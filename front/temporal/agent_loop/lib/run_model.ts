@@ -31,6 +31,10 @@ import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent";
 import { getCompletionDuration } from "@app/lib/api/assistant/messages";
 import { getSkillServers } from "@app/lib/api/assistant/skill_actions";
+import {
+  buildAuditLogTarget,
+  emitAuditLogEventDirect,
+} from "@app/lib/api/audit/workos_audit";
 import { getLLM } from "@app/lib/api/llm";
 import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
 import {
@@ -79,6 +83,13 @@ import { removeNulls } from "@app/types/shared/utils/general";
 import { startActiveObservation } from "@langfuse/tracing";
 import { Context, heartbeat } from "@temporalio/activity";
 import assert from "assert";
+
+const ASK_USER_QUESTION_ALLOWED_ORIGINS: UserMessageOrigin[] = [
+  "web",
+  "slack",
+  "extension",
+  "agent_sidekick",
+];
 
 // Concatenate two content strings, ensuring at least one whitespace character
 // between them when both are non-empty. This prevents words from being glued
@@ -284,10 +295,6 @@ export async function runModel(
   }
 
   // Filter out ask_user_question for origins that don't support interactive questions.
-  const ASK_USER_QUESTION_ALLOWED_ORIGINS: UserMessageOrigin[] = [
-    "web",
-    "slack",
-  ];
   const filteredMcpActions = !ASK_USER_QUESTION_ALLOWED_ORIGINS.includes(
     userMessage.context.origin
   )
@@ -613,9 +620,37 @@ export async function runModel(
           isByokProviderId(model.providerId) &&
           (type === "authentication_error" || type === "permission_error")
         ) {
-          await ProviderCredentialResource.markAsUnhealthy(auth, {
-            providerId: model.providerId,
-          });
+          const invalidatedCredential =
+            await ProviderCredentialResource.markAsUnhealthy(auth, {
+              providerId: model.providerId,
+            });
+
+          if (invalidatedCredential) {
+            void emitAuditLogEventDirect({
+              workspace: auth.getNonNullableWorkspace(),
+              action: "credentials.invalidated",
+              actor: {
+                type: "system",
+                id: "byok_health_check",
+                name: "BYOK Health Check",
+              },
+              targets: [
+                buildAuditLogTarget(
+                  "workspace",
+                  auth.getNonNullableWorkspace()
+                ),
+                buildAuditLogTarget("credential", {
+                  sId: invalidatedCredential.sId,
+                  name: model.providerId,
+                }),
+              ],
+              context: { location: "internal" },
+              metadata: {
+                providerId: model.providerId,
+                reason: "authentication_failed",
+              },
+            });
+          }
         }
 
         const errorMessage =

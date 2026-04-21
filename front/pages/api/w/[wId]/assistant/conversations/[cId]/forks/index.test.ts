@@ -1,4 +1,5 @@
 import { createConversation } from "@app/lib/api/assistant/conversation";
+import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import {
   AgentMessageModel,
   MessageModel,
@@ -12,6 +13,18 @@ import type { ConversationWithoutContentType } from "@app/types/assistant/conver
 import { describe, expect, it } from "vitest";
 
 import handler from "./index";
+
+async function fetchConversationOrThrow(
+  auth: Awaited<ReturnType<typeof createPrivateApiMockRequest>>["auth"],
+  conversationId: string
+) {
+  const result = await getConversation(auth, conversationId);
+  if (result.isErr()) {
+    throw result.error;
+  }
+
+  return result.value;
+}
 
 async function createUserMessage(
   auth: Awaited<ReturnType<typeof createPrivateApiMockRequest>>["auth"],
@@ -113,7 +126,7 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/forks", () => {
     expect(res._getJSONData().error.type).toBe("feature_flag_not_found");
   });
 
-  it("creates a fork and returns the child conversation", async () => {
+  it("creates a fork and returns the child conversation id", async () => {
     const { req, res, auth, globalSpace } = await createPrivateApiMockRequest({
       method: "POST",
     });
@@ -144,17 +157,19 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/forks", () => {
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(200);
-    expect(res._getJSONData().conversation.title).toBe(
-      "Parent conversation (forked)"
-    );
-    expect(res._getJSONData().conversation.forkedFrom).toEqual({
+    const { conversationId } = res._getJSONData();
+    const conversation = await fetchConversationOrThrow(auth, conversationId);
+
+    expect(conversation.title).toBe("Parent conversation (forked)");
+    expect(conversation.forkedFrom).toEqual({
       parentConversationId: parentConversation.sId,
+      parentConversationTitle: "Parent conversation",
       sourceMessageId: sourceMessage.sId,
       branchedAt: expect.any(Number),
       user: auth.getNonNullableUser().toJSON(),
     });
-    expect(res._getJSONData().conversation.depth).toBe(1);
-    expect(res._getJSONData().conversation.spaceId).toBe(globalSpace.sId);
+    expect(conversation.depth).toBe(1);
+    expect(conversation.spaceId).toBe(globalSpace.sId);
   });
 
   it("accepts an empty string body and resolves the latest source message", async () => {
@@ -188,8 +203,12 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/forks", () => {
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(200);
-    expect(res._getJSONData().conversation.forkedFrom).toEqual({
+    const { conversationId } = res._getJSONData();
+    const conversation = await fetchConversationOrThrow(auth, conversationId);
+
+    expect(conversation.forkedFrom).toEqual({
       parentConversationId: parentConversation.sId,
+      parentConversationTitle: "Parent conversation",
       sourceMessageId: sourceMessage.sId,
       branchedAt: expect.any(Number),
       user: auth.getNonNullableUser().toJSON(),

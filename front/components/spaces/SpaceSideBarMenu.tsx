@@ -32,7 +32,7 @@ import {
   useSpacesAsAdmin,
 } from "@app/lib/swr/spaces";
 import { useWebhookSourceViews } from "@app/lib/swr/webhook_source";
-import { normalizeWebhookIcon } from "@app/lib/webhookSource";
+import { normalizeWebhookIcon } from "@app/lib/webhook_source";
 import type {
   DataSourceViewCategory,
   DataSourceViewCategoryWithoutApps,

@@ -14,8 +14,8 @@ import {
   useConversationSkills,
   useConversationTools,
 } from "@app/hooks/conversations";
+import { RUNNING_AGENT_SWITCH_BLOCK_MESSAGE } from "@app/lib/api/assistant/errors";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { DustError } from "@app/lib/error";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { TRACKING_AREAS, trackEvent } from "@app/lib/tracking";
@@ -26,7 +26,7 @@ import {
 } from "@app/types/assistant/assistant";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { RichMention } from "@app/types/assistant/mentions";
-import type { SkillType } from "@app/types/assistant/skill_configuration";
+import type { SkillWithoutToolsType } from "@app/types/assistant/skill_configuration";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import { isEqualNode } from "@app/types/data_source_view";
@@ -65,8 +65,8 @@ interface InputBarProps {
   isFloating?: boolean;
   isFloatingWithoutMargin?: boolean;
   isSubmitting?: boolean;
-  disable?: boolean;
   isAgentBuilder?: boolean;
+  submitBlockMessage?: string | null;
 }
 
 export const InputBar = React.memo(function InputBar({
@@ -83,11 +83,9 @@ export const InputBar = React.memo(function InputBar({
   isAgentBuilder = false,
   isFloating = true,
   isSubmitting = false,
-  disable = false,
+  submitBlockMessage = null,
 }: InputBarProps) {
   const [isLocalSubmitting, setIsLocalSubmitting] = useState(isSubmitting);
-  const { hasFeature } = useFeatureFlags();
-  const singleAgentInput = hasFeature("enable_steering");
   const [isShaking, setIsShaking] = useState(false);
 
   const [attachedNodes, setAttachedNodes] = useState<
@@ -141,7 +139,7 @@ export const InputBar = React.memo(function InputBar({
   // In single-agent mode, block submission when the selected agent differs from
   // the agent that is currently generating a response.
   const agentSwitchBlockMessage = useMemo(() => {
-    if (!singleAgentInput || !selectedSingleAgent) {
+    if (!selectedSingleAgent) {
       return null;
     }
     const conversationId = conversation?.sId ?? "";
@@ -152,10 +150,7 @@ export const InputBar = React.memo(function InputBar({
       (gm) => gm.agentId && gm.agentId !== selectedSingleAgent.id
     )?.agentId;
     if (activeBlockingId) {
-      const name =
-        agentConfigurations.find((a) => a.sId === activeBlockingId)?.name ??
-        "another agent";
-      return `Wait for @${name} to finish before switching agents`;
+      return RUNNING_AGENT_SWITCH_BLOCK_MESSAGE;
     }
 
     // Check messages with a pending blocked action from a different agent.
@@ -175,7 +170,6 @@ export const InputBar = React.memo(function InputBar({
 
     return null;
   }, [
-    singleAgentInput,
     selectedSingleAgent,
     getConversationGeneratingMessages,
     generatingMessages,
@@ -185,6 +179,8 @@ export const InputBar = React.memo(function InputBar({
   ]);
 
   const isBlockedByAgentSwitch = agentSwitchBlockMessage !== null;
+  const isBlockedForSubmission =
+    isBlockedByAgentSwitch || submitBlockMessage !== null;
 
   // Tools selection
 
@@ -192,7 +188,9 @@ export const InputBar = React.memo(function InputBar({
     MCPServerViewType[]
   >([]);
 
-  const [selectedSkills, setSelectedSkills] = useState<SkillType[]>([]);
+  const [selectedSkills, setSelectedSkills] = useState<SkillWithoutToolsType[]>(
+    []
+  );
 
   const { conversationTools } = useConversationTools({
     conversationId: conversation?.sId,
@@ -239,12 +237,12 @@ export const InputBar = React.memo(function InputBar({
     void deleteTool(serverView.sId);
   };
 
-  const handleSkillSelect = (skill: SkillType) => {
+  const handleSkillSelect = (skill: SkillWithoutToolsType) => {
     setSelectedSkills((prev) => [...prev, skill]);
     void addSkill(skill.sId);
   };
 
-  const handleSkillDeselect = (skill: SkillType) => {
+  const handleSkillDeselect = (skill: SkillWithoutToolsType) => {
     setSelectedSkills((prev) => prev.filter((s) => s.sId !== skill.sId));
     void deleteSkill(skill.sId);
   };
@@ -265,7 +263,7 @@ export const InputBar = React.memo(function InputBar({
       isLocalSubmitting ||
       isEmpty ||
       fileUploaderService.isProcessingFiles ||
-      isBlockedByAgentSwitch
+      isBlockedForSubmission
     ) {
       return;
     }
@@ -275,7 +273,6 @@ export const InputBar = React.memo(function InputBar({
     // since it's no longer in the editor as a mention node.
     const hasUserMention = rawMentions.some((m) => m.type === "user");
     const shouldInjectSelectedAgent =
-      singleAgentInput &&
       selectedSingleAgent &&
       !hasUserMention &&
       !rawMentions.some((m) => m.id === selectedSingleAgent.id);
@@ -423,7 +420,6 @@ export const InputBar = React.memo(function InputBar({
           "border-border-dark dark:border-border-dark/10",
           "sm:border-border-dark/50 sm:focus-within:border-border-dark",
           "dark:focus-within:border-border-dark-night sm:focus-within:border-border-dark",
-          disable && "cursor-not-allowed opacity-75",
           isFloating
             ? classNames(
                 "focus-within:ring-1 dark:focus-within:ring-1",
@@ -446,7 +442,6 @@ export const InputBar = React.memo(function InputBar({
               onRemove: handleNodesAttachmentRemove,
             }}
             conversationId={conversation?.sId}
-            disable={disable}
           />
           <InputBarContainer
             actions={actions}
@@ -464,7 +459,6 @@ export const InputBar = React.memo(function InputBar({
             isSubmitting={
               isLocalSubmitting || fileUploaderService.isProcessingFiles
             }
-            disableInput={disable || isLocalSubmitting}
             onNodeSelect={handleNodesAttachmentSelect}
             onNodeUnselect={handleNodesAttachmentRemove}
             selectedMCPServerViews={selectedMCPServerViews}
@@ -479,7 +473,8 @@ export const InputBar = React.memo(function InputBar({
             saveDraft={saveDraft}
             getDraft={getDraft}
             user={user}
-            agentSwitchBlockMessage={agentSwitchBlockMessage}
+            disableAgentSelector={isBlockedByAgentSwitch}
+            submitBlockMessage={submitBlockMessage ?? agentSwitchBlockMessage}
             onShake={handleShake}
           />
         </div>

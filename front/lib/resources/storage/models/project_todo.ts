@@ -70,8 +70,7 @@ const PROJECT_TODO_MODEL_ATTRIBUTES = {
   category: {
     type: DataTypes.STRING,
     allowNull: false,
-    comment:
-      "Category of the todo: need_attention, key_decisions, follow_ups, notable_updates.",
+    comment: "Category of the todo: to_do, to_know.",
   },
   text: {
     type: DataTypes.TEXT,
@@ -90,6 +89,18 @@ const PROJECT_TODO_MODEL_ATTRIBUTES = {
     type: DataTypes.TEXT,
     allowNull: true,
     comment: "Explanation for why the actor made a change.",
+  },
+  deletedAt: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    defaultValue: null,
+  },
+  cleanedAt: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    defaultValue: null,
+    comment:
+      "Set when the user cleans done items from the UI. Hidden but not deleted.",
   },
 } as const;
 
@@ -121,6 +132,8 @@ export class ProjectTodoModel extends WorkspaceAwareModel<ProjectTodoModel> {
   declare status: ProjectTodoStatus;
   declare doneAt: Date | null;
   declare actorRationale: string | null;
+  declare deletedAt: CreationOptional<Date | null>;
+  declare cleanedAt: CreationOptional<Date | null>;
 
   declare space: NonAttribute<SpaceModel>;
   declare user: NonAttribute<UserModel>;
@@ -360,6 +373,8 @@ export class ProjectTodoSourceModel extends WorkspaceAwareModel<ProjectTodoSourc
   declare projectTodoId: ForeignKey<ProjectTodoModel["id"]>;
   declare sourceType: ProjectTodoSourceType;
   declare sourceId: string;
+  declare sourceTitle: string | null;
+  declare sourceUrl: string | null;
 
   declare projectTodo: NonAttribute<ProjectTodoModel>;
 }
@@ -386,6 +401,14 @@ ProjectTodoSourceModel.init(
       comment:
         "String identifier of the source (conversation sId, external URL/ID, etc.) that led to creating this todo.",
     },
+    sourceTitle: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    sourceUrl: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
   },
   {
     modelName: "project_todo_source",
@@ -404,6 +427,12 @@ ProjectTodoSourceModel.init(
       {
         name: "project_todo_sources_sourceType_sourceId_idx",
         fields: ["sourceType", "sourceId"],
+        concurrently: true,
+      },
+      {
+        name: "project_todo_sources_ws_unique_idx",
+        fields: ["workspaceId", "projectTodoId", "sourceType", "sourceId"],
+        unique: true,
         concurrently: true,
       },
     ],

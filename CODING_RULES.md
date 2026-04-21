@@ -208,6 +208,9 @@ Common suffixes:
 - Money: `Cents`, `Dollars` (e.g., `priceCents`, `amountDollars`)
 - Time: `Ms`, `Seconds`, `Minutes`, `Hours` (e.g., `timeoutMs`, `durationSeconds`)
 
+This rule does not apply to common Sequelize date/timestamp fields that follow the framework
+convention, such as `createdAt` and `updatedAt`.
+
 Reviewer: If you detect a variable representing money or time without a unit suffix, require the
 author to rename it with the appropriate suffix.
 

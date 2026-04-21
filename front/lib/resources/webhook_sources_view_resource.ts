@@ -9,7 +9,7 @@ import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
-import { normalizeWebhookIcon } from "@app/lib/webhookSource";
+import { normalizeWebhookIcon } from "@app/lib/webhook_source";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -36,7 +36,12 @@ export interface WebhookSourcesViewResource
 export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSourcesViewModel> {
   static model: ModelStatic<WebhookSourcesViewModel> = WebhookSourcesViewModel;
   readonly editedByUser?: Attributes<UserModel>;
-  private webhookSource?: WebhookSourceResource;
+  private _webhookSource: WebhookSourceResource | null = null;
+
+  get webhookSource(): WebhookSourceResource {
+    assert(this._webhookSource, "webhookSource not loaded");
+    return this._webhookSource;
+  }
 
   constructor(
     model: ModelStatic<WebhookSourcesViewModel>,
@@ -47,33 +52,6 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     super(WebhookSourcesViewModel, blob, space);
 
     this.editedByUser = editedByUser;
-  }
-
-  private async init(auth: Authenticator): Promise<Result<void, DustError>> {
-    if (this.webhookSourceId) {
-      const webhookSourceResource = await WebhookSourceResource.findByPk(
-        auth,
-        this.webhookSourceId
-      );
-      if (!webhookSourceResource) {
-        return new Err(
-          new DustError(
-            "webhook_source_not_found",
-            "Webhook source not found, it should have been fetched by the base fetch."
-          )
-        );
-      }
-
-      this.webhookSource = webhookSourceResource;
-      return new Ok(undefined);
-    }
-
-    return new Err(
-      new DustError(
-        "internal_error",
-        "We could not find the webhook source because it was missing."
-      )
-    );
   }
 
   private static async makeNew(
@@ -87,6 +65,19 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     transaction?: Transaction
   ) {
     assert(auth.isAdmin(), "Only admins can create a webhook sources view");
+
+    assert(blob.webhookSourceId, "webhookSourceId is required");
+
+    const webhookSource = await WebhookSourceResource.findByPk(
+      auth,
+      blob.webhookSourceId
+    );
+    if (!webhookSource) {
+      throw new DustError(
+        "webhook_source_not_found",
+        "Webhook source not found for the new view."
+      );
+    }
 
     const view = await WebhookSourcesViewModel.create(
       {
@@ -104,11 +95,7 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
       view.get(),
       space
     );
-
-    const r = await resource.init(auth);
-    if (r.isErr()) {
-      throw r.error;
-    }
+    resource._webhookSource = webhookSource;
 
     return resource;
   }
@@ -164,21 +151,32 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
       ],
     });
 
-    const filteredViews: WebhookSourcesViewResource[] = [];
+    // Batch-fetch all referenced webhook sources.
+    const webhookSourceIds = [
+      ...new Set(removeNulls(views.map((v) => v.webhookSourceId))),
+    ];
+    const webhookSources = await WebhookSourceResource.fetchByModelIds(
+      auth,
+      webhookSourceIds
+    );
+    const webhookSourceByModelId = new Map(
+      webhookSources.map((ws) => [ws.id, ws])
+    );
 
-    if (options.includeDeleted) {
-      filteredViews.push(...views);
-    } else {
-      for (const view of views) {
-        const r = await view.init(auth);
-
-        if (r.isOk()) {
-          filteredViews.push(view);
-        }
+    // Assign webhook sources; filter out views whose source no longer exists
+    // unless includeDeleted is set.
+    const result: WebhookSourcesViewResource[] = [];
+    for (const view of views) {
+      const ws = webhookSourceByModelId.get(view.webhookSourceId);
+      if (ws) {
+        view._webhookSource = ws;
+        result.push(view);
+      } else if (options.includeDeleted) {
+        result.push(view);
       }
     }
 
-    return filteredViews;
+    return result;
   }
 
   static async fetchById(
@@ -277,6 +275,19 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     );
   }
 
+  static async listByWebhookSourceIds(
+    auth: Authenticator,
+    webhookSourceIds: ModelId[]
+  ): Promise<WebhookSourcesViewResource[]> {
+    if (webhookSourceIds.length === 0) {
+      return [];
+    }
+    const views = await this.baseFetch(auth, {
+      where: { webhookSourceId: { [Op.in]: webhookSourceIds } },
+    });
+    return views.filter((view) => view.canReadOrAdministrate(auth));
+  }
+
   /**
    * List all webhook source views for a webhook source without space permission filtering.
    * This is used internally for webhook trigger processing where authorization
@@ -299,10 +310,10 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
 
   static async getWebhookSourceViewForSystemSpace(
     auth: Authenticator,
-    webhookSourceSId: string
+    webhookSourceId: string
   ): Promise<WebhookSourcesViewResource | null> {
-    const webhookSourceId = getResourceIdFromSId(webhookSourceSId);
-    if (!webhookSourceId) {
+    const webhookSourceModelId = getResourceIdFromSId(webhookSourceId);
+    if (!webhookSourceModelId) {
       return null;
     }
 
@@ -311,7 +322,7 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     const views = await this.baseFetch(auth, {
       where: {
         vaultId: systemSpace.id,
-        webhookSourceId,
+        webhookSourceId: webhookSourceModelId,
       },
     });
 
@@ -466,25 +477,11 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     return new Ok(deletedCount);
   }
 
-  private getWebhookSourceResource(): WebhookSourceResource {
-    if (!this.webhookSource) {
-      throw new Error(
-        "This webhook sources view is referencing a non-existent webhook source"
-      );
-    }
-
-    return this.webhookSource;
-  }
-
   get sId(): string {
     return WebhookSourcesViewResource.modelIdToSId({
       id: this.id,
       workspaceId: this.workspaceId,
     });
-  }
-
-  get webhookSourceSId(): string {
-    return this.getWebhookSourceResource().sId;
   }
 
   static modelIdToSId({
@@ -518,44 +515,42 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
   }
 
   toJSON(): WebhookSourceViewType {
-    const webhookSource = this.getWebhookSourceResource();
     return {
       id: this.id,
       sId: this.sId,
-      customName: this.customName ?? webhookSource.name,
+      customName: this.customName ?? this.webhookSource.name,
       description: this.description,
       icon: normalizeWebhookIcon(this.icon),
-      provider: webhookSource.provider,
-      subscribedEvents: webhookSource.subscribedEvents,
+      provider: this.webhookSource.provider,
+      subscribedEvents: this.webhookSource.subscribedEvents,
       createdAt: this.createdAt.getTime(),
       updatedAt: this.updatedAt.getTime(),
       spaceId: this.space.sId,
-      webhookSource: webhookSource.toJSON(),
+      webhookSource: this.webhookSource.toJSON(),
       editedByUser: this.makeEditedBy(
         this.editedByUser,
-        this.webhookSource ? this.webhookSource.updatedAt : this.updatedAt
+        this.webhookSource.updatedAt
       ),
     };
   }
 
   // Serialization.
   toJSONForAdmin(): WebhookSourceViewForAdminType {
-    const webhookSource = this.getWebhookSourceResource();
     return {
       id: this.id,
       sId: this.sId,
-      customName: this.customName ?? webhookSource.name,
+      customName: this.customName ?? this.webhookSource.name,
       description: this.description,
       icon: normalizeWebhookIcon(this.icon),
-      provider: webhookSource.provider,
-      subscribedEvents: webhookSource.subscribedEvents,
+      provider: this.webhookSource.provider,
+      subscribedEvents: this.webhookSource.subscribedEvents,
       createdAt: this.createdAt.getTime(),
       updatedAt: this.updatedAt.getTime(),
       spaceId: this.space.sId,
-      webhookSource: webhookSource.toJSONForAdmin(),
+      webhookSource: this.webhookSource.toJSONForAdmin(),
       editedByUser: this.makeEditedBy(
         this.editedByUser,
-        this.webhookSource ? this.webhookSource.updatedAt : this.updatedAt
+        this.webhookSource.updatedAt
       ),
     };
   }

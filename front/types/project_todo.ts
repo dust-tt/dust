@@ -1,11 +1,6 @@
 import type { ModelId } from "@app/types/shared/model_id";
 
-export const PROJECT_TODO_CATEGORIES = [
-  "need_attention",
-  "key_decisions",
-  "follow_ups",
-  "notable_updates",
-] as const;
+export const PROJECT_TODO_CATEGORIES = ["to_do", "to_know"] as const;
 
 export type ProjectTodoCategory = (typeof PROJECT_TODO_CATEGORIES)[number];
 
@@ -17,14 +12,24 @@ export const PROJECT_TODO_ACTOR_TYPES = ["user", "agent"] as const;
 
 export type ProjectTodoActorType = (typeof PROJECT_TODO_ACTOR_TYPES)[number];
 
-export const PROJECT_TODO_SOURCE_TYPES = ["conversation"] as const;
+export const PROJECT_TODO_SOURCE_TYPES = [
+  "project_conversation",
+  "project_knowledge",
+  "slack",
+  "notion",
+  "gdrive",
+  "confluence",
+  "github",
+  "microsoft",
+] as const;
 
 export type ProjectTodoSourceType = (typeof PROJECT_TODO_SOURCE_TYPES)[number];
 
 export type ProjectTodoSourceInfo = {
   sourceType: ProjectTodoSourceType;
   sourceId: string;
-  title: string | null;
+  sourceTitle: string | null;
+  sourceUrl: string | null;
 };
 
 // Safe public representation of a ProjectTodo — no internal ModelIds exposed.

@@ -1,7 +1,7 @@
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { importSkillsFromGitHub } from "@app/lib/api/skills/detection/github/import_skills";
-import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
@@ -42,17 +42,6 @@ async function handler(
           api_error: {
             type: "app_auth_error",
             message: "User is not a builder.",
-          },
-        });
-      }
-
-      const featureFlags = await getFeatureFlags(auth);
-      if (!featureFlags.includes("sandbox_tools")) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Skill import from GitHub is not supported.",
           },
         });
       }

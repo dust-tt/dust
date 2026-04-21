@@ -17,6 +17,7 @@ import { Chip, LinkWrapper } from "@dust-tt/sparkle";
 
 export function WorkspaceInfoTable({
   owner,
+  membersCount,
   metronomeCustomerId,
   workspaceVerifiedDomains,
   workspaceCreationDay,
@@ -24,8 +25,10 @@ export function WorkspaceInfoTable({
   dataRetention,
   workosEnvironmentId,
   hasDummyFeature,
+  temporalFrontNamespace,
 }: {
   owner: WorkspaceType;
+  membersCount: number;
   metronomeCustomerId: string | null;
   workspaceVerifiedDomains: WorkspaceDomain[];
   workspaceCreationDay: string;
@@ -33,6 +36,7 @@ export function WorkspaceInfoTable({
   dataRetention: DataRetentionConfig | undefined;
   workosEnvironmentId: string;
   hasDummyFeature: boolean;
+  temporalFrontNamespace: string;
 }) {
   const { dsyncStatus } = usePokeWorkOSDSyncStatus({ owner });
 
@@ -133,6 +137,10 @@ export function WorkspaceInfoTable({
               <PokeTableCell>{workspaceCreationDay}</PokeTableCell>
             </PokeTableRow>
             <PokeTableRow>
+              <PokeTableCell>Members count</PokeTableCell>
+              <PokeTableCell>{membersCount}</PokeTableCell>
+            </PokeTableRow>
+            <PokeTableRow>
               <PokeTableCell>SSO Enforced</PokeTableCell>
               <PokeTableCell>{owner.ssoEnforced ? "✅" : "❌"}</PokeTableCell>
             </PokeTableRow>
@@ -219,6 +227,18 @@ export function WorkspaceInfoTable({
                 </PokeTableRow>
               </>
             )}
+            <PokeTableRow>
+              <PokeTableCell>Reinforcement</PokeTableCell>
+              <PokeTableCell>
+                <LinkWrapper
+                  href={`https://cloud.temporal.io/namespaces/${temporalFrontNamespace}/schedules?query=%60ScheduleId%60%3D%22reinforcement-workspace-${owner.sId}%22`}
+                  target="_blank"
+                  className="text-xs text-highlight-400"
+                >
+                  Schedule
+                </LinkWrapper>
+              </PokeTableCell>
+            </PokeTableRow>
             {hasDummyFeature && (
               <PokeTableRow>
                 <PokeTableCell>Dummy feature</PokeTableCell>

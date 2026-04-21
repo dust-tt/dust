@@ -1,7 +1,7 @@
 // This module merges the latest takeaway snapshots for all conversations in a
 // project into project_todo rows. It is called by mergeTodosForProjectActivity,
-// which itself is invoked by the per-project projectMergeWorkflow at most once
-// per MERGE_THROTTLE_MS (1 hour by default).
+// which itself is invoked by the per-project projectTodoWorkflow at most once
+// per hour (based on the cron schedule).
 //
 // High-level algorithm (3 phases):
 //
@@ -26,14 +26,14 @@
 //       - Not in dedupMap → makeNew + addSource (current behaviour).
 //
 // Category mapping:
-//   actionItems  (open)    → "follow_ups",      status: "todo"
-//   actionItems  (done)    → "follow_ups",      status: "done"
-//   keyDecisions (open)    → "key_decisions",   status: "todo"
-//   keyDecisions (decided) → "key_decisions",   status: "done"
-//   notableFacts           → "notable_updates", status: "todo"
+//   actionItems  (open)    → "to_do",   status: "todo"
+//   actionItems  (done)    → "to_do",   status: "done"
+//   keyDecisions (open)    → "to_know", status: "todo"
+//   keyDecisions (decided) → "to_know", status: "todo"
+//   notableFacts           → "to_know", status: "todo"
 
 import { getFastestWhitelistedModel } from "@app/lib/assistant";
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import {
   batchDeduplicateCandidates,
   type DeduplicateCandidate,
@@ -41,13 +41,16 @@ import {
   makeDedupGroupKey,
   makeDedupResultKey,
 } from "@app/lib/project_todo/deduplicate_candidates";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ProjectTodoResource } from "@app/lib/resources/project_todo_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
-import { TakeawaysResource } from "@app/lib/resources/takeaways_resource";
+import {
+  TakeawaysResource,
+  type TakeawaysWithSource,
+} from "@app/lib/resources/takeaways_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
+import type { ProjectTodoSourceInfo } from "@app/types/project_todo";
 import type { ModelId } from "@app/types/shared/model_id";
 import type {
   TodoVersionedActionItem,
@@ -63,7 +66,7 @@ const BUTLER_AGENT_SID = "butler";
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type TodoBlob = {
-  category: "follow_ups" | "key_decisions" | "notable_updates";
+  category: "to_do" | "to_know";
   text: string;
   status: "todo" | "done";
   doneAt: Date | null;
@@ -75,44 +78,39 @@ type PendingCandidate = {
   itemId: string;
   userId: ModelId;
   blob: TodoBlob;
-  conversationSId: string;
+  source: ProjectTodoSourceInfo;
 };
 
 // ── Entry point ───────────────────────────────────────────────────────────────
 
-export async function mergeTakeawaysIntoProject(
-  auth: Authenticator,
-  { spaceId }: { spaceId: string }
-): Promise<void> {
+export async function mergeTakeawaysIntoProject({
+  workspaceId,
+  spaceId,
+}: {
+  workspaceId: string;
+  spaceId: string;
+}): Promise<void> {
   const spaceModelId = getResourceIdFromSId(spaceId);
   if (spaceModelId === null) {
     logger.error({ spaceId }, "Project todo merge: invalid space sId");
     return;
   }
 
+  const adminAuth = await Authenticator.internalAdminForWorkspace(workspaceId);
+
   // Fetch all latest takeaways for the space directly.
   const takeawaysWithSource = await TakeawaysResource.fetchLatestBySpaceId(
-    auth,
+    adminAuth,
     { spaceModelId }
   );
 
   if (takeawaysWithSource.length === 0) {
+    logger.info(
+      { spaceId },
+      "Project todo merge: no takeaways found, skipping"
+    );
     return;
   }
-
-  // Batch-fetch conversations by sId.
-  const conversationSIds = [
-    ...new Set(
-      takeawaysWithSource.map(({ conversationSId }) => conversationSId)
-    ),
-  ];
-  const conversations = await ConversationResource.fetchByIds(
-    auth,
-    conversationSIds
-  );
-  const conversationBySId = new Map<string, ConversationResource>(
-    conversations.map((c) => [c.sId, c])
-  );
 
   // Collect all user sIds referenced across all takeaways so we can batch-fetch
   // the corresponding UserResources in a single query.
@@ -141,26 +139,29 @@ export async function mergeTakeawaysIntoProject(
 
   // ── Phase 1: collect new candidates, update already-linked items ──────────
 
-  const newCandidates = await collectNewCandidates(auth, {
+  const newCandidates = await collectNewCandidates(adminAuth, {
     takeawaysWithSource,
-    conversationBySId,
     usersById,
   });
 
   if (newCandidates.length === 0) {
+    logger.info(
+      { spaceId },
+      "Project todo merge: no new candidates found, skipping"
+    );
     return;
   }
 
   // ── Phase 2: semantic deduplication ──────────────────────────────────────
 
-  const dedupMap = await buildDeduplicationMap(auth, {
+  const dedupMap = await buildDeduplicationMap(adminAuth, {
     newCandidates,
     spaceModelId,
   });
 
   // ── Phase 3: create or link ───────────────────────────────────────────────
 
-  await createOrLinkTodos(auth, {
+  await createOrLinkTodos(adminAuth, {
     newCandidates,
     dedupMap,
     spaceModelId,
@@ -176,14 +177,9 @@ async function collectNewCandidates(
   auth: Authenticator,
   {
     takeawaysWithSource,
-    conversationBySId,
     usersById,
   }: {
-    takeawaysWithSource: Array<{
-      takeaway: TakeawaysResource;
-      conversationSId: string;
-    }>;
-    conversationBySId: Map<string, ConversationResource>;
+    takeawaysWithSource: TakeawaysWithSource[];
     usersById: Map<string, UserResource>;
   }
 ): Promise<PendingCandidate[]> {
@@ -191,18 +187,9 @@ async function collectNewCandidates(
 
   await concurrentExecutor(
     takeawaysWithSource,
-    async ({ takeaway, conversationSId }) => {
-      const conversation = conversationBySId.get(conversationSId);
-      if (!conversation) {
-        logger.warn(
-          { conversationSId },
-          "Project todo merge: conversation not found, skipping takeaway"
-        );
-        return;
-      }
-      const candidates = await collectConversationCandidates(auth, {
-        conversationSId,
-        takeaway,
+    async (takeawayWithSource) => {
+      const candidates = await collectDocumentCandidates(auth, {
+        takeawayWithSource,
         usersById,
       });
       newCandidates.push(...candidates);
@@ -213,22 +200,18 @@ async function collectNewCandidates(
   return newCandidates;
 }
 
-// Processes one conversation's takeaway: updates todos whose source link already
+// Processes one document's takeaway: updates todos whose source link already
 // exists, and returns items that need to go through dedup + creation.
-async function collectConversationCandidates(
+async function collectDocumentCandidates(
   auth: Authenticator,
   {
-    conversationSId,
-    takeaway,
+    takeawayWithSource,
     usersById,
   }: {
-    conversationSId: string;
-    takeaway: TakeawaysResource;
+    takeawayWithSource: TakeawaysWithSource;
     usersById: Map<string, UserResource>;
   }
 ): Promise<PendingCandidate[]> {
-  const candidates: PendingCandidate[] = [];
-
   function resolveTargetUserIds(userSIds: string[]): ModelId[] {
     return userSIds
       .map((sId) => usersById.get(sId)?.id)
@@ -242,19 +225,19 @@ async function collectConversationCandidates(
     targetUserIds: ModelId[];
     blob: TodoBlob;
   }> = [
-    ...takeaway.actionItems.map((item) => ({
+    ...takeawayWithSource.takeaway.actionItems.map((item) => ({
       itemId: item.sId,
       targetUserIds: resolveTargetUserIds(
         item.assigneeUserId ? [item.assigneeUserId] : []
       ),
       blob: actionItemBlob(item),
     })),
-    ...takeaway.keyDecisions.map((item) => ({
+    ...takeawayWithSource.takeaway.keyDecisions.map((item) => ({
       itemId: item.sId,
       targetUserIds: resolveTargetUserIds(item.relevantUserIds),
       blob: keyDecisionBlob(item),
     })),
-    ...takeaway.notableFacts.map((item) => ({
+    ...takeawayWithSource.takeaway.notableFacts.map((item) => ({
       itemId: item.sId,
       targetUserIds: resolveTargetUserIds(item.relevantUserIds),
       blob: notableFactBlob(item),
@@ -263,11 +246,11 @@ async function collectConversationCandidates(
 
   // Batch-fetch all existing source links for this takeaway in 3 queries
   // instead of one per (item, user) pair.
-  const allItemIds = itemTriples.map((t) => t.itemId);
   const existingByKey = await ProjectTodoResource.fetchBySourceIds(auth, {
-    sourceIds: allItemIds,
+    sourceIds: [takeawayWithSource.source.sourceId],
   });
 
+  const candidates: PendingCandidate[] = [];
   for (const { itemId, targetUserIds, blob } of itemTriples) {
     for (const userId of targetUserIds) {
       const existing = existingByKey.get(`${itemId}:${userId}`) ?? null;
@@ -275,7 +258,12 @@ async function collectConversationCandidates(
         // Source link exists — update content if it has changed.
         await updateTodoIfChanged(existing, auth, blob);
       } else {
-        candidates.push({ itemId, userId, blob, conversationSId });
+        candidates.push({
+          itemId,
+          userId,
+          blob,
+          source: takeawayWithSource.source,
+        });
       }
     }
   }
@@ -371,9 +359,8 @@ async function createOrLinkTodos(
 
       if (match !== null) {
         // Semantic duplicate found — link the new source to the existing todo.
-        await match.addSource(auth, {
-          sourceType: "conversation",
-          sourceId: candidate.itemId,
+        await match.upsertSource(auth, {
+          source: candidate.source,
         });
 
         // For agent-created todos also propagate content updates. User-created
@@ -384,10 +371,10 @@ async function createOrLinkTodos(
 
         logger.info(
           {
-            existingTodoSId: match.sId,
+            existingTodoId: match.sId,
             itemId: candidate.itemId,
             userId: candidate.userId,
-            conversationSId: candidate.conversationSId,
+            source: candidate.source,
             createdByType: match.createdByType,
           },
           "Project todo merge: linked source to existing todo (semantic duplicate)"
@@ -412,17 +399,16 @@ async function createOrLinkTodos(
         markedAsDoneByAgentConfigurationId: null,
       });
 
-      await todo.addSource(auth, {
-        sourceType: "conversation",
-        sourceId: candidate.itemId,
+      await todo.upsertSource(auth, {
+        source: candidate.source,
       });
 
       logger.info(
         {
-          todoSId: todo.sId,
+          todoId: todo.sId,
           itemId: candidate.itemId,
           userId: candidate.userId,
-          conversationSId: candidate.conversationSId,
+          source: candidate.source,
         },
         "Project todo merge: created new todo"
       );
@@ -458,8 +444,8 @@ async function updateTodoIfChanged(
 export function actionItemBlob(item: TodoVersionedActionItem): TodoBlob {
   const isDone = item.status === "done";
   return {
-    category: "follow_ups",
-    text: item.text,
+    category: "to_do",
+    text: item.shortDescription,
     status: isDone ? "done" : "todo",
     doneAt:
       isDone && item.detectedDoneAt ? new Date(item.detectedDoneAt) : null,
@@ -468,17 +454,17 @@ export function actionItemBlob(item: TodoVersionedActionItem): TodoBlob {
 
 export function keyDecisionBlob(item: TodoVersionedKeyDecision): TodoBlob {
   return {
-    category: "key_decisions",
-    text: item.text,
-    status: item.status === "decided" ? "done" : "todo",
+    category: "to_know",
+    text: item.shortDescription,
+    status: "todo",
     doneAt: null,
   };
 }
 
 export function notableFactBlob(item: TodoVersionedNotableFact): TodoBlob {
   return {
-    category: "notable_updates",
-    text: item.text,
+    category: "to_know",
+    text: item.shortDescription,
     status: "todo",
     doneAt: null,
   };

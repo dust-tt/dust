@@ -1,3 +1,4 @@
+import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
 import { ConversationViewerEmptyState } from "@app/components/assistant/ConversationViewerEmptyState";
 import { AgentInputBar } from "@app/components/assistant/conversation/AgentInputBar";
 import { ConversationBranchApprovalModal } from "@app/components/assistant/conversation/ConversationBranchApprovalModal";
@@ -12,6 +13,7 @@ import {
 } from "@app/components/assistant/conversation/lib";
 import { MessageItem } from "@app/components/assistant/conversation/MessageItem";
 import type {
+  ConversationForkNotice,
   VirtuosoMessage,
   VirtuosoMessageListContext,
 } from "@app/components/assistant/conversation/types";
@@ -21,6 +23,7 @@ import {
   getPredicateForRankAndBranch,
   isAgentMessageWithStreaming,
   isCompactionMessage,
+  isConversationForkNotice,
   isUserMessage,
   makeInitialMessageStreamState,
 } from "@app/components/assistant/conversation/types";
@@ -47,10 +50,12 @@ import type { DustError } from "@app/lib/error";
 import {
   AgentMessageCompletedEvent,
   CompactionCompletedEvent,
+  CompactionStartedEvent,
 } from "@app/lib/notifications/events";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import logger from "@app/logger/logger";
 import {
+  type ConversationForkedChildType,
   type ConversationWithoutContentType,
   isUserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";
@@ -95,7 +100,7 @@ interface ConversationViewerProps {
   agentBuilderContext?: VirtuosoMessageListContext["agentBuilderContext"];
   additionalMarkdownComponents?: Components;
   additionalMarkdownPlugins?: PluggableList;
-  setPlanLimitReached?: (planLimitReached: boolean) => void;
+  setLimitReachedCode?: (code: WorkspaceLimit) => void;
   owner: WorkspaceType;
   user: UserType;
   clientSideMCPServerIds?: string[];
@@ -160,6 +165,72 @@ export function getBranchedInsertIndex(
   return rankOffset === -1 ? data.length : rankOffset;
 }
 
+function makeConversationForkNoticeMessage(
+  sourceMessage: VirtuosoMessage,
+  forkedChild: ConversationForkedChildType
+): ConversationForkNotice {
+  return {
+    type: "conversation_fork_notice",
+    sId: `conversation-fork-notice-${forkedChild.childConversationId}`,
+    created: sourceMessage.created,
+    rank: sourceMessage.rank,
+    branchId: null,
+    visibility: "visible",
+    sourceMessageId: forkedChild.sourceMessageId,
+    childConversationId: forkedChild.childConversationId,
+    childConversationTitle: forkedChild.childConversationTitle,
+    user: forkedChild.user,
+  };
+}
+
+function addConversationForkNotices(
+  messages: VirtuosoMessage[],
+  forkedChildren: ConversationForkedChildType[] = []
+): VirtuosoMessage[] {
+  const renderedMessages = messages.filter(
+    (message) => !isConversationForkNotice(message)
+  );
+
+  if (forkedChildren.length === 0) {
+    return renderedMessages;
+  }
+
+  const forkedChildrenBySourceMessageId = new Map<
+    string,
+    ConversationForkedChildType[]
+  >();
+
+  for (const forkedChild of forkedChildren) {
+    const currentChildren =
+      forkedChildrenBySourceMessageId.get(forkedChild.sourceMessageId) ?? [];
+    forkedChildrenBySourceMessageId.set(forkedChild.sourceMessageId, [
+      ...currentChildren,
+      forkedChild,
+    ]);
+  }
+
+  const mergedMessages: VirtuosoMessage[] = [];
+
+  for (const message of renderedMessages) {
+    mergedMessages.push(message);
+
+    if (!isAgentMessageWithStreaming(message)) {
+      continue;
+    }
+
+    const forkedChildrenForMessage = [
+      ...(forkedChildrenBySourceMessageId.get(message.sId) ?? []),
+    ].sort((a, b) => a.branchedAt - b.branchedAt);
+
+    mergedMessages.push(
+      ...forkedChildrenForMessage.map((forkedChild) =>
+        makeConversationForkNoticeMessage(message, forkedChild)
+      )
+    );
+  }
+
+  return mergedMessages;
+}
 export const ConversationViewer = ({
   owner,
   user,
@@ -167,7 +238,7 @@ export const ConversationViewer = ({
   agentBuilderContext,
   additionalMarkdownComponents,
   additionalMarkdownPlugins,
-  setPlanLimitReached,
+  setLimitReachedCode,
   clientSideMCPServerIds,
 }: ConversationViewerProps) => {
   const ref =
@@ -252,6 +323,7 @@ export const ConversationViewer = ({
   const { mutateContextUsage } = useConversationContextUsage({
     conversationId: isCompactionEnabled ? conversationId : null,
     workspaceId: owner.sId,
+    options: { disabled: true },
   });
 
   const submitMessage = useSubmitMessage({
@@ -277,12 +349,20 @@ export const ConversationViewer = ({
     // Load a conversation A, send a message, answer is streaming (streaming events have a short TTL).
     // Switch to conversation B, wait till A is done streaming, then switch back to A.
     // Without waiting for revalidation, we would use whatever data was in the swr cache and see the last message as "streaming" (old data, no more streaming events).
-    if (!initialListData && messages.length > 0 && !isValidating) {
+    if (
+      !initialListData &&
+      conversation &&
+      messages.length > 0 &&
+      !isValidating
+    ) {
       const raw = messages.flatMap((m) => m.messages);
-
       const messagesToRender = convertLightMessageTypeToVirtuosoMessages(raw);
+      const messagesAndNotices = addConversationForkNotices(
+        messagesToRender,
+        conversation.forkedChildren
+      );
 
-      setInitialListData(messagesToRender);
+      setInitialListData(messagesAndNotices);
 
       // Fetch the message to scroll to from the URL hash.
       const hash = window.location.hash;
@@ -295,7 +375,7 @@ export const ConversationViewer = ({
         }
 
         // Find the message index in the current data.
-        const messageIndex = messagesToRender.findIndex(
+        const messageIndex = messagesAndNotices.findIndex(
           (m) => m.sId === messageId
         );
 
@@ -313,7 +393,7 @@ export const ConversationViewer = ({
         }
 
         const firstUnreadIndex = findFirstUnreadMessageIndex(
-          messagesToRender,
+          messagesAndNotices,
           lastReadMs
         );
 
@@ -326,6 +406,7 @@ export const ConversationViewer = ({
     }
   }, [
     initialListData,
+    conversation,
     messages,
     setInitialListData,
     isValidating,
@@ -382,8 +463,14 @@ export const ConversationViewer = ({
     );
 
     if (olderMessagesFromBackend.length > 0) {
+      const renderedOlderMessages = convertLightMessageTypeToVirtuosoMessages(
+        olderMessagesFromBackend
+      );
       ref.current.data.prepend(
-        convertLightMessageTypeToVirtuosoMessages(olderMessagesFromBackend)
+        addConversationForkNotices(
+          renderedOlderMessages,
+          conversation?.forkedChildren
+        )
       );
     }
 
@@ -394,11 +481,53 @@ export const ConversationViewer = ({
     );
 
     if (recentMessagesFromBackend.length > 0) {
+      const renderedRecentMessages = convertLightMessageTypeToVirtuosoMessages(
+        recentMessagesFromBackend
+      );
       ref.current.data.append(
-        convertLightMessageTypeToVirtuosoMessages(recentMessagesFromBackend)
+        addConversationForkNotices(
+          renderedRecentMessages,
+          conversation?.forkedChildren
+        )
       );
     }
-  }, [messages]);
+  }, [conversation?.forkedChildren, messages]);
+
+  useEffect(() => {
+    if (!ref.current || !ref.current.data.get().length) {
+      return;
+    }
+
+    const currentData = ref.current.data.get();
+    const reconciledData = addConversationForkNotices(
+      currentData,
+      conversation?.forkedChildren
+    );
+
+    if (
+      currentData.length === reconciledData.length &&
+      currentData.every(
+        (message, index) => message.sId === reconciledData[index]?.sId
+      )
+    ) {
+      return;
+    }
+
+    while (ref.current.data.get().some(isConversationForkNotice)) {
+      ref.current.data.findAndDelete((message) =>
+        isConversationForkNotice(message)
+      );
+    }
+
+    let index = 0;
+
+    for (const message of reconciledData) {
+      if (isConversationForkNotice(message)) {
+        ref.current.data.insert([message], index);
+      }
+      index += 1;
+    }
+  }, [conversation?.forkedChildren]);
 
   const { feedbacks } = useConversationFeedbacks({
     conversationId: conversationId ?? "",
@@ -596,6 +725,9 @@ export const ConversationViewer = ({
                 }
               }
             }
+            if (conversationId) {
+              window.dispatchEvent(new CompactionStartedEvent(conversationId));
+            }
             break;
 
           case "compaction_message_done":
@@ -607,6 +739,7 @@ export const ConversationViewer = ({
                   : m
               );
             }
+            void mutateContextUsage();
             window.dispatchEvent(new CompactionCompletedEvent());
             break;
           default:
@@ -725,17 +858,15 @@ export const ConversationViewer = ({
         // user keep their current scroll position.
         const isMentioningAgent = mentions.some(isRichAgentMention);
 
+        // When steering (hasRunningAgent), the message is pending and no new
+        // agent message is created — stay at the current scroll position.
+        const shouldScrollToUserMessage = isMentioningAgent && !hasRunningAgent;
+
         const nbMessages = ref.current.data.get().length;
         ref.current.data.append(
           [placeholderUserMsg, ...placeholderAgentMessages],
-          isMentioningAgent && !hasRunningAgent
-            ? () => {
-                return {
-                  index: nbMessages, // Avoid jumping around when the agent message is generated.
-                  align: "start",
-                  behavior: customSmoothScroll,
-                };
-              }
+          shouldScrollToUserMessage
+            ? false // Skip append-time scroll; handled by scrollToItem below.
             : (params) => {
                 if (params.scrollLocation.bottomOffset >= 0) {
                   return {
@@ -749,11 +880,25 @@ export const ConversationViewer = ({
               }
         );
 
+        // We use scrollToItem instead of the append callback because
+        // Virtuoso's append callback clamps the scroll target before applying
+        // the bottom padding needed for align:"start" near the end of the
+        // list, causing the scroll to undershoot.
+        if (shouldScrollToUserMessage && ref.current) {
+          ref.current.scrollToItem({
+            index: nbMessages,
+            align: "start",
+            behavior: customSmoothScroll,
+          });
+        }
+
         const result = await submitMessage(messageData);
 
         if (result.isErr()) {
           if (result.error.type === "plan_limit_reached_error") {
-            setPlanLimitReached?.(true);
+            setLimitReachedCode?.("message_limit");
+          } else if (result.error.type === "credits_exhausted_error") {
+            setLimitReachedCode?.("credits_exhausted");
           } else {
             sendNotification({
               title: result.error.title,
@@ -819,7 +964,7 @@ export const ConversationViewer = ({
       conversationId,
       mutateConversations,
       sendNotification,
-      setPlanLimitReached,
+      setLimitReachedCode,
       submitMessage,
       user,
     ]
@@ -857,12 +1002,18 @@ export const ConversationViewer = ({
       data: VirtuosoMessage;
       context: VirtuosoMessageListContext;
     }) => {
+      if (isConversationForkNotice(data)) {
+        return `conversation-${context.conversation?.sId}-${data.sId}`;
+      }
       return `conversation-${context.conversation?.sId}-message-rank-${data.rank}-message-branchId-${data.branchId}`;
     },
     []
   );
 
   const itemIdentity = useCallback((item: VirtuosoMessage) => {
+    if (isConversationForkNotice(item)) {
+      return item.sId;
+    }
     return `message-rank-${item.rank}-message-branchId-${item.branchId}`;
   }, []);
 

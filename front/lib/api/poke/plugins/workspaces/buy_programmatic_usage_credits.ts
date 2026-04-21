@@ -176,7 +176,7 @@ export const buyProgrammaticUsageCreditsPlugin = createPlugin({
 
     // Handle free credit creation (no Stripe invoice).
     if (validatedArgs.isFreeCredit) {
-      const idempotencyKey = `free-poke-${workspace.sId}-${Date.now()}`;
+      const idempotencyKey = `createCredit-${workspace.sId}-${startDate.getTime()}-${expirationDate.getTime()}`;
 
       const credit = await CreditResource.makeNew(auth, {
         type: "free",
@@ -204,8 +204,8 @@ export const buyProgrammaticUsageCreditsPlugin = createPlugin({
           productId: getProductFreeMonthlyCreditId(),
           creditTypeId: getCreditTypeProgrammaticUsdId(),
           amount,
-          startingAt: startDate.toISOString(),
-          endingBefore: expirationDate.toISOString(),
+          startingAt: startResult.value.startDate.toISOString(),
+          endingBefore: startResult.value.expirationDate.toISOString(),
           name: `Free poke credit ($${originalAmount.toFixed(2)})`,
           idempotencyKey,
         });
@@ -223,6 +223,10 @@ export const buyProgrammaticUsageCreditsPlugin = createPlugin({
               `Credit created locally but failed to mirror in Metronome: ${metronomeResult.error.message}`
             )
           );
+        }
+
+        if (metronomeResult.value) {
+          await credit.setMetronomeCreditId(metronomeResult.value.id);
         }
       }
 

@@ -55,6 +55,7 @@ export function makeIncludeResultResource(
 
     id: doc.document_id,
     source: {
+      mimeType: doc.mime_type ?? undefined,
       provider: dataSourceView.dataSource.connectorProvider ?? undefined,
       name: getDataSourceNameFromView(dataSourceView),
     },

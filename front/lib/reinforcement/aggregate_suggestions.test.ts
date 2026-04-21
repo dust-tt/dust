@@ -39,6 +39,7 @@ function makeInstructionSuggestion(
     updatedAt: Date.now(),
     skillConfigurationId: "skl_abc123",
     analysis: "Instructions could be more specific",
+    title: null,
     state: "pending",
     source: "synthetic",
     sourceConversationId: null,
@@ -46,9 +47,9 @@ function makeInstructionSuggestion(
     suggestion: {
       instructionEdits: [
         {
-          old_string: "verify data",
-          new_string: "always verify data before responding",
-          expected_occurrences: 1,
+          targetBlockId: "abc12345",
+          content: "<p>Always verify data before responding</p>",
+          type: "replace",
         },
       ],
     },
@@ -65,6 +66,7 @@ function makeToolSuggestion(
     updatedAt: Date.now(),
     skillConfigurationId: "skl_abc123",
     analysis: "Needs search capability",
+    title: null,
     state: "pending",
     source: "synthetic",
     sourceConversationId: null,
@@ -93,9 +95,9 @@ describe("buildSkillAggregationPrompt", () => {
       suggestion: {
         instructionEdits: [
           {
-            old_string: "old text",
-            new_string: "New improved instructions.",
-            expected_occurrences: 1,
+            targetBlockId: "abc12345",
+            content: "<p>New improved instructions.</p>",
+            type: "replace",
           },
         ],
       },
@@ -197,6 +199,35 @@ describe("buildSkillAggregationPrompt", () => {
     );
 
     expect(systemPrompt).toContain("edit_skill");
+  });
+
+  it("system prompt requires the aggregator to author a title per suggestion", () => {
+    const { systemPrompt } = buildSkillAggregationPrompt(
+      makeSkill(),
+      [makeInstructionSuggestion()],
+      { pending: [], rejected: [] }
+    );
+
+    expect(systemPrompt).toContain('"title"');
+    // Must guide toward short, user-facing, distinct titles.
+    expect(systemPrompt.toLowerCase()).toContain("title");
+    expect(systemPrompt).toMatch(/distinct title/i);
+  });
+
+  it("does not include synthetic draft titles in the formatted XML", () => {
+    // Drafts don't carry titles; even if a title slips in, formatSuggestion
+    // must not surface it to the aggregator.
+    const suggestion = makeInstructionSuggestion({
+      title: "Should not leak to aggregator",
+    });
+    const { userMessage } = buildSkillAggregationPrompt(
+      makeSkill(),
+      [suggestion],
+      { pending: [], rejected: [] }
+    );
+
+    expect(userMessage).not.toContain("Should not leak to aggregator");
+    expect(userMessage).not.toContain("<title>");
   });
 
   it("includes skill configured tools in user message", () => {

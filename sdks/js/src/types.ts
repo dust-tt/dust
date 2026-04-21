@@ -57,6 +57,7 @@ type KnownModelLLMId =
   | "claude-sonnet-4-5-20250929"
   | "claude-opus-4-5-20251101"
   | "claude-opus-4-6"
+  | "claude-opus-4-7"
   | "claude-sonnet-4-6"
   | "mistral-large-latest"
   | "mistral-medium"
@@ -336,6 +337,7 @@ const USER_MESSAGE_ORIGINS = [
   "transcript",
   "triggered_programmatic",
   "triggered",
+  "wakeup",
   "web",
   "zapier",
   "zendesk",
@@ -680,12 +682,10 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "agent_management_tool"
   | "custom_model_feature"
   | "anthropic_vertex_fallback"
-  | "ask_user_question_tool"
   | "audit_logs"
   | "claude_4_5_opus_feature"
   | "claude_4_opus_feature"
   | "confluence_tool"
-  | "conversation_branches"
   | "sessions_branching"
   | "project_todo"
   | "projects"
@@ -703,6 +703,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "dust_spa"
   | "fireworks_new_model_feature"
   | "gemini_3_1_pro_feature"
+  | "clari_copilot_mcp"
   | "gong_tool"
   | "google_sheets_tool"
   | "hootl_subscriptions"
@@ -723,6 +724,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "openai_usage_mcp"
   | "power_bi_mcp"
   | "reinforced_agents"
+  | "reinforcement_on_openai"
   | "reinforcement_ui"
   | "metronome_billing"
   | "poke_mcp"
@@ -733,7 +735,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "sandbox_tools"
   | "self_created_slack_app_connector_rollout"
   | "show_debug_tools"
-  | "skill_builder_instructions_html"
   | "slack_bot_mcp"
   | "slack_enhanced_default_agent"
   | "slack_message_splitting"
@@ -747,7 +748,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "collapsible_messages"
   | "use_dust_keys"
   | "enable_compaction"
-  | "enable_steering"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -1657,6 +1657,7 @@ const APIErrorTypeSchema = FlexibleEnumSchema<
   | "action_failed"
   | "action_unknown_error"
   | "agent_configuration_not_found"
+  | "agent_inaccessible"
   | "agent_message_error"
   | "app_auth_error"
   | "app_not_found"
@@ -1706,6 +1707,7 @@ const APIErrorTypeSchema = FlexibleEnumSchema<
   | "personal_workspace_not_found"
   | "plan_limit_error"
   | "plan_message_limit_exceeded"
+  | "credits_exhausted"
   | "plugin_execution_failed"
   | "plugin_not_found"
   | "provider_auth_error"
@@ -2902,6 +2904,7 @@ export const GetAnalyticsExportRequestSchema = z
     startDate: AnalyticsDateSchema,
     endDate: AnalyticsDateSchema,
     timezone: Timezone.optional(),
+    format: z.enum(["csv", "json"]).optional(),
   })
   .refine((d) => d.startDate <= d.endDate, {
     message: "startDate must be before or equal to endDate",
@@ -3170,6 +3173,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "BigQueryLogo"
   | "ToolsIcon"
   | "CanvaLogo"
+  | "ClariLogo"
   | "CommandLineIcon"
   | "ConfluenceLogo"
   | "DriveLogo"

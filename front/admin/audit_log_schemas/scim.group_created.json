@@ -11,6 +11,7 @@
   "metadata": {
     "groupName": "string",
     "directoryId": "string",
-    "spaceCreated": "string"
+    "spaceCreated": "string",
+    "actor_type": "string"
   }
 }

@@ -19,6 +19,8 @@ interface CommandPaletteSearchPhaseProps {
   onSearchQueryChange: (query: string) => void;
   agents: LightAgentConfigurationType[];
   skills: SkillType[];
+  hasMoreAgents: boolean;
+  hasMoreSkills: boolean;
   isLoading: boolean;
   selectedIndex: number;
   onSelectedIndexChange: (index: number) => void;
@@ -41,6 +43,8 @@ export function CommandPaletteSearchPhase({
   onSearchQueryChange,
   agents,
   skills,
+  hasMoreAgents,
+  hasMoreSkills,
   isLoading,
   selectedIndex,
   onSelectedIndexChange,
@@ -162,6 +166,11 @@ export function CommandPaletteSearchPhase({
                 </div>
               </ItemRow>
             ))}
+            {hasMoreAgents && (
+              <div className="px-3 py-2 text-xs text-muted-foreground dark:text-muted-foreground-night">
+                More agents available. Type to filter.
+              </div>
+            )}
           </div>
         )}
 
@@ -194,6 +203,11 @@ export function CommandPaletteSearchPhase({
                 </ItemRow>
               );
             })}
+            {hasMoreSkills && (
+              <div className="px-3 py-2 text-xs text-muted-foreground dark:text-muted-foreground-night">
+                More skills available. Type to filter.
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -5,9 +5,15 @@ import type { LLM } from "@app/lib/api/llm/llm";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
-import { getSkillInstructionEditsValidationError } from "@app/lib/api/skills/apply_skill_instruction_edits";
-import { getLargeWhitelistedModel } from "@app/lib/assistant";
-import type { Authenticator } from "@app/lib/auth";
+import {
+  getLargeWhitelistedModel,
+  isProviderWhitelisted,
+} from "@app/lib/assistant";
+import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
+import {
+  hasSuggestionSelfConflict,
+  pruneConflictingSkillEditSuggestions,
+} from "@app/lib/reinforcement/skill_suggestion_pruning";
 import {
   ALL_TOOLS,
   DESCRIBE_MCP_TOOL_NAME,
@@ -27,6 +33,7 @@ import type { ConversationResource } from "@app/lib/resources/conversation_resou
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import logger from "@app/logger/logger";
+import { GPT_5_4_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { SkillSuggestionSource } from "@app/types/suggestions/skill_suggestion";
@@ -61,30 +68,22 @@ const REINFORCED_SKILLS_TOOL_DEFINITIONS: Record<
       instructionEdits: z
         .array(
           z.object({
-            old_string: z
-              .string()
-              .min(1)
-              .describe(
-                "Exact text to find in the current skill instructions."
-              ),
-            new_string: z
+            targetBlockId: z
               .string()
               .describe(
-                "Replacement text. Empty string deletes the matched span."
+                'The data-block-id of the block to replace. Use "instructions-root" to replace all instructions.'
               ),
-            expected_occurrences: z
-              .number()
-              .int()
-              .min(1)
-              .default(1)
+            content: z
+              .string()
               .describe(
-                "How many times old_string is expected to appear. Used to validate the edit is still applicable."
+                "Full HTML replacement content for the block, including its wrapping tag. Must be a single-line string with no literal newlines."
               ),
+            type: z.literal("replace"),
           })
         )
         .optional()
         .describe(
-          "Sequential search-and-replace operations applied to the skill instructions."
+          "Block-targeted edits to the skill instructions. Each item targets one block by its data-block-id."
         ),
       toolEdits: z
         .array(
@@ -103,6 +102,14 @@ const REINFORCED_SKILLS_TOOL_DEFINITIONS: Record<
         .string()
         .optional()
         .describe("Why this change improves the skill"),
+      title: z
+        .string()
+        .max(25)
+        .optional()
+        .describe(
+          "A short, action-oriented user-facing title for this suggestion (MUST be at most 25 characters). " +
+            "Only set this when producing final aggregated suggestions; leave unset for synthetic suggestions."
+        ),
     },
   },
 };
@@ -249,7 +256,13 @@ export async function getReinforcedSkillsLLM(
   if (!owner) {
     return null;
   }
-  const model = getLargeWhitelistedModel(auth);
+  const useOpenAi =
+    (await hasFeatureFlag(auth, "reinforcement_on_openai")) &&
+    isProviderWhitelisted(auth, "openai");
+
+  const model = useOpenAi
+    ? GPT_5_4_MODEL_CONFIG
+    : getLargeWhitelistedModel(auth);
   if (!model) {
     return null;
   }
@@ -406,56 +419,46 @@ async function createSkillSuggestionsFromToolCall({
         };
       }
 
+      if (hasInstructionEdits && !skill.instructionsHtml) {
+        return {
+          suggestionsCreated: 0,
+          error:
+            "edit_skill with instructionEdits requires the skill to have instructionsHtml.",
+        };
+      }
+
       if (
-        parsed.data.instructionEdits &&
-        parsed.data.instructionEdits.length > 0
-      ) {
-        const currentInstructions = skill.instructions ?? "";
-        const validationError = getSkillInstructionEditsValidationError(
-          currentInstructions,
-          parsed.data.instructionEdits
-        );
-        if (validationError) {
-          logger.warn(
-            { skillId: parsed.data.skillId, contextId, validationError },
-            "ReinforcedSkills: invalid instruction edits"
-          );
-          return { suggestionsCreated: 0, error: validationError };
-        }
-      }
-
-      // Mark any existing pending edit suggestions for this skill as outdated.
-      // This is not strictly necessary, but it is unclear if we want to allow multiple pending edit suggestions for the same skill.
-      const existingPending =
-        await SkillSuggestionResource.listBySkillConfigurationId(
-          auth,
-          skill.sId,
+        hasSuggestionSelfConflict(
           {
-            states: ["pending"],
-            kind: "edit",
-            sources: ["reinforcement", "synthetic"],
-          }
-        );
-      if (existingPending.length > 0) {
-        await SkillSuggestionResource.bulkUpdateState(
-          auth,
-          existingPending,
-          "outdated"
-        );
+            instructionEdits: parsed.data.instructionEdits,
+            toolEdits: parsed.data.toolEdits,
+          },
+          skill.instructionsHtml
+        )
+      ) {
+        return {
+          suggestionsCreated: 0,
+          error:
+            "Suggestion has conflicting edits (overlapping block targets or duplicate tool IDs).",
+        };
       }
 
-      await SkillSuggestionResource.createSuggestionForSkill(auth, skill, {
-        kind: "edit",
-        suggestion: {
-          instructionEdits: parsed.data.instructionEdits,
-          toolEdits: parsed.data.toolEdits,
-        },
-        analysis: parsed.data.analysis ?? null,
-        state: "pending",
-        source,
-        sourceConversationId: conversation?.id ?? null,
-        groupId: null,
-      });
+      const newSuggestion =
+        await SkillSuggestionResource.createSuggestionForSkill(auth, skill, {
+          kind: "edit",
+          suggestion: {
+            instructionEdits: parsed.data.instructionEdits,
+            toolEdits: parsed.data.toolEdits,
+          },
+          analysis: parsed.data.analysis ?? null,
+          title: parsed.data.title ?? null,
+          state: "pending",
+          source,
+          sourceConversationId: conversation?.id ?? null,
+          groupId: null,
+        });
+
+      await pruneConflictingSkillEditSuggestions(auth, skill, newSuggestion);
 
       return { suggestionsCreated: 1 };
     }

@@ -1036,6 +1036,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       step: this.stepContent.step,
       executionDurationMs: this.executionDurationMs,
       displayLabels,
+      sandboxOrigin: this.stepContext.sandboxOrigin,
     };
   }
 

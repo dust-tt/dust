@@ -1,5 +1,5 @@
 import type { APIError } from "@anthropic-ai/sdk";
-import { APIConnectionError } from "@anthropic-ai/sdk";
+import { AnthropicError, APIConnectionError } from "@anthropic-ai/sdk";
 
 import type { LLMErrorInfo } from "@app/lib/api/llm/types/errors";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
@@ -61,6 +61,22 @@ function categorizeAnthropicError(
 
   const statusCode = originalError.status ?? 500;
   const isRetryable = shouldRetry(originalError);
+
+  // With eager_input_streaming enabled, the model may produce invalid tool parameter JSON.
+  // The Anthropic API sometimes detects this server-side and aborts the stream with an SSE
+  // error event (instead of reaching content_block_stop where we handle it client-side).
+  // We mark this as retryable so the agent loop retries the full LLM call.
+  if (
+    originalError.type === "invalid_request_error" &&
+    normalized.message.includes("Unable to parse tool parameter JSON")
+  ) {
+    return {
+      type: "invalid_request_error",
+      message: `Model generated invalid tool call JSON (${metadata.clientId}/${metadata.modelId}). ${normalized.message}`,
+      isRetryable: true,
+      originalError,
+    };
+  }
 
   if (originalError instanceof APIConnectionError) {
     return {
@@ -149,4 +165,36 @@ function categorizeAnthropicError(
     isRetryable,
     originalError,
   };
+}
+
+/**
+ * Type guard for an AnthropicError thrown by the SDK's BetaMessageStream when
+ * it fails to parse tool parameter JSON client-side.
+ */
+export function isAnthropicErrorUnableToParseToolParam(
+  err: unknown
+): err is AnthropicError {
+  return (
+    err instanceof AnthropicError &&
+    err.message.includes("Unable to parse tool parameter JSON")
+  );
+}
+
+/**
+ * Handles the SDK-thrown AnthropicError when BetaMessageStream fails to parse
+ * tool parameter JSON client-side. Returns an EventError marked as retryable.
+ */
+export function handleInvalidToolJsonAnthropicError(
+  err: AnthropicError,
+  metadata: LLMClientMetadata
+): LLMEvent {
+  return new EventError(
+    {
+      type: "invalid_request_error",
+      message: `Model generated invalid tool call JSON (${metadata.clientId}/${metadata.modelId}). ${err.message}`,
+      isRetryable: true,
+      originalError: err,
+    },
+    metadata
+  );
 }

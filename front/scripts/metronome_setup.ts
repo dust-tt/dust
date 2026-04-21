@@ -139,6 +139,24 @@ interface PackageSubscription {
   };
 }
 
+// interface RecurringCreditDef {
+//   product_name: string; // resolved to product ID at runtime
+//   access_amount: {
+//     credit_type_id: string; // evaluated after detectEnvironment()
+//     unit_price: number;
+//     quantity?: number;
+//   };
+//   commit_duration: { value: number; unit?: "PERIODS" };
+//   priority: number;
+//   starting_at_offset: {
+//     unit: "DAYS" | "WEEKS" | "MONTHS" | "YEARS";
+//     value: number;
+//   };
+//   applicable_product_tags?: string[];
+//   recurrence_frequency?: "MONTHLY" | "QUARTERLY" | "ANNUAL" | "WEEKLY";
+//   name?: string;
+// }
+
 interface PackageDef {
   // Base name without version suffix. Version is auto-computed at sync time.
   name: string;
@@ -151,6 +169,9 @@ interface PackageDef {
     frequency: "MONTHLY" | "QUARTERLY" | "ANNUAL" | "WEEKLY";
     day?: "CONTRACT_START" | "FIRST_OF_MONTH";
   };
+  // Consolidate scheduled/commit charges onto the usage invoice instead of separate invoices.
+  scheduled_charges_on_usage_invoices?: "ALL";
+  // recurring_credits?: RecurringCreditDef[];
 }
 
 // ---------------------------------------------------------------------------
@@ -675,6 +696,24 @@ function getRateCards(): RateCardDef[] {
   ];
 }
 
+// Recurring free credit definition shared by all packages.
+// Quantity starts at 0 — the credit.segment.start webhook updates it each period
+// to the actual user-based amount.
+// const FREE_MONTHLY_RECURRING_CREDITS: RecurringCreditDef = {
+//   product_name: "Free Monthly Credits",
+//   access_amount: {
+//     credit_type_id: getCreditTypeProgrammaticUsdId(),
+//     unit_price: 0,
+//     quantity: 0,
+//   },
+//   commit_duration: { value: 1 },
+//   priority: 1,
+//   starting_at_offset: { unit: "DAYS", value: 0 },
+//   applicable_product_tags: [USAGE_TAG],
+//   recurrence_frequency: "MONTHLY",
+//   name: "Free Monthly Credits",
+// };
+
 // Seat subscription definition shared by all legacy packages.
 const LEGACY_SEAT_SUBSCRIPTION: PackageSubscription = {
   temporary_id: "legacy-seat-sub",
@@ -713,6 +752,7 @@ const PACKAGES: PackageDef[] = [
     aliases: [{ name: "legacy-pro-monthly" }],
     rate_card_name: "Legacy Pro USD",
     subscriptions: [LEGACY_SEAT_SUBSCRIPTION],
+    // recurring_credits: [FREE_MONTHLY_RECURRING_CREDITS],
     ...BILLING_CYCLE_CONFIG,
   },
   {
@@ -720,6 +760,7 @@ const PACKAGES: PackageDef[] = [
     aliases: [{ name: "legacy-business" }],
     rate_card_name: "Legacy Business USD",
     subscriptions: [LEGACY_SEAT_SUBSCRIPTION],
+    // recurring_credits: [FREE_MONTHLY_RECURRING_CREDITS],
     ...BILLING_CYCLE_CONFIG,
   },
   {
@@ -727,6 +768,7 @@ const PACKAGES: PackageDef[] = [
     aliases: [{ name: "legacy-pro-annual" }],
     rate_card_name: "Legacy Pro Annual USD",
     subscriptions: [LEGACY_SEAT_SUBSCRIPTION],
+    // recurring_credits: [FREE_MONTHLY_RECURRING_CREDITS],
     ...BILLING_CYCLE_CONFIG,
   },
   // Enterprise: MAU-based billing, no seat subscriptions.
@@ -734,6 +776,8 @@ const PACKAGES: PackageDef[] = [
     name: "Legacy Enterprise USD",
     aliases: [{ name: "legacy-enterprise" }],
     rate_card_name: "Legacy Enterprise MAU USD",
+    scheduled_charges_on_usage_invoices: "ALL",
+    // recurring_credits: [FREE_MONTHLY_RECURRING_CREDITS],
     ...BILLING_CYCLE_CONFIG,
   },
   // EUR variants
@@ -742,6 +786,7 @@ const PACKAGES: PackageDef[] = [
     aliases: [{ name: "legacy-pro-monthly-eur" }],
     rate_card_name: "Legacy Pro EUR",
     subscriptions: [LEGACY_SEAT_SUBSCRIPTION],
+    // recurring_credits: [FREE_MONTHLY_RECURRING_CREDITS],
     ...BILLING_CYCLE_CONFIG,
   },
   {
@@ -749,6 +794,7 @@ const PACKAGES: PackageDef[] = [
     aliases: [{ name: "legacy-business-eur" }],
     rate_card_name: "Legacy Business EUR",
     subscriptions: [LEGACY_SEAT_SUBSCRIPTION],
+    // recurring_credits: [FREE_MONTHLY_RECURRING_CREDITS],
     ...BILLING_CYCLE_CONFIG,
   },
   {
@@ -756,12 +802,15 @@ const PACKAGES: PackageDef[] = [
     aliases: [{ name: "legacy-pro-annual-eur" }],
     rate_card_name: "Legacy Pro Annual EUR",
     subscriptions: [LEGACY_SEAT_SUBSCRIPTION],
+    // recurring_credits: [FREE_MONTHLY_RECURRING_CREDITS],
     ...BILLING_CYCLE_CONFIG,
   },
   {
     name: "Legacy Enterprise EUR",
     aliases: [{ name: "legacy-enterprise-eur" }],
     rate_card_name: "Legacy Enterprise MAU EUR",
+    scheduled_charges_on_usage_invoices: "ALL",
+    // recurring_credits: [FREE_MONTHLY_RECURRING_CREDITS],
     ...BILLING_CYCLE_CONFIG,
   },
 ];
@@ -1338,6 +1387,7 @@ interface ExistingPackage {
   contract_name?: string;
   aliases?: Array<{ name: string }>;
   rate_card_id?: string;
+  scheduled_charges_on_usage_invoices?: "ALL";
   subscriptions?: Array<{
     collection_schedule: string;
     proration: {
@@ -1352,6 +1402,19 @@ interface ExistingPackage {
     quantity_management_mode?: string;
     seat_config?: { seat_group_key: string };
   }>;
+  // recurring_credits?: Array<{
+  //   product: { id: string };
+  //   access_amount: {
+  //     credit_type_id: string;
+  //     unit_price: number;
+  //     quantity?: number;
+  //   };
+  //   commit_duration: { value: number };
+  //   priority: number;
+  //   starting_at_offset: { unit: string; value: number };
+  //   applicable_product_tags?: string[];
+  //   recurrence_frequency?: string;
+  // }>;
 }
 
 function packageMatches(ex: ExistingPackage, desired: PackageDef): boolean {
@@ -1415,6 +1478,37 @@ function packageMatches(ex: ExistingPackage, desired: PackageDef): boolean {
       return false;
     }
   }
+
+  // Check scheduled_charges_on_usage_invoices
+  if (
+    (desired.scheduled_charges_on_usage_invoices ?? undefined) !==
+    (ex.scheduled_charges_on_usage_invoices ?? undefined)
+  ) {
+    return false;
+  }
+
+  // Check recurring credits count and product IDs (implicit product recreation cascade).
+  // const desiredCredits = desired.recurring_credits ?? [];
+  // const existingCredits = ex.recurring_credits ?? [];
+  // if (desiredCredits.length !== existingCredits.length) {
+  //   return false;
+  // }
+  // for (const desiredCredit of desiredCredits) {
+  //   const productId = ids.products[desiredCredit.product_name];
+  //   const match = existingCredits.find((c) => c.product.id === productId);
+  //   if (!match) {
+  //     return false;
+  //   }
+  //   if (
+  //     match.access_amount.credit_type_id !==
+  //     desiredCredit.access_amount.credit_type_id
+  //   ) {
+  //     return false;
+  //   }
+  //   if (match.priority !== desiredCredit.priority) {
+  //     return false;
+  //   }
+  // }
 
   return true;
 }
@@ -1522,6 +1616,32 @@ async function syncPackages(): Promise<void> {
           };
         });
 
+        // Resolve recurring credit product IDs
+        // const recurringCredits = (desired.recurring_credits ?? []).map(
+        //   (credit) => {
+        //     const productId = ids.products[credit.product_name];
+        //     if (!productId) {
+        //       throw new Error(
+        //         `Product not found for recurring credit: ${credit.product_name}`
+        //       );
+        //     }
+        //     return {
+        //       product_id: productId,
+        //       access_amount: credit.access_amount,
+        //       commit_duration: credit.commit_duration,
+        //       priority: credit.priority,
+        //       starting_at_offset: credit.starting_at_offset,
+        //       ...(credit.applicable_product_tags
+        //         ? { applicable_product_tags: credit.applicable_product_tags }
+        //         : {}),
+        //       ...(credit.recurrence_frequency
+        //         ? { recurrence_frequency: credit.recurrence_frequency }
+        //         : {}),
+        //       ...(credit.name ? { name: credit.name } : {}),
+        //     };
+        //   }
+        // );
+
         const created = await client.v1.packages.create({
           name: versionedName,
           contract_name: versionedName,
@@ -1532,6 +1652,15 @@ async function syncPackages(): Promise<void> {
             ? { usage_statement_schedule: desired.usage_statement_schedule }
             : {}),
           ...(subscriptions.length > 0 ? { subscriptions } : {}),
+          // ...(recurringCredits.length > 0
+          //   ? { recurring_credits: recurringCredits }
+          //   : {}),
+          ...(desired.scheduled_charges_on_usage_invoices
+            ? {
+                scheduled_charges_on_usage_invoices:
+                  desired.scheduled_charges_on_usage_invoices,
+              }
+            : {}),
         } as Parameters<typeof client.v1.packages.create>[0]);
         const id = (created as { data: { id: string } }).data.id;
         console.log(`    → ${id}`);

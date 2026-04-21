@@ -7,6 +7,7 @@
   ],
   "metadata": {
     "reason": "string",
-    "authenticationMethod": "string"
+    "authenticationMethod": "string",
+    "actor_type": "string"
   }
 }

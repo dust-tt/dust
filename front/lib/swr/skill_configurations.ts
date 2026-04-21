@@ -5,6 +5,7 @@ import type { DetectedSkillSummary } from "@app/lib/skill_detection";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
   GetSkillsResponseBody,
+  GetSkillsWithoutToolsResponseBody,
   GetSkillsWithRelationsResponseBody,
 } from "@app/pages/api/w/[wId]/skills";
 import type {
@@ -18,6 +19,7 @@ import type { GetSimilarSkillsResponseBody } from "@app/pages/api/w/[wId]/skills
 import type {
   SkillStatus,
   SkillType,
+  SkillWithoutToolsType,
   SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 import { isAPIErrorResponse } from "@app/types/error";
@@ -92,21 +94,56 @@ export function useSkill({
   };
 }
 
+export function useSkills(options: {
+  owner: LightWorkspaceType;
+  disabled?: boolean;
+  status?: SkillStatus;
+  globalSpaceOnly?: boolean;
+  isDefault?: boolean;
+  withTools: false;
+}): {
+  skills: SkillWithoutToolsType[];
+  isSkillsError: boolean;
+  isSkillsLoading: boolean;
+  mutateSkills: () => void;
+};
+export function useSkills(options: {
+  owner: LightWorkspaceType;
+  disabled?: boolean;
+  status?: SkillStatus;
+  globalSpaceOnly?: boolean;
+  isDefault?: boolean;
+  withTools?: true;
+}): {
+  skills: SkillType[];
+  isSkillsError: boolean;
+  isSkillsLoading: boolean;
+  mutateSkills: () => void;
+};
 export function useSkills({
   owner,
   disabled,
   status,
   globalSpaceOnly,
   isDefault,
+  withTools = true,
 }: {
   owner: LightWorkspaceType;
   disabled?: boolean;
   status?: SkillStatus;
   globalSpaceOnly?: boolean;
   isDefault?: boolean;
-}) {
+  withTools?: boolean;
+}): {
+  skills: SkillWithoutToolsType[] | SkillType[];
+  isSkillsError: boolean;
+  isSkillsLoading: boolean;
+  mutateSkills: () => void;
+} {
   const { fetcher } = useFetcher();
-  const skillsFetcher: Fetcher<GetSkillsResponseBody> = fetcher;
+  const skillsFetcher: Fetcher<
+    GetSkillsWithoutToolsResponseBody | GetSkillsResponseBody
+  > = fetcher;
 
   const queryParams = new URLSearchParams();
   if (status) {
@@ -117,6 +154,9 @@ export function useSkills({
   }
   if (isDefault) {
     queryParams.set("isDefault", "true");
+  }
+  if (!withTools) {
+    queryParams.set("withTools", "false");
   }
   const queryString = queryParams.toString();
 

@@ -429,7 +429,9 @@ export function FrameRenderer({
           onClose={conversation ? onClosePanel : undefined}
         />
         <CenteredState>
-          <p className="text-warning-500">Error loading file: {error}</p>
+          <p className="text-warning-500">
+            Error loading file: {error.message}
+          </p>
         </CenteredState>
       </div>
     );

@@ -12,7 +12,7 @@ import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type {
-  ProjectTodoSourceType,
+  ProjectTodoSourceInfo,
   ProjectTodoType,
 } from "@app/types/project_todo";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -103,10 +103,16 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
         | "markedAsDoneByType"
         | "markedAsDoneByUserId"
         | "markedAsDoneByAgentConfigurationId"
+        | "deletedAt"
+        | "cleanedAt"
       >
     >,
     transaction?: Transaction
   ): Promise<ProjectTodoResource> {
+    if (this.workspaceId !== auth.getNonNullableWorkspace().id) {
+      throw new Error("Workspace mismatch in updateWithVersion.");
+    }
+
     return withTransaction(async (t) => {
       await this.saveVersion(t);
       await this.update(updates, t);
@@ -146,6 +152,8 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
       markedAsDoneByUserId: this.markedAsDoneByUserId ?? null,
       markedAsDoneByAgentConfigurationId:
         this.markedAsDoneByAgentConfigurationId ?? null,
+      deletedAt: this.deletedAt ?? null,
+      cleanedAt: this.cleanedAt ?? null,
     };
     await ProjectTodoVersionModel.create(versionData, { transaction });
   }
@@ -163,6 +171,8 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
       where: {
         ...where,
         workspaceId: auth.getNonNullableWorkspace().id,
+        deletedAt: null,
+        cleanedAt: null,
       },
       ...otherOptions,
       transaction,
@@ -274,12 +284,10 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
   // Returns all source entries grouped by logical todo sId. Because sources are
   // linked to specific version rows, this queries across ALL versions for the
   // given set of logical todo sIds and deduplicates by (sId, sourceType, sourceId).
-  static async fetchSourcesForTodoSIds(
+  static async fetchSourcesForTodoIds(
     auth: Authenticator,
     { sIds }: { sIds: string[] }
-  ): Promise<
-    Map<string, Array<{ sourceType: ProjectTodoSourceType; sourceId: string }>>
-  > {
+  ): Promise<Map<string, Array<ProjectTodoSourceInfo>>> {
     if (sIds.length === 0) {
       return new Map();
     }
@@ -308,23 +316,22 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
     });
 
     // Group by logical todo sId.
-    const result = new Map<
-      string,
-      Array<{ sourceType: ProjectTodoSourceType; sourceId: string }>
-    >();
+    const result = new Map<string, Array<ProjectTodoSourceInfo>>();
 
     for (const source of sources) {
-      const todoSId = idToSId.get(source.projectTodoId);
-      if (!todoSId) {
+      const todoId = idToSId.get(source.projectTodoId);
+      if (!todoId) {
         continue;
       }
 
-      const existing = result.get(todoSId) ?? [];
+      const existing = result.get(todoId) ?? [];
       existing.push({
         sourceType: source.sourceType,
         sourceId: source.sourceId,
+        sourceTitle: source.sourceTitle,
+        sourceUrl: source.sourceUrl,
       });
-      result.set(todoSId, existing);
+      result.set(todoId, existing);
     }
 
     return result;
@@ -332,26 +339,41 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
 
   // ── Source links (* => todo) ─────────────────────────────────────────────
 
-  async addSource(
+  async upsertSource(
     auth: Authenticator,
     {
-      sourceType,
-      sourceId,
+      source,
     }: {
-      sourceType: ProjectTodoSourceType;
-      sourceId: string;
+      source: ProjectTodoSourceInfo;
     },
     transaction?: Transaction
   ): Promise<void> {
-    await ProjectTodoSourceModel.create(
+    const where = {
+      workspaceId: auth.getNonNullableWorkspace().id,
+      projectTodoId: this.id,
+      sourceType: source.sourceType,
+      sourceId: source.sourceId,
+    };
+    const [sourceInstance, created] = await ProjectTodoSourceModel.findOrCreate(
       {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        projectTodoId: this.id,
-        sourceType,
-        sourceId,
-      },
-      { transaction }
+        where,
+        defaults: {
+          ...where,
+          sourceTitle: source.sourceTitle,
+          sourceUrl: source.sourceUrl,
+        },
+        transaction,
+      }
     );
+    if (!created) {
+      await sourceInstance.update(
+        {
+          sourceTitle: source.sourceTitle,
+          sourceUrl: source.sourceUrl,
+        },
+        { transaction }
+      );
+    }
   }
 
   // ── Serialization ──────────────────────────────────────────────────────────
@@ -377,6 +399,36 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
   }
 
   // ── Lifecycle ──────────────────────────────────────────────────────────────
+
+  // Hides all done todos for the authenticated user in the given space by
+  // setting `cleanedAt`. Items are hidden from normal queries but preserved in
+  // the database for potential future "show completed" views.
+  static async cleanDoneBySpace(
+    auth: Authenticator,
+    { spaceId }: { spaceId: ModelId }
+  ): Promise<Result<{ cleanedCount: number }, Error>> {
+    const doneTodos = await this.baseFetch(auth, {
+      where: { spaceId, userId: auth.getNonNullableUser().id, status: "done" },
+    });
+
+    if (doneTodos.length === 0) {
+      return new Ok({ cleanedCount: 0 });
+    }
+
+    await withTransaction(async (t) => {
+      for (const todo of doneTodos) {
+        await todo.updateWithVersion(auth, { cleanedAt: new Date() }, t);
+      }
+    });
+
+    return new Ok({ cleanedCount: doneTodos.length });
+  }
+
+  async softDelete(auth: Authenticator): Promise<Result<undefined, Error>> {
+    await this.updateWithVersion(auth, { deletedAt: new Date() });
+
+    return new Ok(undefined);
+  }
 
   async delete(
     auth: Authenticator,

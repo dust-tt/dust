@@ -17,6 +17,7 @@ export class SkillFactory {
       agentFacingDescription: string;
       userFacingDescription: string;
       instructions: string;
+      instructionsHtml: string | null;
       status: SkillStatus;
       version: number;
       requestedSpaceIds: ModelId[];
@@ -46,6 +47,7 @@ export class SkillFactory {
         agentFacingDescription,
         userFacingDescription,
         instructions,
+        instructionsHtml: overrides.instructionsHtml,
         name,
         requestedSpaceIds,
         status,

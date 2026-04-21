@@ -6,10 +6,9 @@ import {
 } from "@app/lib/api/skills/detection/github/detect_skills";
 import { initGitHubRepoClient } from "@app/lib/api/skills/detection/github/github_api";
 import { getWorkspaceLevelGitHubAccessToken } from "@app/lib/api/skills/detection/github/github_auth";
-import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { DetectedSkillSummary } from "@app/lib/skill_detection";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
@@ -36,17 +35,6 @@ async function handler(
           api_error: {
             type: "app_auth_error",
             message: "User is not a builder.",
-          },
-        });
-      }
-
-      const featureFlags = await getFeatureFlags(auth);
-      if (!featureFlags.includes("sandbox_tools")) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Skill import from GitHub is not supported.",
           },
         });
       }
@@ -143,13 +131,16 @@ async function handler(
         });
       }
 
-      const skillSummaries = await concurrentExecutor(
-        detectedSkills,
-        async (skill): Promise<DetectedSkillSummary> => {
-          const existing = await SkillResource.fetchActiveByName(
-            auth,
-            skill.name
-          );
+      const existingSkills = await SkillResource.fetchByNames(
+        auth,
+        detectedSkills.map((s) => s.name)
+      );
+
+      const existingSkillsMap = new Map(existingSkills.map((s) => [s.name, s]));
+
+      const skillSummaries: DetectedSkillSummary[] = detectedSkills.map(
+        (skill) => {
+          const existing = existingSkillsMap.get(skill.name);
 
           if (!existing) {
             return {
@@ -166,8 +157,7 @@ async function handler(
               : "name_conflict",
             existingSkillId: existing.sId,
           };
-        },
-        { concurrency: 8 }
+        }
       );
 
       return res.status(200).json({ skills: skillSummaries });

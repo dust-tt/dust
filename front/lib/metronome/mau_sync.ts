@@ -1,5 +1,5 @@
 import {
-  getMetronomeClient,
+  getMetronomeContractById,
   updateSubscriptionQuantity,
 } from "@app/lib/metronome/client";
 import {
@@ -16,24 +16,15 @@ import type { LightWorkspaceType } from "@app/types/user";
 // MAU_TIERS parsing
 // ---------------------------------------------------------------------------
 
-interface TierBoundary {
-  /** Start of this tier (inclusive). */
+export interface TierBoundary {
+  /** Start of this tier (inclusive, 1-indexed). */
   start: number;
   /** End of this tier (exclusive). undefined = unlimited. */
   end: number | undefined;
-  /** If true, this tier's quantity is always 1 (floor tier). */
+  /** If true, this tier has a floor (minimum charge via recurring commit). */
   isFloor: boolean;
 }
 
-/**
- * Parse the MAU_TIERS custom field value into tier boundaries.
- *
- * Format: "FLOOR-101-201" or "0-101-201"
- * - "FLOOR" as first element means tier 1 quantity is always 1.
- * - Numbers are the start of each tier.
- *
- * Returns undefined if the field is missing or empty.
- */
 /**
  * Parse the MAU_TIERS custom field value into tier boundaries.
  *
@@ -82,50 +73,98 @@ export function parseMauTiers(
 }
 
 /**
- * Distribute a total MAU count across tier boundaries.
- * Returns the quantity for each tier.
+ * Compute the quantity for a single tier boundary given a total MAU count.
+ * Tiers are 1-indexed (start/end represent MAU numbers).
  */
+export function computeTierQuantity(
+  totalMau: number,
+  tier: TierBoundary
+): number {
+  if (totalMau < tier.start) {
+    return 0;
+  }
+  const lastInTier = tier.end !== undefined ? tier.end - 1 : totalMau;
+  const count = Math.min(totalMau, lastInTier) - tier.start + 1;
+  return Math.max(count, 0);
+}
+
 /**
- * Distribute a total MAU count across tier boundaries.
+ * Distribute a total MAU count across tiered subscriptions.
+ * Returns only subscriptions whose quantity needs updating (changed from current).
+ * Each returned entry has `currentQuantity` set to the new target quantity.
  *
- * Tiers are 1-indexed (start/end represent MAU numbers, not zero-based indices).
- * Example: tiers [{start:1,end:4}, {start:4,end:6}, {start:6}], totalMau=15
- *   → [3, 2, 10] (MAUs 1-3, 4-5, 6-15)
+ * Example: subscriptions with tiers [{start:1,end:4}, {start:4,end:6}, {start:6}], totalMau=15
+ *   → returns entries with quantities: 3, 2, 10
  */
 export function distributeMauAcrossTiers(
   totalMau: number,
-  tiers: TierBoundary[]
-): number[] {
-  return tiers.map((tier) => {
-    if (totalMau < tier.start) {
-      return 0;
-    }
-    // For 1-indexed tiers: count = min(totalMau, lastInTier) - firstInTier + 1
-    // lastInTier = (end - 1) if end is defined, else totalMau
-    const lastInTier = tier.end !== undefined ? tier.end - 1 : totalMau;
-    const count = Math.min(totalMau, lastInTier) - tier.start + 1;
-    return Math.max(count, 0);
-  });
+  subscriptions: SubscriptionInfo[]
+): SubscriptionInfo[] {
+  return subscriptions
+    .map((sub) => {
+      const newQuantity = computeTierQuantity(totalMau, sub.tier);
+      return sub.currentQuantity !== newQuantity
+        ? { ...sub, currentQuantity: newQuantity }
+        : undefined;
+    })
+    .filter((sub) => sub !== undefined);
 }
 
 // ---------------------------------------------------------------------------
 // Contract MAU info extraction
 // ---------------------------------------------------------------------------
 
+interface SubscriptionInfo {
+  id: string;
+  currentQuantity: number;
+  /** Start of the next billing period — quantity updates target the next period only. */
+  nextPeriodStart: string | undefined;
+  tier: TierBoundary;
+}
+
 interface SimpleMauInfo {
   type: "simple";
-  subscriptionId: string;
+  subscription: SubscriptionInfo;
   threshold: number;
+  currentPeriodStart: string | undefined;
 }
 
 interface TieredMauInfo {
   type: "tiered";
-  tierSubscriptionIds: string[];
+  subscriptions: SubscriptionInfo[];
   threshold: number;
-  tiers: TierBoundary[];
+  currentPeriodStart: string | undefined;
 }
 
 type MauInfo = SimpleMauInfo | TieredMauInfo;
+
+interface MauContractLike {
+  id?: string;
+  custom_fields?: Record<string, string>;
+  subscriptions?: Array<{
+    id?: string;
+    subscription_rate: { product: { id: string } };
+    quantity_schedule?: Array<{ quantity: number }>;
+    billing_periods?: {
+      next?: { starting_at?: string };
+      current?: { starting_at?: string };
+    };
+  }>;
+}
+
+export function hasMauSubscriptionInContract(
+  contract: MauContractLike
+): boolean {
+  const subscriptions = contract.subscriptions ?? [];
+  const productIds = new Set(
+    subscriptions.map((s) => s.subscription_rate.product.id)
+  );
+
+  return (
+    productIds.has(getProductMauId()) ||
+    getProductMauTierIds().some((productId) => productIds.has(productId))
+  );
+}
 
 /**
  * Retrieve a contract and extract MAU info.
@@ -134,37 +173,46 @@ type MauInfo = SimpleMauInfo | TieredMauInfo;
  * - Otherwise → simple mode (single MAU product).
  * - MAU_THRESHOLD custom field controls the threshold (default 1).
  */
-async function getContractMauInfo(
-  metronomeCustomerId: string,
-  contractId: string
-): Promise<MauInfo | undefined> {
-  const client = getMetronomeClient();
-
-  const response = await client.v2.contracts.retrieve({
-    customer_id: metronomeCustomerId,
-    contract_id: contractId,
-  });
-  const contract = response.data;
+function getContractMauInfoFromContract({
+  workspaceId,
+  contract,
+}: {
+  workspaceId: string;
+  contract: MauContractLike;
+}): MauInfo | undefined {
   if (!contract?.subscriptions?.length) {
     return undefined;
   }
 
-  const customFields = (
-    contract as typeof contract & {
-      custom_fields?: Record<string, string>;
-    }
-  ).custom_fields;
+  const customFields = contract.custom_fields;
   const threshold = parseInt(customFields?.MAU_THRESHOLD ?? "1", 10);
   const safeThreshold = isNaN(threshold) ? 1 : threshold;
 
-  // Build product → subscription mapping.
-  const subscriptionByProductId = new Map<string, string>();
+  // Build product → subscription info mapping.
+  const subscriptionByProductId = new Map<
+    string,
+    {
+      id: string;
+      currentQuantity: number;
+      nextPeriodStart: string | undefined;
+      currentPeriodStart: string | undefined;
+    }
+  >();
   for (const sub of contract.subscriptions) {
-    const productId = (
-      sub as { subscription_rate: { product: { id: string } }; id: string }
-    ).subscription_rate.product.id;
-    const subId = (sub as { id: string }).id;
-    subscriptionByProductId.set(productId, subId);
+    const productId = sub.subscription_rate.product.id;
+    const qSchedule = sub.quantity_schedule ?? [];
+    const currentQuantity =
+      qSchedule.length > 0 ? qSchedule[qSchedule.length - 1].quantity : 0;
+    const nextPeriodStart = sub.billing_periods?.next?.starting_at;
+    const currentPeriodStart = sub.billing_periods?.current?.starting_at;
+    if (sub.id) {
+      subscriptionByProductId.set(productId, {
+        id: sub.id,
+        currentQuantity,
+        nextPeriodStart,
+        currentPeriodStart,
+      });
+    }
   }
 
   // Check for MAU_TIERS custom field → tiered mode.
@@ -173,34 +221,48 @@ async function getContractMauInfo(
 
   if (tiers) {
     const tierProductIds = getProductMauTierIds();
-    const tierSubscriptionIds: string[] = [];
+    const subscriptions: SubscriptionInfo[] = [];
     for (let i = 0; i < tiers.length; i++) {
-      const subId = subscriptionByProductId.get(tierProductIds[i]);
-      if (!subId) {
+      const subInfo = subscriptionByProductId.get(tierProductIds[i]);
+      if (!subInfo) {
         logger.warn(
-          { contractId, tierIndex: i, productId: tierProductIds[i] },
+          {
+            workspaceId,
+            contractId: contract.id,
+            tierIndex: i,
+            productId: tierProductIds[i],
+          },
           "[Metronome] MAU tier subscription not found"
         );
         return undefined;
       }
-      tierSubscriptionIds.push(subId);
+      subscriptions.push({ ...subInfo, tier: tiers[i] });
     }
 
     return {
       type: "tiered",
-      tierSubscriptionIds,
+      subscriptions,
       threshold: safeThreshold,
-      tiers,
+      currentPeriodStart: subscriptionByProductId.get(tierProductIds[0])
+        ?.currentPeriodStart,
     };
   }
 
-  // Simple mode: single MAU product.
-  const mauSubId = subscriptionByProductId.get(getProductMauId());
-  if (!mauSubId) {
+  // Simple mode: single MAU product (default tier covers all MAUs).
+  const mauSubInfo = subscriptionByProductId.get(getProductMauId());
+  if (!mauSubInfo) {
     return undefined;
   }
 
-  return { type: "simple", subscriptionId: mauSubId, threshold: safeThreshold };
+  return {
+    type: "simple",
+    subscription: {
+      ...mauSubInfo,
+      tier: { start: 1, end: undefined, isFloor: false },
+    },
+    threshold: safeThreshold,
+    currentPeriodStart: mauSubInfo.currentPeriodStart,
+  };
 }
 
 /**
@@ -210,6 +272,7 @@ async function getContractMauInfo(
  * - Simple (no MAU_TIERS): single MAU product, set quantity to total MAU count.
  * - Tiered (MAU_TIERS set): multiple MAU Tier products, distribute count across tiers.
  *
+ * Skips updates when the quantity hasn't changed.
  * MAU_THRESHOLD custom field controls the MAU counting threshold (default 1).
  */
 export async function syncMauCount({
@@ -217,13 +280,31 @@ export async function syncMauCount({
   contractId,
   workspace,
   startingAt,
+  contract,
 }: {
   metronomeCustomerId: string;
   contractId: string;
   workspace: LightWorkspaceType;
   startingAt?: string;
+  contract?: MauContractLike;
 }): Promise<Result<void, Error>> {
-  const mauInfo = await getContractMauInfo(metronomeCustomerId, contractId);
+  let contractData = contract;
+  if (!contractData) {
+    const contractResult = await getMetronomeContractById({
+      metronomeCustomerId,
+      metronomeContractId: contractId,
+    });
+    if (contractResult.isErr()) {
+      return new Err(contractResult.error);
+    }
+    contractData = contractResult.value;
+  }
+  const mauInfo = contractData
+    ? getContractMauInfoFromContract({
+        workspaceId: workspace.sId,
+        contract: contractData,
+      })
+    : undefined;
   if (!mauInfo) {
     logger.warn(
       { workspaceId: workspace.sId, contractId },
@@ -232,40 +313,38 @@ export async function syncMauCount({
     return new Err(new Error("No MAU subscription found on contract"));
   }
 
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  // Count MAUs since the start of the current billing period (contract anniversary).
+  // Falls back to 30 days if the billing period is not yet available (e.g. new contract).
+  const since = mauInfo.currentPeriodStart
+    ? new Date(mauInfo.currentPeriodStart)
+    : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
   const mauCount = await countActiveUsersForPeriodInWorkspace({
     messagesPerMonthForMau: mauInfo.threshold,
-    since: thirtyDaysAgo,
+    since,
     workspace,
   });
 
   const totalMau = Math.max(mauCount, 1);
 
-  // Uniqueness key prevents duplicate updates within the same hour.
-  const hourKey = startingAt ?? new Date().toISOString().slice(0, 13); // "YYYY-MM-DDTHH"
+  // Get subscriptions that need updating (works for both simple and tiered).
+  const subscriptions =
+    mauInfo.type === "simple" ? [mauInfo.subscription] : mauInfo.subscriptions;
+  const toUpdate = distributeMauAcrossTiers(totalMau, subscriptions);
 
-  if (mauInfo.type === "simple") {
-    return updateSubscriptionQuantity({
-      metronomeCustomerId,
-      contractId,
-      subscriptionId: mauInfo.subscriptionId,
-      quantity: totalMau,
-      uniquenessKey: `mau-sync-${contractId}-${hourKey}`,
-      startingAt,
-    });
-  }
+  logger.info(
+    { workspaceId: workspace.sId, contractId, toUpdate, totalMau },
+    "[Metronome] Updating MAU quantities"
+  );
 
-  // Tiered mode: distribute MAU across tier subscriptions.
-  const tierQuantities = distributeMauAcrossTiers(totalMau, mauInfo.tiers);
-
-  for (let i = 0; i < mauInfo.tierSubscriptionIds.length; i++) {
+  for (const sub of toUpdate) {
+    // Target the next billing period — current period stays as-is.
+    const effectiveStartingAt = sub.nextPeriodStart ?? startingAt;
     const result = await updateSubscriptionQuantity({
       metronomeCustomerId,
       contractId,
-      subscriptionId: mauInfo.tierSubscriptionIds[i],
-      quantity: Math.max(tierQuantities[i], 0),
-      startingAt,
-      uniquenessKey: `mau-sync-${contractId}-tier${i}-${hourKey}`,
+      subscriptionId: sub.id,
+      quantity: sub.currentQuantity,
+      startingAt: effectiveStartingAt,
     });
     if (result.isErr()) {
       return result;

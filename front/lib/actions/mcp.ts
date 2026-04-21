@@ -22,6 +22,7 @@ import type {
   UserQuestion,
 } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import { isInternalServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import type {
   MCPToolRetryPolicyType,
   ToolDisplayLabels,
@@ -255,16 +256,19 @@ const MAX_DESCRIPTION_LENGTH = 1024;
 export function buildToolSpecification(
   actionConfiguration: MCPToolConfigurationType
 ): AgentActionSpecification {
-  // Hide required tool-input configuration from the model; optional internal props stay visible.
-  const filteredInputSchema = hideInternalConfiguration(
-    actionConfiguration.inputSchema
-  );
+  // Internal tools: hide required tool-input configuration from the model.
+  // External/client tools: black-box — pass the schema through as-is.
+  const inputSchema = isInternalServerSideMCPToolConfiguration(
+    actionConfiguration
+  )
+    ? hideInternalConfiguration(actionConfiguration.inputSchema)
+    : actionConfiguration.inputSchema;
 
   return {
     name: actionConfiguration.name,
     description:
       actionConfiguration.description?.slice(0, MAX_DESCRIPTION_LENGTH) ?? "",
-    inputSchema: filteredInputSchema,
+    inputSchema,
   };
 }
 
@@ -279,7 +283,7 @@ export function isMCPApproveExecutionEvent(
   );
 }
 
-function isToolPersonalAuthRequiredEvent(
+export function isToolPersonalAuthRequiredEvent(
   event: unknown
 ): event is ToolPersonalAuthRequiredEvent {
   return (

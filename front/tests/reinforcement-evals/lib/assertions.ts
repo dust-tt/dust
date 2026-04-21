@@ -8,8 +8,9 @@ import { isString } from "@app/types/shared/utils/general";
 type AssertionResult = { success: true } | { success: false; error: string };
 
 interface InstructionEditItem {
-  old_string: string;
-  new_string: string;
+  targetBlockId: string;
+  content: string;
+  type: string;
 }
 
 interface ToolEditItem {
@@ -21,8 +22,8 @@ function isInstructionEditItem(value: unknown): value is InstructionEditItem {
   return (
     typeof value === "object" &&
     value !== null &&
-    "old_string" in value &&
-    typeof value.old_string === "string"
+    "targetBlockId" in value &&
+    typeof value.targetBlockId === "string"
   );
 }
 

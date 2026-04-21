@@ -1,7 +1,8 @@
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ActionDetailsDisplayContext } from "@app/components/actions/mcp/details/types";
 import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
-import { toolGeneratedFileToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
+import { markdownCitationToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
+import type { MCPReferenceCitation } from "@app/components/markdown/MCPReferenceCitation";
 import type {
   SqlQueryOutputType,
   ThinkingOutputType,
@@ -15,6 +16,7 @@ import {
   isWarningResourceType,
   isWebsearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 import config from "@app/lib/api/config";
 import { getDocumentIcon } from "@app/lib/content_nodes";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -22,12 +24,8 @@ import type { LightWorkspaceType } from "@app/types/user";
 import {
   Chip,
   CodeBlock,
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
   ContentBlockWrapper,
   ContentMessage,
-  cn,
   FaviconIcon,
   InformationCircleIcon,
   Markdown,
@@ -83,7 +81,7 @@ export function SqlQueryBlock({ resource }: SqlQueryBlockProps) {
 }
 
 interface ToolGeneratedFileDetailsProps {
-  resource: ToolGeneratedFileType;
+  resource: ToolGeneratedFileType | ActionGeneratedFileType;
   owner: LightWorkspaceType;
 }
 
@@ -91,15 +89,21 @@ export function ToolGeneratedFileDetails({
   resource,
   owner,
 }: ToolGeneratedFileDetailsProps) {
-  const file = {
-    ...resource,
-    sourceUrl: `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${resource.fileId}`,
+  const citation: MCPReferenceCitation = {
+    fileId: resource.fileId,
+    title: resource.title,
+    contentType: resource.contentType,
+    href: `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${resource.fileId}`,
+    description:
+      "text" in resource ? resource.text : (resource.snippet ?? undefined),
   };
+
   return (
     <AttachmentCitation
-      attachmentCitation={toolGeneratedFileToAttachmentCitation(file)}
+      attachmentCitation={markdownCitationToAttachmentCitation(citation)}
       owner={owner}
       conversationId={null}
+      compact
     />
   );
 }
@@ -204,22 +208,10 @@ export function SearchResultDetails({
       ) : (
         <div className="flex flex-col gap-4 pl-6 pt-4">
           <div className="flex flex-col gap-1">
-            <span
-              className={cn(
-                displayContext === "sidebar-single-action" ? "font-medium" : "",
-                "text-foreground dark:text-foreground-night"
-              )}
-            >
+            <span className="font-medium text-foreground dark:text-foreground-night">
               Query
             </span>
-            <div
-              className={cn(
-                displayContext === "sidebar-single-action"
-                  ? ""
-                  : "text-sm font-normal",
-                "text-muted-foreground dark:text-muted-foreground-night"
-              )}
-            >
+            <div className="text-muted-foreground dark:text-muted-foreground-night">
               {displayQuery}
             </div>
             {warning && (
@@ -229,44 +221,22 @@ export function SearchResultDetails({
               />
             )}
           </div>
-          {actionOutput &&
-            (displayContext === "sidebar-single-action" ? (
-              <div className="flex flex-col gap-2">
-                <span className="font-medium text-foreground dark:text-foreground-night">
-                  Results
-                </span>
-                {singleFileContentText && (
-                  <Markdown
-                    content={singleFileContentText}
-                    isStreaming={false}
-                    forcedTextSize="text-sm"
-                    textColor="text-muted-foreground dark:text-muted-foreground-night"
-                  />
-                )}
-                <PaginatedCitationsGrid items={citations} />
-              </div>
-            ) : (
-              <div>
-                <Collapsible defaultOpen={false}>
-                  <CollapsibleTrigger>
-                    <span className="text-sm font-bold text-foreground dark:text-foreground-night">
-                      Results
-                    </span>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    {singleFileContentText && (
-                      <Markdown
-                        content={singleFileContentText}
-                        isStreaming={false}
-                        forcedTextSize="text-sm"
-                        textColor="text-muted-foreground dark:text-muted-foreground-night"
-                      />
-                    )}
-                    <PaginatedCitationsGrid items={citations} />
-                  </CollapsibleContent>
-                </Collapsible>
-              </div>
-            ))}
+          {actionOutput && (
+            <div className="flex flex-col gap-2">
+              <span className="font-medium text-foreground dark:text-foreground-night">
+                Results
+              </span>
+              {singleFileContentText && (
+                <Markdown
+                  content={singleFileContentText}
+                  isStreaming={false}
+                  forcedTextSize="text-sm"
+                  textColor="text-muted-foreground dark:text-muted-foreground-night"
+                />
+              )}
+              <PaginatedCitationsGrid items={citations} />
+            </div>
+          )}
         </div>
       )}
     </ActionDetailsWrapper>

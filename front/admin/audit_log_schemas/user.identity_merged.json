@@ -7,6 +7,7 @@
   ],
   "metadata": {
     "primaryUserId": "string",
-    "mergedUserId": "string"
+    "mergedUserId": "string",
+    "actor_type": "string"
   }
 }

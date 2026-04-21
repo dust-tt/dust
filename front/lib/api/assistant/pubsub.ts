@@ -47,7 +47,7 @@ export async function* getConversationEvents({
     { lastEventId }
   );
 
-  // Unsubscribe if the signal is aborted
+  // Unsubscribe if the signal is aborted, to unblock the callbackReader.next() await below.
   signal.addEventListener("abort", unsubscribe, { once: true });
 
   try {
@@ -70,20 +70,20 @@ export async function* getConversationEvents({
       if (signal.aborted) {
         break;
       }
+      let timeoutId: ReturnType<typeof setTimeout> | undefined;
       const timeoutPromise = new Promise<"timeout">((resolve) => {
-        setTimeout(() => {
-          resolve("timeout");
-        }, TIMEOUT);
+        timeoutId = setTimeout(() => resolve("timeout"), TIMEOUT);
       });
       const rawEvent = await Promise.race([
         callbackReader.next(),
         timeoutPromise,
       ]);
 
-      // Determine if we timeouted
+      // Determine if we timeouted.
       if (rawEvent === "timeout") {
         break;
       }
+      clearTimeout(timeoutId);
 
       if (rawEvent === "close") {
         break;

@@ -182,9 +182,9 @@ function isFeedbackDistributionData(
 }
 
 export function FeedbackDistributionTooltip(
-  props: TooltipContentProps<number, string>
+  props: TooltipContentProps<number, string> & { activeKey?: string }
 ) {
-  const { active, payload } = props;
+  const { active, payload, activeKey } = props;
   if (!active || !payload || payload.length === 0) {
     return null;
   }
@@ -198,10 +198,12 @@ export function FeedbackDistributionTooltip(
     <ChartTooltipCard
       title={row.date}
       rows={FEEDBACK_DISTRIBUTION_LEGEND.map(({ key, label: itemLabel }) => ({
+        key,
         label: itemLabel,
         value: row[key],
         colorClassName: FEEDBACK_DISTRIBUTION_PALETTE[key],
       }))}
+      activeKey={activeKey}
     />
   );
 }

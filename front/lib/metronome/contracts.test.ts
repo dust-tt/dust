@@ -2,18 +2,73 @@ import type { EnterprisePricingCents } from "@app/lib/metronome/contracts";
 import {
   buildEnterpriseOverrides,
   extractEnterprisePricing,
+  provisionMetronomeCustomerAndContract,
+  switchMetronomeContractPackage,
 } from "@app/lib/metronome/contracts";
+import { Ok } from "@app/types/shared/result";
+import type { LightWorkspaceType } from "@app/types/user";
 import type Stripe from "stripe";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // ---------------------------------------------------------------------------
 // Mocks
 // ---------------------------------------------------------------------------
 
-const { mockPrices } = vi.hoisted(() => {
+const {
+  mockCreateMetronomeContract,
+  mockCreateMetronomeCustomer,
+  mockFindMetronomeCustomerByAlias,
+  mockGetMetronomeContractById,
+  mockGetSeatSubscriptionIdFromContract,
+  mockHasMauSubscriptionInContract,
+  mockPrices,
+  mockScheduleMetronomeContractEnd,
+  mockSyncMauCount,
+  mockSyncSeatCount,
+} = vi.hoisted(() => {
   const mockPrices = { retrieve: vi.fn() };
-  return { mockPrices };
+
+  return {
+    mockCreateMetronomeContract: vi.fn(),
+    mockCreateMetronomeCustomer: vi.fn(),
+    mockFindMetronomeCustomerByAlias: vi.fn(),
+    mockGetMetronomeContractById: vi.fn(),
+    mockGetSeatSubscriptionIdFromContract: vi.fn(),
+    mockHasMauSubscriptionInContract: vi.fn(),
+    mockPrices,
+    mockScheduleMetronomeContractEnd: vi.fn(),
+    mockSyncMauCount: vi.fn(),
+    mockSyncSeatCount: vi.fn(),
+  };
 });
+
+vi.mock("@app/lib/metronome/client", () => ({
+  ceilToHourISO: (date: Date) => date.toISOString(),
+  createMetronomeContract: mockCreateMetronomeContract,
+  createMetronomeCustomer: mockCreateMetronomeCustomer,
+  epochSecondsToFloorHourISO: vi.fn(),
+  findMetronomeCustomerByAlias: mockFindMetronomeCustomerByAlias,
+  getMetronomeClient: vi.fn(),
+  getMetronomeContractById: mockGetMetronomeContractById,
+  scheduleMetronomeContractEnd: mockScheduleMetronomeContractEnd,
+}));
+
+vi.mock("@app/lib/metronome/mau_sync", async () => {
+  const actual = await vi.importActual<
+    typeof import("@app/lib/metronome/mau_sync")
+  >("@app/lib/metronome/mau_sync");
+
+  return {
+    ...actual,
+    hasMauSubscriptionInContract: mockHasMauSubscriptionInContract,
+    syncMauCount: mockSyncMauCount,
+  };
+});
+
+vi.mock("@app/lib/metronome/seats", () => ({
+  getSeatSubscriptionIdFromContract: mockGetSeatSubscriptionIdFromContract,
+  syncSeatCount: mockSyncSeatCount,
+}));
 
 vi.mock("@app/lib/plans/stripe", () => ({
   getStripeClient: () => ({ prices: mockPrices }),
@@ -42,6 +97,52 @@ const noopLogger = {
   warn: vi.fn(),
   error: vi.fn(),
 } as any;
+
+const WORKSPACE = {
+  id: 42,
+  sId: "w_123",
+  name: "Workspace",
+} as LightWorkspaceType;
+
+const CONTRACT = {
+  id: "m-contract",
+  subscriptions: [],
+};
+
+beforeEach(() => {
+  mockPrices.retrieve.mockReset();
+
+  mockFindMetronomeCustomerByAlias.mockReset();
+  mockFindMetronomeCustomerByAlias.mockResolvedValue(new Ok("m-customer"));
+
+  mockCreateMetronomeCustomer.mockReset();
+  mockCreateMetronomeCustomer.mockResolvedValue(
+    new Ok({ metronomeCustomerId: "m-customer" })
+  );
+
+  mockCreateMetronomeContract.mockReset();
+  mockCreateMetronomeContract.mockResolvedValue(
+    new Ok({ contractId: "m-contract", startingAt: START_DATE })
+  );
+
+  mockScheduleMetronomeContractEnd.mockReset();
+  mockScheduleMetronomeContractEnd.mockResolvedValue(new Ok(undefined));
+
+  mockGetMetronomeContractById.mockReset();
+  mockGetMetronomeContractById.mockResolvedValue(new Ok(CONTRACT));
+
+  mockGetSeatSubscriptionIdFromContract.mockReset();
+  mockGetSeatSubscriptionIdFromContract.mockReturnValue("seat-subscription");
+
+  mockHasMauSubscriptionInContract.mockReset();
+  mockHasMauSubscriptionInContract.mockReturnValue(true);
+
+  mockSyncSeatCount.mockReset();
+  mockSyncSeatCount.mockResolvedValue(new Ok(undefined));
+
+  mockSyncMauCount.mockReset();
+  mockSyncMauCount.mockResolvedValue(new Ok(undefined));
+});
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -292,7 +393,11 @@ describe("buildEnterpriseOverrides", () => {
       floorCents: 500000,
     };
 
-    const result = buildEnterpriseOverrides({ pricing, startDate: START_DATE });
+    const result = buildEnterpriseOverrides({
+      pricing,
+      startDate: START_DATE,
+      initialMauCount: 0,
+    });
 
     // 1 MAU + 6 tier products = 7 disabled.
     expect(result.overrides).toHaveLength(7);
@@ -315,7 +420,11 @@ describe("buildEnterpriseOverrides", () => {
       floorCents: 450000,
     };
 
-    const result = buildEnterpriseOverrides({ pricing, startDate: START_DATE });
+    const result = buildEnterpriseOverrides({
+      pricing,
+      startDate: START_DATE,
+      initialMauCount: 0,
+    });
 
     // Simple mode: MAU product enabled.
     const mauOverride = findOverride(result.overrides, "mau-product");
@@ -354,7 +463,11 @@ describe("buildEnterpriseOverrides", () => {
       floorCents: 0,
     };
 
-    const result = buildEnterpriseOverrides({ pricing, startDate: START_DATE });
+    const result = buildEnterpriseOverrides({
+      pricing,
+      startDate: START_DATE,
+      initialMauCount: 0,
+    });
 
     const tier1 = findOverride(result.overrides, "tier1-product");
     expect(tier1?.overwrite_rate.price).toBe(0);
@@ -377,7 +490,11 @@ describe("buildEnterpriseOverrides", () => {
       floorCents: 0,
     };
 
-    const result = buildEnterpriseOverrides({ pricing, startDate: START_DATE });
+    const result = buildEnterpriseOverrides({
+      pricing,
+      startDate: START_DATE,
+      initialMauCount: 0,
+    });
 
     const tier1 = findOverride(result.overrides, "tier1-product");
     expect(tier1?.overwrite_rate.price).toBe(4000);
@@ -403,7 +520,11 @@ describe("buildEnterpriseOverrides", () => {
       floorCents: 315000,
     };
 
-    const result = buildEnterpriseOverrides({ pricing, startDate: START_DATE });
+    const result = buildEnterpriseOverrides({
+      pricing,
+      startDate: START_DATE,
+      initialMauCount: 0,
+    });
 
     // 5 tier products enabled with correct prices.
     const enabledTiers = result.overrides.filter((o) => o.entitled);
@@ -433,7 +554,11 @@ describe("buildEnterpriseOverrides", () => {
       floorCents: 0,
     };
 
-    const result = buildEnterpriseOverrides({ pricing, startDate: START_DATE });
+    const result = buildEnterpriseOverrides({
+      pricing,
+      startDate: START_DATE,
+      initialMauCount: 0,
+    });
 
     // Single tier → simple mode: MAU product enabled.
     const mauOverride = findOverride(result.overrides, "mau-product");
@@ -461,7 +586,11 @@ describe("buildEnterpriseOverrides", () => {
       floorCents: 225000,
     };
 
-    const result = buildEnterpriseOverrides({ pricing, startDate: START_DATE });
+    const result = buildEnterpriseOverrides({
+      pricing,
+      startDate: START_DATE,
+      initialMauCount: 0,
+    });
 
     // Simple mode: MAU product enabled (same price across tiers).
     expect(findOverride(result.overrides, "mau-product")?.entitled).toBe(true);
@@ -486,7 +615,11 @@ describe("buildEnterpriseOverrides", () => {
       floorCents: 120000,
     };
 
-    const result = buildEnterpriseOverrides({ pricing, startDate: START_DATE });
+    const result = buildEnterpriseOverrides({
+      pricing,
+      startDate: START_DATE,
+      initialMauCount: 0,
+    });
 
     // Simple mode: MAU product with EUR credit type and price in euros.
     const mauOverride = findOverride(result.overrides, "mau-product");
@@ -512,7 +645,11 @@ describe("buildEnterpriseOverrides", () => {
       floorCents: 325000,
     };
 
-    const result = buildEnterpriseOverrides({ pricing, startDate: START_DATE });
+    const result = buildEnterpriseOverrides({
+      pricing,
+      startDate: START_DATE,
+      initialMauCount: 0,
+    });
 
     const tier1 = findOverride(result.overrides, "tier1-product");
     expect(tier1?.overwrite_rate.price).toBe(3250); // 325000 / 100
@@ -525,5 +662,129 @@ describe("buildEnterpriseOverrides", () => {
 
     expect(result.recurring_commits![0].access_amount.unit_price).toBe(325000);
     expect(result.custom_fields?.MAU_TIERS).toBe("FLOOR-101-201");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Contract provisioning / switching
+// ---------------------------------------------------------------------------
+
+describe("provisionMetronomeCustomerAndContract", () => {
+  it("syncs seats and MAU when the contract has both subscriptions", async () => {
+    const result = await provisionMetronomeCustomerAndContract({
+      workspace: WORKSPACE,
+      stripeCustomerId: "stripe-customer",
+      packageAlias: "legacy-pro-monthly",
+      uniquenessKey: "uniq_123",
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(mockGetMetronomeContractById).toHaveBeenCalledWith({
+      metronomeCustomerId: "m-customer",
+      metronomeContractId: "m-contract",
+    });
+    expect(mockGetSeatSubscriptionIdFromContract).toHaveBeenCalledWith(
+      CONTRACT
+    );
+    expect(mockHasMauSubscriptionInContract).toHaveBeenCalledWith(CONTRACT);
+    expect(mockSyncSeatCount).toHaveBeenCalledTimes(1);
+    expect(mockSyncSeatCount).toHaveBeenCalledWith({
+      metronomeCustomerId: "m-customer",
+      contractId: "m-contract",
+      workspace: WORKSPACE,
+      startingAt: START_DATE,
+      contract: CONTRACT,
+    });
+    expect(mockSyncMauCount).toHaveBeenCalledTimes(1);
+    expect(mockSyncMauCount).toHaveBeenCalledWith({
+      metronomeCustomerId: "m-customer",
+      contractId: "m-contract",
+      workspace: WORKSPACE,
+      startingAt: START_DATE,
+      contract: CONTRACT,
+    });
+  });
+
+  it("skips seat sync when the contract has no seat subscription", async () => {
+    mockGetSeatSubscriptionIdFromContract.mockReturnValue(undefined);
+
+    const result = await provisionMetronomeCustomerAndContract({
+      workspace: WORKSPACE,
+      stripeCustomerId: "stripe-customer",
+      packageAlias: "legacy-enterprise",
+      uniquenessKey: "uniq_123",
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(mockSyncSeatCount).not.toHaveBeenCalled();
+    expect(mockSyncMauCount).toHaveBeenCalledTimes(1);
+  });
+
+  it("skips MAU sync when the contract has no MAU subscription", async () => {
+    mockHasMauSubscriptionInContract.mockReturnValue(false);
+
+    const result = await provisionMetronomeCustomerAndContract({
+      workspace: WORKSPACE,
+      stripeCustomerId: "stripe-customer",
+      packageAlias: "legacy-pro-monthly",
+      uniquenessKey: "uniq_123",
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(mockSyncSeatCount).toHaveBeenCalledTimes(1);
+    expect(mockSyncMauCount).not.toHaveBeenCalled();
+  });
+});
+
+describe("switchMetronomeContractPackage", () => {
+  it("syncs seats and MAU when the contract has both subscriptions", async () => {
+    const result = await switchMetronomeContractPackage({
+      metronomeCustomerId: "m-customer",
+      oldContractId: "old-contract",
+      workspace: WORKSPACE,
+      packageAlias: "legacy-business",
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(mockScheduleMetronomeContractEnd).toHaveBeenCalledTimes(1);
+    expect(mockSyncSeatCount).toHaveBeenCalledTimes(1);
+    expect(mockSyncSeatCount).toHaveBeenCalledWith({
+      metronomeCustomerId: "m-customer",
+      contractId: "m-contract",
+      workspace: WORKSPACE,
+      startingAt: START_DATE,
+      contract: CONTRACT,
+    });
+    expect(mockSyncMauCount).toHaveBeenCalledTimes(1);
+  });
+
+  it("skips seat sync when the switched contract has no seat subscription", async () => {
+    mockGetSeatSubscriptionIdFromContract.mockReturnValue(undefined);
+
+    const result = await switchMetronomeContractPackage({
+      metronomeCustomerId: "m-customer",
+      oldContractId: "old-contract",
+      workspace: WORKSPACE,
+      packageAlias: "legacy-enterprise-eur",
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(mockSyncSeatCount).not.toHaveBeenCalled();
+    expect(mockSyncMauCount).toHaveBeenCalledTimes(1);
+  });
+
+  it("skips MAU sync when the switched contract has no MAU subscription", async () => {
+    mockHasMauSubscriptionInContract.mockReturnValue(false);
+
+    const result = await switchMetronomeContractPackage({
+      metronomeCustomerId: "m-customer",
+      oldContractId: "old-contract",
+      workspace: WORKSPACE,
+      packageAlias: "legacy-business",
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(mockSyncSeatCount).toHaveBeenCalledTimes(1);
+    expect(mockSyncMauCount).not.toHaveBeenCalled();
   });
 });

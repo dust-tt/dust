@@ -22,7 +22,6 @@ import type { AgentLoopRunContextType } from "@app/lib/actions/types";
 import { handleMCPActionError } from "@app/lib/api/mcp/error";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
-import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
@@ -65,8 +64,6 @@ export async function* runToolWithStreaming(
   | ToolAskUserQuestionEvent,
   void
 > {
-  const owner = auth.getNonNullableWorkspace();
-
   const { toolConfiguration, status, augmentedInputs: inputs } = action;
 
   const signal = options?.signal;
@@ -77,13 +74,6 @@ export async function* runToolWithStreaming(
     messageId: agentMessage.sId,
     workspaceId: conversation.owner.sId,
   });
-
-  const tags = [
-    `action:${toolConfiguration.name}`,
-    `mcp_server:${toolConfiguration.mcpServerName}`,
-    `workspace:${owner.sId}`,
-    `workspace_name:${owner.name}`,
-  ];
 
   const agentLoopRunContext: AgentLoopRunContextType = {
     agentConfiguration,
@@ -117,8 +107,6 @@ export async function* runToolWithStreaming(
   // validation error, or any other kind of error from MCP, but not a tool error, which are returned
   // as content.
   if (toolCallResult.isError) {
-    getStatsDClient().increment("mcp_actions_error.count", 1, tags);
-
     const endDate = performance.now();
     yield await handleMCPActionError(auth, {
       action,
@@ -154,22 +142,20 @@ export async function* runToolWithStreaming(
       yield event;
     }
     return;
-  } else {
-    getStatsDClient().increment("mcp_actions_success.count", 1, tags);
-
-    const endDate = performance.now();
-    await action.markAsSucceeded({ executionDurationMs: endDate - startDate });
-
-    yield {
-      type: "tool_success",
-      created: Date.now(),
-      configurationId: agentConfiguration.sId,
-      messageId: agentMessage.sId,
-      action: {
-        ...action.toJSON(),
-        output: removeNulls(outputItems.map(hideFileFromActionOutput)),
-        generatedFiles,
-      },
-    };
   }
+
+  const endDate = performance.now();
+  await action.markAsSucceeded({ executionDurationMs: endDate - startDate });
+
+  yield {
+    type: "tool_success",
+    created: Date.now(),
+    configurationId: agentConfiguration.sId,
+    messageId: agentMessage.sId,
+    action: {
+      ...action.toJSON(),
+      output: removeNulls(outputItems.map(hideFileFromActionOutput)),
+      generatedFiles,
+    },
+  };
 }

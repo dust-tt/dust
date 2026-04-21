@@ -6,6 +6,7 @@ import { Authenticator, hasFeatureFlag } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -26,11 +27,13 @@ export type PokeGetWorkspaceInfo = {
   baseUrl: string;
   extensionConfig: ExtensionConfigurationType | null;
   hasDummyFeature: boolean;
+  membersCount: number;
   metronomeCustomerId: string | null;
   programmaticUsageConfig: ProgrammaticUsageConfigurationType | null;
   stripeSubscription: Stripe.Subscription | null;
   subscriptions: SubscriptionType[];
   whitelistableFeatures: WhitelistableFeature[];
+  temporalFrontNamespace: string;
   workspaceCreationDay: string;
   workspaceVerifiedDomains: WorkspaceDomain[];
   workosEnvironmentId: string;
@@ -98,6 +101,13 @@ async function handler(
         "dummy_feature_for_flag_testing"
       );
 
+      const membersCount = await MembershipResource.getMembersCountForWorkspace(
+        {
+          workspace: owner,
+          activeOnly: true,
+        }
+      );
+
       let stripeSubscription: Stripe.Subscription | null = null;
       if (activeSubscription.stripeSubscriptionId) {
         stripeSubscription = await getStripeSubscription(
@@ -108,6 +118,7 @@ async function handler(
       return res.status(200).json({
         activeSubscription,
         hasDummyFeature,
+        membersCount,
         metronomeCustomerId: workspaceResource.metronomeCustomerId ?? null,
         stripeSubscription,
         subscriptions,
@@ -118,6 +129,7 @@ async function handler(
         programmaticUsageConfig: programmaticUsageConfig?.toJSON() ?? null,
         baseUrl: config.getApiBaseUrl(),
         workosEnvironmentId: config.getWorkOSEnvironmentId(),
+        temporalFrontNamespace: config.getTemporalFrontNamespace() ?? "",
       });
 
     default:

@@ -11,54 +11,6 @@ import {
   SKILL_SUGGESTION_STATES,
 } from "@app/types/suggestions/skill_suggestion";
 import type { LightWorkspaceType } from "@app/types/user";
-import {
-  Dialog,
-  DialogContainer,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@dust-tt/sparkle";
-import { useState } from "react";
-
-interface SkillSuggestionDetailsDialogProps {
-  onClose: () => void;
-  suggestion: SkillSuggestionType;
-}
-
-function SkillSuggestionDetailsDialog({
-  suggestion,
-  onClose,
-}: SkillSuggestionDetailsDialogProps) {
-  return (
-    <Dialog open onOpenChange={onClose}>
-      <DialogContent className="max-h-[80vh] max-w-4xl overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Suggestion Details - {suggestion.sId}</DialogTitle>
-        </DialogHeader>
-        <DialogContainer>
-          <div className="space-y-6">
-            <div>
-              <h3 className="mb-2 text-sm font-semibold">Analysis</h3>
-              <div className="rounded-lg bg-gray-50 p-4 dark:bg-gray-900">
-                <pre className="overflow-x-auto whitespace-pre-wrap text-sm">
-                  {suggestion.analysis ?? "No analysis"}
-                </pre>
-              </div>
-            </div>
-            <div>
-              <h3 className="mb-2 text-sm font-semibold">Content</h3>
-              <div className="rounded-lg bg-gray-50 p-4 dark:bg-gray-900">
-                <pre className="overflow-x-auto whitespace-pre-wrap text-sm">
-                  {JSON.stringify(suggestion.suggestion, null, 2)}
-                </pre>
-              </div>
-            </div>
-          </div>
-        </DialogContainer>
-      </DialogContent>
-    </Dialog>
-  );
-}
 
 interface SkillSuggestionDataTableProps {
   owner: LightWorkspaceType;
@@ -69,9 +21,6 @@ export function SkillSuggestionDataTable({
   owner,
   skillId,
 }: SkillSuggestionDataTableProps) {
-  const [selectedSuggestion, setSelectedSuggestion] =
-    useState<SkillSuggestionType | null>(null);
-
   const useSuggestionsWithSkill = (props: PokeConditionalFetchProps) =>
     usePokeSkillSuggestions({ ...props, skillId });
 
@@ -103,37 +52,28 @@ export function SkillSuggestionDataTable({
   ];
 
   return (
-    <>
-      {selectedSuggestion && (
-        <SkillSuggestionDetailsDialog
-          suggestion={selectedSuggestion}
-          onClose={() => setSelectedSuggestion(null)}
-        />
-      )}
-      <PokeDataTableConditionalFetch
-        header="Suggestions"
-        owner={owner}
-        useSWRHook={useSuggestionsWithSkill}
-      >
-        {(suggestions, mutate) => {
-          const columns = makeColumnsForSkillSuggestions(
-            owner,
-            skillId,
-            async () => {
-              await mutate();
-            },
-            setSelectedSuggestion
-          );
+    <PokeDataTableConditionalFetch
+      header="Suggestions"
+      owner={owner}
+      useSWRHook={useSuggestionsWithSkill}
+    >
+      {(suggestions, mutate) => {
+        const columns = makeColumnsForSkillSuggestions(
+          owner,
+          skillId,
+          async () => {
+            await mutate();
+          }
+        );
 
-          return (
-            <PokeDataTable<SkillSuggestionType, unknown>
-              columns={columns}
-              data={suggestions}
-              facets={facets}
-            />
-          );
-        }}
-      </PokeDataTableConditionalFetch>
-    </>
+        return (
+          <PokeDataTable<SkillSuggestionType, unknown>
+            columns={columns}
+            data={suggestions}
+            facets={facets}
+          />
+        );
+      }}
+    </PokeDataTableConditionalFetch>
   );
 }

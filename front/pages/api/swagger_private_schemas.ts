@@ -147,6 +147,76 @@
  *           type: array
  *           items:
  *             type: string
+ *         forkedFrom:
+ *           $ref: '#/components/schemas/PrivateConversationForkedFrom'
+ *         forkedChildren:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/PrivateConversationForkedChild'
+ *     PrivateConversationForkUser:
+ *       type: object
+ *       properties:
+ *         sId:
+ *           type: string
+ *         id:
+ *           type: integer
+ *         createdAt:
+ *           type: integer
+ *         provider:
+ *           type: string
+ *           nullable: true
+ *           enum: [auth0, github, google, okta, samlp, waad]
+ *         username:
+ *           type: string
+ *         email:
+ *           type: string
+ *         firstName:
+ *           type: string
+ *         lastName:
+ *           type: string
+ *           nullable: true
+ *         fullName:
+ *           type: string
+ *         image:
+ *           type: string
+ *           nullable: true
+ *         lastLoginAt:
+ *           type: integer
+ *           nullable: true
+ *     PrivateConversationForkedFrom:
+ *       type: object
+ *       required:
+ *         - parentConversationId
+ *         - parentConversationTitle
+ *         - sourceMessageId
+ *         - branchedAt
+ *         - user
+ *       properties:
+ *         parentConversationId:
+ *           type: string
+ *         parentConversationTitle:
+ *           type: string
+ *           nullable: true
+ *         sourceMessageId:
+ *           type: string
+ *         branchedAt:
+ *           type: integer
+ *         user:
+ *           $ref: '#/components/schemas/PrivateConversationForkUser'
+ *     PrivateConversationForkedChild:
+ *       type: object
+ *       properties:
+ *         childConversationId:
+ *           type: string
+ *         childConversationTitle:
+ *           type: string
+ *           nullable: true
+ *         sourceMessageId:
+ *           type: string
+ *         branchedAt:
+ *           type: integer
+ *         user:
+ *           $ref: '#/components/schemas/PrivateConversationForkUser'
  *     PrivateFullConversation:
  *       type: object
  *       description: Full conversation including content, owner, and visibility.
@@ -1019,7 +1089,7 @@
  *           type: string
  *         origin:
  *           type: string
- *           enum: [web, project_kickoff, extension, agent_sidekick, api, cli, cli_programmatic, email, excel, gsheet, make, n8n, powerpoint, raycast, slack, slack_workflow, teams, transcript, triggered_programmatic, triggered, zapier, zendesk, onboarding_conversation]
+ *           enum: [web, project_kickoff, extension, agent_sidekick, api, cli, cli_programmatic, email, excel, gsheet, make, n8n, powerpoint, raycast, slack, slack_workflow, teams, transcript, triggered_programmatic, triggered, wakeup, zapier, zendesk, onboarding_conversation]
  *     PrivateReaction:
  *       type: object
  *       description: A reaction on a message.

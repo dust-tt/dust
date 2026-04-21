@@ -1,8 +1,6 @@
 import { AgentMessageMarkdown } from "@app/components/assistant/AgentMessageMarkdown";
 import { AgentHandle } from "@app/components/assistant/conversation/AgentHandle";
-import { AgentMessageCompletionStatus } from "@app/components/assistant/conversation/AgentMessageCompletionStatus";
 import { AgentMessageInteractiveContentGeneratedFiles } from "@app/components/assistant/conversation/AgentMessageGeneratedFiles";
-import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
 import { InlineActivitySteps } from "@app/components/assistant/conversation/actions/inline/InlineActivitySteps";
 import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
 import { markdownCitationToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
@@ -81,7 +79,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types/user";
-import type { DropdownMenuItemProps, StreamingState } from "@dust-tt/sparkle";
+import type { DropdownMenuItemProps } from "@dust-tt/sparkle";
 import {
   ActionGitBranchIcon,
   ArrowPathIcon,
@@ -206,7 +204,6 @@ export function AgentMessage({
   const [streamId, setStreamId] = useState<string>(`message-${sId}`);
   const { hasFeature } = useFeatureFlags();
   const isCollapsibleEnabled = hasFeature("collapsible_messages");
-  const isInlineActivityEnabled = hasFeature("enable_steering");
 
   const [isRetryHandlerProcessing, setIsRetryHandlerProcessing] =
     useState<boolean>(false);
@@ -251,7 +248,6 @@ export function AgentMessage({
   const { shouldStream, streamError } = useAgentMessageStream({
     agentMessage: agentMessage,
     conversationId,
-    isInlineActivityEnabled,
     owner,
     onEventCallback: useCallback(
       (eventPayload: {
@@ -395,7 +391,6 @@ export function AgentMessage({
       ]
     ),
     streamId,
-    useFullChainOfThought: false,
   });
 
   const isDeleted = agentMessage.visibility === "deleted";
@@ -430,8 +425,21 @@ export function AgentMessage({
   // GenerationContext: to know if we are generating or not.
   const generationContext = useGenerationContext();
 
+  // Once a handoff user message exists for this agent message, the agent has
+  // effectively handed over: the child agent owns the generation from here.
+  // Treat this message as no longer generating so we don't show duplicate
+  // "Stop agent" buttons / streaming affordances alongside the child.
+  const isAgentMessageHandingOver = methods.data
+    .get()
+    .some(
+      (m) =>
+        isUserMessage(m) &&
+        isHandoverUserMessage(m) &&
+        m.agenticMessageData?.originMessageId === sId
+    );
+
   useEffect(() => {
-    if (shouldStream) {
+    if (shouldStream && !isAgentMessageHandingOver) {
       generationContext.addGeneratingMessage({
         messageId: sId,
         conversationId,
@@ -442,6 +450,7 @@ export function AgentMessage({
     }
   }, [
     shouldStream,
+    isAgentMessageHandingOver,
     generationContext,
     sId,
     conversationId,
@@ -557,15 +566,6 @@ export function AgentMessage({
     );
   }
 
-  const isAgentMessageHandingOver = methods.data
-    .get()
-    .some(
-      (m) =>
-        isUserMessage(m) &&
-        isHandoverUserMessage(m) &&
-        m.agenticMessageData?.originMessageId === sId
-    );
-
   const parentAgentMessage = methods.data
     .get()
     .find(
@@ -605,7 +605,7 @@ export function AgentMessage({
     await deleteAgentMessage(agentMessage.sId);
 
     methods.data.map((m) => {
-      if (m.sId === agentMessage.sId) {
+      if (isAgentMessageWithStreaming(m) && m.sId === agentMessage.sId) {
         return {
           ...m,
           visibility: "deleted",
@@ -952,16 +952,10 @@ export function AgentMessage({
           references={references}
           streaming={shouldStream}
           streamError={streamError}
-          lastTokenClassification={
-            isInlineActivityEnabled
-              ? null
-              : agentMessage.streaming.agentState === "thinking"
-                ? "tokens"
-                : null
-          }
           activeReferences={activeReferences}
           setActiveReferences={setActiveReferences}
           triggeringUser={triggeringUser}
+          isAgentMessageHandingOver={isAgentMessageHandingOver}
           additionalMarkdownComponents={additionalMarkdownComponents}
           additionalMarkdownPlugins={additionalMarkdownPlugins}
         />
@@ -1006,8 +1000,6 @@ export function AgentMessage({
     );
   };
 
-  const hideCompletionStatus = isDeleted || isInlineActivityEnabled;
-
   return (
     <ConversationMessageContainer messageType="agent" type="agent">
       {!hideHeader && (
@@ -1025,18 +1017,7 @@ export function AgentMessage({
             infoChip={
               agentMessage.prunedContext ? <PrunedContextChip /> : undefined
             }
-            completionStatus={
-              hideCompletionStatus ? undefined : (
-                <AgentMessageCompletionStatus
-                  agentMessage={agentMessage}
-                  onClick={
-                    onCompletionStatusClick
-                      ? () => onCompletionStatusClick(agentMessage.sId)
-                      : undefined
-                  }
-                />
-              )
-            }
+            completionStatus={undefined}
             renderName={renderName}
           />
         </div>
@@ -1057,7 +1038,6 @@ function AgentMessageContent({
   references,
   streaming,
   streamError,
-  lastTokenClassification,
   owner,
   conversationId,
   activeReferences,
@@ -1066,6 +1046,7 @@ function AgentMessageContent({
   reloadMessage,
   isRetryHandlerProcessing,
   onQuickReplySend,
+  isAgentMessageHandingOver,
   additionalMarkdownComponents: propsAdditionalMarkdownComponents,
   additionalMarkdownPlugins,
 }: {
@@ -1088,7 +1069,6 @@ function AgentMessageContent({
   references: { [key: string]: MCPReferenceCitation };
   streaming: boolean;
   streamError: Error | null;
-  lastTokenClassification: null | "tokens" | "chain_of_thought";
   activeReferences: { index: number; document: MCPReferenceCitation }[];
   setActiveReferences: (
     references: {
@@ -1097,6 +1077,10 @@ function AgentMessageContent({
     }[]
   ) => void;
   onQuickReplySend: (message: string) => Promise<void>;
+  // True once a handoff user message pointing to this agent message exists —
+  // the child agent owns generation from that point, so this message should
+  // collapse its inline activity (no more "Thinking…") and drop its stop button.
+  isAgentMessageHandingOver: boolean;
   additionalMarkdownComponents?: Components;
   additionalMarkdownPlugins?: PluggableList;
 }) {
@@ -1106,8 +1090,6 @@ function AgentMessageContent({
   >();
 
   const { vizUrl } = useAuth();
-  const { hasFeature } = useFeatureFlags();
-  const isInlineActivityEnabled = hasFeature("enable_steering");
   const { sId, configuration: agentConfiguration } = agentMessage;
 
   const { postFollowUp } = usePostOnboardingFollowUp({
@@ -1225,10 +1207,6 @@ function AgentMessageContent({
     />
   ) : null;
 
-  if (blockedActionElement && !isInlineActivityEnabled) {
-    return blockedActionElement;
-  }
-
   if (agentMessage.status === "created" && !!streamError) {
     return (
       <ErrorMessage
@@ -1305,25 +1283,19 @@ function AgentMessageContent({
   return (
     <CitationsContext.Provider value={citationsContextValue}>
       <div className="flex flex-col gap-y-4">
-        {isInlineActivityEnabled ? (
-          <InlineActivitySteps
-            agentMessage={agentMessage}
-            lastAgentStateClassification={agentMessage.streaming.agentState}
-            completedSteps={agentMessage.streaming.inlineActivitySteps}
-            pendingToolCalls={agentMessage.streaming.pendingToolCalls}
-            onOpenDetails={onOpenDetails}
-            owner={owner}
-            isLastMessage={isLastMessage}
-          />
-        ) : (
-          <AgentMessageActions
-            agentMessage={agentMessage}
-            lastAgentStateClassification={agentMessage.streaming.agentState}
-            actionProgress={agentMessage.streaming.actionProgress}
-            pendingToolCalls={agentMessage.streaming.pendingToolCalls}
-            owner={owner}
-          />
-        )}
+        <InlineActivitySteps
+          agentMessage={agentMessage}
+          lastAgentStateClassification={
+            isAgentMessageHandingOver
+              ? "done"
+              : agentMessage.streaming.agentState
+          }
+          completedSteps={agentMessage.streaming.inlineActivitySteps}
+          pendingToolCalls={agentMessage.streaming.pendingToolCalls}
+          onOpenDetails={onOpenDetails}
+          owner={owner}
+          isLastMessage={isLastMessage}
+        />
         {blockedActionElement}
         <AgentMessageInteractiveContentGeneratedFiles
           files={interactiveFiles}
@@ -1342,19 +1314,14 @@ function AgentMessageContent({
 
         {agentMessage.content !== null &&
           agentMessage.content !== "" &&
-          !(
-            isInlineActivityEnabled &&
-            agentMessage.streaming.agentState !== "done"
-          ) && (
+          agentMessage.streaming.agentState === "done" && (
             <div>
               <AgentMessageMarkdown
                 content={sanitizeVisualizationContent(agentMessage.content)}
                 owner={owner}
-                isStreaming={streaming && lastTokenClassification === "tokens"}
-                streamingState={getStreamingState(
-                  streaming && lastTokenClassification === "tokens",
-                  agentMessage.status
-                )}
+                streamingState={
+                  agentMessage.status === "cancelled" ? "cancelled" : "none"
+                }
                 isLastMessage={isLastMessage}
                 additionalMarkdownComponents={additionalMarkdownComponents}
                 additionalMarkdownPlugins={additionalMarkdownPlugins}
@@ -1381,7 +1348,7 @@ function AgentMessageContent({
         {agentMessage.status === "cancelled" && (
           <div className="flex flex-col gap-2">
             <div className="text-sm text-faint dark:text-faint-night">
-              Message generation was interrupted
+              Message generation stopped by user
             </div>
             <div>
               <ButtonGroupDropdown
@@ -1414,19 +1381,6 @@ function AgentMessageContent({
       </div>
     </CitationsContext.Provider>
   );
-}
-
-function getStreamingState(
-  isStreaming: boolean,
-  messageStatus: string
-): StreamingState {
-  if (isStreaming) {
-    return "streaming";
-  }
-  if (messageStatus === "cancelled") {
-    return "cancelled";
-  }
-  return "none";
 }
 
 function getCitations({

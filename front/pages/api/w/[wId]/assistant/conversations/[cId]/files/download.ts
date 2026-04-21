@@ -81,9 +81,9 @@ async function handler(
   const bucket = getPrivateUploadBucket();
 
   try {
-    const contentType = await bucket.getFileContentType(normalizedPath);
-    if (contentType) {
-      res.setHeader("Content-Type", contentType);
+    const contentTypeResult = await bucket.getFileContentType(normalizedPath);
+    if (contentTypeResult.isOk() && contentTypeResult.value) {
+      res.setHeader("Content-Type", contentTypeResult.value);
     }
 
     const fileName = path.posix.basename(normalizedPath);

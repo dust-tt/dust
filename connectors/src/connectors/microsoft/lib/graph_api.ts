@@ -32,12 +32,7 @@ export async function clientApiGet(
   endpoint: string
 ) {
   try {
-    const start = new Date();
-    const res = await client.api(endpoint).get();
-    const end = new Date();
-    const duration = end.getTime() - start.getTime();
-    logger.info({ duration, endpoint }, `Graph API call took ${duration}ms`);
-    return res;
+    return await client.api(endpoint).get();
   } catch (error) {
     logger.error({ error, endpoint }, `Graph API call threw an error`);
     if (error instanceof GraphError && error.statusCode === 403) {
@@ -54,12 +49,7 @@ export async function clientApiPost(
   content: any // eslint-disable-line @typescript-eslint/no-explicit-any
 ) {
   try {
-    const start = new Date();
-    const res = await client.api(endpoint).post(content);
-    const end = new Date();
-    const duration = end.getTime() - start.getTime();
-    logger.info({ duration, endpoint }, `Graph API call took ${duration}ms`);
-    return res;
+    return await client.api(endpoint).post(content);
   } catch (error) {
     logger.error({ error, endpoint }, `Graph API call threw an error`);
     if (error instanceof GraphError && error.statusCode === 403) {

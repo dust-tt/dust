@@ -15,12 +15,14 @@ export type AllSkillConfigurationFindOptions = Omit<
     isDefault?: boolean;
   };
   onlyCustom?: false; // Default: include global skills.
+  withTools?: boolean;
 };
 
 // Full find options only custom skills from database.
 type CustomSkillConfigurationFindOptions =
   ResourceFindOptions<SkillConfigurationModel> & {
     onlyCustom: true; // Explicit: only custom skills.
+    withTools?: boolean;
   };
 
 export type SkillConfigurationFindOptions =

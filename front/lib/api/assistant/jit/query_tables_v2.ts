@@ -1,5 +1,6 @@
 import { DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME } from "@app/lib/actions/constants";
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
+import type { AutoInternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import {
   CONVERSATION_FILES_SERVER_NAME,
@@ -17,7 +18,7 @@ import {
   getTablesFromMultiSheetSpreadsheet,
 } from "@app/lib/api/assistant/jit/utils";
 import type { Authenticator } from "@app/lib/auth";
-import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -30,9 +31,9 @@ import assert from "assert";
  */
 export async function getQueryTablesServer(
   auth: Authenticator,
-
   conversation: ConversationWithoutContentType,
-  attachments: ConversationAttachmentType[]
+  attachments: ConversationAttachmentType[],
+  autoInternalViews: Map<AutoInternalMCPServerNameType, MCPServerViewResource>
 ): Promise<ServerSideMCPServerConfigurationType | null> {
   const filesUsableAsTableQuery = attachments.filter((f) => f.isQueryable);
 
@@ -62,11 +63,7 @@ export async function getQueryTablesServer(
     { concurrency: 10 }
   );
 
-  const queryTablesView =
-    await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
-      auth,
-      "query_tables_v2"
-    );
+  const queryTablesView = autoInternalViews.get("query_tables_v2") ?? null;
 
   assert(
     queryTablesView,

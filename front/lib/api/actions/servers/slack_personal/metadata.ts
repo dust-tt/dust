@@ -18,21 +18,21 @@ const commonSearchParams = {
     .array()
     .optional()
     .describe(
-      "Narrow the search to messages wrote by specific users ids (optional)"
+      "Narrow the search to messages written by specific Slack user IDs (e.g., 'U01234ABCD'). Use the search_user tool to find Slack user IDs if needed (optional)"
     ),
   usersTo: z
     .string()
     .array()
     .optional()
     .describe(
-      "Narrow the search to direct messages sent to specific user IDs (optional)"
+      "Narrow the search to direct messages sent to specific Slack user IDs (e.g., 'U01234ABCD'). Use the search_user tool to find Slack user IDs if needed (optional)"
     ),
   usersMentioned: z
     .string()
     .array()
     .optional()
     .describe(
-      "Narrow the search to messages mentioning specific users ids (optional)"
+      "Narrow the search to messages mentioning specific Slack user IDs (e.g., 'U01234ABCD'). Use the search_user tool to find Slack user IDs if needed (optional)"
     ),
   relativeTimeFrame: z
     .string()
@@ -93,14 +93,14 @@ export const SLACK_PERSONAL_TOOLS_METADATA = createToolsRecord({
       to: z
         .union([z.string(), z.string().array().min(2)])
         .describe(
-          "Use a string to post to a channel (name or ID) or a single user (user ID for DM). " +
-            "Use an array of at least 2 user IDs to create a group DM (e.g. ['U123', 'U456']). " +
-            "Arrays only support user IDs, not channel names or IDs."
+          "Use a string to post to a channel (name or ID) or a single user (Slack user ID for DM). " +
+            "Use an array of at least 2 Slack user IDs to create a group DM (e.g. ['U123', 'U456']). " +
+            "Arrays only support Slack user IDs, not channel names or IDs."
         ),
       message: z
         .string()
         .describe(
-          "The message to post, must follow the Slack message formatting rules. " +
+          "The message to post, using standard Markdown formatting. Do NOT use Slack-specific markup. " +
             "To mention a user, use <@user_id> (use the user's id field, not name). " +
             "To mention a user group, use <!subteam^user_group_id> (use the user group's id field, not handle)."
         ),
@@ -134,7 +134,7 @@ export const SLACK_PERSONAL_TOOLS_METADATA = createToolsRecord({
       message: z
         .string()
         .describe(
-          "The message to post, must follow the Slack message formatting rules. " +
+          "The message to post, using standard Markdown formatting. Do NOT use Slack-specific markup. " +
             "To mention a user, use <@user_id> (use the user's id field, not name). " +
             "To mention a user group, use <!subteam^user_group_id> (use the user group's id field, not handle)."
         ),
@@ -157,19 +157,22 @@ export const SLACK_PERSONAL_TOOLS_METADATA = createToolsRecord({
     },
   },
   search_user: {
-    description: `Search for a Slack user by user ID or email address.
+    description: `Search for a Slack user by Slack user ID or email address.
 
 Query parameter accepts:
 - User ID (e.g., 'U01234ABCD') - instant lookup
 - Email address (e.g., 'user@company.com') - instant lookup
 
-If you only have a user's first name or partial information, ask the user to provide their email address or user ID instead of using search_all=true.
+This tool can be used to find the Slack user ID (starts with U, e.g. U01234ABCD) based on the user's email address.
+If you only have a user's first name or partial information, ask the user to provide their email address or Slack user ID instead of using search_all=true.
 
 The search_all parameter should only be set to true if the user explicitly requests to search all workspace users. This operation is slow on large workspaces and should be avoided unless specifically requested.`,
     schema: {
       query: z
         .string()
-        .describe("User ID (e.g., 'U01234ABCD'), email address, or user name"),
+        .describe(
+          "Slack user ID (e.g., 'U01234ABCD'), email address, or user name"
+        ),
       search_all: z
         .boolean()
         .optional()
@@ -230,7 +233,7 @@ Set search_all=true only if the user explicitly requests to search all public wo
       channel: z
         .string()
         .describe(
-          "The channel name, channel ID, or user ID to list threads for. Supports public channels, private channels, and DMs."
+          "The channel name, channel ID, or Slack user ID to list threads for. Supports public channels, private channels, and DMs."
         ),
       relativeTimeFrame: z
         .string()
@@ -255,7 +258,7 @@ Set search_all=true only if the user explicitly requests to search all public wo
       channel: z
         .string()
         .describe(
-          "Channel name, channel ID, or user ID where the thread is located. Supports public channels, private channels, and DMs."
+          "Channel name, channel ID, or Slack user ID where the thread is located. Supports public channels, private channels, and DMs."
         ),
       threadTs: z
         .string()
@@ -437,7 +440,7 @@ Set search_all=true only if the user explicitly requests to search all public wo
         .array()
         .min(1)
         .describe(
-          "Array of Slack user IDs to invite (e.g. ['U01234ABCD', 'U56789EFGH']). Use search_user to find user IDs."
+          "Array of Slack user IDs to invite (e.g. ['U01234ABCD', 'U56789EFGH']). Use search_user to find Slack user IDs."
         ),
     },
     stake: "high",
@@ -479,8 +482,9 @@ export const SLACK_PERSONAL_SERVER = {
     icon: "SlackLogo",
     documentationUrl: "https://docs.dust.tt/docs/slack-mcp",
     instructions:
-      "When posting a message on Slack, you MUST use Slack-flavored Markdown to format the message. " +
-      "IMPORTANT: if you want to mention a user, you must use <@USER_ID> where USER_ID is the id of the user you want to mention.\n" +
+      "When posting a message on Slack, you MUST use standard Markdown formatting (e.g., [text](url) for links, **bold**, *italic*, `code`). " +
+      "Do NOT use Slack-specific markup like <url|text> for links — the system converts Markdown to Slack format automatically. " +
+      "IMPORTANT: if you want to mention a user, you must use <@USER_ID> where USER_ID is the Slack ID (e.g., 'U01234ABCD') of the user you want to mention.\n" +
       "If you want to reference a channel, you must use #CHANNEL where CHANNEL is the channel name, or <#CHANNEL_ID> where CHANNEL_ID is the channel ID.",
   },
   tools: Object.values(SLACK_PERSONAL_TOOLS_METADATA).map((t) => ({

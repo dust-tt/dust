@@ -4,7 +4,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import Metronome, { ConflictError } from "@metronome/sdk";
-import type { ContractV2 } from "@metronome/sdk/resources";
+import type { Commit, ContractV2, Credit } from "@metronome/sdk/resources";
 import type {
   MetronomeBalance,
   MetronomeEvent,
@@ -371,6 +371,28 @@ export async function getMetronomeActiveContract(
 }
 
 /**
+ * Retrieve a specific Metronome contract by customer + contract ID.
+ */
+export async function getMetronomeContractById({
+  metronomeCustomerId,
+  metronomeContractId,
+}: {
+  metronomeCustomerId: string;
+  metronomeContractId: string;
+}): Promise<Result<ContractV2, Error>> {
+  try {
+    const response = await getMetronomeClient().v2.contracts.retrieve({
+      customer_id: metronomeCustomerId,
+      contract_id: metronomeContractId,
+    });
+
+    return new Ok(response.data);
+  } catch (err) {
+    return new Err(normalizeError(err));
+  }
+}
+
+/**
  * Schedule a Metronome contract to end at the given date (defaults to now).
  * Metronome requires ending_before on an hour boundary; we ceil to avoid
  * dropping usage in the current partial hour.
@@ -452,13 +474,16 @@ export async function getMetronomeContractPackageAliases({
   metronomeContractId: string;
 }): Promise<Result<string[], Error>> {
   try {
-    const contractResponse = await getMetronomeClient().v2.contracts.retrieve({
-      customer_id: metronomeCustomerId,
-      contract_id: metronomeContractId,
+    const contractResult = await getMetronomeContractById({
+      metronomeCustomerId,
+      metronomeContractId,
     });
+    if (contractResult.isErr()) {
+      return new Err(contractResult.error);
+    }
 
     const packageId = (
-      contractResponse.data as ContractV2 & { package_id: string } // package_id is missing in ContractV2 but is actually returned
+      contractResult.value as ContractV2 & { package_id: string } // package_id is missing in ContractV2 but is actually returned
     ).package_id;
     if (!packageId) {
       return new Ok([]);
@@ -562,7 +587,7 @@ export async function createMetronomeCommit({
   idempotencyKey: string;
   name?: string;
   priority?: number;
-}): Promise<Result<void, Error>> {
+}): Promise<Result<{ id: string } | null, Error>> {
   // Metronome requires dates on hour boundaries — round down start, round up end.
   const roundedStartingAt = floorToHourISO(startingAt);
   const roundedEndingBefore = ceilToHourISO(endingBefore);
@@ -579,7 +604,7 @@ export async function createMetronomeCommit({
       "[Metronome] Adding commits to customer"
     );
 
-    await getMetronomeClient().v1.customers.commits.create({
+    const response = await getMetronomeClient().v1.customers.commits.create({
       customer_id: metronomeCustomerId,
       type: "PREPAID",
       product_id: productId,
@@ -609,8 +634,17 @@ export async function createMetronomeCommit({
       },
       "[Metronome] Commits added to customer"
     );
-    return new Ok(undefined);
+    return new Ok(response.data);
   } catch (err) {
+    if (err instanceof ConflictError) {
+      // Idempotency key conflict — commit already created, safe to ignore.
+      logger.info(
+        { metronomeCustomerId, idempotencyKey },
+        "[Metronome] Commit already exists (idempotent)"
+      );
+      return new Ok(null);
+    }
+
     const error = normalizeError(err);
     logger.error(
       {
@@ -786,6 +820,58 @@ export async function listMetronomeUsageWithGroups({
 }
 
 /**
+ * Update the amount of a credit segment created from a recurring credit in a package.
+ * Called when a credit.segment.start webhook fires, to set the correct user-based amount.
+ * The segment_id is the access schedule item ID provided in the webhook event.
+ */
+export async function updateMetronomeCreditSegmentAmount({
+  metronomeCustomerId,
+  contractId,
+  creditId,
+  segmentId,
+  amount,
+}: {
+  metronomeCustomerId: string;
+  contractId: string;
+  creditId: string;
+  segmentId: string;
+  amount: number;
+}): Promise<Result<void, Error>> {
+  try {
+    await getMetronomeClient().v2.contracts.edit({
+      customer_id: metronomeCustomerId,
+      contract_id: contractId,
+      update_credits: [
+        {
+          credit_id: creditId,
+          access_schedule: {
+            update_schedule_items: [
+              {
+                id: segmentId,
+                amount,
+              },
+            ],
+          },
+        },
+      ],
+    });
+
+    logger.info(
+      { metronomeCustomerId, contractId, creditId, segmentId, amount },
+      "[Metronome] Free credit segment amount updated"
+    );
+    return new Ok(undefined);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId, contractId, creditId, segmentId, amount },
+      "[Metronome] Failed to update free credit segment amount"
+    );
+    return new Err(error);
+  }
+}
+
+/**
  * Create a credit grant on a Metronome customer.
  * Used for monthly free programmatic credits on legacy plans.
  */
@@ -807,7 +893,7 @@ export async function createMetronomeCredit({
   endingBefore: string;
   name: string;
   idempotencyKey: string;
-}): Promise<Result<{ creditId: string }, Error>> {
+}): Promise<Result<{ id: string } | null, Error>> {
   // Metronome requires dates on hour boundaries — round down start, round up end.
   const roundedStartingAt = floorToHourISO(new Date(startingAt));
   const roundedEndingBefore = ceilToHourISO(new Date(endingBefore));
@@ -832,7 +918,7 @@ export async function createMetronomeCredit({
       uniqueness_key: idempotencyKey,
     });
 
-    return new Ok({ creditId: response.data.id });
+    return new Ok(response.data);
   } catch (err) {
     if (err instanceof ConflictError) {
       // Idempotency key conflict — credit already granted, safe to ignore.
@@ -840,13 +926,167 @@ export async function createMetronomeCredit({
         { metronomeCustomerId, idempotencyKey },
         "[Metronome] Credit grant already exists (idempotent)"
       );
-      return new Ok({ creditId: "already-exists" });
+      return new Ok(null);
     }
 
     const error = normalizeError(err);
     logger.error(
       { error, metronomeCustomerId, name, idempotencyKey },
       "[Metronome] Failed to create credit grant"
+    );
+    return new Err(error);
+  }
+}
+
+/**
+ * List customer-level credits for a Metronome customer.
+ * Optionally filter by a specific credit id.
+ */
+export async function listMetronomeCustomerCredits({
+  metronomeCustomerId,
+  creditId,
+  includeContractCredits = false,
+}: {
+  metronomeCustomerId: string;
+  creditId?: string;
+  includeContractCredits?: boolean;
+}): Promise<Result<Credit[], Error>> {
+  try {
+    const credits: Credit[] = [];
+    for await (const entry of getMetronomeClient().v1.customers.credits.list({
+      customer_id: metronomeCustomerId,
+      ...(creditId ? { credit_id: creditId } : {}),
+      include_contract_credits: includeContractCredits,
+    })) {
+      credits.push(entry);
+    }
+    return new Ok(credits);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId, creditId },
+      "[Metronome] Failed to list customer credits"
+    );
+    return new Err(error);
+  }
+}
+
+/**
+ * List customer-level commits for a Metronome customer.
+ * Optionally filter by a specific commit id.
+ */
+export async function listMetronomeCustomerCommits({
+  metronomeCustomerId,
+  commitId,
+  includeContractCommits = false,
+}: {
+  metronomeCustomerId: string;
+  commitId?: string;
+  includeContractCommits?: boolean;
+}): Promise<Result<Commit[], Error>> {
+  try {
+    const commits: Commit[] = [];
+    for await (const entry of getMetronomeClient().v1.customers.commits.list({
+      customer_id: metronomeCustomerId,
+      ...(commitId ? { commit_id: commitId } : {}),
+      include_contract_commits: includeContractCommits,
+    })) {
+      commits.push(entry);
+    }
+    return new Ok(commits);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId, commitId },
+      "[Metronome] Failed to list customer commits"
+    );
+    return new Err(error);
+  }
+}
+
+/**
+ * Fetch a specific customer-level credit by its Metronome ID.
+ */
+export async function getMetronomeCredit({
+  metronomeCustomerId,
+  creditId,
+  includeContractCredits = true,
+}: {
+  metronomeCustomerId: string;
+  creditId: string;
+  includeContractCredits?: boolean;
+}): Promise<Result<Credit | null, Error>> {
+  const result = await listMetronomeCustomerCredits({
+    metronomeCustomerId,
+    creditId,
+    includeContractCredits,
+  });
+  if (result.isErr()) {
+    return result;
+  }
+  return new Ok(result.value[0] ?? null);
+}
+
+/**
+ * Fetch a specific customer-level commit by its Metronome ID.
+ */
+export async function getMetronomeCommit({
+  metronomeCustomerId,
+  commitId,
+  includeContractCommits = true,
+}: {
+  metronomeCustomerId: string;
+  commitId: string;
+  includeContractCommits?: boolean;
+}): Promise<Result<Commit | null, Error>> {
+  const result = await listMetronomeCustomerCommits({
+    metronomeCustomerId,
+    commitId,
+    includeContractCommits,
+  });
+  if (result.isErr()) {
+    return result;
+  }
+  return new Ok(result.value[0] ?? null);
+}
+
+/**
+ * Apply a manual deduction to a customer-level credit balance.
+ * Used when backfilling credits that have a pre-existing consumed amount.
+ * The amount parameter is a positive value and will be negated internally.
+ */
+export async function deductMetronomeCreditBalance({
+  metronomeCustomerId,
+  creditId,
+  segmentId,
+  amount,
+  reason,
+}: {
+  metronomeCustomerId: string;
+  creditId: string;
+  segmentId: string;
+  amount: number;
+  reason: string;
+}): Promise<Result<void, Error>> {
+  try {
+    await getMetronomeClient().v1.contracts.addManualBalanceEntry({
+      id: creditId,
+      customer_id: metronomeCustomerId,
+      amount: -amount, // negative to draw down the balance
+      reason,
+      segment_id: segmentId,
+      // contract_id omitted — applies to customer-level balance
+    });
+    logger.info(
+      { metronomeCustomerId, creditId, segmentId, amount },
+      "[Metronome] Manual credit deduction applied"
+    );
+    return new Ok(undefined);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId, creditId, segmentId, amount },
+      "[Metronome] Failed to apply manual credit deduction"
     );
     return new Err(error);
   }

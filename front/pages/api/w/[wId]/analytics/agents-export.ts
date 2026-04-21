@@ -53,7 +53,7 @@ async function handler(
         days: q.data.days,
       });
 
-      const result = await fetchAgentExportRows(baseQuery, owner);
+      const result = await fetchAgentExportRows(baseQuery, owner, true);
 
       if (result.isErr()) {
         return apiError(req, res, {

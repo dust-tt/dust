@@ -140,7 +140,13 @@ export function MCPToolValidationRequired({
     const args = blockedAction.argumentsRequiringApproval ?? [];
     const argValues = args
       .filter((arg) => blockedAction.inputs[arg] != null)
-      .map((arg) => JSON.stringify(blockedAction.inputs[arg]));
+      .map((arg) => {
+        const value = blockedAction.inputs[arg];
+        if (Array.isArray(value)) {
+          return value.map(String).join(", ");
+        }
+        return JSON.stringify(value);
+      });
     return `Always allow @${blockedAction.metadata.agentName} to ${asDisplayName(blockedAction.metadata.toolName)} ${
       argValues.length > 0
         ? ` for the following parameters: ${argValues.join(", ")}`
@@ -166,11 +172,15 @@ export function MCPToolValidationRequired({
               {errorMessage}
             </div>
           )}
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:mt-3">
+          <div className="flex flex-col gap-3 sm:mt-3">
             {(blockedAction.stake === "low" ||
               blockedAction.stake === "medium") && (
-              <Label className="flex w-fit cursor-pointer flex-row items-center gap-2 py-1 pr-2 text-xs">
+              <Label
+                htmlFor="never-ask-again"
+                className="flex w-fit cursor-pointer flex-row items-center gap-2 py-1 pr-2 text-xs"
+              >
                 <Checkbox
+                  id="never-ask-again"
                   checked={neverAskAgain}
                   onCheckedChange={(check) => {
                     setNeverAskAgain(!!check);
@@ -182,7 +192,7 @@ export function MCPToolValidationRequired({
               </Label>
             )}
             <div className="hidden sm:block sm:flex-grow" />
-            <div className="flex flex-row gap-3">
+            <div className="flex flex-row gap-3 self-end">
               <Button
                 label="Decline"
                 variant="outline"

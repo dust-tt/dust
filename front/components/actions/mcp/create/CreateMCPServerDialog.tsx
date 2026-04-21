@@ -26,6 +26,7 @@ import {
 } from "@app/lib/actions/mcp_helper";
 import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/mcp_icons";
 import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
+import { getTokenFieldLabel } from "@app/lib/actions/mcp_internal_actions/server_token_labels";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
@@ -35,7 +36,9 @@ import {
   useCreateRemoteMCPServer,
   useDiscoverOAuthMetadata,
 } from "@app/lib/swr/mcp_servers";
+import datadogLogger from "@app/logger/datadogLogger";
 import { validateOAuthCredentials } from "@app/types/oauth/lib";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { WorkspaceType } from "@app/types/user";
 import {
   ContentMessage,
@@ -128,12 +131,24 @@ export function CreateMCPServerDialog({
     [needsCustomName, internalMCPServer, existingViewNames]
   );
 
+  const tokenLabel = internalMCPServer
+    ? getTokenFieldLabel(internalMCPServer.name)
+    : undefined;
+  const predefinedHeaders = tokenLabel?.predefinedHeaders;
+  const showBearerTokenSection = tokenLabel?.showBearerTokenSection ?? true;
+
   const defaultValues = useMemo<CreateMCPServerDialogFormValues>(() => {
     return {
       ...getCreateMCPServerDialogDefaultValues(defaultServerConfig),
       viewName: suggestedViewName,
+      // Pre-fill headers and store their keys so the form can lock them as non-removable.
+      ...(predefinedHeaders && {
+        useCustomHeaders: true,
+        customHeaders: predefinedHeaders.map((key) => ({ key, value: "" })),
+        predefinedHeaderKeys: predefinedHeaders,
+      }),
     };
-  }, [defaultServerConfig, suggestedViewName]);
+  }, [defaultServerConfig, suggestedViewName, predefinedHeaders]);
 
   const form = useForm<CreateMCPServerDialogFormValues>({
     resolver: zodResolver(createMCPServerDialogFormSchema),
@@ -203,11 +218,21 @@ export function CreateMCPServerDialog({
     connectionType: "workspace",
   });
 
+  // Only reset on the closed→open transition. Resetting whenever
+  // `defaultValues` changes is unsafe: SWR mutations triggered during submit
+  // (e.g. `createInternalMCPServer` invalidating the servers list) bubble up
+  // to `existingViewNames`, which recomputes `defaultValues` here and would
+  // clobber in-flight user state — most visibly, it resets `useCase` to null
+  // and unmounts the static credential form mid-submit.
+  const prevIsOpenRef = useRef(false);
+  const defaultValuesRef = useRef(defaultValues);
+  defaultValuesRef.current = defaultValues;
   useEffect(() => {
-    if (isOpen) {
-      form.reset(defaultValues);
+    if (isOpen && !prevIsOpenRef.current) {
+      form.reset(defaultValuesRef.current);
     }
-  }, [defaultValues, form, isOpen]);
+    prevIsOpenRef.current = isOpen;
+  }, [isOpen, form]);
 
   // Initialize authorization from internalMCPServer when dialog opens.
   useEffect(() => {
@@ -386,6 +411,29 @@ export function CreateMCPServerDialog({
       return;
     }
 
+    // Capture the form handle before any async work. SWR mutations that fire
+    // during submit (e.g. `createInternalMCPServer` invalidating the servers
+    // list) can re-render the dialog and unmount the static credential form,
+    // which nulls `staticFormRef.current`. Grabbing it up front avoids that
+    // race.
+    const formHandle = staticFormRef.current;
+    if (!formHandle) {
+      sendNotification({
+        type: "error",
+        title: "Cannot submit credentials",
+        description: "The credentials form is not ready. Please retry.",
+      });
+      datadogLogger.error(
+        {
+          workspaceId: owner.sId,
+          hasAuthorization: !!authorization,
+          useCase,
+        },
+        "Static credential form ref is null at submit time"
+      );
+      return;
+    }
+
     setIsLoading(true);
     setExternalIsLoading(true);
 
@@ -409,9 +457,17 @@ export function CreateMCPServerDialog({
 
       const createdServer = createRes.value.server;
 
-      // Submit the static credential form — returns credentialId or null.
-      const credentialId = await staticFormRef.current?.submit();
+      const credentialId = await formHandle.submit();
       if (!credentialId) {
+        // The form surfaced its own notification for the specific failure;
+        // log here so we also have a parent-side breadcrumb.
+        datadogLogger.warn(
+          {
+            workspaceId: owner.sId,
+            mcpServerId: createdServer.sId,
+          },
+          "Static credential form submit returned null"
+        );
         return;
       }
 
@@ -422,6 +478,14 @@ export function CreateMCPServerDialog({
         provider: authorization.provider,
       });
       if (!connectionCreationRes) {
+        datadogLogger.error(
+          {
+            workspaceId: owner.sId,
+            mcpServerId: createdServer.sId,
+            credentialId,
+          },
+          "createMCPServerConnection returned falsy result"
+        );
         return;
       }
 
@@ -433,6 +497,17 @@ export function CreateMCPServerDialog({
       setMCPServerToShow(createdServer);
       setIsOpen(false);
       resetState();
+    } catch (err) {
+      const e = normalizeError(err);
+      sendNotification({
+        type: "error",
+        title: "Failed to add the tool",
+        description: e.message,
+      });
+      datadogLogger.error(
+        { workspaceId: owner.sId, err: e },
+        "Unexpected error in handleCreateServerAndSubmitStaticCredentials"
+      );
     } finally {
       setIsLoading(false);
       setExternalIsLoading(false);
@@ -523,7 +598,8 @@ export function CreateMCPServerDialog({
               )}
 
               {internalMCPServer &&
-                requiresBearerTokenConfiguration(internalMCPServer) && (
+                requiresBearerTokenConfiguration(internalMCPServer) &&
+                showBearerTokenSection && (
                   <InternalBearerTokenSection
                     serverName={internalMCPServer.name}
                   />

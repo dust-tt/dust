@@ -37,7 +37,7 @@
     "generate:hubspot-forms": "tsx scripts/generate-hubspot-forms.ts"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.79.0",
+    "@anthropic-ai/sdk": "^0.90.0",
     "@contentful/rich-text-react-renderer": "^16.1.6",
     "@contentful/rich-text-types": "^17.2.5",
     "@datadog/browser-logs": "^6.13.0",
@@ -147,7 +147,7 @@
     "framer-motion": "^12.7.3",
     "fs-extra": "^11.1.1",
     "googleapis": "^118.0.0",
-    "hot-shots": "^10.0.0",
+    "hot-shots": "^12.1.0",
     "html-escaper": "^3.0.3",
     "htmlparser2": "^9.1.0",
     "image-size": "^2.0.2",
@@ -244,7 +244,7 @@
     "@types/lodash": "^4.14.202",
     "@types/luxon": "^3.4.2",
     "@types/minimist": "^1.2.2",
-    "@types/node": "^22.19.11",
+    "@types/node": "^24.12.2",
     "@types/pegjs": "^0.10.3",
     "@types/pg": "^8.11.11",
     "@types/react": "^18.3.18",

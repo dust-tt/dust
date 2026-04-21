@@ -9,18 +9,18 @@ import type { Authenticator } from "../auth";
 
 async function createConvWithAgentMessage(
   auth: Authenticator,
-  agentSId: string
+  agentId: string
 ) {
   const workspace = auth.getNonNullableWorkspace();
   const conv = await ConversationFactory.create(auth, {
-    agentConfigurationId: agentSId,
+    agentConfigurationId: agentId,
     messagesCreatedAt: [],
   });
   const messageRow = await ConversationFactory.createAgentMessageWithRank({
     workspace,
     conversationId: conv.id as ModelId,
     rank: 0,
-    agentConfigurationId: agentSId,
+    agentConfigurationId: agentId,
   });
   return { conv, agentMessageId: messageRow.agentMessageId! };
 }

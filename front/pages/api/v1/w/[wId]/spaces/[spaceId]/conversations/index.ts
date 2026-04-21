@@ -7,7 +7,6 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getConversationRoute } from "@app/lib/utils/router";
-import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type { WithAPIErrorResponse } from "@app/types/error";
@@ -109,16 +108,6 @@ async function handler(
           url: getConversationRoute(wId, c.sId, undefined, config.getAppUrl()),
         };
       });
-
-      logger.info(
-        {
-          workspaceId: wId,
-          spaceId,
-          conversationCount: responseConversations.length,
-          updatedSince,
-        },
-        "[GetSpaceConversationsForDataSource] Successfully fetched conversations"
-      );
 
       return res.status(200).json({
         conversations: responseConversations.map(

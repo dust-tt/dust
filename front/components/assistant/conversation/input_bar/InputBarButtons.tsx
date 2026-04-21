@@ -14,7 +14,7 @@ import type {
   RichMention,
 } from "@app/types/assistant/mentions";
 import { toRichAgentMentionType } from "@app/types/assistant/mentions";
-import type { SkillType } from "@app/types/assistant/skill_configuration";
+import type { SkillWithoutToolsType } from "@app/types/assistant/skill_configuration";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import { getSupportedFileExtensions } from "@app/types/files";
 import type { SpaceType } from "@app/types/space";
@@ -30,7 +30,6 @@ interface InputBarButtonsProps {
   clientType: string;
   conversation?: ConversationWithoutContentType;
   disableAgentSelector: boolean;
-  disableInput: boolean;
   editorService: ReturnType<typeof useCustomEditor>["editorService"];
   fileInputRef: React.MutableRefObject<HTMLInputElement | null>;
   fileUploaderService: FileUploaderService;
@@ -38,12 +37,11 @@ interface InputBarButtonsProps {
   onMCPServerViewSelect: (serverView: MCPServerViewType) => void;
   onNodeSelect: (node: DataSourceViewContentNode) => void;
   onNodeUnselect: (node: DataSourceViewContentNode) => void;
-  onSkillSelect: (skill: SkillType) => void;
+  onSkillSelect: (skill: SkillWithoutToolsType) => void;
   owner: WorkspaceType;
   selectedAgent: RichAgentMention | null;
   selectedMCPServerViews: MCPServerViewType[];
-  selectedSkills: SkillType[];
-  singleAgentInput: boolean;
+  selectedSkills: SkillWithoutToolsType[];
   space: SpaceType | undefined;
   user: UserType | null;
 }
@@ -56,7 +54,6 @@ export const InputBarButtons = React.memo(function InputBarButtons({
   clientType,
   conversation,
   disableAgentSelector,
-  disableInput,
   editorService,
   fileInputRef,
   fileUploaderService,
@@ -69,7 +66,6 @@ export const InputBarButtons = React.memo(function InputBarButtons({
   selectedAgent,
   selectedMCPServerViews,
   selectedSkills,
-  singleAgentInput,
   space,
   user,
 }: InputBarButtonsProps) {
@@ -88,11 +84,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
       size={buttonSize}
       onAgentDetailsClick={handleAgentDetailsClick}
       onItemClick={(c) => {
-        if (singleAgentInput) {
-          handleSingleAgentSelect(toRichAgentMentionType(c));
-        } else {
-          editorService.insertMention(toRichAgentMentionType(c));
-        }
+        handleSingleAgentSelect(toRichAgentMentionType(c));
       }}
       agents={allAgents}
       showDropdownArrow={false}
@@ -101,33 +93,28 @@ export const InputBarButtons = React.memo(function InputBarButtons({
         actions.includes("agents-list-with-actions") &&
         clientType !== "extension"
       }
-      disabled={disableInput}
       pickerButton={
-        singleAgentInput ? (
-          selectedAgent ? (
-            <Button
-              variant="ghost-secondary"
-              size={buttonSize}
-              icon={() => (
-                <Avatar size="xxs" visual={selectedAgent.pictureUrl} />
-              )}
-              label={selectedAgent.label}
-              className={cn(
-                disableAgentSelector && "bg-gray-150 dark:bg-gray-800"
-              )}
-            />
-          ) : (
-            <Button
-              variant="ghost-secondary"
-              size={buttonSize}
-              icon={RobotIcon}
-              label="Agent"
-              className={cn(
-                disableAgentSelector && "bg-gray-150 dark:bg-gray-800"
-              )}
-            />
-          )
-        ) : undefined
+        selectedAgent ? (
+          <Button
+            variant="ghost-secondary"
+            size={buttonSize}
+            icon={() => <Avatar size="xxs" visual={selectedAgent.pictureUrl} />}
+            label={selectedAgent.label}
+            className={cn(
+              disableAgentSelector && "bg-gray-150 dark:bg-gray-800"
+            )}
+          />
+        ) : (
+          <Button
+            variant="ghost-secondary"
+            size={buttonSize}
+            icon={RobotIcon}
+            label="Agent"
+            className={cn(
+              disableAgentSelector && "bg-gray-150 dark:bg-gray-800"
+            )}
+          />
+        )
       }
     />
   );
@@ -139,7 +126,6 @@ export const InputBarButtons = React.memo(function InputBarButtons({
       onSelect={onMCPServerViewSelect}
       selectedSkills={selectedSkills}
       onSkillSelect={onSkillSelect}
-      disabled={disableInput}
       buttonSize={buttonSize}
     />
   );
@@ -167,7 +153,6 @@ export const InputBarButtons = React.memo(function InputBarButtons({
           onNodeSelect={onNodeSelect}
           onNodeUnselect={onNodeUnselect}
           attachedNodes={attachedNodes}
-          disabled={disableInput}
           buttonSize={buttonSize}
           toolFileUpload={{
             useCase: "conversation",
@@ -180,17 +165,11 @@ export const InputBarButtons = React.memo(function InputBarButtons({
         />
       </>
     );
-  return singleAgentInput ? (
+  return (
     <>
       {agentButton}
       {toolsButton}
       {attachmentButton}
-    </>
-  ) : (
-    <>
-      {attachmentButton}
-      {toolsButton}
-      {agentButton}
     </>
   );
 });

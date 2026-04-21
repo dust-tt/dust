@@ -5,6 +5,7 @@
 import type { Step } from "@app/lib/api/assistant/conversation_rendering/helpers";
 import {
   getSteps,
+  renderCompactionMessage,
   renderContentFragment,
   renderOtherAgentMessageAsUserMessage,
   renderUserMessage,
@@ -151,8 +152,21 @@ export async function renderAllMessages(
 ): Promise<ModelMessageTypeMultiActions[]> {
   const messages: ModelMessageTypeMultiActions[] = [];
 
-  // Render loop: render all messages and all actions.
-  for (const versions of conversation.content) {
+  // Find the last succeeded compaction to use as a history boundary. Messages before it are
+  // already summarized in the compaction content, so we skip them to avoid redundancy and
+  // reduce token usage.
+  let startIndex = 0;
+  for (let i = conversation.content.length - 1; i >= 0; i--) {
+    const m = conversation.content[i][conversation.content[i].length - 1];
+    if (isCompactionMessageType(m) && m.status === "succeeded") {
+      startIndex = i;
+      break;
+    }
+  }
+
+  // Render loop: render messages from the compaction boundary onward.
+  for (let idx = startIndex; idx < conversation.content.length; idx++) {
+    const versions = conversation.content[idx];
     const m = versions[versions.length - 1];
 
     if (isAgentMessageType(m)) {
@@ -204,8 +218,10 @@ export async function renderAllMessages(
         }
       }
     } else if (isCompactionMessageType(m)) {
-      // TODO(compaction): rendering
-      continue;
+      const rendered = renderCompactionMessage(m);
+      if (rendered) {
+        messages.push(rendered);
+      }
     } else {
       assertNever(m);
     }

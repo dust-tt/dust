@@ -1,6 +1,18 @@
 /** @ignoreswagger */
 import apiConfig from "@app/lib/api/config";
-import { getMetronomeClient } from "@app/lib/metronome/client";
+import {
+  calculateFreeCreditAmountMicroUsd,
+  countEligibleUsersForFreeCredits,
+} from "@app/lib/credits/free";
+import {
+  getMetronomeClient,
+  updateMetronomeCreditSegmentAmount,
+} from "@app/lib/metronome/client";
+import {
+  getCreditTypeProgrammaticUsdId,
+  getProductFreeMonthlyCreditId,
+} from "@app/lib/metronome/constants";
+import { invalidateContractCache } from "@app/lib/metronome/plan_type";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
@@ -23,6 +35,15 @@ const ContractEndEventSchema = z.object({
   type: z.literal("contract.end"),
   contract_id: z.string(),
   customer_id: z.string(),
+});
+
+const CreditSegmentStartEventSchema = z.object({
+  type: z.literal("credit.segment.start"),
+  customer_id: z.string(),
+  contract_id: z.string(),
+  credit_id: z.string(),
+  segment_id: z.string(),
+  product: z.object({ id: z.string() }),
 });
 
 // Disable Next.js body parsing so we can read the raw body for signature verification.
@@ -113,6 +134,93 @@ async function handler(
           );
           break;
 
+        case "credit.segment.start": {
+          const parsed = CreditSegmentStartEventSchema.safeParse(event);
+          if (!parsed.success) {
+            logger.error(
+              { event, error: parsed.error.message },
+              "[Metronome Webhook] Invalid credit.segment.start event"
+            );
+            break;
+          }
+
+          const {
+            customer_id: customerId,
+            contract_id: contractId,
+            credit_id: creditId,
+            segment_id: segmentId,
+            product,
+          } = parsed.data;
+
+          if (
+            product.id !== getProductFreeMonthlyCreditId() ||
+            creditId !== getCreditTypeProgrammaticUsdId()
+          ) {
+            logger.info(
+              { customerId, creditId, productId: product.id },
+              "[Metronome Webhook] credit.segment.start: ignoring non-free-credit segment"
+            );
+            break;
+          }
+
+          const workspace =
+            await WorkspaceResource.fetchByMetronomeCustomerId(customerId);
+          if (!workspace) {
+            logger.warn(
+              { customerId },
+              "[Metronome Webhook] credit.segment.start: workspace not found"
+            );
+            break;
+          }
+
+          const userCount = await countEligibleUsersForFreeCredits(workspace);
+          const amountMicroUsd = calculateFreeCreditAmountMicroUsd(userCount);
+          const amount = amountMicroUsd / 1_000_000;
+
+          const updateResult = await updateMetronomeCreditSegmentAmount({
+            metronomeCustomerId: customerId,
+            contractId,
+            creditId,
+            segmentId,
+            amount,
+          });
+
+          if (updateResult.isErr()) {
+            logger.error(
+              {
+                customerId,
+                contractId,
+                creditId,
+                segmentId,
+                error: updateResult.error,
+                workspaceId: workspace.sId,
+              },
+              "[Metronome Webhook] credit.segment.start: failed to update free credit amount"
+            );
+            return apiError(req, res, {
+              status_code: 500,
+              api_error: {
+                type: "internal_server_error",
+                message: `Error updating free credit amount: ${updateResult.error.message}`,
+              },
+            });
+          }
+
+          logger.info(
+            {
+              customerId,
+              contractId,
+              creditId,
+              segmentId,
+              amountMicroUsd,
+              userCount,
+              workspaceId: workspace.sId,
+            },
+            "[Metronome Webhook] credit.segment.start: free credit amount updated"
+          );
+          break;
+        }
+
         case "credit.create":
           logger.info(
             { event },
@@ -146,6 +254,8 @@ async function handler(
             );
             break;
           }
+
+          await invalidateContractCache(workspace.sId);
 
           const subscription =
             await SubscriptionResource.fetchByMetronomeContractId(

@@ -19,13 +19,9 @@
     "install:all": "npm install",
     "knip": "knip",
     "format": "biome check --write --error-on-warnings .",
-    "format:check": "biome check --error-on-warnings .",
-    "format:lefthook": "biome format --write",
-    "lint": "biome lint --error-on-warnings .",
-    "lint:fix": "biome lint --fix --error-on-warnings .",
-    "lint:lefthook": "biome lint --error-on-warnings",
-    "biome": "biome check --error-on-warnings .",
-    "biome:lefthook": "biome check --write --error-on-warnings",
+    "format:ci": "biome ci --error-on-warnings .",
+    "format:lefthook": "biome check --write --error-on-warnings --no-errors-on-unmatched",
+    "format:changed": "biome check --write --error-on-warnings --changed",
     "test:grit": "command -v grit >/dev/null 2>&1 || { echo 'Error: grit CLI not found. Install it with: brew install getgrit/tap/grit (or: curl -fsSL https://docs.grit.io/install | bash)'; exit 1; } && grit patterns test"
   },
   "devDependencies": {
@@ -36,7 +32,7 @@
     "wrangler": "4.80.0"
   },
   "engines": {
-    "node": ">=22.22.0"
+    "node": ">=24.0.0"
   },
   "overrides": {
     "eslint-plugin-react-hooks": {
@@ -44,7 +40,7 @@
     },
     "@types/react": "^18.3.18",
     "@modelcontextprotocol/sdk": "^1.27.0",
-    "@types/node": "^22.19.11",
+    "@types/node": "^24.12.2",
     "dd-trace": "^5.87.0",
     "esbuild": "^0.27.3",
     "undici": "^7.24.0"

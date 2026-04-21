@@ -27,13 +27,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout codex repo at pinned tag
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           repository: openai/codex
           ref: ${{ inputs.codex_tag }}
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@1.85.0
+        uses: dtolnay/rust-toolchain@aad518f59d88bae90133242f9ddac7f8bbc5dddf # 1.94.1
 
       - name: Install cross
         run: cargo install cross --git https://github.com/cross-rs/cross
@@ -50,7 +50,7 @@ jobs:
           sha256sum apply_patch-linux-x86_64 > checksums-sha256.txt
 
       - name: Create Release
-        uses: softprops/action-gh-release@v3.0.0
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
         with:
           tag_name: apply-patch-v${{ inputs.apply_patch_version }}
           name: apply_patch v${{ inputs.apply_patch_version }}

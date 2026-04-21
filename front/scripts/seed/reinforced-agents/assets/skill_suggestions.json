@@ -2,15 +2,16 @@
   {
     "skillName": "SearchInfoContactWithSuggestion",
     "kind": "edit",
+    "title": "Add web search fallback",
     "analysis": "The skill should leverage web search to find up-to-date contact information and include instructions on how to use the web search tool effectively.",
     "state": "pending",
     "source": "reinforcement",
     "suggestion": {
       "instructionEdits": [
         {
-          "old_string": "2. **Search strategy**: Use the most relevant search method based on available data (name, email, role, department).",
-          "new_string": "2. **Search strategy**: Use the most relevant search method based on available data (name, email, role, department). When internal directories are insufficient, use the web search tool to find publicly available professional contact information (LinkedIn, company websites). Always verify web results against internal records before sharing.",
-          "expected_occurrences": 1
+          "targetBlockId": "ci02intr",
+          "content": "<p>When searching for contact information, follow these steps. When internal directories are insufficient, also leverage the web search tool to find publicly available professional contact information:</p>",
+          "type": "replace"
         }
       ],
       "toolEdits": [
@@ -24,20 +25,55 @@
   {
     "skillName": "SearchInfoContactWithSuggestion",
     "kind": "edit",
+    "title": "Strengthen privacy rules",
     "analysis": "Improve privacy handling and add a step for verifying information currency.",
     "state": "pending",
     "source": "reinforcement",
     "suggestion": {
       "instructionEdits": [
         {
-          "old_string": "5. **Privacy**: Only share information that is available in the company directory. Do not speculate on personal contact details.",
-          "new_string": "5. **Privacy**: Only share information that is available in the company directory. Do not speculate on personal contact details. If the user asks for private information (personal phone, home address), politely decline and redirect to HR.",
-          "expected_occurrences": 1
+          "targetBlockId": "ci03list",
+          "content": "<ol><li><strong>Identify the query</strong>: Determine whether the user is looking for a specific person, a team, or a department.</li><li><strong>Search strategy</strong>: Use the most relevant search method based on available data (name, email, role, department).</li><li><strong>Present results</strong>: Display contact details clearly including name, email, phone, team, and location.</li><li><strong>Handle ambiguity</strong>: If multiple matches are found, present all options and ask for clarification.</li><li><strong>Privacy</strong>: Only share information that is available in the company directory. Do not speculate on personal contact details.</li><li><strong>Private information requests</strong>: If the user asks for private information (personal phone, home address), politely decline and redirect to HR.</li></ol>",
+          "type": "replace"
         },
         {
-          "old_string": "Always confirm the information is up to date and suggest alternative contacts if the primary person is unavailable.",
-          "new_string": "Always confirm the information is up to date by checking the last-modified date of the directory entry. Suggest alternative contacts if the primary person is unavailable or if the entry is older than 90 days.",
-          "expected_occurrences": 1
+          "targetBlockId": "a1b2c3d4",
+          "content": "<p>Always confirm the information is up to date by checking the last-modified date of the directory entry. Suggest alternative contacts if the primary person is unavailable or if the entry is older than 90 days.</p>",
+          "type": "replace"
+        }
+      ]
+    }
+  },
+  {
+    "skillName": "MeetingNotesFormatter",
+    "kind": "edit",
+    "title": "Flag confidential topics",
+    "analysis": "The summary instruction is too brief. Replace it with a more detailed two-part guidance: first explain the expected summary format, then add a note about handling confidential topics.",
+    "state": "pending",
+    "source": "reinforcement",
+    "suggestion": {
+      "instructionEdits": [
+        {
+          "targetBlockId": "mn04outr",
+          "content": "<p>Keep the output clean and professional. Use bullet points for clarity. When summarising, group related items under thematic headings.</p><p>If the meeting covered confidential topics (HR decisions, salary discussions, legal matters), flag them clearly and restrict distribution to attendees only.</p>",
+          "type": "replace"
+        }
+      ]
+    }
+  },
+  {
+    "skillName": "MeetingNotesFormatter",
+    "kind": "edit",
+    "title": "Add decisions to example",
+    "analysis": "The example code block should include a Decisions section between Summary and Action Items to match the skill's own guidelines about extracting key decisions.",
+    "state": "pending",
+    "source": "reinforcement",
+    "suggestion": {
+      "instructionEdits": [
+        {
+          "targetBlockId": "mn06code",
+          "content": "<pre><code>## Meeting: Q3 Planning Review\n**Date**: 2024-09-15\n**Attendees**: Alice, Bob, Charlie\n\n### Summary\nThe team reviewed Q3 goals and identified two blockers.\n\n### Key Decisions\n- Postpone the infrastructure migration to Q4\n\n### Action Items\n- [ ] Alice: Update the roadmap by Friday\n- [ ] Bob: Schedule follow-up with design team</code></pre>",
+          "type": "replace"
         }
       ]
     }

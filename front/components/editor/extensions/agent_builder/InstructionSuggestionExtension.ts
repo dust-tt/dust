@@ -117,11 +117,11 @@ export function diffBlockContent(
   }));
 }
 
-function parseHTMLToBlock(
+function parseHTMLToBlocks(
   html: string,
   schema: Schema,
   targetBlockId: string
-): PMNode | null {
+): PMNode[] {
   const domParser = PMDOMParser.fromSchema(schema);
   const tempDiv = document.createElement("div");
   tempDiv.innerHTML = html;
@@ -131,20 +131,23 @@ function parseHTMLToBlock(
   // The agent builder schema enforces doc > instructionsRoot > blocks.
   // When we parse HTML like "<p>text</p>", the parser returns:
   // doc > instructionsRoot > paragraph
-  // For single-block targets we unwrap past the instructionsRoot to get the
-  // block node. When the target is the instructionsRoot itself, we return it
-  // directly so all child blocks are preserved.
-  let container: PMNode = parsed;
-  const first = container.firstChild;
-  if (first?.type.name === INSTRUCTIONS_ROOT_NODE_NAME) {
-    if (targetBlockId === INSTRUCTIONS_ROOT_TARGET_BLOCK_ID) {
-      return first;
-    }
-
-    return first.firstChild ?? null;
+  // For root targets, return the instructionsRoot directly so all child blocks
+  // are preserved. For single-block targets, return all children of the
+  // instructionsRoot — this supports multi-block replacements where one block
+  // is replaced by several (e.g., "<p>A</p><p>B</p>").
+  const first = parsed.firstChild;
+  if (
+    first?.type.name === INSTRUCTIONS_ROOT_NODE_NAME &&
+    targetBlockId === INSTRUCTIONS_ROOT_TARGET_BLOCK_ID
+  ) {
+    return [first];
   }
 
-  return container.firstChild ?? null;
+  const container =
+    first?.type.name === INSTRUCTIONS_ROOT_NODE_NAME ? first : parsed;
+  const children: PMNode[] = [];
+  container.content.forEach((child) => children.push(child));
+  return children;
 }
 
 function findBlockByBlockId(
@@ -233,6 +236,10 @@ function buildBlockDecorations({
             span.className = isHighlighted ? CLASSES.add : CLASSES.addDimmed;
             span.setAttribute(SUGGESTION_ID_ATTRIBUTE, suggestionId);
             span.contentEditable = "false";
+            // ProseMirror sets `white-space: normal` on [contenteditable="false"]
+            // elements, which collapses \n in code blocks. Override to inherit
+            // the parent <pre>'s `white-space: pre-wrap`.
+            span.style.whiteSpace = "inherit";
 
             const serializer = DOMSerializer.fromSchema(schema);
             if (isCrossType) {
@@ -415,7 +422,11 @@ function buildDecorations(
   const schema = state.schema;
 
   for (const [suggestionId, suggestion] of suggestions) {
-    const isHighlighted = suggestionId === highlightedId;
+    // Support prefix matching: a highlightedId of "abc" highlights both "abc" and "abc:0", "abc:1", etc.
+    const isHighlighted =
+      highlightedId !== null &&
+      (suggestionId === highlightedId ||
+        suggestionId.startsWith(highlightedId + ":"));
     const applyBlockHighlight = showBlockHighlight && isHighlighted;
 
     for (const op of suggestion.operations) {
@@ -426,21 +437,26 @@ function buildDecorations(
 
       const { node: blockNode, pos: blockPos } = found;
 
-      const newNode = parseHTMLToBlock(op.newContent, schema, op.targetBlockId);
-      if (!newNode) {
+      const newNodes = parseHTMLToBlocks(
+        op.newContent,
+        schema,
+        op.targetBlockId
+      );
+      if (newNodes.length === 0) {
         continue;
       }
 
       // For root-level targets, diff per-child block so that word-level diffs stay within their
-      // block and block boundaries are preserved. For single-block targets, diff the block directly.
+      // block and block boundaries are preserved. For single-block targets, diff the first new
+      // block against the old block and show any extra new blocks as addition widgets.
       if (
         blockNode.type.name === INSTRUCTIONS_ROOT_NODE_NAME &&
-        newNode.type.name === INSTRUCTIONS_ROOT_NODE_NAME
+        newNodes[0].type.name === INSTRUCTIONS_ROOT_NODE_NAME
       ) {
         buildRootDecorations({
           applyBlockHighlight,
           oldRoot: blockNode,
-          newRoot: newNode,
+          newRoot: newNodes[0],
           rootPos: blockPos,
           schema,
           suggestionId,
@@ -451,13 +467,26 @@ function buildDecorations(
         buildBlockDecorations({
           applyBlockHighlight,
           oldNode: blockNode,
-          newNode,
+          newNode: newNodes[0],
           blockPos,
           schema,
           suggestionId,
           isHighlighted,
           decorations,
         });
+
+        // Extra new blocks shown as full addition widgets after the old block.
+        const afterBlockPos = blockPos + blockNode.nodeSize;
+        for (let i = 1; i < newNodes.length; i++) {
+          addBlockAdditionWidget(
+            afterBlockPos,
+            newNodes[i],
+            isHighlighted,
+            decorations,
+            schema,
+            suggestionId
+          );
+        }
       }
     }
   }
@@ -779,26 +808,36 @@ export const InstructionSuggestionExtension = Extension.create<{
               }
 
               const { node: blockNode, pos: blockPos } = found;
-              const newNode = parseHTMLToBlock(
+              const newNodes = parseHTMLToBlocks(
                 op.newContent,
                 schema,
                 op.targetBlockId
               );
-              if (!newNode) {
+              if (newNodes.length === 0) {
                 continue;
               }
 
-              if (blockNode.type === newNode.type) {
-                // Same type: replace inner content.
-                const from = blockPos + 1;
-                const to = blockPos + blockNode.nodeSize - 1;
-                tr.replaceWith(from, to, newNode.content);
+              if (newNodes.length === 1) {
+                const newNode = newNodes[0];
+                if (blockNode.type === newNode.type) {
+                  // Same type: replace inner content.
+                  const from = blockPos + 1;
+                  const to = blockPos + blockNode.nodeSize - 1;
+                  tr.replaceWith(from, to, newNode.content);
+                } else {
+                  // Cross-type: replace the entire block node.
+                  tr.replaceWith(
+                    blockPos,
+                    blockPos + blockNode.nodeSize,
+                    newNode
+                  );
+                }
               } else {
-                // Cross-type: replace the entire block node.
+                // Multi-block: replace the old block with all new blocks.
                 tr.replaceWith(
                   blockPos,
                   blockPos + blockNode.nodeSize,
-                  newNode
+                  newNodes
                 );
               }
             }

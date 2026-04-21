@@ -20,6 +20,7 @@ import {
   updateConversationRequirements,
 } from "@app/lib/api/assistant/conversation/permissions";
 import { ensureConversationTitle } from "@app/lib/api/assistant/conversation/title";
+import { RUNNING_AGENT_SWITCH_BLOCK_MESSAGE } from "@app/lib/api/assistant/errors";
 import {
   batchRenderMessages,
   batchRenderUserMessagesWithoutMentions,
@@ -55,6 +56,8 @@ import { isModelAvailable, isProviderWhitelisted } from "@app/lib/assistant";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { extractFromString, serializeMention } from "@app/lib/mentions/format";
+import { hasCredits } from "@app/lib/metronome/credit_balance";
+import { isLegacyPlan } from "@app/lib/metronome/plan_type";
 import {
   AgentMCPActionModel,
   AgentMCPActionOutputItemModel,
@@ -469,6 +472,32 @@ async function getConversationRankVersionLock(
   );
 }
 
+async function getNextConversationMessageRank(
+  auth: Authenticator,
+  {
+    conversation,
+    transaction,
+  }: {
+    conversation: ConversationWithoutContentType;
+    transaction: Transaction;
+  }
+): Promise<number> {
+  const owner = auth.getNonNullableWorkspace();
+
+  return (
+    ((await MessageModel.max<number | null, MessageModel>("rank", {
+      where: {
+        workspaceId: owner.id,
+        conversationId: conversation.id,
+        branchId: conversation.branchId
+          ? getResourceIdFromSId(conversation.branchId)
+          : null,
+      },
+      transaction,
+    })) ?? -1) + 1
+  );
+}
+
 export function isUserMessageContextValid(
   auth: Authenticator,
   req: NextApiRequest,
@@ -514,6 +543,7 @@ export function isUserMessageContextValid(
     case "transcript":
     case "triggered":
     case "triggered_programmatic":
+    case "wakeup":
     case "onboarding_conversation":
     case "agent_sidekick":
     case "project_kickoff":
@@ -541,7 +571,6 @@ export async function postUserMessage(
     skipToolsValidation,
     skipDustAutoMention,
     doNotAssociateUser,
-    steeringEnabled,
   }: {
     conversation: ConversationType;
     content: string;
@@ -551,7 +580,6 @@ export async function postUserMessage(
     skipToolsValidation: boolean;
     doNotAssociateUser?: boolean;
     skipDustAutoMention?: boolean;
-    steeringEnabled?: boolean;
   }
 ): Promise<
   Result<
@@ -640,30 +668,35 @@ export async function postUserMessage(
     );
 
   // Steering invariants: enforce single agent loop per conversation.
-  if (steeringEnabled) {
-    if (agentMentions.length > 1) {
-      return new Err({
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Only one agent can be mentioned per message.",
-        },
-      });
-    }
+  if (agentMentions.length > 1) {
+    return new Err({
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Only one agent can be mentioned per message.",
+      },
+    });
+  }
 
-    if (
-      runningAgentMessage &&
-      agentMentions.length > 0 &&
-      agentMentions[0].configurationId !== runningAgentMessage.configuration.sId
-    ) {
-      return new Err({
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Cannot run a different agent while one is running.",
-        },
-      });
-    }
+  // When isHandover is true we allow creating a new agentic loop as the parent one will close asap,
+  // the steering code path is disabled in that case: we allow mentioning another agent (the agent
+  // to handoff to) and we don't set the user message state to pending (see below).
+  const isHandover = agenticMessageData?.type === "agent_handover";
+
+  if (
+    runningAgentMessage &&
+    agentMentions.length > 0 &&
+    agentMentions[0].configurationId !==
+      runningAgentMessage.configuration.sId &&
+    !isHandover
+  ) {
+    return new Err({
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: RUNNING_AGENT_SWITCH_BLOCK_MESSAGE,
+      },
+    });
   }
 
   // `getAgentConfiguration` checks that we're only pulling a configuration from the
@@ -767,9 +800,8 @@ export async function postUserMessage(
       });
     }
 
-    // If the conversation is part of a project and the conversation branches feature flag is enabled.
     // When the agent is not usable, we will create a branch.
-    if (isPartOfProject && featureFlags.includes("conversation_branches")) {
+    if (isPartOfProject) {
       const canAgentBeUsed = await canAgentBeUsedInProjectConversation(auth, {
         configuration: agentConfig,
         conversation,
@@ -846,17 +878,10 @@ export async function postUserMessage(
       );
     }
 
-    nextMessageRank ??=
-      ((await MessageModel.max<number | null, MessageModel>("rank", {
-        where: {
-          workspaceId: owner.id,
-          conversationId: conversation.id,
-          branchId: conversation.branchId
-            ? getResourceIdFromSId(conversation.branchId)
-            : null,
-        },
-        transaction: t,
-      })) ?? -1) + 1;
+    nextMessageRank ??= await getNextConversationMessageRank(auth, {
+      conversation,
+      transaction: t,
+    });
 
     // Enrich context with auth data for analytics tracking.
     const enrichedContext: UserMessageContext = {
@@ -868,7 +893,7 @@ export async function postUserMessage(
     // Re-read the agent message status inside the critical section of the advisory lock. Between
     // the initial check and acquiring the lock, the agent loop may have finalized — if so, clear
     // runningAgentMessage so we fall through to the normal flow.
-    if (steeringEnabled && runningAgentMessage) {
+    if (runningAgentMessage) {
       const agentMessageRow = await AgentMessageModel.findOne({
         where: {
           id: runningAgentMessage.agentMessageId,
@@ -883,9 +908,11 @@ export async function postUserMessage(
     }
 
     // We set the visibility of the user message to "pending" if steering is enabled, we have a
-    // running agent message and there are agent mentions in the user messsage.
+    // running agent message and there are agent mentions in the user messsage. If we are handing
+    // over we don't attempt steering as the intent is to start a new agentic loop and stop the
+    // parent one ASAP.
     const visibility: MessageVisibility =
-      steeringEnabled && runningAgentMessage && agentMentions.length > 0
+      runningAgentMessage && agentMentions.length > 0 && !isHandover
         ? "pending"
         : "visible";
 
@@ -977,17 +1004,8 @@ export async function postUserMessage(
     });
   }
 
-  const conversationRes = await ConversationResource.fetchById(
-    auth,
-    conversation.sId
-  );
-  if (!conversationRes) {
-    throw new Error(
-      "Unexpected: Conversation not found after posting message."
-    );
-  }
   await triggerConversationUnreadNotifications(auth, {
-    conversationId: conversationRes.sId,
+    conversationId: conversation.sId,
     messageId: userMessage.sId,
   });
 
@@ -1012,6 +1030,11 @@ export async function postUserMessage(
         conversationId: conversation.sId,
         agentName: agentMessage.configuration.name,
         origin: context.origin,
+        ...(conversation.triggerId
+          ? { triggerId: conversation.triggerId }
+          : {}),
+        initiating_user_id: auth.user()?.sId ?? "unknown",
+        initiating_user_email: auth.user()?.email ?? "unknown",
       },
     });
   }
@@ -1024,11 +1047,7 @@ export async function postUserMessage(
       conversation,
       userMessage,
     });
-  } else if (
-    steeringEnabled &&
-    runningAgentMessage &&
-    userMessage.visibility === "pending"
-  ) {
+  } else if (runningAgentMessage && userMessage.visibility === "pending") {
     // Pending path: signal the running agent loop to gracefully stop.
     await gracefullyStopAgentLoop(auth, {
       messageIds: [runningAgentMessage.sId],
@@ -1266,17 +1285,10 @@ export async function editUserMessage(
 
         // Only create agent messages if there are no agent messages after the edited user message
         if (!hasAgentMessagesAfter) {
-          const nextMessageRank =
-            ((await MessageModel.max<number | null, MessageModel>("rank", {
-              where: {
-                workspaceId: owner.id,
-                conversationId: conversation.id,
-                branchId: conversation.branchId
-                  ? getResourceIdFromSId(conversation.branchId)
-                  : null,
-              },
-              transaction: t,
-            })) ?? -1) + 1;
+          const nextMessageRank = await getNextConversationMessageRank(auth, {
+            conversation,
+            transaction: t,
+          });
 
           const {
             agentMessages: newAgentMessages,
@@ -1919,17 +1931,10 @@ export async function postNewContentFragment(
           await withTransaction(async (t) => {
             await getConversationRankVersionLock(auth, conversation, t);
 
-            const nextMessageRank =
-              ((await MessageModel.max<number | null, MessageModel>("rank", {
-                where: {
-                  workspaceId: owner.id,
-                  conversationId: conversation.id,
-                  branchId: conversation.branchId
-                    ? getResourceIdFromSId(conversation.branchId)
-                    : null,
-                },
-                transaction: t,
-              })) ?? -1) + 1;
+            const nextMessageRank = await getNextConversationMessageRank(auth, {
+              conversation,
+              transaction: t,
+            });
 
             await MessageModel.create(
               {
@@ -2018,17 +2023,10 @@ export async function postNewContentFragment(
       }
     })();
 
-    const nextMessageRank =
-      ((await MessageModel.max<number | null, MessageModel>("rank", {
-        where: {
-          workspaceId: owner.id,
-          conversationId: conversation.id,
-          branchId: conversation.branchId
-            ? getResourceIdFromSId(conversation.branchId)
-            : null,
-        },
-        transaction: t,
-      })) ?? -1) + 1;
+    const nextMessageRank = await getNextConversationMessageRank(auth, {
+      conversation,
+      transaction: t,
+    });
     const messageRow = await MessageModel.create(
       {
         sId: messageId,
@@ -2047,7 +2045,7 @@ export async function postNewContentFragment(
 
     if (isContentFragmentInputWithContentNode(cf)) {
       await updateConversationRequirements(auth, {
-        contentFragment: cf,
+        contentFragmentDatasourceViewIds: [cf.nodeDataSourceViewId],
         conversation,
         t,
       });
@@ -2236,6 +2234,33 @@ async function checkMessagesLimit(
   // Skip rate limiting for system-initiated messages (e.g. reinforced agent workflows).
   if (!auth.user() && !auth.key() && auth.authMethod() === "internal") {
     return new Ok(undefined);
+  }
+
+  // Check Metronome credits.
+  const owner = auth.getNonNullableWorkspace();
+  const featureFlags = await getFeatureFlags(auth);
+  if (featureFlags.includes("metronome_billing") && owner.metronomeCustomerId) {
+    const onLegacyPlan = await isLegacyPlan(owner.sId);
+    if (!onLegacyPlan) {
+      const user = auth.user();
+      if (user) {
+        const hasCreds = await hasCredits(
+          owner.sId,
+          user.sId,
+          owner.metronomeCustomerId
+        );
+        if (!hasCreds) {
+          return new Err({
+            status_code: 403,
+            api_error: {
+              type: "credits_exhausted",
+              message:
+                "Your workspace has run out of credits. Please purchase more credits to continue.",
+            },
+          });
+        }
+      }
+    }
   }
 
   const messageLimit = await isMessagesLimitReached(auth, {
@@ -2555,9 +2580,14 @@ export async function compactConversation(
   {
     conversation,
     model,
+    sourceConversation,
   }: {
     conversation: ConversationType;
     model: SupportedModel;
+    sourceConversation?: {
+      conversationId: string;
+      messageRank: number;
+    };
   }
 ): Promise<
   Result<{ compactionMessage: CompactionMessageType }, APIErrorWithStatusCode>
@@ -2577,13 +2607,19 @@ export async function compactConversation(
       (m): m is CompactionMessageType =>
         isCompactionMessageType(m) && m.status === "created"
     );
-  if (runningAgentMessage || runningCompaction) {
+  const lastMessage = conversation.content.at(-1)?.at(-1);
+
+  if (
+    runningAgentMessage ||
+    runningCompaction ||
+    (lastMessage && isCompactionMessageType(lastMessage))
+  ) {
     return new Err({
       status_code: 409,
       api_error: {
         type: "invalid_request_error",
         message:
-          "Cannot compact while another compaction or an agent message is running.",
+          "Cannot compact while another compaction or an agent message is running, or when the last message is already a compaction message.",
       },
     });
   }
@@ -2631,17 +2667,10 @@ export async function compactConversation(
       return { compactionMessage: null };
     }
 
-    const nextMessageRank =
-      ((await MessageModel.max<number | null, MessageModel>("rank", {
-        where: {
-          workspaceId: owner.id,
-          conversationId: conversation.id,
-          branchId: conversation.branchId
-            ? getResourceIdFromSId(conversation.branchId)
-            : null,
-        },
-        transaction: t,
-      })) ?? -1) + 1;
+    const nextMessageRank = await getNextConversationMessageRank(auth, {
+      conversation,
+      transaction: t,
+    });
 
     const compactionMessage = await createCompactionMessage(auth, {
       conversation,
@@ -2679,6 +2708,7 @@ export async function compactConversation(
     compactionMessageId: compactionMessage.sId,
     compactionMessageVersion: compactionMessage.version,
     model,
+    sourceConversation,
   });
 
   return new Ok({ compactionMessage });
@@ -2818,19 +2848,6 @@ export async function updateAgentMessageWithFinalStatus(
       }
     );
 
-    const nextMessageRank =
-      ((await MessageModel.max<number | null, MessageModel>("rank", {
-        where: {
-          workspaceId: owner.id,
-          conversationId: conversation.id,
-          branchId: conversation.branchId
-            ? getResourceIdFromSId(conversation.branchId)
-            : null,
-        },
-        transaction: t,
-      })) ?? -1) + 1;
-
-    // Render all promoted user messages.
     const promotedUserMessages = await batchRenderUserMessagesWithoutMentions(
       auth,
       {
@@ -2857,6 +2874,33 @@ export async function updateAgentMessageWithFinalStatus(
     await ConversationResource.markAsUpdated(promotedAuth, {
       conversation,
       t,
+    });
+
+    if (status === "cancelled") {
+      // When the agent message is cancelled it means the user pushed the "stop" button so the
+      // intent is to interrupt all work. We promot user messages but don't trigger a new agent
+      // message.
+      return {
+        promotedUserMessages,
+        promotedAuth,
+        agentMessage: null,
+      };
+    }
+
+    if (!agentMessage.configuration) {
+      // Configuration is not available (e.g., workflow error path where the agent
+      // message is reconstructed without its configuration). Promote pending user
+      // messages but don't attempt to create a new agent message.
+      return {
+        promotedUserMessages,
+        promotedAuth,
+        agentMessage: null,
+      };
+    }
+
+    const nextMessageRank = await getNextConversationMessageRank(auth, {
+      conversation,
+      transaction: t,
     });
 
     // Create a new agent message using the last promoted user message.
@@ -2908,6 +2952,11 @@ export async function updateAgentMessageWithFinalStatus(
         conversationId: conversation.sId,
         agentName: newAgentMessage.configuration.name,
         origin: "steering",
+        ...(conversation.triggerId
+          ? { triggerId: conversation.triggerId }
+          : {}),
+        initiating_user_id: promotedAuth.user()?.sId ?? "unknown",
+        initiating_user_email: promotedAuth.user()?.email ?? "unknown",
       },
     });
 

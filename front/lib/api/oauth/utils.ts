@@ -4,12 +4,12 @@ import { isDevelopment } from "@app/types/shared/env";
 import type { ParsedUrlQuery } from "querystring";
 
 export function finalizeUriForProvider(provider: OAuthProvider): string {
-  // Fathom does not accept http nor localhost in the redirect URL, even in dev.
-  // Currently relying on an ngrok.
-  if (isDevelopment() && provider === "fathom") {
-    return config.getDevOAuthFathomRedirectBaseUrl() + "/oauth/fathom/finalize";
+  if (isDevelopment()) {
+    const devBaseUrl = config.getDevOAuthRedirectBaseUrl();
+    if (devBaseUrl) {
+      return devBaseUrl + `/oauth/${provider}/finalize`;
+    }
   }
-  // Use auth redirect base URL for OAuth callbacks
   return config.getAuthRedirectBaseUrl() + `/oauth/${provider}/finalize`;
 }
 

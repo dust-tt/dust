@@ -452,7 +452,7 @@ export const runConversation = async (
       }
     }
 
-    expect(fullResponse, "Full response should match deltas").toBe(
+    expect(fullResponse.trim(), "Full response should match deltas").toBe(
       responseFromDeltas.trim()
     );
     if (reasoningFromDeltas.length > 0) {

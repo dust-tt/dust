@@ -10,19 +10,25 @@ import { useAuth } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
-import { getProjectRoute } from "@app/lib/utils/router";
+import { getConversationRoute, getProjectRoute } from "@app/lib/utils/router";
+import { getConversationDisplayTitle } from "@app/types/assistant/conversation";
 import type { WorkspaceType } from "@app/types/user";
 import type { BreadcrumbItem } from "@dust-tt/sparkle";
 import {
+  ActionGitBranchIcon,
   ArrowLeftIcon,
   AttachmentIcon,
   Breadcrumbs,
   Button,
+  Chip,
   MoreIcon,
+  Tooltip,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 import { EditConversationTitleDialog } from "./EditConversationTitleDialog";
+
+const UNTITLED_CONVERSATION_TITLE = "Untitled conversation";
 
 export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
   const activeConversationId = useActiveConversationId();
@@ -48,7 +54,9 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
     handleMenuOpenChange,
   } = useConversationMenu();
 
-  const currentTitle = conversation?.title ?? "";
+  const currentTitle = conversation
+    ? getConversationDisplayTitle(conversation)
+    : "";
 
   if (!activeConversationId) {
     return null;
@@ -57,6 +65,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
   const spaceId = conversation?.spaceId;
   const isProjectConversation = !!spaceId;
   const isLoading = isProjectConversation && !spaceInfo;
+  const forkedFrom = conversation?.forkedFrom;
 
   const breadcrumbItems: BreadcrumbItem[] = [];
 
@@ -79,19 +88,61 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
     });
   }
 
+  const ForkedFromChip = () => {
+    if (!forkedFrom) {
+      return null;
+    }
+
+    const isReadableParentConversation =
+      "parentConversationTitle" in forkedFrom;
+    const chipLabel = isReadableParentConversation
+      ? (forkedFrom.parentConversationTitle ?? UNTITLED_CONVERSATION_TITLE)
+      : "Parent conversation";
+    const chipHref = isReadableParentConversation
+      ? getConversationRoute(owner.sId, forkedFrom.parentConversationId)
+      : undefined;
+    const tooltipLabel = isReadableParentConversation
+      ? `This conversation was branched from "${chipLabel}".`
+      : "This conversation was branched from a parent conversation you can no longer access.";
+
+    return (
+      <div className="flex h-9 items-center">
+        <Tooltip
+          label={tooltipLabel}
+          tooltipTriggerAsChild
+          trigger={
+            <span className="inline-flex h-9 items-center">
+              <Chip
+                className="max-w-44 shrink-0"
+                color="primary"
+                href={chipHref}
+                icon={ActionGitBranchIcon}
+                label={chipLabel}
+                size="mini"
+              />
+            </span>
+          }
+        />
+      </div>
+    );
+  };
+
   return (
     <AppLayoutTitle>
       <div
         className="grid h-full min-w-0 max-w-full grid-cols-[1fr,auto] items-center gap-3"
         onContextMenu={handleRightClick}
       >
-        <div className="min-w-0 overflow-x-auto scrollbar-hide">
-          <Breadcrumbs
-            items={breadcrumbItems}
-            className="dd-privacy-mask"
-            truncateLengthMiddle={35}
-            truncateLengthEnd={120}
-          />
+        <div className="flex min-w-0 items-center gap-2 overflow-x-auto scrollbar-hide">
+          <div className="flex min-w-0 items-center">
+            <Breadcrumbs
+              items={breadcrumbItems}
+              className="dd-privacy-mask"
+              truncateLengthMiddle={35}
+              truncateLengthEnd={120}
+            />
+          </div>
+          <ForkedFromChip />
         </div>
         <EditConversationTitleDialog
           isOpen={showRenameDialog}

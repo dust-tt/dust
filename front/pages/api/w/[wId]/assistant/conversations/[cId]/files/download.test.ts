@@ -1,14 +1,12 @@
 import handler from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/files/download";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
+import { Ok } from "@app/types/shared/result";
 import type { RequestMethod } from "node-mocks-http";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockGetFileContentType, mockCreateReadStream } = vi.hoisted(() => ({
-  mockGetFileContentType: vi.fn().mockResolvedValue("application/pdf"),
-  mockCreateReadStream: vi.fn().mockReturnValue({
-    on: vi.fn().mockReturnThis(),
-    pipe: vi.fn(),
-  }),
+  mockGetFileContentType: vi.fn(),
+  mockCreateReadStream: vi.fn(),
 }));
 
 vi.mock("@app/lib/api/auth_wrappers", async () => {
@@ -55,6 +53,11 @@ async function setupTest(method: RequestMethod = "POST") {
 describe("POST /api/w/[wId]/assistant/conversations/[cId]/files/download", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetFileContentType.mockResolvedValue(new Ok("application/pdf"));
+    mockCreateReadStream.mockReturnValue({
+      on: vi.fn().mockReturnThis(),
+      pipe: vi.fn(),
+    });
   });
 
   it("should return 405 for non-POST methods", async () => {

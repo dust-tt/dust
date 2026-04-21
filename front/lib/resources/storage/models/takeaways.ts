@@ -155,6 +155,9 @@ export class TakeawaySourcesModel extends WorkspaceAwareModel<TakeawaySourcesMod
   declare takeawaysId: ForeignKey<TakeawaysModel["id"]>;
   declare sourceType: ProjectTodoSourceType;
   declare sourceId: string;
+
+  declare sourceTitle: string | null;
+  declare sourceUrl: string | null;
 }
 
 TakeawaySourcesModel.init(
@@ -184,6 +187,14 @@ TakeawaySourcesModel.init(
       allowNull: false,
       comment:
         "String identifier of the source (internal SID or external URL/ID) that produced this takeaway.",
+    },
+    sourceTitle: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    sourceUrl: {
+      type: DataTypes.TEXT,
+      allowNull: true,
     },
   },
   {

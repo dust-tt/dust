@@ -141,18 +141,24 @@ export async function compactionWorkflow({
   compactionMessageId,
   compactionMessageVersion,
   model,
+  sourceConversation,
 }: {
   authType: AuthenticatorType;
   conversationId: string;
   compactionMessageId: string;
   compactionMessageVersion: number;
   model: SupportedModel;
+  sourceConversation?: {
+    conversationId: string;
+    messageRank: number;
+  };
 }) {
   await compactionActivity(authType, {
     conversationId,
     compactionMessageId,
     compactionMessageVersion,
     model,
+    sourceConversation,
   });
 }
 

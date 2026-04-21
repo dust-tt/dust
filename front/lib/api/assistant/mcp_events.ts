@@ -8,7 +8,6 @@ import type { EventPayload } from "@app/lib/api/redis-hybrid-manager";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
 import { createCallbackReader } from "@app/lib/utils";
-import { setTimeoutAsync } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 
 interface GetMCPEventsForServerOptions {
@@ -33,7 +32,7 @@ export async function* getMCPEventsForServer(
     { lastEventId }
   );
 
-  // Unsubscribe if the signal is aborted.
+  // Unsubscribe if the signal is aborted, to unblock the callbackReader.next() await below.
   signal.addEventListener("abort", unsubscribe, { once: true });
 
   try {
@@ -54,15 +53,20 @@ export async function* getMCPEventsForServer(
       if (signal.aborted) {
         break;
       }
+      let timeoutId: ReturnType<typeof setTimeout> | undefined;
+      const timeoutPromise = new Promise<"timeout">((resolve) => {
+        timeoutId = setTimeout(() => resolve("timeout"), MCP_EVENTS_TIMEOUT_MS);
+      });
       const rawEvent = await Promise.race([
         callbackReader.next(),
-        setTimeoutAsync(MCP_EVENTS_TIMEOUT_MS),
+        timeoutPromise,
       ]);
 
       // Determine if we timeouted.
       if (rawEvent === "timeout") {
         break;
       }
+      clearTimeout(timeoutId);
 
       if (rawEvent === "close") {
         break;

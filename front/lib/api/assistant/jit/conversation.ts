@@ -1,4 +1,5 @@
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
+import type { AutoInternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { CONVERSATION_FILES_SERVER_NAME } from "@app/lib/api/actions/servers/conversation_files/metadata";
 import type { ConversationAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import type { Authenticator } from "@app/lib/auth";
@@ -66,17 +67,15 @@ export async function getConversationMCPServers(
  */
 export async function getConversationFilesServer(
   auth: Authenticator,
-  attachments: ConversationAttachmentType[]
+  attachments: ConversationAttachmentType[],
+  autoInternalViews: Map<AutoInternalMCPServerNameType, MCPServerViewResource>
 ): Promise<ServerSideMCPServerConfigurationType | null> {
   if (attachments.length === 0) {
     return null;
   }
 
   const conversationFilesView =
-    await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
-      auth,
-      "conversation_files"
-    );
+    autoInternalViews.get("conversation_files") ?? null;
 
   assert(
     conversationFilesView,

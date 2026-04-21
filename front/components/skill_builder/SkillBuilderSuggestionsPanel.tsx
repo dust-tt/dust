@@ -13,8 +13,19 @@ import { useCallback } from "react";
 import { useFormContext } from "react-hook-form";
 
 export function SkillBuilderSuggestionsPanel() {
-  const { owner, skillId } = useSkillBuilderContext();
+  const {
+    owner,
+    skillId,
+    selectedSuggestionId,
+    setSelectedSuggestionId,
+    acceptInstructionEdits,
+  } = useSkillBuilderContext();
   const { getValues, setValue } = useFormContext<SkillBuilderFormData>();
+
+  const getSkillInstructionsHtml = useCallback(
+    () => getValues("instructionsHtml") ?? "",
+    [getValues]
+  );
   const { mcpServerViews } = useMCPServerViewsContext();
 
   const { suggestions, isSuggestionsLoading, mutateSuggestions } =
@@ -29,27 +40,6 @@ export function SkillBuilderSuggestionsPanel() {
     skillId,
     workspaceId: owner.sId,
   });
-
-  const applyInstructionEdits = useCallback(
-    (suggestion: SkillSuggestionType) => {
-      const { instructionEdits } = suggestion.suggestion;
-      if (!instructionEdits || instructionEdits.length === 0) {
-        return;
-      }
-
-      let instructions = getValues("instructions");
-
-      for (const edit of instructionEdits) {
-        instructions = instructions.replaceAll(
-          edit.old_string,
-          edit.new_string
-        );
-      }
-
-      setValue("instructions", instructions, { shouldDirty: true });
-    },
-    [getValues, setValue]
-  );
 
   const applyToolEdits = useCallback(
     (suggestion: SkillSuggestionType) => {
@@ -87,22 +77,39 @@ export function SkillBuilderSuggestionsPanel() {
     async (suggestion: SkillSuggestionType) => {
       const result = await patchSuggestions([suggestion.sId], "approved");
       if (result) {
-        applyInstructionEdits(suggestion);
+        acceptInstructionEdits?.(suggestion.sId);
         applyToolEdits(suggestion);
+        setSelectedSuggestionId(null);
         await mutateSuggestions();
       }
     },
-    [patchSuggestions, mutateSuggestions, applyInstructionEdits, applyToolEdits]
+    [
+      patchSuggestions,
+      mutateSuggestions,
+      acceptInstructionEdits,
+      applyToolEdits,
+      setSelectedSuggestionId,
+    ]
   );
 
   const handleDecline = useCallback(
     async (suggestion: SkillSuggestionType) => {
       const result = await patchSuggestions([suggestion.sId], "rejected");
       if (result) {
+        setSelectedSuggestionId(null);
         await mutateSuggestions();
       }
     },
-    [patchSuggestions, mutateSuggestions]
+    [patchSuggestions, mutateSuggestions, setSelectedSuggestionId]
+  );
+
+  const handleSelect = useCallback(
+    (suggestionId: string) => {
+      setSelectedSuggestionId(
+        selectedSuggestionId === suggestionId ? null : suggestionId
+      );
+    },
+    [selectedSuggestionId, setSelectedSuggestionId]
   );
 
   return (
@@ -137,6 +144,9 @@ export function SkillBuilderSuggestionsPanel() {
                 suggestion={suggestion}
                 onAccept={handleAccept}
                 onDecline={handleDecline}
+                getSkillInstructionsHtml={getSkillInstructionsHtml}
+                isSelected={selectedSuggestionId === suggestion.sId}
+                onSelect={() => handleSelect(suggestion.sId)}
               />
             ))
           )}

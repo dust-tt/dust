@@ -46,19 +46,19 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
   static model: ModelStatic<AgentSuggestionModel> = AgentSuggestionModel;
 
   readonly editorsGroupId: ModelId | null;
-  readonly agentConfigurationSId: string;
+  readonly _agentConfigurationId: string;
   readonly _conversationId: string | null;
 
   constructor(
     model: ModelStatic<AgentSuggestionModel>,
     blob: Attributes<AgentSuggestionModel>,
     editorsGroupId: ModelId | null,
-    agentConfigurationSId: string,
+    agentConfigurationId: string,
     conversationId: string | null
   ) {
     super(AgentSuggestionModel, blob);
     this.editorsGroupId = editorsGroupId;
-    this.agentConfigurationSId = agentConfigurationSId;
+    this._agentConfigurationId = agentConfigurationId;
     this._conversationId = conversationId;
   }
 

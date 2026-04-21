@@ -10,11 +10,12 @@ import {
   UserConversationReadsModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
-import "@app/lib/models/agent/conversation_fork";
+import { ConversationForkModel } from "@app/lib/models/agent/conversation_fork";
 import { REINFORCEMENT_METADATA_KEYS } from "@app/lib/reinforced_agent/types";
 import { REINFORCED_SKILLS_METADATA_KEYS } from "@app/lib/reinforcement/types";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { ConversationBranchResource } from "@app/lib/resources/conversation_branch_resource";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import {
   createResourcePermissionsFromSpacesWithMap,
@@ -24,6 +25,7 @@ import { RunResource } from "@app/lib/resources/run_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
@@ -32,13 +34,19 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
+  ConversationForkedChildType,
   ConversationForkedFromType,
   ConversationMCPServerViewType,
+  ConversationMetadata,
+  ConversationUrlAccessMode,
   ConversationVisibility,
   ConversationWithoutContentType,
   ParticipantActionType,
 } from "@app/types/assistant/conversation";
-import { ConversationError } from "@app/types/assistant/conversation";
+import {
+  ConversationError,
+  getConversationUrlAccessMode,
+} from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -59,6 +67,7 @@ export type FetchConversationOptions = {
   includeDeleted?: boolean;
   excludeTest?: boolean; // Explicitly exclude test conversations
   dangerouslySkipPermissionFiltering?: boolean;
+  includeForkedChildrenInfo?: boolean;
   updatedSince?: number; // Filter conversations updated after this timestamp (milliseconds)
 };
 
@@ -66,6 +75,12 @@ interface UserParticipation {
   actionRequired: boolean;
   updated: number;
 }
+
+export type ConversationAccessType =
+  | "allowed"
+  | "conversation_not_found"
+  | "conversation_access_restricted"
+  | "conversation_access_restricted_by_private_by_default_url_restriction";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -86,7 +101,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   constructor(
     model: ModelStaticWorkspaceAware<ConversationModel>,
     blob: Attributes<ConversationModel>,
-    private readonly _space: SpaceResource | null
+    private _space: SpaceResource | null
   ) {
     super(ConversationModel, blob);
   }
@@ -101,7 +116,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           {
             association: "parentConversation" as const,
             required: true,
-            attributes: ["sId"],
+            attributes: ["sId", "title"],
           },
           {
             association: "sourceMessage" as const,
@@ -149,6 +164,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     return {
       parentConversationId: fork.parentConversation.sId,
+      parentConversationTitle: fork.parentConversation.title,
       sourceMessageId: fork.sourceMessage.sId,
       branchedAt: fork.branchedAt.getTime(),
       user: new UserResource(
@@ -156,6 +172,29 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         fork.createdByUser.get()
       ).toJSON(),
     };
+  }
+
+  private static isPrivateConversationUrlsByDefaultEnabled(
+    auth: Authenticator
+  ): boolean {
+    return (
+      auth.getNonNullableWorkspace().metadata
+        ?.privateConversationUrlsByDefault === true
+    );
+  }
+
+  private static getConversationUrlAccessModeForPrivateByDefault(conversation: {
+    metadata: ConversationMetadata;
+  }): ConversationUrlAccessMode {
+    return (
+      getConversationUrlAccessMode(conversation.metadata) ?? "participants_only"
+    );
+  }
+
+  private static shouldApplyPrivateByDefaultUrlRestriction(conversation: {
+    spaceId: ModelId | null;
+  }): boolean {
+    return conversation.spaceId === null;
   }
 
   private static fromModel(
@@ -211,6 +250,106 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return this.forkedFromData;
   }
 
+  private static async listSerializedChildForks(
+    auth: Authenticator,
+    conversation: ConversationResource
+  ): Promise<ConversationForkedChildType[]> {
+    const workspace = auth.getNonNullableWorkspace();
+
+    const forks = await ConversationForkModel.findAll({
+      where: {
+        workspaceId: workspace.id,
+        parentConversationId: conversation.id,
+      },
+      order: [
+        ["branchedAt", "ASC"],
+        ["id", "ASC"],
+      ],
+      include: [
+        {
+          model: ConversationModel,
+          as: "childConversation",
+          required: true,
+          attributes: ["sId", "title"],
+        },
+        {
+          model: MessageModel,
+          as: "sourceMessage",
+          required: true,
+          attributes: ["sId"],
+        },
+        {
+          model: UserModel,
+          as: "createdByUser",
+          required: true,
+          attributes: [
+            "id",
+            "sId",
+            "createdAt",
+            "provider",
+            "username",
+            "email",
+            "firstName",
+            "lastName",
+            "imageUrl",
+            "lastLoginAt",
+          ],
+        },
+      ],
+    });
+
+    if (forks.length === 0) {
+      return [];
+    }
+
+    const childConversationIds = forks.flatMap((fork) => {
+      assert(
+        fork.childConversation,
+        "Forked child conversation must be loaded for parent lineage."
+      );
+
+      return [fork.childConversation.sId];
+    });
+
+    const readableChildConversationIds = new Set(
+      (await this.fetchByIds(auth, childConversationIds)).map(
+        (childConversation) => childConversation.sId
+      )
+    );
+
+    return forks.flatMap((fork) => {
+      assert(
+        fork.childConversation,
+        "Forked child conversation must be loaded for parent lineage."
+      );
+      assert(
+        fork.sourceMessage,
+        "Forked source message must be loaded for parent lineage."
+      );
+      assert(
+        fork.createdByUser,
+        "Forked creator must be loaded for parent lineage."
+      );
+
+      if (!readableChildConversationIds.has(fork.childConversation.sId)) {
+        return [];
+      }
+
+      return [
+        {
+          childConversationId: fork.childConversation.sId,
+          childConversationTitle: fork.childConversation.title,
+          sourceMessageId: fork.sourceMessage.sId,
+          branchedAt: fork.branchedAt.getTime(),
+          user: new UserResource(
+            UserResource.model,
+            fork.createdByUser.get()
+          ).toJSON(),
+        },
+      ];
+    });
+  }
+
   get space(): SpaceResource | null {
     if (this.spaceId && !this._space) {
       throw new Error(
@@ -241,6 +380,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       throw new Error(
         "Cannot create conversation in a space that does not belong to the workspace."
       );
+    }
+
+    if ((blob.spaceId ?? null) !== (space?.id ?? null)) {
+      throw new Error("Space resource must match space id.");
     }
 
     const requestedSpaceIds =
@@ -449,7 +592,159 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       )
     );
 
-    return spaceBasedAccessible;
+    if (!this.isPrivateConversationUrlsByDefaultEnabled(auth)) {
+      return spaceBasedAccessible;
+    }
+
+    const participantRestrictedConversations = spaceBasedAccessible.filter(
+      (conversation) =>
+        this.shouldApplyPrivateByDefaultUrlRestriction(conversation) &&
+        this.getConversationUrlAccessModeForPrivateByDefault(conversation) ===
+          "participants_only"
+    );
+
+    const user = auth.user();
+    // API key auth has no user and never creates participant records, so the
+    // participant-restriction concept doesn't apply.
+    // TODO(2026-04-20 sebastien): Review implementation to support API Keys.
+    if (!user) {
+      return spaceBasedAccessible;
+    }
+
+    if (spaceBasedAccessible.length === 0) {
+      const participantRestrictedConversationIds = new Set(
+        participantRestrictedConversations.map(
+          (conversation) => conversation.id
+        )
+      );
+      return spaceBasedAccessible.filter(
+        (conversation) =>
+          !participantRestrictedConversationIds.has(conversation.id)
+      );
+    }
+
+    if (participantRestrictedConversations.length === 0) {
+      return spaceBasedAccessible;
+    }
+
+    const participations = await ConversationParticipantModel.findAll({
+      where: {
+        workspaceId: workspace.id,
+        userId: user.id,
+        conversationId: {
+          [Op.in]: participantRestrictedConversations.map((c) => c.id),
+        },
+      },
+      attributes: ["conversationId"],
+    });
+
+    const participantConversationIds = new Set(
+      participations.map((p) => p.conversationId)
+    );
+
+    return spaceBasedAccessible.filter(
+      (conversation) =>
+        !this.shouldApplyPrivateByDefaultUrlRestriction(conversation) ||
+        this.getConversationUrlAccessModeForPrivateByDefault(conversation) ===
+          "workspace_members" ||
+        participantConversationIds.has(conversation.id)
+    );
+  }
+
+  private static async canUserAccessPrivateByDefaultConversation(
+    auth: Authenticator,
+    conversation: ConversationModel
+  ): Promise<boolean> {
+    if (!this.isPrivateConversationUrlsByDefaultEnabled(auth)) {
+      return true;
+    }
+
+    if (!this.shouldApplyPrivateByDefaultUrlRestriction(conversation)) {
+      return true;
+    }
+
+    if (
+      this.getConversationUrlAccessModeForPrivateByDefault(conversation) ===
+      "workspace_members"
+    ) {
+      return true;
+    }
+
+    const user = auth.user();
+    if (!user) {
+      return false;
+    }
+
+    const participationCount = await ConversationParticipantModel.count({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        conversationId: conversation.id,
+        userId: user.id,
+      },
+    });
+
+    return participationCount > 0;
+  }
+
+  private static async isConversationReadableFromRequestedSpaces(
+    auth: Authenticator,
+    conversation: ConversationModel
+  ): Promise<boolean> {
+    const spaces = await SpaceResource.fetchByModelIds(
+      auth,
+      conversation.requestedSpaceIds
+    );
+
+    const spaceIdToGroupsMap = createSpaceIdToGroupsMap(auth, spaces);
+
+    return auth.canRead(
+      createResourcePermissionsFromSpacesWithMap(
+        spaceIdToGroupsMap,
+        conversation.requestedSpaceIds
+      )
+    );
+  }
+
+  static async canAccess(
+    auth: Authenticator,
+    sId: string
+  ): Promise<ConversationAccessType> {
+    const workspace = auth.getNonNullableWorkspace();
+    const { where } = this.getOptions();
+    const conversation = await this.model.findOne({
+      where: {
+        sId,
+        workspaceId: workspace.id,
+        ...where,
+      },
+    });
+    if (!conversation) {
+      return "conversation_not_found";
+    }
+
+    try {
+      if (
+        !(await this.isConversationReadableFromRequestedSpaces(
+          auth,
+          conversation
+        ))
+      ) {
+        return "conversation_access_restricted";
+      }
+    } catch (_error) {
+      return "conversation_not_found";
+    }
+
+    if (
+      !(await this.canUserAccessPrivateByDefaultConversation(
+        auth,
+        conversation
+      ))
+    ) {
+      return "conversation_access_restricted_by_private_by_default_url_restriction";
+    }
+
+    return "allowed";
   }
 
   private static triggerModelIdToSId({
@@ -599,48 +894,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const conversations = await this.fetchByIds(auth, sIds);
     await this.enrichWithReadState(auth, conversations);
     return conversations;
-  }
-
-  static async canAccess(
-    auth: Authenticator,
-    sId: string
-  ): Promise<
-    "allowed" | "conversation_not_found" | "conversation_access_restricted"
-  > {
-    const workspace = auth.getNonNullableWorkspace();
-    const { where } = this.getOptions();
-    const conversation = await this.model.findOne({
-      where: {
-        sId,
-        workspaceId: workspace.id,
-        ...where,
-      },
-    });
-    if (!conversation) {
-      return "conversation_not_found";
-    }
-    const spaces = await SpaceResource.fetchByModelIds(
-      auth,
-      conversation.requestedSpaceIds
-    );
-    try {
-      const spaceIdToGroupsMap = createSpaceIdToGroupsMap(auth, spaces);
-      if (
-        !auth.canRead(
-          createResourcePermissionsFromSpacesWithMap(
-            spaceIdToGroupsMap,
-            conversation.requestedSpaceIds
-          )
-        )
-      ) {
-        return "conversation_access_restricted";
-      }
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-    } catch (error) {
-      return "conversation_not_found";
-    }
-    return "allowed";
   }
 
   static async listAll(
@@ -957,17 +1210,17 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       conversations.map((c) => [c.id, c.sId])
     );
 
-    const agentToConvSIds = new Map<string, Set<string>>();
+    const agentToConvIds = new Map<string, Set<string>>();
     for (const p of participations) {
       const convSId = sIdById.get(p.message!.conversationId);
       if (!convSId) {
         continue;
       }
       const agentId = p.agentConfigurationId;
-      if (!agentToConvSIds.has(agentId)) {
-        agentToConvSIds.set(agentId, new Set());
+      if (!agentToConvIds.has(agentId)) {
+        agentToConvIds.set(agentId, new Set());
       }
-      agentToConvSIds.get(agentId)!.add(convSId);
+      agentToConvIds.get(agentId)!.add(convSId);
     }
 
     let qualifyingConvSIds: Set<string>;
@@ -1012,7 +1265,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       }
     }
 
-    for (const [agentId, convSIds] of agentToConvSIds) {
+    for (const [agentId, convSIds] of agentToConvIds) {
       const qualifying = [...convSIds].filter((sId) =>
         qualifyingConvSIds.has(sId)
       );
@@ -1027,9 +1280,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   static async fetchConversationWithoutContent(
     auth: Authenticator,
     sId: string,
-    options?: FetchConversationOptions & {
-      dangerouslySkipPermissionFiltering?: boolean;
-    }
+    options?: FetchConversationOptions
   ): Promise<Result<ConversationWithoutContentType, ConversationError>> {
     const conversation = await this.fetchById(auth, sId, {
       includeDeleted: options?.includeDeleted,
@@ -1046,6 +1297,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         auth,
         conversation.id
       );
+    const forkedChildren = options?.includeForkedChildrenInfo
+      ? await ConversationResource.listSerializedChildForks(auth, conversation)
+      : [];
 
     return new Ok({
       id: conversation.id,
@@ -1067,6 +1321,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       ...(conversation.forkedFromInfo && {
         forkedFrom: conversation.forkedFromInfo,
       }),
+      ...(forkedChildren.length > 0 && { forkedChildren }),
     });
   }
 
@@ -2011,13 +2266,90 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return pendingMessages;
   }
 
-  async getLatestAgentMessageRun(
+  static async updateCompactionMessageRunIds(
+    auth: Authenticator,
+    {
+      compactionMessageModelId,
+      runIds,
+    }: {
+      compactionMessageModelId: ModelId;
+      runIds: string[];
+    }
+  ): Promise<void> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    const sanitizedRunIds = runIds.map((runId) => runId.replaceAll("'", "''"));
+
+    await CompactionMessageModel.update(
+      {
+        runIds: fn(
+          "ARRAY",
+          literal(
+            `SELECT DISTINCT unnest(COALESCE("runIds", '{}') || ARRAY['${sanitizedRunIds.join("','")}']::text[])`
+          )
+        ),
+      },
+      {
+        where: {
+          id: compactionMessageModelId,
+          workspaceId,
+        },
+      }
+    );
+  }
+
+  // Return the latest run from a successful compaction message.
+  async getLatestCompactionMessageRun(
     auth: Authenticator
-  ): Promise<RunResource | null> {
+  ): Promise<{ rank: number; run: RunResource } | null> {
     const owner = auth.getNonNullableWorkspace();
 
-    // Include in-progress ("created") agent messages so that context usage is available even while
-    // the agent is still running (it accumulates runIds step by step).
+    const message = await MessageModel.findOne({
+      where: {
+        conversationId: this.id,
+        workspaceId: owner.id,
+      },
+      include: [
+        {
+          model: CompactionMessageModel,
+          as: "compactionMessage",
+          required: true,
+          where: {
+            status: "succeeded",
+          },
+        },
+      ],
+      order: [["rank", "DESC"]],
+    });
+
+    if (!message?.compactionMessage?.runIds?.length) {
+      return null;
+    }
+
+    // The runIds array ordering is not guaranteed to be chronological. Fetch all runs and pick
+    // the most recently created one.
+    const runs = await RunResource.listByDustRunIds(auth, {
+      dustRunIds: message.compactionMessage.runIds,
+    });
+
+    if (runs.length === 0) {
+      return null;
+    }
+
+    return {
+      rank: message.rank,
+      run: runs.reduce((latest, r) =>
+        r.createdAt > latest.createdAt ? r : latest
+      ),
+    };
+  }
+
+  // Return the latest run from an agent message. We accept all statuses as they all have valid
+  // runIds that represent the actual latest run.
+  async getLatestAgentMessageRun(
+    auth: Authenticator
+  ): Promise<{ rank: number; run: RunResource } | null> {
+    const owner = auth.getNonNullableWorkspace();
+
     const message = await MessageModel.findOne({
       where: {
         conversationId: this.id,
@@ -2028,9 +2360,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           model: AgentMessageModel,
           as: "agentMessage",
           required: true,
-          where: {
-            status: ["succeeded", "gracefully_stopped", "created"],
-          },
         },
       ],
       order: [["rank", "DESC"]],
@@ -2050,9 +2379,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       return null;
     }
 
-    return runs.reduce((latest, r) =>
-      r.createdAt > latest.createdAt ? r : latest
-    );
+    return {
+      rank: message.rank,
+      run: runs.reduce((latest, r) =>
+        r.createdAt > latest.createdAt ? r : latest
+      ),
+    };
   }
 
   static async resolveForkSourceMessage(
@@ -2358,6 +2690,27 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     );
   }
 
+  static async updateUrlAccessMode(
+    auth: Authenticator,
+    sId: string,
+    accessMode: ConversationUrlAccessMode,
+    transaction?: Transaction
+  ) {
+    const conversation = await this.fetchById(auth, sId);
+    if (conversation == null) {
+      return new Err(new ConversationError("conversation_not_found"));
+    }
+
+    const metadata: ConversationMetadata = {
+      ...conversation.metadata,
+      urlAccessMode: accessMode,
+    };
+
+    await conversation.update({ metadata }, transaction);
+
+    return new Ok(undefined);
+  }
+
   static async fetchMCPServerViews(
     auth: Authenticator,
     conversation: ConversationWithoutContentType,
@@ -2530,6 +2883,81 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
   async updateSpaceId(space: SpaceResource, transaction?: Transaction) {
     await this.update({ spaceId: space.id }, transaction);
+  }
+
+  async clearSpaceId() {
+    await this.update({ spaceId: null });
+    this._space = null;
+  }
+
+  /**
+   * Get the distinct agent configuration IDs and content fragment DataSourceView ids
+   * used in this conversation. This data is needed to rebuild the conversation's
+   * requestedSpaceIds when moving out of a project.
+   */
+  async fetchAgentConfigurationAndContentFragmentIds(
+    auth: Authenticator
+  ): Promise<{
+    agentConfigurationIds: string[];
+    contentFragmentDatasourceViewIds: string[];
+  }> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    const agentMessages = await MessageModel.findAll({
+      where: {
+        conversationId: this.id,
+        workspaceId,
+        agentMessageId: { [Op.ne]: null },
+        branchId: { [Op.is]: null },
+      },
+      include: [
+        {
+          model: AgentMessageModel,
+          as: "agentMessage",
+          required: true,
+          attributes: ["agentConfigurationId"],
+        },
+      ],
+    });
+
+    const agentConfigurationIds = uniq(
+      agentMessages
+        .map((m) => m.agentMessage?.agentConfigurationId)
+        .filter((id): id is string => Boolean(id))
+    );
+
+    const cfMessages = await MessageModel.findAll({
+      where: {
+        conversationId: this.id,
+        workspaceId,
+        contentFragmentId: { [Op.ne]: null },
+        branchId: { [Op.is]: null },
+      },
+      include: [
+        {
+          model: ContentFragmentModel,
+          as: "contentFragment",
+          required: true,
+        },
+      ],
+    });
+
+    const contentFragmentDatasourceViewIds = uniq(
+      cfMessages
+        .map((m) => {
+          const modelId = m.contentFragment?.nodeDataSourceViewId;
+          if (modelId == null) {
+            return null;
+          }
+          return DataSourceViewResource.modelIdToSId({
+            id: modelId,
+            workspaceId,
+          });
+        })
+        .filter((sId): sId is string => sId !== null)
+    );
+
+    return { agentConfigurationIds, contentFragmentDatasourceViewIds };
   }
 
   static async markHasError(

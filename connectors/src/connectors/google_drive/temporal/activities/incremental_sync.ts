@@ -38,6 +38,8 @@ import type { GaxiosResponse } from "googleapis-common";
 import { GaxiosError } from "googleapis-common";
 import type { RedisClientType } from "redis";
 
+const PAGE_SIZE = 500;
+
 export async function incrementalSync(
   connectorId: ModelId,
   driveId: string,
@@ -95,7 +97,7 @@ export async function incrementalSync(
 
     let opts: drive_v3.Params$Resource$Changes$List = {
       pageToken: nextPageToken,
-      pageSize: 1000,
+      pageSize: PAGE_SIZE,
       fields: `nextPageToken, newStartPageToken, changes(changeType, fileId, time, removed, file(${FILE_ATTRIBUTES_TO_FETCH.join(",")}))`,
       includeItemsFromAllDrives: true,
       supportsAllDrives: true,

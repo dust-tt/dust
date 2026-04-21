@@ -4,6 +4,14 @@ import {
 } from "@app/components/resources/resources_icon_names";
 import { MCP_TOOL_STAKE_LEVELS } from "@app/lib/actions/constants";
 import { UserQuestionSchema } from "@app/lib/actions/types";
+import type {
+  ClariCall,
+  ClariCallDetails,
+} from "@app/lib/api/actions/servers/clari_copilot/types";
+import {
+  ClariCallDetailsSchema,
+  ClariCallSchema,
+} from "@app/lib/api/actions/servers/clari_copilot/types";
 import { CONNECTOR_PROVIDERS } from "@app/types/data_source";
 import type { AllSupportedFileContentType } from "@app/types/files";
 import { ALL_FILE_FORMATS } from "@app/types/files";
@@ -352,6 +360,7 @@ export const IncludeResultResourceSchema = z.object({
   ref: z.string(),
   chunks: z.array(z.string()),
   source: z.object({
+    mimeType: z.string().optional(),
     name: z.string(),
     provider: z.string().optional(),
   }),
@@ -1103,5 +1112,56 @@ export const isAgentPauseOutputResourceType = (
   return (
     outputBlock.type === "resource" &&
     AgentPauseOutputResourceSchema.safeParse(outputBlock.resource).success
+  );
+};
+
+// Clari Copilot tool outputs.
+
+export const CLARI_CALL_LIST_MIME_TYPE =
+  "application/vnd.dust.tool-output.clari-call-list" as const;
+
+export const ClariCallListResourceSchema = z.object({
+  mimeType: z.literal(CLARI_CALL_LIST_MIME_TYPE),
+  uri: z.literal(""),
+  text: z.string(),
+  calls: z.array(ClariCallSchema),
+});
+
+export type ClariCallListResourceType = z.infer<
+  typeof ClariCallListResourceSchema
+> & { calls: ClariCall[] };
+
+export const isClariCallListResource = (
+  outputBlock: CallToolResult["content"][number]
+): outputBlock is { type: "resource"; resource: ClariCallListResourceType } => {
+  return (
+    outputBlock.type === "resource" &&
+    ClariCallListResourceSchema.safeParse(outputBlock.resource).success
+  );
+};
+
+export const CLARI_CALL_DETAILS_MIME_TYPE =
+  "application/vnd.dust.tool-output.clari-call-details" as const;
+
+export const ClariCallDetailsResourceSchema = z.object({
+  mimeType: z.literal(CLARI_CALL_DETAILS_MIME_TYPE),
+  uri: z.string(),
+  text: z.string(),
+  call: ClariCallDetailsSchema,
+});
+
+export type ClariCallDetailsResourceType = z.infer<
+  typeof ClariCallDetailsResourceSchema
+> & { call: ClariCallDetails };
+
+export const isClariCallDetailsResource = (
+  outputBlock: CallToolResult["content"][number]
+): outputBlock is {
+  type: "resource";
+  resource: ClariCallDetailsResourceType;
+} => {
+  return (
+    outputBlock.type === "resource" &&
+    ClariCallDetailsResourceSchema.safeParse(outputBlock.resource).success
   );
 };

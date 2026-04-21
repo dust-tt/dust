@@ -30,13 +30,13 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0 # Full depth for better git operations
 
       # Setup Node.js for JS/TS projects
       - name: Setup Node.js
-        uses: actions/setup-node@v6.3.0
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           node-version: 22.22.0
 
@@ -45,7 +45,7 @@ jobs:
 
       # Setup Rust for core project
       - name: Setup Rust
-        uses: dtolnay/rust-toolchain@1.85.0
+        uses: dtolnay/rust-toolchain@aad518f59d88bae90133242f9ddac7f8bbc5dddf # 1.94.1
         with:
           components: rustfmt
 
@@ -60,7 +60,7 @@ jobs:
 
       - name: Run Claude Code
         id: claude
-        uses: anthropics/claude-code-action@v1.0.96
+        uses: anthropics/claude-code-action@5fb899572b81d2bb648d4d187173a2f423a9677c # v1.0.96
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
 
@@ -123,14 +123,14 @@ jobs:
 
             ### Project-specific Build Commands:
 
-            **front**: cd front && npm ci && npx tsc --noEmit && npm run lint && npm run format:check
-            **connectors**: cd connectors && npm install && npm run build && npm run lint && npm run format:check
-            **cli**: cd cli/dust-cli && npm ci && npx tsc && npm run lint
+            **front**: cd front && npm ci && npx tsc --noEmit && cd .. && npm run format:ci
+            **connectors**: cd connectors && npm install && npm run build && cd .. && npm run format:ci
+            **cli**: cd cli/dust-cli && npm ci && npx tsc && cd ../.. && npm run format:ci
             **core**: cd core && cargo check && cargo fmt --all -- --check
-            **extension**: cd extension && npm ci && npm run build && npm run lint
-            **sparkle**: cd sparkle && npm install && npm run build && npm run lint
+            **extension**: cd extension && npm ci && npm run build && cd .. && npm run format:ci
+            **sparkle**: cd sparkle && npm install && npm run build && cd .. && npm run format:ci
             **viz**: cd viz && npm install && npm run build && npm run check
-            **sdks/js**: Already pre-built; if changes made: cd sdks/js && npm run build && npm run lint
+            **sdks/js**: Already pre-built; if changes made: cd sdks/js && npm run build && cd ../.. && npm run format:ci
 
             ### Important Rules:
             - Install dependencies once per project when first needed (npm ci or npm install)

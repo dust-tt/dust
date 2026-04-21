@@ -6,9 +6,12 @@ import {
   useBranchConversation,
   useConversationParticipants,
   useConversationParticipationOptions,
+  useConversationUrlAccessMode,
   useJoinConversation,
+  useSpaceConversationsSummary,
 } from "@app/hooks/conversations";
 import { useDeleteConversation } from "@app/hooks/useDeleteConversation";
+import { useMoveConversationOutOfProject } from "@app/hooks/useMoveConversationOutOfProject";
 import { useMoveConversationToProject } from "@app/hooks/useMoveConversationToProject";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useURLSheet } from "@app/hooks/useURLSheet";
@@ -17,7 +20,7 @@ import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useClientType } from "@app/lib/context/clientType";
 import { useAppRouter } from "@app/lib/platform";
 import { getSpaceIcon } from "@app/lib/spaces";
-import { useSpaces } from "@app/lib/swr/spaces";
+import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { hasHealthyProviders } from "@app/lib/utils/providersHealth";
 import {
   getAgentBuilderRoute,
@@ -25,18 +28,24 @@ import {
   getProjectRoute,
   setQueryParam,
 } from "@app/lib/utils/router";
-import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
-import { isProjectConversation } from "@app/types/assistant/conversation";
+import {
+  type ConversationWithoutContentType,
+  getConversationDisplayTitle,
+  getConversationUrlAccessMode,
+  isProjectConversation,
+} from "@app/types/assistant/conversation";
 import type { WorkspaceType } from "@app/types/user";
 import { isBuilder } from "@app/types/user";
 import {
   ActionGitBranchIcon,
   ArrowRightIcon,
   Avatar,
+  ChatBubbleBottomCenterTextIcon,
   ContactsUserIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuPortal,
   DropdownMenuSeparator,
   DropdownMenuSub,
@@ -44,6 +53,8 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
   ExternalLinkIcon,
+  EyeIcon,
+  EyeSlashIcon,
   LinkIcon,
   PencilSquareIcon,
   PlusCircleIcon,
@@ -216,13 +227,34 @@ export function ConversationMenu({
       disabled: shouldWaitBeforeFetching,
     },
   });
-  const { spaces: projects } = useSpaces({
-    kinds: ["project"],
+
+  const { summary } = useSpaceConversationsSummary({
     workspaceId: owner.sId,
-    disabled: shouldWaitBeforeFetching || !hasFeature("projects"),
+    options: { disabled: shouldWaitBeforeFetching || !hasFeature("projects") },
   });
 
+  const filteredProjects = summary
+    .map(({ space }) => space)
+    .filter((space) => space.sId !== conversation?.spaceId);
+
+  const conversationSpaceId =
+    conversation && isProjectConversation(conversation)
+      ? conversation.spaceId
+      : null;
+  const { spaceInfo: conversationSpaceInfo } = useSpaceInfo({
+    workspaceId: owner.sId,
+    spaceId: conversationSpaceId,
+    disabled: shouldWaitBeforeFetching || !conversationSpaceId,
+  });
+  const isProjectEditor = conversationSpaceInfo?.isEditor ?? false;
+  const canMoveOutOfProject =
+    conversation && isProjectConversation(conversation) && isProjectEditor;
+
   const moveConversationToProject = useMoveConversationToProject(owner);
+  const moveConversationOutOfProject = useMoveConversationOutOfProject(
+    owner,
+    activeConversationId
+  );
 
   const joinConversation = useJoinConversation({
     ownerId: owner.sId,
@@ -267,6 +299,13 @@ export function ConversationMenu({
   const openConversationInBrowser = () => {
     window.open(conversationLink, "_blank");
   };
+  const {
+    isUpdatingConversationUrlAccessMode,
+    updateConversationUrlAccessMode,
+  } = useConversationUrlAccessMode({
+    owner,
+    conversationId: activeConversationId,
+  });
 
   if (!activeConversationId) {
     return null;
@@ -275,6 +314,21 @@ export function ConversationMenu({
   const canJoin = conversationParticipationOptions.includes("join");
   const canLeave = conversationParticipationOptions.includes("leave");
   const canDelete = conversationParticipationOptions.includes("delete");
+  const isPrivateConversationUrlsByDefaultEnabled =
+    owner.metadata?.privateConversationUrlsByDefault === true;
+  const isProjectConversationWithOwnUrl =
+    conversation !== undefined && isProjectConversation(conversation);
+  const conversationUrlAccessMode = getConversationUrlAccessMode(
+    conversation?.metadata
+  );
+  const canMakeUrlAccessible =
+    isPrivateConversationUrlsByDefaultEnabled &&
+    !isProjectConversationWithOwnUrl &&
+    conversationUrlAccessMode !== "workspace_members";
+  const canRestrictUrlAccess =
+    isPrivateConversationUrlsByDefaultEnabled &&
+    !isProjectConversationWithOwnUrl &&
+    conversationUrlAccessMode === "workspace_members";
 
   return (
     <div
@@ -304,8 +358,9 @@ export function ConversationMenu({
         onClose={() => setShowRenameDialog(false)}
         owner={owner}
         conversationId={activeConversationId}
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        currentTitle={conversation?.title || ""}
+        currentTitle={
+          conversation ? getConversationDisplayTitle(conversation) : ""
+        }
       />
       <DropdownMenu modal={false} open={isOpen} onOpenChange={onOpenChange}>
         {triggerPosition ? (
@@ -350,25 +405,42 @@ export function ConversationMenu({
             <DropdownMenuSub>
               <DropdownMenuSubTrigger
                 icon={ArrowRightIcon}
-                label="Move to project"
-                disabled={!projects.length}
+                label={canMoveOutOfProject ? "Move to..." : "Move to project"}
+                disabled={
+                  canMoveOutOfProject ? false : !filteredProjects.length
+                }
               />
               <DropdownMenuPortal>
-                <DropdownMenuSubContent>
-                  {projects
-                    .filter((project) => project.sId !== conversation?.spaceId)
-                    .map((project) => (
+                <DropdownMenuSubContent
+                  collisionPadding={16}
+                  className="max-w-60"
+                >
+                  {canMoveOutOfProject && (
+                    <>
                       <DropdownMenuItem
-                        key={project.sId}
-                        icon={getSpaceIcon(project)}
-                        label={project.name}
+                        icon={ChatBubbleBottomCenterTextIcon}
+                        label="Personal conversations"
                         onClick={async () =>
-                          conversation
-                            ? moveConversationToProject(conversation, project)
-                            : Promise.resolve(false)
+                          moveConversationOutOfProject(conversation)
                         }
                       />
-                    ))}
+                      <DropdownMenuSeparator />
+                      <DropdownMenuLabel label="Projects" />
+                    </>
+                  )}
+                  {filteredProjects.map((project) => (
+                    <DropdownMenuItem
+                      key={project.sId}
+                      icon={getSpaceIcon(project)}
+                      label={project.name}
+                      truncateText
+                      onClick={async () =>
+                        conversation
+                          ? moveConversationToProject(conversation, project)
+                          : Promise.resolve(false)
+                      }
+                    />
+                  ))}
                 </DropdownMenuSubContent>
               </DropdownMenuPortal>
             </DropdownMenuSub>
@@ -440,6 +512,24 @@ export function ConversationMenu({
               label="Copy link"
               onClick={copyConversationLink}
               icon={LinkIcon}
+            />
+          )}
+          {(canMakeUrlAccessible || canRestrictUrlAccess) && (
+            <DropdownMenuItem
+              label={
+                canRestrictUrlAccess
+                  ? "Restrict URL access"
+                  : "Make URL accessible"
+              }
+              onClick={() => {
+                void updateConversationUrlAccessMode(
+                  canRestrictUrlAccess
+                    ? "participants_only"
+                    : "workspace_members"
+                );
+              }}
+              icon={canRestrictUrlAccess ? EyeSlashIcon : EyeIcon}
+              disabled={isUpdatingConversationUrlAccessMode}
             />
           )}
           {canTurnIntoAgent && (

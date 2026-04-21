@@ -1,5 +1,6 @@
 import { buildServerSideMCPServerConfiguration } from "@app/lib/actions/configuration/helpers";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
+import type { AutoInternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
 import type { Authenticator } from "@app/lib/auth";
@@ -81,20 +82,35 @@ export async function getSkillServers(
     })
   );
 
-  // Add knowledge servers (file system / data warehouse) from skills with attached data sources.
   const {
     documentDataSourceConfigurations,
     warehouseDataSourceConfigurations,
   } = await getSkillDataSourceConfigurations(auth, { skills });
 
-  const [fileSystemServer, dataWarehouseServer] = await Promise.all([
-    createSkillKnowledgeFileSystemServer(auth, {
-      dataSourceConfigurations: documentDataSourceConfigurations,
-    }),
-    createSkillKnowledgeDataWarehouseServer(auth, {
-      dataSourceConfigurations: warehouseDataSourceConfigurations,
-    }),
-  ]);
+  const namesToFetch: AutoInternalMCPServerNameType[] = [];
+  if (documentDataSourceConfigurations.length > 0) {
+    namesToFetch.push("data_sources_file_system");
+  }
+  if (warehouseDataSourceConfigurations.length > 0) {
+    namesToFetch.push("data_warehouses");
+  }
+
+  const autoInternalViews =
+    namesToFetch.length > 0
+      ? await MCPServerViewResource.getMCPServerViewsForAutoInternalToolsAsMap(
+          auth,
+          namesToFetch
+        )
+      : new Map<AutoInternalMCPServerNameType, MCPServerViewResource>();
+
+  const fileSystemServer = createSkillKnowledgeFileSystemServer({
+    dataSourceConfigurations: documentDataSourceConfigurations,
+    mcpServerView: autoInternalViews.get("data_sources_file_system") ?? null,
+  });
+  const dataWarehouseServer = createSkillKnowledgeDataWarehouseServer({
+    dataSourceConfigurations: warehouseDataSourceConfigurations,
+    mcpServerView: autoInternalViews.get("data_warehouses") ?? null,
+  });
 
   return [
     ...mcpServers,
@@ -212,29 +228,14 @@ export async function getSkillDataSourceConfigurations(
   };
 }
 
-/**
- * Creates a file system server configuration scoped to the provided data source configurations.
- * Returns null if no configurations are provided or the server view doesn't exist.
- */
-async function createSkillKnowledgeFileSystemServer(
-  auth: Authenticator,
-  {
-    dataSourceConfigurations,
-  }: {
-    dataSourceConfigurations: DataSourceConfiguration[];
-  }
-): Promise<MCPServerConfigurationType | null> {
-  if (dataSourceConfigurations.length === 0) {
-    return null;
-  }
-
-  const mcpServerView =
-    await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
-      auth,
-      "data_sources_file_system"
-    );
-
-  if (!mcpServerView) {
+function createSkillKnowledgeFileSystemServer({
+  dataSourceConfigurations,
+  mcpServerView,
+}: {
+  dataSourceConfigurations: DataSourceConfiguration[];
+  mcpServerView: MCPServerViewResource | null;
+}): MCPServerConfigurationType | null {
+  if (dataSourceConfigurations.length === 0 || !mcpServerView) {
     return null;
   }
 
@@ -245,29 +246,14 @@ async function createSkillKnowledgeFileSystemServer(
   });
 }
 
-/**
- * Creates a data warehouse server configuration scoped to the provided data source configurations.
- * Returns null if no configurations are provided or the server view doesn't exist.
- */
-async function createSkillKnowledgeDataWarehouseServer(
-  auth: Authenticator,
-  {
-    dataSourceConfigurations,
-  }: {
-    dataSourceConfigurations: DataSourceConfiguration[];
-  }
-): Promise<MCPServerConfigurationType | null> {
-  if (dataSourceConfigurations.length === 0) {
-    return null;
-  }
-
-  const mcpServerView =
-    await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
-      auth,
-      "data_warehouses"
-    );
-
-  if (!mcpServerView) {
+function createSkillKnowledgeDataWarehouseServer({
+  dataSourceConfigurations,
+  mcpServerView,
+}: {
+  dataSourceConfigurations: DataSourceConfiguration[];
+  mcpServerView: MCPServerViewResource | null;
+}): MCPServerConfigurationType | null {
+  if (dataSourceConfigurations.length === 0 || !mcpServerView) {
     return null;
   }
 

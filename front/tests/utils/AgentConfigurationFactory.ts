@@ -5,6 +5,7 @@ import type {
   ModelIdType,
   ModelProviderIdType,
 } from "@app/types/assistant/models/types";
+import type { ModelId } from "@app/types/shared/model_id";
 import assert from "assert";
 
 export class AgentConfigurationFactory {
@@ -19,6 +20,7 @@ export class AgentConfigurationFactory {
         modelId: ModelIdType;
         temperature?: number;
       };
+      requestedSpaceIds: ModelId[];
     }> = {}
   ): Promise<AgentConfigurationType> {
     const name = overrides.name ?? "Test Agent";
@@ -27,6 +29,7 @@ export class AgentConfigurationFactory {
     const providerId = overrides.model?.providerId ?? "openai";
     const modelId = overrides.model?.modelId ?? "gpt-4-turbo";
     const temperature = overrides.model?.temperature ?? 0.7;
+    const requestedSpaceIds = overrides.requestedSpaceIds ?? [];
 
     const user = auth.user();
     assert(user, "User is required");
@@ -45,7 +48,7 @@ export class AgentConfigurationFactory {
         temperature,
       },
       templateId: null,
-      requestedSpaceIds: [],
+      requestedSpaceIds,
       tags: [], // Added missing tags property
       editors: [user.toJSON()],
       authorId: user.id,

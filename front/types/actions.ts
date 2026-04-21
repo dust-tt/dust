@@ -27,6 +27,7 @@ export type AgentMCPActionType = {
     running: string;
     done: string;
   } | null;
+  sandboxOrigin?: boolean;
 };
 
 export type AgentMCPActionWithOutputType = AgentMCPActionType & {

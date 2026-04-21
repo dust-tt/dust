@@ -6,7 +6,10 @@ import {
 } from "@app/components/agent_builder/observability/utils";
 import { ChartContainer } from "@app/components/charts/ChartContainer";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
+import { useSelectableSeries } from "@app/components/charts/useSelectableSeries";
 import { useAgentContextOrigin } from "@app/lib/swr/assistants";
+import { isString } from "@app/types/shared/utils/general";
+import { cn } from "@dust-tt/sparkle";
 import { Cell, Pie, PieChart, Tooltip } from "recharts";
 
 interface SourceChartProps {
@@ -41,11 +44,15 @@ export function SourceChart({
 
   const data = buildSourceChartData(contextOrigin.buckets, total);
 
-  const legendItems = data.map((d) => ({
-    key: d.label,
-    label: d.label,
-    colorClassName: getSourceColor(d.origin),
-  }));
+  const { selectedKey, isDimmed, decorate } = useSelectableSeries();
+
+  const legendItems = decorate(
+    data.map((d) => ({
+      key: d.origin,
+      label: d.label,
+      colorClassName: getSourceColor(d.origin),
+    }))
+  );
 
   return (
     <ChartContainer
@@ -65,17 +72,26 @@ export function SourceChart({
         <Tooltip
           cursor={false}
           wrapperStyle={{ outline: "none", zIndex: 50 }}
-          content={({ active }) => {
+          content={({ active, payload }) => {
             if (!active || data.length === 0) {
               return null;
             }
+            const rawOrigin = payload?.[0]?.payload?.origin;
+            const hoveredOrigin = isString(rawOrigin) ? rawOrigin : undefined;
             const rows = data.map((d) => ({
+              key: d.origin,
               label: d.label,
               value: d.count,
               percent: d.percent,
               colorClassName: getSourceColor(d.origin),
             }));
-            return <ChartTooltipCard title="Source breakdown" rows={rows} />;
+            return (
+              <ChartTooltipCard
+                title="Source breakdown"
+                rows={rows}
+                activeKey={hoveredOrigin ?? selectedKey}
+              />
+            );
           }}
           contentStyle={{
             background: "transparent",
@@ -97,7 +113,11 @@ export function SourceChart({
           {data.map((entry) => (
             <Cell
               key={entry.origin}
-              className={getSourceColor(entry.origin)}
+              className={cn(
+                getSourceColor(entry.origin),
+                "transition-opacity",
+                isDimmed(entry.origin) && "opacity-25"
+              )}
               fill="currentColor"
             />
           ))}

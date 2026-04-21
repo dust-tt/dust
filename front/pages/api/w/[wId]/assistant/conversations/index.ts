@@ -135,7 +135,6 @@ import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/hel
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getPaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -402,21 +401,15 @@ async function handler(
           }
         }
 
-        const featureFlags = await getFeatureFlags(auth);
-        const steeringEnabled = featureFlags.includes("enable_steering");
-
-        if (message.content.length === 0) {
-          if (!steeringEnabled || message.mentions.length === 0) {
-            return apiError(req, res, {
-              status_code: 400,
-              api_error: {
-                type: "invalid_request_error",
-                message: steeringEnabled
-                  ? "Message content cannot be empty unless at least one mention is provided."
-                  : "Message content cannot be empty.",
-              },
-            });
-          }
+        if (message.content.length === 0 && message.mentions.length === 0) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "Message content cannot be empty unless at least one mention is provided.",
+            },
+          });
         }
 
         // If a message was provided we do await for the message to be created before returning the
@@ -436,7 +429,6 @@ async function handler(
               message.context.clientSideMCPServerIds ?? [],
           },
           skipToolsValidation: skipToolsValidation ?? false,
-          steeringEnabled,
         });
         if (messageRes.isErr()) {
           return apiError(req, res, messageRes.error);

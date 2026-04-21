@@ -297,7 +297,7 @@ describe("PATCH /api/w/[wId]/webhook_sources/views/[viewId]", () => {
 
     // Create additional views in global space for the same webhook source
     await webhookSourceViewFactory.create(globalSpace, {
-      webhookSourceId: systemView.webhookSourceSId,
+      webhookSourceId: systemView.webhookSource.sId,
     });
 
     // Verify initial state
@@ -373,7 +373,7 @@ describe("PATCH /api/w/[wId]/webhook_sources/views/[viewId]", () => {
 
     // Create additional views in global space for the same webhook source
     await webhookSourceViewFactory.create(globalSpace, {
-      webhookSourceId: systemView.webhookSourceSId,
+      webhookSourceId: systemView.webhookSource.sId,
     });
 
     // Verify initial state

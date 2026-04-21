@@ -90,7 +90,7 @@ async function handler(
         });
         if (!body.archive && projectTodoEnabled) {
           void launchOrSignalProjectTodoWorkflow({
-            authType: auth.toJSON(),
+            workspaceId: auth.getNonNullableWorkspace().sId,
             spaceId: space.sId,
           });
         }
@@ -101,7 +101,7 @@ async function handler(
             await metadata.archive();
             if (projectTodoEnabled) {
               void stopProjectTodoWorkflow({
-                authType: auth.toJSON(),
+                workspaceId: auth.getNonNullableWorkspace().sId,
                 spaceId: space.sId,
               });
             }
@@ -109,7 +109,7 @@ async function handler(
             await metadata.unarchive();
             if (projectTodoEnabled) {
               void launchOrSignalProjectTodoWorkflow({
-                authType: auth.toJSON(),
+                workspaceId: auth.getNonNullableWorkspace().sId,
                 spaceId: space.sId,
               });
             }

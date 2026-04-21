@@ -1,5 +1,5 @@
-import { getGithubOrganizations } from "@app/lib/triggers/built-in-webhooks/github/orgs";
-import { getGithubRepositories } from "@app/lib/triggers/built-in-webhooks/github/repos";
+import { getGithubOrganizations } from "@app/lib/api/triggers/built-in-webhooks/github/orgs";
+import { getGithubRepositories } from "@app/lib/api/triggers/built-in-webhooks/github/repos";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { Err, Ok } from "@app/types/shared/result";
@@ -18,11 +18,11 @@ vi.mock("@app/lib/api/config", () => ({
 }));
 
 // Mock the GitHub service functions
-vi.mock("@app/lib/triggers/built-in-webhooks/github/repos", () => ({
+vi.mock("@app/lib/api/triggers/built-in-webhooks/github/repos", () => ({
   getGithubRepositories: vi.fn(),
 }));
 
-vi.mock("@app/lib/triggers/built-in-webhooks/github/orgs", () => ({
+vi.mock("@app/lib/api/triggers/built-in-webhooks/github/orgs", () => ({
   getGithubOrganizations: vi.fn(),
 }));
 

@@ -635,13 +635,13 @@ const transcripts = async (command: string, args: parseArgs.ParsedArgs) => {
         `Pausing all LabsTranscripts workflows and recording active ones... (activeIdsFile: ${activeIdsFile})`
       );
       const allWorkspaces = await WorkspaceResource.listAll();
-      const activeConfigSIds: string[] = [];
+      const activeConfigIds: string[] = [];
       for (const ws of allWorkspaces) {
         const configs =
           await LabsTranscriptsConfigurationResource.findByWorkspaceId(ws.id);
         for (const config of configs) {
           if (config.status === "active" || !!config.dataSourceViewId) {
-            activeConfigSIds.push(config.sId);
+            activeConfigIds.push(config.sId);
             if (execute) {
               await stopRetrieveTranscriptsWorkflow(config);
             } else {
@@ -654,10 +654,10 @@ const transcripts = async (command: string, args: parseArgs.ParsedArgs) => {
       }
       await fs.writeFile(
         activeIdsFile,
-        JSON.stringify(activeConfigSIds, null, 2)
+        JSON.stringify(activeConfigIds, null, 2)
       );
       logger.info(
-        `Paused all workflows. Active workflow sIds recorded: ${activeConfigSIds.length}`
+        `Paused all workflows. Active workflow sIds recorded: ${activeConfigIds.length}`
       );
       return;
     }
@@ -667,15 +667,15 @@ const transcripts = async (command: string, args: parseArgs.ParsedArgs) => {
       logger.info(
         `Restarting only previously active LabsTranscripts workflows... (activeIdsFile: ${activeIdsFile})`
       );
-      let activeConfigSIds: string[] = [];
+      let activeConfigIds: string[] = [];
       try {
         const data = await fs.readFile(activeIdsFile, "utf-8");
-        activeConfigSIds = JSON.parse(data);
+        activeConfigIds = JSON.parse(data);
       } catch (e) {
         logger.error(`Could not read ${activeIdsFile}: ${e}`);
         process.exit(1);
       }
-      for (const sId of activeConfigSIds) {
+      for (const sId of activeConfigIds) {
         const config = await LabsTranscriptsConfigurationResource.fetchById(
           auth,
           sId
@@ -692,7 +692,7 @@ const transcripts = async (command: string, args: parseArgs.ParsedArgs) => {
           );
         }
       }
-      logger.info(`Restarted ${activeConfigSIds.length} workflows.`);
+      logger.info(`Restarted ${activeConfigIds.length} workflows.`);
       return;
     }
     case "stop-all": {

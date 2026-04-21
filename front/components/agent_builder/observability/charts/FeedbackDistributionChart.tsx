@@ -12,11 +12,13 @@ import {
 } from "@app/components/agent_builder/observability/utils";
 import { ChartContainer } from "@app/components/charts/ChartContainer";
 import { legendFromConstant } from "@app/components/charts/ChartLegend";
+import { useSelectableSeries } from "@app/components/charts/useSelectableSeries";
 import {
   useAgentFeedbackDistribution,
   useAgentVersionMarkers,
 } from "@app/lib/swr/assistants";
 import { formatShortDate } from "@app/lib/utils/timestamps";
+import { cn } from "@dust-tt/sparkle";
 import {
   CartesianGrid,
   Line,
@@ -25,6 +27,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 
 interface FeedbackDistributionChartProps {
   workspaceId: string;
@@ -64,13 +67,19 @@ export function FeedbackDistributionChart({
     disabled: !workspaceId || !agentConfigurationId || !isCustomAgent,
   });
 
-  const legendItems = legendFromConstant(
-    FEEDBACK_DISTRIBUTION_LEGEND,
-    FEEDBACK_DISTRIBUTION_PALETTE,
-    {
-      includeVersionMarker:
-        isCustomAgent && mode === "timeRange" && versionMarkers.length > 0,
-    }
+  const { activeKey, isDimmed, decorate, hoverHandlers } =
+    useSelectableSeries();
+
+  const legendItems = decorate(
+    legendFromConstant(
+      FEEDBACK_DISTRIBUTION_LEGEND,
+      FEEDBACK_DISTRIBUTION_PALETTE,
+      {
+        includeVersionMarker:
+          isCustomAgent && mode === "timeRange" && versionMarkers.length > 0,
+      }
+    ),
+    { skip: (item) => item.key === "versionMarkers" }
   );
 
   const filteredData = filterTimeSeriesByVersionWindow(
@@ -124,7 +133,9 @@ export function FeedbackDistributionChart({
           tickMargin={8}
         />
         <Tooltip
-          content={FeedbackDistributionTooltip}
+          content={(props: TooltipContentProps<number, string>) => (
+            <FeedbackDistributionTooltip {...props} activeKey={activeKey} />
+          )}
           cursor={false}
           wrapperStyle={{ outline: "none", zIndex: 50 }}
           contentStyle={{
@@ -138,19 +149,29 @@ export function FeedbackDistributionChart({
           type="monotone"
           dataKey="positive"
           name="Positive"
-          className={FEEDBACK_DISTRIBUTION_PALETTE.positive}
+          className={cn(
+            FEEDBACK_DISTRIBUTION_PALETTE.positive,
+            "transition-opacity",
+            isDimmed("positive") && "opacity-25"
+          )}
           stroke="currentColor"
           strokeWidth={2}
           dot={false}
+          {...hoverHandlers("positive")}
         />
         <Line
           type="monotone"
           dataKey="negative"
           name="Negative"
-          className={FEEDBACK_DISTRIBUTION_PALETTE.negative}
+          className={cn(
+            FEEDBACK_DISTRIBUTION_PALETTE.negative,
+            "transition-opacity",
+            isDimmed("negative") && "opacity-25"
+          )}
           stroke="currentColor"
           strokeWidth={2}
           dot={false}
+          {...hoverHandlers("negative")}
         />
         {isCustomAgent && (
           <VersionMarkersDots mode={mode} versionMarkers={versionMarkers} />

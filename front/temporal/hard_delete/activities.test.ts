@@ -1,19 +1,20 @@
 import { createPendingAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
-import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import {
   purgeExpiredPendingAgentsActivity,
-  purgeExpiredSyntheticSuggestionsActivity,
+  purgeExpiredSyntheticSkillSuggestionsActivity,
 } from "@app/temporal/hard_delete/activities";
 import {
   PENDING_AGENTS_RETENTION_HOURS,
   SYNTHETIC_SUGGESTIONS_RETENTION_DAYS,
 } from "@app/temporal/hard_delete/utils";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
-import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
+import { SkillSuggestionFactory } from "@app/tests/utils/SkillSuggestionFactory";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@temporalio/activity", () => ({
@@ -165,10 +166,10 @@ describe("purgeExpiredPendingAgentsActivity", () => {
     });
 
     // Create a pending agent that will expire.
-    const { sId: expiredSId } =
+    const { sId: expiredId } =
       await createPendingAgentConfiguration(authenticator);
     const expiredAgent = await AgentConfigurationModel.findOne({
-      where: { sId: expiredSId, workspaceId: workspace.id },
+      where: { sId: expiredId, workspaceId: workspace.id },
     });
     const expiredGroupId = await getEditorGroupId(
       expiredAgent!.id,
@@ -179,10 +180,10 @@ describe("purgeExpiredPendingAgentsActivity", () => {
     vi.advanceTimersByTime(PAST_THRESHOLD_MS);
 
     // Create a fresh pending agent (after time advance, so it's young).
-    const { sId: freshSId } =
+    const { sId: freshId } =
       await createPendingAgentConfiguration(authenticator);
     const freshAgent = await AgentConfigurationModel.findOne({
-      where: { sId: freshSId, workspaceId: workspace.id },
+      where: { sId: freshId, workspaceId: workspace.id },
     });
     const freshGroupId = await getEditorGroupId(freshAgent!.id, workspace.id);
 
@@ -198,7 +199,7 @@ describe("purgeExpiredPendingAgentsActivity", () => {
     // Expired pending agent + group: deleted.
     expect(
       await AgentConfigurationModel.findOne({
-        where: { sId: expiredSId, workspaceId: workspace.id },
+        where: { sId: expiredId, workspaceId: workspace.id },
       })
     ).toBeNull();
     expect(
@@ -207,7 +208,7 @@ describe("purgeExpiredPendingAgentsActivity", () => {
 
     // Fresh pending agent + group: survived.
     const freshAfter = await AgentConfigurationModel.findOne({
-      where: { sId: freshSId, workspaceId: workspace.id },
+      where: { sId: freshId, workspaceId: workspace.id },
     });
     expect(freshAfter).not.toBeNull();
     expect(freshAfter!.status).toBe("pending");
@@ -230,82 +231,70 @@ describe("purgeExpiredPendingAgentsActivity", () => {
 const PAST_SYNTHETIC_THRESHOLD_MS =
   (SYNTHETIC_SUGGESTIONS_RETENTION_DAYS + 1) * 24 * 3600 * 1000;
 
-describe("purgeExpiredSyntheticSuggestionsActivity", () => {
-  it("deletes synthetic suggestions older than threshold", async () => {
+describe("purgeExpiredSyntheticSkillSuggestionsActivity", () => {
+  it("deletes synthetic skill suggestions older than threshold", async () => {
     const { authenticator } = await createResourceTest({
       role: "admin",
     });
 
-    const agentConfig = await AgentConfigurationFactory.createTestAgent(
+    const skill = await SkillFactory.create(authenticator);
+    const suggestion = await SkillSuggestionFactory.create(
       authenticator,
-      { name: "Agent with suggestions" }
-    );
-
-    const suggestion = await AgentSuggestionFactory.createInstructions(
-      authenticator,
-      agentConfig,
+      skill,
       { source: "synthetic" }
     );
 
     // Advance time past the synthetic retention threshold.
     vi.advanceTimersByTime(PAST_SYNTHETIC_THRESHOLD_MS);
 
-    await purgeExpiredSyntheticSuggestionsActivity();
+    await purgeExpiredSyntheticSkillSuggestionsActivity();
 
-    const remaining = await AgentSuggestionResource.fetchById(
+    const remaining = await SkillSuggestionResource.fetchById(
       authenticator,
       suggestion.sId
     );
     expect(remaining).toBeNull();
   });
 
-  it("does not delete synthetic suggestions younger than threshold", async () => {
+  it("does not delete synthetic skill suggestions younger than threshold", async () => {
     const { authenticator } = await createResourceTest({
       role: "admin",
     });
 
-    const agentConfig = await AgentConfigurationFactory.createTestAgent(
+    const skill = await SkillFactory.create(authenticator);
+    const suggestion = await SkillSuggestionFactory.create(
       authenticator,
-      { name: "Agent with fresh suggestions" }
-    );
-
-    const suggestion = await AgentSuggestionFactory.createInstructions(
-      authenticator,
-      agentConfig,
+      skill,
       { source: "synthetic" }
     );
 
-    await purgeExpiredSyntheticSuggestionsActivity();
+    await purgeExpiredSyntheticSkillSuggestionsActivity();
 
-    const remaining = await AgentSuggestionResource.fetchById(
+    const remaining = await SkillSuggestionResource.fetchById(
       authenticator,
       suggestion.sId
     );
     expect(remaining).not.toBeNull();
   });
 
-  it("does not delete non-synthetic suggestions older than threshold", async () => {
+  it("does not delete non-synthetic skill suggestions older than threshold", async () => {
     const { authenticator } = await createResourceTest({
       role: "admin",
     });
 
-    const agentConfig = await AgentConfigurationFactory.createTestAgent(
+    const skill = await SkillFactory.create(authenticator);
+    const suggestion = await SkillSuggestionFactory.create(
       authenticator,
-      { name: "Agent with sidekick suggestions" }
-    );
-
-    const suggestion = await AgentSuggestionFactory.createInstructions(
-      authenticator,
-      agentConfig,
-      { source: "sidekick" }
+      skill,
+      { source: "reinforcement" }
     );
 
     // Advance time past the synthetic retention threshold.
     vi.advanceTimersByTime(PAST_SYNTHETIC_THRESHOLD_MS);
 
-    await purgeExpiredSyntheticSuggestionsActivity();
+    await purgeExpiredSyntheticSkillSuggestionsActivity();
 
-    const remaining = await AgentSuggestionResource.fetchById(
+    const remaining = await SkillSuggestionResource.fetchById(
       authenticator,
       suggestion.sId
     );

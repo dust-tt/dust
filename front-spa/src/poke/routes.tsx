@@ -23,6 +23,7 @@ import { PluginsPage } from "@dust-tt/front/components/poke/pages/PluginsPage";
 import { PokefyPage } from "@dust-tt/front/components/poke/pages/PokefyPage";
 import { ProductionChecksPage } from "@dust-tt/front/components/poke/pages/ProductionChecksPage";
 import { SkillDetailsPage } from "@dust-tt/front/components/poke/pages/SkillDetailsPage";
+import { SkillSuggestionDetailsPage } from "@dust-tt/front/components/poke/pages/SkillSuggestionDetailsPage";
 import { SpaceDataSourceViewPage } from "@dust-tt/front/components/poke/pages/SpaceDataSourceViewPage";
 import { SpacePage } from "@dust-tt/front/components/poke/pages/SpacePage";
 import { TemplateDetailPage } from "@dust-tt/front/components/poke/pages/TemplateDetailPage";
@@ -124,6 +125,10 @@ export const routes: RouteObject[] = [
           { path: "groups/:groupId", element: <GroupPage /> },
           { path: "files/:sId", element: <FramePage /> },
           { path: "skills/:sId", element: <SkillDetailsPage /> },
+          {
+            path: "suggestions/:suggestionId",
+            element: <SkillSuggestionDetailsPage />,
+          },
           { path: "spaces/:spaceId", element: <SpacePage /> },
           { path: "spaces/:spaceId/apps/:appId", element: <AppPage /> },
           {

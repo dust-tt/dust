@@ -2,6 +2,7 @@ mod api;
 mod commands;
 
 use clap::{Parser, Subcommand};
+use tracing::error;
 
 #[derive(Parser)]
 #[command(name = "dsbx", version, about = "Dust sandbox CLI")]
@@ -14,6 +15,8 @@ struct Cli {
 enum Commands {
     /// Print version information
     Version,
+    /// Forward sandbox egress traffic to the Dust egress proxy
+    Forward(commands::forward::ForwardArgs),
     /// Interact with MCP servers and tools
     Tools {
         /// Server name (omit to list all servers)
@@ -27,11 +30,21 @@ enum Commands {
 }
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() {
+    init_tracing();
+
+    if let Err(error) = run().await {
+        error!(error = %error, "dsbx command failed");
+        std::process::exit(1);
+    }
+}
+
+async fn run() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
         Commands::Version => commands::cmd_version(),
+        Commands::Forward(args) => commands::cmd_forward(args).await?,
         Commands::Tools {
             server_name,
             tool_name,
@@ -49,6 +62,19 @@ async fn main() -> anyhow::Result<()> {
     }
 
     Ok(())
+}
+
+fn init_tracing() {
+    let env_filter = tracing_subscriber::EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info"));
+
+    let subscriber = tracing_subscriber::fmt()
+        .with_env_filter(env_filter)
+        .with_writer(std::io::stderr)
+        .json()
+        .finish();
+
+    let _ = tracing::subscriber::set_global_default(subscriber);
 }
 
 #[cfg(test)]

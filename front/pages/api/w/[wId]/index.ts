@@ -71,6 +71,10 @@ const WorkspaceVoiceTranscriptionUpdateBodySchema = t.type({
   allowVoiceTranscription: t.boolean,
 });
 
+const WorkspacePrivateConversationUrlsUpdateBodySchema = t.type({
+  privateConversationUrlsByDefault: t.boolean,
+});
+
 const WorkspaceEmailAgentsUpdateBodySchema = t.type({
   allowEmailAgents: t.boolean,
 });
@@ -93,6 +97,7 @@ const PostWorkspaceRequestBodySchema = t.union([
   WorkspaceInteractiveContentSharingUpdateBodySchema,
   WorkspaceSharingPolicyUpdateBodySchema,
   WorkspaceVoiceTranscriptionUpdateBodySchema,
+  WorkspacePrivateConversationUrlsUpdateBodySchema,
   WorkspaceEmailAgentsUpdateBodySchema,
   WorkspaceAgentReinforcementUpdateBodySchema,
   WorkspaceReinforcementBatchModeUpdateBodySchema,
@@ -216,6 +221,15 @@ async function handler(
         const newMetadata = {
           ...previousMetadata,
           allowVoiceTranscription: body.allowVoiceTranscription,
+        };
+        await workspace.updateWorkspaceSettings({ metadata: newMetadata });
+        owner.metadata = newMetadata;
+      } else if ("privateConversationUrlsByDefault" in body) {
+        const previousMetadata = owner.metadata ?? {};
+        const newMetadata = {
+          ...previousMetadata,
+          privateConversationUrlsByDefault:
+            body.privateConversationUrlsByDefault,
         };
         await workspace.updateWorkspaceSettings({ metadata: newMetadata });
         owner.metadata = newMetadata;

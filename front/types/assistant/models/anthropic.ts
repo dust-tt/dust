@@ -22,35 +22,10 @@ export const CLAUDE_4_5_HAIKU_20251001_MODEL_ID =
 export const CLAUDE_4_5_OPUS_20251101_MODEL_ID =
   "claude-opus-4-5-20251101" as const;
 export const CLAUDE_OPUS_4_6_MODEL_ID = "claude-opus-4-6" as const;
+export const CLAUDE_OPUS_4_7_MODEL_ID = "claude-opus-4-7" as const;
 export const CLAUDE_SONNET_4_6_MODEL_ID = "claude-sonnet-4-6" as const;
 
 export const ANTHROPIC_TOKEN_COUNT_ADJUSTMENT = 1.3;
-
-// @todo isInlineActivityEnabled.
-// When it's ungated we can remove this meta prompt and let the model decide if it wants to output text before tool calls or not based on the activity type.
-export const CLAUDE_4_NATIVE_REASONING_META_PROMPT =
-  `
-When executing multiple tool calls, output text only after all tools have completed.
-
-This restriction applies ONLY to visible text output - you should still use your ` +
-  `full internal reasoning and thinking process to plan your approach and analyze results.
-
-Example of what NOT to do:
-User: "Analyze our sales data and create a report"
-Assistant: "I'll search for the sales data first..."
-[search_tool]
-Assistant: "Great, now let me create a visualization..."
-[create_chart_tool]
-Assistant: [final response]
-
-Example of correct behavior:
-User: "Analyze our sales data and create a report"
-[search_tool]
-[create_chart_tool]
-Assistant: [final response]
-
-Think deeply and reason internally as needed. Execute all tools first, then provide your complete response.
-`;
 export const CLAUDE_4_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
   modelId: CLAUDE_4_OPUS_20250514_MODEL_ID,
@@ -69,7 +44,6 @@ export const CLAUDE_4_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   minimumReasoningEffort: "light",
   maximumReasoningEffort: "high",
   defaultReasoningEffort: "light",
-  nativeReasoningMetaPrompt: CLAUDE_4_NATIVE_REASONING_META_PROMPT,
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
   supportsBatchProcessing: true,
   availableIfOneOf: {
@@ -95,7 +69,6 @@ export const CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   minimumReasoningEffort: "light",
   maximumReasoningEffort: "high",
   defaultReasoningEffort: "light",
-  nativeReasoningMetaPrompt: CLAUDE_4_NATIVE_REASONING_META_PROMPT,
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
   supportsBatchProcessing: true,
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
@@ -119,7 +92,6 @@ export const CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   minimumReasoningEffort: "light",
   maximumReasoningEffort: "high",
   defaultReasoningEffort: "light",
-  nativeReasoningMetaPrompt: CLAUDE_4_NATIVE_REASONING_META_PROMPT,
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
   supportsPromptCaching: true,
   supportsBatchProcessing: true,
@@ -186,7 +158,6 @@ export const CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   minimumReasoningEffort: "light",
   maximumReasoningEffort: "high",
   defaultReasoningEffort: "light",
-  nativeReasoningMetaPrompt: CLAUDE_4_NATIVE_REASONING_META_PROMPT,
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
   supportsBatchProcessing: true,
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
@@ -210,7 +181,6 @@ export const CLAUDE_4_5_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   minimumReasoningEffort: "light",
   maximumReasoningEffort: "high",
   defaultReasoningEffort: "light",
-  nativeReasoningMetaPrompt: CLAUDE_4_NATIVE_REASONING_META_PROMPT,
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
   supportsPromptCaching: true,
   supportsBatchProcessing: true,
@@ -228,17 +198,16 @@ export const CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   recommendedExhaustiveTopK: 64,
   largeModel: true,
   description:
-    "Anthropic's Claude Opus 4.6 model, the latest and most advanced model with enhanced reasoning capabilities (200k context).",
-  shortDescription: "Anthropic's latest flagship model.",
+    "Anthropic's Claude Opus 4.6 model, an advanced model with enhanced reasoning capabilities (200k context).",
+  shortDescription: "Anthropic's previous flagship model.",
   isLegacy: false,
-  isLatest: true,
+  isLatest: false,
   generationTokensCount: 64_000,
   supportsVision: true,
   supportsResponseFormat: true,
   minimumReasoningEffort: "light",
   maximumReasoningEffort: "high",
   defaultReasoningEffort: "medium",
-  nativeReasoningMetaPrompt: CLAUDE_4_NATIVE_REASONING_META_PROMPT,
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
   supportsPromptCaching: true,
   supportsBatchProcessing: true,
@@ -248,11 +217,40 @@ export const CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
     enterprise: true,
     featureFlag: "claude_4_5_opus_feature",
   },
-  customBetas: [
-    "auto-thinking-2026-01-12",
-    "effort-2025-11-24",
-    "max-effort-2026-01-24",
-  ],
+  customBetas: ["auto-thinking-2026-01-12", "max-effort-2026-01-24"],
+  disablePrefill: true,
+};
+export const CLAUDE_OPUS_4_7_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "anthropic",
+  modelId: CLAUDE_OPUS_4_7_MODEL_ID,
+  displayName: "Claude Opus 4.7",
+  contextSize: 200_000,
+  recommendedTopK: 16,
+  recommendedExhaustiveTopK: 64,
+  largeModel: true,
+  description:
+    "Anthropic's Claude Opus 4.7 model, the latest and most capable model with a step-change improvement in agentic coding (200k context).",
+  shortDescription: "Anthropic's latest flagship model.",
+  isLegacy: false,
+  isLatest: true,
+  generationTokensCount: 64_000,
+  supportsVision: true,
+  supportsResponseFormat: true,
+  minimumReasoningEffort: "light",
+  maximumReasoningEffort: "high",
+  defaultReasoningEffort: "medium",
+  // Opus 4.7 uses a new tokenizer (~555k words/1M tokens vs ~750k for anthropic_base).
+  // Ratio: 750/555 ≈ 1.35, applied on top of the base 1.3 adjustment → 1.3 × 1.35 ≈ 1.75.
+  tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT * 1.35,
+  supportsPromptCaching: true,
+  supportsBatchProcessing: true,
+  tokenizer: { type: "tiktoken", base: "anthropic_base" },
+  customThinkingType: "auto",
+  availableIfOneOf: {
+    enterprise: true,
+    featureFlag: "claude_4_5_opus_feature",
+  },
+  customBetas: ["auto-thinking-2026-01-12", "max-effort-2026-01-24"],
   disablePrefill: true,
 };
 export const CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
@@ -277,17 +275,12 @@ export const CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   minimumReasoningEffort: "light",
   maximumReasoningEffort: "high",
   defaultReasoningEffort: "medium",
-  nativeReasoningMetaPrompt: CLAUDE_4_NATIVE_REASONING_META_PROMPT,
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
   supportsPromptCaching: true,
   supportsBatchProcessing: true,
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
   customThinkingType: "auto",
-  customBetas: [
-    "auto-thinking-2026-01-12",
-    "effort-2025-11-24",
-    "max-effort-2026-01-24",
-  ],
+  customBetas: ["auto-thinking-2026-01-12", "max-effort-2026-01-24"],
   disablePrefill: true,
 };
 

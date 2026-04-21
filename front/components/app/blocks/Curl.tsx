@@ -54,7 +54,7 @@ export default function Curl({
   onBlockDown: () => void;
   onBlockNew: (blockType: BlockType | "map_reduce" | "while_end") => void;
 }>) {
-  const availableMethods = ["GET", "POST", "PUT", "PATCH"];
+  const availableMethods = ["GET", "POST", "PUT", "PATCH", "DELETE"];
 
   const handleSchemeChange = (scheme: string) => {
     const b = shallowBlockClone(block);

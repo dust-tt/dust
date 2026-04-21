@@ -312,6 +312,35 @@ export const AvatarStackExample: Story = {
 
         <Avatar.Stack
           size="xs"
+          nbVisibleItems={3}
+          avatars={[
+            {
+              name: "Isabelle Doe",
+              visual: "https://dust.tt/static/droidavatar/Droid_Lime_3.jpg",
+            },
+            {
+              name: "Rafael Doe",
+              visual: "https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg",
+            },
+            {
+              name: "Aria Doe",
+              visual: "https://dust.tt/static/droidavatar/Droid_Red_3.jpg",
+            },
+            { name: "Omar Doe" },
+            { name: "Priya Doe" },
+            { name: "Leo Doe" },
+            { name: "Mia Doe" },
+            { name: "Kai Doe" },
+            { name: "Zara Doe" },
+            { name: "Finn Doe" },
+            { name: "Nova Doe" },
+            { name: "Quinn Doe" },
+            { name: "River Doe" },
+          ]}
+        />
+
+        <Avatar.Stack
+          size="xs"
           nbVisibleItems={1}
           avatars={[
             {
@@ -360,6 +389,35 @@ export const AvatarStackExample: Story = {
               visual: "https://dust.tt/static/droidavatar/Droid_Pink_3.jpg",
             },
             { name: "Eleanor Wright" },
+          ]}
+        />
+
+        <Avatar.Stack
+          size="sm"
+          nbVisibleItems={3}
+          avatars={[
+            {
+              name: "Isabelle Doe",
+              visual: "https://dust.tt/static/droidavatar/Droid_Lime_3.jpg",
+            },
+            {
+              name: "Rafael Doe",
+              visual: "https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg",
+            },
+            {
+              name: "Aria Doe",
+              visual: "https://dust.tt/static/droidavatar/Droid_Red_3.jpg",
+            },
+            { name: "Omar Doe" },
+            { name: "Priya Doe" },
+            { name: "Leo Doe" },
+            { name: "Mia Doe" },
+            { name: "Kai Doe" },
+            { name: "Zara Doe" },
+            { name: "Finn Doe" },
+            { name: "Nova Doe" },
+            { name: "Quinn Doe" },
+            { name: "River Doe" },
           ]}
         />
 
@@ -417,6 +475,34 @@ export const AvatarStackExample: Story = {
               name: "Omar Doe",
               visual: "https://dust.tt/static/droidavatar/Droid_Pink_3.jpg",
             },
+          ]}
+        />
+        <Avatar.Stack
+          size="md"
+          nbVisibleItems={3}
+          avatars={[
+            {
+              name: "Isabelle Doe",
+              visual: "https://dust.tt/static/droidavatar/Droid_Lime_3.jpg",
+            },
+            {
+              name: "Rafael Doe",
+              visual: "https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg",
+            },
+            {
+              name: "Aria Doe",
+              visual: "https://dust.tt/static/droidavatar/Droid_Red_3.jpg",
+            },
+            { name: "Omar Doe" },
+            { name: "Priya Doe" },
+            { name: "Leo Doe" },
+            { name: "Mia Doe" },
+            { name: "Kai Doe" },
+            { name: "Zara Doe" },
+            { name: "Finn Doe" },
+            { name: "Nova Doe" },
+            { name: "Quinn Doe" },
+            { name: "River Doe" },
           ]}
         />
         <Avatar.Stack

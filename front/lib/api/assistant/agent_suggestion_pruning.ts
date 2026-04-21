@@ -1,5 +1,9 @@
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { Authenticator } from "@app/lib/auth";
+import {
+  buildDescendantMap,
+  instructionBlockSetsConflict,
+} from "@app/lib/editor/instructions_block_conflict";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import logger from "@app/logger/logger";
@@ -15,7 +19,6 @@ import {
   INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
   parseAgentSuggestionData,
 } from "@app/types/suggestions/agent_suggestion";
-import { JSDOM } from "jsdom";
 
 type ToolsSuggestionResource = AgentSuggestionResource & {
   kind: "tools";
@@ -310,31 +313,6 @@ function getInstructionSuggestionsWithoutExistingBlockId(
   return outdatedSuggestions;
 }
 
-function getDescendantBlockIds(
-  instructionsHtml: string,
-  targetBlockId: string
-): Set<string> {
-  const descendants = new Set<string>();
-
-  const dom = new JSDOM(instructionsHtml);
-  const doc = dom.window.document;
-
-  const targetElement = doc.querySelector(`[data-block-id="${targetBlockId}"]`);
-  if (!targetElement) {
-    return descendants;
-  }
-
-  const descendantElements = targetElement.querySelectorAll("[data-block-id]");
-  descendantElements.forEach((element) => {
-    const descendantId = element.getAttribute("data-block-id");
-    if (descendantId && descendantId !== targetBlockId) {
-      descendants.add(descendantId);
-    }
-  });
-
-  return descendants;
-}
-
 /**
  * Marks existing instruction suggestions as outdated when new suggestions conflict.
  *
@@ -368,56 +346,24 @@ export async function pruneConflictingInstructionSuggestions(
     return;
   }
 
-  // Build conflict detection sets: which blocks are being changed, and which are their descendants
-  const newTargetBlockIds = new Set<string>();
-  const allDescendantBlockIds = new Set<string>();
+  const newTargetBlockIds = new Set(newSuggestions.map((s) => s.targetBlockId));
 
-  for (const newSugg of newSuggestions) {
-    const { targetBlockId } = newSugg;
-    newTargetBlockIds.add(targetBlockId);
+  const allBlockIds = new Set([
+    ...newTargetBlockIds,
+    ...existingPending.map((s) => s.suggestion.targetBlockId),
+  ]);
+  const descendantMap = agentConfiguration.instructionsHtml
+    ? buildDescendantMap(agentConfiguration.instructionsHtml, allBlockIds)
+    : new Map<string, Set<string>>();
 
-    // instructions-root is a full rewrite: mark everything outdated
-    if (targetBlockId === INSTRUCTIONS_ROOT_TARGET_BLOCK_ID) {
-      if (existingPending.length > 0) {
-        await AgentSuggestionResource.bulkUpdateState(
-          auth,
-          existingPending,
-          "outdated"
-        );
-      }
-      return;
-    }
-
-    if (agentConfiguration.instructionsHtml) {
-      const descendants = getDescendantBlockIds(
-        agentConfiguration.instructionsHtml,
-        targetBlockId
-      );
-      descendants.forEach((id) => allDescendantBlockIds.add(id));
-    }
-  }
-
-  const toMarkOutdated: InstructionsSuggestionResource[] = [];
-  for (const existingSugg of existingPending) {
-    const existingTargetId = existingSugg.suggestion.targetBlockId;
-
-    // Conflict 1: Same block (duplicate suggestion for same target)
-    if (newTargetBlockIds.has(existingTargetId)) {
-      toMarkOutdated.push(existingSugg);
-      continue;
-    }
-
-    // Conflict 2: Child block (existing targets a descendant that will be replaced)
-    if (allDescendantBlockIds.has(existingTargetId)) {
-      toMarkOutdated.push(existingSugg);
-      continue;
-    }
-
-    // Conflict 3: Existing is instructions-root but new suggestions are block-level.
-    if (existingTargetId === INSTRUCTIONS_ROOT_TARGET_BLOCK_ID) {
-      toMarkOutdated.push(existingSugg);
-    }
-  }
+  const toMarkOutdated = existingPending.filter((existingSugg) =>
+    instructionBlockSetsConflict(
+      newTargetBlockIds,
+      new Set([existingSugg.suggestion.targetBlockId]),
+      agentConfiguration.instructionsHtml,
+      descendantMap
+    )
+  );
 
   if (toMarkOutdated.length > 0) {
     await AgentSuggestionResource.bulkUpdateState(

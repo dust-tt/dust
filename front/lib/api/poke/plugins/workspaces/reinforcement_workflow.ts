@@ -1,7 +1,7 @@
 import { createPlugin } from "@app/lib/api/poke/types";
 import {
-  launchReinforcementWorkspaceCron,
-  stopReinforcementWorkspaceCron,
+  deleteReinforcementWorkspaceSchedule,
+  startReinforcementWorkspaceSchedule,
 } from "@app/temporal/reinforcement/client";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -31,7 +31,7 @@ export const reinforcementWorkflowPlugin = createPlugin({
 
     switch (action) {
       case "start-cron": {
-        const result = await launchReinforcementWorkspaceCron({
+        const result = await startReinforcementWorkspaceSchedule({
           workspaceId: workspace.sId,
         });
         if (result.isErr()) {
@@ -43,9 +43,8 @@ export const reinforcementWorkflowPlugin = createPlugin({
         });
       }
       case "stop-cron": {
-        await stopReinforcementWorkspaceCron({
+        await deleteReinforcementWorkspaceSchedule({
           workspaceId: workspace.sId,
-          stopReason: "Stopped via poke plugin",
         });
         return new Ok({
           display: "text",

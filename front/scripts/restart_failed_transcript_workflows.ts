@@ -9,7 +9,7 @@ import { makeRetrieveTranscriptWorkflowId } from "@app/temporal/labs/transcripts
 import { WorkflowNotFoundError } from "@temporalio/client";
 
 type WorkflowStatus = {
-  configSId: string;
+  configId: string;
   workspaceId: number;
   workspaceName: string;
   provider: string;
@@ -28,7 +28,7 @@ async function checkWorkflowStatus(
   const workflowId = makeRetrieveTranscriptWorkflowId(config);
 
   const baseStatus: Omit<WorkflowStatus, "status"> = {
-    configSId: config.sId,
+    configId: config.sId,
     workspaceId: config.workspaceId,
     workspaceName: workspace.name,
     provider: config.provider,
@@ -59,7 +59,7 @@ async function checkWorkflowStatus(
       {
         error: e,
         workflowId,
-        configSId: config.sId,
+        configId: config.sId,
       },
       "Error checking workflow status"
     );
@@ -94,7 +94,7 @@ async function restartFailedWorkflows(
       // Fetch the config fresh to ensure we have the latest state
       const config = await LabsTranscriptsConfigurationResource.fetchById(
         auth,
-        status.configSId
+        status.configId
       );
 
       if (!config) {
@@ -121,7 +121,7 @@ async function restartFailedWorkflows(
         );
         logger.error(
           {
-            configSId: status.configSId,
+            configId: status.configId,
             error: result.error,
           },
           "Failed to restart workflow"
@@ -139,7 +139,7 @@ async function restartFailedWorkflows(
       );
       logger.error(
         {
-          configSId: status.configSId,
+          configId: status.configId,
           error: e,
         },
         "Exception while restarting workflow"
@@ -283,7 +283,7 @@ makeScript(
         `  • ${status.workspaceName} | ${status.provider} | Status: ${status.status}`
       );
       logger.info(
-        `    Processing: ${processing} | Storing: ${storing} | Config: ${status.configSId}`
+        `    Processing: ${processing} | Storing: ${storing} | Config: ${status.configId}`
       );
     }
     logger.info("─".repeat(80));

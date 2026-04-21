@@ -64,10 +64,10 @@ async function getAccessibleAgentsInfoBySId({
 
 async function getTriggersWithAgentAccesibleAgent({
   auth,
-  agentInfoBySId,
+  agentInfoById,
 }: {
   auth: Authenticator;
-  agentInfoBySId: Map<string, { sId: string; name: string }>;
+  agentInfoById: Map<string, { sId: string; name: string }>;
 }): Promise<
   Array<{
     webhookSourceViewId: number | string | null;
@@ -85,7 +85,7 @@ async function getTriggersWithAgentAccesibleAgent({
   return triggers.filter(
     (trigger) =>
       trigger.webhookSourceViewId !== null &&
-      agentInfoBySId.has(trigger.agentConfigurationId)
+      agentInfoById.has(trigger.agentConfigurationId)
   );
 }
 
@@ -104,15 +104,15 @@ export async function getWebhookSourcesUsage({
     return {};
   }
 
-  const agentInfoBySId = await getAccessibleAgentsInfoBySId({ auth });
+  const agentInfoById = await getAccessibleAgentsInfoBySId({ auth });
 
-  if (agentInfoBySId.size === 0) {
+  if (agentInfoById.size === 0) {
     return {};
   }
 
   const filteredTriggers = await getTriggersWithAgentAccesibleAgent({
     auth,
-    agentInfoBySId,
+    agentInfoById,
   });
 
   if (filteredTriggers.length === 0) {
@@ -155,7 +155,7 @@ export async function getWebhookSourcesUsage({
       continue;
     }
 
-    const agentInfo = agentInfoBySId.get(trigger.agentConfigurationId);
+    const agentInfo = agentInfoById.get(trigger.agentConfigurationId);
     if (!agentInfo) {
       continue;
     }

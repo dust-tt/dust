@@ -304,20 +304,23 @@ export async function getShrinkWrappedConversation(
 
     if (feedbacks.length > 0) {
       // Build agentMessageId (ModelId) → message sId map from the conversation.
-      const agentMessageIdToSId = new Map<number, string>();
+      const agentMessageModelIdToId = new Map<number, string>();
       for (const messageVersions of conversation.content) {
         if (messageVersions.length === 0) {
           continue;
         }
         const lastVersion = messageVersions[messageVersions.length - 1];
         if (isAgentMessageType(lastVersion)) {
-          agentMessageIdToSId.set(lastVersion.agentMessageId, lastVersion.sId);
+          agentMessageModelIdToId.set(
+            lastVersion.agentMessageId,
+            lastVersion.sId
+          );
         }
       }
 
       feedbackByMessageId = new Map();
       for (const f of feedbacks) {
-        const messageId = agentMessageIdToSId.get(f.agentMessageId);
+        const messageId = agentMessageModelIdToId.get(f.agentMessageId);
         if (messageId) {
           const list = feedbackByMessageId.get(messageId) ?? [];
           list.push({

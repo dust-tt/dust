@@ -14,6 +14,7 @@ import { AGENT_SIDEKICK_AGENT_STATE_SERVER } from "@app/lib/api/actions/servers/
 import { AGENT_SIDEKICK_CONTEXT_SERVER } from "@app/lib/api/actions/servers/agent_sidekick_context/metadata";
 import { ASHBY_SERVER } from "@app/lib/api/actions/servers/ashby/metadata";
 import { ASK_USER_QUESTION_SERVER } from "@app/lib/api/actions/servers/ask_user_question/metadata";
+import { CLARI_COPILOT_SERVER } from "@app/lib/api/actions/servers/clari_copilot/metadata";
 import { COMMON_UTILITIES_SERVER } from "@app/lib/api/actions/servers/common_utilities/metadata";
 import { CONFLUENCE_SERVER } from "@app/lib/api/actions/servers/confluence/metadata";
 import { CONVERSATION_FILES_SERVER } from "@app/lib/api/actions/servers/conversation_files/metadata";
@@ -143,6 +144,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "agent_memory",
   "agent_router",
   ASHBY_SERVER_NAME,
+  "clari_copilot",
   "confluence",
   "conversation_files",
   "databricks",
@@ -1091,14 +1093,25 @@ export const INTERNAL_MCP_SERVERS = {
     id: 1028,
     availability: "auto",
     allowMultipleInstances: false,
-    isPreview: true,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("ask_user_question_tool");
-    },
+    isPreview: false,
+    isRestricted: undefined,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: ASK_USER_QUESTION_SERVER,
+  },
+  clari_copilot: {
+    id: 1030,
+    availability: "manual",
+    allowMultipleInstances: true,
+    isRestricted: ({ featureFlags }) =>
+      !featureFlags.includes("clari_copilot_mcp"),
+    isPreview: true,
+    requiresBearerToken: true,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: CLARI_COPILOT_SERVER,
   },
   // Using satisfies here instead of: type to avoid TypeScript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
 } satisfies {

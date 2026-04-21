@@ -125,6 +125,18 @@ export function SkillDetailsPage() {
 
       <div className="mt-4">
         <div className="border-material-200 rounded-lg border p-4">
+          <h2 className="text-md pb-4 font-bold">Instructions HTML</h2>
+          <TextArea
+            value={skill.instructionsHtml ?? ""}
+            readOnly
+            resize="none"
+            isDisplay
+          />
+        </div>
+      </div>
+
+      <div className="mt-4">
+        <div className="border-material-200 rounded-lg border p-4">
           <h2 className="text-md pb-4 font-bold">
             Tools ({skill.tools.length})
           </h2>

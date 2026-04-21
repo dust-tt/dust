@@ -3,6 +3,7 @@ import { SkillBuilderIsDefaultSection } from "@app/components/skill_builder/Skil
 import { SkillBuilderNameSection } from "@app/components/skill_builder/SkillBuilderNameSection";
 import { SkillBuilderUserFacingDescriptionSection } from "@app/components/skill_builder/SkillBuilderUserFacingDescriptionSection";
 import { SkillEditorsSheet } from "@app/components/skill_builder/SkillEditorsSheet";
+import type { SkillType } from "@app/types/assistant/skill_configuration";
 import {
   Collapsible,
   CollapsibleContent,
@@ -10,7 +11,13 @@ import {
   Label,
 } from "@dust-tt/sparkle";
 
-export function SkillBuilderSettingsSection() {
+interface SkillBuilderSettingsSectionProps {
+  skill?: SkillType;
+}
+
+export function SkillBuilderSettingsSection({
+  skill,
+}: SkillBuilderSettingsSectionProps) {
   return (
     <div className="space-y-5">
       <h2 className="heading-lg text-foreground dark:text-foreground-night">
@@ -31,14 +38,16 @@ export function SkillBuilderSettingsSection() {
           <SkillEditorsSheet />
         </div>
       </div>
-      <Collapsible defaultOpen>
-        <CollapsibleTrigger variant="secondary">Advanced</CollapsibleTrigger>
-        <CollapsibleContent>
-          <div className="pt-3">
-            <SkillBuilderIsDefaultSection />
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
+      {skill && (
+        <Collapsible defaultOpen>
+          <CollapsibleTrigger variant="secondary">Advanced</CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="pt-3">
+              <SkillBuilderIsDefaultSection />
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
     </div>
   );
 }

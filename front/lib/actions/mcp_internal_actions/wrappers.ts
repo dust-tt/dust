@@ -154,11 +154,7 @@ function withToolLogging<T>(
 
     logger.info(loggerArgs, "Tool execution start");
 
-    const tags = [
-      `tool:${toolNameForMonitoring}`,
-      `workspace:${owner.sId}`,
-      `workspace_plan_code:${auth.plan()?.code ?? null}`,
-    ];
+    const tags = [`tool:${toolNameForMonitoring}`];
 
     if (enableAlerting) {
       getStatsDClient().increment("use_tools.count", 1, tags);

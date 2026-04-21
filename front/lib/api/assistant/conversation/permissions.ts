@@ -1,9 +1,12 @@
-import { getContentFragmentSpaceIds } from "@app/lib/api/assistant/permissions";
+import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
+import { getContentFragmentsSpaceIds } from "@app/lib/api/assistant/permissions";
 import { Authenticator } from "@app/lib/auth";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import {
+  type ConversationAccessType,
+  ConversationResource,
+} from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
-import type { ContentFragmentInputWithContentNode } from "@app/types/api/internal/assistant";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { isProjectConversation } from "@app/types/assistant/conversation";
@@ -23,19 +26,16 @@ export async function canUserAccessConversation(
     userId: string;
     conversationId: string;
   }
-): Promise<boolean> {
+): Promise<ConversationAccessType> {
   const workspace = auth.getNonNullableWorkspace();
   const fakeAuth = await Authenticator.fromUserIdAndWorkspaceId(
     userId,
     workspace.sId
   );
 
-  const canAccess = await ConversationResource.canAccess(
-    fakeAuth,
-    conversationId
-  );
+  const access = await ConversationResource.canAccess(fakeAuth, conversationId);
 
-  return canAccess === "allowed";
+  return access;
 }
 
 /**
@@ -139,12 +139,12 @@ export async function updateConversationRequirements(
   auth: Authenticator,
   {
     agents,
-    contentFragment,
+    contentFragmentDatasourceViewIds,
     conversation,
     t,
   }: {
     agents?: LightAgentConfigurationType[];
-    contentFragment?: ContentFragmentInputWithContentNode;
+    contentFragmentDatasourceViewIds?: string[];
     conversation: ConversationWithoutContentType;
     t?: Transaction;
   }
@@ -178,13 +178,12 @@ export async function updateConversationRequirements(
   if (agents) {
     newSpaceRequirements = agents.flatMap((agent) => agent.requestedSpaceIds);
   }
-  if (contentFragment) {
-    const requestedSpaceId = await getContentFragmentSpaceIds(
+  if (!!contentFragmentDatasourceViewIds?.length) {
+    const requestedSpaceIds = await getContentFragmentsSpaceIds(
       auth,
-      contentFragment
+      contentFragmentDatasourceViewIds
     );
-
-    newSpaceRequirements.push(requestedSpaceId);
+    newSpaceRequirements.push(...requestedSpaceIds);
   }
 
   newSpaceRequirements = uniq(newSpaceRequirements);
@@ -229,4 +228,39 @@ export async function updateConversationRequirements(
     allSpaceRequirements,
     t
   );
+}
+
+/**
+ * Rebuild the requestedSpaceIds for a conversation by collecting space requirements
+ * from all agents mentioned and all content fragments with content nodes.
+ *
+ * This function recalculates the full set of requirements from scratch. Used when moving
+ * a conversation out of a project, since project conversations have their requirements
+ * set to [projectSpaceId] only.
+ */
+export async function rebuildConversationRequirements(
+  auth: Authenticator,
+  conversationResource: ConversationResource
+): Promise<void> {
+  // Clear existing requirements so that updateConversationRequirements starts from a clean state.
+  await conversationResource.updateRequirements([]);
+
+  const { agentConfigurationIds, contentFragmentDatasourceViewIds } =
+    await conversationResource.fetchAgentConfigurationAndContentFragmentIds(
+      auth
+    );
+
+  const agents =
+    agentConfigurationIds.length > 0
+      ? await getAgentConfigurations(auth, {
+          agentIds: agentConfigurationIds,
+          variant: "light",
+        })
+      : [];
+
+  await updateConversationRequirements(auth, {
+    agents,
+    contentFragmentDatasourceViewIds,
+    conversation: conversationResource.toJSON(),
+  });
 }

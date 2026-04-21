@@ -11,7 +11,7 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { trustedFetch } from "@app/lib/egress/server";
 import type { FileResource } from "@app/lib/resources/file_resource";
-import { concurrentExecutor } from "@app/temporal/utils";
+import { concurrentExecutor } from "@app/temporal/workflow_utils";
 import type { ImageModelIdType } from "@app/types/assistant/models/models";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 import { Err, Ok, type Result } from "@app/types/shared/result";

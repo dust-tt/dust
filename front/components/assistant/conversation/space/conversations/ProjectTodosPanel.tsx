@@ -1,31 +1,47 @@
 import { useAppRouter } from "@app/lib/platform";
+import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import {
-  useCreateProjectTodo,
+  useCleanDoneProjectTodos,
+  useDeleteProjectTodo,
   useProjectTodos,
   useUpdateProjectTodo,
 } from "@app/lib/swr/projects";
-import { getConversationRoute } from "@app/lib/utils/router";
+import { timeAgoFrom } from "@app/lib/utils";
+import type { GetProjectTodosResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_todos/index";
 import type {
+  ProjectTodoActorType,
   ProjectTodoCategory,
+  ProjectTodoStatus,
   ProjectTodoType,
 } from "@app/types/project_todo";
 import { PROJECT_TODO_CATEGORIES } from "@app/types/project_todo";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
+  BookOpenIcon,
   Button,
+  ChatBubbleLeftRightIcon,
   Checkbox,
-  CircleIcon,
+  ConfluenceLogo,
   cn,
+  DriveLogo,
+  GithubLogo,
   Icon,
-  Input,
-  PlusIcon,
+  IconButton,
+  MicrosoftLogo,
+  NotionLogo,
+  SlackLogo,
   Spinner,
   SquareIcon,
+  Tooltip,
+  TrashIcon,
   TriangleIcon,
   WindIcon,
 } from "@dust-tt/sparkle";
 import type React from "react";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+const SUMMARY_ITEM_TRANSITION_MS = 240;
 
 // ── Category display configuration ────────────────────────────────────────────
 
@@ -36,32 +52,140 @@ type CategoryConfig = {
 };
 
 const CATEGORY_CONFIG: Record<ProjectTodoCategory, CategoryConfig> = {
-  need_attention: {
-    label: "Need attention",
+  to_do: {
+    label: "Need to do",
     icon: TriangleIcon,
     iconClassName: "text-warning-300 dark:text-warning-300-night",
   },
-  key_decisions: {
-    label: "Key decisions",
+  to_know: {
+    label: "Need to know",
     icon: SquareIcon,
     iconClassName: "text-golden-300 dark:text-golden-300-night",
-  },
-  follow_ups: {
-    label: "Follow-ups",
-    icon: CircleIcon,
-    iconClassName: "text-blue-300 dark:text-blue-300-night",
-  },
-  notable_updates: {
-    label: "Notable updates",
-    icon: CircleIcon,
-    iconClassName: "text-green-300 dark:text-green-300-night",
   },
 };
 
 // Stable display order for categories.
 const ORDERED_CATEGORIES: ProjectTodoCategory[] = [...PROJECT_TODO_CATEGORIES];
 
+// ── Metadata tooltip ──────────────────────────────────────────────────────────
+
+function formatActorLabel(
+  type: ProjectTodoActorType | null,
+  agentId: string | null,
+  agentNameById: Map<string, string>
+): string {
+  if (!type) {
+    return "someone";
+  }
+  switch (type) {
+    case "agent":
+      if (agentId === "butler") {
+        return "Dust";
+      }
+      const name = agentId ? agentNameById.get(agentId) : null;
+      return name ? `@${name}` : "an agent";
+    case "user":
+      return "you";
+    default:
+      assertNeverAndIgnore(type);
+      return "someone";
+  }
+}
+
+function formatFriendlyDate(value: Date | string): string {
+  return `${timeAgoFrom(new Date(value).getTime(), { useLongFormat: true })} ago`;
+}
+
+interface TodoMetadataTooltipProps {
+  todo: ProjectTodoType;
+  agentNameById: Map<string, string>;
+  children: React.ReactElement;
+}
+
+function TodoMetadataTooltip({
+  todo,
+  agentNameById,
+  children,
+}: TodoMetadataTooltipProps) {
+  const creatorLabel = formatActorLabel(
+    todo.createdByType,
+    todo.createdByAgentConfigurationId,
+    agentNameById
+  );
+  const doneLabel = todo.markedAsDoneByType
+    ? formatActorLabel(
+        todo.markedAsDoneByType,
+        todo.markedAsDoneByAgentConfigurationId,
+        agentNameById
+      )
+    : null;
+
+  const label = (
+    <div className="flex flex-col gap-1">
+      <div className="text-xs">
+        Created by {creatorLabel} · {formatFriendlyDate(todo.createdAt)}
+      </div>
+      {todo.doneAt && doneLabel && (
+        <div className="text-xs">
+          Done by {doneLabel} · {formatFriendlyDate(todo.doneAt)}
+        </div>
+      )}
+      {todo.actorRationale && (
+        <div className="max-w-xs text-xs italic opacity-80">
+          {todo.actorRationale}
+        </div>
+      )}
+    </div>
+  );
+
+  return <Tooltip label={label} tooltipTriggerAsChild trigger={children} />;
+}
+
+function useAgentNameById(
+  owner: LightWorkspaceType,
+  disabled?: boolean
+): Map<string, string> {
+  const { agentConfigurations } = useAgentConfigurations({
+    workspaceId: owner.sId,
+    agentsGetView: "list",
+    disabled,
+  });
+  return useMemo(() => {
+    const map = new Map<string, string>();
+    for (const a of agentConfigurations) {
+      map.set(a.sId, a.name);
+    }
+    return map;
+  }, [agentConfigurations]);
+}
+
 // ── Shared sub-components ─────────────────────────────────────────────────────
+
+function getSourceDisplay(source: ProjectTodoType["sources"][number]) {
+  const sourceIconByType: Record<
+    ProjectTodoType["sources"][number]["sourceType"],
+    React.ComponentType
+  > = {
+    project_conversation: ChatBubbleLeftRightIcon,
+    project_knowledge: BookOpenIcon,
+    slack: SlackLogo,
+    notion: NotionLogo,
+    gdrive: DriveLogo,
+    confluence: ConfluenceLogo,
+    github: GithubLogo,
+    microsoft: MicrosoftLogo,
+  };
+
+  const originalLabel = source.sourceTitle ?? source.sourceId;
+  const customLabel = source.sourceType === "slack" ? "Slack thread" : null;
+
+  return {
+    icon: sourceIconByType[source.sourceType],
+    label: customLabel ?? originalLabel,
+    originalLabel,
+    hasCustomLabel: customLabel !== null,
+  };
+}
 
 function TodoSources({
   sources,
@@ -91,17 +215,57 @@ function TodoSources({
       {sources.map((source, index) => (
         <span key={`${source.sourceType}-${source.sourceId}`}>
           {index > 0 && ", "}
-          <button
-            type="button"
-            className="underline hover:no-underline"
-            onClick={() => {
-              void router.push(
-                getConversationRoute(owner.sId, source.sourceId)
-              );
-            }}
-          >
-            {source.title ?? source.sourceId}
-          </button>
+          {(() => {
+            const { icon, label, originalLabel, hasCustomLabel } =
+              getSourceDisplay(source);
+
+            const trigger = (
+              <button
+                type="button"
+                className="underline hover:no-underline"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+
+                  if (!source.sourceUrl) {
+                    return;
+                  }
+
+                  try {
+                    const currentOrigin = window.location.origin;
+                    const targetUrl = new URL(source.sourceUrl, currentOrigin);
+
+                    if (targetUrl.origin === currentOrigin) {
+                      const internalPath = `${targetUrl.pathname}${targetUrl.search}${targetUrl.hash}`;
+                      void router.push(internalPath);
+                      return;
+                    }
+
+                    window.open(
+                      targetUrl.toString(),
+                      "_blank",
+                      "noopener,noreferrer"
+                    );
+                  } catch {
+                    void router.push(source.sourceUrl);
+                  }
+                }}
+              >
+                <Icon
+                  visual={icon}
+                  size="xs"
+                  className="mr-1 inline-block align-text-bottom opacity-70"
+                />
+                <span>{label}</span>
+              </button>
+            );
+
+            if (!hasCustomLabel) {
+              return trigger;
+            }
+
+            return <Tooltip label={originalLabel} trigger={trigger} />;
+          })()}
         </span>
       ))}
     </span>
@@ -137,36 +301,102 @@ function groupTodosByCategory(todos: ProjectTodoType[]) {
   return { todosByCategory, activeSections };
 }
 
+// ── Collapsible wrapper ──────────────────────────────────────────────────────
+
+const COLLAPSED_MAX_HEIGHT_PX = 260;
+
+interface CollapsibleTodoListProps {
+  children: React.ReactNode;
+}
+
+function CollapsibleTodoList({ children }: CollapsibleTodoListProps) {
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [needsCollapse, setNeedsCollapse] = useState(false);
+
+  useEffect(() => {
+    const el = contentRef.current;
+    if (!el) {
+      return;
+    }
+
+    const observer = new ResizeObserver(() => {
+      setNeedsCollapse(el.scrollHeight > COLLAPSED_MAX_HEIGHT_PX);
+    });
+    observer.observe(el);
+
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="relative">
+        <div
+          ref={contentRef}
+          className="flex flex-col gap-4"
+          style={{
+            maxHeight:
+              isExpanded || !needsCollapse
+                ? undefined
+                : COLLAPSED_MAX_HEIGHT_PX,
+            overflow: "hidden",
+            transition: "max-height 200ms ease",
+          }}
+        >
+          {children}
+        </div>
+        {!isExpanded && needsCollapse && (
+          <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-b from-transparent to-background dark:to-background-night" />
+        )}
+      </div>
+      {needsCollapse && (
+        <div>
+          <Button
+            size="xs"
+            variant="outline"
+            label={isExpanded ? "Show less" : "Show more"}
+            onClick={() => setIsExpanded((prev) => !prev)}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Read-only panel (archived projects) ───────────────────────────────────────
 
 function ReadOnlyTodoItem({
   todo,
   owner,
+  agentNameById,
 }: {
   todo: ProjectTodoType;
   owner: LightWorkspaceType;
+  agentNameById: Map<string, string>;
 }) {
   const isDone = todo.status === "done";
 
   return (
-    <li className="flex items-start gap-2 py-0.5">
-      <div className="mt-0.5 shrink-0">
+    <div className="flex items-start gap-3 overflow-hidden">
+      <div className="mt-1 shrink-0">
         <Checkbox size="xs" checked={isDone} disabled />
       </div>
-      <div className="flex flex-col gap-0.5">
-        <span
-          className={cn(
-            "text-sm leading-5",
-            isDone
-              ? "text-faint dark:text-faint-night line-through"
-              : "text-foreground dark:text-foreground-night"
-          )}
-        >
-          {todo.text}
-        </span>
-        <TodoSources sources={todo.sources} owner={owner} isDone={isDone} />
-      </div>
-    </li>
+      <TodoMetadataTooltip todo={todo} agentNameById={agentNameById}>
+        <div className="flex flex-col gap-0.5">
+          <span
+            className={cn(
+              "text-base min-h-6",
+              isDone
+                ? "text-faint dark:text-faint-night line-through"
+                : "text-foreground dark:text-foreground-night"
+            )}
+          >
+            {todo.text}
+          </span>
+          <TodoSources sources={todo.sources} owner={owner} isDone={isDone} />
+        </div>
+      </TodoMetadataTooltip>
+    </div>
   );
 }
 
@@ -178,19 +408,20 @@ function ReadOnlyProjectTodosPanel({
   spaceId: string;
 }) {
   const { todos, isTodosLoading } = useProjectTodos({ owner, spaceId });
+  const agentNameById = useAgentNameById(owner);
   const { todosByCategory, activeSections } = groupTodosByCategory(todos);
 
   return (
     <div className="flex flex-col gap-3">
       <h3 className="heading-2xl text-foreground dark:text-foreground-night">
-        Todos
+        What's new?
       </h3>
       {isTodosLoading ? (
         <div className="flex justify-center py-4">
           <Spinner size="sm" />
         </div>
       ) : (
-        <div className="flex flex-col gap-4">
+        <CollapsibleTodoList>
           {activeSections.map((cat) => {
             const config = CATEGORY_CONFIG[cat];
             const items = todosByCategory[cat] ?? [];
@@ -198,25 +429,26 @@ function ReadOnlyProjectTodosPanel({
             return (
               <div key={cat} className="flex flex-col gap-1">
                 <CategorySectionHeader config={config} />
-                <ul className="flex flex-col pl-7">
+                <div className="flex flex-col">
                   {items.map((todo) => (
                     <ReadOnlyTodoItem
                       key={todo.sId}
                       todo={todo}
                       owner={owner}
+                      agentNameById={agentNameById}
                     />
                   ))}
-                </ul>
+                </div>
               </div>
             );
           })}
 
           {activeSections.length === 0 && (
-            <p className="text-sm italic text-faint dark:text-faint-night">
-              All caught up!
+            <p className="text-base italic text-faint dark:text-faint-night">
+              You're all caught up!
             </p>
           )}
-        </div>
+        </CollapsibleTodoList>
       )}
     </div>
   );
@@ -224,139 +456,74 @@ function ReadOnlyProjectTodosPanel({
 
 // ── Editable sub-components ───────────────────────────────────────────────────
 
-interface AddTodoFormProps {
-  defaultCategory?: ProjectTodoCategory;
-  onSubmit: (category: ProjectTodoCategory, text: string) => Promise<void>;
-  onCancel: () => void;
-  isBusy: boolean;
-}
-
-function AddTodoForm({
-  defaultCategory = "follow_ups",
-  onSubmit,
-  onCancel,
-  isBusy,
-}: AddTodoFormProps) {
-  const [text, setText] = useState("");
-  const [category, setCategory] =
-    useState<ProjectTodoCategory>(defaultCategory);
-
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === "Enter" && text.trim()) {
-        void onSubmit(category, text.trim());
-      } else if (e.key === "Escape") {
-        onCancel();
-      }
-    },
-    [category, onCancel, onSubmit, text]
-  );
-
-  return (
-    <div className="flex flex-col gap-2 pt-1">
-      <Input
-        autoFocus
-        placeholder="What needs to be done?"
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        onKeyDown={handleKeyDown}
-        disabled={isBusy}
-        className="text-sm"
-      />
-      {/* Category selector chips */}
-      <div className="flex flex-wrap gap-1">
-        {ORDERED_CATEGORIES.map((cat) => {
-          const config = CATEGORY_CONFIG[cat];
-          const isSelected = category === cat;
-          return (
-            <button
-              key={cat}
-              type="button"
-              onClick={() => setCategory(cat)}
-              className={cn(
-                "flex items-center gap-1 rounded px-2 py-0.5 text-xs transition-colors",
-                isSelected
-                  ? "bg-primary-100 dark:bg-primary-100-night text-primary dark:text-primary-night font-medium"
-                  : "bg-muted dark:bg-muted-night text-muted-foreground dark:text-muted-foreground-night hover:bg-primary-50 dark:hover:bg-primary-50-night"
-              )}
-            >
-              <Icon
-                visual={config.icon}
-                size="xs"
-                className={config.iconClassName}
-              />
-              {config.label}
-            </button>
-          );
-        })}
-      </div>
-      {/* Submit / cancel */}
-      <div className="flex gap-2">
-        <Button
-          size="xs"
-          variant="primary"
-          label="Add"
-          disabled={!text.trim() || isBusy}
-          isLoading={isBusy}
-          onClick={() => {
-            if (text.trim()) {
-              void onSubmit(category, text.trim());
-            }
-          }}
-        />
-        <Button
-          size="xs"
-          variant="ghost"
-          label="Cancel"
-          onClick={onCancel}
-          disabled={isBusy}
-        />
-      </div>
-    </div>
-  );
+interface EditableTodoItemProps {
+  todo: ProjectTodoType;
+  onToggleDone: (todo: ProjectTodoType) => void;
+  onDelete: (todo: ProjectTodoType) => void;
+  owner: LightWorkspaceType;
+  agentNameById: Map<string, string>;
+  isExiting: boolean;
 }
 
 function EditableTodoItem({
   todo,
-  isPendingDone,
-  onMarkDone,
+  onToggleDone,
+  onDelete,
   owner,
-}: {
-  todo: ProjectTodoType;
-  isPendingDone: boolean;
-  onMarkDone: (todo: ProjectTodoType) => void;
-  owner: LightWorkspaceType;
-}) {
-  const isDone = isPendingDone || todo.status === "done";
+  agentNameById,
+  isExiting,
+}: EditableTodoItemProps) {
+  const isDone = todo.status === "done";
+
+  const handleToggle = () => {
+    onToggleDone(todo);
+  };
 
   return (
-    <li className="flex items-start gap-2 py-0.5">
-      <div className="mt-0.5 shrink-0">
+    <div
+      className={cn(
+        "group/todo flex items-start gap-3 overflow-hidden",
+        "transition-all duration-200",
+        isExiting ? "max-h-0 opacity-0" : "max-h-32 opacity-100"
+      )}
+    >
+      <div className="mt-1 shrink-0">
         <Checkbox
           size="xs"
           checked={isDone}
           isMutedAfterCheck
-          onCheckedChange={(checked) => {
-            if (checked === true && !isDone) {
-              onMarkDone(todo);
-            }
-          }}
+          onCheckedChange={() => handleToggle()}
         />
       </div>
-      <div className="flex flex-col gap-0.5">
-        <span
-          className={cn(
-            "text-sm leading-5 transition-all duration-300",
-            isDone
-              ? "text-faint dark:text-faint-night line-through"
-              : "text-foreground dark:text-foreground-night"
-          )}
+      <TodoMetadataTooltip todo={todo} agentNameById={agentNameById}>
+        <button
+          type="button"
+          className="flex min-w-0 flex-1 cursor-pointer flex-col gap-0.5 text-left"
+          onClick={handleToggle}
         >
-          {todo.text}
-        </span>
-        <TodoSources sources={todo.sources} owner={owner} isDone={isDone} />
+          <span
+            className={cn(
+              "text-base min-h-6 transition-all duration-300",
+              isDone
+                ? "text-faint dark:text-faint-night line-through"
+                : "text-foreground dark:text-foreground-night"
+            )}
+          >
+            {todo.text}
+          </span>
+          <TodoSources sources={todo.sources} owner={owner} isDone={isDone} />
+        </button>
+      </TodoMetadataTooltip>
+      <div className="mt-0.5 shrink-0 opacity-0 transition-opacity group-hover/todo:opacity-100">
+        <IconButton
+          icon={TrashIcon}
+          size="xs"
+          variant="ghost"
+          tooltip="Delete todo"
+          onClick={() => onDelete(todo)}
+        />
       </div>
-    </li>
+    </div>
   );
 }
 
@@ -371,77 +538,101 @@ function EditableProjectTodosPanel({
     owner,
     spaceId,
   });
-  const doCreate = useCreateProjectTodo({ owner, spaceId });
+  const agentNameById = useAgentNameById(owner);
   const doUpdate = useUpdateProjectTodo({ owner, spaceId });
+  const doDelete = useDeleteProjectTodo({ owner, spaceId });
+  const doCleanDone = useCleanDoneProjectTodos({ owner, spaceId });
 
-  // Tracks todos being optimistically marked as done (shown with strikethrough).
-  const [pendingDoneIds, setPendingDoneIds] = useState<Set<string>>(new Set());
-  // Which section's inline add form is open, or "global" for the bottom-level form.
-  const [addingTo, setAddingTo] = useState<
-    ProjectTodoCategory | "global" | null
-  >(null);
-  const [isCreating, setIsCreating] = useState(false);
+  // Tracks todos being animated out during a clean operation.
+  const [pendingRemovalIds, setPendingRemovalIds] = useState<Set<string>>(
+    new Set()
+  );
+  const [isCleaning, setIsCleaning] = useState(false);
+
+  const hasDoneItems = todos.some((t) => t.status === "done");
 
   const { todosByCategory, activeSections } = groupTodosByCategory(todos);
-  const isEmpty = activeSections.length === 0 && !isCreating;
 
-  const handleMarkDone = useCallback(
-    async (todo: ProjectTodoType) => {
-      setPendingDoneIds((prev) => new Set([...prev, todo.sId]));
+  // Optimistically update a todo's status in the SWR cache and send the PATCH.
+  // On failure the cache is revalidated from the server.
+  const handleSetStatus = useCallback(
+    async (todo: ProjectTodoType, status: ProjectTodoStatus) => {
+      const optimistic = (prev: GetProjectTodosResponseBody | undefined) => ({
+        todos: (prev?.todos ?? []).map((t) =>
+          t.sId === todo.sId ? { ...t, status } : t
+        ),
+      });
 
-      const result = await doUpdate(todo.sId, { status: "done" });
+      void mutateTodos(optimistic, { revalidate: false });
 
+      const result = await doUpdate(todo.sId, { status });
       if (result.isErr()) {
-        setPendingDoneIds((prev) => {
-          const next = new Set(prev);
-          next.delete(todo.sId);
-          return next;
-        });
-        return;
-      }
-
-      // After a brief visual pause, refresh the list.
-      setTimeout(() => {
+        // Revert: let SWR re-fetch the real server state.
         void mutateTodos();
-        setPendingDoneIds((prev) => {
-          const next = new Set(prev);
-          next.delete(todo.sId);
-          return next;
-        });
-      }, 600);
+      }
     },
     [doUpdate, mutateTodos]
   );
 
-  const handleMarkSectionDone = useCallback(
-    async (category: ProjectTodoCategory) => {
-      const undone = (todosByCategory[category] ?? []).filter(
-        (t) => t.status !== "done" && !pendingDoneIds.has(t.sId)
-      );
-      for (const todo of undone) {
-        void handleMarkDone(todo);
+  const handleToggleDone = useCallback(
+    (todo: ProjectTodoType) => {
+      if (todo.status === "done") {
+        void handleSetStatus(todo, "todo");
+      } else {
+        void handleSetStatus(todo, "done");
       }
     },
-    [handleMarkDone, pendingDoneIds, todosByCategory]
+    [handleSetStatus]
   );
 
-  const handleClean = useCallback(() => {
-    void mutateTodos();
-    setPendingDoneIds(new Set());
-  }, [mutateTodos]);
+  const handleCheckAllInSection = useCallback(
+    async (category: ProjectTodoCategory) => {
+      const sectionTodos = todosByCategory[category] ?? [];
+      for (const todo of sectionTodos) {
+        if (todo.status !== "done") {
+          void handleSetStatus(todo, "done");
+        }
+      }
+    },
+    [handleSetStatus, todosByCategory]
+  );
 
-  const handleCreate = useCallback(
-    async (category: ProjectTodoCategory, text: string) => {
-      setIsCreating(true);
-      const result = await doCreate(category, text);
-      setIsCreating(false);
+  const handleClean = useCallback(async () => {
+    setIsCleaning(true);
 
+    // Optimistically hide done items to trigger exit animations.
+    const doneSIds = new Set(
+      todos.filter((t) => t.status === "done").map((t) => t.sId)
+    );
+    setPendingRemovalIds(doneSIds);
+
+    const result = await doCleanDone();
+
+    if (result.isOk()) {
+      // Wait for exit animations to finish, then refresh the server data.
+      // pendingRemovalIds is cleared only after mutateTodos resolves so items
+      // don't briefly reappear from the stale SWR cache and re-trigger the
+      // exit animation.
+      setTimeout(async () => {
+        await mutateTodos();
+        setPendingRemovalIds(new Set());
+        setIsCleaning(false);
+      }, SUMMARY_ITEM_TRANSITION_MS);
+    } else {
+      // Revert on failure.
+      setPendingRemovalIds(new Set());
+      setIsCleaning(false);
+    }
+  }, [doCleanDone, mutateTodos, todos]);
+
+  const handleDelete = useCallback(
+    async (todo: ProjectTodoType) => {
+      const result = await doDelete(todo.sId);
       if (result.isOk()) {
-        setAddingTo(null);
         void mutateTodos();
       }
     },
-    [doCreate, mutateTodos]
+    [doDelete, mutateTodos]
   );
 
   return (
@@ -449,10 +640,10 @@ function EditableProjectTodosPanel({
       {/* Header */}
       <div className="inline-flex items-center gap-2">
         <h3 className="heading-2xl text-foreground dark:text-foreground-night">
-          Todos
+          What's new?
         </h3>
         <div className="flex-1" />
-        {pendingDoneIds.size > 0 && (
+        {hasDoneItems && (
           <Button
             size="xs"
             variant="outline"
@@ -460,6 +651,7 @@ function EditableProjectTodosPanel({
             label="Clean"
             tooltip="Remove checked items"
             onClick={handleClean}
+            disabled={isCleaning}
           />
         )}
       </div>
@@ -470,16 +662,13 @@ function EditableProjectTodosPanel({
           <Spinner size="sm" />
         </div>
       ) : (
-        <div className="flex flex-col gap-4">
+        <CollapsibleTodoList>
           {/* Per-category sections */}
           {activeSections.map((cat) => {
             const config = CATEGORY_CONFIG[cat];
             const items = todosByCategory[cat] ?? [];
-            const allPendingDone =
-              items.length > 0 &&
-              items.every(
-                (t) => t.status === "done" || pendingDoneIds.has(t.sId)
-              );
+            const allDone =
+              items.length > 0 && items.every((t) => t.status === "done");
 
             return (
               <div key={cat} className="flex flex-col gap-1">
@@ -496,12 +685,11 @@ function EditableProjectTodosPanel({
                     />
                     <Checkbox
                       size="xs"
-                      className="hidden group-hover/section-title:flex"
-                      checked={allPendingDone}
-                      isMutedAfterCheck
+                      className="hidden group-hover/section-title:inline-block"
+                      checked={allDone}
                       onCheckedChange={(checked) => {
                         if (checked === true) {
-                          void handleMarkSectionDone(cat);
+                          void handleCheckAllInSection(cat);
                         }
                       }}
                     />
@@ -512,70 +700,30 @@ function EditableProjectTodosPanel({
                 </div>
 
                 {/* Todo items */}
-                <ul className="flex flex-col pl-7">
+                <div className="flex flex-col">
                   {items.map((todo) => (
                     <EditableTodoItem
                       key={todo.sId}
                       todo={todo}
-                      isPendingDone={pendingDoneIds.has(todo.sId)}
-                      onMarkDone={handleMarkDone}
+                      onToggleDone={handleToggleDone}
+                      onDelete={handleDelete}
                       owner={owner}
+                      agentNameById={agentNameById}
+                      isExiting={pendingRemovalIds.has(todo.sId)}
                     />
                   ))}
-                </ul>
-
-                {/* Inline add form / button for this section */}
-                <div className="pl-7">
-                  {addingTo === cat ? (
-                    <AddTodoForm
-                      defaultCategory={cat}
-                      onSubmit={handleCreate}
-                      onCancel={() => setAddingTo(null)}
-                      isBusy={isCreating}
-                    />
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setAddingTo(cat)}
-                      className="flex items-center gap-1 text-xs text-muted-foreground dark:text-muted-foreground-night hover:text-foreground dark:hover:text-foreground-night transition-colors"
-                    >
-                      <Icon visual={PlusIcon} size="xs" />
-                      Add
-                    </button>
-                  )}
                 </div>
               </div>
             );
           })}
 
           {/* Empty state */}
-          {isEmpty && (
-            <p className="text-sm italic text-faint dark:text-faint-night">
-              All caught up!
+          {activeSections.length === 0 && (
+            <p className="text-base italic text-faint dark:text-faint-night">
+              You're all caught up!
             </p>
           )}
-
-          {/* Global add todo */}
-          {addingTo === "global" ? (
-            <AddTodoForm
-              onSubmit={handleCreate}
-              onCancel={() => setAddingTo(null)}
-              isBusy={isCreating}
-            />
-          ) : (
-            addingTo === null && (
-              <div>
-                <Button
-                  size="xs"
-                  variant="outline"
-                  icon={PlusIcon}
-                  label="Add todo"
-                  onClick={() => setAddingTo("global")}
-                />
-              </div>
-            )
-          )}
-        </div>
+        </CollapsibleTodoList>
       )}
     </div>
   );

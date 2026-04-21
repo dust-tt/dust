@@ -1,18 +1,22 @@
 import {
-  launchAllReinforcedSkillsWorkspaceCrons,
-  launchReinforcementWorkspaceCron,
+  deleteReinforcementWorkspaceSchedule,
+  ensureReinforcementWorkspaceSchedules,
+  launchEnsureReinforcementSchedulesWorkflow as launchEnsureReinforcementSchedulesWorkflow,
+  startReinforcementWorkspaceSchedule,
   startReinforcementWorkspaceWorkflow,
-  stopAllReinforcedSkillsWorkspaceCrons,
-  stopReinforcementWorkspaceCron,
+  stopAllReinforcementWorkspaceSchedules as stopAllReinforcementWorkspaceSchedules,
+  stopEnsureReinforcementSchedulesWorkflow as stopEnsureReinforcementSchedulesWorkflow,
 } from "@app/temporal/reinforcement/client";
 import parseArgs from "minimist";
 
 function usage() {
   console.error(`Usage:
-  start                                                                          Start cron workflows for all flagged workspaces
-  stop                                                                           Stop cron workflows for all flagged workspaces
-  start-workspace --workspace-id <sId>                                          Start the cron workflow for a specific workspace
-  stop-workspace --workspace-id <sId>                                           Stop the cron workflow for a specific workspace
+  start                                                                        Ensure all workspace schedules (start missing, stop extra)
+  stop                                                                         Stop all running schedules
+  start-ensure                                                                 Start the daily ensure-crons workflow (11pm local)
+  stop-ensure                                                                  Stop the daily ensure-crons workflow
+  start-workspace --workspace-id <sId>                                         Start the schedule for a specific workspace
+  stop-workspace --workspace-id <sId>                                          Stop the schedule for a specific workspace
   run-workspace --workspace-id <sId> [--batch] [--skill-id <sId>] [--days <n>] Run once for a specific workspace
   run-skill --workspace-id <sId> --skill-id <sId> [--batch] [--days <n>]       Run for a specific skill (shorthand)`);
 }
@@ -28,10 +32,16 @@ const main = async () => {
 
   switch (command) {
     case "start":
-      await launchAllReinforcedSkillsWorkspaceCrons();
+      await ensureReinforcementWorkspaceSchedules();
       return;
     case "stop":
-      await stopAllReinforcedSkillsWorkspaceCrons();
+      await stopAllReinforcementWorkspaceSchedules();
+      return;
+    case "start-ensure":
+      await launchEnsureReinforcementSchedulesWorkflow();
+      return;
+    case "stop-ensure":
+      await stopEnsureReinforcementSchedulesWorkflow();
       return;
     case "start-workspace": {
       const workspaceId = argv["workspace-id"];
@@ -40,7 +50,7 @@ const main = async () => {
         usage();
         process.exit(1);
       }
-      await launchReinforcementWorkspaceCron({ workspaceId });
+      await startReinforcementWorkspaceSchedule({ workspaceId });
       return;
     }
     case "stop-workspace": {
@@ -50,10 +60,7 @@ const main = async () => {
         usage();
         process.exit(1);
       }
-      await stopReinforcementWorkspaceCron({
-        workspaceId,
-        stopReason: "Stopped via CLI",
-      });
+      await deleteReinforcementWorkspaceSchedule({ workspaceId });
       return;
     }
     case "run-workspace": {

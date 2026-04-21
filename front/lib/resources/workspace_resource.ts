@@ -315,15 +315,6 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     return workspace ? new this(this.model, workspace.get()) : null;
   }
 
-  static async fetchByMetronomeCustomerId(
-    metronomeCustomerId: string
-  ): Promise<WorkspaceResource | null> {
-    const workspace = await this.model.findOne({
-      where: { metronomeCustomerId },
-    });
-    return workspace ? new this(this.model, workspace.get()) : null;
-  }
-
   static async fetchByModelIds(ids: ModelId[]): Promise<WorkspaceResource[]> {
     const workspaces = await this.model.findAll({
       where: {
@@ -407,6 +398,15 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
   static async isDomainAutoJoinEnabled(domain: string): Promise<boolean> {
     const result = await this.fetchWorkspaceAndDomainInfo(domain);
     return result?.domainInfo.domainAutoJoinEnabled ?? false;
+  }
+
+  static async fetchByMetronomeCustomerId(
+    metronomeCustomerId: string
+  ): Promise<WorkspaceResource | null> {
+    const workspace = await this.model.findOne({
+      where: { metronomeCustomerId },
+    });
+    return workspace ? new this(this.model, workspace.get()) : null;
   }
 
   static async fetchByWorkOSOrganizationId(

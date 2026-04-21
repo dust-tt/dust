@@ -1,9 +1,4 @@
 export const WHITELISTABLE_FEATURES_CONFIG = {
-  skill_builder_instructions_html: {
-    description:
-      "Enable HTML-backed instructions in the skill builder (block IDs, HTML round-trip storage)",
-    stage: "dust_only",
-  },
   advanced_notion_management: {
     description:
       "Advanced features for Notion workspace management shown to admins",
@@ -11,11 +6,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   anthropic_vertex_fallback: {
     description: "Fallback to Vertex Anthropic for some Anthropic models",
-    stage: "dust_only",
-  },
-  ask_user_question_tool: {
-    description:
-      "Enable ask_user_question tool for agents to ask users questions",
     stage: "dust_only",
   },
   audit_logs: {
@@ -209,8 +199,8 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
   },
   projects: {
-    description: "Enable use Spaces as Projects",
-    stage: "dust_only",
+    description: "Enable the Projects feature",
+    stage: "on_demand",
   },
   databricks_tool: {
     description: "Databricks MCP tool",
@@ -239,10 +229,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     // Not really on_demand but we want to be able to enable it for customers
     stage: "on_demand",
   },
-  conversation_branches: {
-    description: "Enable conversation branches",
-    stage: "dust_only",
-  },
   sessions_branching: {
     description: "Enable sessions branching",
     stage: "dust_only",
@@ -250,6 +236,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   reinforced_agents: {
     description:
       "Enable reinforcement: background analysis of conversations to suggest improvements to skills.",
+    stage: "dust_only",
+  },
+  reinforcement_on_openai: {
+    description:
+      "Use OpenAI large model for reinforcement workflow when available, falling back to default model selection.",
     stage: "dust_only",
   },
   reinforcement_ui: {
@@ -274,6 +265,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Gong MCP tool for sales conversation analytics",
     stage: "dust_only",
   },
+  clari_copilot_mcp: {
+    description:
+      "Enable the Clari Copilot MCP server for call transcript and summary access.",
+    stage: "on_demand",
+  },
   official_notion_mcp: {
     description:
       "Use the official Notion MCP server instead of the internal one",
@@ -292,11 +288,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   enable_compaction: {
     description:
       "Enable context compaction: summarize older messages to free up context window",
-    stage: "dust_only",
-  },
-  enable_steering: {
-    description:
-      "Enable steering: pending user messages + graceful stop of running agent loops",
     stage: "dust_only",
   },
 } as const satisfies Record<string, FeatureFlag>;

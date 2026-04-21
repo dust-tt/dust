@@ -24,6 +24,7 @@ import {
 import {
   applyEnterpriseOverrides,
   buildEnterpriseOverrides,
+  countMauForWorkspace,
   type EnterprisePricingCents,
   extractEnterprisePricing,
 } from "@app/lib/metronome/contracts";
@@ -232,15 +233,57 @@ async function getSubscriptionInfo(
   };
 }
 
+/**
+ * Enable Stripe billing provider on a Metronome contract.
+ * This makes Metronome push invoices to Stripe for real payment collection.
+ * Without this, invoices stay in Metronome only (shadow mode).
+ */
+async function enableStripeBilling({
+  metronomeCustomerId,
+  contractId,
+  logger,
+  workspaceId,
+}: {
+  metronomeCustomerId: string;
+  contractId: string;
+  logger: Logger;
+  workspaceId: string;
+}): Promise<void> {
+  const client = getMetronomeClient();
+
+  logger.info(
+    { workspaceId, contractId },
+    "Enabling Stripe billing provider on contract"
+  );
+
+  await client.v2.contracts.edit({
+    customer_id: metronomeCustomerId,
+    contract_id: contractId,
+    add_billing_provider_configuration_update: {
+      billing_provider_configuration: {
+        billing_provider: "stripe",
+        delivery_method: "direct_to_billing_provider",
+      },
+      schedule: {
+        effective_at: "START_OF_CURRENT_PERIOD",
+      },
+    },
+  });
+
+  logger.info({ workspaceId, contractId }, "Stripe billing provider enabled");
+}
+
 async function migrateWorkspace(
   workspace: LightWorkspaceType,
   execute: boolean,
+  force: boolean,
   logger: Logger,
   packageInfo: {
     aliasToPackageId: Record<string, string>;
     packageIdToAlias: Record<string, string>;
   },
-  packageAliasFilter?: string
+  packageAliasFilter?: string,
+  enableBilling?: boolean
 ): Promise<void> {
   const client = getMetronomeClient();
   const workspaceResource = await WorkspaceResource.fetchById(workspace.sId);
@@ -300,10 +343,30 @@ async function migrateWorkspace(
       );
       continue;
     }
+    // Already on the latest package version — nothing to migrate unless forced.
+    if (contractPackageId === targetPackageId && !force) {
+      logger.info(
+        {
+          workspaceId: workspace.sId,
+          contractId: contract.id,
+          targetAlias,
+        },
+        "Contract already on latest package version — skipping (use --force to re-create)"
+      );
+      return;
+    }
     oldAlias = packageInfo.packageIdToAlias[contractPackageId];
     oldContractId = contract.id;
     break;
   }
+
+  // Count MAUs for initial subscription quantities.
+  const initialMauCount = isEnterprise
+    ? await countMauForWorkspace(
+        workspace,
+        subInfo.enterprisePricing!.billingMode
+      )
+    : 0;
 
   // Build enterprise overrides for both logging and contract creation.
   const enterpriseOverrides =
@@ -311,6 +374,7 @@ async function migrateWorkspace(
       ? buildEnterpriseOverrides({
           pricing: subInfo.enterprisePricing,
           startDate: subInfo.startDate,
+          initialMauCount,
         })
       : undefined;
 
@@ -376,6 +440,33 @@ async function migrateWorkspace(
       startDate: subInfo.startDate,
       overrideLogger: logger,
       workspaceId: workspace.sId,
+      initialMauCount,
+    });
+  }
+
+  // Update metronomeContractId on the subscription first so that the contract
+  // cache is invalidated before syncing subscriptions (syncMauCount /
+  // syncSeatCount call getActiveContract which reads from Redis cache).
+  await SubscriptionResource.updateMetronomeContractId(
+    subInfo.subscriptionModelId,
+    newContractId
+  );
+  logger.info(
+    {
+      workspaceId: workspace.sId,
+      subscriptionId: subInfo.subscriptionModelId,
+      newContractId,
+    },
+    "Updated metronomeContractId on subscription"
+  );
+
+  // Enable Stripe billing if requested.
+  if (enableBilling) {
+    await enableStripeBilling({
+      metronomeCustomerId,
+      contractId: newContractId,
+      logger,
+      workspaceId: workspace.sId,
     });
   }
 
@@ -415,20 +506,6 @@ async function migrateWorkspace(
       );
     }
   }
-
-  // Update metronomeContractId on the subscription.
-  await SubscriptionResource.updateMetronomeContractId(
-    subInfo.subscriptionModelId,
-    newContractId
-  );
-  logger.info(
-    {
-      workspaceId: workspace.sId,
-      subscriptionId: subInfo.subscriptionModelId,
-      newContractId,
-    },
-    "Updated metronomeContractId on subscription"
-  );
 }
 
 makeScript(
@@ -445,14 +522,32 @@ makeScript(
         "Only migrate contracts targeting this package alias (e.g., 'legacy-pro-29'). Omit to migrate all.",
       type: "string" as const,
     },
+    force: {
+      alias: "f",
+      describe:
+        "Force re-creation of contracts even if already on the latest package version (useful to update overrides).",
+      type: "boolean" as const,
+      default: false,
+    },
+    enableBilling: {
+      alias: "b",
+      describe:
+        "Enable Stripe billing provider on created contracts. Without this flag, contracts stay in shadow mode (invoices in Metronome only).",
+      type: "boolean" as const,
+      default: false,
+    },
   },
   async (args, logger) => {
     const packageAliasFilter = args.packageAlias;
+    const enableBilling = args.enableBilling;
     if (packageAliasFilter) {
       logger.info(
         { packageAlias: packageAliasFilter },
         "Filtering to contracts targeting this package alias"
       );
+    }
+    if (enableBilling) {
+      logger.info("Stripe billing will be enabled on created contracts");
     }
 
     logger.info("Fetching latest package versions from Metronome...");
@@ -471,9 +566,11 @@ makeScript(
       await migrateWorkspace(
         renderLightWorkspaceType({ workspace }),
         args.execute,
+        args.force,
         logger,
         packageInfo,
-        packageAliasFilter
+        packageAliasFilter,
+        enableBilling
       );
     } else {
       await runOnAllWorkspaces(
@@ -481,9 +578,11 @@ makeScript(
           migrateWorkspace(
             workspace,
             args.execute,
+            args.force,
             logger,
             packageInfo,
-            packageAliasFilter
+            packageAliasFilter,
+            enableBilling
           ),
         { concurrency: 4 }
       );

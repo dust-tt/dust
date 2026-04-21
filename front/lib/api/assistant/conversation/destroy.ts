@@ -27,6 +27,7 @@ import {
   ProjectTodoConversationModel,
   ProjectTodoSourceModel,
 } from "@app/lib/resources/storage/models/project_todo";
+import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -297,6 +298,8 @@ export async function destroyConversation(
       conversationId: conversation.id,
     },
   });
+
+  await WakeUpResource.deleteByConversation(auth, conversation.toJSON());
 
   await ProjectTodoConversationModel.destroy({
     where: { workspaceId: owner.id, conversationId: conversation.id },

@@ -230,8 +230,8 @@
     },
     "/api/v1/w/{wId}/analytics/export": {
       "get": {
-        "summary": "Export workspace analytics as CSV",
-        "description": "Export analytics data for the workspace identified by {wId} in CSV format.",
+        "summary": "Export workspace analytics",
+        "description": "Export analytics data for the workspace identified by {wId} in CSV or JSON format.",
         "tags": [
           "Workspace"
         ],
@@ -297,15 +297,36 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "description": "Output format (defaults to csv)",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "csv",
+                "json"
+              ]
+            }
           }
         ],
         "responses": {
           "200": {
-            "description": "The analytics data in CSV format",
+            "description": "The analytics data in CSV or JSON format",
             "content": {
               "text/csv": {
                 "schema": {
                   "type": "string"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
                 }
               }
             }
@@ -6506,7 +6527,7 @@
       },
       "patch": {
         "summary": "Update a conversation",
-        "description": "Update a conversation's title, mark it as read, or move it to a different space.",
+        "description": "Update a conversation's title, mark it as read, move it to a different space, or control URL access mode.",
         "tags": [
           "Private Conversations"
         ],
@@ -6571,6 +6592,21 @@
                     "properties": {
                       "spaceId": {
                         "type": "string"
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "accessMode"
+                    ],
+                    "properties": {
+                      "accessMode": {
+                        "type": "string",
+                        "enum": [
+                          "participants_only",
+                          "workspace_members"
+                        ]
                       }
                     }
                   }
@@ -8823,6 +8859,184 @@
         }
       }
     },
+    "/api/w/{wId}/spaces/{spaceId}/project_notification_preferences": {
+      "get": {
+        "summary": "Get project notification preference",
+        "description": "Returns the current user's notification preference for a project space.",
+        "tags": [
+          "Private Spaces"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "spaceId",
+            "required": true,
+            "description": "ID of the project space",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "userProjectNotificationPreference": {
+                      "type": "object",
+                      "nullable": true,
+                      "properties": {
+                        "sId": {
+                          "type": "string"
+                        },
+                        "spaceId": {
+                          "type": "string"
+                        },
+                        "userId": {
+                          "type": "string"
+                        },
+                        "preference": {
+                          "type": "string",
+                          "enum": [
+                            "all_messages",
+                            "only_mentions",
+                            "never"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request (space is not a project)"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "patch": {
+        "summary": "Set project notification preference",
+        "description": "Sets the current user's notification preference for a project space.",
+        "tags": [
+          "Private Spaces"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "spaceId",
+            "required": true,
+            "description": "ID of the project space",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "preference"
+                ],
+                "properties": {
+                  "preference": {
+                    "type": "string",
+                    "enum": [
+                      "all_messages",
+                      "only_mentions",
+                      "never"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "userProjectNotificationPreference": {
+                      "type": "object",
+                      "nullable": true,
+                      "properties": {
+                        "sId": {
+                          "type": "string"
+                        },
+                        "spaceId": {
+                          "type": "string"
+                        },
+                        "userId": {
+                          "type": "string"
+                        },
+                        "preference": {
+                          "type": "string",
+                          "enum": [
+                            "all_messages",
+                            "only_mentions",
+                            "never"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request (space is not a project or invalid body)"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "405": {
+            "description": "Method not supported"
+          }
+        }
+      }
+    },
     "/api/w/{wId}/spaces": {
       "get": {
         "summary": "List spaces",
@@ -9367,6 +9581,114 @@
             "items": {
               "type": "string"
             }
+          },
+          "forkedFrom": {
+            "$ref": "#/components/schemas/PrivateConversationForkedFrom"
+          },
+          "forkedChildren": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PrivateConversationForkedChild"
+            }
+          }
+        }
+      },
+      "PrivateConversationForkUser": {
+        "type": "object",
+        "properties": {
+          "sId": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer"
+          },
+          "createdAt": {
+            "type": "integer"
+          },
+          "provider": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "auth0",
+              "github",
+              "google",
+              "okta",
+              "samlp",
+              "waad"
+            ]
+          },
+          "username": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "firstName": {
+            "type": "string"
+          },
+          "lastName": {
+            "type": "string",
+            "nullable": true
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "image": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastLoginAt": {
+            "type": "integer",
+            "nullable": true
+          }
+        }
+      },
+      "PrivateConversationForkedFrom": {
+        "type": "object",
+        "required": [
+          "parentConversationId",
+          "parentConversationTitle",
+          "sourceMessageId",
+          "branchedAt",
+          "user"
+        ],
+        "properties": {
+          "parentConversationId": {
+            "type": "string"
+          },
+          "parentConversationTitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "sourceMessageId": {
+            "type": "string"
+          },
+          "branchedAt": {
+            "type": "integer"
+          },
+          "user": {
+            "$ref": "#/components/schemas/PrivateConversationForkUser"
+          }
+        }
+      },
+      "PrivateConversationForkedChild": {
+        "type": "object",
+        "properties": {
+          "childConversationId": {
+            "type": "string"
+          },
+          "childConversationTitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "sourceMessageId": {
+            "type": "string"
+          },
+          "branchedAt": {
+            "type": "integer"
+          },
+          "user": {
+            "$ref": "#/components/schemas/PrivateConversationForkUser"
           }
         }
       },
@@ -10741,6 +11063,7 @@
               "transcript",
               "triggered_programmatic",
               "triggered",
+              "wakeup",
               "zapier",
               "zendesk",
               "onboarding_conversation"

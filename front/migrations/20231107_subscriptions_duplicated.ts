@@ -9,9 +9,9 @@ async function main() {
   // SELECT "workspaceId", COUNT(*) as "subscriptionsCount"
   // FROM "workspaces" WHERE "plan" = '5'
   //GROUP BY "workspaceId" HAVING COUNT(*) > 1;
-  const workspacesIds = getWorkspaceIds();
+  const workspaceIds = getWorkspaceIds();
 
-  for (const workspaceId of workspacesIds) {
+  for (const workspaceId of workspaceIds) {
     await getValidSubscriptionStartDateForWorkspace(workspaceId);
     await deletedDuplicatedEndedSubscriptionsForWorkspace(workspaceId);
   }

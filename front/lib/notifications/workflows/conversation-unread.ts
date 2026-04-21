@@ -24,11 +24,13 @@ import { renderEmail } from "@app/lib/notifications/email-templates/conversation
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserMetadataModel } from "@app/lib/resources/storage/models/user";
+import { UserProjectNotificationPreferenceResource } from "@app/lib/resources/user_project_notification_preferences_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import {
   ConversationError,
+  getConversationDisplayTitle,
   isCompactionMessageType,
   isLightAgentMessageType,
   isProjectConversation,
@@ -46,6 +48,7 @@ import {
   NOTIFICATION_PREFERENCES_DELAYS,
 } from "@app/types/notification_preferences";
 import { isDevelopment } from "@app/types/shared/env";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -78,6 +81,7 @@ export const shouldSendNotificationForAgentAnswer = (
     case "extension":
     case "cli":
     case "cli_programmatic":
+    case "wakeup":
       return true;
     case "onboarding_conversation":
     case "agent_sidekick":
@@ -115,9 +119,10 @@ const ConversationDetailsSchema = z.object({
   subject: z.string(),
   author: z.string(),
   authorIsAgent: z.boolean(),
-  avatarUrl: z.string().optional(),
+  authorUserId: z.string().optional(),
   isFromTrigger: z.boolean(),
   isFromEmailAgentConversation: z.boolean(),
+  isFromSlackAgentConversation: z.boolean(),
   workspaceName: z.string(),
   mentionedUserIds: z.array(z.string()),
   hasUnreadMessages: z.boolean(),
@@ -174,6 +179,7 @@ const getConversationDetails = async ({
         authorIsAgent: false,
         isFromTrigger: false,
         isFromEmailAgentConversation: false,
+        isFromSlackAgentConversation: false,
         workspaceName: "Deleted conversation",
         mentionedUserIds: [],
         avatarUrl: undefined,
@@ -213,7 +219,7 @@ const getConversationDetails = async ({
   const conversation = conversationRes.value;
 
   const workspaceName = auth.getNonNullableWorkspace().name;
-  const subject = conversation.title ?? "Dust conversation";
+  const subject = getConversationDisplayTitle(conversation);
   const isFromTrigger = !!conversation.triggerId;
 
   // Retrieve the message that triggered the notification.
@@ -232,7 +238,7 @@ const getConversationDetails = async ({
 
   let author: string;
   let authorIsAgent: boolean;
-  let avatarUrl: string | undefined;
+  let authorUserId: string | undefined;
   let mentionedUserIds: string[] = [];
   const messageContent =
     message.type === "agent_message" || message.type === "user_message"
@@ -249,6 +255,12 @@ const getConversationDetails = async ({
       isUserMessageType(parentUserMessage) &&
       parentUserMessage.context.origin === "email");
 
+  const isFromSlackAgentConversation =
+    (isUserMessageType(message) && message.context.origin === "slack") ||
+    (parentUserMessage !== undefined &&
+      isUserMessageType(parentUserMessage) &&
+      parentUserMessage.context.origin === "slack");
+
   if (isCompactionMessageType(message)) {
     // Compaction messages don't trigger notifications.
     return new Err(new ConversationError("message_not_found"));
@@ -257,8 +269,9 @@ const getConversationDetails = async ({
     author = "Someone else";
     authorIsAgent = false;
   } else if (isUserMessageType(message)) {
-    author = message.user?.fullName ?? "Someone else";
-    avatarUrl = message.user?.image ?? undefined;
+    author =
+      message.user?.fullName ?? message.context.fullName ?? "Someone else";
+    authorUserId = message.user?.sId ?? undefined;
     authorIsAgent = false;
 
     // Extract approved user mentions from the rendered message.
@@ -269,7 +282,6 @@ const getConversationDetails = async ({
     author = message.configuration.name
       ? `@${message.configuration.name}`
       : "An agent";
-    avatarUrl = message.configuration.pictureUrl ?? undefined;
     authorIsAgent = true;
   } else {
     assertNever(message);
@@ -317,9 +329,10 @@ const getConversationDetails = async ({
     subject,
     author,
     authorIsAgent,
-    avatarUrl,
+    authorUserId,
     isFromTrigger,
     isFromEmailAgentConversation,
+    isFromSlackAgentConversation,
     workspaceName,
     mentionedUserIds,
     hasUnreadMessages,
@@ -602,7 +615,7 @@ const generateUnreadMessagesSummary = async ({
 
   const preamble = [
     `Conversation: ${conversation.sId}`,
-    `Title: ${conversation.title ?? "Untitled Conversation"}`,
+    `Title: ${getConversationDisplayTitle(conversation)}`,
     `Created: ${new Date(conversation.created).toISOString()}`,
     `Updated: ${new Date(conversation.updated).toISOString()}`,
     `Unread: ${conversation.unread}`,
@@ -1072,18 +1085,21 @@ export const conversationUnreadWorkflow = workflow(
  * always notified regardless of their preference.
  */
 export const filterParticipantsByNotifyCondition = async ({
+  auth,
   participants,
   mentionedUserIds,
   totalParticipantCount,
+  spaceModelId,
 }: {
+  auth: Authenticator;
   participants: (UserType & { lastReadAt: Date | null })[];
   mentionedUserIds: Set<string>;
   totalParticipantCount: number;
+  spaceModelId: ModelId | null;
 }): Promise<(UserType & { lastReadAt: Date | null })[]> => {
   const userModelIds = participants.map((p) => p.id);
 
-  // Bulk query for all preferences.
-  const preferences = await UserMetadataModel.findAll({
+  const generalPreferences = await UserMetadataModel.findAll({
     where: {
       userId: { [Op.in]: userModelIds },
       key: CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyCondition,
@@ -1091,16 +1107,26 @@ export const filterParticipantsByNotifyCondition = async ({
     attributes: ["userId", "value"],
   });
 
-  const preferenceMap = new Map<number, NotificationCondition>();
-  for (const pref of preferences) {
+  const generalPreferenceMap = new Map<number, NotificationCondition>();
+  for (const pref of generalPreferences) {
     if (isNotificationCondition(pref.value)) {
-      preferenceMap.set(pref.userId, pref.value);
+      generalPreferenceMap.set(pref.userId, pref.value);
     }
   }
 
+  const projectPreferenceMap = spaceModelId
+    ? await UserProjectNotificationPreferenceResource.fetchAllBySpaceAndUsers(
+        auth,
+        { spaceModelId, userModelIds }
+      )
+    : new Map<ModelId, NotificationCondition>();
+
   return participants.filter((participant) => {
+    // Project-level preference overrides the general one if present.
     const notifyCondition =
-      preferenceMap.get(participant.id) ?? DEFAULT_NOTIFICATION_CONDITION;
+      projectPreferenceMap.get(participant.id) ??
+      generalPreferenceMap.get(participant.id) ??
+      DEFAULT_NOTIFICATION_CONDITION;
     switch (notifyCondition) {
       case "all_messages":
         return true;
@@ -1146,19 +1172,6 @@ export const triggerConversationUnreadNotifications = async (
     return new Ok(undefined);
   }
 
-  // Get all participants to determine total count (for single-participant exception).
-  const totalParticipants = await conversation.listParticipants(auth);
-  const allParticipants = totalParticipants.filter((p) => {
-    if (userToNotifyId && p.sId !== userToNotifyId) {
-      return false;
-    }
-    return p.lastReadAt === null || conversation.updatedAt > p.lastReadAt;
-  });
-
-  if (allParticipants.length === 0) {
-    return new Ok(undefined);
-  }
-
   // Get conversation details including mentioned user IDs.
   const detailsResult = await getConversationDetails({
     auth,
@@ -1172,15 +1185,38 @@ export const triggerConversationUnreadNotifications = async (
     // Conversation or message was deleted - no notification needed.
     return new Ok(undefined);
   }
-  if (detailsResult.value.isFromEmailAgentConversation) {
+  if (
+    detailsResult.value.isFromEmailAgentConversation ||
+    detailsResult.value.isFromSlackAgentConversation
+  ) {
+    return new Ok(undefined);
+  }
+  const { authorUserId } = detailsResult.value;
+  // Get all participants to determine total count (for single-participant exception).
+  const totalParticipants = await conversation.listParticipants(auth);
+  const allParticipants = totalParticipants.filter((p) => {
+    if (userToNotifyId && p.sId !== userToNotifyId) {
+      return false;
+    }
+    // Exclude the message author from notifications (they don't need to be
+    // notified about their own message).
+    if (authorUserId && p.sId === authorUserId) {
+      return false;
+    }
+    return p.lastReadAt === null || conversation.updatedAt > p.lastReadAt;
+  });
+
+  if (allParticipants.length === 0) {
     return new Ok(undefined);
   }
 
   // Filter participants based on their notification condition preference.
   const participants = await filterParticipantsByNotifyCondition({
+    auth,
     participants: allParticipants,
     mentionedUserIds: new Set(detailsResult.value.mentionedUserIds),
     totalParticipantCount: totalParticipants.length,
+    spaceModelId: conversation.spaceId,
   });
 
   if (participants.length === 0) {

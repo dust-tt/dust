@@ -28,6 +28,7 @@ export {
   useAddDeleteConversationTool,
   useConversationTools,
 } from "./useConversationTools";
+export { useConversationUrlAccessMode } from "./useConversationUrlAccessMode";
 export { usePostOnboardingFollowUp } from "./usePostOnboardingFollowUp";
 export { useSearchPrivateConversations } from "./useSearchPrivateConversations";
 export { useSearchProjectConversations } from "./useSearchProjectConversations";

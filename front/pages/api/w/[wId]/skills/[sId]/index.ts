@@ -1,6 +1,7 @@
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
+import { pruneOutdatedSkillEditSuggestions } from "@app/lib/reinforcement/skill_suggestion_pruning";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -327,6 +328,8 @@ async function handler(
         userFacingDescription: body.userFacingDescription,
         ...(shouldActivate ? { status: "active" as const } : {}),
       });
+
+      await pruneOutdatedSkillEditSuggestions(auth, skill);
 
       return res.status(200).json({
         skill: skill.toJSON(auth),

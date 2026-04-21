@@ -616,7 +616,7 @@ export function getGoogleDriveServerMetadata() {
         "Search, read, create, clone, edit, comment on, and manage permissions for files in Google Drive (Docs, Sheets, Presentations).",
       authorization: {
         provider: "google_drive",
-        supported_use_cases: ["personal_actions"],
+        supported_use_cases: ["personal_actions", "platform_actions"],
         scope:
           "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly",
       },

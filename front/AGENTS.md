@@ -33,27 +33,12 @@ front/
 
 # Development setup
 
-- You can use `./admin/check.ts` to run all checks (lint, type-check, format) concurrently.
-    - Use `npx tsgo --noEmit` to type-check the front project.
-    - Use `npm run lint` to run ESLint
-- Read `runbooks/TEST.md` for all things related to testing.
+- Use `npx tsgo --noEmit` to type-check the front project.
+- Use `npm run format:changed` (from the repo root) to format and lint changed files.
+- For changes related to Temporal, LLM, MCP servers, Elasticsearch, audit events, and webhook sources, and for testing, use the corresponding skills.
 
 # Running tests
 - Use `npm run test -- filetotest
-
-# Runbooks
-
-Runbooks for various typical development tasks are located under `runbooks/`:
-
-`ELASTICSEARCH.md`: add a new Elasticsearch index for search in front.
-`NEW_AUDIT_EVENT.md`: add a new audit log event (schema, type, emit call).
-`NEW_LLM.md`: add support for a new provider/model.
-`NEW_MCP_SERVER.md`: add a new MCP server to Dust.
-`NEW_WEBHOOK_SOURCE.md`: add a new webhook source to Dust.
-`TEMPORAL.md`: create a new temporal workflow.
-`TEST.md`: running tests in front.
-
-Read these files on-demand when working on tasks.
 
 @CODING_RULES.md
 

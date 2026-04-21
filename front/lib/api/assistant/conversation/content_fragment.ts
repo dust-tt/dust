@@ -28,7 +28,10 @@ import type {
 import { DATA_SOURCE_NODE_ID } from "@app/types/core/content_node";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { SupportedFileContentType } from "@app/types/files";
-import { extensionsForContentType } from "@app/types/files";
+import {
+  extensionsForContentType,
+  isConversationFileUseCase,
+} from "@app/types/files";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -58,9 +61,11 @@ export async function toFileContentFragment(
   {
     contentFragment,
     fileName,
+    skipDataSourceIndexing,
   }: {
     contentFragment: ContentFragmentInputWithInlinedContent;
     fileName?: string;
+    skipDataSourceIndexing?: boolean;
   }
 ): Promise<
   Result<ContentFragmentInputWithFileIdType, ProcessAndStoreFileError>
@@ -74,7 +79,9 @@ export async function toFileContentFragment(
     userId: auth.user()?.id,
     workspaceId: auth.getNonNullableWorkspace().id,
     useCase: "conversation",
-    useCaseMetadata: null,
+    useCaseMetadata: skipDataSourceIndexing
+      ? { skipDataSourceIndexing: true }
+      : undefined,
   });
 
   const processRes = await processAndStoreFile(auth, {
@@ -118,8 +125,10 @@ export async function getContentFragmentBlob(
       "File must have a supported content type."
     );
 
-    if (file.useCase !== "conversation") {
-      return new Err(new Error("File not meant to be used in a conversation."));
+    if (!isConversationFileUseCase(file.useCase)) {
+      return new Err(
+        new Error("File not meant to be attached in a conversation.")
+      );
     }
 
     if (!file.isReady) {

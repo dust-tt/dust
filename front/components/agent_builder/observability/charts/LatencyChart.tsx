@@ -12,10 +12,12 @@ import { padSeriesToTimeRange } from "@app/components/agent_builder/observabilit
 import { ChartContainer } from "@app/components/charts/ChartContainer";
 import { legendFromConstant } from "@app/components/charts/ChartLegend";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
+import { useSelectableSeries } from "@app/components/charts/useSelectableSeries";
 import type { AgentVersionMarker } from "@app/lib/api/assistant/observability/version_markers";
 import { useAgentVersionMarkers } from "@app/lib/swr/assistants";
 import { BROWSER_TIMEZONE } from "@app/lib/swr/workspaces";
 import { formatShortDate } from "@app/lib/utils/timestamps";
+import { cn } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 import {
   CartesianGrid,
@@ -52,9 +54,10 @@ function zeroFactory(timestamp: number) {
 function LatencyTooltip(
   props: TooltipContentProps<number, string> & {
     versionMarkers: AgentVersionMarker[];
+    activeKey?: string;
   }
 ) {
-  const { active, payload, versionMarkers } = props;
+  const { active, payload, versionMarkers, activeKey } = props;
   if (!active || !payload || payload.length === 0) {
     return null;
   }
@@ -69,16 +72,19 @@ function LatencyTooltip(
       title={formatTimeSeriesTitle(row.date, row.timestamp, versionMarkers)}
       rows={[
         {
+          key: "average",
           label: "Average time",
           value: `${row.avgLatencyMs}s`,
           colorClassName: LATENCY_PALETTE.average,
         },
         {
+          key: "median",
           label: "Median time",
           value: `${row.percentilesLatencyMs}s`,
           colorClassName: LATENCY_PALETTE.median,
         },
       ]}
+      activeKey={activeKey}
     />
   );
 }
@@ -132,10 +138,16 @@ export function LatencyChart({
     }));
   }, [rawData, mode, period]);
 
-  const legendItems = legendFromConstant(LATENCY_LEGEND, LATENCY_PALETTE, {
-    includeVersionMarker:
-      isCustomAgent && mode === "timeRange" && versionMarkers.length > 0,
-  });
+  const { activeKey, isDimmed, decorate, hoverHandlers } =
+    useSelectableSeries();
+
+  const legendItems = decorate(
+    legendFromConstant(LATENCY_LEGEND, LATENCY_PALETTE, {
+      includeVersionMarker:
+        isCustomAgent && mode === "timeRange" && versionMarkers.length > 0,
+    }),
+    { skip: (item) => item.key === "versionMarkers" }
+  );
 
   return (
     <ChartContainer
@@ -189,7 +201,11 @@ export function LatencyChart({
         />
         <Tooltip
           content={(props: TooltipContentProps<number, string>) => (
-            <LatencyTooltip {...props} versionMarkers={versionMarkers} />
+            <LatencyTooltip
+              {...props}
+              versionMarkers={versionMarkers}
+              activeKey={activeKey}
+            />
           )}
           cursor={false}
           wrapperStyle={{ outline: "none", zIndex: 50 }}
@@ -205,19 +221,29 @@ export function LatencyChart({
           strokeWidth={2}
           dataKey="avgLatencyMs"
           name="Average time to complete output"
-          className={LATENCY_PALETTE.average}
+          className={cn(
+            LATENCY_PALETTE.average,
+            "transition-opacity",
+            isDimmed("average") && "opacity-25"
+          )}
           fill="url(#fillAverage)"
           stroke="currentColor"
           dot={false}
+          {...hoverHandlers("average")}
         />
         <Line
           type="monotone"
           strokeWidth={2}
           dataKey="percentilesLatencyMs"
           name="Median time to complete output"
-          className={LATENCY_PALETTE.median}
+          className={cn(
+            LATENCY_PALETTE.median,
+            "transition-opacity",
+            isDimmed("median") && "opacity-25"
+          )}
           stroke="currentColor"
           dot={false}
+          {...hoverHandlers("median")}
         />
         {isCustomAgent && (
           <VersionMarkersDots mode={mode} versionMarkers={versionMarkers} />

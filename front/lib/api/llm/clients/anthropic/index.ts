@@ -24,7 +24,11 @@ import {
   toMessage,
   toTool,
 } from "@app/lib/api/llm/clients/anthropic/utils/conversation_to_anthropic";
-import { handleError } from "@app/lib/api/llm/clients/anthropic/utils/errors";
+import {
+  handleError,
+  handleInvalidToolJsonAnthropicError,
+  isAnthropicErrorUnableToParseToolParam,
+} from "@app/lib/api/llm/clients/anthropic/utils/errors";
 import { LLM } from "@app/lib/api/llm/llm";
 import type { BatchResult, BatchStatus } from "@app/lib/api/llm/types/batch";
 import { handleGenericError } from "@app/lib/api/llm/types/errors";
@@ -156,18 +160,18 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
   protected buildStreamRequestPayload(
     streamParameters: LLMStreamParameters
   ): BetaMessageStreamParams {
-    // Merge betas, always include structured-outputs, add custom betas if specified.
-    // TODO(fabien): Remove beta tag and beta client when structured outputs are generally available.
-    const betas = [
-      "structured-outputs-2025-11-13",
-      ...(this.modelConfig.customBetas ?? []),
-    ];
+    const basePayload = this.buildBaseRequestPayload(streamParameters);
+    const outputFormat = toOutputFormatParam(this.responseFormat);
+
+    const customBetas = this.modelConfig.customBetas;
 
     return {
-      ...this.buildBaseRequestPayload(streamParameters),
+      ...basePayload,
       stream: true,
-      betas,
-      output_format: toOutputFormatParam(this.responseFormat),
+      ...(customBetas && customBetas.length > 0 ? { betas: customBetas } : {}),
+      output_config: outputFormat
+        ? { ...basePayload.output_config, format: outputFormat }
+        : basePayload.output_config,
       cache_control: { type: "ephemeral" },
     };
   }
@@ -200,6 +204,10 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
     } catch (err) {
       if (err instanceof APIError) {
         yield handleError(err, this.metadata);
+      } else if (isAnthropicErrorUnableToParseToolParam(err)) {
+        // The SDK's BetaMessageStream throws an AnthropicError (not APIError) when
+        // it fails to parse tool parameter JSON client-side. Mark retryable.
+        yield handleInvalidToolJsonAnthropicError(err, this.metadata);
       } else {
         yield handleGenericError(err, this.metadata);
       }

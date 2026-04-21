@@ -6,6 +6,7 @@
     }
   ],
   "metadata": {
-    "relocated": "string"
+    "relocated": "string",
+    "actor_type": "string"
   }
 }

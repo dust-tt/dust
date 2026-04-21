@@ -35,7 +35,7 @@ async function handler(
     });
   }
 
-  if (!isString(hash)) {
+  if (hash !== undefined && !isString(hash)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {

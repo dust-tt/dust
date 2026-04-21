@@ -2,7 +2,7 @@ import { createPlugin } from "@app/lib/api/poke/types";
 import type { Authenticator } from "@app/lib/auth";
 import { addStripeMetronomeBillingConfig } from "@app/lib/metronome/client";
 import {
-  cancelSubscriptionAtPeriodEnd,
+  cancelSubscriptionImmediatelyNoInvoice,
   getStripeSubscription,
 } from "@app/lib/plans/stripe";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
@@ -46,8 +46,6 @@ async function switchWorkspaceToMetronomeBilling(
     return new Err(billingConfigResult.error);
   }
 
-  const periodEnd = new Date(stripeSubscription.current_period_end * 1000);
-
   await withTransaction(async (t) => {
     const subscriptionResource =
       await SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id, t);
@@ -62,7 +60,7 @@ async function switchWorkspaceToMetronomeBilling(
         planId: subscriptionResource.planId,
         status: "active",
         trialing: false,
-        startDate: periodEnd,
+        startDate: new Date(),
         endDate: null,
         stripeSubscriptionId: null,
         metronomeContractId: subscription.metronomeContractId,
@@ -73,7 +71,7 @@ async function switchWorkspaceToMetronomeBilling(
   });
 
   try {
-    await cancelSubscriptionAtPeriodEnd({
+    await cancelSubscriptionImmediatelyNoInvoice({
       stripeSubscriptionId: subscription.stripeSubscriptionId,
     });
   } catch (err) {
@@ -86,22 +84,22 @@ async function switchWorkspaceToMetronomeBilling(
       },
       "[SwitchToMetronomeBilling] MANUAL ACTION REQUIRED: DB and Metronome are already migrated " +
         "to Metronome billing but Stripe subscription cancellation failed. " +
-        "Cancel the Stripe subscription manually to avoid double-charging the customer at period end."
+        "Cancel the Stripe subscription manually (with invoice_now=false, prorate=false) to avoid extra invoicing."
     );
     return new Ok({
       display: "text",
       value:
         `WARNING: DB migrated and Metronome billing enabled, but failed to cancel Stripe ` +
         `subscription ${subscription.stripeSubscriptionId}: ${error.message}. ` +
-        `Cancel it manually in Stripe to avoid double-charging at period end.`,
+        `Cancel the Stripe subscription manually (with invoice_now=false, prorate=false) to avoid extra invoicing.`,
     });
   }
 
   return new Ok({
     display: "text",
     value:
-      `Stripe subscription ${subscription.stripeSubscriptionId} will be cancelled on ${periodEnd.toISOString()}. ` +
-      `New Metronome contract ${subscription.metronomeContractId} continues from that date with Stripe as billing provider.`,
+      `Stripe subscription ${subscription.stripeSubscriptionId} cancelled immediately (no proration invoice). ` +
+      `New Metronome contract ${subscription.metronomeContractId} is now the active billing provider.`,
   });
 }
 
@@ -110,7 +108,7 @@ export const switchToMetronomeBillingPlugin = createPlugin({
     id: "switch-to-metronome-billing",
     name: "Switch to Metronome Billing",
     description:
-      "Cancels the Stripe subscription at period end and enables Metronome as the billing provider. The Metronome contract transitions at the same date to avoid double-billing.",
+      "Cancels the Stripe subscription immediately (no proration invoice) and enables Metronome as the billing provider.",
     resourceTypes: ["workspaces"],
     args: {},
   },

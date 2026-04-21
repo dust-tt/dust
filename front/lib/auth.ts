@@ -97,7 +97,7 @@ export interface AuthenticatorType {
  * This is a class that will be used to check if a user can perform an action on a resource.
  * It acts as a central place to enforce permissioning across all of Dust.
  *
- * It explicitely does not store a reference to the current user to make sure our permissions are
+ * It explicitly does not store a reference to the current user to make sure our permissions are
  * workspace oriented. Use `getUserFromSession` if needed.
  */
 export class Authenticator {
@@ -905,6 +905,7 @@ export class Authenticator {
       user,
       subscription: auth._subscription,
       workspace: auth._workspace,
+      providersHealth: auth._providersHealth,
     });
   }
 
@@ -918,6 +919,7 @@ export class Authenticator {
       subscription: this._subscription,
       workspace: this._workspace,
       clientIp: this._clientIp,
+      providersHealth: this._providersHealth,
     });
   }
 

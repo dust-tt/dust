@@ -337,10 +337,11 @@ function getDefaultValueAtPath(inputSchema: JSONSchema, keyPath: string) {
 }
 
 /**
- * Recursively filters out **required** properties whose schema matches a configurable
+ * Filters out **required** properties whose schema matches a configurable
  * `INTERNAL_MIME_TYPES.TOOL_INPUT` (those are injected server-side).
  * Optional internal-configuration properties are kept so the model can see them and infer values when useful.
- * Handles nested objects and arrays.
+ *
+ * Only applicable to internal MCP tools — external tool schemas are treated as black-box.
  */
 export function hideInternalConfiguration(inputSchema: JSONSchema): JSONSchema {
   const resultingSchema = { ...inputSchema };
@@ -915,9 +916,9 @@ export function findMatchingSubSchemas(
           // For tuple items, we use the index as part of the key
           for (const match of Object.keys(itemMatches)) {
             if (match !== "") {
-              matches[`items[${i}].${match}`] = itemMatches[match];
+              matches[`items.${i}.${match}`] = itemMatches[match];
             } else {
-              matches[`items[${i}]`] = itemMatches[match];
+              matches[`items.${i}`] = itemMatches[match];
             }
           }
         }

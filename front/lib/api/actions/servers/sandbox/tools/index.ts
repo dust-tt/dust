@@ -1,6 +1,7 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type {
   ToolDefinition,
+  ToolHandlerExtra,
   ToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
@@ -12,6 +13,11 @@ import {
   generateSandboxExecToken,
   revokeExecToken,
 } from "@app/lib/api/sandbox/access_tokens";
+import {
+  checkEgressForwarderHealth,
+  sandboxSupportsEgressForwarding,
+  setupEgressForwarder,
+} from "@app/lib/api/sandbox/egress";
 import {
   mountConversationFiles,
   refreshGcsToken,
@@ -31,7 +37,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import logger from "@app/logger/logger";
 import { isDevelopment } from "@app/types/shared/env";
-import { Err, Ok } from "@app/types/shared/result";
+import { Err, Ok, type Result } from "@app/types/shared/result";
 
 const DEFAULT_WORKING_DIRECTORY = "/home/agent";
 const DEFAULT_EXEC_TIMEOUT_MS = 60_000;
@@ -90,111 +96,7 @@ export function createSandboxTools(
   _agentLoopContext?: AgentLoopContextType
 ): ToolDefinition[] {
   const handlers: ToolHandlers<typeof SANDBOX_TOOLS_METADATA> = {
-    bash: async (
-      { command, workingDirectory, timeoutMs },
-      { auth, agentLoopContext }
-    ) => {
-      const conversation = agentLoopContext?.runContext?.conversation;
-      const agentConfiguration =
-        agentLoopContext?.runContext?.agentConfiguration;
-      const agentMessage = agentLoopContext?.runContext?.agentMessage;
-      if (!conversation || !agentConfiguration || !agentMessage) {
-        return new Err(new MCPError("No conversation context available."));
-      }
-
-      const ensureResult = await SandboxResource.ensureActive(
-        auth,
-        conversation
-      );
-      if (ensureResult.isErr()) {
-        return new Err(new MCPError(ensureResult.error.message));
-      }
-
-      const { sandbox, freshlyCreated, wokeFromSleep } = ensureResult.value;
-
-      // Mount GCS conversation files (fire-and-forget).
-      // On fresh creation or wake-from-sleep, /tmp is empty so we need a full mount.
-      // For already-running sandboxes we just refresh the token.
-      const imageResult = getSandboxImage(auth);
-      if (imageResult.isOk()) {
-        const image = imageResult.value;
-
-        void startTelemetry(auth, sandbox, conversation).catch((err) =>
-          logger.error({ err }, "Telemetry start failed (fire-and-forget)")
-        );
-
-        if (freshlyCreated || wokeFromSleep) {
-          void mountConversationFiles(auth, sandbox, conversation, image).catch(
-            (err) => logger.error({ err }, "GCS mount failed (fire-and-forget)")
-          );
-        } else {
-          void refreshGcsToken(auth, sandbox, conversation, image).catch(
-            (err) =>
-              logger.error(
-                { err },
-                "GCS token refresh failed (fire-and-forget)"
-              )
-          );
-        }
-      } else {
-        logger.error(
-          { err: imageResult.error },
-          "Failed to get sandbox image for GCS mount"
-        );
-      }
-
-      const execId = generateExecId();
-      const sandboxToken = await generateSandboxExecToken(auth, {
-        agentConfiguration,
-        agentMessage,
-        conversation,
-        sandbox,
-        execId,
-        expiryMs: DEFAULT_EXEC_TIMEOUT_MS,
-      });
-
-      const metricsCtx = { workspaceId: auth.getNonNullableWorkspace().sId };
-      const startMs = performance.now();
-
-      const providerId = agentConfiguration.model.providerId;
-      const timeoutSec = timeoutMs ? Math.ceil(timeoutMs / 1000) : 60;
-      const wrappedCommand = wrapCommand(command, providerId, {
-        timeoutSec,
-      });
-
-      const sandboxAPIBase =
-        isDevelopment() && config.getSandboxDevFrontHostName()
-          ? `https://${config.getSandboxDevFrontHostName()}`
-          : config.getClientFacingUrl();
-
-      const execResult = await sandbox.exec(auth, wrappedCommand, {
-        workingDirectory: workingDirectory ?? DEFAULT_WORKING_DIRECTORY,
-        envVars: {
-          DUST_SANDBOX_TOKEN: sandboxToken,
-          DUST_API_URL: `${sandboxAPIBase}/api/v1/w/${auth.getNonNullableWorkspace().sId}`,
-        },
-      });
-
-      const durationMs = performance.now() - startMs;
-      recordToolDuration(
-        "bash",
-        durationMs,
-        metricsCtx,
-        execResult.isOk() ? "success" : "error"
-      );
-
-      void revokeExecToken({ sbId: sandbox.sId, execId }).catch((err) =>
-        logger.error({ error: err }, "Failed to revoke exec token")
-      );
-
-      if (execResult.isErr()) {
-        return new Err(new MCPError(execResult.error.message));
-      }
-
-      const output = formatExecOutput(execResult.value);
-
-      return new Ok([{ type: "text" as const, text: output }]);
-    },
+    bash: runSandboxBashTool,
     describe_toolset: async ({ format }, { auth, agentLoopContext }) => {
       const providerId =
         agentLoopContext?.runContext?.agentConfiguration.model.providerId;
@@ -216,4 +118,166 @@ export function createSandboxTools(
   };
 
   return buildTools(SANDBOX_TOOLS_METADATA, handlers);
+}
+
+export async function runSandboxBashTool(
+  {
+    command,
+    workingDirectory,
+    timeoutMs,
+  }: {
+    command: string;
+    description: string;
+    timeoutMs?: number;
+    workingDirectory?: string;
+  },
+  { auth, agentLoopContext }: ToolHandlerExtra
+): Promise<Result<Array<{ type: "text"; text: string }>, MCPError>> {
+  const conversation = agentLoopContext?.runContext?.conversation;
+  const agentConfiguration = agentLoopContext?.runContext?.agentConfiguration;
+  const agentMessage = agentLoopContext?.runContext?.agentMessage;
+  if (!conversation || !agentConfiguration || !agentMessage) {
+    return new Err(new MCPError("No conversation context available."));
+  }
+
+  const ensureResult = await SandboxResource.ensureActive(auth, conversation);
+  if (ensureResult.isErr()) {
+    return new Err(new MCPError(ensureResult.error.message));
+  }
+
+  const { sandbox, freshlyCreated, wokeFromSleep } = ensureResult.value;
+
+  const imageResult = getSandboxImage(auth);
+  if (imageResult.isOk()) {
+    const image = imageResult.value;
+
+    void startTelemetry(auth, sandbox, conversation).catch((err) =>
+      logger.error({ err }, "Telemetry start failed (fire-and-forget)")
+    );
+
+    if (freshlyCreated || wokeFromSleep) {
+      void mountConversationFiles(auth, sandbox, conversation, image).catch(
+        (err) => logger.error({ err }, "GCS mount failed (fire-and-forget)")
+      );
+    } else {
+      void refreshGcsToken(auth, sandbox, conversation, image).catch((err) =>
+        logger.error({ err }, "GCS token refresh failed (fire-and-forget)")
+      );
+    }
+  } else {
+    logger.error(
+      { err: imageResult.error },
+      "Failed to get sandbox image for GCS mount"
+    );
+  }
+
+  const egressCompatResult = await sandboxSupportsEgressForwarding(
+    auth,
+    sandbox
+  );
+  if (egressCompatResult.isErr()) {
+    return new Err(new MCPError(egressCompatResult.error.message));
+  }
+
+  let execUser: string | undefined;
+  if (!egressCompatResult.value) {
+    logger.info(
+      {
+        event: "egress.compat_skip",
+        providerId: sandbox.providerId,
+        sandboxId: sandbox.sId,
+      },
+      "Skipping sandbox egress setup for an incompatible sandbox"
+    );
+  } else {
+    if (freshlyCreated) {
+      const setupResult = await setupEgressForwarder(auth, sandbox);
+      if (setupResult.isErr()) {
+        return new Err(new MCPError(setupResult.error.message));
+      }
+    }
+
+    const healthResult = await checkEgressForwarderHealth(auth, sandbox);
+    if (healthResult.isErr()) {
+      return new Err(new MCPError(healthResult.error.message));
+    }
+
+    if (!healthResult.value) {
+      logger.warn(
+        {
+          event: "egress.health_fail",
+          providerId: sandbox.providerId,
+          sandboxId: sandbox.sId,
+        },
+        "Sandbox egress forwarder health check failed, restarting"
+      );
+      const setupResult = await setupEgressForwarder(auth, sandbox);
+      if (setupResult.isErr()) {
+        return new Err(new MCPError(setupResult.error.message));
+      }
+    } else {
+      logger.info(
+        {
+          event: "egress.health_ok",
+          providerId: sandbox.providerId,
+          sandboxId: sandbox.sId,
+        },
+        "Sandbox egress forwarder health check succeeded"
+      );
+    }
+
+    execUser = "agent-proxied";
+  }
+
+  const execId = generateExecId();
+  const sandboxToken = await generateSandboxExecToken(auth, {
+    agentConfiguration,
+    agentMessage,
+    conversation,
+    sandbox,
+    execId,
+    expiryMs: DEFAULT_EXEC_TIMEOUT_MS,
+  });
+
+  const metricsCtx = { workspaceId: auth.getNonNullableWorkspace().sId };
+  const startMs = performance.now();
+
+  const providerId = agentConfiguration.model.providerId;
+  const timeoutSec = timeoutMs ? Math.ceil(timeoutMs / 1000) : 60;
+  const wrappedCommand = wrapCommand(command, providerId, {
+    timeoutSec,
+  });
+
+  const sandboxAPIBase =
+    isDevelopment() && config.getSandboxDevFrontHostName()
+      ? `https://${config.getSandboxDevFrontHostName()}`
+      : config.getClientFacingUrl();
+
+  const execResult = await sandbox.exec(auth, wrappedCommand, {
+    workingDirectory: workingDirectory ?? DEFAULT_WORKING_DIRECTORY,
+    envVars: {
+      DUST_SANDBOX_TOKEN: sandboxToken,
+      DUST_API_URL: `${sandboxAPIBase}/api/v1/w/${auth.getNonNullableWorkspace().sId}`,
+    },
+    ...(execUser ? { user: execUser } : {}),
+  });
+
+  const durationMs = performance.now() - startMs;
+  recordToolDuration(
+    "bash",
+    durationMs,
+    metricsCtx,
+    execResult.isOk() ? "success" : "error"
+  );
+
+  void revokeExecToken({ sbId: sandbox.sId, execId }).catch((err) =>
+    logger.error({ error: err }, "Failed to revoke exec token")
+  );
+
+  if (execResult.isErr()) {
+    return new Err(new MCPError(execResult.error.message));
+  }
+
+  const output = formatExecOutput(execResult.value);
+  return new Ok([{ type: "text" as const, text: output }]);
 }

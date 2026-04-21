@@ -111,6 +111,17 @@ export class TagResource extends BaseResource<TagModel> {
     return tags.length > 0 ? tags[0] : null;
   }
 
+  static async findByNames(
+    auth: Authenticator,
+    names: string[]
+  ): Promise<TagResource[]> {
+    return this.baseFetch(auth, {
+      where: {
+        name: names,
+      },
+    });
+  }
+
   static async findAll(auth: Authenticator, { kind }: { kind?: TagKind } = {}) {
     return this.baseFetch(auth, {
       where: {

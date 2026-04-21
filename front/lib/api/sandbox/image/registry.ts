@@ -10,10 +10,14 @@ import { Err, Ok } from "@app/types/shared/result";
 import fs from "fs";
 import path from "path";
 
-const DSBX_CLI_VERSION = "0.1.3";
+const DUST_BEDROCK_IMAGE_VERSION = "1.7.0";
+const DUST_BASE_IMAGE_VERSION = "0.7.11";
+const DSBX_CLI_VERSION = "0.1.4";
+const AGENT_PROXIED_UID = 1003;
 // Built from https://github.com/openai/codex at tag rust-v0.115.0 (Apache-2.0).
 // Released via the "Release sandbox tool" GitHub Actions workflow.
 const APPLY_PATCH_VERSION = "0.1.0";
+const EGRESS_LOCAL_DIR = path.resolve(__dirname, "egress");
 const PROFILE_LOCAL_DIR = path.resolve(__dirname, "profile");
 const TELEMETRY_LOCAL_DIR = path.resolve(__dirname, "telemetry");
 
@@ -84,7 +88,23 @@ function getLocalContent(dir: string, filename: string): () => string {
   return () => fs.readFileSync(path.join(dir, filename), "utf-8");
 }
 
-const DUST_BASE_IMAGE = SandboxImage.fromDocker("dust-sbx-bedrock:1.3.0")
+function getAgentProxiedSetupCommand(): string {
+  // setgid bit on shared dirs + default POSIX ACLs ensures files created
+  // by either agent or agent-proxied are group-owned by `agent` and
+  // group-writable, regardless of the creating process's umask — avoids
+  // a perms handoff footgun during the PR1→PR2 rollout window.
+  return [
+    `useradd --create-home --uid ${AGENT_PROXIED_UID} --gid agent --shell /bin/bash agent-proxied`,
+    "chgrp agent /home/agent /files/conversation",
+    "chmod g+ws /home/agent /files/conversation",
+    "setfacl -R -d -m g::rwx /home/agent /files/conversation",
+    "setfacl -R -m g::rwx /home/agent /files/conversation",
+  ].join(" && ");
+}
+
+const DUST_BASE_IMAGE = SandboxImage.fromDocker(
+  `dust-sbx-bedrock:${DUST_BEDROCK_IMAGE_VERSION}`
+)
   // Create agent user first so e2b creates /home/agent with correct ownership.
   .setUser("agent")
   // Conversation files bootstrap
@@ -92,6 +112,7 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker("dust-sbx-bedrock:1.3.0")
   .runCmd("mkdir -p /files/conversation && chmod 777 /files/conversation", {
     user: "root",
   })
+  .runCmd(getAgentProxiedSetupCommand(), { user: "root" })
   // Create simple netcat-based token server script.
   .runCmd("mkdir -p /home/agent/.bin", { user: "root" })
   // TODO(2026-03-06 SANDBOX): .copy is broken, use file once fixed.
@@ -242,7 +263,21 @@ SHELLEOF`,
     "/etc/systemd/system/fluent-bit.service",
     { user: "root" }
   )
-  .runCmd("systemctl daemon-reload", { user: "root" })
+  .copy(
+    getLocalContent(EGRESS_LOCAL_DIR, "egress-nftables.sh"),
+    "/etc/dust/egress-nftables.sh",
+    { user: "root" }
+  )
+  .runCmd("chmod 755 /etc/dust/egress-nftables.sh", { user: "root" })
+  .copy(
+    getLocalContent(EGRESS_LOCAL_DIR, "dust-egress-nftables.service"),
+    "/etc/systemd/system/dust-egress-nftables.service",
+    { user: "root" }
+  )
+  .runCmd(
+    "systemctl daemon-reload && systemctl enable dust-egress-nftables.service",
+    { user: "root" }
+  )
   // Profile functions (no install needed, provided by profile scripts)
   .registerTool([
     {
@@ -298,7 +333,7 @@ SHELLEOF`,
   .withToolManifest()
   .register({
     imageName: "dust-base",
-    tag: "0.7.2",
+    tag: DUST_BASE_IMAGE_VERSION,
   });
 
 const IMAGES: readonly SandboxImage[] = [DUST_BASE_IMAGE];

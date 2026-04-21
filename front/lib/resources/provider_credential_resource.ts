@@ -396,10 +396,11 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
     await this.invalidateProviderCredentialCache(workspace.id);
   }
 
+  // Returns the invalidated credential so the caller can emit credentials.invalidated, or null if no change was made.
   static async markAsUnhealthy(
     auth: Authenticator,
     { providerId }: { providerId: ByokModelProviderIdType }
-  ): Promise<void> {
+  ): Promise<ProviderCredentialResource | null> {
     const workspace = auth.getNonNullableWorkspace();
     assert(
       auth.getNonNullablePlan().isByok,
@@ -408,7 +409,7 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
 
     const credential = await this.fetchByProvider(auth, providerId);
     if (!credential) {
-      return;
+      return null;
     }
 
     const isAuthError = await hasCredentialAuthError({
@@ -417,7 +418,7 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
     });
 
     if (!isAuthError) {
-      return;
+      return null;
     }
 
     const [affectedCount] = await ProviderCredentialModel.update(
@@ -425,10 +426,14 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
       { where: { workspaceId: workspace.id, providerId, isHealthy: true } }
     );
 
-    if (affectedCount > 0) {
-      await this.invalidateProviderCredentialCache(workspace.id);
-      notifyProviderCredentialsHealthUpdated(auth);
+    if (affectedCount === 0) {
+      return null;
     }
+
+    await this.invalidateProviderCredentialCache(workspace.id);
+    notifyProviderCredentialsHealthUpdated(auth);
+
+    return credential;
   }
 
   async delete(

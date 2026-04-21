@@ -29,7 +29,6 @@ export const AgentMessageMarkdown = ({
   additionalMarkdownComponents = {} as Components,
   additionalMarkdownPlugins = [] as PluggableList,
   isLastMessage = false,
-  isStreaming = false,
   streamingState,
   isInstructions = false,
   textColor,
@@ -40,7 +39,6 @@ export const AgentMessageMarkdown = ({
   owner: WorkspaceType;
   content: string;
   isLastMessage?: boolean;
-  isStreaming?: boolean;
   streamingState?: StreamingState;
   isInstructions?: boolean;
   additionalMarkdownComponents?: Components;
@@ -91,7 +89,6 @@ export const AgentMessageMarkdown = ({
       additionalMarkdownComponents={markdownComponents}
       additionalMarkdownPlugins={markdownPlugins}
       isLastMessage={isLastMessage}
-      isStreaming={isStreaming}
       streamingState={streamingState}
       enableAnimation
       textColor={textColor}

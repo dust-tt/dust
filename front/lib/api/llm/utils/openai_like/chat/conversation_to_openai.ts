@@ -133,6 +133,12 @@ export function toMessages(
       case "function":
         messages.push(toToolMessage(message));
         break;
+      case "compaction":
+        messages.push({
+          role: "user",
+          content: message.content,
+        });
+        break;
       default:
         assertNever(message);
     }

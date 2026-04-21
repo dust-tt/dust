@@ -1,5 +1,6 @@
 import type {
   ClientSideMCPToolConfigurationType,
+  InternalServerSideMCPToolConfigurationType,
   LightClientSideMCPToolConfigurationType,
   LightMCPToolConfigurationType,
   LightServerSideMCPToolConfigurationType,
@@ -56,6 +57,14 @@ export function isServerSideMCPToolConfiguration(
   arg: MCPToolConfigurationType
 ): arg is ServerSideMCPToolConfigurationType {
   return isMCPToolConfiguration(arg) && "mcpServerViewId" in arg;
+}
+
+export function isInternalServerSideMCPToolConfiguration(
+  arg: MCPToolConfigurationType
+): arg is InternalServerSideMCPToolConfigurationType {
+  return (
+    isServerSideMCPToolConfiguration(arg) && arg.internalMCPServerId !== null
+  );
 }
 
 // Light tool configuration.

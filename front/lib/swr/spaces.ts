@@ -35,6 +35,10 @@ import type {
   GetProjectMetadataResponseBody,
   PatchProjectMetadataResponseBody,
 } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_metadata";
+import type {
+  GetUserProjectNotificationPreferenceResponseBody,
+  PatchUserProjectNotificationPreferenceResponseBody,
+} from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_notification_preferences";
 import type { SpacesLookupResponseBody } from "@app/pages/api/w/[wId]/spaces/projects-lookup";
 import type { PatchProjectMetadataBodyType } from "@app/types/api/internal/spaces";
 import type { DataSourceViewCategoryWithoutApps } from "@app/types/api/public/spaces";
@@ -42,6 +46,10 @@ import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
 import type { SearchWarningCode } from "@app/types/core/core_api";
 import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/core_api";
 import type { DataSourceViewType } from "@app/types/data_source_view";
+import type {
+  NotificationCondition,
+  UserProjectNotificationPreference,
+} from "@app/types/notification_preferences";
 import type { ProjectMetadataType } from "@app/types/project_metadata";
 import { isString } from "@app/types/shared/utils/general";
 import type { ProjectType, SpaceKind, SpaceType } from "@app/types/space";
@@ -1035,6 +1043,87 @@ export function useUpdateProjectMetadata({
 
     const response: PatchProjectMetadataResponseBody = await res.json();
     return response.projectMetadata;
+  };
+}
+
+export function useProjectNotificationPreference({
+  workspaceId,
+  spaceId,
+  disabled = false,
+}: {
+  workspaceId: string;
+  spaceId: string | null;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const projectMetadataFetcher: Fetcher<GetUserProjectNotificationPreferenceResponseBody> =
+    fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/spaces/${spaceId}/project_notification_preferences`,
+    projectMetadataFetcher,
+    { disabled: disabled || spaceId === null }
+  );
+
+  return {
+    projectNotificationPreference:
+      data?.userProjectNotificationPreference ?? null,
+    isProjectNotificationPreferenceLoading: !error && !data && !disabled,
+    mutateProjectNotificationPreference: mutate,
+  };
+}
+
+export function useUpdateProjectNotificationPreference({
+  workspaceId,
+  spaceId,
+}: {
+  workspaceId: string;
+  spaceId: string | null;
+}) {
+  const sendNotification = useSendNotification();
+  const { mutateProjectNotificationPreference } =
+    useProjectNotificationPreference({
+      workspaceId,
+      spaceId,
+      disabled: true,
+    });
+
+  return async (
+    preference: NotificationCondition
+  ): Promise<UserProjectNotificationPreference | null> => {
+    if (!spaceId) {
+      return null;
+    }
+    const url = `/api/w/${workspaceId}/spaces/${spaceId}/project_notification_preferences`;
+
+    const res = await clientFetch(url, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        preference,
+      }),
+    });
+
+    if (!res.ok) {
+      const errorData = await getErrorFromResponse(res);
+      sendNotification({
+        type: "error",
+        title: "Error updating project notification preference",
+        description: `Error: ${errorData.message}`,
+      });
+      return null;
+    }
+
+    void mutateProjectNotificationPreference();
+
+    sendNotification({
+      type: "success",
+      title: "Project notification preference updated",
+    });
+
+    const response: PatchUserProjectNotificationPreferenceResponseBody =
+      await res.json();
+    return response.userProjectNotificationPreference;
   };
 }
 

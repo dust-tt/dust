@@ -80,6 +80,9 @@ export const RESOURCES_PREFIX = {
   project_todo_state: "pts",
   project_todo: "ptd",
 
+  // Wake-ups.
+  wake_up: "wak",
+
   // Takeaways.
   takeaways: "tka",
 
@@ -89,6 +92,9 @@ export const RESOURCES_PREFIX = {
 
   // Provider credentials (BYOK).
   provider_credential: "pcr",
+
+  // User project notification preferences.
+  user_project_notification_preference: "upnp",
 } as const;
 
 export const CROSS_WORKSPACE_RESOURCES_WORKSPACE_ID: ModelId = 0;

@@ -3,10 +3,10 @@ import type { WebhookSourceFormValues } from "@app/components/triggers/forms/web
 import { WebhookEndpointUsageInfo } from "@app/components/triggers/WebhookEndpointUsageInfo";
 import { useSendNotification } from "@app/hooks/useNotification";
 import config from "@app/lib/api/config";
-import { buildWebhookUrl, normalizeWebhookIcon } from "@app/lib/webhookSource";
+import { buildWebhookUrl, normalizeWebhookIcon } from "@app/lib/webhook_source";
 import type { WebhookSourceViewForAdminType } from "@app/types/triggers/webhooks";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
-import { WEBHOOK_PRESETS_UI } from "@app/types/triggers/webhooks_ui";
+import { CLIENT_SIDE_WEBHOOK_PRESETS } from "@app/types/triggers/webhooks_client_side";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   ActionIcons,
@@ -191,7 +191,7 @@ export function WebhookSourceDetailsInfo({
         {provider &&
           (() => {
             const DetailsComponent =
-              WEBHOOK_PRESETS_UI[provider].components.detailsComponent;
+              CLIENT_SIDE_WEBHOOK_PRESETS[provider].components.detailsComponent;
             return (
               <DetailsComponent
                 webhookSource={webhookSourceView.webhookSource}

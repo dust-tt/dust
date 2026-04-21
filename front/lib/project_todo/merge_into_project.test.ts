@@ -17,10 +17,9 @@ function makeActionItem(
 ): TodoVersionedActionItem {
   return {
     sId: "action-1",
-    text: "Write the report",
+    shortDescription: "Write the report",
     assigneeUserId: null,
     assigneeName: null,
-    sourceMessageRank: 1,
     status: "open",
     detectedDoneAt: null,
     detectedDoneRationale: null,
@@ -33,9 +32,8 @@ function makeKeyDecision(
 ): TodoVersionedKeyDecision {
   return {
     sId: "decision-1",
-    text: "Use PostgreSQL",
+    shortDescription: "Use PostgreSQL",
     relevantUserIds: [],
-    sourceMessageRank: 2,
     status: "decided",
     ...overrides,
   };
@@ -46,9 +44,8 @@ function makeNotableFact(
 ): TodoVersionedNotableFact {
   return {
     sId: "fact-1",
-    text: "Budget capped at €50k",
+    shortDescription: "Budget capped at €50k",
     relevantUserIds: [],
-    sourceMessageRank: 3,
     ...overrides,
   };
 }
@@ -56,9 +53,9 @@ function makeNotableFact(
 // ── actionItemBlob ────────────────────────────────────────────────────────────
 
 describe("actionItemBlob", () => {
-  it("maps to follow_ups category", () => {
+  it("maps to to_do category", () => {
     const blob = actionItemBlob(makeActionItem());
-    expect(blob.category).toBe("follow_ups");
+    expect(blob.category).toBe("to_do");
   });
 
   it("maps open status to todo", () => {
@@ -84,8 +81,10 @@ describe("actionItemBlob", () => {
     expect(blob.doneAt).toBeNull();
   });
 
-  it("preserves text", () => {
-    const blob = actionItemBlob(makeActionItem({ text: "Deploy to prod" }));
+  it("preserves shortDescription", () => {
+    const blob = actionItemBlob(
+      makeActionItem({ shortDescription: "Deploy to prod" })
+    );
     expect(blob.text).toBe("Deploy to prod");
   });
 });
@@ -93,14 +92,14 @@ describe("actionItemBlob", () => {
 // ── keyDecisionBlob ───────────────────────────────────────────────────────────
 
 describe("keyDecisionBlob", () => {
-  it("maps to key_decisions category", () => {
+  it("maps to to_know category", () => {
     const blob = keyDecisionBlob(makeKeyDecision());
-    expect(blob.category).toBe("key_decisions");
+    expect(blob.category).toBe("to_know");
   });
 
   it("maps decided status to done", () => {
     const blob = keyDecisionBlob(makeKeyDecision({ status: "decided" }));
-    expect(blob.status).toBe("done");
+    expect(blob.status).toBe("todo");
   });
 
   it("maps open status to todo", () => {
@@ -114,7 +113,9 @@ describe("keyDecisionBlob", () => {
   });
 
   it("preserves text", () => {
-    const blob = keyDecisionBlob(makeKeyDecision({ text: "Go monorepo" }));
+    const blob = keyDecisionBlob(
+      makeKeyDecision({ shortDescription: "Go monorepo" })
+    );
     expect(blob.text).toBe("Go monorepo");
   });
 });
@@ -122,9 +123,9 @@ describe("keyDecisionBlob", () => {
 // ── notableFactBlob ───────────────────────────────────────────────────────────
 
 describe("notableFactBlob", () => {
-  it("maps to notable_updates category", () => {
+  it("maps to to_know category", () => {
     const blob = notableFactBlob(makeNotableFact());
-    expect(blob.category).toBe("notable_updates");
+    expect(blob.category).toBe("to_know");
   });
 
   it("always sets status to todo", () => {
@@ -137,9 +138,9 @@ describe("notableFactBlob", () => {
     expect(blob.doneAt).toBeNull();
   });
 
-  it("preserves text", () => {
+  it("preserves shortDescription", () => {
     const blob = notableFactBlob(
-      makeNotableFact({ text: "Team is 12 people" })
+      makeNotableFact({ shortDescription: "Team is 12 people" })
     );
     expect(blob.text).toBe("Team is 12 people");
   });

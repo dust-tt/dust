@@ -1,5 +1,5 @@
 import { getIcon } from "@app/components/resources/resources_icons";
-import { normalizeWebhookIcon } from "@app/lib/webhookSource";
+import { normalizeWebhookIcon } from "@app/lib/webhook_source";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import { ActionCard, SearchInput, TimeIcon } from "@dust-tt/sparkle";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`

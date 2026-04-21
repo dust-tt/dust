@@ -66,9 +66,9 @@ describe("SkillSuggestionResource", () => {
           suggestion: {
             instructionEdits: [
               {
-                old_string: "original",
-                new_string: "Be more detailed",
-                expected_occurrences: 1,
+                targetBlockId: "abc12345",
+                content: "<p>Be more detailed</p>",
+                type: "replace",
               },
             ],
           },
@@ -221,9 +221,9 @@ describe("SkillSuggestionResource", () => {
             suggestion: {
               instructionEdits: [
                 {
-                  old_string: "old",
-                  new_string: `instruction-${i}`,
-                  expected_occurrences: 1,
+                  targetBlockId: "abc12345",
+                  content: `<p>instruction-${i}</p>`,
+                  type: "replace",
                 },
               ],
             },
@@ -543,9 +543,9 @@ describe("SkillSuggestionResource", () => {
           suggestion: {
             instructionEdits: [
               {
-                old_string: "old text",
-                new_string: "New instructions",
-                expected_occurrences: 1,
+                targetBlockId: "abc12345",
+                content: "<p>New instructions</p>",
+                type: "replace",
               },
             ],
           },
@@ -560,19 +560,37 @@ describe("SkillSuggestionResource", () => {
       expect(json.suggestion).toMatchObject({
         instructionEdits: [
           {
-            old_string: "old text",
-            new_string: "New instructions",
-            expected_occurrences: 1,
+            targetBlockId: "abc12345",
+            content: "<p>New instructions</p>",
+            type: "replace",
           },
         ],
       });
       expect(json.analysis).toBe("Improved clarity");
+      expect(json.title).toBeNull();
       expect(json.state).toBe("pending");
       expect(json.source).toBe("reinforcement");
       expect(json.skillConfigurationId).toBe(skill.sId);
       expect(json.sourceConversationId).toBeNull();
       expect(typeof json.createdAt).toBe("number");
       expect(typeof json.updatedAt).toBe("number");
+    });
+
+    it("should round-trip a title through create, fetch, and toJSON", async () => {
+      const title = "Clarify response tone";
+
+      const suggestion = await SkillSuggestionFactory.create(
+        authenticator,
+        skill,
+        { title }
+      );
+      expect(suggestion.toJSON().title).toBe(title);
+
+      const fetched = await SkillSuggestionResource.fetchById(
+        authenticator,
+        suggestion.sId
+      );
+      expect(fetched?.toJSON().title).toBe(title);
     });
   });
 });

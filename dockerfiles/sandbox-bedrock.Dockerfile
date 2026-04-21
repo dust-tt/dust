@@ -4,8 +4,12 @@ FROM ubuntu:noble-20260210.1 AS rootfs
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-  ca-certificates curl git unzip xz-utils gnupg lsb-release netcat-openbsd \
+  ca-certificates curl git unzip xz-utils gnupg lsb-release netcat-openbsd nftables acl \
   && rm -rf /var/lib/apt/lists/*
+
+RUN useradd --system --no-create-home --uid 9990 --shell /bin/bash dust-fwd \
+  && mkdir -p /etc/dust \
+  && chmod 755 /etc/dust
 
 # Add gcsfuse repository
 RUN curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg \
@@ -56,3 +60,8 @@ RUN printf '%s\n' \
   'export VIRTUAL_ENV="/opt/venv"' \
   'export NPM_CONFIG_PREFIX="/opt/npm-global"' \
   > /etc/profile.d/dust-env.sh
+
+RUN if command -v sudo >/dev/null 2>&1; then \
+  echo "sudo must not be installed in sandbox images" >&2; \
+  exit 1; \
+fi

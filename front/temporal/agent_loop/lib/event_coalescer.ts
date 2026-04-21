@@ -3,7 +3,7 @@ import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types"
 import logger from "@app/logger/logger";
 import type { GenerationTokensEvent } from "@app/types/assistant/generation";
 
-const FLUSH_INTERVAL_MS = 100;
+export const DEFAULT_EVENT_FLUSH_INTERVAL_MS = 100;
 const MAX_BUFFER_AGE_MS = 60_000; // 1 minute
 const CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -72,7 +72,7 @@ class EventCoalescer {
     event,
     key,
     step,
-    flushIntervalMs = FLUSH_INTERVAL_MS,
+    flushIntervalMs = DEFAULT_EVENT_FLUSH_INTERVAL_MS,
   }: {
     conversationId: string;
     event: AgentMessageEvents;

@@ -19,14 +19,8 @@ import { usePokeRegion } from "@app/lib/swr/poke";
 import { classNames } from "@app/lib/utils";
 import type { PokeWorkspaceWithRegion } from "@app/poke/swr/search";
 import { usePokeWorkspacesAllRegions } from "@app/poke/swr/search";
-import {
-  BookOpenIcon,
-  Chip,
-  Icon,
-  Input,
-  LinkWrapper,
-  Spinner,
-} from "@dust-tt/sparkle";
+import { pluralize } from "@app/types/shared/utils/string_utils";
+import { Chip, Icon, Input, LinkWrapper, Spinner } from "@dust-tt/sparkle";
 import { UsersIcon } from "lucide-react";
 import moment from "moment";
 import type { ChangeEvent } from "react";
@@ -78,27 +72,14 @@ function WorkspaceList({
                       </PokeTableCell>
                     </PokeTableRow>
                     <PokeTableRow>
-                      <PokeTableCell className="max-w-[200px] overflow-hidden text-ellipsis">
-                        {ws.adminEmail}{" "}
-                        {ws.workspaceDomains && (
-                          <label>
-                            (
-                            {ws.workspaceDomains
-                              .map((d) => d.domain)
-                              .join(", ")}
-                            )
-                          </label>
-                        )}
-                      </PokeTableCell>
-                      <PokeTableCell align="center">
-                        <label>
-                          <Icon visual={UsersIcon} /> {ws.membersCount}
-                        </label>
-                      </PokeTableCell>
-                      <PokeTableCell align="center">
-                        <label>
-                          <Icon visual={BookOpenIcon} /> {ws.dataSourcesCount}
-                        </label>
+                      <PokeTableCell className="space-x-2" colSpan={3}>
+                        <div className="flex items-center gap-1.5">
+                          <Icon visual={UsersIcon} size="xs" />
+                          <span>
+                            {ws.membersCount}&nbsp; member
+                            {pluralize(ws.membersCount)}
+                          </span>
+                        </div>
                       </PokeTableCell>
                     </PokeTableRow>
                     <PokeTableRow>

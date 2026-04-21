@@ -64,7 +64,7 @@ async function disableSendMailForWorkspace(
   const existingInstances = Array.from(uniqueInstancesMap.values());
   if (existingInstances.length === 0) {
     logger.info(
-      { workspaceSId: workspace.sId },
+      { workspaceId: workspace.sId },
       "No existing Outlook instances found in workspace."
     );
     return { processedCount: 0 };
@@ -72,7 +72,7 @@ async function disableSendMailForWorkspace(
 
   logger.info(
     {
-      workspaceSId: workspace.sId,
+      workspaceId: workspace.sId,
       instancesCount: existingInstances.length,
     },
     "Found Outlook instances to disable send_mail in workspace."
@@ -81,7 +81,7 @@ async function disableSendMailForWorkspace(
   let processedCount = 0;
   for (const instance of existingInstances) {
     const instanceLogger = logger.child({
-      workspaceSId: workspace.sId,
+      workspaceId: workspace.sId,
       internalMCPServerId: instance.internalMCPServerId,
       mcpServerConnectionId: instance.mcpServerConnectionId,
       instanceCreatedAt: instance.createdAt.toISOString(),

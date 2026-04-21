@@ -29,6 +29,7 @@ interface AgentMetadataRow {
 }
 
 export interface AgentExportRow {
+  agentId: string;
   name: string;
   description: string;
   settings: string;
@@ -42,6 +43,7 @@ export interface AgentExportRow {
 }
 
 export const AGENT_EXPORT_HEADERS: (keyof AgentExportRow)[] = [
+  "agentId",
   "name",
   "description",
   "settings",
@@ -56,7 +58,8 @@ export const AGENT_EXPORT_HEADERS: (keyof AgentExportRow)[] = [
 
 export async function fetchAgentExportRows(
   baseQuery: estypes.QueryDslQueryContainer,
-  owner: WorkspaceType
+  owner: WorkspaceType,
+  includeHiddenAgents: boolean
 ): Promise<Result<AgentExportRow[], Error>> {
   const esResult = await searchAnalytics<never, TopAgentsExportAggs>(
     {
@@ -99,8 +102,7 @@ export async function fetchAgentExportRows(
     ])
   );
 
-  const scopeFilter =
-    owner.role === "admin" ? "" : `AND ac."scope" != 'hidden'`;
+  const scopeFilter = includeHiddenAgents ? "" : `AND ac."scope" != 'hidden'`;
 
   // TODO(BACK5): Migrate to AgentConfigurationResource when a suitable method exists.
   const readReplica = getFrontReplicaDbConnection();
@@ -137,6 +139,7 @@ export async function fetchAgentExportRows(
   const rows: AgentExportRow[] = agents.map((agent) => {
     const metrics = esMetrics.get(agent.sId);
     return {
+      agentId: agent.sId,
       name: agent.name,
       description: agent.description,
       settings: agent.settings,

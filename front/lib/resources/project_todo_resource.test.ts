@@ -24,7 +24,7 @@ function makeTodoBlob(
     markedAsDoneByType: null,
     markedAsDoneByUserId: null,
     markedAsDoneByAgentConfigurationId: null,
-    category: "follow_ups",
+    category: "to_do",
     text: overrides.text ?? "Test todo",
     status: "todo",
     doneAt: null,
@@ -119,11 +119,11 @@ describe("ProjectTodoResource", () => {
         auth,
         makeTodoBlob(space.id, user.id, { text: "Original" })
       );
-      const originalSId = todo.sId;
+      const originalId = todo.sId;
 
       const updated = await todo.updateWithVersion(auth, { text: "Updated" });
 
-      expect(updated.sId).toBe(originalSId);
+      expect(updated.sId).toBe(originalId);
       expect(updated.text).toBe("Updated");
     });
 
@@ -150,6 +150,25 @@ describe("ProjectTodoResource", () => {
 
       expect(v2.text).toBe("Version 2");
       expect(v2.sId).toBe(todo.sId);
+    });
+
+    it("should throw when called with a different workspace's auth", async () => {
+      const todo = await ProjectTodoResource.makeNew(
+        auth,
+        makeTodoBlob(space.id, user.id, { text: "Original" })
+      );
+
+      const otherSetup = await createResourceTest({ role: "user" });
+
+      await expect(
+        todo.updateWithVersion(otherSetup.authenticator, {
+          text: "Cross-tenant",
+        })
+      ).rejects.toThrow("Workspace mismatch");
+
+      // Confirm the database row is unchanged.
+      const fetched = await ProjectTodoResource.fetchBySId(auth, todo.sId);
+      expect(fetched?.text).toBe("Original");
     });
 
     it("should support marking a todo as done", async () => {

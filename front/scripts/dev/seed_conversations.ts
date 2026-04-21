@@ -285,7 +285,7 @@ async function createProjects(
     );
     projects.push(project);
     logger.info(
-      { projectSId: project.sId, name: projectName },
+      { projectId: project.sId, name: projectName },
       "Project created"
     );
   }

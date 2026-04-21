@@ -21,6 +21,7 @@ import type {
 } from "@app/types/assistant/conversation";
 import {
   isAgentMessageType,
+  isReinforcedSkillNotificationMetadata,
   isUserMessageType,
 } from "@app/types/assistant/conversation";
 import type { Result } from "../shared/result";
@@ -39,20 +40,6 @@ function isReinforcedAgentNotificationMetadata(
     typeof value.agentName === "string" &&
     "agentConfigurationId" in value &&
     typeof value.agentConfigurationId === "string"
-  );
-}
-
-function isReinforcedSkillNotificationMetadata(
-  value: unknown
-): value is { skillName: string; skillId: string } {
-  if (typeof value !== "object" || value === null) {
-    return false;
-  }
-  return (
-    "skillName" in value &&
-    typeof value.skillName === "string" &&
-    "skillId" in value &&
-    typeof value.skillId === "string"
   );
 }
 

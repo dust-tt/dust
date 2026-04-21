@@ -1,12 +1,12 @@
 /** @ignoreswagger */
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { TriggerType } from "@app/types/assistant/triggers";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import { removeNulls } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 export interface GetUserTriggersResponseBody {
@@ -32,69 +32,38 @@ async function handler(
     });
   }
 
-  // Get triggers where user is editor or subscriber concurrently
-  const [editorTriggers, subscriberTriggers] = await Promise.all([
-    TriggerResource.listByUserEditor(auth, auth.getNonNullableUser()),
-    TriggerResource.listByUserSubscriber(auth, auth.getNonNullableUser()),
-  ]);
+  const editorTriggers = await TriggerResource.listByUserEditor(
+    auth,
+    auth.getNonNullableUser()
+  );
 
-  const editorTriggersWithAgentInfo = await concurrentExecutor(
-    editorTriggers,
-    async (trigger) => {
-      const agentConfiguration = await getAgentConfiguration(auth, {
-        agentId: trigger.agentConfigurationId,
-        variant: "light",
-      });
+  const uniqueAgentIds = Array.from(
+    new Set(editorTriggers.map((t) => t.agentConfigurationId))
+  );
 
-      if (!agentConfiguration) {
+  const agentConfigurations = await getAgentConfigurations(auth, {
+    agentIds: uniqueAgentIds,
+    variant: "light",
+  });
+
+  const agentById = new Map(agentConfigurations.map((a) => [a.sId, a]));
+
+  const triggers = removeNulls(
+    editorTriggers.map((trigger) => {
+      const agent = agentById.get(trigger.agentConfigurationId);
+      if (!agent) {
         return null;
       }
-
       return {
         ...trigger.toJSON(),
         isEditor: true,
-        agentName: agentConfiguration.name,
-        agentPictureUrl: agentConfiguration.pictureUrl,
+        agentName: agent.name,
+        agentPictureUrl: agent.pictureUrl,
       };
-    },
-    { concurrency: 5 }
+    })
   );
 
-  const subscriberTriggersWithAgentInfo = await concurrentExecutor(
-    subscriberTriggers,
-    async (trigger) => {
-      const agentConfiguration = await getAgentConfiguration(auth, {
-        agentId: trigger.agentConfigurationId,
-        variant: "light",
-      });
-
-      if (!agentConfiguration) {
-        return null;
-      }
-
-      return {
-        ...trigger.toJSON(),
-        isEditor: false,
-        agentName: agentConfiguration.name,
-        agentPictureUrl: agentConfiguration.pictureUrl,
-      };
-    },
-    { concurrency: 5 }
-  );
-
-  // Combine and filter out null values
-  const allTriggers = [
-    ...editorTriggersWithAgentInfo,
-    ...subscriberTriggersWithAgentInfo,
-  ];
-
-  const filteredTriggers = allTriggers.filter(
-    (trigger): trigger is Exclude<typeof trigger, null> => trigger !== null
-  );
-
-  return res.status(200).json({
-    triggers: filteredTriggers,
-  });
+  return res.status(200).json({ triggers });
 }
 
 export default withLogging(withSessionAuthenticationForWorkspace(handler));

@@ -29,7 +29,10 @@ import { MCPRunAgentActionDetails } from "@app/components/actions/mcp/details/MC
 import { MCPSandboxActionDetails } from "@app/components/actions/mcp/details/MCPSandboxActionDetails";
 import { MCPSkillEnableActionDetails } from "@app/components/actions/mcp/details/MCPSkillEnableActionDetails";
 import { MCPTablesQueryActionDetails } from "@app/components/actions/mcp/details/MCPTablesQueryActionDetails";
-import { SearchResultDetails } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
+import {
+  SearchResultDetails,
+  ToolGeneratedFileDetails,
+} from "@app/components/actions/mcp/details/MCPToolOutputDetails";
 import { MCPToolsetsEnableActionDetails } from "@app/components/actions/mcp/details/MCPToolsetsEnableActionDetails";
 import type {
   ActionDetailsDisplayContext,
@@ -88,21 +91,15 @@ import {
   GET_DATABASE_SCHEMA_TOOL_NAME,
   TABLE_QUERY_V2_SERVER_NAME,
 } from "@app/lib/api/actions/servers/query_tables_v2/metadata";
-import config from "@app/lib/api/config";
 import { isValidJSON } from "@app/lib/utils/json";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
-import { isSupportedImageContentType } from "@app/types/files";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   ActionDocumentTextIcon,
   ClockIcon,
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
   ContentBlockWrapper,
   ContentMessage,
-  cn,
   GlobeAltIcon,
   MagnifyingGlassIcon,
   Markdown,
@@ -164,7 +161,7 @@ export function MCPActionDetails({
     if (status === "denied") {
       const deniedMessage = {
         type: "text" as const,
-        text: "Tool execution rejected by the user.",
+        text: "Tool execution rejected or skipped by the user.",
       };
 
       if (baseOutput === null) {
@@ -427,84 +424,31 @@ export function GenericActionDetails({
     >
       {displayContext !== "conversation" && (
         <div className="dd-privacy-mask flex flex-col gap-4 py-4 pl-6">
-          {displayContext === "sidebar-single-action" ? (
-            <>
-              <div>
-                <span className="font-medium text-foreground dark:text-foreground-night">
-                  Inputs
-                </span>
-                <RenderToolItemMarkdown text={inputs} type="input" />
+          <div>
+            <span className="font-medium text-foreground dark:text-foreground-night">
+              Inputs
+            </span>
+            <RenderToolItemMarkdown text={inputs} type="input" />
+          </div>
+          {action.output && (
+            <div>
+              <span className="font-medium text-foreground dark:text-foreground-night">
+                Output
+              </span>
+              <div className="my-2 flex flex-col gap-2">
+                {action.output
+                  .filter(
+                    (o) => isTextContent(o) || isResourceContentWithText(o)
+                  )
+                  .map((o, index) => (
+                    <RenderToolItemMarkdown
+                      key={index}
+                      text={getOutputText(o)}
+                      type="output"
+                    />
+                  ))}
               </div>
-              {action.output && (
-                <div>
-                  <span className="font-medium text-foreground dark:text-foreground-night">
-                    Output
-                  </span>
-                  <div className="my-2 flex flex-col gap-2">
-                    {action.output
-                      .filter(
-                        (o) => isTextContent(o) || isResourceContentWithText(o)
-                      )
-                      .map((o, index) => (
-                        <RenderToolItemMarkdown
-                          key={index}
-                          text={getOutputText(o)}
-                          type="output"
-                        />
-                      ))}
-                  </div>
-                </div>
-              )}
-            </>
-          ) : (
-            <>
-              <Collapsible defaultOpen={false}>
-                <CollapsibleTrigger>
-                  <div
-                    className={cn(
-                      "text-foreground dark:text-foreground-night",
-                      "flex flex-row items-center gap-x-2"
-                    )}
-                  >
-                    <span className="heading-base">Inputs</span>
-                  </div>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <RenderToolItemMarkdown text={inputs} type="input" />
-                </CollapsibleContent>
-              </Collapsible>
-
-              {action.output && (
-                <Collapsible defaultOpen={false}>
-                  <CollapsibleTrigger>
-                    <div
-                      className={cn(
-                        "text-foreground dark:text-foreground-night",
-                        "flex flex-row items-center gap-x-2"
-                      )}
-                    >
-                      <span className="heading-base">Output</span>
-                    </div>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <div className="my-2 flex flex-col gap-2">
-                      {action.output
-                        .filter(
-                          (o) =>
-                            isTextContent(o) || isResourceContentWithText(o)
-                        )
-                        .map((o, index) => (
-                          <RenderToolItemMarkdown
-                            key={index}
-                            text={getOutputText(o)}
-                            type="output"
-                          />
-                        ))}
-                    </div>
-                  </CollapsibleContent>
-                </Collapsible>
-              )}
-            </>
+            </div>
           )}
 
           {action.generatedFiles.filter((f) => !f.hidden).length > 0 && (
@@ -513,33 +457,13 @@ export function GenericActionDetails({
               <div className="flex flex-wrap gap-2">
                 {action.generatedFiles
                   .filter((f) => !f.hidden)
-                  .map((file) => {
-                    if (isSupportedImageContentType(file.contentType)) {
-                      return (
-                        <div
-                          key={file.fileId}
-                          className="h-24 w-24 flex-shrink-0"
-                        >
-                          <img
-                            className="h-full w-full rounded-xl object-cover"
-                            src={`${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${file.fileId}`}
-                            alt={`${file.title}`}
-                          />
-                        </div>
-                      );
-                    }
-                    return (
-                      <div key={file.fileId}>
-                        <a
-                          href={`${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${file.fileId}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          {file.title}
-                        </a>
-                      </div>
-                    );
-                  })}
+                  .map((file) => (
+                    <ToolGeneratedFileDetails
+                      key={file.fileId}
+                      resource={file}
+                      owner={owner}
+                    />
+                  ))}
               </div>
             </>
           )}

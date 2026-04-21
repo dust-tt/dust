@@ -83,6 +83,7 @@ import { ConversationForkResource } from "@app/lib/resources/conversation_fork_r
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { makeSId } from "@app/lib/resources/string_ids";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 // Mock rateLimiter from the utils module
 import * as rateLimiterModule from "@app/lib/utils/rate_limiter";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
@@ -241,8 +242,8 @@ describe("retryAgentMessage", () => {
   it("should create a new agent message version", async () => {
     const originalVersion = agentMessage.version;
     const originalRank = agentMessage.rank;
-    const originalId = agentMessage.id;
-    const originalSId = agentMessage.sId;
+    const originalModelId = agentMessage.id;
+    const originalId = agentMessage.sId;
 
     const result = await retryAgentMessage(auth, {
       conversation,
@@ -257,8 +258,8 @@ describe("retryAgentMessage", () => {
       // Version should be increased
       expect(newAgentMessage.version).toBe(originalVersion + 1);
       // ID should be different (both database id and sId)
-      expect(newAgentMessage.id).not.toBe(originalId);
-      expect(newAgentMessage.sId).not.toBe(originalSId);
+      expect(newAgentMessage.id).not.toBe(originalModelId);
+      expect(newAgentMessage.sId).not.toBe(originalId);
       // Status should be created
       expect(newAgentMessage.status).toBe("created");
       // Configuration should remain the same
@@ -1185,23 +1186,21 @@ describe("softDeleteAgentMessage", () => {
 describe("postUserMessage", () => {
   let auth: Authenticator;
   let workspace: Awaited<ReturnType<typeof createResourceTest>>["workspace"];
+  let globalGroup: Awaited<
+    ReturnType<typeof createResourceTest>
+  >["globalGroup"];
   let conversation: ConversationType;
   let agentConfig1: LightAgentConfigurationType;
-  let agentConfig2: LightAgentConfigurationType;
 
   beforeEach(async () => {
     const setup = await createResourceTest({});
     auth = setup.authenticator;
     workspace = setup.workspace;
+    globalGroup = setup.globalGroup;
 
     agentConfig1 = await AgentConfigurationFactory.createTestAgent(auth, {
       name: "Test Agent 1",
       description: "First test agent",
-    });
-
-    agentConfig2 = await AgentConfigurationFactory.createTestAgent(auth, {
-      name: "Test Agent 2",
-      description: "Second test agent",
     });
 
     const conversationWithoutContent = await ConversationFactory.create(auth, {
@@ -1227,9 +1226,6 @@ describe("postUserMessage", () => {
       {
         configurationId: agentConfig1.sId,
       } satisfies AgentMention,
-      {
-        configurationId: agentConfig2.sId,
-      } satisfies AgentMention,
     ];
 
     const user = auth.getNonNullableUser();
@@ -1237,7 +1233,7 @@ describe("postUserMessage", () => {
 
     const result = await postUserMessage(auth, {
       conversation,
-      content: `Hello @${agentConfig1.name} and @${agentConfig2.name}`,
+      content: `Hello @${agentConfig1.name}`,
       mentions,
       context: {
         username: userJson.username,
@@ -1256,20 +1252,18 @@ describe("postUserMessage", () => {
 
       // Verify userMessage has mentions
       expect(userMessage.mentions).toBeDefined();
-      expect(userMessage.mentions.length).toBe(2);
+      expect(userMessage.mentions.length).toBe(1);
 
       // Verify userMessage has richMentions
       expect(userMessage.richMentions).toBeDefined();
-      expect(userMessage.richMentions.length).toBe(2);
+      expect(userMessage.richMentions.length).toBe(1);
 
       // Verify all mentions are agent mentions
       const agentMentions = userMessage.richMentions.filter(isRichAgentMention);
-      expect(agentMentions.length).toBe(2);
+      expect(agentMentions.length).toBe(1);
 
-      // Verify the agent configurations match
-      const mentionedAgentIds = agentMentions.map((m) => m.id);
-      expect(mentionedAgentIds).toContain(agentConfig1.sId);
-      expect(mentionedAgentIds).toContain(agentConfig2.sId);
+      // Verify the agent configuration matches
+      expect(agentMentions[0].id).toBe(agentConfig1.sId);
 
       // Verify mentions are stored in the database
       const mentionsInDb = await MentionModel.findAll({
@@ -1278,12 +1272,8 @@ describe("postUserMessage", () => {
           workspaceId: workspace.id,
         },
       });
-      expect(mentionsInDb.length).toBe(2);
-      const agentConfigIdsInDb = mentionsInDb
-        .map((m) => m.agentConfigurationId)
-        .filter((id): id is string => id !== null);
-      expect(agentConfigIdsInDb).toContain(agentConfig1.sId);
-      expect(agentConfigIdsInDb).toContain(agentConfig2.sId);
+      expect(mentionsInDb.length).toBe(1);
+      expect(mentionsInDb[0].agentConfigurationId).toBe(agentConfig1.sId);
 
       // Verify launchAgentLoopWorkflow was called for agent mentions
       expect(launchAgentLoopWorkflow).toHaveBeenCalled();
@@ -2207,6 +2197,46 @@ describe("postUserMessage", () => {
     });
   });
 
+  describe("API key auth on workspace with privateConversationUrlsByDefault", () => {
+    it("should succeed when posting via API key on a workspace with private URLs by default", async () => {
+      // Enable private conversation URLs by default for the workspace.
+      // Testing API key auth (which has no user), even though the message was just posted.
+      const updateResult = await WorkspaceResource.updateMetadata(
+        workspace.id,
+        {
+          privateConversationUrlsByDefault: true,
+        }
+      );
+      expect(updateResult.isOk()).toBe(true);
+
+      const apiKey = await KeyFactory.regular(globalGroup);
+      const { workspaceAuth: apiKeyAuth } = await Authenticator.fromKey(
+        apiKey,
+        workspace.sId
+      );
+
+      const result = await postUserMessage(apiKeyAuth, {
+        conversation,
+        content: "Hello from API key",
+        mentions: [],
+        context: {
+          username: "api-user",
+          timezone: "UTC",
+          fullName: null,
+          email: null,
+          profilePictureUrl: null,
+          origin: "api",
+        },
+        skipToolsValidation: false,
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.userMessage.content).toBe("Hello from API key");
+      }
+    });
+  });
+
   describe("restricted agent branch creation", () => {
     let projectSpace: Awaited<ReturnType<typeof SpaceFactory.project>>;
     let anotherProjectSpace: Awaited<ReturnType<typeof SpaceFactory.project>>;
@@ -2286,6 +2316,13 @@ describe("postUserMessage", () => {
         }
       );
 
+      // Mark factory-created agent messages as succeeded so steering doesn't
+      // treat them as a running agent loop.
+      await AgentMessageModel.update(
+        { status: "succeeded" },
+        { where: { workspaceId: workspace.id, status: "created" } }
+      );
+
       const fetchedConversationResult = await getConversation(
         auth,
         conversationWithoutContent.sId
@@ -2296,10 +2333,10 @@ describe("postUserMessage", () => {
       projectConversation = fetchedConversationResult.value;
     }
 
-    describe("with conversation_branches feature flag enabled", () => {
+    describe("with projects feature flag enabled regarding branches", () => {
       beforeEach(async () => {
         await setupProjectWithRestrictedAgent();
-        await FeatureFlagFactory.basic(auth, "conversation_branches");
+        await FeatureFlagFactory.basic(auth, "projects");
       });
 
       it("should create a branch and put first message in branch when posting with restricted agent", async () => {
@@ -2450,62 +2487,6 @@ describe("postUserMessage", () => {
         rateLimiterSpy.mockRestore();
       });
     });
-
-    describe("with conversation_branches feature flag disabled", () => {
-      beforeEach(async () => {
-        await setupProjectWithRestrictedAgent();
-      });
-
-      it("should not create a branch when posting with restricted agent", async () => {
-        const user = auth.getNonNullableUser();
-        const userJson = user.toJSON();
-
-        const rateLimiterSpy = vi
-          .spyOn(rateLimiterModule, "rateLimiter")
-          .mockResolvedValue(100);
-
-        const result = await postUserMessage(auth, {
-          conversation: projectConversation,
-          content: `Hello @${agentWithDifferentSpace.name}`,
-          mentions: [{ configurationId: agentWithDifferentSpace.sId }],
-          context: {
-            username: userJson.username,
-            timezone: "UTC",
-            fullName: userJson.fullName,
-            email: userJson.email,
-            profilePictureUrl: userJson.image,
-            origin: "web",
-          },
-          skipToolsValidation: false,
-        });
-
-        expect(result.isOk()).toBe(true);
-        if (!result.isOk()) {
-          return;
-        }
-
-        const branchesAfter =
-          await ConversationBranchResource.listForConversation(
-            auth,
-            projectConversation.id
-          );
-        expect(branchesAfter.length).toBe(0);
-
-        expect(projectConversation.branchId).toBeNull();
-
-        // When the agent is restricted and we don't create a branch, no agent message is created
-        // but the mention is stored with status agent_restricted_by_space_usage
-        const agentMessages = result.value.agentMessages;
-        expect(agentMessages.length).toBe(0);
-        const richMention = result.value.userMessage.richMentions.find(
-          (m) => m.type === "agent" && m.id === agentWithDifferentSpace.sId
-        );
-        expect(richMention).toBeDefined();
-        expect(richMention!.status).toBe("agent_restricted_by_space_usage");
-
-        rateLimiterSpy.mockRestore();
-      });
-    });
   });
 });
 
@@ -2553,6 +2534,37 @@ describe("compactConversation", () => {
     const { compactionMessage } = result.value;
     expect(compactionMessage.status).toBe("created");
     expect(compactionMessage.content).toBeNull();
+  });
+
+  it("should reject compaction when the last message is already a compaction message", async () => {
+    const compactionMessageRow = await CompactionMessageModel.create({
+      status: "succeeded",
+      content: "compacted summary",
+      workspaceId: workspace.id,
+    });
+    await MessageModel.create({
+      sId: generateRandomModelSId(),
+      rank: 0,
+      conversationId: conversation.id,
+      compactionMessageId: compactionMessageRow.id,
+      workspaceId: workspace.id,
+    });
+
+    const fetched = await getConversation(auth, conversation.sId);
+    expect(fetched.isOk()).toBe(true);
+    if (fetched.isErr()) {
+      return;
+    }
+
+    const result = await compactConversation(auth, {
+      conversation: fetched.value,
+      model: { providerId: "anthropic", modelId: "claude-haiku-4-5-20251001" },
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.status_code).toBe(409);
+    }
   });
 
   it("should reject compaction when an agent message is running", async () => {
@@ -3652,6 +3664,13 @@ describe("conversation fetch forkedFrom", () => {
       agentConfigurationId: agent.sId,
       messagesCreatedAt: [new Date("2026-01-05T00:00:00.000Z")],
     });
+    const parentConversationTitle = "Quarterly Review Data";
+    const updateTitleRes = await ConversationResource.updateTitle(
+      auth,
+      parentConversation.sId,
+      parentConversationTitle
+    );
+    expect(updateTitleRes.isOk()).toBe(true);
     const childConversation = await ConversationFactory.create(auth, {
       agentConfigurationId: agent.sId,
       messagesCreatedAt: [],
@@ -3700,6 +3719,7 @@ describe("conversation fetch forkedFrom", () => {
     if (fullConversationResult.isOk()) {
       expect(fullConversationResult.value.forkedFrom).toEqual({
         parentConversationId: parentConversation.sId,
+        parentConversationTitle,
         sourceMessageId: sourceMessage.sId,
         branchedAt: branchedAt.getTime(),
         user: auth.getNonNullableUser().toJSON(),
@@ -3715,10 +3735,125 @@ describe("conversation fetch forkedFrom", () => {
     if (lightConversationResult.isOk()) {
       expect(lightConversationResult.value.forkedFrom).toEqual({
         parentConversationId: parentConversation.sId,
+        parentConversationTitle,
         sourceMessageId: sourceMessage.sId,
         branchedAt: branchedAt.getTime(),
         user: auth.getNonNullableUser().toJSON(),
       });
+    }
+  });
+
+  it("includes forkedChildren in the conversation detail payload", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Fork Fetch Agent",
+      description: "Fork fetch agent",
+    });
+
+    const parentConversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agent.sId,
+      messagesCreatedAt: [new Date("2026-01-05T00:00:00.000Z")],
+    });
+    const firstChildConversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agent.sId,
+      messagesCreatedAt: [],
+    });
+    const secondChildConversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agent.sId,
+      messagesCreatedAt: [],
+    });
+
+    await ConversationModel.update(
+      { title: "Later fork" },
+      { where: { id: firstChildConversation.id, workspaceId: workspace.id } }
+    );
+    await ConversationModel.update(
+      { title: "Earlier fork" },
+      { where: { id: secondChildConversation.id, workspaceId: workspace.id } }
+    );
+
+    const parentConversationResource = await ConversationResource.fetchById(
+      auth,
+      parentConversation.sId
+    );
+    const firstChildConversationResource = await ConversationResource.fetchById(
+      auth,
+      firstChildConversation.sId
+    );
+    const secondChildConversationResource =
+      await ConversationResource.fetchById(auth, secondChildConversation.sId);
+
+    expect(parentConversationResource).not.toBeNull();
+    expect(firstChildConversationResource).not.toBeNull();
+    expect(secondChildConversationResource).not.toBeNull();
+
+    if (
+      !parentConversationResource ||
+      !firstChildConversationResource ||
+      !secondChildConversationResource
+    ) {
+      throw new Error("Failed to fetch fork conversations");
+    }
+
+    const sourceMessage = await MessageModel.findOne({
+      where: {
+        conversationId: parentConversation.id,
+        workspaceId: workspace.id,
+        rank: 1,
+      },
+    });
+    expect(sourceMessage).not.toBeNull();
+    if (!sourceMessage) {
+      throw new Error("Failed to fetch source message");
+    }
+
+    const laterBranchedAt = new Date("2026-01-06T11:00:00.000Z");
+    const earlierBranchedAt = new Date("2026-01-06T10:00:00.000Z");
+
+    await ConversationForkResource.makeNew(auth, {
+      parentConversation: parentConversationResource,
+      childConversation: firstChildConversationResource,
+      sourceMessageModelId: sourceMessage.id,
+      branchedAt: laterBranchedAt,
+    });
+    await ConversationForkResource.makeNew(auth, {
+      parentConversation: parentConversationResource,
+      childConversation: secondChildConversationResource,
+      sourceMessageModelId: sourceMessage.id,
+      branchedAt: earlierBranchedAt,
+    });
+
+    const expectedForkedChildren = [
+      {
+        childConversationId: secondChildConversation.sId,
+        childConversationTitle: "Earlier fork",
+        sourceMessageId: sourceMessage.sId,
+        branchedAt: earlierBranchedAt.getTime(),
+        user: auth.getNonNullableUser().toJSON(),
+      },
+      {
+        childConversationId: firstChildConversation.sId,
+        childConversationTitle: "Later fork",
+        sourceMessageId: sourceMessage.sId,
+        branchedAt: laterBranchedAt.getTime(),
+        user: auth.getNonNullableUser().toJSON(),
+      },
+    ];
+
+    const conversationResult =
+      await ConversationResource.fetchConversationWithoutContent(
+        auth,
+        parentConversation.sId,
+        { includeForkedChildrenInfo: true }
+      );
+    expect(conversationResult.isOk()).toBe(true);
+
+    if (conversationResult.isOk()) {
+      expect(conversationResult.value.forkedChildren).toEqual(
+        expectedForkedChildren
+      );
     }
   });
 });

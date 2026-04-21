@@ -7,6 +7,7 @@ import type { SkillAttachedKnowledge } from "@app/lib/resources/skill/skill_reso
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -1054,6 +1055,106 @@ describe("SkillResource", () => {
         editorGroupIds
       );
       expect(editorGroupsAfter).toHaveLength(0);
+    });
+  });
+
+  describe("listAgentMessageSkillsByCustomSkills", () => {
+    it("returns an empty array when no skills are provided", async () => {
+      const results = await SkillResource.listAgentMessageSkillsByCustomSkills(
+        testContext.authenticator,
+        []
+      );
+      expect(results).toEqual([]);
+    });
+
+    it("returns matching records and filters by skill ids and workspace", async () => {
+      const skillA = await SkillFactory.create(testContext.authenticator, {
+        name: "Skill A",
+      });
+      const skillB = await SkillFactory.create(testContext.authenticator, {
+        name: "Skill B (not queried)",
+      });
+
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { name: "Agent For Skill Test" }
+      );
+
+      await SkillFactory.linkToAgent(testContext.authenticator, {
+        skillId: skillA.id,
+        agentConfigurationId: agent.id,
+      });
+      await SkillFactory.linkToAgent(testContext.authenticator, {
+        skillId: skillB.id,
+        agentConfigurationId: agent.id,
+      });
+
+      const conv1 = await ConversationFactory.create(
+        testContext.authenticator,
+        { agentConfigurationId: agent.sId, messagesCreatedAt: [] }
+      );
+      const { agentMessage: msg1 } =
+        await ConversationFactory.createAgentMessage(
+          testContext.authenticator,
+          {
+            workspace: testContext.workspace,
+            conversation: conv1,
+            agentConfig: agent,
+          }
+        );
+
+      const conv2 = await ConversationFactory.create(
+        testContext.authenticator,
+        { agentConfigurationId: agent.sId, messagesCreatedAt: [] }
+      );
+      const { agentMessage: msg2 } =
+        await ConversationFactory.createAgentMessage(
+          testContext.authenticator,
+          {
+            workspace: testContext.workspace,
+            conversation: conv2,
+            agentConfig: agent,
+          }
+        );
+
+      // Enable skillA on conv1 and skillB on conv2
+      const enableA = await skillA.enableForAgent(testContext.authenticator, {
+        agentConfiguration: agent,
+        conversation: conv1,
+      });
+      expect(enableA.isOk()).toBe(true);
+      const enableB = await skillB.enableForAgent(testContext.authenticator, {
+        agentConfiguration: agent,
+        conversation: conv2,
+      });
+      expect(enableB.isOk()).toBe(true);
+
+      await SkillResource.snapshotConversationSkillsForMessage(
+        testContext.authenticator,
+        {
+          agentConfigurationId: agent.sId,
+          agentMessageId: msg1.agentMessageId,
+          conversationId: conv1.id,
+        }
+      );
+      await SkillResource.snapshotConversationSkillsForMessage(
+        testContext.authenticator,
+        {
+          agentConfigurationId: agent.sId,
+          agentMessageId: msg2.agentMessageId,
+          conversationId: conv2.id,
+        }
+      );
+
+      const results = await SkillResource.listAgentMessageSkillsByCustomSkills(
+        testContext.authenticator,
+        [skillA]
+      );
+
+      expect(results).toHaveLength(1);
+      expect(results[0].skill.id).toEqual(skillA.id);
+      expect(results[0].conversationModelId).toEqual(conv1.id);
+      expect(results[0].agentConfigurationId).toEqual(agent.sId);
     });
   });
 });

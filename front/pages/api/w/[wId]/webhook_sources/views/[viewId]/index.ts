@@ -8,7 +8,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
-import { normalizeWebhookIcon } from "@app/lib/webhookSource";
+import { normalizeWebhookIcon } from "@app/lib/webhook_source";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
@@ -259,7 +259,7 @@ async function editWebhookSourceViewsName(
   const systemView =
     await WebhookSourcesViewResource.getWebhookSourceViewForSystemSpace(
       auth,
-      webhookSourceView.webhookSourceSId
+      webhookSourceView.webhookSource.sId
     );
 
   if (!systemView) {
@@ -310,7 +310,7 @@ async function editWebhookSourceDescriptionAndIcon(
   const systemView =
     await WebhookSourcesViewResource.getWebhookSourceViewForSystemSpace(
       auth,
-      webhookSourceView.webhookSourceSId
+      webhookSourceView.webhookSource.sId
     );
 
   if (!systemView) {

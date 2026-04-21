@@ -5,7 +5,11 @@ import {
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
 import type { Authenticator } from "@app/lib/auth";
-import { syncSeatCount } from "@app/lib/metronome/seats";
+import { getActiveContract } from "@app/lib/metronome/plan_type";
+import {
+  getSeatSubscriptionIdFromContract,
+  syncSeatCount,
+} from "@app/lib/metronome/seats";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
@@ -40,10 +44,23 @@ async function syncSeatCountForWorkspace(
   if (!subscription?.metronomeContractId) {
     return new Ok(undefined);
   }
+
+  const contract = await getActiveContract(workspace.sId);
+  if (!contract) {
+    return new Ok(undefined);
+  }
+
+  // Gate on seat subscription presence — contracts without a seat product (e.g. enterprise)
+  // should not trigger a seat sync.
+  if (!getSeatSubscriptionIdFromContract(contract)) {
+    return new Ok(undefined);
+  }
+
   return await syncSeatCount({
     metronomeCustomerId: workspace.metronomeCustomerId,
     contractId: subscription.metronomeContractId,
     workspace,
+    contract,
   });
 }
 

@@ -128,6 +128,7 @@ export function WorkspacePage() {
   const {
     activeSubscription,
     hasDummyFeature,
+    membersCount,
     metronomeCustomerId,
     stripeSubscription,
     subscriptions,
@@ -137,6 +138,7 @@ export function WorkspacePage() {
     extensionConfig,
     programmaticUsageConfig,
     workosEnvironmentId,
+    temporalFrontNamespace,
   } = workspaceInfo;
 
   return (
@@ -207,6 +209,7 @@ export function WorkspacePage() {
               <TabsContent value="workspace">
                 <WorkspaceInfoTable
                   owner={owner}
+                  membersCount={membersCount}
                   metronomeCustomerId={metronomeCustomerId}
                   workspaceVerifiedDomains={workspaceVerifiedDomains}
                   workspaceCreationDay={workspaceCreationDay}
@@ -214,6 +217,7 @@ export function WorkspacePage() {
                   dataRetention={dataRetention}
                   workosEnvironmentId={workosEnvironmentId}
                   hasDummyFeature={hasDummyFeature}
+                  temporalFrontNamespace={temporalFrontNamespace}
                 />
               </TabsContent>
               <TabsContent value="subscriptions">

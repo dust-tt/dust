@@ -11,17 +11,10 @@ import type {
 import isEqual from "lodash/isEqual";
 
 /**
- * Type guard to check if a value is a JSONSchema object
+ * Type guard to check if a value is a JSONSchema object (excludes arrays).
  */
-export function isJSONSchemaObject(
-  value:
-    | JSONSchema
-    | JSONSchemaDefinition
-    | JSONSchemaDefinition[]
-    | boolean
-    | undefined
-): value is JSONSchema {
-  return !!value && typeof value === "object";
+export function isJSONSchemaObject(value: unknown): value is JSONSchema {
+  return !!value && typeof value === "object" && !Array.isArray(value);
 }
 
 /**
@@ -61,19 +54,30 @@ export function areSchemasEqual(
 }
 
 /**
- * Finds the schema for a property given a $ref to it.
+ * Follows an internal JSON Schema $ref (e.g. "#/definitions/Foo") and returns
+ * the referenced sub-schema, or null if the ref is external or the path is invalid.
  */
 export function followInternalRef(
   schema: JSONSchema,
   ref: string
 ): JSONSchema | null {
-  return findSchemaAtPath(
-    schema,
-    ref
-      .replace("#/", "")
-      .split("/")
-      .filter((key) => key !== "properties")
-  );
+  if (!ref.startsWith("#/")) {
+    return null;
+  }
+
+  let current: object = schema;
+  for (const segment of ref.slice(2).split("/")) {
+    if (!isRecord(current) || !(segment in current)) {
+      return null;
+    }
+    const next = current[segment];
+    if (typeof next !== "object" || next === null) {
+      return null;
+    }
+    current = next;
+  }
+
+  return isJSONSchemaObject(current) ? current : null;
 }
 
 /**

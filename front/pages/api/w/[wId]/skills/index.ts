@@ -11,15 +11,21 @@ import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type {
   SkillType,
+  SkillWithoutToolsType,
   SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import { removeNulls } from "@app/types/shared/utils/general";
 import { isBuilder } from "@app/types/user";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import uniq from "lodash/uniq";
 import type { NextApiRequest, NextApiResponse } from "next";
+
+export type GetSkillsWithoutToolsResponseBody = {
+  skills: SkillWithoutToolsType[];
+};
 
 export type GetSkillsResponseBody = {
   skills: SkillType[];
@@ -92,6 +98,7 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
     WithAPIErrorResponse<
+      | GetSkillsWithoutToolsResponseBody
       | GetSkillsResponseBody
       | GetSkillsWithRelationsResponseBody
       | PostSkillResponseBody
@@ -103,7 +110,18 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const { withRelations, status, globalSpaceOnly, isDefault } = req.query;
+      const { withRelations, withTools, status, globalSpaceOnly, isDefault } =
+        req.query;
+
+      if (withRelations === "true" && withTools === "false") {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "withTools=false is incompatible with withRelations=true.",
+          },
+        });
+      }
 
       const statusValidation = SkillStatusSchema.decode(status);
       if (isLeft(statusValidation)) {
@@ -117,22 +135,31 @@ async function handler(
       }
       const skillStatus = statusValidation.right;
 
+      // withTools defaults to true
+      const shouldIncludeTools = withTools !== "false";
+
       const skills = await SkillResource.listByWorkspace(auth, {
         status: skillStatus,
         globalSpaceOnly: globalSpaceOnly === "true",
         isDefault: isDefault === "true" ? true : undefined,
+        withTools: shouldIncludeTools,
       });
 
       if (withRelations === "true") {
+        const extendedSkills = await SkillResource.fetchByIds(
+          auth,
+          removeNulls(uniq(skills.map((skill) => skill.extendedSkillId)))
+        );
+        const extendedSkillsMap = new Map(
+          extendedSkills.map((skill) => [skill.sId, skill])
+        );
+
         const skillsWithRelations = await concurrentExecutor(
           skills,
           async (sc) => {
             const usage = await sc.fetchUsage(auth);
             const editors = await sc.listEditors(auth);
             const editedByUser = await sc.fetchEditedByUser(auth);
-            const extendedSkill = sc.extendedSkillId
-              ? await SkillResource.fetchById(auth, sc.extendedSkillId)
-              : null;
 
             return {
               ...sc.toJSON(auth),
@@ -140,8 +167,9 @@ async function handler(
                 usage,
                 editors: editors ? editors.map((e) => e.toJSON()) : null,
                 editedByUser: editedByUser ? editedByUser.toJSON() : null,
-                extendedSkill: extendedSkill
-                  ? extendedSkill.toJSON(auth)
+                extendedSkill: sc.extendedSkillId
+                  ? (extendedSkillsMap.get(sc.extendedSkillId)?.toJSON(auth) ??
+                    null)
                   : null,
               },
             } satisfies SkillWithRelationsType;
@@ -150,6 +178,15 @@ async function handler(
         );
 
         return res.status(200).json({ skills: skillsWithRelations });
+      }
+
+      if (!shouldIncludeTools) {
+        return res.status(200).json({
+          skills: skills.map((sc) => {
+            const { tools: _tools, ...withoutTools } = sc.toJSON(auth);
+            return withoutTools;
+          }),
+        });
       }
 
       return res.status(200).json({

@@ -3,7 +3,7 @@ import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_act
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type { AgentContentItemType } from "@app/types/assistant/agent_message_content";
-
+import moment from "moment";
 import type { ContentFragmentType } from "../content_fragment";
 import type { AllSupportedWithDustSpecificFileContentType } from "../files";
 import type { ModelId } from "../shared/model_id";
@@ -104,6 +104,7 @@ export type UserMessageOrigin =
   | "transcript"
   | "triggered_programmatic"
   | "triggered"
+  | "wakeup"
   | "zapier"
   | "zendesk"
   // TODO onboarding_conversation, agent_sidekick, and project_kickoff aren't message origins. They
@@ -373,10 +374,64 @@ export function isCompactionMessageType(
  */
 export type ConversationVisibility = "unlisted" | "deleted" | "test";
 
-export type ConversationMetadata = Record<string, unknown>;
+export const CONVERSATION_URL_ACCESS_MODES = [
+  "participants_only",
+  "workspace_members",
+] as const;
 
+export type ConversationUrlAccessMode =
+  (typeof CONVERSATION_URL_ACCESS_MODES)[number];
+
+export const CONVERSATION_METADATA_URL_ACCESS_MODE_KEY = "urlAccessMode";
+
+export type ConversationMetadata = Record<string, unknown> & {
+  urlAccessMode?: ConversationUrlAccessMode;
+};
+
+export function isConversationUrlAccessMode(
+  value: unknown
+): value is ConversationUrlAccessMode {
+  return value === "participants_only" || value === "workspace_members";
+}
+
+export function getConversationUrlAccessMode(
+  metadata: ConversationMetadata | null | undefined
+): ConversationUrlAccessMode | null {
+  const accessMode = metadata?.[CONVERSATION_METADATA_URL_ACCESS_MODE_KEY];
+  return isConversationUrlAccessMode(accessMode) ? accessMode : null;
+}
+
+export function isReinforcedSkillNotificationMetadata(
+  value: unknown
+): value is { skillName: string; skillId: string } {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  return (
+    "skillName" in value &&
+    typeof value.skillName === "string" &&
+    "skillId" in value &&
+    typeof value.skillId === "string"
+  );
+}
+
+/**
+ * @swaggerschema PrivateConversationForkedFrom (swagger_private_schemas.ts)
+ */
 export type ConversationForkedFromType = {
   parentConversationId: string;
+  parentConversationTitle: string | null;
+  sourceMessageId: string;
+  branchedAt: number;
+  user: UserType;
+};
+
+/**
+ * @swaggerschema PrivateConversationForkedChild (swagger_private_schemas.ts)
+ */
+export type ConversationForkedChildType = {
+  childConversationId: string;
+  childConversationTitle: string | null;
   sourceMessageId: string;
   branchedAt: number;
   user: UserType;
@@ -403,10 +458,29 @@ export type ConversationWithoutContentType = {
   metadata: ConversationMetadata;
   branchId: string | null;
   forkedFrom?: ConversationForkedFromType;
+  forkedChildren?: ConversationForkedChildType[];
 
   // Ideally, this property should be moved to the ConversationType.
   requestedSpaceIds: string[];
 };
+
+type ConversationDisplayTitleInput = Pick<
+  ConversationWithoutContentType,
+  "created" | "title"
+>;
+
+export function getConversationDisplayTitle(
+  conversation: ConversationDisplayTitleInput,
+  now = new Date()
+): string {
+  if (conversation.title) {
+    return conversation.title;
+  }
+
+  return moment(conversation.created).isSame(now, "day")
+    ? "New Conversation"
+    : `Conversation from ${new Date(conversation.created).toLocaleDateString()}`;
+}
 
 /**
  * content [][] structure is intended to allow retries (of agent messages) or edits (of user
@@ -507,6 +581,7 @@ export type SubmitMessageError = {
     | "attachment_upload_error"
     | "message_send_error"
     | "plan_limit_reached_error"
+    | "credits_exhausted_error"
     | "content_too_large";
   title: string;
   message: string;

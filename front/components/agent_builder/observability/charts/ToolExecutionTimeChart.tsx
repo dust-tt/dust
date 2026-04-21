@@ -11,11 +11,13 @@ import { ChartContainer } from "@app/components/charts/ChartContainer";
 import { legendFromConstant } from "@app/components/charts/ChartLegend";
 import { RoundedBarShape } from "@app/components/charts/ChartShapes";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
+import { useSelectableSeries } from "@app/components/charts/useSelectableSeries";
 import type { ToolLatencyView } from "@app/lib/api/assistant/observability/tool_latency";
 import {
   Button,
   ButtonsSwitch,
   ButtonsSwitchList,
+  cn,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -54,9 +56,9 @@ function isToolLatencyDatum(data: unknown): data is ToolLatencyDatum {
 }
 
 function ToolExecutionTimeTooltip(
-  props: TooltipContentProps<number, string>
+  props: TooltipContentProps<number, string> & { activeKey?: string }
 ): JSX.Element | null {
-  const { active, payload } = props;
+  const { active, payload, activeKey } = props;
   if (!active || !payload || payload.length === 0) {
     return null;
   }
@@ -73,22 +75,26 @@ function ToolExecutionTimeTooltip(
       title={row.label}
       rows={[
         {
+          key: "avgLatencyMs",
           label: "Average",
           value: formatDurationMs(row.avgLatencyMs),
           colorClassName: TOOL_EXECUTION_TIME_PALETTE.avgLatencyMs,
         },
         {
+          key: "p50LatencyMs",
           label: "P50",
           value: formatDurationMs(row.p50LatencyMs),
           colorClassName: TOOL_EXECUTION_TIME_PALETTE.p50LatencyMs,
         },
         {
+          key: "p95LatencyMs",
           label: "P95",
           value: formatDurationMs(row.p95LatencyMs),
           colorClassName: TOOL_EXECUTION_TIME_PALETTE.p95LatencyMs,
         },
       ]}
       footer={`Executions: ${row.count}`}
+      activeKey={activeKey}
     />
   );
 }
@@ -187,9 +193,11 @@ export function ToolExecutionTimeChart({
     emptyMessage = "No successful tool executions for this server.";
   }
 
-  const legendItems = legendFromConstant(
-    TOOL_EXECUTION_TIME_LEGEND,
-    TOOL_EXECUTION_TIME_PALETTE
+  const { activeKey, isDimmed, decorate, hoverHandlers } =
+    useSelectableSeries();
+
+  const legendItems = decorate(
+    legendFromConstant(TOOL_EXECUTION_TIME_LEGEND, TOOL_EXECUTION_TIME_PALETTE)
   );
 
   const selectedServerLabel =
@@ -277,7 +285,9 @@ export function ToolExecutionTimeChart({
           tickFormatter={formatDurationMs}
         />
         <Tooltip
-          content={ToolExecutionTimeTooltip}
+          content={(props: TooltipContentProps<number, string>) => (
+            <ToolExecutionTimeTooltip {...props} activeKey={activeKey} />
+          )}
           cursor={false}
           wrapperStyle={{ outline: "none", zIndex: 50 }}
           contentStyle={{
@@ -291,22 +301,37 @@ export function ToolExecutionTimeChart({
           dataKey="p50LatencyMs"
           name="P50"
           fill="currentColor"
-          className={TOOL_EXECUTION_TIME_PALETTE.p50LatencyMs}
+          className={cn(
+            TOOL_EXECUTION_TIME_PALETTE.p50LatencyMs,
+            "transition-opacity",
+            isDimmed("p50LatencyMs") && "opacity-25"
+          )}
           shape={<RoundedBarShape />}
+          {...hoverHandlers("p50LatencyMs")}
         />
         <Bar
           dataKey="avgLatencyMs"
           name="Average"
           fill="currentColor"
-          className={TOOL_EXECUTION_TIME_PALETTE.avgLatencyMs}
+          className={cn(
+            TOOL_EXECUTION_TIME_PALETTE.avgLatencyMs,
+            "transition-opacity",
+            isDimmed("avgLatencyMs") && "opacity-25"
+          )}
           shape={<RoundedBarShape />}
+          {...hoverHandlers("avgLatencyMs")}
         />
         <Bar
           dataKey="p95LatencyMs"
           name="P95"
           fill="currentColor"
-          className={TOOL_EXECUTION_TIME_PALETTE.p95LatencyMs}
+          className={cn(
+            TOOL_EXECUTION_TIME_PALETTE.p95LatencyMs,
+            "transition-opacity",
+            isDimmed("p95LatencyMs") && "opacity-25"
+          )}
           shape={<RoundedBarShape />}
+          {...hoverHandlers("p95LatencyMs")}
         />
       </BarChart>
     </ChartContainer>

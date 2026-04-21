@@ -22,23 +22,19 @@ export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
  *
  * @param isReadOnly - When true, interactive editing extensions are omitted.
  * @param editableExtensions - Extensions appended when `isReadOnly` is false.
- * @param withDocumentExtensions - When true, includes InstructionsDocumentExtension,
- *   InstructionsRootExtension, and BlockIdExtension (document + block IDs).
  */
 export function buildSkillInstructionsExtensions(
   isReadOnly: boolean,
-  editableExtensions: Extensions = [],
-  { withDocumentExtensions = false }: { withDocumentExtensions?: boolean } = {}
+  editableExtensions: Extensions = []
 ): Extensions {
   const baseExtensions: Extensions = [
-    ...(withDocumentExtensions
-      ? [InstructionsDocumentExtension, InstructionsRootExtension]
-      : []),
+    InstructionsDocumentExtension,
+    InstructionsRootExtension,
     Markdown.configure(),
     StarterKit.configure({
-      // document: false is required when InstructionsDocumentExtension is present
-      // (it replaces StarterKit's default Document node).
-      ...(withDocumentExtensions ? { document: false } : {}),
+      // document: false is required because InstructionsDocumentExtension
+      // replaces StarterKit's default Document node.
+      document: false,
       orderedList: {
         HTMLAttributes: {
           class: markdownStyles.orderedList(),
@@ -87,7 +83,7 @@ export function buildSkillInstructionsExtensions(
         class: "mt-4 mb-3",
       },
     }),
-    ...(withDocumentExtensions ? [BlockIdExtension] : []),
+    BlockIdExtension,
     KnowledgeNode,
     RawMarkdownBlock,
     ...rawMarkdownBlockParsers,

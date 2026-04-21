@@ -1,12 +1,14 @@
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
-import { updateConversationRequirements } from "@app/lib/api/assistant/conversation/permissions";
+import {
+  rebuildConversationRequirements,
+  updateConversationRequirements,
+} from "@app/lib/api/assistant/conversation/permissions";
 import { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import type { ContentFragmentInputWithContentNode } from "@app/types/api/internal/assistant";
 import type { WorkspaceType } from "@app/types/user";
 import { beforeEach, describe, expect, it } from "vitest";
 
@@ -286,13 +288,6 @@ describe("updateConversationRequirements", () => {
         auth.user() ?? null
       );
 
-      // Create content fragment input
-      const contentFragment: ContentFragmentInputWithContentNode = {
-        title: "Test Fragment",
-        nodeId: "test-node-id",
-        nodeDataSourceViewId: dsView.sId,
-      };
-
       // Fetch conversation
       const fetchedConversationResult = await getConversation(
         auth,
@@ -303,9 +298,9 @@ describe("updateConversationRequirements", () => {
       }
       const regularConversation = fetchedConversationResult.value;
 
-      // Call updateConversationRequirements with content fragment
+      // Call updateConversationRequirements with content fragment datasource view ID
       await updateConversationRequirements(auth, {
-        contentFragment,
+        contentFragmentDatasourceViewIds: [dsView.sId],
         conversation: regularConversation,
       });
 
@@ -361,12 +356,6 @@ describe("updateConversationRequirements", () => {
         auth.user() ?? null
       );
 
-      const contentFragment: ContentFragmentInputWithContentNode = {
-        title: "Test Fragment",
-        nodeId: "test-node-id",
-        nodeDataSourceViewId: dsView.sId,
-      };
-
       // Fetch agents and conversation
       const { getAgentConfigurations } = await import(
         "@app/lib/api/assistant/configuration/agent"
@@ -388,7 +377,7 @@ describe("updateConversationRequirements", () => {
       // Call updateConversationRequirements with both
       await updateConversationRequirements(auth, {
         agents,
-        contentFragment,
+        contentFragmentDatasourceViewIds: [dsView.sId],
         conversation: regularConversation,
       });
 
@@ -647,5 +636,138 @@ describe("updateConversationRequirements", () => {
         anotherProjectSpace.sId
       );
     });
+  });
+});
+
+// rebuildConversationRequirements is called after a project conversation is
+// moved out of its project. While in the project, the conversation's
+// requestedSpaceIds is forced to [projectSpace.sId]. After moving out, it
+// must be recomputed from the actual agents and content fragments mentioned
+// in the conversation.
+describe("rebuildConversationRequirements", () => {
+  let workspace: WorkspaceType;
+  let auth: Authenticator;
+  let projectSpace: Awaited<ReturnType<typeof SpaceFactory.project>>;
+  let regularSpace: Awaited<ReturnType<typeof SpaceFactory.regular>>;
+  let anotherRegularSpace: Awaited<ReturnType<typeof SpaceFactory.regular>>;
+
+  beforeEach(async () => {
+    const setup = await createResourceTest({});
+    workspace = setup.workspace;
+    auth = setup.authenticator;
+
+    projectSpace = await SpaceFactory.project(workspace);
+    regularSpace = await SpaceFactory.regular(workspace);
+    anotherRegularSpace = await SpaceFactory.regular(workspace);
+
+    const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const userJson = auth.getNonNullableUser().toJSON();
+
+    for (const space of [projectSpace, regularSpace, anotherRegularSpace]) {
+      const group = space.groups.find((g) => g.kind === "regular");
+      if (!group) {
+        continue;
+      }
+      const addRes = await group.dangerouslyAddMember(internalAdminAuth, {
+        user: userJson,
+      });
+      if (addRes.isErr()) {
+        throw new Error(
+          `Failed to add user to ${space.name}: ${addRes.error.message}`
+        );
+      }
+    }
+
+    await auth.refresh();
+  });
+
+  const fetchConversationResource = async (conversationId: string) => {
+    const conversationResource = await ConversationResource.fetchById(
+      auth,
+      conversationId
+    );
+    if (!conversationResource) {
+      throw new Error("Failed to fetch conversation resource");
+    }
+    return conversationResource;
+  };
+
+  // Sets up a project conversation in the invariant state: spaceId points to
+  // the project and requestedSpaceIds is [projectSpace.sId].
+  const createProjectConversation = async ({
+    agentConfigurationId,
+    withAgentMessage,
+  }: {
+    agentConfigurationId: string;
+    withAgentMessage: boolean;
+  }) => {
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId,
+      messagesCreatedAt: withAgentMessage ? [new Date()] : [],
+      spaceId: projectSpace.id,
+    });
+    await ConversationResource.updateRequirements(auth, conversation.sId, [
+      projectSpace.id,
+    ]);
+
+    const initialResource = await fetchConversationResource(conversation.sId);
+    expect(initialResource.requestedSpaceIds).toEqual([projectSpace.id]);
+
+    return conversation;
+  };
+
+  // Simulates the move-out flow: clear the space association and rebuild.
+  const moveOutAndRebuild = async (conversationId: string) => {
+    const conversationResource =
+      await fetchConversationResource(conversationId);
+    await conversationResource.clearSpaceId();
+    await rebuildConversationRequirements(auth, conversationResource);
+  };
+
+  it("replaces the project requirement with the mentioned agent's requested spaces", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Agent 1",
+      requestedSpaceIds: [regularSpace.id],
+    });
+
+    const conversation = await createProjectConversation({
+      agentConfigurationId: agent.sId,
+      withAgentMessage: true,
+    });
+
+    await moveOutAndRebuild(conversation.sId);
+
+    const updatedResource = await fetchConversationResource(conversation.sId);
+    expect(updatedResource.requestedSpaceIds).toEqual([regularSpace.id]);
+  });
+
+  it("clears the project requirement when no agents or content fragments are present", async () => {
+    const conversation = await createProjectConversation({
+      agentConfigurationId: "test-agent",
+      withAgentMessage: false,
+    });
+
+    await moveOutAndRebuild(conversation.sId);
+
+    const updatedResource = await fetchConversationResource(conversation.sId);
+    expect(updatedResource.requestedSpaceIds).toEqual([]);
+  });
+
+  it("clears the project requirement when the mentioned agent has no required spaces", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Agent 1",
+    });
+
+    const conversation = await createProjectConversation({
+      agentConfigurationId: agent.sId,
+      withAgentMessage: true,
+    });
+
+    await moveOutAndRebuild(conversation.sId);
+
+    const updatedResource = await fetchConversationResource(conversation.sId);
+    expect(updatedResource.requestedSpaceIds).toEqual([]);
   });
 });

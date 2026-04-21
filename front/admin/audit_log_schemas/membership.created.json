@@ -10,6 +10,7 @@
   ],
   "metadata": {
     "role": "string",
-    "origin": "string"
+    "origin": "string",
+    "actor_type": "string"
   }
 }

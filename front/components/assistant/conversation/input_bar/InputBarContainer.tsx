@@ -1,6 +1,7 @@
 import { ContextUsageIndicator } from "@app/components/assistant/conversation/input_bar/ContextUsageIndicator";
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
 import { InputBarButtons } from "@app/components/assistant/conversation/input_bar/InputBarButtons";
+import { InputBarSkillChip } from "@app/components/assistant/conversation/input_bar/InputBarSkillChip";
 import {
   getDisplayNameFromPastedFileId,
   getPastedFileName,
@@ -21,11 +22,9 @@ import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isNodeCandidate } from "@app/lib/connectors";
 import { useClientType } from "@app/lib/context/clientType";
-import { getSkillIcon } from "@app/lib/skill";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { classNames } from "@app/lib/utils";
-import { getManageSkillsRoute } from "@app/lib/utils/router";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type {
@@ -36,13 +35,12 @@ import {
   isRichAgentMention,
   toRichAgentMentionType,
 } from "@app/types/assistant/mentions";
-import type { SkillType } from "@app/types/assistant/skill_configuration";
+import type { SkillWithoutToolsType } from "@app/types/assistant/skill_configuration";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { SpaceType } from "@app/types/space";
 import type { UserType, WorkspaceType } from "@app/types/user";
-import { isBuilder } from "@app/types/user";
 import {
   ArrowUpIcon,
   AttachmentIcon,
@@ -78,13 +76,7 @@ const COLLAPSE_TRANSITION = "200ms cubic-bezier(0.34, 1.15, 0.64, 1)";
 const FADE_OUT_TRANSITION = "50ms ease-out";
 const FADE_IN_TRANSITION = "150ms ease-out";
 
-function getButtonsTransitionStyle(
-  singleAgentInput: boolean,
-  hideButtons: boolean
-): React.CSSProperties | undefined {
-  if (!singleAgentInput) {
-    return undefined;
-  }
+function getButtonsTransitionStyle(hideButtons: boolean): React.CSSProperties {
   const opacityTransition = hideButtons
     ? FADE_OUT_TRANSITION
     : FADE_IN_TRANSITION;
@@ -97,12 +89,8 @@ function getButtonsTransitionStyle(
 }
 
 function getToolbarRowTransitionStyle(
-  singleAgentInput: boolean,
   hideButtons: boolean
-): React.CSSProperties | undefined {
-  if (!singleAgentInput) {
-    return undefined;
-  }
+): React.CSSProperties {
   const opacityTransition = hideButtons
     ? FADE_OUT_TRANSITION
     : FADE_IN_TRANSITION;
@@ -132,12 +120,12 @@ export interface InputBarContainerProps {
   actions: InputBarAction[];
   allAgents: LightAgentConfigurationType[];
   attachedNodes: DataSourceViewContentNode[];
-  agentSwitchBlockMessage: string | null;
+  disableAgentSelector: boolean;
+  submitBlockMessage: string | null;
   onShake: () => void;
   conversation?: ConversationWithoutContentType;
   space?: SpaceType;
   disableAutoFocus: boolean;
-  disableInput: boolean;
   disableUserMentions?: boolean;
   fileUploaderService: FileUploaderService;
   getDraft: () => {
@@ -152,14 +140,14 @@ export interface InputBarContainerProps {
   onNodeSelect: (node: DataSourceViewContentNode) => void;
   onNodeUnselect: (node: DataSourceViewContentNode) => void;
   onResetSelections: () => void;
-  onSkillDeselect: (skill: SkillType) => void;
-  onSkillSelect: (skill: SkillType) => void;
+  onSkillDeselect: (skill: SkillWithoutToolsType) => void;
+  onSkillSelect: (skill: SkillWithoutToolsType) => void;
   owner: WorkspaceType;
   saveDraft: (markdown: string, agentMention?: RichAgentMention | null) => void;
   pendingInputText: string | null;
   selectedAgent: RichAgentMention | null;
   selectedMCPServerViews: MCPServerViewType[];
-  selectedSkills: SkillType[];
+  selectedSkills: SkillWithoutToolsType[];
   stickyMentions?: RichMention[];
   user: UserType | null;
 }
@@ -177,7 +165,6 @@ const InputBarContainer = ({
   disableAutoFocus,
   disableUserMentions,
   isSubmitting,
-  disableInput,
   fileUploaderService,
   getDraft,
   isAgentBuilder = false,
@@ -193,20 +180,20 @@ const InputBarContainer = ({
   selectedSkills,
   saveDraft,
   user,
-  agentSwitchBlockMessage,
+  disableAgentSelector,
+  submitBlockMessage,
   onShake,
 }: InputBarContainerProps) => {
-  const isBlockedByAgentSwitch = agentSwitchBlockMessage !== null;
+  const isSubmitBlocked = submitBlockMessage !== null;
   const { subscription } = useAuth();
   const isMobile = useIsMobile();
   const { hasFeature } = useFeatureFlags();
-  const singleAgentInput = hasFeature("enable_steering");
   const isCompactionEnabled = hasFeature("enable_compaction");
   const { selectedSingleAgent, setSelectedSingleAgent } =
     useContext(InputBarContext);
 
   const [hasUserMention, setHasUserMention] = useState(false);
-  const canSubmitEmpty = singleAgentInput && !!selectedSingleAgent;
+  const canSubmitEmpty = !!selectedSingleAgent;
 
   const agentsById = useMemo(
     () => new Map(allAgents.map((a) => [a.sId, a])),
@@ -403,7 +390,7 @@ const InputBarContainer = ({
   // Wrap onEnterKeyDown so that a blocked Enter attempt triggers the shake animation.
   const onEnterKeyDownWithShake: typeof onEnterKeyDown = useCallback(
     (isEmpty, markdownAndMentions, resetEditorText, setLoading) => {
-      if (isBlockedByAgentSwitch) {
+      if (isSubmitBlocked) {
         onShake();
         return;
       }
@@ -414,48 +401,44 @@ const InputBarContainer = ({
         setLoading
       );
     },
-    [isBlockedByAgentSwitch, canSubmitEmpty, onEnterKeyDown, onShake]
+    [isSubmitBlocked, canSubmitEmpty, onEnterKeyDown, onShake]
   );
 
-  onFirstAgentMentionPasteRef.current = singleAgentInput
-    ? (agentId: string) => {
-        const agent = agentsById.get(agentId);
-        if (agent) {
-          setSelectedSingleAgent(toRichAgentMentionType(agent));
-        }
-      }
-    : undefined;
+  onFirstAgentMentionPasteRef.current = (agentId: string) => {
+    const agent = agentsById.get(agentId);
+    if (agent) {
+      setSelectedSingleAgent(toRichAgentMentionType(agent));
+    }
+  };
 
-  onAgentMentionsStrippedRef.current = singleAgentInput
-    ? (payload: MentionsStrippedPayload) => {
-        let title: string;
-        let description: string;
-        switch (payload.reason) {
-          case "extra-agents":
-            title = "Agent mentions removed";
-            description = `${payload.count} ${payload.count === 1 ? "agent mention was" : "agent mentions were"} removed. Only one agent can be used at a time.`;
-            break;
-          case "users-stripped-for-agent":
-            title = "User mentions removed";
-            description =
-              "You can’t mention both users and agents in the same message.";
-            break;
-          case "user-conflict":
-          case "mixed-conflict":
-            title = "Agent mentions removed";
-            description =
-              "You can’t mention both users and agents in the same message.";
-            break;
-          default:
-            assertNever(payload);
-        }
-        sendNotification({
-          type: "info",
-          title,
-          description,
-        });
-      }
-    : undefined;
+  onAgentMentionsStrippedRef.current = (payload: MentionsStrippedPayload) => {
+    let title: string;
+    let description: string;
+    switch (payload.reason) {
+      case "extra-agents":
+        title = "Agent mentions removed";
+        description = `${payload.count} ${payload.count === 1 ? "agent mention was" : "agent mentions were"} removed. Only one agent can be used at a time.`;
+        break;
+      case "users-stripped-for-agent":
+        title = "User mentions removed";
+        description =
+          "You can’t mention both users and agents in the same message.";
+        break;
+      case "user-conflict":
+      case "mixed-conflict":
+        title = "Agent mentions removed";
+        description =
+          "You can’t mention both users and agents in the same message.";
+        break;
+      default:
+        assertNever(payload);
+    }
+    sendNotification({
+      type: "info",
+      title,
+      description,
+    });
+  };
   // Current space is taken from the conversation (if already set) or from the space prop (if provided).
   const spaceId = conversation?.spaceId ?? space?.sId ?? undefined;
 
@@ -465,12 +448,11 @@ const InputBarContainer = ({
     disableUserMentions,
     onUrlDetected: handleUrlDetected,
     onAgentSelect: onSingleAgentSelect,
-    singleAgentInputEnabled: singleAgentInput,
     owner,
     conversationId: conversation?.sId,
     spaceId,
     onInlineText: handleInlineText,
-    shouldSuggestAgentRef: singleAgentInput ? shouldSuggestAgentRef : undefined,
+    shouldSuggestAgentRef,
     onFirstAgentMentionPasteRef,
     onAgentMentionsStrippedRef,
     onLongTextPaste: async ({ text, from, to }) => {
@@ -548,17 +530,9 @@ const InputBarContainer = ({
             editorService.insertText(message.text);
             break;
           case "mention": {
-            if (singleAgentInput) {
-              const agent = agentsById.get(message.id);
-              if (agent) {
-                handleSingleAgentSelect(toRichAgentMentionType(agent));
-              }
-            } else {
-              editorService.insertMention({
-                type: "agent",
-                id: message.id,
-                label: message.name,
-              });
+            const agent = agentsById.get(message.id);
+            if (agent) {
+              handleSingleAgentSelect(toRichAgentMentionType(agent));
             }
             break;
           }
@@ -591,10 +565,10 @@ const InputBarContainer = ({
   const onEditorMentionsChangedRef = useRef((_userMentioned: boolean) => {});
 
   onEditorMentionsChangedRef.current = (userMentioned: boolean) => {
-    shouldSuggestAgentRef.current = !(singleAgentInput && userMentioned);
+    shouldSuggestAgentRef.current = !userMentioned;
     const wasUserMentioned = prevUserMentionedRef.current;
     prevUserMentionedRef.current = userMentioned;
-    if (singleAgentInput && userMentioned && !wasUserMentioned) {
+    if (userMentioned && !wasUserMentioned) {
       setSelectedSingleAgent(null);
       onResetSelections();
       fileUploaderService.resetUpload();
@@ -604,7 +578,7 @@ const InputBarContainer = ({
   // When the selected agent changes, remove any @user mentions (which are
   // incompatible with single-agent mode), notify the user, and persist the draft.
   useEffect(() => {
-    if (singleAgentInput && selectedSingleAgent) {
+    if (selectedSingleAgent) {
       const hadUserMentions = editorService.removeUserMentions();
       if (hadUserMentions) {
         sendNotification({
@@ -618,13 +592,7 @@ const InputBarContainer = ({
       const { markdown } = editorService.getMarkdownAndMentions();
       saveDraft(markdown, selectedSingleAgent);
     }
-  }, [
-    singleAgentInput,
-    selectedSingleAgent,
-    editorService,
-    saveDraft,
-    sendNotification,
-  ]);
+  }, [selectedSingleAgent, editorService, saveDraft, sendNotification]);
 
   // Update the editor ref when the editor is created and listen for updates to the editor.
   useEffect(() => {
@@ -658,13 +626,6 @@ const InputBarContainer = ({
       }
     };
   }, [editor, editorService, saveDraft]);
-
-  // Disable the editor when disableInput is true.
-  useEffect(() => {
-    if (editor) {
-      editor.setEditable(!disableInput);
-    }
-  }, [editor, disableInput]);
 
   useUrlHandler(editor, selectedNode, nodeOrUrlCandidate, handleUrlReplaced);
 
@@ -874,13 +835,12 @@ const InputBarContainer = ({
       draft &&
       (editorService.isEmpty() || editorContainsOnlyStickyMentions)
     ) {
-      // TODO: cleanup once we ship the single agent mode
-      // In single-agent mode, strip agent mentions from the draft text since
-      // the agent is handled by the picker button, not inline in the editor.
-      // This handles drafts saved before single-agent mode was enabled.
-      const draftText = singleAgentInput
-        ? draft.text.replace(/:mention\[[^\]]*\]\{sId=[^}]*\}\s*/g, "").trim()
-        : draft.text;
+      // Strip agent mentions from the draft text since the agent is handled
+      // by the picker button, not inline in the editor. This handles drafts
+      // saved before single-agent mode was enabled.
+      const draftText = draft.text
+        .replace(/:mention\[[^\]]*\]\{sId=[^}]*\}\s*/g, "")
+        .trim();
 
       // Schedule content restoration to avoid flushing during render lifecycle.
       queueMicrotask(() =>
@@ -917,12 +877,11 @@ const InputBarContainer = ({
   const isSubmitDisabled =
     (isEmpty && !canSubmitEmpty) ||
     isSubmitting ||
-    disableInput ||
-    isBlockedByAgentSwitch ||
+    isSubmitBlocked ||
     voiceTranscriberService.status !== "idle";
 
   const [isToolbarOpen, setIsToolbarOpen] = useState(false);
-  const hideButtons = singleAgentInput && hasUserMention;
+  const hideButtons = hasUserMention;
 
   const contentEditableClasses = classNames(
     "inline-block w-full",
@@ -934,14 +893,8 @@ const InputBarContainer = ({
 
   const isRecording = voiceTranscriberService.status === "recording";
 
-  const buttonsTransitionStyle = getButtonsTransitionStyle(
-    singleAgentInput,
-    hideButtons
-  );
-  const toolbarRowTransitionStyle = getToolbarRowTransitionStyle(
-    singleAgentInput,
-    hideButtons
-  );
+  const buttonsTransitionStyle = getButtonsTransitionStyle(hideButtons);
+  const toolbarRowTransitionStyle = getToolbarRowTransitionStyle(hideButtons);
 
   return (
     <div
@@ -957,13 +910,11 @@ const InputBarContainer = ({
       <div className="flex w-0 flex-grow flex-col">
         <div className="relative">
           <EditorContent
-            disabled={disableInput}
             editor={editor}
             className={classNames(
               contentEditableClasses,
               "scrollbar-hide",
               "overflow-y-auto",
-              disableInput && "cursor-not-allowed",
               hideButtons
                 ? "max-h-[40vh] pr-20"
                 : "max-h-[40vh] min-h-14 sm:min-h-16"
@@ -985,13 +936,9 @@ const InputBarContainer = ({
             "flex w-full flex-col",
             !hideButtons && "py-1.5 sm:pb-2"
           )}
-          style={
-            singleAgentInput
-              ? {
-                  transition: `padding ${COLLAPSE_TRANSITION}`,
-                }
-              : undefined
-          }
+          style={{
+            transition: `padding ${COLLAPSE_TRANSITION}`,
+          }}
         >
           <div
             className="mb-1 flex flex-wrap items-center px-2"
@@ -999,43 +946,22 @@ const InputBarContainer = ({
           >
             {selectedSkills.map((skill) => (
               <React.Fragment key={skill.sId}>
-                {/* Two Chips: one for larger screens (desktop), one for smaller screens (mobile). */}
-                <Chip
-                  size="xs"
-                  label={skill.name}
-                  icon={getSkillIcon(skill.icon)}
-                  href={
-                    isBuilder(owner)
-                      ? getManageSkillsRoute(owner.sId, skill.sId)
-                      : undefined
-                  }
-                  target="_blank"
-                  className="m-0.5 hidden bg-background text-foreground dark:bg-background-night dark:text-foreground-night xs:flex"
-                  onRemove={
-                    disableInput
-                      ? undefined
-                      : () => {
-                          onSkillDeselect(skill);
-                        }
-                  }
+                <InputBarSkillChip
+                  owner={owner}
+                  skill={skill}
+                  className="m-0.5 hidden xs:flex"
+                  onRemove={() => {
+                    onSkillDeselect(skill);
+                  }}
                 />
-                <Chip
-                  size="xs"
-                  icon={getSkillIcon(skill.icon)}
-                  href={
-                    isBuilder(owner)
-                      ? getManageSkillsRoute(owner.sId, skill.sId)
-                      : undefined
-                  }
-                  target="_blank"
-                  className="m-0.5 flex bg-background text-foreground dark:bg-background-night dark:text-foreground-night xs:hidden"
-                  onRemove={
-                    disableInput
-                      ? undefined
-                      : () => {
-                          onSkillDeselect(skill);
-                        }
-                  }
+                <InputBarSkillChip
+                  owner={owner}
+                  skill={skill}
+                  compact
+                  className="m-0.5 flex xs:hidden"
+                  onRemove={() => {
+                    onSkillDeselect(skill);
+                  }}
                 />
               </React.Fragment>
             ))}
@@ -1047,25 +973,17 @@ const InputBarContainer = ({
                   label={getMcpServerViewDisplayName(msv)}
                   icon={getIcon(msv.server.icon)}
                   className="m-0.5 hidden bg-background text-foreground dark:bg-background-night dark:text-foreground-night xs:flex"
-                  onRemove={
-                    disableInput
-                      ? undefined
-                      : () => {
-                          onMCPServerViewDeselect(msv);
-                        }
-                  }
+                  onRemove={() => {
+                    onMCPServerViewDeselect(msv);
+                  }}
                 />
                 <Chip
                   size="xs"
                   icon={getIcon(msv.server.icon)}
                   className="m-0.5 flex bg-background text-foreground dark:bg-background-night dark:text-foreground-night xs:hidden"
-                  onRemove={
-                    disableInput
-                      ? undefined
-                      : () => {
-                          onMCPServerViewDeselect(msv);
-                        }
-                  }
+                  onRemove={() => {
+                    onMCPServerViewDeselect(msv);
+                  }}
                 />
               </React.Fragment>
             ))}
@@ -1116,8 +1034,7 @@ const InputBarContainer = ({
                     buttonSize={buttonSize}
                     clientType={clientType}
                     conversation={conversation}
-                    disableAgentSelector={isBlockedByAgentSwitch}
-                    disableInput={disableInput}
+                    disableAgentSelector={disableAgentSelector}
                     editorService={editorService}
                     fileInputRef={fileInputRef}
                     fileUploaderService={fileUploaderService}
@@ -1130,7 +1047,6 @@ const InputBarContainer = ({
                     selectedAgent={selectedSingleAgent}
                     selectedMCPServerViews={selectedMCPServerViews}
                     selectedSkills={selectedSkills}
-                    singleAgentInput={singleAgentInput}
                     space={space}
                     user={user}
                   />
@@ -1140,105 +1056,100 @@ const InputBarContainer = ({
               <div
                 className="flex items-center gap-2 md:gap-1"
                 style={buttonsTransitionStyle}
-              >
-                {clientType === "extension" && (
-                  <>
-                    <div ref={plusButtonRef}>
-                      <DropdownMenu
-                        open={isCaptureDropdownOpen}
-                        onOpenChange={setIsCaptureDropdownOpen}
-                      >
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost-secondary"
-                            icon={PlusIcon}
-                            size={buttonSize}
-                            disabled={disableInput}
-                          />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          {actions.includes("attachment") && (
-                            <DropdownMenuItem
-                              icon={AttachmentIcon}
-                              label="Attach knowledge"
-                              onClick={() => {
-                                setIsCaptureDropdownOpen(false);
-                                setShowKnowledgePicker(true);
-                              }}
-                            />
-                          )}
-                          {captureActions && (
-                            <>
-                              <DropdownMenuItem
-                                icon={GlobeAltIcon}
-                                label="Attach page content"
-                                disabled={
-                                  captureActions.isCapturing ||
-                                  fileUploaderService.isProcessingFiles
-                                }
-                                onClick={() => captureActions.onCapture("text")}
-                                endComponent={
-                                  <DropdownMenuShortcut
-                                    shortcut={pageShortcut}
-                                    className="text-xs text-faint dark:text-faint-night"
-                                  />
-                                }
-                              />
-                              <DropdownMenuItem
-                                icon={CameraIcon}
-                                label="Take screenshot"
-                                disabled={
-                                  captureActions.isCapturing ||
-                                  fileUploaderService.isProcessingFiles
-                                }
-                                onClick={() =>
-                                  captureActions.onCapture("screenshot")
-                                }
-                                endComponent={
-                                  <DropdownMenuShortcut
-                                    shortcut={screenshotShortcut}
-                                    className="text-xs text-faint dark:text-faint-night"
-                                  />
-                                }
-                              />
-                            </>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                    {actions.includes("attachment") && (
-                      <InputBarAttachmentsPicker
-                        fileUploaderService={fileUploaderService}
-                        owner={owner}
-                        isLoading={false}
-                        onNodeSelect={onNodeSelect}
-                        onNodeUnselect={onNodeUnselect}
-                        attachedNodes={attachedNodes}
-                        disabled={disableInput}
-                        buttonSize={buttonSize}
-                        toolFileUpload={{
-                          useCase: "conversation",
-                          useCaseMetadata: {
-                            conversationId: conversation?.sId,
-                          },
-                        }}
-                        spaceId={space?.sId}
-                        type="dropdown"
-                        onFileChange={() => setShowKnowledgePicker(false)}
-                        externalOpen={showKnowledgePicker}
-                        onExternalOpenChange={setShowKnowledgePicker}
-                        anchorRef={plusButtonRef}
-                      />
-                    )}
-                  </>
-                )}
-              </div>
+              />
             </div>
           </div>
         </div>
         <div
           className={cn("absolute bottom-2 right-2 flex items-center gap-2")}
         >
+          {clientType === "extension" && (
+            <>
+              <div ref={plusButtonRef}>
+                <DropdownMenu
+                  open={isCaptureDropdownOpen}
+                  onOpenChange={setIsCaptureDropdownOpen}
+                >
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost-secondary"
+                      icon={PlusIcon}
+                      size={buttonSize}
+                    />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {actions.includes("attachment") && (
+                      <DropdownMenuItem
+                        icon={AttachmentIcon}
+                        label="Attach knowledge"
+                        onClick={() => {
+                          setIsCaptureDropdownOpen(false);
+                          setShowKnowledgePicker(true);
+                        }}
+                      />
+                    )}
+                    {captureActions && (
+                      <>
+                        <DropdownMenuItem
+                          icon={GlobeAltIcon}
+                          label="Attach page content"
+                          disabled={
+                            captureActions.isCapturing ||
+                            fileUploaderService.isProcessingFiles
+                          }
+                          onClick={() => captureActions.onCapture("text")}
+                          endComponent={
+                            <DropdownMenuShortcut
+                              shortcut={pageShortcut}
+                              className="text-xs text-faint dark:text-faint-night"
+                            />
+                          }
+                        />
+                        <DropdownMenuItem
+                          icon={CameraIcon}
+                          label="Take screenshot"
+                          disabled={
+                            captureActions.isCapturing ||
+                            fileUploaderService.isProcessingFiles
+                          }
+                          onClick={() => captureActions.onCapture("screenshot")}
+                          endComponent={
+                            <DropdownMenuShortcut
+                              shortcut={screenshotShortcut}
+                              className="text-xs text-faint dark:text-faint-night"
+                            />
+                          }
+                        />
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+              {actions.includes("attachment") && (
+                <InputBarAttachmentsPicker
+                  fileUploaderService={fileUploaderService}
+                  owner={owner}
+                  isLoading={false}
+                  onNodeSelect={onNodeSelect}
+                  onNodeUnselect={onNodeUnselect}
+                  attachedNodes={attachedNodes}
+                  buttonSize={buttonSize}
+                  toolFileUpload={{
+                    useCase: "conversation",
+                    useCaseMetadata: {
+                      conversationId: conversation?.sId,
+                    },
+                  }}
+                  spaceId={space?.sId}
+                  type="dropdown"
+                  onFileChange={() => setShowKnowledgePicker(false)}
+                  externalOpen={showKnowledgePicker}
+                  onExternalOpenChange={setShowKnowledgePicker}
+                  anchorRef={plusButtonRef}
+                />
+              )}
+            </>
+          )}
           <div className="flex items-center">
             {isCompactionEnabled && conversation && (
               <ContextUsageIndicator
@@ -1256,7 +1167,6 @@ const InputBarContainer = ({
                   elapsedSeconds={voiceTranscriberService.elapsedSeconds}
                   onRecordStart={voiceTranscriberService.startRecording}
                   onRecordStop={voiceTranscriberService.stopRecording}
-                  disabled={disableInput}
                   size={buttonSize}
                   showStopLabel={!isMobile}
                 />
@@ -1268,11 +1178,11 @@ const InputBarContainer = ({
               isSubmitting && voiceTranscriberService.status !== "transcribing"
             }
             icon={ArrowUpIcon}
-            variant={isBlockedByAgentSwitch ? "ghost-secondary" : "highlight"}
+            variant={isSubmitBlocked ? "ghost-secondary" : "highlight"}
             disabled={isSubmitDisabled}
-            tooltip={agentSwitchBlockMessage ?? undefined}
+            tooltip={submitBlockMessage ?? undefined}
             className={cn(
-              isBlockedByAgentSwitch &&
+              isSubmitBlocked &&
                 "hover:s-bg-transparent dark:hover:s-bg-transparent hover:s-text-muted-foreground dark:hover:s-text-muted-foreground-night"
             )}
             onClick={async (e: React.MouseEvent<HTMLButtonElement>) => {

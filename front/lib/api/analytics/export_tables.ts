@@ -55,12 +55,14 @@ export async function exportTable({
   endDate,
   timezone,
   owner,
+  includeHiddenAgents,
 }: {
   table: AnalyticsExportTable;
   startDate: string;
   endDate: string;
   timezone: string;
   owner: WorkspaceType;
+  includeHiddenAgents: boolean;
 }): Promise<Result<string, Error>> {
   switch (table) {
     case "usage_metrics":
@@ -70,7 +72,7 @@ export async function exportTable({
     case "source":
       return exportSource({ startDate, endDate, timezone, owner });
     case "agents":
-      return exportAgents({ startDate, endDate, owner });
+      return exportAgents({ startDate, endDate, owner, includeHiddenAgents });
     case "users":
       return exportUsers({ startDate, endDate, timezone, owner });
     case "skill_usage":
@@ -235,10 +237,12 @@ async function exportAgents({
   startDate,
   endDate,
   owner,
+  includeHiddenAgents,
 }: {
   startDate: string;
   endDate: string;
   owner: WorkspaceType;
+  includeHiddenAgents: boolean;
 }): Promise<Result<string, Error>> {
   const baseQuery = buildAgentAnalyticsBaseQuery({
     workspaceId: owner.sId,
@@ -246,7 +250,11 @@ async function exportAgents({
     endDate,
   });
 
-  const result = await fetchAgentExportRows(baseQuery, owner);
+  const result = await fetchAgentExportRows(
+    baseQuery,
+    owner,
+    includeHiddenAgents
+  );
 
   if (result.isErr()) {
     return new Err(

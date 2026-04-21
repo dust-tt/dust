@@ -1,7 +1,5 @@
 import { Authenticator } from "@app/lib/auth";
-import { DustError } from "@app/lib/error";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
-import { TriggerSubscriberModel } from "@app/lib/models/agent/triggers/trigger_subscriber";
 import { TriggerModel } from "@app/lib/models/agent/triggers/triggers";
 import { WebhookRequestModel } from "@app/lib/models/agent/triggers/webhook_request";
 import { WebhookRequestTriggerModel } from "@app/lib/models/agent/triggers/webhook_request_trigger";
@@ -16,7 +14,7 @@ import logger from "@app/logger/logger";
 import {
   createOrUpdateAgentSchedule,
   deleteTriggerSchedule,
-} from "@app/temporal/triggers/schedule/client";
+} from "@app/temporal/triggers/schedule_client";
 import type {
   ScheduleConfig,
   TriggerExecutionMode,
@@ -28,10 +26,7 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import {
-  errorToString,
-  normalizeError,
-} from "@app/types/shared/utils/error_utils";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { UserType } from "@app/types/user";
 import assert from "assert";
 import type {
@@ -187,39 +182,6 @@ export class TriggerResource extends BaseResource<TriggerModel> {
         editor: user.id,
       },
     });
-  }
-
-  static async listByUserSubscriber(
-    auth: Authenticator,
-    user: UserResource | UserType
-  ) {
-    assert(
-      auth.isAdmin() || auth.user()?.id === user.id,
-      "Triggers can only be listed by admins or by the subscribed user."
-    );
-
-    const workspace = auth.getNonNullableWorkspace();
-
-    const res = await this.model.findAll({
-      where: {
-        workspaceId: workspace.id,
-        // Exclude triggers where user is also editor to avoid duplicates
-        editor: { [Op.ne]: user.id },
-      },
-      include: [
-        {
-          model: TriggerSubscriberModel,
-          as: "trigger_subscribers",
-          required: true,
-          attributes: [],
-          where: {
-            userId: user.id,
-          },
-        },
-      ],
-    });
-
-    return res.map((c) => new this(this.model, c.get()));
   }
 
   /**
@@ -380,12 +342,6 @@ export class TriggerResource extends BaseResource<TriggerModel> {
         });
       }
 
-      await TriggerSubscriberModel.destroy({
-        where: {
-          workspaceId: auth.getNonNullableWorkspace().id,
-          triggerId: this.id,
-        },
-      });
       await TriggerModel.destroy({
         where: {
           id: this.id,
@@ -730,125 +686,6 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     } catch (error) {
       return new Err(normalizeError(error));
     }
-  }
-
-  async addToSubscribers(
-    auth: Authenticator
-  ): Promise<Result<undefined, DustError<"unauthorized" | "internal_error">>> {
-    if (auth.getNonNullableWorkspace().id !== this.workspaceId) {
-      return new Err(
-        new DustError(
-          "unauthorized",
-          "User does not have access to this trigger"
-        )
-      );
-    }
-
-    if (auth.getNonNullableUser().id === this.editor) {
-      return new Err(
-        new DustError("internal_error", "User is the editor of the trigger")
-      );
-    }
-
-    const existing = await TriggerSubscriberModel.findOne({
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        triggerId: this.id,
-        userId: auth.getNonNullableUser().id,
-      },
-    });
-    if (existing) {
-      return new Err(
-        new DustError("internal_error", "User is already a subscriber")
-      );
-    }
-
-    await TriggerSubscriberModel.create({
-      workspaceId: auth.getNonNullableWorkspace().id,
-      triggerId: this.id,
-      userId: auth.getNonNullableUser().id,
-    });
-
-    return new Ok(undefined);
-  }
-
-  async removeFromSubscribers(
-    auth: Authenticator
-  ): Promise<Result<undefined, DustError<"unauthorized" | "internal_error">>> {
-    if (auth.getNonNullableWorkspace().id !== this.workspaceId) {
-      return new Err(
-        new DustError(
-          "unauthorized",
-          "User does not have access to this trigger"
-        )
-      );
-    }
-
-    try {
-      await TriggerSubscriberModel.destroy({
-        where: {
-          workspaceId: auth.getNonNullableWorkspace().id,
-          triggerId: this.id,
-          userId: auth.getNonNullableUser().id,
-        },
-      });
-
-      return new Ok(undefined);
-    } catch (error) {
-      return new Err(new DustError("internal_error", errorToString(error)));
-    }
-  }
-
-  async getSubscribers(
-    auth: Authenticator
-  ): Promise<
-    Result<UserResource[], DustError<"unauthorized" | "internal_error">>
-  > {
-    if (auth.getNonNullableWorkspace().id !== this.workspaceId) {
-      return new Err(
-        new DustError(
-          "unauthorized",
-          "User does not have access to this trigger"
-        )
-      );
-    }
-
-    try {
-      const subscribers = await TriggerSubscriberModel.findAll({
-        where: {
-          workspaceId: auth.getNonNullableWorkspace().id,
-          triggerId: this.id,
-        },
-      });
-
-      const userResources = await UserResource.fetchByModelIds(
-        subscribers.map((subscriber) => subscriber.userId)
-      );
-
-      return new Ok(userResources);
-    } catch (error) {
-      return new Err(new DustError("internal_error", errorToString(error)));
-    }
-  }
-
-  async isSubscriber(auth: Authenticator): Promise<boolean> {
-    if (auth.getNonNullableWorkspace().id !== this.workspaceId) {
-      return false;
-    }
-
-    if (auth.getNonNullableUser().id === this.editor) {
-      return false;
-    }
-
-    const nbSubscribers = await TriggerSubscriberModel.count({
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        triggerId: this.id,
-        userId: auth.getNonNullableUser().id,
-      },
-    });
-
-    return nbSubscribers > 0;
   }
 
   static modelIdToSId({

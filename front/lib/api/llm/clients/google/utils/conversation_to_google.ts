@@ -198,6 +198,12 @@ export async function toContent(
     case "assistant": {
       return assistantMessageToParts(message);
     }
+    case "compaction": {
+      return {
+        role: "user",
+        parts: [{ text: message.content }],
+      };
+    }
     default:
       assertNever(message);
   }

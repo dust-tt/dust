@@ -20,10 +20,12 @@ import type {
 } from "@app/types/assistant/agent_message_content";
 import type {
   AgentMessageType,
+  CompactionMessageType,
   ConversationWithoutContentType,
   UserMessageType,
 } from "@app/types/assistant/conversation";
 import type {
+  CompactionMessageTypeModel,
   FunctionCallType,
   FunctionMessageTypeModel,
   ModelMessageTypeMultiActions,
@@ -55,7 +57,7 @@ export function renderActionForMultiActionsModel(
       name: action.functionCallName,
       function_call_id: action.functionCallId,
       content:
-        "The user rejected this specific action execution. Using this action is hence forbidden for this message.",
+        "The user rejected or skipped this specific action execution. Using this action is hence forbidden for this message.",
     };
   }
 
@@ -368,7 +370,7 @@ export function renderOtherAgentMessageAsUserMessage(
   const agentName = message.configuration.name;
 
   const systemContext = `<dust_system>
-This is the output of another agent "@${agentName}" that was invoked in this conversation.
+This is the output of another invoked agent: "@${agentName}".
 You are seeing the final response only, not the full reasoning or tool execution steps.
 </dust_system>
 
@@ -404,4 +406,24 @@ export async function renderContentFragment(
     }
   );
   return renderedContentFragment;
+}
+
+/**
+ * Renders a succeeded compaction message as a model message. The summary is wrapped in
+ * <compaction_summary> tags so the model can distinguish it from regular user messages.
+ * Returns null for failed or in-progress compactions (they are inert).
+ */
+export function renderCompactionMessage(
+  message: CompactionMessageType
+): CompactionMessageTypeModel | null {
+  if (message.status !== "succeeded" || !message.content) {
+    return null;
+  }
+  return {
+    role: "compaction",
+    content: `<dust_system>Context was compacted</dust_system>
+<compaction_summary>
+${message.content}
+</compaction_summary>`,
+  };
 }

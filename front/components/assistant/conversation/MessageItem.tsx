@@ -2,6 +2,7 @@ import { AgentMessage } from "@app/components/assistant/conversation/AgentMessag
 import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
 import { contentFragmentToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
 import { CompactionMessage } from "@app/components/assistant/conversation/CompactionMessage";
+import { ConversationForkNotice } from "@app/components/assistant/conversation/ConversationForkNotice";
 import type { FeedbackSelectorBaseProps } from "@app/components/assistant/conversation/FeedbackSelector";
 import { MentionInvalid } from "@app/components/assistant/conversation/MentionInvalid";
 import { MentionValidationRequired } from "@app/components/assistant/conversation/MentionValidationRequired";
@@ -14,6 +15,7 @@ import {
   getMessageDate,
   isAgentMessageWithStreaming,
   isCompactionMessage,
+  isConversationForkNotice,
   isHiddenMessage,
   isUserMessage,
 } from "@app/components/assistant/conversation/types";
@@ -52,6 +54,7 @@ function getMessageTopMargin({
   // Previous message has reactions — add extra space to clear them.
   if (
     prevData &&
+    !isConversationForkNotice(prevData) &&
     !isCompactionMessage(prevData) &&
     prevData.reactions.length > 0
   ) {
@@ -237,7 +240,11 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       return messageUser;
     }, [isAgentMessage, parentMessageId, messageUser, methods.data]);
 
-    if (!allowBranchMessages && data.branchId) {
+    if (
+      !allowBranchMessages &&
+      data.branchId &&
+      !isConversationForkNotice(data)
+    ) {
       return null;
     }
 
@@ -267,11 +274,30 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
           className={cn(
             "mx-auto max-w-conversation",
             topMargin,
-            !nextData && "mb-8"
+            !nextData && "mb-10"
           )}
         >
           <CompactionMessage message={data} />
         </div>
+      );
+    }
+
+    if (isConversationForkNotice(data)) {
+      return (
+        <>
+          {!areSameDate && <MessageDateIndicator message={data} />}
+          <div
+            key={`message-id-${sId}`}
+            ref={ref}
+            className={cn(
+              "mx-auto max-w-conversation",
+              topMargin,
+              !nextData && "mb-8"
+            )}
+          >
+            <ConversationForkNotice message={data} owner={context.owner} />
+          </div>
+        </>
       );
     }
 
@@ -284,7 +310,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
           className={cn(
             "mx-auto max-w-conversation",
             topMargin,
-            !nextData && "mb-8"
+            !nextData && "mb-10"
           )}
         >
           {isUserMessage(data) && (

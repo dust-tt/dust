@@ -105,12 +105,6 @@ function constructToolsSection({
     !model.useNativeLightReasoning
   ) {
     toolUseDirectives += `${CHAIN_OF_THOUGHT_META_PROMPT}\n`;
-  } else if (
-    model.nativeReasoningMetaPrompt &&
-    (agentConfiguration.model.reasoningEffort === "medium" ||
-      agentConfiguration.model.reasoningEffort === "high")
-  ) {
-    toolUseDirectives += `${model.nativeReasoningMetaPrompt}\n`;
   }
 
   toolUseDirectives +=
@@ -121,12 +115,15 @@ function constructToolsSection({
   );
   if (hasAskUserQuestion) {
     toolUseDirectives +=
-      "\nUse ask_user_question when (1) the user's request has 2+ plausible " +
-      "interpretations that lead to different work, or (2) you're about to " +
-      "take a consequential action and want to confirm the target or scope. " +
-      "Only ask when the answer materially changes what you do next. " +
-      "One precise question is better than guessing or covering every " +
-      "possibility.\n";
+      "\nUse ask_user_question when (1) the request has 2+ plausible " +
+      "interpretations that would lead to different work, (2) you're about " +
+      "to take a consequential action and want to confirm the target or " +
+      "scope, or (3) required information is missing and can't be reliably " +
+      "inferred from context. Only ask when the answer materially changes " +
+      "what you do next. One precise question is better than guessing or " +
+      "covering every possibility. Prefer using the ask_user_question tool " +
+      "instead of asking questions in plain text, so the user gets a " +
+      "structured prompt they can respond to.\n";
   }
 
   toolsSection += toolUseDirectives;

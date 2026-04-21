@@ -11,6 +11,7 @@
   "metadata": {
     "dataSourceName": "string",
     "provider": "string",
-    "spaceId": "string"
+    "spaceId": "string",
+    "actor_type": "string"
   }
 }

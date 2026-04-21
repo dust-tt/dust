@@ -28,6 +28,7 @@ import {
   cn,
   Icon,
   ToolsIcon,
+  XCircleIcon,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -55,6 +56,15 @@ function getCompletionLabel(
   }
 }
 
+function getTerminalLabel(status: LightAgentMessageType["status"]): string {
+  switch (status) {
+    case "cancelled":
+      return "Cancelled";
+    default:
+      return "Completed";
+  }
+}
+
 function getCollapseAnimationStyle(isCollapsed: boolean): React.CSSProperties {
   return {
     gridTemplateRows: isCollapsed ? "0fr" : "1fr",
@@ -68,7 +78,7 @@ function getCollapseAnimationStyle(isCollapsed: boolean): React.CSSProperties {
 /**
  * Inline activity steps component.
  * Everything is wrapped in a single collapsible "Work" section
- * with a stepper timeline containing CoT, actions, and a "Done" marker.
+ * with a stepper timeline containing CoT, actions, and a terminal marker.
  *
  * Steps are accumulated by useAgentMessageStream — this component is a pure render.
  */
@@ -89,7 +99,9 @@ export function InlineActivitySteps({
   const { openPanel } = useConversationSidePanelContext();
 
   const isDone =
-    lastAgentStateClassification === "done" || agentMessage.status === "failed";
+    lastAgentStateClassification === "done" ||
+    agentMessage.status === "failed" ||
+    agentMessage.status === "cancelled";
 
   const [isCollapsed, setIsCollapsed] = useState(isDone && !isLastMessage);
 
@@ -108,7 +120,7 @@ export function InlineActivitySteps({
   const isThinking = lastAgentStateClassification === "thinking";
   const isWriting = lastAgentStateClassification === "writing";
   const isActing = lastAgentStateClassification === "acting";
-  const showPendingToolCalls = pendingToolCalls.length > 0;
+  const showPendingToolCalls = !isDone && pendingToolCalls.length > 0;
 
   const headerLabel =
     agentMessage.completionDurationMs !== null
@@ -117,8 +129,13 @@ export function InlineActivitySteps({
           agentMessage.completionDurationMs
         )
       : isDone
-        ? "Completed"
+        ? getTerminalLabel(agentMessage.status)
         : null;
+
+  // Writing-only: no prior steps, just streaming text. Show "Writing..."
+  // without the collapse toggle so it doesn't look like a "Thinking" section.
+  const isWritingOnly =
+    isWriting && completedSteps.length === 0 && !showPendingToolCalls;
 
   const toggleCollapse = () => setIsCollapsed((c) => !c);
 
@@ -133,8 +150,8 @@ export function InlineActivitySteps({
 
   // Show active thinking whenever the agent is thinking.
   // Dedup in appendThinkingStep handles duplicate content at capture time.
-  const showActiveThinking = isThinking;
-  const showActiveWriting = isWriting;
+  const showActiveThinking = !isDone && isThinking;
+  const showActiveWriting = !isDone && isWriting;
   const latestPendingToolCall = showPendingToolCalls
     ? pendingToolCalls[pendingToolCalls.length - 1]
     : null;
@@ -142,7 +159,9 @@ export function InlineActivitySteps({
     (showActiveThinking && !chainOfThought) ||
     (showActiveWriting && !agentMessage.content);
   const activeAction =
-    isActing && isAgentMessageWithActions ? actions[actions.length - 1] : null;
+    !isDone && isActing && isAgentMessageWithActions
+      ? actions[actions.length - 1]
+      : null;
 
   const hasContent =
     completedSteps.length > 0 ||
@@ -190,24 +209,30 @@ export function InlineActivitySteps({
 
   return (
     <div className="flex flex-col text-sm">
-      <button
-        className="self-start text-muted-foreground dark:text-muted-foreground-night hover:text-foreground dark:hover:text-foreground-night transition-colors duration-200 flex gap-1 items-center"
-        onClick={toggleCollapse}
-      >
-        {headerLabel ?? <AnimatedText>Thinking…</AnimatedText>}
-        <span
-          className={cn(
-            "transition-transform duration-200 ease-out",
-            isCollapsed ? "rotate-0" : "rotate-90"
-          )}
-        >
-          <Icon size="xs" visual={ChevronRightIcon} />
+      {isWritingOnly ? (
+        <span className="self-start text-muted-foreground dark:text-muted-foreground-night flex gap-1 items-center">
+          <AnimatedText>Writing…</AnimatedText>
         </span>
-      </button>
+      ) : (
+        <button
+          className="self-start text-muted-foreground dark:text-muted-foreground-night hover:text-foreground dark:hover:text-foreground-night transition-colors duration-200 flex gap-1 items-center"
+          onClick={toggleCollapse}
+        >
+          {headerLabel ?? <AnimatedText>Thinking…</AnimatedText>}
+          <span
+            className={cn(
+              "transition-transform duration-200 ease-out",
+              isCollapsed ? "rotate-0" : "rotate-90"
+            )}
+          >
+            <Icon size="xs" visual={ChevronRightIcon} />
+          </span>
+        </button>
+      )}
 
       <div
         className="grid ease-out"
-        style={getCollapseAnimationStyle(isCollapsed)}
+        style={getCollapseAnimationStyle(isWritingOnly ? false : isCollapsed)}
       >
         <div className="overflow-hidden">
           <div className="mt-3 flex flex-col gap-3">
@@ -242,7 +267,6 @@ export function InlineActivitySteps({
                       <AgentMessageMarkdown
                         content={step.content}
                         owner={owner}
-                        isStreaming={false}
                         isLastMessage={false}
                       />
                     </div>
@@ -296,12 +320,13 @@ export function InlineActivitySteps({
             )}
 
             {/* Active writing (streaming content tokens) */}
-            {showActiveWriting && agentMessage.content ? (
+            {showActiveWriting &&
+            agentMessage.content &&
+            completedSteps.length === 0 ? (
               <div>
                 <AgentMessageMarkdown
                   content={agentMessage.content}
                   owner={owner}
-                  isStreaming={false}
                   streamingState="streaming"
                   isLastMessage={false}
                 />
@@ -338,15 +363,35 @@ export function InlineActivitySteps({
             {isDone &&
               completedSteps.length > 0 &&
               agentMessage.status !== "gracefully_stopped" && (
-                <TimelineRow icon={CheckIcon} isLast>
+                <TimelineRow
+                  icon={
+                    agentMessage.status === "cancelled"
+                      ? XCircleIcon
+                      : CheckIcon
+                  }
+                  isLast
+                >
                   <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                    Done
+                    {agentMessage.status === "cancelled" ? "Cancelled" : "Done"}
                   </span>
                 </TimelineRow>
               )}
           </div>
         </div>
       </div>
+
+      {showActiveWriting &&
+      agentMessage.content &&
+      completedSteps.length > 0 ? (
+        <div className="mt-3">
+          <AgentMessageMarkdown
+            content={agentMessage.content}
+            owner={owner}
+            streamingState="streaming"
+            isLastMessage={false}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }

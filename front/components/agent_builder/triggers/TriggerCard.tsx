@@ -3,10 +3,10 @@ import type { AgentBuilderTriggerType } from "@app/components/agent_builder/Agen
 import { getIcon } from "@app/components/resources/resources_icons";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { describeScheduleConfig } from "@app/lib/utils/schedule_description";
-import { normalizeWebhookIcon } from "@app/lib/webhookSource";
+import { normalizeWebhookIcon } from "@app/lib/webhook_source";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
-import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
+import { CLIENT_SIDE_WEBHOOK_PRESETS } from "@app/types/triggers/webhooks_client_side";
 import { ActionCard, TimeIcon } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
@@ -17,7 +17,9 @@ function getTriggerIconComponent(trigger: AgentBuilderTriggerType) {
     case "webhook":
       return getIcon(
         normalizeWebhookIcon(
-          trigger.provider ? WEBHOOK_PRESETS[trigger.provider].icon : null
+          trigger.provider
+            ? CLIENT_SIDE_WEBHOOK_PRESETS[trigger.provider].icon
+            : null
         )
       );
     default:
@@ -77,7 +79,9 @@ export function TriggerCard({
 
   const resolvedIcon = webhookSourceView?.provider
     ? getIcon(
-        normalizeWebhookIcon(WEBHOOK_PRESETS[webhookSourceView.provider].icon)
+        normalizeWebhookIcon(
+          CLIENT_SIDE_WEBHOOK_PRESETS[webhookSourceView.provider].icon
+        )
       )
     : getTriggerIconComponent(trigger);
 

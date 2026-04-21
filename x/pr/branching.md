@@ -85,18 +85,21 @@ The target design uses the compaction flow from the parallel compaction proposal
 - the child remains blocked for posting while the initial compaction is in the
   `created` state
 
-Until compaction ships, the fork flow can use an artificial compaction
-placeholder internally. That placeholder reuses the rendered
-conversation-for-model view at the resolved source message of the parent
-conversation and stores it as the initial message in the child, explicitly
-stating that it is a forked starting point.
+This now lands in 3 steps:
+
+1. refactor compaction so the existing workflow can keep the compaction message
+   and SSE on a target conversation while summarizing a separate source
+   conversation snapshot
+2. switch fork creation from the placeholder message to a real child-side
+   compaction that targets the parent conversation at the resolved source rank
+3. refine model selection so fork compaction uses the source agent message
+   model instead of the default fallback
 
 Compaction happens after the fork is created. We never compact the
 parent conversation as part of the fork action.
 
-This placeholder path exists only to unblock internal development and
-integration work while compaction is still in flight. Before release, fork
-initialization switches to the shipped compaction flow.
+Until step 2 lands, the fork flow continues to use the temporary placeholder
+message that states the conversation was forked.
 
 #### 3. Filesystem and File Seeding
 
@@ -279,20 +282,26 @@ Scope:
 - add the lightweight "XXX branched this conversation: " UI in the parent conversation
 - wire the UI to the backend endpoint
 
-#### 5: Switch Fork Initialization to Shipped Compaction
+#### 5: Replace the Placeholder with Child-Side Compaction
 
 Scope:
 
-- switch the fork initialization seam from the artificial placeholder to the
-  shipped compaction flow
-- keep the same fork API and lineage model
+- PR 1: refactor `compactConversation` so the existing workflow can summarize
+  a source conversation snapshot into a compaction message owned by another
+  target conversation
+- PR 2: create that compaction message in the child during fork creation and
+  summarize the parent conversation up to the resolved source message rank
+- PR 3: refine model selection so fork compaction uses the source agent
+  message model instead of the current default
 
 Why separate:
 
-- compaction is already being developed independently
-- this keeps the forking work moving internally without blocking on compaction
-  shipping
-- this is the release gate for broad exposure of the feature
+- the compaction refactor is independently useful and lower risk than changing
+  fork creation at the same time
+- the fork integration stays small once the workflow already supports separate
+  source and target conversations
+- model selection is not product-critical for the first internal rollout and
+  can follow after the functional child-side compaction path exists
 
 ### Non-Goals for the First Version
 

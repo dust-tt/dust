@@ -20,6 +20,7 @@ export class SkillSuggestionModel extends WorkspaceAwareModel<SkillSuggestionMod
   declare kind: SkillSuggestionKind;
   declare suggestion: SkillSuggestionPayload;
   declare analysis: string | null;
+  declare title: string | null;
 
   declare state: SkillSuggestionState;
   declare source: SkillSuggestionSource;
@@ -56,6 +57,10 @@ SkillSuggestionModel.init(
     },
     analysis: {
       type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    title: {
+      type: DataTypes.STRING,
       allowNull: true,
     },
     state: {

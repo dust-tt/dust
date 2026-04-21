@@ -7,13 +7,13 @@ import type {
 } from "@app/components/assistant/conversation/types";
 import {
   isAgentMessageWithStreaming,
+  isCompactionMessage,
   isHandoverUserMessage,
   isHiddenMessage,
   isUserMessage,
 } from "@app/components/assistant/conversation/types";
 import { ProjectJoinCTA } from "@app/components/spaces/ProjectJoinCTA";
 import { useCancelMessage, useConversation } from "@app/hooks/conversations";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
@@ -65,8 +65,6 @@ export const AgentInputBar = ({
   const agentBuilderContext = context.agentBuilderContext;
 
   const isMobile = useIsMobile();
-  const { hasFeature } = useFeatureFlags();
-  const singleAgentInput = hasFeature("enable_steering");
   const { agentConfigurations } = useUnifiedAgentConfigurations({
     workspaceId: context.owner.sId,
   });
@@ -91,15 +89,19 @@ export const AgentInputBar = ({
   // Last agent mentioned by anyone in the conversation. Computed outside useMemo so the
   // result is a stable object reference (same mention object from the message list) that
   // won't cause unnecessary recomputation of autoMentions when allMessages array ref changes.
-  const lastAgentMentionInConversation = singleAgentInput
-    ? (allMessages
-        .filter(isUserMessage)
-        .filter((m) => !isHandoverUserMessage(m) && m.visibility !== "deleted")
-        .findLast((m) => m.richMentions.some(isRichAgentMention))
-        ?.richMentions.find(isRichAgentMention) ?? null)
-    : null;
+  const lastAgentMentionInConversation =
+    allMessages
+      .filter(isUserMessage)
+      .filter((m) => !isHandoverUserMessage(m) && m.visibility !== "deleted")
+      .findLast((m) => m.richMentions.some(isRichAgentMention))
+      ?.richMentions.find(isRichAgentMention) ?? null;
 
   const draftAgent = agentBuilderContext?.draftAgent;
+  const compactionBlockMessage = allMessages.some(
+    (message) => isCompactionMessage(message) && message.status === "created"
+  )
+    ? "Wait for compaction to finish"
+    : null;
 
   const autoMentions = useMemo(() => {
     // If we are in the agent builder, we show the draft agent as the sticky mention, all the time.
@@ -108,58 +110,43 @@ export const AgentInputBar = ({
       return [toRichAgentMentionType(draftAgent)];
     }
 
-    // In single-agent mode, find the last agent mentioned in the conversation.
+    // Find the last agent mentioned in the conversation.
     // First from the current user's messages, then from anyone's messages.
-    if (singleAgentInput) {
-      const currentUserAgentMention =
-        lastUserMessage?.richMentions.find(isRichAgentMention);
-      if (
-        currentUserAgentMention &&
-        accessibleAgentIds.has(currentUserAgentMention.id)
-      ) {
-        return [currentUserAgentMention];
-      }
-
-      // @sidekick is not available in accessibleAgentIds so we need to skip it
-      if (agentBuilderContext) {
-        return lastAgentMentionInConversation
-          ? [lastAgentMentionInConversation]
-          : [];
-      }
-
-      if (
-        lastAgentMentionInConversation &&
-        accessibleAgentIds.has(lastAgentMentionInConversation.id)
-      ) {
-        return [lastAgentMentionInConversation];
-      }
-
-      // Ultimate fallback: select the "dust" agent if available.
-      const dustAgent = agentConfigurations.find(
-        (a) => a.sId === GLOBAL_AGENTS_SID.DUST
-      );
-      if (dustAgent) {
-        return [toRichAgentMentionType(dustAgent)];
-      }
-
-      return [];
+    const currentUserAgentMention =
+      lastUserMessage?.richMentions.find(isRichAgentMention);
+    if (
+      currentUserAgentMention &&
+      accessibleAgentIds.has(currentUserAgentMention.id)
+    ) {
+      return [currentUserAgentMention];
     }
 
-    // Non-steering mode: prefill all mentions if they are all agent mentions.
-    const shouldPrefill =
-      lastUserMessage &&
-      lastUserMessage.richMentions.length > 0 &&
-      lastUserMessage.richMentions.every(isRichAgentMention);
+    // @sidekick is not available in accessibleAgentIds so we need to skip it
+    if (agentBuilderContext) {
+      return lastAgentMentionInConversation
+        ? [lastAgentMentionInConversation]
+        : [];
+    }
 
-    if (shouldPrefill) {
-      return lastUserMessage.richMentions;
+    if (
+      lastAgentMentionInConversation &&
+      accessibleAgentIds.has(lastAgentMentionInConversation.id)
+    ) {
+      return [lastAgentMentionInConversation];
+    }
+
+    // Ultimate fallback: select the "dust" agent if available.
+    const dustAgent = agentConfigurations.find(
+      (a) => a.sId === GLOBAL_AGENTS_SID.DUST
+    );
+    if (dustAgent) {
+      return [toRichAgentMentionType(dustAgent)];
     }
 
     return [];
   }, [
     draftAgent,
     lastUserMessage,
-    singleAgentInput,
     lastAgentMentionInConversation,
     accessibleAgentIds,
     agentConfigurations,
@@ -353,7 +340,7 @@ export const AgentInputBar = ({
             className="flex items-center gap-1 rounded-xl border border-border bg-white p-1 dark:border-border-night dark:bg-muted-night"
             style={{
               position: "absolute",
-              top: "-2em",
+              top: "-2rem",
             }}
           >
             {showStopButton && (
@@ -447,6 +434,7 @@ export const AgentInputBar = ({
         actions={agentBuilderContext?.actionsToShow}
         isSubmitting={agentBuilderContext?.isSubmitting === true}
         isAgentBuilder={!!agentBuilderContext}
+        submitBlockMessage={compactionBlockMessage}
       />
     </div>
   );

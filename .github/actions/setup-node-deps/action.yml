@@ -12,7 +12,7 @@ inputs:
   node-version:
     description: "Node.js version to use"
     required: false
-    default: "22.22.0"
+    default: "24.14.0"
 outputs:
   cache-hit-node-modules:
     description: "Whether node_modules cache was hit"
@@ -21,7 +21,7 @@ runs:
   using: "composite"
   steps:
     - name: Setup Node.js
-      uses: actions/setup-node@v6.3.0
+      uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
       with:
         node-version: ${{ inputs.node-version }}
 
@@ -31,7 +31,7 @@ runs:
 
     - name: Cache node_modules
       id: cache-node-modules
-      uses: actions/cache@v5.0.5
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
       with:
         path: |
           node_modules

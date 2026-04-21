@@ -108,7 +108,7 @@ async function backfillWorkspace(
       monthlyLimit,
       defaultDiscountPercent,
       paygCapMicroUsd,
-      existingConfigSId: existingConfig?.sId,
+      existingConfigId: existingConfig?.sId,
       execute,
     },
     execute

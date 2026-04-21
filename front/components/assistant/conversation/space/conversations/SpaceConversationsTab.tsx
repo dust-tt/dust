@@ -1,4 +1,5 @@
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
+import { ProjectTodosPanel } from "@app/components/assistant/conversation/space/conversations/ProjectTodosPanel";
 import { SpaceConversationListItem } from "@app/components/assistant/conversation/space/conversations/SpaceConversationListItem";
 import { SpaceConversationsActions } from "@app/components/assistant/conversation/space/conversations/SpaceConversationsActions";
 import { SpaceLoadingConversationListItem } from "@app/components/assistant/conversation/space/conversations/SpaceLoadingConversationListItem";
@@ -9,6 +10,7 @@ import { ProjectJoinCTA } from "@app/components/spaces/ProjectJoinCTA";
 import { useSpaceUnreadConversationIds } from "@app/hooks/conversations";
 import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversationsAsRead";
 import { useSearchConversations } from "@app/hooks/useSearchConversations";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { GetSpaceResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
@@ -16,6 +18,7 @@ import type {
   ConversationWithoutContentType,
   LightConversationType,
 } from "@app/types/assistant/conversation";
+import { getConversationDisplayTitle } from "@app/types/assistant/conversation";
 import type { RichMention } from "@app/types/assistant/mentions";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import type { Result } from "@app/types/shared/result";
@@ -73,6 +76,7 @@ export function SpaceConversationsTab({
   onOpenMembersPanel,
 }: SpaceConversationsTabProps) {
   const { isEditor: isProjectEditor } = spaceInfo;
+  const { hasFeature } = useFeatureFlags();
   const router = useAppRouter();
   const hasHistory = useMemo(() => conversations.length > 0, [conversations]);
 
@@ -172,6 +176,14 @@ export function SpaceConversationsTab({
             )}
           </div>
 
+          {hasFeature("project_todo") && (
+            <ProjectTodosPanel
+              owner={owner}
+              spaceId={spaceInfo.sId}
+              isArchived={!!spaceInfo.archivedAt}
+            />
+          )}
+
           {/* Suggestions for empty rooms */}
           {isEmpty ? (
             <SpaceConversationsActions
@@ -202,10 +214,7 @@ export function SpaceConversationsTab({
                     displayItemCount={true}
                     renderItem={(conversation, selected) => {
                       const conversationLabel =
-                        conversation.title ??
-                        (moment(conversation.created).isSame(moment(), "day")
-                          ? "New Conversation"
-                          : `Conversation from ${new Date(conversation.created).toLocaleDateString()}`);
+                        getConversationDisplayTitle(conversation);
                       const time = moment(conversation.updated).fromNow();
 
                       return (

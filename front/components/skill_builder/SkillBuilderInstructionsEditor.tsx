@@ -7,9 +7,10 @@ import {
   useSkillInstructionsEditor,
 } from "@app/components/editor/SkillInstructionsEditor";
 import { SKILL_BUILDER_INSTRUCTIONS_BLUR_EVENT } from "@app/components/skill_builder/events";
+import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { useSkillVersionComparisonContext } from "@app/components/skill_builder/SkillBuilderVersionContext";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useSkillSuggestions } from "@app/hooks/useSkillSuggestions";
 import {
   postProcessMarkdown,
   preprocessMarkdownForEditor,
@@ -58,8 +59,6 @@ export function SkillBuilderInstructionsEditor({
 }: SkillBuilderInstructionsEditorProps) {
   const { compareVersion, isDiffMode } = useSkillVersionComparisonContext();
   const { setValue } = useFormContext<SkillBuilderFormData>();
-  const { hasFeature } = useFeatureFlags();
-  const useHtmlInstructions = hasFeature("skill_builder_instructions_html");
 
   const { field: instructionsField, fieldState: instructionsFieldState } =
     useController<SkillBuilderFormData, typeof INSTRUCTIONS_FIELD_NAME>({
@@ -92,13 +91,11 @@ export function SkillBuilderInstructionsEditor({
             postProcessMarkdown(editor.getMarkdown()).trim(),
             { shouldDirty: true }
           );
-          if (useHtmlInstructions) {
-            setValue(
-              INSTRUCTIONS_HTML_FIELD_NAME,
-              stripHtmlAttributes(editor.getHTML()),
-              { shouldDirty: true }
-            );
-          }
+          setValue(
+            INSTRUCTIONS_HTML_FIELD_NAME,
+            stripHtmlAttributes(editor.getHTML()),
+            { shouldDirty: true }
+          );
           setValue(
             ATTACHED_KNOWLEDGE_FIELD_NAME,
             toAttachedKnowledge(collectKnowledgeItems(editor)),
@@ -106,7 +103,7 @@ export function SkillBuilderInstructionsEditor({
           );
         }
       }, 250),
-    [isDiffMode, setValue, useHtmlInstructions]
+    [isDiffMode, setValue]
   );
 
   const handleUpdate = useCallback(
@@ -135,13 +132,20 @@ export function SkillBuilderInstructionsEditor({
     [setValue]
   );
 
-  const { editor } = useSkillInstructionsEditor({
+  const { owner, skillId, selectedSuggestionId, setAcceptInstructionEdits } =
+    useSkillBuilderContext();
+  const { suggestions, isSuggestionsLoading } = useSkillSuggestions({
+    skillId,
+    states: ["pending"],
+    workspaceId: owner.sId,
+    disabled: !skillId,
+  });
+
+  const hasSuggestions = suggestions.length > 0;
+
+  const { editor, isContentReady } = useSkillInstructionsEditor({
     content: instructionsField.value ?? "",
-    htmlContent:
-      useHtmlInstructions && instructionsHtmlField.value
-        ? instructionsHtmlField.value
-        : undefined,
-    withDocumentExtensions: useHtmlInstructions,
+    htmlContent: instructionsHtmlField.value ?? undefined,
     isReadOnly: false,
     onUpdate: handleUpdate,
     onBlur: handleBlur,
@@ -183,6 +187,91 @@ export function SkillBuilderInstructionsEditor({
     }
   }, [editor, handleAddKnowledge, onAddKnowledge]);
 
+  // Register a callback that the suggestions panel can call to accept a
+  // suggestion directly via the editor's ProseMirror commands.
+  // Accepting the ProseMirror suggestion means we don't need to manipulate the HTML by hand again
+  // as we already did it to create the suggestion in ProseMirror.
+  useEffect(() => {
+    if (!editor) {
+      setAcceptInstructionEdits(null);
+      return;
+    }
+
+    // Wrap in arrow to avoid React treating the function as a state updater.
+    setAcceptInstructionEdits(() => (suggestionSId: string) => {
+      // Accept each edit of this suggestion via the PM command.
+      for (let i = 0; ; i++) {
+        const editId = `${suggestionSId}:${i}`;
+        const accepted = editor.commands.acceptSuggestion(editId);
+        if (!accepted) {
+          break;
+        }
+      }
+
+      // Sync the editor's new content back to the form.
+      setValue(
+        INSTRUCTIONS_HTML_FIELD_NAME,
+        stripHtmlAttributes(editor.getHTML()),
+        { shouldDirty: true }
+      );
+      setValue(
+        INSTRUCTIONS_FIELD_NAME,
+        postProcessMarkdown(editor.getMarkdown()).trim(),
+        {
+          shouldDirty: true,
+        }
+      );
+    });
+
+    return () => {
+      setAcceptInstructionEdits(null);
+    };
+  }, [editor, setValue, setAcceptInstructionEdits]);
+
+  // Apply pending instruction suggestions as inline diff decorations.
+  // "Reject all + re-apply current" on every change so that accepts and
+  // rejects from the suggestions panel are immediately reflected.
+  // Wait for isContentReady to be true so there is content on which the diff must be applied
+  useEffect(() => {
+    if (!editor || isSuggestionsLoading || !isContentReady) {
+      return;
+    }
+
+    editor.commands.rejectAllSuggestions();
+
+    for (const suggestion of suggestions) {
+      const { instructionEdits } = suggestion.suggestion;
+      if (!instructionEdits || instructionEdits.length === 0) {
+        continue;
+      }
+      for (let i = 0; i < instructionEdits.length; i++) {
+        const edit = instructionEdits[i];
+        editor.commands.applySuggestion({
+          id: `${suggestion.sId}:${i}`,
+          targetBlockId: edit.targetBlockId,
+          content: edit.content,
+        });
+      }
+    }
+
+    // Highlight all edits of the selected suggestion using prefix matching.
+    // may be null if no suggestion is selected
+    editor.commands.setHighlightedSuggestion(selectedSuggestionId);
+
+    // Make the editor read-only while suggestion diffs are displayed.
+    if (!isDiffMode) {
+      editor.setEditable(!hasSuggestions);
+    }
+  }, [
+    editor,
+    isContentReady,
+    suggestions,
+    isSuggestionsLoading,
+    selectedSuggestionId,
+    isDiffMode,
+    hasSuggestions,
+  ]);
+
   useEffect(() => {
     return () => {
       debouncedUpdate.cancel();
@@ -201,23 +290,18 @@ export function SkillBuilderInstructionsEditor({
           class: cn(
             editorVariants({
               error: displayError,
-              disabled: isDiffMode,
+              disabled: isDiffMode || hasSuggestions,
             }),
             INSTRUCTIONS_EDITOR_SIZE
           ),
         },
       },
     });
-  }, [editor, displayError, isDiffMode]);
+  }, [editor, displayError, isDiffMode, hasSuggestions]);
 
   // Sync external changes to the editor content
   useEffect(() => {
-    if (
-      !editor ||
-      (useHtmlInstructions
-        ? !instructionsHtmlField.value
-        : instructionsField.value === undefined)
-    ) {
+    if (!editor || !instructionsHtmlField.value) {
       return;
     }
 
@@ -231,32 +315,12 @@ export function SkillBuilderInstructionsEditor({
       return;
     }
 
-    if (useHtmlInstructions) {
-      const incomingHtml = instructionsHtmlField.value;
-      const currentHtml = stripHtmlAttributes(editor.getHTML());
-      if (currentHtml !== incomingHtml) {
-        setTimeout(() => {
-          editor.commands.setContent(incomingHtml, { emitUpdate: false });
-        }, 0);
-      }
-    } else {
-      const incomingMarkdown = instructionsField.value;
-      const currentContent = postProcessMarkdown(editor.getMarkdown());
-      if (currentContent !== incomingMarkdown) {
-        setTimeout(() => {
-          editor.commands.setContent(
-            preprocessMarkdownForEditor(incomingMarkdown),
-            { emitUpdate: false, contentType: "markdown" }
-          );
-        }, 0);
-      }
+    const incomingHtml = instructionsHtmlField.value;
+    const currentHtml = stripHtmlAttributes(editor.getHTML());
+    if (currentHtml !== incomingHtml) {
+      editor.commands.setContent(incomingHtml, { emitUpdate: false });
     }
-  }, [
-    editor,
-    instructionsField.value,
-    instructionsHtmlField.value,
-    useHtmlInstructions,
-  ]);
+  }, [editor, instructionsHtmlField.value]);
 
   useEffect(() => {
     if (!editor) {

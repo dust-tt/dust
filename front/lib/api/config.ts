@@ -191,6 +191,26 @@ const config = {
   getSandboxJwtSecret: (): string => {
     return EnvironmentConfig.getEnvVariable("DUST_SANDBOX_JWT_SECRET");
   },
+  getEgressProxyJwtSecret: (): string => {
+    return EnvironmentConfig.getEnvVariable("EGRESS_PROXY_JWT_SECRET");
+  },
+  getEgressProxyHost: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("EGRESS_PROXY_HOST");
+  },
+  getEgressProxyPort: (): number => {
+    const value =
+      EnvironmentConfig.getOptionalEnvVariable("EGRESS_PROXY_PORT") ?? "4443";
+    const port = Number.parseInt(value, 10);
+
+    if (Number.isNaN(port) || port <= 0) {
+      throw new Error("EGRESS_PROXY_PORT must be a positive integer");
+    }
+
+    return port;
+  },
+  getEgressProxyTlsName: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("EGRESS_PROXY_TLS_NAME");
+  },
   getOAuthAPIConfig: (): { url: string; apiKey: string | null } => {
     return {
       url: EnvironmentConfig.getEnvVariable("OAUTH_API"),
@@ -290,9 +310,9 @@ const config = {
   getOAuthFathomClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_FATHOM_CLIENT_ID");
   },
-  getDevOAuthFathomRedirectBaseUrl: (): string => {
-    return EnvironmentConfig.getEnvVariable(
-      "DEV_OAUTH_FATHOM_REDIRECT_BASE_URL"
+  getDevOAuthRedirectBaseUrl: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable(
+      "DEV_OAUTH_REDIRECT_BASE_URL"
     );
   },
   getOAuthLinearClientId: (): string => {
@@ -444,6 +464,9 @@ const config = {
   },
   getTemporalAgentNamespace: () => {
     return EnvironmentConfig.getOptionalEnvVariable("TEMPORAL_AGENT_NAMESPACE");
+  },
+  getTemporalFrontNamespace: () => {
+    return EnvironmentConfig.getOptionalEnvVariable("TEMPORAL_NAMESPACE");
   },
   // Deployment component name. Set via DD_SERVICE in helm values per deployment.
   getServiceName: (): string | undefined => {

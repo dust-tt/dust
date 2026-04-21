@@ -42,6 +42,8 @@ export class HubspotOAuthProvider implements BaseOAuthStrategyProvider {
       "timeline",
       "crm.lists.read",
       "crm.lists.write",
+      "marketing-email",
+      "content",
     ];
 
     return (

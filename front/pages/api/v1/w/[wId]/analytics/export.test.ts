@@ -47,9 +47,10 @@ vi.mock("@app/lib/api/assistant/observability/context_origin", async () => ({
 }));
 
 vi.mock("@app/lib/api/analytics/agents_export", async () => ({
-  AGENT_EXPORT_HEADERS: ["name", "messages"],
+  AGENT_EXPORT_HEADERS: ["agentId", "name", "messages"],
   fetchAgentExportRows: vi.fn(
-    async () => new Ok([{ name: "TestAgent", messages: 5 }])
+    async () =>
+      new Ok([{ agentId: "agent-123", name: "TestAgent", messages: 5 }])
   ),
 }));
 
@@ -110,11 +111,13 @@ async function setupTest({
   startDate = "2024-06-01",
   endDate = "2024-06-30",
   timezone,
+  format,
 }: {
   table?: string;
   startDate?: string;
   endDate?: string;
   timezone?: string;
+  format?: string;
 } = {}) {
   const result = await createPublicApiMockRequest();
 
@@ -126,6 +129,9 @@ async function setupTest({
   };
   if (timezone) {
     query.timezone = timezone;
+  }
+  if (format) {
+    query.format = format;
   }
 
   result.req.query = query;
@@ -236,7 +242,7 @@ describe("GET /api/v1/w/[wId]/analytics/export", () => {
 
     expect(res._getStatusCode()).toBe(200);
     const csv = res._getData();
-    expect(csv).toContain("name,messages");
+    expect(csv).toContain("agentId,name,messages");
   });
 
   it("returns CSV for users table", async () => {
@@ -281,5 +287,55 @@ describe("GET /api/v1/w/[wId]/analytics/export", () => {
     );
     expect(csv).toContain("msg-1");
     expect(csv).toContain("alice@example.com");
+  });
+
+  it("returns JSON when format=json", async () => {
+    const { req, res } = await setupTest({
+      table: "usage_metrics",
+      format: "json",
+    });
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(res.getHeader("Content-Type")).toBe("application/json");
+    const data = res._getJSONData();
+    expect(Array.isArray(data)).toBe(true);
+    expect(data[0]).toHaveProperty("date");
+    expect(data[0]).toHaveProperty("messages");
+    expect(data[0]).toHaveProperty("conversations");
+    expect(data[0]).toHaveProperty("activeUsers");
+  });
+
+  it("returns CSV by default (no format param)", async () => {
+    const { req, res } = await setupTest({ table: "usage_metrics" });
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(res.getHeader("Content-Type")).toBe("text/csv");
+  });
+
+  it("returns CSV when format=csv", async () => {
+    const { req, res } = await setupTest({
+      table: "usage_metrics",
+      format: "csv",
+    });
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(res.getHeader("Content-Type")).toBe("text/csv");
+  });
+
+  it("returns 400 for invalid format value", async () => {
+    const { req, res } = await setupTest({
+      table: "usage_metrics",
+      format: "xml",
+    });
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(400);
   });
 });

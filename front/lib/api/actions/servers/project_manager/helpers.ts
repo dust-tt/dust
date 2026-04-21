@@ -1,7 +1,14 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import type { DustProjectConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { getDataSourceURI } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import type {
+  DataSourcesToolConfigurationType,
+  DustProjectConfigurationType,
+} from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { parseProjectConfigurationURI } from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
+import { isContentNodeAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
+import { listProjectContextAttachments } from "@app/lib/api/projects/context";
+import { fetchProjectDataSourceView } from "@app/lib/api/projects/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -10,9 +17,56 @@ import { isProjectConversation } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
 export interface ProjectSpaceContext {
   space: SpaceResource;
+}
+
+export async function buildProjectRetrieveDataSources(
+  auth: Authenticator,
+  space: SpaceResource
+): Promise<DataSourcesToolConfigurationType> {
+  const owner = auth.getNonNullableWorkspace();
+  const dataSources: DataSourcesToolConfigurationType = [];
+
+  const projectDsViewRes = await fetchProjectDataSourceView(auth, space);
+  if (projectDsViewRes.isOk()) {
+    dataSources.push({
+      uri: getDataSourceURI({
+        workspaceId: owner.sId,
+        dataSourceViewId: projectDsViewRes.value.sId,
+        filter: { parents: null, tags: null },
+      }),
+      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
+    });
+  }
+
+  const attachments = await listProjectContextAttachments(auth, space);
+  const seenContentNodeKeys = new Set<string>();
+  for (const attachment of attachments) {
+    if (!isContentNodeAttachmentType(attachment)) {
+      continue;
+    }
+    const key = `${attachment.nodeDataSourceViewId}:${attachment.nodeId}`;
+    if (seenContentNodeKeys.has(key)) {
+      continue;
+    }
+    seenContentNodeKeys.add(key);
+    dataSources.push({
+      uri: getDataSourceURI({
+        workspaceId: owner.sId,
+        dataSourceViewId: attachment.nodeDataSourceViewId,
+        filter: {
+          parents: { in: [attachment.nodeId], not: [] },
+          tags: null,
+        },
+      }),
+      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
+    });
+  }
+
+  return dataSources;
 }
 
 /**

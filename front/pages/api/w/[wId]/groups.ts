@@ -60,9 +60,15 @@ async function handler(
         });
       }
 
-      const groupsWithMemberCount = await Promise.all(
-        groups.map((group) => group.toJSONWithMemberCount(auth))
+      const memberCounts = await GroupResource.getMemberCountsForGroups(
+        auth,
+        groups
       );
+
+      const groupsWithMemberCount = groups.map((group) => ({
+        ...group.toJSON(),
+        memberCount: memberCounts.get(group.id) ?? 0,
+      }));
 
       return res.status(200).json({
         groups: groupsWithMemberCount,

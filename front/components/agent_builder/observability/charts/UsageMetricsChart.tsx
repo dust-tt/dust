@@ -13,12 +13,14 @@ import {
 import { ChartContainer } from "@app/components/charts/ChartContainer";
 import { legendFromConstant } from "@app/components/charts/ChartLegend";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
+import { useSelectableSeries } from "@app/components/charts/useSelectableSeries";
 import type { AgentVersionMarker } from "@app/lib/api/assistant/observability/version_markers";
 import {
   useAgentUsageMetrics,
   useAgentVersionMarkers,
 } from "@app/lib/swr/assistants";
 import { BROWSER_TIMEZONE } from "@app/lib/swr/workspaces";
+import { cn } from "@dust-tt/sparkle";
 import {
   CartesianGrid,
   Line,
@@ -58,9 +60,10 @@ function zeroFactory(timestamp: number) {
 function UsageMetricsTooltip(
   props: TooltipContentProps<number, string> & {
     versionMarkers: AgentVersionMarker[];
+    activeKey?: string;
   }
 ) {
-  const { active, payload, versionMarkers } = props;
+  const { active, payload, versionMarkers, activeKey } = props;
   if (!active || !payload || payload.length === 0) {
     return null;
   }
@@ -77,21 +80,25 @@ function UsageMetricsTooltip(
       title={formatTimeSeriesTitle(row.date, row.timestamp, versionMarkers)}
       rows={[
         {
+          key: "messages",
           label: "Messages",
           value: row.count,
           colorClassName: USAGE_METRICS_PALETTE.messages,
         },
         {
+          key: "conversations",
           label: "Conversations",
           value: row.conversations,
           colorClassName: USAGE_METRICS_PALETTE.conversations,
         },
         {
+          key: "activeUsers",
           label: "Active users",
           value: row.activeUsers,
           colorClassName: USAGE_METRICS_PALETTE.activeUsers,
         },
       ]}
+      activeKey={activeKey}
     />
   );
 }
@@ -123,13 +130,15 @@ export function UsageMetricsChart({
     disabled: !workspaceId || !agentConfigurationId || !isCustomAgent,
   });
 
-  const legendItems = legendFromConstant(
-    USAGE_METRICS_LEGEND,
-    USAGE_METRICS_PALETTE,
-    {
+  const { activeKey, isDimmed, decorate, hoverHandlers } =
+    useSelectableSeries();
+
+  const legendItems = decorate(
+    legendFromConstant(USAGE_METRICS_LEGEND, USAGE_METRICS_PALETTE, {
       includeVersionMarker:
         isCustomAgent && mode === "timeRange" && versionMarkers.length > 0,
-    }
+    }),
+    { skip: (item) => item.key === "versionMarkers" }
   );
 
   const filteredData = filterTimeSeriesByVersionWindow(
@@ -224,7 +233,11 @@ export function UsageMetricsChart({
         />
         <Tooltip
           content={(props: TooltipContentProps<number, string>) => (
-            <UsageMetricsTooltip {...props} versionMarkers={versionMarkers} />
+            <UsageMetricsTooltip
+              {...props}
+              versionMarkers={versionMarkers}
+              activeKey={activeKey}
+            />
           )}
           cursor={false}
           wrapperStyle={{ outline: "none", zIndex: 50 }}
@@ -245,9 +258,14 @@ export function UsageMetricsChart({
           strokeWidth={2}
           dataKey="count"
           name="Messages"
-          className={USAGE_METRICS_PALETTE.messages}
+          className={cn(
+            USAGE_METRICS_PALETTE.messages,
+            "transition-opacity",
+            isDimmed("messages") && "opacity-25"
+          )}
           stroke="currentColor"
           dot={false}
+          {...hoverHandlers("messages")}
         />
         <Line
           type={
@@ -258,9 +276,14 @@ export function UsageMetricsChart({
           strokeWidth={2}
           dataKey="conversations"
           name="Conversations"
-          className={USAGE_METRICS_PALETTE.conversations}
+          className={cn(
+            USAGE_METRICS_PALETTE.conversations,
+            "transition-opacity",
+            isDimmed("conversations") && "opacity-25"
+          )}
           stroke="currentColor"
           dot={false}
+          {...hoverHandlers("conversations")}
         />
         <Line
           type={
@@ -271,9 +294,14 @@ export function UsageMetricsChart({
           strokeWidth={2}
           dataKey="activeUsers"
           name="Active users"
-          className={USAGE_METRICS_PALETTE.activeUsers}
+          className={cn(
+            USAGE_METRICS_PALETTE.activeUsers,
+            "transition-opacity",
+            isDimmed("activeUsers") && "opacity-25"
+          )}
           stroke="currentColor"
           dot={false}
+          {...hoverHandlers("activeUsers")}
         />
         {isCustomAgent && (
           <VersionMarkersDots mode={mode} versionMarkers={versionMarkers} />

@@ -210,7 +210,7 @@ export async function executeQuery(
       content.push({
         type: "resource",
         resource: {
-          text: "Results are also available as a rich text file that can be searched.",
+          text: "Results are also available as a rich text file that can be viewed.",
           uri: sectionFile.getPublicUrl(auth),
           mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
           fileId: sectionFile.sId,

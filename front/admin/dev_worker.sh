@@ -10,6 +10,7 @@ NODE_ENV=development npx concurrently \
   "tsx ./start_worker.ts --workers $WORKERS" \
   "nodemon --exec 'tsx ./start_worker.ts --workers agent_loop' \
     --watch 'temporal/agent_loop' \
+    --watch 'temporal/project_todo' \
     --watch 'lib/api/assistant' \
     --watch 'lib/actions' \
     --watch 'lib/api/mcp' \

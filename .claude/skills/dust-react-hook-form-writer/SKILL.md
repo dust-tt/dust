@@ -1,5 +1,5 @@
 ---
-name: react-hook-form-writer
+name: dust-react-hook-form-writer
 description: Write and refactor React forms using react-hook-form with Zod validation. Use when creating new form components, converting existing forms to react-hook-form, or implementing form validation patterns.
 ---
 

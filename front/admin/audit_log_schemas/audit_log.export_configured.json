@@ -4,5 +4,8 @@
     {
       "type": "workspace"
     }
-  ]
+  ],
+  "metadata": {
+    "actor_type": "string"
+  }
 }

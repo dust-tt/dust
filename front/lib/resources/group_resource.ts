@@ -623,7 +623,8 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   private static async baseFetch(
     auth: Authenticator,
-    { includes, limit, order, where }: ResourceFindOptions<GroupModel> = {}
+    { includes, limit, order, where }: ResourceFindOptions<GroupModel> = {},
+    transaction?: Transaction
   ) {
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     const includeClauses: Includeable[] = includes || [];
@@ -636,18 +637,27 @@ export class GroupResource extends BaseResource<GroupModel> {
       include: includeClauses,
       limit,
       order,
+      transaction,
     });
     return groupModels.map((b) => new this(this.model, b.get()));
   }
 
-  static async fetchByModelIds(auth: Authenticator, ids: ModelId[]) {
-    return this.baseFetch(auth, {
-      where: {
-        id: {
-          [Op.in]: ids,
+  static async fetchByModelIds(
+    auth: Authenticator,
+    ids: ModelId[],
+    { transaction }: { transaction?: Transaction } = {}
+  ) {
+    return this.baseFetch(
+      auth,
+      {
+        where: {
+          id: {
+            [Op.in]: ids,
+          },
         },
       },
-    });
+      transaction
+    );
   }
 
   static async fetchById(
@@ -1049,6 +1059,36 @@ export class GroupResource extends BaseResource<GroupModel> {
     });
 
     return groups.map((group) => new this(GroupModel, group.get()));
+  }
+
+  static async getMemberCountsForGroups(
+    auth: Authenticator,
+    groups: GroupResource[]
+  ): Promise<Map<ModelId, number>> {
+    const owner = auth.getNonNullableWorkspace();
+    const counts = new Map<ModelId, number>();
+
+    const globalGroup = groups.find((g) => g.isGlobal());
+    const regularGroups = groups.filter((g) => !g.isGlobal());
+
+    // Global group count comes from workspace active memberships.
+    if (globalGroup) {
+      const { total } = await MembershipResource.getActiveMemberships({
+        workspace: owner,
+      });
+      counts.set(globalGroup.id, total);
+    }
+
+    // All regular group counts in one query, reusing the existing method.
+    if (regularGroups.length > 0) {
+      const membershipsByGroup =
+        await GroupResource.getActiveMembershipsForGroups(auth, regularGroups);
+      for (const [groupId, userIds] of Object.entries(membershipsByGroup)) {
+        counts.set(Number(groupId), userIds.length);
+      }
+    }
+
+    return counts;
   }
 
   static async getActiveMembershipsForGroups(

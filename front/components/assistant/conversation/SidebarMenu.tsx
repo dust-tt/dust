@@ -47,7 +47,10 @@ import {
   getProjectRoute,
   getSkillBuilderRoute,
 } from "@app/lib/utils/router";
-import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import {
+  type ConversationWithoutContentType,
+  getConversationDisplayTitle,
+} from "@app/types/assistant/conversation";
 import type { ProjectType, SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import { isBuilder } from "@app/types/user";
@@ -90,7 +93,6 @@ import {
   TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import moment from "moment";
 import {
   memo,
   useCallback,
@@ -974,37 +976,26 @@ export function AgentSidebarMenu({
                         {isBuilder(owner) && (
                           <>
                             <DropdownMenuLabel>Skills</DropdownMenuLabel>
-                            {hasFeature("sandbox_tools") ? (
-                              <DropdownMenuSub>
-                                <DropdownMenuSubTrigger
-                                  icon={PlusIcon}
-                                  label="New skill"
-                                />
-                                <DropdownMenuSubContent>
-                                  <DropdownMenuItem
-                                    href={getSkillBuilderRoute(
-                                      owner.sId,
-                                      "new"
-                                    )}
-                                    icon={SKILL_ICON}
-                                    label="From scratch"
-                                  />
-                                  <DropdownMenuItem
-                                    icon={FolderOpenIcon}
-                                    label="From existing"
-                                    onClick={() =>
-                                      setIsImportSkillDialogOpen(true)
-                                    }
-                                  />
-                                </DropdownMenuSubContent>
-                              </DropdownMenuSub>
-                            ) : (
-                              <DropdownMenuItem
-                                href={getSkillBuilderRoute(owner.sId, "new")}
+                            <DropdownMenuSub>
+                              <DropdownMenuSubTrigger
                                 icon={PlusIcon}
                                 label="New skill"
                               />
-                            )}
+                              <DropdownMenuSubContent>
+                                <DropdownMenuItem
+                                  href={getSkillBuilderRoute(owner.sId, "new")}
+                                  icon={SKILL_ICON}
+                                  label="From scratch"
+                                />
+                                <DropdownMenuItem
+                                  icon={FolderOpenIcon}
+                                  label="From existing"
+                                  onClick={() =>
+                                    setIsImportSkillDialogOpen(true)
+                                  }
+                                />
+                              </DropdownMenuSubContent>
+                            </DropdownMenuSub>
                             <DropdownMenuItem
                               href={getSkillBuilderRoute(owner.sId, "manage")}
                               icon={SKILL_ICON}
@@ -1078,9 +1069,9 @@ export function AgentSidebarMenu({
   );
 }
 
-interface InboxConversationListProps {
-  inboxConversations: ConversationWithoutContentType[];
-  dateLabel: string;
+interface UnreadConversationsSectionProps {
+  label: string;
+  conversations: ConversationWithoutContentType[];
   isMultiSelect: boolean;
   isMarkingAllAsRead: boolean;
   onMarkAllAsRead: (conversationIds: string[]) => void;
@@ -1102,11 +1093,9 @@ const ConversationListContainer = ({
   return <div className="sm:flex sm:flex-col sm:gap-0.5">{children}</div>;
 };
 
-interface InboxSectionProps
-  extends Omit<InboxConversationListProps, "dateLabel"> {}
-
-function InboxSection({
-  inboxConversations,
+function UnreadConversationsSection({
+  label,
+  conversations,
   isMultiSelect,
   isMarkingAllAsRead,
   titleFilter,
@@ -1116,15 +1105,15 @@ function InboxSection({
   toggleConversationSelection,
   activeConversationId,
   owner,
-}: InboxSectionProps) {
-  const totalCount = inboxConversations.length;
+}: UnreadConversationsSectionProps) {
+  const totalCount = conversations.length;
 
   const shouldShowMarkAllAsReadButton =
     totalCount > 0 && titleFilter.length === 0 && !isMultiSelect;
 
   return (
     <NavigationListCollapsibleSection
-      label={`Inbox (${totalCount})`}
+      label={`${label} (${totalCount})`}
       className="border-b border-t border-border bg-background/50 px-2 pb-2 dark:border-border-night dark:bg-background-night/50"
       defaultOpen
       actionOnHover={false}
@@ -1135,15 +1124,13 @@ function InboxSection({
             variant="ghost"
             icon={CheckDoubleIcon}
             tooltip="Mark all as read"
-            onClick={() =>
-              onMarkAllAsRead(inboxConversations.map((c) => c.sId))
-            }
+            onClick={() => onMarkAllAsRead(conversations.map((c) => c.sId))}
             isLoading={isMarkingAllAsRead}
           />
         ) : null
       }
     >
-      {inboxConversations.map((conversation) => (
+      {conversations.map((conversation) => (
         <ConversationListItem
           key={conversation.sId}
           conversation={conversation}
@@ -1239,11 +1226,7 @@ const ConversationListItem = memo(
       handleMenuOpenChange,
     } = useConversationMenu();
 
-    const conversationLabel =
-      conversation.title ??
-      (moment(conversation.created).isSame(moment(), "day")
-        ? "New Conversation"
-        : `Conversation from ${new Date(conversation.created).toLocaleDateString()}`);
+    const conversationLabel = getConversationDisplayTitle(conversation);
 
     const handleDragStart = useCallback(
       (e: React.DragEvent) => {
@@ -1368,7 +1351,11 @@ function NavigationListWithInbox({
   isLoadingMore,
 }: NavigationListWithInboxProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const { readConversations, inboxConversations } = useMemo(() => {
+  const {
+    readConversations,
+    inboxConversations,
+    skillSuggestionConversations,
+  } = useMemo(() => {
     return getGroupConversationsByUnreadAndActionRequired(
       conversations,
       titleFilter
@@ -1420,9 +1407,25 @@ function NavigationListWithInbox({
       ref={scrollContainerRef}
       className="dd-privacy-mask h-full w-full overflow-y-auto"
     >
+      {skillSuggestionConversations.length > 0 && (
+        <UnreadConversationsSection
+          label="Skill suggestions"
+          conversations={skillSuggestionConversations}
+          isMultiSelect={isMultiSelect}
+          isMarkingAllAsRead={isMarkingAllAsRead}
+          titleFilter={titleFilter}
+          onMarkAllAsRead={markAllAsRead}
+          onConversationBranched={onConversationBranched}
+          selectedConversations={selectedConversations}
+          toggleConversationSelection={toggleConversationSelection}
+          activeConversationId={activeConversationId}
+          owner={owner}
+        />
+      )}
       {inboxConversations.length > 0 && (
-        <InboxSection
-          inboxConversations={inboxConversations}
+        <UnreadConversationsSection
+          label="Inbox"
+          conversations={inboxConversations}
           isMultiSelect={isMultiSelect}
           isMarkingAllAsRead={isMarkingAllAsRead}
           titleFilter={titleFilter}

@@ -443,10 +443,9 @@ Avatar.Stack = function ({
                     <Avatar
                       size={size}
                       name={
-                        "+" +
-                        String(
-                          Number(remainingCount) < 10 ? remainingCount : ""
-                        )
+                        Number(remainingCount) < 10
+                          ? `+${remainingCount}`
+                          : "9+"
                       }
                     />
                   </div>
@@ -454,8 +453,7 @@ Avatar.Stack = function ({
                   <Avatar
                     size={size}
                     name={
-                      "+" +
-                      String(Number(remainingCount) < 10 ? remainingCount : "")
+                      Number(remainingCount) < 10 ? `+${remainingCount}` : "9+"
                     }
                   />
                 )}

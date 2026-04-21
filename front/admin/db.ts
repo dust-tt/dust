@@ -38,7 +38,6 @@ import { ConversationBranchModel } from "@app/lib/models/agent/conversation_bran
 import { ConversationForkModel } from "@app/lib/models/agent/conversation_fork";
 import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
-import { TriggerSubscriberModel } from "@app/lib/models/agent/triggers/trigger_subscriber";
 import { TriggerModel } from "@app/lib/models/agent/triggers/triggers";
 import { WebhookRequestModel } from "@app/lib/models/agent/triggers/webhook_request";
 import { WebhookRequestTriggerModel } from "@app/lib/models/agent/triggers/webhook_request_trigger";
@@ -65,6 +64,7 @@ import {
 import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import { SkillSuggestionModel } from "@app/lib/models/skill/skill_suggestion";
 import { TagModel } from "@app/lib/models/tags";
+import { WorkspaceSensitivityLabelConfigModel } from "@app/lib/models/workspace_sensitivity_label_config";
 import { AcademyChapterVisitModel } from "@app/lib/resources/storage/models/academy_chapter_visit";
 import { AcademyQuizAttemptModel } from "@app/lib/resources/storage/models/academy_quiz_attempt";
 import { AgentMemoryModel } from "@app/lib/resources/storage/models/agent_memories";
@@ -124,6 +124,8 @@ import {
   UserModel,
   UserToolApprovalModel,
 } from "@app/lib/resources/storage/models/user";
+import { UserProjectNotificationPreferenceModel } from "@app/lib/resources/storage/models/user_project_notification_preferences";
+import { WakeUpModel } from "@app/lib/resources/storage/models/wakeup";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import { WorkspaceVerificationAttemptModel } from "@app/lib/resources/storage/models/workspace_verification_attempt";
@@ -161,12 +163,12 @@ export function loadAllModels() {
     WebhookSourceModel,
     WebhookSourcesViewModel,
     TriggerModel,
-    TriggerSubscriberModel,
     WebhookRequestModel,
     WebhookRequestTriggerModel,
     ConversationModel,
     ConversationParticipantModel,
     UserConversationReadsModel,
+    WakeUpModel,
     DataSourceModel,
     DataSourceViewModel,
     RunModel,
@@ -241,6 +243,8 @@ export function loadAllModels() {
     TakeawaySourcesModel,
     TakeawaysVersionModel,
     ProjectTodoTakeawaySourcesModel,
+    UserProjectNotificationPreferenceModel,
+    WorkspaceSensitivityLabelConfigModel,
   ];
 }
 
