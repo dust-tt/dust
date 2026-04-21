@@ -763,8 +763,9 @@ async function handleUserAddedToGroup(
           });
         if (
           latestMembership?.endAt &&
-          latestMembership.endAt.getTime() >=
-            eventCreatedAt.getTime() - STALE_USER_ADDED_GRACE_MS
+          Math.abs(
+            latestMembership.endAt.getTime() - eventCreatedAt.getTime()
+          ) <= STALE_USER_ADDED_GRACE_MS
         ) {
           logger.info(
             {
