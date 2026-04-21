@@ -1,7 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
-import type { WakeUpStatus } from "@app/lib/resources/storage/models/wakeup";
 import { WakeUpModel } from "@app/lib/resources/storage/models/wakeup";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
@@ -9,8 +8,14 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import type {
+  WakeUpScheduleConfig,
+  WakeUpStatus,
+  WakeUpType,
+} from "@app/types/assistant/wakeups";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { Attributes, Transaction, WhereOptions } from "sequelize";
 
 const ACTIVE_WAKE_UP_STATUSES: WakeUpStatus[] = ["scheduled"];
@@ -212,6 +217,48 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
     });
 
     return new Ok(undefined);
+  }
+
+  toJSON(): WakeUpType {
+    const scheduleConfig: WakeUpScheduleConfig = (() => {
+      switch (this.scheduleType) {
+        case "one_shot": {
+          if (!this.fireAt) {
+            throw new Error("Wake-up is missing fireAt for one-shot schedule.");
+          }
+
+          return {
+            type: "one_shot",
+            fireAt: this.fireAt.getTime(),
+          };
+        }
+        case "cron": {
+          if (!this.cronExpression || !this.cronTimezone) {
+            throw new Error(
+              "Wake-up is missing cron schedule fields for cron schedule."
+            );
+          }
+
+          return {
+            type: "cron",
+            cron: this.cronExpression,
+            timezone: this.cronTimezone,
+          };
+        }
+        default:
+          return assertNever(this.scheduleType);
+      }
+    })();
+
+    return {
+      id: this.id,
+      createdAt: this.createdAt.getTime(),
+      agentConfigurationId: this.agentConfigurationId,
+      scheduleConfig,
+      reason: this.reason,
+      status: this.status,
+      fireCount: this.fireCount,
+    };
   }
 
   private async startTemporalWorkflow(

@@ -3,11 +3,12 @@ import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import type {
+  WakeUpScheduleType,
+  WakeUpStatus,
+} from "@app/types/assistant/wakeups";
 import type { CreationOptional, ForeignKey } from "sequelize";
 import { DataTypes } from "sequelize";
-
-export type WakeUpScheduleType = "one_shot" | "cron";
-export type WakeUpStatus = "scheduled" | "fired" | "cancelled" | "expired";
 
 export class WakeUpModel extends WorkspaceAwareModel<WakeUpModel> {
   declare createdAt: CreationOptional<Date>;
