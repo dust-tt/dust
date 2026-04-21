@@ -323,11 +323,24 @@ function buildReinforcedSkillStaticResponse(
   skillId: string
 ): string {
   const builderUrl = getSkillBuilderRoute(workspaceId, skillId);
-  return [
-    `Dust has analysed your workspace conversations using the ${skillName} skill and found suggestions to improve it.`,
-    `You can view and apply these suggestions by going to the [skill builder](${builderUrl}).`,
-    "Let me know if you have further questions.",
-  ].join("\n");
+  const messages = [
+    [
+      `Dust has analyzed conversations in your workspace that use the ${skillName} skill and found suggestions to improve it.`,
+      `You can view and apply these suggestions by going to the [skill builder](${builderUrl}).`,
+      "Let me know if you have further questions.",
+    ],
+    [
+      `Based on recent conversations, Dust has identified ways to enhance the ${skillName} skill.`,
+      `Head over to the [skill builder](${builderUrl}) to review and apply these improvements.`,
+      "Feel free to ask if you need any help.",
+    ],
+    [
+      `Dust has reviewed how the ${skillName} skill is being used and has new improvement suggestions.`,
+      `Check them out in the [skill builder](${builderUrl}) and apply the ones you like.`,
+      "Let me know if you have any questions.",
+    ],
+  ];
+  return messages[Math.floor(Math.random() * messages.length)].join("\n");
 }
 
 function _getDustLikeGlobalAgent(
