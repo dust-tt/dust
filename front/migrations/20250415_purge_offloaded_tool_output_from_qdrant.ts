@@ -22,10 +22,6 @@ const BATCH_SIZE = 100;
  * threshold (FILE_OFFLOAD_TEXT_SIZE_BYTES) from Qdrant, and stamps them with
  * skipDataSourceIndexing so the conversation render no longer advertises them as searchable.
  *
- *
- * Purges tool-output files that were indexed in Qdrant without skipDataSourceIndexing from
- * Qdrant, and stamps them with skipDataSourceIndexing so future renders don't re-index them.
- *
  * Covers two cases:
  *  1. Text-block offloads: large text blocks were written to a text/plain file (mimeType
  *     "text/plain" in the resource). Lowering FILE_OFFLOAD_TEXT_SIZE_BYTES from 400 KB -> 20 KB
