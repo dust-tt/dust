@@ -10,6 +10,7 @@ import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { LightWorkspaceType } from "@app/types/user";
+import { isToolGeneratedFile } from "@dust-tt/client";
 import * as fs from "fs";
 import { Op } from "sequelize";
 
@@ -21,10 +22,18 @@ const BATCH_SIZE = 100;
  * threshold (FILE_OFFLOAD_TEXT_SIZE_BYTES) from Qdrant, and stamps them with
  * skipDataSourceIndexing so the conversation render no longer advertises them as searchable.
  *
- * Background: lowering the threshold from 400 KB -> 20 KB caused a +20% increase in indexed
- * points. These files are "never" used for semantic search, models read them directly.
- * Going forward, new offloaded files are created with skipDataSourceIndexing: true (see
- * mcp_execution.ts). This script cleans up the already-indexed ones.
+ *
+ * Purges tool-output files that were indexed in Qdrant without skipDataSourceIndexing from
+ * Qdrant, and stamps them with skipDataSourceIndexing so future renders don't re-index them.
+ *
+ * Covers two cases:
+ *  1. Text-block offloads: large text blocks were written to a text/plain file (mimeType
+ *     "text/plain" in the resource). Lowering FILE_OFFLOAD_TEXT_SIZE_BYTES from 400 KB -> 20 KB
+ *     caused a +20% increase in indexed points.
+ *  2. Browse/websearch files: handleWebbrowser (with summarisation) creates a text/plain file and
+ *     calls uploadFileToConversationDataSource without skipDataSourceIndexing. The associated
+ *     output item has mimeType TOOL_OUTPUT.FILE ("application/vnd.dust.tool-output.file") and
+ *     sentinel text "Web page content archived as a file.".
  *
  * Safe to re-run: files already stamped with skipDataSourceIndexing are skipped.
  *
@@ -68,15 +77,31 @@ async function purgeWorkspace(
 
     cursorId = outputItems[outputItems.length - 1].id;
 
-    // Keep only items whose content is a plain-text resource block. Web browser files use
-    // INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE as their mimeType and must be excluded.
-    const fileIds = outputItems
+    // Case 1: text-block offloads. `resource` carries mimeType "text/plain".
+    // Case 2: browse/websearch files. `resource` carries mimeType TOOL_OUTPUT.FILE with the
+    // sentinel text set by handleWebbrowser.
+    const toolOutputsOffloadedFileIds = outputItems
       .filter((item) => {
         const c = item.content;
         return c.type === "resource" && c.resource?.mimeType === "text/plain";
       })
-      .map((item) => item.fileId)
-      .filter((id): id is number => id !== null);
+      .map((item) => item.fileId);
+
+    const websearchBrowseFileIds = outputItems
+      .filter((item) => {
+        const c = item.content;
+
+        return (
+          isToolGeneratedFile(c) &&
+          c.resource.text === "Web page content archived as a file."
+        );
+      })
+      .map((item) => item.fileId);
+
+    const fileIds = [
+      ...toolOutputsOffloadedFileIds,
+      ...websearchBrowseFileIds,
+    ].filter((id): id is number => id !== null);
 
     if (fileIds.length === 0) {
       continue;
