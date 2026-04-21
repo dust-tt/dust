@@ -805,11 +805,11 @@ function PortraitCard({ portrait }: { portrait: Portrait }) {
           />
           <div
             className="cursor-radar-ring"
-            style={{ animationDelay: "600ms" }}
+            style={{ animationDelay: "1067ms" }}
           />
           <div
             className="cursor-radar-ring"
-            style={{ animationDelay: "1200ms" }}
+            style={{ animationDelay: "2134ms" }}
           />
           {/* Center dot */}
           <div
@@ -829,8 +829,8 @@ export default function LandingAIToWork() {
     <div className="s-flex s-min-h-screen s-flex-col s-items-center s-justify-center s-bg-white s-px-8 s-py-16">
       <style>{`
         @keyframes radarPulse {
-          0%   { transform: translate(-50%, -50%) scale(0.2); opacity: 0.7; }
-          100% { transform: translate(-50%, -50%) scale(3);   opacity: 0; }
+          0%   { transform: translate(-50%, -50%) scale(0.3); opacity: 0.6; }
+          100% { transform: translate(-50%, -50%) scale(1.8); opacity: 0; }
         }
         .cursor-radar-ring {
           position: absolute;
@@ -838,7 +838,7 @@ export default function LandingAIToWork() {
           width: 28px; height: 28px;
           border-radius: 9999px;
           border: 2px solid #10b981;
-          animation: radarPulse 1.8s ease-out infinite;
+          animation: radarPulse 3.2s ease-out infinite;
         }
       `}</style>
       <div className="s-mb-12 s-max-w-3xl s-text-center">
