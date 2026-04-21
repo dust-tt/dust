@@ -1297,10 +1297,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         auth,
         conversation.id
       );
-    const forkedFrom = await ConversationResource.getSerializedForkedFrom(
-      auth,
-      conversation
-    );
+    const forkedFrom = conversation.forkedFromInfo;
     const forkedChildren = options?.includeForkedChildrenInfo
       ? await ConversationResource.listSerializedChildForks(auth, conversation)
       : [];
@@ -1322,9 +1319,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       depth: conversation.depth,
       metadata: conversation.metadata,
       branchId: null,
-      ...(conversation.forkedFromInfo && {
-        forkedFrom: conversation.forkedFromInfo,
-      }),
+      ...(forkedFrom && { forkedFrom }),
       ...(forkedChildren.length > 0 && { forkedChildren }),
     });
   }
