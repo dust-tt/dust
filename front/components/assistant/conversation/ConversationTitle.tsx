@@ -110,32 +110,34 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
             />
           </div>
           {forkedFrom && (
-            <div className="flex items-center">
+            <div className="flex h-9 items-center">
               <Tooltip
                 label={forkedFromTooltipLabel}
                 tooltipTriggerAsChild
                 trigger={
-                  hasReadableParentConversation ? (
-                    <Chip
-                      className="max-w-44 shrink-0 dd-privacy-mask"
-                      color="primary"
-                      href={getConversationRoute(
-                        owner.sId,
-                        forkedFrom.parentConversationId
-                      )}
-                      icon={ActionGitBranchIcon}
-                      label={parentConversationTitle}
-                      size="mini"
-                    />
-                  ) : (
-                    <Chip
-                      className="max-w-44 shrink-0"
-                      color="primary"
-                      icon={ActionGitBranchIcon}
-                      label={parentConversationTitle}
-                      size="mini"
-                    />
-                  )
+                  <span className="inline-flex h-9 items-center">
+                    {hasReadableParentConversation ? (
+                      <Chip
+                        className="max-w-44 shrink-0 dd-privacy-mask"
+                        color="primary"
+                        href={getConversationRoute(
+                          owner.sId,
+                          forkedFrom.parentConversationId
+                        )}
+                        icon={ActionGitBranchIcon}
+                        label={parentConversationTitle}
+                        size="mini"
+                      />
+                    ) : (
+                      <Chip
+                        className="max-w-44 shrink-0"
+                        color="primary"
+                        icon={ActionGitBranchIcon}
+                        label={parentConversationTitle}
+                        size="mini"
+                      />
+                    )}
+                  </span>
                 }
               />
             </div>
