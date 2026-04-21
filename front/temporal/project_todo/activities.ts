@@ -192,5 +192,15 @@ export async function mergeTodosForProjectActivity({
   workspaceId: string;
   spaceId: string;
 }): Promise<void> {
+  logger.info(
+    { workspaceId, spaceId },
+    "Starting merge of project todo takeaways"
+  );
+
+  if (!workspaceId) {
+    logger.error({ workspaceId, spaceId }, "Workspace ID is required");
+    return;
+  }
+
   await mergeTakeawaysIntoProject({ workspaceId, spaceId });
 }
