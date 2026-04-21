@@ -1,6 +1,7 @@
 import { updateAgentMessageWithFinalStatus } from "@app/lib/api/assistant/conversation";
 import { fetchAgentMessageBySId } from "@app/lib/api/assistant/conversation/messages";
 import { cancelMessageGenerationEvent } from "@app/lib/api/assistant/pubsub";
+import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streaming/events";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -65,6 +66,17 @@ export async function cancelMessageGeneration(
         conversation,
         agentMessage,
         status: "cancelled",
+      });
+
+      await publishConversationRelatedEvent({
+        event: {
+          type: "agent_generation_cancelled",
+          created: Date.now(),
+          configurationId: agentMessage.configuration.sId,
+          messageId: agentMessage.sId,
+        },
+        conversationId: conversation.sId,
+        step: 0,
       });
     },
     { concurrency: 8 }
