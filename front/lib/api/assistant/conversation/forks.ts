@@ -51,9 +51,6 @@ export type CreateConversationForkErrorCode =
   | "invalid_request_error"
   | "internal_error";
 
-const FORK_INITIALIZATION_MESSAGE_RANK = 0;
-const UNTITLED_CONVERSATION_TITLE = "Untitled conversation";
-
 type CarriedAttachment = {
   carriedAttachment:
     | ContentFragmentInputWithFileIdType
@@ -62,10 +59,6 @@ type CarriedAttachment = {
   attachErrorMessage: string;
   attachLogMetadata: Record<string, string>;
 };
-
-function escapeMarkdownLinkText(text: string): string {
-  return text.replace(/[\\[\]]/g, "\\$&");
-}
 
 function filterConversationContentUpToRank(
   conversation: ConversationType,
