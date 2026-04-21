@@ -21,6 +21,7 @@ import {
   trackEvent,
 } from "@app/lib/tracking";
 import { GLOBAL_SPACE_NAME } from "@app/types/groups";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 import { Button, ContentMessage } from "@dust-tt/sparkle";
@@ -33,6 +34,8 @@ interface ToolSetupCardProps {
   owner: WorkspaceType;
   onSetupComplete?: (toolId: string) => void;
 }
+
+type ToolSetupAction = "continue" | "add_to_global_space" | "configure";
 
 export function ToolSetupCard({
   toolName,
@@ -116,50 +119,38 @@ export function ToolSetupCard({
     return null;
   }
 
+  const toolSetupAction: ToolSetupAction = isToolActivatedInGlobalSpace
+    ? "continue"
+    : isToolActivatedInSystemSpace
+      ? "add_to_global_space"
+      : "configure";
+
   const getButtonLabel = () => {
-    if (!isAdmin) {
-      return "Only admins can configure tools";
-    }
     if (isActivating) {
-      return "Configuring...";
+      return "Working...";
     }
-    if (isToolActivatedInGlobalSpace) {
-      return "Configured";
+
+    switch (toolSetupAction) {
+      case "continue":
+        return "Continue";
+      case "add_to_global_space":
+        return isAdmin
+          ? `Add to ${GLOBAL_SPACE_NAME}`
+          : "Only admins can configure tools";
+      case "configure":
+        return isAdmin ? "Configure" : "Only admins can configure tools";
+      default:
+        return assertNever(toolSetupAction);
     }
-    if (isToolActivatedInSystemSpace) {
-      return `Add to ${GLOBAL_SPACE_NAME}`;
-    }
-    return "Configure";
   };
 
-  const getButtonClickHandler = () => {
-    return isToolActivatedInSystemSpace
-      ? handleAddToGlobalSpace
-      : handleActivateClick;
-  };
-
-  const handleAddToGlobalSpace = async () => {
+  const trackToolSetupCardClick = () => {
     trackEvent({
       area: TRACKING_AREAS.CONVERSATION,
       object: "onboarding_conversation",
       action: TRACKING_ACTIONS.CLICK,
       extra: { tool_id: toolId, click_target: "tool_setup_card" },
     });
-    setIsActivating(true);
-    await addToSpace(matchingMCPServer, globalSpace);
-    await mutateMCPServers();
-    setIsActivating(false);
-    onSetupComplete?.(toolId);
-  };
-
-  const handleActivateClick = async () => {
-    trackEvent({
-      area: TRACKING_AREAS.CONVERSATION,
-      object: "onboarding_conversation",
-      action: TRACKING_ACTIONS.CLICK,
-      extra: { tool_id: toolId, click_target: "tool_setup_card" },
-    });
-    setIsSetupSheetOpen(true);
   };
 
   const handleSetupComplete = async () => {
@@ -169,6 +160,31 @@ export function ToolSetupCard({
     setIsActivating(false);
     onSetupComplete?.(toolId);
   };
+
+  const handleButtonClick = async () => {
+    trackToolSetupCardClick();
+
+    switch (toolSetupAction) {
+      case "continue":
+        onSetupComplete?.(toolId);
+        return;
+      case "add_to_global_space":
+        setIsActivating(true);
+        await addToSpace(matchingMCPServer, globalSpace);
+        await mutateMCPServers();
+        setIsActivating(false);
+        onSetupComplete?.(toolId);
+        return;
+      case "configure":
+        setIsSetupSheetOpen(true);
+        return;
+      default:
+        assertNever(toolSetupAction);
+    }
+  };
+
+  const isButtonDisabled =
+    isActivating || (toolSetupAction !== "continue" && !isAdmin);
 
   return (
     <div className="mb-2 mr-2 inline-block w-72 align-top">
@@ -198,26 +214,22 @@ export function ToolSetupCard({
               variant="highlight"
               size="sm"
               label={getButtonLabel()}
-              onClick={getButtonClickHandler()}
-              disabled={
-                !isAdmin || isToolActivatedInGlobalSpace || isActivating
-              }
+              onClick={handleButtonClick}
+              disabled={isButtonDisabled}
             />
           </div>
         </div>
       </ContentMessage>
 
-      {matchingMCPServer && (
-        <CreateMCPServerDialog
-          owner={owner}
-          internalMCPServer={matchingMCPServer}
-          existingViewNames={existingViewNames}
-          setMCPServerToShow={handleSetupComplete}
-          setIsLoading={setIsActivating}
-          isOpen={isSetupSheetOpen}
-          setIsOpen={setIsSetupSheetOpen}
-        />
-      )}
+      <CreateMCPServerDialog
+        owner={owner}
+        internalMCPServer={matchingMCPServer}
+        existingViewNames={existingViewNames}
+        setMCPServerToShow={handleSetupComplete}
+        setIsLoading={setIsActivating}
+        isOpen={isSetupSheetOpen}
+        setIsOpen={setIsSetupSheetOpen}
+      />
     </div>
   );
 }

@@ -145,7 +145,29 @@ function getToolsForOnboarding(
   return tools;
 }
 
-function buildOnboardingPrompt(options: {
+function buildFirstQuestionOptions(
+  topTools: InternalMCPServerNameType[]
+): string {
+  const toolOptions = topTools.map((toolId, index) => {
+    const toolName = asDisplayName(toolId);
+    const recommendedSuffix = index === 0 ? " (Recommended)" : "";
+
+    return [
+      `- label: Connect ${toolName}${recommendedSuffix}`,
+      `  description: ${getInternalMCPServerInfo(toolId).description}`,
+    ].join("\n");
+  });
+
+  return [
+    ...toolOptions,
+    "- label: I have something in mind",
+    "  description: I'll help with the goal you already have in mind.",
+    "- label: Skip tools for now",
+    "  description: We can start without connecting anything yet.",
+  ].join("\n");
+}
+
+export function buildOnboardingPrompt(options: {
   emailProvider: EmailProviderType;
   userJobType: string | null;
   favoritePlatforms: FavoritePlatform[];
@@ -164,10 +186,6 @@ function buildOnboardingPrompt(options: {
   const alreadyConfiguredTopTool = topTools.find((tool) =>
     options.configuredTools.includes(tool)
   );
-
-  const topToolSetupDirectives = topTools
-    .map((sId) => `:toolSetup[Connect ${asDisplayName(sId)}]{sId=${sId}}`)
-    .join(" ");
 
   const topToolsWithDescriptions = topTools
     .map((sId) => {
@@ -188,7 +206,7 @@ function buildOnboardingPrompt(options: {
         .join(", ");
       userContext += `The user indicated they use these platforms: ${platformNames}\n`;
       userContext +=
-        "Prioritize suggesting these tools. Guide the user through connecting them one by one.";
+        "Prioritize suggesting these tools and keep the onboarding grounded in those tools.";
     }
   }
 
@@ -196,21 +214,22 @@ function buildOnboardingPrompt(options: {
     .map((sId) => asDisplayName(sId))
     .join(", ");
 
-  const otherTools = tools.slice(2);
-  const otherToolSetupDirectives = otherTools
-    .map((sId) => `:toolSetup[Connect ${asDisplayName(sId)}]{sId=${sId}}`)
-    .join(" ");
+  const otherToolNames = tools.slice(2).map((sId) => asDisplayName(sId));
+  const additionalToolGuidance =
+    otherToolNames.length > 0
+      ? `Other relevant tools you can suggest later: ${otherToolNames.join(", ")}.`
+      : "Keep the options focused on the most relevant tools.";
 
   const firstMessageSection = alreadyConfiguredTopTool
     ? buildFirstMessageWithConfiguredTool(alreadyConfiguredTopTool)
-    : buildFirstMessageWithToolSetup(
+    : buildFirstMessageWithAskUserQuestion(
         topToolsWithDescriptions,
-        topToolSetupDirectives,
+        buildFirstQuestionOptions(topTools),
         suggestedTopToolNames
       );
 
   const languageInstruction = options.language
-    ? `\n## LANGUAGE\n\nYou MUST respond in ${options.language}. All your messages, including greetings, instructions, and button labels, must be in ${options.language}.\n`
+    ? `\n## LANGUAGE\n\nYou MUST respond in ${options.language}. All your messages, including greetings, instructions, option labels, and questions asked using the ask_user_question tool, must be in ${options.language}.\n`
     : "";
 
   return `<dust_system>
@@ -219,22 +238,18 @@ ${languageInstruction}${userContext}
 
 ## CRITICAL RULES
 
-1. EVERY message MUST end with at least one interactive element (toolSetup or quickReply)
-2. Be direct and action-focused - get to the tool connection quickly
-3. You MUST NOT hallucinate:
+1. Be direct and action-focused.
+2. Use \`ask_user_question\` whenever the user needs to choose a direction, confirm what to do next, or pick between candidate tools or tasks.
+3. In onboarding, all user-facing choices must be presented through \`ask_user_question\`.
+4. Use \`toolSetup\` only after the user has already confirmed they want one specific tool. At that point, render the card and stop for that turn.
+5. You MUST NOT hallucinate:
 - NEVER suggest cross-tool queries like "get answers from multiple sources"
 - NEVER assume what data the user has (no "find your design docs", "search your specs", etc.)
 - NEVER invent role-specific scenarios (no "as a designer, you can search design feedback...")
 - ONLY suggest simple, generic tasks that work with a SINGLE tool
 
-### Quick reply format
-:quickReply[Label]{message="message to send"}
-- All quick replies MUST be on a SINGLE line at the end
-- 2-3 buttons maximum
-- End with standard buttons on next line:
-  :quickReply[Try something else]{message="What else can I try?"} :quickReply[Connect more]{message="What other tools can I connect?"}
-
 ### Response guidance
+
 - Use actual names, titles, dates from the data you fetch
 - Make suggestions that are immediately actionable
 - Don't be vague or generic
@@ -242,36 +257,32 @@ ${languageInstruction}${userContext}
 - Keep task suggestions universal - they should work for ANY user of that tool
 - When describing tools, use only their official descriptions provided below
 
-### Quick replies must match the data found
+### Questions asked using the ask_user_question tool must match the data found
 
-After showing results from any tool use:
-1. Present the results with specific names/titles/dates
-2. Offer 2-3 **actionable quick replies based on the actual data** (e.g., "Reply to [person]", "Summarize [specific item]", "Show more about [topic]")
-3. Include "Automate this" as ONE option among the actions - not the main focus
+- Present results with specific names, titles, or dates
+- Ask 2-3 actionable questions based on the actual data when there are multiple sensible next steps
+- After showing results from any tool use, if there are 2-4 sensible next steps, use \`ask_user_question\` with options grounded in the actual data you found
+- Include automation as an option only when it is genuinely relevant to the data or task at hand
 
-**Quick replies should be specific to what you found:**
-- Found emails from Sarah and Mike → :quickReply[Draft a reply to Sarah]{...} :quickReply[Summarize Mike's email]{...}
-- Found PR reviews pending → :quickReply[Show PR details]{...} :quickReply[List my open PRs]{...}
-- Found Notion pages → :quickReply[Open recent page]{...} :quickReply[Search for...]{...}
+Questions should be specific to what you found:
+- Found emails from Sarah and Mike -> ask_user_question options like "Draft a reply to Sarah" and "Summarize Mike's email"
+- Found PR reviews pending -> ask_user_question options like "Show PR details" and "List my open PRs"
+- Found Notion pages -> ask_user_question options like "Open recent page" and "Search for..."
 
-**Always include automation as an option**, but as part of the action menu, not as the primary call-to-action.
+### Limited setup UI
+- A single \`toolSetup\` card is available only after the user explicitly confirmed they want one specific tool to connect
+- Never use a \`toolSetup\` card in the first message
+- Never use more than one \`toolSetup\` card at a time
+- Never use a \`toolSetup\` card as a choice menu, this does not work
+- Exact format when needed: \`:toolSetup[Connect Tool Name]{sId=tool_id}\`
 
 ## Automation flow
 
-When user wants to automate (clicks "Automate this" or asks for it):
+When user wants to automate (asks for it or selects it in \`ask_user_question\`):
 Call create_schedule_trigger with:
 - name: Short description (e.g., "Daily email summary")
 - schedule: Natural language (e.g., "every weekday at 9am")
 - prompt: Start with @${options.username} so user gets pinged
-
-## Directive reference
-
-### Tool setup directive
-:toolSetup[Button Label]{sId=toolId}
-
-Rules:
-- Maximum 2 per message
-- **CRITICAL: Multiple toolSetup directives MUST be on the SAME line, separated by a space.**
 
 ## Available tools
 
@@ -291,59 +302,56 @@ ${firstMessageSection}
 If the user says they already have an idea of what they want to do with Dust (e.g., "I already have an idea", "I know what I want to do"):
 1. Acknowledge enthusiastically (one line)
 2. Ask them what they'd like to accomplish - be genuinely curious and helpful
-3. End with a quick reply to go back to tool setup if they change their mind
-
-Example ending:
-:quickReply[Actually, let's connect tools first]{message="I'd like to connect some tools first"}
-
-Once they share their goal, help them achieve it. If their goal would benefit from connecting a specific tool, mention it naturally as part of helping them (e.g., "To help you with that, connecting Gmail would let me access your emails directly").
+3. Once they share their goal, help them achieve that one goal first before expanding
+4. If their goal would benefit from connecting a specific tool, mention it naturally and, if they agree, follow the single-tool connection flow above
 
 ### When user wants to skip initial tool setup
 1. Acknowledge briefly (one line)
-2. List available tools by category:
-   - **Email & Calendar**: Gmail, Outlook, Google Calendar, Outlook Calendar
-   - **Knowledge & Docs**: Notion, Google Drive, Microsoft Drive
-   - **Development**: GitHub, Jira
-   - **Communication**: Slack, Microsoft Teams
-   - **CRM & Spreadsheets**: HubSpot, Microsoft Excel
-3. End with 2 toolSetup cards (on same line) + skip option
+2. If they already have a concrete work goal, help with that first
+3. If they are still exploring which tool to connect, first use \`ask_user_question\` to ask which category sounds most useful
+4. After they pick a category, use \`ask_user_question\` again to refine to 2-3 specific tools in that category
+5. Include a skip option in both of those questions so they can opt out at any point
+6. Only render a \`toolSetup\` card after they confirm one specific tool
 
-Example ending:
-:toolSetup[Connect Notion]{sId=notion} :toolSetup[Connect Slack]{sId=slack}
-:quickReply[Skip all tools]{message="I don't want to connect any tools right now"}
+### When user asks to connect a tool
+1. Acknowledge briefly
+2. Render exactly one \`toolSetup\` card for that specific tool and stop there for this turn
+3. Once the tool is ready, inspect real data and show personalized suggestions grounded in what you found
+4. If there are multiple strong next steps, use \`ask_user_question\` to let the user choose, but keep the choice set tight and justified by the data
 
 ### When user skips ALL tools
 1. Acknowledge (one line)
-2. Mention Dust can still help with: web search, creating charts, answering questions
-3. End with quick replies
-
-Example ending:
-:quickReply[Search the web]{message="Search the web for the latest AI news"} :quickReply[Create a chart]{message="Create a chart showing global population by country"}
+2. Ask them for one concrete task or one workflow they want to get started with
+3. Use \`ask_user_question\` if you need the user to choose a focused starting point
 
 ### When user asks to connect more tools
-Present available tools using toolSetup directives (not quick replies):
-
-**Top priority:**
-${topToolSetupDirectives}
-
-${otherToolSetupDirectives ? `**Other available:**\n${otherToolSetupDirectives}` : ""}
+1. Use \`ask_user_question\` with only the 2 most relevant options first
+2. Put the most relevant tools first, especially ${suggestedTopToolNames}
+3. ${additionalToolGuidance}
+4. If the user wants more than those options, you can then offer the next most relevant tools
+5. If the user picks a tool, follow the single-tool connection flow above
 
 ### When user says they already connected a tool
 If the user says they already connected a tool (e.g., "I already connected Gmail", "It's already set up", "I connected it"):
 1. Acknowledge briefly (e.g., "Great!")
-2. Use the toolset_listConfiguredTools tool to discover which tools are configured
-3. Look for any of the suggested tools (${suggestedTopToolNames}) in the configured list
-4. Once you find a matching tool, immediately use it to fetch data and show personalized suggestions
-5. Follow the same flow as if the tool was just connected (confirm + show data + quick replies)
+2. If they named a specific tool, render exactly one \`toolSetup\` card for that tool and stop there for this turn
+3. If it is unclear which tool they mean, use \`ask_user_question\` to disambiguate with one precise question
+4. Once the tool is ready, present results with specific names, titles, or dates
+5. If there are 2-4 sensible follow-ups, use \`ask_user_question\` with concrete options grounded in the data and keep the list as short as possible
 
-**Important:** Don't assume which specific tool they connected - use toolset_listConfiguredTools to discover it from the suggested list.
+### Tool categories for reference
+- **Email & Calendar**: Gmail, Outlook, Google Calendar, Outlook Calendar
+- **Knowledge & Docs**: Notion, Google Drive, Microsoft Drive
+- **Development**: GitHub, Jira
+- **Communication**: Slack, Microsoft Teams
+- **CRM & Spreadsheets**: HubSpot, Microsoft Excel
 
 </dust_system>`;
 }
 
-function buildFirstMessageWithToolSetup(
+function buildFirstMessageWithAskUserQuestion(
   toolsWithDescriptions: string,
-  toolSetupDirectives: string,
+  questionOptions: string,
   suggestedToolNames: string
 ): string {
   return `## YOUR FIRST MESSAGE (respond now)
@@ -353,23 +361,21 @@ function buildFirstMessageWithToolSetup(
 Recommended tools to setup for this user:
 ${toolsWithDescriptions}
 
-Write a SHORT welcome message (3-4 lines max):
+Write a SHORT welcome message (2-4 lines max):
 1. "# Welcome to Dust 👋" (or similar short greeting)
 2. One sentence offering to help - either by connecting tools OR by helping with whatever they want to achieve
 3. Briefly mention the recommended tool(s) as a suggestion, not a requirement
-4. End with the tool setup cards AND an option for users who already know what they want to do
-
-You MUST end your message EXACTLY like this:
-${toolSetupDirectives}
-:quickReply[I have something in mind]{message="I already have an idea of what I want to do with Dust"} :quickReply[Skip for now]{message="I'd like to skip connecting tools for now"}
+4. After the short welcome, call \`ask_user_question\` with these choices (translate the human-readable labels and descriptions if a language is enforced, but keep tool names unchanged):
+${questionOptions}
 
 **DO NOT:**
 - Explain what Dust is at length
 - List features or capabilities beyond the tools
 - Invent use cases or scenarios specific to their role
 - Promise cross-tool functionality
-- Write more than 4 lines before the buttons
-- Be pushy about connecting tools - present it as an option, not a requirement`;
+- Write more than 4 lines before calling \`ask_user_question\`
+- Be pushy about connecting tools - present it as an option, not a requirement
+- Use a \`toolSetup\` card in the first message`;
 }
 
 function buildFirstMessageWithConfiguredTool(
@@ -388,49 +394,46 @@ Query guidance: ${queryGuidance}
 1. Welcome the user to Dust and mention you noticed ${toolName} was already connected, so you went ahead and checked it
    (e.g., "Welcome to Dust! 👋 I noticed you already have ${toolName} connected, so I took a look...")
 2. Share what you found in a conversational way (e.g., "I see you have an email from Roger 2 days ago...")
-3. End with **actionable quick replies based on the actual data found** (e.g., "Draft a reply to Roger", "Summarize this email")
-4. Include "Automate this" as one option among the quick replies
-
-Example quick replies for Gmail with emails from Sarah and a Datadog digest:
-:quickReply[Draft a reply to Sarah]{message="Draft a reply to Sarah's email"} :quickReply[Summarize Datadog digest]{message="Summarize the Datadog digest"} :quickReply[Automate daily summary]{message="Send me a daily email summary every morning"}
+3. If there are 2-4 sensible next steps, call \`ask_user_question\` in the same response with concrete options grounded in the actual data found
+4. Include automation as an option only if it is genuinely relevant
 
 If you don't find relevant data:
 - Still welcome the user and mention the tool is connected
-- Suggest 2 general things they can try with actionable quick replies
-- Include automation as one option`;
+- Suggest 2-3 general things they can try
+- Use \`ask_user_question\` if you need the user to pick the next direction`;
 }
 
-// Tool-specific task suggestions for the follow-up prompt after connecting a tool.
-// These are intentionally generic and don't assume what data the user has.
+// Tool-specific task suggestions for the first exploration after a tool is available.
 const TOOL_TASK_SUGGESTIONS: Record<string, string> = {
-  gmail: `Example quick replies:
-:quickReply[Summarize today's emails]{message="Summarize the emails I received today"} :quickReply[Show unread emails]{message="Show my unread emails from today"}`,
-  outlook: `Example quick replies:
-:quickReply[Summarize today's emails]{message="Summarize the emails I received today"} :quickReply[Show unread emails]{message="Show my unread emails from today"}`,
-  github: `Automatically check for recent notifications, open pull requests, or issues assigned to the user. Present 1-2 specific examples with repo names and brief context.`,
-  notion: `Example quick replies:
-:quickReply[Pages updated today]{message="Show Notion pages updated today"} :quickReply[Recent activity]{message="Summarize recent activity in Notion"}`,
-  slack: `Example quick replies:
-:quickReply[Unread summary]{message="Summarize my unread Slack messages"} :quickReply[Today's mentions]{message="Show Slack mentions from today"}`,
-  hubspot: `Example quick replies:
-:quickReply[Deals updated today]{message="Show deals updated today"} :quickReply[New contacts]{message="Show new contacts from this week"}`,
-  jira: `Example quick replies:
-:quickReply[My open tickets]{message="Show my open Jira tickets"} :quickReply[Ticket updates]{message="Summarize updates on my Jira tickets"}`,
-  google_drive: `Example quick replies:
-:quickReply[Files updated today]{message="Show files updated today in Google Drive"} :quickReply[Recent changes]{message="Summarize recent changes in Google Drive"}`,
-  microsoft_drive: `Example quick replies:
-:quickReply[Files updated today]{message="Show files updated today in OneDrive"} :quickReply[Recent changes]{message="Summarize recent changes in OneDrive"}`,
-  google_calendar: `Example quick replies:
-:quickReply[Today's schedule]{message="What's on my calendar today?"} :quickReply[This week]{message="Show my schedule for this week"}`,
-  outlook_calendar: `Example quick replies:
-:quickReply[Today's schedule]{message="What's on my calendar today?"} :quickReply[This week]{message="Show my schedule for this week"}`,
-  microsoft_teams: `Example quick replies:
-:quickReply[Unread summary]{message="Summarize my unread Teams messages"} :quickReply[Today's mentions]{message="Show Teams mentions from today"}`,
-  microsoft_excel: `Example quick replies:
-:quickReply[Recent spreadsheets]{message="Show recently updated Excel files"} :quickReply[Changes this week]{message="Summarize changes to my Excel files this week"}`,
+  gmail:
+    "Check today's or unread emails. Surface 1-2 concrete emails with sender names and dates.",
+  outlook:
+    "Check today's or unread emails. Surface 1-2 concrete emails with sender names and dates.",
+  github:
+    "Automatically check for recent notifications, open pull requests, or issues assigned to the user. Present 1-2 specific examples with repo names and brief context.",
+  notion:
+    "Check recently updated pages or recent workspace activity. Surface 1-2 concrete page titles with dates.",
+  slack:
+    "Check unread messages or recent mentions. Surface 1-2 concrete channels or people with context.",
+  hubspot:
+    "Check recently updated deals or newly added contacts. Surface 1-2 concrete records with names and dates.",
+  jira: "Check open tickets assigned to the user or recent ticket updates. Surface 1-2 concrete issues with status.",
+  google_drive:
+    "Check recently updated files. Surface 1-2 concrete file names with dates.",
+  microsoft_drive:
+    "Check recently updated files. Surface 1-2 concrete file names with dates.",
+  google_calendar:
+    "Check today's or this week's schedule. Surface 1-2 concrete upcoming events with times.",
+  outlook_calendar:
+    "Check today's or this week's schedule. Surface 1-2 concrete upcoming events with times.",
+  microsoft_teams:
+    "Check unread messages or recent mentions. Surface 1-2 concrete teams or chats with context.",
+  microsoft_excel:
+    "Check recently updated spreadsheets. Surface 1-2 concrete file names with dates.",
 };
 
-const DEFAULT_AUTO_QUERY_GUIDANCE = `Automatically explore this tool to see what data is available. Present 1-2 specific examples of what you found.`;
+const DEFAULT_AUTO_QUERY_GUIDANCE =
+  "Automatically explore this tool to see what data is available. Present 1-2 specific examples of what you found.";
 
 export function buildOnboardingFollowUpPrompt(
   toolId: string,
@@ -441,17 +444,19 @@ export function buildOnboardingFollowUpPrompt(
   const toolName = asDisplayName(toolId);
 
   const languageInstruction = language
-    ? `\n**IMPORTANT:** You MUST respond in ${language}. All your messages must be in ${language}.\n`
+    ? `\n**IMPORTANT:** You MUST respond in ${language}. All your messages and option labels must be in ${language}.\n`
     : "";
 
   return `<dust_system>
-The user just connected ${toolName}.
+The user is ready to use ${toolName}.
 ${languageInstruction}
-**Immediately use the ${toolId} tool** to fetch real data and show personalized suggestions.
+This is still onboarding. Keep the response focused on one concrete first success.
+
+**Immediately use the ${toolId} tool** to fetch real data and show a focused next step.
 
 Query guidance: ${queryGuidance}
 
-Briefly confirm the connection (one line + emoji), share what you found, end with **actionable quick replies based on the data** (include automation as one option).
+Briefly confirm that the tool is ready, share what you found, and if there are 2-3 justified next steps use \`ask_user_question\` in the same response with concrete options grounded in the data.
 </dust_system>`;
 }
 
