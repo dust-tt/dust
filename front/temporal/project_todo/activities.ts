@@ -81,6 +81,13 @@ export async function analyzeProjectTodosActivity({
   workspaceId: string;
   spaceId: string;
 }): Promise<void> {
+  logger.info({ workspaceId, spaceId }, "Starting project todo analysis");
+
+  if (!workspaceId) {
+    logger.error({ workspaceId, spaceId }, "Workspace ID is required");
+    return;
+  }
+
   const workspace = await WorkspaceResource.fetchById(workspaceId);
   if (!workspace) {
     logger.error({ workspaceId }, "Workspace not found");
