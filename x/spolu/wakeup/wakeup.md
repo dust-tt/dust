@@ -28,7 +28,7 @@ Delays ("in 2 hours"), absolute times ("at 2026-04-16T16:00Z"), and cron pattern
 │  WakeUpResource (new model)                                 │
 │  - conversationId (FK → ConversationModel)                  │
 │  - workspaceId                                              │
-│  - userId (user associated with the agent loop, nullable)   │
+│  - userId (user associated with the agent loop, required)   │
 │  - agentConfigurationId                                     │
 │  - scheduleType: "one_shot" | "cron"                        │
 │  - scheduleConfig (fireAt timestamp | cron+tz)              │
@@ -79,7 +79,7 @@ CREATE TABLE wake_ups (
   "updatedAt"     TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
   "workspaceId"   BIGINT NOT NULL REFERENCES workspaces(id),
   "conversationId" BIGINT NOT NULL REFERENCES conversations(id),
-  "userId"        BIGINT REFERENCES users(id),  -- null for API-created wake-ups
+  "userId"        BIGINT NOT NULL REFERENCES users(id),
   "agentConfigurationId" TEXT NOT NULL,
   "scheduleType"  TEXT NOT NULL,             -- "one_shot" | "cron"
   "fireAt"        TIMESTAMP WITH TIME ZONE,  -- for one_shot
@@ -148,8 +148,7 @@ For **cron** wake-ups, a Temporal Schedule is created (via `client.schedule.crea
 1. Fetch `WakeUpResource` by sId, verify `status === "scheduled"`.
 2. Fetch conversation via `ConversationResource`.
 3. Authenticate as the wake-up's userId via `Authenticator.fromUserIdAndWorkspaceId()` (the agent
-   runs under that user's credentials). If userId is null (API-created), use
-   `Authenticator.internalAdminForWorkspace()`.
+   runs under that user's credentials).
 4. Call `postUserMessage` with:
    - `content`: `@agent Wake-up: {reason}`
    - `context.origin`: `"wakeup"` (new origin value)
@@ -203,25 +202,20 @@ it executes under the original user's auth context.
 
 ### Conversation interaction restrictions
 
-To mitigate this, while a conversation has active wake-ups with an associated user (`userId` is
-set), only that user is allowed to post messages in the conversation. Other users attempting to
-post will receive an error explaining that the conversation has a pending wake-up owned by another
-user.
+To mitigate this, while a conversation has an active wake-up, only the wake-up owner is allowed to
+post messages in the conversation. Other users attempting to post will receive an error explaining
+that the conversation has a pending wake-up owned by another user.
 
-- Admins and the wake-up owner can cancel the wake-up (which lifts the restriction).
-- If the wake-up was created by an agent loop triggered via API with no associated user
-  (`userId` is null), the restriction does not apply — anyone with access to the conversation can
-  interact, and anyone with access can also cancel the wake-up.
+- Admins and the wake-up owner can cancel the wake-up, which lifts the restriction.
 
 This is a conservative starting point. We may relax restrictions later (e.g., allow read-only
 access, or allow messages that don't mention agents) once we better understand the threat model.
 
 ### Cancellation permissions
 
-| Wake-up has userId | Who can cancel                                  |
-|--------------------|-------------------------------------------------|
-| Yes                | The wake-up owner (userId) or workspace admins  |
-| No (API-created)   | Anyone with access to the conversation          |
+| Wake-up | Who can cancel                                 |
+|---------|------------------------------------------------|
+| Any     | The wake-up owner (userId) or workspace admins |
 
 ## Steering Integration
 
@@ -317,8 +311,8 @@ When a wake-up fires:
 ## Resolved Decisions
 
 1. **Authentication**: The activity authenticates as the wake-up's `userId` (the user whose agent
-   loop created it). For API-created wake-ups with no user, uses internal admin auth. See Security
-   section for interaction restrictions that prevent privilege escalation.
+   loop created it). See Security section for interaction restrictions that prevent privilege
+   escalation.
 
 2. **Conversation cleanup**: Handled in code, not via DB cascade. When a conversation is deleted,
    the deletion logic cancels all active wake-ups (Temporal workflows/schedules) and deletes the
