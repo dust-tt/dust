@@ -446,26 +446,27 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     );
     const remoteServerIds = removeNulls(views.map((v) => v.remoteMCPServerId));
 
-    const [internalMetadata, remoteMetadata] = await Promise.all([
+    const internalMetadata =
       internalServerIds.length > 0
-        ? RemoteMCPServerToolMetadataModel.findAll({
+        ? await RemoteMCPServerToolMetadataModel.findAll({
             where: {
               workspaceId,
               internalMCPServerId: { [Op.in]: internalServerIds },
             },
             transaction,
           })
-        : [],
+        : [];
+
+    const remoteMetadata =
       remoteServerIds.length > 0
-        ? RemoteMCPServerToolMetadataModel.findAll({
+        ? await RemoteMCPServerToolMetadataModel.findAll({
             where: {
               workspaceId,
               remoteMCPServerId: { [Op.in]: remoteServerIds },
             },
             transaction,
           })
-        : [],
-    ]);
+        : [];
 
     const metadataByInternalId = new Map<
       string,
