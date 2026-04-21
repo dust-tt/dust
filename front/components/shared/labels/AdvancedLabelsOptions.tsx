@@ -1,12 +1,20 @@
 import { SensitivityLabelsConfig } from "@app/components/shared/labels/SensitivityLabelsConfig";
-import type { ConnectorOptionsProps } from "@app/lib/connector_providers_ui";
+import type { SensitivityLabelSource } from "@app/components/shared/labels/types";
+import type { LightWorkspaceType } from "@app/types/user";
+
+interface AdvancedLabelsOptionsProps {
+  owner: LightWorkspaceType;
+  source: SensitivityLabelSource;
+  readOnly?: boolean;
+  isAdmin: boolean;
+}
 
 export const AdvancedLabelsOptions = ({
   owner,
-  readOnly,
+  source,
+  readOnly = false,
   isAdmin,
-  dataSource,
-}: ConnectorOptionsProps) => {
+}: AdvancedLabelsOptionsProps) => {
   return (
     <div className="flex flex-col gap-2 mt-4">
       <span className="heading-sm text-foreground dark:text-foreground-night">
@@ -18,7 +26,7 @@ export const AdvancedLabelsOptions = ({
       </span>
       <SensitivityLabelsConfig
         owner={owner}
-        source={{ dataSourceId: dataSource.sId }}
+        source={source}
         readOnly={readOnly}
         isAdmin={isAdmin}
       />

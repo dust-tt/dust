@@ -3,7 +3,7 @@ import {
   OAUTH_USE_CASE_TO_DESCRIPTION,
   OAUTH_USE_CASE_TO_LABEL,
 } from "@app/components/actions/mcp/MCPServerAuthConnection";
-import { SensitivityLabelsConfig } from "@app/components/shared/labels/SensitivityLabelsConfig";
+import { AdvancedLabelsOptions } from "@app/components/shared/labels/AdvancedLabelsOptions";
 import { getSensitivityLabelProviderForServerId } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import {
@@ -52,6 +52,9 @@ export function MCPServerSettings({
     useState<MCPOAuthUseCase | null>(null);
 
   const useCase = selectedUseCase ?? mcpServerView.oAuthUseCase;
+  const sensitivityLabelProvider = getSensitivityLabelProviderForServerId(
+    mcpServerView.server.sId
+  );
 
   const handleDeleteConnection = () => {
     if (!connection) {
@@ -133,18 +136,13 @@ export function MCPServerSettings({
           </div>
         </div>
       )}
-      {connection &&
-        getSensitivityLabelProviderForServerId(mcpServerView.server.sId) !==
-          null && (
-          <div className="space-y-2">
-            <div className="heading-base">Allowed labels</div>
-            <SensitivityLabelsConfig
-              owner={owner}
-              source={{ internalMCPServerId: mcpServerView.server.sId }}
-              isAdmin={true}
-            />
-          </div>
-        )}
+      {connection && sensitivityLabelProvider !== null && (
+        <AdvancedLabelsOptions
+          owner={owner}
+          source={{ internalMCPServerId: mcpServerView.server.sId }}
+          isAdmin={true}
+        />
+      )}
 
       {authorization?.availableScopes &&
         authorization.availableScopes.length > 0 && (

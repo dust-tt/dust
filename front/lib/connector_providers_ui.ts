@@ -1,4 +1,3 @@
-import { AdvancedLabelsOptions } from "@app/components/data_source/AdvancedLabelsOptions";
 import { BigQueryUseMetadataForDBMLView } from "@app/components/data_source/BigQueryUseMetadataForDBMLView";
 import { createConnectorOptionsPdfEnabled } from "@app/components/data_source/ConnectorOptionsPdfEnabled";
 import { GithubCodeEnableView } from "@app/components/data_source/GithubCodeEnableView";
@@ -9,6 +8,7 @@ import { SlackOAuthExtraConfig } from "@app/components/data_source/SlackOAuthExt
 import { SalesforceOauthExtraConfig } from "@app/components/data_source/salesforce/SalesforceOAuthExtractConfig";
 import { ZendeskConfigView } from "@app/components/data_source/ZendeskConfigView";
 import { ZendeskOAuthExtraConfig } from "@app/components/data_source/ZendeskOAuthExtraConfig";
+import { AdvancedLabelsOptions } from "@app/components/shared/labels/AdvancedLabelsOptions";
 import type { ConnectorPermission } from "@app/types/connectors/connectors_api";
 import type { ConnectorProvider, DataSourceType } from "@app/types/data_source";
 import type { PlanType } from "@app/types/plan";
@@ -33,7 +33,7 @@ import {
   ZendeskLogo,
   ZendeskWhiteLogo,
 } from "@dust-tt/sparkle";
-import type { ComponentType } from "react";
+import React, { type ComponentType } from "react";
 
 export interface ConnectorOptionsProps {
   owner: WorkspaceType;
@@ -298,7 +298,13 @@ export const CONNECTOR_UI_CONFIGURATIONS: Record<
     optionsComponent: createConnectorOptionsPdfEnabled(
       "When enabled, PDF documents from your Microsoft OneDrive and SharePoint will be synced and processed by Dust."
     ),
-    advancedOptionsComponent: AdvancedLabelsOptions,
+    advancedOptionsComponent: ({ owner, readOnly, isAdmin, dataSource }) =>
+      React.createElement(AdvancedLabelsOptions, {
+        owner,
+        source: { dataSourceId: dataSource.sId },
+        readOnly,
+        isAdmin,
+      }),
     isNested: true,
     isTitleFilterEnabled: true,
     oauthExtraConfigComponent: MicrosoftOAuthExtraConfig,
