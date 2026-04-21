@@ -22,6 +22,17 @@ const CORNER_RADIUS = 4;
 const SEGMENT_GAP = 2;
 const MIN_LABEL_SEGMENT_WIDTH = 32;
 
+// Picks black or white text based on the Tailwind shade in `sourceColor`
+// (e.g. `text-emerald-300`). Dust's bar colors render at the same luminance in
+// light and dark mode, so a single class suffices.
+function getLabelFillClass(sourceColor: string): string {
+  const match = sourceColor.match(/text-[a-z]+-(\d+)/);
+  if (!match) {
+    return "fill-white";
+  }
+  return Number(match[1]) >= 500 ? "fill-white" : "fill-gray-950";
+}
+
 // Recharts injects geometry props as `number | string`, so each field is
 // narrowed to `number` at render time.
 interface PercentLabelProps {
@@ -31,6 +42,7 @@ interface PercentLabelProps {
   height?: number | string;
   value?: number | string;
   total: number;
+  fillClassName: string;
 }
 
 function PercentLabel({
@@ -40,6 +52,7 @@ function PercentLabel({
   height,
   value,
   total,
+  fillClassName,
 }: PercentLabelProps) {
   if (
     typeof x !== "number" ||
@@ -58,7 +71,7 @@ function PercentLabel({
       y={y + height / 2}
       textAnchor="middle"
       dominantBaseline="central"
-      className="fill-white text-xs font-medium"
+      className={`${fillClassName} text-xs font-medium`}
     >
       {Math.round((value / total) * 100)}%
     </text>
@@ -231,7 +244,14 @@ export function WorkspaceSourceChart({
           >
             <LabelList
               dataKey={entry.origin}
-              content={<PercentLabel total={total} />}
+              content={
+                <PercentLabel
+                  total={total}
+                  fillClassName={getLabelFillClass(
+                    getSourceColor(entry.origin)
+                  )}
+                />
+              }
             />
           </Bar>
         ))}
