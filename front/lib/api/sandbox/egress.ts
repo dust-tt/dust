@@ -5,6 +5,7 @@ import type { Authenticator } from "@app/lib/auth";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import logger from "@app/logger/logger";
 import { Err, Ok, type Result } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import jwt from "jsonwebtoken";
 
 const EGRESS_FORWARDER_LISTEN_ADDR = "127.0.0.1:9990";
@@ -153,7 +154,7 @@ export async function setupEgressForwarder(
       { ...logContext, error: String(error) },
       "Failed to resolve egress proxy address"
     );
-    return new Err(error instanceof Error ? error : new Error(String(error)));
+    return new Err(normalizeError(error));
   }
 
   const proxyPort = config.getEgressProxyPort();
