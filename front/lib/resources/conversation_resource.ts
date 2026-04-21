@@ -38,12 +38,14 @@ import type {
   ConversationForkedFromType,
   ConversationMCPServerViewType,
   ConversationMetadata,
+  ConversationPlanModeMetadata,
   ConversationUrlAccessMode,
   ConversationVisibility,
   ConversationWithoutContentType,
   ParticipantActionType,
 } from "@app/types/assistant/conversation";
 import {
+  CONVERSATION_METADATA_PLAN_MODE_KEY,
   ConversationError,
   getConversationUrlAccessMode,
 } from "@app/types/assistant/conversation";
@@ -2705,6 +2707,55 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       ...conversation.metadata,
       urlAccessMode: accessMode,
     };
+
+    await conversation.update({ metadata }, transaction);
+
+    return new Ok(undefined);
+  }
+
+  // Return sIds of agent messages in this conversation whose agent loop is still running
+  // (status === "created"). Used by plan-mode cancel to signal graceful stop on the live loop.
+  async getRunningAgentMessageSIds(auth: Authenticator): Promise<string[]> {
+    const workspace = auth.getNonNullableWorkspace();
+
+    const rows = await MessageModel.findAll({
+      attributes: ["sId"],
+      include: [
+        {
+          model: AgentMessageModel,
+          as: "agentMessage",
+          attributes: [],
+          required: true,
+          where: { status: "created" },
+        },
+      ],
+      where: {
+        workspaceId: workspace.id,
+        conversationId: this.id,
+        agentMessageId: { [Op.ne]: null },
+      },
+    });
+
+    return rows.map((r) => r.sId);
+  }
+
+  static async updatePlanMode(
+    auth: Authenticator,
+    sId: string,
+    planMode: ConversationPlanModeMetadata | null,
+    transaction?: Transaction
+  ): Promise<Result<undefined, ConversationError>> {
+    const conversation = await this.fetchById(auth, sId);
+    if (conversation == null) {
+      return new Err(new ConversationError("conversation_not_found"));
+    }
+
+    const metadata: ConversationMetadata = { ...conversation.metadata };
+    if (planMode) {
+      metadata[CONVERSATION_METADATA_PLAN_MODE_KEY] = planMode;
+    } else {
+      delete metadata[CONVERSATION_METADATA_PLAN_MODE_KEY];
+    }
 
     await conversation.update({ metadata }, transaction);
 

@@ -31,6 +31,12 @@ export type FileUseCase =
   // sandbox at /dust/skills/<skill-name>/<filename>.
   | "skill_attachment";
 
+export type PlanModeApproval = {
+  approvedAt: string; // ISO timestamp.
+  approvedByUserId: string; // sId of approver.
+  fileVersion: number; // FileModel.version at approval time.
+};
+
 export type FileUseCaseMetadata = {
   conversationId?: string;
   skillId?: string;
@@ -42,6 +48,11 @@ export type FileUseCaseMetadata = {
   sourceIcon?: string;
   hideFromUser?: boolean;
   skipDataSourceIndexing?: boolean;
+  // Plan mode: set on the conversation's plan.md file.
+  // `isPlanFile: true` marks the file so we can find it by querying useCaseMetadata.
+  // `planModeLastApproval` is null during planning, set when the plan is approved.
+  isPlanFile?: boolean;
+  planModeLastApproval?: PlanModeApproval | null;
 };
 
 export function isConversationFileUseCase(

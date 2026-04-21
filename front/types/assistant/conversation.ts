@@ -382,9 +382,21 @@ export type ConversationUrlAccessMode =
   (typeof CONVERSATION_URL_ACCESS_MODES)[number];
 
 export const CONVERSATION_METADATA_URL_ACCESS_MODE_KEY = "urlAccessMode";
+export const CONVERSATION_METADATA_PLAN_MODE_KEY = "planMode";
+
+// Plan mode state stored on conversation.metadata. Presence of this object means a plan exists
+// for the conversation. The planning vs execution phase is derived from the plan file's
+// useCaseMetadata.planModeLastApproval: null = planning, set = approved + executing.
+export type ConversationPlanModeMetadata = {
+  planFileId: string;
+  // sId of the user who called enter_plan_mode. Used by the cancel endpoint to restrict cancel
+  // to the initiator.
+  initiatedByUserId: string;
+};
 
 export type ConversationMetadata = Record<string, unknown> & {
   urlAccessMode?: ConversationUrlAccessMode;
+  planMode?: ConversationPlanModeMetadata;
 };
 
 export function isConversationUrlAccessMode(
@@ -398,6 +410,26 @@ export function getConversationUrlAccessMode(
 ): ConversationUrlAccessMode | null {
   const accessMode = metadata?.[CONVERSATION_METADATA_URL_ACCESS_MODE_KEY];
   return isConversationUrlAccessMode(accessMode) ? accessMode : null;
+}
+
+export function isConversationPlanModeMetadata(
+  value: unknown
+): value is ConversationPlanModeMetadata {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "planFileId" in value &&
+    typeof value.planFileId === "string" &&
+    "initiatedByUserId" in value &&
+    typeof value.initiatedByUserId === "string"
+  );
+}
+
+export function getConversationPlanMode(
+  metadata: ConversationMetadata | null | undefined
+): ConversationPlanModeMetadata | null {
+  const planMode = metadata?.[CONVERSATION_METADATA_PLAN_MODE_KEY];
+  return isConversationPlanModeMetadata(planMode) ? planMode : null;
 }
 
 export function isReinforcedSkillNotificationMetadata(

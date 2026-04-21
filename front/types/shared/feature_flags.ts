@@ -270,6 +270,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Enable the Clari Copilot MCP server for call transcript and summary access.",
     stage: "on_demand",
   },
+  plan_mode: {
+    description:
+      "Enable the Plan Mode skill and MCP server, letting agents draft an approvable plan.md before executing non-trivial tasks.",
+    stage: "dust_only",
+  },
   official_notion_mcp: {
     description:
       "Use the official Notion MCP server instead of the internal one",

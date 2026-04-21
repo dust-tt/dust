@@ -138,6 +138,7 @@ const TOOL_CATEGORY_MAP: Record<InternalMCPServerNameType, ToolCategory> = {
   poke: "platform",
   sandbox: "platform",
   ask_user_question: "platform",
+  plan_mode: "platform",
 };
 
 export function getToolCategory(

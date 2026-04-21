@@ -47,6 +47,7 @@ import { default as notionServer } from "@app/lib/api/actions/servers/notion";
 import { default as openaiUsageServer } from "@app/lib/api/actions/servers/openai_usage";
 import { default as outlookCalendarServer } from "@app/lib/api/actions/servers/outlook/calendar_server";
 import { default as outlookMailServer } from "@app/lib/api/actions/servers/outlook/mail_server";
+import { default as planModeServer } from "@app/lib/api/actions/servers/plan_mode";
 import { default as pokeServer } from "@app/lib/api/actions/servers/poke";
 import { default as primitiveTypesDebuggerServer } from "@app/lib/api/actions/servers/primitive_types_debugger";
 import { default as productboardServer } from "@app/lib/api/actions/servers/productboard";
@@ -261,6 +262,8 @@ export async function getInternalMCPServer(
       return statuspageServer(auth, agentLoopContext);
     case "sandbox":
       return sandboxServer(auth, agentLoopContext);
+    case "plan_mode":
+      return planModeServer(auth, agentLoopContext);
     default:
       assertNever(internalMCPServerName);
   }

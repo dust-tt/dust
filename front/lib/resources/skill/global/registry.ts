@@ -6,6 +6,7 @@ import { discoverToolsSkill } from "@app/lib/resources/skill/global/discover_too
 import { framesSkill } from "@app/lib/resources/skill/global/frames";
 import { goDeepSkill } from "@app/lib/resources/skill/global/go_deep";
 import { mentionUsersSkill } from "@app/lib/resources/skill/global/mention_users";
+import { planModeSkill } from "@app/lib/resources/skill/global/plan_mode";
 import { projectsSkill } from "@app/lib/resources/skill/global/projects";
 import { sandboxSkill } from "@app/lib/resources/skill/global/sandbox";
 import type { AllSkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
@@ -92,6 +93,7 @@ const GLOBAL_SKILLS_ARRAY = ensureUniqueSIds([
   framesSkill,
   goDeepSkill,
   mentionUsersSkill,
+  planModeSkill,
   projectsSkill,
   sandboxSkill,
 ] as const);
