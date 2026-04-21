@@ -104,6 +104,7 @@ export type UserMessageOrigin =
   | "transcript"
   | "triggered_programmatic"
   | "triggered"
+  | "wakeup"
   | "zapier"
   | "zendesk"
   // TODO onboarding_conversation, agent_sidekick, and project_kickoff aren't message origins. They

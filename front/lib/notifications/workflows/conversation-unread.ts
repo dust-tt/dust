@@ -102,6 +102,7 @@ export const shouldSendNotificationForAgentAnswer = (
     case "transcript":
     case "triggered_programmatic":
     case "triggered":
+    case "wakeup":
     case "zapier":
     case "zendesk":
     case "project_kickoff":

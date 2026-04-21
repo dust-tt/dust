@@ -11063,6 +11063,7 @@
               "transcript",
               "triggered_programmatic",
               "triggered",
+              "wakeup",
               "zapier",
               "zendesk",
               "onboarding_conversation"
