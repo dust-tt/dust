@@ -80,6 +80,9 @@ export const RESOURCES_PREFIX = {
   project_todo_state: "pts",
   project_todo: "ptd",
 
+  // Wake-ups.
+  wake_up: "wak",
+
   // Takeaways.
   takeaways: "tka",
 

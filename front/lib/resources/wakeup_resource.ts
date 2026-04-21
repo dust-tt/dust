@@ -4,6 +4,7 @@ import type { ConversationResource } from "@app/lib/resources/conversation_resou
 import { WakeUpModel } from "@app/lib/resources/storage/models/wakeup";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
+import { makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
@@ -13,6 +14,7 @@ import type {
   WakeUpStatus,
   WakeUpType,
 } from "@app/types/assistant/wakeups";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -26,6 +28,23 @@ export interface WakeUpResource extends ReadonlyAttributesType<WakeUpModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class WakeUpResource extends BaseResource<WakeUpModel> {
   static model: ModelStaticWorkspaceAware<WakeUpModel> = WakeUpModel;
+
+  get sId(): string {
+    return WakeUpResource.modelIdToSId({
+      id: this.id,
+      workspaceId: this.workspaceId,
+    });
+  }
+
+  static modelIdToSId({
+    id,
+    workspaceId,
+  }: {
+    id: ModelId;
+    workspaceId: ModelId;
+  }): string {
+    return makeSId("wake_up", { id, workspaceId });
+  }
 
   constructor(
     model: ModelStaticWorkspaceAware<WakeUpModel>,
@@ -252,6 +271,7 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
 
     return {
       id: this.id,
+      sId: this.sId,
       createdAt: this.createdAt.getTime(),
       agentConfigurationId: this.agentConfigurationId,
       scheduleConfig,
