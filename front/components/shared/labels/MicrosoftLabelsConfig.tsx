@@ -57,7 +57,7 @@ export function MicrosoftLabelsSelector({
     try {
       const result = await saveDataClassificationLabels({
         owner,
-        ...source,
+        source,
         allowedLabels: Array.from(selected),
       });
       if (result.success) {
