@@ -1,5 +1,4 @@
 import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
-import { CHART_HEIGHT } from "@app/components/agent_builder/observability/constants";
 import {
   buildSourceChartData,
   getSourceColor,
@@ -10,11 +9,82 @@ import { CsvDownloadButton } from "@app/components/workspace/analytics/CsvDownlo
 import { useDownloadCsv } from "@app/hooks/useDownloadCsv";
 import { useWorkspaceContextOrigin } from "@app/lib/swr/workspaces";
 import { isString } from "@app/types/shared/utils/general";
-import { Cell, Pie, PieChart, Tooltip } from "recharts";
+import { Bar, BarChart, LabelList, Tooltip, XAxis, YAxis } from "recharts";
 
 interface WorkspaceSourceChartProps {
   workspaceId: string;
   period: ObservabilityTimeRangeType;
+}
+
+const CARD_CHART_HEIGHT = 72;
+const BAR_MAX_SIZE = 40;
+const CORNER_RADIUS = 4;
+const MIN_SEGMENT_WIDTH = 6;
+const MIN_LABEL_SEGMENT_WIDTH = 32;
+
+function getSegmentRadius(
+  index: number,
+  count: number
+): [number, number, number, number] {
+  const left = index === 0 ? CORNER_RADIUS : 0;
+  const right = index === count - 1 ? CORNER_RADIUS : 0;
+  return [left, right, right, left];
+}
+
+// Picks black or white text based on the Tailwind shade in `sourceColor`
+// (e.g. `text-emerald-300`). Dust's bar colors render at the same luminance in
+// light and dark mode, so a single class suffices.
+function getLabelFillClass(sourceColor: string): string {
+  const match = sourceColor.match(/text-[a-z]+-(\d+)/);
+  if (!match) {
+    return "fill-white";
+  }
+  return Number(match[1]) >= 500 ? "fill-white" : "fill-gray-950";
+}
+
+// Recharts injects geometry props as `number | string`, so each field is
+// narrowed to `number` at render time.
+interface PercentLabelProps {
+  x?: number | string;
+  y?: number | string;
+  width?: number | string;
+  height?: number | string;
+  value?: number | string;
+  total: number;
+  fillClassName: string;
+}
+
+function PercentLabel({
+  x,
+  y,
+  width,
+  height,
+  value,
+  total,
+  fillClassName,
+}: PercentLabelProps) {
+  if (
+    typeof x !== "number" ||
+    typeof y !== "number" ||
+    typeof width !== "number" ||
+    typeof height !== "number" ||
+    typeof value !== "number" ||
+    total === 0 ||
+    width < MIN_LABEL_SEGMENT_WIDTH
+  ) {
+    return null;
+  }
+  return (
+    <text
+      x={x + width / 2}
+      y={y + height / 2}
+      textAnchor="middle"
+      dominantBaseline="central"
+      className={`${fillClassName} text-xs font-medium`}
+    >
+      {Math.round((value / total) * 100)}%
+    </text>
+  );
 }
 
 export function WorkspaceSourceChart({
@@ -30,6 +100,13 @@ export function WorkspaceSourceChart({
 
   const total = contextOrigin.total;
   const data = buildSourceChartData(contextOrigin.buckets, total);
+
+  // Pivot the breakdown into a single-row dataset so recharts renders a
+  // horizontal stacked bar (one segment per origin).
+  const chartData =
+    data.length > 0
+      ? [Object.fromEntries(data.map((d) => [d.origin, d.count]))]
+      : [];
 
   const legendItems = data.map((d) => ({
     key: d.label,
@@ -57,20 +134,27 @@ export function WorkspaceSourceChart({
       emptyMessage={
         data.length === 0 ? "No messages for this selection." : undefined
       }
-      height={CHART_HEIGHT}
+      height={CARD_CHART_HEIGHT}
       legendItems={legendItems}
       additionalControls={controls}
     >
-      <PieChart>
+      <BarChart
+        data={chartData}
+        layout="vertical"
+        margin={{ top: 0, right: 0, left: 0, bottom: 0 }}
+      >
+        <XAxis type="number" hide domain={[0, total]} />
+        <YAxis type="category" hide />
         <Tooltip
           isAnimationActive={false}
+          shared={false}
           cursor={false}
           wrapperStyle={{ outline: "none", zIndex: 50 }}
           content={({ active, payload }) => {
             if (!active || data.length === 0) {
               return null;
             }
-            const rawOrigin = payload?.[0]?.payload?.origin;
+            const rawOrigin = payload?.[0]?.dataKey;
             const activeOrigin = isString(rawOrigin) ? rawOrigin : undefined;
             const rows = data.map((d) => ({
               key: d.origin,
@@ -94,41 +178,33 @@ export function WorkspaceSourceChart({
             boxShadow: "none",
           }}
         />
-        <Pie
-          data={data}
-          dataKey="count"
-          nameKey="origin"
-          innerRadius="60%"
-          outerRadius="80%"
-          minAngle={4}
-          paddingAngle={3}
-          strokeWidth={0}
-        >
-          {data.map((entry) => (
-            <Cell
-              key={entry.origin}
-              className={getSourceColor(entry.origin)}
-              fill="currentColor"
-            />
-          ))}
-        </Pie>
-        {total > 0 && (
-          <text
-            x="50%"
-            y="50%"
-            textAnchor="middle"
-            dominantBaseline="middle"
-            className="fill-foreground dark:fill-foreground-night"
+        {data.map((entry, idx) => (
+          <Bar
+            key={entry.origin}
+            dataKey={entry.origin}
+            stackId="source"
+            name={entry.label}
+            className={getSourceColor(entry.origin)}
+            fill="currentColor"
+            isAnimationActive={false}
+            maxBarSize={BAR_MAX_SIZE}
+            minPointSize={MIN_SEGMENT_WIDTH}
+            radius={getSegmentRadius(idx, data.length)}
           >
-            <tspan className="text-2xl font-semibold">
-              {total.toLocaleString()}
-            </tspan>
-            <tspan x="50%" dy="1.2em" className="text-sm">
-              Messages
-            </tspan>
-          </text>
-        )}
-      </PieChart>
+            <LabelList
+              dataKey={entry.origin}
+              content={
+                <PercentLabel
+                  total={total}
+                  fillClassName={getLabelFillClass(
+                    getSourceColor(entry.origin)
+                  )}
+                />
+              }
+            />
+          </Bar>
+        ))}
+      </BarChart>
     </ChartContainer>
   );
 }
