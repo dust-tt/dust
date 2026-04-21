@@ -1,5 +1,6 @@
 import {
   Avatar,
+  Chip,
   Icon,
   MagnifyingGlassIcon,
   NotionLogo,
@@ -507,7 +508,6 @@ function LogRow({
 
 // ─── Activity popover (cursor-following) ─────────────────────────────────────
 
-const FADE_MS = 200;
 const POPOVER_HEIGHT = 260;
 
 function ActivityPopover({
@@ -519,13 +519,15 @@ function ActivityPopover({
 }) {
   const [tick, setTick] = useState(0);
   const [mounted, setMounted] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  // Smooth-scroll to the sentinel div at the bottom on each new entry
+  // Smooth-scroll to bottom sentinel on each new entry
   useEffect(() => {
     if (bottomRef.current) {
-      bottomRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
+      bottomRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
     }
   }, [tick]);
 
@@ -550,7 +552,7 @@ function ActivityPopover({
       scheduleNext();
       return () => clearTimeout(timeoutId);
     } else {
-      const id = setTimeout(() => setMounted(false), FADE_MS);
+      const id = setTimeout(() => setMounted(false), 150);
       return () => clearTimeout(id);
     }
   }, [visible]);
@@ -578,14 +580,12 @@ function ActivityPopover({
           background-clip: text;
           animation: shimmerSlide 2s linear infinite;
         }
-        /* Fade the popover in/out using filter instead of opacity —
-           filter does NOT create a stacking context, so backdrop-blur
-           on children keeps working correctly. */
-        @keyframes popoverFadeIn  { from { filter: opacity(0); } to { filter: opacity(1); } }
-        @keyframes popoverFadeOut { from { filter: opacity(1); } to { filter: opacity(0); } }
-        .popover-enter { animation: popoverFadeIn  ${FADE_MS}ms ease forwards; }
-        .popover-exit  { animation: popoverFadeOut ${FADE_MS}ms ease forwards; }
+        /* Hide scrollbar while keeping scroll behaviour */
+        .activity-scroll::-webkit-scrollbar { display: none; }
+        .activity-scroll { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
+      {/* Wrapper: no opacity/filter/transform that would create a stacking
+          context and break backdrop-blur on child bubbles. */}
       <div
         className="s-pointer-events-none s-fixed s-z-50"
         style={{
@@ -594,12 +594,13 @@ function ActivityPopover({
           transform: "translateY(-50%)",
         }}
       >
-        <div className={`s-w-96 ${visible ? "popover-enter" : "popover-exit"}`}>
+        <div className="s-w-96">
+          {/* overflow: scroll (not hidden) so scrollIntoView works */}
           <div
-            ref={scrollRef}
+            className="activity-scroll"
             style={{
               height: POPOVER_HEIGHT,
-              overflowY: "hidden",
+              overflowY: "scroll",
               display: "flex",
               flexDirection: "column",
               justifyContent: "flex-end",
@@ -615,7 +616,7 @@ function ActivityPopover({
                 />
               ))}
               {/* Sentinel — smooth scroll target */}
-              <div ref={bottomRef} style={{ height: 0 }} />
+              <div ref={bottomRef} style={{ height: 1 }} />
             </div>
           </div>
         </div>
@@ -778,27 +779,27 @@ function PortraitCard({ portrait }: { portrait: Portrait }) {
         </p>
       </div>
 
-      {/* Activity indicator dot */}
-      {portrait.hasActivity && (
-        <div className="s-absolute s-right-2.5 s-top-2.5 s-h-2 s-w-2 s-rounded-full s-bg-emerald-400 s-ring-2 s-ring-white s-animate-pulse" />
-      )}
-
       {/* Activity popover — only for Elena, rendered in a portal above everything */}
       {portrait.hasActivity && (
         <ActivityPopover pagePos={pagePos} visible={hovered} />
       )}
 
-      {/* Plain "Activity" pill for non-Elena cards */}
-      {!portrait.hasActivity && hovered && (
+      {/* Cursor follower: colored dot + chip label */}
+      {hovered && (
         <div
-          className="s-pointer-events-none s-absolute s-z-10 s-whitespace-nowrap s-rounded-full s-bg-white/20 s-px-4 s-py-1.5 s-text-sm s-font-medium s-text-white s-ring-1 s-ring-white/30 s-backdrop-blur-sm"
+          className="s-pointer-events-none s-absolute s-z-10 s-flex s-items-center s-gap-1.5"
           style={{
             left: cursorPos.x,
             top: cursorPos.y,
-            transform: "translate(12px, -50%)",
+            transform: "translate(10px, -50%)",
           }}
         >
-          Activity
+          <div className="s-h-2.5 s-w-2.5 s-rounded-full s-bg-emerald-400 s-ring-2 s-ring-white s-flex-shrink-0" />
+          <Chip
+            size="xs"
+            color="success"
+            label={`${portrait.name}'s activity`}
+          />
         </div>
       )}
     </div>
