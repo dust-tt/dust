@@ -1,5 +1,6 @@
 import assert from "node:assert";
 import type { APIPromise } from "@anthropic-ai/sdk";
+import { APIError } from "@anthropic-ai/sdk";
 import type { BetaRawMessageStreamEvent } from "@anthropic-ai/sdk/resources/beta.mjs";
 import type { MessageBatchResult } from "@anthropic-ai/sdk/resources/messages/batches.mjs";
 import type {
@@ -34,6 +35,7 @@ import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import cloneDeep from "lodash/cloneDeep";
 
 const MAX_EAGER_VALIDATION_INPUT_LENGTH = 5_000;
+const INVALID_JSON_MARKER = "JSON: ";
 
 export async function* streamLLMEvents(
   messageStreamEvents: AsyncIterable<BetaRawMessageStreamEvent>,
@@ -60,17 +62,43 @@ export async function* streamLLMEvents(
   // https://github.com/anthropics/anthropic-sdk-typescript/issues/777
   // They say it has been fixed in the version we are using but in practice we still see it happening.
   // To work around this, we clone each event before processing it.
-  for await (const mutableMessageStreamEvent of messageStreamEvents) {
-    const messageStreamEvent = cloneDeep(mutableMessageStreamEvent);
+  try {
+    for await (const mutableMessageStreamEvent of messageStreamEvents) {
+      const messageStreamEvent = cloneDeep(mutableMessageStreamEvent);
 
-    for (const ev of handleMessageStreamEvent(
-      messageStreamEvent,
-      stateContainer,
-      metadata,
-      tokenUsageAccumulator
-    )) {
+      for (const ev of handleMessageStreamEvent(
+        messageStreamEvent,
+        stateContainer,
+        metadata,
+        tokenUsageAccumulator
+      )) {
+        aggregate.add(ev);
+        yield ev;
+      }
+    }
+  } catch (err) {
+    // The Anthropic API sometimes aborts the stream with an error when the model
+    // produces invalid tool parameter JSON. When we have a tool in progress in our
+    // state, we recover by emitting a toolCallWithInvalidJson event so the agent
+    // loop can send it back as a tool result and let the model self-correct.
+    if (
+      isInvalidToolJsonError(err) &&
+      stateContainer.state?.accumulatorType === "tool_use"
+    ) {
+      const { message } = err.error.error;
+      const invalidJson = message.slice(
+        message.lastIndexOf(INVALID_JSON_MARKER) + INVALID_JSON_MARKER.length
+      );
+      const ev = toolCallWithInvalidJson({
+        ...stateContainer.state.toolInfo,
+        invalidJson,
+        metadata,
+      });
       aggregate.add(ev);
       yield ev;
+      stateContainer.state = null;
+    } else {
+      throw err;
     }
   }
 
@@ -537,6 +565,45 @@ function toolCallWithInvalidJson({
     },
     metadata,
   };
+}
+
+type InvalidToolJsonError = APIError & {
+  error: { error: { message: string } };
+};
+
+/**
+ * Checks if an error is an Anthropic "Unable to parse tool parameter JSON" error.
+ * The Anthropic API error message format ends with `JSON: <raw invalid json>`.
+ * The invalid JSON can be extracted from `err.error.error.message` at the call site.
+ */
+function isInvalidToolJsonError(err: unknown): err is InvalidToolJsonError {
+  if (!(err instanceof APIError)) {
+    return false;
+  }
+  if (err.type !== "invalid_request_error") {
+    return false;
+  }
+  // err.error is the parsed JSON body: { type: "error", error: { type, message } }.
+  const body = err.error;
+  if (typeof body !== "object" || body === null || !isRecord(body)) {
+    return false;
+  }
+  const innerError = body.error;
+  if (
+    typeof innerError !== "object" ||
+    innerError === null ||
+    !isRecord(innerError)
+  ) {
+    return false;
+  }
+  const { message } = innerError;
+  if (typeof message !== "string") {
+    return false;
+  }
+  if (!message.includes("Unable to parse tool parameter JSON")) {
+    return false;
+  }
+  return message.lastIndexOf(INVALID_JSON_MARKER) !== -1;
 }
 
 /**
