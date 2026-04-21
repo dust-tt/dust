@@ -773,9 +773,7 @@ function PortraitCard({
       </div>
 
       {/* Activity popover — only for Elena, rendered in a portal above everything */}
-      {portrait.hasActivity && (
-        <ActivityPopover pagePos={pagePos} visible={hovered} />
-      )}
+      <ActivityPopover pagePos={pagePos} visible={hovered} />
 
       {/* Cursor: green dot + radar pulse rings */}
       {hovered && (
@@ -889,7 +887,9 @@ export default function LandingAIToWork() {
           width: 28px; height: 28px;
           border-radius: 9999px;
           background: #10b981;
+          opacity: 0;
           animation: radarPulse 3.2s ease-out infinite;
+          animation-fill-mode: backwards;
         }
       `}</style>
 
