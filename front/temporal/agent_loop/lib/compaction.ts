@@ -172,15 +172,9 @@ export async function runCompaction(
     conversationToSummarize = sourceConversationRes.value;
   }
 
-  if (sourceConversation) {
-    conversationToSummarize = filterConversationContentUpToRank(
-      conversationToSummarize,
-      sourceConversation.messageRank
-    );
-  }
-
   const summaryRes = await generateCompactionSummary(auth, {
     sourceConversation: conversationToSummarize,
+    sourceMessageRank: sourceConversation?.messageRank,
     targetConversationId: targetConversation.sId,
     compactionMessage,
     model,
@@ -246,11 +240,13 @@ async function generateCompactionSummary(
   auth: Authenticator,
   {
     sourceConversation,
+    sourceMessageRank,
     targetConversationId,
     compactionMessage,
     model,
   }: {
     sourceConversation: ConversationType;
+    sourceMessageRank?: number;
     targetConversationId: string;
     compactionMessage: CompactionMessageType;
     model: SupportedModel;
@@ -258,9 +254,17 @@ async function generateCompactionSummary(
 ): Promise<Result<string, Error>> {
   const owner = auth.getNonNullableWorkspace();
 
+  const conversationToSummarize =
+    sourceMessageRank === undefined
+      ? sourceConversation
+      : filterConversationContentUpToRank(
+          sourceConversation,
+          sourceMessageRank
+        );
+
   // renderConversationAsText stops at the last succeeded compaction boundary by default and skips
   // running agent messages, producing exactly the messages that need to be summarized.
-  const renderedMessages = renderConversationAsText(sourceConversation, {
+  const renderedMessages = renderConversationAsText(conversationToSummarize, {
     includeTimestamps: true,
     includeActions: true,
     includeActionDetails: true,
