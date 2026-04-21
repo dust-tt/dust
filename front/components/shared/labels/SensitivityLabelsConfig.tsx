@@ -1,14 +1,11 @@
 import { useDataClassificationLabels } from "@app/lib/swr/data_classification_labels";
 import type { LightWorkspaceType } from "@app/types/user";
 import { MicrosoftLabelsSelector } from "./MicrosoftLabelsConfig";
-
-type Source =
-  | { dataSourceId: string; internalMCPServerId?: never }
-  | { internalMCPServerId: string; dataSourceId?: never };
+import type { SensitivityLabelSource } from "./types";
 
 interface SensitivityLabelsConfigProps {
   owner: LightWorkspaceType;
-  source: Source;
+  source: SensitivityLabelSource;
   readOnly?: boolean;
   isAdmin: boolean;
 }
@@ -24,7 +21,7 @@ export function SensitivityLabelsConfig({
     isDataClassificationLabelsLoading,
     isDataClassificationLabelsError,
     mutateDataClassificationLabels,
-  } = useDataClassificationLabels({ owner, ...source });
+  } = useDataClassificationLabels({ owner, source });
 
   if (isDataClassificationLabelsLoading) {
     return null;

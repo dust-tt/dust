@@ -1,3 +1,4 @@
+import type { SensitivityLabelSource } from "@app/components/shared/labels/types";
 import { clientFetch } from "@app/lib/egress/client";
 import type { MicrosoftAllowedLabel } from "@app/lib/models/workspace_sensitivity_label_config";
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
@@ -6,9 +7,7 @@ import type { LightWorkspaceType } from "@app/types/user";
 
 function buildKey(
   owner: LightWorkspaceType,
-  source:
-    | { dataSourceId: string; internalMCPServerId?: never }
-    | { internalMCPServerId: string; dataSourceId?: never }
+  source: SensitivityLabelSource
 ): string {
   if (source.dataSourceId !== undefined) {
     return `/api/w/${owner.sId}/data-classification-labels?dataSourceId=${source.dataSourceId}`;
@@ -18,21 +17,13 @@ function buildKey(
 
 export function useDataClassificationLabels({
   owner,
-  dataSourceId,
-  internalMCPServerId,
+  source,
 }: {
   owner: LightWorkspaceType;
-} & (
-  | { dataSourceId: string; internalMCPServerId?: never }
-  | { internalMCPServerId: string; dataSourceId?: never }
-)) {
+  source: SensitivityLabelSource;
+}) {
   const { fetcher } = useFetcher();
-  const key = buildKey(
-    owner,
-    dataSourceId !== undefined
-      ? { dataSourceId }
-      : { internalMCPServerId: internalMCPServerId! }
-  );
+  const key = buildKey(owner, source);
   const { data, error, mutate } = useSWRWithDefaults<
     string,
     DataClassificationLabelsResponseBody
@@ -48,21 +39,18 @@ export function useDataClassificationLabels({
 
 export async function saveDataClassificationLabels({
   owner,
-  dataSourceId,
-  internalMCPServerId,
+  source,
   allowedLabels,
 }: {
   owner: LightWorkspaceType;
   allowedLabels: MicrosoftAllowedLabel[];
-} & (
-  | { dataSourceId: string; internalMCPServerId?: never }
-  | { internalMCPServerId: string; dataSourceId?: never }
-)): Promise<{ success: boolean; error?: string }> {
+  source: SensitivityLabelSource;
+}): Promise<{ success: boolean; error?: string }> {
   const body: Record<string, unknown> = { allowedLabels };
-  if (dataSourceId !== undefined) {
-    body.dataSourceId = dataSourceId;
+  if (source.dataSourceId !== undefined) {
+    body.dataSourceId = source.dataSourceId;
   } else {
-    body.internalMCPServerId = internalMCPServerId;
+    body.internalMCPServerId = source.internalMCPServerId;
   }
 
   const response = await clientFetch(
