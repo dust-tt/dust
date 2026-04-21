@@ -139,7 +139,7 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
 
     const cancelResults = await concurrentExecutor(
       activeWakeUps,
-      async (wakeUp) => wakeUp.cancel(auth, { transaction }),
+      async (wakeUp) => wakeUp.cancelTemporalWorkflow(auth),
       { concurrency: 10 }
     );
 
