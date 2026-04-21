@@ -5,7 +5,8 @@
 ### [x] PR 1 — WakeUpModel + migration
 
 Add the `wake_ups` table (migration), `WakeUpModel` Sequelize model, indexes on `conversationId`,
-`userId`, and `(workspaceId, status)`. Add `"wakeup"` to `UserMessageOrigin` union type and usage
+`userId`, and `(workspaceId, status)`. Require `userId` to be non-null so wake-ups can only be
+created in a user context. Add `"wakeup"` to `UserMessageOrigin` union type and usage
 classification.
 
 ### [x] PR 2 — WakeUpResource
@@ -52,9 +53,8 @@ legacy `agent_action.ts` registry.
 
 ### PR 6 — Conversation interaction restrictions
 
-Enforce that only the wake-up owner can post in a conversation with an active user-owned wake-up.
-Cancellation permissions (owner + admins for user-owned, anyone for userless). Skip restrictions
-for API-created wake-ups with no userId.
+Enforce that only the wake-up owner can post in a conversation with an active wake-up.
+Cancellation permissions are owner + workspace admins.
 
 ## Milestone 5: API + UI
 
