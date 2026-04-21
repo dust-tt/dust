@@ -3990,6 +3990,97 @@ describe("postNewContentFragment", () => {
         );
       }
     });
+
+    it("allows superseding a trunk content fragment from a branch conversation", async () => {
+      const user = auth.getNonNullableUser();
+      const blob = new Ok({
+        contentType: "text/plain" as const,
+        fileId: null,
+        nodeId: "branch-node-id",
+        nodeDataSourceViewId: dsViewInGlobalSpace.id,
+        nodeType: "document" as const,
+        sourceUrl: null,
+        textBytes: null,
+        title: "Branch superseded fragment",
+      });
+      vi.mocked(getContentFragmentBlob)
+        .mockResolvedValueOnce(blob)
+        .mockResolvedValueOnce(blob);
+
+      const conversationWithoutContent = await ConversationFactory.create(
+        auth,
+        {
+          agentConfigurationId: agentConfig.sId,
+          messagesCreatedAt: [],
+        }
+      );
+
+      const conversationResult = await getConversation(
+        auth,
+        conversationWithoutContent.sId
+      );
+      expect(conversationResult.isOk()).toBe(true);
+      if (conversationResult.isErr()) {
+        throw new Error("Failed to fetch conversation");
+      }
+
+      const input: ContentFragmentInputWithContentNode = {
+        title: "Branch superseded fragment",
+        nodeId: "branch-node-id",
+        nodeDataSourceViewId: dsViewInGlobalSpace.sId,
+      };
+      const context = {
+        username: user.username,
+        fullName: user.fullName(),
+        email: user.email,
+        profilePictureUrl: null,
+      };
+
+      const first = await postNewContentFragment(
+        auth,
+        conversationResult.value,
+        input,
+        context
+      );
+      expect(first.isOk()).toBe(true);
+      if (first.isErr()) {
+        throw new Error("Failed to create the trunk content fragment");
+      }
+
+      const branch = await ConversationBranchResource.makeNew(auth, {
+        state: "open",
+        previousMessageId: first.value.id,
+        conversationId: conversationResult.value.id,
+        userId: user.id,
+      });
+
+      const branchConversationResult = await getConversation(
+        auth,
+        conversationWithoutContent.sId,
+        false,
+        branch.sId
+      );
+      expect(branchConversationResult.isOk()).toBe(true);
+      if (branchConversationResult.isErr()) {
+        throw new Error("Failed to fetch branch conversation");
+      }
+
+      const second = await postNewContentFragment(
+        auth,
+        branchConversationResult.value,
+        {
+          ...input,
+          supersededContentFragmentId: first.value.contentFragmentId,
+        },
+        context
+      );
+      expect(second.isOk()).toBe(true);
+      if (second.isOk()) {
+        expect(second.value.contentFragmentId).toBe(
+          first.value.contentFragmentId
+        );
+      }
+    });
   });
 });
 

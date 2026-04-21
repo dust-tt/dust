@@ -157,8 +157,8 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
 import uniq from "lodash/uniq";
 import type { NextApiRequest } from "next";
-import type { Transaction } from "sequelize";
-import { col } from "sequelize";
+import type { Transaction, WhereOptions } from "sequelize";
+import { col, Op } from "sequelize";
 
 // Rate limit for programmatic usage: 1 message per this amount of dollars per minute.
 const PROGRAMMATIC_RATE_LIMIT_DOLLARS_PER_MESSAGE = 3;
@@ -492,9 +492,7 @@ async function getNextConversationMessageRank(
       where: {
         workspaceId: owner.id,
         conversationId: conversation.id,
-        branchId: conversation.branchId
-          ? getResourceIdFromSId(conversation.branchId)
-          : null,
+        branchId: getConversationBranchModelId(conversation),
       },
       transaction,
     })) ?? -1) + 1
@@ -516,6 +514,56 @@ function getConversationBranchModelId(
   return branchModelId;
 }
 
+async function getConversationMessageWhere(
+  auth: Authenticator,
+  conversation: ConversationWithoutContentType
+): Promise<WhereOptions<MessageModel>> {
+  const workspaceId = auth.getNonNullableWorkspace().id;
+  const where: WhereOptions<MessageModel> = {
+    workspaceId,
+    conversationId: conversation.id,
+  };
+
+  if (!conversation.branchId) {
+    return {
+      ...where,
+      branchId: null,
+    };
+  }
+
+  const branch = await ConversationBranchResource.fetchById(
+    auth,
+    conversation.branchId
+  );
+  if (!branch || !branch.canRead(auth)) {
+    throw new Error("Unexpected: conversation branch not found.");
+  }
+
+  const previousMessage = await MessageModel.findOne({
+    attributes: ["rank"],
+    where: {
+      id: branch.previousMessageId,
+      workspaceId,
+    },
+  });
+  if (!previousMessage) {
+    throw new Error("Unexpected: branch previous message not found.");
+  }
+
+  return {
+    ...where,
+    [Op.or]: [
+      {
+        branchId: branch.id,
+      },
+      {
+        branchId: null,
+        rank: { [Op.lte]: previousMessage.rank },
+      },
+    ],
+  };
+}
+
 async function hasContentFragmentSeriesInConversation(
   auth: Authenticator,
   {
@@ -526,13 +574,10 @@ async function hasContentFragmentSeriesInConversation(
     contentFragmentSId: string;
   }
 ): Promise<boolean> {
+  const messageWhere = await getConversationMessageWhere(auth, conversation);
   const message = await MessageModel.findOne({
     attributes: ["id"],
-    where: {
-      workspaceId: auth.getNonNullableWorkspace().id,
-      conversationId: conversation.id,
-      branchId: getConversationBranchModelId(conversation),
-    },
+    where: messageWhere,
     include: [
       {
         model: ContentFragmentModel,
