@@ -13,7 +13,8 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { Attributes, Transaction, WhereOptions } from "sequelize";
 import { literal } from "sequelize";
 
@@ -64,7 +65,48 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
     agentConfiguration: AgentConfigurationType,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<WakeUpResource, Error>> {
-    const { status = "scheduled", fireCount = 0, ...wakeUpBlob } = blob;
+    const {
+      status = "scheduled",
+      fireCount = 0,
+      scheduleType,
+      fireAt,
+      cronExpression,
+      cronTimezone,
+      reason,
+    } = blob;
+
+    switch (scheduleType) {
+      case "one_shot":
+        if (!fireAt) {
+          return new Err(
+            new Error("fireAt is required for one_shot schedule type")
+          );
+        }
+        if (cronExpression || cronTimezone) {
+          return new Err(
+            new Error(
+              "cronExpression and cronTimezone should be null for one_shot schedule type"
+            )
+          );
+        }
+        break;
+      case "cron":
+        if (!cronExpression || !cronTimezone) {
+          return new Err(
+            new Error(
+              "cronExpression and cronTimezone are required for cron schedule type"
+            )
+          );
+        }
+        if (fireAt) {
+          return new Err(
+            new Error("fireAt should be null for cron schedule type")
+          );
+        }
+        break;
+      default:
+        assertNever(scheduleType);
+    }
 
     const row = await this.model.create(
       {
@@ -74,7 +116,11 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
         agentConfigurationId: agentConfiguration.sId,
         status,
         fireCount,
-        ...wakeUpBlob,
+        scheduleType,
+        fireAt,
+        cronExpression,
+        cronTimezone,
+        reason,
       },
       { transaction }
     );
