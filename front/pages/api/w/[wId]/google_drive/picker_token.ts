@@ -4,6 +4,7 @@ import config from "@app/lib/api/config";
 import { getOAuthConnectionAccessToken } from "@app/lib/api/oauth_access_token";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
@@ -43,11 +44,20 @@ async function handler(
 
       const { mcpServerId } = parseResult.data;
 
-      // Look up the user's personal OAuth connection for this MCP server
+      // Use whichever connection type the tool is configured for.
+      const views = await MCPServerViewResource.listByMCPServer(
+        auth,
+        mcpServerId
+      );
+      const connectionType =
+        views[0]?.oAuthUseCase === "platform_actions"
+          ? "workspace"
+          : "personal";
+
       const connectionResult =
         await MCPServerConnectionResource.findByMCPServer(auth, {
           mcpServerId,
-          connectionType: "personal",
+          connectionType,
         });
 
       if (connectionResult.isErr()) {
