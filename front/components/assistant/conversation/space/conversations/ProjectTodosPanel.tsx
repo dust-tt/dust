@@ -1,18 +1,21 @@
 import { useAppRouter } from "@app/lib/platform";
+import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import {
   useCleanDoneProjectTodos,
   useDeleteProjectTodo,
   useProjectTodos,
   useUpdateProjectTodo,
 } from "@app/lib/swr/projects";
+import { timeAgoFrom } from "@app/lib/utils";
 import type { GetProjectTodosResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_todos/index";
-
 import type {
+  ProjectTodoActorType,
   ProjectTodoCategory,
   ProjectTodoStatus,
   ProjectTodoType,
 } from "@app/types/project_todo";
 import { PROJECT_TODO_CATEGORIES } from "@app/types/project_todo";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   BookOpenIcon,
@@ -37,7 +40,7 @@ import {
 } from "@dust-tt/sparkle";
 import { AnimatePresence, motion } from "framer-motion";
 import type React from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 // ── Category display configuration ────────────────────────────────────────────
 
@@ -62,6 +65,98 @@ const CATEGORY_CONFIG: Record<ProjectTodoCategory, CategoryConfig> = {
 
 // Stable display order for categories.
 const ORDERED_CATEGORIES: ProjectTodoCategory[] = [...PROJECT_TODO_CATEGORIES];
+
+// ── Metadata tooltip ──────────────────────────────────────────────────────────
+
+function formatActorLabel(
+  type: ProjectTodoActorType | null,
+  agentId: string | null,
+  agentNameById: Map<string, string>
+): string {
+  if (!type) {
+    return "someone";
+  }
+  switch (type) {
+    case "agent":
+      if (agentId === "butler") {
+        return "Dust";
+      }
+      const name = agentId ? agentNameById.get(agentId) : null;
+      return name ? `@${name}` : "an agent";
+    case "user":
+      return "you";
+    default:
+      assertNeverAndIgnore(type);
+      return "someone";
+  }
+}
+
+function formatFriendlyDate(value: Date | string): string {
+  return `${timeAgoFrom(new Date(value).getTime(), { useLongFormat: true })} ago`;
+}
+
+interface TodoMetadataTooltipProps {
+  todo: ProjectTodoType;
+  agentNameById: Map<string, string>;
+  children: React.ReactElement;
+}
+
+function TodoMetadataTooltip({
+  todo,
+  agentNameById,
+  children,
+}: TodoMetadataTooltipProps) {
+  const creatorLabel = formatActorLabel(
+    todo.createdByType,
+    todo.createdByAgentConfigurationId,
+    agentNameById
+  );
+  const doneLabel = todo.markedAsDoneByType
+    ? formatActorLabel(
+        todo.markedAsDoneByType,
+        todo.markedAsDoneByAgentConfigurationId,
+        agentNameById
+      )
+    : null;
+
+  const label = (
+    <div className="flex flex-col gap-1">
+      <div className="text-xs">
+        Created by {creatorLabel} · {formatFriendlyDate(todo.createdAt)}
+      </div>
+      {todo.doneAt && doneLabel && (
+        <div className="text-xs">
+          Done by {doneLabel} · {formatFriendlyDate(todo.doneAt)}
+        </div>
+      )}
+      {todo.actorRationale && (
+        <div className="max-w-xs text-xs italic opacity-80">
+          {todo.actorRationale}
+        </div>
+      )}
+    </div>
+  );
+
+  return <Tooltip label={label} tooltipTriggerAsChild trigger={children} />;
+}
+
+function useAgentNameById(
+  owner: LightWorkspaceType,
+  disabled?: boolean
+): Map<string, string> {
+  const { agentConfigurations } = useAgentConfigurations({
+    workspaceId: owner.sId,
+    agentsGetView: "list",
+    disabled,
+  });
+  return useMemo(() => {
+    const map = new Map<string, string>();
+    for (const a of agentConfigurations) {
+      map.set(a.sId, a.name);
+    }
+    return map;
+  }, [agentConfigurations]);
+}
 
 // ── Shared sub-components ─────────────────────────────────────────────────────
 
@@ -272,9 +367,11 @@ function CollapsibleTodoList({ children }: CollapsibleTodoListProps) {
 function ReadOnlyTodoItem({
   todo,
   owner,
+  agentNameById,
 }: {
   todo: ProjectTodoType;
   owner: LightWorkspaceType;
+  agentNameById: Map<string, string>;
 }) {
   const isDone = todo.status === "done";
 
@@ -283,19 +380,21 @@ function ReadOnlyTodoItem({
       <div className="mt-0.5 shrink-0">
         <Checkbox size="xs" checked={isDone} disabled />
       </div>
-      <div className="flex flex-col gap-0.5">
-        <span
-          className={cn(
-            "text-sm leading-5",
-            isDone
-              ? "text-faint dark:text-faint-night line-through"
-              : "text-foreground dark:text-foreground-night"
-          )}
-        >
-          {todo.text}
-        </span>
-        <TodoSources sources={todo.sources} owner={owner} isDone={isDone} />
-      </div>
+      <TodoMetadataTooltip todo={todo} agentNameById={agentNameById}>
+        <div className="flex flex-col gap-0.5">
+          <span
+            className={cn(
+              "text-sm leading-5",
+              isDone
+                ? "text-faint dark:text-faint-night line-through"
+                : "text-foreground dark:text-foreground-night"
+            )}
+          >
+            {todo.text}
+          </span>
+          <TodoSources sources={todo.sources} owner={owner} isDone={isDone} />
+        </div>
+      </TodoMetadataTooltip>
     </li>
   );
 }
@@ -308,6 +407,7 @@ function ReadOnlyProjectTodosPanel({
   spaceId: string;
 }) {
   const { todos, isTodosLoading } = useProjectTodos({ owner, spaceId });
+  const agentNameById = useAgentNameById(owner);
   const { todosByCategory, activeSections } = groupTodosByCategory(todos);
 
   return (
@@ -334,6 +434,7 @@ function ReadOnlyProjectTodosPanel({
                       key={todo.sId}
                       todo={todo}
                       owner={owner}
+                      agentNameById={agentNameById}
                     />
                   ))}
                 </ul>
@@ -359,6 +460,7 @@ interface EditableTodoItemProps {
   onToggleDone: (todo: ProjectTodoType) => void;
   onDelete: (todo: ProjectTodoType) => void;
   owner: LightWorkspaceType;
+  agentNameById: Map<string, string>;
 }
 
 function EditableTodoItem({
@@ -366,6 +468,7 @@ function EditableTodoItem({
   onToggleDone,
   onDelete,
   owner,
+  agentNameById,
 }: EditableTodoItemProps) {
   const isDone = todo.status === "done";
 
@@ -397,23 +500,25 @@ function EditableTodoItem({
           onCheckedChange={() => handleToggle()}
         />
       </div>
-      <button
-        type="button"
-        className="flex min-w-0 flex-1 cursor-pointer flex-col gap-0.5 text-left"
-        onClick={handleToggle}
-      >
-        <span
-          className={cn(
-            "text-sm leading-5 transition-all duration-300",
-            isDone
-              ? "text-faint dark:text-faint-night line-through"
-              : "text-foreground dark:text-foreground-night"
-          )}
+      <TodoMetadataTooltip todo={todo} agentNameById={agentNameById}>
+        <button
+          type="button"
+          className="flex min-w-0 flex-1 cursor-pointer flex-col gap-0.5 text-left"
+          onClick={handleToggle}
         >
-          {todo.text}
-        </span>
-        <TodoSources sources={todo.sources} owner={owner} isDone={isDone} />
-      </button>
+          <span
+            className={cn(
+              "text-sm leading-5 transition-all duration-300",
+              isDone
+                ? "text-faint dark:text-faint-night line-through"
+                : "text-foreground dark:text-foreground-night"
+            )}
+          >
+            {todo.text}
+          </span>
+          <TodoSources sources={todo.sources} owner={owner} isDone={isDone} />
+        </button>
+      </TodoMetadataTooltip>
       <div className="shrink-0 opacity-0 transition-opacity group-hover/todo:opacity-100">
         <IconButton
           icon={TrashIcon}
@@ -438,6 +543,7 @@ function EditableProjectTodosPanel({
     owner,
     spaceId,
   });
+  const agentNameById = useAgentNameById(owner);
   const doUpdate = useUpdateProjectTodo({ owner, spaceId });
   const doDelete = useDeleteProjectTodo({ owner, spaceId });
   const doCleanDone = useCleanDoneProjectTodos({ owner, spaceId });
@@ -625,6 +731,7 @@ function EditableProjectTodosPanel({
                         onToggleDone={handleToggleDone}
                         onDelete={handleDelete}
                         owner={owner}
+                        agentNameById={agentNameById}
                       />
                     ))}
                   </AnimatePresence>
