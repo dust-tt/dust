@@ -457,13 +457,14 @@ export class InternalMCPServerInMemoryResource {
         removeNulls(servers.map((server) => server.internalMCPServerId))
       ),
     ];
-    const resolvedIds = removeNulls(ids
-      .map((id) => {
+    const resolvedIds = removeNulls(
+      ids.map((id) => {
         const resolvedName = getInternalMCPServerNameAndWorkspaceId(id);
         return resolvedName.isOk()
           ? { id, name: resolvedName.value.name }
           : null;
-      }));
+      })
+    );
 
     const enabledServerNames = await this.computeEnabledServerNames(
       auth,
