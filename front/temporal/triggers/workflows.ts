@@ -18,7 +18,7 @@ const { expireWakeUpActivity, runWakeUpActivity } = proxyActivities<
   retry: {
     initialInterval: "30 seconds",
     backoffCoefficient: 2,
-    maximumAttempts: 6,
+    maximumAttempts: 3,
     maximumInterval: "5 minutes",
     nonRetryableErrorTypes: ["WakeUpNonRetryableError"],
   },
