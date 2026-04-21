@@ -132,7 +132,7 @@ export async function cancelMessageGenerationEvent(
         const signalError = normalizeError(err);
         // Swallow errors from signaling (workflow might not exist anymore)
         logger.warn(
-          { error: signalError, messageId },
+          { error: signalError, conversationId, messageId },
           "Failed to signal agent loop workflow for cancellation"
         );
         failedIds.push(messageId);
@@ -170,7 +170,7 @@ export async function gracefullyStopAgentLoop(
         const signalError = normalizeError(err);
         // Swallow errors from signaling (workflow might not exist anymore)
         logger.warn(
-          { error: signalError, messageId },
+          { error: signalError, conversationId, messageId },
           "Failed to signal agent loop workflow for graceful stop"
         );
       }
