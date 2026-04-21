@@ -47,19 +47,40 @@ export class InternalMCPServerInMemoryResource {
   private metadata: Omit<
     MCPServerType,
     "sId" | "allowMultipleInstances" | "availability"
-  > = {
-    name: DEFAULT_MCP_ACTION_NAME,
-    version: DEFAULT_MCP_ACTION_VERSION,
-    description: DEFAULT_MCP_ACTION_DESCRIPTION,
-    icon: DEFAULT_MCP_SERVER_ICON,
-    authorization: null,
-    documentationUrl: null,
-    tools: [],
-  };
+  >;
   private internalServerCredential: {
     sharedSecret: string | null;
     customHeaders: Record<string, string> | null;
-  } | null = null;
+  } | null;
+
+  constructor(
+    readonly id: string,
+    readonly availability: MCPServerAvailability,
+    {
+      metadata = {
+        name: DEFAULT_MCP_ACTION_NAME,
+        version: DEFAULT_MCP_ACTION_VERSION,
+        description: DEFAULT_MCP_ACTION_DESCRIPTION,
+        icon: DEFAULT_MCP_SERVER_ICON,
+        authorization: null,
+        documentationUrl: null,
+        tools: [],
+      },
+      internalServerCredential = null,
+    }: {
+      metadata?: Omit<
+        MCPServerType,
+        "sId" | "allowMultipleInstances" | "availability"
+      >;
+      internalServerCredential?: {
+        sharedSecret: string | null;
+        customHeaders: Record<string, string> | null;
+      } | null;
+    } = {}
+  ) {
+    this.metadata = metadata;
+    this.internalServerCredential = internalServerCredential;
+  }
 
   constructor(
     readonly id: string,
