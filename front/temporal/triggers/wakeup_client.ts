@@ -2,12 +2,18 @@ import type { Authenticator } from "@app/lib/auth";
 import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import { QUEUE_NAME } from "@app/temporal/triggers/config";
+import { buildCronScheduleSpec } from "@app/temporal/triggers/schedule_client";
 import type { WakeUpType } from "@app/types/assistant/wakeups";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { WorkflowNotFoundError } from "@temporalio/client";
+import type { ScheduleOptions } from "@temporalio/client";
+import {
+  ScheduleNotFoundError,
+  ScheduleOverlapPolicy,
+  WorkflowNotFoundError,
+} from "@temporalio/client";
 
 import { wakeUpWorkflow } from "./workflows";
 
@@ -19,6 +25,16 @@ export function makeWakeUpWorkflowId({
   wakeUpId: string;
 }): string {
   return `wakeup-${workspaceId}-${wakeUpId}`;
+}
+
+export function makeWakeUpScheduleId({
+  workspaceId,
+  wakeUpId,
+}: {
+  workspaceId: string;
+  wakeUpId: string;
+}): string {
+  return `wakeup-schedule-${workspaceId}-${wakeUpId}`;
 }
 
 export async function launchOrScheduleWakeUpTemporalWorkflow(
@@ -71,9 +87,61 @@ export async function launchOrScheduleWakeUpTemporalWorkflow(
     }
 
     case "cron": {
-      //TODO(wakeup): Implement schedule creation
+      const scheduleId = makeWakeUpScheduleId({
+        workspaceId: owner.sId,
+        wakeUpId: wakeUp.sId,
+      });
 
-      return new Err(new Error("Cron wake-ups are not supported yet."));
+      const childLogger = logger.child({
+        workspaceId: owner.sId,
+        wakeUpId: wakeUp.sId,
+        scheduleId,
+        wakeUp,
+      });
+
+      const scheduleOptions: ScheduleOptions = {
+        action: {
+          type: "startWorkflow" as const,
+          workflowType: wakeUpWorkflow,
+          args: [{ workspaceId: owner.sId, wakeUpId: wakeUp.sId }] as const,
+          taskQueue: QUEUE_NAME,
+        },
+        scheduleId,
+        policies: {
+          overlap: ScheduleOverlapPolicy.SKIP,
+        },
+        spec: buildCronScheduleSpec(wakeUp.scheduleConfig),
+      };
+
+      const existingSchedule = client.schedule.getHandle(scheduleId);
+      try {
+        await existingSchedule.update((previous) => {
+          return {
+            ...scheduleOptions,
+            state: previous.state,
+          };
+        });
+
+        childLogger.info("Updated existing wake-up schedule.");
+        return new Ok(undefined);
+      } catch (error) {
+        if (!(error instanceof ScheduleNotFoundError)) {
+          childLogger.error(
+            { error },
+            "Failed to update existing wake-up schedule."
+          );
+          return new Err(normalizeError(error));
+        }
+      }
+
+      try {
+        await client.schedule.create(scheduleOptions);
+        childLogger.info("Created new wake-up schedule.");
+        return new Ok(undefined);
+      } catch (error) {
+        childLogger.error({ error }, "Failed to create wake-up schedule.");
+        return new Err(normalizeError(error));
+      }
     }
 
     default:
@@ -116,9 +184,29 @@ export async function cancelWakeUpTemporalWorkflow(
     }
 
     case "cron": {
-      //TODO(wakeup): Implement schedule deletion
+      const scheduleId = makeWakeUpScheduleId({
+        workspaceId: owner.sId,
+        wakeUpId: wakeUp.sId,
+      });
 
-      return new Err(new Error("Cron wake-ups are not supported yet."));
+      try {
+        await client.schedule.getHandle(scheduleId).delete();
+      } catch (error) {
+        if (!(error instanceof ScheduleNotFoundError)) {
+          logger.warn(
+            {
+              workspaceId: owner.sId,
+              wakeUpId: wakeUp.sId,
+              scheduleId,
+              error,
+            },
+            "Failed deleting wake-up schedule."
+          );
+          return new Err(normalizeError(error));
+        }
+      }
+
+      return new Ok(undefined);
     }
 
     default:
