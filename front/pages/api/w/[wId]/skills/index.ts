@@ -115,13 +115,8 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const {
-        withRelations,
-        status,
-        globalSpaceOnly,
-        isDefault,
-        viewType,
-      } = req.query;
+      const { withRelations, status, globalSpaceOnly, isDefault, viewType } =
+        req.query;
 
       let skillView: SkillViewType = "full";
       if (viewType !== undefined) {
@@ -143,7 +138,8 @@ async function handler(
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: "viewType=summary is incompatible with withRelations=true.",
+            message:
+              "viewType=summary is incompatible with withRelations=true.",
           },
         });
       }
@@ -206,12 +202,8 @@ async function handler(
       if (skillView === "summary") {
         return res.status(200).json({
           skills: skills.map((sc) => {
-            const {
-              instructions,
-              instructionsHtml,
-              tools,
-              ...skillSummary
-            } = sc.toJSON(auth);
+            const { instructions, instructionsHtml, tools, ...skillSummary } =
+              sc.toJSON(auth);
 
             return skillSummary;
           }),

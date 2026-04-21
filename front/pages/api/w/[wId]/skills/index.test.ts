@@ -255,7 +255,10 @@ describe("GET /api/w/[wId]/skills", () => {
   it("should not fetch dynamic global instructions for viewType=summary", async () => {
     const { req, res, workspace } = await setupTest();
 
-    const fetchInstructionsSpy = vi.spyOn(discoverToolsSkill, "fetchInstructions");
+    const fetchInstructionsSpy = vi.spyOn(
+      discoverToolsSkill,
+      "fetchInstructions"
+    );
     try {
       req.query = {
         ...req.query,
@@ -270,7 +273,9 @@ describe("GET /api/w/[wId]/skills", () => {
       expect(
         res
           ._getJSONData()
-          .skills.some((s: SkillSummaryType) => s.sId === discoverToolsSkill.sId)
+          .skills.some(
+            (s: SkillSummaryType) => s.sId === discoverToolsSkill.sId
+          )
       ).toBe(true);
       expect(fetchInstructionsSpy).not.toHaveBeenCalled();
     } finally {
