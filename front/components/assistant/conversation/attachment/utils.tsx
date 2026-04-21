@@ -17,7 +17,6 @@ import {
   isInternalAllowedIcon,
 } from "@app/components/resources/resources_icons";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import type { ToolGeneratedFileType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
@@ -292,28 +291,6 @@ export function markdownCitationToAttachmentCitation(
       />
     ),
     provider: citation.provider,
-    isUploading: false,
-  };
-}
-
-export function toolGeneratedFileToAttachmentCitation(
-  file: ToolGeneratedFileType & { sourceUrl: string }
-): MCPAttachmentCitation {
-  return {
-    id: file.fileId,
-    fileId: file.fileId,
-    attachmentCitationType: "mcp",
-    contentType: file.contentType,
-    sourceUrl: file.sourceUrl,
-    description: file.text,
-    title: file.title,
-    type: "file",
-    visual: (
-      <IconForAttachmentCitation
-        contentType={file.contentType}
-        fileName={file.title}
-      />
-    ),
     isUploading: false,
   };
 }

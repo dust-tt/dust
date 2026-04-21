@@ -29,7 +29,10 @@ import { MCPRunAgentActionDetails } from "@app/components/actions/mcp/details/MC
 import { MCPSandboxActionDetails } from "@app/components/actions/mcp/details/MCPSandboxActionDetails";
 import { MCPSkillEnableActionDetails } from "@app/components/actions/mcp/details/MCPSkillEnableActionDetails";
 import { MCPTablesQueryActionDetails } from "@app/components/actions/mcp/details/MCPTablesQueryActionDetails";
-import { SearchResultDetails } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
+import {
+  SearchResultDetails,
+  ToolGeneratedFileDetails,
+} from "@app/components/actions/mcp/details/MCPToolOutputDetails";
 import { MCPToolsetsEnableActionDetails } from "@app/components/actions/mcp/details/MCPToolsetsEnableActionDetails";
 import type {
   ActionDetailsDisplayContext,
@@ -88,10 +91,8 @@ import {
   GET_DATABASE_SCHEMA_TOOL_NAME,
   TABLE_QUERY_V2_SERVER_NAME,
 } from "@app/lib/api/actions/servers/query_tables_v2/metadata";
-import config from "@app/lib/api/config";
 import { isValidJSON } from "@app/lib/utils/json";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
-import { isSupportedImageContentType } from "@app/types/files";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -456,33 +457,13 @@ export function GenericActionDetails({
               <div className="flex flex-wrap gap-2">
                 {action.generatedFiles
                   .filter((f) => !f.hidden)
-                  .map((file) => {
-                    if (isSupportedImageContentType(file.contentType)) {
-                      return (
-                        <div
-                          key={file.fileId}
-                          className="h-24 w-24 flex-shrink-0"
-                        >
-                          <img
-                            className="h-full w-full rounded-xl object-cover"
-                            src={`${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${file.fileId}`}
-                            alt={`${file.title}`}
-                          />
-                        </div>
-                      );
-                    }
-                    return (
-                      <div key={file.fileId}>
-                        <a
-                          href={`${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${file.fileId}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          {file.title}
-                        </a>
-                      </div>
-                    );
-                  })}
+                  .map((file) => (
+                    <ToolGeneratedFileDetails
+                      key={file.fileId}
+                      resource={file}
+                      owner={owner}
+                    />
+                  ))}
               </div>
             </>
           )}
