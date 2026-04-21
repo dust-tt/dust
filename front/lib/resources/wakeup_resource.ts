@@ -14,7 +14,6 @@ import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { Attributes, Transaction, WhereOptions } from "sequelize";
 import { literal } from "sequelize";
 
@@ -52,61 +51,26 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
 
   static async makeNew(
     auth: Authenticator,
-    blob: {
-      scheduleType: WakeUpScheduleType;
-      fireAt: Date | null;
-      cronExpression: string | null;
-      cronTimezone: string | null;
-      reason: string;
-      status?: WakeUpStatus;
-      fireCount?: number;
-    },
+    blob:
+      | {
+          scheduleType: "one_shot";
+          fireAt: Date;
+          cronExpression: null;
+          cronTimezone: null;
+          reason: string;
+        }
+      | {
+          scheduleType: "cron";
+          fireAt: null;
+          cronExpression: string;
+          cronTimezone: string;
+          reason: string;
+        },
     conversation: ConversationResource,
     agentConfiguration: AgentConfigurationType,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<WakeUpResource, Error>> {
-    const {
-      status = "scheduled",
-      fireCount = 0,
-      scheduleType,
-      fireAt,
-      cronExpression,
-      cronTimezone,
-      reason,
-    } = blob;
-
-    switch (scheduleType) {
-      case "one_shot":
-        if (!fireAt) {
-          return new Err(
-            new Error("fireAt is required for one_shot schedule type")
-          );
-        }
-        if (cronExpression || cronTimezone) {
-          return new Err(
-            new Error(
-              "cronExpression and cronTimezone should be null for one_shot schedule type"
-            )
-          );
-        }
-        break;
-      case "cron":
-        if (!cronExpression || !cronTimezone) {
-          return new Err(
-            new Error(
-              "cronExpression and cronTimezone are required for cron schedule type"
-            )
-          );
-        }
-        if (fireAt) {
-          return new Err(
-            new Error("fireAt should be null for cron schedule type")
-          );
-        }
-        break;
-      default:
-        assertNever(scheduleType);
-    }
+    const { scheduleType, fireAt, cronExpression, cronTimezone, reason } = blob;
 
     const row = await this.model.create(
       {
@@ -114,8 +78,8 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
         conversationId: conversation.id,
         userId: auth.user()?.id ?? null,
         agentConfigurationId: agentConfiguration.sId,
-        status,
-        fireCount,
+        status: "scheduled",
+        fireCount: 0,
         scheduleType,
         fireAt,
         cronExpression,
