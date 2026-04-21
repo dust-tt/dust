@@ -84,10 +84,10 @@ function SidekickContent({
       actionsToShow: [
         "attachment",
         ...(subscription.plan.isByok ? [] : ["voice" as const]),
-        "agents-list" as const,
       ] satisfies InputBarAction[],
       clientSideMCPServerIds,
       skipToolsValidation: true,
+      disableAgentMentions: true,
     }),
     [resetConversation, clientSideMCPServerIds, subscription.plan.isByok]
   );

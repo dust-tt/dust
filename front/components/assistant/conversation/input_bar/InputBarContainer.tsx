@@ -127,6 +127,7 @@ export interface InputBarContainerProps {
   space?: SpaceType;
   disableAutoFocus: boolean;
   disableUserMentions?: boolean;
+  disableAgentMentions?: boolean;
   fileUploaderService: FileUploaderService;
   getDraft: () => {
     text: string;
@@ -164,6 +165,7 @@ const InputBarContainer = ({
   actions,
   disableAutoFocus,
   disableUserMentions,
+  disableAgentMentions,
   isSubmitting,
   fileUploaderService,
   getDraft,
@@ -446,6 +448,7 @@ const InputBarContainer = ({
     onEnterKeyDown: onEnterKeyDownWithShake,
     disableAutoFocus,
     disableUserMentions,
+    disableAgentMentions,
     onUrlDetected: handleUrlDetected,
     onAgentSelect: onSingleAgentSelect,
     owner,

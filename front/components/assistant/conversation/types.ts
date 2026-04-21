@@ -126,6 +126,7 @@ export type VirtuosoMessageListContext = {
     resetConversation: () => void;
     clientSideMCPServerIds?: string[];
     skipToolsValidation?: boolean;
+    disableAgentMentions?: boolean;
   };
   feedbacksByMessageId: Record<string, AgentMessageFeedbackType>;
   additionalMarkdownComponents?: Components;
