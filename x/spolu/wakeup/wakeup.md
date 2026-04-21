@@ -333,8 +333,8 @@ When a wake-up fires:
 
 - In the current codebase, `schedule_wakeup` should be wired through the internal MCP tool
   architecture rather than a legacy `front/lib/api/assistant/agent_action.ts` registry.
-- The firing path should define idempotency explicitly, e.g. an atomic claim / fire transition and
-  a persisted fired message identifier, so retries cannot post duplicate wake-up messages.
+- The firing path should define idempotency explicitly so retries cannot post duplicate wake-up
+  messages.
 - Cancel-vs-fire races should be handled explicitly by `WakeUpResource`, not left to best effort.
 - Missing/deleted conversation, user, workspace, or inaccessible agent at fire time should be
   terminal `cancelled` / `expired` states, not infinite retries.

@@ -27,10 +27,10 @@ reuse the same serialized shape.
 Add `wakeUpWorkflow` and `runWakeUpActivity` to the `agent-schedule-v1` queue. Wire up the
 one-shot path: `startDelay` on `client.workflow.start()`. Activity posts a user message into the
 conversation with `origin: "wakeup"`, `doNotAssociateUser: true`, `username: "Dust"`,
-`<dust_system>` context block, and agent mention. Use an atomic claim / duplicate-fire protection
-when firing, and treat missing/deleted conversation, user, workspace, or agent as terminal
-cancelled/expired states. Back-off + retry only when a different agent is running (retryable
-error, 10min max window).
+`<dust_system>` context block, and agent mention. Use duplicate-fire protection when firing, and
+treat missing/deleted conversation, user, workspace, or agent as terminal cancelled/expired
+states. Back-off + retry only when a different agent is running (retryable error, 10min max
+window).
 
 Status: Temporal scaffolding for one-shot wake-ups is in place (`front/temporal/triggers/wakeup/*`,
 worker wiring, and `WakeUpResource` integration). Remaining work is implementing the activity

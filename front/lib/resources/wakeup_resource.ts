@@ -98,8 +98,6 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
     const { scheduleType, fireAt, cronExpression, cronTimezone, reason } = blob;
     const user = auth.getNonNullableUser();
 
-    const user = auth.getNonNullableUser();
-
     const row = await this.model.create(
       {
         workspaceId: auth.getNonNullableWorkspace().id,
@@ -183,10 +181,7 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
   }: {
     workspaceId: string;
     wakeUpId: string;
-  }): Promise<Result<
-    { auth: Authenticator; wakeUp: WakeUpResource },
-    Error
-  >> {
+  }): Promise<Result<{ auth: Authenticator; wakeUp: WakeUpResource }, Error>> {
     let auth = await Authenticator.internalBuilderForWorkspace(workspaceId);
     const wakeUp = await WakeUpResource.fetchById(auth, wakeUpId);
 
