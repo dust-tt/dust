@@ -774,9 +774,7 @@ async function batchRenderCompactionMessages(
         "Unreachable: batchRenderCompactionMessages has been filtered on compaction message"
       );
     }
-
     const compactionMessage = m.compactionMessage;
-
     return {
       type: "compaction_message" as const,
       id: m.id,
