@@ -7,7 +7,7 @@ import { WebhookSourceViewIcon } from "@app/components/triggers/WebhookSourceVie
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import { filterWebhookSource } from "@app/lib/webhookSource";
+import { filterWebhookSource } from "@app/lib/webhook_source";
 import type { SpaceType } from "@app/types/space";
 import type {
   WebhookProvider,

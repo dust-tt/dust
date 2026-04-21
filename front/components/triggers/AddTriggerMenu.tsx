@@ -1,7 +1,7 @@
 import { getIcon } from "@app/components/resources/resources_icons";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
-import { DEFAULT_WEBHOOK_ICON } from "@app/lib/webhookSource";
+import { DEFAULT_WEBHOOK_ICON } from "@app/lib/webhook_source";
 import type { WebhookProvider } from "@app/types/triggers/webhooks";
 import {
   isWebhookProvider,

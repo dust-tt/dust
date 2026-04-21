@@ -1,4 +1,4 @@
-import { normalizeWebhookIcon } from "@app/lib/webhookSource";
+import { normalizeWebhookIcon } from "@app/lib/webhook_source";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import { z } from "zod";
 
