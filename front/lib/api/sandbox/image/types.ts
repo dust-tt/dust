@@ -94,8 +94,11 @@ export const ALLOWLIST_NETWORK_POLICY: NetworkPolicy = {
     // Datadog EU — sandbox telemetry
     "http-intake.logs.datadoghq.eu",
     "api.datadoghq.eu",
-    // Regional egress proxy (eu.sandbox-egress.dust.tt, us.sandbox-egress.dust.tt, ...)
+    // Regional egress proxy — the forwarder connects by IP (resolved by front),
+    // so E2B's domain-based allowOut doesn't cover it. These are reserved GCP LB IPs.
     "*.sandbox-egress.dust.tt",
+    "104.199.4.80/32", // eu.sandbox-egress.dust.tt
+    "104.154.146.142/32", // us.sandbox-egress.dust.tt
   ],
 };
 
