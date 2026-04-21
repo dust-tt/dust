@@ -3,6 +3,7 @@ import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import {
   useCleanDoneProjectTodos,
   useDeleteProjectTodo,
+  useMarkProjectTodosRead,
   useProjectTodos,
   useUpdateProjectTodo,
 } from "@app/lib/swr/projects";
@@ -36,6 +37,7 @@ import {
   Tooltip,
   TrashIcon,
   TriangleIcon,
+  TypingAnimation,
   WindIcon,
 } from "@dust-tt/sparkle";
 import type React from "react";
@@ -463,6 +465,10 @@ interface EditableTodoItemProps {
   owner: LightWorkspaceType;
   agentNameById: Map<string, string>;
   isExiting: boolean;
+  isAdded: boolean;
+  isEntering: boolean;
+  isTyping: boolean;
+  isNewlyDone: boolean;
 }
 
 function EditableTodoItem({
@@ -472,8 +478,21 @@ function EditableTodoItem({
   owner,
   agentNameById,
   isExiting,
+  isAdded,
+  isEntering,
+  isTyping,
+  isNewlyDone,
 }: EditableTodoItemProps) {
   const isDone = todo.status === "done";
+  const [isFlashing, setIsFlashing] = useState(isNewlyDone);
+
+  useEffect(() => {
+    if (!isNewlyDone) {
+      return;
+    }
+    const timeout = setTimeout(() => setIsFlashing(false), 1000);
+    return () => clearTimeout(timeout);
+  }, [isNewlyDone]);
 
   const handleToggle = () => {
     onToggleDone(todo);
@@ -484,7 +503,11 @@ function EditableTodoItem({
       className={cn(
         "group/todo flex items-start gap-3 overflow-hidden",
         "transition-all duration-200",
-        isExiting ? "max-h-0 opacity-0" : "max-h-32 opacity-100"
+        isExiting
+          ? "max-h-0 opacity-0"
+          : isAdded && !isEntering
+            ? "max-h-0 opacity-0"
+            : "max-h-32 opacity-100"
       )}
     >
       <div className="mt-1 shrink-0">
@@ -506,10 +529,16 @@ function EditableTodoItem({
               "text-base min-h-6 transition-all duration-300",
               isDone
                 ? "text-faint dark:text-faint-night line-through"
-                : "text-foreground dark:text-foreground-night"
+                : "text-foreground dark:text-foreground-night",
+              isFlashing &&
+                "rounded bg-warning-100/40 dark:bg-warning-100-night/30"
             )}
           >
-            {todo.text}
+            {isTyping ? (
+              <TypingAnimation text={todo.text} duration={16} />
+            ) : (
+              todo.text
+            )}
           </span>
           <TodoSources sources={todo.sources} owner={owner} isDone={isDone} />
         </button>
@@ -534,7 +563,7 @@ function EditableProjectTodosPanel({
   owner: LightWorkspaceType;
   spaceId: string;
 }) {
-  const { todos, isTodosLoading, mutateTodos } = useProjectTodos({
+  const { todos, lastReadAt, isTodosLoading, mutateTodos } = useProjectTodos({
     owner,
     spaceId,
   });
@@ -542,12 +571,105 @@ function EditableProjectTodosPanel({
   const doUpdate = useUpdateProjectTodo({ owner, spaceId });
   const doDelete = useDeleteProjectTodo({ owner, spaceId });
   const doCleanDone = useCleanDoneProjectTodos({ owner, spaceId });
+  const markRead = useMarkProjectTodosRead({ owner, spaceId });
+  const markReadRef = useRef(markRead);
+  markReadRef.current = markRead;
 
   // Tracks todos being animated out during a clean operation.
   const [pendingRemovalIds, setPendingRemovalIds] = useState<Set<string>>(
     new Set()
   );
   const [isCleaning, setIsCleaning] = useState(false);
+
+  // ── Diff animation state ────────────────────────────────────────────────────
+
+  // Frozen snapshot of lastReadAt taken on first successful load. undefined =
+  // not yet captured; null = first-ever visit; string = ISO timestamp.
+  // Initialized synchronously so new items start hidden from the very first
+  // render with data — prevents a layout shift on unchanged items caused by
+  // transitioning new items from visible→hidden after the first paint.
+  const [frozenLastReadAt, setFrozenLastReadAt] = useState<
+    string | null | undefined
+  >(() => (!isTodosLoading ? lastReadAt : undefined));
+
+  useEffect(() => {
+    if (!isTodosLoading && frozenLastReadAt === undefined) {
+      setFrozenLastReadAt(lastReadAt);
+    }
+  }, [isTodosLoading, frozenLastReadAt, lastReadAt]);
+
+  const diffKeys = useMemo(() => {
+    if (frozenLastReadAt === undefined || frozenLastReadAt === null) {
+      return { added: new Set<string>(), newlyDone: new Set<string>() };
+    }
+    const cutoff = new Date(frozenLastReadAt).getTime();
+    const added = new Set<string>();
+    const newlyDone = new Set<string>();
+    for (const t of todos) {
+      if (new Date(t.createdAt).getTime() > cutoff) {
+        added.add(t.sId);
+      } else if (
+        t.status === "done" &&
+        t.doneAt &&
+        new Date(t.doneAt).getTime() > cutoff
+      ) {
+        newlyDone.add(t.sId);
+      }
+    }
+    return { added, newlyDone };
+  }, [frozenLastReadAt, todos]);
+
+  const [enteringKeys, setEnteringKeys] = useState<Set<string>>(new Set());
+  const [enteredKeys, setEnteredKeys] = useState<Set<string>>(new Set());
+  const [typingKeys, setTypingKeys] = useState<Set<string>>(new Set());
+  const [doneFlashKeys, setDoneFlashKeys] = useState<Set<string>>(new Set());
+  const startTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cleanupTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hasRunRef = useRef(false);
+
+  // diffKeys is intentionally excluded: it is memoized and stable during
+  // animation (no SWR updates occur while animation state updates fire).
+  // markReadRef is a ref — .current is updated synchronously every render so
+  // it never needs to be a dep. Including either would cause the cleanup to
+  // fire on every animation state update and cancel the in-flight timeouts.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional one-shot effect, see comment above
+  useEffect(() => {
+    if (isTodosLoading || frozenLastReadAt === undefined || hasRunRef.current) {
+      return;
+    }
+    hasRunRef.current = true;
+
+    const { added, newlyDone } = diffKeys;
+
+    if (added.size === 0 && newlyDone.size === 0) {
+      void markReadRef.current();
+      return;
+    }
+
+    setTypingKeys(new Set(added));
+    setDoneFlashKeys(new Set(newlyDone));
+
+    startTimeoutRef.current = setTimeout(() => {
+      setEnteringKeys(new Set(added));
+      startTimeoutRef.current = null;
+    }, 0);
+
+    cleanupTimeoutRef.current = setTimeout(() => {
+      void markReadRef.current();
+      setEnteringKeys(new Set());
+      setEnteredKeys(new Set(added));
+      cleanupTimeoutRef.current = null;
+    }, SUMMARY_ITEM_TRANSITION_MS);
+
+    return () => {
+      if (startTimeoutRef.current !== null) {
+        clearTimeout(startTimeoutRef.current);
+      }
+      if (cleanupTimeoutRef.current !== null) {
+        clearTimeout(cleanupTimeoutRef.current);
+      }
+    };
+  }, [isTodosLoading, frozenLastReadAt]);
 
   const hasDoneItems = todos.some((t) => t.status === "done");
 
@@ -558,6 +680,7 @@ function EditableProjectTodosPanel({
   const handleSetStatus = useCallback(
     async (todo: ProjectTodoType, status: ProjectTodoStatus) => {
       const optimistic = (prev: GetProjectTodosResponseBody | undefined) => ({
+        lastReadAt: prev?.lastReadAt ?? null,
         todos: (prev?.todos ?? []).map((t) =>
           t.sId === todo.sId ? { ...t, status } : t
         ),
@@ -657,7 +780,7 @@ function EditableProjectTodosPanel({
       </div>
 
       {/* Body */}
-      {isTodosLoading ? (
+      {isTodosLoading || frozenLastReadAt === undefined ? (
         <div className="flex justify-center py-4">
           <Spinner size="sm" />
         </div>
@@ -710,6 +833,13 @@ function EditableProjectTodosPanel({
                       owner={owner}
                       agentNameById={agentNameById}
                       isExiting={pendingRemovalIds.has(todo.sId)}
+                      isAdded={
+                        diffKeys.added.has(todo.sId) &&
+                        !enteredKeys.has(todo.sId)
+                      }
+                      isEntering={enteringKeys.has(todo.sId)}
+                      isTyping={typingKeys.has(todo.sId)}
+                      isNewlyDone={doneFlashKeys.has(todo.sId)}
                     />
                   ))}
                 </div>

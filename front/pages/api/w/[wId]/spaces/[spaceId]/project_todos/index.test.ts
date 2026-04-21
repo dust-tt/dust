@@ -30,7 +30,9 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/project_todos", () => {
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(200);
-    expect(res._getJSONData().todos).toEqual([]);
+    const data = res._getJSONData();
+    expect(data.todos).toEqual([]);
+    expect(data.lastReadAt).toBeNull();
   });
 
   it("should return latest versions of todos for the space", async () => {
@@ -49,11 +51,12 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/project_todos", () => {
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(200);
-    const { todos } = res._getJSONData();
+    const { todos, lastReadAt } = res._getJSONData();
     // Only the latest version should appear.
     expect(todos).toHaveLength(1);
     expect(todos[0].text).toBe("Updated todo");
     expect(todos[0].sId).toBe(todo.sId);
+    expect(lastReadAt).toBeNull();
   });
 
   it("should return 400 for non-project spaces", async () => {
