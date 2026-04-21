@@ -1,4 +1,4 @@
-import config from "@app/lib/file_storage/config";
+import { getUpsertQueueBucket } from "@app/lib/file_storage";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 
@@ -10,7 +10,6 @@ import {
 } from "@app/types/api/public/data_sources";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { Storage } from "@google-cloud/storage";
 import * as t from "io-ts";
 import { v4 as uuidv4 } from "uuid";
 
@@ -135,10 +134,8 @@ async function enqueueUpsert({
       launchWorkflowFn: typeof launchUpsertTableWorkflow;
     }): Promise<Result<string, Error>> {
   try {
-    const storage = new Storage({ keyFilename: config.getServiceAccount() });
-    const bucket = storage.bucket(config.getGcsUpsertQueueBucket());
     const now = Date.now();
-    await bucket
+    await getUpsertQueueBucket()
       .file(`${upsertQueueId}.json`)
       .save(JSON.stringify(upsertItem), {
         contentType: "application/json",
