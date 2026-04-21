@@ -14,7 +14,7 @@ import type { ServerPresetWebhook } from "@app/types/triggers/webhooks_source_pr
 // Server-only registry it includes webhookService instances. Never import this
 // from the SPA. It pulls in oauth_api.ts -> undici.
 export const WEBHOOK_PRESETS_SERVER: {
-  [_P in WebhookProvider]: ServerPresetWebhook<P>;
+  [_P in WebhookProvider]: ServerPresetWebhook<_P>;
 } = {
   fathom: {
     ...FATHOM_WEBHOOK_PRESET,
