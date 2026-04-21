@@ -1,6 +1,5 @@
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { internalFetch } from "@app/lib/api/internal_fetch";
-import { formatDataSourceDisplayName } from "@app/types/core/utils";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { ProviderVisibility } from "@app/types/connectors/connectors_api";
 import type { CoreAPIContentNode } from "@app/types/core/content_node";
 import type {
@@ -15,6 +14,7 @@ import type {
   CoreAPITableBlob,
   EmbedderType,
 } from "@app/types/core/data_source";
+import { formatDataSourceDisplayName } from "@app/types/core/utils";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { DustAppSecretType } from "@app/types/dust_app_secret";
 import type { Project } from "@app/types/project";
@@ -292,7 +292,6 @@ export interface CoreAPIUpsertDataSourceDocumentPayload {
   title: string;
   mimeType: string;
 }
-
 
 // Counter-part of `DatabasesTablesUpsertPayload` in `core/bin/core_api.rs`.
 type UpsertTableParams = {

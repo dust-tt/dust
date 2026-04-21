@@ -1,5 +1,5 @@
-import type { ByokModelProviderIdType } from "@app/types/assistant/models/types";
 import { internalFetch } from "@app/lib/api/internal_fetch";
+import type { ByokModelProviderIdType } from "@app/types/assistant/models/types";
 import type { ApiKeyCredentialsType } from "@app/types/provider_credential";
 import type {
   ConnectionCredentials,

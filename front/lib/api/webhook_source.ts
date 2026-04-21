@@ -33,7 +33,8 @@ export async function deleteWebhookSource(
     webhookSource.remoteMetadata &&
     webhookSource.oauthConnectionId
   ) {
-    const service = WEBHOOK_PRESETS_SERVER[webhookSource.provider].webhookService;
+    const service =
+      WEBHOOK_PRESETS_SERVER[webhookSource.provider].webhookService;
     const result = await service.deleteWebhooks({
       auth,
       connectionId: webhookSource.oauthConnectionId,

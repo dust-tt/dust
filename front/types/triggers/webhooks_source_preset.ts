@@ -35,7 +35,7 @@ export type WebhookEvent = {
 
 // Data-only preset type, excluding React components.
 // Use this type for server-side / temporal worker code that does not need UI.
-export type PresetWebhook<P extends WebhookProvider = WebhookProvider> = {
+export type PresetWebhook<_P extends WebhookProvider = WebhookProvider> = {
   name: string;
   description: string;
   icon: InternalAllowedIconType | CustomResourceIconType;
