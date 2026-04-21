@@ -468,10 +468,6 @@ type ConversationDisplayTitleInput = Pick<
   "created" | "title"
 >;
 
-function isSameLocalDay(timestamp: number, now: Date): boolean {
-  return moment(timestamp).isSame(now, "day");
-}
-
 export function getConversationDisplayTitle(
   conversation: ConversationDisplayTitleInput,
   now = new Date()
@@ -480,7 +476,7 @@ export function getConversationDisplayTitle(
     return conversation.title;
   }
 
-  return isSameLocalDay(conversation.created, now)
+  return moment(conversation.created).isSame(now, "day")
     ? "New Conversation"
     : `Conversation from ${new Date(conversation.created).toLocaleDateString()}`;
 }
