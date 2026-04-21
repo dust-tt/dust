@@ -1,6 +1,6 @@
 import assert from "node:assert";
 import type { APIPromise } from "@anthropic-ai/sdk";
-import { APIError } from "@anthropic-ai/sdk";
+import { AnthropicError, APIError } from "@anthropic-ai/sdk";
 import type { BetaRawMessageStreamEvent } from "@anthropic-ai/sdk/resources/beta.mjs";
 import type { MessageBatchResult } from "@anthropic-ai/sdk/resources/messages/batches.mjs";
 import type {
@@ -36,6 +36,7 @@ import cloneDeep from "lodash/cloneDeep";
 
 const MAX_EAGER_VALIDATION_INPUT_LENGTH = 5_000;
 const INVALID_JSON_MARKER = "JSON: ";
+const INVALID_TOOL_JSON_NEEDLE = "Unable to parse tool parameter JSON";
 
 export async function* streamLLMEvents(
   messageStreamEvents: AsyncIterable<BetaRawMessageStreamEvent>,
@@ -78,16 +79,20 @@ export async function* streamLLMEvents(
     }
   } catch (err) {
     // The Anthropic API sometimes aborts the stream with an error when the model
-    // produces invalid tool parameter JSON. When we have a tool in progress in our
-    // state, we recover by emitting a toolCallWithInvalidJson event so the agent
-    // loop can send it back as a tool result and let the model self-correct.
+    // produces invalid tool parameter JSON. This can surface in two ways:
+    // 1. As an APIError when the API detects it server-side and aborts with an SSE error event.
+    // 2. As an AnthropicError when the SDK detects it client-side during partial JSON parsing.
+    // When we have a tool in progress in our state, we recover by emitting a
+    // toolCallWithInvalidJson event so the agent loop can send it back as a tool
+    // result and let the model self-correct.
+    const invalidJsonMessage = getInvalidToolJsonMessage(err);
     if (
-      isInvalidToolJsonError(err) &&
+      invalidJsonMessage !== null &&
       stateContainer.state?.accumulatorType === "tool_use"
     ) {
-      const { message } = err.error.error;
-      const invalidJson = message.slice(
-        message.lastIndexOf(INVALID_JSON_MARKER) + INVALID_JSON_MARKER.length
+      const invalidJson = invalidJsonMessage.slice(
+        invalidJsonMessage.lastIndexOf(INVALID_JSON_MARKER) +
+          INVALID_JSON_MARKER.length
       );
       const ev = toolCallWithInvalidJson({
         ...stateContainer.state.toolInfo,
@@ -567,23 +572,16 @@ function toolCallWithInvalidJson({
   };
 }
 
-type InvalidToolJsonError = APIError & {
-  error: { error: { message: string } };
-};
-
 /**
- * Checks if an error is an Anthropic "Unable to parse tool parameter JSON" error.
- * The Anthropic API error message format ends with `JSON: <raw invalid json>`.
- * The invalid JSON can be extracted from `err.error.error.message` at the call site.
+ * Type guard for an APIError whose body carries the nested error.message with
+ * the invalid-tool-JSON diagnostic from the Anthropic API (server-side detection).
  */
-function isInvalidToolJsonError(err: unknown): err is InvalidToolJsonError {
-  if (!(err instanceof APIError)) {
+function isApiInvalidToolJsonError(
+  err: unknown
+): err is APIError & { error: { error: { message: string } } } {
+  if (!(err instanceof APIError) || err.type !== "invalid_request_error") {
     return false;
   }
-  if (err.type !== "invalid_request_error") {
-    return false;
-  }
-  // err.error is the parsed JSON body: { type: "error", error: { type, message } }.
   const body = err.error;
   if (typeof body !== "object" || body === null || !isRecord(body)) {
     return false;
@@ -597,13 +595,45 @@ function isInvalidToolJsonError(err: unknown): err is InvalidToolJsonError {
     return false;
   }
   const { message } = innerError;
-  if (typeof message !== "string") {
-    return false;
+  return (
+    typeof message === "string" &&
+    message.includes(INVALID_TOOL_JSON_NEEDLE) &&
+    message.includes(INVALID_JSON_MARKER)
+  );
+}
+
+/**
+ * Type guard for an AnthropicError thrown by the SDK's BetaMessageStream when
+ * it fails to parse tool parameter JSON client-side.
+ */
+function isAnthropicInvalidToolJsonError(err: unknown): err is AnthropicError {
+  return (
+    err instanceof AnthropicError &&
+    err.message.includes(INVALID_TOOL_JSON_NEEDLE) &&
+    err.message.includes(INVALID_JSON_MARKER)
+  );
+}
+
+/**
+ * Extracts the error message from an Anthropic "Unable to parse tool parameter JSON"
+ * error, or returns null if the error is unrelated.
+ *
+ * Two shapes are possible:
+ * 1. APIError (server-side detection): the API aborts the stream with an SSE error event.
+ *    The message lives at err.error.error.message.
+ * 2. AnthropicError (client-side detection): the SDK's BetaMessageStream fails to parse
+ *    partial tool JSON locally. The message is directly on err.message.
+ *
+ * Both formats end with `JSON: <raw invalid json>`.
+ */
+function getInvalidToolJsonMessage(err: unknown): string | null {
+  if (isApiInvalidToolJsonError(err)) {
+    return err.error.error.message;
   }
-  if (!message.includes("Unable to parse tool parameter JSON")) {
-    return false;
+  if (isAnthropicInvalidToolJsonError(err)) {
+    return err.message;
   }
-  return message.lastIndexOf(INVALID_JSON_MARKER) !== -1;
+  return null;
 }
 
 /**

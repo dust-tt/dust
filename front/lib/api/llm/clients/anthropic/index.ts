@@ -24,7 +24,11 @@ import {
   toMessage,
   toTool,
 } from "@app/lib/api/llm/clients/anthropic/utils/conversation_to_anthropic";
-import { handleError } from "@app/lib/api/llm/clients/anthropic/utils/errors";
+import {
+  handleError,
+  handleInvalidToolJsonAnthropicError,
+  isAnthropicErrorUnableToParseToolParam,
+} from "@app/lib/api/llm/clients/anthropic/utils/errors";
 import { LLM } from "@app/lib/api/llm/llm";
 import type { BatchResult, BatchStatus } from "@app/lib/api/llm/types/batch";
 import { handleGenericError } from "@app/lib/api/llm/types/errors";
@@ -200,6 +204,10 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
     } catch (err) {
       if (err instanceof APIError) {
         yield handleError(err, this.metadata);
+      } else if (isAnthropicErrorUnableToParseToolParam(err)) {
+        // The SDK's BetaMessageStream throws an AnthropicError (not APIError) when
+        // it fails to parse tool parameter JSON client-side. Mark retryable.
+        yield handleInvalidToolJsonAnthropicError(err, this.metadata);
       } else {
         yield handleGenericError(err, this.metadata);
       }
