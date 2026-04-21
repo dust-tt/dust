@@ -95,12 +95,13 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<WakeUpResource, Error>> {
     const { scheduleType, fireAt, cronExpression, cronTimezone, reason } = blob;
+    const user = auth.getNonNullableUser();
 
     const row = await this.model.create(
       {
         workspaceId: auth.getNonNullableWorkspace().id,
         conversationId: conversation.id,
-        userId: auth.user()?.id ?? null,
+        userId: user.id,
         agentConfigurationId: agentConfiguration.sId,
         status: "scheduled",
         fireCount: 0,
