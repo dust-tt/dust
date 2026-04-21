@@ -508,7 +508,7 @@ function LogRow({
 
 // ─── Activity popover (cursor-following) ─────────────────────────────────────
 
-const POPOVER_HEIGHT = 260;
+const POPOVER_HEIGHT = 380;
 
 function ActivityPopover({
   pagePos,
@@ -590,8 +590,8 @@ function ActivityPopover({
         className="s-pointer-events-none s-fixed s-z-50"
         style={{
           left: pagePos.x + 16,
-          top: pagePos.y,
-          transform: "translateY(-50%)",
+          top: pagePos.y - 12,
+          transform: "translateY(-100%)",
         }}
       >
         <div className="s-w-96">
@@ -784,22 +784,22 @@ function PortraitCard({ portrait }: { portrait: Portrait }) {
         <ActivityPopover pagePos={pagePos} visible={hovered} />
       )}
 
-      {/* Cursor follower: colored dot + chip label */}
+      {/* Cursor follower: chip left of cursor, dot at cursor */}
       {hovered && (
         <div
           className="s-pointer-events-none s-absolute s-z-10 s-flex s-items-center s-gap-1.5"
           style={{
             left: cursorPos.x,
             top: cursorPos.y,
-            transform: "translate(10px, -50%)",
+            transform: "translate(-100%, -50%)",
           }}
         >
-          <div className="s-h-2.5 s-w-2.5 s-rounded-full s-bg-emerald-400 s-ring-2 s-ring-white s-flex-shrink-0" />
           <Chip
             size="xs"
             color="success"
             label={`${portrait.name}'s activity`}
           />
+          <div className="s-h-2.5 s-w-2.5 s-flex-shrink-0 s-rounded-full s-bg-emerald-400 s-ring-2 s-ring-white" />
         </div>
       )}
     </div>
