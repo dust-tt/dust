@@ -39,7 +39,8 @@ Current terminal / retry behavior:
 - Retry exhaustion or timeout: mark `expired` via `expireWakeUpActivity(...)`.
 
 Current retry policy: 3 attempts, exponential backoff starting at 30 seconds, max interval
-5 minutes. Cron wake-ups still return an unsupported error for now.
+5 minutes. Cron firing semantics are still follow-up work, but the Temporal schedule create /
+delete path now exists in `front/temporal/triggers/wakeup_client.ts`.
 
 ### [x] PR 4 — Wire WakeUpResource to Temporal
 
@@ -50,43 +51,46 @@ backend level.
 Follow-up work remains for explicit duplicate-fire / cancel-vs-fire race handling, tighter retry
 classification, audit events, and the cron path.
 
-## Milestone 3: Agent action
+## Milestone 3: Cron wake-ups
 
-### PR 5 — schedule_wakeup tool (one-shot)
+### PR 5 — Cron scheduling path
+
+Create the cron Temporal path for wake-ups. Reuse the existing trigger schedule patterns where
+helpful.
+
+Status: in progress. This PR now implements Temporal Schedule creation / deletion in
+`front/temporal/triggers/wakeup_client.ts`. Remaining work is cron validation, recurring fire
+semantics (`fireCount`, expiry / max-fire policy), and cron-specific guardrails.
+
+## Milestone 4: Agent action
+
+### PR 6 — schedule_wakeup tool (one-shot + cron)
 
 Agent tool definition for `schedule_wakeup`. Deterministic `when` parsing (relative durations, ISO
-timestamps). Guardrail enforcement (max 1 active per conversation, min interval, max delay,
-workspace limits). Returns confirmation with scheduled time and wake-up sId. Gate behind feature
-flag. In the current codebase, wire this through the internal MCP tool architecture rather than a
-legacy `agent_action.ts` registry.
+timestamps, cron expressions). Guardrail enforcement (max 1 active per conversation, min interval,
+max delay, workspace limits). Returns confirmation with scheduled time and wake-up sId. Gate
+behind feature flag. In the current codebase, wire this through the internal MCP tool
+architecture rather than a legacy `agent_action.ts` registry.
 
-## Milestone 4: Security
+## Milestone 5: Security
 
-### PR 6 — Conversation interaction restrictions
+### PR 7 — Conversation interaction restrictions
 
 Enforce that only the wake-up owner can post in a conversation with an active wake-up.
 Cancellation permissions are owner + workspace admins.
 
-## Milestone 5: API + UI
+## Milestone 6: API + UI
 
-### PR 7 — Wake-up API endpoints
+### PR 8 — Wake-up API endpoints
 
 `GET/DELETE /api/w/[wId]/assistant/conversations/[cId]/wakeups`. List active wake-ups, cancel by
 sId. SWR hooks. Keep private Swagger docs/annotations in sync.
 
-### PR 8 — Conversation UI
+### PR 9 — Conversation UI
 
 Wake-up banner ("Waiting until {time} — {reason}" + cancel button). Wake-up message rendering
 (system-style message from "Dust"). Conversation moves to active in sidebar when wake-up fires.
 For V1, the UI can assume max 1 active wake-up per conversation.
-
-## Milestone 6: Cron wake-ups
-
-### PR 9 — Cron scheduling path
-
-Extend `schedule_wakeup` to accept cron expressions. Create Temporal Schedules via
-`client.schedule.create()` reusing `buildScheduleSpec()`. `fireCount` tracking + `MAX_FIRES`
-expiration. Cron-specific guardrails.
 
 ## Milestone 7: Cleanup + GA
 

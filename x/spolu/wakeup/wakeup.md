@@ -46,7 +46,8 @@ Cron scheduling, the tool surface, API endpoints, and UI are still follow-up wor
 │                                                             │
 │  One-shot: client.workflow.start(..., startDelay)           │
 │            → wakeUpWorkflow → runWakeUpActivity             │
-│  Cron:     not implemented yet                              │
+│  Cron:     client.schedule.create() / delete()              │
+│            → wakeUpWorkflow → runWakeUpActivity             │
 │                                                             │
 │  Workflow ID: wakeup-{workspaceId}-{wakeUpId}               │
 └──────────────────────┬──────────────────────────────────────┘
@@ -141,8 +142,9 @@ Current retry policy:
 - maximum attempts: 3
 - non-retryable error type: `WakeUpNonRetryableError`
 
-Cron wake-ups are not implemented yet. `launchOrScheduleWakeUpTemporalWorkflow(...)` returns an
-error for `scheduleType: "cron"`.
+Cron wake-ups are partially implemented. `launchOrScheduleWakeUpTemporalWorkflow(...)` can now
+create a Temporal Schedule for `scheduleType: "cron"`, and
+`cancelWakeUpTemporalWorkflow(...)` can delete it. Recurring fire semantics remain follow-up work.
 
 ### `runWakeUpActivity` (current, in `front/temporal/triggers/activities.ts`)
 
@@ -302,7 +304,7 @@ When a wake-up fires:
 | `front/types/assistant/conversation.ts` | Add `"wakeup"` to `UserMessageOrigin` |
 | `front/temporal/triggers/workflows.ts` | Add `wakeUpWorkflow` + retry / expiry handling |
 | `front/temporal/triggers/activities.ts` | Add `runWakeUpActivity` and `expireWakeUpActivity` |
-| `front/temporal/triggers/wakeup_client.ts` | Start / cancel one-shot wake-up workflows |
+| `front/temporal/triggers/wakeup_client.ts` | Start / cancel one-shot workflows and create / delete cron schedules |
 | `front/lib/resources/wakeup_resource.ts` | Temporal integration + activity helpers |
 | `front/types/assistant/wakeups.ts` | Shared wake-up schemas and types |
 
@@ -330,6 +332,9 @@ When a wake-up fires:
 
 - In the current codebase, `schedule_wakeup` should be wired through the internal MCP tool
   architecture rather than a legacy `front/lib/api/assistant/agent_action.ts` registry.
+- The current implementation can create / delete cron schedules, but recurring fire semantics are
+  still incomplete. A follow-up should define cron validation, `fireCount`, and expiry / max-fire
+  behavior clearly.
 - The current PR does not add explicit duplicate-fire protection yet. A follow-up should define the
   idempotency story clearly.
 - Cancel-vs-fire races are still best-effort today and should be tightened in `WakeUpResource`.
