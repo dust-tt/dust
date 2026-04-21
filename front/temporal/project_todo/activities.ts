@@ -6,7 +6,7 @@ import { extractDocumentTakeaways } from "@app/lib/project_todo/analyze_document
 import { mergeTakeawaysIntoProject } from "@app/lib/project_todo/merge_into_project";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { TakeawaySourceDocument } from "@app/lib/resources/takeaways_resource";
-import { UserResource } from "@app/lib/resources/user_resource";
+import type { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -94,14 +94,27 @@ export async function analyzeProjectTodosActivity({
     return;
   }
 
-  const r = await space.fetchManualGroupsMemberships(adminAuth);
+  const { groupsToProcess } =
+    await space.fetchManualGroupsMemberships(adminAuth);
 
   // We only need a valid member that has "read" permissions on the project.
-  const member = await UserResource.fetchByModelId(
-    r.allGroupMemberships[0].userId
-  );
+  // Iterate groups (rather than relying on GroupMembershipModel rows alone) so
+  // we also pick up members from groups whose membership is resolved at read
+  // time (e.g. the global group on non-restricted projects).
+  let member: UserResource | undefined;
+  for (const group of groupsToProcess) {
+    const members = await group.getActiveMembers(adminAuth);
+    if (members.length > 0) {
+      member = members[0];
+      break;
+    }
+  }
+
   if (!member) {
-    logger.error({ spaceId }, "Member not found");
+    logger.info(
+      { workspaceId, spaceId },
+      "No active members on project space; skipping todo analysis"
+    );
     return;
   }
 
