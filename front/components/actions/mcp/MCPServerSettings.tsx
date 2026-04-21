@@ -3,7 +3,7 @@ import {
   OAUTH_USE_CASE_TO_DESCRIPTION,
   OAUTH_USE_CASE_TO_LABEL,
 } from "@app/components/actions/mcp/MCPServerAuthConnection";
-import { MCPSensitivityLabelsConfig } from "@app/components/data_source/SensitivityLabelsConfig";
+import { MCPSensitivityLabelsConfig } from "@app/components/shared/labels/SensitivityLabelsConfig";
 import { getSensitivityLabelProviderForServerId } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import {

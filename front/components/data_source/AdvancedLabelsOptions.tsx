@@ -1,4 +1,4 @@
-import { ConnectorSensitivityLabelsConfig } from "@app/components/data_source/SensitivityLabelsConfig";
+import { ConnectorSensitivityLabelsConfig } from "@app/components/shared/labels/SensitivityLabelsConfig";
 import type { ConnectorOptionsProps } from "@app/lib/connector_providers_ui";
 
 export const AdvancedLabelsOptions = ({

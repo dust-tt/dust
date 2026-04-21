@@ -197,11 +197,11 @@ function MicrosoftLabelsSelector({
               variant="outline"
               size="sm"
               isSelect
-              className="w-52 justify-between"
+              className="w-full justify-between"
               disabled={readOnly || !isAdmin}
             />
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-80">
+          <DropdownMenuContent className="w-80" align="start">
             <div className="max-h-80 overflow-auto">
               {labels.length === 0
                 ? emptyContent
