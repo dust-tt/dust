@@ -294,7 +294,7 @@ export function isToolPersonalAuthRequiredEvent(
   );
 }
 
-function isToolFileAuthRequiredEvent(
+export function isToolFileAuthRequiredEvent(
   event: unknown
 ): event is ToolFileAuthRequiredEvent {
   return (
