@@ -57,9 +57,3 @@ export interface MetronomeUsageWithGroupsResponse {
   value: number | null;
   group: Record<string, string> | null;
 }
-
-export function isSeatBasedMetronomePackageAlias(
-  packageAlias: string
-): boolean {
-  return PRO_OR_BUSINESS_PACKAGE_ALIASES.has(packageAlias);
-}
