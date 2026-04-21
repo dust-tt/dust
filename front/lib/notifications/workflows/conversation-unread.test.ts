@@ -90,7 +90,7 @@ describe("conversation-unread workflow business logic", () => {
     transcript: false,
     triggered: false,
     triggered_programmatic: false,
-    wakeup: false,
+    wakeup: true,
     zendesk: false,
     reinforced_agent_notification: false,
     reinforced_skill_notification: false,

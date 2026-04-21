@@ -8,6 +8,9 @@ Add the `wake_ups` table (migration), `WakeUpModel` Sequelize model, indexes on 
 `userId`, and `(workspaceId, status)`. Add `"wakeup"` to `UserMessageOrigin` union type and usage
 classification.
 
+Status: merged, including SDK / Swagger / observability updates for the new origin. Agent
+replies to wake-up messages are treated like regular unread replies for notifications.
+
 ### [x] PR 2 — WakeUpResource
 
 `WakeUpResource` wrapping the model: `makeNew`, `cancel`, `markFired`, `listByConversation`,

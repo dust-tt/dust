@@ -80,6 +80,7 @@ export const shouldSendNotificationForAgentAnswer = (
     case "extension":
     case "cli":
     case "cli_programmatic":
+    case "wakeup":
       return true;
     case "onboarding_conversation":
     case "agent_sidekick":
@@ -102,7 +103,6 @@ export const shouldSendNotificationForAgentAnswer = (
     case "transcript":
     case "triggered_programmatic":
     case "triggered":
-    case "wakeup":
     case "zapier":
     case "zendesk":
     case "project_kickoff":
