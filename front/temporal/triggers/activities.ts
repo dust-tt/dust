@@ -24,6 +24,11 @@ import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
+class TriggerNonRetryableError extends Error {}
+
+// biome-ignore lint/correctness/noUnusedVariables: not implemented yet.
+class WakeUpNonRetryableError extends Error {}
+
 async function createConversationForAgentConfiguration({
   auth,
   agentConfiguration,
@@ -87,8 +92,6 @@ async function createConversationForAgentConfiguration({
 
   return new Ok(newConversation);
 }
-
-class TriggerNonRetryableError extends Error {}
 
 export async function runTriggeredAgentsActivity({
   userId,
@@ -260,4 +263,17 @@ export async function runTriggeredAgentsActivity({
       cause: conversationResult.error,
     });
   }
+}
+
+export async function runWakeUpActivity({
+  workspaceId,
+  wakeUpId,
+}: {
+  workspaceId: string;
+  wakeUpId: string;
+}): Promise<void> {
+  logger.info(
+    { wakeUpId, workspaceId },
+    "Wake-up activity is not implemented yet."
+  );
 }

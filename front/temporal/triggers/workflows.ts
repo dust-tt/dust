@@ -10,6 +10,13 @@ const { runTriggeredAgentsActivity } = proxyActivities<typeof activities>({
   },
 });
 
+const { runWakeUpActivity } = proxyActivities<typeof activities>({
+  startToCloseTimeout: "5 minutes",
+  retry: {
+    nonRetryableErrorTypes: ["WakeUpNonRetryableError"],
+  },
+});
+
 export async function agentTriggerWorkflow({
   userId,
   workspaceId,
@@ -30,4 +37,14 @@ export async function agentTriggerWorkflow({
     contentFragment,
     webhookRequestId,
   });
+}
+
+export async function wakeUpWorkflow({
+  workspaceId,
+  wakeUpId,
+}: {
+  workspaceId: string;
+  wakeUpId: string;
+}): Promise<void> {
+  await runWakeUpActivity({ workspaceId, wakeUpId });
 }
