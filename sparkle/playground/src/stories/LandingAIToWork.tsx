@@ -75,45 +75,48 @@ const PORTRAITS: Portrait[] = [
   },
   {
     id: 5,
-    title: "Product Designer",
-    name: "Leila",
-    image: "https://i.pravatar.cc/400?img=47",
+    title: "CTO",
+    name: "Elena",
+    image: "/landing/p5_cto.png",
     conversation: [
-      {
-        role: "user",
-        text: "What's the drop-off rate on the onboarding flow?",
-      },
-      { role: "ai", text: "68% drop at step 3 — the permissions screen." },
-      { role: "user", text: "Suggest two alternatives." },
-      {
-        role: "ai",
-        text: "Option A: defer permissions. Option B: inline explainer.",
-      },
+      { role: "user", text: "What's our infra cost trend this month?" },
+      { role: "ai", text: "Up 8% — driven by the new ML pipeline cluster." },
+      { role: "user", text: "Model three cost reduction scenarios." },
+      { role: "ai", text: "Scenarios ready. Spot instances save the most." },
     ],
   },
   {
     id: 6,
-    title: "Legal Counsel",
-    name: "David",
-    image: "https://i.pravatar.cc/400?img=56",
+    title: "CFO",
+    name: "Richard",
+    image: "/landing/p6_cfo.png",
     conversation: [
-      { role: "user", text: "Review this vendor contract for red flags." },
-      {
-        role: "ai",
-        text: "Two issues: unlimited liability clause and auto-renewal trap.",
-      },
-      { role: "user", text: "Draft proposed amendments." },
-      {
-        role: "ai",
-        text: "Amendments drafted. Ready to send to counterparty.",
-      },
+      { role: "user", text: "How are we tracking vs. Q2 budget?" },
+      { role: "ai", text: "3% under on opex, 7% over on headcount." },
+      { role: "user", text: "Prepare a reforecast memo for the board." },
+      { role: "ai", text: "Memo drafted. Highlights the headcount variance." },
     ],
   },
   {
     id: 7,
+    title: "Systems Engineer",
+    name: "Tom",
+    image: "/landing/p7_systems_engineer.png",
+    conversation: [
+      { role: "user", text: "Any alerts firing in prod right now?" },
+      { role: "ai", text: "One: elevated p99 latency on the auth service." },
+      { role: "user", text: "Root cause and suggested fix?" },
+      {
+        role: "ai",
+        text: "Connection pool saturation. Increase limit to 200.",
+      },
+    ],
+  },
+  {
+    id: 8,
     title: "Data Analyst",
     name: "Yuki",
-    image: "https://i.pravatar.cc/400?img=44",
+    image: "/landing/p8_data_analyst.png",
     conversation: [
       { role: "user", text: "Why did DAU drop 15% last Tuesday?" },
       {
@@ -125,36 +128,63 @@ const PORTRAITS: Portrait[] = [
     ],
   },
   {
-    id: 8,
-    title: "Head of Engineering",
-    name: "Priya",
-    image: "https://i.pravatar.cc/400?img=32",
+    id: 9,
+    title: "Account Executive",
+    name: "Claire",
+    image: "/landing/p9_account_executive.png",
     conversation: [
-      { role: "user", text: "What's blocking the v2.4 release?" },
+      { role: "user", text: "Prep me for my Acme call in 10 minutes." },
       {
         role: "ai",
-        text: "Two failing tests in the auth module — open since Monday.",
+        text: "Last touchpoint: demo 3 weeks ago. Pain: slow ROI.",
       },
-      { role: "user", text: "Assign to the on-call and escalate." },
-      { role: "ai", text: "Assigned to Theo. Escalation sent." },
+      { role: "user", text: "What's the best angle to push today?" },
+      {
+        role: "ai",
+        text: "Lead with the new automation module — halves setup time.",
+      },
     ],
   },
   {
-    id: 9,
-    title: "Customer Success",
-    name: "Amara",
-    image: "https://i.pravatar.cc/400?img=60",
+    id: 10,
+    title: "Marketing Manager",
+    name: "Zoé",
+    image: "/landing/p10_marketing_manager.png",
     conversation: [
-      { role: "user", text: "Who are our most at-risk enterprise accounts?" },
       {
-        role: "ai",
-        text: "Globex and Initech — both under 40% feature adoption.",
+        role: "user",
+        text: "Which campaign drove the most signups last week?",
       },
-      { role: "user", text: "Schedule check-ins and prepare talking points." },
+      { role: "ai", text: "LinkedIn retargeting — 340 signups, CPA $18." },
+      { role: "user", text: "Double the budget on that one." },
+      { role: "ai", text: "Done. Projected 680 signups next week." },
+    ],
+  },
+  {
+    id: 11,
+    title: "Customer Support Specialist",
+    name: "Nina",
+    image: "/landing/p11_customer_support.png",
+    conversation: [
+      { role: "user", text: "What's the top issue in today's tickets?" },
+      { role: "ai", text: "Export failures — 34 tickets in the last 6 hours." },
+      { role: "user", text: "Draft a status update for affected users." },
+      { role: "ai", text: "Draft ready. Empathetic tone, ETA in 2 hours." },
+    ],
+  },
+  {
+    id: 12,
+    title: "HR Manager",
+    name: "Anne",
+    image: "/landing/p12_hr_manager.png",
+    conversation: [
+      { role: "user", text: "How many open roles are past 30 days?" },
+      { role: "ai", text: "Seven — three in engineering, two in sales." },
       {
-        role: "ai",
-        text: "Meetings booked for Thursday. Talking points attached.",
+        role: "user",
+        text: "Draft a message to hiring managers to review pipelines.",
       },
+      { role: "ai", text: "Message drafted. Friendly nudge, no blame." },
     ],
   },
 ];
@@ -259,7 +289,7 @@ export default function LandingAIToWork() {
         className="s-w-full s-max-w-4xl"
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(3, 1fr)",
+          gridTemplateColumns: "repeat(4, 1fr)",
           gap: "12px",
         }}
       >
