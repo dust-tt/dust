@@ -19,7 +19,7 @@ import {
 import { getAvatarFromIcon } from "@app/components/resources/resources_icons";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useAuth } from "@app/lib/auth/AuthContext";
-import { normalizeWebhookIcon } from "@app/lib/webhookSource";
+import { normalizeWebhookIcon } from "@app/lib/webhook_source";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { MultiPageSheetPage } from "@dust-tt/sparkle";

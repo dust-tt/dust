@@ -25,7 +25,7 @@ import {
   useDeleteWebhookSource,
   useWebhookSourcesWithViews,
 } from "@app/lib/swr/webhook_source";
-import { normalizeWebhookIcon } from "@app/lib/webhookSource";
+import { normalizeWebhookIcon } from "@app/lib/webhook_source";
 import datadogLogger from "@app/logger/datadogLogger";
 import type { RequireAtLeastOne } from "@app/types/shared/typescipt_utils";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";

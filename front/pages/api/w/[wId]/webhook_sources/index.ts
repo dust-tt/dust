@@ -8,7 +8,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateSecureSecret } from "@app/lib/resources/string_ids_server";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
-import { buildWebhookUrl } from "@app/lib/webhookSource";
+import { buildWebhookUrl } from "@app/lib/webhook_source";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
