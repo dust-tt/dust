@@ -106,6 +106,16 @@ Wraps `WakeUpModel`. Key methods:
 - `markFired()` — increments `fireCount`, updates status for one-shot.
 - `listByConversation(auth, conversationId)` — for UI display.
 - `listActiveByWorkspace(auth)` — for guardrail checks.
+- `toJSON()` — serializes to the shared `WakeUpType` shape.
++
++Also define shared Zod-backed types in `front/types/assistant/wakeups.ts`:
++
++- `WakeUpScheduleConfig`
++- `WakeUpOneShotScheduleConfig`
++- `WakeUpCronScheduleConfig`
++- `WakeUpType`
++
++These types should be the source of truth for endpoint and UI serialization.
 
 ## Temporal Workflows
 
@@ -285,6 +295,7 @@ When a wake-up fires:
 |------|---------|
 | `front/lib/models/agent/wakeup.ts` | `WakeUpModel` Sequelize model |
 | `front/lib/resources/wakeup_resource.ts` | `WakeUpResource` wrapping the model |
+| `front/types/assistant/wakeups.ts` | Shared Zod schemas / serialized wake-up types |
 | `front/lib/api/assistant/wakeup.ts` | Business logic (create, cancel, list) |
 | `front/lib/actions/wakeup_action.ts` | Agent action definition for `schedule_wakeup` |
 | `front/pages/api/w/[wId]/assistant/conversations/[cId]/wakeups/index.ts` | API: list/cancel |
