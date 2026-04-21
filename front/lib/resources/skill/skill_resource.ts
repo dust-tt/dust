@@ -2446,6 +2446,50 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
   }
 
+  static async listAgentMessageSkillsByCustomSkills(
+    auth: Authenticator,
+    customSkills: SkillResource[]
+  ): Promise<
+    {
+      skill: SkillResource;
+      conversationModelId: ModelId;
+      agentConfigurationId: string | null;
+    }[]
+  > {
+    if (customSkills.length === 0) {
+      return [];
+    }
+
+    const workspace = auth.getNonNullableWorkspace();
+
+    const skillsById = new Map(customSkills.map((s) => [s.id, s]));
+
+    const records = await AgentMessageSkillModel.findAll({
+      attributes: ["conversationId", "customSkillId", "agentConfigurationId"],
+      where: {
+        workspaceId: workspace.id,
+        customSkillId: { [Op.in]: [...skillsById.keys()] },
+      },
+    });
+
+    return removeNulls(
+      records.map((r) => {
+        if (r.customSkillId === null) {
+          return null;
+        }
+        const skill = skillsById.get(r.customSkillId);
+        if (!skill) {
+          return null;
+        }
+        return {
+          skill,
+          conversationModelId: r.conversationId,
+          agentConfigurationId: r.agentConfigurationId,
+        };
+      })
+    );
+  }
+
   static async deleteAllForWorkspace(auth: Authenticator): Promise<void> {
     const workspaceId = auth.getNonNullableWorkspace().id;
 
