@@ -8,7 +8,6 @@ import {
   getCoTDelimitersConfiguration,
 } from "@app/lib/llms/agent_message_content_parser";
 import {
-  CompactionMessageModel,
   MentionModel,
   MessageModel,
   UserMessageModel,
@@ -770,37 +769,26 @@ async function batchRenderCompactionMessages(
   const compactionMessages = messages.filter((m) => !!m.compactionMessage);
 
   return compactionMessages.map((m) => {
-<<<<<<< Updated upstream
     if (!m.compactionMessage) {
       throw new Error(
         "Unreachable: batchRenderCompactionMessages has been filtered on compaction message"
       );
     }
+
     const compactionMessage = m.compactionMessage;
+
     return {
       type: "compaction_message" as const,
       id: m.id,
       compactionMessageId: compactionMessage.id,
-=======
-    const cm = m.compactionMessage!;
-    return {
-      type: "compaction_message" as const,
-      id: m.id,
-      compactionMessageId: cm.id,
->>>>>>> Stashed changes
       sId: m.sId,
       created: m.createdAt.getTime(),
       visibility: m.visibility,
       version: m.version,
       rank: m.rank,
       branchId: m.getBranchId(),
-<<<<<<< Updated upstream
       status: compactionMessage.status,
       content: compactionMessage.content,
-=======
-      status: cm.status,
-      content: cm.content,
->>>>>>> Stashed changes
     };
   });
 }
