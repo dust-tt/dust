@@ -1,6 +1,7 @@
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import type { GooglePickerFile } from "@app/hooks/useGooglePicker";
 import { useGooglePicker } from "@app/hooks/useGooglePicker";
+import { useResolveAuthentication } from "@app/hooks/useResolveAuthentication";
 import type {
   BlockedToolExecution,
   FileAuthorizationInfo,
@@ -17,6 +18,7 @@ import {
   ContentMessage,
   DocumentTextIcon,
   ExternalLinkIcon,
+  XMarkIcon,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -51,6 +53,10 @@ export function GoogleDriveFileAuthorizationRequired({
   const [credentialsError, setCredentialsError] = useState<string | null>(null);
 
   const { removeCompletedAction } = useBlockedActionsContext();
+  const { resolveAuthentication, isResolving } = useResolveAuthentication({
+    owner,
+    kind: "file_authorization",
+  });
   const isExtension = clientType === "extension";
 
   const isTriggeredByCurrentUser = useMemo(
@@ -148,6 +154,27 @@ export function GoogleDriveFileAuthorizationRequired({
     setIsOpeningPicker(true);
   };
 
+  const handleSkip = useCallback(async () => {
+    const denyRes = await resolveAuthentication({
+      outcome: "denied",
+      actionId: blockedAction.actionId,
+      conversationId: blockedAction.conversationId,
+      messageId: blockedAction.messageId,
+    });
+
+    if (!denyRes.success) {
+      return;
+    }
+
+    removeCompletedAction(blockedAction.actionId);
+  }, [
+    resolveAuthentication,
+    removeCompletedAction,
+    blockedAction.actionId,
+    blockedAction.conversationId,
+    blockedAction.messageId,
+  ]);
+
   const webAppConversationUrl = `${regionInfo.url}/w/${owner.sId}/conversation/${blockedAction.conversationId}`;
 
   const handleOpenInWebApp = () => {
@@ -179,7 +206,15 @@ export function GoogleDriveFileAuthorizationRequired({
             )}
           </div>
           {!isAuthorized && (
-            <div className="mt-3 flex flex-col justify-end sm:flex-row">
+            <div className="mt-3 flex flex-col justify-end gap-3 sm:flex-row">
+              <Button
+                variant="outline"
+                size="xs"
+                label="Skip"
+                icon={XMarkIcon}
+                disabled={isResolving || isOpeningPicker}
+                onClick={() => void handleSkip()}
+              />
               {isExtension ? (
                 <Button
                   label="Open in Web App"
@@ -194,7 +229,12 @@ export function GoogleDriveFileAuthorizationRequired({
                   variant="highlight"
                   size="xs"
                   icon={DocumentTextIcon}
-                  disabled={isButtonLoading || !!error || !!credentialsError}
+                  disabled={
+                    isButtonLoading ||
+                    isResolving ||
+                    !!error ||
+                    !!credentialsError
+                  }
                   onClick={handleOpenPicker}
                 />
               )}
