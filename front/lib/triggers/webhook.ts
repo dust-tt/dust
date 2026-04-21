@@ -1,5 +1,6 @@
 import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
 import { checkProgrammaticUsageLimits } from "@app/lib/api/programmatic_usage/tracking";
+import { FathomClient } from "@app/lib/api/triggers/built-in-webhooks/fathom/fathom_client";
 import { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import { getWebhookRequestsBucket } from "@app/lib/file_storage";
@@ -9,7 +10,6 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
 import type { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
-import { FathomClient } from "@app/lib/triggers/built-in-webhooks/fathom/fathom_client";
 import type { RateLimitCheckResult } from "@app/lib/triggers/rate_limits";
 import {
   checkTriggerForExecutionPerDayLimit,

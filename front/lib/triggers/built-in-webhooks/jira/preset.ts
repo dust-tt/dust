@@ -10,9 +10,8 @@ import {
   issueUpdatedExample,
   issueUpdatedSchema,
 } from "@app/lib/triggers/built-in-webhooks/jira/schemas/issue_updated";
-import { JiraWebhookService } from "@app/lib/triggers/built-in-webhooks/jira/service";
 import type {
-  PresetWebhook,
+  BaseWebhookPreset,
   WebhookEvent,
 } from "@app/types/triggers/webhooks_source_preset";
 
@@ -43,7 +42,7 @@ const JIRA_ISSUE_DELETED_EVENT: WebhookEvent = {
   sample: issueDeletedExample,
 };
 
-export const JIRA_WEBHOOK_PRESET: PresetWebhook<"jira"> = {
+export const JIRA_WEBHOOK_PRESET: BaseWebhookPreset = {
   name: "Jira",
   eventCheck: {
     type: "body",
@@ -54,9 +53,7 @@ export const JIRA_WEBHOOK_PRESET: PresetWebhook<"jira"> = {
     JIRA_ISSUE_UPDATED_EVENT,
     JIRA_ISSUE_DELETED_EVENT,
   ],
-  icon: "JiraLogo",
   description: "Receive events from Jira such as creation of issues.",
   filterGenerationInstructions: null,
   webhookPageUrl: `https://id.atlassian.com/manage-profile/security/api-tokens`,
-  webhookService: new JiraWebhookService(),
 };

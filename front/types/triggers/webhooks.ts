@@ -12,7 +12,7 @@ import type { LinearAdditionalData } from "@app/lib/triggers/built-in-webhooks/l
 import { ZENDESK_WEBHOOK_PRESET } from "@app/lib/triggers/built-in-webhooks/zendesk/preset";
 import type { AgentsUsageType } from "@app/types/data_source";
 import type { ModelId } from "@app/types/shared/model_id";
-import type { PresetWebhook } from "@app/types/triggers/webhooks_source_preset";
+import type { BaseWebhookPreset } from "@app/types/triggers/webhooks_source_preset";
 import type { EditedByUser } from "@app/types/user";
 import { z } from "zod";
 
@@ -63,9 +63,7 @@ export const WEBHOOK_PRESETS = {
   jira: JIRA_WEBHOOK_PRESET,
   linear: LINEAR_WEBHOOK_PRESET,
   zendesk: ZENDESK_WEBHOOK_PRESET,
-} satisfies {
-  [P in WebhookProvider]: PresetWebhook<P>;
-};
+} satisfies Record<WebhookProvider, BaseWebhookPreset>;
 
 export type WebhookSourceType = {
   id: ModelId;

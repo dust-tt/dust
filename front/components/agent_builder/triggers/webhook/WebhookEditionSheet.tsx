@@ -6,7 +6,7 @@ import type { TriggerExecutionMode } from "@app/types/assistant/triggers";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 import type {
-  PresetWebhook,
+  BaseWebhookPreset,
   WebhookEvent,
 } from "@app/types/triggers/webhooks_source_preset";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -135,7 +135,7 @@ function WebhookEditionExecutionLimit({
 
 interface WebhookEditionEventSelectorProps {
   isEditor: boolean;
-  selectedPreset: PresetWebhook | null;
+  selectedPreset: BaseWebhookPreset | null;
   availableEvents: WebhookEvent[];
 }
 
@@ -257,7 +257,7 @@ export function WebhookEditionSheetContent({
   webhookSourceView,
   isEditor,
 }: WebhookEditionSheetContentProps) {
-  const selectedPreset = useMemo((): PresetWebhook | null => {
+  const selectedPreset = useMemo((): BaseWebhookPreset | null => {
     if (!webhookSourceView || webhookSourceView.provider === null) {
       return null;
     }

@@ -1,7 +1,7 @@
 import config from "@app/lib/api/config";
+import { getGithubOrganizations } from "@app/lib/api/triggers/built-in-webhooks/github/orgs";
+import { getGithubRepositories } from "@app/lib/api/triggers/built-in-webhooks/github/repos";
 import type { Authenticator } from "@app/lib/auth";
-import { getGithubOrganizations } from "@app/lib/triggers/built-in-webhooks/github/orgs";
-import { getGithubRepositories } from "@app/lib/triggers/built-in-webhooks/github/repos";
 import type { GithubAdditionalData } from "@app/lib/triggers/built-in-webhooks/github/types";
 import logger from "@app/logger/logger";
 import { OAuthAPI } from "@app/types/oauth/oauth_api";

@@ -1,6 +1,6 @@
 import config from "@app/lib/api/config";
+import { FathomClient } from "@app/lib/api/triggers/built-in-webhooks/fathom/fathom_client";
 import type { Authenticator } from "@app/lib/auth";
-import { FathomClient } from "@app/lib/triggers/built-in-webhooks/fathom/fathom_client";
 import {
   isFathomWebhookCreateMetadata,
   isFathomWebhookMetadata,

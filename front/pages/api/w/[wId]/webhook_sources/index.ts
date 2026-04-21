@@ -2,6 +2,7 @@
 import { getWebhookSourcesUsage } from "@app/lib/api/agent_triggers";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
+import { WEBHOOK_SERVICES } from "@app/lib/api/triggers/built-in-webhooks/services";
 import { deleteWebhookSource } from "@app/lib/api/webhook_source";
 import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -17,10 +18,7 @@ import type {
   WebhookSourceForAdminType,
   WebhookSourceWithViewsAndUsageType,
 } from "@app/types/triggers/webhooks";
-import {
-  WEBHOOK_PRESETS,
-  WebhookSourcesSchema,
-} from "@app/types/triggers/webhooks";
+import { WebhookSourcesSchema } from "@app/types/triggers/webhooks";
 import type { NextApiRequest, NextApiResponse } from "next";
 import type { z } from "zod";
 import { fromError } from "zod-validation-error";
@@ -208,7 +206,7 @@ async function handler(
           workspaceId: workspace.sId,
           webhookSource: webhookSource.toJSONForAdmin(),
         });
-        const service = WEBHOOK_PRESETS[provider].webhookService;
+        const service = WEBHOOK_SERVICES[provider];
         const result = await service.createWebhooks({
           auth,
           connectionId,
