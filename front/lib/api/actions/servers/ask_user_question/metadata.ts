@@ -32,6 +32,7 @@ export const ASK_USER_QUESTION_TOOLS_METADATA = createToolsRecord({
     schema: {
       ...UserQuestionSchema.shape,
     },
+    enableAlerting: true,
     stake: "never_ask",
     displayLabels: {
       running: "Asking user...",
