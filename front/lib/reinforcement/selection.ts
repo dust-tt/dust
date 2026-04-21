@@ -51,7 +51,7 @@ interface ScoredConversation {
  */
 async function fetchEligibleSkillIds(
   auth: Authenticator
-): Promise<Set<SkillResource>> {
+): Promise<SkillResource[]> {
   const workspace = auth.getNonNullableWorkspace();
   const stalenessThreshold = daysAgo(SKILL_STALENESS_THRESHOLD_DAYS);
   const pendingSuggestionCutoff = daysAgo(PENDING_SUGGESTION_MAX_AGE_DAYS);
@@ -74,19 +74,16 @@ async function fetchEligibleSkillIds(
     pendingSuggestions.map((s) => s.skillConfigurationId)
   );
 
-  const eligibleSkills = new Set<SkillResource>();
-  for (const skill of recentSkills) {
-    if (!skillsWithPendingSuggestions.has(skill.id)) {
-      eligibleSkills.add(skill);
-    }
-  }
+  const eligibleSkills = recentSkills.filter(
+    (skill) => !skillsWithPendingSuggestions.has(skill.id)
+  );
 
   logger.info(
     {
       workspaceId: workspace.sId,
       recentSkillCount: recentSkills.length,
       pendingSuggestionSkillCount: skillsWithPendingSuggestions.size,
-      eligibleSkillCount: eligibleSkills.size,
+      eligibleSkillCount: eligibleSkills.length,
     },
     "ReinforcedSkills: eligible skill determination"
   );
@@ -105,7 +102,7 @@ async function discoverConversations(
     cutoffDate,
     skillId,
   }: {
-    eligibleSkills: Set<SkillResource>;
+    eligibleSkills: SkillResource[];
     cutoffDate: Date;
     skillId?: string;
   }
@@ -115,13 +112,13 @@ async function discoverConversations(
 }> {
   const workspace = auth.getNonNullableWorkspace();
 
-  if (eligibleSkills.size === 0) {
+  if (eligibleSkills.length === 0) {
     return { conversationSkillMap: new Map(), convModelIdToId: new Map() };
   }
 
   const skillRecords = await SkillResource.listAgentMessageSkillsByCustomSkills(
     auth,
-    [...eligibleSkills]
+    eligibleSkills
   );
 
   if (skillRecords.length === 0) {
@@ -369,7 +366,7 @@ export async function findConversationsWithSkills(
 
   // Stage 1: Eligible skills.
   const eligibleSkills = await fetchEligibleSkillIds(auth);
-  if (eligibleSkills.size === 0) {
+  if (eligibleSkills.length === 0) {
     logger.info(
       { workspaceId: workspace.sId },
       "ReinforcedSkills: no eligible skills found, skipping"
