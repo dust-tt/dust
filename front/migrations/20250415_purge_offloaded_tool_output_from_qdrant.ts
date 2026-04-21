@@ -15,7 +15,7 @@ import * as fs from "fs";
 import { Op } from "sequelize";
 
 const BATCH_SIZE = 100;
-const CONCURRENCY = 8;
+const CONCURRENCY = 20;
 const WORKSPACE_CONCURRENCY = 20;
 
 /**
