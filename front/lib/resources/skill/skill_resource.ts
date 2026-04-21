@@ -507,6 +507,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       where,
       includes,
       onlyCustom,
+      withInstructions = true,
       withTools = true,
       ...otherOptions
     } = options;
@@ -734,6 +735,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         this.fromGlobalSkill(auth, def, {
           agentLoopData,
           mcpServerViews,
+          withInstructions,
         }),
       { concurrency: 5 }
     );
@@ -1055,6 +1057,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       isDefault,
       updatedAfter,
       reinforcementNotOff,
+      withInstructions = true,
       withTools = true,
     }: {
       status?: SkillStatus | SkillStatus[];
@@ -1064,6 +1067,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       isDefault?: boolean;
       updatedAfter?: Date;
       reinforcementNotOff?: boolean;
+      withInstructions?: boolean;
       withTools?: boolean;
     } = {}
   ): Promise<SkillResource[]> {
@@ -1076,6 +1080,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       },
       ...(limit ? { limit } : {}),
       onlyCustom,
+      withInstructions,
       withTools,
     });
 
@@ -1429,9 +1434,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     {
       agentLoopData,
       mcpServerViews,
+      withInstructions = true,
     }: {
       agentLoopData?: AgentLoopExecutionData;
       mcpServerViews: MCPServerViewResource[];
+      withInstructions?: boolean;
     }
   ): Promise<SkillResource> {
     const workspaceId = auth.getNonNullableWorkspace().id;
@@ -1457,12 +1464,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       ).map((view) => ({ view, childAgentId, serverNameOverride }))
     );
 
-    const instructions = def.fetchInstructions
-      ? await def.fetchInstructions(auth, {
-          spaceIds: requestedSpaceIds,
-          agentLoopData,
-        })
-      : def.instructions;
+    const instructions = withInstructions
+      ? def.fetchInstructions
+        ? await def.fetchInstructions(auth, {
+            spaceIds: requestedSpaceIds,
+            agentLoopData,
+          })
+        : def.instructions
+      : "";
 
     return new SkillResource(
       this.model,
