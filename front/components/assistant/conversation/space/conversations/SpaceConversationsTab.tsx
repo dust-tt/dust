@@ -141,8 +141,14 @@ export function SpaceConversationsTab({
           )}
         >
           <div className="flex w-full flex-col gap-3">
-            <h2 className="heading-2xl text-foreground dark:text-foreground-night">
-              {spaceInfo.name}
+            <h2
+              className={cn(
+                "heading-2xl text-foreground dark:text-foreground-night items-center",
+                spaceInfo.archivedAt &&
+                  "text-muted-foreground dark:text-muted-foreground-night"
+              )}
+            >
+              {`${spaceInfo.name}${spaceInfo.archivedAt ? " (Archived)" : ""}`}
             </h2>
             {isEmpty && (
               <h3 className="heading-lg text-foreground dark:text-foreground-night">
@@ -152,7 +158,7 @@ export function SpaceConversationsTab({
             {spaceInfo.archivedAt ? (
               <div className="mx-auto flex flex-col w-full py-4 sm:max-w-conversation">
                 <EmptyCTA
-                  message="This project is archived. You can view past conversations, but you cannot start new ones."
+                  message="This project is archived and no longer appears in your sidebar. You can still search for it and view past conversations, but you cannot start new ones."
                   action={null}
                 />
               </div>

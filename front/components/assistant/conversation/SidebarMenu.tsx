@@ -48,12 +48,12 @@ import {
   getSkillBuilderRoute,
 } from "@app/lib/utils/router";
 import { formatWakeUpSidebarLabel } from "@app/lib/utils/wakeup_description";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import {
   type ConversationListItemType,
-  type ConversationWithoutContentType,
   getConversationDisplayTitle,
 } from "@app/types/assistant/conversation";
-import type { ProjectType, SpaceType } from "@app/types/space";
+import type { ProjectType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import { isBuilder } from "@app/types/user";
 import {
@@ -66,6 +66,7 @@ import {
   ChatBubbleBottomCenterPlusIcon,
   Checkbox,
   CheckDoubleIcon,
+  Chip,
   cn,
   DocumentIcon,
   DropdownMenu,
@@ -123,7 +124,7 @@ type GroupLabel =
   | "Older";
 
 interface SearchProjectItemProps {
-  space: SpaceType;
+  space: ProjectType;
   owner: WorkspaceType;
   isMember: boolean;
   activeSpaceId: string | null;
@@ -138,6 +139,8 @@ function SearchProjectItem({
   const router = useAppRouter();
   const { setSidebarOpen } = useContext(SidebarContext);
 
+  const isArchived = !!space.archivedAt;
+
   return (
     <NavigationListItem
       selected={activeSpaceId === space.sId}
@@ -148,6 +151,11 @@ function SearchProjectItem({
         setSidebarOpen(false);
         await router.push(getProjectRoute(owner.sId, space.sId));
       }}
+      suffix={
+        isArchived ? (
+          <Chip size="mini" color="white" label="Archived" />
+        ) : undefined
+      }
     />
   );
 }
