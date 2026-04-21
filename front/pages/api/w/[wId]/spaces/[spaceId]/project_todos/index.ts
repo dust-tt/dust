@@ -45,7 +45,7 @@ async function handler(
         }
       );
 
-      // Combine todo data with enriched sources.
+      // TODO: enrich todos with creator/done-by user info when supporting multiple users.
       const todosWithSources: ProjectTodoType[] = todos.map((t) => {
         const sources = sourcesByTodoId.get(t.sId) ?? [];
         return {

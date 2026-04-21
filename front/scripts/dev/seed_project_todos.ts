@@ -4,6 +4,9 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { makeScript } from "@app/scripts/helpers";
 
+// Mirrors the sentinel used by the butler merge workflow.
+const BUTLER_AGENT_SID = "butler";
+
 const SEED_TODOS = [
   // Current version, in progress.
   {
@@ -14,17 +17,25 @@ const SEED_TODOS = [
     text: "Update the onboarding checklist for new hires",
     status: "in_progress" as const,
   },
-  // Current version, done.
+  // Current version, done — marked done by agent.
   {
     text: "Send weekly status report to stakeholders",
     status: "done" as const,
+    agentMarkedDone: true,
+    agentRationale:
+      "Detected in the #weekly-updates Slack thread: report was shared and acknowledged by the team.",
   },
   // Will be set to done with an older version (simulates a todo created, then marked done).
+  // Marked done by agent.
   {
     text: "Fix broken link in the FAQ page",
     status: "done" as const,
     withOlderVersion: true,
+    agentMarkedDone: true,
+    agentRationale:
+      "The broken link was replaced with the correct URL in the FAQ document.",
   },
+  // Marked done by user.
   {
     text: "Archive completed sprint tickets",
     status: "done" as const,
@@ -70,7 +81,7 @@ makeScript(
       alias: "uId",
       type: "string" as const,
       demandOption: true,
-      description: "User sId.",
+      description: "User sId (used only to resolve the target space/user).",
     },
   },
   async ({ execute, workspaceId, spaceId, userId }, logger) => {
@@ -109,13 +120,13 @@ makeScript(
     }
 
     for (const seed of SEED_TODOS) {
-      // Create every todo in initial "todo" status.
+      // All todos are created by the butler agent, mirroring merge_into_project.ts.
       const todo = await ProjectTodoResource.makeNew(auth, {
         spaceId: space.id,
         userId: user.id,
-        createdByType: "user",
-        createdByUserId: user.id,
-        createdByAgentConfigurationId: null,
+        createdByType: "agent",
+        createdByUserId: null,
+        createdByAgentConfigurationId: BUTLER_AGENT_SID,
         markedAsDoneByType: null,
         markedAsDoneByUserId: null,
         markedAsDoneByAgentConfigurationId: null,
@@ -127,46 +138,35 @@ makeScript(
       });
 
       if (seed.deleted) {
-        // Soft-delete: creates a version (the original "todo" state) then sets deletedAt.
         await todo.softDelete(auth);
         logger.info({ text: seed.text }, "Created and soft-deleted todo.");
       } else if (seed.status) {
-        if (seed.withOlderVersion) {
-          // First move to an intermediate state to create version history.
-          // This simulates a todo that went through a status change.
-          await todo.updateWithVersion(auth, {
-            status: seed.status,
-            ...(seed.status === "done"
-              ? {
-                  doneAt: new Date(),
-                  markedAsDoneByType: "user",
-                  markedAsDoneByUserId: user.id,
-                  markedAsDoneByAgentConfigurationId: null,
-                }
-              : {}),
-          });
-          logger.info(
-            { text: seed.text, status: seed.status },
-            "Created todo with older version."
-          );
-        } else {
-          // Update directly (still creates a version of the original state).
-          await todo.updateWithVersion(auth, {
-            status: seed.status,
-            ...(seed.status === "done"
-              ? {
-                  doneAt: new Date(),
-                  markedAsDoneByType: "user",
-                  markedAsDoneByUserId: user.id,
-                  markedAsDoneByAgentConfigurationId: null,
-                }
-              : {}),
-          });
-          logger.info(
-            { text: seed.text, status: seed.status },
-            "Created todo with status update."
-          );
-        }
+        const doneUpdates =
+          seed.status === "done"
+            ? {
+                doneAt: new Date(),
+                markedAsDoneByType: seed.agentMarkedDone
+                  ? ("agent" as const)
+                  : ("user" as const),
+                markedAsDoneByUserId: seed.agentMarkedDone ? null : user.id,
+                markedAsDoneByAgentConfigurationId: seed.agentMarkedDone
+                  ? BUTLER_AGENT_SID
+                  : null,
+                actorRationale: seed.agentRationale ?? null,
+              }
+            : {};
+
+        await todo.updateWithVersion(auth, {
+          status: seed.status,
+          ...doneUpdates,
+        });
+
+        logger.info(
+          { text: seed.text, status: seed.status },
+          seed.withOlderVersion
+            ? "Created todo with older version."
+            : "Created todo with status update."
+        );
       } else {
         logger.info({ text: seed.text }, "Created todo.");
       }
