@@ -1,4 +1,5 @@
 import type { ContentFragmentInputWithFileIdType } from "@app/types/api/internal/assistant";
+import { ActivityFailure, RetryState } from "@temporalio/common";
 import { proxyActivities } from "@temporalio/workflow";
 
 import type * as activities from "./activities";
@@ -10,9 +11,15 @@ const { runTriggeredAgentsActivity } = proxyActivities<typeof activities>({
   },
 });
 
-const { runWakeUpActivity } = proxyActivities<typeof activities>({
+const { expireWakeUpActivity, runWakeUpActivity } = proxyActivities<
+  typeof activities
+>({
   startToCloseTimeout: "5 minutes",
   retry: {
+    initialInterval: "30 seconds",
+    backoffCoefficient: 2,
+    maximumAttempts: 3,
+    maximumInterval: "5 minutes",
     nonRetryableErrorTypes: ["WakeUpNonRetryableError"],
   },
 });
@@ -39,6 +46,23 @@ export async function agentTriggerWorkflow({
   });
 }
 
+function isWakeUpActivityRetryExhausted(
+  error: unknown
+): error is ActivityFailure {
+  if (!(error instanceof ActivityFailure)) {
+    return false;
+  }
+
+  if (error.activityType !== "runWakeUpActivity") {
+    return false;
+  }
+
+  return (
+    error.retryState === RetryState.MAXIMUM_ATTEMPTS_REACHED ||
+    error.retryState === RetryState.TIMEOUT
+  );
+}
+
 export async function wakeUpWorkflow({
   workspaceId,
   wakeUpId,
@@ -46,5 +70,14 @@ export async function wakeUpWorkflow({
   workspaceId: string;
   wakeUpId: string;
 }): Promise<void> {
-  await runWakeUpActivity({ workspaceId, wakeUpId });
+  try {
+    await runWakeUpActivity({ workspaceId, wakeUpId });
+  } catch (error) {
+    if (isWakeUpActivityRetryExhausted(error)) {
+      await expireWakeUpActivity({ workspaceId, wakeUpId });
+      return;
+    }
+
+    throw error;
+  }
 }

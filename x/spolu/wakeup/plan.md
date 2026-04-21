@@ -22,25 +22,33 @@ reuse the same serialized shape.
 
 ## Milestone 2: Temporal execution (one-shot only)
 
-### PR 3 — wakeUpWorkflow + runWakeUpActivity
+### [x] PR 3 — wakeUpWorkflow + runWakeUpActivity
 
-Add `wakeUpWorkflow` and `runWakeUpActivity` to the `agent-schedule-v1` queue. Wire up the
-one-shot path: `startDelay` on `client.workflow.start()`. Activity posts a user message into the
-conversation with `origin: "wakeup"`, `doNotAssociateUser: true`, `username: "Dust"`,
-`<dust_system>` context block, and agent mention. Use an atomic claim / duplicate-fire protection
-when firing, and treat missing/deleted conversation, user, workspace, or agent as terminal
-cancelled/expired states. Back-off + retry only when a different agent is running (retryable
-error, 10min max window).
+Add `wakeUpWorkflow`, `runWakeUpActivity`, and `expireWakeUpActivity` to the shared
+`agent-schedule-v1` queue in `front/temporal/triggers/{workflows,activities}.ts`. Wire up the
+one-shot path with `startDelay` on `client.workflow.start()`. The activity resolves the wake-up
+and acting user via `WakeUpResource.fetchWakeUpAndAuthenticatorById(...)`, fetches the
+conversation with `getConversation(...)`, posts a user message with `origin: "wakeup"`,
+`doNotAssociateUser: true`, `username: "Dust"`, and a `<dust_system>` context block, then marks
+the wake-up as fired.
 
-Status: Temporal scaffolding for one-shot wake-ups is in place (`front/temporal/triggers/wakeup/*`,
-worker wiring, and `WakeUpResource` integration). Remaining work is implementing the activity
-logic and retry/terminal-state behavior.
+Current terminal / retry behavior:
+- Missing workspace or wake-up: non-retryable failure.
+- Missing or inaccessible conversation: mark `cancelled` and stop.
+- Posting failure: retry via Temporal backoff.
+- Retry exhaustion or timeout: mark `expired` via `expireWakeUpActivity(...)`.
 
-### PR 4 — Wire WakeUpResource to Temporal
+Current retry policy: 3 attempts, exponential backoff starting at 30 seconds, max interval
+5 minutes. Cron wake-ups still return an unsupported error for now.
 
-Connect `WakeUpResource.makeNew` and `cancel` to actual Temporal workflow start/terminate. Remove
-stubs from PR 2. One-shot wake-ups are now fully functional end-to-end at the backend level.
-Emit the corresponding audit events.
+### [x] PR 4 — Wire WakeUpResource to Temporal
+
+Connect `WakeUpResource.makeNew` and `cancel` to actual Temporal workflow start / cancellation via
+`front/temporal/triggers/wakeup_client.ts`. One-shot wake-ups are now functional end-to-end at the
+backend level.
+
+Follow-up work remains for explicit duplicate-fire / cancel-vs-fire race handling, tighter retry
+classification, audit events, and the cron path.
 
 ## Milestone 3: Agent action
 

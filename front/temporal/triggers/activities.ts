@@ -4,13 +4,16 @@ import {
   postNewContentFragment,
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
+import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
 } from "@app/lib/api/audit/workos_audit";
 import { Authenticator } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
+import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
 import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
@@ -19,14 +22,14 @@ import type { ContentFragmentInputWithFileIdType } from "@app/types/api/internal
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type { TriggerType } from "@app/types/assistant/triggers";
+import type { WakeUpType } from "@app/types/assistant/wakeups";
 import type { APIErrorWithStatusCode } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 class TriggerNonRetryableError extends Error {}
-
-// biome-ignore lint/correctness/noUnusedVariables: not implemented yet.
 class WakeUpNonRetryableError extends Error {}
 
 async function createConversationForAgentConfiguration({
@@ -265,6 +268,14 @@ export async function runTriggeredAgentsActivity({
   }
 }
 
+function buildWakeUpMessageContent(wakeUp: WakeUpType): string {
+  return `<dust_system>
+This is an automatic wake-up message for a previously scheduled follow-up using the wake-up tool.
+- Wake-up ID: ${wakeUp.sId}
+</dust_system>
+Wake-up reason: ${wakeUp.reason}`;
+}
+
 export async function runWakeUpActivity({
   workspaceId,
   wakeUpId,
@@ -272,8 +283,107 @@ export async function runWakeUpActivity({
   workspaceId: string;
   wakeUpId: string;
 }): Promise<void> {
-  logger.info(
-    { wakeUpId, workspaceId },
-    "Wake-up activity is not implemented yet."
+  const wakeUpAndAuthRes = await WakeUpResource.fetchWakeUpAndAuthenticatorById(
+    {
+      workspaceId,
+      wakeUpId,
+    }
   );
+  if (wakeUpAndAuthRes.isErr()) {
+    logger.error(
+      { wakeUpId, workspaceId, error: normalizeError(wakeUpAndAuthRes.error) },
+      "Skipping wake-up: workspace or wake-up not found."
+    );
+    throw new WakeUpNonRetryableError("Workspace or wake-up not found.");
+  }
+
+  const { auth, wakeUp } = wakeUpAndAuthRes.value;
+
+  if (wakeUp.status !== "scheduled") {
+    logger.info(
+      { status: wakeUp.status, wakeUpId, workspaceId },
+      "Skipping wake-up: wake-up is not scheduled."
+    );
+    throw new WakeUpNonRetryableError("Wake-up is not scheduled.");
+  }
+
+  const [c] = await ConversationResource.fetchByModelIds(auth, [
+    wakeUp.conversationId,
+  ]);
+  if (!c) {
+    logger.info(
+      { status: wakeUp.status, wakeUpId, workspaceId },
+      "Cancelling wake-up: conversation not found."
+    );
+    await wakeUp.markCancelled(auth);
+    throw new WakeUpNonRetryableError("Conversation not found.");
+  }
+
+  const conversationRes = await getConversation(auth, c.sId);
+  if (conversationRes.isErr()) {
+    logger.info(
+      {
+        status: wakeUp.status,
+        wakeUpId,
+        workspaceId,
+        error: normalizeError(conversationRes.error),
+      },
+      "Cancelling wake-up: conversation not accessible."
+    );
+    await wakeUp.markCancelled(auth);
+    throw new WakeUpNonRetryableError("Conversation not accessible.");
+  }
+
+  const conversation = conversationRes.value;
+
+  const postMessageResult = await postUserMessage(auth, {
+    conversation,
+    content: buildWakeUpMessageContent(wakeUp.toJSON()),
+    mentions: [{ configurationId: wakeUp.agentConfigurationId }],
+    context: {
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC",
+      username: "Dust",
+      fullName: "Dust",
+      email: null,
+      profilePictureUrl: null,
+      origin: "wakeup",
+    },
+    skipToolsValidation: false,
+    doNotAssociateUser: true,
+  });
+
+  if (postMessageResult.isErr()) {
+    const {
+      api_error: { message, type },
+    } = postMessageResult.error;
+
+    throw new Error(`Error posting wake-up message: [${type}] ${message}`);
+  }
+
+  await wakeUp.markFired(auth);
+}
+
+export async function expireWakeUpActivity({
+  workspaceId,
+  wakeUpId,
+}: {
+  workspaceId: string;
+  wakeUpId: string;
+}): Promise<void> {
+  const wakeUpAndAuthRes = await WakeUpResource.fetchWakeUpAndAuthenticatorById(
+    {
+      workspaceId,
+      wakeUpId,
+    }
+  );
+  if (wakeUpAndAuthRes.isErr()) {
+    logger.error(
+      { wakeUpId, workspaceId, error: normalizeError(wakeUpAndAuthRes.error) },
+      "Expire wake-up: workspace or wake-up not found."
+    );
+    throw new WakeUpNonRetryableError("Workspace or wake-up not found.");
+  }
+  const { auth, wakeUp } = wakeUpAndAuthRes.value;
+
+  await wakeUp.markExpired(auth);
 }

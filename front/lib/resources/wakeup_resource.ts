@@ -1,11 +1,12 @@
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { WakeUpModel } from "@app/lib/resources/storage/models/wakeup";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
-import { makeSId } from "@app/lib/resources/string_ids";
+import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import {
   cancelWakeUpTemporalWorkflow,
@@ -20,7 +21,7 @@ import type {
 } from "@app/types/assistant/wakeups";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { Attributes, Transaction, WhereOptions } from "sequelize";
 
@@ -123,6 +124,24 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
     return new Ok(wakeUp);
   }
 
+  static async fetchById(
+    auth: Authenticator,
+    wakeUpId: string
+  ): Promise<WakeUpResource | null> {
+    const modelId = getResourceIdFromSId(wakeUpId);
+    if (!modelId) {
+      return null;
+    }
+
+    const [wakeUp] = await this.baseFetch(auth, {
+      where: {
+        id: modelId,
+      },
+    });
+
+    return wakeUp ?? null;
+  }
+
   static async listByConversation(
     auth: Authenticator,
     conversation: ConversationWithoutContentType
@@ -150,6 +169,38 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
         ["id", "ASC"],
       ],
     });
+  }
+
+  /**
+   * This is used by the wake-up temporal activities to recover the wake-up resource and its
+   * associated user's authenticator.
+   */
+  static async fetchWakeUpAndAuthenticatorById({
+    workspaceId,
+    wakeUpId,
+  }: {
+    workspaceId: string;
+    wakeUpId: string;
+  }): Promise<Result<{ auth: Authenticator; wakeUp: WakeUpResource }, Error>> {
+    let auth = await Authenticator.internalBuilderForWorkspace(workspaceId);
+    const wakeUp = await WakeUpResource.fetchById(auth, wakeUpId);
+
+    if (!wakeUp) {
+      return new Err(new Error("WakeUp not found"));
+    }
+
+    const [user] = await UserResource.fetchByModelIds([wakeUp.userId]);
+    if (!user) {
+      return new Err(new Error("WakeUp user not found"));
+    }
+
+    auth = await Authenticator.fromUserIdAndWorkspaceId(user.sId, workspaceId);
+
+    if (!auth.workspace() || !auth.user()) {
+      return new Err(new Error("Invalid Authenticator for WakeUp"));
+    }
+
+    return new Ok({ auth, wakeUp });
   }
 
   static async deleteByConversation(
@@ -196,22 +247,49 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
       return temporalResult;
     }
 
+    await this.markCancelled(auth, { transaction });
+
+    return new Ok(undefined);
+  }
+
+  async markCancelled(
+    auth: Authenticator,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<void> {
+    if (this.status === "cancelled") {
+      return;
+    }
+
     await this.update(
       {
         status: "cancelled",
       },
       transaction
     );
+  }
 
-    return new Ok(undefined);
+  async markExpired(
+    auth: Authenticator,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<void> {
+    if (this.status === "expired") {
+      return;
+    }
+
+    await this.update(
+      {
+        status: "expired",
+      },
+      transaction
+    );
   }
 
   async markFired(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
-  ): Promise<Result<void, Error>> {
+  ): Promise<void> {
     if (this.status !== "scheduled") {
-      return new Ok(undefined);
+      return;
     }
 
     const nextStatus: WakeUpStatus =
@@ -224,8 +302,6 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
       },
       transaction
     );
-
-    return new Ok(undefined);
   }
 
   async delete(
