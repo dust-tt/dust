@@ -1,6 +1,6 @@
 import { useDataClassificationLabels } from "@app/lib/swr/data_classification_labels";
 import type { LightWorkspaceType } from "@app/types/user";
-import { MicrosoftLabelsSelector } from "./MicrosoftLabelsConfig";
+import { MicrosoftLabelsSelector } from "./MicrosoftLabelsSelector";
 import type { SensitivityLabelSource } from "./types";
 
 interface SensitivityLabelsConfigProps {
