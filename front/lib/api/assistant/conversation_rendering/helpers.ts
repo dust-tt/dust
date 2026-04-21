@@ -14,6 +14,7 @@ import {
 } from "@app/lib/mentions/format";
 import { renderLightContentFragmentForModel } from "@app/lib/resources/content_fragment_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type {
@@ -114,8 +115,9 @@ export async function renderActionForMultiActionsModel(
       const bucket = getPrivateUploadBucket();
       const workspaceId = auth.getNonNullableWorkspace().sId;
 
-      const imageBlocks = await Promise.all(
-        imageFiles.map(async (imageFile): Promise<Content> => {
+      const imageBlocks = await concurrentExecutor(
+        imageFiles,
+        async (imageFile): Promise<Content> => {
           const filePath = FileResource.getCloudStoragePathForId({
             fileId: imageFile.fileId,
             workspaceId,
@@ -123,7 +125,8 @@ export async function renderActionForMultiActionsModel(
           });
           const signedUrl = await bucket.getSignedUrl(filePath);
           return { type: "image_url", image_url: { url: signedUrl } };
-        })
+        },
+        { concurrency: 4 }
       );
 
       return {
