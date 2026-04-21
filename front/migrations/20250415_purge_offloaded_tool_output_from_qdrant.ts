@@ -1,6 +1,7 @@
 import config from "@app/lib/api/config";
 import { getOrCreateConversationDataSourceFromFile } from "@app/lib/api/data_sources";
 import { Authenticator } from "@app/lib/auth";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { AgentMCPActionOutputItemModel } from "@app/lib/models/agent/actions/mcp";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { FileModel } from "@app/lib/resources/storage/models/files";
@@ -44,7 +45,18 @@ async function purgeWorkspace(
   { execute, manifestFd }: { execute: boolean; manifestFd: number | null },
   localLogger: Logger
 ) {
-  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+  // Authenticator init fetches OAuth credentials if BYOK is available on the plan via the OAuth
+  // service. Prodbox can't reach oauth. Simply skip the workspace.
+  let auth: Authenticator;
+  try {
+    auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+  } catch (err) {
+    localLogger.error(
+      { workspaceId: workspace.sId, error: normalizeError(err) },
+      "Failed to initialize authenticator (OAuth service unavailable?), skipping workspace"
+    );
+    return;
+  }
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), localLogger);
 
   let cursorId = 0;
