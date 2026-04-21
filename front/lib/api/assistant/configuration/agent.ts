@@ -1677,7 +1677,7 @@ async function canPublishAgent(auth: Authenticator): Promise<{
   return { canPublish: false, message: PUBLISHING_RESTRICTIONS[level].message };
 }
 
-export async function updateAgentConfigurationScope(
+export async function updateAgentConfigurationsScope(
   auth: Authenticator,
   agentIds: string[],
   scope: Exclude<AgentConfigurationScope, "global">
@@ -1700,9 +1700,9 @@ export async function updateAgentConfigurationScope(
 
   const { canPublish, message } = await canPublishAgent(auth);
   if (scope === "visible" && !canPublish) {
-    if (editableAgents.some(
-      (a) => a.scope !== "visible" && a.status === "active"
-    )) {
+    if (
+      editableAgents.some((a) => a.scope !== "visible" && a.status === "active")
+    ) {
       return new Err(new Error(message ?? "Publishing agents is restricted."));
     }
   }

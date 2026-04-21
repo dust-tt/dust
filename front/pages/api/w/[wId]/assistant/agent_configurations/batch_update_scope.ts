@@ -1,5 +1,5 @@
 /** @ignoreswagger */
-import { updateAgentConfigurationScope } from "@app/lib/api/assistant/configuration/agent";
+import { updateAgentConfigurationsScope } from "@app/lib/api/assistant/configuration/agent";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
@@ -59,7 +59,7 @@ async function handler(
 
   const { agentIds, scope } = bodyValidation.data;
 
-  const result = await updateAgentConfigurationScope(auth, agentIds, scope);
+  const result = await updateAgentConfigurationsScope(auth, agentIds, scope);
   if (result.isErr()) {
     return apiError(req, res, {
       status_code: 400,
