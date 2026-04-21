@@ -371,6 +371,28 @@ export async function getMetronomeActiveContract(
 }
 
 /**
+ * Retrieve a specific Metronome contract by customer + contract ID.
+ */
+export async function getMetronomeContractById({
+  metronomeCustomerId,
+  metronomeContractId,
+}: {
+  metronomeCustomerId: string;
+  metronomeContractId: string;
+}): Promise<Result<ContractV2, Error>> {
+  try {
+    const response = await getMetronomeClient().v2.contracts.retrieve({
+      customer_id: metronomeCustomerId,
+      contract_id: metronomeContractId,
+    });
+
+    return new Ok(response.data);
+  } catch (err) {
+    return new Err(normalizeError(err));
+  }
+}
+
+/**
  * Schedule a Metronome contract to end at the given date (defaults to now).
  * Metronome requires ending_before on an hour boundary; we ceil to avoid
  * dropping usage in the current partial hour.
@@ -452,13 +474,16 @@ export async function getMetronomeContractPackageAliases({
   metronomeContractId: string;
 }): Promise<Result<string[], Error>> {
   try {
-    const contractResponse = await getMetronomeClient().v2.contracts.retrieve({
-      customer_id: metronomeCustomerId,
-      contract_id: metronomeContractId,
+    const contractResult = await getMetronomeContractById({
+      metronomeCustomerId,
+      metronomeContractId,
     });
+    if (contractResult.isErr()) {
+      return new Err(contractResult.error);
+    }
 
     const packageId = (
-      contractResponse.data as ContractV2 & { package_id: string } // package_id is missing in ContractV2 but is actually returned
+      contractResult.value as ContractV2 & { package_id: string } // package_id is missing in ContractV2 but is actually returned
     ).package_id;
     if (!packageId) {
       return new Ok([]);

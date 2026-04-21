@@ -1,9 +1,11 @@
-import { updateSubscriptionQuantity } from "@app/lib/metronome/client";
+import {
+  getMetronomeContractById,
+  updateSubscriptionQuantity,
+} from "@app/lib/metronome/client";
 import {
   getProductMauId,
   getProductMauTierIds,
 } from "@app/lib/metronome/constants";
-import { getActiveContract } from "@app/lib/metronome/plan_type";
 import { countActiveUsersForPeriodInWorkspace } from "@app/lib/plans/usage/mau";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
@@ -136,6 +138,34 @@ interface TieredMauInfo {
 
 type MauInfo = SimpleMauInfo | TieredMauInfo;
 
+interface MauContractLike {
+  id?: string;
+  custom_fields?: Record<string, string>;
+  subscriptions?: Array<{
+    id?: string;
+    subscription_rate: { product: { id: string } };
+    quantity_schedule?: Array<{ quantity: number }>;
+    billing_periods?: {
+      next?: { starting_at?: string };
+      current?: { starting_at?: string };
+    };
+  }>;
+}
+
+export function hasMauSubscriptionInContract(
+  contract: MauContractLike
+): boolean {
+  const subscriptions = contract.subscriptions ?? [];
+  const productIds = new Set(
+    subscriptions.map((s) => s.subscription_rate.product.id)
+  );
+
+  return (
+    productIds.has(getProductMauId()) ||
+    getProductMauTierIds().some((productId) => productIds.has(productId))
+  );
+}
+
 /**
  * Retrieve a contract and extract MAU info.
  *
@@ -143,10 +173,13 @@ type MauInfo = SimpleMauInfo | TieredMauInfo;
  * - Otherwise → simple mode (single MAU product).
  * - MAU_THRESHOLD custom field controls the threshold (default 1).
  */
-async function getContractMauInfo(
-  workspaceId: string
-): Promise<MauInfo | undefined> {
-  const contract = await getActiveContract(workspaceId);
+function getContractMauInfoFromContract({
+  workspaceId,
+  contract,
+}: {
+  workspaceId: string;
+  contract: MauContractLike;
+}): MauInfo | undefined {
   if (!contract?.subscriptions?.length) {
     return undefined;
   }
@@ -247,13 +280,31 @@ export async function syncMauCount({
   contractId,
   workspace,
   startingAt,
+  contract,
 }: {
   metronomeCustomerId: string;
   contractId: string;
   workspace: LightWorkspaceType;
   startingAt?: string;
+  contract?: MauContractLike;
 }): Promise<Result<void, Error>> {
-  const mauInfo = await getContractMauInfo(workspace.sId);
+  let contractData = contract;
+  if (!contractData) {
+    const contractResult = await getMetronomeContractById({
+      metronomeCustomerId,
+      metronomeContractId: contractId,
+    });
+    if (contractResult.isErr()) {
+      return new Err(contractResult.error);
+    }
+    contractData = contractResult.value;
+  }
+  const mauInfo = contractData
+    ? getContractMauInfoFromContract({
+        workspaceId: workspace.sId,
+        contract: contractData,
+      })
+    : undefined;
   if (!mauInfo) {
     logger.warn(
       { workspaceId: workspace.sId, contractId },

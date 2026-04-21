@@ -10,7 +10,11 @@ import {
   buildLlmUsageEvents,
   buildToolUseEvents,
 } from "@app/lib/metronome/events";
-import { syncMauCount } from "@app/lib/metronome/mau_sync";
+import {
+  hasMauSubscriptionInContract,
+  syncMauCount,
+} from "@app/lib/metronome/mau_sync";
+import { getActiveContract } from "@app/lib/metronome/plan_type";
 import {
   AgentMessageModel,
   MessageModel,
@@ -413,11 +417,27 @@ export async function syncMauCountToMetronomeForAllWorkspacesActivity(): Promise
       }
 
       try {
-        await syncMauCount({
+        const contract = await getActiveContract(workspace.sId);
+        if (!contract) {
+          return;
+        }
+        if (!hasMauSubscriptionInContract(contract)) {
+          return;
+        }
+
+        const result = await syncMauCount({
           metronomeCustomerId: workspace.metronomeCustomerId,
           contractId: subscription.metronomeContractId,
           workspace: renderLightWorkspaceType({ workspace }),
+          contract,
         });
+        if (result.isErr()) {
+          logger.error(
+            { workspaceId: workspace.sId, error: result.error },
+            "[Metronome] Failed to sync MAU count for workspace"
+          );
+          return;
+        }
       } catch (err) {
         logger.error(
           { workspaceId: workspace.sId, error: err },
