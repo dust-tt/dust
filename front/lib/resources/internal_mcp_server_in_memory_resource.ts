@@ -663,16 +663,15 @@ export class InternalMCPServerInMemoryResource {
     sharedSecret: string | null;
     customHeaders: Record<string, string> | null;
   } | null> {
-    const [credential] = await this.fetchDecryptedCredentialsByIds(
-      auth,
-      [internalMCPServerId]
-    );
+    const [credential] = await this.fetchDecryptedCredentialsByIds(auth, [
+      internalMCPServerId,
+    ]);
 
     return credential
       ? {
-        sharedSecret: credential.sharedSecret,
-        customHeaders: credential.customHeaders,
-      }
+          sharedSecret: credential.sharedSecret,
+          customHeaders: credential.customHeaders,
+        }
       : null;
   }
 
