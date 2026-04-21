@@ -130,6 +130,21 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     });
   }
 
+  static async listByAgentConfigurationIds(
+    auth: Authenticator,
+    agentConfigurationIds: string[]
+  ): Promise<TriggerResource[]> {
+    if (agentConfigurationIds.length === 0) {
+      return [];
+    }
+
+    return this.baseFetch(auth, {
+      where: {
+        agentConfigurationId: agentConfigurationIds,
+      },
+    });
+  }
+
   static async listByAgentConfigurationIdAndEditors(
     auth: Authenticator,
     {
@@ -657,6 +672,46 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     const r = await this.removeTemporalWorkflow(auth);
     if (r.isErr()) {
       return r;
+    }
+
+    return new Ok(undefined);
+  }
+
+  static async disableMany(
+    auth: Authenticator,
+    triggers: TriggerResource[],
+    targetStatus: Exclude<TriggerStatus, "enabled"> = "disabled"
+  ): Promise<Result<undefined, Error>> {
+    const workspace = auth.getNonNullableWorkspace();
+
+    const toUpdate = triggers.filter((t) => t.status !== targetStatus);
+    if (toUpdate.length === 0) {
+      return new Ok(undefined);
+    }
+
+    await this.model.update(
+      { status: targetStatus },
+      {
+        where: {
+          id: { [Op.in]: toUpdate.map((t) => t.id) },
+          workspaceId: workspace.id,
+        },
+      }
+    );
+
+    for (const trigger of toUpdate) {
+      const r = await trigger.removeTemporalWorkflow(auth);
+      if (r.isErr()) {
+        logger.error(
+          {
+            triggerId: trigger.sId,
+            workspaceId: workspace.sId,
+            agentConfigurationId: trigger.agentConfigurationId,
+            error: r.error,
+          },
+          `Failed to remove temporal workflow while disabling trigger ${trigger.sId}`
+        );
+      }
     }
 
     return new Ok(undefined);

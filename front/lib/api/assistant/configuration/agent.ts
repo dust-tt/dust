@@ -1679,95 +1679,141 @@ async function canPublishAgent(auth: Authenticator): Promise<{
 
 export async function updateAgentConfigurationScope(
   auth: Authenticator,
-  agentConfigurationId: string,
+  agentIds: string[],
   scope: Exclude<AgentConfigurationScope, "global">
 ): Promise<Result<void, Error>> {
-  const agentConfig = await getAgentConfiguration(auth, {
-    agentId: agentConfigurationId,
+  if (agentIds.length === 0) {
+    return new Ok(undefined);
+  }
+
+  const agentConfigs = await getAgentConfigurations(auth, {
+    agentIds,
     variant: "light",
   });
 
-  if (!agentConfig) {
-    return new Err(new Error(`Could not find agent ${agentConfigurationId}`));
+  const editableAgents = agentConfigs.filter(
+    (a) => a.canEdit || auth.isAdmin()
+  );
+  if (editableAgents.length === 0) {
+    return new Ok(undefined);
   }
 
   const { canPublish, message } = await canPublishAgent(auth);
-  if (
-    !canPublish &&
-    agentConfig.scope !== "visible" &&
-    scope === "visible" &&
-    agentConfig.status === "active"
-  ) {
-    return new Err(new Error(message ?? "Publishing agents is restricted."));
+  if (scope === "visible" && !canPublish) {
+    if (editableAgents.some(
+      (a) => a.scope !== "visible" && a.status === "active"
+    )) {
+      return new Err(new Error(message ?? "Publishing agents is restricted."));
+    }
   }
 
-  const previousScope = agentConfig.scope;
+  // Snapshot previous scopes before the bulk UPDATE so downstream logic doesn't depend on
+  // the in-memory agent objects being untouched by the static Sequelize update.
+  const previousScopeByAgentId = new Map(
+    editableAgents.map((a) => [a.sId, a.scope])
+  );
+
   await AgentConfigurationModel.update(
     { scope },
     {
       where: {
-        id: agentConfig.id,
+        id: { [Op.in]: editableAgents.map((a) => a.id) },
       },
     }
   );
 
-  void emitAuditLogEvent({
-    auth,
-    action: "agent.scope_changed",
-    targets: [
-      buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
-      buildAuditLogTarget("agent", agentConfig),
-    ],
-    context: getAuditLogContext(auth),
-    metadata: {
-      agentName: agentConfig.name,
-      previousScope: previousScope,
-      newScope: scope,
-    },
-  });
+  for (const agentConfig of editableAgents) {
+    void emitAuditLogEvent({
+      auth,
+      action: "agent.scope_changed",
+      targets: [
+        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+        buildAuditLogTarget("agent", agentConfig),
+      ],
+      context: getAuditLogContext(auth),
+      metadata: {
+        agentName: agentConfig.name,
+        previousScope:
+          previousScopeByAgentId.get(agentConfig.sId) ?? agentConfig.scope,
+        newScope: scope,
+      },
+    });
+  }
 
   // When scope changes from visible to hidden, disable triggers for non-editors.
   // Non-editors will no longer have access to the hidden agent.
-  if (previousScope === "visible" && scope === "hidden") {
-    const triggers = await TriggerResource.listByAgentConfigurationId(
-      auth,
-      agentConfigurationId
+  if (scope === "hidden") {
+    const transitioningAgents = editableAgents.filter(
+      (a) => previousScopeByAgentId.get(a.sId) === "visible"
     );
-
-    if (triggers.length > 0) {
-      // Get the editor group to find who can still access the agent
-      const editorGroupRes = await GroupResource.findEditorGroupForAgent(
-        auth,
-        agentConfig
-      );
-
-      let editorIds: Set<ModelId> = new Set();
-      if (editorGroupRes.isOk()) {
-        const members = await editorGroupRes.value.getActiveMembers(auth);
-        editorIds = new Set(members.map((m) => m.id));
-      }
-
-      // Disable triggers for users who are not editors
-      for (const trigger of triggers) {
-        if (!editorIds.has(trigger.editor)) {
-          const disableResult = await trigger.disable(auth);
-          if (disableResult.isErr()) {
-            logger.error(
-              {
-                workspaceId: auth.getNonNullableWorkspace().sId,
-                agentConfigurationId,
-                triggerId: trigger.sId,
-                error: disableResult.error,
-              },
-              `Failed to disable trigger ${trigger.sId} when changing agent ${agentConfigurationId} scope to hidden`
-            );
-          }
-        }
-      }
+    if (transitioningAgents.length > 0) {
+      await disableTriggersForNonEditors(auth, transitioningAgents);
     }
   }
 
   return new Ok(undefined);
+}
+
+async function disableTriggersForNonEditors(
+  auth: Authenticator,
+  agents: LightAgentConfigurationType[]
+): Promise<void> {
+  const triggers = await TriggerResource.listByAgentConfigurationIds(
+    auth,
+    agents.map((a) => a.sId)
+  );
+  if (triggers.length === 0) {
+    return;
+  }
+
+  const editorGroupsRes = await GroupResource.findEditorGroupsForAgents(
+    auth,
+    agents
+  );
+  const editorGroupsByAgentId = editorGroupsRes.isOk()
+    ? editorGroupsRes.value
+    : {};
+
+  // Dedupe editor groups so we fetch members once per unique group.
+  const uniqueGroupsByGroupModelId = new Map<ModelId, GroupResource>();
+  for (const group of Object.values(editorGroupsByAgentId)) {
+    uniqueGroupsByGroupModelId.set(group.id, group);
+  }
+
+  const editorIdsByGroupModelId = new Map<ModelId, Set<ModelId>>();
+  for (const group of uniqueGroupsByGroupModelId.values()) {
+    const members = await group.getActiveMembers(auth);
+    editorIdsByGroupModelId.set(group.id, new Set(members.map((m) => m.id)));
+  }
+
+  const editorIdsByAgentId = new Map<string, Set<ModelId>>();
+  for (const agent of agents) {
+    const group = editorGroupsByAgentId[agent.sId];
+    const editorIds = group
+      ? (editorIdsByGroupModelId.get(group.id) ?? new Set<ModelId>())
+      : new Set<ModelId>();
+    editorIdsByAgentId.set(agent.sId, editorIds);
+  }
+
+  const triggersToDisable = triggers.filter((trigger) => {
+    const editorIds = editorIdsByAgentId.get(trigger.agentConfigurationId);
+    return editorIds !== undefined && !editorIds.has(trigger.editor);
+  });
+
+  if (triggersToDisable.length === 0) {
+    return;
+  }
+
+  const res = await TriggerResource.disableMany(auth, triggersToDisable);
+  if (res.isErr()) {
+    logger.error(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        error: res.error,
+      },
+      "Failed to disable triggers when changing agent scope to hidden"
+    );
+  }
 }
 
 export { updateAgentRequirements } from "@app/lib/api/assistant/configuration/agent_requirements";
