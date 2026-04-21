@@ -199,7 +199,7 @@ const config = {
   },
   getEgressProxyPort: (): number => {
     const value =
-      EnvironmentConfig.getOptionalEnvVariable("EGRESS_PROXY_PORT") ?? "443";
+      EnvironmentConfig.getOptionalEnvVariable("EGRESS_PROXY_PORT") ?? "4443";
     const port = Number.parseInt(value, 10);
 
     if (Number.isNaN(port) || port <= 0) {
