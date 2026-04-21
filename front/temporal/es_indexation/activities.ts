@@ -124,10 +124,7 @@ export async function indexConversationEsActivity({
   }
 
   const participantUserIds =
-    await ConversationResource.listParticipantsForConversation(
-      auth,
-      conversation.id
-    );
+    await conversation.listParticipantsForConversation();
 
   const document = buildConversationSearchDocument(
     auth,

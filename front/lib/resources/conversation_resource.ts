@@ -1,4 +1,5 @@
 import type { Authenticator } from "@app/lib/auth";
+import { listPrivateConversationIdsFromES } from "@app/lib/conversation_search/search";
 import { ConversationMCPServerViewModel } from "@app/lib/models/agent/actions/conversation_mcp_server_view";
 import {
   AgentMessageModel,
@@ -32,6 +33,8 @@ import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
+import logger from "@app/logger/logger";
+import { launchIndexConversationEsWorkflow } from "@app/temporal/es_indexation/client";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   ConversationForkedChildType,
@@ -400,11 +403,15 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       { transaction }
     );
 
-    return new ConversationResource(
+    const resource = new ConversationResource(
       ConversationResource.model,
       conversation.get(),
       space
     );
+
+    await this.triggerEsIndexing(resource.sId, workspace.sId);
+
+    return resource;
   }
 
   static async countForWorkspace(
@@ -771,6 +778,33 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       this.triggerId,
       this.workspaceId
     );
+  }
+
+  // Returns all user sIds that have ever participated in the conversation.
+  async listParticipantsForConversation(): Promise<string[]> {
+    const participants = await ConversationParticipantModel.findAll({
+      where: {
+        conversationId: this.id,
+        workspaceId: this.workspaceId,
+      },
+      attributes: ["userId"],
+      include: [{ model: UserModel, attributes: ["sId"] }],
+    });
+
+    return participants.flatMap((p) => (p.user ? [p.user.sId] : []));
+  }
+
+  private static async triggerEsIndexing(
+    conversationId: string,
+    workspaceId: string
+  ): Promise<void> {
+    const result = await launchIndexConversationEsWorkflow({
+      conversationId,
+      workspaceId,
+    });
+    if (result.isErr()) {
+      throw result.error;
+    }
   }
 
   static async fetchParticipationMapForUser(
@@ -1337,6 +1371,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     }
 
     await conversation.update(blob, transaction);
+
+    await this.triggerEsIndexing(sId, auth.getNonNullableWorkspace().sId);
+
     return new Ok(undefined);
   }
 
@@ -1486,6 +1523,82 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     lastValue: string | null;
   }> {
     return this.fetchPrivateConversationsPaginated(auth, { pagination });
+  }
+
+  // Lists private conversations using Elasticsearch for ordering, then hydrates
+  // full state from the DB. Falls back to DB-only on ES failure.
+  static async listPrivateConversationsForUserPaginatedFromES(
+    auth: Authenticator,
+    pagination: {
+      limit: number;
+      lastValue?: string;
+      orderDirection?: "asc" | "desc";
+    }
+  ): Promise<{
+    conversations: ConversationResource[];
+    hasMore: boolean;
+    lastValue: string | null;
+  }> {
+    const user = auth.user();
+    if (!user) {
+      return { conversations: [], hasMore: false, lastValue: null };
+    }
+
+    const workspace = auth.getNonNullableWorkspace();
+    const orderDirection = pagination.orderDirection ?? "desc";
+
+    const accessibleSpaces =
+      await SpaceResource.listWorkspaceSpacesAsMember(auth);
+    const accessibleSpaceIds = accessibleSpaces.map((s) => s.sId);
+
+    const esResult = await listPrivateConversationIdsFromES({
+      workspaceId: workspace.sId,
+      userId: user.sId,
+      accessibleSpaceIds,
+      limit: pagination.limit,
+      lastValue: pagination.lastValue,
+      orderDirection,
+    });
+
+    if (esResult.isErr()) {
+      logger.error(
+        { workspaceId: workspace.sId, error: esResult.error },
+        "[conversation_search] ES query failed, falling back to DB"
+      );
+      return this.listPrivateConversationsForUserPaginated(auth, pagination);
+    }
+
+    const { conversationIds, hasMore, lastValue } = esResult.value;
+
+    if (conversationIds.length === 0) {
+      return { conversations: [], hasMore, lastValue };
+    }
+
+    // Targeted fetch: three indexed lookups on the ES-returned IDs only.
+    // No participation table scan — that's the slow path ES replaces.
+    const conversations = await this.fetchByIds(auth, conversationIds);
+
+    // Log discrepancies: ES returned IDs that the DB doesn't recognize.
+    const dbIds = new Set(conversations.map((c) => c.sId));
+    const missingInDb = conversationIds.filter((id) => !dbIds.has(id));
+    if (missingInDb.length > 0) {
+      logger.warn(
+        { workspaceId: workspace.sId, userId: user.sId, missingInDb },
+        "[conversation_search] ES returned conversation IDs absent from DB (stale index)"
+      );
+    }
+
+    // Enrich with per-user participation and read state for these conversations only.
+    await this.enrichWithParticipationAndReadState(auth, conversations);
+
+    // Preserve ES ordering.
+    const byId = new Map(conversations.map((c) => [c.sId, c]));
+    const ordered = conversationIds.flatMap((id) => {
+      const c = byId.get(id);
+      return c ? [c] : [];
+    });
+
+    return { conversations: ordered, hasMore, lastValue };
   }
 
   static async listSpaceUnreadConversationsAndActivityForUser(
@@ -1992,6 +2105,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       }
     );
 
+    await this.triggerEsIndexing(
+      conversation.sId,
+      auth.getNonNullableWorkspace().sId
+    );
+
     return new Ok(updated[0]);
   }
 
@@ -2172,6 +2290,13 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         );
       }
     }, transaction);
+
+    if (status !== "none") {
+      await this.triggerEsIndexing(
+        conversation.sId,
+        auth.getNonNullableWorkspace().sId
+      );
+    }
 
     return status;
   }
