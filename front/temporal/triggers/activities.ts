@@ -32,7 +32,6 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 class TriggerNonRetryableError extends Error {}
 
 export class WakeUpNonRetryableError extends Error {}
-export class WakeUpRetryableError extends Error {}
 
 async function createConversationForAgentConfiguration({
   auth,
