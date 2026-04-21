@@ -288,8 +288,7 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
   private async startTemporalWorkflow(
     auth: Authenticator
   ): Promise<Result<void, Error>> {
-    return launchOrScheduleWakeUpTemporalWorkflow({
-      auth,
+    return launchOrScheduleWakeUpTemporalWorkflow(auth, {
       wakeUp: this.toJSON(),
     });
   }
@@ -297,9 +296,6 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
   private async cancelTemporalWorkflow(
     auth: Authenticator
   ): Promise<Result<void, Error>> {
-    return cancelWakeUpTemporalWorkflow({
-      auth,
-      wakeUp: this.toJSON(),
-    });
+    return cancelWakeUpTemporalWorkflow(auth, { wakeUp: this.toJSON() });
   }
 }

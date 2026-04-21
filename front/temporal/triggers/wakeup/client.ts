@@ -21,13 +21,10 @@ export function makeWakeUpWorkflowId({
   return `wakeup-${workspaceId}-${wakeUpId}`;
 }
 
-export async function launchOrScheduleWakeUpTemporalWorkflow({
-  auth,
-  wakeUp,
-}: {
-  auth: Authenticator;
-  wakeUp: WakeUpType;
-}): Promise<Result<void, Error>> {
+export async function launchOrScheduleWakeUpTemporalWorkflow(
+  auth: Authenticator,
+  { wakeUp }: { wakeUp: WakeUpType }
+): Promise<Result<void, Error>> {
   const client = await getTemporalClientForAgentNamespace();
   const owner = auth.getNonNullableWorkspace();
   const workflowId = makeWakeUpWorkflowId({
@@ -84,13 +81,10 @@ export async function launchOrScheduleWakeUpTemporalWorkflow({
   }
 }
 
-export async function cancelWakeUpTemporalWorkflow({
-  auth,
-  wakeUp,
-}: {
-  auth: Authenticator;
-  wakeUp: WakeUpType;
-}): Promise<Result<void, Error>> {
+export async function cancelWakeUpTemporalWorkflow(
+  auth: Authenticator,
+  { wakeUp }: { wakeUp: WakeUpType }
+): Promise<Result<void, Error>> {
   const client = await getTemporalClientForAgentNamespace();
   const owner = auth.getNonNullableWorkspace();
 
