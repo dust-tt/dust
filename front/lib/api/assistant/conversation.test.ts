@@ -3761,14 +3761,17 @@ describe("postNewContentFragment", () => {
       });
       expect(messageCountAfterFirst).toBe(1);
 
-      fetchedConversationResult = await getConversation(
-        auth,
-        conversationWithoutContent.sId
-      );
-      if (fetchedConversationResult.isErr()) {
-        throw new Error("Failed to fetch conversation");
+      const conversationWithoutContentResult =
+        await ConversationResource.fetchConversationWithoutContent(
+          auth,
+          conversationWithoutContent.sId
+        );
+      expect(conversationWithoutContentResult.isOk()).toBe(true);
+      if (conversationWithoutContentResult.isErr()) {
+        throw new Error("Failed to fetch conversation metadata");
       }
-      const conversationAfterFirst = fetchedConversationResult.value;
+
+      const conversationAfterFirst = conversationWithoutContentResult.value;
 
       const second = await postNewContentFragment(
         auth,
@@ -3785,6 +3788,88 @@ describe("postNewContentFragment", () => {
         },
       });
       expect(messageCountAfterSecond).toBe(1);
+    });
+
+    it("allows superseding a content fragment with conversation metadata only", async () => {
+      const user = auth.getNonNullableUser();
+      const blob = new Ok({
+        contentType: "text/plain" as const,
+        fileId: null,
+        nodeId: "test-node-id",
+        nodeDataSourceViewId: dsViewInGlobalSpace.id,
+        nodeType: "document" as const,
+        sourceUrl: null,
+        textBytes: null,
+        title: "Superseded fragment",
+      });
+      vi.mocked(getContentFragmentBlob)
+        .mockResolvedValueOnce(blob)
+        .mockResolvedValueOnce(blob);
+
+      const conversationWithoutContent = await ConversationFactory.create(
+        auth,
+        {
+          agentConfigurationId: agentConfig.sId,
+          messagesCreatedAt: [],
+        }
+      );
+
+      const fetchedConversationResult = await getConversation(
+        auth,
+        conversationWithoutContent.sId
+      );
+      if (fetchedConversationResult.isErr()) {
+        throw new Error("Failed to fetch conversation");
+      }
+      const fullConversation = fetchedConversationResult.value;
+
+      const input: ContentFragmentInputWithContentNode = {
+        title: "Superseded fragment",
+        nodeId: "test-node-id",
+        nodeDataSourceViewId: dsViewInGlobalSpace.sId,
+      };
+      const context = {
+        username: user.username,
+        fullName: user.fullName(),
+        email: user.email,
+        profilePictureUrl: null,
+      };
+
+      const first = await postNewContentFragment(
+        auth,
+        fullConversation,
+        input,
+        context
+      );
+      expect(first.isOk()).toBe(true);
+
+      const conversationMetadataResult =
+        await ConversationResource.fetchConversationWithoutContent(
+          auth,
+          conversationWithoutContent.sId
+        );
+      expect(conversationMetadataResult.isOk()).toBe(true);
+      if (conversationMetadataResult.isErr()) {
+        throw new Error("Failed to fetch conversation metadata");
+      }
+
+      const second = await postNewContentFragment(
+        auth,
+        conversationMetadataResult.value,
+        {
+          ...input,
+          supersededContentFragmentId: first.isOk()
+            ? first.value.contentFragmentId
+            : generateRandomModelSId("cf"),
+        },
+        context
+      );
+      expect(second.isOk()).toBe(true);
+      if (first.isOk() && second.isOk()) {
+        expect(second.value.contentFragmentId).toBe(
+          first.value.contentFragmentId
+        );
+      }
     });
   });
 });

@@ -82,6 +82,7 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
@@ -145,7 +146,6 @@ import type {
   ContentFragmentContextType,
   ContentFragmentType,
 } from "@app/types/content_fragment";
-import { isContentFragmentType } from "@app/types/content_fragment";
 import type { APIErrorWithStatusCode } from "@app/types/error";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -499,6 +499,78 @@ async function getNextConversationMessageRank(
       transaction,
     })) ?? -1) + 1
   );
+}
+
+function getConversationBranchModelId(
+  conversation: ConversationWithoutContentType
+): ModelId | null {
+  if (!conversation.branchId) {
+    return null;
+  }
+
+  const branchModelId = getResourceIdFromSId(conversation.branchId);
+  if (branchModelId === null) {
+    throw new Error("Unexpected: invalid branch sId in conversation.");
+  }
+
+  return branchModelId;
+}
+
+async function hasContentFragmentMessageInConversation(
+  auth: Authenticator,
+  {
+    conversation,
+    contentFragmentModelId,
+  }: {
+    conversation: ConversationWithoutContentType;
+    contentFragmentModelId: ModelId;
+  }
+): Promise<boolean> {
+  const message = await MessageModel.findOne({
+    attributes: ["id"],
+    where: {
+      workspaceId: auth.getNonNullableWorkspace().id,
+      conversationId: conversation.id,
+      branchId: getConversationBranchModelId(conversation),
+      contentFragmentId: contentFragmentModelId,
+    },
+  });
+
+  return !!message;
+}
+
+async function hasContentFragmentSeriesInConversation(
+  auth: Authenticator,
+  {
+    conversation,
+    contentFragmentSId,
+  }: {
+    conversation: ConversationWithoutContentType;
+    contentFragmentSId: string;
+  }
+): Promise<boolean> {
+  const message = await MessageModel.findOne({
+    attributes: ["id"],
+    where: {
+      workspaceId: auth.getNonNullableWorkspace().id,
+      conversationId: conversation.id,
+      branchId: getConversationBranchModelId(conversation),
+    },
+    include: [
+      {
+        model: ContentFragmentModel,
+        as: "contentFragment",
+        attributes: [],
+        required: true,
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          sId: contentFragmentSId,
+        },
+      },
+    ],
+  });
+
+  return !!message;
 }
 
 export function isUserMessageContextValid(
@@ -1926,12 +1998,12 @@ export async function retryAgentMessage(
 // Injects a new content fragment in the conversation.
 export async function postNewContentFragment(
   auth: Authenticator,
-  conversation: ConversationType,
+  conversation: ConversationWithoutContentType,
   cf: ContentFragmentInputWithFileIdType | ContentFragmentInputWithContentNode,
   context: ContentFragmentContextType | null
 ): Promise<Result<ContentFragmentType, Error>> {
   const owner = auth.workspace();
-  if (!owner || owner.id !== conversation.owner.id) {
+  if (!owner) {
     throw new Error("Invalid auth for conversation.");
   }
 
@@ -1970,14 +2042,13 @@ export async function postNewContentFragment(
         cf.fileId
       );
       if (r) {
-        const alreadyPresent = conversation.content.some((versions) => {
-          const latest = versions[versions.length - 1];
-          return (
-            isContentFragmentType(latest) &&
-            latest.contentFragmentVersion === "latest" &&
-            latest.contentFragmentId === r.fragment.sId
-          );
-        });
+        const alreadyPresent = await hasContentFragmentMessageInConversation(
+          auth,
+          {
+            conversation,
+            contentFragmentModelId: r.fragment.id,
+          }
+        );
 
         if (!alreadyPresent) {
           await withTransaction(async (t) => {
@@ -2037,12 +2108,9 @@ export async function postNewContentFragment(
   // If the request is superseding an existing content fragment, we need to validate that it exists
   // and is part of the conversation.
   if (supersededContentFragmentId) {
-    const found = conversation.content.some((versions) => {
-      const latest = versions[versions.length - 1];
-      return (
-        isContentFragmentType(latest) &&
-        latest.contentFragmentId === supersededContentFragmentId
-      );
+    const found = await hasContentFragmentSeriesInConversation(auth, {
+      conversation,
+      contentFragmentSId: supersededContentFragmentId,
     });
 
     if (!found) {

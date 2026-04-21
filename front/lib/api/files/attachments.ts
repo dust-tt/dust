@@ -6,7 +6,7 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
-import type { ConversationType } from "@app/types/assistant/conversation";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -26,7 +26,7 @@ export async function maybeUpsertFileAttachment(
         }
       | object
     )[];
-    conversation: ConversationType;
+    conversation: ConversationWithoutContentType;
   }
 ): Promise<Result<undefined, Error>> {
   const filesIds = removeNulls(
@@ -71,7 +71,7 @@ export async function maybeUpsertFileAttachment(
             if (r.isErr()) {
               logger.error({
                 fileModelId: fileResource.id,
-                workspaceId: conversation.owner.sId,
+                workspaceId: auth.getNonNullableWorkspace().sId,
                 contentType: fileResource.contentType,
                 useCase: fileResource.useCase,
                 useCaseMetadata: fileResource.useCaseMetadata,
