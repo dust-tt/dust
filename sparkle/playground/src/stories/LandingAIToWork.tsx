@@ -1,5 +1,4 @@
 import {
-  AnimatedText,
   Avatar,
   Icon,
   MagnifyingGlassIcon,
@@ -106,15 +105,15 @@ const LOG: LogEntry[] = [
     kind: "message",
     from: ELENA,
     text: "@Aria — check Ares-7 telemetry pipeline. Something feels off since last night.",
-    durationMs: 2000,
+    durationMs: 3200,
   },
   {
     id: 2,
-    kind: "tool_call",
+    kind: "tool_call", // shimmer plays for this duration before result appears
     from: ARIA,
     text: 'Notion search: "Ares-7 pipeline docs"',
-    toolLogoNode: <NotionLogo className="s-h-3.5 s-w-3.5" />,
-    durationMs: 900,
+    toolLogoNode: <NotionLogo className="s-h-4 s-w-4" />,
+    durationMs: 2200,
   },
   {
     id: 3,
@@ -122,7 +121,7 @@ const LOG: LogEntry[] = [
     from: ARIA,
     text: "Found ingestion architecture doc",
     toolIcon: DocumentTextIcon,
-    durationMs: 700,
+    durationMs: 1400,
   },
   {
     id: 4,
@@ -130,7 +129,7 @@ const LOG: LogEntry[] = [
     from: ORION,
     text: "DB query: telemetry_records, last 24h",
     toolIcon: ActionDatabaseIcon,
-    durationMs: 1100,
+    durationMs: 2600,
   },
   {
     id: 5,
@@ -138,14 +137,14 @@ const LOG: LogEntry[] = [
     from: ORION,
     text: "3h gap detected (02:14–05:07 UTC)",
     toolIcon: ActionDatabaseIcon,
-    durationMs: 600,
+    durationMs: 1400,
   },
   {
     id: 6,
     kind: "message",
     from: ORION,
     text: "3h of telemetry missing. Zero records ingested between 02:14–05:07 UTC.",
-    durationMs: 2500,
+    durationMs: 3800,
   },
 
   // ACT 2 — Root Cause
@@ -154,7 +153,7 @@ const LOG: LogEntry[] = [
     kind: "message",
     from: ELENA,
     text: "@Orion — check infra logs and error events for that window.",
-    durationMs: 1800,
+    durationMs: 3000,
   },
   {
     id: 8,
@@ -162,7 +161,7 @@ const LOG: LogEntry[] = [
     from: ORION,
     text: "DB query: infra_events, 02:00–06:00 UTC",
     toolIcon: ActionDatabaseIcon,
-    durationMs: 1200,
+    durationMs: 2800,
   },
   {
     id: 9,
@@ -170,7 +169,7 @@ const LOG: LogEntry[] = [
     from: ORION,
     text: "OOM kill on worker-node-4 at 02:13",
     toolIcon: ServerIcon,
-    durationMs: 700,
+    durationMs: 1400,
   },
   {
     id: 10,
@@ -178,7 +177,7 @@ const LOG: LogEntry[] = [
     from: ARIA,
     text: 'Web search: "OOM kill data recovery no WAL"',
     toolIcon: GlobeAltIcon,
-    durationMs: 1000,
+    durationMs: 2400,
   },
   {
     id: 11,
@@ -186,14 +185,14 @@ const LOG: LogEntry[] = [
     from: ARIA,
     text: "No recovery without write-ahead log",
     toolIcon: MagnifyingGlassIcon,
-    durationMs: 600,
+    durationMs: 1200,
   },
   {
     id: 12,
     kind: "message",
     from: ARIA,
     text: "worker-node-4 crashed (OOM) at 02:13. No failover triggered. Data unrecoverable without WAL.",
-    durationMs: 2800,
+    durationMs: 4200,
   },
 
   // ACT 3 — Human Input
@@ -202,21 +201,21 @@ const LOG: LogEntry[] = [
     kind: "message",
     from: ELENA,
     text: "@Yuki — can you confirm the gap from your dashboard? Does it affect launch metrics?",
-    durationMs: 2200,
+    durationMs: 3400,
   },
   {
     id: 14,
     kind: "message",
     from: YUKI,
     text: "Confirmed. Affects 4 KPIs. I can interpolate estimates if needed.",
-    durationMs: 2000,
+    durationMs: 3200,
   },
   {
     id: 15,
     kind: "message",
     from: ELENA,
     text: "Yes please, attach to the incident report.",
-    durationMs: 1800,
+    durationMs: 2800,
   },
 
   // ACT 4 — Incident Report
@@ -225,7 +224,7 @@ const LOG: LogEntry[] = [
     kind: "message",
     from: ELENA,
     text: "@Hermes — draft incident report. Timeline, root cause, impact, fix recommendations.",
-    durationMs: 1600,
+    durationMs: 2600,
   },
   {
     id: 17,
@@ -233,7 +232,7 @@ const LOG: LogEntry[] = [
     from: HERMES,
     text: "Write file: incident_ares7.md",
     toolIcon: PencilSquareIcon,
-    durationMs: 1400,
+    durationMs: 3000,
   },
   {
     id: 18,
@@ -241,28 +240,28 @@ const LOG: LogEntry[] = [
     from: HERMES,
     text: "Done",
     toolIcon: DocumentTextIcon,
-    durationMs: 600,
+    durationMs: 1200,
   },
   {
     id: 19,
     kind: "message",
     from: HERMES,
     text: "Report ready. 4 sections, fix rec includes WAL setup + auto-failover.",
-    durationMs: 2400,
+    durationMs: 3600,
   },
   {
     id: 20,
     kind: "message",
     from: ELENA,
     text: "@Sophie — flagging incident on Ares-7. Report attached. Need greenlight on infra changes.",
-    durationMs: 2200,
+    durationMs: 3400,
   },
   {
     id: 21,
     kind: "message",
     from: SOPHIE,
     text: "Approved. WAL + failover must be live before T-24h. Loop in DevOps.",
-    durationMs: 2600,
+    durationMs: 4000,
   },
 
   // ACT 5 — External Comms
@@ -271,14 +270,14 @@ const LOG: LogEntry[] = [
     kind: "message",
     from: ELENA,
     text: "@James — partners may need a status update. Having Hermes draft something.",
-    durationMs: 1800,
+    durationMs: 2800,
   },
   {
     id: 23,
     kind: "message",
     from: ELENA,
     text: "@Hermes — draft short external update. Acknowledge delay, no technical detail, reassuring tone.",
-    durationMs: 1600,
+    durationMs: 2600,
   },
   {
     id: 24,
@@ -286,7 +285,7 @@ const LOG: LogEntry[] = [
     from: HERMES,
     text: "Write file: partner_update.md",
     toolIcon: PencilSquareIcon,
-    durationMs: 1300,
+    durationMs: 2800,
   },
   {
     id: 25,
@@ -294,35 +293,35 @@ const LOG: LogEntry[] = [
     from: HERMES,
     text: "Done",
     toolIcon: DocumentTextIcon,
-    durationMs: 500,
+    durationMs: 1000,
   },
   {
     id: 26,
     kind: "message",
     from: HERMES,
     text: "Draft ready. 3 sentences, neutral tone.",
-    durationMs: 1800,
+    durationMs: 2800,
   },
   {
     id: 27,
     kind: "message",
     from: ELENA,
     text: "@James — draft attached, please review.",
-    durationMs: 1600,
+    durationMs: 2600,
   },
   {
     id: 28,
     kind: "message",
     from: JAMES,
     text: "Good. Soften line 2 — too close to admitting fault.",
-    durationMs: 2000,
+    durationMs: 3200,
   },
   {
     id: 29,
     kind: "message",
     from: ELENA,
     text: "@Hermes — revise line 2, more neutral, no implicit fault.",
-    durationMs: 1400,
+    durationMs: 2400,
   },
   {
     id: 30,
@@ -330,7 +329,7 @@ const LOG: LogEntry[] = [
     from: HERMES,
     text: "Edit file: partner_update.md",
     toolIcon: PencilSquareIcon,
-    durationMs: 1100,
+    durationMs: 2200,
   },
   {
     id: 31,
@@ -338,14 +337,14 @@ const LOG: LogEntry[] = [
     from: HERMES,
     text: "Updated",
     toolIcon: DocumentTextIcon,
-    durationMs: 500,
+    durationMs: 1000,
   },
   {
     id: 32,
     kind: "message",
     from: JAMES,
     text: "Perfect. Sending now.",
-    durationMs: 2000,
+    durationMs: 3000,
   },
 ];
 
@@ -385,7 +384,7 @@ function MessageText({
   return (
     <p
       className={`s-mt-0.5 s-text-sm s-leading-snug ${
-        isLocutor ? "s-text-blue-50" : "s-text-slate-600"
+        isLocutor ? "s-text-blue-50" : "s-text-slate-900"
       }`}
     >
       {parts.map((part, i) =>
@@ -408,11 +407,11 @@ function MessageText({
 
 function LogRow({
   entry,
-  index,
+  isNewest,
   prevEntry,
 }: {
   entry: LogEntry;
-  index: number;
+  isNewest: boolean;
   prevEntry?: LogEntry;
 }) {
   const isToolCall = entry.kind === "tool_call";
@@ -428,43 +427,37 @@ function LogRow({
     prevEntry.from.id === entry.from.id;
 
   const animStyle: React.CSSProperties = {
-    animation:
-      index === VISIBLE_COUNT - 1
-        ? "rowEnter 0.25s cubic-bezier(0.22,1,0.36,1) both"
-        : undefined,
+    animation: isNewest
+      ? "itemEnter 0.3s cubic-bezier(0.22,1,0.36,1) both"
+      : undefined,
   };
+
+  // Tool icon: platform logos and action icons unified to 16×16
+  const toolIconNode = entry.toolLogoNode ? (
+    <span className="s-flex s-h-4 s-w-4 s-shrink-0 s-items-center s-justify-center s-opacity-70">
+      {entry.toolLogoNode}
+    </span>
+  ) : entry.toolIcon ? (
+    <Icon
+      visual={entry.toolIcon}
+      size="xs"
+      className="s-shrink-0 s-text-slate-400"
+    />
+  ) : null;
 
   if (isTool) {
     return (
-      <div
-        className="s-rounded-xl s-bg-slate-800/80 s-px-3 s-py-2 s-shadow-sm s-backdrop-blur-sm"
-        style={animStyle}
-      >
-        <div className="s-flex s-items-center s-gap-2">
-          {/* Avatar slot — hidden when consecutive same-agent actions */}
-          <div className="s-flex s-w-5 s-shrink-0 s-justify-center">
-            {!sameAgentAsPrev && <ActorAvatar actor={entry.from} size="xs" />}
-          </div>
-          {entry.toolLogoNode ? (
-            <span className="s-shrink-0 s-opacity-60">
-              {entry.toolLogoNode}
-            </span>
-          ) : entry.toolIcon ? (
-            <Icon
-              visual={entry.toolIcon}
-              size="xs"
-              className="s-shrink-0 s-text-slate-400"
-            />
-          ) : null}
+      <div className="s-flex" style={animStyle}>
+        <div className="s-inline-flex s-items-center s-gap-2 s-rounded-2xl s-border s-border-white/10 s-bg-slate-800/80 s-px-2.5 s-py-2.5 s-shadow-md s-backdrop-blur-md">
+          {/* Avatar — always shown, same agent consecutive rows get the avatar repeated */}
+          <ActorAvatar actor={entry.from} size="xxs" />
+          {toolIconNode}
           {isToolCall ? (
-            <AnimatedText
-              variant="white"
-              className="s-truncate s-font-mono s-text-xs"
-            >
+            <span className="s-font-mono s-text-xs s-text-shimmer">
               {entry.text}
-            </AnimatedText>
+            </span>
           ) : (
-            <span className="s-truncate s-font-mono s-text-xs s-italic s-text-slate-400">
+            <span className="s-font-mono s-text-xs s-italic s-text-slate-300">
               {entry.text}
             </span>
           )}
@@ -476,10 +469,16 @@ function LogRow({
   const isAgentSender = entry.from.kind === "agent";
 
   if (isLocutor) {
-    // Elena: blue bubble, right-aligned, no avatar
+    // Elena: blue bubble, right-aligned, avatar + name left-aligned inside
     return (
       <div className="s-flex s-justify-end" style={animStyle}>
-        <div className="s-max-w-[85%] s-rounded-xl s-bg-blue-500 s-px-3 s-py-2 s-shadow-sm">
+        <div className="s-max-w-[85%] s-rounded-2xl s-border s-border-blue-300/30 s-bg-blue-500/70 s-px-3 s-py-3 s-shadow-md s-backdrop-blur-md">
+          <div className="s-mb-1 s-flex s-items-center s-gap-1.5">
+            <ActorAvatar actor={entry.from} size="sm" />
+            <span className="s-text-sm s-font-semibold s-text-blue-100">
+              {entry.from.name}
+            </span>
+          </div>
           <MessageText text={entry.text} isLocutor />
         </div>
       </div>
@@ -489,11 +488,11 @@ function LogRow({
   // Interlocutor (human or agent): white bubble, left-aligned, avatar + name inside
   return (
     <div className="s-flex s-max-w-[85%]" style={animStyle}>
-      <div className="s-min-w-0 s-rounded-xl s-bg-white/90 s-px-3 s-py-2 s-shadow-sm s-backdrop-blur-sm">
+      <div className="s-min-w-0 s-rounded-2xl s-border s-border-slate-200/60 s-bg-white/80 s-px-3 s-py-3 s-shadow-md s-backdrop-blur-md">
         <div className="s-mb-1 s-flex s-items-center s-gap-1.5">
-          <ActorAvatar actor={entry.from} size="xs" />
+          <ActorAvatar actor={entry.from} size="sm" />
           <span
-            className={`s-text-xs s-font-semibold ${
+            className={`s-text-sm s-font-semibold ${
               isAgentSender ? "s-text-violet-700" : "s-text-slate-700"
             }`}
           >
@@ -508,8 +507,8 @@ function LogRow({
 
 // ─── Activity popover (cursor-following) ─────────────────────────────────────
 
-const VISIBLE_COUNT = 3;
-const FADE_MS = 200; // popover fade duration
+const FADE_MS = 200;
+const POPOVER_HEIGHT = 260;
 
 function ActivityPopover({
   pagePos,
@@ -520,21 +519,27 @@ function ActivityPopover({
 }) {
   const [tick, setTick] = useState(0);
   const [mounted, setMounted] = useState(false);
-  const [opacity, setOpacity] = useState(0);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  // Smooth-scroll to the sentinel div at the bottom on each new entry
+  useEffect(() => {
+    if (bottomRef.current) {
+      bottomRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
+    }
+  }, [tick]);
 
   useEffect(() => {
     if (visible) {
       setTick(0);
       setMounted(true);
-      requestAnimationFrame(() => requestAnimationFrame(() => setOpacity(1)));
 
-      // Schedule advances using each entry's own durationMs
       let currentTick = 0;
       let timeoutId: ReturnType<typeof setTimeout>;
 
       const scheduleNext = () => {
         if (currentTick >= LOG.length - 1) return;
-        const delay = LOG[currentTick].durationMs ?? 1200;
+        const delay = LOG[currentTick].durationMs ?? 1800;
         timeoutId = setTimeout(() => {
           currentTick += 1;
           setTick(currentTick);
@@ -545,25 +550,41 @@ function ActivityPopover({
       scheduleNext();
       return () => clearTimeout(timeoutId);
     } else {
-      setOpacity(0);
       const id = setTimeout(() => setMounted(false), FADE_MS);
       return () => clearTimeout(id);
     }
   }, [visible]);
 
-  const end = tick + 1;
-  const start = Math.max(0, end - VISIBLE_COUNT);
-  const visibleEntries = LOG.slice(start, end);
+  const visibleEntries = LOG.slice(0, tick + 1);
 
   if (!mounted) return null;
 
   return createPortal(
     <>
       <style>{`
-        @keyframes rowEnter {
-          from { opacity: 0; transform: translateY(8px); }
-          to   { opacity: 1; transform: translateY(0); }
+        @keyframes itemEnter {
+          from { opacity: 0; transform: scale(0.92); }
+          to   { opacity: 1; transform: scale(1); }
         }
+        @keyframes shimmerSlide {
+          0%   { background-position: -200% center; }
+          100% { background-position:  200% center; }
+        }
+        .s-text-shimmer {
+          color: transparent;
+          background: linear-gradient(90deg, #cbd5e1 30%, #ffffff 50%, #cbd5e1 70%);
+          background-size: 200% auto;
+          -webkit-background-clip: text;
+          background-clip: text;
+          animation: shimmerSlide 2s linear infinite;
+        }
+        /* Fade the popover in/out using filter instead of opacity —
+           filter does NOT create a stacking context, so backdrop-blur
+           on children keeps working correctly. */
+        @keyframes popoverFadeIn  { from { filter: opacity(0); } to { filter: opacity(1); } }
+        @keyframes popoverFadeOut { from { filter: opacity(1); } to { filter: opacity(0); } }
+        .popover-enter { animation: popoverFadeIn  ${FADE_MS}ms ease forwards; }
+        .popover-exit  { animation: popoverFadeOut ${FADE_MS}ms ease forwards; }
       `}</style>
       <div
         className="s-pointer-events-none s-fixed s-z-50"
@@ -571,19 +592,32 @@ function ActivityPopover({
           left: pagePos.x + 16,
           top: pagePos.y,
           transform: "translateY(-50%)",
-          opacity,
-          transition: `opacity ${FADE_MS}ms ease`,
         }}
       >
-        <div className="s-flex s-w-72 s-flex-col s-gap-1.5">
-          {visibleEntries.map((entry, i) => (
-            <LogRow
-              key={entry.id}
-              entry={entry}
-              index={i}
-              prevEntry={visibleEntries[i - 1]}
-            />
-          ))}
+        <div className={`s-w-96 ${visible ? "popover-enter" : "popover-exit"}`}>
+          <div
+            ref={scrollRef}
+            style={{
+              height: POPOVER_HEIGHT,
+              overflowY: "hidden",
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "flex-end",
+            }}
+          >
+            <div className="s-flex s-flex-col s-gap-1.5 s-px-0.5 s-py-0.5">
+              {visibleEntries.map((entry, i) => (
+                <LogRow
+                  key={entry.id}
+                  entry={entry}
+                  isNewest={i === visibleEntries.length - 1}
+                  prevEntry={visibleEntries[i - 1]}
+                />
+              ))}
+              {/* Sentinel — smooth scroll target */}
+              <div ref={bottomRef} style={{ height: 0 }} />
+            </div>
+          </div>
         </div>
       </div>
     </>,
