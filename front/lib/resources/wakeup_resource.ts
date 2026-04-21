@@ -37,13 +37,13 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
     auth: Authenticator,
     options?: ResourceFindOptions<WakeUpModel>
   ): Promise<WakeUpResource[]> {
-    const { where, ...otherOptions } = options ?? {};
+    const { where, ...rest } = options ?? {};
     const rows = await this.model.findAll({
       where: {
         ...where,
         workspaceId: auth.getNonNullableWorkspace().id,
-      } as WhereOptions<WakeUpModel>,
-      ...otherOptions,
+      },
+      ...rest,
     });
 
     return rows.map((row) => new this(this.model, row.get()));
