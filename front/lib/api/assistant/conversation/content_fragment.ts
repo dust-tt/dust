@@ -61,9 +61,11 @@ export async function toFileContentFragment(
   {
     contentFragment,
     fileName,
+    skipDataSourceIndexing,
   }: {
     contentFragment: ContentFragmentInputWithInlinedContent;
     fileName?: string;
+    skipDataSourceIndexing?: boolean;
   }
 ): Promise<
   Result<ContentFragmentInputWithFileIdType, ProcessAndStoreFileError>
@@ -77,7 +79,7 @@ export async function toFileContentFragment(
     userId: auth.user()?.id,
     workspaceId: auth.getNonNullableWorkspace().id,
     useCase: "conversation",
-    useCaseMetadata: null,
+    useCaseMetadata: skipDataSourceIndexing ? {skipDataSourceIndexing: true} : undefined,
   });
 
   const processRes = await processAndStoreFile(auth, {

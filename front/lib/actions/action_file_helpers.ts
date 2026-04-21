@@ -184,6 +184,7 @@ export async function generateSectionFile(
     useCase: "tool_output",
     useCaseMetadata: {
       conversationId,
+      skipDataSourceIndexing: true,
     },
   });
 
