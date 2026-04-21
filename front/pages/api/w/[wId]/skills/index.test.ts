@@ -4,6 +4,7 @@ import {
   SkillMCPServerConfigurationModel,
 } from "@app/lib/models/skill";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { discoverToolsSkill } from "@app/lib/resources/skill/global/discover_tools";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
@@ -15,12 +16,13 @@ import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory"
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type {
+  SkillSummaryType,
   SkillType,
   SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 import type { MembershipRoleType } from "@app/types/memberships";
 import type { RequestMethod } from "node-mocks-http";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import handler from "./index";
 
@@ -209,6 +211,71 @@ describe("GET /api/w/[wId]/skills", () => {
     expect(res._getStatusCode()).toBe(200);
     const skillNames = res._getJSONData().skills.map((s: SkillType) => s.name);
     expect(skillNames).toContain("Skill In Restricted Space");
+  });
+
+  it("should return skill summaries for viewType=summary", async () => {
+    const { req, res, workspace, auth, user } = await setupTest();
+
+    const skill = await SkillFactory.create(auth, {
+      name: "Picker Skill",
+      userFacingDescription: "Shown in the capabilities picker",
+    });
+
+    req.query = { ...req.query, wId: workspace.sId, viewType: "summary" };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+
+    const skillSummary = res
+      ._getJSONData()
+      .skills.find((s: SkillSummaryType) => s.sId === skill.sId);
+
+    expect(skillSummary).toMatchObject({
+      sId: skill.sId,
+      name: "Picker Skill",
+      userFacingDescription: "Shown in the capabilities picker",
+      agentFacingDescription: "Test skill agent facing description",
+      editedBy: user.id,
+      status: "active",
+      requestedSpaceIds: [],
+      fileAttachments: [],
+      isDefault: false,
+      extendedSkillId: null,
+    });
+    expect(skillSummary).toHaveProperty("createdAt");
+    expect(skillSummary).toHaveProperty("updatedAt");
+    expect(skillSummary).toHaveProperty("source");
+    expect(skillSummary).toHaveProperty("sourceMetadata");
+    expect(skillSummary).not.toHaveProperty("instructions");
+    expect(skillSummary).not.toHaveProperty("instructionsHtml");
+    expect(skillSummary).not.toHaveProperty("tools");
+  });
+
+  it("should not fetch dynamic global instructions for viewType=summary", async () => {
+    const { req, res, workspace } = await setupTest();
+
+    const fetchInstructionsSpy = vi.spyOn(discoverToolsSkill, "fetchInstructions");
+    try {
+      req.query = {
+        ...req.query,
+        wId: workspace.sId,
+        globalSpaceOnly: "true",
+        viewType: "summary",
+      };
+
+      await handler(req, res);
+
+      expect(res._getStatusCode()).toBe(200);
+      expect(
+        res
+          ._getJSONData()
+          .skills.some((s: SkillSummaryType) => s.sId === discoverToolsSkill.sId)
+      ).toBe(true);
+      expect(fetchInstructionsSpy).not.toHaveBeenCalled();
+    } finally {
+      fetchInstructionsSpy.mockRestore();
+    }
   });
 });
 
