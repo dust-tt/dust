@@ -11,10 +11,6 @@ export function useSelectableSeries() {
 
   const activeKey = hoveredKey ?? selectedKey;
 
-  const toggle = useCallback((key: string) => {
-    setSelectedKey((prev) => (prev === key ? undefined : key));
-  }, []);
-
   const isDimmed = useCallback(
     (key: string) => selectedKey !== undefined && selectedKey !== key,
     [selectedKey]
@@ -31,12 +27,15 @@ export function useSelectableSeries() {
         }
         return {
           ...item,
-          onClick: () => toggle(item.key),
+          onClick: () =>
+            setSelectedKey((prev) =>
+              prev === item.key ? undefined : item.key
+            ),
           isActive:
             selectedKey === undefined ? undefined : selectedKey === item.key,
         };
       }),
-    [selectedKey, toggle]
+    [selectedKey]
   );
 
   return { selectedKey, activeKey, isDimmed, decorate, hoverHandlers };
