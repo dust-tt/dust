@@ -14,7 +14,7 @@ import type {
   RichMention,
 } from "@app/types/assistant/mentions";
 import { toRichAgentMentionType } from "@app/types/assistant/mentions";
-import type { SkillWithoutToolsType } from "@app/types/assistant/skill_configuration";
+import type { SkillSummaryType } from "@app/types/assistant/skill_configuration";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import { getSupportedFileExtensions } from "@app/types/files";
 import type { SpaceType } from "@app/types/space";
@@ -37,11 +37,11 @@ interface InputBarButtonsProps {
   onMCPServerViewSelect: (serverView: MCPServerViewType) => void;
   onNodeSelect: (node: DataSourceViewContentNode) => void;
   onNodeUnselect: (node: DataSourceViewContentNode) => void;
-  onSkillSelect: (skill: SkillWithoutToolsType) => void;
+  onSkillSelect: (skill: SkillSummaryType) => void;
   owner: WorkspaceType;
   selectedAgent: RichAgentMention | null;
   selectedMCPServerViews: MCPServerViewType[];
-  selectedSkills: SkillWithoutToolsType[];
+  selectedSkills: SkillSummaryType[];
   space: SpaceType | undefined;
   user: UserType | null;
 }

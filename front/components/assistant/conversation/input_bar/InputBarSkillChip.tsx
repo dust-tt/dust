@@ -1,6 +1,6 @@
 import { getSkillIcon } from "@app/lib/skill";
 import { getManageSkillsRoute } from "@app/lib/utils/router";
-import type { SkillWithoutToolsType } from "@app/types/assistant/skill_configuration";
+import type { SkillSummaryType } from "@app/types/assistant/skill_configuration";
 import type { WorkspaceType } from "@app/types/user";
 import { isBuilder } from "@app/types/user";
 import { Chip } from "@dust-tt/sparkle";
@@ -9,7 +9,7 @@ interface InputBarSkillChipProps {
   className?: string;
   compact?: boolean;
   owner: WorkspaceType;
-  skill: SkillWithoutToolsType;
+  skill: SkillSummaryType;
   onRemove?: () => void;
 }
 
