@@ -426,9 +426,12 @@ function LogRow({
     (prevEntry.kind === "tool_call" || prevEntry.kind === "tool_result") &&
     prevEntry.from.id === entry.from.id;
 
+  // Only animate the newest entry. Use fill-mode=none (default) so transform
+  // is released after the animation ends — otherwise transform:scale(1) on a
+  // bubble ancestor creates a stacking context and kills backdrop-filter.
   const animStyle: React.CSSProperties = {
     animation: isNewest
-      ? "itemEnter 0.3s cubic-bezier(0.22,1,0.36,1) both"
+      ? "itemEnter 0.3s cubic-bezier(0.22,1,0.36,1)"
       : undefined,
   };
 
@@ -584,8 +587,6 @@ function ActivityPopover({
         .activity-scroll {
           -ms-overflow-style: none;
           scrollbar-width: none;
-          -webkit-mask-image: linear-gradient(to bottom, transparent 0px, black 56px);
-          mask-image: linear-gradient(to bottom, transparent 0px, black 56px);
         }
       `}</style>
       {/* Wrapper: NO transform/opacity/filter — any of those create a stacking
