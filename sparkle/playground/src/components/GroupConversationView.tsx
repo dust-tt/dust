@@ -2391,7 +2391,7 @@ export function GroupConversationView({
                         </>
                       ) : (
                         <div className="s-text-base s-text-faint s-italic dark:s-text-faint-night">
-                          You're all catch up!
+                          You're all caught up!
                         </div>
                       )}
                     </div>
