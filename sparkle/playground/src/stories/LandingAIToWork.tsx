@@ -588,14 +588,14 @@ function ActivityPopover({
           mask-image: linear-gradient(to bottom, transparent 0px, black 56px);
         }
       `}</style>
-      {/* Wrapper: no opacity/filter/transform that would create a stacking
-          context and break backdrop-blur on child bubbles. */}
+      {/* Wrapper: NO transform/opacity/filter — any of those create a stacking
+          context that clips backdrop-filter on child bubbles.
+          Offset is baked into top/left directly. */}
       <div
         className="s-pointer-events-none s-fixed s-z-50"
         style={{
           left: pagePos.x + 16,
-          top: pagePos.y - 12,
-          transform: "translateY(-100%)",
+          top: pagePos.y - 12 - POPOVER_HEIGHT,
         }}
       >
         <div className="s-w-96">
