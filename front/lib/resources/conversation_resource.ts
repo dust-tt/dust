@@ -54,6 +54,7 @@ import {
   getConversationDisplayTitle,
   getConversationUrlAccessMode,
 } from "@app/types/assistant/conversation";
+import type { ContentFragmentVersion } from "@app/types/content_fragment";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -2647,6 +2648,51 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     });
 
     return pendingMessages;
+  }
+
+  static async hasMessageForContentFragmentSeries(
+    auth: Authenticator,
+    {
+      conversation,
+      contentFragmentSId,
+      contentFragmentVersion,
+      transaction,
+    }: {
+      conversation: ConversationWithoutContentType;
+      contentFragmentSId: string;
+      contentFragmentVersion?: ContentFragmentVersion;
+      transaction?: Transaction;
+    }
+  ): Promise<boolean> {
+    const owner = auth.getNonNullableWorkspace();
+    const message = await MessageModel.findOne({
+      attributes: ["id"],
+      where: {
+        conversationId: conversation.id,
+        workspaceId: owner.id,
+        branchId: conversation.branchId
+          ? getResourceIdFromSId(conversation.branchId)
+          : null,
+      },
+      include: [
+        {
+          model: ContentFragmentModel,
+          as: "contentFragment",
+          attributes: [],
+          required: true,
+          where: {
+            workspaceId: owner.id,
+            sId: contentFragmentSId,
+            ...(contentFragmentVersion
+              ? { version: contentFragmentVersion }
+              : {}),
+          },
+        },
+      ],
+      transaction,
+    });
+
+    return !!message;
   }
 
   static async updateCompactionMessageRunIds(
