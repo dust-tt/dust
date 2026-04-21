@@ -5,7 +5,6 @@ import {
 } from "@app/lib/api/assistant/configuration/agent";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -63,26 +62,24 @@ async function handler(
 
   const { agentIds, scope } = bodyValidation.data;
 
-  // Process agents concurrently
-  await concurrentExecutor(
-    agentIds,
-    async (agentId) => {
-      const agent = await getAgentConfiguration(auth, {
-        agentId,
-        variant: "light",
-      });
-      if (!agent) {
-        return; // Skip if agent not found
-      }
+  // We specifically don't want to use concurrentExecutor here to avoid
+  // too much DB concurrency
 
-      if (!agent.canEdit && !auth.isAdmin()) {
-        return; // Skip if user doesn't have permission
-      }
+  for (const agentId of agentIds) {
+    const agent = await getAgentConfiguration(auth, {
+      agentId,
+      variant: "light",
+    });
+    if (!agent) {
+      continue; // Skip if agent not found
+    }
 
-      await updateAgentConfigurationScope(auth, agentId, scope);
-    },
-    { concurrency: 10 }
-  );
+    if (!agent.canEdit && !auth.isAdmin()) {
+      continue; // Skip if user doesn't have permission
+    }
+
+    await updateAgentConfigurationScope(auth, agentId, scope);
+  }
 
   return res.status(200).json({
     success: true,

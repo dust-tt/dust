@@ -1577,6 +1577,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     const workspace = auth.getNonNullableWorkspace();
 
+    // We specifically don't want to use concurrentExecutor here to avoid
+    // too much DB concurrency
     for (const agent of agents) {
       const spaceIdsToRemoveFromAgent = new Set<ModelId>();
 
