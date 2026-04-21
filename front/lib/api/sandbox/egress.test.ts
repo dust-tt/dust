@@ -9,6 +9,8 @@ const {
   mockGetEgressProxyTlsName,
   mockGetCurrentRegion,
   mockLoggerInfo,
+  mockLoggerWarn,
+  mockLoggerError,
   mockLookup,
 } = vi.hoisted(() => ({
   mockGetEgressProxyHost: vi.fn(),
@@ -17,6 +19,8 @@ const {
   mockGetEgressProxyTlsName: vi.fn(),
   mockGetCurrentRegion: vi.fn(),
   mockLoggerInfo: vi.fn(),
+  mockLoggerWarn: vi.fn(),
+  mockLoggerError: vi.fn(),
   mockLookup: vi.fn(),
 }));
 
@@ -38,6 +42,8 @@ vi.mock("@app/lib/api/regions/config", () => ({
 vi.mock("@app/logger/logger", () => ({
   default: {
     info: mockLoggerInfo,
+    warn: mockLoggerWarn,
+    error: mockLoggerError,
   },
 }));
 
@@ -151,7 +157,7 @@ describe("sandbox egress helpers", () => {
         providerId: "provider-sandbox-id",
         sandboxId: "sandbox-id",
       }),
-      "Sandbox egress forwarder is healthy"
+      "Egress forwarder is healthy"
     );
   });
 

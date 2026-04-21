@@ -88,16 +88,36 @@ export async function sandboxSupportsEgressForwarding(
   auth: Authenticator,
   sandbox: SandboxResource
 ): Promise<Result<boolean, Error>> {
+  const logContext = {
+    event: "egress.compat_probe",
+    providerId: sandbox.providerId,
+    sandboxId: sandbox.sId,
+  };
+
   const probeResult = await sandbox.exec(
     auth,
     "test -d /etc/dust && id agent-proxied >/dev/null 2>&1 && test -x /opt/bin/dsbx && systemctl is-active --quiet dust-egress-nftables.service"
   );
 
   if (probeResult.isErr()) {
+    logger.warn(
+      { ...logContext, error: probeResult.error.message },
+      "Egress compat probe exec failed"
+    );
     return probeResult;
   }
 
-  return new Ok(probeResult.value.exitCode === 0);
+  const supported = probeResult.value.exitCode === 0;
+  logger.info(
+    {
+      ...logContext,
+      supported,
+      exitCode: probeResult.value.exitCode,
+    },
+    "Egress compat probe completed"
+  );
+
+  return new Ok(supported);
 }
 
 export async function checkEgressForwarderHealth(
@@ -129,8 +149,19 @@ export async function setupEgressForwarder(
   try {
     proxyAddr = await resolveProxyAddr();
   } catch (error) {
+    logger.error(
+      { ...logContext, error: String(error) },
+      "Failed to resolve egress proxy address"
+    );
     return new Err(error instanceof Error ? error : new Error(String(error)));
   }
+
+  const proxyPort = config.getEgressProxyPort();
+  const proxyTlsName = getProxyTlsName();
+  logger.info(
+    { ...logContext, proxyAddr, proxyPort, proxyTlsName },
+    "Starting egress forwarder setup"
+  );
 
   const token = mintEgressJwt(sandbox.providerId);
   const tokenWriteResult = await sandbox.writeFile(
@@ -139,6 +170,10 @@ export async function setupEgressForwarder(
     new TextEncoder().encode(token).buffer
   );
   if (tokenWriteResult.isErr()) {
+    logger.error(
+      { ...logContext, error: tokenWriteResult.error.message },
+      "Failed to write egress token"
+    );
     return tokenWriteResult;
   }
 
@@ -149,6 +184,10 @@ export async function setupEgressForwarder(
     "root"
   );
   if (chmodResult.isErr()) {
+    logger.error(
+      { ...logContext, error: chmodResult.error.message },
+      "Failed to chmod egress token"
+    );
     return chmodResult;
   }
 
@@ -158,8 +197,8 @@ export async function setupEgressForwarder(
   const startForwarderCommand =
     "nohup /opt/bin/dsbx forward " +
     `--token-file ${shellEscape(EGRESS_TOKEN_PATH)} ` +
-    `--proxy-addr ${shellEscape(`${proxyAddr}:${config.getEgressProxyPort()}`)} ` +
-    `--proxy-tls-name ${shellEscape(getProxyTlsName())} ` +
+    `--proxy-addr ${shellEscape(`${proxyAddr}:${proxyPort}`)} ` +
+    `--proxy-tls-name ${shellEscape(proxyTlsName)} ` +
     `--listen ${shellEscape(EGRESS_FORWARDER_LISTEN_ADDR)} ` +
     `--deny-log ${shellEscape(EGRESS_DENY_LOG_PATH)} ` +
     `>${shellEscape(EGRESS_FORWARDER_LOG_PATH)} 2>&1 &`;
@@ -171,22 +210,34 @@ export async function setupEgressForwarder(
     "root"
   );
   if (startResult.isErr()) {
+    logger.error(
+      { ...logContext, error: startResult.error.message },
+      "Failed to start egress forwarder"
+    );
     return startResult;
   }
 
   for (let i = 0; i < EGRESS_SETUP_WAIT_RETRIES; i++) {
     const healthResult = await checkEgressForwarderHealth(auth, sandbox);
     if (healthResult.isErr()) {
+      logger.error(
+        { ...logContext, error: healthResult.error.message, attempt: i },
+        "Egress forwarder health check exec failed"
+      );
       return healthResult;
     }
     if (healthResult.value) {
-      logger.info(logContext, "Sandbox egress forwarder is healthy");
+      logger.info(logContext, "Egress forwarder is healthy");
       return new Ok(undefined);
     }
 
     await sleep(EGRESS_SETUP_WAIT_MS);
   }
 
+  logger.error(
+    logContext,
+    "Egress forwarder did not become healthy in time"
+  );
   return new Err(
     new Error("Sandbox egress forwarder did not become healthy in time")
   );
