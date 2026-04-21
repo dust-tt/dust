@@ -2,14 +2,70 @@ import { toFileContentFragment } from "@app/lib/api/assistant/conversation/conte
 import { Authenticator } from "@app/lib/auth";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
-import type {WebhookSourceResource} from "@app/lib/resources/webhook_source_resource";
+import type { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
+import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import { launchAgentTriggerWorkflow } from "@app/temporal/triggers/client";
+import { QUEUE_NAME } from "@app/temporal/triggers/config";
+import { agentTriggerWorkflow } from "@app/temporal/triggers/workflows";
 import type { ContentFragmentInputWithFileIdType } from "@app/types/api/internal/assistant";
-import type { WebhookTriggerType } from "@app/types/assistant/triggers";
+import type {
+  TriggerType,
+  WebhookTriggerType,
+} from "@app/types/assistant/triggers";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+
+async function launchAgentTriggerWorkflow({
+  auth,
+  trigger,
+  contentFragment,
+  webhookRequestId,
+}: {
+  auth: Authenticator;
+  trigger: TriggerType;
+  contentFragment?: ContentFragmentInputWithFileIdType;
+  webhookRequestId?: number;
+}): Promise<Result<undefined, Error>> {
+  const client = await getTemporalClientForAgentNamespace();
+
+  const workflowId = makeAgentTriggerWorkflowId(
+    auth.getNonNullableUser().sId,
+    auth.getNonNullableWorkspace().sId,
+    trigger
+  );
+
+  try {
+    await client.workflow.start(agentTriggerWorkflow, {
+      args: [
+        {
+          userId: auth.getNonNullableUser().sId,
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          triggerId: trigger.sId,
+          contentFragment,
+          webhookRequestId,
+        },
+      ],
+      taskQueue: QUEUE_NAME,
+      workflowId,
+    });
+  } catch (error) {
+    return new Err(
+      new Error(`Could not launch workflow: ${normalizeError(error)}`)
+    );
+  }
+
+  return new Ok(undefined);
+}
+
+function makeAgentTriggerWorkflowId(
+  userId: string,
+  workspaceId: string,
+  trigger: TriggerType
+): string {
+  return `agent-trigger-${trigger.kind}-${userId}-${workspaceId}-${trigger.sId}-${Date.now()}`;
+}
 
 export async function launchTriggersWorkflows(
   auth: Authenticator,
