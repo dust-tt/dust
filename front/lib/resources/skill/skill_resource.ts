@@ -1579,7 +1579,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const workspace = auth.getNonNullableWorkspace();
     const agentIds = agents.map((a) => a.id);
 
-    let actionsByAgentModelId = new Map<ModelId, MCPServerConfigurationType[]>();
+    let actionsByAgentModelId = new Map<
+      ModelId,
+      MCPServerConfigurationType[]
+    >();
     let skillByAgentModelId = new Map<ModelId, SkillResource[]>();
 
     if (spaceIdsRemovedFromThisSkill.length > 0) {
@@ -1598,10 +1601,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       // We only need to consider custom skills, as global skill have no effect on space requirements.
       const customSkills = await SkillResource.fetchByModelIds(
         auth,
-        removeNulls(agentSkillModels.map(skill => skill.customSkillId))
+        removeNulls(agentSkillModels.map((skill) => skill.customSkillId))
       );
 
-      const skillByModelId = new Map<ModelId, SkillResource>(customSkills.map(skill => [skill.id, skill]));
+      const skillByModelId = new Map<ModelId, SkillResource>(
+        customSkills.map((skill) => [skill.id, skill])
+      );
       for (const agentSkill of agentSkillModels) {
         if (!agentSkill.customSkillId) {
           continue;
@@ -1610,7 +1615,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         if (!skill) {
           continue;
         }
-        const list = skillByAgentModelId.get(agentSkill.agentConfigurationId) ?? [];
+        const list =
+          skillByAgentModelId.get(agentSkill.agentConfigurationId) ?? [];
         list.push(skill);
         skillByAgentModelId.set(agentSkill.agentConfigurationId, list);
       }
@@ -1624,9 +1630,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       // any other capabilities that require the removed spaces.
       if (spaceIdsRemovedFromThisSkill.length > 0) {
         const actions = actionsByAgentModelId.get(agent.id) ?? [];
-        const otherAgentSkills = (skillByAgentModelId.get(agent.id) ?? []).filter(
-          (skill) => skill.sId !== this.sId
-        );
+        const otherAgentSkills = (
+          skillByAgentModelId.get(agent.id) ?? []
+        ).filter((skill) => skill.sId !== this.sId);
 
         const agentOtherCapabilitiesRequirements =
           await getAgentConfigurationRequirementsFromCapabilities(auth, {
