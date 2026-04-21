@@ -90,47 +90,31 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
       return null;
     }
 
-    if ("parentConversationTitle" in forkedFrom) {
-      const readableParentConversationTitle =
-        forkedFrom.parentConversationTitle ?? UNTITLED_CONVERSATION_TITLE;
-
-      return (
-        <div className="flex h-9 items-center">
-          <Tooltip
-            label={`This conversation was branched from "${readableParentConversationTitle}".`}
-            tooltipTriggerAsChild
-            trigger={
-              <span className="inline-flex h-9 items-center">
-                <Chip
-                  className="max-w-44 shrink-0 dd-privacy-mask"
-                  color="primary"
-                  href={getConversationRoute(
-                    owner.sId,
-                    forkedFrom.parentConversationId
-                  )}
-                  icon={ActionGitBranchIcon}
-                  label={readableParentConversationTitle}
-                  size="mini"
-                />
-              </span>
-            }
-          />
-        </div>
-      );
-    }
+    const isReadableParentConversation =
+      "parentConversationTitle" in forkedFrom;
+    const chipLabel = isReadableParentConversation
+      ? (forkedFrom.parentConversationTitle ?? UNTITLED_CONVERSATION_TITLE)
+      : "Parent conversation";
+    const chipHref = isReadableParentConversation
+      ? getConversationRoute(owner.sId, forkedFrom.parentConversationId)
+      : undefined;
+    const tooltipLabel = isReadableParentConversation
+      ? `This conversation was branched from "${chipLabel}".`
+      : "This conversation was branched from a parent conversation you can no longer access.";
 
     return (
       <div className="flex h-9 items-center">
         <Tooltip
-          label="This conversation was branched from a parent conversation you can no longer access."
+          label={tooltipLabel}
           tooltipTriggerAsChild
           trigger={
             <span className="inline-flex h-9 items-center">
               <Chip
                 className="max-w-44 shrink-0"
                 color="primary"
+                href={chipHref}
                 icon={ActionGitBranchIcon}
-                label="Parent conversation"
+                label={chipLabel}
                 size="mini"
               />
             </span>
