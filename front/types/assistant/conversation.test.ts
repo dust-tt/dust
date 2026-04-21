@@ -3,6 +3,25 @@ import { describe, expect, it } from "vitest";
 
 describe("getConversationDisplayTitle", () => {
   const now = new Date("2026-04-20T12:00:00Z");
+  const forkedFrom = {
+    parentConversationId: "conv_parent",
+    parentConversationTitle: "Quarterly review",
+    sourceMessageId: "msg_source",
+    branchedAt: now.getTime(),
+    user: {
+      sId: "user_1",
+      id: 1,
+      createdAt: now.getTime(),
+      provider: null,
+      username: "forker",
+      email: "forker@example.com",
+      firstName: "Fork",
+      lastName: null,
+      fullName: "Fork User",
+      image: null,
+      lastLoginAt: null,
+    },
+  };
 
   it("returns the persisted title when present", () => {
     expect(
@@ -34,9 +53,7 @@ describe("getConversationDisplayTitle", () => {
         {
           title: null,
           created: now.getTime(),
-          forkedFrom: {
-            parentConversationTitle: "Quarterly review",
-          },
+          forkedFrom,
         },
         now
       )
@@ -50,6 +67,7 @@ describe("getConversationDisplayTitle", () => {
           title: null,
           created: now.getTime(),
           forkedFrom: {
+            ...forkedFrom,
             parentConversationTitle: null,
           },
         },

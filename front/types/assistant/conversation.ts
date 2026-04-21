@@ -466,13 +466,8 @@ export type ConversationWithoutContentType = {
 
 type ConversationDisplayTitleInput = Pick<
   ConversationWithoutContentType,
-  "created" | "title"
-> & {
-  forkedFrom?: Pick<
-    NonNullable<ConversationWithoutContentType["forkedFrom"]>,
-    "parentConversationTitle"
-  >;
-};
+  "created" | "title" | "forkedFrom"
+>;
 export function getConversationDisplayTitle(
   conversation: ConversationDisplayTitleInput,
   now = new Date()
