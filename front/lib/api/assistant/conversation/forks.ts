@@ -1,4 +1,7 @@
-import { postNewContentFragment } from "@app/lib/api/assistant/conversation";
+import {
+  compactConversation,
+  postNewContentFragment,
+} from "@app/lib/api/assistant/conversation";
 import {
   type ContentNodeAttachmentType,
   type FileAttachmentType,
@@ -6,13 +9,13 @@ import {
   isFileAttachmentType,
 } from "@app/lib/api/assistant/conversation/attachments";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
-import { createUserMessage } from "@app/lib/api/assistant/conversation/messages";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { getOrCreateConversationDataSourceFromFile } from "@app/lib/api/data_sources";
 import {
   isFileTypeUpsertableForUseCase,
   processAndUpsertToDataSource,
 } from "@app/lib/api/files/upsert";
+import { isProviderWhitelisted } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { ConversationForkResource } from "@app/lib/resources/conversation_fork_resource";
@@ -22,7 +25,6 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
-import { getConversationRoute } from "@app/lib/utils/router";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type {
@@ -33,6 +35,12 @@ import type {
   ConversationType,
   ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
+import { CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
+import { GEMINI_3_FLASH_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
+import { MISTRAL_SMALL_MODEL_CONFIG } from "@app/types/assistant/models/mistral";
+import { GPT_5_MINI_MODEL_CONFIG } from "@app/types/assistant/models/openai";
+import type { SupportedModel } from "@app/types/assistant/models/types";
+import { GROK_4_1_FAST_NON_REASONING_MODEL_CONFIG } from "@app/types/assistant/models/xai";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -44,8 +52,6 @@ export type CreateConversationForkErrorCode =
   | "internal_error";
 
 const FORKED_CONVERSATION_TITLE_SUFFIX = " (forked)";
-const FORK_INITIALIZATION_MESSAGE_RANK = 0;
-const UNTITLED_CONVERSATION_TITLE = "Untitled conversation";
 
 type CarriedAttachment = {
   carriedAttachment:
@@ -68,10 +74,6 @@ function getForkedConversationTitle(title: string | null): string | null {
   return `${title}${FORKED_CONVERSATION_TITLE_SUFFIX}`;
 }
 
-function escapeMarkdownLinkText(text: string): string {
-  return text.replace(/[\\[\]]/g, "\\$&");
-}
-
 function filterConversationContentUpToRank(
   conversation: ConversationType,
   maxRank: number
@@ -85,20 +87,23 @@ function filterConversationContentUpToRank(
   };
 }
 
-function getForkInitializationMessageContent(
-  workspaceId: string,
-  parentConversation: ConversationWithoutContentType,
-  sourceMessageId: string
-): string {
-  const parentConversationTitle = escapeMarkdownLinkText(
-    parentConversation.title ?? UNTITLED_CONVERSATION_TITLE
-  );
-  const parentConversationUrl = getConversationRoute(
-    workspaceId,
-    parentConversation.sId
-  );
+function getForkCompactionModel(auth: Authenticator): SupportedModel | null {
+  const modelConfiguration = [
+    GPT_5_MINI_MODEL_CONFIG,
+    CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
+    GEMINI_3_FLASH_MODEL_CONFIG,
+    MISTRAL_SMALL_MODEL_CONFIG,
+    GROK_4_1_FAST_NON_REASONING_MODEL_CONFIG,
+  ].find((model) => isProviderWhitelisted(auth, model.providerId));
 
-  return `The conversation was forked from [${parentConversationTitle}](${parentConversationUrl}). Source message: ${sourceMessageId}.`;
+  if (!modelConfiguration) {
+    return null;
+  }
+
+  return {
+    providerId: modelConfiguration.providerId,
+    modelId: modelConfiguration.modelId,
+  };
 }
 
 async function copyConversationMCPServerViews(
@@ -194,48 +199,6 @@ async function copyConversationSkills(
   }
 
   return new Ok(undefined);
-}
-
-async function createForkInitializationMessage(
-  auth: Authenticator,
-  {
-    parentConversation,
-    childConversation,
-    sourceMessageId,
-    transaction,
-  }: {
-    parentConversation: ConversationWithoutContentType;
-    childConversation: ConversationWithoutContentType;
-    sourceMessageId: string;
-    transaction: Transaction;
-  }
-) {
-  // TODO(sessions): Replace this placeholder user message with a compaction message once
-  // compaction messages are rendered in the main conversation UI.
-  const user = auth.getNonNullableUser();
-
-  await createUserMessage(auth, {
-    conversation: childConversation,
-    content: getForkInitializationMessageContent(
-      auth.getNonNullableWorkspace().sId,
-      parentConversation,
-      sourceMessageId
-    ),
-    metadata: {
-      type: "create",
-      user: user.toJSON(),
-      rank: FORK_INITIALIZATION_MESSAGE_RANK,
-      context: {
-        username: user.username,
-        fullName: user.fullName(),
-        email: user.email,
-        profilePictureUrl: user.imageUrl,
-        timezone: "UTC",
-        origin: "api",
-      },
-    },
-    transaction,
-  });
 }
 
 async function carryOverFile(
@@ -489,6 +452,16 @@ export async function createConversationFork(
     );
   }
 
+  const forkCompactionModel = getForkCompactionModel(auth);
+  if (!forkCompactionModel) {
+    return new Err(
+      new DustError(
+        "internal_error",
+        "No whitelisted model available for fork compaction."
+      )
+    );
+  }
+
   const branchedAt = new Date();
 
   const childConversationId = await withTransaction(async (transaction) => {
@@ -546,13 +519,6 @@ export async function createConversationFork(
       return copySkillsResult;
     }
 
-    await createForkInitializationMessage(auth, {
-      parentConversation: parentConversation.toJSON(),
-      childConversation: childConversation.toJSON(),
-      sourceMessageId: sourceMessage.value.sId,
-      transaction,
-    });
-
     await ConversationResource.upsertParticipation(auth, {
       conversation: childConversation.toJSON(),
       action: "subscribed",
@@ -598,6 +564,28 @@ export async function createConversationFork(
     );
 
     return new Ok(childConversationId.value.childConversationId);
+  }
+
+  const compactionResult = await compactConversation(auth, {
+    conversation: childConversation.value,
+    model: forkCompactionModel,
+    sourceConversation: {
+      conversationId: parentConversation.sId,
+      messageRank: childConversationId.value.sourceMessageRank,
+    },
+  });
+
+  if (compactionResult.isErr()) {
+    logger.error(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        parentConversationId: conversationId,
+        childConversationId: childConversation.value.sId,
+        error: compactionResult.error,
+      },
+      "Failed to initialize forked conversation compaction."
+    );
+    return new Ok(childConversation.value.sId);
   }
 
   const parentConversationWithContent = await getConversation(
