@@ -597,6 +597,34 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
       done: "Remove file access",
     },
   },
+  upload_file: {
+    description:
+      "Upload a file from the Dust conversation to Google Drive. Optionally specify a folder to upload into.",
+    schema: {
+      fileId: z
+        .string()
+        .describe(
+          "The Dust fileId from the conversation attachments to upload."
+        ),
+      parentId: z
+        .string()
+        .optional()
+        .describe(
+          "The ID of the folder to upload the file into. If not provided, uploads to the user's root Drive. Use the search_files tool with `mimeType = 'application/vnd.google-apps.folder'` to find folder IDs."
+        ),
+      fileName: z
+        .string()
+        .optional()
+        .describe(
+          "Optional custom filename for the uploaded file. If not provided, uses the original filename from the conversation attachment."
+        ),
+    },
+    stake: "low",
+    displayLabels: {
+      running: "Uploading file to Google Drive",
+      done: "Upload file to Google Drive",
+    },
+  },
 });
 
 const ALL_TOOLS_METADATA = {

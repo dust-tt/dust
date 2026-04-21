@@ -228,6 +228,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "update_file_permission": "medium",
     "update_presentation": "medium",
     "update_spreadsheet": "medium",
+    "upload_file": "low",
   },
   "google_sheets": {
     "add_worksheet": "low",
