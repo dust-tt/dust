@@ -4,7 +4,8 @@ import type {
 } from "@app/components/editor/extensions/skill_builder/SlashCommandDropdown";
 import { SlashCommandDropdown } from "@app/components/editor/extensions/skill_builder/SlashCommandDropdown";
 import { getSkillAvatarIcon } from "@app/lib/skill";
-import type { SkillType } from "@app/types/assistant/skill_configuration";
+import type { SkillWithoutToolsType } from "@app/types/assistant/skill_configuration";
+import type { SuggestionProps } from "@tiptap/suggestion";
 import { forwardRef, useMemo } from "react";
 
 const MAX_SKILL_SUGGESTIONS = 10;
@@ -16,7 +17,7 @@ export function filterInputBarSkills({
 }: {
   query: string;
   selectedSkillIds: Set<string>;
-  skills: SkillType[];
+  skills: SkillWithoutToolsType[];
 }) {
   const normalizedQuery = query.trim().toLowerCase();
 
@@ -35,16 +36,16 @@ export function filterInputBarSkills({
 
 export const InputBarSkillSuggestionDropdown = forwardRef<
   SlashCommandDropdownRef,
-  {
-    anchorRect: DOMRect;
+  Pick<
+    SuggestionProps<SkillWithoutToolsType>,
+    "clientRect" | "command" | "items"
+  > & {
     onClose: () => void;
-    onSkillSelect: (skill: SkillType) => void;
-    skills: SkillType[];
   }
->(({ anchorRect, onClose, onSkillSelect, skills }, ref) => {
+>(({ clientRect, command, items, onClose }, ref) => {
   const skillItems = useMemo<SlashCommand[]>(
     () =>
-      skills.map((skill) => ({
+      items.map((skill) => ({
         action: skill.sId,
         description: skill.userFacingDescription,
         icon: getSkillAvatarIcon(skill.icon),
@@ -56,12 +57,12 @@ export const InputBarSkillSuggestionDropdown = forwardRef<
             }
           : undefined,
       })),
-    [skills]
+    [items]
   );
 
   const skillsById = useMemo(
-    () => new Map(skills.map((skill) => [skill.sId, skill])),
-    [skills]
+    () => new Map(items.map((skill) => [skill.sId, skill])),
+    [items]
   );
 
   return (
@@ -72,10 +73,10 @@ export const InputBarSkillSuggestionDropdown = forwardRef<
         const skill = skillsById.get(item.id);
 
         if (skill) {
-          onSkillSelect(skill);
+          command(skill);
         }
       }}
-      clientRect={() => anchorRect}
+      clientRect={clientRect}
       emptyMessage="No skills found"
       header="Skills"
       onClose={onClose}
