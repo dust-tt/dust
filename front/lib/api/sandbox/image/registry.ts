@@ -11,7 +11,7 @@ import fs from "fs";
 import path from "path";
 
 const DUST_BEDROCK_IMAGE_VERSION = "1.6.0";
-const DUST_BASE_IMAGE_VERSION = "0.7.9";
+const DUST_BASE_IMAGE_VERSION = "0.7.10";
 const DSBX_CLI_VERSION = "0.1.4";
 const AGENT_PROXIED_UID = 1003;
 // Built from https://github.com/openai/codex at tag rust-v0.115.0 (Apache-2.0).
@@ -113,6 +113,8 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
     user: "root",
   })
   .runCmd(getAgentProxiedSetupCommand(), { user: "root" })
+  // dust-fwd is created with nologin in bedrock; E2B exec needs a real shell.
+  .runCmd("usermod -s /bin/bash dust-fwd", { user: "root" })
   // Create simple netcat-based token server script.
   .runCmd("mkdir -p /home/agent/.bin", { user: "root" })
   // TODO(2026-03-06 SANDBOX): .copy is broken, use file once fixed.
