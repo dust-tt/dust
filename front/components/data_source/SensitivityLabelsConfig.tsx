@@ -34,10 +34,11 @@ export function ConnectorSensitivityLabelsConfig({
   const {
     dataClassificationLabels,
     isDataClassificationLabelsLoading,
+    isDataClassificationLabelsError,
     mutateDataClassificationLabels,
   } = useDataClassificationLabels({ owner, dataSourceId: dataSource.sId });
 
-  if (isDataClassificationLabelsLoading || !dataClassificationLabels) {
+  if (isDataClassificationLabelsLoading) {
     return null;
   }
 
@@ -45,13 +46,15 @@ export function ConnectorSensitivityLabelsConfig({
     <MicrosoftLabelsSelector
       owner={owner}
       source={{ dataSourceId: dataSource.sId }}
-      labels={dataClassificationLabels.labels}
+      labels={dataClassificationLabels?.labels ?? []}
       savedAllowedLabels={
-        dataClassificationLabels.allowedLabels as MicrosoftAllowedLabel[]
+        (dataClassificationLabels?.allowedLabels ??
+          []) as MicrosoftAllowedLabel[]
       }
       onSaved={mutateDataClassificationLabels}
       readOnly={readOnly}
       isAdmin={isAdmin}
+      hasError={!!isDataClassificationLabelsError}
     />
   );
 }
@@ -74,10 +77,11 @@ export function MCPSensitivityLabelsConfig({
   const {
     dataClassificationLabels,
     isDataClassificationLabelsLoading,
+    isDataClassificationLabelsError,
     mutateDataClassificationLabels,
   } = useDataClassificationLabels({ owner, internalMCPServerId });
 
-  if (isDataClassificationLabelsLoading || !dataClassificationLabels) {
+  if (isDataClassificationLabelsLoading) {
     return null;
   }
 
@@ -85,11 +89,12 @@ export function MCPSensitivityLabelsConfig({
     <MicrosoftLabelsSelector
       owner={owner}
       source={{ internalMCPServerId }}
-      labels={dataClassificationLabels.labels}
-      savedAllowedLabels={dataClassificationLabels.allowedLabels}
+      labels={dataClassificationLabels?.labels ?? []}
+      savedAllowedLabels={dataClassificationLabels?.allowedLabels ?? []}
       onSaved={mutateDataClassificationLabels}
       readOnly={readOnly}
       isAdmin={isAdmin}
+      hasError={!!isDataClassificationLabelsError}
     />
   );
 }
@@ -108,6 +113,7 @@ interface MicrosoftLabelsSelectorProps {
   onSaved: () => void;
   readOnly: boolean;
   isAdmin: boolean;
+  hasError: boolean;
 }
 
 function MicrosoftLabelsSelector({
@@ -118,6 +124,7 @@ function MicrosoftLabelsSelector({
   onSaved,
   readOnly,
   isAdmin,
+  hasError,
 }: MicrosoftLabelsSelectorProps) {
   const sendNotification = useSendNotification();
   const [selected, setSelected] = useState<Set<string>>(
@@ -169,6 +176,17 @@ function MicrosoftLabelsSelector({
       ? "Select labels"
       : `${selected.size} label${selected.size === 1 ? "" : "s"} selected`;
 
+  const emptyContent = hasError ? (
+    <p className="px-2 py-3 text-sm text-muted-foreground dark:text-muted-foreground-night">
+      Labels could not be retrieved. Make sure to grant the necessary
+      permissions to your Dust app in Azure.
+    </p>
+  ) : (
+    <p className="px-2 py-3 text-sm text-muted-foreground dark:text-muted-foreground-night">
+      No labels found. Configure them in your Microsoft Purview console first.
+    </p>
+  );
+
   return (
     <div className="mb-4 flex flex-col gap-3">
       <div className="flex items-center gap-2">
@@ -185,22 +203,17 @@ function MicrosoftLabelsSelector({
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-80">
             <div className="max-h-80 overflow-auto">
-              {labels.length === 0 ? (
-                <p className="px-2 py-3 text-sm text-muted-foreground dark:text-muted-foreground-night">
-                  No labels found. Configure them in your Microsoft Purview
-                  console first.
-                </p>
-              ) : (
-                labels.map((label) => (
-                  <DropdownMenuCheckboxItem
-                    key={label.id}
-                    label={label.name}
-                    checked={selected.has(label.id)}
-                    onCheckedChange={() => toggle(label.id)}
-                    onSelect={(e) => e.preventDefault()}
-                  />
-                ))
-              )}
+              {labels.length === 0
+                ? emptyContent
+                : labels.map((label) => (
+                    <DropdownMenuCheckboxItem
+                      key={label.id}
+                      label={label.name}
+                      checked={selected.has(label.id)}
+                      onCheckedChange={() => toggle(label.id)}
+                      onSelect={(e) => e.preventDefault()}
+                    />
+                  ))}
             </div>
           </DropdownMenuContent>
         </DropdownMenu>

@@ -101,24 +101,19 @@ async function getMicrosoftSensitivityLabels(
     authProvider: (done) => done(null, accessToken),
   });
 
-  try {
-    const res = await client
-      .api("/security/dataSecurityAndGovernance/sensitivityLabels")
-      .get();
+  const res = await client
+    .api("/security/dataSecurityAndGovernance/sensitivityLabels")
+    .get();
 
-    const rawLabels: { id?: string; name?: string; displayName?: string }[] =
-      res?.value ?? [];
+  const rawLabels: { id?: string; name?: string; displayName?: string }[] =
+    res?.value ?? [];
 
-    return rawLabels
-      .filter((l) => l.id)
-      .map((l) => ({
-        id: l.id as string,
-        name: l.name ?? l.displayName ?? l.id ?? "",
-      }));
-  } catch (e) {
-    logger.warn({ error: e }, "Error fetching Microsoft sensitivity labels");
-    return [];
-  }
+  return rawLabels
+    .filter((l) => l.id)
+    .map((l) => ({
+      id: l.id as string,
+      name: l.name ?? l.displayName ?? l.id ?? "",
+    }));
 }
 
 // ─── Handler ─────────────────────────────────────────────────────────────────
@@ -236,9 +231,24 @@ async function handler(
           sourceId,
         });
 
-      const labels: MicrosoftSensitivityLabel[] = accessToken
-        ? await getMicrosoftSensitivityLabels(accessToken)
-        : [];
+      let labels: MicrosoftSensitivityLabel[] = [];
+      if (accessToken) {
+        try {
+          labels = await getMicrosoftSensitivityLabels(accessToken);
+        } catch (e) {
+          logger.warn(
+            { error: e },
+            "Error fetching Microsoft sensitivity labels"
+          );
+          return apiError(req, res, {
+            status_code: 502,
+            api_error: {
+              type: "connector_update_error",
+              message: "Failed to fetch Microsoft Purview sensitivity labels.",
+            },
+          });
+        }
+      }
 
       return res.status(200).json({
         labels,
