@@ -1,4 +1,5 @@
 import { InputBarSlashSuggestionDropdown } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionDropdown";
+import type { SlashCommandDropdownRef } from "@app/components/editor/extensions/skill_builder/SlashCommandDropdown";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import type { WorkspaceType } from "@app/types/user";
 import { Extension } from "@tiptap/core";
@@ -7,8 +8,6 @@ import type { EditorView } from "@tiptap/pm/view";
 import { ReactRenderer } from "@tiptap/react";
 import { exitSuggestion, Suggestion } from "@tiptap/suggestion";
 import type { RefObject } from "react";
-
-import type { SlashCommandDropdownRef } from "../skill_builder/SlashCommandDropdown";
 
 export const inputBarSlashSuggestionPluginKey = new PluginKey(
   "inputBarSlashSuggestion"

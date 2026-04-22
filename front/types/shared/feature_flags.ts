@@ -291,9 +291,9 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Show the browser extension MCP tools toggle in workspace access settings",
     stage: "dust_only",
   },
-  input_bar_slash_skills: {
+  input_bar_slash_suggestions: {
     description:
-      "Enable slash-triggered skill selection in the conversation input bar",
+      "Enable slash-triggered suggestions in the conversation input bar",
     stage: "dust_only",
   },
   sensitivity_labels: {

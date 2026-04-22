@@ -189,7 +189,9 @@ const InputBarContainer = ({
   const isMobile = useIsMobile();
   const { hasFeature } = useFeatureFlags();
   const isCompactionEnabled = hasFeature("enable_compaction");
-  const isInputBarSlashSkillsEnabled = hasFeature("input_bar_slash_skills");
+  const isInputBarSlashSuggestionsEnabled = hasFeature(
+    "input_bar_slash_suggestions"
+  );
   const { selectedSingleAgent, setSelectedSingleAgent } =
     useContext(InputBarContext);
 
@@ -229,7 +231,7 @@ const InputBarContainer = ({
   const plusButtonRef = useRef<HTMLDivElement>(null);
   const clientType = useClientType();
   const shouldEnableSlashSuggestion =
-    actions.includes("capabilities") && isInputBarSlashSkillsEnabled;
+    actions.includes("capabilities") && isInputBarSlashSuggestionsEnabled;
 
   const [selectedNode, setSelectedNode] =
     useState<DataSourceViewContentNode | null>(null);
@@ -928,326 +930,319 @@ const InputBarContainer = ({
   const toolbarRowTransitionStyle = getToolbarRowTransitionStyle(hideButtons);
 
   return (
-    <>
-      <div
-        id="InputBarContainer"
-        className="relative flex flex-1 cursor-text flex-row sm:pt-0"
-        onClick={(e) => {
-          // If e.target is not a child of a div with class "tiptap", then focus on the editor
-          if (
-            !(e.target instanceof HTMLElement && e.target.closest(".tiptap"))
-          ) {
-            editorService.focusEnd();
-          }
-        }}
-      >
-        <div className="flex w-0 flex-grow flex-col">
-          <div className="relative">
-            <EditorContent
-              editor={editor}
-              className={classNames(
-                contentEditableClasses,
-                "scrollbar-hide",
-                "overflow-y-auto",
-                hideButtons
-                  ? "max-h-[40vh] pr-20"
-                  : "max-h-[40vh] min-h-14 sm:min-h-16"
-              )}
-            />
-          </div>
-          <BubbleMenu
-            editor={editor ?? undefined}
-            className={cn("flex", isMobile && "hidden")}
+    <div
+      id="InputBarContainer"
+      className="relative flex flex-1 cursor-text flex-row sm:pt-0"
+      onClick={(e) => {
+        // If e.target is not a child of a div with class "tiptap", then focus on the editor
+        if (!(e.target instanceof HTMLElement && e.target.closest(".tiptap"))) {
+          editorService.focusEnd();
+        }
+      }}
+    >
+      <div className="flex w-0 flex-grow flex-col">
+        <div className="relative">
+          <EditorContent
+            editor={editor}
+            className={classNames(
+              contentEditableClasses,
+              "scrollbar-hide",
+              "overflow-y-auto",
+              hideButtons
+                ? "max-h-[40vh] pr-20"
+                : "max-h-[40vh] min-h-14 sm:min-h-16"
+            )}
+          />
+        </div>
+        <BubbleMenu
+          editor={editor ?? undefined}
+          className={cn("flex", isMobile && "hidden")}
+        >
+          {editor && (
+            <Toolbar className={cn("inline-flex", isMobile && "hidden")}>
+              <ToolBarContent editor={editor} />
+            </Toolbar>
+          )}
+        </BubbleMenu>
+        <div
+          className={cn(
+            "flex w-full flex-col",
+            !hideButtons && "py-1.5 sm:pb-2"
+          )}
+          style={{
+            transition: `padding ${COLLAPSE_TRANSITION}`,
+          }}
+        >
+          <div
+            className="mb-1 flex flex-wrap items-center px-2"
+            style={toolbarRowTransitionStyle}
           >
-            {editor && (
-              <Toolbar className={cn("inline-flex", isMobile && "hidden")}>
+            {selectedSkills.map((skill) => (
+              <React.Fragment key={skill.sId}>
+                <InputBarSkillChip
+                  owner={owner}
+                  skill={skill}
+                  className="m-0.5 hidden xs:flex"
+                  onRemove={() => {
+                    onSkillDeselect(skill);
+                  }}
+                />
+                <InputBarSkillChip
+                  owner={owner}
+                  skill={skill}
+                  compact
+                  className="m-0.5 flex xs:hidden"
+                  onRemove={() => {
+                    onSkillDeselect(skill);
+                  }}
+                />
+              </React.Fragment>
+            ))}
+            {selectedMCPServerViews.map((msv) => (
+              <React.Fragment key={msv.sId}>
+                {/* Two Chips: one for larger screens (desktop), one for smaller screens (mobile). */}
+                <Chip
+                  size="xs"
+                  label={getMcpServerViewDisplayName(msv)}
+                  icon={getIcon(msv.server.icon)}
+                  className="m-0.5 hidden bg-background text-foreground dark:bg-background-night dark:text-foreground-night xs:flex"
+                  onRemove={() => {
+                    onMCPServerViewDeselect(msv);
+                  }}
+                />
+                <Chip
+                  size="xs"
+                  icon={getIcon(msv.server.icon)}
+                  className="m-0.5 flex bg-background text-foreground dark:bg-background-night dark:text-foreground-night xs:hidden"
+                  onRemove={() => {
+                    onMCPServerViewDeselect(msv);
+                  }}
+                />
+              </React.Fragment>
+            ))}
+          </div>
+          <div
+            className="relative flex w-full items-center justify-between"
+            style={toolbarRowTransitionStyle}
+          >
+            {!isRecording && editor && (
+              <Toolbar
+                variant="overlay"
+                className={cn(
+                  isToolbarOpen
+                    ? "pointer-events-auto w-full"
+                    : "pointer-events-none hidden w-[120px]",
+                  !isMobile && "hidden"
+                )}
+                onClose={(e: React.MouseEvent<HTMLButtonElement>) => {
+                  e.stopPropagation();
+                  setIsToolbarOpen(false);
+                }}
+              >
                 <ToolBarContent editor={editor} />
               </Toolbar>
             )}
-          </BubbleMenu>
-          <div
-            className={cn(
-              "flex w-full flex-col",
-              !hideButtons && "py-1.5 sm:pb-2"
-            )}
-            style={{
-              transition: `padding ${COLLAPSE_TRANSITION}`,
-            }}
-          >
             <div
-              className="mb-1 flex flex-wrap items-center px-2"
-              style={toolbarRowTransitionStyle}
-            >
-              {selectedSkills.map((skill) => (
-                <React.Fragment key={skill.sId}>
-                  <InputBarSkillChip
-                    owner={owner}
-                    skill={skill}
-                    className="m-0.5 hidden xs:flex"
-                    onRemove={() => {
-                      onSkillDeselect(skill);
-                    }}
-                  />
-                  <InputBarSkillChip
-                    owner={owner}
-                    skill={skill}
-                    compact
-                    className="m-0.5 flex xs:hidden"
-                    onRemove={() => {
-                      onSkillDeselect(skill);
-                    }}
-                  />
-                </React.Fragment>
-              ))}
-              {selectedMCPServerViews.map((msv) => (
-                <React.Fragment key={msv.sId}>
-                  {/* Two Chips: one for larger screens (desktop), one for smaller screens (mobile). */}
-                  <Chip
-                    size="xs"
-                    label={getMcpServerViewDisplayName(msv)}
-                    icon={getIcon(msv.server.icon)}
-                    className="m-0.5 hidden bg-background text-foreground dark:bg-background-night dark:text-foreground-night xs:flex"
-                    onRemove={() => {
-                      onMCPServerViewDeselect(msv);
-                    }}
-                  />
-                  <Chip
-                    size="xs"
-                    icon={getIcon(msv.server.icon)}
-                    className="m-0.5 flex bg-background text-foreground dark:bg-background-night dark:text-foreground-night xs:hidden"
-                    onRemove={() => {
-                      onMCPServerViewDeselect(msv);
-                    }}
-                  />
-                </React.Fragment>
-              ))}
-            </div>
-            <div
-              className="relative flex w-full items-center justify-between"
-              style={toolbarRowTransitionStyle}
-            >
-              {!isRecording && editor && (
-                <Toolbar
-                  variant="overlay"
-                  className={cn(
-                    isToolbarOpen
-                      ? "pointer-events-auto w-full"
-                      : "pointer-events-none hidden w-[120px]",
-                    !isMobile && "hidden"
-                  )}
-                  onClose={(e: React.MouseEvent<HTMLButtonElement>) => {
-                    e.stopPropagation();
-                    setIsToolbarOpen(false);
-                  }}
-                >
-                  <ToolBarContent editor={editor} />
-                </Toolbar>
+              className={cn(
+                "flex w-full items-center px-2",
+                isToolbarOpen && "opacity-0"
               )}
-              <div
-                className={cn(
-                  "flex w-full items-center px-2",
-                  isToolbarOpen && "opacity-0"
-                )}
-              >
-                {!isRecording && (
-                  <div
-                    className="flex items-center"
-                    style={buttonsTransitionStyle}
-                  >
-                    <Button
-                      variant="ghost-secondary"
-                      icon={TextIcon}
-                      size={buttonSize}
-                      className={cn("flex", !isMobile && "hidden")}
-                      onClick={() => setIsToolbarOpen(!isToolbarOpen)}
-                    />
-                    <InputBarButtons
-                      actions={actions}
-                      allAgents={allAgents}
-                      attachedNodes={attachedNodes}
-                      buttonSize={buttonSize}
-                      clientType={clientType}
-                      conversation={conversation}
-                      disableAgentSelector={disableAgentSelector}
-                      editorService={editorService}
-                      fileInputRef={fileInputRef}
-                      fileUploaderService={fileUploaderService}
-                      handleSingleAgentSelect={handleSingleAgentSelect}
-                      onMCPServerViewSelect={onMCPServerViewSelect}
-                      onNodeSelect={onNodeSelect}
-                      onNodeUnselect={onNodeUnselect}
-                      onSkillSelect={onSkillSelect}
-                      owner={owner}
-                      selectedAgent={selectedSingleAgent}
-                      selectedMCPServerViews={selectedMCPServerViews}
-                      selectedSkills={selectedSkills}
-                      space={space}
-                      user={user}
-                    />
-                  </div>
-                )}
-                <div className="grow" />
+            >
+              {!isRecording && (
                 <div
-                  className="flex items-center gap-2 md:gap-1"
+                  className="flex items-center"
                   style={buttonsTransitionStyle}
-                />
-              </div>
-            </div>
-          </div>
-          <div
-            className={cn("absolute bottom-2 right-2 flex items-center gap-2")}
-          >
-            {clientType === "extension" && (
-              <>
-                <div ref={plusButtonRef}>
-                  <DropdownMenu
-                    open={isCaptureDropdownOpen}
-                    onOpenChange={setIsCaptureDropdownOpen}
-                  >
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost-secondary"
-                        icon={PlusIcon}
-                        size={buttonSize}
-                      />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      {actions.includes("attachment") && (
-                        <DropdownMenuItem
-                          icon={AttachmentIcon}
-                          label="Attach knowledge"
-                          onClick={() => {
-                            setIsCaptureDropdownOpen(false);
-                            setShowKnowledgePicker(true);
-                          }}
-                        />
-                      )}
-                      {captureActions && (
-                        <>
-                          <DropdownMenuItem
-                            icon={GlobeAltIcon}
-                            label="Attach page content"
-                            disabled={
-                              captureActions.isCapturing ||
-                              fileUploaderService.isProcessingFiles
-                            }
-                            onClick={() => captureActions.onCapture("text")}
-                            endComponent={
-                              <DropdownMenuShortcut
-                                shortcut={pageShortcut}
-                                className="text-xs text-faint dark:text-faint-night"
-                              />
-                            }
-                          />
-                          <DropdownMenuItem
-                            icon={CameraIcon}
-                            label="Take screenshot"
-                            disabled={
-                              captureActions.isCapturing ||
-                              fileUploaderService.isProcessingFiles
-                            }
-                            onClick={() =>
-                              captureActions.onCapture("screenshot")
-                            }
-                            endComponent={
-                              <DropdownMenuShortcut
-                                shortcut={screenshotShortcut}
-                                className="text-xs text-faint dark:text-faint-night"
-                              />
-                            }
-                          />
-                        </>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-                {actions.includes("attachment") && (
-                  <InputBarAttachmentsPicker
-                    fileUploaderService={fileUploaderService}
-                    owner={owner}
-                    isLoading={false}
-                    onNodeSelect={onNodeSelect}
-                    onNodeUnselect={onNodeUnselect}
+                >
+                  <Button
+                    variant="ghost-secondary"
+                    icon={TextIcon}
+                    size={buttonSize}
+                    className={cn("flex", !isMobile && "hidden")}
+                    onClick={() => setIsToolbarOpen(!isToolbarOpen)}
+                  />
+                  <InputBarButtons
+                    actions={actions}
+                    allAgents={allAgents}
                     attachedNodes={attachedNodes}
                     buttonSize={buttonSize}
-                    toolFileUpload={{
-                      useCase: "conversation",
-                      useCaseMetadata: {
-                        conversationId: conversation?.sId,
-                      },
-                    }}
-                    spaceId={space?.sId}
-                    type="dropdown"
-                    onFileChange={() => setShowKnowledgePicker(false)}
-                    externalOpen={showKnowledgePicker}
-                    onExternalOpenChange={setShowKnowledgePicker}
-                    anchorRef={plusButtonRef}
+                    clientType={clientType}
+                    conversation={conversation}
+                    disableAgentSelector={disableAgentSelector}
+                    editorService={editorService}
+                    fileInputRef={fileInputRef}
+                    fileUploaderService={fileUploaderService}
+                    handleSingleAgentSelect={handleSingleAgentSelect}
+                    onMCPServerViewSelect={onMCPServerViewSelect}
+                    onNodeSelect={onNodeSelect}
+                    onNodeUnselect={onNodeUnselect}
+                    onSkillSelect={onSkillSelect}
+                    owner={owner}
+                    selectedAgent={selectedSingleAgent}
+                    selectedMCPServerViews={selectedMCPServerViews}
+                    selectedSkills={selectedSkills}
+                    space={space}
+                    user={user}
                   />
-                )}
-              </>
-            )}
-            <div className="flex items-center">
-              {isCompactionEnabled && conversation && (
-                <ContextUsageIndicator
-                  buttonSize={buttonSize}
-                  owner={owner}
-                  conversationId={conversation?.sId}
-                />
+                </div>
               )}
-              {!subscription.plan.isByok &&
-                owner.metadata?.allowVoiceTranscription !== false &&
-                actions.includes("voice") && (
-                  <VoicePicker
-                    status={voiceTranscriberService.status}
-                    level={voiceTranscriberService.level}
-                    elapsedSeconds={voiceTranscriberService.elapsedSeconds}
-                    onRecordStart={voiceTranscriberService.startRecording}
-                    onRecordStop={voiceTranscriberService.stopRecording}
-                    size={buttonSize}
-                    showStopLabel={!isMobile}
-                  />
-                )}
+              <div className="grow" />
+              <div
+                className="flex items-center gap-2 md:gap-1"
+                style={buttonsTransitionStyle}
+              />
             </div>
-            <Button
-              size={buttonSize}
-              isLoading={
-                isSubmitting &&
-                voiceTranscriberService.status !== "transcribing"
-              }
-              icon={ArrowUpIcon}
-              variant={isSubmitBlocked ? "ghost-secondary" : "highlight"}
-              disabled={isSubmitDisabled}
-              tooltip={submitBlockMessage ?? undefined}
-              className={cn(
-                isSubmitBlocked &&
-                  "hover:s-bg-transparent dark:hover:s-bg-transparent hover:s-text-muted-foreground dark:hover:s-text-muted-foreground-night"
-              )}
-              onClick={async (e: React.MouseEvent<HTMLButtonElement>) => {
-                e.preventDefault();
-                e.stopPropagation();
-                if (disableAutoFocus) {
-                  editorService.blur();
-                  // wait a bit for the keyboard to be closed on mobile
-                  if (isMobile) {
-                    editorService.setLoading(true);
-                    await new Promise((resolve) => setTimeout(resolve, 500));
-                    editorService.setLoading(false);
-                  }
-                }
-                onEnterKeyDown(
-                  editorService.isEmpty() && !canSubmitEmpty,
-                  editorService.getMarkdownAndMentions(),
-                  () => {
-                    editorService.clearEditor();
-                  },
-                  editorService.setLoading
-                );
-              }}
-            />
           </div>
         </div>
+        <div
+          className={cn("absolute bottom-2 right-2 flex items-center gap-2")}
+        >
+          {clientType === "extension" && (
+            <>
+              <div ref={plusButtonRef}>
+                <DropdownMenu
+                  open={isCaptureDropdownOpen}
+                  onOpenChange={setIsCaptureDropdownOpen}
+                >
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost-secondary"
+                      icon={PlusIcon}
+                      size={buttonSize}
+                    />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {actions.includes("attachment") && (
+                      <DropdownMenuItem
+                        icon={AttachmentIcon}
+                        label="Attach knowledge"
+                        onClick={() => {
+                          setIsCaptureDropdownOpen(false);
+                          setShowKnowledgePicker(true);
+                        }}
+                      />
+                    )}
+                    {captureActions && (
+                      <>
+                        <DropdownMenuItem
+                          icon={GlobeAltIcon}
+                          label="Attach page content"
+                          disabled={
+                            captureActions.isCapturing ||
+                            fileUploaderService.isProcessingFiles
+                          }
+                          onClick={() => captureActions.onCapture("text")}
+                          endComponent={
+                            <DropdownMenuShortcut
+                              shortcut={pageShortcut}
+                              className="text-xs text-faint dark:text-faint-night"
+                            />
+                          }
+                        />
+                        <DropdownMenuItem
+                          icon={CameraIcon}
+                          label="Take screenshot"
+                          disabled={
+                            captureActions.isCapturing ||
+                            fileUploaderService.isProcessingFiles
+                          }
+                          onClick={() => captureActions.onCapture("screenshot")}
+                          endComponent={
+                            <DropdownMenuShortcut
+                              shortcut={screenshotShortcut}
+                              className="text-xs text-faint dark:text-faint-night"
+                            />
+                          }
+                        />
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+              {actions.includes("attachment") && (
+                <InputBarAttachmentsPicker
+                  fileUploaderService={fileUploaderService}
+                  owner={owner}
+                  isLoading={false}
+                  onNodeSelect={onNodeSelect}
+                  onNodeUnselect={onNodeUnselect}
+                  attachedNodes={attachedNodes}
+                  buttonSize={buttonSize}
+                  toolFileUpload={{
+                    useCase: "conversation",
+                    useCaseMetadata: {
+                      conversationId: conversation?.sId,
+                    },
+                  }}
+                  spaceId={space?.sId}
+                  type="dropdown"
+                  onFileChange={() => setShowKnowledgePicker(false)}
+                  externalOpen={showKnowledgePicker}
+                  onExternalOpenChange={setShowKnowledgePicker}
+                  anchorRef={plusButtonRef}
+                />
+              )}
+            </>
+          )}
+          <div className="flex items-center">
+            {isCompactionEnabled && conversation && (
+              <ContextUsageIndicator
+                buttonSize={buttonSize}
+                owner={owner}
+                conversationId={conversation?.sId}
+              />
+            )}
+            {!subscription.plan.isByok &&
+              owner.metadata?.allowVoiceTranscription !== false &&
+              actions.includes("voice") && (
+                <VoicePicker
+                  status={voiceTranscriberService.status}
+                  level={voiceTranscriberService.level}
+                  elapsedSeconds={voiceTranscriberService.elapsedSeconds}
+                  onRecordStart={voiceTranscriberService.startRecording}
+                  onRecordStop={voiceTranscriberService.stopRecording}
+                  size={buttonSize}
+                  showStopLabel={!isMobile}
+                />
+              )}
+          </div>
+          <Button
+            size={buttonSize}
+            isLoading={
+              isSubmitting && voiceTranscriberService.status !== "transcribing"
+            }
+            icon={ArrowUpIcon}
+            variant={isSubmitBlocked ? "ghost-secondary" : "highlight"}
+            disabled={isSubmitDisabled}
+            tooltip={submitBlockMessage ?? undefined}
+            className={cn(
+              isSubmitBlocked &&
+                "hover:s-bg-transparent dark:hover:s-bg-transparent hover:s-text-muted-foreground dark:hover:s-text-muted-foreground-night"
+            )}
+            onClick={async (e: React.MouseEvent<HTMLButtonElement>) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (disableAutoFocus) {
+                editorService.blur();
+                // wait a bit for the keyboard to be closed on mobile
+                if (isMobile) {
+                  editorService.setLoading(true);
+                  await new Promise((resolve) => setTimeout(resolve, 500));
+                  editorService.setLoading(false);
+                }
+              }
+              onEnterKeyDown(
+                editorService.isEmpty() && !canSubmitEmpty,
+                editorService.getMarkdownAndMentions(),
+                () => {
+                  editorService.clearEditor();
+                },
+                editorService.setLoading
+              );
+            }}
+          />
+        </div>
       </div>
-    </>
+    </div>
   );
 };
 
