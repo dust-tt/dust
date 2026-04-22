@@ -32,8 +32,8 @@ import { runOnAllWorkspaces } from "./workspace_helpers";
 
 type SyncType = "free" | "committed" | "all";
 
-// Tolerance in USD below which we skip the deduction (floating-point noise).
-const DEDUCTION_THRESHOLD_USD = 0.000_001;
+// Tolerance in micro-USD below which we skip the deduction (1 µUSD = $0.000001).
+const DEDUCTION_THRESHOLD_MICRO_USD = 1;
 
 async function syncCreditsOfType(
   workspace: LightWorkspaceType,
@@ -97,7 +97,7 @@ async function syncCreditsOfType(
       continue;
     }
 
-    // Metronome balance is in USD; our DB values are in micro USD.
+    // Metronome balance is in USD; our DB values are in micro-USD.
     const metronomeBalanceUsd = metronomeEntry.balance;
     if (metronomeBalanceUsd === undefined) {
       logger.warn(
@@ -107,22 +107,25 @@ async function syncCreditsOfType(
       continue;
     }
 
-    const dbRemainingUsd =
-      (credit.initialAmountMicroUsd - credit.consumedAmountMicroUsd) /
-      1_000_000;
+    // Work in micro-USD integers to avoid floating-point noise.
+    const metronomeBalanceMicroUsd = Math.round(
+      metronomeBalanceUsd * 1_000_000
+    );
+    const dbRemainingMicroUsd =
+      credit.initialAmountMicroUsd - credit.consumedAmountMicroUsd;
 
-    // Metronome consumed = initial - balance; DB consumed = consumedAmountMicroUsd / 1e6.
     // If metronomeBalance > dbRemaining, Metronome has consumed less than DB.
-    const deductionUsd = metronomeBalanceUsd - dbRemainingUsd;
+    const deductionMicroUsd = metronomeBalanceMicroUsd - dbRemainingMicroUsd;
+    const deductionUsd = deductionMicroUsd / 1_000_000;
 
-    if (deductionUsd <= DEDUCTION_THRESHOLD_USD) {
+    if (deductionMicroUsd <= DEDUCTION_THRESHOLD_MICRO_USD) {
       logger.info(
         {
           workspaceId: workspace.sId,
           creditId: credit.id,
           metronomeCreditId,
           metronomeBalanceUsd,
-          dbRemainingUsd,
+          dbRemainingUsd: dbRemainingMicroUsd / 1_000_000,
           deductionUsd,
         },
         `[Sync] ${metronomeItem} in sync (or Metronome has consumed more), no action needed`
@@ -150,7 +153,7 @@ async function syncCreditsOfType(
           metronomeCreditId,
           segmentId,
           metronomeBalanceUsd,
-          dbRemainingUsd,
+          dbRemainingUsd: dbRemainingMicroUsd / 1_000_000,
           deductionUsd,
         },
         `[Sync] [DRY RUN] Would add manual ledger deduction of $${deductionUsd.toFixed(6)} to ${metronomeItem}`
