@@ -1101,7 +1101,7 @@ export const INTERNAL_MCP_SERVERS = {
     metadata: ASK_USER_QUESTION_SERVER,
   },
   wakeups: {
-    id: 1029,
+    id: 1031,
     availability: "auto",
     allowMultipleInstances: false,
     isPreview: true,
