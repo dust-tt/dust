@@ -286,6 +286,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Enable context compaction: summarize older messages to free up context window",
     stage: "dust_only",
   },
+  browser_extension_mcp_tools: {
+    description:
+      "Show the browser extension MCP tools toggle in workspace access settings",
+    stage: "dust_only",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";
