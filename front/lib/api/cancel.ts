@@ -90,7 +90,7 @@ export async function cancelMessageGeneration(
         messageId: agentMessage.sId,
       },
       conversationId: conversation.sId,
-      step: 0,
+      step: agentMessage.contents.reduce((max, c) => Math.max(max, c.step), 0),
     });
   }
 }
