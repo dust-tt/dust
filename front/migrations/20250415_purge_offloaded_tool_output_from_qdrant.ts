@@ -1,7 +1,6 @@
 import config from "@app/lib/api/config";
 import { getOrCreateConversationDataSourceFromFile } from "@app/lib/api/data_sources";
 import { Authenticator } from "@app/lib/auth";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { AgentMCPActionOutputItemModel } from "@app/lib/models/agent/actions/mcp";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { FileModel } from "@app/lib/resources/storage/models/files";
@@ -10,6 +9,7 @@ import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import { CoreAPI } from "@app/types/core/core_api";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { isToolGeneratedFile } from "@dust-tt/client";
 import * as fs from "fs";
@@ -19,19 +19,28 @@ const BATCH_SIZE = 100;
 const CONCURRENCY = 20;
 const WORKSPACE_CONCURRENCY = 20;
 
+const PASTED_CONTENT_TYPE = "text/vnd.dust.attachment.pasted";
+const WEBHOOK_BODY_FILENAME_RE = /^webhook_body_\d+_\d+\.json$/;
+
 /**
- * Purges tool-output files that were offloaded to disk because their content exceeded the size
- * threshold (FILE_OFFLOAD_TEXT_SIZE_BYTES) from Qdrant, and stamps them with
- * skipDataSourceIndexing so the conversation render no longer advertises them as searchable.
+ * Purges conversation files that should not be semantically searchable from Qdrant, and
+ * stamps them with skipDataSourceIndexing so conversation rendering no longer advertises them
+ * as searchable.
  *
- * Covers two cases:
- *  1. Text-block offloads: large text blocks were written to a text/plain file (mimeType
- *     "text/plain" in the resource). Lowering FILE_OFFLOAD_TEXT_SIZE_BYTES from 400 KB -> 20 KB
- *     caused a +20% increase in indexed points.
- *  2. Browse/websearch files: handleWebbrowser (with summarisation) creates a text/plain file and
- *     calls uploadFileToConversationDataSource without skipDataSourceIndexing. The associated
- *     output item has mimeType TOOL_OUTPUT.FILE ("application/vnd.dust.tool-output.file") and
- *     sentinel text "Web page content archived as a file.".
+ * Three classes of files are covered:
+ *  1. Offloaded tool outputs (via AgentMCPActionOutputItemModel):
+ *     - Text-block offloads: large text blocks written to a text/plain file. Lowering
+ *       FILE_OFFLOAD_TEXT_SIZE_BYTES from 400 KB -> 20 KB caused a +20% increase in points.
+ *     - Browse/websearch files: handleWebbrowser (with summarisation) creates a text/plain
+ *       file via uploadFileToConversationDataSource without skipDataSourceIndexing. The
+ *       associated output item carries TOOL_OUTPUT.FILE and the sentinel
+ *       "Web page content archived as a file.".
+ *  2. Webhook trigger payloads (via FileModel): fileName matches
+ *     webhook_body_<sourceId>_<epoch>.json, contentType "application/json". Pulled in as a
+ *     content fragment on every trigger firing; the agent reads them inline, retrieval adds
+ *     nothing.
+ *  3. Pasted text (via FileModel): contentType "text/vnd.dust.attachment.pasted". Attached
+ *     in the same turn as the user message; retrieval adds nothing over in-context reading.
  *
  * Safe to re-run: files already stamped with skipDataSourceIndexing are skipped.
  *
@@ -40,29 +49,126 @@ const WORKSPACE_CONCURRENCY = 20;
  * Each line contains everything needed to restore the document to Qdrant if required.
  */
 
-async function purgeWorkspace(
+type PurgeStats = {
+  totalProcessed: number;
+  totalDeleted: number;
+  totalSkipped: number;
+};
+
+async function purgeFile(
+  auth: Authenticator,
+  coreAPI: CoreAPI,
+  file: FileResource,
   workspace: LightWorkspaceType,
-  { execute, manifestFd }: { execute: boolean; manifestFd: number | null },
-  localLogger: Logger
-) {
-  // Authenticator init fetches OAuth credentials if BYOK is available on the plan via the OAuth
-  // service. Prodbox can't reach oauth. Simply skip the workspace.
-  let auth: Authenticator;
-  try {
-    auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-  } catch (err) {
+  {
+    execute,
+    manifestFd,
+    reason,
+  }: { execute: boolean; manifestFd: number | null; reason: string },
+  localLogger: Logger,
+  stats: PurgeStats
+): Promise<void> {
+  // Skip files already stamped. Safe to re-run.
+  if (file.useCaseMetadata?.skipDataSourceIndexing) {
+    stats.totalSkipped++;
+    return;
+  }
+
+  localLogger.info(
+    {
+      fileId: file.sId,
+      workspaceId: workspace.sId,
+      conversationId: file.useCaseMetadata?.conversationId,
+      contentType: file.contentType,
+      fileName: file.fileName,
+      createdAt: file.createdAt,
+      reason,
+    },
+    execute ? "Purging file" : "[dry-run] Would purge file"
+  );
+
+  if (!execute) {
+    return;
+  }
+
+  // Resolve the conversation data source so we can delete the document from Qdrant.
+  const dsRes = await getOrCreateConversationDataSourceFromFile(auth, file);
+  if (dsRes.isErr()) {
     localLogger.error(
-      { workspaceId: workspace.sId, error: normalizeError(err) },
-      "Failed to initialize authenticator (OAuth service unavailable?), skipping workspace"
+      {
+        error: dsRes.error.message,
+        fileId: file.sId,
+        workspaceId: workspace.sId,
+      },
+      "Failed to resolve conversation data source. Skipping"
     );
     return;
   }
-  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), localLogger);
 
+  const dataSource = dsRes.value;
+
+  // Delete the document from Qdrant. The document ID is the file's sId.
+  const delRes = await coreAPI.deleteDataSourceDocument({
+    dataSourceId: dataSource.dustAPIDataSourceId,
+    documentId: file.sId,
+    projectId: dataSource.dustAPIProjectId,
+  });
+
+  if (delRes.isErr()) {
+    localLogger.error(
+      {
+        dataSourceId: dataSource.dustAPIDataSourceId,
+        error: delRes.error.message,
+        fileId: file.sId,
+        projectId: dataSource.dustAPIProjectId,
+        workspaceId: workspace.sId,
+      },
+      "Failed to delete document from Qdrant. Skipping metadata update"
+    );
+    return;
+  }
+
+  // Stamp the file so future conversation renders don't advertise it as searchable.
+  // Using FileModel.update directly. FileResource.update is protected, and
+  // setUseCaseMetadata triggers resolveAndSetMountFilePath which we don't need here.
+  await FileModel.update(
+    {
+      useCaseMetadata: {
+        ...file.useCaseMetadata,
+        skipDataSourceIndexing: true,
+      },
+    },
+    { where: { id: file.id } }
+  );
+
+  // Append a manifest line so the deletion can be reversed if needed.
+  if (manifestFd !== null) {
+    const entry = JSON.stringify({
+      fileId: file.sId,
+      workspaceId: workspace.sId,
+      conversationId: file.useCaseMetadata?.conversationId ?? null,
+      projectId: dataSource.dustAPIProjectId,
+      dataSourceId: dataSource.dustAPIDataSourceId,
+      contentType: file.contentType,
+      fileName: file.fileName,
+      createdAt: file.createdAt,
+      reason,
+    });
+    fs.writeSync(manifestFd, entry + "\n");
+  }
+
+  stats.totalDeleted++;
+}
+
+async function purgeOffloadedToolOutputs(
+  auth: Authenticator,
+  coreAPI: CoreAPI,
+  workspace: LightWorkspaceType,
+  { execute, manifestFd }: { execute: boolean; manifestFd: number | null },
+  localLogger: Logger,
+  stats: PurgeStats
+): Promise<void> {
   let cursorId = 0;
-  let totalProcessed = 0;
-  let totalDeleted = 0;
-  let totalSkipped = 0;
 
   while (true) {
     // Step 1: find output items that reference a file. Content filtering is done in JS below
@@ -124,115 +230,212 @@ async function purgeWorkspace(
       (f) => f.useCase === "tool_output" && f.contentType === "text/plain"
     );
 
-    totalProcessed += toolOutputFiles.length;
+    stats.totalProcessed += toolOutputFiles.length;
 
     await concurrentExecutor(
       toolOutputFiles,
-      async (file) => {
-        // Skip files already stamped. Safe to re-run.
-        if (file.useCaseMetadata?.skipDataSourceIndexing) {
-          totalSkipped++;
-          return;
-        }
-
-        localLogger.info(
-          {
-            fileId: file.sId,
-            workspaceId: workspace.sId,
-            conversationId: file.useCaseMetadata?.conversationId,
-            contentType: file.contentType,
-            fileName: file.fileName,
-            createdAt: file.createdAt,
-          },
-          execute
-            ? "Purging offloaded tool output file"
-            : "[dry-run] Would purge offloaded tool output file"
-        );
-
-        if (!execute) {
-          return;
-        }
-
-        // Resolve the conversation data source so we can delete the document from Qdrant.
-        const dsRes = await getOrCreateConversationDataSourceFromFile(
+      (file) =>
+        purgeFile(
           auth,
-          file
-        );
-        if (dsRes.isErr()) {
-          localLogger.error(
-            {
-              error: dsRes.error.message,
-              fileId: file.sId,
-              workspaceId: workspace.sId,
-            },
-            "Failed to resolve conversation data source. Skipping"
-          );
-          return;
-        }
-
-        const dataSource = dsRes.value;
-
-        // Delete the document from Qdrant. The document ID is the file's sId.
-        const delRes = await coreAPI.deleteDataSourceDocument({
-          dataSourceId: dataSource.dustAPIDataSourceId,
-          documentId: file.sId,
-          projectId: dataSource.dustAPIProjectId,
-        });
-
-        if (delRes.isErr()) {
-          localLogger.error(
-            {
-              dataSourceId: dataSource.dustAPIDataSourceId,
-              error: delRes.error.message,
-              fileId: file.sId,
-              projectId: dataSource.dustAPIProjectId,
-              workspaceId: workspace.sId,
-            },
-            "Failed to delete document from Qdrant. Skipping metadata update"
-          );
-          return;
-        }
-
-        // Stamp the file so future conversation renders don't advertise it as searchable.
-        // Using FileModel.update directly. FileResource.update is protected, and
-        // setUseCaseMetadata triggers resolveAndSetMountFilePath which we don't need here.
-        await FileModel.update(
-          {
-            useCaseMetadata: {
-              ...file.useCaseMetadata,
-              skipDataSourceIndexing: true,
-            },
-          },
-          { where: { id: file.id } }
-        );
-
-        // Append a manifest line so the deletion can be reversed if needed.
-        if (manifestFd !== null) {
-          const entry = JSON.stringify({
-            fileId: file.sId,
-            workspaceId: workspace.sId,
-            conversationId: file.useCaseMetadata?.conversationId ?? null,
-            projectId: dataSource.dustAPIProjectId,
-            dataSourceId: dataSource.dustAPIDataSourceId,
-            contentType: file.contentType,
-            fileName: file.fileName,
-            createdAt: file.createdAt,
-          });
-          fs.writeSync(manifestFd, entry + "\n");
-        }
-
-        totalDeleted++;
-      },
+          coreAPI,
+          file,
+          workspace,
+          { execute, manifestFd, reason: "offloaded_tool_output" },
+          localLogger,
+          stats
+        ),
       { concurrency: CONCURRENCY }
     );
   }
+}
+
+async function purgeWebhooks(
+  auth: Authenticator,
+  coreAPI: CoreAPI,
+  workspace: LightWorkspaceType,
+  { execute, manifestFd }: { execute: boolean; manifestFd: number | null },
+  localLogger: Logger,
+  stats: PurgeStats
+): Promise<void> {
+  let cursorId = 0;
+
+  while (true) {
+    // Coarse filter at the DB (contentType); the exact webhook_body filename regex is applied
+    // in JS since fileName is not indexed for LIKE patterns. Cursor-based pagination (id >
+    // cursorId) avoids the O(offset) cost of OFFSET.
+    const rows = await FileModel.findAll({
+      attributes: ["id", "fileName", "contentType"],
+      where: {
+        workspaceId: workspace.id,
+        id: { [Op.gt]: cursorId },
+        useCase: "conversation",
+        contentType: "application/json",
+      },
+      order: [["id", "ASC"]],
+      limit: BATCH_SIZE,
+    });
+
+    if (rows.length === 0) {
+      break;
+    }
+
+    cursorId = rows[rows.length - 1].id;
+
+    const matchedIds = rows
+      .filter((r) => WEBHOOK_BODY_FILENAME_RE.test(r.fileName))
+      .map((r) => r.id);
+
+    if (matchedIds.length === 0) {
+      continue;
+    }
+
+    const files = await FileResource.fetchByModelIdsWithAuth(auth, matchedIds);
+
+    // Safety: re-confirm shape after the FileResource roundtrip.
+    const targets = files.filter(
+      (f) =>
+        f.useCase === "conversation" &&
+        f.contentType === "application/json" &&
+        WEBHOOK_BODY_FILENAME_RE.test(f.fileName)
+    );
+
+    stats.totalProcessed += targets.length;
+
+    await concurrentExecutor(
+      targets,
+      (file) =>
+        purgeFile(
+          auth,
+          coreAPI,
+          file,
+          workspace,
+          { execute, manifestFd, reason: "webhook_body" },
+          localLogger,
+          stats
+        ),
+      { concurrency: CONCURRENCY }
+    );
+  }
+}
+
+async function purgePastedFiles(
+  auth: Authenticator,
+  coreAPI: CoreAPI,
+  workspace: LightWorkspaceType,
+  { execute, manifestFd }: { execute: boolean; manifestFd: number | null },
+  localLogger: Logger,
+  stats: PurgeStats
+): Promise<void> {
+  let cursorId = 0;
+
+  while (true) {
+    // PASTED_CONTENT_TYPE is unique to pasted attachments, no further filter needed.
+    const rows = await FileModel.findAll({
+      attributes: ["id"],
+      where: {
+        workspaceId: workspace.id,
+        id: { [Op.gt]: cursorId },
+        useCase: "conversation",
+        contentType: PASTED_CONTENT_TYPE,
+      },
+      order: [["id", "ASC"]],
+      limit: BATCH_SIZE,
+    });
+
+    if (rows.length === 0) {
+      break;
+    }
+
+    cursorId = rows[rows.length - 1].id;
+
+    const files = await FileResource.fetchByModelIdsWithAuth(
+      auth,
+      rows.map((r) => r.id)
+    );
+
+    // Safety: re-confirm shape after the FileResource roundtrip.
+    const targets = files.filter(
+      (f) =>
+        f.useCase === "conversation" && f.contentType === PASTED_CONTENT_TYPE
+    );
+
+    stats.totalProcessed += targets.length;
+
+    await concurrentExecutor(
+      targets,
+      (file) =>
+        purgeFile(
+          auth,
+          coreAPI,
+          file,
+          workspace,
+          { execute, manifestFd, reason: "pasted_text" },
+          localLogger,
+          stats
+        ),
+      { concurrency: CONCURRENCY }
+    );
+  }
+}
+
+async function purgeWorkspace(
+  workspace: LightWorkspaceType,
+  { execute, manifestFd }: { execute: boolean; manifestFd: number | null },
+  localLogger: Logger
+) {
+  // Authenticator init fetches OAuth credentials if BYOK is available on the plan via the OAuth
+  // service. Prodbox can't reach oauth. Simply skip the workspace.
+  let auth: Authenticator;
+  try {
+    auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+  } catch (err) {
+    localLogger.error(
+      { workspaceId: workspace.sId, error: normalizeError(err) },
+      "Failed to initialize authenticator (OAuth service unavailable?), skipping workspace"
+    );
+    return;
+  }
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), localLogger);
+
+  const stats: PurgeStats = {
+    totalProcessed: 0,
+    totalDeleted: 0,
+    totalSkipped: 0,
+  };
+
+  await purgeOffloadedToolOutputs(
+    auth,
+    coreAPI,
+    workspace,
+    { execute, manifestFd },
+    localLogger,
+    stats
+  );
+
+  await purgeWebhooks(
+    auth,
+    coreAPI,
+    workspace,
+    { execute, manifestFd },
+    localLogger,
+    stats
+  );
+
+  await purgePastedFiles(
+    auth,
+    coreAPI,
+    workspace,
+    { execute, manifestFd },
+    localLogger,
+    stats
+  );
 
   localLogger.info(
     {
       execute,
-      totalDeleted,
-      totalProcessed,
-      totalSkipped,
+      totalDeleted: stats.totalDeleted,
+      totalProcessed: stats.totalProcessed,
+      totalSkipped: stats.totalSkipped,
       workspaceId: workspace.sId,
     },
     "Done processing workspace"
