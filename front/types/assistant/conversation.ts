@@ -479,7 +479,7 @@ export function getConversationDisplayTitle(
   if (conversation.forkedFrom) {
     return conversation.forkedFrom.parentConversationTitle
       ? `Branched from '${conversation.forkedFrom.parentConversationTitle}'`
-      : "Forked conversation";
+      : "Branched conversation";
   }
 
   return moment(conversation.created).isSame(now, "day")
