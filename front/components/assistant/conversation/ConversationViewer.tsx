@@ -922,9 +922,10 @@ export const ConversationViewer = ({
           contentFragments: contentFragmentsFromBackend,
         } = result.value;
 
-        const existingBackendUserMessage = ref.current.data.find(
-          (m) => isUserMessage(m) && m.sId === messageFromBackend.sId
-        );
+        const renderedUserMessage = {
+          ...messageFromBackend,
+          contentFragments: contentFragmentsFromBackend,
+        };
 
         // If the message was created in a branch, we remove the placeholder user message and the placeholder agent messages from the list.
         if (messageFromBackend.branchId) {
@@ -937,28 +938,19 @@ export const ConversationViewer = ({
           );
         }
 
-        if (existingBackendUserMessage) {
-          ref.current.data.findAndDelete(
-            (m) => m.sId === placeholderUserMsg.sId
-          );
-          ref.current.data.map((m) =>
-            isUserMessage(m) && m.sId === messageFromBackend.sId
-              ? {
-                  ...messageFromBackend,
-                  contentFragments: contentFragmentsFromBackend,
-                }
-              : m
-          );
+        ref.current.data.findAndDelete(
+          (m) =>
+            m.sId === placeholderUserMsg.sId ||
+            (isUserMessage(m) && m.sId === messageFromBackend.sId)
+        );
+
+        const currentData = ref.current.data.get();
+        const offset = getBranchedInsertIndex(currentData, renderedUserMessage);
+
+        if (offset < currentData.length) {
+          ref.current.data.insert([renderedUserMessage], offset, false);
         } else {
-          // map() is how we update the state of virtuoso messages.
-          ref.current.data.map((m) =>
-            areSameRankAndBranch(m, placeholderUserMsg)
-              ? {
-                  ...messageFromBackend,
-                  contentFragments: contentFragmentsFromBackend,
-                }
-              : m
-          );
+          ref.current.data.append([renderedUserMessage], false);
         }
 
         void mutateConversations(
