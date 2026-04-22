@@ -40,6 +40,7 @@ export interface SlashCommandDropdownProps
   emptyMessage?: string;
   header?: string;
   onClose?: () => void;
+  size?: "default" | "wide";
 }
 
 export interface SlashCommandDropdownRef {
@@ -58,6 +59,7 @@ export const SlashCommandDropdown = forwardRef<
       emptyMessage = DEFAULT_EMPTY_MESSAGE,
       header,
       onClose,
+      size = "default",
     },
     ref
   ) => {
@@ -151,7 +153,7 @@ export const SlashCommandDropdown = forwardRef<
         </DropdownMenuTrigger>
         <DropdownMenuContent
           ref={containerRef}
-          className="w-64"
+          className={size === "wide" ? "w-80" : "w-64"}
           align="start"
           avoidCollisions
           collisionPadding={12}
