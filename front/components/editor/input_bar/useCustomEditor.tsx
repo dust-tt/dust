@@ -26,7 +26,7 @@ import { isSubmitMessageKey } from "@app/lib/keymaps";
 import { extractFromEditorJSON } from "@app/lib/mentions/format";
 import { isMobile } from "@app/lib/utils";
 import type { RichMention } from "@app/types/assistant/mentions";
-import type { SkillWithoutToolsType } from "@app/types/assistant/skill_configuration";
+import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import type { WorkspaceType } from "@app/types/user";
 import { markdownStyles } from "@dust-tt/sparkle";
 import { Placeholder } from "@tiptap/extensions";
@@ -227,10 +227,10 @@ export interface CustomEditorProps {
   skillSuggestion?: {
     enabledRef: React.RefObject<boolean>;
     onSkillSelectRef: React.RefObject<
-      ((skill: SkillWithoutToolsType) => void) | undefined
+      ((skill: SkillWithoutInstructionsAndToolsType) => void) | undefined
     >;
     selectedSkillIdsRef: React.RefObject<Set<string>>;
-    skillsRef: React.RefObject<SkillWithoutToolsType[]>;
+    skillsRef: React.RefObject<SkillWithoutInstructionsAndToolsType[]>;
   };
 }
 

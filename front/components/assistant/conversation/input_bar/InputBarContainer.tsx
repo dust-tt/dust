@@ -243,7 +243,7 @@ const InputBarContainer = ({
     owner,
     status: "active",
     globalSpaceOnly: true,
-    withTools: false,
+    viewType: "summary",
     disabled: !shouldEnableSkillSelection,
   });
 
@@ -255,7 +255,7 @@ const InputBarContainer = ({
   const selectedSkillIdsRef = useRef(selectedSkillIds);
   const shouldEnableSkillSelectionRef = useRef(shouldEnableSkillSelection);
   const onSkillSelectRef = useRef<
-    ((skill: SkillWithoutToolsType) => void) | undefined
+    ((skill: SkillWithoutInstructionsAndToolsType) => void) | undefined
   >(undefined);
 
   availableSkillsRef.current = availableSkills;
@@ -468,7 +468,7 @@ const InputBarContainer = ({
   };
 
   const handleSkillPickerSelection = useCallback(
-    (skill: SkillWithoutToolsType) => {
+    (skill: SkillWithoutInstructionsAndToolsType) => {
       onSkillSelect(skill);
       queueMicrotask(() => editorRef.current?.commands.focus());
     },

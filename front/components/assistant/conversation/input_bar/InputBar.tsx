@@ -242,11 +242,6 @@ export const InputBar = React.memo(function InputBar({
     void deleteTool(serverView.sId);
   };
 
-  const selectedSkillIds = useMemo(
-    () => new Set(selectedSkills.map((skill) => skill.sId)),
-    [selectedSkills]
-  );
-
   const handleSkillSelect = useCallback(
     (skill: SkillWithoutInstructionsAndToolsType) => {
       if (selectedSkillIds.has(skill.sId)) {

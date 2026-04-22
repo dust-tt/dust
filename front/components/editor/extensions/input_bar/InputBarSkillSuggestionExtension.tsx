@@ -2,7 +2,7 @@ import {
   filterInputBarSkills,
   InputBarSkillSuggestionDropdown,
 } from "@app/components/editor/extensions/input_bar/InputBarSkillSuggestionDropdown";
-import type { SkillWithoutToolsType } from "@app/types/assistant/skill_configuration";
+import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import { Extension } from "@tiptap/core";
 import { type EditorState, Plugin, PluginKey } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
@@ -36,10 +36,10 @@ function hasSlashCharacterAtPosition(state: EditorState, position: number) {
 export interface InputBarSkillSuggestionExtensionOptions {
   enabledRef: RefObject<boolean>;
   onSkillSelectRef: RefObject<
-    ((skill: SkillWithoutToolsType) => void) | undefined
+    ((skill: SkillWithoutInstructionsAndToolsType) => void) | undefined
   >;
   selectedSkillIdsRef: RefObject<Set<string>>;
-  skillsRef: RefObject<SkillWithoutToolsType[]>;
+  skillsRef: RefObject<SkillWithoutInstructionsAndToolsType[]>;
 }
 
 export const InputBarSkillSuggestionExtension =
@@ -57,7 +57,7 @@ export const InputBarSkillSuggestionExtension =
         enabledRef: { current: false },
         onSkillSelectRef: { current: undefined },
         selectedSkillIdsRef: { current: new Set<string>() },
-        skillsRef: { current: [] as SkillWithoutToolsType[] },
+        skillsRef: { current: [] as SkillWithoutInstructionsAndToolsType[] },
       };
     },
 
@@ -65,7 +65,7 @@ export const InputBarSkillSuggestionExtension =
       const extensionStorage = this.storage;
 
       return [
-        Suggestion<SkillWithoutToolsType>({
+        Suggestion<SkillWithoutInstructionsAndToolsType>({
           editor: this.editor,
           char: "/",
           pluginKey: inputBarSkillSuggestionPluginKey,

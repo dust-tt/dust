@@ -4,7 +4,7 @@ import type {
 } from "@app/components/editor/extensions/skill_builder/SlashCommandDropdown";
 import { SlashCommandDropdown } from "@app/components/editor/extensions/skill_builder/SlashCommandDropdown";
 import { getSkillAvatarIcon } from "@app/lib/skill";
-import type { SkillWithoutToolsType } from "@app/types/assistant/skill_configuration";
+import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import type { SuggestionProps } from "@tiptap/suggestion";
 import { forwardRef, useMemo } from "react";
 
@@ -17,7 +17,7 @@ export function filterInputBarSkills({
 }: {
   query: string;
   selectedSkillIds: Set<string>;
-  skills: SkillWithoutToolsType[];
+  skills: SkillWithoutInstructionsAndToolsType[];
 }) {
   const normalizedQuery = query.trim().toLowerCase();
 
@@ -37,7 +37,7 @@ export function filterInputBarSkills({
 export const InputBarSkillSuggestionDropdown = forwardRef<
   SlashCommandDropdownRef,
   Pick<
-    SuggestionProps<SkillWithoutToolsType>,
+    SuggestionProps<SkillWithoutInstructionsAndToolsType>,
     "clientRect" | "command" | "items"
   > & {
     onClose: () => void;
