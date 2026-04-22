@@ -1,9 +1,11 @@
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
-import {
-  formatConversationForShrinkWrap,
-  type ShrinkWrapAction,
-} from "@app/lib/api/assistant/conversation/shrink_wrap";
+import { renderConversationAsText } from "@app/lib/api/assistant/conversation/render_as_text";
 import type { AvailableTool } from "@app/lib/api/assistant/workspace_capabilities";
+import {
+  mockAgentMessage,
+  mockConversation,
+  mockUserMessage,
+} from "@app/tests/utils/conversation_test_factories";
 import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
 
 export interface MockMcpToolInput {
@@ -72,65 +74,33 @@ export interface MockConversationMessage {
 }
 
 /**
- * Build a shrink-wrapped conversation text from a compact message list,
- * using the real `formatConversationForShrinkWrap`.
+ * Build a conversation text from a compact message list using the real serializer
+ * so the output format always stays in sync with production rendering.
  */
 export function buildConversationText(
   messages: MockConversationMessage[],
-  agentConfigId: string = "skill-under-test"
+  _agentConfigSId: string = "skill-under-test"
 ): string {
-  const feedbackByMessageId = new Map<
-    string,
-    { thumbDirection: AgentMessageFeedbackDirection; content: string | null }[]
-  >();
-
-  const shrinkMessages = messages.map((msg, i) => {
-    const sId = `msg_${i}`;
-    const created = 1700000000 + i * 100;
-
-    if (msg.role === "user") {
-      return {
-        type: "user_message" as const,
-        sId,
-        created,
-        content: msg.content,
-        context: { username: "user" },
-        mentions: [{ configurationId: agentConfigId }],
-      };
-    }
-
-    if (msg.feedback) {
-      feedbackByMessageId.set(sId, [
-        {
-          thumbDirection: msg.feedback.direction,
-          content: msg.feedback.comment ?? null,
-        },
-      ]);
-    }
-
-    const actions: ShrinkWrapAction[] = (msg.actions ?? []).map((a) => ({
-      functionCallName: a.functionCallName,
-      status: a.status,
-      internalMCPServerName: null,
-      params: a.params ?? {},
-      output: a.output ?? null,
-    }));
-
-    return {
-      type: "agent_message" as const,
-      sId,
-      created,
-      content: msg.content,
-      status: "succeeded",
-      configuration: { sId: agentConfigId, name: "Agent" },
-      actions,
-      parentAgentMessageId: null,
-    };
-  });
-
-  return formatConversationForShrinkWrap(
-    { sId: "conv_eval", title: "Eval conversation", messages: shrinkMessages },
-    { feedbackByMessageId, includeActionDetails: true }
+  return renderConversationAsText(
+    mockConversation(
+      messages.map((msg) =>
+        msg.role === "user"
+          ? mockUserMessage(msg.content)
+          : mockAgentMessage({
+              content: msg.content,
+              actions: msg.actions,
+              feedback: msg.feedback
+                ? [
+                    {
+                      direction: msg.feedback.direction,
+                      comment: msg.feedback.comment,
+                    },
+                  ]
+                : undefined,
+            })
+      )
+    ),
+    { includeActions: true, includeActionDetails: true, includeFeedback: true }
   );
 }
 

@@ -21,7 +21,7 @@ import { pruneConflictingInstructionSuggestions } from "@app/lib/api/assistant/a
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
-import { getShrinkWrappedConversation } from "@app/lib/api/assistant/conversation/shrink_wrap";
+import { renderConversationAsTextWithFeedback } from "@app/lib/api/assistant/conversation/render_conversation_with_feedback";
 import type { AgentMessageFeedbackWithMetadataType } from "@app/lib/api/assistant/feedback";
 import { getAgentFeedbacks } from "@app/lib/api/assistant/feedback";
 import { fetchAgentOverview } from "@app/lib/api/assistant/observability/overview";
@@ -1529,10 +1529,11 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     { conversationId, fromMessageIndex, toMessageIndex },
     { auth }
   ) => {
-    const conversationRes = await getShrinkWrappedConversation(auth, {
+    const conversationRes = await renderConversationAsTextWithFeedback(auth, {
       conversationId,
       fromMessageIndex,
       toMessageIndex,
+      includeActionDetails: true,
     });
 
     if (conversationRes.isErr()) {

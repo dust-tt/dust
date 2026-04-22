@@ -4,7 +4,7 @@ import {
 } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
-import { getShrinkWrappedConversation } from "@app/lib/api/assistant/conversation/shrink_wrap";
+import { renderConversationAsTextWithFeedback } from "@app/lib/api/assistant/conversation/render_conversation_with_feedback";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import type { LlmConversationOptions } from "@app/lib/api/llm/batch_llm";
 import {
@@ -352,9 +352,9 @@ export async function analyzeConversationStepActivity({
   // On first step, build the analysis prompt and create a reinforcement conversation.
   if (!reinforcementConversationId) {
     const [conversationRes, agentSkills] = await Promise.all([
-      getShrinkWrappedConversation(auth, {
+      renderConversationAsTextWithFeedback(auth, {
         conversationId,
-        includeFeedback: true,
+        includeActionDetails: true,
       }),
       SkillResource.listByAgentConfiguration(auth, agentConfig),
     ]);
