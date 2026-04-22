@@ -6,7 +6,6 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import {
@@ -173,28 +172,32 @@ async function handler(
           extendedSkills.map((skill) => [skill.sId, skill])
         );
 
-        const skillsWithRelations = await concurrentExecutor(
-          skills,
-          async (sc) => {
-            const usage = await sc.fetchUsage(auth);
-            const editors = await sc.listEditors(auth);
-            const editedByUser = await sc.fetchEditedByUser(auth);
+        const { usageMap, editorsMap, editedByUserMap } =
+          await SkillResource.fetchRelationsForSkills(auth, skills);
 
-            return {
-              ...sc.toJSON(auth),
-              relations: {
-                usage,
-                editors: editors ? editors.map((e) => e.toJSON()) : null,
-                editedByUser: editedByUser ? editedByUser.toJSON() : null,
-                extendedSkill: sc.extendedSkillId
-                  ? (extendedSkillsMap.get(sc.extendedSkillId)?.toJSON(auth) ??
-                    null)
-                  : null,
-              },
-            } satisfies SkillWithRelationsType;
-          },
-          { concurrency: 10 }
-        );
+        const skillsWithRelations = skills.map((sc) => {
+          const usage = usageMap.get(sc.sId) ?? { count: 0, agents: [] };
+          const editors = sc.editorGroup
+            ? (editorsMap.get(sc.editorGroup.id) ?? [])
+            : null;
+          const editedByUser =
+            sc.editedBy !== null
+              ? (editedByUserMap.get(sc.editedBy) ?? null)
+              : null;
+
+          return {
+            ...sc.toJSON(auth),
+            relations: {
+              usage,
+              editors: editors ? editors.map((e) => e.toJSON()) : null,
+              editedByUser: editedByUser ? editedByUser.toJSON() : null,
+              extendedSkill: sc.extendedSkillId
+                ? (extendedSkillsMap.get(sc.extendedSkillId)?.toJSON(auth) ??
+                  null)
+                : null,
+            },
+          } satisfies SkillWithRelationsType;
+        });
 
         return res.status(200).json({ skills: skillsWithRelations });
       }

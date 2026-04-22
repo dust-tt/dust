@@ -26,6 +26,7 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { FileResource } from "@app/lib/resources/file_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import {
   createResourcePermissionsFromSpacesWithMap,
   createSpaceIdToGroupsMap,
@@ -35,6 +36,7 @@ import type { SkillDefinition } from "@app/lib/resources/skill/code_defined/shar
 import { SystemSkillsRegistry } from "@app/lib/resources/skill/code_defined/system_registry";
 import type { SkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import {
   getResourceIdFromSId,
@@ -2606,6 +2608,182 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     await SkillConfigurationModel.destroy({
       where: { workspaceId },
     });
+  }
+
+  static async fetchRelationsForSkills(
+    auth: Authenticator,
+    skills: SkillResource[]
+  ): Promise<{
+    usageMap: Map<string, AgentsUsageType>;
+    editorsMap: Map<number, UserResource[]>;
+    editedByUserMap: Map<number, UserResource>;
+  }> {
+    if (skills.length === 0) {
+      return {
+        usageMap: new Map(),
+        editorsMap: new Map(),
+        editedByUserMap: new Map(),
+      };
+    }
+
+    // Batch fetch agentConfigsIds
+    const workspace = auth.getNonNullableWorkspace();
+
+    const customSkillIds = removeNulls(
+      skills.map((s) => (s.globalSId ? null : s.id))
+    );
+    const globalSkillIds = removeNulls(skills.map((s) => s.globalSId));
+
+    const agentSkillOrClauses = [
+      ...(customSkillIds.length > 0
+        ? [{ customSkillId: { [Op.in]: customSkillIds } }]
+        : []),
+      ...(globalSkillIds.length > 0
+        ? [{ globalSkillId: { [Op.in]: globalSkillIds } }]
+        : []),
+    ];
+
+    const allAgentSkills =
+      agentSkillOrClauses.length > 0
+        ? await AgentSkillModel.findAll({
+            where: {
+              workspaceId: workspace.id,
+              [Op.or]: agentSkillOrClauses,
+            },
+          })
+        : [];
+
+    const agentConfigIds = [
+      ...new Set(allAgentSkills.map((as) => as.agentConfigurationId)),
+    ];
+    const allAgentConfigs =
+      agentConfigIds.length > 0
+        ? await AgentConfigurationModel.findAll({
+            where: {
+              id: { [Op.in]: agentConfigIds },
+              workspaceId: workspace.id,
+              status: "active",
+            },
+          })
+        : [];
+
+    const agentConfigById = new Map(allAgentConfigs.map((ac) => [ac.id, ac]));
+
+    const agentConfigIdsByCustomSkillId = allAgentSkills.reduce((acc, as) => {
+      if (as.customSkillId === null) {
+        return acc;
+      }
+      const list = acc.get(as.customSkillId) ?? [];
+      return acc.set(as.customSkillId, [...list, as.agentConfigurationId]);
+    }, new Map<number, number[]>());
+
+    const agentConfigIdsByGlobalSkillId = allAgentSkills.reduce((acc, as) => {
+      if (as.globalSkillId === null) {
+        return acc;
+      }
+      const list = acc.get(as.globalSkillId) ?? [];
+      return acc.set(as.globalSkillId, [...list, as.agentConfigurationId]);
+    }, new Map<string, number[]>());
+
+    // Batch fetch editor GroupMemberships
+    const allEditorGroupIds = removeNulls(
+      skills.map((s) => s.editorGroup?.id ?? null)
+    );
+
+    const allEditorGroupMemberships =
+      allEditorGroupIds.length > 0
+        ? await GroupMembershipModel.findAll({
+            where: {
+              workspaceId: workspace.id,
+              groupId: { [Op.in]: allEditorGroupIds },
+              status: "active",
+              startAt: { [Op.lte]: new Date() },
+              [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+            },
+          })
+        : [];
+
+    // Batch fetch Users and Memberships for editor and editedByUser
+    const allEditorUserModelIds = [
+      ...new Set(allEditorGroupMemberships.map((m) => m.userId)),
+    ];
+
+    const allEditedByUserModelIds = removeNulls(
+      skills.map((s) =>
+        !s.globalSId && s.editedBy !== null ? s.editedBy : null
+      )
+    );
+
+    const allUniqueUserModelIds = [
+      ...new Set([...allEditorUserModelIds, ...allEditedByUserModelIds]),
+    ];
+
+    const allUsers =
+      allUniqueUserModelIds.length > 0
+        ? await UserResource.fetchByModelIds(allUniqueUserModelIds)
+        : [];
+
+    const { memberships: allMemberships } =
+      allUsers.length > 0
+        ? await MembershipResource.getActiveMemberships({
+            users: allUsers,
+            workspace,
+          })
+        : { memberships: [] };
+
+    const membershipUserModelIds = new Set(allMemberships.map((m) => m.userId));
+    const activeUserById = new Map(
+      allUsers
+        .filter((u) => membershipUserModelIds.has(u.id))
+        .map((u) => [u.id, u])
+    );
+
+    // Build usageMap from agentConfigsIds
+    const usageMap = new Map<string, AgentsUsageType>(
+      skills.map((skill) => {
+        const configIds = skill.globalSId
+          ? (agentConfigIdsByGlobalSkillId.get(skill.globalSId) ?? [])
+          : (agentConfigIdsByCustomSkillId.get(skill.id) ?? []);
+
+        const agents = removeNulls(
+          configIds.map((id) => agentConfigById.get(id) ?? null)
+        )
+          .map((ac) => ({ sId: ac.sId, name: ac.name }))
+          .sort((a, b) => a.name.localeCompare(b.name));
+
+        return [skill.sId, { count: agents.length, agents }] as const;
+      })
+    );
+
+    // Build editorsMap: editorGroup.id → active editors.
+    const userIdsByGroupId = allEditorGroupMemberships.reduce((acc, gm) => {
+      const list = acc.get(gm.groupId) ?? [];
+      return acc.set(gm.groupId, [...list, gm.userId]);
+    }, new Map<number, number[]>());
+
+    const editorsMap = new Map<number, UserResource[]>(
+      skills
+        .filter((skill) => skill.editorGroup !== null)
+        .map((skill) => {
+          const userIds = userIdsByGroupId.get(skill.editorGroup!.id) ?? [];
+          return [
+            skill.editorGroup!.id,
+            removeNulls(userIds.map((uid) => activeUserById.get(uid) ?? null)),
+          ] as const;
+        })
+    );
+
+    // Build editedByUserMap: editedBy (modelId) → user (if active member).
+    const editedByUserMap = new Map<number, UserResource>(
+      skills
+        .filter((skill) => !skill.globalSId && skill.editedBy !== null)
+        .flatMap((skill) => {
+          const user = activeUserById.get(skill.editedBy!);
+          return user ? [[skill.editedBy!, user] as const] : [];
+        })
+    );
+
+    return { usageMap, editorsMap, editedByUserMap };
   }
 
   toJSON(auth: Authenticator): SkillType {
