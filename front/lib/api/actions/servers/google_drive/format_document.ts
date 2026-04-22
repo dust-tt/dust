@@ -20,6 +20,29 @@ export function formatDocumentStructure(
   lines.push(`Document ID: ${doc.documentId}`);
   lines.push("");
 
+  // Header content
+  const defaultHeaderId = doc.documentStyle?.defaultHeaderId;
+  if (defaultHeaderId && doc.headers?.[defaultHeaderId]?.content) {
+    lines.push("## Header");
+    lines.push(
+      `Segment ID: ${defaultHeaderId} — pass this as \`segmentId\` in batchUpdate requests to target the header.`
+    );
+    lines.push("");
+    for (const el of doc.headers[defaultHeaderId].content) {
+      if (el.paragraph?.elements) {
+        lines.push(`### Paragraph [${el.startIndex}-${el.endIndex}]`);
+        for (const run of el.paragraph.elements) {
+          if (run.textRun?.content) {
+            lines.push(
+              `- Text (${run.startIndex}-${run.endIndex}): "${run.textRun.content.replace(/\n/g, "\\n")}"`
+            );
+          }
+        }
+        lines.push("");
+      }
+    }
+  }
+
   // Body content
   let hasMore = false;
   let endIndex = 0;
