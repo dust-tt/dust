@@ -1,4 +1,4 @@
-import { InputBarSkillSuggestionDropdown } from "@app/components/editor/extensions/input_bar/InputBarSkillSuggestionDropdown";
+import { InputBarCapabilitySuggestionDropdown } from "@app/components/editor/extensions/input_bar/InputBarCapabilitySuggestionDropdown";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import type { WorkspaceType } from "@app/types/user";
 import { Extension } from "@tiptap/core";
@@ -10,11 +10,11 @@ import type { RefObject } from "react";
 
 import type { SlashCommandDropdownRef } from "../skill_builder/SlashCommandDropdown";
 
-export const inputBarSkillSuggestionPluginKey = new PluginKey(
-  "inputBarSkillSuggestion"
+export const inputBarCapabilitySuggestionPluginKey = new PluginKey(
+  "inputBarCapabilitySuggestion"
 );
 
-export interface InputBarSkillSuggestionExtensionOptions {
+export interface InputBarCapabilitySuggestionExtensionOptions {
   owner: WorkspaceType;
   enabledRef: RefObject<boolean>;
   onSkillSelectRef: RefObject<
@@ -23,9 +23,9 @@ export interface InputBarSkillSuggestionExtensionOptions {
   selectedSkillIdsRef: RefObject<Set<string>>;
 }
 
-export const InputBarSkillSuggestionExtension =
-  Extension.create<InputBarSkillSuggestionExtensionOptions>({
-    name: "inputBarSkillSuggestion",
+export const InputBarCapabilitySuggestionExtension =
+  Extension.create<InputBarCapabilitySuggestionExtensionOptions>({
+    name: "inputBarCapabilitySuggestion",
 
     addOptions() {
       return {
@@ -43,7 +43,7 @@ export const InputBarSkillSuggestionExtension =
         Suggestion<SkillWithoutInstructionsAndToolsType>({
           editor: this.editor,
           char: "/",
-          pluginKey: inputBarSkillSuggestionPluginKey,
+          pluginKey: inputBarCapabilitySuggestionPluginKey,
           allowSpaces: true,
           startOfLine: false,
           items: () => [],
@@ -61,7 +61,7 @@ export const InputBarSkillSuggestionExtension =
               if (activeEditorView) {
                 exitSuggestion(
                   activeEditorView,
-                  inputBarSkillSuggestionPluginKey
+                  inputBarCapabilitySuggestionPluginKey
                 );
               }
             };
@@ -69,7 +69,9 @@ export const InputBarSkillSuggestionExtension =
             return {
               onStart: (props) => {
                 activeEditorView = props.editor.view;
-                component = new ReactRenderer(InputBarSkillSuggestionDropdown, {
+                component = new ReactRenderer(
+                  InputBarCapabilitySuggestionDropdown,
+                  {
                   props: {
                     ...props,
                     onClose: closeSuggestionDropdown,
@@ -77,7 +79,8 @@ export const InputBarSkillSuggestionExtension =
                     selectedSkillIdsRef: extensionOptions.selectedSkillIdsRef,
                   },
                   editor: props.editor,
-                });
+                  }
+                );
 
                 if (!props.clientRect) {
                   return;

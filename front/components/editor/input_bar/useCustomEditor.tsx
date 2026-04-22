@@ -2,9 +2,9 @@ import { CodeExtension } from "@app/components/editor/extensions/CodeExtension";
 import { EmojiExtension } from "@app/components/editor/extensions/EmojiExtension";
 import { DataSourceLinkExtension } from "@app/components/editor/extensions/input_bar/DataSourceLinkExtension";
 import {
-  InputBarSkillSuggestionExtension,
-  inputBarSkillSuggestionPluginKey,
-} from "@app/components/editor/extensions/input_bar/InputBarSkillSuggestionExtension";
+  InputBarCapabilitySuggestionExtension,
+  inputBarCapabilitySuggestionPluginKey,
+} from "@app/components/editor/extensions/input_bar/InputBarCapabilitySuggestionExtension";
 import { KeyboardShortcutsExtension } from "@app/components/editor/extensions/input_bar/KeyboardShortcutsExtension";
 import { PastedAttachmentExtension } from "@app/components/editor/extensions/input_bar/PastedAttachmentExtension";
 import { URLDetectionExtension } from "@app/components/editor/extensions/input_bar/URLDetectionExtension";
@@ -224,7 +224,7 @@ export interface CustomEditorProps {
   onAgentMentionsStrippedRef?: React.RefObject<
     ((payload: MentionsStrippedPayload) => void) | undefined
   >;
-  skillSuggestion?: {
+  capabilitySuggestion?: {
     enabledRef: React.RefObject<boolean>;
     onSkillSelectRef: React.RefObject<
       ((skill: SkillWithoutInstructionsAndToolsType) => void) | undefined
@@ -245,7 +245,7 @@ export const buildEditorExtensions = ({
   shouldSuggestAgentRef,
   onFirstAgentMentionPasteRef,
   onAgentMentionsStrippedRef,
-  skillSuggestion,
+  capabilitySuggestion,
 }: {
   owner: WorkspaceType;
   conversationId?: string | null;
@@ -262,7 +262,7 @@ export const buildEditorExtensions = ({
   onAgentMentionsStrippedRef?: React.RefObject<
     ((payload: MentionsStrippedPayload) => void) | undefined
   >;
-  skillSuggestion?: CustomEditorProps["skillSuggestion"];
+  capabilitySuggestion?: CustomEditorProps["capabilitySuggestion"];
 }) => {
   const extensions = [
     KeyboardShortcutsExtension,
@@ -359,13 +359,13 @@ export const buildEditorExtensions = ({
     URLStorageExtension,
   ];
 
-  if (skillSuggestion) {
+  if (capabilitySuggestion) {
     extensions.push(
-      InputBarSkillSuggestionExtension.configure({
+      InputBarCapabilitySuggestionExtension.configure({
         owner,
-        enabledRef: skillSuggestion.enabledRef,
-        onSkillSelectRef: skillSuggestion.onSkillSelectRef,
-        selectedSkillIdsRef: skillSuggestion.selectedSkillIdsRef,
+        enabledRef: capabilitySuggestion.enabledRef,
+        onSkillSelectRef: capabilitySuggestion.onSkillSelectRef,
+        selectedSkillIdsRef: capabilitySuggestion.selectedSkillIdsRef,
       })
     );
   }
@@ -397,7 +397,7 @@ const useCustomEditor = ({
   shouldSuggestAgentRef,
   onFirstAgentMentionPasteRef,
   onAgentMentionsStrippedRef,
-  skillSuggestion,
+  capabilitySuggestion,
 }: CustomEditorProps) => {
   const editor = useEditor(
     {
@@ -414,7 +414,7 @@ const useCustomEditor = ({
         shouldSuggestAgentRef,
         onFirstAgentMentionPasteRef,
         onAgentMentionsStrippedRef,
-        skillSuggestion,
+        capabilitySuggestion,
       }),
       shouldRerenderOnTransaction: true, // necessary to update the editor state (and so the toolbar icons "activation") in real time
       editorProps: {
@@ -487,9 +487,9 @@ const useCustomEditor = ({
               return false;
             }
 
-            const inputBarSkillSuggestionPluginState =
-              inputBarSkillSuggestionPluginKey.getState(view.state);
-            if (inputBarSkillSuggestionPluginState?.active) {
+            const inputBarCapabilitySuggestionPluginState =
+              inputBarCapabilitySuggestionPluginKey.getState(view.state);
+            if (inputBarCapabilitySuggestionPluginState?.active) {
               return false;
             }
 
