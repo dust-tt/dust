@@ -48,24 +48,20 @@ async function importAgentConfiguration(
   }
 
   const editorEmails = yamlConfig.editors;
-  if (editorEmails.length === 0) {
-    return new Err({
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "At least one editor is required.",
-      },
-    });
-  }
+  const fetchedEditors = await UserResource.fetchByEmails(editorEmails);
 
-  const editorUsers = await UserResource.fetchByEmails(editorEmails);
+  const uploadingUser = auth.user();
+  const editorUsers =
+    uploadingUser && !fetchedEditors.some((u) => u.id === uploadingUser.id)
+      ? [...fetchedEditors, uploadingUser]
+      : fetchedEditors;
 
   if (editorUsers.length === 0) {
     return new Err({
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "No valid editor users found.",
+        message: "At least one editor is required.",
       },
     });
   }
