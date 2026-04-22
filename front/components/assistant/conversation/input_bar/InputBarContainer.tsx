@@ -228,7 +228,7 @@ const InputBarContainer = ({
   const [showKnowledgePicker, setShowKnowledgePicker] = useState(false);
   const plusButtonRef = useRef<HTMLDivElement>(null);
   const clientType = useClientType();
-  const shouldEnableCapabilitySelection =
+  const shouldEnableSlashSuggestion =
     actions.includes("capabilities") && isInputBarSlashSkillsEnabled;
 
   const [selectedNode, setSelectedNode] =
@@ -243,15 +243,13 @@ const InputBarContainer = ({
     [selectedSkills]
   );
   const selectedSkillIdsRef = useRef(selectedSkillIds);
-  const shouldEnableCapabilitySelectionRef = useRef(
-    shouldEnableCapabilitySelection
-  );
+  const shouldEnableSlashSuggestionRef = useRef(shouldEnableSlashSuggestion);
   const onSkillSelectRef = useRef<
     ((skill: SkillWithoutInstructionsAndToolsType) => void) | undefined
   >(undefined);
 
   selectedSkillIdsRef.current = selectedSkillIds;
-  shouldEnableCapabilitySelectionRef.current = shouldEnableCapabilitySelection;
+  shouldEnableSlashSuggestionRef.current = shouldEnableSlashSuggestion;
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const removePastedAttachmentChip = useCallback(
@@ -458,14 +456,14 @@ const InputBarContainer = ({
     });
   };
 
-  const handleCapabilityPickerSelection = useCallback(
+  const handleSlashSuggestionSelection = useCallback(
     (skill: SkillWithoutInstructionsAndToolsType) => {
       onSkillSelect(skill);
       queueMicrotask(() => editorRef.current?.commands.focus());
     },
     [onSkillSelect]
   );
-  onSkillSelectRef.current = handleCapabilityPickerSelection;
+  onSkillSelectRef.current = handleSlashSuggestionSelection;
 
   // Current space is taken from the conversation (if already set) or from the space prop (if provided).
   const spaceId = conversation?.spaceId ?? space?.sId ?? undefined;
@@ -483,8 +481,8 @@ const InputBarContainer = ({
     shouldSuggestAgentRef,
     onFirstAgentMentionPasteRef,
     onAgentMentionsStrippedRef,
-    capabilitySuggestion: {
-      enabledRef: shouldEnableCapabilitySelectionRef,
+    slashSuggestion: {
+      enabledRef: shouldEnableSlashSuggestionRef,
       onSkillSelectRef,
       selectedSkillIdsRef,
     },

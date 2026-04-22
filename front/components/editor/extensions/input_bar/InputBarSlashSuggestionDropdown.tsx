@@ -16,9 +16,9 @@ import {
   useRef,
 } from "react";
 
-const MAX_CAPABILITY_SUGGESTIONS = 10;
+const MAX_SLASH_SUGGESTIONS = 10;
 
-export function filterInputBarCapabilities({
+export function filterInputBarSlashSuggestions({
   query,
   selectedSkillIds,
   skills,
@@ -39,10 +39,10 @@ export function filterInputBarCapabilities({
       return skill.name.toLowerCase().includes(normalizedQuery);
     })
     .toSorted((a, b) => a.name.localeCompare(b.name))
-    .slice(0, MAX_CAPABILITY_SUGGESTIONS);
+    .slice(0, MAX_SLASH_SUGGESTIONS);
 }
 
-export const InputBarCapabilitySuggestionDropdown = forwardRef<
+export const InputBarSlashSuggestionDropdown = forwardRef<
   SlashCommandDropdownRef,
   Pick<
     SuggestionProps<SkillWithoutInstructionsAndToolsType>,
@@ -67,7 +67,7 @@ export const InputBarCapabilitySuggestionDropdown = forwardRef<
 
     const filteredSkills = useMemo(
       () =>
-        filterInputBarCapabilities({
+        filterInputBarSlashSuggestions({
           query,
           selectedSkillIds: selectedSkillIdsRef.current ?? new Set<string>(),
           skills,
@@ -137,5 +137,5 @@ export const InputBarCapabilitySuggestionDropdown = forwardRef<
   }
 );
 
-InputBarCapabilitySuggestionDropdown.displayName =
-  "InputBarCapabilitySuggestionDropdown";
+InputBarSlashSuggestionDropdown.displayName =
+  "InputBarSlashSuggestionDropdown";
