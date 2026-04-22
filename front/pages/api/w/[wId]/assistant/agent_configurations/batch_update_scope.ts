@@ -1,8 +1,5 @@
 /** @ignoreswagger */
-import {
-  getAgentConfiguration,
-  updateAgentConfigurationScope,
-} from "@app/lib/api/assistant/configuration/agent";
+import { updateAgentConfigurationsScope } from "@app/lib/api/assistant/configuration/agent";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
@@ -62,23 +59,15 @@ async function handler(
 
   const { agentIds, scope } = bodyValidation.data;
 
-  // We specifically don't want to use concurrentExecutor here to avoid
-  // too much DB concurrency
-
-  for (const agentId of agentIds) {
-    const agent = await getAgentConfiguration(auth, {
-      agentId,
-      variant: "light",
+  const result = await updateAgentConfigurationsScope(auth, agentIds, scope);
+  if (result.isErr()) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: result.error.message,
+      },
     });
-    if (!agent) {
-      continue; // Skip if agent not found
-    }
-
-    if (!agent.canEdit && !auth.isAdmin()) {
-      continue; // Skip if user doesn't have permission
-    }
-
-    await updateAgentConfigurationScope(auth, agentId, scope);
   }
 
   return res.status(200).json({

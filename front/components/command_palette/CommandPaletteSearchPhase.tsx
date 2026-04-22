@@ -6,19 +6,19 @@ import {
 } from "@app/components/command_palette/CommandPaletteItems";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
-import type { SkillType } from "@app/types/assistant/skill_configuration";
+import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import { Avatar, SearchInput } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef } from "react";
 
 export type CommandPaletteItem =
   | { kind: "agent"; agent: LightAgentConfigurationType }
-  | { kind: "skill"; skill: SkillType };
+  | { kind: "skill"; skill: SkillWithoutInstructionsAndToolsType };
 
 interface CommandPaletteSearchPhaseProps {
   searchQuery: string;
   onSearchQueryChange: (query: string) => void;
   agents: LightAgentConfigurationType[];
-  skills: SkillType[];
+  skills: SkillWithoutInstructionsAndToolsType[];
   hasMoreAgents: boolean;
   hasMoreSkills: boolean;
   isLoading: boolean;
@@ -30,7 +30,7 @@ interface CommandPaletteSearchPhaseProps {
 
 function getFlatItems(
   agents: LightAgentConfigurationType[],
-  skills: SkillType[]
+  skills: SkillWithoutInstructionsAndToolsType[]
 ): CommandPaletteItem[] {
   return [
     ...agents.map((agent): CommandPaletteItem => ({ kind: "agent", agent })),

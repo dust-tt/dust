@@ -4,6 +4,7 @@ import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { SkillSuggestionModel } from "@app/lib/models/skill/skill_suggestion";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
@@ -16,6 +17,7 @@ import type {
   SkillSuggestionSource,
   SkillSuggestionState,
   SkillSuggestionType,
+  SkillSuggestionUpdatedBy,
 } from "@app/types/suggestions/skill_suggestion";
 import { parseSkillSuggestionData } from "@app/types/suggestions/skill_suggestion";
 import type {
@@ -43,18 +45,21 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
   readonly editorsGroupId: ModelId | null;
   readonly skillConfigurationSId: string;
   readonly sourceConversationSId: string | null;
+  readonly updatedBy: SkillSuggestionUpdatedBy | null;
 
   constructor(
     model: ModelStatic<SkillSuggestionModel>,
     blob: Attributes<SkillSuggestionModel>,
     editorsGroupId: ModelId | null,
     skillConfigurationSId: string,
-    sourceConversationSId: string | null
+    sourceConversationSId: string | null,
+    updatedBy: SkillSuggestionUpdatedBy | null
   ) {
     super(SkillSuggestionModel, blob);
     this.editorsGroupId = editorsGroupId;
     this.skillConfigurationSId = skillConfigurationSId;
     this.sourceConversationSId = sourceConversationSId;
+    this.updatedBy = updatedBy;
   }
 
   /**
@@ -95,6 +100,7 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
       suggestion.get(),
       skill.editorGroup?.id ?? null,
       skill.sId,
+      null,
       null
     );
   }
@@ -122,6 +128,12 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
           as: "sourceConversation",
           required: false,
           attributes: ["sId"],
+        },
+        {
+          model: UserModel,
+          as: "updatedByUser",
+          required: false,
+          attributes: ["sId", "firstName", "lastName", "email"],
         },
       ],
       ...otherOptions,
@@ -154,12 +166,23 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
         if (!skillResource || !skillResource.canWrite(auth)) {
           return null;
         }
+        const user = suggestion.updatedByUser;
+        const updatedBy = user
+          ? {
+              sId: user.sId,
+              fullName: [user.firstName, user.lastName]
+                .filter(Boolean)
+                .join(" "),
+              email: user.email,
+            }
+          : null;
         return new this(
           SkillSuggestionModel,
           suggestion.get(),
           skillResource.editorGroup?.id ?? null,
           skillResource.sId,
-          suggestion.sourceConversation?.sId ?? null
+          suggestion.sourceConversation?.sId ?? null,
+          updatedBy
         );
       })
     );
@@ -276,15 +299,23 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
       return;
     }
 
-    await this.model.update(
-      { state },
-      {
-        where: {
-          workspaceId: auth.getNonNullableWorkspace().id,
-          id: { [Op.in]: suggestions.map((s) => s.id) },
-        },
+    // Track the user who accepted/rejected. Do not set for "outdated"
+    // (suggestion became obsolete) or "pending" (reset).
+    const updates: { state: SkillSuggestionState; updatedByUserId?: ModelId } =
+      { state };
+    if (state === "approved" || state === "rejected") {
+      const user = auth.user();
+      if (user) {
+        updates.updatedByUserId = user.id;
       }
-    );
+    }
+
+    await this.model.update(updates, {
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        id: { [Op.in]: suggestions.map((s) => s.id) },
+      },
+    });
   }
 
   async delete(auth: Authenticator): Promise<Result<undefined, Error>> {
@@ -401,6 +432,7 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
       state: this.state,
       source: this.source,
       sourceConversationId: this.sourceConversationSId,
+      updatedBy: this.updatedBy,
       ...suggestionData,
     };
   }

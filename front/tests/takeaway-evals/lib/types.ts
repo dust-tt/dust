@@ -48,7 +48,10 @@ export type TakeawayAssertion =
       status?: "decided" | "open";
     }
   | { type: "minActionItems"; count: number }
+  | { type: "minNotableFacts"; count: number }
   | { type: "maxActionItems"; count: number }
+  | { type: "maxNotableFacts"; count: number }
+  | { type: "maxKeyDecisions"; count: number }
   | {
       type: "shouldPreserveSId";
       category: "actionItem" | "notableFact" | "keyDecision";
@@ -96,8 +99,20 @@ export function minActionItems(count: number): TakeawayAssertion {
   return { type: "minActionItems", count };
 }
 
+export function minNotableFacts(count: number): TakeawayAssertion {
+  return { type: "minNotableFacts", count };
+}
+
 export function maxActionItems(count: number): TakeawayAssertion {
   return { type: "maxActionItems", count };
+}
+
+export function maxNotableFacts(count: number): TakeawayAssertion {
+  return { type: "maxNotableFacts", count };
+}
+
+export function maxKeyDecisions(count: number): TakeawayAssertion {
+  return { type: "maxKeyDecisions", count };
 }
 
 export function shouldPreserveSId(

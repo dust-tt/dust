@@ -10,10 +10,12 @@ import jwt from "jsonwebtoken";
 const EGRESS_FORWARDER_LISTEN_ADDR = "127.0.0.1:9990";
 const EGRESS_TOKEN_PATH = "/etc/dust/egress-token";
 const EGRESS_DENY_LOG_PATH = "/tmp/dust-egress-denied.log";
+const EGRESS_DENY_LOG_OFFSET_PATH = "/tmp/.dust-egress-deny-offset";
 const EGRESS_FORWARDER_LOG_PATH = "/tmp/dust-forwarder.log";
 const EGRESS_SETUP_WAIT_RETRIES = 6;
 const EGRESS_SETUP_WAIT_MS = 500;
 const EGRESS_JWT_TTL_SECONDS = 24 * 60 * 60;
+const MAX_DENY_LOG_LINES_PER_EXEC = 20;
 
 const REGION_PROXY_PREFIX = {
   "europe-west1": "eu",
@@ -84,29 +86,18 @@ export function mintEgressJwt(providerId: string): string {
   );
 }
 
-export async function sandboxSupportsEgressForwarding(
-  auth: Authenticator,
-  sandbox: SandboxResource
-): Promise<Result<boolean, Error>> {
-  const probeResult = await sandbox.exec(
-    auth,
-    "test -d /etc/dust && id agent-proxied >/dev/null 2>&1 && test -x /opt/bin/dsbx && systemctl is-active --quiet dust-egress-nftables.service"
-  );
-
-  if (probeResult.isErr()) {
-    return probeResult;
-  }
-
-  return new Ok(probeResult.value.exitCode === 0);
-}
-
 export async function checkEgressForwarderHealth(
   auth: Authenticator,
   sandbox: SandboxResource
 ): Promise<Result<boolean, Error>> {
-  const healthResult = await sandbox.exec(auth, "nc -z 127.0.0.1 9990", {
-    timeoutMs: 1_000,
-  });
+  // Use ss to check if the port is bound locally rather than nc -z which opens
+  // a real TCP connection through the forwarder, triggering a proxy round-trip
+  // and noisy <unknown> deny log entries on every health check.
+  const healthResult = await sandbox.exec(
+    auth,
+    "ss -tln sport = :9990 | grep -q LISTEN",
+    { timeoutMs: 1_000 }
+  );
 
   if (healthResult.isErr()) {
     return healthResult;
@@ -190,4 +181,35 @@ export async function setupEgressForwarder(
   return new Err(
     new Error("Sandbox egress forwarder did not become healthy in time")
   );
+}
+
+// Best-effort, sandbox-global deny log surfacing. The offset tracks lines
+// consumed across all exec calls, so entries returned here are "new since the
+// last read", not strictly caused by the command that just ran.
+export async function readNewDenyLogEntries(
+  auth: Authenticator,
+  sandbox: SandboxResource
+): Promise<Result<string[], Error>> {
+  const command =
+    `_off=$(cat ${shellEscape(EGRESS_DENY_LOG_OFFSET_PATH)} 2>/dev/null || echo 0); ` +
+    `_total=$(wc -l < ${shellEscape(EGRESS_DENY_LOG_PATH)} 2>/dev/null || echo 0); ` +
+    `if [ "$_total" -gt "$_off" ]; then ` +
+    `tail -n +$((_off + 1)) ${shellEscape(EGRESS_DENY_LOG_PATH)} | head -n ${MAX_DENY_LOG_LINES_PER_EXEC}; ` +
+    `fi; ` +
+    `echo "$_total" > ${shellEscape(EGRESS_DENY_LOG_OFFSET_PATH)}`;
+
+  const result = await sandbox.exec(auth, command, {
+    user: "root",
+    timeoutMs: 2_000,
+  });
+
+  if (result.isErr()) {
+    return result;
+  }
+
+  const lines = result.value.stdout
+    .split("\n")
+    .filter((line) => line.trim().length > 0);
+
+  return new Ok(lines);
 }

@@ -64,12 +64,19 @@ function computeIntervalOffsetMs(config: IntervalScheduleConfig): number {
   return utcTimeMs;
 }
 
+export function buildCronScheduleSpec(config: {
+  cron: string;
+  timezone: string;
+}): ScheduleSpec {
+  return {
+    cronExpressions: [config.cron],
+    timezone: config.timezone,
+  };
+}
+
 function buildScheduleSpec(config: ScheduleConfig): ScheduleSpec {
   if (isCronScheduleConfig(config)) {
-    return {
-      cronExpressions: [config.cron],
-      timezone: config.timezone,
-    };
+    return buildCronScheduleSpec(config);
   }
 
   // Interval-based (N-day, N-week).

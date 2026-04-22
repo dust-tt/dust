@@ -28,18 +28,27 @@ export function buildPromptNotableFacts(
 ): string {
   let prompt =
     "Notable fact guidelines:\n" +
-    "- A notable fact is a piece of information that would change how a project member " +
-    "plans their work or makes decisions. Good examples: deadlines discovered, technical " +
-    "constraints found, dependency changes, risks identified, scope clarifications, " +
-    "important metrics or thresholds.\n" +
-    "- Be concise and specific — one fact per distinct piece of information.\n" +
-    "- Do NOT extract: casual remarks, greetings, scheduling small-talk ('I'll be 5 min late'), " +
-    "information obvious from the project description, facts already captured as action items " +
-    "or key decisions, questions that were already answered in the conversation, or " +
-    "time-sensitive facts that will be irrelevant within 24 hours (e.g., 'server is currently " +
-    "down', 'waiting for a reply').\n" +
-    "- In the description, mention users and agents by their name, NOT via their id or " +
-    "via a generic term like User, Agent or Bot.\n" +
+    "Most information in a document is NOT a notable fact. Prefer zero notable facts over " +
+    "a noisy list. When in doubt, leave it out.\n\n" +
+    "Only extract a fact if it passes ALL three tests:\n" +
+    "1. **Actionability**: it would concretely change how a project member plans their work " +
+    "or makes a decision. Good examples: deadlines discovered, technical constraints found, " +
+    "dependency changes, risks identified, important metrics or thresholds.\n" +
+    "2. **Durability**: a new project member joining two weeks from now would still benefit " +
+    "from knowing it. Transient context does NOT qualify — skip: who is OoO today, errors " +
+    "that occurred during an incident, how a UI element works. " +
+    "If the fact only mattered during the conversation itself, it is not durable.\n" +
+    "3. **Novelty**: it is not already captured as an action item, a key decision, or " +
+    "obvious from the project description.\n\n" +
+    "Examples of what are NOT notable facts:\n" +
+    "- 'The + symbol shows there are more members than displayed' — UI clarification, not project knowledge.\n" +
+    "- 'The traffic spike from a marketing campaign caused the outage' — transient incident context.\n" +
+    "- 'The member display component needs calibration' — short-lived observation resolved in the thread.\n\n" +
+    "Formatting rules:\n" +
+    "- Be concise and specific — one fact per distinct piece of information. Do not combine " +
+    "multiple facts into a single entry.\n" +
+    "- Mention users and agents by their name, NOT via their id or via a generic term " +
+    "like User, Agent or Bot.\n" +
     "- Write each description as an objective factual statement. Name people by their actual " +
     "name when relevant. Do not use 'You' or 'Your' — these items are shown to all project " +
     "members, not just one person.\n" +
@@ -47,9 +56,11 @@ export function buildPromptNotableFacts(
     "relevant to or was stated by.\n\n";
   if (previousNotableFacts.length > 0) {
     prompt +=
-      "The following notable facts were detected in a previous analysis of this document. " +
-      "If you detect the same fact again, copy its sId exactly into the output, update the other fields when appropriate. " +
-      "Omit the sId field for brand-new facts that were not previously tracked.\n\n" +
+      "The following notable facts were tracked in a previous analysis of this document. " +
+      "You MUST always include ALL previously tracked facts in your output — never drop them. " +
+      "For each previously tracked fact: copy its sId verbatim and update the description " +
+      "only when the document provides new information about it. " +
+      "Omit the sId field only for brand-new facts not previously tracked.\n\n" +
       "Known notable facts:\n";
     for (const fact of previousNotableFacts) {
       prompt += `<notable_fact sId="${fact.sId}">`;

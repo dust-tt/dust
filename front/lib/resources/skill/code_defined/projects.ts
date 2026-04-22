@@ -6,7 +6,7 @@ import {
 import { PROJECT_MANAGER_SERVER_NAME } from "@app/lib/api/actions/servers/project_manager/metadata";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import type { GlobalSkillDefinition } from "@app/lib/resources/skill/global/registry";
+import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import { isProjectConversation } from "@app/types/assistant/conversation";
@@ -77,5 +77,4 @@ When you need to find information, uses this order (skip steps if the relevant t
     return !flags.includes("projects");
   },
   // Note: we auto enabled in listForAgentLoop for project conversations.
-  isAutoEnabled: false,
 } as const satisfies GlobalSkillDefinition;

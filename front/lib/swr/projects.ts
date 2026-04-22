@@ -336,9 +336,29 @@ export function useProjectTodos({
 
   return {
     todos: data?.todos ?? [],
+    lastReadAt: data?.lastReadAt ?? null,
     isTodosLoading: !disabled && !error && !data,
     isTodosError: !!error,
     mutateTodos: mutate,
+  };
+}
+
+export function useMarkProjectTodosRead({
+  owner,
+  spaceId,
+}: {
+  owner: LightWorkspaceType;
+  spaceId: string;
+}) {
+  return async (): Promise<void> => {
+    try {
+      await clientFetch(
+        `/api/w/${owner.sId}/spaces/${spaceId}/project_todos/mark_read`,
+        { method: "POST" }
+      );
+    } catch {
+      // Silent — mark_read is best-effort.
+    }
   };
 }
 

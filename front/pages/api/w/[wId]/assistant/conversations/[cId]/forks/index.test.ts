@@ -10,9 +10,14 @@ import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import handler from "./index";
+
+vi.mock("@app/temporal/agent_loop/client", () => ({
+  launchAgentLoopWorkflow: vi.fn(),
+  launchCompactionWorkflow: vi.fn(),
+}));
 
 async function fetchConversationOrThrow(
   auth: Awaited<ReturnType<typeof createPrivateApiMockRequest>>["auth"],
@@ -160,13 +165,15 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/forks", () => {
     const { conversationId } = res._getJSONData();
     const conversation = await fetchConversationOrThrow(auth, conversationId);
 
-    expect(conversation.title).toBe("Parent conversation (forked)");
-    expect(conversation.forkedFrom).toEqual({
-      parentConversationId: parentConversation.sId,
-      parentConversationTitle: "Parent conversation",
-      sourceMessageId: sourceMessage.sId,
-      branchedAt: expect.any(Number),
-      user: auth.getNonNullableUser().toJSON(),
+    expect(conversation.title).toBeNull();
+    expect(conversation.forkingData).toEqual({
+      forkedFrom: {
+        parentConversationId: parentConversation.sId,
+        parentConversationTitle: "Parent conversation",
+        sourceMessageId: sourceMessage.sId,
+        branchedAt: expect.any(Number),
+        user: auth.getNonNullableUser().toJSON(),
+      },
     });
     expect(conversation.depth).toBe(1);
     expect(conversation.spaceId).toBe(globalSpace.sId);
@@ -206,12 +213,14 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/forks", () => {
     const { conversationId } = res._getJSONData();
     const conversation = await fetchConversationOrThrow(auth, conversationId);
 
-    expect(conversation.forkedFrom).toEqual({
-      parentConversationId: parentConversation.sId,
-      parentConversationTitle: "Parent conversation",
-      sourceMessageId: sourceMessage.sId,
-      branchedAt: expect.any(Number),
-      user: auth.getNonNullableUser().toJSON(),
+    expect(conversation.forkingData).toEqual({
+      forkedFrom: {
+        parentConversationId: parentConversation.sId,
+        parentConversationTitle: "Parent conversation",
+        sourceMessageId: sourceMessage.sId,
+        branchedAt: expect.any(Number),
+        user: auth.getNonNullableUser().toJSON(),
+      },
     });
   });
 

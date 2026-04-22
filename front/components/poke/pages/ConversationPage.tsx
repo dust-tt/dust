@@ -1,3 +1,4 @@
+import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
@@ -512,6 +513,13 @@ export function ConversationPage() {
           </LinkWrapper>
         </h3>
         <Page.Vertical align="stretch">
+          <PluginList
+            pluginResourceTarget={{
+              resourceId: conversation.sId,
+              resourceType: "conversations",
+              workspace: owner,
+            }}
+          />
           <div className="flex space-x-2">
             {langfuseUiBaseUrl && (
               <Button

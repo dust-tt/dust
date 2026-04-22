@@ -100,6 +100,16 @@ export function parseSkillSuggestionData(data: unknown): SkillSuggestionData {
   return SkillSuggestionDataSchema.parse(data);
 }
 
+const SkillSuggestionUpdatedBySchema = z.object({
+  sId: z.string(),
+  fullName: z.string(),
+  email: z.string(),
+});
+
+export type SkillSuggestionUpdatedBy = z.infer<
+  typeof SkillSuggestionUpdatedBySchema
+>;
+
 const BaseSkillSuggestionSchema = z.object({
   sId: z.string(),
   createdAt: z.number(),
@@ -110,6 +120,7 @@ const BaseSkillSuggestionSchema = z.object({
   state: z.enum(SKILL_SUGGESTION_STATES),
   source: z.enum(SKILL_SUGGESTION_SOURCES),
   sourceConversationId: z.string().nullable(),
+  updatedBy: SkillSuggestionUpdatedBySchema.nullable(),
 });
 
 export const SkillSuggestionSchema = BaseSkillSuggestionSchema.and(

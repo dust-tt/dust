@@ -556,9 +556,7 @@ export const INTERNAL_MCP_SERVERS = {
     id: 31,
     availability: "manual" as const,
     allowMultipleInstances: true,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("slack_bot_mcp");
-    },
+    isRestricted: undefined,
     isPreview: true,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,

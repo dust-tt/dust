@@ -38,21 +38,35 @@ export function buildPromptActionItems(
   previousActionItems: TodoVersionedActionItem[]
 ): string {
   let prompt =
-    "You are a document analyst. Your job is to extract action items from a document.\n\n" +
     "Action item guidelines:\n" +
-    "- An action item is a concrete task that someone committed to doing, or was asked to do.\n" +
+    "Most documents contain few or no action items. Prefer fewer, high-confidence items " +
+    "over a noisy list. When in doubt, leave it out.\n\n" +
+    "Only extract an action item if it passes ALL four tests:\n" +
+    "1. **Commitment**: someone explicitly committed to doing a concrete task, or was " +
+    "clearly asked to do one. Only extract tasks with a clear deliverable — 'I'll fix X' " +
+    "qualifies, 'I'll think about it' does not.\n" +
+    "2. **Durability**: the task is still relevant — if it was already resolved within " +
+    "the same conversation, set status to 'done'; if the request was immediately " +
+    "fulfilled inline (e.g., answering a question), do not extract it at all.\n" +
+    "3. **Distinctness**: it is not a duplicate of another action item or a rephrasing " +
+    "of a key decision.\n" +
+    "4. **Relevance**: the task is work-related and project-relevant. Purely social plans " +
+    "(birthday lunches, personal events, casual meetups) are not action items even if someone " +
+    "commits to arranging them.\n\n" +
+    "Formatting rules:\n" +
     "- If an action item was explicitly completed or resolved in the document, set status to 'done'.\n" +
     "- Include an assignee_name only when clearly stated in the document.\n" +
     "- Include an assignee_user_id (from the project members list) when the assignee matches a known project member.\n" +
     "- Be concise: one action item per distinct task.\n" +
     "- In the description, mention users and agents by their name, NOT via their id or via a generic term like User, Agent or Bot.\n" +
-    "- In the description, refer to the assignee by Your pronouns (e.g., 'You', 'Your', 'Yours'), not by their name.\n" +
-    "- Do not include vague or aspirational items — only concrete commitments.\n\n";
+    "- In the description, refer to the assignee by Your pronouns (e.g., 'You', 'Your', 'Yours'), not by their name.\n\n";
   if (previousActionItems.length > 0) {
     prompt +=
-      "The following action items were detected in a previous analysis of this document. " +
-      "If you detect the same task again, copy its sId exactly into the output, update the other fields when appropriate. " +
-      "Omit the sId field for brand-new tasks that were not previously tracked.\n\n" +
+      "The following action items were tracked in a previous analysis of this document. " +
+      "You MUST always include ALL previously tracked items in your output — never drop them. " +
+      "For each previously tracked item: copy its sId verbatim and update status or description " +
+      "only when the document explicitly provides new information (e.g., the assignee reports it is done). " +
+      "Omit the sId field only for brand-new tasks that were not previously tracked.\n\n" +
       "Known action items:\n";
     for (const item of previousActionItems) {
       prompt += `<action_item sId="${item.sId}" status="${item.status}">`;

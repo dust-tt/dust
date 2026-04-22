@@ -101,12 +101,26 @@ export const MICROSOFT_TEAMS_TOOLS_METADATA = createToolsRecord({
   },
   list_messages: {
     description:
-      "List messages in a specific channel. Without messageId, returns top-level messages only (thread starters, where replyToId is null) — thread replies are NOT included. To read a full thread, call this tool again with the messageId of the top-level message to fetch its replies via the /replies endpoint. Supports pagination to retrieve all results and filtering by date range.",
+      "List messages from a Teams channel or chat (1:1, group, or meeting chat). Provide either chatId (for chats) or both teamId + channelId (for channels). For channels, returns top-level messages only — to read a full thread, call again with a messageId. For chats, returns all messages. Supports pagination and date range filtering.",
     schema: {
-      teamId: z.string().describe("The ID of the team containing the channel."),
+      chatId: z
+        .string()
+        .optional()
+        .describe(
+          "The ID of the chat to list messages from (1:1, group, or meeting chat). Use list_chats to get chat IDs. Required if teamId and channelId are not provided."
+        ),
+      teamId: z
+        .string()
+        .optional()
+        .describe(
+          "The ID of the team containing the channel. Required if chatId is not provided."
+        ),
       channelId: z
         .string()
-        .describe("The ID of the channel to list messages from."),
+        .optional()
+        .describe(
+          "The ID of the channel to list messages from. Required if chatId is not provided."
+        ),
       messageId: z
         .string()
         .optional()

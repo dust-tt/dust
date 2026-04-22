@@ -25,10 +25,10 @@ import {
   TakeawaysResource,
 } from "@app/lib/resources/takeaways_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
-import logger from "@app/logger/logger";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { startActiveObservation } from "@langfuse/tracing";
+import type { Logger } from "pino";
 import { buildPromptForSourceType } from "./prompts";
 
 async function buildPromptProjectMembers(
@@ -55,11 +55,13 @@ async function buildPromptProjectMembers(
 async function callExtractActionItemsLLM(
   auth: Authenticator,
   {
+    localLogger,
     model,
     specification,
     prompt,
     document,
   }: {
+    localLogger: Logger;
     model: ModelConfigurationType;
     specification: AgentActionSpecification;
     prompt: string;
@@ -103,13 +105,8 @@ async function callExtractActionItemsLLM(
       )
   );
   if (res.isErr()) {
-    logger.error(
-      {
-        sourceId: document.id,
-        sourceType: document.type,
-        workspaceId: owner.sId,
-        error: res.error,
-      },
+    localLogger.error(
+      { error: res.error },
       "Document takeaway: LLM call failed"
     );
     return null;
@@ -117,27 +114,14 @@ async function callExtractActionItemsLLM(
 
   const action = res.value.actions?.[0];
   if (!action?.arguments) {
-    logger.warn(
-      {
-        sourceId: document.id,
-        sourceType: document.type,
-        workspaceId: owner.sId,
-      },
-      "Document takeaway: no tool call in LLM response"
-    );
+    localLogger.warn("Document takeaway: no tool call in LLM response");
     return null;
   }
 
   const parsed = ExtractTakeawaysInputSchema.safeParse(action.arguments);
   if (!parsed.success) {
-    logger.warn(
-      {
-        sourceId: document.id,
-        sourceType: document.type,
-        workspaceId: owner.sId,
-        error: parsed.error,
-        arguments: action.arguments,
-      },
+    localLogger.warn(
+      { error: parsed.error, arguments: action.arguments },
       "Document takeaway: failed to parse LLM response"
     );
     return null;
@@ -148,17 +132,29 @@ async function callExtractActionItemsLLM(
 // Maps raw LLM-extracted items to typed action items, reusing sIds from the
 // previous version when the LLM echoes them back, generating new UUIDs otherwise.
 
+export type ExtractedTakeawayStats = {
+  actionItems: number;
+  keyDecisions: number;
+  notableFacts: number;
+};
+
+// Returns counts of extracted takeaways, or null if extraction failed.
 export async function extractDocumentTakeaways(
   auth: Authenticator,
   {
+    localLogger: parentLogger,
     spaceId,
     document,
   }: {
+    localLogger: Logger;
     spaceId: string;
     document: TakeawaySourceDocument;
   }
-): Promise<void> {
-  const owner = auth.getNonNullableWorkspace();
+): Promise<ExtractedTakeawayStats | null> {
+  const localLogger = parentLogger.child({
+    sourceId: document.id,
+    sourceType: document.type,
+  });
 
   // Fetch the model and the previous version concurrently — they are independent.
   const [model, previousVersion] = await Promise.all([
@@ -169,15 +165,8 @@ export async function extractDocumentTakeaways(
     }),
   ]);
   if (!model) {
-    logger.warn(
-      {
-        sourceId: document.id,
-        sourceType: document.type,
-        workspaceId: owner.sId,
-      },
-      "Document takeaway: no whitelisted model available"
-    );
-    return;
+    localLogger.warn("Document takeaway: no whitelisted model available");
+    return null;
   }
 
   const previousActionItems = previousVersion?.actionItems ?? [];
@@ -195,21 +184,15 @@ export async function extractDocumentTakeaways(
   const specification = buildSpec();
 
   const extraction = await callExtractActionItemsLLM(auth, {
+    localLogger,
     model,
     specification,
     prompt,
     document,
   });
   if (!extraction) {
-    logger.error(
-      {
-        sourceId: document.id,
-        sourceType: document.type,
-        workspaceId: owner.sId,
-      },
-      "Document takeaway: no extraction result"
-    );
-    return;
+    localLogger.error("Document takeaway: no extraction result");
+    return null;
   }
 
   // Fetch all assignees from the action items.
@@ -243,20 +226,19 @@ export async function extractDocumentTakeaways(
     validAssigneesUserIds
   );
 
+  const stats: ExtractedTakeawayStats = {
+    actionItems: actionItems.length,
+    keyDecisions: keyDecisions.length,
+    notableFacts: notableFacts.length,
+  };
+
   if (
     actionItems.length === 0 &&
     notableFacts.length === 0 &&
     keyDecisions.length === 0
   ) {
-    logger.info(
-      {
-        sourceId: document.id,
-        sourceType: document.type,
-        workspaceId: owner.sId,
-      },
-      "Document takeaway: no takeaways extracted"
-    );
-    return;
+    localLogger.info("Document takeaway: no takeaways extracted");
+    return stats;
   }
 
   await TakeawaysResource.makeNewForDocument(auth, {
@@ -267,15 +249,14 @@ export async function extractDocumentTakeaways(
     keyDecisions,
   });
 
-  logger.info(
+  localLogger.info(
     {
-      sourceId: document.id,
-      sourceType: document.type,
-      workspaceId: owner.sId,
       actionItemCount: actionItems.length,
       notableFactCount: notableFacts.length,
       keyDecisionCount: keyDecisions.length,
     },
     "Document takeaway: analysis complete"
   );
+
+  return stats;
 }

@@ -50,7 +50,7 @@ vi.mock("node:dns/promises", () => ({
 
 import {
   mintEgressJwt,
-  sandboxSupportsEgressForwarding,
+  readNewDenyLogEntries,
   setupEgressForwarder,
 } from "./egress";
 
@@ -76,31 +76,6 @@ describe("sandbox egress helpers", () => {
 
     expect(payload.sbId).toBe("provider-sandbox-id");
     expect(payload.exp).toBeGreaterThan(payload.iat ?? 0);
-  });
-
-  it("detects incompatible sandboxes from the compat probe exit code", async () => {
-    const sandbox = {
-      exec: vi
-        .fn()
-        .mockResolvedValue(new Ok({ exitCode: 1, stdout: "", stderr: "" })),
-    };
-
-    const result = await sandboxSupportsEgressForwarding(
-      {} as never,
-      sandbox as never
-    );
-
-    expect(result).toEqual(new Ok(false));
-    expect(sandbox.exec).toHaveBeenCalledWith(
-      {},
-      expect.stringContaining("test -x /opt/bin/dsbx")
-    );
-    expect(sandbox.exec).toHaveBeenCalledWith(
-      {},
-      expect.stringContaining(
-        "systemctl is-active --quiet dust-egress-nftables.service"
-      )
-    );
   });
 
   it("writes the token, starts the forwarder, and waits for health", async () => {
@@ -153,6 +128,48 @@ describe("sandbox egress helpers", () => {
       }),
       "Sandbox egress forwarder is healthy"
     );
+  });
+
+  it("returns new deny log entries and advances the offset", async () => {
+    const sandbox = {
+      exec: vi.fn().mockResolvedValue(
+        new Ok({
+          exitCode: 0,
+          stdout: "google.com:443 denied\nevil.com:80 denied\n",
+          stderr: "",
+        })
+      ),
+    };
+
+    const result = await readNewDenyLogEntries({} as never, sandbox as never);
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toEqual([
+        "google.com:443 denied",
+        "evil.com:80 denied",
+      ]);
+    }
+    expect(sandbox.exec).toHaveBeenCalledWith(
+      {},
+      expect.stringContaining("dust-egress-denied.log"),
+      { user: "root", timeoutMs: 2_000 }
+    );
+  });
+
+  it("returns empty array when there are no new deny log entries", async () => {
+    const sandbox = {
+      exec: vi
+        .fn()
+        .mockResolvedValue(new Ok({ exitCode: 0, stdout: "", stderr: "" })),
+    };
+
+    const result = await readNewDenyLogEntries({} as never, sandbox as never);
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toEqual([]);
+    }
   });
 
   it("surfaces setup failures from sandbox commands", async () => {

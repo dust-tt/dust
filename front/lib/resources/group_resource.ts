@@ -130,17 +130,47 @@ export class GroupResource extends BaseResource<GroupModel> {
     { cacheNullValues: false }
   );
 
-  static invalidateGroupIdsCacheForUser = invalidateCacheWithRedis(
+  private static _invalidateGroupIdsCacheForUser = invalidateCacheWithRedis(
     (_params: { user: { id: ModelId }; workspace: { id: ModelId } }) =>
       Promise.resolve([]),
     GroupResource.groupIdsCacheKeyResolver
   );
 
-  static batchInvalidateGroupIdsCacheForUsers = batchInvalidateCacheWithRedis(
-    (_params: { user: { id: ModelId }; workspace: { id: ModelId } }) =>
-      Promise.resolve([]),
-    GroupResource.groupIdsCacheKeyResolver
-  );
+  static invalidateGroupIdsCacheForUser = async (params: {
+    user: { id: ModelId };
+    workspace: { id: ModelId };
+  }) => {
+    logger.info(
+      {
+        userModelId: params.user.id,
+        workspaceModelId: params.workspace.id,
+        method: "GroupResource.invalidateGroupIdsCacheForUser",
+      },
+      "Invalidating auth resource cache"
+    );
+    return GroupResource._invalidateGroupIdsCacheForUser(params);
+  };
+
+  private static _batchInvalidateGroupIdsCacheForUsers =
+    batchInvalidateCacheWithRedis(
+      (_params: { user: { id: ModelId }; workspace: { id: ModelId } }) =>
+        Promise.resolve([]),
+      GroupResource.groupIdsCacheKeyResolver
+    );
+
+  static batchInvalidateGroupIdsCacheForUsers = async (
+    argsList: [{ user: { id: ModelId }; workspace: { id: ModelId } }][]
+  ) => {
+    logger.info(
+      {
+        workspaceModelId: argsList[0]?.[0]?.workspace.id,
+        count: argsList.length,
+        method: "GroupResource.batchInvalidateGroupIdsCacheForUsers",
+      },
+      "Invalidating auth resource cache (batch)"
+    );
+    return GroupResource._batchInvalidateGroupIdsCacheForUsers(argsList);
+  };
 
   /**
    * WARNING: This method skips workspace membership checks. It is intended for use in
@@ -157,6 +187,14 @@ export class GroupResource extends BaseResource<GroupModel> {
     transaction?: Transaction;
   }): Promise<ModelId[]> {
     if (transaction) {
+      logger.info(
+        {
+          userModelId: user.id,
+          workspaceModelId: workspace.id,
+          method: "GroupResource.dangerouslyListUserGroupsForAuth",
+        },
+        "Skipping auth resource cache: transaction provided"
+      );
       return this.dangerouslyListUserGroupsForAuthUncached({
         user,
         workspace,
@@ -1249,11 +1287,11 @@ export class GroupResource extends BaseResource<GroupModel> {
     {
       users,
       transaction,
-      allowProvisionnedGroups = false,
+      allowProvisionedGroups = false,
     }: {
       users: UserType[];
       transaction?: Transaction;
-      allowProvisionnedGroups?: boolean;
+      allowProvisionedGroups?: boolean;
     }
   ): Promise<
     Result<
@@ -1272,7 +1310,7 @@ export class GroupResource extends BaseResource<GroupModel> {
         this.kind === "space_editors" ||
         this.kind === "agent_editors" ||
         this.kind === "skill_editors" ||
-        (allowProvisionnedGroups && this.kind === "provisioned"),
+        (allowProvisionedGroups && this.kind === "provisioned"),
       `You can't add members to ${this.kind} groups.`
     );
     const owner = auth.getNonNullableWorkspace();
@@ -1394,11 +1432,11 @@ export class GroupResource extends BaseResource<GroupModel> {
     {
       user,
       transaction,
-      allowProvisionnedGroups = false,
+      allowProvisionedGroups = false,
     }: {
       user: UserType;
       transaction?: Transaction;
-      allowProvisionnedGroups?: boolean;
+      allowProvisionedGroups?: boolean;
     }
   ): Promise<
     Result<
@@ -1415,7 +1453,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     return this.dangerouslyAddMembers(auth, {
       users: [user],
       transaction,
-      allowProvisionnedGroups,
+      allowProvisionedGroups,
     });
   }
 
@@ -1427,11 +1465,11 @@ export class GroupResource extends BaseResource<GroupModel> {
     {
       users,
       transaction,
-      allowProvisionnedGroups = false,
+      allowProvisionedGroups = false,
     }: {
       users: UserType[];
       transaction?: Transaction;
-      allowProvisionnedGroups?: boolean;
+      allowProvisionedGroups?: boolean;
     }
   ): Promise<
     Result<
@@ -1449,7 +1487,7 @@ export class GroupResource extends BaseResource<GroupModel> {
         this.kind === "space_editors" ||
         this.kind === "agent_editors" ||
         this.kind === "skill_editors" ||
-        (allowProvisionnedGroups && this.kind === "provisioned"),
+        (allowProvisionedGroups && this.kind === "provisioned"),
       `You can't remove members from ${this.kind} groups.`
     );
     const owner = auth.getNonNullableWorkspace();
@@ -1554,11 +1592,11 @@ export class GroupResource extends BaseResource<GroupModel> {
     {
       user,
       transaction,
-      allowProvisionnedGroups = false,
+      allowProvisionedGroups = false,
     }: {
       user: UserType;
       transaction?: Transaction;
-      allowProvisionnedGroups?: boolean;
+      allowProvisionedGroups?: boolean;
     }
   ): Promise<
     Result<
@@ -1574,7 +1612,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     return this.dangerouslyRemoveMembers(auth, {
       users: [user],
       transaction,
-      allowProvisionnedGroups,
+      allowProvisionedGroups,
     });
   }
 

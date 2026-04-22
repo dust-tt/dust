@@ -233,7 +233,10 @@ export default function SkillBuilder({
           <SkillBuilderInstructionsSection />
           {hasFeature("sandbox_tools") && <SkillBuilderFilesSection />}
           <SkillBuilderToolsSection extendedSkill={extendedSkill} />
-          <SkillBuilderSettingsOrComparisonFooter skill={skill} />
+          <SkillBuilderSettingsOrComparisonFooter
+            skill={skill}
+            hasReinforcedAgents={hasReinforcedAgents}
+          />
         </div>
       </ScrollArea>
       <BarFooter
@@ -303,8 +306,10 @@ export default function SkillBuilder({
 
 function SkillBuilderSettingsOrComparisonFooter({
   skill,
+  hasReinforcedAgents,
 }: {
   skill?: SkillType;
+  hasReinforcedAgents: boolean;
 }) {
   const { compareVersion } = useSkillVersionComparisonContext();
 
@@ -312,5 +317,10 @@ function SkillBuilderSettingsOrComparisonFooter({
     return <SkillBuilderVersionComparisonFooter />;
   }
 
-  return <SkillBuilderSettingsSection skill={skill} />;
+  return (
+    <SkillBuilderSettingsSection
+      skill={skill}
+      hasReinforcedAgents={hasReinforcedAgents}
+    />
+  );
 }

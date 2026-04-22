@@ -9,12 +9,13 @@ import {
   AVAILABLE_INTERNAL_MCP_SERVER_NAMES,
   getAvailabilityOfInternalMCPServerById,
   getAvailabilityOfInternalMCPServerByName,
+  INTERNAL_MCP_SERVERS,
   isAutoInternalMCPServerName,
   isValidInternalMCPServerId,
 } from "@app/lib/actions/mcp_internal_actions/constants";
-import { isEnabledForWorkspace } from "@app/lib/actions/mcp_internal_actions/enabled";
+import { isDeepDiveDisabledByAdmin } from "@app/lib/api/assistant/global_agents/configurations/dust/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import type { Authenticator } from "@app/lib/auth";
+import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
@@ -446,26 +447,27 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     );
     const remoteServerIds = removeNulls(views.map((v) => v.remoteMCPServerId));
 
-    const [internalMetadata, remoteMetadata] = await Promise.all([
+    const internalMetadata =
       internalServerIds.length > 0
-        ? RemoteMCPServerToolMetadataModel.findAll({
+        ? await RemoteMCPServerToolMetadataModel.findAll({
             where: {
               workspaceId,
               internalMCPServerId: { [Op.in]: internalServerIds },
             },
             transaction,
           })
-        : [],
+        : [];
+
+    const remoteMetadata =
       remoteServerIds.length > 0
-        ? RemoteMCPServerToolMetadataModel.findAll({
+        ? await RemoteMCPServerToolMetadataModel.findAll({
             where: {
               workspaceId,
               remoteMCPServerId: { [Op.in]: remoteServerIds },
             },
             transaction,
           })
-        : [],
-    ]);
+        : [];
 
     const metadataByInternalId = new Map<
       string,
@@ -935,7 +937,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     transaction?: Transaction
   ): Promise<Result<number, Error>> {
     await destroyMCPServerViewDependencies(auth, {
-      mcpServerViewId: this.id,
+      mcpServerViewIds: [this.id],
       transaction,
     });
 
@@ -1024,6 +1026,9 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
   }> {
     return tracer.trace("ensureAllAutoToolsAreCreated", async () => {
       const names = AVAILABLE_INTERNAL_MCP_SERVER_NAMES;
+      const featureFlags = await getFeatureFlags(auth);
+      const isDeepDiveDisabled = await isDeepDiveDisabledByAdmin(auth);
+      const plan = auth.getNonNullablePlan();
 
       const autoInternalMCPServerIds: string[] = [];
       for (const name of names) {
@@ -1031,7 +1036,11 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
           continue;
         }
 
-        const isEnabled = await isEnabledForWorkspace(auth, name);
+        const isEnabled = !INTERNAL_MCP_SERVERS[name].isRestricted?.({
+          featureFlags,
+          isDeepDiveDisabled,
+          plan,
+        });
         const availability = getAvailabilityOfInternalMCPServerByName(name);
 
         if (isEnabled && availability !== "manual") {

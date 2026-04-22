@@ -1,8 +1,11 @@
 import {
+  maxKeyDecisions,
+  maxNotableFacts,
   minActionItems,
   shouldExtractActionItem,
   shouldExtractKeyDecision,
   shouldExtractNotableFact,
+  shouldPreserveSId,
   type TakeawayTestSuite,
 } from "@app/tests/takeaway-evals/lib/types";
 
@@ -47,18 +50,17 @@ export const mixedExtractionSuite: TakeawayTestSuite = {
           assigneeUserId: "user-alice",
         }),
         shouldExtractNotableFact("100 requests"),
-        shouldExtractNotableFact("72%"),
         shouldExtractKeyDecision("batching", { status: "decided" }),
       ],
       judgeCriteria: `A rich meeting with all three categories present:
 - Action items: Bob (payment), Carol (email notifications), Alice (CI check)
-- Notable facts: Stripe rate limit (100 req/s), current test coverage (72%)
+- Notable fact: Stripe rate limit (100 req/s). The 72% coverage is ephemeral and acceptable to skip.
 - Key decision: implement request batching (decided)
 
 Score 0 if fewer than 2 categories have correct extractions.
 Score 1 if action items are partially correct but other categories are missing.
 Score 2 if most items are correct across all categories.
-Score 3 if all action items, notable facts, and the key decision are correctly extracted.`,
+Score 3 if all action items, the Stripe rate limit fact, and the key decision are correctly extracted.`,
     },
 
     // ── Empty/minimal document ────────────────────────────────────────────────
@@ -152,6 +154,8 @@ Score 3 if completely empty extraction (ideal for this scenario).`,
         shouldExtractActionItem("payment", { status: "done" }),
         shouldExtractActionItem("email", { status: "open" }),
         shouldExtractActionItem("monitoring"),
+        shouldPreserveSId("actionItem", "prev-ai-1"),
+        shouldPreserveSId("actionItem", "prev-ai-2"),
       ],
       judgeCriteria: `IMPORTANT CONTEXT: This is a re-analysis scenario. The system was given a
 previous version of extracted takeaways (action items, notable facts, key decisions) and is
@@ -172,6 +176,53 @@ Score 0 if action item status transitions are wrong (payment not marked done, or
 Score 1 if statuses are partially correct or the new monitoring item is missing.
 Score 2 if all three action items are present with correct statuses.
 Score 3 if action items are perfect and carried-forward notable facts/decisions are reasonable.`,
+    },
+
+    // ── Small amount of items detected ────────────────────────────────────────
+    {
+      scenarioId: "real-world-bug-report-thread",
+      document: {
+        id: "slack-C09T7N4S6GG-thread-1776758009.764779",
+        title: "initiative-projects-thread-2026-04-21_07h53",
+        type: "slack",
+        text: "$title: Thread in #initiative-projects: @seb the + button not working on team bi-weekly project (top right) Attached file : Screenshot 2026-04-21 at 09.53.09.png ( imag...\n$createdAt: 2026-04-21T07:53:29.000Z\n$updatedAt: 2026-04-21T09:22:09.000Z\n>> @Ambra [20260421 07:53]:\n@seb the + button not working on team bi-weekly project (top right)\nAttached file : Screenshot 2026-04-21 at 09.53.09.png ( image/png )\n>> @rcs [20260421 08:00]:\nSeb is OoO.\n\nIt's not a button, it's to show that there are more members of the project.\nAttached file : image.png ( image/png )\n>> @rcs [20260421 08:01]:\nCould you invite me to the project so I can have a look? I suppose it's a display issue when the number is bigger than 9\n>> @ed [20260421 08:15]:\n@rcs also, I think the component is not super well calibrated to display that many people, mlaybe reduce to 5 max?\n>> @rcs [20260421 08:16]:\nYeah, it's too small. I'll fix both at the same time!\n>> @rcs [20260421 08:25]:\n@Ambra I confirm it means \"there are more than 10 people not showed\". I'll think of something to improve it\n>> @rcs [20260421 09:22]:\nBoth are fixed =&gt; <https://github.com/dust-tt/dust/pull/24610>\n",
+        uri: "https://dust4ai.slack.com/archives/C09T7N4S6GG/p1776758009764779?thread_ts=1776758009.764779&cid=C09T7N4S6GG",
+      },
+      members: [
+        { sId: "user-seb", fullName: "Sébastien Flory", email: "seb@dust.tt" },
+        {
+          sId: "user-rcs",
+          fullName: "Rémy-Christophe Schermesser",
+          email: "rcs@dust.tt",
+        },
+        {
+          sId: "user-ed",
+          fullName: "Edouard Wautier",
+          email: "ed@dust.tt",
+        },
+      ],
+      expectedAssertions: [
+        minActionItems(1),
+        shouldExtractActionItem("display", {
+          assigneeUserId: "user-rcs",
+          status: "done",
+        }),
+        maxNotableFacts(0),
+        maxKeyDecisions(1),
+      ],
+      judgeCriteria: `A real-world Slack thread about a UI bug on the project members display.
+This is a short troubleshooting thread — sparse extraction is ideal.
+
+- Action item: rcs fixed the display issue (done — PR 24610 merged). This is the only
+  clearly extractable takeaway.
+- Notable facts: none expected. The conversation is debugging context, not durable knowledge.
+- Key decision: reducing displayed avatars to 5 max is acceptable but optional — it's a
+  minor UI tweak, not a project-level decision.
+
+Score 0 if the action item is missing or assigned to the wrong person.
+Score 1 if the action item is present but not marked as done, or multiple spurious items extracted.
+Score 2 if the action item is correct with status done and extraction is sparse.
+Score 3 if only the action item is extracted (and optionally the 5-max key decision), with zero notable facts.`,
     },
   ],
 };

@@ -1,11 +1,12 @@
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { WakeUpModel } from "@app/lib/resources/storage/models/wakeup";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
-import { makeSId } from "@app/lib/resources/string_ids";
+import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import {
   cancelWakeUpTemporalWorkflow,
@@ -20,11 +21,43 @@ import type {
 } from "@app/types/assistant/wakeups";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { Attributes, Transaction, WhereOptions } from "sequelize";
 
 const ACTIVE_WAKE_UP_STATUSES: WakeUpStatus[] = ["scheduled"];
+const MAX_WAKE_UP_FIRES = 32;
+
+// Minimum allowed interval between two cron fires, in minutes. Matches the per-conversation
+// guardrail in the wake-up design doc.
+const WAKE_UP_MIN_INTERVAL_MINUTES = 5;
+
+// Standard 5-field cron regex. Does not support # (nth occurrence) or L (last) operators.
+const WAKE_UP_CRON_REGEXP =
+  /^((((\d+,)+\d+|(\d+(\/|-)\d+)|\d+|\*(\/\d+)?|\?|[A-Z]{3}(-[A-Z]{3})?) ?){5,7})|(@(annually|yearly|monthly|weekly|daily|hourly|reboot))|(@every (\d+(ns|us|µs|ms|s|m|h))+)$/;
+
+function isValidIANATimezone(timezone: string): boolean {
+  const supportedTimezones = Intl.supportedValuesOf("timeZone");
+  return supportedTimezones.includes(timezone);
+}
+
+// A cron expression is considered too frequent if its minutes field fires more than once every
+// `WAKE_UP_MIN_INTERVAL_MINUTES` minutes. Accepts a literal minute ("0", "15") or a `*/N` step with
+// `N >= WAKE_UP_MIN_INTERVAL_MINUTES`.
+function isWakeUpCronTooFrequent(cron: string): boolean {
+  const minutes = cron.split(" ")[0];
+
+  if (/^\d+$/.test(minutes)) {
+    return false;
+  }
+
+  const stepMatch = /^\*\/(\d+)$/.exec(minutes);
+  if (stepMatch && parseInt(stepMatch[1], 10) >= WAKE_UP_MIN_INTERVAL_MINUTES) {
+    return false;
+  }
+
+  return true;
+}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface WakeUpResource extends ReadonlyAttributesType<WakeUpModel> {}
@@ -73,6 +106,49 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
     return rows.map((row) => new this(this.model, row.get()));
   }
 
+  /**
+   * Validates a cron expression and its timezone for wake-ups. Mirrors the trigger schedule
+   * validation but enforces the wake-up specific minimum interval between fires.
+   */
+  static validateCron({
+    cron,
+    timezone,
+  }: {
+    cron: string;
+    timezone: string;
+  }): Result<void, Error> {
+    if (
+      !cron ||
+      cron.split(" ").length !== 5 ||
+      !cron.match(WAKE_UP_CRON_REGEXP)
+    ) {
+      return new Err(
+        new Error(
+          "Invalid wake-up cron expression: expected 5 fields (min hour dom mon dow) " +
+            "using standard operators (* , - / ?) or 3-letter names; '#' and 'L' are not supported."
+        )
+      );
+    }
+
+    if (isWakeUpCronTooFrequent(cron)) {
+      return new Err(
+        new Error(
+          `Wake-up cron cannot fire more often than every ${WAKE_UP_MIN_INTERVAL_MINUTES} minutes.`
+        )
+      );
+    }
+
+    if (!timezone || !isValidIANATimezone(timezone)) {
+      return new Err(
+        new Error(
+          'Invalid wake-up timezone (must be an IANA timezone, i.e. "Europe/Paris").'
+        )
+      );
+    }
+
+    return new Ok(undefined);
+  }
+
   static async makeNew(
     auth: Authenticator,
     blob:
@@ -96,6 +172,16 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
   ): Promise<Result<WakeUpResource, Error>> {
     const { scheduleType, fireAt, cronExpression, cronTimezone, reason } = blob;
     const user = auth.getNonNullableUser();
+
+    if (scheduleType === "cron") {
+      const validation = this.validateCron({
+        cron: cronExpression,
+        timezone: cronTimezone,
+      });
+      if (validation.isErr()) {
+        return validation;
+      }
+    }
 
     const row = await this.model.create(
       {
@@ -121,6 +207,24 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
     }
 
     return new Ok(wakeUp);
+  }
+
+  static async fetchById(
+    auth: Authenticator,
+    wakeUpId: string
+  ): Promise<WakeUpResource | null> {
+    const modelId = getResourceIdFromSId(wakeUpId);
+    if (!modelId) {
+      return null;
+    }
+
+    const [wakeUp] = await this.baseFetch(auth, {
+      where: {
+        id: modelId,
+      },
+    });
+
+    return wakeUp ?? null;
   }
 
   static async listByConversation(
@@ -150,6 +254,38 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
         ["id", "ASC"],
       ],
     });
+  }
+
+  /**
+   * This is used by the wake-up temporal activities to recover the wake-up resource and its
+   * associated user's authenticator.
+   */
+  static async fetchWakeUpAndAuthenticatorById({
+    workspaceId,
+    wakeUpId,
+  }: {
+    workspaceId: string;
+    wakeUpId: string;
+  }): Promise<Result<{ auth: Authenticator; wakeUp: WakeUpResource }, Error>> {
+    let auth = await Authenticator.internalBuilderForWorkspace(workspaceId);
+    const wakeUp = await WakeUpResource.fetchById(auth, wakeUpId);
+
+    if (!wakeUp) {
+      return new Err(new Error("WakeUp not found"));
+    }
+
+    const [user] = await UserResource.fetchByModelIds([wakeUp.userId]);
+    if (!user) {
+      return new Err(new Error("WakeUp user not found"));
+    }
+
+    auth = await Authenticator.fromUserIdAndWorkspaceId(user.sId, workspaceId);
+
+    if (!auth.workspace() || !auth.user()) {
+      return new Err(new Error("Invalid Authenticator for WakeUp"));
+    }
+
+    return new Ok({ auth, wakeUp });
   }
 
   static async deleteByConversation(
@@ -196,36 +332,80 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
       return temporalResult;
     }
 
+    await this.markCancelled(auth, { transaction });
+
+    return new Ok(undefined);
+  }
+
+  async markCancelled(
+    auth: Authenticator,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<void> {
+    if (this.status === "cancelled") {
+      return;
+    }
+
     await this.update(
       {
         status: "cancelled",
       },
       transaction
     );
+  }
 
-    return new Ok(undefined);
+  async markExpired(
+    auth: Authenticator,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<void> {
+    if (this.status === "expired") {
+      return;
+    }
+
+    await this.update(
+      {
+        status: "expired",
+      },
+      transaction
+    );
+  }
+
+  maxFires(): number {
+    return MAX_WAKE_UP_FIRES;
   }
 
   async markFired(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
-  ): Promise<Result<void, Error>> {
+  ): Promise<void> {
     if (this.status !== "scheduled") {
-      return new Ok(undefined);
+      return;
     }
 
+    const nextFireCount = this.fireCount + 1;
     const nextStatus: WakeUpStatus =
-      this.scheduleType === "one_shot" ? "fired" : "scheduled";
+      this.scheduleType === "one_shot"
+        ? "fired"
+        : nextFireCount >= this.maxFires()
+          ? "expired"
+          : "scheduled";
 
     await this.update(
       {
-        fireCount: this.fireCount + 1,
+        fireCount: nextFireCount,
         status: nextStatus,
       },
       transaction
     );
+  }
 
-    return new Ok(undefined);
+  async cleanupTemporalIfCronExpired(
+    auth: Authenticator
+  ): Promise<Result<void, Error>> {
+    if (this.scheduleType !== "cron" || this.status !== "expired") {
+      return new Ok(undefined);
+    }
+
+    return this.cancelTemporalWorkflow(auth);
   }
 
   async delete(
@@ -283,6 +463,7 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
       reason: this.reason,
       status: this.status,
       fireCount: this.fireCount,
+      maxFires: this.maxFires(),
     };
   }
 

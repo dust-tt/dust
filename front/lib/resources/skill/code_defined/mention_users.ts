@@ -1,4 +1,4 @@
-import type { GlobalSkillDefinition } from "@app/lib/resources/skill/global/registry";
+import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 
 export const mentionUsersSkill = {
   sId: "mention_users",

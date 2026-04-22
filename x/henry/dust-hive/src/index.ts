@@ -309,7 +309,7 @@ cli.command("forward stop", "Stop the port forwarder").action(async () => {
 
 cli
   .command("forward [name]", "Forward OAuth ports to environment")
-  .example("dust-hive forward          # Forward to last warmed env")
+  .example("dust-hive forward          # Forward to current env (or prompt)")
   .example("dust-hive forward my-env   # Forward to specific env")
   .example("dust-hive forward status   # Show forwarding status")
   .example("dust-hive forward stop     # Stop port forwarding")

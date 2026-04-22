@@ -438,6 +438,14 @@ export type ConversationForkedChildType = {
 };
 
 /**
+ * @swaggerschema PrivateConversationForkingData (swagger_private_schemas.ts)
+ */
+export type ConversationForkingDataType = {
+  forkedFrom?: ConversationForkedFromType;
+  forkedChildren?: ConversationForkedChildType[];
+};
+
+/**
  * A lighter version of Conversation without the content (for menu display).
  *
  * @swaggerschema PrivateConversation (swagger_private_schemas.ts)
@@ -457,8 +465,7 @@ export type ConversationWithoutContentType = {
   depth: number;
   metadata: ConversationMetadata;
   branchId: string | null;
-  forkedFrom?: ConversationForkedFromType;
-  forkedChildren?: ConversationForkedChildType[];
+  forkingData?: ConversationForkingDataType;
 
   // Ideally, this property should be moved to the ConversationType.
   requestedSpaceIds: string[];
@@ -466,15 +473,21 @@ export type ConversationWithoutContentType = {
 
 type ConversationDisplayTitleInput = Pick<
   ConversationWithoutContentType,
-  "created" | "title"
+  "created" | "title" | "forkingData"
 >;
-
 export function getConversationDisplayTitle(
   conversation: ConversationDisplayTitleInput,
   now = new Date()
 ): string {
   if (conversation.title) {
     return conversation.title;
+  }
+
+  const forkedFrom = conversation.forkingData?.forkedFrom;
+  if (forkedFrom) {
+    return forkedFrom.parentConversationTitle
+      ? `Branched from '${forkedFrom.parentConversationTitle}'`
+      : "Branched conversation";
   }
 
   return moment(conversation.created).isSame(now, "day")

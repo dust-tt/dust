@@ -37,6 +37,14 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
         .array(z.string())
         .optional()
         .describe("Fields to include in the response."),
+      sharedMailboxAddress: z
+        .string()
+        .optional()
+        .describe(
+          "The email address of the shared mailbox to access (e.g. 'support@company.com'). " +
+            "Leave empty to access your own mailbox. " +
+            "Note: the shared mailbox address must be known in advance — there is no API to auto-discover it."
+        ),
     },
     stake: "never_ask",
     displayLabels: {
@@ -52,6 +60,14 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
         .string()
         .describe(
           "The ID of the message to get attachments from (from the get_messages response)"
+        ),
+      sharedMailboxAddress: z
+        .string()
+        .optional()
+        .describe(
+          "The email address of the shared mailbox to access (e.g. 'support@company.com'). " +
+            "Leave empty to access your own mailbox. " +
+            "Note: the shared mailbox address must be known in advance — there is no API to auto-discover it."
         ),
     },
     stake: "never_ask",
@@ -78,6 +94,14 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
         .number()
         .optional()
         .describe("Number of drafts to skip for pagination."),
+      sharedMailboxAddress: z
+        .string()
+        .optional()
+        .describe(
+          "The email address of the shared mailbox to access (e.g. 'support@company.com'). " +
+            "Leave empty to access your own mailbox. " +
+            "Note: the shared mailbox address must be known in advance — there is no API to auto-discover it."
+        ),
     },
     stake: "never_ask",
     displayLabels: {
@@ -96,6 +120,12 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
         .array(z.string())
         .optional()
         .describe("The email addresses to BCC"),
+      replyTo: z
+        .array(z.string())
+        .optional()
+        .describe(
+          "Reply-to email addresses. Replies will go to these addresses instead of the sender."
+        ),
       subject: z.string().describe("The subject line of the email"),
       contentType: z
         .string()
@@ -177,6 +207,12 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
         .array(z.string())
         .optional()
         .describe("The email addresses to BCC"),
+      replyTo: z
+        .array(z.string())
+        .optional()
+        .describe(
+          "Reply-to email addresses. Replies will go to these addresses instead of the sender."
+        ),
       subject: z.string().describe("The subject line of the email"),
       contentType: z
         .enum(["text", "html"])
