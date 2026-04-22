@@ -21,7 +21,7 @@ import { AgentProjectConfigurationModel } from "@app/lib/models/agent/actions/pr
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import { FeatureFlagModel } from "@app/lib/models/feature_flag";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import type { GlobalSkillId } from "@app/lib/resources/skill/global/registry";
+import type { GlobalSkillId } from "@app/lib/resources/skill/code_defined/global_registry";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getInsertSQL, withTransaction } from "@app/lib/utils/sql_utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";

@@ -18,7 +18,7 @@ import {
 import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { GlobalSkillId } from "@app/lib/resources/skill/global/registry";
+import { GlobalSkillId } from "@app/lib/resources/skill/code_defined/global_registry";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getInsertSQL, withTransaction } from "@app/lib/utils/sql_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
