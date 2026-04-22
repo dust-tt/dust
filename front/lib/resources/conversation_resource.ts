@@ -1,4 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
+import { hasFeatureFlag } from "@app/lib/auth";
+import { listPrivateConversationsFromES } from "@app/lib/conversation_search/search";
 import { ConversationMCPServerViewModel } from "@app/lib/models/agent/actions/conversation_mcp_server_view";
 import {
   AgentMessageModel,
@@ -32,10 +34,13 @@ import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
+import logger from "@app/logger/logger";
+import { launchIndexConversationEsWorkflow } from "@app/temporal/es_indexation/client";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   ConversationForkedChildType,
   ConversationForkedFromType,
+  ConversationListItemType,
   ConversationMCPServerViewType,
   ConversationMetadata,
   ConversationUrlAccessMode,
@@ -400,11 +405,15 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       { transaction }
     );
 
-    return new ConversationResource(
+    const resource = new ConversationResource(
       ConversationResource.model,
       conversation.get(),
       space
     );
+
+    await this.triggerEsIndexing(auth, resource.sId, workspace.sId);
+
+    return resource;
   }
 
   static async countForWorkspace(
@@ -771,6 +780,65 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       this.triggerId,
       this.workspaceId
     );
+  }
+
+  async listParticipantsForConversation(): Promise<
+    Array<{
+      userId: string;
+      actionRequired: boolean;
+      lastReadMs: number | null;
+    }>
+  > {
+    const participants = await ConversationParticipantModel.findAll({
+      where: {
+        conversationId: this.id,
+        workspaceId: this.workspaceId,
+      },
+      attributes: ["userId", "actionRequired"],
+      include: [{ model: UserModel, attributes: ["sId"] }],
+    });
+
+    const userModelIds = participants.map((p) => p.userId);
+    const reads = await UserConversationReadsModel.findAll({
+      where: {
+        conversationId: this.id,
+        workspaceId: this.workspaceId,
+        userId: userModelIds,
+      },
+      attributes: ["userId", "lastReadAt"],
+    });
+    const readsByUserId = new Map(reads.map((r) => [r.userId, r.lastReadAt]));
+
+    return participants.flatMap((p) => {
+      if (!p.user) {
+        return [];
+      }
+      const lastReadAt = readsByUserId.get(p.userId) ?? null;
+      return [
+        {
+          userId: p.user.sId,
+          actionRequired: p.actionRequired,
+          lastReadMs: lastReadAt ? lastReadAt.getTime() : null,
+        },
+      ];
+    });
+  }
+
+  private static async triggerEsIndexing(
+    auth: Authenticator,
+    conversationId: string,
+    workspaceId: string
+  ): Promise<void> {
+    if (!(await hasFeatureFlag(auth, "conversation_search_indexing"))) {
+      return;
+    }
+    const result = await launchIndexConversationEsWorkflow({
+      conversationId,
+      workspaceId,
+    });
+    if (result.isErr()) {
+      throw result.error;
+    }
   }
 
   static async fetchParticipationMapForUser(
@@ -1337,6 +1405,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     }
 
     await conversation.update(blob, transaction);
+
+    await this.triggerEsIndexing(auth, sId, auth.getNonNullableWorkspace().sId);
+
     return new Ok(undefined);
   }
 
@@ -1486,6 +1557,126 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     lastValue: string | null;
   }> {
     return this.fetchPrivateConversationsPaginated(auth, { pagination });
+  }
+
+  private static resourceToListItem(
+    resource: ConversationResource
+  ): ConversationListItemType {
+    return {
+      actionRequired: resource.userParticipation?.actionRequired ?? false,
+      created: resource.createdAt.getTime(),
+      hasError: resource.hasError,
+      lastReadMs: resource.userLastReadAt?.getTime() ?? null,
+      metadata: resource.metadata ?? {},
+      requestedSpaceIds: resource.getRequestedSpaceIdsFromModel(),
+      sId: resource.sId,
+      spaceId: resource.space?.sId ?? null,
+      title: resource.title,
+      triggerId: resource.triggerSId,
+      unread:
+        resource.userLastReadAt === null ||
+        resource.updatedAt > resource.userLastReadAt,
+      updated: resource.updatedAt.getTime(),
+    };
+  }
+
+  // Lists private conversations from Elasticsearch. Falls back to DB on ES
+  // failure or when the conversation_search_read feature flag is disabled.
+  static async listPrivateConversationsForUserPaginatedFromES(
+    auth: Authenticator,
+    pagination: {
+      limit: number;
+      lastValue?: string;
+      orderDirection?: "asc" | "desc";
+    }
+  ): Promise<{
+    conversations: ConversationListItemType[];
+    hasMore: boolean;
+    lastValue: string | null;
+  }> {
+    const user = auth.user();
+    if (!user) {
+      return { conversations: [], hasMore: false, lastValue: null };
+    }
+
+    if (!(await hasFeatureFlag(auth, "conversation_search_read"))) {
+      return this.listPrivateConversationsForUserPaginatedFromDB(
+        auth,
+        pagination
+      );
+    }
+
+    const workspace = auth.getNonNullableWorkspace();
+    const orderDirection = pagination.orderDirection ?? "desc";
+
+    const accessibleSpaces =
+      await SpaceResource.listWorkspaceSpacesAsMember(auth);
+    const accessibleSpaceIds = accessibleSpaces.map((s) => s.sId);
+
+    const esResult = await listPrivateConversationsFromES({
+      workspaceId: workspace.sId,
+      userId: user.sId,
+      accessibleSpaceIds,
+      limit: pagination.limit,
+      lastValue: pagination.lastValue,
+      orderDirection,
+    });
+
+    if (esResult.isErr()) {
+      logger.error(
+        { workspaceId: workspace.sId, error: esResult.error },
+        "[conversation_search] ES query failed, falling back to DB"
+      );
+      return this.listPrivateConversationsForUserPaginatedFromDB(
+        auth,
+        pagination
+      );
+    }
+
+    const { items, hasMore, lastValue } = esResult.value;
+
+    // Validate ES results against DB to detect stale index entries.
+    if (items.length > 0) {
+      const dbConversations = await this.fetchByIds(
+        auth,
+        items.map((i) => i.sId)
+      );
+      const dbSIds = new Set(dbConversations.map((c) => c.sId));
+      const missingInDb = items
+        .map((i) => i.sId)
+        .filter((sId) => !dbSIds.has(sId));
+      if (missingInDb.length > 0) {
+        logger.warn(
+          { workspaceId: workspace.sId, userId: user.sId, missingInDb },
+          "[conversation_search] ES returned conversation IDs absent from DB (stale index)"
+        );
+      }
+    }
+
+    return { conversations: items, hasMore, lastValue };
+  }
+
+  private static async listPrivateConversationsForUserPaginatedFromDB(
+    auth: Authenticator,
+    pagination: {
+      limit: number;
+      lastValue?: string;
+      orderDirection?: "asc" | "desc";
+    }
+  ): Promise<{
+    conversations: ConversationListItemType[];
+    hasMore: boolean;
+    lastValue: string | null;
+  }> {
+    const result = await this.listPrivateConversationsForUserPaginated(
+      auth,
+      pagination
+    );
+    return {
+      conversations: result.conversations.map(this.resourceToListItem),
+      hasMore: result.hasMore,
+      lastValue: result.lastValue,
+    };
   }
 
   static async listSpaceUnreadConversationsAndActivityForUser(
@@ -1942,6 +2133,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       }
     );
 
+    await this.triggerEsIndexing(
+      auth,
+      conversation.sId,
+      auth.getNonNullableWorkspace().sId
+    );
+
     return new Ok(updated);
   }
 
@@ -1969,6 +2166,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       }
     );
 
+    await this.triggerEsIndexing(
+      auth,
+      conversation.sId,
+      auth.getNonNullableWorkspace().sId
+    );
+
     return new Ok(updated);
   }
 
@@ -1990,6 +2193,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         },
         transaction: t,
       }
+    );
+
+    await this.triggerEsIndexing(
+      auth,
+      conversation.sId,
+      auth.getNonNullableWorkspace().sId
     );
 
     return new Ok(updated[0]);
@@ -2017,6 +2226,13 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       },
       { transaction }
     );
+
+    await this.triggerEsIndexing(
+      auth,
+      conversation.sId,
+      auth.getNonNullableWorkspace().sId
+    );
+
     return new Ok(updated);
   }
 
@@ -2038,6 +2254,13 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         workspaceId: auth.getNonNullableWorkspace().id,
       },
     });
+
+    await this.triggerEsIndexing(
+      auth,
+      conversation.sId,
+      auth.getNonNullableWorkspace().sId
+    );
+
     return new Ok(undefined);
   }
 
@@ -2172,6 +2395,14 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         );
       }
     }, transaction);
+
+    if (status !== "none") {
+      await this.triggerEsIndexing(
+        auth,
+        conversation.sId,
+        auth.getNonNullableWorkspace().sId
+      );
+    }
 
     return status;
   }

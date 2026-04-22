@@ -215,6 +215,16 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Enable project todo tab (todos and what's new digest)",
     stage: "dust_only",
   },
+  conversation_search_indexing: {
+    description:
+      "Enable ES indexing of conversations on mutation (write path)",
+    stage: "dust_only",
+  },
+  conversation_search_read: {
+    description:
+      "Enable ES-backed conversation listing in the sidebar (read path)",
+    stage: "dust_only",
+  },
   conversations_slack_notifications: {
     description: "Enable slack notifications",
     stage: "dust_only",
