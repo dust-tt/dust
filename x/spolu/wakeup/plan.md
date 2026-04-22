@@ -58,9 +58,17 @@ classification, audit events, and the cron path.
 Create the cron Temporal path for wake-ups. Reuse the existing trigger schedule patterns where
 helpful.
 
-Status: in progress. This PR now implements Temporal Schedule creation / deletion in
-`front/temporal/triggers/wakeup_client.ts`. Remaining work is cron validation, recurring fire
-semantics (`fireCount`, expiry / max-fire policy), and cron-specific guardrails.
+Status: in progress. Current state:
+- Temporal Schedule creation / deletion is implemented in
+  `front/temporal/triggers/wakeup_client.ts`.
+- `WakeUpResource.maxFires()` (backed by `MAX_WAKE_UP_FIRES = 32`) is exposed on `WakeUpType`, and
+  `markFired(...)` transitions a cron wake-up to `expired` once `fireCount >= maxFires`.
+- The wake-up `<dust_system>` message includes `fireCount / maxFires` and an expiration warning
+  when the wake-up is about to expire.
+- `cleanupTemporalAfterFire(...)` deletes the Temporal schedule after the final fire.
+
+Remaining work: cron validation, cron-specific guardrails, and any further refinements of the
+recurring fire semantics.
 
 ## Milestone 4: Agent action
 
