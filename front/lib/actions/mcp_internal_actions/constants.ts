@@ -1100,6 +1100,18 @@ export const INTERNAL_MCP_SERVERS = {
     timeoutMs: undefined,
     metadata: ASK_USER_QUESTION_SERVER,
   },
+  wakeups: {
+    id: 1029,
+    availability: "auto",
+    allowMultipleInstances: false,
+    isPreview: true,
+    isRestricted: ({ featureFlags }) =>
+      !featureFlags.includes("enable_wakeups"),
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: WAKEUPS_SERVER,
+  },
   clari_copilot: {
     id: 1030,
     availability: "manual",
@@ -1112,17 +1124,6 @@ export const INTERNAL_MCP_SERVERS = {
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: CLARI_COPILOT_SERVER,
-  },
-  wakeups: {
-    id: 1031,
-    availability: "auto",
-    allowMultipleInstances: false,
-    isPreview: true,
-    isRestricted: ({ featureFlags }) => !featureFlags.includes("enable_wakeups"),
-    tools_arguments_requiring_approval: undefined,
-    tools_retry_policies: undefined,
-    timeoutMs: undefined,
-    metadata: WAKEUPS_SERVER,
   },
   // Using satisfies here instead of: type to avoid TypeScript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
 } satisfies {
