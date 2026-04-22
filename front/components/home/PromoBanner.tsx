@@ -6,14 +6,16 @@ import { useEffect, useState } from "react";
 // Set to null when there's nothing to promote.
 // =============================================================================
 const CURRENT_PROMO: PromoConfig | null = {
-  id: "product-vision-webinar-2026-04",
+  id: "product-vision-webinar-replay-2026-05",
   image: "/static/landing/Webinar_Banner.jpeg",
-  link: "https://watch.getcontrast.io/register/dust-dust-community-office-hours-a24c1c99?utm_source=dust-website&utm_medium=banner",
-  title: "Dust Product Vision Webinar",
-  subtitle: "Apr 14 at 3:45 PM · Gabriel (CEO) & Thibaut (Partnerships)",
-  linkLabel: "Register now",
-  // Banner auto-hides after this date (end of the event day).
-  expiresAt: new Date("2026-04-14T17:00:00"),
+  link: "https://watch.getcontrast.io/register/dust-dust-community-office-hours-a24c1c99?utm_source=website",
+  title: "Dust Product Vision",
+  subtitle: "Building AI that works for your whole team",
+  hostedBy:
+    "Hosted by Gabriel Hubert (CEO) and Thibault Martin (Partnership Lead)",
+  linkLabel: "Watch the replay",
+  // Banner auto-hides after this date.
+  expiresAt: new Date("2026-05-06T17:00:00"),
 };
 // =============================================================================
 
@@ -26,6 +28,8 @@ interface PromoConfig {
   link: string;
   title: string;
   subtitle: string;
+  /** Optional second subtitle line (e.g. hosts). */
+  hostedBy?: string;
   linkLabel: string;
   /** Optional expiry — banner stops showing after this date. */
   expiresAt?: Date;
@@ -54,7 +58,8 @@ export function PromoBanner() {
     return null;
   }
 
-  const { image, link, title, subtitle, linkLabel, id } = CURRENT_PROMO;
+  const { image, link, title, subtitle, hostedBy, linkLabel, id } =
+    CURRENT_PROMO;
 
   return (
     <div className="fixed bottom-4 left-4 z-40 max-w-[320px] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
@@ -80,7 +85,10 @@ export function PromoBanner() {
         className="block px-4 py-3"
       >
         <div className="text-sm font-medium text-slate-900">{title}</div>
-        <div className="mt-0.5 text-xs text-slate-500">{subtitle}</div>
+        <div className="mt-0.5 text-xs text-slate-900">{subtitle}</div>
+        {hostedBy && (
+          <div className="mt-0.5 text-xs text-slate-500">{hostedBy}</div>
+        )}
         <div className="mt-1.5 text-xs font-medium text-blue-600 hover:underline">
           {linkLabel} →
         </div>
