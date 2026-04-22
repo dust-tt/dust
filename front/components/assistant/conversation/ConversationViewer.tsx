@@ -920,12 +920,20 @@ export const ConversationViewer = ({
         const {
           message: messageFromBackend,
           contentFragments: contentFragmentsFromBackend,
+          agentMessages: agentMessagesFromBackend,
         } = result.value;
 
         const renderedUserMessage = {
           ...messageFromBackend,
           contentFragments: contentFragmentsFromBackend,
         };
+        const renderedAgentMessages = agentMessagesFromBackend
+          .map((agentMessage) =>
+            makeInitialMessageStreamState(
+              getLightAgentMessageFromAgentMessage(agentMessage)
+            )
+          )
+          .sort((a, b) => a.rank - b.rank);
 
         // If the message was created in a branch, we remove the placeholder user message and the placeholder agent messages from the list.
         if (messageFromBackend.branchId) {
@@ -943,11 +951,26 @@ export const ConversationViewer = ({
           .filter(
             (m) =>
               m.sId !== placeholderUserMsg.sId &&
-              !(isUserMessage(m) && m.sId === messageFromBackend.sId)
+              !placeholderAgentMessages.some(
+                (placeholderAgentMessage) =>
+                  placeholderAgentMessage.sId === m.sId
+              ) &&
+              !(isUserMessage(m) && m.sId === messageFromBackend.sId) &&
+              !(
+                isAgentMessageWithStreaming(m) &&
+                renderedAgentMessages.some(
+                  (renderedAgentMessage) => renderedAgentMessage.sId === m.sId
+                )
+              )
           );
 
-        const offset = getBranchedInsertIndex(nextData, renderedUserMessage);
-        nextData.splice(offset, 0, renderedUserMessage);
+        for (const messageToInsert of [
+          renderedUserMessage,
+          ...renderedAgentMessages,
+        ]) {
+          const offset = getBranchedInsertIndex(nextData, messageToInsert);
+          nextData.splice(offset, 0, messageToInsert);
+        }
 
         ref.current.data.replace(nextData);
 
