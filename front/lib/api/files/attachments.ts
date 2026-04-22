@@ -43,9 +43,10 @@ export async function maybeUpsertFileAttachment(
       ...fileResources.map(async (fileResource) => {
         if (
           fileResource.useCase === "conversation" &&
-          !fileResource.useCaseMetadata
+          !fileResource.useCaseMetadata?.conversationId
         ) {
           await fileResource.setUseCaseMetadata(auth, {
+            ...(fileResource.useCaseMetadata ?? {}),
             conversationId: conversation.sId,
           });
 
