@@ -23,7 +23,7 @@ import type {
 } from "@app/lib/search/tools/types";
 import { useUnifiedSearch } from "@app/lib/swr/search";
 import { useSpaces } from "@app/lib/swr/spaces";
-import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/core_api";
+import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/utils";
 import type { DataSourceType } from "@app/types/data_source";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import type { FileUseCaseMetadata } from "@app/types/files";

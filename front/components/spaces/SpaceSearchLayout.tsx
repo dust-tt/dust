@@ -40,7 +40,7 @@ import type {
 } from "@app/types/api/public/spaces";
 import { DATA_SOURCE_VIEW_CATEGORIES_DISPLAY_NAMES } from "@app/types/api/public/spaces";
 import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
-import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/core_api";
+import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/utils";
 import type {
   DataSourceViewContentNode,
   DataSourceViewType,
