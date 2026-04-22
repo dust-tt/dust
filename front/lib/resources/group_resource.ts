@@ -130,17 +130,47 @@ export class GroupResource extends BaseResource<GroupModel> {
     { cacheNullValues: false }
   );
 
-  static invalidateGroupIdsCacheForUser = invalidateCacheWithRedis(
+  private static _invalidateGroupIdsCacheForUser = invalidateCacheWithRedis(
     (_params: { user: { id: ModelId }; workspace: { id: ModelId } }) =>
       Promise.resolve([]),
     GroupResource.groupIdsCacheKeyResolver
   );
 
-  static batchInvalidateGroupIdsCacheForUsers = batchInvalidateCacheWithRedis(
-    (_params: { user: { id: ModelId }; workspace: { id: ModelId } }) =>
-      Promise.resolve([]),
-    GroupResource.groupIdsCacheKeyResolver
-  );
+  static invalidateGroupIdsCacheForUser = async (params: {
+    user: { id: ModelId };
+    workspace: { id: ModelId };
+  }) => {
+    logger.info(
+      {
+        userModelId: params.user.id,
+        workspaceModelId: params.workspace.id,
+        method: "GroupResource.invalidateGroupIdsCacheForUser",
+      },
+      "Invalidating auth resource cache"
+    );
+    return GroupResource._invalidateGroupIdsCacheForUser(params);
+  };
+
+  private static _batchInvalidateGroupIdsCacheForUsers =
+    batchInvalidateCacheWithRedis(
+      (_params: { user: { id: ModelId }; workspace: { id: ModelId } }) =>
+        Promise.resolve([]),
+      GroupResource.groupIdsCacheKeyResolver
+    );
+
+  static batchInvalidateGroupIdsCacheForUsers = async (
+    argsList: [{ user: { id: ModelId }; workspace: { id: ModelId } }][]
+  ) => {
+    logger.info(
+      {
+        workspaceModelId: argsList[0]?.[0]?.workspace.id,
+        count: argsList.length,
+        method: "GroupResource.batchInvalidateGroupIdsCacheForUsers",
+      },
+      "Invalidating auth resource cache (batch)"
+    );
+    return GroupResource._batchInvalidateGroupIdsCacheForUsers(argsList);
+  };
 
   /**
    * WARNING: This method skips workspace membership checks. It is intended for use in
@@ -157,6 +187,14 @@ export class GroupResource extends BaseResource<GroupModel> {
     transaction?: Transaction;
   }): Promise<ModelId[]> {
     if (transaction) {
+      logger.info(
+        {
+          userModelId: user.id,
+          workspaceModelId: workspace.id,
+          method: "GroupResource.dangerouslyListUserGroupsForAuth",
+        },
+        "Skipping auth resource cache: transaction provided"
+      );
       return this.dangerouslyListUserGroupsForAuthUncached({
         user,
         workspace,

@@ -411,11 +411,26 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     { cacheNullValues: false }
   );
 
-  private static invalidateRoleCache = invalidateCacheWithRedis(
+  private static _invalidateRoleCache = invalidateCacheWithRedis(
     MembershipResource._getActiveRoleForUserInWorkspaceUncached,
     (params: { userModelId: ModelId; workspaceModelId: ModelId }) =>
       MembershipResource.roleCacheKeyResolver(params)
   );
+
+  private static invalidateRoleCache = async (params: {
+    userModelId: ModelId;
+    workspaceModelId: ModelId;
+  }) => {
+    logger.info(
+      {
+        userModelId: params.userModelId,
+        workspaceModelId: params.workspaceModelId,
+        method: "MembershipResource.invalidateRoleCache",
+      },
+      "Invalidating auth resource cache"
+    );
+    return MembershipResource._invalidateRoleCache(params);
+  };
 
   static async getActiveRoleForUserInWorkspace({
     user,
@@ -427,6 +442,14 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     transaction?: Transaction;
   }): Promise<MembershipRoleType | "none"> {
     if (transaction) {
+      logger.info(
+        {
+          userModelId: user.id,
+          workspaceModelId: workspace.id,
+          method: "MembershipResource.getActiveRoleForUserInWorkspace",
+        },
+        "Skipping auth resource cache: transaction provided"
+      );
       return this._getActiveRoleForUserInWorkspaceUncached({
         userModelId: user.id,
         workspaceModelId: workspace.id,
