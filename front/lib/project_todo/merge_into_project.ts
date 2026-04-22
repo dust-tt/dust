@@ -376,9 +376,10 @@ async function buildDeduplicationMap(
 
 // ── Phase 3 ───────────────────────────────────────────────────────────────────
 
-// For each candidate: if a semantic duplicate was found, attach the source link
-// to the existing todo (updating content for agent-created ones if needed).
-// Otherwise, create a new todo and link the source.
+// Candidates are processed sequentially within each (userId, category) group
+// so that a leader's todo is created before any follower in the same group
+// needs to reference it. Groups run in parallel — no cross-group ordering
+// constraint exists.
 async function createOrLinkTodos(
   auth: Authenticator,
   {
@@ -396,72 +397,127 @@ async function createOrLinkTodos(
   let deduplicated = 0;
   let createdNew = 0;
 
-  await concurrentExecutor(
-    newCandidates,
-    async (candidate) => {
-      const match =
-        dedupMap.get(makeDedupResultKey(candidate.userId, candidate.itemId)) ??
-        null;
+  // Group by (userId, category) — same grouping the dedup phase used, so
+  // follower references (same-group only) resolve via leaderTodos below.
+  const byGroup = new Map<string, PendingCandidate[]>();
+  for (const c of newCandidates) {
+    const key = `${c.userId}:${c.blob.category}`;
+    const bucket = byGroup.get(key) ?? [];
+    bucket.push(c);
+    byGroup.set(key, bucket);
+  }
 
-      if (match !== null) {
-        // Semantic duplicate found — link the new source to the existing todo.
-        await match.upsertSource(auth, {
+  await concurrentExecutor(
+    Array.from(byGroup.values()),
+    async (groupCandidates) => {
+      // Map from candidate key → todo created for that candidate (leaders only).
+      // Populated as we iterate so followers later in the group can look up
+      // their leader's todo without hitting the database.
+      const leaderTodos = new Map<string, ProjectTodoResource>();
+
+      for (const candidate of groupCandidates) {
+        const candidateKey = makeDedupResultKey(
+          candidate.userId,
+          candidate.itemId
+        );
+        const resolution = dedupMap.get(candidateKey);
+
+        if (resolution?.kind === "existing") {
+          // Semantic duplicate of an existing todo — link source + maybe update.
+          await resolution.todo.upsertSource(auth, {
+            itemId: candidate.itemId,
+            source: candidate.source,
+          });
+          // User-intent guard lives in updateTodoIfChanged — no-op when the
+          // target todo was created by a user or already marked done by one.
+          await updateTodoIfChanged(resolution.todo, auth, candidate.blob);
+          deduplicated++;
+
+          localLogger.info(
+            {
+              existingTodoId: resolution.todo.sId,
+              itemId: candidate.itemId,
+              userId: candidate.userId,
+              source: candidate.source,
+              createdByType: resolution.todo.createdByType,
+            },
+            "Project todo merge: linked source to existing todo (semantic duplicate)"
+          );
+          continue;
+        }
+
+        if (resolution?.kind === "follower") {
+          const leader = leaderTodos.get(resolution.leaderKey);
+          if (leader) {
+            await leader.upsertSource(auth, {
+              itemId: candidate.itemId,
+              source: candidate.source,
+            });
+            deduplicated++;
+
+            localLogger.info(
+              {
+                leaderTodoId: leader.sId,
+                itemId: candidate.itemId,
+                userId: candidate.userId,
+                source: candidate.source,
+              },
+              "Project todo merge: linked source to leader todo (intra-batch duplicate)"
+            );
+            continue;
+          }
+          // Defensive: the chain resolver should have ensured the leader
+          // appears earlier in this group. If not, fall through and create a
+          // fresh todo rather than silently dropping the candidate's source.
+          localLogger.warn(
+            {
+              itemId: candidate.itemId,
+              userId: candidate.userId,
+              leaderKey: resolution.leaderKey,
+            },
+            "Project todo merge: follower without leader, promoting to new todo"
+          );
+        }
+
+        // Leader, or follower-without-leader fallback, or no resolution at
+        // all — create a fresh todo. Atomic so Temporal retries can't leave
+        // an orphan row.
+        const todo = await ProjectTodoResource.makeNewWithSource(auth, {
+          blob: {
+            spaceId: spaceModelId,
+            userId: candidate.userId,
+            createdByType: "agent",
+            createdByUserId: null,
+            createdByAgentConfigurationId: BUTLER_AGENT_SID,
+            category: candidate.blob.category,
+            text: candidate.blob.text,
+            status: candidate.blob.status,
+            doneAt: candidate.blob.doneAt,
+            actorRationale: null,
+            markedAsDoneByType: null,
+            markedAsDoneByUserId: null,
+            markedAsDoneByAgentConfigurationId: null,
+          },
           itemId: candidate.itemId,
           source: candidate.source,
         });
 
-        // User-intent guard lives in updateTodoIfChanged — it is a no-op when
-        // the target todo was created by a user or already marked done by one.
-        await updateTodoIfChanged(match, auth, candidate.blob);
-
-        deduplicated++;
+        // Record this candidate as a potential leader so later same-group
+        // followers can attach to it. Only leaders seed the map; the fallback
+        // path writes here too to keep "follower without leader" recoverable.
+        leaderTodos.set(candidateKey, todo);
+        createdNew++;
 
         localLogger.info(
           {
-            existingTodoId: match.sId,
+            todoId: todo.sId,
             itemId: candidate.itemId,
             userId: candidate.userId,
             source: candidate.source,
-            createdByType: match.createdByType,
           },
-          "Project todo merge: linked source to existing todo (semantic duplicate)"
+          "Project todo merge: created new todo"
         );
-        return;
       }
-
-      // No duplicate — create a fresh todo and link the source atomically so
-      // a Temporal retry after a partial success can't leave an orphan row.
-      const todo = await ProjectTodoResource.makeNewWithSource(auth, {
-        blob: {
-          spaceId: spaceModelId,
-          userId: candidate.userId,
-          createdByType: "agent",
-          createdByUserId: null,
-          createdByAgentConfigurationId: BUTLER_AGENT_SID,
-          category: candidate.blob.category,
-          text: candidate.blob.text,
-          status: candidate.blob.status,
-          doneAt: candidate.blob.doneAt,
-          actorRationale: null,
-          markedAsDoneByType: null,
-          markedAsDoneByUserId: null,
-          markedAsDoneByAgentConfigurationId: null,
-        },
-        itemId: candidate.itemId,
-        source: candidate.source,
-      });
-
-      createdNew++;
-
-      localLogger.info(
-        {
-          todoId: todo.sId,
-          itemId: candidate.itemId,
-          userId: candidate.userId,
-          source: candidate.source,
-        },
-        "Project todo merge: created new todo"
-      );
     },
     { concurrency: 4 }
   );

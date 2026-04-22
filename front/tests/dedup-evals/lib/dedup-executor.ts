@@ -52,11 +52,22 @@ export async function executeDedup(
   const existingTodos = buildMockExistingTodos(testCase);
   const candidates = buildCandidates(testCase);
 
-  const matchMap = await runDeduplicationLLMCall(auth, {
+  const llmMatches = await runDeduplicationLLMCall(auth, {
     model,
     candidates,
     existingTodos,
   });
+
+  // Current eval assertions only cover candidate→existing matches. Project
+  // the richer LLMMatch map down to the legacy shape, dropping intra-batch
+  // follower matches; adding assertion types for intra-batch dedup is
+  // tracked separately.
+  const matchMap = new Map<number, string>();
+  for (const [idx, match] of llmMatches) {
+    if (match.kind === "existing") {
+      matchMap.set(idx, match.sId);
+    }
+  }
 
   return { matchMap };
 }
