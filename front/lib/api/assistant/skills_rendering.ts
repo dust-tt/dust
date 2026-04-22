@@ -46,7 +46,8 @@ export function renderAvailableSkillsUserMessage(
 
   const enableSkillToolName = `${SKILL_MANAGEMENT_SERVER_NAME}${TOOL_NAME_SEPARATOR}${ENABLE_SKILL_TOOL_NAME}`;
   const lines = equippedSkills.map(
-    ({ name, agentFacingDescription }) => `- ${name}: ${agentFacingDescription}`
+    ({ name, agentFacingDescription }) =>
+      `- **${name}**: ${agentFacingDescription}`
   );
 
   return renderSystemSkillMessage(

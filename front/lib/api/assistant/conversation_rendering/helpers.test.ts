@@ -217,8 +217,8 @@ describe("skill rendering helpers", () => {
           text: `<dust_system>
 The following skills are available for use with the skill_management__enable_skill tool:
 
-- commit: Create a git commit with a descriptive message.
-- review-pr: Review a pull request for code quality and correctness.
+- **commit**: Create a git commit with a descriptive message.
+- **review-pr**: Review a pull request for code quality and correctness.
 </dust_system>`,
         },
       ],
