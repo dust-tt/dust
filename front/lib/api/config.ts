@@ -208,6 +208,9 @@ const config = {
 
     return port;
   },
+  getEgressPolicyBucket: (): string => {
+    return EnvironmentConfig.getEnvVariable("EGRESS_PROXY_POLICY_BUCKET");
+  },
   getEgressProxyTlsName: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("EGRESS_PROXY_TLS_NAME");
   },

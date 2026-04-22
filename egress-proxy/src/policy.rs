@@ -1,9 +1,25 @@
-use crate::domain::{normalize_dns_name, normalize_domain_or_ip};
+use crate::domain::normalize_dns_name;
 use anyhow::{anyhow, Result};
+use serde::{Deserialize, Deserializer};
 
-#[derive(Debug, Clone)]
-pub struct TemporaryAllowlist {
-    patterns: Vec<DomainPattern>,
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Policy {
+    default_action: Action,
+    rules: Vec<PolicyRule>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Action {
+    Allow,
+    Deny,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct PolicyRule {
+    domain: DomainPattern,
+    action: Action,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -12,43 +28,20 @@ enum DomainPattern {
     WildcardSuffix(String),
 }
 
-impl TemporaryAllowlist {
-    pub fn parse(value: &str) -> Result<Self> {
-        let mut patterns = Vec::new();
-
-        for raw_entry in value.split(',') {
-            let entry = raw_entry.trim();
-            if entry.is_empty() {
-                continue;
+impl Policy {
+    pub fn evaluate(&self, domain: &str) -> Action {
+        for rule in &self.rules {
+            if rule.domain.matches(domain) {
+                return rule.action;
             }
-            patterns.push(DomainPattern::parse(entry)?);
         }
 
-        if patterns.is_empty() {
-            return Err(anyhow!("EGRESS_PROXY_ALLOWED_DOMAINS must not be empty"));
-        }
-
-        Ok(Self { patterns })
-    }
-
-    pub fn allows(&self, domain: &str, sb_id: &str) -> bool {
-        // TODO(sandbox-egress): Replace this static env allowlist with the GCS-backed
-        // per-sandbox policy provider. The production policy source is
-        // gs://<regional-sandbox-egress-policies>/policies/{sbId}.json.
-
-        // TODO(sandbox-egress): Use sb_id to fetch policies/{sbId}.json from GCS. PR 1 uses
-        // the same temporary allowlist for every sandbox so we can validate the proxy protocol
-        // independently from front and GCS integration.
-        let _ = sb_id;
-
-        self.patterns.iter().any(|pattern| pattern.matches(domain))
+        self.default_action
     }
 }
 
 impl DomainPattern {
     fn parse(value: &str) -> Result<Self> {
-        // TODO(sandbox-egress): Replace the minimal domain allowlist with the full policy schema
-        // (defaultAction + rules) once front starts writing policy files.
         let value = value.trim().to_ascii_lowercase();
         if let Some(suffix) = value.strip_prefix("*.") {
             let suffix = normalize_dns_name(suffix)
@@ -59,9 +52,9 @@ impl DomainPattern {
             return Ok(Self::WildcardSuffix(suffix));
         }
 
-        let value =
-            normalize_domain_or_ip(&value).map_err(|_| anyhow!("invalid domain entry: {value}"))?;
-        Ok(Self::Exact(value))
+        let exact =
+            normalize_dns_name(&value).map_err(|_| anyhow!("invalid domain entry: {value}"))?;
+        Ok(Self::Exact(exact))
     }
 
     fn matches(&self, domain: &str) -> bool {
@@ -76,51 +69,101 @@ impl DomainPattern {
     }
 }
 
-// TODO(sandbox-egress): Add a bounded TTL cache for GCS policies to avoid reading on
-// every connection.
+impl<'de> Deserialize<'de> for DomainPattern {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let value = String::deserialize(deserializer)?;
+        Self::parse(&value).map_err(serde::de::Error::custom)
+    }
+}
 
 #[cfg(test)]
 mod tests {
-    use super::TemporaryAllowlist;
+    use super::{Action, Policy};
 
     #[test]
     fn exact_domains_match_case_insensitively_after_parse() {
-        let allowlist =
-            TemporaryAllowlist::parse("Example.COM").expect("valid domain entry should parse");
+        let policy: Policy = serde_json::from_str(
+            r#"{
+                "defaultAction": "deny",
+                "rules": [{ "domain": "Example.COM", "action": "allow" }]
+            }"#,
+        )
+        .expect("valid policy should parse");
 
-        assert!(allowlist.allows("example.com", "sbx"));
-        assert!(!allowlist.allows("api.example.com", "sbx"));
-    }
-
-    #[test]
-    fn exact_ip_literals_are_valid_entries() {
-        let allowlist = TemporaryAllowlist::parse("127.0.0.1,::ffff:127.0.0.1")
-            .expect("valid IP literal entries should parse");
-
-        assert!(allowlist.allows("127.0.0.1", "sbx"));
-        assert!(allowlist.allows("::ffff:127.0.0.1", "sbx"));
+        assert_eq!(policy.evaluate("example.com"), Action::Allow);
+        assert_eq!(policy.evaluate("api.example.com"), Action::Deny);
     }
 
     #[test]
     fn wildcard_matches_subdomains_only() {
-        let allowlist =
-            TemporaryAllowlist::parse("*.example.com").expect("valid wildcard entry should parse");
+        let policy: Policy = serde_json::from_str(
+            r#"{
+                "defaultAction": "deny",
+                "rules": [{ "domain": "*.example.com", "action": "allow" }]
+            }"#,
+        )
+        .expect("valid policy should parse");
 
-        assert!(allowlist.allows("api.example.com", "sbx"));
-        assert!(allowlist.allows("a.b.example.com", "sbx"));
-        assert!(!allowlist.allows("example.com", "sbx"));
+        assert_eq!(policy.evaluate("api.example.com"), Action::Allow);
+        assert_eq!(policy.evaluate("a.b.example.com"), Action::Allow);
+        assert_eq!(policy.evaluate("example.com"), Action::Deny);
     }
 
     #[test]
-    fn invalid_entries_fail_startup() {
-        assert!(TemporaryAllowlist::parse("example.com, bad domain").is_err());
-        assert!(TemporaryAllowlist::parse(" , ").is_err());
-        assert!(TemporaryAllowlist::parse("*").is_err());
-        assert!(TemporaryAllowlist::parse("*.*.com").is_err());
-        assert!(TemporaryAllowlist::parse("*example.com").is_err());
-        assert!(TemporaryAllowlist::parse(".example.com").is_err());
-        assert!(TemporaryAllowlist::parse("example..com").is_err());
-        assert!(TemporaryAllowlist::parse("host:443").is_err());
-        assert!(TemporaryAllowlist::parse("*.com").is_err());
+    fn first_matching_rule_wins() {
+        let policy: Policy = serde_json::from_str(
+            r#"{
+                "defaultAction": "allow",
+                "rules": [
+                    { "domain": "*.example.com", "action": "deny" },
+                    { "domain": "api.example.com", "action": "allow" }
+                ]
+            }"#,
+        )
+        .expect("valid policy should parse");
+
+        assert_eq!(policy.evaluate("api.example.com"), Action::Deny);
+        assert_eq!(policy.evaluate("other.example.com"), Action::Deny);
+        assert_eq!(policy.evaluate("dust.tt"), Action::Allow);
+    }
+
+    #[test]
+    fn invalid_entries_fail_deserialization() {
+        for domain in [
+            "127.0.0.1",
+            "::1",
+            "*",
+            "*.*.com",
+            "*example.com",
+            ".example.com",
+            "example..com",
+            "host:443",
+            "*.com",
+        ] {
+            let policy = format!(
+                r#"{{
+                    "defaultAction": "deny",
+                    "rules": [{{ "domain": "{domain}", "action": "allow" }}]
+                }}"#
+            );
+            assert!(
+                serde_json::from_str::<Policy>(&policy).is_err(),
+                "{domain} should be rejected"
+            );
+        }
+    }
+
+    #[test]
+    fn unknown_action_fails_deserialization() {
+        assert!(serde_json::from_str::<Policy>(
+            r#"{
+                    "defaultAction": "deny",
+                    "rules": [{ "domain": "example.com", "action": "block" }]
+                }"#,
+        )
+        .is_err());
     }
 }

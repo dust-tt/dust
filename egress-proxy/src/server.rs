@@ -22,7 +22,7 @@ pub async fn run(config: Config) -> Result<()> {
     let proxy_addr = listener.local_addr()?;
     let health_listener = TcpListener::bind(config.health_addr).await?;
     let health_addr = health_listener.local_addr()?;
-    let state = Arc::new(ConnectionState::new(&config));
+    let state = Arc::new(ConnectionState::new(&config)?);
 
     // TODO(sandbox-egress): Confirm final certificate provisioning path once the Kubernetes
     // deployment and DNS name are introduced.

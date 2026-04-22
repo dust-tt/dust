@@ -1,6 +1,10 @@
 import config from "@app/lib/api/config";
 import { getSandboxProvider } from "@app/lib/api/sandbox";
 import { revokeAllExecTokensForSandbox } from "@app/lib/api/sandbox/access_tokens";
+import {
+  deleteSandboxPolicy,
+  writeEmptySandboxPolicy,
+} from "@app/lib/api/sandbox/egress_policy";
 import { getSandboxImage } from "@app/lib/api/sandbox/image";
 import {
   recordLifecycleOperation,
@@ -277,6 +281,10 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         }
       }
 
+      await this.cleanupSandboxPolicy(sandbox.providerId, {
+        sandbox: sandbox.toLogJSON(),
+      });
+
       await SandboxModel.destroy({
         where: {
           id: sandbox.id,
@@ -304,6 +312,45 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     return executeWithLock(`sandbox:lifecycle:${conversationId}`, () =>
       fn(provider)
     );
+  }
+
+  private static async cleanupSandboxPolicy(
+    providerId: string,
+    logContext: Record<string, unknown>
+  ): Promise<void> {
+    const deleteResult = await deleteSandboxPolicy(providerId);
+    if (deleteResult.isErr()) {
+      logger.error(
+        {
+          ...logContext,
+          providerId,
+          error: deleteResult.error.message,
+        },
+        "Failed to delete sandbox egress policy."
+      );
+    }
+  }
+
+  private static async destroyProviderSandboxBestEffort(
+    provider: SandboxProvider,
+    providerId: string,
+    tracingOpts: { workspaceId: string },
+    logContext: Record<string, unknown>
+  ): Promise<void> {
+    const destroyResult = await provider.destroy(providerId, tracingOpts);
+    if (
+      destroyResult.isErr() &&
+      !(destroyResult.error instanceof SandboxNotFoundError)
+    ) {
+      logger.error(
+        {
+          ...logContext,
+          providerId,
+          error: destroyResult.error.message,
+        },
+        "Failed to destroy sandbox at provider during cleanup."
+      );
+    }
   }
 
   /**
@@ -351,6 +398,23 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         );
         if (createResult.isErr()) {
           return createResult;
+        }
+
+        const writePolicyResult = await writeEmptySandboxPolicy(
+          createResult.value.providerId
+        );
+        if (writePolicyResult.isErr()) {
+          await this.destroyProviderSandboxBestEffort(
+            provider,
+            createResult.value.providerId,
+            tracingOpts,
+            {
+              conversationId: conversation.sId,
+              workspaceId: auth.getNonNullableWorkspace().sId,
+            }
+          );
+
+          return writePolicyResult;
         }
 
         const sandbox = await SandboxResource.makeNew(auth, {
@@ -432,6 +496,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         // Falls through to recreation when wake fails.
 
         case "deleted": {
+          const oldProviderId = existing.providerId;
           const imageResult = getSandboxImage(auth);
           if (imageResult.isErr()) {
             return imageResult;
@@ -455,8 +520,33 @@ export class SandboxResource extends BaseResource<SandboxModel> {
           if (createResult.isErr()) {
             return createResult;
           }
+
+          const writePolicyResult = await writeEmptySandboxPolicy(
+            createResult.value.providerId
+          );
+          if (writePolicyResult.isErr()) {
+            await this.destroyProviderSandboxBestEffort(
+              provider,
+              createResult.value.providerId,
+              tracingOpts,
+              {
+                conversationId: conversation.sId,
+                sandbox: existing.toLogJSON(),
+                workspaceId: auth.getNonNullableWorkspace().sId,
+              }
+            );
+
+            return writePolicyResult;
+          }
+
           await existing.update({ providerId: createResult.value.providerId });
           freshlyCreated = true;
+
+          await this.cleanupSandboxPolicy(oldProviderId, {
+            conversationId: conversation.sId,
+            sandbox: existing.toLogJSON(),
+            workspaceId: auth.getNonNullableWorkspace().sId,
+          });
 
           const startTelemetry = await provider.exec(
             createResult.value.providerId,
@@ -527,6 +617,10 @@ export class SandboxResource extends BaseResource<SandboxModel> {
             "Sandbox not found at provider during sleep — marking deleted."
           );
           await sandbox.updateStatus("deleted", { ctx });
+          await this.cleanupSandboxPolicy(sandbox.providerId, {
+            sandbox: sandbox.toLogJSON(),
+            workspaceId: auth.getNonNullableWorkspace().sId,
+          });
           return new Ok(undefined);
         }
         return result;
@@ -631,12 +725,20 @@ export class SandboxResource extends BaseResource<SandboxModel> {
             "Sandbox not found at provider during destroy — marking deleted."
           );
           await sandbox.updateStatus("deleted", { ctx });
+          await this.cleanupSandboxPolicy(sandbox.providerId, {
+            sandbox: sandbox.toLogJSON(),
+            workspaceId: auth.getNonNullableWorkspace().sId,
+          });
           return new Ok(undefined);
         }
         return result;
       }
 
       await sandbox.updateStatus("deleted", { ctx });
+      await this.cleanupSandboxPolicy(sandbox.providerId, {
+        sandbox: sandbox.toLogJSON(),
+        workspaceId: auth.getNonNullableWorkspace().sId,
+      });
       recordLifecycleOperation("destroy", ctx);
 
       void revokeAllExecTokensForSandbox(sandbox.sId).catch((err) =>
