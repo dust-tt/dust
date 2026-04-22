@@ -82,6 +82,36 @@ function constructContextSection({
   return context;
 }
 
+function quotePromptText(text: string): string {
+  return JSON.stringify(text);
+}
+
+function constructBranchContextSection({
+  conversation,
+}: {
+  conversation?: Pick<ConversationWithoutContentType, "forkedFrom">;
+}): string {
+  const forkedFrom = conversation?.forkedFrom;
+  if (!forkedFrom) {
+    return "";
+  }
+
+  const parentConversation = forkedFrom.parentConversationTitle
+    ? quotePromptText(forkedFrom.parentConversationTitle)
+    : `conversation ${forkedFrom.parentConversationId}`;
+
+  return (
+    "# BRANCH CONTEXT\n\n" +
+    `This conversation was branched from ${parentConversation}.\n` +
+    "This conversation starts from a summary of the parent conversation at " +
+    "the branch point.\n" +
+    "Available tools and enabled skills from the parent conversation were " +
+    "carried over into this conversation.\n" +
+    "Conversation attachments and tool outputs available at the branch point were " +
+    "also carried over into this conversation.\n"
+  );
+}
+
 function constructToolsSection({
   hasAvailableActions,
   model,
@@ -420,6 +450,7 @@ export function constructPromptMultiActions(
     owner,
     userMessage,
   });
+  const branchContextSection = constructBranchContextSection({ conversation });
   const toolsSection = constructToolsSection({
     hasAvailableActions,
     model,
@@ -440,11 +471,11 @@ export function constructPromptMultiActions(
     // Instructions (long cache): stable per agent config — agent instructions,
     // tools (directives + server listing), skills, format docs, and guidelines.
     //
-    // Shared context (short cache): workspace-scoped data shared across users —
-    // date, toolsets, workspace info. A cache breakpoint here
-    // lets different users in the same workspace share this prefix.
+    // Shared context (short cache): workspace-scoped data shared across users — date, toolsets,
+    // workspace info. A cache breakpoint here lets different users in the same workspace share
+    // this prefix.
     //
-    // Ephemeral context (no breakpoint): per-user data — memories, user profile.
+    // Ephemeral context (no breakpoint): per-call data — branch lineage, memories, user profile.
     const fullInstructions = [
       instructionsContent,
       toolsSection,
@@ -463,6 +494,7 @@ export function constructPromptMultiActions(
     ].filter((s) => s.content.trim() !== "");
 
     const ephemeralContext: SystemPromptContext[] = [
+      { role: "context" as const, content: branchContextSection },
       { role: "context" as const, content: memoriesContext ?? "" },
       { role: "context" as const, content: userContext ?? "" },
     ].filter((s) => s.content.trim() !== "");
@@ -480,6 +512,7 @@ export function constructPromptMultiActions(
   const allSections: SystemPromptContext[] = [
     { role: "context" as const, content: instructionsContent },
     { role: "context" as const, content: contextSection },
+    { role: "context" as const, content: branchContextSection },
     { role: "context" as const, content: toolsSection },
     { role: "context" as const, content: skillsSection },
     { role: "context" as const, content: attachmentsSection },

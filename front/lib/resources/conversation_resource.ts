@@ -622,7 +622,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       )
     );
 
-    if (!this.isPrivateConversationUrlsByDefaultEnabled(auth)) {
+    if (
+      !this.isPrivateConversationUrlsByDefaultEnabled(auth) ||
+      auth.isAdmin()
+    ) {
       return spaceBasedAccessible;
     }
 
