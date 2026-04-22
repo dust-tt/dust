@@ -1115,7 +1115,7 @@ export const INTERNAL_MCP_SERVERS = {
   },
   wakeups: {
     id: 1031,
-    availability: "auto_hidden_builder",
+    availability: "auto",
     allowMultipleInstances: false,
     isPreview: true,
     isRestricted: ({ featureFlags }) => !featureFlags.includes("wakeups"),
