@@ -71,12 +71,13 @@ async function runSuccessfulSandboxCommand(
   return new Ok(undefined);
 }
 
-export function mintEgressJwt(providerId: string): string {
+export function mintEgressJwt(providerId: string, workspaceId: string): string {
   return jwt.sign(
     {
       iss: "dust-front",
       aud: "dust-egress-proxy",
       sbId: providerId,
+      wId: workspaceId,
     },
     config.getEgressProxyJwtSecret(),
     {
@@ -123,7 +124,10 @@ export async function setupEgressForwarder(
     return new Err(error instanceof Error ? error : new Error(String(error)));
   }
 
-  const token = mintEgressJwt(sandbox.providerId);
+  const token = mintEgressJwt(
+    sandbox.providerId,
+    auth.getNonNullableWorkspace().sId
+  );
   const tokenWriteResult = await sandbox.writeFile(
     auth,
     EGRESS_TOKEN_PATH,
@@ -133,19 +137,20 @@ export async function setupEgressForwarder(
     return tokenWriteResult;
   }
 
-  const chmodResult = await runSuccessfulSandboxCommand(
+  // Older sandboxes may still have root-owned log files from before the
+  // forwarder switched to dust-fwd, so clear them before dropping privileges.
+  const prepareRuntimeFilesResult = await runSuccessfulSandboxCommand(
     auth,
     sandbox,
-    `chmod 600 ${shellEscape(EGRESS_TOKEN_PATH)}`,
+    `chown dust-fwd:dust-fwd ${shellEscape(EGRESS_TOKEN_PATH)} && ` +
+      `chmod 600 ${shellEscape(EGRESS_TOKEN_PATH)} && ` +
+      `rm -f ${shellEscape(EGRESS_FORWARDER_LOG_PATH)} ${shellEscape(EGRESS_DENY_LOG_PATH)}`,
     "root"
   );
-  if (chmodResult.isErr()) {
-    return chmodResult;
+  if (prepareRuntimeFilesResult.isErr()) {
+    return prepareRuntimeFilesResult;
   }
 
-  // The forwarder runs as root. The nftables rules only redirect traffic
-  // from agent-proxied (uid 1003), so root's outbound connections go
-  // straight to the internet without looping back through the proxy.
   const startForwarderCommand =
     "nohup /opt/bin/dsbx forward " +
     `--token-file ${shellEscape(EGRESS_TOKEN_PATH)} ` +
@@ -159,7 +164,7 @@ export async function setupEgressForwarder(
     auth,
     sandbox,
     startForwarderCommand,
-    "root"
+    "dust-fwd"
   );
   if (startResult.isErr()) {
     return startResult;
