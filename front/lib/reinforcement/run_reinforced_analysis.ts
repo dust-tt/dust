@@ -467,7 +467,7 @@ async function createSkillSuggestionsFromToolCall({
       }
 
       // Resolve sourceSuggestionIds to sourceConversationIds for reinforcement suggestions.
-      let sourceConversationIds: string[] | null = null;
+      let sourceConversationIds: number[] | null = null;
       if (
         source === "reinforcement" &&
         parsed.data.sourceSuggestionIds &&
@@ -480,8 +480,8 @@ async function createSkillSuggestionsFromToolCall({
         sourceConversationIds = [
           ...new Set(
             sourceSuggestions
-              .map((s) => s.sourceConversationSId)
-              .filter((sId): sId is string => sId !== null)
+              .map((s) => s.sourceConversationId)
+              .filter((id): id is number => id !== null)
           ),
         ];
       }

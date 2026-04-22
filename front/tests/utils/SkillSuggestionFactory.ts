@@ -20,7 +20,7 @@ export class SkillSuggestionFactory {
       title: string | null;
       state: SkillSuggestionState;
       source: SkillSuggestionSource;
-      sourceConversationIds: string[] | null;
+      sourceConversationIds: number[] | null;
     }> = {}
   ): Promise<SkillSuggestionResource> {
     return SkillSuggestionResource.createSuggestionForSkill(auth, skill, {

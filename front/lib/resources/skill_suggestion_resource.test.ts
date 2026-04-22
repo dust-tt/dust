@@ -540,20 +540,17 @@ describe("SkillSuggestionResource", () => {
         authenticator,
         skill,
         {
-          sourceConversationIds: ["conv_abc", "conv_def"],
+          sourceConversationIds: [100, 200],
         }
       );
 
-      expect(suggestion.sourceConversationIds).toEqual([
-        "conv_abc",
-        "conv_def",
-      ]);
+      expect(suggestion.sourceConversationIds).toEqual([100, 200]);
 
       const fetched = await SkillSuggestionResource.fetchById(
         authenticator,
         suggestion.sId
       );
-      expect(fetched?.sourceConversationIds).toEqual(["conv_abc", "conv_def"]);
+      expect(fetched?.sourceConversationIds).toEqual([100, 200]);
     });
 
     it("should default sourceConversationIds to null", async () => {
@@ -614,7 +611,7 @@ describe("SkillSuggestionResource", () => {
         authenticator,
         skill,
         {
-          sourceConversationIds: ["conv_abc", "conv_def"],
+          sourceConversationIds: [100, 200],
         }
       );
 

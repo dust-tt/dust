@@ -26,7 +26,7 @@ export class SkillSuggestionModel extends WorkspaceAwareModel<SkillSuggestionMod
   declare state: SkillSuggestionState;
   declare source: SkillSuggestionSource;
   declare sourceConversationId: ForeignKey<ConversationModel["id"]> | null;
-  declare sourceConversationIds: string[] | null;
+  declare sourceConversationIds: number[] | null;
   declare groupId: string | null;
   declare updatedByUserId: ForeignKey<UserModel["id"]> | null;
 
@@ -83,10 +83,10 @@ SkillSuggestionModel.init(
         "FK to the conversation that triggered this suggestion (only set when applicable, e.g. synthetic)",
     },
     sourceConversationIds: {
-      type: DataTypes.JSONB,
+      type: DataTypes.ARRAY(DataTypes.BIGINT),
       allowNull: true,
       comment:
-        "Array of conversation sIds that contributed to this suggestion.",
+        "Array of conversation model IDs that contributed to this reinforcement suggestion.",
     },
     groupId: {
       type: DataTypes.STRING,
