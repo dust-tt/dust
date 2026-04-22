@@ -12,7 +12,7 @@ export const discoverSkillsSkill = {
     "List available workspace skills and enable them for the current conversation.",
   instructions:
     "Some of the available skills come from the workspace rather than " +
-    "this agent's configuration. They can be enabled exactly like any other available skill.",
-  version: 1,
+    "this agent's configuration. They can be enabled exactly like any other available skill listed below.",
+  version: 2,
   icon: "PuzzleIcon",
 } as const satisfies SystemSkillDefinition;
