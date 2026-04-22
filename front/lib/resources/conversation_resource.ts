@@ -356,22 +356,21 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     });
   }
 
-  static async fetchForkingData(
-    auth: Authenticator,
-    conversation: ConversationResource
+  async fetchForkingData(
+    auth: Authenticator
   ): Promise<ConversationForkingDataType | undefined> {
-    const forkedChildren = await this.listSerializedChildForks(
+    const forkedChildren = await ConversationResource.listSerializedChildForks(
       auth,
-      conversation
+      this
     );
 
-    if (!conversation.forkingData?.forkedFrom && forkedChildren.length === 0) {
+    if (!this.forkingData?.forkedFrom && forkedChildren.length === 0) {
       return undefined;
     }
 
     return {
-      ...(conversation.forkingData?.forkedFrom && {
-        forkedFrom: conversation.forkingData.forkedFrom,
+      ...(this.forkingData?.forkedFrom && {
+        forkedFrom: this.forkingData.forkedFrom,
       }),
       ...(forkedChildren.length > 0 && { forkedChildren }),
     };
@@ -1328,7 +1327,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         conversation.id
       );
     const forkingData = options?.includeForkingData
-      ? await ConversationResource.fetchForkingData(auth, conversation)
+      ? await conversation.fetchForkingData(auth)
       : undefined;
 
     return new Ok({
