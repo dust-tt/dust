@@ -9,6 +9,7 @@ import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
 import { isUserMessageType } from "@app/types/assistant/conversation";
 import type { WakeUpType } from "@app/types/assistant/wakeups";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 // Per-conversation guardrails. Enforced at tool-call time so the agent gets a clear error instead
 // of silently over-scheduling.
@@ -105,6 +106,8 @@ function renderScheduleConfig(wakeUp: WakeUpType): string {
       return `one-shot at ${new Date(wakeUp.scheduleConfig.fireAt).toISOString()}`;
     case "cron":
       return `cron "${wakeUp.scheduleConfig.cron}" (${wakeUp.scheduleConfig.timezone})`;
+    default:
+      assertNever(wakeUp.scheduleConfig);
   }
 }
 
