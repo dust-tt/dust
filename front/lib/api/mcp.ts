@@ -119,6 +119,7 @@ export type ServerSideMCPToolTypeWithStakeAndRetryPolicy =
 export type ClientSideMCPToolTypeWithStakeLevel =
   WithStakeLevelType<MCPToolWithAvailabilityType> & {
     argumentsRequiringApproval?: string[];
+    timeoutMs?: number;
   };
 
 export type RemoteMCPServerType = MCPServerType & {

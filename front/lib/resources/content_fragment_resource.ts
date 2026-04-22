@@ -27,6 +27,7 @@ import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { ContentFragmentMessageTypeModel } from "@app/types/assistant/generation";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
@@ -623,8 +624,9 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
     );
 
     // Render all content fragments with pre-fetched files.
-    return Promise.all(
-      messagesWithContentFragment.map(async (message: MessageModel) => {
+    return concurrentExecutor(
+      messagesWithContentFragment,
+      async (message: MessageModel) => {
         const contentFragment = ContentFragmentResource.fromMessage(message);
         const file = contentFragment.fileId
           ? filesByModelId.get(contentFragment.fileId)
@@ -639,7 +641,8 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
           file,
           dataSourceView,
         });
-      })
+      },
+      { concurrency: 4 }
     );
   }
 

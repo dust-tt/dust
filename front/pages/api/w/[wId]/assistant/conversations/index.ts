@@ -165,6 +165,12 @@ export type PostConversationsResponseBody = {
   contentFragments: ContentFragmentType[];
 };
 
+function isConversationNotFoundError(err: unknown): err is ConversationError {
+  return (
+    err instanceof ConversationError && err.type === "conversation_not_found"
+  );
+}
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
@@ -302,53 +308,37 @@ async function handler(
       };
 
       if (contentFragments.length > 0) {
-        const newContentFragmentsRes = await Promise.all(
-          contentFragments.map((contentFragment) => {
-            return postNewContentFragment(auth, conversation, contentFragment, {
+        const newContentFragmentsRes = await concurrentExecutor(
+          contentFragments,
+          async (contentFragment) =>
+            postNewContentFragment(auth, conversation, contentFragment, {
               ...baseContext,
               profilePictureUrl: contentFragment.context.profilePictureUrl,
-            });
-          })
+            }),
+          { concurrency: 4 }
         );
 
         for (const r of newContentFragmentsRes) {
           if (r.isErr()) {
-            if (r.isErr()) {
-              return apiError(req, res, {
-                status_code: 400,
-                api_error: {
-                  type: "invalid_request_error",
-                  message: r.error.message,
-                },
-              });
-            }
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: r.error.message,
+              },
+            });
           }
 
           newContentFragments.push(r.value);
         }
 
-        const updatedConversationRes = await getConversation(
-          auth,
-          conversation.sId
-        );
-
-        if (updatedConversationRes.isErr()) {
-          // Preserving former code in which if the conversation was not found here, we do not error
-          if (
-            !(
-              updatedConversationRes.error instanceof ConversationError &&
-              updatedConversationRes.error.type === "conversation_not_found"
-            )
-          ) {
-            return apiErrorForConversation(
-              req,
-              res,
-              updatedConversationRes.error
-            );
-          }
-        } else {
-          conversation = updatedConversationRes.value;
-        }
+        conversation = {
+          ...conversation,
+          content: [
+            ...conversation.content,
+            ...newContentFragments.map((contentFragment) => [contentFragment]),
+          ],
+        };
       }
 
       if (message) {
@@ -445,11 +435,11 @@ async function handler(
         // streaming events from these agent messages directly.
         const updatedRes = await getConversation(auth, conversation.sId);
 
-        if (updatedRes.isErr()) {
+        if (updatedRes.isOk()) {
+          conversation = updatedRes.value;
+        } else if (!isConversationNotFoundError(updatedRes.error)) {
           return apiErrorForConversation(req, res, updatedRes.error);
         }
-
-        conversation = updatedRes.value;
       }
 
       res.status(200).json({

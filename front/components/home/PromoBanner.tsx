@@ -62,27 +62,30 @@ export function PromoBanner() {
     CURRENT_PROMO;
 
   return (
-    <div className="fixed bottom-4 left-4 z-40 max-w-[320px] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
-      <div className="relative">
-        <a href={link} target="_blank" rel="noopener noreferrer">
-          <img src={image} alt={title} className="w-full cursor-pointer" />
-        </a>
-        <Button
-          variant="outline"
-          icon={XMarkIcon}
-          size="icon-xs"
-          className="absolute right-1 top-1"
-          onClick={() => {
-            sessionStorage.setItem(storageKey(id), "true");
-            setIsVisible(false);
-          }}
-        />
-      </div>
+    <div className="fixed bottom-4 left-4 right-4 z-40 max-w-[280px] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg sm:right-auto sm:max-w-[320px]">
       <a
         href={link}
         target="_blank"
         rel="noopener noreferrer"
-        className="block px-4 py-3"
+        className="hidden sm:block"
+      >
+        <img src={image} alt={title} className="w-full cursor-pointer" />
+      </a>
+      <Button
+        variant="outline"
+        icon={XMarkIcon}
+        size="icon-xs"
+        className="absolute right-1 top-1 z-10"
+        onClick={() => {
+          sessionStorage.setItem(storageKey(id), "true");
+          setIsVisible(false);
+        }}
+      />
+      <a
+        href={link}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="block px-3 py-2.5 pr-8 sm:px-4 sm:py-3 sm:pr-4"
       >
         <div className="text-sm font-medium text-slate-900">{title}</div>
         <div className="mt-0.5 text-xs text-slate-900">{subtitle}</div>

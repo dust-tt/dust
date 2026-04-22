@@ -20,6 +20,7 @@ import { notifyProjectMembersAdded } from "@app/lib/notifications/workflows/proj
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { auditLog } from "@app/logger/logger";
 import type {
   AgentMessageType,
@@ -145,55 +146,63 @@ export const createUserMentions = async (
     (mention) => mention.userId
   );
 
-  // Store user mentions in the database
-  const mentionModels = await Promise.all(
-    uniqueMentions.map(async (mention) => {
+  if (uniqueMentions.length === 0) {
+    return [];
+  }
+
+  // Store user mentions in the database with bounded concurrency.
+  const mentionModels = await concurrentExecutor(
+    uniqueMentions,
+    async (mention) => {
       // check if the user exists in the workspace before creating the mention
       const user = await getUserForWorkspace(auth, {
         userId: mention.userId,
       });
-      if (user) {
-        usersById.set(user.id, user.toJSON());
+      if (!user) {
+        return undefined;
+      }
 
-        const isParticipant =
-          await ConversationResource.isConversationParticipant(auth, {
-            conversation,
-            user: user.toJSON(),
-          });
+      usersById.set(user.id, user.toJSON());
 
-        // TODO: Alternative approach would be to always set pending_project_membership for
-        // project conversations and decide at render time whether to show "add to project"
-        // (for editors) or "request access" (for non-editors). This would require building
-        // a request access flow. See https://github.com/dust-tt/dust/issues/20852
-        const status = await getMentionStatus(auth, {
+      const isParticipant =
+        await ConversationResource.isConversationParticipant(auth, {
           conversation,
-          message,
-          isParticipant,
-          mentionedUser: user,
+          user: user.toJSON(),
         });
 
-        const mentionModel = await MentionModel.create(
-          {
-            messageId: message.id,
-            userId: user.id,
-            workspaceId: auth.getNonNullableWorkspace().id,
-            status,
-          },
-          { transaction }
-        );
+      // TODO: Alternative approach would be to always set pending_project_membership for
+      // project conversations and decide at render time whether to show "add to project"
+      // (for editors) or "request access" (for non-editors). This would require building
+      // a request access flow. See https://github.com/dust-tt/dust/issues/20852
+      const status = await getMentionStatus(auth, {
+        conversation,
+        message,
+        isParticipant,
+        mentionedUser: user,
+      });
 
-        if (!isParticipant && status === "approved") {
-          await ConversationResource.upsertParticipation(auth, {
-            conversation,
-            action: "subscribed",
-            user: user.toJSON(),
-            lastReadAt: null,
-            transaction,
-          });
-        }
-        return mentionModel;
+      const mentionModel = await MentionModel.create(
+        {
+          messageId: message.id,
+          userId: user.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+          status,
+        },
+        { transaction }
+      );
+
+      if (!isParticipant && status === "approved") {
+        await ConversationResource.upsertParticipation(auth, {
+          conversation,
+          action: "subscribed",
+          user: user.toJSON(),
+          lastReadAt: null,
+          transaction,
+        });
       }
-    })
+      return mentionModel;
+    },
+    { concurrency: 4 }
   );
 
   return getRichMentionsWithStatusForMessage(

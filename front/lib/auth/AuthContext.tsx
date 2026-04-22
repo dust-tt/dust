@@ -1,8 +1,23 @@
+import {
+  devFlagApply,
+  devFlagGetVersion,
+  devFlagSubscribe,
+} from "@app/components/dev/devFlagOverrideStore";
+import { DEV_MODE_ACTIVE } from "@app/components/dev/devModeConstants";
 import type { SubscriptionType } from "@app/types/plan";
 import type { ProvidersHealth } from "@app/types/provider_credential";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
-import { createContext, useCallback, useContext } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useSyncExternalStore,
+} from "react";
+
+const noopSubscribe = () => () => {};
+const noopGetVersion = () => 0;
 
 // Context for pages that have workspace (app pages, workspace-scoped poke pages).
 // User is non-nullable because authentication is guaranteed by the session wrapper.
@@ -29,7 +44,20 @@ export function useAuth(): AuthContextValue {
 
 export function useFeatureFlags() {
   const ctx = useContext(AuthContext);
-  const featureFlags = ctx?.featureFlags ?? [];
+  const serverFlags = ctx?.featureFlags ?? [];
+
+  // Dev mode flag overrides — no-ops when off, see devFlagOverrideStore.ts.
+  const overrideVersion = useSyncExternalStore(
+    DEV_MODE_ACTIVE ? devFlagSubscribe : noopSubscribe,
+    DEV_MODE_ACTIVE ? devFlagGetVersion : noopGetVersion,
+    noopGetVersion
+  );
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: overrideVersion triggers recalculation when dev panel changes overrides
+  const featureFlags = useMemo(
+    () => (DEV_MODE_ACTIVE ? devFlagApply(serverFlags) : serverFlags),
+    [serverFlags, overrideVersion]
+  );
 
   const hasFeature = useCallback(
     (flag: WhitelistableFeature | null | undefined) => {

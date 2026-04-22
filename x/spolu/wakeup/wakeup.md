@@ -62,8 +62,8 @@ validation, the tool surface, API endpoints, and UI are still follow-up work.
 │  3. Fetch conversation and call getConversation(...)        │
 │  4. postUserMessage into the conversation:                  │
 │     - origin: "wakeup"                                      │
-│     - username: "Dust"                                      │
-│     - doNotAssociateUser: true                              │
+│     - username: "dust_system"                               │
+│     - fullName: "Dust System"                               │
 │     - content: <dust_system> + "Wake-up reason: ..."        │
 │     - mentions: [{ configurationId: agentConfigurationId }] │
 │  5. fireCount++ and:                                        │
@@ -173,8 +173,8 @@ fire via `cleanupTemporalAfterFire(...)`.
      wake-up is about to reach `maxFires`) an expiration warning
    - `Wake-up reason: {reason}`
    - `context.origin: "wakeup"`
-   - `context.username: "Dust"`
-   - `doNotAssociateUser: true`
+   - `context.username: "dust_system"`
+   - `context.fullName: "Dust System"`
    - `mentions: [{ configurationId: wakeUp.agentConfigurationId }]`
 5. Mark the wake-up as fired on success (`markFired(...)` handles one-shot vs cron and the
    `fireCount >= maxFires` expiration transition).
@@ -186,22 +186,42 @@ fire via `cleanupTemporalAfterFire(...)`.
 
 ## Agent Skill Interface
 
-The wake-up is exposed as an always-enabled agent action (like retrieval or browse). The agent
-calls it as a tool:
+The wake-up capability is exposed through the `wakeups` internal MCP server (server id
+1031, `availability: "auto"`, gated behind the `enable_wakeups` feature flag while in
+preview). It registers three tools:
 
 ```
 schedule_wakeup({
-  when: string,   // "in 2h", "in 30m", "2026-04-16T16:00:00Z", "0 9 * * MON-FRI"
-  reason: string  // Displayed in UI, injected in wake-up message
+  when: string,     // "in 2h", "in 30m", "2026-04-16T16:00:00Z", "0 9 * * MON-FRI"
+  reason: string,   // Displayed in UI, injected in wake-up message
+  timezone?: string // IANA timezone, required only for cron (falls back to the
+                    // last user message's timezone if omitted)
 })
+list_wakeups({})
+cancel_wakeup({ wakeUpId: string })
 ```
 
-The `when` field is parsed server-side:
-- Relative durations ("in Xh", "in Xm") → `scheduleType: "one_shot"`, compute `fireAt`.
-- ISO timestamps → `scheduleType: "one_shot"`, use directly as `fireAt`.
-- Cron expressions → `scheduleType: "cron"`, with default `maxFires` from guardrails.
+The `when` field is parsed server-side, deterministically, in this order:
+- Relative durations (`"in Xm"`, `"in Xh"`, `"in Xd"`) → `scheduleType: "one_shot"`,
+  compute `fireAt`.
+- ISO 8601 timestamps (must start with `YYYY-MM-DD`) → `scheduleType: "one_shot"`, use
+  directly as `fireAt`.
+- 5-field cron expressions → `scheduleType: "cron"`, validated by
+  `WakeUpResource.validateCron(...)`.
 
-Returns to the agent: confirmation with the scheduled time and wake-up ID.
+Guardrails enforced at tool-call time:
+- Max 1 active wake-up per conversation.
+- Max 256 active wake-ups per workspace.
+- One-shot delay must be > 0 and ≤ 31 days.
+
+`list_wakeups` returns all wake-ups (any status) for the current conversation. Handlers
+resolve the current conversation and agent configuration from
+`agentLoopContext.runContext`, so the tools only function from within a running agent
+loop. `cancel_wakeup` verifies that the target wake-up belongs to the current
+conversation before cancelling.
+
+All three tools return the wake-up `sId` in their response so the agent can reference it
+later.
 
 ## Message Origin
 
