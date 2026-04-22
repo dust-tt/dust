@@ -46,6 +46,11 @@ import type {
   ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
 import { isCompactionMessageType } from "@app/types/assistant/conversation";
+import {
+  isContentFragmentType,
+  isContentNodeContentFragment,
+  isFileContentFragment,
+} from "@app/types/content_fragment";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Ok } from "@app/types/shared/result";
 import { describe, expect, it, vi } from "vitest";
@@ -275,6 +280,46 @@ async function fetchConversationOrThrow(
   }
 
   return result.value;
+}
+
+function getLatestFileContentFragmentId(
+  conversation: ConversationType,
+  fileId: string
+): string {
+  for (const versions of conversation.content) {
+    const latestVersion = versions[versions.length - 1];
+
+    if (
+      latestVersion &&
+      isContentFragmentType(latestVersion) &&
+      isFileContentFragment(latestVersion) &&
+      latestVersion.fileId === fileId
+    ) {
+      return latestVersion.contentFragmentId;
+    }
+  }
+
+  throw new Error(`Missing file content fragment for file ${fileId}.`);
+}
+
+function getLatestContentNodeContentFragmentId(
+  conversation: ConversationType,
+  nodeId: string
+): string {
+  for (const versions of conversation.content) {
+    const latestVersion = versions[versions.length - 1];
+
+    if (
+      latestVersion &&
+      isContentFragmentType(latestVersion) &&
+      isContentNodeContentFragment(latestVersion) &&
+      latestVersion.nodeId === nodeId
+    ) {
+      return latestVersion.contentFragmentId;
+    }
+  }
+
+  throw new Error(`Missing content node content fragment for node ${nodeId}.`);
 }
 
 function mockCopyToConversation() {
@@ -725,6 +770,9 @@ describe("createConversationFork", () => {
       null
     );
     expect(attachmentResult.isOk()).toBe(true);
+    if (attachmentResult.isErr()) {
+      throw attachmentResult.error;
+    }
 
     parentConversationWithContent = await fetchConversationOrThrow(
       auth,
@@ -765,6 +813,10 @@ describe("createConversationFork", () => {
     expect(childFileAttachments).toHaveLength(1);
     expect(childFileAttachments[0]?.title).toBe("Notes");
     expect(childFileAttachments[0]?.fileId).not.toBe(sourceFile.sId);
+    const childFileContentFragmentId = getLatestFileContentFragmentId(
+      childConversation,
+      childFileAttachments[0]!.fileId
+    );
 
     const copiedFiles = await FileResource.fetchByIds(auth, [
       childFileAttachments[0]!.fileId,
@@ -780,6 +832,21 @@ describe("createConversationFork", () => {
     expect(processAndUpsertToDataSourceSpy).toHaveBeenCalledTimes(1);
     expect(processAndUpsertToDataSourceSpy.mock.calls[0]?.[2].file.sId).toBe(
       copiedFiles[0]?.sId
+    );
+    expect(vi.mocked(launchCompactionWorkflow)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        auth,
+        conversationId: childConversation.sId,
+        sourceConversation: expect.objectContaining({
+          conversationId: parentConversation.sId,
+          messageRank: sourceMessage.rank,
+          attachmentIdReplacements: {
+            [sourceFile.sId]: childFileAttachments[0]!.fileId,
+            [attachmentResult.value.contentFragmentId]:
+              childFileContentFragmentId,
+          },
+        }),
+      })
     );
 
     copyToConversationSpy.mockRestore();
@@ -988,6 +1055,19 @@ describe("createConversationFork", () => {
     expect(processAndUpsertToDataSourceSpy.mock.calls[0]?.[2].file.sId).toBe(
       copiedFiles[0]?.sId
     );
+    expect(vi.mocked(launchCompactionWorkflow)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        auth,
+        conversationId: childConversation.sId,
+        sourceConversation: expect.objectContaining({
+          conversationId: parentConversation.sId,
+          messageRank: sourceMessage.rank,
+          attachmentIdReplacements: expect.objectContaining({
+            [sourceToolOutput.sId]: childFileAttachments[0]!.fileId,
+          }),
+        }),
+      })
+    );
 
     copyToConversationSpy.mockRestore();
     getOrCreateConversationDataSourceFromFileSpy.mockRestore();
@@ -1169,6 +1249,9 @@ describe("createConversationFork", () => {
       null
     );
     expect(firstAttachmentResult.isOk()).toBe(true);
+    if (firstAttachmentResult.isErr()) {
+      throw firstAttachmentResult.error;
+    }
 
     parentConversationWithContent = await fetchConversationOrThrow(
       auth,
@@ -1229,6 +1312,24 @@ describe("createConversationFork", () => {
     expect(childContentNodeAttachments[0]?.nodeId).toBe("node_before_fork");
     expect(childContentNodeAttachments[0]?.nodeDataSourceViewId).toBe(
       dataSourceView.sId
+    );
+    const childContentNodeFragmentId = getLatestContentNodeContentFragmentId(
+      childConversation,
+      "node_before_fork"
+    );
+    expect(vi.mocked(launchCompactionWorkflow)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        auth,
+        conversationId: childConversation.sId,
+        sourceConversation: expect.objectContaining({
+          conversationId: parentConversation.sId,
+          messageRank: sourceMessage.rank,
+          attachmentIdReplacements: {
+            [firstAttachmentResult.value.contentFragmentId]:
+              childContentNodeFragmentId,
+          },
+        }),
+      })
     );
 
     getContentFragmentBlobSpy.mockRestore();
