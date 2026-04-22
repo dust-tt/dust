@@ -3,27 +3,24 @@
 // which itself is invoked by the per-project projectTodoWorkflow at most once
 // per hour (based on the cron schedule).
 //
-// High-level algorithm (3 phases):
+// High-level algorithm (2 phases):
 //
 //   Phase 1 — Collect new candidates.
 //     For every (takeaway, item, targetUser) triple:
-//       - fetchBySourceId(itemId, userId):
+//       - fetchByItemIds(itemId, userId):
 //           found     → update text/status/doneAt if changed (no new row)
 //           not found → push to newCandidates[]
 //
-//   Phase 2 — Semantic deduplication.
-//     - Pre-fetch existing todos per (userId, category) for the space.
-//     - Run one LLM call per non-empty (userId, category) group to detect
-//       items that describe the same task despite different wording.
-//     - Build dedupMap: `${userId}:${itemId}` → matching ProjectTodoResource.
-//       Missing keys mean the candidate is genuinely new.
-//
-//   Phase 3 — Create or link.
-//     For each candidate in newCandidates:
-//       - Key in dedupMap → addSource on existing todo.
-//           If existing todo is user-created: preserve text/status (user wins).
-//           If existing todo is agent-created: also update if content changed.
-//       - Not in dedupMap → makeNew + addSource (current behaviour).
+//   Phase 2 — Process each (userId, category) group as one pipelined pass.
+//     For each group of candidates, in parallel (up to 4 groups at once):
+//       - Fetch existing todos for this (user, category) once.
+//       - Run the dedup LLM (if any candidates or existing todos remain).
+//       - Walk candidates in order, sequentially within the group:
+//           existing(todo) → upsertSource + maybe update content.
+//           leader         → makeNewWithSource (and remember as leader).
+//           follower(key)  → upsertSource on the already-created leader todo.
+//     Leaders-before-followers is guaranteed by the in-order walk because
+//     the dedup LLM is instructed to only reference earlier candidates.
 //
 // Category mapping:
 //   actionItems  (open)    → "to_do",   status: "todo"
@@ -35,11 +32,10 @@
 import { getFastestWhitelistedModel } from "@app/lib/assistant";
 import { Authenticator } from "@app/lib/auth";
 import {
-  batchDeduplicateCandidates,
   type DeduplicateCandidate,
-  type DeduplicationMap,
-  makeDedupGroupKey,
   makeDedupResultKey,
+  resolveDeduplicationChains,
+  runDeduplicationLLMCall,
 } from "@app/lib/project_todo/deduplicate_candidates";
 import { ProjectTodoResource } from "@app/lib/resources/project_todo_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
@@ -49,6 +45,7 @@ import {
 } from "@app/lib/resources/takeaways_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { ProjectTodoSourceInfo } from "@app/types/project_todo";
 import type { ModelId } from "@app/types/shared/model_id";
 import type {
@@ -176,25 +173,42 @@ export async function mergeTakeawaysIntoProject({
     return stats;
   }
 
-  // ── Phase 2: semantic deduplication ──────────────────────────────────────
+  // ── Phase 2: one pipelined pass per (userId, category) group ─────────────
 
-  const dedupMap = await buildDeduplicationMap(adminAuth, {
-    localLogger,
-    newCandidates,
-    spaceModelId,
-  });
+  const model = getFastestWhitelistedModel(adminAuth);
+  if (!model) {
+    localLogger.warn(
+      "Project todo merge: no whitelisted model — skipping dedup, every candidate becomes a new todo"
+    );
+  }
 
-  // ── Phase 3: create or link ───────────────────────────────────────────────
+  // Group candidates by (userId, category). Followers can only reference
+  // earlier candidates in the same group, so the in-order walk inside
+  // processGroup trivially satisfies leaders-before-followers.
+  const byGroup = new Map<string, PendingCandidate[]>();
+  for (const c of newCandidates) {
+    const key = `${c.userId}:${c.blob.category}`;
+    const bucket = byGroup.get(key) ?? [];
+    bucket.push(c);
+    byGroup.set(key, bucket);
+  }
 
-  const { deduplicated, createdNew } = await createOrLinkTodos(adminAuth, {
-    localLogger,
-    newCandidates,
-    dedupMap,
-    spaceModelId,
-  });
+  const groupResults = await concurrentExecutor(
+    Array.from(byGroup.values()),
+    (groupCandidates) =>
+      processGroup(adminAuth, {
+        localLogger,
+        candidates: groupCandidates,
+        model,
+        spaceModelId,
+      }),
+    { concurrency: 4 }
+  );
 
-  stats.deduplicated = deduplicated;
-  stats.createdNew = createdNew;
+  for (const { deduplicated, createdNew } of groupResults) {
+    stats.deduplicated += deduplicated;
+    stats.createdNew += createdNew;
+  }
 
   return stats;
 }
@@ -311,216 +325,174 @@ async function collectDocumentCandidates(
   return { candidates, existingUpdated };
 }
 
-// ── Phase 2 ───────────────────────────────────────────────────────────────────
+// ── Phase 2: process one (userId, category) group end-to-end ─────────────────
 
-// Pre-fetches all existing todos per (userId, category) and runs batch semantic
-// deduplication via LLM. Returns an empty map if no model is available, which
-// causes all candidates to be treated as new in phase 3.
-async function buildDeduplicationMap(
+// Fetches existing todos, runs the dedup LLM, and then walks candidates
+// sequentially to create / link todos. All candidates in `groupCandidates`
+// must share the same (userId, category); the caller (mergeTakeawaysIntoProject)
+// partitions by `${userId}:${category}` before dispatching groups.
+async function processGroup(
   auth: Authenticator,
   {
     localLogger,
-    newCandidates,
-    spaceModelId,
-  }: {
-    localLogger: Logger;
-    newCandidates: PendingCandidate[];
-    spaceModelId: ModelId;
-  }
-): Promise<DeduplicationMap> {
-  const model = getFastestWhitelistedModel(auth);
-  if (!model) {
-    localLogger.warn(
-      "Project todo merge: no whitelisted model, skipping deduplication"
-    );
-    return new Map();
-  }
-
-  // Fetch all existing todos for each unique target user in a single pass, then
-  // group them by `${userId}:${category}` for efficient lookup in the LLM calls.
-  const uniqueUserIds = [...new Set(newCandidates.map((c) => c.userId))];
-  const existingTodosByGroup = new Map<string, ProjectTodoResource[]>();
-
-  await concurrentExecutor(
-    uniqueUserIds,
-    async (userId) => {
-      const todos = await ProjectTodoResource.fetchLatestBySpaceForUser(auth, {
-        spaceId: spaceModelId,
-        userId,
-      });
-      for (const todo of todos) {
-        const key = makeDedupGroupKey(userId, todo.category);
-        const group = existingTodosByGroup.get(key) ?? [];
-        group.push(todo);
-        existingTodosByGroup.set(key, group);
-      }
-    },
-    { concurrency: 4 }
-  );
-
-  const deduplicateCandidates: DeduplicateCandidate[] = newCandidates.map(
-    (c) => ({
-      itemId: c.itemId,
-      userId: c.userId,
-      text: c.blob.text,
-      category: c.blob.category,
-    })
-  );
-
-  return batchDeduplicateCandidates(auth, {
+    candidates,
     model,
-    candidates: deduplicateCandidates,
-    existingTodosByGroup,
-  });
-}
-
-// ── Phase 3 ───────────────────────────────────────────────────────────────────
-
-// Candidates are processed sequentially within each (userId, category) group
-// so that a leader's todo is created before any follower in the same group
-// needs to reference it. Groups run in parallel — no cross-group ordering
-// constraint exists.
-async function createOrLinkTodos(
-  auth: Authenticator,
-  {
-    localLogger,
-    newCandidates,
-    dedupMap,
     spaceModelId,
   }: {
     localLogger: Logger;
-    newCandidates: PendingCandidate[];
-    dedupMap: DeduplicationMap;
+    candidates: PendingCandidate[];
+    // null when no whitelisted model is available — every candidate becomes
+    // a leader without an LLM call.
+    model: ModelConfigurationType | null;
     spaceModelId: ModelId;
   }
 ): Promise<{ deduplicated: number; createdNew: number }> {
   let deduplicated = 0;
   let createdNew = 0;
 
-  // Group by (userId, category) — same grouping the dedup phase used, so
-  // follower references (same-group only) resolve via leaderTodos below.
-  const byGroup = new Map<string, PendingCandidate[]>();
-  for (const c of newCandidates) {
-    const key = `${c.userId}:${c.blob.category}`;
-    const bucket = byGroup.get(key) ?? [];
-    bucket.push(c);
-    byGroup.set(key, bucket);
+  if (candidates.length === 0) {
+    return { deduplicated, createdNew };
   }
 
-  await concurrentExecutor(
-    Array.from(byGroup.values()),
-    async (groupCandidates) => {
-      // Map from candidate key → todo created for that candidate (leaders only).
-      // Populated as we iterate so followers later in the group can look up
-      // their leader's todo without hitting the database.
-      const leaderTodos = new Map<string, ProjectTodoResource>();
+  // Precondition: all candidates share (userId, category) by construction.
+  const { userId } = candidates[0];
+  const category = candidates[0].blob.category;
 
-      for (const candidate of groupCandidates) {
-        const candidateKey = makeDedupResultKey(
-          candidate.userId,
-          candidate.itemId
-        );
-        const resolution = dedupMap.get(candidateKey);
+  // Fetch once: all existing todos for this user, then filter to category.
+  const userTodos = await ProjectTodoResource.fetchLatestBySpaceForUser(auth, {
+    spaceId: spaceModelId,
+    userId,
+  });
+  const existingTodos = userTodos.filter((t) => t.category === category);
 
-        if (resolution?.kind === "existing") {
-          // Semantic duplicate of an existing todo — link source + maybe update.
-          await resolution.todo.upsertSource(auth, {
-            itemId: candidate.itemId,
-            source: candidate.source,
-          });
-          // User-intent guard lives in updateTodoIfChanged — no-op when the
-          // target todo was created by a user or already marked done by one.
-          await updateTodoIfChanged(resolution.todo, auth, candidate.blob);
-          deduplicated++;
+  // Run the dedup LLM unless there is literally nothing to compare against
+  // (a lone new candidate with no existing todos in this group — the LLM
+  // would only echo "new" in that case).
+  const dedupCandidates: DeduplicateCandidate[] = candidates.map((c) => ({
+    itemId: c.itemId,
+    userId: c.userId,
+    text: c.blob.text,
+    category: c.blob.category,
+  }));
+  const shouldCallLLM =
+    model !== null && (existingTodos.length > 0 || candidates.length > 1);
+  const resolutions = shouldCallLLM
+    ? resolveDeduplicationChains(
+        dedupCandidates,
+        await runDeduplicationLLMCall(auth, {
+          model: model as ModelConfigurationType,
+          candidates: dedupCandidates,
+          existingTodos,
+        }),
+        existingTodos
+      )
+    : new Map();
 
-          localLogger.info(
-            {
-              existingTodoId: resolution.todo.sId,
-              itemId: candidate.itemId,
-              userId: candidate.userId,
-              source: candidate.source,
-              createdByType: resolution.todo.createdByType,
-            },
-            "Project todo merge: linked source to existing todo (semantic duplicate)"
-          );
-          continue;
-        }
+  // Map from candidate key → todo created for that candidate. Populated as
+  // we iterate so followers later in the group can look up their leader's
+  // todo without hitting the database.
+  const leaderTodos = new Map<string, ProjectTodoResource>();
 
-        if (resolution?.kind === "follower") {
-          const leader = leaderTodos.get(resolution.leaderKey);
-          if (leader) {
-            await leader.upsertSource(auth, {
-              itemId: candidate.itemId,
-              source: candidate.source,
-            });
-            deduplicated++;
+  for (const candidate of candidates) {
+    const candidateKey = makeDedupResultKey(candidate.userId, candidate.itemId);
+    const resolution = resolutions.get(candidateKey);
 
-            localLogger.info(
-              {
-                leaderTodoId: leader.sId,
-                itemId: candidate.itemId,
-                userId: candidate.userId,
-                source: candidate.source,
-              },
-              "Project todo merge: linked source to leader todo (intra-batch duplicate)"
-            );
-            continue;
-          }
-          // Defensive: the chain resolver should have ensured the leader
-          // appears earlier in this group. If not, fall through and create a
-          // fresh todo rather than silently dropping the candidate's source.
-          localLogger.warn(
-            {
-              itemId: candidate.itemId,
-              userId: candidate.userId,
-              leaderKey: resolution.leaderKey,
-            },
-            "Project todo merge: follower without leader, promoting to new todo"
-          );
-        }
+    if (resolution?.kind === "existing") {
+      // Semantic duplicate of an existing todo — link source + maybe update.
+      await resolution.todo.upsertSource(auth, {
+        itemId: candidate.itemId,
+        source: candidate.source,
+      });
+      // User-intent guard lives in updateTodoIfChanged — no-op when the
+      // target todo was created by a user or already marked done by one.
+      await updateTodoIfChanged(resolution.todo, auth, candidate.blob);
+      deduplicated++;
 
-        // Leader, or follower-without-leader fallback, or no resolution at
-        // all — create a fresh todo. Atomic so Temporal retries can't leave
-        // an orphan row.
-        const todo = await ProjectTodoResource.makeNewWithSource(auth, {
-          blob: {
-            spaceId: spaceModelId,
-            userId: candidate.userId,
-            createdByType: "agent",
-            createdByUserId: null,
-            createdByAgentConfigurationId: BUTLER_AGENT_SID,
-            category: candidate.blob.category,
-            text: candidate.blob.text,
-            status: candidate.blob.status,
-            doneAt: candidate.blob.doneAt,
-            actorRationale: null,
-            markedAsDoneByType: null,
-            markedAsDoneByUserId: null,
-            markedAsDoneByAgentConfigurationId: null,
-          },
+      localLogger.info(
+        {
+          existingTodoId: resolution.todo.sId,
+          itemId: candidate.itemId,
+          userId: candidate.userId,
+          source: candidate.source,
+          createdByType: resolution.todo.createdByType,
+        },
+        "Project todo merge: linked source to existing todo (semantic duplicate)"
+      );
+      continue;
+    }
+
+    if (resolution?.kind === "follower") {
+      const leader = leaderTodos.get(resolution.leaderKey);
+      if (leader) {
+        await leader.upsertSource(auth, {
           itemId: candidate.itemId,
           source: candidate.source,
         });
-
-        // Record this candidate as a potential leader so later same-group
-        // followers can attach to it. Only leaders seed the map; the fallback
-        // path writes here too to keep "follower without leader" recoverable.
-        leaderTodos.set(candidateKey, todo);
-        createdNew++;
+        deduplicated++;
 
         localLogger.info(
           {
-            todoId: todo.sId,
+            leaderTodoId: leader.sId,
             itemId: candidate.itemId,
             userId: candidate.userId,
             source: candidate.source,
           },
-          "Project todo merge: created new todo"
+          "Project todo merge: linked source to leader todo (intra-batch duplicate)"
         );
+        continue;
       }
-    },
-    { concurrency: 4 }
-  );
+      // Defensive: the chain resolver should have ensured the leader
+      // appears earlier in this group. If not, fall through and create a
+      // fresh todo rather than silently dropping the candidate's source.
+      localLogger.warn(
+        {
+          itemId: candidate.itemId,
+          userId: candidate.userId,
+          leaderKey: resolution.leaderKey,
+        },
+        "Project todo merge: follower without leader, promoting to new todo"
+      );
+    }
+
+    // Leader, or follower-without-leader fallback, or no resolution at
+    // all — create a fresh todo. Atomic so Temporal retries can't leave
+    // an orphan row.
+    const todo = await ProjectTodoResource.makeNewWithSource(auth, {
+      blob: {
+        spaceId: spaceModelId,
+        userId: candidate.userId,
+        createdByType: "agent",
+        createdByUserId: null,
+        createdByAgentConfigurationId: BUTLER_AGENT_SID,
+        category: candidate.blob.category,
+        text: candidate.blob.text,
+        status: candidate.blob.status,
+        doneAt: candidate.blob.doneAt,
+        actorRationale: null,
+        markedAsDoneByType: null,
+        markedAsDoneByUserId: null,
+        markedAsDoneByAgentConfigurationId: null,
+      },
+      itemId: candidate.itemId,
+      source: candidate.source,
+    });
+
+    // Record this candidate as a potential leader so later same-group
+    // followers can attach to it. The fallback path writes here too to
+    // keep "follower without leader" recoverable.
+    leaderTodos.set(candidateKey, todo);
+    createdNew++;
+
+    localLogger.info(
+      {
+        todoId: todo.sId,
+        itemId: candidate.itemId,
+        userId: candidate.userId,
+        source: candidate.source,
+      },
+      "Project todo merge: created new todo"
+    );
+  }
 
   return { deduplicated, createdNew };
 }

@@ -1,15 +1,20 @@
 // Semantic deduplication for project TODO candidates during the merge workflow.
 //
-// batchDeduplicateCandidates groups candidates by (userId, category), runs one
-// LLM call per non-empty group, and returns a map from the candidate key
-// (`${userId}:${itemId}`) to a Resolution describing what Phase 3 should do:
+// The merge entry point (mergeTakeawaysIntoProject → processGroup) calls the
+// two building blocks in this module per (userId, category) group:
 //
-//   - existing(todo): link this candidate's source to the existing todo.
-//   - leader:         this candidate is the first occurrence of its task —
-//                     Phase 3 will create a new todo for it.
-//   - follower(key):  this candidate duplicates an earlier candidate in the
-//                     same batch (from a different doc). Phase 3 attaches its
-//                     source to the todo created for the leader at `key`.
+//   1. runDeduplicationLLMCall(auth, { model, candidates, existingTodos }):
+//      one LLM call, returns raw candidate → LLMMatch pairs.
+//   2. resolveDeduplicationChains(candidates, matches, existingTodos):
+//      pure function that walks candidates in index order and collapses the
+//      raw matches into a DeduplicationMap of Resolutions:
+//
+//        - existing(todo): link this candidate's source to the existing todo.
+//        - leader:         first occurrence of this task — create a new todo.
+//                          Leaders are represented by absence from the map.
+//        - follower(key):  duplicates an earlier candidate (same batch, same
+//                          group). Phase 3 attaches the source to the todo
+//                          created for the leader identified by `key`.
 //
 // On LLM failure the affected group is treated as all-new (every candidate
 // becomes a leader), so the caller always falls back to creating a fresh
@@ -19,7 +24,6 @@ import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import type { Authenticator } from "@app/lib/auth";
 import type { ProjectTodoResource } from "@app/lib/resources/project_todo_resource";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
@@ -53,18 +57,9 @@ export type Resolution =
 // free to omit leaders to keep the map small.
 export type DeduplicationMap = Map<string, Resolution>;
 
-// Key helpers — exported so the builder (this file) and the consumer
-// (merge_into_project.ts) always use the same format.
-
-// Groups candidates/todos by user and category for per-group LLM calls.
-export function makeDedupGroupKey(
-  userId: ModelId,
-  category: ProjectTodoCategory
-): string {
-  return `${userId}:${category}`;
-}
-
 // Identifies a specific (candidate, user) pair in the DeduplicationMap.
+// Exported so the resolver (this file) and the consumer (merge_into_project.ts)
+// always use the same key format.
 export function makeDedupResultKey(userId: ModelId, itemId: string): string {
   return `${userId}:${itemId}`;
 }
@@ -372,66 +367,4 @@ export function resolveDeduplicationChains(
   }
 
   return result;
-}
-
-// ── Public API ────────────────────────────────────────────────────────────────
-
-// Runs semantic deduplication for all new candidates. Groups candidates by
-// (userId, category), executes one LLM call per group (up to 4 concurrent),
-// and returns a DeduplicationMap keyed by `${userId}:${itemId}`. Missing
-// entries mean the candidate is a leader — Phase 3 will create a new todo.
-export async function batchDeduplicateCandidates(
-  auth: Authenticator,
-  {
-    model,
-    candidates,
-    existingTodosByGroup,
-  }: {
-    model: ModelConfigurationType;
-    candidates: DeduplicateCandidate[];
-    existingTodosByGroup: Map<string, ProjectTodoResource[]>;
-  }
-): Promise<DeduplicationMap> {
-  const deduplicationMap: DeduplicationMap = new Map();
-
-  // Group candidates by (userId, category).
-  const groups = new Map<string, DeduplicateCandidate[]>();
-  for (const candidate of candidates) {
-    const key = makeDedupGroupKey(candidate.userId, candidate.category);
-    const group = groups.get(key) ?? [];
-    group.push(candidate);
-    groups.set(key, group);
-  }
-
-  await concurrentExecutor(
-    Array.from(groups.entries()),
-    async ([groupKey, groupCandidates]) => {
-      const existingTodos = existingTodosByGroup.get(groupKey) ?? [];
-
-      // Single candidate + no existing todos → nothing for the LLM to compare
-      // against. Fast path: treat as leader (no map entry).
-      if (existingTodos.length === 0 && groupCandidates.length <= 1) {
-        return;
-      }
-
-      const matches = await runDeduplicationLLMCall(auth, {
-        model,
-        candidates: groupCandidates,
-        existingTodos,
-      });
-
-      const groupResolutions = resolveDeduplicationChains(
-        groupCandidates,
-        matches,
-        existingTodos
-      );
-
-      for (const [key, resolution] of groupResolutions) {
-        deduplicationMap.set(key, resolution);
-      }
-    },
-    { concurrency: 4 }
-  );
-
-  return deduplicationMap;
 }
