@@ -4,6 +4,7 @@ import {
   createPendingAgentConfiguration,
   getAgentConfiguration,
   restoreAgentConfiguration,
+  updateAgentConfigurationsScope,
 } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
@@ -11,6 +12,7 @@ import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_res
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
+import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -328,5 +330,175 @@ describe("archiveAgentConfiguration and restoreAgentConfiguration", () => {
         "Agent configuration is not archived"
       );
     }
+  });
+});
+
+describe("updateAgentConfigurationsScope", () => {
+  it("updates the scope of a single agent", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      authenticator,
+      { scope: "hidden" }
+    );
+
+    const result = await updateAgentConfigurationsScope(
+      authenticator,
+      [agent.sId],
+      "visible"
+    );
+    expect(result.isOk()).toBe(true);
+
+    const row = await AgentConfigurationModel.findOne({
+      where: { sId: agent.sId, workspaceId: workspace.id },
+    });
+    expect(row!.scope).toBe("visible");
+  });
+
+  it("updates the scope of multiple agents in a single call", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const agents = await Promise.all([
+      AgentConfigurationFactory.createTestAgent(authenticator, {
+        name: "A1",
+        scope: "hidden",
+      }),
+      AgentConfigurationFactory.createTestAgent(authenticator, {
+        name: "A2",
+        scope: "hidden",
+      }),
+      AgentConfigurationFactory.createTestAgent(authenticator, {
+        name: "A3",
+        scope: "hidden",
+      }),
+    ]);
+
+    const result = await updateAgentConfigurationsScope(
+      authenticator,
+      agents.map((a) => a.sId),
+      "visible"
+    );
+    expect(result.isOk()).toBe(true);
+
+    for (const a of agents) {
+      const row = await AgentConfigurationModel.findOne({
+        where: { sId: a.sId, workspaceId: workspace.id },
+      });
+      expect(row!.scope).toBe("visible");
+    }
+  });
+
+  it("returns Ok without changes when agentIds is empty", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    const result = await updateAgentConfigurationsScope(
+      authenticator,
+      [],
+      "visible"
+    );
+    expect(result.isOk()).toBe(true);
+  });
+
+  it("skips agents the caller cannot edit and is not admin of", async () => {
+    const { authenticator: ownerAuth, workspace } = await createResourceTest({
+      role: "builder",
+    });
+    const ownedAgent = await AgentConfigurationFactory.createTestAgent(
+      ownerAuth,
+      { name: "Owned", scope: "hidden" }
+    );
+
+    // Another builder who has no editing rights on the agent.
+    const outsider = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, outsider, { role: "builder" });
+    const outsiderAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      outsider.sId,
+      workspace.sId
+    );
+
+    const result = await updateAgentConfigurationsScope(
+      outsiderAuth,
+      [ownedAgent.sId],
+      "visible"
+    );
+    expect(result.isOk()).toBe(true);
+
+    const row = await AgentConfigurationModel.findOne({
+      where: { sId: ownedAgent.sId, workspaceId: workspace.id },
+    });
+    expect(row!.scope).toBe("hidden");
+  });
+
+  it("disables triggers of non-editors when transitioning visible → hidden", async () => {
+    const { authenticator, workspace, user } = await createResourceTest({
+      role: "admin",
+    });
+
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      authenticator,
+      { scope: "visible" }
+    );
+
+    // A workspace member who is not in the agent's editor group.
+    const nonEditor = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, nonEditor, {
+      role: "builder",
+    });
+
+    // Trigger owned by the admin (member of the editor group).
+    const editorTriggerRes = await TriggerResource.makeNew(authenticator, {
+      workspaceId: workspace.id,
+      name: "editor-trigger",
+      kind: "webhook",
+      agentConfigurationId: agent.sId,
+      editor: user.id,
+      customPrompt: null,
+      status: "enabled",
+      configuration: { includePayload: true },
+      webhookSourceViewId: null,
+      origin: "user",
+    });
+    expect(editorTriggerRes.isOk()).toBe(true);
+    const editorTrigger = editorTriggerRes.isOk()
+      ? editorTriggerRes.value
+      : null;
+
+    // Trigger owned by the non-editor user.
+    const nonEditorTriggerRes = await TriggerResource.makeNew(authenticator, {
+      workspaceId: workspace.id,
+      name: "non-editor-trigger",
+      kind: "webhook",
+      agentConfigurationId: agent.sId,
+      editor: nonEditor.id,
+      customPrompt: null,
+      status: "enabled",
+      configuration: { includePayload: true },
+      webhookSourceViewId: null,
+      origin: "user",
+    });
+    expect(nonEditorTriggerRes.isOk()).toBe(true);
+    const nonEditorTrigger = nonEditorTriggerRes.isOk()
+      ? nonEditorTriggerRes.value
+      : null;
+
+    const result = await updateAgentConfigurationsScope(
+      authenticator,
+      [agent.sId],
+      "hidden"
+    );
+    expect(result.isOk()).toBe(true);
+
+    const refreshedEditorTrigger = await TriggerResource.fetchById(
+      authenticator,
+      editorTrigger!.sId
+    );
+    const refreshedNonEditorTrigger = await TriggerResource.fetchById(
+      authenticator,
+      nonEditorTrigger!.sId
+    );
+
+    expect(refreshedEditorTrigger!.status).toBe("enabled");
+    expect(refreshedNonEditorTrigger!.status).toBe("disabled");
   });
 });
