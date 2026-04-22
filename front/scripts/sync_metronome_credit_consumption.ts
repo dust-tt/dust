@@ -61,16 +61,18 @@ async function syncCreditsOfType(
   for (const credit of credits) {
     const metronomeCreditId = credit.metronomeCreditId!;
 
-    // Fetch the entry from Metronome.
+    // Fetch the entry from Metronome (include_balance=true is required to get the balance field).
     const metronomeResult =
       type === "free"
         ? await getMetronomeCredit({
             metronomeCustomerId,
             creditId: metronomeCreditId,
+            includeBalance: true,
           })
         : await getMetronomeCommit({
             metronomeCustomerId,
             commitId: metronomeCreditId,
+            includeBalance: true,
           });
 
     if (metronomeResult.isErr()) {
