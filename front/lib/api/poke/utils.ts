@@ -1,4 +1,5 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
@@ -9,6 +10,7 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { ConversationType } from "@app/types/assistant/conversation";
 import type { SupportedResourceType } from "@app/types/poke/plugins";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -16,6 +18,7 @@ import type { LightWorkspaceType } from "@app/types/user";
 export type ResourceTypeMap = {
   agents: LightAgentConfigurationType;
   apps: AppResource;
+  conversations: ConversationType;
   workspaces: LightWorkspaceType;
   data_sources: DataSourceResource;
   mcp_server_views: MCPServerViewResource;
@@ -43,6 +46,11 @@ export async function fetchPluginResource<T extends SupportedResourceType>(
     case "apps":
       result = await AppResource.fetchById(auth, resourceId);
       break;
+    case "conversations": {
+      const conversationRes = await getConversation(auth, resourceId);
+      result = conversationRes.isOk() ? conversationRes.value : null;
+      break;
+    }
     case "workspaces":
       result = await getWorkspaceInfos(resourceId);
       break;
