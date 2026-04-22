@@ -9,7 +9,8 @@ import type { DataSourceViewResource } from "@app/lib/resources/data_source_view
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { SearchWarningCode } from "@app/types/core/core_api";
-import { CoreAPI, MIN_SEARCH_QUERY_SIZE } from "@app/types/core/core_api";
+import { CoreAPI } from "@app/types/core/core_api";
+import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/utils";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { NextApiRequest, NextApiResponse } from "next";
