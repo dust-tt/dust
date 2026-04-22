@@ -6,13 +6,13 @@
 // See devFlagOverrideStore.ts for the full architecture overview.
 
 import {
-  notifyDevFlagOverridesChanged,
-  registerDevFlagOverrides,
-} from "./devFlagOverrideStore";
-import {
   isWhitelistableFeature,
   type WhitelistableFeature,
 } from "@app/types/shared/feature_flags";
+import {
+  notifyDevFlagOverridesChanged,
+  registerDevFlagOverrides,
+} from "./devFlagOverrideStore";
 
 const FEATURE_FLAG_OVERRIDES_KEY = "dust_ff_overrides";
 

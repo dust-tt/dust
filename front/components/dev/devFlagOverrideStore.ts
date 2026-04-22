@@ -52,24 +52,20 @@
 //    sessionStorage then calls notifyDevFlagOverridesChanged() → same re-render
 //    cycle as step 2e.
 
-import { DEV_MODE_ACTIVE } from "./devModeConstants";
-
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import { DEV_MODE_ACTIVE } from "./devModeConstants";
 
 // useSyncExternalStore snapshot version — incremented on every override change.
 let _version = 0;
 
 // Listener set for useSyncExternalStore subscriptions. Null when dev mode is
 // off so we don't allocate a Set that will never be used.
-const _listeners: Set<() => void> | null = DEV_MODE_ACTIVE
-  ? new Set()
-  : null;
+const _listeners: Set<() => void> | null = DEV_MODE_ACTIVE ? new Set() : null;
 
 // The actual override application function. Starts as identity and gets
 // replaced when the lazy chunk registers via registerDevFlagOverrides.
-let _applyOverrides: (
-  flags: WhitelistableFeature[]
-) => WhitelistableFeature[] = (f) => f;
+let _applyOverrides: (flags: WhitelistableFeature[]) => WhitelistableFeature[] =
+  (f) => f;
 
 // --- Hooks interface (consumed by useFeatureFlags in AuthContext) ---
 
