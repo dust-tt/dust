@@ -10,6 +10,10 @@ import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import type {
+  CompactionAttachmentIdReplacements,
+  CompactionSourceConversation,
+} from "@app/types/assistant/compaction";
+import type {
   CompactionMessageType,
   ConversationType,
 } from "@app/types/assistant/conversation";
@@ -68,6 +72,36 @@ function extractSummary(generation: string): string {
   return generation.replace(/<analysis>[\s\S]*?<\/analysis>/g, "").trim();
 }
 
+function escapeRegex(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function replaceAttachmentIdsInSummary(
+  summary: string,
+  replacements: CompactionAttachmentIdReplacements | undefined
+): string {
+  if (!replacements || Object.keys(replacements).length === 0) {
+    return summary;
+  }
+
+  let nextSummary = summary;
+
+  for (const [sourceId, targetId] of Object.entries(replacements).sort(
+    ([leftId], [rightId]) => rightId.length - leftId.length
+  )) {
+    const pattern = new RegExp(
+      `(^|[^A-Za-z0-9_])(${escapeRegex(sourceId)})(?=$|[^A-Za-z0-9_])`,
+      "g"
+    );
+
+    nextSummary = nextSummary.replace(pattern, (_match, prefix) => {
+      return `${prefix}${targetId}`;
+    });
+  }
+
+  return nextSummary;
+}
+
 function filterConversationContentUpToRank(
   conversation: ConversationType,
   maxRank: number
@@ -115,10 +149,7 @@ export async function runCompaction(
     compactionMessageId: string;
     compactionMessageVersion: number;
     model: SupportedModel;
-    sourceConversation?: {
-      conversationId: string;
-      messageRank: number;
-    };
+    sourceConversation?: CompactionSourceConversation;
   }
 ): Promise<Result<void, Error>> {
   const owner = auth.getNonNullableWorkspace();
@@ -184,7 +215,10 @@ export async function runCompaction(
   let status: "succeeded" | "failed";
 
   if (summaryRes.isOk()) {
-    content = summaryRes.value;
+    content = replaceAttachmentIdsInSummary(
+      summaryRes.value,
+      sourceConversation?.attachmentIdReplacements
+    );
     status = "succeeded";
 
     logger.info(
