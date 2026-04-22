@@ -9,6 +9,9 @@ export type SkillStatus = (typeof SKILL_STATUSES)[number];
 export const SKILL_REINFORCEMENT_MODES = ["auto", "on", "off"] as const;
 export type SkillReinforcementMode = (typeof SKILL_REINFORCEMENT_MODES)[number];
 
+export const SKILL_VIEWS = ["full", "summary"] as const;
+export type SkillViewType = (typeof SKILL_VIEWS)[number];
+
 export const SKILL_SOURCES = [
   "web_app",
   "github",
@@ -25,7 +28,7 @@ export const SkillSourceMetadataSchema = z.object({
 
 export type SkillSourceMetadata = z.infer<typeof SkillSourceMetadataSchema>;
 
-export const SkillWithoutToolsSchema = z.object({
+export const SkillWithoutInstructionsAndToolsSchema = z.object({
   id: z.number(),
   sId: z.string(),
   createdAt: z.number().nullable(),
@@ -35,8 +38,6 @@ export const SkillWithoutToolsSchema = z.object({
   name: z.string(),
   agentFacingDescription: z.string(),
   userFacingDescription: z.string(),
-  instructions: z.string().nullable(),
-  instructionsHtml: z.string().nullable(),
   icon: z.string().nullable(),
   source: z.enum(SKILL_SOURCES).nullable(),
   sourceMetadata: SkillSourceMetadataSchema.nullable(),
@@ -55,9 +56,13 @@ export const SkillWithoutToolsSchema = z.object({
   extendedSkillId: z.string().nullable(),
 });
 
-export type SkillWithoutToolsType = z.infer<typeof SkillWithoutToolsSchema>;
+export type SkillWithoutInstructionsAndToolsType = z.infer<
+  typeof SkillWithoutInstructionsAndToolsSchema
+>;
 
-export const SkillSchema = SkillWithoutToolsSchema.extend({
+export const SkillSchema = SkillWithoutInstructionsAndToolsSchema.extend({
+  instructions: z.string().nullable(),
+  instructionsHtml: z.string().nullable(),
   tools: z.array(MCPServerViewSchema),
 });
 

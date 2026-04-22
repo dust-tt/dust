@@ -5,7 +5,7 @@ import type { DetectedSkillSummary } from "@app/lib/skill_detection";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
   GetSkillsResponseBody,
-  GetSkillsWithoutToolsResponseBody,
+  GetSkillsWithoutInstructionsAndToolsResponseBody,
   GetSkillsWithRelationsResponseBody,
 } from "@app/pages/api/w/[wId]/skills";
 import type {
@@ -19,7 +19,7 @@ import type { GetSimilarSkillsResponseBody } from "@app/pages/api/w/[wId]/skills
 import type {
   SkillStatus,
   SkillType,
-  SkillWithoutToolsType,
+  SkillViewType,
   SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 import { isAPIErrorResponse } from "@app/types/error";
@@ -32,6 +32,21 @@ import type { SWRMutationConfiguration } from "swr/mutation";
 import useSWRMutation from "swr/mutation";
 
 const DETECT_SKILLS_DEBOUNCE_MS = 1_000;
+
+type SkillsResponseByViewType = {
+  full: GetSkillsResponseBody;
+  summary: GetSkillsWithoutInstructionsAndToolsResponseBody;
+};
+
+type SkillsByViewType<TViewType extends SkillViewType> =
+  SkillsResponseByViewType[TViewType]["skills"];
+
+type UseSkillsResult<TViewType extends SkillViewType> = {
+  skills: SkillsByViewType<TViewType>;
+  isSkillsError: boolean;
+  isSkillsLoading: boolean;
+  mutateSkills: () => void;
+};
 
 export function useSkill(options: {
   workspaceId: string;
@@ -94,56 +109,23 @@ export function useSkill({
   };
 }
 
-export function useSkills(options: {
-  owner: LightWorkspaceType;
-  disabled?: boolean;
-  status?: SkillStatus;
-  globalSpaceOnly?: boolean;
-  isDefault?: boolean;
-  withTools: false;
-}): {
-  skills: SkillWithoutToolsType[];
-  isSkillsError: boolean;
-  isSkillsLoading: boolean;
-  mutateSkills: () => void;
-};
-export function useSkills(options: {
-  owner: LightWorkspaceType;
-  disabled?: boolean;
-  status?: SkillStatus;
-  globalSpaceOnly?: boolean;
-  isDefault?: boolean;
-  withTools?: true;
-}): {
-  skills: SkillType[];
-  isSkillsError: boolean;
-  isSkillsLoading: boolean;
-  mutateSkills: () => void;
-};
-export function useSkills({
+export function useSkills<TViewType extends SkillViewType = "full">({
   owner,
   disabled,
   status,
   globalSpaceOnly,
   isDefault,
-  withTools = true,
+  viewType,
 }: {
   owner: LightWorkspaceType;
   disabled?: boolean;
   status?: SkillStatus;
   globalSpaceOnly?: boolean;
   isDefault?: boolean;
-  withTools?: boolean;
-}): {
-  skills: SkillWithoutToolsType[] | SkillType[];
-  isSkillsError: boolean;
-  isSkillsLoading: boolean;
-  mutateSkills: () => void;
-} {
+  viewType?: TViewType;
+}): UseSkillsResult<TViewType> {
   const { fetcher } = useFetcher();
-  const skillsFetcher: Fetcher<
-    GetSkillsWithoutToolsResponseBody | GetSkillsResponseBody
-  > = fetcher;
+  const requestedViewType: SkillViewType = viewType ?? "full";
 
   const queryParams = new URLSearchParams();
   if (status) {
@@ -155,19 +137,19 @@ export function useSkills({
   if (isDefault) {
     queryParams.set("isDefault", "true");
   }
-  if (!withTools) {
-    queryParams.set("withTools", "false");
+  if (requestedViewType === "summary") {
+    queryParams.set("viewType", requestedViewType);
   }
   const queryString = queryParams.toString();
 
   const { data, error, isLoading, mutate } = useSWRWithDefaults(
     `/api/w/${owner.sId}/skills${queryString ? `?${queryString}` : ""}`,
-    skillsFetcher,
+    fetcher,
     { disabled }
   );
 
   return {
-    skills: data?.skills ?? emptyArray(),
+    skills: data?.skills ?? emptyArray<SkillsByViewType<TViewType>[number]>(),
     isSkillsError: !!error,
     isSkillsLoading: isLoading,
     mutateSkills: mutate,

@@ -26,7 +26,7 @@ import {
 } from "@app/types/assistant/assistant";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { RichMention } from "@app/types/assistant/mentions";
-import type { SkillWithoutToolsType } from "@app/types/assistant/skill_configuration";
+import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import { isEqualNode } from "@app/types/data_source_view";
@@ -188,9 +188,9 @@ export const InputBar = React.memo(function InputBar({
     MCPServerViewType[]
   >([]);
 
-  const [selectedSkills, setSelectedSkills] = useState<SkillWithoutToolsType[]>(
-    []
-  );
+  const [selectedSkills, setSelectedSkills] = useState<
+    SkillWithoutInstructionsAndToolsType[]
+  >([]);
 
   const { conversationTools } = useConversationTools({
     conversationId: conversation?.sId,
@@ -237,12 +237,12 @@ export const InputBar = React.memo(function InputBar({
     void deleteTool(serverView.sId);
   };
 
-  const handleSkillSelect = (skill: SkillWithoutToolsType) => {
+  const handleSkillSelect = (skill: SkillWithoutInstructionsAndToolsType) => {
     setSelectedSkills((prev) => [...prev, skill]);
     void addSkill(skill.sId);
   };
 
-  const handleSkillDeselect = (skill: SkillWithoutToolsType) => {
+  const handleSkillDeselect = (skill: SkillWithoutInstructionsAndToolsType) => {
     setSelectedSkills((prev) => prev.filter((s) => s.sId !== skill.sId));
     void deleteSkill(skill.sId);
   };

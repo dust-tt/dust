@@ -9,13 +9,15 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type {
-  SkillType,
-  SkillWithoutToolsType,
-  SkillWithRelationsType,
+import {
+  SKILL_VIEWS,
+  type SkillType,
+  type SkillViewType,
+  type SkillWithoutInstructionsAndToolsType,
+  type SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { removeNulls } from "@app/types/shared/utils/general";
+import { isString, removeNulls } from "@app/types/shared/utils/general";
 import { isBuilder } from "@app/types/user";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
@@ -23,8 +25,8 @@ import * as reporter from "io-ts-reporters";
 import uniq from "lodash/uniq";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-export type GetSkillsWithoutToolsResponseBody = {
-  skills: SkillWithoutToolsType[];
+export type GetSkillsWithoutInstructionsAndToolsResponseBody = {
+  skills: SkillWithoutInstructionsAndToolsType[];
 };
 
 export type GetSkillsResponseBody = {
@@ -39,13 +41,16 @@ export type PostSkillResponseBody = {
   skill: SkillType;
 };
 
-// Schema for GET status query parameter.
 const SkillStatusSchema = t.union([
   t.literal("active"),
   t.literal("archived"),
   t.literal("suggested"),
   t.undefined,
 ]);
+
+function isSkillViewType(value: string): value is SkillViewType {
+  return SKILL_VIEWS.some((skillViewType) => skillViewType === value);
+}
 
 // Schema for attached knowledge.
 export const AttachedKnowledgeSchema = t.type({
@@ -98,7 +103,7 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
     WithAPIErrorResponse<
-      | GetSkillsWithoutToolsResponseBody
+      | GetSkillsWithoutInstructionsAndToolsResponseBody
       | GetSkillsResponseBody
       | GetSkillsWithRelationsResponseBody
       | PostSkillResponseBody
@@ -110,15 +115,31 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const { withRelations, withTools, status, globalSpaceOnly, isDefault } =
+      const { withRelations, status, globalSpaceOnly, isDefault, viewType } =
         req.query;
 
-      if (withRelations === "true" && withTools === "false") {
+      let skillView: SkillViewType = "full";
+      if (viewType !== undefined) {
+        if (!isString(viewType) || !isSkillViewType(viewType)) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: `Invalid viewType: ${viewType}. Expected "full" or "summary".`,
+            },
+          });
+        }
+
+        skillView = viewType;
+      }
+
+      if (withRelations === "true" && skillView === "summary") {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: "withTools=false is incompatible with withRelations=true.",
+            message:
+              "viewType=summary is incompatible with withRelations=true.",
           },
         });
       }
@@ -135,14 +156,12 @@ async function handler(
       }
       const skillStatus = statusValidation.right;
 
-      // withTools defaults to true
-      const shouldIncludeTools = withTools !== "false";
-
       const skills = await SkillResource.listByWorkspace(auth, {
         status: skillStatus,
         globalSpaceOnly: globalSpaceOnly === "true",
         isDefault: isDefault === "true" ? true : undefined,
-        withTools: shouldIncludeTools,
+        withInstructions: skillView !== "summary",
+        withTools: skillView === "full",
       });
 
       if (withRelations === "true") {
@@ -180,11 +199,17 @@ async function handler(
         return res.status(200).json({ skills: skillsWithRelations });
       }
 
-      if (!shouldIncludeTools) {
+      if (skillView === "summary") {
         return res.status(200).json({
           skills: skills.map((sc) => {
-            const { tools: _tools, ...withoutTools } = sc.toJSON(auth);
-            return withoutTools;
+            const {
+              instructions,
+              instructionsHtml,
+              tools,
+              ...skillWithoutInstructionsAndTools
+            } = sc.toJSON(auth);
+
+            return skillWithoutInstructionsAndTools;
           }),
         });
       }
