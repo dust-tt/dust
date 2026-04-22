@@ -117,8 +117,17 @@ function buildDeduplicationPrompt(
 
   return [
     `Deduplicate TODO items for category "${categoryLabel}".`,
-    "Two items are duplicates when they describe the same task or decision,",
-    "regardless of wording differences.",
+    "",
+    "Two items are duplicates only if completing one would make the other",
+    "redundant. If both could independently appear on a task list without",
+    "overlap, they are distinct — even if they share keywords or domain.",
+    "", //
+    "A candidate that is a more specific or more general version of an",
+    "existing TODO is still a duplicate if the core task is the same.",
+    "",
+    "When in doubt, treat the candidate as new. A false duplicate merge",
+    "loses data; a missed dedup just creates a minor duplicate that can",
+    "be cleaned up later.",
     "",
     "Existing TODOs:",
     existingLines,
@@ -127,8 +136,8 @@ function buildDeduplicationPrompt(
     candidateLines,
     "",
     "Call report_duplicates with one entry per candidate.",
-    "Include duplicate_of_sid only when the candidate is semantically equivalent",
-    "to an existing TODO.",
+    "Include duplicate_of_sid only when the candidate is clearly redundant",
+    "with an existing TODO.",
   ].join("\n");
 }
 
@@ -179,7 +188,8 @@ export async function runDeduplicationLLMCall(
         {
           conversation: conv,
           prompt:
-            "You are a TODO deduplication assistant identifying semantic duplicates.",
+            "You identify semantic duplicates among TODO items. " +
+            "Err on the side of treating items as new — only match when clearly redundant.",
           specifications: [specification],
           forceToolCall: specification.name,
         },
