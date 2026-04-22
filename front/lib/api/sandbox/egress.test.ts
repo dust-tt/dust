@@ -110,7 +110,9 @@ describe("sandbox egress helpers", () => {
     expect(sandbox.exec).toHaveBeenNthCalledWith(
       1,
       auth,
-      expect.stringContaining("chown dust-fwd:dust-fwd"),
+      expect.stringContaining(
+        "chown dust-fwd:dust-fwd '/etc/dust/egress-token' && chmod 600 '/etc/dust/egress-token' && rm -f '/tmp/dust-forwarder.log' '/tmp/dust-egress-denied.log'",
+      ),
       { user: "root" },
     );
     expect(sandbox.exec).toHaveBeenNthCalledWith(
