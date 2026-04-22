@@ -14,10 +14,12 @@ import {
 
 interface SkillBuilderSettingsSectionProps {
   skill?: SkillType;
+  hasReinforcedAgents: boolean;
 }
 
 export function SkillBuilderSettingsSection({
   skill,
+  hasReinforcedAgents,
 }: SkillBuilderSettingsSectionProps) {
   return (
     <div className="space-y-5">
@@ -45,7 +47,7 @@ export function SkillBuilderSettingsSection({
           <CollapsibleContent>
             <div className="space-y-3 pt-3">
               <SkillBuilderIsDefaultSection />
-              <SkillBuilderEnableSuggestionsSection />
+              {hasReinforcedAgents && <SkillBuilderEnableSuggestionsSection />}
             </div>
           </CollapsibleContent>
         </Collapsible>
