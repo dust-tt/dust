@@ -11,9 +11,9 @@ import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import {
   SKILL_VIEWS,
-  type SkillWithoutInstructionsAndToolsType,
   type SkillType,
   type SkillViewType,
+  type SkillWithoutInstructionsAndToolsType,
   type SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 import type { WithAPIErrorResponse } from "@app/types/error";

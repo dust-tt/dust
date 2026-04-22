@@ -4,8 +4,8 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import type { DetectedSkillSummary } from "@app/lib/skill_detection";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
-  GetSkillsWithoutInstructionsAndToolsResponseBody,
   GetSkillsResponseBody,
+  GetSkillsWithoutInstructionsAndToolsResponseBody,
   GetSkillsWithRelationsResponseBody,
 } from "@app/pages/api/w/[wId]/skills";
 import type {

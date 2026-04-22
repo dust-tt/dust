@@ -242,9 +242,7 @@ export const InputBar = React.memo(function InputBar({
     void addSkill(skill.sId);
   };
 
-  const handleSkillDeselect = (
-    skill: SkillWithoutInstructionsAndToolsType
-  ) => {
+  const handleSkillDeselect = (skill: SkillWithoutInstructionsAndToolsType) => {
     setSelectedSkills((prev) => prev.filter((s) => s.sId !== skill.sId));
     void deleteSkill(skill.sId);
   };
