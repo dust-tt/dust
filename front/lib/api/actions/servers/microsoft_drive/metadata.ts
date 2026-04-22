@@ -206,7 +206,7 @@ export const MICROSOFT_DRIVE_SERVER = {
       provider: "microsoft_tools",
       supported_use_cases: ["personal_actions"],
       scope:
-        "User.Read Files.ReadWrite.All Sites.Read.All ExternalItem.Read.All offline_access",
+        "User.Read Files.ReadWrite.All Sites.Read.All ExternalItem.Read.All SensitivityLabel.Read offline_access",
       availableScopes: [
         {
           value: "Files.Read.All",

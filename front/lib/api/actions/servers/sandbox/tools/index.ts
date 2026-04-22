@@ -41,54 +41,36 @@ import { Err, Ok, type Result } from "@app/types/shared/result";
 
 const DEFAULT_WORKING_DIRECTORY = "/home/agent";
 const DEFAULT_EXEC_TIMEOUT_MS = 60_000;
-const MAX_OUTPUT_LINES = 2_000;
-const MAX_OUTPUT_BYTES = 50_000;
 
-// TODO(SANDBOX-S1): Offload large outputs to a temporary file on the sandbox
-// (like coding agents do). The model would only see tail-truncated output plus
-// the path to the full output file, which it can read back if needed.
-function formatExecOutput(result: ExecResult): string {
-  const parts: string[] = [];
+interface FormatExecOutputOpts {
+  denyLogEntries?: string[];
+}
+
+function formatExecOutput(
+  result: ExecResult,
+  opts?: FormatExecOutputOpts
+): string {
+  const sections: string[] = [];
 
   if (result.stdout) {
-    parts.push(result.stdout);
+    sections.push(`<stdout>\n${result.stdout}\n</stdout>`);
   }
+
   if (result.stderr) {
-    parts.push(`[stderr]\n${result.stderr}`);
+    sections.push(`<stderr>\n${result.stderr}\n</stderr>`);
   }
+
   if (result.exitCode !== 0) {
-    parts.push(`[exit code: ${result.exitCode}]`);
+    sections.push(`<exit_code>${result.exitCode}</exit_code>`);
   }
 
-  let output = parts.join("\n");
-
-  const lines = output.split("\n");
-  const byteLength = Buffer.byteLength(output, "utf-8");
-
-  if (lines.length > MAX_OUTPUT_LINES || byteLength > MAX_OUTPUT_BYTES) {
-    if (lines.length > MAX_OUTPUT_LINES) {
-      output = lines.slice(0, MAX_OUTPUT_LINES).join("\n");
-    }
-
-    if (Buffer.byteLength(output, "utf-8") > MAX_OUTPUT_BYTES) {
-      // Truncate to MAX_OUTPUT_BYTES at a line boundary.
-      const truncatedLines: string[] = [];
-      let currentBytes = 0;
-      for (const line of output.split("\n")) {
-        const lineBytes = Buffer.byteLength(line + "\n", "utf-8");
-        if (currentBytes + lineBytes > MAX_OUTPUT_BYTES) {
-          break;
-        }
-        truncatedLines.push(line);
-        currentBytes += lineBytes;
-      }
-      output = truncatedLines.join("\n");
-    }
-
-    output += "\n[Output truncated — exceeded limit]";
+  if (opts?.denyLogEntries && opts.denyLogEntries.length > 0) {
+    sections.push(
+      `<network_proxy_logs>\n${opts.denyLogEntries.join("\n")}\n</network_proxy_logs>`
+    );
   }
 
-  return output || "(no output)";
+  return sections.join("\n") || "(no output)";
 }
 
 export function createSandboxTools(
@@ -256,8 +238,7 @@ export async function runSandboxBashTool(
     return new Err(new MCPError(execResult.error.message));
   }
 
-  let output = formatExecOutput(execResult.value);
-
+  let denyLogEntries: string[] | undefined;
   const denyResult = await readNewDenyLogEntries(auth, sandbox);
   if (denyResult.isErr()) {
     logger.warn(
@@ -265,10 +246,10 @@ export async function runSandboxBashTool(
       "Failed to read egress deny log"
     );
   } else if (denyResult.value.length > 0) {
-    output +=
-      "\n[network proxy] Recent outbound request(s) denied by the sandbox proxy:\n" +
-      denyResult.value.map((line) => `  ${line}`).join("\n");
+    denyLogEntries = denyResult.value;
   }
+
+  const output = formatExecOutput(execResult.value, { denyLogEntries });
 
   return new Ok([{ type: "text" as const, text: output }]);
 }

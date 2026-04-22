@@ -27,7 +27,6 @@ import {
   isResourceSId,
 } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -280,24 +279,16 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       },
     });
 
-    const serverToolMetadatas = await RemoteMCPServerToolMetadataModel.findAll({
+    await destroyMCPServerViewDependencies(auth, {
+      mcpServerViewIds: mcpServerViews.map((view) => view.id),
+    });
+
+    await RemoteMCPServerToolMetadataModel.destroy({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         remoteMCPServerId: this.id,
       },
     });
-
-    await destroyMCPServerViewDependencies(auth, {
-      mcpServerViewIds: mcpServerViews.map((view) => view.id),
-    });
-
-    await concurrentExecutor(
-      serverToolMetadatas,
-      async (serverToolMetadata) => {
-        await serverToolMetadata.destroy();
-      },
-      { concurrency: 10 }
-    );
 
     // Directly delete the MCPServerView here to avoid a circular dependency.
     await MCPServerViewModel.destroy({

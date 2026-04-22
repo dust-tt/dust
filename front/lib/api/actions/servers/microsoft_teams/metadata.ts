@@ -281,7 +281,7 @@ export const MICROSOFT_TEAMS_SERVER = {
       provider: "microsoft_tools",
       supported_use_cases: ["personal_actions"],
       scope:
-        "User.Read User.ReadBasic.All Team.ReadBasic.All Channel.ReadBasic.All Chat.Read Chat.ReadWrite ChatMessage.Read ChatMessage.Send ChannelMessage.Read.All ChannelMessage.Send OnlineMeetings.Read OnlineMeetingTranscript.Read.All offline_access",
+        "User.Read User.ReadBasic.All Team.ReadBasic.All Channel.ReadBasic.All Chat.Read Chat.ReadWrite ChatMessage.Read ChatMessage.Send ChannelMessage.Read.All ChannelMessage.Send OnlineMeetings.Read OnlineMeetingTranscript.Read.All SensitivityLabel.Read offline_access",
       availableScopes: [
         {
           value: "Chat.Read",

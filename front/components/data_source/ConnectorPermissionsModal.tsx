@@ -55,6 +55,9 @@ import {
   Avatar,
   Button,
   CloudArrowLeftRightIcon,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
   ContentMessage,
   Dialog,
   DialogContainer,
@@ -902,6 +905,8 @@ export function ConnectorPermissionsModal({
   const connectorUIConfiguration = CONNECTOR_UI_CONFIGURATIONS[connector.type];
 
   const OptionsComponent = connectorUIConfiguration.optionsComponent;
+  const AdvancedOptionsComponent =
+    connectorUIConfiguration.advancedOptionsComponent;
 
   const permissionsConfigurable = getConnectorPermissionsConfigurableBlocked(
     connector.type
@@ -1028,6 +1033,20 @@ export function ConnectorPermissionsModal({
                       />
                     </>
                   )}
+                  {AdvancedOptionsComponent &&
+                    plan &&
+                    featureFlags.includes("sensitivity_labels") && (
+                      <Collapsible className="mb-4">
+                        <CollapsibleTrigger>
+                          <div className="heading-lg">Advanced</div>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <AdvancedOptionsComponent
+                            {...{ owner, readOnly, isAdmin, dataSource, plan }}
+                          />
+                        </CollapsibleContent>
+                      </Collapsible>
+                    )}
 
                   {advancedNotionManagement && (
                     <AdvancedNotionManagement

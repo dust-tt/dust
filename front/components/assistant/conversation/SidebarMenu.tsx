@@ -48,6 +48,7 @@ import {
   getSkillBuilderRoute,
 } from "@app/lib/utils/router";
 import {
+  type ConversationListItemType,
   type ConversationWithoutContentType,
   getConversationDisplayTitle,
 } from "@app/types/assistant/conversation";
@@ -169,8 +170,8 @@ interface SearchResultsProps {
   hideTriggeredConversations: boolean;
   setHideTriggeredConversations: (hide: boolean) => void;
   isMultiSelect: boolean;
-  selectedConversations: ConversationWithoutContentType[];
-  toggleConversationSelection: (c: ConversationWithoutContentType) => void;
+  selectedConversations: ConversationListItemType[];
+  toggleConversationSelection: (c: ConversationListItemType) => void;
 }
 
 function SearchResults({
@@ -471,7 +472,7 @@ export function AgentSidebarMenu({
 
   const [isMultiSelect, setIsMultiSelect] = useState(false);
   const [selectedConversations, setSelectedConversations] = useState<
-    ConversationWithoutContentType[]
+    ConversationListItemType[]
   >([]);
   const doDelete = useDeleteConversation(owner);
 
@@ -539,7 +540,7 @@ export function AgentSidebarMenu({
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const toggleConversationSelection = useCallback(
-    (c: ConversationWithoutContentType) => {
+    (c: ConversationListItemType) => {
       if (selectedConversations.includes(c)) {
         setSelectedConversations((prev) => prev.filter((id) => id !== c));
       } else {
@@ -641,9 +642,7 @@ export function AgentSidebarMenu({
 
   const hasTriggeredConversations = useMemo(
     () =>
-      conversations.some(
-        (c: ConversationWithoutContentType) => c.triggerId !== null
-      ),
+      conversations.some((c: ConversationListItemType) => c.triggerId !== null),
     [conversations]
   );
 
@@ -1071,13 +1070,13 @@ export function AgentSidebarMenu({
 
 interface UnreadConversationsSectionProps {
   label: string;
-  conversations: ConversationWithoutContentType[];
+  conversations: ConversationListItemType[];
   isMultiSelect: boolean;
   isMarkingAllAsRead: boolean;
   onMarkAllAsRead: (conversationIds: string[]) => void;
   onConversationBranched?: () => Promise<void> | void;
-  selectedConversations: ConversationWithoutContentType[];
-  toggleConversationSelection: (c: ConversationWithoutContentType) => void;
+  selectedConversations: ConversationListItemType[];
+  toggleConversationSelection: (c: ConversationListItemType) => void;
   activeConversationId: string | null;
   owner: WorkspaceType;
   titleFilter: string;
@@ -1151,11 +1150,11 @@ const ConversationList = ({
   dateLabel,
   ...props
 }: {
-  conversations: ConversationWithoutContentType[];
+  conversations: ConversationListItemType[];
   dateLabel: string;
   isMultiSelect: boolean;
-  selectedConversations: ConversationWithoutContentType[];
-  toggleConversationSelection: (c: ConversationWithoutContentType) => void;
+  selectedConversations: ConversationListItemType[];
+  toggleConversationSelection: (c: ConversationListItemType) => void;
   activeConversationId: string | null;
   onConversationBranched?: () => Promise<void> | void;
   owner: WorkspaceType;
@@ -1186,7 +1185,7 @@ const ConversationList = ({
 };
 
 function getConversationDotStatus(
-  conversation: ConversationWithoutContentType
+  conversation: ConversationListItemType
 ): "blocked" | "unread" | "idle" {
   if (conversation.actionRequired) {
     return "blocked";
@@ -1210,11 +1209,11 @@ const ConversationListItem = memo(
     activeConversationId,
     owner,
   }: {
-    conversation: ConversationWithoutContentType;
+    conversation: ConversationListItemType;
     isMultiSelect: boolean;
     onConversationBranched?: () => Promise<void> | void;
-    selectedConversations: ConversationWithoutContentType[];
-    toggleConversationSelection: (c: ConversationWithoutContentType) => void;
+    selectedConversations: ConversationListItemType[];
+    toggleConversationSelection: (c: ConversationListItemType) => void;
     activeConversationId: string | null;
     owner: WorkspaceType;
   }) => {
@@ -1308,13 +1307,11 @@ const ConversationListItem = memo(
 );
 
 interface NavigationListWithInboxProps {
-  conversations: ConversationWithoutContentType[];
+  conversations: ConversationListItemType[];
   titleFilter: string;
   isMultiSelect: boolean;
-  selectedConversations: ConversationWithoutContentType[];
-  toggleConversationSelection: (
-    conversation: ConversationWithoutContentType
-  ) => void;
+  selectedConversations: ConversationListItemType[];
+  toggleConversationSelection: (conversation: ConversationListItemType) => void;
   activeConversationId: string | null;
   onConversationBranched?: () => Promise<void> | void;
   owner: WorkspaceType;
@@ -1371,7 +1368,7 @@ function NavigationListWithInbox({
         conversations: readConversations,
         titleFilter,
       })
-    : ({} as Record<GroupLabel, ConversationWithoutContentType[]>);
+    : ({} as Record<GroupLabel, ConversationListItemType[]>);
 
   const conversationsContent = (
     <>

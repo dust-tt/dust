@@ -7,7 +7,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import {
-  type ConversationWithoutContentType,
+  type ConversationListItemType,
   getConversationDisplayTitle,
 } from "@app/types/assistant/conversation";
 import type { SpaceType } from "@app/types/space";
@@ -27,7 +27,7 @@ export function useMoveConversationToProject(owner: LightWorkspaceType) {
 
   return useCallback(
     async (
-      conversation: ConversationWithoutContentType,
+      conversation: ConversationListItemType,
       space: SpaceType
     ): Promise<boolean> => {
       const confirmed = await confirm({

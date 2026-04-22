@@ -750,6 +750,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "use_dust_keys"
   | "enable_compaction"
   | "browser_extension_mcp_tools"
+  | "sensitivity_labels"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
