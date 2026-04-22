@@ -1,11 +1,11 @@
 import {
-  type AvailableSkillType,
   renderAvailableSkillsUserMessage,
   renderEnabledSkillUserMessageFromInstructions,
 } from "@app/lib/api/assistant/skills_rendering";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import type { TextContent } from "@app/types/assistant/generation";
 import { describe, expect, it } from "vitest";
 
@@ -190,19 +190,23 @@ Just text`);
 });
 
 describe("skill rendering helpers", () => {
-  it("renders available skills as a synthetic user message", () => {
+  it("renders available skills as a synthetic user message", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+
+    const commitSkill = await SkillFactory.create(authenticator, {
+      name: "commit",
+      agentFacingDescription: "Create a git commit with a descriptive message.",
+    });
+    const reviewPrSkill = await SkillFactory.create(authenticator, {
+      name: "review-pr",
+      agentFacingDescription:
+        "Review a pull request for code quality and correctness.",
+    });
+
     const message = renderAvailableSkillsUserMessage([
-      {
-        name: "commit",
-        agentFacingDescription:
-          "Create a git commit with a descriptive message.",
-      },
-      {
-        name: "review-pr",
-        agentFacingDescription:
-          "Review a pull request for code quality and correctness.",
-      },
-    ] satisfies AvailableSkillType[]);
+      commitSkill,
+      reviewPrSkill,
+    ]);
 
     expect(message).toEqual({
       role: "user",

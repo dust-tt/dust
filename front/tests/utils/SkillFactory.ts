@@ -11,6 +11,13 @@ import type { ModelId } from "@app/types/shared/model_id";
 import assert from "assert";
 
 export class SkillFactory {
+  static withExtendedSkill(
+    skill: SkillResource,
+    extendedSkill: SkillResource | null = null
+  ): SkillResource & { extendedSkill: SkillResource | null } {
+    return Object.assign(skill, { extendedSkill });
+  }
+
   static async create(
     auth: Authenticator,
     overrides: Partial<{

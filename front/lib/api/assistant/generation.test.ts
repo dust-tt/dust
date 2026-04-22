@@ -5,10 +5,6 @@ import {
   globalAgentInjectsUserContext,
   globalAgentInjectsWorkspaceContext,
 } from "@app/lib/api/assistant/global_agents/global_agents";
-import type {
-  AvailableSkillType,
-  EnabledSkillType,
-} from "@app/lib/api/assistant/skills_rendering";
 import {
   normalizePrompt,
   systemPromptToText,
@@ -499,14 +495,14 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     expect(text).not.toContain("<existing_memories>");
   });
 
-  it("should keep enableable skills out of the system prompt", () => {
+  it("should keep enableable skills out of the system prompt", async () => {
     const equippedSkills = [
-      {
+      await SkillFactory.create(authenticator1, {
         name: "commit",
         agentFacingDescription:
           "Create a git commit with a descriptive message.",
-      },
-    ] satisfies AvailableSkillType[];
+      }),
+    ];
 
     const params = {
       userMessage: userMessage1,
@@ -528,14 +524,14 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     expect(text).not.toContain("## AVAILABLE SKILLS");
   });
 
-  it("should keep enableable skills in the system prompt on the legacy path", () => {
+  it("should keep enableable skills in the system prompt on the legacy path", async () => {
     const equippedSkills = [
-      {
+      await SkillFactory.create(authenticator1, {
         name: "commit",
         agentFacingDescription:
           "Create a git commit with a descriptive message.",
-      },
-    ] satisfies AvailableSkillType[];
+      }),
+    ];
 
     const params = {
       userMessage: userMessage1,
@@ -556,16 +552,17 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     );
   });
 
-  it("should keep system skill instructions in the system prompt", () => {
-    const systemSkills = [
-      {
-        isSystemSkill: true,
-        name: "Discover Tools",
-        instructions:
-          "List available toolsets and enable them for the current conversation.",
-        extendedSkill: null,
-      },
-    ] satisfies EnabledSkillType[];
+  it("should keep system skill instructions in the system prompt", async () => {
+    const discoverSkills = await SkillResource.fetchById(
+      authenticator1,
+      "discover_skills"
+    );
+    expect(discoverSkills).not.toBeNull();
+    if (!discoverSkills) {
+      return;
+    }
+
+    const systemSkills = [SkillFactory.withExtendedSkill(discoverSkills)];
 
     const params = {
       userMessage: userMessage1,
@@ -583,9 +580,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     const text = systemPromptToText(sections);
 
     expect(text).toContain("## SYSTEM SKILLS");
-    expect(text).toContain(
-      "List available toolsets and enable them for the current conversation."
-    );
+    expect(text).toContain(discoverSkills.instructions);
   });
 
   it("should keep memory_guidelines in instructions but existing_memories in ephemeral tier for dust-like agents", () => {
