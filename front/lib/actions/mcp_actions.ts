@@ -56,7 +56,7 @@ import {
   isConnectViaClientSideMCPServer,
   isConnectViaMCPServerId,
 } from "@app/lib/actions/mcp_metadata";
-import { MCPOAuthProviderError } from "@app/lib/actions/mcp_oauth_provider";
+import { isOAuthOrTransportAuthError } from "@app/lib/actions/mcp_transport_errors";
 import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import type {
   AgentLoopListToolsContextType,
@@ -566,12 +566,12 @@ export async function* tryCallMCPTool(
       }
     }
 
-    // When the MCP SDK receives a 401/403 from the remote server during a
-    // tool call (e.g., StreamableHTTP where each call is a separate HTTP
-    // request), it calls unimplemented methods on MCPOAuthProvider which
-    // throw MCPOAuthProviderError. Trigger re-authentication.
+    // When the remote server returns 401/403 during a tool call, the SDK
+    // throws either MCPOAuthProviderError (when authProvider is present) or
+    // a transport-level error with code 401 (when token is injected via
+    // headers). Detect both to trigger re-authentication.
     if (
-      error instanceof MCPOAuthProviderError &&
+      isOAuthOrTransportAuthError(error) &&
       isServerSideMCPToolConfiguration(toolConfiguration)
     ) {
       const mcpServerView = await MCPServerViewResource.fetchById(
@@ -880,9 +880,9 @@ export async function callMCPToolForSandbox(
       };
     }
 
-    // OAuth errors during tool execution (e.g., expired token mid-call).
-    // Sandbox can't re-authenticate, so surface as an error.
-    if (error instanceof MCPOAuthProviderError) {
+    // OAuth / transport 401 errors during tool execution (e.g., expired
+    // token mid-call). Sandbox can't re-authenticate, so surface as error.
+    if (isOAuthOrTransportAuthError(error)) {
       return {
         isError: true,
         content: [

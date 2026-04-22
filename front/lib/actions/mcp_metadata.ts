@@ -26,10 +26,8 @@ import {
   getInternalMCPServerNameFromSId,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { InMemoryWithAuthTransport } from "@app/lib/actions/mcp_internal_actions/in_memory_with_auth_transport";
-import {
-  MCPOAuthProvider,
-  MCPOAuthProviderError,
-} from "@app/lib/actions/mcp_oauth_provider";
+import { MCPOAuthProvider } from "@app/lib/actions/mcp_oauth_provider";
+import { isOAuthOrTransportAuthError } from "@app/lib/actions/mcp_transport_errors";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { ClientSideRedisMCPTransport } from "@app/lib/api/actions/mcp_client_side";
 import type {
@@ -593,21 +591,35 @@ export async function connectToMCPServer(
           try {
             const req = {
               requestInit: {
-                // Include stored custom headers
-                headers: remoteMCPServer.customHeaders ?? {},
+                headers: {
+                  ...(remoteMCPServer.customHeaders ?? {}),
+                  // Inject the token directly as a header so the SDK does
+                  // not need an authProvider to set the Authorization header.
+                  ...(token
+                    ? { Authorization: `Bearer ${token.access_token}` }
+                    : {}),
+                },
                 dispatcher,
               },
+<<<<<<< Updated upstream
               authProvider: new MCPOAuthProvider(token, clientInfo),
+=======
+              // Only provide authProvider when there is no pre-existing token.
+              // When a token exists we inject it via headers above and omit the
+              // authProvider so the SDK does not enter its interactive OAuth
+              // flow (redirectUrl, saveTokens, …) on 401.
+              ...(token ? {} : { authProvider: new MCPOAuthProvider() }),
+>>>>>>> Stashed changes
               fetch: proxyFetch,
             };
 
             await connectToRemoteMCPServer(mcpClient, url, req);
           } catch (e: unknown) {
-            // When the MCP SDK receives a 401/403 from the remote server, it
-            // calls unimplemented methods on MCPOAuthProvider which throw
-            // MCPOAuthProviderError. This reliably indicates token rejection.
+            // Without an authProvider the SDK throws transport-level errors
+            // (StreamableHTTPError / SseError with code 401) instead of
+            // MCPOAuthProviderError. Detect both so we can trigger re-auth.
             if (
-              e instanceof MCPOAuthProviderError &&
+              isOAuthOrTransportAuthError(e) &&
               remoteMCPServer.authorization &&
               oauthConnectionType
             ) {
