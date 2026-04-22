@@ -8,9 +8,16 @@ import {
   PartnerIdealPartners,
   PartnerSocialProof,
 } from "@app/components/home/PartnerHero";
+import { Button } from "@dust-tt/sparkle";
 import type { GetStaticProps } from "next";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
+
+// Temporarily route partner sign-ups to a HubSpot-hosted form while we fix
+// tracking on the embedded PartnerForm. Flip back to true once resolved.
+const SHOW_PARTNER_FORM = false;
+const PARTNER_HUBSPOT_FORM_URL =
+  "https://share-eu1.hsforms.com/2FctvfmFxRQqllduT_JmlTA2dzwm3";
 
 export const getStaticProps: GetStaticProps = async () => {
   return {
@@ -46,7 +53,17 @@ export default function Partner() {
                 soon as we&apos;re ready to explore a partnership with you.
               </P>
             </div>
-            <PartnerForm />
+            {SHOW_PARTNER_FORM ? (
+              <PartnerForm />
+            ) : (
+              <a
+                href={PARTNER_HUBSPOT_FORM_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Button variant="highlight" size="md" label="Register here" />
+              </a>
+            )}
           </div>
         </Grid>
         <PartnerSocialProof />
