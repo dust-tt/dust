@@ -85,10 +85,14 @@ wake-up message with `username: "dust_system"` / `fullName: "Dust System"` inste
 
 ## Milestone 5: Security
 
-### PR 7 — Conversation interaction restrictions
+### [partial] PR 7 — Cancellation rights on `WakeUpResource`
 
-Enforce that only the wake-up owner can post in a conversation with an active wake-up.
-Cancellation permissions are owner + workspace admins.
+Enforce that only the wake-up owner (`userId`) or a workspace admin can cancel a wake-up.
+Implemented in `WakeUpResource.cancel(...)` via a `canCancel(auth)` check that short-circuits
+to an `Err` before cancelling the Temporal workflow or marking the row cancelled.
+
+Follow-up still in this milestone: restrict user message posting in a conversation with an
+active wake-up to the wake-up owner only.
 
 ## Milestone 6: API + UI
 

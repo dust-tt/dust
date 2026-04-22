@@ -319,10 +319,25 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
     });
   }
 
+  canCancel(auth: Authenticator): boolean {
+    if (auth.isAdmin()) {
+      return true;
+    }
+    return auth.user()?.id === this.userId;
+  }
+
   async cancel(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<void, Error>> {
+    if (!this.canCancel(auth)) {
+      return new Err(
+        new Error(
+          "Only the wake-up owner or a workspace admin can cancel this wake-up."
+        )
+      );
+    }
+
     if (this.status !== "scheduled") {
       return new Ok(undefined);
     }
