@@ -14,8 +14,9 @@ wake-up fires, the agent resumes in the same conversation with full context. The
 supports one-shot delays ("in 2 hours"), absolute times ("at 2026-04-16T16:00Z"), and cron
 patterns ("0 9 * * MON-FRI").
 
-Current implementation status: the backend Temporal path is implemented for one-shot wake-ups only.
-Cron scheduling, the tool surface, API endpoints, and UI are still follow-up work.
+Current implementation status: the backend Temporal path is implemented for one-shot wake-ups, and
+cron wake-ups now have schedule create / delete plus `fireCount` / `maxFires` expiration. Cron
+validation and guardrails, the tool surface, API endpoints, and UI are still follow-up work.
 
 ## Design Overview
 
@@ -37,7 +38,7 @@ Cron scheduling, the tool surface, API endpoints, and UI are still follow-up wor
 │  - scheduleConfig (fireAt timestamp | cron+tz)              │
 │  - reason (injected in wake-up message + displayed in UI)   │
 │  - status: scheduled | fired | cancelled | expired          │
-│  - fireCount                                                │
+│  - fireCount / maxFires (MAX_WAKE_UP_FIRES = 32)            │
 └──────────────────────┬──────────────────────────────────────┘
                        │
                        ▼
@@ -64,7 +65,10 @@ Cron scheduling, the tool surface, API endpoints, and UI are still follow-up wor
 │     - doNotAssociateUser: true                              │
 │     - content: <dust_system> + "Wake-up reason: ..."        │
 │     - mentions: [{ configurationId: agentConfigurationId }] │
-│  5. fireCount++ and one_shot → status = fired               │
+│  5. fireCount++ and:                                        │
+│     - one_shot → status = fired                             │
+│     - cron + fireCount >= maxFires → status = expired       │
+│       + delete Temporal schedule                            │
 │  6. Missing / inaccessible conversation → cancelled         │
 │     Retry exhaustion / timeout → expired                    │
 └─────────────────────────────────────────────────────────────┘
@@ -105,13 +109,19 @@ Wraps `WakeUpModel`. Key methods:
 - `makeNew(auth, { conversationId, agentConfigurationId, scheduleType, ... })` — creates the row
   and starts the Temporal workflow.
 - `cancel(auth)` — cancels the Temporal workflow and sets status to `cancelled`.
-- `markFired()` — increments `fireCount`, updates status for one-shot.
+- `markFired()` — increments `fireCount` and updates status:
+  - `one_shot` → `fired`
+  - `cron` + `fireCount >= maxFires()` → `expired`
+  - `cron` otherwise → stays `scheduled`
 - `markExpired()` — sets status to `expired`.
+- `maxFires()` — returns the constant `MAX_WAKE_UP_FIRES` (currently 32).
+- `cleanupTemporalAfterFire(auth)` — deletes the Temporal schedule for cron wake-ups once they
+  have reached `expired`.
 - `listByConversation(auth, conversationId)` — for UI display.
 - `listActiveByWorkspace(auth)` — for guardrail checks.
 - `fetchWakeUpAndAuthenticatorById({ workspaceId, wakeUpId })` — resolves the wake-up and the
   wake-up owner's authenticator for Temporal activities.
-- `toJSON()` — serializes to the shared `WakeUpType` shape.
+- `toJSON()` — serializes to the shared `WakeUpType` shape (including `fireCount` and `maxFires`).
 
 Also define shared Zod-backed types in `front/types/assistant/wakeups.ts`:
 
@@ -143,8 +153,10 @@ Current retry policy:
 - non-retryable error type: `WakeUpNonRetryableError`
 
 Cron wake-ups are partially implemented. `launchOrScheduleWakeUpTemporalWorkflow(...)` can now
-create a Temporal Schedule for `scheduleType: "cron"`, and
-`cancelWakeUpTemporalWorkflow(...)` can delete it. Recurring fire semantics remain follow-up work.
+create a Temporal Schedule for `scheduleType: "cron"`, and `cancelWakeUpTemporalWorkflow(...)` can
+delete it. Recurring fire semantics now track `fireCount / maxFires` and automatically expire the
+wake-up once the fire count reaches `maxFires`; the Temporal schedule is deleted after the final
+fire via `cleanupTemporalAfterFire(...)`.
 
 ### `runWakeUpActivity` (current, in `front/temporal/triggers/activities.ts`)
 
@@ -153,15 +165,19 @@ create a Temporal Schedule for `scheduleType: "cron"`, and
 2. Verify `status === "scheduled"`.
 3. Fetch the conversation resource and then the full conversation with `getConversation(...)`.
 4. Call `postUserMessage(...)` with:
-   - a `<dust_system>` block containing the wake-up sId
+   - a `<dust_system>` block containing the wake-up sId, `fireCount / maxFires`, and (when the
+     wake-up is about to reach `maxFires`) an expiration warning
    - `Wake-up reason: {reason}`
    - `context.origin: "wakeup"`
    - `context.username: "Dust"`
    - `doNotAssociateUser: true`
    - `mentions: [{ configurationId: wakeUp.agentConfigurationId }]`
-5. Mark the wake-up as fired on success.
-6. Mark the wake-up as cancelled when the conversation is missing or inaccessible.
-7. Let Temporal retry posting failures. If retries are exhausted, `expireWakeUpActivity(...)`
+5. Mark the wake-up as fired on success (`markFired(...)` handles one-shot vs cron and the
+   `fireCount >= maxFires` expiration transition).
+6. For cron wake-ups that have just expired, call `cleanupTemporalAfterFire(...)` to delete the
+   Temporal schedule.
+7. Mark the wake-up as cancelled when the conversation is missing or inaccessible.
+8. Let Temporal retry posting failures. If retries are exhausted, `expireWakeUpActivity(...)`
    marks the wake-up as expired.
 
 ## Agent Skill Interface
@@ -319,7 +335,8 @@ When a wake-up fires:
    `WakeUpModel` rows explicitly.
 
 3. **Wake-up message content**: The current implementation posts a `<dust_system>` block that
-   includes the wake-up sId, followed by `Wake-up reason: {reason}`.
+   includes the wake-up sId and `fireCount / maxFires`, and an expiration warning when the
+   wake-up is about to reach `maxFires`, followed by `Wake-up reason: {reason}`.
 
 4. **Billing**: Wake-up fires count as programmatic usage, same treatment as trigger-fired
    messages.
@@ -332,10 +349,10 @@ When a wake-up fires:
 
 - In the current codebase, `schedule_wakeup` should be wired through the internal MCP tool
   architecture rather than a legacy `front/lib/api/assistant/agent_action.ts` registry.
-- The current implementation can create / delete cron schedules, but recurring fire semantics are
-  still incomplete. A follow-up should define cron validation, `fireCount`, and expiry / max-fire
-  behavior clearly.
-- The current PR does not add explicit duplicate-fire protection yet. A follow-up should define the
+- The current implementation can create / delete cron schedules, tracks `fireCount / maxFires`,
+  and automatically expires cron wake-ups once `fireCount >= maxFires`. Remaining cron work is
+  cron validation and cron-specific guardrails.
+- Explicit duplicate-fire protection is not implemented. A follow-up should define the
   idempotency story clearly.
 - Cancel-vs-fire races are still best-effort today and should be tightened in `WakeUpResource`.
 - The current implementation retries generic posting failures and expires after retry exhaustion.
