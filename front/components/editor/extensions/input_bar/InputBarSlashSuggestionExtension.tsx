@@ -15,7 +15,7 @@ export const inputBarSlashSuggestionPluginKey = new PluginKey(
 );
 
 export interface InputBarSlashSuggestionExtensionOptions {
-  owner: WorkspaceType;
+  owner?: WorkspaceType;
   enabledRef: RefObject<boolean>;
   onSkillSelectRef: RefObject<
     ((skill: SkillWithoutInstructionsAndToolsType) => void) | undefined
@@ -29,7 +29,7 @@ export const InputBarSlashSuggestionExtension =
 
     addOptions() {
       return {
-        owner: {} as WorkspaceType,
+        owner: undefined,
         enabledRef: { current: false },
         onSkillSelectRef: { current: undefined },
         selectedSkillIdsRef: { current: new Set<string>() },
@@ -48,7 +48,9 @@ export const InputBarSlashSuggestionExtension =
           startOfLine: false,
           items: () => [],
           allow: ({ editor }) =>
-            Boolean(extensionOptions.enabledRef.current) && editor.isFocused,
+            Boolean(extensionOptions.owner) &&
+            Boolean(extensionOptions.enabledRef.current) &&
+            editor.isFocused,
           command: ({ editor, range, props }) => {
             editor.chain().focus().deleteRange(range).run();
             extensionOptions.onSkillSelectRef.current?.(props);
@@ -68,30 +70,38 @@ export const InputBarSlashSuggestionExtension =
 
             return {
               onStart: (props) => {
+                const owner = extensionOptions.owner;
+
+                if (!owner || !props.clientRect) {
+                  return;
+                }
+
                 activeEditorView = props.editor.view;
                 component = new ReactRenderer(InputBarSlashSuggestionDropdown, {
                   props: {
                     ...props,
                     onClose: closeSuggestionDropdown,
-                    owner: extensionOptions.owner,
+                    owner,
                     selectedSkillIdsRef: extensionOptions.selectedSkillIdsRef,
                   },
                   editor: props.editor,
                 });
 
-                if (!props.clientRect) {
-                  return;
-                }
-
                 document.body.appendChild(component.element);
               },
 
               onUpdate(props) {
+                const owner = extensionOptions.owner;
+
+                if (!owner) {
+                  return;
+                }
+
                 activeEditorView = props.editor.view;
                 component?.updateProps({
                   ...props,
                   onClose: closeSuggestionDropdown,
-                  owner: extensionOptions.owner,
+                  owner,
                   selectedSkillIdsRef: extensionOptions.selectedSkillIdsRef,
                 });
               },
