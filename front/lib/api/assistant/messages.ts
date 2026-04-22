@@ -371,7 +371,7 @@ export async function batchRenderUserMessagesWithoutMentions(
   );
 }
 
-async function batchRenderAgentMessages<V extends RenderMessageVariant>(
+export async function batchRenderAgentMessages<V extends RenderMessageVariant>(
   auth: Authenticator,
   messages: MessageModel[],
   viewType: V,
