@@ -77,27 +77,32 @@ function resultToTakeawaySourceDocument(
 export async function analyzeProjectTodosActivity({
   workspaceId,
   spaceId,
+  runId,
 }: {
   workspaceId: string;
   spaceId: string;
+  runId: string;
 }): Promise<void> {
-  logger.info({ workspaceId, spaceId }, "Starting project todo analysis");
+  const startMs = Date.now();
+  const localLogger = logger.child({ workspaceId, spaceId, runId });
+
+  localLogger.info("Starting project todo analysis");
 
   if (!workspaceId) {
-    logger.error({ workspaceId, spaceId }, "Workspace ID is required");
+    localLogger.error("Workspace ID is required");
     return;
   }
 
   const workspace = await WorkspaceResource.fetchById(workspaceId);
   if (!workspace) {
-    logger.error({ workspaceId }, "Workspace not found");
+    localLogger.error("Workspace not found");
     return;
   }
   const adminAuth = await Authenticator.internalAdminForWorkspace(workspaceId);
 
   const space = await SpaceResource.fetchById(adminAuth, spaceId);
   if (!space || !space.isProject()) {
-    logger.error({ spaceId }, "Space not found or not a project");
+    localLogger.error("Space not found or not a project");
     return;
   }
 
@@ -118,8 +123,7 @@ export async function analyzeProjectTodosActivity({
   }
 
   if (!member) {
-    logger.info(
-      { workspaceId, spaceId },
+    localLogger.info(
       "No active members on project space; skipping todo analysis"
     );
     return;
@@ -130,10 +134,7 @@ export async function analyzeProjectTodosActivity({
     workspaceId
   );
   if (!auth) {
-    logger.error(
-      { spaceId },
-      "Failed to create authenticator for project member"
-    );
+    localLogger.error("Failed to create authenticator for project member");
     return;
   }
 
@@ -147,8 +148,8 @@ export async function analyzeProjectTodosActivity({
   });
 
   if (results.isErr()) {
-    logger.error(
-      { spaceId, error: results.error },
+    localLogger.error(
+      { error: results.error },
       "Failed to retrieve include data"
     );
     return;
@@ -158,28 +159,38 @@ export async function analyzeProjectTodosActivity({
     results.value.map((result) => resultToTakeawaySourceDocument(result))
   );
 
-  for (const document of documents) {
-    logger.info(
-      {
-        id: document.id,
-        title: document.title,
-        text: document.text,
-        type: document.type,
-        uri: document.uri,
-      },
-      "Document"
-    );
-  }
+  const stats = {
+    documentsFound: documents.length,
+    documentsAnalyzed: 0,
+    documentsFailed: 0,
+    actionItemsExtracted: 0,
+    keyDecisionsExtracted: 0,
+    notableFactsExtracted: 0,
+  };
 
   await concurrentExecutor(
     documents,
     async (document) => {
-      await extractDocumentTakeaways(auth, {
+      const result = await extractDocumentTakeaways(auth, {
+        localLogger,
         spaceId,
         document,
       });
+      if (result) {
+        stats.documentsAnalyzed++;
+        stats.actionItemsExtracted += result.actionItems;
+        stats.keyDecisionsExtracted += result.keyDecisions;
+        stats.notableFactsExtracted += result.notableFacts;
+      } else {
+        stats.documentsFailed++;
+      }
     },
     { concurrency: 10 }
+  );
+
+  localLogger.info(
+    { phase: "analyze", ...stats, durationMs: Date.now() - startMs },
+    "Project todo analysis complete"
   );
 }
 
@@ -188,19 +199,30 @@ export async function analyzeProjectTodosActivity({
 export async function mergeTodosForProjectActivity({
   workspaceId,
   spaceId,
+  runId,
 }: {
   workspaceId: string;
   spaceId: string;
+  runId: string;
 }): Promise<void> {
-  logger.info(
-    { workspaceId, spaceId },
-    "Starting merge of project todo takeaways"
-  );
+  const startMs = Date.now();
+  const localLogger = logger.child({ workspaceId, spaceId, runId });
+
+  localLogger.info("Starting merge of project todo takeaways");
 
   if (!workspaceId) {
-    logger.error({ workspaceId, spaceId }, "Workspace ID is required");
+    localLogger.error("Workspace ID is required");
     return;
   }
 
-  await mergeTakeawaysIntoProject({ workspaceId, spaceId });
+  const stats = await mergeTakeawaysIntoProject({
+    localLogger,
+    workspaceId,
+    spaceId,
+  });
+
+  localLogger.info(
+    { phase: "merge", ...stats, durationMs: Date.now() - startMs },
+    "Project todo merge complete"
+  );
 }

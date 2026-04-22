@@ -1,5 +1,5 @@
 import type * as activities from "@app/temporal/project_todo/activities";
-import { proxyActivities } from "@temporalio/workflow";
+import { proxyActivities, uuid4 } from "@temporalio/workflow";
 
 const { analyzeProjectTodosActivity, mergeTodosForProjectActivity } =
   proxyActivities<typeof activities>({
@@ -16,6 +16,8 @@ export async function projectTodoWorkflow({
   workspaceId: string;
   spaceId: string;
 }): Promise<void> {
-  await analyzeProjectTodosActivity({ workspaceId, spaceId });
-  await mergeTodosForProjectActivity({ workspaceId, spaceId });
+  // Generate a unique run ID to correlate all log lines across both activities.
+  const runId = uuid4();
+  await analyzeProjectTodosActivity({ workspaceId, spaceId, runId });
+  await mergeTodosForProjectActivity({ workspaceId, spaceId, runId });
 }
