@@ -77,16 +77,11 @@ export const unstickConversationPlugin = createPlugin({
         new Error("Nothing to unstick: no hung agent answer found.")
       );
     }
-    if (stuckAgents.length > 1) {
-      return new Err(
-        new Error(
-          `Found ${stuckAgents.length} hung agent answers (expected one). ` +
-            `sIds: ${stuckAgents.map((a) => a.sId).join(", ")}.`
-        )
-      );
-    }
 
-    const stuck = stuckAgents[0];
+    // Only finalize the latest hung answer: it's the one blocking the queue. Earlier zombies
+    // (if any) are orphaned history and don't block processing; leave them alone so we do the
+    // minimum needed to resume the conversation.
+    const stuck = stuckAgents[stuckAgents.length - 1];
 
     await updateAgentMessageWithFinalStatus(auth, {
       conversation,
@@ -101,12 +96,21 @@ export const unstickConversationPlugin = createPlugin({
       },
     });
 
+    const extras =
+      stuckAgents.length > 1
+        ? ` ${stuckAgents.length - 1} earlier hung answer(s) were left alone ` +
+          `(sIds: ${stuckAgents
+            .slice(0, -1)
+            .map((a) => a.sId)
+            .join(", ")}).`
+        : "";
+
     return new Ok({
       display: "text",
       value:
         `Marked agent message ${stuck.sId} as failed. ` +
         `Any queued user messages have been promoted and a fresh agent answer has been ` +
-        `kicked off for the last one.`,
+        `kicked off for the last one.${extras}`,
     });
   },
 });
