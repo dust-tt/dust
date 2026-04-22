@@ -94,99 +94,51 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const { serverType, id } = getServerTypeAndIdFromSId(serverId);
-      switch (serverType) {
-        case "internal": {
-          const systemSpace =
-            await SpaceResource.fetchWorkspaceSystemSpace(auth);
-          const server = await InternalMCPServerInMemoryResource.fetchById(
-            auth,
-            serverId,
-            systemSpace
-          );
+      const { serverType } = getServerTypeAndIdFromSId(serverId);
 
-          if (!server) {
-            return apiError(req, res, {
-              status_code: 404,
-              api_error: {
-                type: "data_source_not_found",
-                message: "Internal MCP Server not found",
-              },
-            });
-          }
+      // Fetch all views for this server in one pass. baseFetch internally resolves
+      // the server resource, so we avoid a separate fetchById round-trip.
+      const allViews = await MCPServerViewResource.listByMCPServer(
+        auth,
+        serverId
+      );
 
-          const json = server.toJSON();
-
-          const views = (
-            await MCPServerViewResource.listByMCPServer(auth, json.sId)
-          ).map((v) => v.toJSON());
-
-          // Enrich authorization so the client can block the OAuth popup when the
-          // workspace-level connection is missing.
-          return res.status(200).json({
-            server: {
-              ...json,
-              views,
-              authorization: withWorkspaceConnectionRequirement(
-                json.authorization,
-                {
-                  isWorkspaceConnected: (
-                    await MCPServerConnectionResource.findByMCPServer(auth, {
-                      mcpServerId: json.sId,
-                      connectionType: "workspace",
-                    })
-                  ).isOk(),
-                }
-              ),
-            },
-          });
-        }
-        case "remote": {
-          const server = await RemoteMCPServerResource.fetchById(
-            auth,
-            serverId
-          );
-
-          if (!server || server.id !== id) {
-            return apiError(req, res, {
-              status_code: 404,
-              api_error: {
-                type: "data_source_not_found",
-                message: "Remote MCP Server not found",
-              },
-            });
-          }
-
-          const json = server.toJSON();
-
-          const views = (
-            await MCPServerViewResource.listByMCPServer(auth, json.sId)
-          ).map((v) => v.toJSON());
-
-          // Enrich authorization so the client can block the OAuth popup when the
-          // workspace-level connection is missing.
-          return res.status(200).json({
-            server: {
-              ...json,
-              views,
-              authorization: withWorkspaceConnectionRequirement(
-                json.authorization,
-                {
-                  isWorkspaceConnected: (
-                    await MCPServerConnectionResource.findByMCPServer(auth, {
-                      mcpServerId: json.sId,
-                      connectionType: "workspace",
-                    })
-                  ).isOk(),
-                }
-              ),
-            },
-          });
-        }
-        default:
-          assertNever(serverType);
+      if (allViews.length === 0) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "data_source_not_found",
+            message:
+              serverType === "internal"
+                ? "Internal MCP Server not found"
+                : "Remote MCP Server not found",
+          },
+        });
       }
-      break;
+
+      // Extract the server JSON from any view — all views point to the same server.
+      const json = allViews[0].toJSON().server;
+      const views = allViews.map((v) => v.toJSON());
+
+      // Enrich authorization so the client can block the OAuth popup when the
+      // workspace-level connection is missing.
+      return res.status(200).json({
+        server: {
+          ...json,
+          views,
+          authorization: withWorkspaceConnectionRequirement(
+            json.authorization,
+            {
+              isWorkspaceConnected: (
+                await MCPServerConnectionResource.findByMCPServer(auth, {
+                  mcpServerId: serverId,
+                  connectionType: "workspace",
+                })
+              ).isOk(),
+            }
+          ),
+        },
+      });
     }
     case "PATCH": {
       const r = PatchMCPServerBodySchema.safeParse(req.body);

@@ -247,11 +247,12 @@ async function handler(
             });
           }
 
-          // Check for name conflicts before creating the server.
-          if (body.includeGlobal) {
-            const globalSpace =
-              await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+          // Fetch once; reused for both the conflict check and the view creation below.
+          const globalSpace = body.includeGlobal
+            ? await SpaceResource.fetchWorkspaceGlobalSpace(auth)
+            : null;
 
+          if (globalSpace) {
             const { hasConflict } =
               await MCPServerViewResource.hasNameConflictInSpaceByName(
                 auth,
@@ -305,21 +306,22 @@ async function handler(
             });
           }
 
-          // Create default tool stakes if specified
+          // Create default tool stakes if specified — one bulk INSERT instead of N round-trips.
           if (defaultConfig?.toolStakes) {
-            for (const [toolName, stakeLevel] of Object.entries(
-              defaultConfig.toolStakes
-            )) {
-              await RemoteMCPServerToolMetadataResource.makeNew(auth, {
-                remoteMCPServerId: newRemoteMCPServer.id,
-                toolName,
-                permission: stakeLevel,
-                enabled: true,
-              });
-            }
+            await RemoteMCPServerToolMetadataResource.bulkCreate(
+              auth,
+              Object.entries(defaultConfig.toolStakes).map(
+                ([toolName, stakeLevel]) => ({
+                  remoteMCPServerId: newRemoteMCPServer.id,
+                  toolName,
+                  permission: stakeLevel,
+                  enabled: true,
+                })
+              )
+            );
           }
 
-          if (body.includeGlobal) {
+          if (globalSpace) {
             const systemView =
               await MCPServerViewResource.getMCPServerViewForSystemSpace(
                 auth,
@@ -339,7 +341,7 @@ async function handler(
 
             await MCPServerViewResource.create(auth, {
               systemView,
-              space: await SpaceResource.fetchWorkspaceGlobalSpace(auth),
+              space: globalSpace,
             });
           }
 
@@ -402,11 +404,12 @@ async function handler(
           // otherwise fall back to the internal server name.
           const nameForConflictCheck = viewName ?? name;
 
-          // Check for name conflicts before creating the server.
-          if (body.includeGlobal) {
-            const globalSpace =
-              await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+          // Fetch once; reused for both the conflict check and the view creation below.
+          const globalSpace = body.includeGlobal
+            ? await SpaceResource.fetchWorkspaceGlobalSpace(auth)
+            : null;
 
+          if (globalSpace) {
             const { hasConflict } =
               await MCPServerViewResource.hasNameConflictInSpaceByName(
                 auth,
@@ -483,10 +486,7 @@ async function handler(
             }
           }
 
-          if (body.includeGlobal) {
-            const globalSpace =
-              await SpaceResource.fetchWorkspaceGlobalSpace(auth);
-
+          if (globalSpace) {
             const systemView =
               await MCPServerViewResource.getMCPServerViewForSystemSpace(
                 auth,

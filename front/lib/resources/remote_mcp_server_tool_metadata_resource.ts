@@ -62,6 +62,36 @@ export class RemoteMCPServerToolMetadataResource extends BaseResource<RemoteMCPS
     return new this(RemoteMCPServerToolMetadataModel, toolMetadata.get());
   }
 
+  static async bulkCreate(
+    auth: Authenticator,
+    blobs: CreationAttributes<RemoteMCPServerToolMetadataModel>[],
+    transaction?: Transaction
+  ) {
+    if (blobs.length === 0) {
+      return [];
+    }
+
+    const canAdministrate =
+      await SpaceResource.canAdministrateSystemSpace(auth);
+
+    if (!canAdministrate) {
+      throw new DustError(
+        "unauthorized",
+        "The user is not authorized to create tool metadata"
+      );
+    }
+
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    const records = await this.model.bulkCreate(
+      blobs.map((blob) => ({ ...blob, workspaceId })),
+      { transaction }
+    );
+
+    return records.map(
+      (r) => new this(RemoteMCPServerToolMetadataModel, r.get())
+    );
+  }
+
   // Fetch
 
   private static async baseFetch(

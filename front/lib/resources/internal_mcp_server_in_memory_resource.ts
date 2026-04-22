@@ -66,9 +66,13 @@ export class InternalMCPServerInMemoryResource {
     readonly availability: MCPServerAvailability
   ) {}
 
+  // When `preloadedCredential` is provided the per-server DB fetch is skipped.
+  // Pass it when calling in a loop so callers can batch-fetch all credentials
+  // upfront and avoid N concurrent queries.
   private static async init(
     auth: Authenticator,
-    id: string
+    id: string,
+    preloadedCredential?: InternalMCPServerCredentialModel | null
   ): Promise<InternalMCPServerInMemoryResource | null> {
     const r = getInternalMCPServerNameAndWorkspaceId(id);
     if (r.isErr()) {
@@ -100,8 +104,30 @@ export class InternalMCPServerInMemoryResource {
       ...serverMetadata.serverInfo,
       tools: serverMetadata.tools,
     };
-    server.internalServerCredential =
-      await server.fetchInternalServerCredential(auth);
+
+    if (preloadedCredential !== undefined) {
+      // Caller batch-fetched credentials — avoid the per-server DB round-trip.
+      if (
+        !doesInternalMCPServerRequireBearerToken(id) ||
+        !preloadedCredential
+      ) {
+        server.internalServerCredential = null;
+      } else {
+        server.internalServerCredential = {
+          sharedSecret: preloadedCredential.encryptedKey
+            ? decrypt({
+                encrypted: preloadedCredential.encryptedKey,
+                key: auth.getNonNullableWorkspace().sId,
+                useCase: "mcp_server_credentials",
+              })
+            : null,
+          customHeaders: preloadedCredential.customHeaders,
+        };
+      }
+    } else {
+      server.internalServerCredential =
+        await server.fetchInternalServerCredential(auth);
+    }
 
     return server;
   }
@@ -307,9 +333,30 @@ export class InternalMCPServerInMemoryResource {
     });
     validIds.push(...removeNulls(servers.map((s) => s.internalMCPServerId)));
 
+    if (validIds.length === 0) {
+      return [];
+    }
+
+    // Batch-fetch all credentials in one query instead of one per server in the executor.
+    const uniqueIds = [...new Set(validIds)];
+    const allCredentials = await InternalMCPServerCredentialModel.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        internalMCPServerId: { [Op.in]: uniqueIds },
+      },
+    });
+    const credentialsByServerId = new Map(
+      allCredentials.map((c) => [c.internalMCPServerId, c])
+    );
+
     const resources = await concurrentExecutor(
       validIds,
-      (id) => InternalMCPServerInMemoryResource.init(auth, id),
+      (id) =>
+        InternalMCPServerInMemoryResource.init(
+          auth,
+          id,
+          credentialsByServerId.get(id) ?? null
+        ),
       { concurrency: 10 }
     );
 
@@ -363,11 +410,34 @@ export class InternalMCPServerInMemoryResource {
       },
     });
 
+    const serverIds = removeNulls(
+      servers.map((server) => server.internalMCPServerId)
+    );
+
+    if (serverIds.length === 0) {
+      return [];
+    }
+
+    // Batch-fetch all credentials in one query instead of one per server in the executor.
+    const allCredentials = await InternalMCPServerCredentialModel.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        internalMCPServerId: { [Op.in]: serverIds },
+      },
+    });
+    const credentialsByServerId = new Map(
+      allCredentials.map((c) => [c.internalMCPServerId, c])
+    );
+
     const resources = await concurrentExecutor(
-      removeNulls(servers.map((server) => server.internalMCPServerId)),
+      serverIds,
       async (internalMCPServerId) =>
         // This does not create them in the workspace, only in memory, we need to call "makeNew" to create them in the workspace.
-        InternalMCPServerInMemoryResource.init(auth, internalMCPServerId),
+        InternalMCPServerInMemoryResource.init(
+          auth,
+          internalMCPServerId,
+          credentialsByServerId.get(internalMCPServerId) ?? null
+        ),
       {
         concurrency: 10,
       }
