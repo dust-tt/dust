@@ -84,13 +84,9 @@ export function getGroupConversationsByUnreadAndActionRequired(
   );
 }
 
-export function getGroupConversationsByDate<T extends ConversationListItemType>({
-  conversations,
-  titleFilter,
-}: {
-  conversations: T[];
-  titleFilter: string;
-}) {
+export function getGroupConversationsByDate<
+  T extends ConversationListItemType,
+>({ conversations, titleFilter }: { conversations: T[]; titleFilter: string }) {
   const today = moment().startOf("day");
   const yesterday = moment().subtract(1, "days").startOf("day");
   const lastWeek = moment().subtract(1, "weeks").startOf("day");

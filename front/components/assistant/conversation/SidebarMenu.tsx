@@ -642,9 +642,7 @@ export function AgentSidebarMenu({
 
   const hasTriggeredConversations = useMemo(
     () =>
-      conversations.some(
-        (c: ConversationListItemType) => c.triggerId !== null
-      ),
+      conversations.some((c: ConversationListItemType) => c.triggerId !== null),
     [conversations]
   );
 
@@ -1313,9 +1311,7 @@ interface NavigationListWithInboxProps {
   titleFilter: string;
   isMultiSelect: boolean;
   selectedConversations: ConversationListItemType[];
-  toggleConversationSelection: (
-    conversation: ConversationListItemType
-  ) => void;
+  toggleConversationSelection: (conversation: ConversationListItemType) => void;
   activeConversationId: string | null;
   onConversationBranched?: () => Promise<void> | void;
   owner: WorkspaceType;
