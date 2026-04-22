@@ -93,7 +93,7 @@ async function handler(
       const conversationsFull = await concurrentExecutor(
         spaceConversations,
         async (c) => getConversation(auth, c.sId, true), // includeDeleted = true
-        { concurrency: 10 }
+        { concurrency: 4 }
       );
 
       const conversations = removeNulls(
