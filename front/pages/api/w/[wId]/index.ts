@@ -87,6 +87,10 @@ const WorkspaceReinforcementBatchModeUpdateBodySchema = t.type({
   allowReinforcementBatchMode: t.boolean,
 });
 
+const WorkspaceExtensionMcpToolsUpdateBodySchema = t.type({
+  disableExtensionMcpTools: t.boolean,
+});
+
 const PostWorkspaceRequestBodySchema = t.union([
   WorkspaceAllowedDomainUpdateBodySchema,
   WorkspaceBatchDomainUpdateBodySchema,
@@ -101,6 +105,7 @@ const PostWorkspaceRequestBodySchema = t.union([
   WorkspaceEmailAgentsUpdateBodySchema,
   WorkspaceAgentReinforcementUpdateBodySchema,
   WorkspaceReinforcementBatchModeUpdateBodySchema,
+  WorkspaceExtensionMcpToolsUpdateBodySchema,
 ]);
 
 async function handler(
@@ -254,6 +259,14 @@ async function handler(
         const newMetadata = {
           ...previousMetadata,
           allowReinforcementBatchMode: body.allowReinforcementBatchMode,
+        };
+        await workspace.updateWorkspaceSettings({ metadata: newMetadata });
+        owner.metadata = newMetadata;
+      } else if ("disableExtensionMcpTools" in body) {
+        const previousMetadata = owner.metadata ?? {};
+        const newMetadata = {
+          ...previousMetadata,
+          disableExtensionMcpTools: body.disableExtensionMcpTools,
         };
         await workspace.updateWorkspaceSettings({ metadata: newMetadata });
         owner.metadata = newMetadata;

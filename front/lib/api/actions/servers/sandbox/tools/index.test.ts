@@ -11,7 +11,6 @@ const {
   mockRecordToolDuration,
   mockRefreshGcsToken,
   mockRevokeExecToken,
-  mockSandboxSupportsEgressForwarding,
   mockSetupEgressForwarder,
   mockStartTelemetry,
   mockWrapCommand,
@@ -26,7 +25,6 @@ const {
   mockRecordToolDuration: vi.fn(),
   mockRefreshGcsToken: vi.fn(),
   mockRevokeExecToken: vi.fn(),
-  mockSandboxSupportsEgressForwarding: vi.fn(),
   mockSetupEgressForwarder: vi.fn(),
   mockStartTelemetry: vi.fn(),
   mockWrapCommand: vi.fn(),
@@ -43,7 +41,6 @@ vi.mock("@app/lib/api/config", () => ({
 vi.mock("@app/lib/api/sandbox/egress", () => ({
   checkEgressForwarderHealth: mockCheckEgressForwarderHealth,
   readNewDenyLogEntries: mockReadNewDenyLogEntries,
-  sandboxSupportsEgressForwarding: mockSandboxSupportsEgressForwarding,
   setupEgressForwarder: mockSetupEgressForwarder,
 }));
 
@@ -127,46 +124,6 @@ describe("runSandboxBashTool", () => {
     } as never;
   }
 
-  it("keeps executing as the default user when the sandbox is pre-PR1", async () => {
-    const sandbox = {
-      providerId: "provider-id",
-      sId: "sandbox-id",
-      exec: vi
-        .fn()
-        .mockResolvedValue(
-          new Ok({ exitCode: 0, stdout: "hello", stderr: "" })
-        ),
-    };
-
-    mockEnsureActive.mockResolvedValue(
-      new Ok({
-        freshlyCreated: false,
-        sandbox,
-        wokeFromSleep: false,
-      })
-    );
-    mockSandboxSupportsEgressForwarding.mockResolvedValue(new Ok(false));
-
-    const result = await runSandboxBashTool(
-      { command: "echo hello", description: "Run command" },
-      makeExtra()
-    );
-
-    expect(result.isOk()).toBe(true);
-    expect(mockSetupEgressForwarder).not.toHaveBeenCalled();
-    expect(mockCheckEgressForwarderHealth).not.toHaveBeenCalled();
-    expect(sandbox.exec).toHaveBeenCalledWith(
-      expect.anything(),
-      "wrapped:echo hello",
-      expect.objectContaining({
-        envVars: expect.objectContaining({
-          DUST_SANDBOX_TOKEN: "sandbox-token",
-        }),
-      })
-    );
-    expect(sandbox.exec.mock.calls[0][2]).not.toHaveProperty("user");
-  });
-
   it("executes as agent-proxied when the forwarder is healthy", async () => {
     const sandbox = {
       providerId: "provider-id",
@@ -185,7 +142,7 @@ describe("runSandboxBashTool", () => {
         wokeFromSleep: false,
       })
     );
-    mockSandboxSupportsEgressForwarding.mockResolvedValue(new Ok(true));
+
     mockCheckEgressForwarderHealth.mockResolvedValue(new Ok(true));
 
     const result = await runSandboxBashTool(
@@ -222,7 +179,7 @@ describe("runSandboxBashTool", () => {
         wokeFromSleep: true,
       })
     );
-    mockSandboxSupportsEgressForwarding.mockResolvedValue(new Ok(true));
+
     mockCheckEgressForwarderHealth.mockResolvedValue(new Ok(false));
 
     const result = await runSandboxBashTool(
@@ -261,7 +218,7 @@ describe("runSandboxBashTool", () => {
         wokeFromSleep: false,
       })
     );
-    mockSandboxSupportsEgressForwarding.mockResolvedValue(new Ok(true));
+
     mockSetupEgressForwarder.mockResolvedValue(
       new Err(new Error("setup failed"))
     );

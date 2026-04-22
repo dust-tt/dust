@@ -63,7 +63,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
   const spaceId = conversation?.spaceId;
   const isProjectConversation = !!spaceId;
   const isLoading = isProjectConversation && !spaceInfo;
-  const forkedFrom = conversation?.forkedFrom;
+  const forkedFrom = conversation?.forkingData?.forkedFrom;
 
   const breadcrumbItems: BreadcrumbItem[] = [];
 

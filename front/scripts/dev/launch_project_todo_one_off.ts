@@ -7,6 +7,7 @@ import {
   mergeTodosForProjectActivity,
 } from "@app/temporal/project_todo/activities";
 import { QUEUE_NAME } from "@app/temporal/project_todo/config";
+import { v4 as uuidv4 } from "uuid";
 
 makeScript(
   {
@@ -69,7 +70,8 @@ makeScript(
       return;
     }
 
-    await analyzeProjectTodosActivity({ workspaceId, spaceId });
-    await mergeTodosForProjectActivity({ workspaceId, spaceId });
+    const runId = uuidv4();
+    await analyzeProjectTodosActivity({ workspaceId, spaceId, runId });
+    await mergeTodosForProjectActivity({ workspaceId, spaceId, runId });
   }
 );

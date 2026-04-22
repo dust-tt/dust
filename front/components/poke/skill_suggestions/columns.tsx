@@ -195,6 +195,28 @@ export function makeColumnsForSkillSuggestions(
       },
     },
     {
+      accessorKey: "updatedAt",
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Updated at" />
+      ),
+      cell: ({ row }) => {
+        return formatTimestampToFriendlyDate(row.original.updatedAt);
+      },
+    },
+    {
+      accessorKey: "updatedBy",
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Updated by" />
+      ),
+      cell: ({ row }) => {
+        const updatedBy = row.original.updatedBy;
+        if (!updatedBy) {
+          return "-";
+        }
+        return <span title={updatedBy.email}>{updatedBy.fullName}</span>;
+      },
+    },
+    {
       id: "content",
       header: "Content",
       cell: ({ row }) => {

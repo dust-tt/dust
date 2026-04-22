@@ -207,7 +207,7 @@ async function handler(
     case "GET": {
       const conversationRes =
         await ConversationResource.fetchConversationWithoutContent(auth, cId, {
-          includeForkedChildrenInfo: true,
+          includeForkingData: true,
         });
 
       if (conversationRes.isErr()) {

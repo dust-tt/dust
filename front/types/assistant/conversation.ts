@@ -457,6 +457,14 @@ export type ConversationListItemType = {
 };
 
 /**
+ * @swaggerschema PrivateConversationForkingData (swagger_private_schemas.ts)
+ */
+export type ConversationForkingDataType = {
+  forkedFrom?: ConversationForkedFromType;
+  forkedChildren?: ConversationForkedChildType[];
+};
+
+/**
  * A lighter version of Conversation without the content (for menu display).
  * Extends ConversationListItemType with DB-layer fields used when the full conversation context is
  * available (individual conversation pages, mutations).
@@ -467,13 +475,12 @@ export type ConversationWithoutContentType = ConversationListItemType & {
   id: ModelId;
   depth: number;
   branchId: string | null;
-  forkedFrom?: ConversationForkedFromType;
-  forkedChildren?: ConversationForkedChildType[];
+  forkingData?: ConversationForkingDataType;
 };
 
 type ConversationDisplayTitleInput = Pick<
   ConversationWithoutContentType,
-  "created" | "title" | "forkedFrom"
+  "created" | "title" | "forkingData"
 >;
 export function getConversationDisplayTitle(
   conversation: ConversationDisplayTitleInput,
@@ -483,9 +490,10 @@ export function getConversationDisplayTitle(
     return conversation.title;
   }
 
-  if (conversation.forkedFrom) {
-    return conversation.forkedFrom.parentConversationTitle
-      ? `Branched from '${conversation.forkedFrom.parentConversationTitle}'`
+  const forkedFrom = conversation.forkingData?.forkedFrom;
+  if (forkedFrom) {
+    return forkedFrom.parentConversationTitle
+      ? `Branched from '${forkedFrom.parentConversationTitle}'`
       : "Branched conversation";
   }
 

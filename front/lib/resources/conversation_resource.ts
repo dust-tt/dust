@@ -37,6 +37,7 @@ import type {
   ConversationForkedChildType,
   ConversationForkedFromType,
   ConversationListItemType,
+  ConversationForkingDataType,
   ConversationMCPServerViewType,
   ConversationMetadata,
   ConversationUrlAccessMode,
@@ -69,7 +70,7 @@ export type FetchConversationOptions = {
   includeDeleted?: boolean;
   excludeTest?: boolean; // Explicitly exclude test conversations
   dangerouslySkipPermissionFiltering?: boolean;
-  includeForkedChildrenInfo?: boolean;
+  includeForkingData?: boolean;
   updatedSince?: number; // Filter conversations updated after this timestamp (milliseconds)
 };
 
@@ -98,7 +99,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   // User-specific fields (populated when conversations are listed for a user).
   private userParticipation?: UserParticipation;
   private userLastReadAt: Date | null = null;
-  private forkedFromData?: ConversationForkedFromType;
+  private _forkingData?: ConversationForkingDataType;
 
   constructor(
     model: ModelStaticWorkspaceAware<ConversationModel>,
@@ -204,7 +205,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     space: SpaceResource | null
   ): ConversationResource {
     const resource = new this(this.model, conversation.get(), space);
-    resource.forkedFromData = this.getForkedFromData(conversation);
+    const forkedFrom = this.getForkedFromData(conversation);
+    if (forkedFrom) {
+      resource._forkingData = { forkedFrom };
+    }
 
     return resource;
   }
@@ -216,10 +220,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       transaction,
       excludeTest,
       updatedAfter,
+      includeForkingData,
     }: {
       transaction?: Transaction;
       excludeTest?: boolean;
       updatedAfter?: Date;
+      includeForkingData?: boolean;
     } = {}
   ): Promise<ConversationResource[]> {
     if (ids.length === 0) {
@@ -240,7 +246,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         visibility: { [Op.notIn]: excludedVisibilities },
         ...(updatedAfter ? { updatedAt: { [Op.gte]: updatedAfter } } : {}),
       } as WhereOptions<ConversationModel>,
-      include: this.getForkedFromInclude(),
+      ...(includeForkingData ? { include: this.getForkedFromInclude() } : {}),
       transaction,
     });
 
@@ -248,8 +254,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return conversations.map((c) => this.fromModel(c, null));
   }
 
-  get forkedFromInfo(): ConversationForkedFromType | undefined {
-    return this.forkedFromData;
+  get forkingData(): ConversationForkingDataType | undefined {
+    return this._forkingData;
   }
 
   private static async listSerializedChildForks(
@@ -350,6 +356,26 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         },
       ];
     });
+  }
+
+  async fetchForkingData(
+    auth: Authenticator
+  ): Promise<ConversationForkingDataType | undefined> {
+    const forkedChildren = await ConversationResource.listSerializedChildForks(
+      auth,
+      this
+    );
+
+    if (!this.forkingData?.forkedFrom && forkedChildren.length === 0) {
+      return undefined;
+    }
+
+    return {
+      ...(this.forkingData?.forkedFrom && {
+        forkedFrom: this.forkingData.forkedFrom,
+      }),
+      ...(forkedChildren.length > 0 && { forkedChildren }),
+    };
   }
 
   get space(): SpaceResource | null {
@@ -536,7 +562,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         ...options.where,
         workspaceId: workspace.id,
       },
-      include: this.getForkedFromInclude(),
+      ...(fetchConversationOptions?.includeForkingData
+        ? { include: this.getForkedFromInclude() }
+        : {}),
       limit: options.limit,
       order: options.order,
     });
@@ -1288,6 +1316,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       includeDeleted: options?.includeDeleted,
       dangerouslySkipPermissionFiltering:
         options?.dangerouslySkipPermissionFiltering,
+      includeForkingData: options?.includeForkingData,
     });
 
     if (!conversation) {
@@ -1299,9 +1328,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         auth,
         conversation.id
       );
-    const forkedChildren = options?.includeForkedChildrenInfo
-      ? await ConversationResource.listSerializedChildForks(auth, conversation)
-      : [];
+    const forkingData = options?.includeForkingData
+      ? await conversation.fetchForkingData(auth)
+      : undefined;
 
     return new Ok({
       id: conversation.id,
@@ -1320,10 +1349,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       depth: conversation.depth,
       metadata: conversation.metadata,
       branchId: null,
-      ...(conversation.forkedFromInfo && {
-        forkedFrom: conversation.forkedFromInfo,
-      }),
-      ...(forkedChildren.length > 0 && { forkedChildren }),
+      ...(forkingData && { forkingData }),
     });
   }
 
@@ -3366,7 +3392,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       id: this.id,
       depth: this.depth,
       branchId: null,
-      ...(this.forkedFromInfo && { forkedFrom: this.forkedFromInfo }),
+      ...(this.forkingData && { forkingData: this.forkingData }),
     };
   }
 }

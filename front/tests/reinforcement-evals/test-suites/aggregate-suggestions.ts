@@ -32,6 +32,7 @@ function makeInstructionSuggestion(input: {
     state: "pending",
     source: input.source ?? "synthetic",
     sourceConversationId: null,
+    updatedBy: null,
     kind: "edit",
     suggestion: {
       instructionEdits: input.instructionEdits.map((e) => ({
@@ -61,6 +62,7 @@ function makeToolSuggestion(input: {
     state: "pending",
     source: input.source ?? "synthetic",
     sourceConversationId: null,
+    updatedBy: null,
     kind: "edit",
     suggestion: {
       toolEdits: [{ action: input.action, toolId: input.toolId }],

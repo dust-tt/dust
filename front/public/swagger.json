@@ -9582,14 +9582,8 @@
               "type": "string"
             }
           },
-          "forkedFrom": {
-            "$ref": "#/components/schemas/PrivateConversationForkedFrom"
-          },
-          "forkedChildren": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/PrivateConversationForkedChild"
-            }
+          "forkingData": {
+            "$ref": "#/components/schemas/PrivateConversationForkingData"
           }
         }
       },
@@ -9689,6 +9683,20 @@
           },
           "user": {
             "$ref": "#/components/schemas/PrivateConversationForkUser"
+          }
+        }
+      },
+      "PrivateConversationForkingData": {
+        "type": "object",
+        "properties": {
+          "forkedFrom": {
+            "$ref": "#/components/schemas/PrivateConversationForkedFrom"
+          },
+          "forkedChildren": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PrivateConversationForkedChild"
+            }
           }
         }
       },

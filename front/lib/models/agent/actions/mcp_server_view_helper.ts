@@ -11,23 +11,23 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
-export const destroyMCPServerViewDependencies = async (
+export async function destroyMCPServerViewDependencies(
   auth: Authenticator,
   {
-    mcpServerViewId,
+    mcpServerViewIds,
     transaction,
   }: {
-    mcpServerViewId: ModelId;
+    mcpServerViewIds: ModelId[];
     transaction?: Transaction;
   }
-) => {
+) {
   // Delete all dependencies.
   const agentConfigurationIds = (
     await AgentMCPServerConfigurationModel.findAll({
       attributes: ["id"],
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
-        mcpServerViewId: mcpServerViewId,
+        mcpServerViewId: mcpServerViewIds,
       },
       transaction,
     })
@@ -66,7 +66,7 @@ export const destroyMCPServerViewDependencies = async (
   await AgentMCPServerConfigurationModel.destroy({
     where: {
       workspaceId: auth.getNonNullableWorkspace().id,
-      mcpServerViewId: mcpServerViewId,
+      mcpServerViewId: mcpServerViewIds,
     },
     transaction,
   });
@@ -74,7 +74,7 @@ export const destroyMCPServerViewDependencies = async (
   await ConversationMCPServerViewModel.destroy({
     where: {
       workspaceId: auth.getNonNullableWorkspace().id,
-      mcpServerViewId: mcpServerViewId,
+      mcpServerViewId: mcpServerViewIds,
     },
     transaction,
   });
@@ -82,8 +82,8 @@ export const destroyMCPServerViewDependencies = async (
   await SkillMCPServerConfigurationModel.destroy({
     where: {
       workspaceId: auth.getNonNullableWorkspace().id,
-      mcpServerViewId: mcpServerViewId,
+      mcpServerViewId: mcpServerViewIds,
     },
     transaction,
   });
-};
+}

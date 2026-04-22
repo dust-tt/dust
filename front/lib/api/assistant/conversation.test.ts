@@ -3863,7 +3863,7 @@ describe("isConversationEventAllowedForAuth", () => {
   });
 });
 
-describe("conversation fetch forkedFrom", () => {
+describe("conversation fetch forkingData", () => {
   it("includes forkedFrom in full and light conversation payloads", async () => {
     const { authenticator: auth, workspace } = await createResourceTest({
       role: "admin",
@@ -3930,12 +3930,14 @@ describe("conversation fetch forkedFrom", () => {
     expect(fullConversationResult.isOk()).toBe(true);
 
     if (fullConversationResult.isOk()) {
-      expect(fullConversationResult.value.forkedFrom).toEqual({
-        parentConversationId: parentConversation.sId,
-        parentConversationTitle,
-        sourceMessageId: sourceMessage.sId,
-        branchedAt: branchedAt.getTime(),
-        user: auth.getNonNullableUser().toJSON(),
+      expect(fullConversationResult.value.forkingData).toEqual({
+        forkedFrom: {
+          parentConversationId: parentConversation.sId,
+          parentConversationTitle,
+          sourceMessageId: sourceMessage.sId,
+          branchedAt: branchedAt.getTime(),
+          user: auth.getNonNullableUser().toJSON(),
+        },
       });
     }
 
@@ -3946,12 +3948,14 @@ describe("conversation fetch forkedFrom", () => {
     expect(lightConversationResult.isOk()).toBe(true);
 
     if (lightConversationResult.isOk()) {
-      expect(lightConversationResult.value.forkedFrom).toEqual({
-        parentConversationId: parentConversation.sId,
-        parentConversationTitle,
-        sourceMessageId: sourceMessage.sId,
-        branchedAt: branchedAt.getTime(),
-        user: auth.getNonNullableUser().toJSON(),
+      expect(lightConversationResult.value.forkingData).toEqual({
+        forkedFrom: {
+          parentConversationId: parentConversation.sId,
+          parentConversationTitle,
+          sourceMessageId: sourceMessage.sId,
+          branchedAt: branchedAt.getTime(),
+          user: auth.getNonNullableUser().toJSON(),
+        },
       });
     }
   });
@@ -4059,14 +4063,14 @@ describe("conversation fetch forkedFrom", () => {
       await ConversationResource.fetchConversationWithoutContent(
         auth,
         parentConversation.sId,
-        { includeForkedChildrenInfo: true }
+        { includeForkingData: true }
       );
     expect(conversationResult.isOk()).toBe(true);
 
     if (conversationResult.isOk()) {
-      expect(conversationResult.value.forkedChildren).toEqual(
-        expectedForkedChildren
-      );
+      expect(conversationResult.value.forkingData).toEqual({
+        forkedChildren: expectedForkedChildren,
+      });
     }
   });
 });

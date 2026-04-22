@@ -255,15 +255,9 @@ export class InternalMCPServerInMemoryResource {
       },
     });
 
-    await concurrentExecutor(
-      mcpServerViews,
-      async (mcpServerView) => {
-        await destroyMCPServerViewDependencies(auth, {
-          mcpServerViewId: mcpServerView.id,
-        });
-      },
-      { concurrency: 10 }
-    );
+    await destroyMCPServerViewDependencies(auth, {
+      mcpServerViewIds: mcpServerViews.map((view) => view.id),
+    });
 
     await MCPServerViewModel.destroy({
       where: {
