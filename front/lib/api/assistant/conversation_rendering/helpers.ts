@@ -5,6 +5,8 @@
 
 import { isTextContent } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { rewriteContentForModel } from "@app/lib/actions/mcp_utils";
+import { getEnableSkillInstructionsFromOutputBlock } from "@app/lib/api/actions/servers/skill_management/rendering";
+import { renderEnabledSkillUserMessageFromInstructions } from "@app/lib/api/assistant/skills_rendering";
 import type { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import {
@@ -41,9 +43,34 @@ export type Step = {
   contents: Exclude<AgentContentItemType, AgentErrorContentType>[];
   actions: {
     call: FunctionCallType;
+    followUpMessages: UserMessageTypeModel[];
     result: FunctionMessageTypeModel;
   }[];
 };
+
+function renderFollowUpMessagesForAction(
+  action: AgentMCPActionWithOutputType,
+  {
+    renderSkillsAsUserMessages,
+  }: {
+    renderSkillsAsUserMessages: boolean;
+  }
+): UserMessageTypeModel[] {
+  if (!renderSkillsAsUserMessages) {
+    return [];
+  }
+
+  return removeNulls(
+    (action.output ?? []).map((outputBlock) => {
+      const marker = getEnableSkillInstructionsFromOutputBlock(outputBlock);
+      if (!marker) {
+        return null;
+      }
+
+      return renderEnabledSkillUserMessageFromInstructions(marker);
+    })
+  );
+}
 
 /**
  * Renders an action result for multi-actions model
@@ -116,12 +143,14 @@ export function getSteps(
     workspaceId,
     conversationId,
     onMissingAction,
+    renderSkillsAsUserMessages = false,
   }: {
     model: ModelConfigurationType;
     message: AgentMessageType;
     workspaceId: string;
     conversationId: string;
     onMissingAction: "inject-placeholder" | "skip";
+    renderSkillsAsUserMessages?: boolean;
   }
 ): Step[] {
   const supportedModel = getSupportedModelConfig(model);
@@ -151,6 +180,9 @@ export function getSteps(
         name: action.functionCallName,
         arguments: JSON.stringify(action.params),
       },
+      followUpMessages: renderFollowUpMessagesForAction(action, {
+        renderSkillsAsUserMessages,
+      }),
       result: renderActionForMultiActionsModel(action),
     });
   }
@@ -216,6 +248,7 @@ export function getSteps(
               );
               actions.push({
                 call: functionCall,
+                followUpMessages: [],
                 result: {
                   role: "function",
                   name: functionCall.name,

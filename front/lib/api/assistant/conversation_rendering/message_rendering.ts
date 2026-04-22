@@ -117,8 +117,9 @@ export function renderAgentSteps(
         } satisfies AssistantContentMessageTypeModel);
       }
 
-      for (const { result } of step.actions) {
+      for (const { result, followUpMessages } of step.actions) {
         messages.push(result);
+        messages.push(...followUpMessages);
       }
     }
   }
@@ -141,6 +142,7 @@ export async function renderAllMessages(
     excludeImages,
     onMissingAction,
     agentConfiguration,
+    renderSkillsAsUserMessages = false,
   }: {
     conversation: ConversationType;
     model: ModelConfigurationType;
@@ -148,6 +150,7 @@ export async function renderAllMessages(
     excludeImages?: boolean;
     onMissingAction: "inject-placeholder" | "skip";
     agentConfiguration?: AgentConfigurationType;
+    renderSkillsAsUserMessages?: boolean;
   }
 ): Promise<ModelMessageTypeMultiActions[]> {
   const messages: ModelMessageTypeMultiActions[] = [];
@@ -183,6 +186,7 @@ export async function renderAllMessages(
             workspaceId: conversation.owner.sId,
             conversationId: conversation.sId,
             onMissingAction,
+            renderSkillsAsUserMessages,
           });
 
           const agentMessages = renderAgentSteps(

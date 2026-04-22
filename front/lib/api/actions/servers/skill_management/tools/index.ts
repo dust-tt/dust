@@ -3,6 +3,8 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { SKILL_MANAGEMENT_TOOLS_METADATA } from "@app/lib/api/actions/servers/skill_management/metadata";
+import { makeEnableSkillInstructionsMarker } from "@app/lib/api/actions/servers/skill_management/rendering";
+import { SKILLS_AS_USER_MESSAGES_FEATURE_FLAG } from "@app/lib/api/assistant/skills_rendering";
 import { getFeatureFlags } from "@app/lib/auth";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -39,28 +41,44 @@ const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
       );
     }
 
+    const [augmentedSkill] =
+      await SkillResource.augmentSkillsWithExtendedSkills(auth, [skill]);
+    if (!augmentedSkill) {
+      return new Err(
+        new MCPError(`Failed to load enabled instructions for "${skill.name}"`)
+      );
+    }
+
+    const featureFlags = await getFeatureFlags(auth);
+    const renderSkillsAsUserMessages = featureFlags.includes(
+      SKILLS_AS_USER_MESSAGES_FEATURE_FLAG
+    );
+    const markerOutput = renderSkillsAsUserMessages
+      ? [makeEnableSkillInstructionsMarker(augmentedSkill)]
+      : [];
+
     if (enableResult.value.alreadyEnabled) {
       return new Ok([
         {
           type: "text" as const,
           text: `Skill "${skill.name}" was already enabled. No action taken.`,
         },
+        ...markerOutput,
       ]);
     }
 
-    // Load skill file attachments to the sandbox (behind feature flag).
-    const featureFlags = await getFeatureFlags(auth);
+    const baseOutput = [
+      {
+        type: "text" as const,
+        text: `Skill "${skill.name}" has been enabled.`,
+      },
+    ];
 
     if (
       !featureFlags.includes("sandbox_tools") ||
       skill.getFileAttachments().length === 0
     ) {
-      return new Ok([
-        {
-          type: "text" as const,
-          text: `Skill "${skill.name}" has been enabled.`,
-        },
-      ]);
+      return new Ok([...baseOutput, ...markerOutput]);
     }
 
     const ensureResult = await SandboxResource.ensureActive(auth, conversation);
@@ -89,6 +107,7 @@ const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
           `Skill "${skill.name}" has been enabled.` +
           (fileMessage ? `\n\n${fileMessage}` : ""),
       },
+      ...markerOutput,
     ]);
   },
 };
