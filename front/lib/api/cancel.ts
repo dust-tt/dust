@@ -60,7 +60,9 @@ export async function cancelMessageGeneration(
   const agentMessagesRes = await batchRenderAgentMessages(
     auth,
     messageRows,
-    "full"
+    "full",
+    null,
+    new Map()
   );
 
   if (agentMessagesRes.isErr()) {
