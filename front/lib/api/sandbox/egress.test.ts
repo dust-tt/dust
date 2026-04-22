@@ -105,27 +105,27 @@ describe("sandbox egress helpers", () => {
     expect(sandbox.writeFile).toHaveBeenCalledWith(
       auth,
       "/etc/dust/egress-token",
-      expect.anything(),
+      expect.anything()
     );
     expect(sandbox.exec).toHaveBeenNthCalledWith(
       1,
       auth,
       expect.stringContaining(
-        "chown dust-fwd:dust-fwd '/etc/dust/egress-token' && chmod 600 '/etc/dust/egress-token' && rm -f '/tmp/dust-forwarder.log' '/tmp/dust-egress-denied.log'",
+        "chown dust-fwd:dust-fwd '/etc/dust/egress-token' && chmod 600 '/etc/dust/egress-token' && rm -f '/tmp/dust-forwarder.log' '/tmp/dust-egress-denied.log'"
       ),
-      { user: "root" },
+      { user: "root" }
     );
     expect(sandbox.exec).toHaveBeenNthCalledWith(
       2,
       auth,
       expect.stringContaining("--proxy-addr '203.0.113.10:4443'"),
-      { user: "dust-fwd" },
+      { user: "dust-fwd" }
     );
     expect(sandbox.exec).toHaveBeenNthCalledWith(
       2,
       auth,
       expect.stringContaining("--proxy-tls-name 'eu.sandbox-egress.dust.tt'"),
-      { user: "dust-fwd" },
+      { user: "dust-fwd" }
     );
     expect(mockLoggerInfo).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -133,7 +133,7 @@ describe("sandbox egress helpers", () => {
         providerId: "provider-sandbox-id",
         sandboxId: "sandbox-id",
       }),
-      "Sandbox egress forwarder is healthy",
+      "Sandbox egress forwarder is healthy"
     );
   });
 
@@ -144,7 +144,7 @@ describe("sandbox egress helpers", () => {
           exitCode: 0,
           stdout: "google.com:443 denied\nevil.com:80 denied\n",
           stderr: "",
-        }),
+        })
       ),
     };
 
@@ -160,7 +160,7 @@ describe("sandbox egress helpers", () => {
     expect(sandbox.exec).toHaveBeenCalledWith(
       auth,
       expect.stringContaining("dust-egress-denied.log"),
-      { user: "root", timeoutMs: 2_000 },
+      { user: "root", timeoutMs: 2_000 }
     );
   });
 
