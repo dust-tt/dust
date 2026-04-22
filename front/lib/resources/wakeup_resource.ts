@@ -261,12 +261,9 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
 
   /**
    * Checks whether the caller can post or edit user messages in a conversation that has active
-   * wake-ups. Rejects when any active (scheduled) wake-up is owned by a user other than the
-   * current one — this keeps the agent running under the owner's auth from being steered by
-   * another user before the wake-up fires. The wake-up activity itself posts under the owner's
-   * auth (via `fetchWakeUpAndAuthenticatorById`), so fires are never blocked.
-   *
-   * The `(workspaceId, conversationId, status)` index covers this query.
+   * wake-ups. Rejects when any active (scheduled) wake-up is owned by a user other than the current
+   * one (his keeps the agent running under the owner's auth from being steered by another user
+   * before the wake-up fires).
    */
   static async canUserInteract(
     auth: Authenticator,
