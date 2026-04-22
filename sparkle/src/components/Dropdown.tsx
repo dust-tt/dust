@@ -936,6 +936,34 @@ const DropdownTooltipTrigger = React.forwardRef<
     },
     ref
   ) => {
+    const [isOpen, setIsOpen] = React.useState(false);
+
+    const handleOpenChange = React.useCallback(
+      (open: boolean) => {
+        setIsOpen(open);
+        onVisibilityChange?.(open);
+      },
+      [onVisibilityChange]
+    );
+
+    React.useEffect(() => {
+      if (!isOpen) {
+        return;
+      }
+
+      const closeTooltip = () => {
+        handleOpenChange(false);
+      };
+
+      window.addEventListener("scroll", closeTooltip, true);
+      window.visualViewport?.addEventListener("scroll", closeTooltip);
+
+      return () => {
+        window.removeEventListener("scroll", closeTooltip, true);
+        window.visualViewport?.removeEventListener("scroll", closeTooltip);
+      };
+    }, [handleOpenChange, isOpen]);
+
     const tooltipContent = (
       <TooltipPrimitive.Content
         side={side}
@@ -952,8 +980,8 @@ const DropdownTooltipTrigger = React.forwardRef<
     const container = useSheetContainer(mountPortalContainer);
 
     return (
-      <TooltipPrimitive.Provider delayDuration={300}>
-        <TooltipPrimitive.Root onOpenChange={onVisibilityChange}>
+      <TooltipPrimitive.Provider delayDuration={700}>
+        <TooltipPrimitive.Root open={isOpen} onOpenChange={handleOpenChange}>
           <TooltipPrimitive.Trigger asChild className={className} ref={ref}>
             {/* Wrapper allows pointer events even when child is disabled, while maintaining proper positioning */}
             <span className="s-block s-w-full">{children}</span>
