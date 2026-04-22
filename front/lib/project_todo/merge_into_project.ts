@@ -49,7 +49,6 @@ import {
 } from "@app/lib/resources/takeaways_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import logger from "@app/logger/logger";
 import type { ProjectTodoSourceInfo } from "@app/types/project_todo";
 import type { ModelId } from "@app/types/shared/model_id";
 import type {
@@ -57,6 +56,7 @@ import type {
   TodoVersionedKeyDecision,
   TodoVersionedNotableFact,
 } from "@app/types/takeaways";
+import type { Logger } from "pino";
 
 // Stable identifier used when recording the creating actor for butler-created
 // project todos. This is not an actual agent configuration sId but a sentinel
@@ -81,19 +81,43 @@ type PendingCandidate = {
   source: ProjectTodoSourceInfo;
 };
 
+// ── Stats ─────────────────────────────────────────────────────────────────────
+
+export type MergeStats = {
+  takeawaysProcessed: number;
+  candidatesCollected: number;
+  existingUpdated: number;
+  deduplicated: number;
+  createdNew: number;
+};
+
+function emptyMergeStats(): MergeStats {
+  return {
+    takeawaysProcessed: 0,
+    candidatesCollected: 0,
+    existingUpdated: 0,
+    deduplicated: 0,
+    createdNew: 0,
+  };
+}
+
 // ── Entry point ───────────────────────────────────────────────────────────────
 
 export async function mergeTakeawaysIntoProject({
+  localLogger,
   workspaceId,
   spaceId,
 }: {
+  localLogger: Logger;
   workspaceId: string;
   spaceId: string;
-}): Promise<void> {
+}): Promise<MergeStats> {
+  const stats = emptyMergeStats();
+
   const spaceModelId = getResourceIdFromSId(spaceId);
   if (spaceModelId === null) {
-    logger.error({ spaceId }, "Project todo merge: invalid space sId");
-    return;
+    localLogger.error("Project todo merge: invalid space sId");
+    return stats;
   }
 
   const adminAuth = await Authenticator.internalAdminForWorkspace(workspaceId);
@@ -104,12 +128,11 @@ export async function mergeTakeawaysIntoProject({
     { spaceModelId }
   );
 
+  stats.takeawaysProcessed = takeawaysWithSource.length;
+
   if (takeawaysWithSource.length === 0) {
-    logger.info(
-      { spaceId },
-      "Project todo merge: no takeaways found, skipping"
-    );
-    return;
+    localLogger.info("Project todo merge: no takeaways found, skipping");
+    return stats;
   }
 
   // Collect all user sIds referenced across all takeaways so we can batch-fetch
@@ -139,33 +162,41 @@ export async function mergeTakeawaysIntoProject({
 
   // ── Phase 1: collect new candidates, update already-linked items ──────────
 
-  const newCandidates = await collectNewCandidates(adminAuth, {
-    takeawaysWithSource,
-    usersById,
-  });
+  const { candidates: newCandidates, existingUpdated } =
+    await collectNewCandidates(adminAuth, {
+      takeawaysWithSource,
+      usersById,
+    });
+
+  stats.candidatesCollected = newCandidates.length;
+  stats.existingUpdated = existingUpdated;
 
   if (newCandidates.length === 0) {
-    logger.info(
-      { spaceId },
-      "Project todo merge: no new candidates found, skipping"
-    );
-    return;
+    localLogger.info("Project todo merge: no new candidates found, skipping");
+    return stats;
   }
 
   // ── Phase 2: semantic deduplication ──────────────────────────────────────
 
   const dedupMap = await buildDeduplicationMap(adminAuth, {
+    localLogger,
     newCandidates,
     spaceModelId,
   });
 
   // ── Phase 3: create or link ───────────────────────────────────────────────
 
-  await createOrLinkTodos(adminAuth, {
+  const { deduplicated, createdNew } = await createOrLinkTodos(adminAuth, {
+    localLogger,
     newCandidates,
     dedupMap,
     spaceModelId,
   });
+
+  stats.deduplicated = deduplicated;
+  stats.createdNew = createdNew;
+
+  return stats;
 }
 
 // ── Phase 1 ───────────────────────────────────────────────────────────────────
@@ -182,22 +213,24 @@ async function collectNewCandidates(
     takeawaysWithSource: TakeawaysWithSource[];
     usersById: Map<string, UserResource>;
   }
-): Promise<PendingCandidate[]> {
+): Promise<{ candidates: PendingCandidate[]; existingUpdated: number }> {
   const newCandidates: PendingCandidate[] = [];
+  let existingUpdated = 0;
 
   await concurrentExecutor(
     takeawaysWithSource,
     async (takeawayWithSource) => {
-      const candidates = await collectDocumentCandidates(auth, {
+      const result = await collectDocumentCandidates(auth, {
         takeawayWithSource,
         usersById,
       });
-      newCandidates.push(...candidates);
+      newCandidates.push(...result.candidates);
+      existingUpdated += result.existingUpdated;
     },
     { concurrency: 4 }
   );
 
-  return newCandidates;
+  return { candidates: newCandidates, existingUpdated };
 }
 
 // Processes one document's takeaway: updates todos whose source link already
@@ -211,7 +244,7 @@ async function collectDocumentCandidates(
     takeawayWithSource: TakeawaysWithSource;
     usersById: Map<string, UserResource>;
   }
-): Promise<PendingCandidate[]> {
+): Promise<{ candidates: PendingCandidate[]; existingUpdated: number }> {
   function resolveTargetUserIds(userSIds: string[]): ModelId[] {
     return userSIds
       .map((sId) => usersById.get(sId)?.id)
@@ -251,12 +284,16 @@ async function collectDocumentCandidates(
   });
 
   const candidates: PendingCandidate[] = [];
+  let existingUpdated = 0;
   for (const { itemId, targetUserIds, blob } of itemTriples) {
     for (const userId of targetUserIds) {
       const existing = existingByKey.get(`${itemId}:${userId}`) ?? null;
       if (existing !== null) {
         // Source link exists — update content if it has changed.
-        await updateTodoIfChanged(existing, auth, blob);
+        const updated = await updateTodoIfChanged(existing, auth, blob);
+        if (updated) {
+          existingUpdated++;
+        }
       } else {
         candidates.push({
           itemId,
@@ -268,7 +305,7 @@ async function collectDocumentCandidates(
     }
   }
 
-  return candidates;
+  return { candidates, existingUpdated };
 }
 
 // ── Phase 2 ───────────────────────────────────────────────────────────────────
@@ -279,17 +316,18 @@ async function collectDocumentCandidates(
 async function buildDeduplicationMap(
   auth: Authenticator,
   {
+    localLogger,
     newCandidates,
     spaceModelId,
   }: {
+    localLogger: Logger;
     newCandidates: PendingCandidate[];
     spaceModelId: ModelId;
   }
 ): Promise<DeduplicationMap> {
   const model = getFastestWhitelistedModel(auth);
   if (!model) {
-    logger.warn(
-      { workspaceId: auth.getNonNullableWorkspace().sId },
+    localLogger.warn(
       "Project todo merge: no whitelisted model, skipping deduplication"
     );
     return new Map();
@@ -341,15 +379,20 @@ async function buildDeduplicationMap(
 async function createOrLinkTodos(
   auth: Authenticator,
   {
+    localLogger,
     newCandidates,
     dedupMap,
     spaceModelId,
   }: {
+    localLogger: Logger;
     newCandidates: PendingCandidate[];
     dedupMap: DeduplicationMap;
     spaceModelId: ModelId;
   }
-): Promise<void> {
+): Promise<{ deduplicated: number; createdNew: number }> {
+  let deduplicated = 0;
+  let createdNew = 0;
+
   await concurrentExecutor(
     newCandidates,
     async (candidate) => {
@@ -369,7 +412,9 @@ async function createOrLinkTodos(
           await updateTodoIfChanged(match, auth, candidate.blob);
         }
 
-        logger.info(
+        deduplicated++;
+
+        localLogger.info(
           {
             existingTodoId: match.sId,
             itemId: candidate.itemId,
@@ -403,7 +448,9 @@ async function createOrLinkTodos(
         source: candidate.source,
       });
 
-      logger.info(
+      createdNew++;
+
+      localLogger.info(
         {
           todoId: todo.sId,
           itemId: candidate.itemId,
@@ -415,16 +462,19 @@ async function createOrLinkTodos(
     },
     { concurrency: 4 }
   );
+
+  return { deduplicated, createdNew };
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 // Creates a new version of a todo only when text, status, or doneAt has changed.
+// Returns true if an update was performed.
 async function updateTodoIfChanged(
   todo: ProjectTodoResource,
   auth: Authenticator,
   blob: TodoBlob
-): Promise<void> {
+): Promise<boolean> {
   const textChanged = todo.text !== blob.text;
   const statusChanged = todo.status !== blob.status;
   const doneAtChanged =
@@ -436,7 +486,9 @@ async function updateTodoIfChanged(
       status: blob.status,
       doneAt: blob.doneAt,
     });
+    return true;
   }
+  return false;
 }
 
 // ── Blob helpers ─────────────────────────────────────────────────────────────
