@@ -342,6 +342,10 @@ export type FeatureFlag = {
 
 export type WhitelistableFeature = keyof typeof WHITELISTABLE_FEATURES_CONFIG;
 
+export type GetWorkspaceFeatureFlagsResponseType = {
+  feature_flags: WhitelistableFeature[];
+};
+
 export const WHITELISTABLE_FEATURES = Object.keys(
   WHITELISTABLE_FEATURES_CONFIG
 ) as WhitelistableFeature[];

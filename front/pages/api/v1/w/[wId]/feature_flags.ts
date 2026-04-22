@@ -3,17 +3,13 @@ import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import type { GetWorkspaceFeatureFlagsResponseType } from "@app/types/shared/feature_flags";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 /**
  * @ignoreswagger
  * System API key only endpoint. Undocumented.
  */
-
-type GetWorkspaceFeatureFlagsResponseType = {
-  feature_flags: WhitelistableFeature[];
-};
 
 async function handler(
   req: NextApiRequest,

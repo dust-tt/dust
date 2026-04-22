@@ -30,12 +30,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import type { GetWorkspaceFeatureFlagsResponseType } from "@app/types/shared/feature_flags";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-export type GetWorkspaceFeatureFlagsResponseType = {
-  feature_flags: WhitelistableFeature[];
-};
 
 async function handler(
   req: NextApiRequest,
