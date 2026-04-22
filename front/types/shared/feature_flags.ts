@@ -295,6 +295,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Show the browser extension MCP tools toggle in workspace access settings",
     stage: "dust_only",
   },
+  conversation_search_indexing: {
+    description: "Enable ES indexing of conversations on mutation (write path)",
+    stage: "dust_only",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";
