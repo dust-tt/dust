@@ -10,10 +10,12 @@ import jwt from "jsonwebtoken";
 const EGRESS_FORWARDER_LISTEN_ADDR = "127.0.0.1:9990";
 const EGRESS_TOKEN_PATH = "/etc/dust/egress-token";
 const EGRESS_DENY_LOG_PATH = "/tmp/dust-egress-denied.log";
+const EGRESS_DENY_LOG_OFFSET_PATH = "/tmp/.dust-egress-deny-offset";
 const EGRESS_FORWARDER_LOG_PATH = "/tmp/dust-forwarder.log";
 const EGRESS_SETUP_WAIT_RETRIES = 6;
 const EGRESS_SETUP_WAIT_MS = 500;
 const EGRESS_JWT_TTL_SECONDS = 24 * 60 * 60;
+const MAX_DENY_LOG_LINES_PER_EXEC = 20;
 
 const REGION_PROXY_PREFIX = {
   "europe-west1": "eu",
@@ -190,4 +192,32 @@ export async function setupEgressForwarder(
   return new Err(
     new Error("Sandbox egress forwarder did not become healthy in time")
   );
+}
+
+export async function readNewDenyLogEntries(
+  auth: Authenticator,
+  sandbox: SandboxResource
+): Promise<Result<string[], Error>> {
+  const command =
+    `_off=$(cat ${shellEscape(EGRESS_DENY_LOG_OFFSET_PATH)} 2>/dev/null || echo 0); ` +
+    `_total=$(wc -l < ${shellEscape(EGRESS_DENY_LOG_PATH)} 2>/dev/null || echo 0); ` +
+    `if [ "$_total" -gt "$_off" ]; then ` +
+    `tail -n +$((_off + 1)) ${shellEscape(EGRESS_DENY_LOG_PATH)} | head -n ${MAX_DENY_LOG_LINES_PER_EXEC}; ` +
+    `fi; ` +
+    `echo "$_total" > ${shellEscape(EGRESS_DENY_LOG_OFFSET_PATH)}`;
+
+  const result = await sandbox.exec(auth, command, {
+    user: "root",
+    timeoutMs: 2_000,
+  });
+
+  if (result.isErr()) {
+    return result;
+  }
+
+  const lines = result.value.stdout
+    .split("\n")
+    .filter((line) => line.trim().length > 0);
+
+  return new Ok(lines);
 }
