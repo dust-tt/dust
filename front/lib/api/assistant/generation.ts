@@ -82,6 +82,31 @@ function constructContextSection({
   return context;
 }
 
+function constructBranchContextSection({
+  conversation,
+}: {
+  conversation?: Pick<ConversationWithoutContentType, "forkedFrom">;
+}): string {
+  const forkedFrom = conversation?.forkedFrom;
+  if (!forkedFrom) {
+    return "";
+  }
+
+  const parentConversation = forkedFrom.parentConversationTitle
+    ? `"${forkedFrom.parentConversationTitle}"`
+    : `conversation ${forkedFrom.parentConversationId}`;
+
+  return (
+    "# BRANCH CONTEXT\n\n" +
+    `This conversation was branched from ${parentConversation}.\n` +
+    "This conversation starts from a summary of the parent conversation " +
+    `up to source message ${forkedFrom.sourceMessageId}.\n` +
+    "Readable conversation-level tool access, enabled skills, and direct " +
+    "attachments and tool outputs available at the branch point were copied " +
+    "into this conversation.\n"
+  );
+}
+
 function constructToolsSection({
   hasAvailableActions,
   model,
@@ -420,6 +445,7 @@ export function constructPromptMultiActions(
     owner,
     userMessage,
   });
+  const branchContextSection = constructBranchContextSection({ conversation });
   const toolsSection = constructToolsSection({
     hasAvailableActions,
     model,
@@ -440,9 +466,9 @@ export function constructPromptMultiActions(
     // Instructions (long cache): stable per agent config — agent instructions,
     // tools (directives + server listing), skills, format docs, and guidelines.
     //
-    // Shared context (short cache): workspace-scoped data shared across users —
-    // date, toolsets, workspace info. A cache breakpoint here
-    // lets different users in the same workspace share this prefix.
+    // Shared context (short cache): workspace- and conversation-scoped data shared across users —
+    // date, branch lineage, toolsets, workspace info. A cache breakpoint here lets different
+    // users in the same workspace share this prefix when that context is identical.
     //
     // Ephemeral context (no breakpoint): per-user data — memories, user profile.
     const fullInstructions = [
@@ -458,6 +484,7 @@ export function constructPromptMultiActions(
 
     const sharedContext: SystemPromptContext[] = [
       { role: "context" as const, content: contextSection },
+      { role: "context" as const, content: branchContextSection },
       { role: "context" as const, content: toolsetsContext ?? "" },
       { role: "context" as const, content: workspaceContext ?? "" },
     ].filter((s) => s.content.trim() !== "");
@@ -480,6 +507,7 @@ export function constructPromptMultiActions(
   const allSections: SystemPromptContext[] = [
     { role: "context" as const, content: instructionsContent },
     { role: "context" as const, content: contextSection },
+    { role: "context" as const, content: branchContextSection },
     { role: "context" as const, content: toolsSection },
     { role: "context" as const, content: skillsSection },
     { role: "context" as const, content: attachmentsSection },
