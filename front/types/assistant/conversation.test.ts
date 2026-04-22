@@ -73,7 +73,7 @@ describe("getConversationDisplayTitle", () => {
         },
         now
       )
-    ).toBe("Forked conversation");
+    ).toBe("Branched conversation");
   });
 
   it("keeps the existing fallback for untitled non-fork conversations", () => {
