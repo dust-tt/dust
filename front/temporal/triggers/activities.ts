@@ -353,14 +353,13 @@ export async function runWakeUpActivity({
     mentions: [{ configurationId: wakeUp.agentConfigurationId }],
     context: {
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC",
-      username: "Dust",
-      fullName: "Dust",
+      username: "dust_system",
+      fullName: "Dust System",
       email: null,
       profilePictureUrl: null,
       origin: "wakeup",
     },
     skipToolsValidation: false,
-    doNotAssociateUser: true,
   });
 
   if (postMessageResult.isErr()) {

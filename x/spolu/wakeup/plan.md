@@ -72,13 +72,16 @@ Done:
 
 ## Milestone 4: Agent action
 
-### PR 6 — schedule_wakeup tool (one-shot + cron)
+### [x] PR 6 — `wakeups` internal MCP server
 
-Agent tool definition for `schedule_wakeup`. Deterministic `when` parsing (relative durations, ISO
-timestamps, cron expressions). Guardrail enforcement (max 1 active per conversation, min interval,
-max delay, workspace limits). Returns confirmation with scheduled time and wake-up sId. Gate
-behind feature flag. In the current codebase, wire this through the internal MCP tool
-architecture rather than a legacy `agent_action.ts` registry.
+Adds the `wakeups` internal MCP server (id 1031, `availability: "auto"`, preview, gated
+behind the new `enable_wakeups` feature flag) exposing `schedule_wakeup`, `list_wakeups`,
+and `cancel_wakeup` to agents. `when` is parsed deterministically (relative duration, ISO
+8601, 5-field cron); cron timezone falls back to the last user message's timezone.
+Guardrails enforced at tool-call time: max 1 active wake-up per conversation, max 256 per
+workspace, max 31-day one-shot delay. Also updates `runWakeUpActivity` to post the
+wake-up message with `username: "dust_system"` / `fullName: "Dust System"` instead of
+`doNotAssociateUser: true`.
 
 ## Milestone 5: Security
 
