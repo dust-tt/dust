@@ -80,6 +80,7 @@ import { UKG_READY_SERVER } from "@app/lib/api/actions/servers/ukg_ready/metadat
 import { USER_MENTIONS_SERVER } from "@app/lib/api/actions/servers/user_mentions/metadata";
 import { VAL_TOWN_SERVER } from "@app/lib/api/actions/servers/val_town/metadata";
 import { VANTA_SERVER } from "@app/lib/api/actions/servers/vanta/metadata";
+import { WAKEUPS_SERVER } from "@app/lib/api/actions/servers/wakeups/metadata";
 import {
   WEB_SEARCH_BROWSE_SERVER,
   WEB_SEARCH_BROWSE_SERVER_NAME,
@@ -209,6 +210,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "poke",
   "sandbox",
   "ask_user_question",
+  "wakeups",
 ] as const;
 
 export const INTERNAL_SERVERS_WITH_WEBSEARCH = [
@@ -1110,6 +1112,17 @@ export const INTERNAL_MCP_SERVERS = {
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: CLARI_COPILOT_SERVER,
+  },
+  wakeups: {
+    id: 1031,
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isPreview: true,
+    isRestricted: ({ featureFlags }) => !featureFlags.includes("wakeups"),
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: WAKEUPS_SERVER,
   },
   // Using satisfies here instead of: type to avoid TypeScript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
 } satisfies {
