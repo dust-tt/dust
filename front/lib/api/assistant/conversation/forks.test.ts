@@ -384,12 +384,14 @@ describe("createConversationFork", () => {
     expect(childConversation.title).toBeNull();
     expect(childConversation.spaceId).toBe(globalSpace.sId);
     expect(childConversation.depth).toBe(parentConversation.depth + 1);
-    expect(childConversation.forkedFrom).toEqual({
-      parentConversationId: parentConversation.sId,
-      parentConversationTitle: "Parent conversation",
-      sourceMessageId: sourceMessage.sId,
-      branchedAt: expect.any(Number),
-      user: user.toJSON(),
+    expect(childConversation.forkingData).toEqual({
+      forkedFrom: {
+        parentConversationId: parentConversation.sId,
+        parentConversationTitle: "Parent conversation",
+        sourceMessageId: sourceMessage.sId,
+        branchedAt: expect.any(Number),
+        user: user.toJSON(),
+      },
     });
     expect(childConversation.content).toHaveLength(1);
     expect(isCompactionMessageType(childConversation.content[0]![0]!)).toBe(
@@ -503,7 +505,7 @@ describe("createConversationFork", () => {
       result.value
     );
 
-    expect(childConversation.forkedFrom?.sourceMessageId).toBe(
+    expect(childConversation.forkingData?.forkedFrom?.sourceMessageId).toBe(
       firstAgentMessage.sId
     );
   });

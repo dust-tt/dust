@@ -92,7 +92,7 @@ async function _getConversation<V extends "light" | "full">(
   const conversation = await ConversationResource.fetchById(
     auth,
     conversationId,
-    { includeDeleted }
+    { includeDeleted, includeForkingData: true }
   );
 
   if (!conversation) {
@@ -243,6 +243,7 @@ async function _getConversation<V extends "light" | "full">(
 
   // TypeScript will now properly narrow based on viewType
   const messagesWithRank = renderRes.value as MessageTypeForView<V>[];
+  const forkingData = await conversation.fetchForkingData(auth);
 
   // We pre-create an array that will hold
   // the versions of each User/Assistant/ContentFragment message. The length of that array is by definition the
@@ -328,9 +329,7 @@ async function _getConversation<V extends "light" | "full">(
       spaceId: conversation.space?.sId ?? null,
       metadata: conversation.metadata,
       branchId,
-      ...(conversation.forkedFromInfo && {
-        forkedFrom: conversation.forkedFromInfo,
-      }),
+      ...(forkingData && { forkingData }),
     };
 
     if (paginationHasMore !== undefined) {
@@ -408,9 +407,7 @@ async function _getConversation<V extends "light" | "full">(
       spaceId: conversation.space?.sId ?? null,
       metadata: conversation.metadata,
       branchId,
-      ...(conversation.forkedFromInfo && {
-        forkedFrom: conversation.forkedFromInfo,
-      }),
+      ...(forkingData && { forkingData }),
     };
 
     if (paginationHasMore !== undefined) {

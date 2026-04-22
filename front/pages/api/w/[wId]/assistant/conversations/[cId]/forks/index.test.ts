@@ -166,12 +166,14 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/forks", () => {
     const conversation = await fetchConversationOrThrow(auth, conversationId);
 
     expect(conversation.title).toBeNull();
-    expect(conversation.forkedFrom).toEqual({
-      parentConversationId: parentConversation.sId,
-      parentConversationTitle: "Parent conversation",
-      sourceMessageId: sourceMessage.sId,
-      branchedAt: expect.any(Number),
-      user: auth.getNonNullableUser().toJSON(),
+    expect(conversation.forkingData).toEqual({
+      forkedFrom: {
+        parentConversationId: parentConversation.sId,
+        parentConversationTitle: "Parent conversation",
+        sourceMessageId: sourceMessage.sId,
+        branchedAt: expect.any(Number),
+        user: auth.getNonNullableUser().toJSON(),
+      },
     });
     expect(conversation.depth).toBe(1);
     expect(conversation.spaceId).toBe(globalSpace.sId);
@@ -211,12 +213,14 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/forks", () => {
     const { conversationId } = res._getJSONData();
     const conversation = await fetchConversationOrThrow(auth, conversationId);
 
-    expect(conversation.forkedFrom).toEqual({
-      parentConversationId: parentConversation.sId,
-      parentConversationTitle: "Parent conversation",
-      sourceMessageId: sourceMessage.sId,
-      branchedAt: expect.any(Number),
-      user: auth.getNonNullableUser().toJSON(),
+    expect(conversation.forkingData).toEqual({
+      forkedFrom: {
+        parentConversationId: parentConversation.sId,
+        parentConversationTitle: "Parent conversation",
+        sourceMessageId: sourceMessage.sId,
+        branchedAt: expect.any(Number),
+        user: auth.getNonNullableUser().toJSON(),
+      },
     });
   });
 
