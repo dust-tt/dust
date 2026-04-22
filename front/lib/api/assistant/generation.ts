@@ -93,7 +93,7 @@ function constructBranchContextSection({
   }
 
   const parentConversation = forkedFrom.parentConversationTitle
-    ? `"${forkedFrom.parentConversationTitle}"`
+    ? JSON.stringify(forkedFrom.parentConversationTitle)
     : `conversation ${forkedFrom.parentConversationId}`;
 
   return (
@@ -101,9 +101,10 @@ function constructBranchContextSection({
     `This conversation was branched from ${parentConversation}.\n` +
     "This conversation starts from a summary of the parent conversation " +
     `up to source message ${forkedFrom.sourceMessageId}.\n` +
-    "Readable conversation-level tool access, enabled skills, and direct " +
-    "attachments and tool outputs available at the branch point were copied " +
-    "into this conversation.\n"
+    "Readable conversation-level tool access and enabled skills from the " +
+    "parent conversation were carried over into this conversation.\n" +
+    "Direct attachments and tool outputs available at the branch point were " +
+    "also carried over into this conversation.\n"
   );
 }
 
@@ -466,11 +467,11 @@ export function constructPromptMultiActions(
     // Instructions (long cache): stable per agent config — agent instructions,
     // tools (directives + server listing), skills, format docs, and guidelines.
     //
-    // Shared context (short cache): workspace- and conversation-scoped data shared across users —
-    // date, branch lineage, toolsets, workspace info. A cache breakpoint here lets different
-    // users in the same workspace share this prefix when that context is identical.
+    // Shared context (short cache): workspace-scoped data shared across users — date, toolsets,
+    // workspace info. A cache breakpoint here lets different users in the same workspace share
+    // this prefix.
     //
-    // Ephemeral context (no breakpoint): per-user data — memories, user profile.
+    // Ephemeral context (no breakpoint): per-call data — branch lineage, memories, user profile.
     const fullInstructions = [
       instructionsContent,
       toolsSection,
@@ -484,12 +485,12 @@ export function constructPromptMultiActions(
 
     const sharedContext: SystemPromptContext[] = [
       { role: "context" as const, content: contextSection },
-      { role: "context" as const, content: branchContextSection },
       { role: "context" as const, content: toolsetsContext ?? "" },
       { role: "context" as const, content: workspaceContext ?? "" },
     ].filter((s) => s.content.trim() !== "");
 
     const ephemeralContext: SystemPromptContext[] = [
+      { role: "context" as const, content: branchContextSection },
       { role: "context" as const, content: memoriesContext ?? "" },
       { role: "context" as const, content: userContext ?? "" },
     ].filter((s) => s.content.trim() !== "");

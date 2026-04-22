@@ -349,12 +349,15 @@ describe("constructPromptMultiActions - system prompt stability", () => {
       "This conversation starts from a summary of the parent conversation up to source message msg_parent_source."
     );
     expect(text).toContain(
-      "Readable conversation-level tool access, enabled skills, and direct attachments and tool outputs available at the branch point were copied into this conversation."
+      "Readable conversation-level tool access and enabled skills from the parent conversation were carried over into this conversation."
+    );
+    expect(text).toContain(
+      "Direct attachments and tool outputs available at the branch point were also carried over into this conversation."
     );
     expect(text).not.toContain("child conversation");
   });
 
-  it("should place branch context in shared tier for structured prompts", () => {
+  it("should place branch context in ephemeral tier for structured prompts", () => {
     const deepDiveConfig = {
       ...agentConfig1,
       sId: GLOBAL_AGENTS_SID.DEEP_DIVE,
@@ -376,11 +379,17 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     };
 
     const sections = constructPromptMultiActions(authenticator1, params);
-    const { instructions, sharedContext } = normalizePrompt(sections);
+    const { instructions, sharedContext, ephemeralContext } =
+      normalizePrompt(sections);
 
     expect(instructions[0]?.content).not.toContain("# BRANCH CONTEXT");
+    expect(
+      sharedContext.some((section) =>
+        section.content.includes("# BRANCH CONTEXT")
+      )
+    ).toBe(false);
 
-    const branchSection = sharedContext.find((section) =>
+    const branchSection = ephemeralContext.find((section) =>
       section.content.includes("# BRANCH CONTEXT")
     );
     expect(branchSection).toBeDefined();
