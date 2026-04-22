@@ -90,6 +90,7 @@ export function SourceChart({
                 title="Source breakdown"
                 rows={rows}
                 activeKey={hoveredOrigin ?? selectedKey}
+                selectedKey={selectedKey}
               />
             );
           }}
@@ -109,6 +110,7 @@ export function SourceChart({
           minAngle={4}
           paddingAngle={3}
           strokeWidth={0}
+          isAnimationActive={false}
         >
           {data.map((entry) => (
             <Cell

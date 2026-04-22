@@ -55,9 +55,10 @@ function LatencyTooltip(
   props: TooltipContentProps<number, string> & {
     versionMarkers: AgentVersionMarker[];
     activeKey?: string;
+    selectedKey?: string;
   }
 ) {
-  const { active, payload, versionMarkers, activeKey } = props;
+  const { active, payload, versionMarkers, activeKey, selectedKey } = props;
   if (!active || !payload || payload.length === 0) {
     return null;
   }
@@ -85,6 +86,7 @@ function LatencyTooltip(
         },
       ]}
       activeKey={activeKey}
+      selectedKey={selectedKey}
     />
   );
 }
@@ -138,8 +140,14 @@ export function LatencyChart({
     }));
   }, [rawData, mode, period]);
 
-  const { activeKey, isDimmed, decorate, hoverHandlers } =
-    useSelectableSeries();
+  const {
+    selectedKey,
+    activeKey,
+    isDimmed,
+    lineActiveDot,
+    decorate,
+    hoverHandlers,
+  } = useSelectableSeries();
 
   const legendItems = decorate(
     legendFromConstant(LATENCY_LEGEND, LATENCY_PALETTE, {
@@ -205,6 +213,7 @@ export function LatencyChart({
               {...props}
               versionMarkers={versionMarkers}
               activeKey={activeKey}
+              selectedKey={selectedKey}
             />
           )}
           cursor={false}
@@ -229,6 +238,8 @@ export function LatencyChart({
           fill="url(#fillAverage)"
           stroke="currentColor"
           dot={false}
+          activeDot={lineActiveDot("average")}
+          isAnimationActive={false}
           {...hoverHandlers("average")}
         />
         <Line
@@ -243,6 +254,8 @@ export function LatencyChart({
           )}
           stroke="currentColor"
           dot={false}
+          activeDot={lineActiveDot("median")}
+          isAnimationActive={false}
           {...hoverHandlers("median")}
         />
         {isCustomAgent && (

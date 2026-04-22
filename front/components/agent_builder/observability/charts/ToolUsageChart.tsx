@@ -76,7 +76,7 @@ export function ToolUsageChart({
     configurationNames,
   });
 
-  const { isDimmed, decorate } = useSelectableSeries();
+  const { selectedKey, isDimmed, decorate } = useSelectableSeries();
 
   const legendItems = useMemo(
     () =>
@@ -92,9 +92,14 @@ export function ToolUsageChart({
 
   const renderToolUsageTooltip = useCallback(
     (props: TooltipContentProps<number, string>) => (
-      <ChartsTooltip {...props} topTools={topTools} hoveredTool={hoveredTool} />
+      <ChartsTooltip
+        {...props}
+        topTools={topTools}
+        hoveredTool={hoveredTool}
+        selectedKey={selectedKey}
+      />
     ),
-    [topTools, hoveredTool]
+    [topTools, hoveredTool, selectedKey]
   );
 
   return (
@@ -193,6 +198,7 @@ export function ToolUsageChart({
             shape={
               <RoundedBarShape seriesKey={toolName} stackOrderKeys={topTools} />
             }
+            isAnimationActive={false}
             onMouseEnter={() => setHoveredTool(toolName)}
             onMouseLeave={() => setHoveredTool(null)}
           />

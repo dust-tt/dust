@@ -16,6 +16,11 @@ export function useSelectableSeries() {
     [selectedKey]
   );
 
+  const lineActiveDot = useCallback(
+    (key: string): false | undefined => (isDimmed(key) ? false : undefined),
+    [isDimmed]
+  );
+
   const decorate = useCallback(
     (
       items: readonly LegendEntry[],
@@ -38,5 +43,12 @@ export function useSelectableSeries() {
     [selectedKey]
   );
 
-  return { selectedKey, activeKey, isDimmed, decorate, hoverHandlers };
+  return {
+    selectedKey,
+    activeKey,
+    isDimmed,
+    lineActiveDot,
+    decorate,
+    hoverHandlers,
+  };
 }

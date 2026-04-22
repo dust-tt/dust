@@ -56,9 +56,12 @@ function isToolLatencyDatum(data: unknown): data is ToolLatencyDatum {
 }
 
 function ToolExecutionTimeTooltip(
-  props: TooltipContentProps<number, string> & { activeKey?: string }
+  props: TooltipContentProps<number, string> & {
+    activeKey?: string;
+    selectedKey?: string;
+  }
 ): JSX.Element | null {
-  const { active, payload, activeKey } = props;
+  const { active, payload, activeKey, selectedKey } = props;
   if (!active || !payload || payload.length === 0) {
     return null;
   }
@@ -95,6 +98,7 @@ function ToolExecutionTimeTooltip(
       ]}
       footer={`Executions: ${row.count}`}
       activeKey={activeKey}
+      selectedKey={selectedKey}
     />
   );
 }
@@ -193,7 +197,7 @@ export function ToolExecutionTimeChart({
     emptyMessage = "No successful tool executions for this server.";
   }
 
-  const { activeKey, isDimmed, decorate, hoverHandlers } =
+  const { selectedKey, activeKey, isDimmed, decorate, hoverHandlers } =
     useSelectableSeries();
 
   const legendItems = decorate(
@@ -286,7 +290,11 @@ export function ToolExecutionTimeChart({
         />
         <Tooltip
           content={(props: TooltipContentProps<number, string>) => (
-            <ToolExecutionTimeTooltip {...props} activeKey={activeKey} />
+            <ToolExecutionTimeTooltip
+              {...props}
+              activeKey={activeKey}
+              selectedKey={selectedKey}
+            />
           )}
           cursor={false}
           wrapperStyle={{ outline: "none", zIndex: 50 }}
@@ -307,6 +315,7 @@ export function ToolExecutionTimeChart({
             isDimmed("p50LatencyMs") && "opacity-25"
           )}
           shape={<RoundedBarShape />}
+          isAnimationActive={false}
           {...hoverHandlers("p50LatencyMs")}
         />
         <Bar
@@ -319,6 +328,7 @@ export function ToolExecutionTimeChart({
             isDimmed("avgLatencyMs") && "opacity-25"
           )}
           shape={<RoundedBarShape />}
+          isAnimationActive={false}
           {...hoverHandlers("avgLatencyMs")}
         />
         <Bar
@@ -331,6 +341,7 @@ export function ToolExecutionTimeChart({
             isDimmed("p95LatencyMs") && "opacity-25"
           )}
           shape={<RoundedBarShape />}
+          isAnimationActive={false}
           {...hoverHandlers("p95LatencyMs")}
         />
       </BarChart>

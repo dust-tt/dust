@@ -130,7 +130,7 @@ export function SkillUsageChart({
       ? versionData.chartData.length === 0
       : filteredSourceItems.length === 0;
 
-  const { isDimmed, decorate } = useSelectableSeries();
+  const { selectedKey, isDimmed, decorate } = useSelectableSeries();
 
   const legendItems = useMemo(() => {
     if (skillMode === "version") {
@@ -157,10 +157,11 @@ export function SkillUsageChart({
         {...props}
         topTools={versionData.topTools}
         hoveredTool={hoveredTool}
+        selectedKey={selectedKey}
         showLabel
       />
     ),
-    [versionData.topTools, hoveredTool]
+    [versionData.topTools, hoveredTool, selectedKey]
   );
 
   const renderSourceTooltip = useCallback(
@@ -174,6 +175,9 @@ export function SkillUsageChart({
         return null;
       }
       const item = first.payload;
+      if (selectedKey !== undefined && item.skillName !== selectedKey) {
+        return null;
+      }
       const sourceEntries = Object.entries(item.sources)
         .map(([key, val]): [string, number] => [key, Number(val)])
         .sort(([, a], [, b]) => b - a);
@@ -192,7 +196,7 @@ export function SkillUsageChart({
         />
       );
     },
-    []
+    [selectedKey]
   );
 
   const handleSkillToggle = (skill: string, checked: boolean) => {
@@ -337,6 +341,7 @@ export function SkillUsageChart({
                   stackOrderKeys={versionData.topTools}
                 />
               }
+              isAnimationActive={false}
               onMouseEnter={() => setHoveredTool(toolName)}
               onMouseLeave={() => setHoveredTool(null)}
             />
@@ -369,7 +374,11 @@ export function SkillUsageChart({
             content={renderSourceTooltip}
             wrapperStyle={{ outline: "none", zIndex: 50 }}
           />
-          <Bar dataKey="totalCount" radius={[4, 4, 0, 0]}>
+          <Bar
+            dataKey="totalCount"
+            radius={[4, 4, 0, 0]}
+            isAnimationActive={false}
+          >
             {filteredSourceItems.map((item) => (
               <Cell
                 key={item.skillName}

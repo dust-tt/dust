@@ -61,9 +61,10 @@ function UsageMetricsTooltip(
   props: TooltipContentProps<number, string> & {
     versionMarkers: AgentVersionMarker[];
     activeKey?: string;
+    selectedKey?: string;
   }
 ) {
-  const { active, payload, versionMarkers, activeKey } = props;
+  const { active, payload, versionMarkers, activeKey, selectedKey } = props;
   if (!active || !payload || payload.length === 0) {
     return null;
   }
@@ -99,6 +100,7 @@ function UsageMetricsTooltip(
         },
       ]}
       activeKey={activeKey}
+      selectedKey={selectedKey}
     />
   );
 }
@@ -130,8 +132,14 @@ export function UsageMetricsChart({
     disabled: !workspaceId || !agentConfigurationId || !isCustomAgent,
   });
 
-  const { activeKey, isDimmed, decorate, hoverHandlers } =
-    useSelectableSeries();
+  const {
+    selectedKey,
+    activeKey,
+    isDimmed,
+    lineActiveDot,
+    decorate,
+    hoverHandlers,
+  } = useSelectableSeries();
 
   const legendItems = decorate(
     legendFromConstant(USAGE_METRICS_LEGEND, USAGE_METRICS_PALETTE, {
@@ -237,6 +245,7 @@ export function UsageMetricsChart({
               {...props}
               versionMarkers={versionMarkers}
               activeKey={activeKey}
+              selectedKey={selectedKey}
             />
           )}
           cursor={false}
@@ -265,6 +274,8 @@ export function UsageMetricsChart({
           )}
           stroke="currentColor"
           dot={false}
+          activeDot={lineActiveDot("messages")}
+          isAnimationActive={false}
           {...hoverHandlers("messages")}
         />
         <Line
@@ -283,6 +294,8 @@ export function UsageMetricsChart({
           )}
           stroke="currentColor"
           dot={false}
+          activeDot={lineActiveDot("conversations")}
+          isAnimationActive={false}
           {...hoverHandlers("conversations")}
         />
         <Line
@@ -301,6 +314,8 @@ export function UsageMetricsChart({
           )}
           stroke="currentColor"
           dot={false}
+          activeDot={lineActiveDot("activeUsers")}
+          isAnimationActive={false}
           {...hoverHandlers("activeUsers")}
         />
         {isCustomAgent && (

@@ -158,6 +158,7 @@ function activeUsersZeroFactory(timestamp: number): ActiveUsersMetricsDatum {
 interface UsageMetricsTooltipProps extends TooltipContentProps<number, string> {
   displayMode: UsageDisplayMode;
   activeKey?: string;
+  selectedKey?: string;
 }
 
 function UsageMetricsTooltip({
@@ -165,6 +166,7 @@ function UsageMetricsTooltip({
   payload,
   displayMode,
   activeKey,
+  selectedKey,
 }: UsageMetricsTooltipProps) {
   if (!active || !payload || payload.length === 0) {
     return null;
@@ -201,7 +203,14 @@ function UsageMetricsTooltip({
         colorClassName: ACTIVE_USERS_PALETTE.mau,
       },
     ];
-    return <ChartTooltipCard title={title} rows={rows} activeKey={activeKey} />;
+    return (
+      <ChartTooltipCard
+        title={title}
+        rows={rows}
+        activeKey={activeKey}
+        selectedKey={selectedKey}
+      />
+    );
   }
 
   if (!isWorkspaceUsageMetricsDatum(first.payload)) {
@@ -226,7 +235,14 @@ function UsageMetricsTooltip({
     },
   ];
 
-  return <ChartTooltipCard title={title} rows={rows} activeKey={activeKey} />;
+  return (
+    <ChartTooltipCard
+      title={title}
+      rows={rows}
+      activeKey={activeKey}
+      selectedKey={selectedKey}
+    />
+  );
 }
 
 interface WorkspaceUsageChartProps {
@@ -258,8 +274,14 @@ export function WorkspaceUsageChart({
     disabled: !workspaceId || displayMode !== "users",
   });
 
-  const { activeKey, isDimmed, decorate, hoverHandlers } =
-    useSelectableSeries();
+  const {
+    selectedKey,
+    activeKey,
+    isDimmed,
+    lineActiveDot,
+    decorate,
+    hoverHandlers,
+  } = useSelectableSeries();
 
   const legendItems = decorate(getLegendItemsForMode(displayMode));
 
@@ -374,6 +396,7 @@ export function WorkspaceUsageChart({
               {...props}
               displayMode={displayMode}
               activeKey={activeKey}
+              selectedKey={selectedKey}
             />
           )}
           cursor={false}
@@ -399,6 +422,8 @@ export function WorkspaceUsageChart({
               )}
               stroke="currentColor"
               dot={false}
+              activeDot={lineActiveDot("messages")}
+              isAnimationActive={false}
               {...hoverHandlers("messages")}
             />
             <Line
@@ -413,6 +438,8 @@ export function WorkspaceUsageChart({
               )}
               stroke="currentColor"
               dot={false}
+              activeDot={lineActiveDot("conversations")}
+              isAnimationActive={false}
               {...hoverHandlers("conversations")}
             />
           </>
@@ -430,6 +457,8 @@ export function WorkspaceUsageChart({
               )}
               stroke="currentColor"
               dot={false}
+              activeDot={lineActiveDot("dau")}
+              isAnimationActive={false}
               {...hoverHandlers("dau")}
             />
             <Line
@@ -444,6 +473,8 @@ export function WorkspaceUsageChart({
               )}
               stroke="currentColor"
               dot={false}
+              activeDot={lineActiveDot("wau")}
+              isAnimationActive={false}
               {...hoverHandlers("wau")}
             />
             <Line
@@ -458,6 +489,8 @@ export function WorkspaceUsageChart({
               )}
               stroke="currentColor"
               dot={false}
+              activeDot={lineActiveDot("mau")}
+              isAnimationActive={false}
               {...hoverHandlers("mau")}
             />
           </>
