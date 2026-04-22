@@ -946,10 +946,12 @@ export async function listMetronomeCustomerCredits({
   metronomeCustomerId,
   creditId,
   includeContractCredits = false,
+  includeBalance = false,
 }: {
   metronomeCustomerId: string;
   creditId?: string;
   includeContractCredits?: boolean;
+  includeBalance?: boolean;
 }): Promise<Result<Credit[], Error>> {
   try {
     const credits: Credit[] = [];
@@ -957,6 +959,7 @@ export async function listMetronomeCustomerCredits({
       customer_id: metronomeCustomerId,
       ...(creditId ? { credit_id: creditId } : {}),
       include_contract_credits: includeContractCredits,
+      include_balance: includeBalance,
     })) {
       credits.push(entry);
     }
@@ -979,10 +982,12 @@ export async function listMetronomeCustomerCommits({
   metronomeCustomerId,
   commitId,
   includeContractCommits = false,
+  includeBalance = false,
 }: {
   metronomeCustomerId: string;
   commitId?: string;
   includeContractCommits?: boolean;
+  includeBalance?: boolean;
 }): Promise<Result<Commit[], Error>> {
   try {
     const commits: Commit[] = [];
@@ -990,6 +995,7 @@ export async function listMetronomeCustomerCommits({
       customer_id: metronomeCustomerId,
       ...(commitId ? { commit_id: commitId } : {}),
       include_contract_commits: includeContractCommits,
+      include_balance: includeBalance,
     })) {
       commits.push(entry);
     }
@@ -1011,15 +1017,18 @@ export async function getMetronomeCredit({
   metronomeCustomerId,
   creditId,
   includeContractCredits = true,
+  includeBalance = false,
 }: {
   metronomeCustomerId: string;
   creditId: string;
   includeContractCredits?: boolean;
+  includeBalance?: boolean;
 }): Promise<Result<Credit | null, Error>> {
   const result = await listMetronomeCustomerCredits({
     metronomeCustomerId,
     creditId,
     includeContractCredits,
+    includeBalance,
   });
   if (result.isErr()) {
     return result;
@@ -1034,15 +1043,18 @@ export async function getMetronomeCommit({
   metronomeCustomerId,
   commitId,
   includeContractCommits = true,
+  includeBalance = false,
 }: {
   metronomeCustomerId: string;
   commitId: string;
   includeContractCommits?: boolean;
+  includeBalance?: boolean;
 }): Promise<Result<Commit | null, Error>> {
   const result = await listMetronomeCustomerCommits({
     metronomeCustomerId,
     commitId,
     includeContractCommits,
+    includeBalance,
   });
   if (result.isErr()) {
     return result;
