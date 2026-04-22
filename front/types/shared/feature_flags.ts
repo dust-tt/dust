@@ -75,10 +75,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Google Sheets MCP tool",
     stage: "rolling_out",
   },
-  gpt_image_2_feature: {
-    description: "Force OpenAI gpt-image-2 for image generation",
-    stage: "on_demand",
-  },
   http_client_tool: {
     description: "HTTP Client MCP tool for making external API requests",
     stage: "on_demand",
