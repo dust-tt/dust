@@ -85,14 +85,26 @@ wake-up message with `username: "dust_system"` / `fullName: "Dust System"` inste
 
 ## Milestone 5: Security
 
-### [partial] PR 7 — Cancellation rights on `WakeUpResource`
+### [x] PR 7 — Cancellation rights on `WakeUpResource`
 
-Enforce that only the wake-up owner (`userId`) or a workspace admin can cancel a wake-up.
-Implemented in `WakeUpResource.cancel(...)` via a `canCancel(auth)` check that short-circuits
-to an `Err` before cancelling the Temporal workflow or marking the row cancelled.
+Two slices:
 
-Follow-up still in this milestone: restrict user message posting in a conversation with an
-active wake-up to the wake-up owner only.
+1. **Cancellation rights (`WakeUpResource.cancel`)** — only the wake-up owner (`userId`) or
+   a workspace admin can cancel. Enforced via a `canCancel(auth)` check in `cancel(...)`
+   that returns an `Err` before touching the Temporal workflow or marking the row
+   cancelled.
+
+2. **Post / edit restriction** — while a conversation has an active (scheduled) wake-up,
+   only the wake-up owner can post or edit user messages. Shared logic lives on
+   `WakeUpResource.canUserInteract(auth, conversation)`, which returns an
+   `APIErrorWithStatusCode` (409 `invalid_request_error`) when any active wake-up is
+   owned by a user other than the caller. Called from both `postUserMessage` and
+   `editUserMessage` in `front/lib/api/assistant/conversation.ts`. The wake-up activity
+   posts under the owner's auth (via `fetchWakeUpAndAuthenticatorById`), so fires are
+   never blocked.
+
+`retryAgentMessage` is intentionally not gated — it does not take user input beyond
+selecting an existing agent message.
 
 ## Milestone 6: API + UI
 

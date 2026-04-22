@@ -85,6 +85,7 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
+import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
 
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -661,6 +662,14 @@ export async function postUserMessage(
     });
   }
 
+  const canInteractRes = await WakeUpResource.canUserInteract(
+    auth,
+    conversation
+  );
+  if (canInteractRes.isErr()) {
+    return canInteractRes;
+  }
+
   const agentMentions = mentions.filter(isAgentMention);
   let runningAgentMessage = conversation.content
     .flat()
@@ -1151,6 +1160,14 @@ export async function editUserMessage(
         message: "Only the author of the message can edit it",
       },
     });
+  }
+
+  const canInteractRes = await WakeUpResource.canUserInteract(
+    auth,
+    conversation
+  );
+  if (canInteractRes.isErr()) {
+    return canInteractRes;
   }
 
   let userMessage: UserMessageType | null = null;
