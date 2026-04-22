@@ -124,6 +124,12 @@ SkillSuggestionModel.init(
         concurrently: true,
         where: { groupId: { [Op.ne]: null } },
       },
+      {
+        name: "idx_skill_suggestions_updated_by_user_id",
+        fields: ["updatedByUserId"],
+        concurrently: true,
+        where: { updatedByUserId: { [Op.ne]: null } },
+      },
     ],
   }
 );
