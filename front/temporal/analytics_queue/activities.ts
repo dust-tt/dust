@@ -376,14 +376,12 @@ async function collectSkillsUsageFromMessage(
 
   const globalSkillsMap = new Map<string, SkillDefinition>();
   if (globalSkillIds.length > 0) {
-    const [globalSkills, systemSkills] = await Promise.all([
-      GlobalSkillsRegistry.findAll(auth, {
-        sId: globalSkillIds,
-      }),
-      SystemSkillsRegistry.findAll(auth, {
-        sId: globalSkillIds,
-      }),
-    ]);
+    const globalSkills = await GlobalSkillsRegistry.findAll(auth, {
+      sId: globalSkillIds,
+    });
+    const systemSkills = await SystemSkillsRegistry.findAll(auth, {
+      sId: globalSkillIds,
+    });
     for (const skill of [...globalSkills, ...systemSkills]) {
       globalSkillsMap.set(skill.sId, skill);
     }

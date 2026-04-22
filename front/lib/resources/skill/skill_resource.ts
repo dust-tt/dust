@@ -695,10 +695,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       return allowedCustomSkillsRes;
     }
 
-    const [globalSkillDefinitions, systemSkillDefinitions] = await Promise.all([
-      GlobalSkillsRegistry.findAll(auth, where),
-      SystemSkillsRegistry.findAll(auth, where),
-    ]);
+    const globalSkillDefinitions = await GlobalSkillsRegistry.findAll(
+      auth,
+      where
+    );
+    const systemSkillDefinitions = await SystemSkillsRegistry.findAll(
+      auth,
+      where
+    );
 
     const allCodeDefinedSkills = [
       ...globalSkillDefinitions,
