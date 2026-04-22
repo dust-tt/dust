@@ -290,7 +290,7 @@ export async function runSandboxBashTool(
       );
     } else if (denyResult.value.length > 0) {
       output +=
-        "\n[network proxy] The following outbound request(s) were denied:\n" +
+        "\n[network proxy] Recent outbound request(s) denied by the sandbox proxy:\n" +
         denyResult.value.map((line) => `  ${line}`).join("\n");
     }
   }

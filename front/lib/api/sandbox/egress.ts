@@ -194,6 +194,9 @@ export async function setupEgressForwarder(
   );
 }
 
+// Best-effort, sandbox-global deny log surfacing. The offset tracks lines
+// consumed across all exec calls, so entries returned here are "new since the
+// last read", not strictly caused by the command that just ran.
 export async function readNewDenyLogEntries(
   auth: Authenticator,
   sandbox: SandboxResource
