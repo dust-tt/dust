@@ -18,6 +18,7 @@ function makeSkill(overrides: Partial<SkillType> = {}): SkillType {
     icon: null,
     source: null,
     sourceMetadata: null,
+    reinforcement: "auto",
     requestedSpaceIds: [],
     tools: [],
     fileAttachments: [],
