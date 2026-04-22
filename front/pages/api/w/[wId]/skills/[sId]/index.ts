@@ -329,14 +329,11 @@ async function handler(
         isDefault: body.isDefault,
         mcpServerViews,
         name,
+        reinforcement: body.reinforcement,
         requestedSpaceIds,
         userFacingDescription: body.userFacingDescription,
         ...(shouldActivate ? { status: "active" as const } : {}),
       });
-
-      if (body.reinforcement && body.reinforcement !== skill.reinforcement) {
-        await skill.updateReinforcement(body.reinforcement);
-      }
 
       await pruneOutdatedSkillEditSuggestions(auth, skill);
 

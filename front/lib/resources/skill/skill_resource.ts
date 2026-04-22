@@ -1900,6 +1900,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       isDefault,
       mcpServerViews,
       name,
+      reinforcement,
       requestedSpaceIds,
       source,
       sourceMetadata,
@@ -1915,6 +1916,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       isDefault?: boolean;
       mcpServerViews: MCPServerViewResource[];
       name: string;
+      reinforcement?: SkillReinforcementMode;
       requestedSpaceIds: ModelId[];
       source?: SkillSourceType;
       sourceMetadata?: SkillSourceMetadata;
@@ -1949,6 +1951,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           ...(source ? { source } : {}),
           ...(sourceMetadata ? { sourceMetadata } : {}),
           ...(isDefault !== undefined ? { isDefault } : {}),
+          ...(reinforcement !== undefined ? { reinforcement } : {}),
         },
         transaction
       );
