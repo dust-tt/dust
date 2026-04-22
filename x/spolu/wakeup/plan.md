@@ -53,12 +53,12 @@ classification, audit events, and the cron path.
 
 ## Milestone 3: Cron wake-ups
 
-### PR 5 — Cron scheduling path
+### [x] PR 5 — Cron scheduling path
 
-Create the cron Temporal path for wake-ups. Reuse the existing trigger schedule patterns where
+Create the cron Temporal path for wake-ups, reusing the existing trigger schedule patterns where
 helpful.
 
-Status: in progress. Current state:
+Done:
 - Temporal Schedule creation / deletion is implemented in
   `front/temporal/triggers/wakeup_client.ts`.
 - `WakeUpResource.maxFires()` (backed by `MAX_WAKE_UP_FIRES = 32`) is exposed on `WakeUpType`, and
@@ -66,9 +66,9 @@ Status: in progress. Current state:
 - The wake-up `<dust_system>` message includes `fireCount / maxFires` and an expiration warning
   when the wake-up is about to expire.
 - `cleanupTemporalAfterFire(...)` deletes the Temporal schedule after the final fire.
-
-Remaining work: cron validation, cron-specific guardrails, and any further refinements of the
-recurring fire semantics.
+- `WakeUpResource.validateCron({ cron, timezone })` enforces a well-formed 5-field cron
+  expression, a minimum interval of 5 minutes between fires, and a valid IANA timezone. It is
+  called from `makeNew(...)` as a defense-in-depth check.
 
 ## Milestone 4: Agent action
 

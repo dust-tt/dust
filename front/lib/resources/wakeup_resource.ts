@@ -33,8 +33,6 @@ const MAX_WAKE_UP_FIRES = 32;
 const WAKE_UP_MIN_INTERVAL_MINUTES = 5;
 
 // Standard 5-field cron regex. Does not support # (nth occurrence) or L (last) operators.
-// Mirrors the regex used for trigger schedules in
-// `front/lib/api/assistant/configuration/triggers.ts`.
 const WAKE_UP_CRON_REGEXP =
   /^((((\d+,)+\d+|(\d+(\/|-)\d+)|\d+|\*(\/\d+)?|\?|[A-Z]{3}(-[A-Z]{3})?) ?){5,7})|(@(annually|yearly|monthly|weekly|daily|hourly|reboot))|(@every (\d+(ns|us|µs|ms|s|m|h))+)$/;
 
@@ -44,8 +42,8 @@ function isValidIANATimezone(timezone: string): boolean {
 }
 
 // A cron expression is considered too frequent if its minutes field fires more than once every
-// `WAKE_UP_MIN_INTERVAL_MINUTES` minutes. Accepts a literal minute ("0", "15") or a
-// `*/N` step with `N >= WAKE_UP_MIN_INTERVAL_MINUTES`.
+// `WAKE_UP_MIN_INTERVAL_MINUTES` minutes. Accepts a literal minute ("0", "15") or a `*/N` step with
+// `N >= WAKE_UP_MIN_INTERVAL_MINUTES`.
 function isWakeUpCronTooFrequent(cron: string): boolean {
   const minutes = cron.split(" ")[0];
 
