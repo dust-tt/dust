@@ -15,7 +15,11 @@ export class SkillFactory {
     skill: SkillResource,
     extendedSkill: SkillResource | null = null
   ): SkillResource & { extendedSkill: SkillResource | null } {
-    return Object.assign(skill, { extendedSkill });
+    return Object.assign(
+      Object.create(Object.getPrototypeOf(skill)),
+      skill,
+      { extendedSkill }
+    );
   }
 
   static async create(
