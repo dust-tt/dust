@@ -4,7 +4,6 @@ import { isRegionRedirect } from "@app/lib/swr/workspaces";
 import type { GetPokeNoWorkspaceAuthContextResponseType } from "@app/pages/api/poke/auth-context";
 import type { GetPokePlansResponseBody } from "@app/pages/api/poke/plans";
 import type { GetRegionResponseType } from "@app/pages/api/poke/region";
-import type { GetPokeWorkspacesResponseBody } from "@app/pages/api/poke/workspaces";
 import type { GetPokeWorkspaceAuthContextResponseType } from "@app/pages/api/poke/workspaces/[wId]/auth-context";
 import type { GetPokeFeaturesResponseBody } from "@app/pages/api/poke/workspaces/[wId]/features";
 import type { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/permissions";
@@ -66,46 +65,6 @@ export function usePokeConnectorPermissions({
     isResourcesLoading: !error && !data,
     isResourcesError: error,
     resourcesError: isAPIErrorResponse(error) ? error.error : null,
-  };
-}
-
-export function usePokeWorkspaces({
-  upgraded,
-  search,
-  disabled,
-  limit,
-}: {
-  upgraded?: boolean;
-  search?: string;
-  disabled?: boolean;
-  limit?: number;
-} = {}) {
-  const { fetcher } = useFetcher();
-  const workspacesFetcher: Fetcher<GetPokeWorkspacesResponseBody> = fetcher;
-
-  const queryParams = [
-    upgraded !== undefined ? `upgraded=${upgraded}` : null,
-    search ? `search=${search}` : null,
-    limit ? `limit=${limit}` : null,
-  ].filter((q) => q);
-
-  let query = "";
-  if (queryParams.length > 0) {
-    query = `?${queryParams.join("&")}`;
-  }
-
-  const { data, error } = useSWRWithDefaults(
-    `/api/poke/workspaces${query}`,
-    workspacesFetcher,
-    {
-      disabled,
-    }
-  );
-
-  return {
-    workspaces: data?.workspaces ?? emptyArray(),
-    isWorkspacesLoading: !error && !data,
-    isWorkspacesError: error,
   };
 }
 
