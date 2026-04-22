@@ -488,6 +488,7 @@ const InputBarContainer = ({
       onSkillSelectRef,
       selectedSkillIdsRef,
     },
+    placeholderOverride: submitBlockMessage,
     onLongTextPaste: async ({ text, from, to }) => {
       let filename = "";
       let inserted = false;
@@ -582,6 +583,17 @@ const InputBarContainer = ({
       });
     },
   });
+
+  // Keep the editor non-editable while submission is blocked (e.g. a non-owner
+  // viewing a conversation with an active wake-up). The placeholder already
+  // reads the block reason via `placeholderOverride`; disabling editability
+  // prevents typing into the field.
+  useEffect(() => {
+    if (!editor || editor.isDestroyed) {
+      return;
+    }
+    editor.setEditable(!isSubmitBlocked);
+  }, [editor, isSubmitBlocked]);
 
   // Ref to expose the current selectedSingleAgent to the editor update listener
   // without re-registering it on every selection change.
@@ -1072,6 +1084,7 @@ const InputBarContainer = ({
                     fileInputRef={fileInputRef}
                     fileUploaderService={fileUploaderService}
                     handleSingleAgentSelect={handleSingleAgentSelect}
+                    isInputDisabled={isSubmitBlocked}
                     onMCPServerViewSelect={onMCPServerViewSelect}
                     onNodeSelect={onNodeSelect}
                     onNodeUnselect={onNodeUnselect}
@@ -1179,6 +1192,7 @@ const InputBarContainer = ({
                   externalOpen={showKnowledgePicker}
                   onExternalOpenChange={setShowKnowledgePicker}
                   anchorRef={plusButtonRef}
+                  disabled={isSubmitBlocked}
                 />
               )}
             </>
@@ -1202,6 +1216,7 @@ const InputBarContainer = ({
                   onRecordStop={voiceTranscriberService.stopRecording}
                   size={buttonSize}
                   showStopLabel={!isMobile}
+                  disabled={isSubmitBlocked}
                 />
               )}
           </div>

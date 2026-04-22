@@ -231,6 +231,8 @@ export interface CustomEditorProps {
     >;
     selectedSkillIdsRef: React.RefObject<Set<string>>;
   };
+  // Override the default editor placeholder (e.g. to show a blocked-state reason).
+  placeholderOverride?: string | null;
 }
 
 export const buildEditorExtensions = ({
@@ -246,6 +248,7 @@ export const buildEditorExtensions = ({
   onFirstAgentMentionPasteRef,
   onAgentMentionsStrippedRef,
   slashSuggestion,
+  placeholderOverride,
 }: {
   owner: WorkspaceType;
   conversationId?: string | null;
@@ -263,6 +266,7 @@ export const buildEditorExtensions = ({
     ((payload: MentionsStrippedPayload) => void) | undefined
   >;
   slashSuggestion?: CustomEditorProps["slashSuggestion"];
+  placeholderOverride?: string | null;
 }) => {
   const extensions = [
     KeyboardShortcutsExtension,
@@ -348,7 +352,7 @@ export const buildEditorExtensions = ({
         if (node.type.name !== "paragraph") {
           return "";
         }
-        return "Ask a question";
+        return placeholderOverride ?? "Ask a question";
       },
       emptyNodeClass:
         "first:before:text-gray-400 first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:absolute",
@@ -398,6 +402,7 @@ const useCustomEditor = ({
   onFirstAgentMentionPasteRef,
   onAgentMentionsStrippedRef,
   slashSuggestion,
+  placeholderOverride,
 }: CustomEditorProps) => {
   const editor = useEditor(
     {
@@ -415,6 +420,7 @@ const useCustomEditor = ({
         onFirstAgentMentionPasteRef,
         onAgentMentionsStrippedRef,
         slashSuggestion,
+        placeholderOverride,
       }),
       shouldRerenderOnTransaction: true, // necessary to update the editor state (and so the toolbar icons "activation") in real time
       editorProps: {
@@ -442,7 +448,8 @@ const useCustomEditor = ({
       immediatelyRender: false,
     },
     // Important to watch for conversationId changes to reset the editor state when switching conversations.
-    [conversationId]
+    // placeholderOverride is included so the placeholder text updates when the blocked-state reason changes.
+    [conversationId, placeholderOverride]
   );
 
   const editorService = useEditorService(editor);
