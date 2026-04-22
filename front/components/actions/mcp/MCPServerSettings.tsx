@@ -12,7 +12,7 @@ import {
   useMCPServerConnections,
 } from "@app/lib/swr/mcp_servers";
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
-import { isAdmin, type LightWorkspaceType } from "@app/types/user";
+import type { LightWorkspaceType } from "@app/types/user";
 import { Button, Chip, LoginIcon, XMarkIcon } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
@@ -145,7 +145,6 @@ export function MCPServerSettings({
           <AdvancedLabelsOptions
             owner={owner}
             source={{ internalMCPServerId: mcpServerView.server.sId }}
-            isAdmin={isAdmin(owner)}
           />
         )}
 

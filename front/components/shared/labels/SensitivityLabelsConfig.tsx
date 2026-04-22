@@ -7,14 +7,12 @@ interface SensitivityLabelsConfigProps {
   owner: LightWorkspaceType;
   source: SensitivityLabelSource;
   readOnly?: boolean;
-  isAdmin: boolean;
 }
 
 export function SensitivityLabelsConfig({
   owner,
   source,
   readOnly = false,
-  isAdmin,
 }: SensitivityLabelsConfigProps) {
   const {
     dataClassificationLabels,
@@ -35,7 +33,6 @@ export function SensitivityLabelsConfig({
       savedAllowedLabels={dataClassificationLabels?.allowedLabels ?? []}
       onSaved={mutateDataClassificationLabels}
       readOnly={readOnly}
-      isAdmin={isAdmin}
       hasError={!!isDataClassificationLabelsError}
     />
   );

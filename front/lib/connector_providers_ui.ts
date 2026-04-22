@@ -298,12 +298,11 @@ export const CONNECTOR_UI_CONFIGURATIONS: Record<
     optionsComponent: createConnectorOptionsPdfEnabled(
       "When enabled, PDF documents from your Microsoft OneDrive and SharePoint will be synced and processed by Dust."
     ),
-    advancedOptionsComponent: ({ owner, readOnly, isAdmin, dataSource }) =>
+    advancedOptionsComponent: ({ owner, readOnly, dataSource }) =>
       React.createElement(AdvancedLabelsOptions, {
         owner,
         source: { dataSourceId: dataSource.sId },
         readOnly,
-        isAdmin,
       }),
     isNested: true,
     isTitleFilterEnabled: true,

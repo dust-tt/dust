@@ -2,7 +2,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import type { MicrosoftAllowedLabel } from "@app/lib/models/workspace_sensitivity_label_config";
 import { saveDataClassificationLabels } from "@app/lib/swr/data_classification_labels";
 import type { MicrosoftSensitivityLabel } from "@app/pages/api/w/[wId]/data-classification-labels";
-import type { LightWorkspaceType } from "@app/types/user";
+import { isAdmin, type LightWorkspaceType } from "@app/types/user";
 import {
   Button,
   DropdownMenu,
@@ -20,7 +20,6 @@ interface MicrosoftLabelsSelectorProps {
   savedAllowedLabels: MicrosoftAllowedLabel[];
   onSaved: () => void;
   readOnly: boolean;
-  isAdmin: boolean;
   hasError: boolean;
 }
 
@@ -31,7 +30,6 @@ export function MicrosoftLabelsSelector({
   savedAllowedLabels,
   onSaved,
   readOnly,
-  isAdmin,
   hasError,
 }: MicrosoftLabelsSelectorProps) {
   const sendNotification = useSendNotification();
@@ -39,6 +37,8 @@ export function MicrosoftLabelsSelector({
     new Set(savedAllowedLabels)
   );
   const [isSaving, setIsSaving] = useState(false);
+
+  const isAdminUser = isAdmin(owner);
 
   const toggle = (id: string) => {
     setSelected((prev) => {
@@ -106,7 +106,7 @@ export function MicrosoftLabelsSelector({
               size="sm"
               isSelect
               className="flex-1 justify-between"
-              disabled={readOnly || !isAdmin}
+              disabled={readOnly || !isAdminUser}
             />
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-80" align="start">
@@ -130,7 +130,7 @@ export function MicrosoftLabelsSelector({
             label="Save"
             size="sm"
             variant="primary"
-            disabled={readOnly || !isAdmin || isSaving}
+            disabled={readOnly || !isAdminUser || isSaving}
             onClick={() => void handleSave()}
           />
         )}

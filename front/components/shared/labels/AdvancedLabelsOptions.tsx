@@ -6,14 +6,12 @@ interface AdvancedLabelsOptionsProps {
   owner: LightWorkspaceType;
   source: SensitivityLabelSource;
   readOnly?: boolean;
-  isAdmin: boolean;
 }
 
 export const AdvancedLabelsOptions = ({
   owner,
   source,
   readOnly = false,
-  isAdmin,
 }: AdvancedLabelsOptionsProps) => {
   return (
     <div className="flex flex-col gap-2 mt-4">
@@ -28,7 +26,6 @@ export const AdvancedLabelsOptions = ({
         owner={owner}
         source={source}
         readOnly={readOnly}
-        isAdmin={isAdmin}
       />
     </div>
   );
