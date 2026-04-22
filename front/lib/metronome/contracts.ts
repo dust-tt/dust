@@ -189,7 +189,7 @@ export interface EnterprisePricingCents {
   floorCents: number;
 }
 
-async function syncContractQuantities(
+export async function syncContractQuantities(
   metronomeCustomerId: string,
   metronomeContractId: string,
   workspace: LightWorkspaceType,

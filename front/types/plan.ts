@@ -126,12 +126,13 @@ export type CreatePlanFormType = t.TypeOf<typeof CreatePlanFormSchema>;
 
 export const EnterpriseUpgradeFormSchema = t.intersection([
   t.type({
-    stripeSubscriptionId: NonEmptyString,
     planCode: NonEmptyString,
     freeCreditsOverrideEnabled: t.boolean,
     paygEnabled: t.boolean,
   }),
   t.partial({
+    stripeSubscriptionId: NonEmptyString,
+    metronomeContractId: NonEmptyString,
     freeCreditsDollars: t.number,
     defaultDiscountPercent: t.number,
     paygCapDollars: t.number,

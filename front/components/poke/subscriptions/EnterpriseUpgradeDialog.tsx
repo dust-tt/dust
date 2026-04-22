@@ -37,12 +37,14 @@ const MICRO_USD_PER_DOLLAR = 1_000_000;
 
 interface EnterpriseUpgradeDialogProps {
   owner: WorkspaceType;
+  hasMetronomeBilling: boolean;
   subscription: SubscriptionType;
   programmaticUsageConfig: ProgrammaticUsageConfigurationType | null;
 }
 
 export default function EnterpriseUpgradeDialog({
   owner,
+  hasMetronomeBilling,
   subscription,
   programmaticUsageConfig,
 }: EnterpriseUpgradeDialogProps) {
@@ -69,8 +71,11 @@ export default function EnterpriseUpgradeDialog({
   const form = useForm<EnterpriseUpgradeFormType>({
     resolver: ioTsResolver(EnterpriseUpgradeFormSchema),
     defaultValues: {
-      stripeSubscriptionId: subscription.stripeSubscriptionId ?? "",
-      planCode: subscription.plan.code,
+      stripeSubscriptionId: !hasMetronomeBilling
+        ? (subscription.stripeSubscriptionId ?? "")
+        : undefined,
+      metronomeContractId: "",
+      planCode: "",
       freeCreditsOverrideEnabled: freeCreditMicroUsd !== null,
       freeCreditsDollars:
         freeCreditMicroUsd !== null
@@ -152,8 +157,11 @@ export default function EnterpriseUpgradeDialog({
         <DialogHeader>
           <DialogTitle>Upgrade {owner.name} to Enterprise.</DialogTitle>
           <DialogDescription>
-            Select the enterprise plan and provide the Stripe subscription id of
-            the customer.
+            Select the enterprise plan and provide the{" "}
+            {hasMetronomeBilling
+              ? "Metronome contract ID"
+              : "Stripe subscription Id"}{" "}
+            of the customer.
           </DialogDescription>
         </DialogHeader>
         <DialogContainer>
@@ -185,12 +193,21 @@ export default function EnterpriseUpgradeDialog({
                     />
                   </div>
                   <div className="grid-cols grid items-center gap-4">
-                    <InputField
-                      control={form.control}
-                      name="stripeSubscriptionId"
-                      title="Stripe Subscription id"
-                      placeholder="sub_1234567890"
-                    />
+                    {hasMetronomeBilling ? (
+                      <InputField
+                        control={form.control}
+                        name="metronomeContractId"
+                        title="Metronome Contract ID"
+                        placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                      />
+                    ) : (
+                      <InputField
+                        control={form.control}
+                        name="stripeSubscriptionId"
+                        title="Stripe Subscription id"
+                        placeholder="sub_1234567890"
+                      />
+                    )}
                   </div>
 
                   <div className="border-t pt-4">
