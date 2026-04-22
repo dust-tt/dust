@@ -1,44 +1,12 @@
-import { getEnvironment, listEnvironments } from "../lib/environment";
-import {
-  getForwarderStatus,
-  readForwarderState,
-  startForwarder,
-  stopForwarder,
-} from "../lib/forward";
+import { getEnvironment } from "../lib/environment";
+import { getForwarderStatus, startForwarder, stopForwarder } from "../lib/forward";
 import { FORWARDER_MAPPINGS } from "../lib/forwarderConfig";
 import { logger } from "../lib/logger";
-import { FORWARDER_LOG_PATH } from "../lib/paths";
+import { FORWARDER_LOG_PATH, detectEnvFromCwd } from "../lib/paths";
 import { isServiceRunning } from "../lib/process";
+import { restoreTerminal, selectEnvironment } from "../lib/prompt";
 import { CommandError, Err, Ok, type Result } from "../lib/result";
 import { getStateInfo } from "../lib/state";
-
-async function findLastWarmedEnv(): Promise<string | null> {
-  const state = await readForwarderState();
-  if (state) {
-    // Check if the last env still exists and is warm
-    const env = await getEnvironment(state.targetEnv);
-    if (env) {
-      const stateInfo = await getStateInfo(env);
-      if (stateInfo.state === "warm") {
-        return state.targetEnv;
-      }
-    }
-  }
-
-  // Fall back to finding any warm environment
-  const envNames = await listEnvironments();
-  for (const name of envNames) {
-    const env = await getEnvironment(name);
-    if (env) {
-      const stateInfo = await getStateInfo(env);
-      if (stateInfo.state === "warm") {
-        return name;
-      }
-    }
-  }
-
-  return null;
-}
 
 export async function forwardStatusCommand(): Promise<Result<void>> {
   const status = await getForwarderStatus();
@@ -127,15 +95,6 @@ async function forwardToEnv(name: string): Promise<Result<void>> {
 }
 
 export async function forwardCommand(name?: string): Promise<Result<void>> {
-  // No name: forward to last warmed env
-  if (!name) {
-    const lastEnv = await findLastWarmedEnv();
-    if (!lastEnv) {
-      return Err(new CommandError("No warm environment found. Run 'dust-hive warm NAME' first."));
-    }
-    return forwardToEnv(lastEnv);
-  }
-
   // Route subcommands (for cac multi-word command compatibility)
   if (name === "status") {
     return forwardStatusCommand();
@@ -144,6 +103,24 @@ export async function forwardCommand(name?: string): Promise<Result<void>> {
     return forwardStopCommand();
   }
 
-  // NAME: forward to specific env
-  return forwardToEnv(name);
+  // NAME provided: forward to specific env
+  if (name) {
+    return forwardToEnv(name);
+  }
+
+  // No name: default to current env (detected from cwd)
+  const currentEnv = detectEnvFromCwd();
+  if (currentEnv) {
+    return forwardToEnv(currentEnv);
+  }
+
+  // No current env: ask interactively
+  const selected = await selectEnvironment({ message: "Select environment for forward" });
+  restoreTerminal();
+
+  if (!selected) {
+    return Err(new CommandError("No environment selected"));
+  }
+
+  return forwardToEnv(selected);
 }
