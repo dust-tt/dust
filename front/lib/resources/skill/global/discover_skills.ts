@@ -1,8 +1,8 @@
-import type { GlobalSkillDefinition } from "@app/lib/resources/skill/global/registry";
+import type { SystemSkillDefinition } from "@app/lib/resources/skill/global/shared";
 
 // This skill allows discovering skills from the workspace. When equipped on an
 // agent, it causes `listForAgentLoop` to include discoverable skills (custom
-// default skills + non-auto-enabled global skills) in the equipped skills list.
+// default skills + regular global skills) in the equipped skills list.
 export const discoverSkillsSkill = {
   sId: "discover_skills",
   name: "Discover Skills",
@@ -11,9 +11,8 @@ export const discoverSkillsSkill = {
   agentFacingDescription:
     "List available workspace skills and enable them for the current conversation.",
   instructions:
-    "Some of the available skills listed below come from the workspace rather than " +
+    "Some of the available skills come from the workspace rather than " +
     "this agent's configuration. They can be enabled exactly like any other available skill.",
   version: 1,
   icon: "PuzzleIcon",
-  isAutoEnabled: true,
-} as const satisfies GlobalSkillDefinition;
+} as const satisfies SystemSkillDefinition;

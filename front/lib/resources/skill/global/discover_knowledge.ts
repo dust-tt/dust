@@ -1,4 +1,4 @@
-import type { GlobalSkillDefinition } from "@app/lib/resources/skill/global/registry";
+import type { SystemSkillDefinition } from "@app/lib/resources/skill/global/shared";
 
 const DISCOVER_KNOWLEDGE_INSTRUCTIONS =
   "Default behavior: optimize for speed by starting with `semantic_search`.\n" +
@@ -36,5 +36,4 @@ export const discoverKnowledgeSkill = {
   version: 1,
   icon: "ActionBookOpenIcon",
   inheritAgentConfigurationDataSources: true,
-  isAutoEnabled: true,
-} as const satisfies GlobalSkillDefinition;
+} as const satisfies SystemSkillDefinition;

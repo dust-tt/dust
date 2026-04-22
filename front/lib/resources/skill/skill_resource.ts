@@ -30,8 +30,9 @@ import {
   createResourcePermissionsFromSpacesWithMap,
   createSpaceIdToGroupsMap,
 } from "@app/lib/resources/permission_utils";
-import type { GlobalSkillDefinition } from "@app/lib/resources/skill/global/registry";
 import { GlobalSkillsRegistry } from "@app/lib/resources/skill/global/registry";
+import type { SkillDefinition } from "@app/lib/resources/skill/global/shared";
+import { SystemSkillsRegistry } from "@app/lib/resources/skill/global/system_registry";
 import type { SkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -189,6 +190,7 @@ export interface SkillResource
  * with a thin coordination layer.
  *
  * @see GlobalSkillsRegistry for global skill definitions
+ * @see SystemSkillsRegistry for always-enabled system skill definitions
  */
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class SkillResource extends BaseResource<SkillConfigurationModel> {
@@ -318,17 +320,17 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     ]);
   }
 
-  get isAutoEnabled(): boolean {
+  get isSystemSkill(): boolean {
     if (!this.globalSId) {
       return false;
     }
 
-    return GlobalSkillsRegistry.isSkillAutoEnabled(this.sId);
+    return SystemSkillsRegistry.isSystemSkill(this.sId);
   }
 
   get isExtendable(): boolean {
-    // Auto-enabled skills are baseline discovery capabilities: they are not meant to be extended.
-    return this.globalSId !== null && !this.isAutoEnabled;
+    // System skills are baseline capabilities: they are not meant to be extended.
+    return this.globalSId !== null && !this.isSystemSkill;
   }
 
   static async makeNew(
@@ -693,12 +695,17 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       return allowedCustomSkillsRes;
     }
 
-    const globalSkillDefinitions = await GlobalSkillsRegistry.findAll(
-      auth,
-      where
-    );
+    const [globalSkillDefinitions, systemSkillDefinitions] = await Promise.all([
+      GlobalSkillsRegistry.findAll(auth, where),
+      SystemSkillsRegistry.findAll(auth, where),
+    ]);
 
-    const enabledGlobalSkillDefinitions = globalSkillDefinitions.filter(
+    const allCodeDefinedSkills = [
+      ...globalSkillDefinitions,
+      ...systemSkillDefinitions,
+    ];
+
+    const enabledCodeDefinedSkills = allCodeDefinedSkills.filter(
       (def) => !agentLoopData || !def.isDisabledForAgentLoop?.(agentLoopData)
     );
 
@@ -712,7 +719,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     let mcpServerViews: MCPServerViewResource[] = [];
     if (withTools) {
       const mcpServerIds = uniq(
-        enabledGlobalSkillDefinitions.flatMap(
+        enabledCodeDefinedSkills.flatMap(
           (def) => def.mcpServers?.map((s) => s.name) ?? []
         )
       ).map((name) =>
@@ -731,7 +738,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
 
     const globalSkills = await concurrentExecutor(
-      enabledGlobalSkillDefinitions,
+      enabledCodeDefinedSkills,
       (def) =>
         this.fromGlobalSkill(auth, def, {
           agentLoopData,
@@ -1096,8 +1103,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   /**
-   * List discoverable skills: custom default skills + non-auto-enabled global
-   * skills.
+   * List discoverable skills: custom default skills + regular global skills.
    */
   static async listDiscoverable(auth: Authenticator): Promise<SkillResource[]> {
     return this.baseFetch(auth, {
@@ -1268,8 +1274,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       discoverableSkills = await this.listDiscoverable(auth);
     }
 
-    // Auto-enabled skills are always treated as enabled when present in the agent configuration. Only possible for global skills for now.
-    const autoEnabledSkills = allAgentSkills.filter((s) => s.isAutoEnabled);
+    // System skills are always treated as enabled when present in the agent configuration.
+    const systemSkills = allAgentSkills.filter((s) => s.isSystemSkill);
 
     const sortByName = (a: SkillResource, b: SkillResource) =>
       a.name.localeCompare(b.name);
@@ -1278,7 +1284,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const projectSkill =
       conversation &&
       isProjectConversation(conversation) &&
-      !autoEnabledSkills.some((s) => s.globalSId === "projects") &&
+      !systemSkills.some((s) => s.globalSId === "projects") &&
       !conversationEnabledSkills.some((s) => s.globalSId === "projects")
         ? await SkillResource.fetchBySkillReferences(
             auth,
@@ -1287,9 +1293,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           )
         : [];
 
-    // Compute the enabled skills: auto-enabled skills + conversation-enabled skills.
+    // Compute the enabled skills: system skills + conversation-enabled skills.
     const enabledSkills = [
-      ...autoEnabledSkills.sort(sortByName),
+      ...systemSkills.sort(sortByName),
       ...conversationEnabledSkills.sort(sortByName),
       ...projectSkill,
     ];
@@ -1431,7 +1437,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   private static async fromGlobalSkill(
     auth: Authenticator,
-    def: GlobalSkillDefinition,
+    def: SkillDefinition,
     {
       agentLoopData,
       mcpServerViews,
@@ -1494,7 +1500,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         extendedSkillId: null,
         source: null,
         sourceMetadata: null,
-        isDefault: def.isAutoEnabled !== true,
+        isDefault: !SystemSkillsRegistry.isSystemSkill(def.sId),
         reinforcement: "auto",
         lastReinforcementAnalysisAt: null,
       },
@@ -1820,6 +1826,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     if (
       !GlobalSkillsRegistry.doesSkillInheritAgentConfigurationDataSources(
+        this.globalSId
+      ) &&
+      !SystemSkillsRegistry.doesSkillInheritAgentConfigurationDataSources(
         this.globalSId
       )
     ) {

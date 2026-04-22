@@ -1,5 +1,5 @@
 import { INTERACTIVE_CONTENT_INSTRUCTIONS } from "@app/lib/api/actions/servers/interactive_content/instructions";
-import type { GlobalSkillDefinition } from "@app/lib/resources/skill/global/registry";
+import type { GlobalSkillDefinition } from "@app/lib/resources/skill/global/shared";
 
 export const framesSkill = {
   sId: "frames",

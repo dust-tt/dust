@@ -2,7 +2,7 @@ import { isJITMCPServerView } from "@app/lib/actions/mcp_internal_actions/utils"
 import { buildToolsetsContext } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import type { GlobalSkillDefinition } from "@app/lib/resources/skill/global/registry";
+import type { SystemSkillDefinition } from "@app/lib/resources/skill/global/shared";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 
 export const discoverToolsSkill = {
@@ -35,8 +35,7 @@ export const discoverToolsSkill = {
   mcpServers: [{ name: "toolsets" }],
   version: 1,
   icon: "ToolsIcon",
-  isAutoEnabled: true,
-} as const satisfies GlobalSkillDefinition;
+} as const satisfies SystemSkillDefinition;
 
 export function buildDiscoverToolsInstructions(
   availableToolsets: MCPServerViewResource[]

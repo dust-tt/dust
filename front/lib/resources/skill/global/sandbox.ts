@@ -6,7 +6,7 @@ import {
 } from "@app/lib/api/sandbox/image";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import type { GlobalSkillDefinition } from "@app/lib/resources/skill/global/registry";
+import type { SystemSkillDefinition } from "@app/lib/resources/skill/global/shared";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 import { Ok } from "@app/types/shared/result";
@@ -85,5 +85,4 @@ export const sandboxSkill = {
 
     return !flags.includes("sandbox_tools");
   },
-  isAutoEnabled: true,
-} as const satisfies GlobalSkillDefinition;
+} as const satisfies SystemSkillDefinition;
