@@ -1,9 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SubscriptionModel } from "@app/lib/models/plan";
 import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
 import { FREE_BYOK_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockGetLlmCredentials = vi.hoisted(() => vi.fn());
 const mockIsProviderWhitelisted = vi.hoisted(() => vi.fn());
@@ -35,9 +35,9 @@ vi.mock("@app/lib/api/llm/clients/openai/imageGeneration", () => ({
   ImageGenerationOpenAILLM: mockOpenAIImageGenerationLLM,
 }));
 
+import { Authenticator } from "@app/lib/auth";
 import { GEMINI_3_PRO_IMAGE_MODEL_ID } from "@app/types/assistant/models/google_ai_studio";
 import { GPT_IMAGE_2_MODEL_ID } from "@app/types/assistant/models/openai";
-import { Authenticator } from "@app/lib/auth";
 import { getImageGenerationLLM } from "./getImageGenerationLLM";
 
 describe("getImageGenerationLLM", () => {

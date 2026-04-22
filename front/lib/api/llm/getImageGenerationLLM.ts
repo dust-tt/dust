@@ -3,7 +3,7 @@ import { ImageGenerationOpenAILLM } from "@app/lib/api/llm/clients/openai/imageG
 import type { ImageGenerationLLM } from "@app/lib/api/llm/imageGeneration";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { isProviderWhitelisted } from "@app/lib/assistant";
-import { getFeatureFlags, type Authenticator } from "@app/lib/auth";
+import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { GEMINI_3_PRO_IMAGE_MODEL_ID } from "@app/types/assistant/models/google_ai_studio";
 import { GPT_IMAGE_2_MODEL_ID } from "@app/types/assistant/models/openai";
 
