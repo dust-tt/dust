@@ -104,9 +104,14 @@ export async function checkEgressForwarderHealth(
   auth: Authenticator,
   sandbox: SandboxResource
 ): Promise<Result<boolean, Error>> {
-  const healthResult = await sandbox.exec(auth, "nc -z 127.0.0.1 9990", {
-    timeoutMs: 1_000,
-  });
+  // Use ss to check if the port is bound locally rather than nc -z which opens
+  // a real TCP connection through the forwarder, triggering a proxy round-trip
+  // and noisy <unknown> deny log entries on every health check.
+  const healthResult = await sandbox.exec(
+    auth,
+    "ss -tln sport = :9990 | grep -q LISTEN",
+    { timeoutMs: 1_000 }
+  );
 
   if (healthResult.isErr()) {
     return healthResult;
