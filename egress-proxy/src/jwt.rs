@@ -14,6 +14,7 @@ pub struct JwtValidator {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ValidatedSandboxToken {
     pub sb_id: String,
+    pub w_id: Option<String>,
 }
 
 #[derive(Debug, Error, PartialEq, Eq)]
@@ -30,6 +31,8 @@ pub enum JwtValidationError {
 struct Claims {
     #[serde(rename = "sbId")]
     sb_id: String,
+    #[serde(rename = "wId")]
+    w_id: Option<String>,
     exp: usize,
 }
 
@@ -41,8 +44,6 @@ impl JwtValidator {
     }
 
     pub fn validate(&self, raw_token: &str) -> Result<ValidatedSandboxToken, JwtValidationError> {
-        // TODO(sandbox-egress): Front will mint these JWTs during sandbox setup and write the
-        // per-sandbox policy before user code can execute.
         let mut validation = Validation::new(Algorithm::HS256);
         // TODO(sandbox-egress): Nice-to-have once front token minting is wired: make the
         // front/proxy clock-skew tolerance explicit and cover it with a unit test.
@@ -65,7 +66,21 @@ fn claims_to_validated_token(
 ) -> Result<ValidatedSandboxToken, JwtValidationError> {
     let claims = token.claims;
     let now_seconds = current_unix_timestamp_seconds()?;
+    let raw_w_id = claims.w_id;
+    let w_id = raw_w_id.as_ref().and_then(|value| {
+        let trimmed = value.trim();
+        if trimmed.is_empty() {
+            None
+        } else {
+            Some(trimmed.to_string())
+        }
+    });
+
     if claims.sb_id.trim().is_empty() || claims.exp == 0 {
+        return Err(JwtValidationError::InvalidClaims);
+    }
+
+    if raw_w_id.is_some() && w_id.is_none() {
         return Err(JwtValidationError::InvalidClaims);
     }
 
@@ -75,6 +90,7 @@ fn claims_to_validated_token(
 
     Ok(ValidatedSandboxToken {
         sb_id: claims.sb_id,
+        w_id,
     })
 }
 
@@ -108,6 +124,8 @@ mod tests {
     struct TestClaims<'a> {
         #[serde(rename = "sbId")]
         sb_id: &'a str,
+        #[serde(rename = "wId", skip_serializing_if = "Option::is_none")]
+        w_id: Option<&'a str>,
         iss: &'a str,
         aud: &'a str,
         exp: usize,
@@ -116,19 +134,72 @@ mod tests {
     #[test]
     fn validates_expected_claims() {
         let validator = JwtValidator::new("secret");
-        let token = token("secret", "sbx", EXPECTED_ISSUER, EXPECTED_AUDIENCE, 60);
+        let token = token(
+            "secret",
+            "sbx",
+            Some("workspace"),
+            EXPECTED_ISSUER,
+            EXPECTED_AUDIENCE,
+            60,
+        );
 
         let validated = validator
             .validate(&token)
             .expect("token with valid claims should validate");
 
         assert_eq!(validated.sb_id, "sbx");
+        assert_eq!(validated.w_id.as_deref(), Some("workspace"));
+    }
+
+    #[test]
+    fn accepts_tokens_without_workspace_id() {
+        let validator = JwtValidator::new("secret");
+        let token = token(
+            "secret",
+            "sbx",
+            None,
+            EXPECTED_ISSUER,
+            EXPECTED_AUDIENCE,
+            60,
+        );
+
+        let validated = validator
+            .validate(&token)
+            .expect("token without wId should validate during rollout");
+
+        assert_eq!(validated.sb_id, "sbx");
+        assert_eq!(validated.w_id, None);
+    }
+
+    #[test]
+    fn rejects_empty_workspace_id_when_present() {
+        let validator = JwtValidator::new("secret");
+        let token = token(
+            "secret",
+            "sbx",
+            Some("   "),
+            EXPECTED_ISSUER,
+            EXPECTED_AUDIENCE,
+            60,
+        );
+
+        assert_eq!(
+            validator.validate(&token).unwrap_err(),
+            JwtValidationError::InvalidClaims
+        );
     }
 
     #[test]
     fn rejects_expired_tokens() {
         let validator = JwtValidator::new("secret");
-        let token = token("secret", "sbx", EXPECTED_ISSUER, EXPECTED_AUDIENCE, -60);
+        let token = token(
+            "secret",
+            "sbx",
+            Some("workspace"),
+            EXPECTED_ISSUER,
+            EXPECTED_AUDIENCE,
+            -60,
+        );
 
         assert_eq!(
             validator.validate(&token).unwrap_err(),
@@ -139,7 +210,14 @@ mod tests {
     #[test]
     fn rejects_wrong_audience() {
         let validator = JwtValidator::new("secret");
-        let token = token("secret", "sbx", EXPECTED_ISSUER, "wrong", 60);
+        let token = token(
+            "secret",
+            "sbx",
+            Some("workspace"),
+            EXPECTED_ISSUER,
+            "wrong",
+            60,
+        );
 
         assert_eq!(
             validator.validate(&token).unwrap_err(),
@@ -147,7 +225,14 @@ mod tests {
         );
     }
 
-    fn token(secret: &str, sb_id: &str, iss: &str, aud: &str, exp_offset_seconds: i64) -> String {
+    fn token(
+        secret: &str,
+        sb_id: &str,
+        w_id: Option<&str>,
+        iss: &str,
+        aud: &str,
+        exp_offset_seconds: i64,
+    ) -> String {
         let now_seconds = i64::try_from(
             SystemTime::now()
                 .duration_since(UNIX_EPOCH)
@@ -159,6 +244,7 @@ mod tests {
         let exp = usize::try_from(exp_seconds).expect("expiration timestamp should fit in usize");
         let claims = TestClaims {
             sb_id,
+            w_id,
             iss,
             aud,
             exp,

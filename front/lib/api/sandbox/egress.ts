@@ -53,7 +53,7 @@ async function runSuccessfulSandboxCommand(
   auth: Authenticator,
   sandbox: SandboxResource,
   command: string,
-  user?: string
+  user?: string,
 ): Promise<Result<void, Error>> {
   const result = await sandbox.exec(auth, command, user ? { user } : undefined);
   if (result.isErr()) {
@@ -63,32 +63,33 @@ async function runSuccessfulSandboxCommand(
   if (result.value.exitCode !== 0) {
     return new Err(
       new Error(
-        `Sandbox command failed with exit code ${result.value.exitCode}: ${result.value.stderr || result.value.stdout || command}`
-      )
+        `Sandbox command failed with exit code ${result.value.exitCode}: ${result.value.stderr || result.value.stdout || command}`,
+      ),
     );
   }
 
   return new Ok(undefined);
 }
 
-export function mintEgressJwt(providerId: string): string {
+export function mintEgressJwt(providerId: string, workspaceId: string): string {
   return jwt.sign(
     {
       iss: "dust-front",
       aud: "dust-egress-proxy",
       sbId: providerId,
+      wId: workspaceId,
     },
     config.getEgressProxyJwtSecret(),
     {
       algorithm: "HS256",
       expiresIn: EGRESS_JWT_TTL_SECONDS,
-    }
+    },
   );
 }
 
 export async function checkEgressForwarderHealth(
   auth: Authenticator,
-  sandbox: SandboxResource
+  sandbox: SandboxResource,
 ): Promise<Result<boolean, Error>> {
   // Use ss to check if the port is bound locally rather than nc -z which opens
   // a real TCP connection through the forwarder, triggering a proxy round-trip
@@ -96,7 +97,7 @@ export async function checkEgressForwarderHealth(
   const healthResult = await sandbox.exec(
     auth,
     "ss -tln sport = :9990 | grep -q LISTEN",
-    { timeoutMs: 1_000 }
+    { timeoutMs: 1_000 },
   );
 
   if (healthResult.isErr()) {
@@ -108,7 +109,7 @@ export async function checkEgressForwarderHealth(
 
 export async function setupEgressForwarder(
   auth: Authenticator,
-  sandbox: SandboxResource
+  sandbox: SandboxResource,
 ): Promise<Result<void, Error>> {
   const logContext = {
     event: "egress.setup",
@@ -123,11 +124,14 @@ export async function setupEgressForwarder(
     return new Err(error instanceof Error ? error : new Error(String(error)));
   }
 
-  const token = mintEgressJwt(sandbox.providerId);
+  const token = mintEgressJwt(
+    sandbox.providerId,
+    auth.getNonNullableWorkspace().sId,
+  );
   const tokenWriteResult = await sandbox.writeFile(
     auth,
     EGRESS_TOKEN_PATH,
-    new TextEncoder().encode(token).buffer
+    new TextEncoder().encode(token).buffer,
   );
   if (tokenWriteResult.isErr()) {
     return tokenWriteResult;
@@ -136,16 +140,13 @@ export async function setupEgressForwarder(
   const chmodResult = await runSuccessfulSandboxCommand(
     auth,
     sandbox,
-    `chmod 600 ${shellEscape(EGRESS_TOKEN_PATH)}`,
-    "root"
+    `chown dust-fwd:dust-fwd ${shellEscape(EGRESS_TOKEN_PATH)} && chmod 600 ${shellEscape(EGRESS_TOKEN_PATH)}`,
+    "root",
   );
   if (chmodResult.isErr()) {
     return chmodResult;
   }
 
-  // The forwarder runs as root. The nftables rules only redirect traffic
-  // from agent-proxied (uid 1003), so root's outbound connections go
-  // straight to the internet without looping back through the proxy.
   const startForwarderCommand =
     "nohup /opt/bin/dsbx forward " +
     `--token-file ${shellEscape(EGRESS_TOKEN_PATH)} ` +
@@ -159,7 +160,7 @@ export async function setupEgressForwarder(
     auth,
     sandbox,
     startForwarderCommand,
-    "root"
+    "dust-fwd",
   );
   if (startResult.isErr()) {
     return startResult;
@@ -179,7 +180,7 @@ export async function setupEgressForwarder(
   }
 
   return new Err(
-    new Error("Sandbox egress forwarder did not become healthy in time")
+    new Error("Sandbox egress forwarder did not become healthy in time"),
   );
 }
 
@@ -188,7 +189,7 @@ export async function setupEgressForwarder(
 // last read", not strictly caused by the command that just ran.
 export async function readNewDenyLogEntries(
   auth: Authenticator,
-  sandbox: SandboxResource
+  sandbox: SandboxResource,
 ): Promise<Result<string[], Error>> {
   const command =
     `_off=$(cat ${shellEscape(EGRESS_DENY_LOG_OFFSET_PATH)} 2>/dev/null || echo 0); ` +
