@@ -14,13 +14,16 @@ import { MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY } from "@app/lib/invit
 import { MembershipInvitationModel } from "@app/lib/models/membership_invitation";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { isEmailValid } from "@app/lib/utils";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type { APIErrorWithStatusCode } from "@app/types/error";
 import type { MembershipInvitationType } from "@app/types/membership_invitation";
 import type { SubscriptionType } from "@app/types/plan";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { sanitizeString } from "@app/types/shared/utils/string_utils";
 import type {
   ActiveRoleType,
@@ -35,6 +38,8 @@ import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
 import { MembershipInvitationResource } from "../resources/membership_invitation_resource";
+
+const EMAIL_CONCURRENCY = 8;
 
 export async function getInvitation(
   auth: Authenticator,
@@ -59,41 +64,6 @@ export async function getInvitation(
   }
 
   return invitation.toJSON();
-}
-
-export async function updateOrCreateInvitation(
-  auth: Authenticator,
-  inviteEmail: string,
-  initialRole: ActiveRoleType,
-  transaction?: Transaction
-): Promise<MembershipInvitationType> {
-  // check for prior existing pending invitation
-  const existingInvitation =
-    await MembershipInvitationResource.getPendingForEmailAndWorkspace({
-      email: sanitizeString(inviteEmail),
-      includeExpired: true,
-      workspace: auth.getNonNullableWorkspace(),
-      transaction,
-    });
-
-  if (existingInvitation && existingInvitation.isExpired()) {
-    await existingInvitation.revoke(transaction);
-  } else if (existingInvitation) {
-    await existingInvitation.updateRole(initialRole, transaction);
-    return existingInvitation.toJSON();
-  }
-
-  const newInvitation = await MembershipInvitationResource.makeNew(
-    auth,
-    {
-      inviteEmail: sanitizeString(inviteEmail),
-      status: "pending",
-      initialRole,
-    },
-    transaction
-  );
-
-  return newInvitation.toJSON();
 }
 
 export function getMembershipInvitationToken(
@@ -195,6 +165,16 @@ export interface HandleMembershipInvitationResult {
   error_message?: string;
 }
 
+interface InvitationToEmail {
+  invitation: MembershipInvitationType;
+  email: string;
+}
+
+interface InvitationTransactionPayload {
+  resultsWithoutEmail: HandleMembershipInvitationResult[];
+  invitationsToEmail: InvitationToEmail[];
+}
+
 export async function handleMembershipInvitations(
   auth: Authenticator,
   {
@@ -213,13 +193,14 @@ export async function handleMembershipInvitations(
 ): Promise<Result<HandleMembershipInvitationResult[], APIErrorWithStatusCode>> {
   const { maxUsers } = subscription.plan.limits.users;
 
-  const result = await withTransaction(
+  // Emails are sent after the transaction commits so the DB transaction is
+  // not held open during SendGrid calls.
+  const transactionResult = await withTransaction(
     async (
       t
     ): Promise<
-      Result<HandleMembershipInvitationResult[], APIErrorWithStatusCode>
+      Result<InvitationTransactionPayload, APIErrorWithStatusCode>
     > => {
-      // Only lock and check seats available if the workspace has a limits
       if (maxUsers !== -1) {
         await getWorkspaceAdministrationVersionLock(owner, t);
 
@@ -296,7 +277,7 @@ export async function handleMembershipInvitations(
         invitationRequests.map((r) => r.email.toLowerCase().trim())
       );
       const emailsToSendInvitations = force
-        ? invitationRequests // If force is true, send to all requested emails
+        ? invitationRequests
         : invitationRequests.filter(
             (r) =>
               !emailsWithRecentUnconsumedInvitations.has(
@@ -304,7 +285,7 @@ export async function handleMembershipInvitations(
               )
           );
       const invitationsToUnrevoke = force
-        ? [] // If force is true, don't unrevoke any invitations
+        ? []
         : unconsumedInvitations.revoked.filter((i) =>
             requestedEmails.has(i.inviteEmail.toLowerCase().trim())
           );
@@ -313,7 +294,7 @@ export async function handleMembershipInvitations(
         !emailsToSendInvitations.length &&
         !invitationsToUnrevoke.length &&
         invitationRequests.length > 0 &&
-        !force // Only return this error if force is false
+        !force
       ) {
         return new Err({
           status_code: 400,
@@ -330,75 +311,181 @@ export async function handleMembershipInvitations(
         t
       );
 
-      const unrevokedResults: HandleMembershipInvitationResult[] =
+      const resultsWithoutEmail: HandleMembershipInvitationResult[] =
         invitationsToUnrevoke.map((i) => ({
           success: true,
           email: i.inviteEmail,
         }));
 
-      const invitationResults = await Promise.all(
-        emailsToSendInvitations.map(async ({ email, role }) => {
-          if (existingMembers.find((m) => m.email === email)) {
-            return {
-              success: false,
-              email,
-              error_message:
-                "Cannot send invitation to existing active member.",
-            };
-          }
-
-          try {
-            const invitation = await updateOrCreateInvitation(
-              auth,
-              email,
-              role,
-              t
-            );
-            await sendWorkspaceInvitationEmail(owner, user, invitation);
-          } catch (e) {
-            logger.error(
-              {
-                error: e,
-                message: "Failed to send invitation email",
-                email,
-              },
-              "Failed to send invitation email"
-            );
-
-            return {
-              success: false,
-              email,
-              error_message: e instanceof Error ? e.message : "Unknown error",
-            };
-          }
-          return {
-            success: true,
-            email,
-          };
-        })
-      );
-
-      const allResults = [...invitationResults, ...unrevokedResults];
-
-      const successfulInvites = allResults.filter((r) => r.success);
-      if (successfulInvites.length > 0) {
-        void emitAuditLogEvent({
-          auth,
-          action: "member.invited",
-          targets: successfulInvites.map((r) =>
-            buildAuditLogTarget("user", { sId: r.email, name: r.email })
-          ),
-          context: getAuditLogContext(auth),
-          metadata: {
-            invitedCount: String(successfulInvites.length),
-            emails: successfulInvites.map((r) => r.email).join(","),
-          },
-        });
+      const existingMemberEmails = new Set(existingMembers.map((m) => m.email));
+      const dbCandidates: {
+        originalEmail: string;
+        sanitizedEmail: string;
+        role: ActiveRoleType;
+      }[] = [];
+      for (const req of emailsToSendInvitations) {
+        if (existingMemberEmails.has(req.email)) {
+          resultsWithoutEmail.push({
+            success: false,
+            email: req.email,
+            error_message: "Cannot send invitation to existing active member.",
+          });
+        } else {
+          dbCandidates.push({
+            originalEmail: req.email,
+            sanitizedEmail: sanitizeString(req.email),
+            role: req.role,
+          });
+        }
       }
 
-      return new Ok(allResults);
+      // If the caller sends the same address twice, last role wins.
+      const uniqueCandidateBySanitizedEmail = new Map(
+        dbCandidates.map((c) => [c.sanitizedEmail, c])
+      );
+
+      const existingInvitations =
+        await MembershipInvitationResource.listPendingForEmailsAndWorkspace({
+          emails: Array.from(uniqueCandidateBySanitizedEmail.keys()),
+          workspace: owner,
+          includeExpired: true,
+          transaction: t,
+        });
+      const existingByEmail = new Map(
+        existingInvitations.map((inv) => [inv.inviteEmail, inv])
+      );
+
+      const toRevokeModelIds: ModelId[] = [];
+      const toCreate: {
+        inviteEmail: string;
+        initialRole: ActiveRoleType;
+      }[] = [];
+      // Group role updates by target role so we issue one UPDATE per distinct
+      // role (bounded by the number of active roles) instead of per invitation.
+      const toUpdateRoleByRole = new Map<ActiveRoleType, ModelId[]>();
+      const invitationBySanitizedEmail = new Map<
+        string,
+        MembershipInvitationType
+      >();
+
+      for (const {
+        sanitizedEmail,
+        role,
+      } of uniqueCandidateBySanitizedEmail.values()) {
+        const existing = existingByEmail.get(sanitizedEmail);
+        if (!existing || existing.isExpired()) {
+          if (existing) {
+            toRevokeModelIds.push(existing.id);
+          }
+          toCreate.push({
+            inviteEmail: sanitizedEmail,
+            initialRole: role,
+          });
+        } else {
+          if (existing.initialRole !== role) {
+            const group = toUpdateRoleByRole.get(role) ?? [];
+            group.push(existing.id);
+            toUpdateRoleByRole.set(role, group);
+          }
+          invitationBySanitizedEmail.set(sanitizedEmail, {
+            ...existing.toJSON(),
+            initialRole: role,
+          });
+        }
+      }
+
+      await MembershipInvitationResource.bulkRevokeByModelIds(
+        auth,
+        toRevokeModelIds,
+        t
+      );
+
+      for (const [role, modelIds] of toUpdateRoleByRole) {
+        await MembershipInvitationResource.bulkUpdateInitialRoleByModelIds(
+          auth,
+          modelIds,
+          role,
+          t
+        );
+      }
+
+      const created = await MembershipInvitationResource.bulkMakeNewPending(
+        auth,
+        toCreate,
+        t
+      );
+      for (const invitation of created) {
+        invitationBySanitizedEmail.set(
+          invitation.inviteEmail,
+          invitation.toJSON()
+        );
+      }
+
+      // One entry per original request so the response count matches the
+      // caller; duplicate addresses share the same underlying invitation row.
+      const invitationsToEmail: InvitationToEmail[] = [];
+      for (const { originalEmail, sanitizedEmail } of dbCandidates) {
+        const invitation = invitationBySanitizedEmail.get(sanitizedEmail);
+        if (invitation) {
+          invitationsToEmail.push({ invitation, email: originalEmail });
+        }
+      }
+
+      return new Ok({ resultsWithoutEmail, invitationsToEmail });
     }
   );
 
-  return result;
+  if (transactionResult.isErr()) {
+    return transactionResult;
+  }
+
+  const { resultsWithoutEmail, invitationsToEmail } = transactionResult.value;
+
+  const emailResults = await concurrentExecutor(
+    invitationsToEmail,
+    async ({ invitation, email }) => {
+      try {
+        await sendWorkspaceInvitationEmail(owner, user, invitation);
+        return { success: true, email };
+      } catch (e) {
+        logger.error(
+          {
+            error: e,
+            message: "Failed to send invitation email",
+            email,
+          },
+          "Failed to send invitation email"
+        );
+        return {
+          success: false,
+          email,
+          error_message: normalizeError(e).message,
+        };
+      }
+    },
+    { concurrency: EMAIL_CONCURRENCY }
+  );
+
+  const allResults: HandleMembershipInvitationResult[] = [
+    ...resultsWithoutEmail,
+    ...emailResults,
+  ];
+
+  const successfulInvites = allResults.filter((r) => r.success);
+  if (successfulInvites.length > 0) {
+    void emitAuditLogEvent({
+      auth,
+      action: "member.invited",
+      targets: successfulInvites.map((r) =>
+        buildAuditLogTarget("user", { sId: r.email, name: r.email })
+      ),
+      context: getAuditLogContext(auth),
+      metadata: {
+        invitedCount: String(successfulInvites.length),
+        emails: successfulInvites.map((r) => r.email).join(","),
+      },
+    });
+  }
+
+  return new Ok(allResults);
 }

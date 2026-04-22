@@ -10,6 +10,7 @@ import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrapp
 import type { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import type { MembershipInvitationType } from "@app/types/membership_invitation";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { ActiveRoleType, LightWorkspaceType } from "@app/types/user";
@@ -174,6 +175,44 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
       );
   }
 
+  static async listPendingForEmailsAndWorkspace({
+    emails,
+    workspace,
+    includeExpired = false,
+    transaction,
+  }: {
+    emails: string[];
+    workspace: LightWorkspaceType | WorkspaceResource;
+    includeExpired?: boolean;
+    transaction?: Transaction;
+  }): Promise<MembershipInvitationResource[]> {
+    if (emails.length === 0) {
+      return [];
+    }
+
+    const invitations = await this.model.findAll({
+      where: {
+        inviteEmail: { [Op.in]: emails },
+        workspaceId: workspace.id,
+        status: "pending",
+      },
+      include: [WorkspaceModel],
+      transaction,
+    });
+
+    return invitations
+      .filter(
+        (invitation) =>
+          includeExpired || !this.invitationExpired(invitation.createdAt)
+      )
+      .map(
+        (invitation) =>
+          new MembershipInvitationResource(this.model, invitation.get(), {
+            workspace: invitation.workspace,
+          })
+      );
+  }
+
   static async getPendingForEmailAndWorkspace({
     email,
     workspace,
@@ -185,26 +224,85 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
     includeExpired?: boolean;
     transaction?: Transaction;
   }): Promise<MembershipInvitationResource | null> {
-    const invitation = await this.model.findOne({
-      where: {
-        inviteEmail: email,
-        workspaceId: workspace.id,
-        status: "pending",
-      },
-      include: [WorkspaceModel],
+    const [invitation] = await this.listPendingForEmailsAndWorkspace({
+      emails: [email],
+      workspace,
+      includeExpired,
       transaction,
     });
+    return invitation ?? null;
+  }
 
-    if (
-      !invitation ||
-      (!includeExpired && this.invitationExpired(invitation.createdAt))
-    ) {
-      return null;
+  static async bulkMakeNewPending(
+    auth: Authenticator,
+    blobs: { inviteEmail: string; initialRole: ActiveRoleType }[],
+    transaction?: Transaction
+  ): Promise<MembershipInvitationResource[]> {
+    if (blobs.length === 0) {
+      return [];
     }
+    const workspace = auth.getNonNullableWorkspace();
+    const invitations = await this.model.bulkCreate(
+      blobs.map((b) => ({
+        ...b,
+        status: "pending" as const,
+        workspaceId: workspace.id,
+        sId: generateRandomModelSId(),
+      })),
+      { transaction }
+    );
+    return invitations.map(
+      (invitation) =>
+        new this(this.model, invitation.get(), {
+          workspace: invitation.workspace,
+        })
+    );
+  }
 
-    return new MembershipInvitationResource(this.model, invitation.get(), {
-      workspace: invitation.workspace,
+  private static async bulkUpdateByModelIds(
+    auth: Authenticator,
+    modelIds: ModelId[],
+    values: Partial<Attributes<MembershipInvitationModel>>,
+    transaction?: Transaction
+  ): Promise<void> {
+    if (modelIds.length === 0) {
+      return;
+    }
+    const workspace = auth.getNonNullableWorkspace();
+    await this.model.update(values, {
+      where: {
+        id: { [Op.in]: modelIds },
+        workspaceId: workspace.id,
+      },
+      transaction,
     });
+  }
+
+  static async bulkRevokeByModelIds(
+    auth: Authenticator,
+    modelIds: ModelId[],
+    transaction?: Transaction
+  ): Promise<void> {
+    await this.bulkUpdateByModelIds(
+      auth,
+      modelIds,
+      { status: "revoked" },
+      transaction
+    );
+  }
+
+  static async bulkUpdateInitialRoleByModelIds(
+    auth: Authenticator,
+    modelIds: ModelId[],
+    role: ActiveRoleType,
+    transaction?: Transaction
+  ): Promise<void> {
+    await this.bulkUpdateByModelIds(
+      auth,
+      modelIds,
+      { initialRole: role },
+      transaction
+    );
   }
 
   static async getPendingInvitations(
