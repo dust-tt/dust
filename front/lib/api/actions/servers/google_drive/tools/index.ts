@@ -9,6 +9,10 @@ import {
   makeFileAuthorizationError,
   makePersonalAuthenticationError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
+import {
+  getFileFromConversationAttachment,
+  sanitizeFilename,
+} from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import { formatDocumentStructure } from "@app/lib/api/actions/servers/google_drive/format_document";
 import { formatPresentationStructure } from "@app/lib/api/actions/servers/google_drive/format_presentation";
 import {
@@ -27,6 +31,7 @@ import {
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { Common } from "googleapis";
+import { Readable } from "stream";
 
 /**
  * Normalizes GaxiosError code to string for comparison.
@@ -1273,6 +1278,70 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
         ),
       },
     ]);
+  },
+
+  upload_file: async (
+    { fileId, parentId, fileName },
+    { auth, authInfo, agentLoopContext }
+  ) => {
+    const drive = await getDriveClient(authInfo);
+    if (!drive) {
+      return new Err(new MCPError("Failed to authenticate with Google Drive"));
+    }
+
+    if (!agentLoopContext) {
+      return new Err(
+        new MCPError("No conversation context available for file access")
+      );
+    }
+
+    try {
+      const fileResult = await getFileFromConversationAttachment(
+        auth,
+        fileId,
+        agentLoopContext
+      );
+
+      if (fileResult.isErr()) {
+        return new Err(new MCPError(fileResult.error));
+      }
+
+      const { buffer, filename, contentType } = fileResult.value;
+
+      const uploadFileName = sanitizeFilename(fileName ?? filename);
+
+      const res = await drive.files.create({
+        requestBody: {
+          name: uploadFileName,
+          ...(parentId ? { parents: [parentId] } : {}),
+        },
+        media: {
+          mimeType: contentType,
+          body: Readable.from(buffer),
+        },
+        fields: "id, name, mimeType, size, webViewLink",
+        supportsAllDrives: true,
+      });
+
+      return new Ok([
+        {
+          type: "text" as const,
+          text: JSON.stringify(
+            {
+              fileId: res.data.id,
+              name: res.data.name,
+              mimeType: res.data.mimeType,
+              size: res.data.size,
+              url: res.data.webViewLink,
+            },
+            null,
+            2
+          ),
+        },
+      ]);
+    } catch (err) {
+      return handleDriveAccessError(err, authInfo);
+    }
   },
 };
 
