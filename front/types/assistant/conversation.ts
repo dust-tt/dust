@@ -473,7 +473,7 @@ export type ConversationWithoutContentType = {
 
 type ConversationDisplayTitleInput = Pick<
   ConversationWithoutContentType,
-  "created" | "title" | "forkedFrom"
+  "created" | "title" | "forkingData"
 >;
 export function getConversationDisplayTitle(
   conversation: ConversationDisplayTitleInput,
@@ -483,9 +483,10 @@ export function getConversationDisplayTitle(
     return conversation.title;
   }
 
-  if (conversation.forkedFrom) {
-    return conversation.forkedFrom.parentConversationTitle
-      ? `Branched from '${conversation.forkedFrom.parentConversationTitle}'`
+  const forkedFrom = conversation.forkingData?.forkedFrom;
+  if (forkedFrom) {
+    return forkedFrom.parentConversationTitle
+      ? `Branched from '${forkedFrom.parentConversationTitle}'`
       : "Branched conversation";
   }
 

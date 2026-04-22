@@ -53,7 +53,7 @@ describe("getConversationDisplayTitle", () => {
         {
           title: null,
           created: now.getTime(),
-          forkedFrom,
+          forkingData: { forkedFrom },
         },
         now
       )
@@ -66,9 +66,11 @@ describe("getConversationDisplayTitle", () => {
         {
           title: null,
           created: now.getTime(),
-          forkedFrom: {
-            ...forkedFrom,
-            parentConversationTitle: null,
+          forkingData: {
+            forkedFrom: {
+              ...forkedFrom,
+              parentConversationTitle: null,
+            },
           },
         },
         now
