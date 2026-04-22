@@ -54,15 +54,23 @@ export type SystemSkillDefinition = SkillDefinition;
 // Helper function that enforces unique sIds.
 export function ensureUniqueSIds<T extends readonly SkillDefinition[]>(
   skills: readonly [...T] & {
+    // For each element in the array (I = index).
     [I in keyof T]: {
+      // For each property in that element (K = property key).
       [K in keyof T[I]]: K extends "sId"
-        ? T[I][K] extends {
+        ? // Only check sId properties for duplicates.
+          T[I][K] extends {
+            // Build object of all OTHER elements (exclude current index I).
             [J in keyof T]: J extends I ? never : T[J];
-          }[number]["sId"]
-          ? `ERROR: Duplicate sId detected: \${T[I][K] & string}`
-          : T[I][K] extends ResourceSId
+          }[number]["sId"] // Extract their sId values as a union.
+          ? // If current sId matches any other element's sId, return error.
+            `ERROR: Duplicate sId detected: \${T[I][K] & string}`
+          : // Ensure it does not start with skl_ to avoid conflicts with custom skills.
+            T[I][K] extends ResourceSId
             ? "ERROR: sId cannot start with resource prefix"
-            : T[I][K]
+            : // Otherwise, return the original sId type.
+              T[I][K]
+        // For non-sId properties, just pass through unchanged.
         : T[I][K];
     };
   }
