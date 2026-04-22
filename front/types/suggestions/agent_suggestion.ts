@@ -83,6 +83,7 @@ const KnowledgeSuggestionSchema = z.object({
       "'Search' for semantic search on unstructured data. 'Query table' to generate SQL-like queries against structured data."
     ),
   dataSourceViewId: z.string(),
+  nodeIds: z.array(z.string()).optional(),
   description: z.string().optional(),
 });
 

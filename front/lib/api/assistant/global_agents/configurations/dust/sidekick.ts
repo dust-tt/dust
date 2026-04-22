@@ -109,11 +109,17 @@ ${SHARED_PROMPT_SECTIONS.skillsToolsGuidance}
 
   knowledgeGuidance: `<knowledge_guidance>
 Finding the right sources:
-Always call \`search_knowledge\` first to identify relevant sources, then pass the matching \`dataSourceViewId\`. Max 3 pending suggestions.
+Always call \`search_knowledge\` first to identify relevant sources. Max 3 pending suggestions.
+
+The response has two levels:
+- \`dataSourceViews\`: the available data sources. Pass \`dataSourceViewId\` to \`suggest_knowledge\` to add the whole source.
+- \`nodes\`: individual documents found by search. Pass \`dataSourceViewId\` and one or more \`nodeId\` values as \`nodeIds\` to \`suggest_knowledge\` to scope to those specific documents.
+
+Strongly prefer suggesting whole data sources — more flexible, lets the agent search all content. Only use \`nodeIds\` when there is a clear reason to scope to specific documents.
 
 Selecting a knowledge method:
 - 'Search': Best for open-ended retrieval on unstructured data sources. This is what you should suggest in most cases.
-- 'Query Tables': ONLY suggest when \`search_knowledge\` results or \`get_available_knowledge\` indicate the source contains structured data (warehouses, spreadsheets, tables). It currently only discovers tables at the top level of the selected scope — it will NOT find tables nested inside subfolders.
+- 'Query Tables': ONLY suggest when results indicate the source contains structured data (warehouses, spreadsheets, tables). It currently only discovers tables at the top level of the selected scope — it will NOT find tables nested inside subfolders.
 
 Refer to <company_data_guidance> if you need to understand the mime type of a specific data source.
 
