@@ -78,18 +78,21 @@
  *         description: Method not supported
  */
 
-import { exportTable } from "@app/lib/api/analytics/export_tables";
+import type { ExportTableData } from "@app/lib/api/analytics/export_tables";
+import {
+  exportTable,
+  stringifyExportTableAsCsv,
+} from "@app/lib/api/analytics/export_tables";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { GetAnalyticsExportRequestSchema } from "@dust-tt/client";
-import { parse as parseCSV } from "csv-parse/sync";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<string | Record<string, string>[]>>,
+  res: NextApiResponse<WithAPIErrorResponse<string | ExportTableData["rows"]>>,
   auth: Authenticator
 ): Promise<void> {
   if (!auth.isKey() || !auth.isBuilder()) {
@@ -124,7 +127,7 @@ async function handler(
       }
 
       const owner = auth.getNonNullableWorkspace();
-      const csv = await exportTable({
+      const result = await exportTable({
         table: q.data.table,
         startDate: q.data.startDate,
         endDate: q.data.endDate,
@@ -133,25 +136,19 @@ async function handler(
         includeHiddenAgents: auth.isKey(),
       });
 
-      if (csv.isErr()) {
+      if (result.isErr()) {
         return apiError(req, res, {
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: csv.error.message,
+            message: result.error.message,
           },
         });
       }
 
-      // TODO: Avoid CSV→parse round-trip. Return structured data directly
-      // from exportTable() instead of converting CSV back to JSON.
       if (q.data.format === "json") {
-        const records = parseCSV<Record<string, string>>(csv.value, {
-          columns: true,
-          skip_empty_lines: true,
-        });
         res.setHeader("Content-Type", "application/json");
-        return res.status(200).json(records);
+        return res.status(200).json(result.value.rows);
       }
 
       res.setHeader("Content-Type", "text/csv");
@@ -159,7 +156,7 @@ async function handler(
         "Content-Disposition",
         `attachment; filename="dust_${q.data.table}_${q.data.startDate}_${q.data.endDate}.csv"`
       );
-      return res.status(200).send(csv.value);
+      return res.status(200).send(stringifyExportTableAsCsv(result.value));
     }
     default:
       return apiError(req, res, {
