@@ -1,9 +1,5 @@
-// Dev mode feature flag overrides — sessionStorage-backed read/write + apply.
-//
-// This module is lazy-loaded as part of the dev panel chunk. On module load it
-// registers applyFeatureFlagOverrides into devFlagOverrideStore so that
-// useFeatureFlags (main bundle) can apply overrides without importing this file.
-// See devFlagOverrideStore.ts for the full architecture overview.
+// Feature flag overrides — sessionStorage-backed read/write + apply.
+// Lazy-loaded with the dev panel. Registers into devFlagOverrideStore on load.
 
 import {
   isWhitelistableFeature,

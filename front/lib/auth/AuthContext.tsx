@@ -46,10 +46,7 @@ export function useFeatureFlags() {
   const ctx = useContext(AuthContext);
   const serverFlags = ctx?.featureFlags ?? [];
 
-  // Dev mode feature flag overrides: when dev mode is off, these resolve to
-  // no-ops (constant version 0, no subscriptions, identity apply). When on,
-  // the lazy-loaded dev panel registers the real override logic into
-  // devFlagOverrideStore. See that file for the full architecture overview.
+  // Dev mode flag overrides — no-ops when off, see devFlagOverrideStore.ts.
   const overrideVersion = useSyncExternalStore(
     DEV_MODE_ACTIVE ? devFlagSubscribe : noopSubscribe,
     DEV_MODE_ACTIVE ? devFlagGetVersion : noopGetVersion,
