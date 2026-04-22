@@ -1,5 +1,4 @@
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import {
   canAgentBeUsedInProjectConversation,
   updateConversationRequirements,
@@ -685,101 +684,5 @@ export async function createCompactionMessage(
     branchId: conversation.branchId,
     status: "created",
     content: null,
-  };
-}
-
-export async function fetchAgentMessageBySId(
-  auth: Authenticator,
-  {
-    conversation,
-    messageId,
-  }: {
-    conversation: ConversationWithoutContentType;
-    messageId: string;
-  }
-): Promise<AgentMessageType | null> {
-  const workspace = auth.getNonNullableWorkspace();
-
-  const messageRow = await MessageModel.findOne({
-    where: {
-      sId: messageId,
-      conversationId: conversation.id,
-      workspaceId: workspace.id,
-    },
-    include: [
-      {
-        model: AgentMessageModel,
-        as: "agentMessage",
-        required: true,
-      },
-    ],
-  });
-
-  if (!messageRow || !messageRow.agentMessage) {
-    return null;
-  }
-
-  const agentMessage = messageRow.agentMessage;
-
-  const [agentConfigurations, parentMessageRow] = await Promise.all([
-    getAgentConfigurations(auth, {
-      agentIds: [agentMessage.agentConfigurationId],
-      variant: "extra_light",
-    }),
-    messageRow.parentId
-      ? MessageModel.findOne({
-          where: { id: messageRow.parentId, workspaceId: workspace.id },
-          attributes: ["sId"],
-          include: [
-            {
-              model: UserMessageModel,
-              as: "userMessage",
-              required: true,
-              attributes: ["agenticMessageType", "agenticOriginMessageId"],
-            },
-          ],
-        })
-      : null,
-  ]);
-
-  const configuration = agentConfigurations[0];
-  if (!configuration || !parentMessageRow) {
-    return null;
-  }
-
-  const parentAgentMessageId =
-    parentMessageRow.userMessage?.agenticMessageType === "agent_handover"
-      ? (parentMessageRow.userMessage.agenticOriginMessageId ?? null)
-      : null;
-
-  return {
-    id: messageRow.id,
-    agentMessageId: agentMessage.id,
-    created: agentMessage.createdAt.getTime(),
-    completedTs: agentMessage.completedAt?.getTime() ?? null,
-    sId: messageRow.sId,
-    type: "agent_message",
-    visibility: messageRow.visibility,
-    version: messageRow.version,
-    parentMessageId: parentMessageRow.sId,
-    parentAgentMessageId,
-    status: agentMessage.status,
-    actions: [],
-    content: null,
-    chainOfThought: null,
-    error: null,
-    configuration,
-    rank: messageRow.rank,
-    branchId: conversation.branchId,
-    skipToolsValidation: agentMessage.skipToolsValidation,
-    contents: [],
-    modelInteractionDurationMs: agentMessage.modelInteractionDurationMs,
-    completionDurationMs: getCompletionDuration(
-      agentMessage.createdAt.getTime(),
-      agentMessage.completedAt?.getTime() ?? null,
-      []
-    ),
-    richMentions: [],
-    reactions: [],
   };
 }

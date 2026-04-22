@@ -2508,6 +2508,32 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return new Ok(message);
   }
 
+  static async getMessageByIds(
+    auth: Authenticator,
+    conversation: ConversationWithoutContentType,
+    messageIds: string[]
+  ): Promise<MessageModel[]> {
+    return MessageModel.findAll({
+      where: {
+        conversationId: conversation.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        sId: { [Op.in]: messageIds },
+      },
+      include: [
+        {
+          model: UserMessageModel,
+          as: "userMessage",
+          required: false,
+        },
+        {
+          model: AgentMessageModel,
+          as: "agentMessage",
+          required: false,
+        },
+      ],
+    });
+  }
+
   /**
    * This function retrieves the latest version of each message for the current page,
    * because there's no easy way to fetch only the latest version of a message.
