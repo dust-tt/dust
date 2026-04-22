@@ -89,9 +89,9 @@ function quotePromptText(text: string): string {
 function constructBranchContextSection({
   conversation,
 }: {
-  conversation?: Pick<ConversationWithoutContentType, "forkedFrom">;
+  conversation?: Pick<ConversationWithoutContentType, "forkingData">;
 }): string {
-  const forkedFrom = conversation?.forkedFrom;
+  const { forkedFrom } = conversation?.forkingData ?? {};
   if (!forkedFrom) {
     return "";
   }

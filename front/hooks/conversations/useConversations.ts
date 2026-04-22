@@ -4,7 +4,7 @@ import {
   useSWRInfiniteWithDefaults,
 } from "@app/lib/swr/swr";
 import type { GetConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
-import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import type { ConversationListItemType } from "@app/types/assistant/conversation";
 import { useCallback, useMemo } from "react";
 import type { Fetcher } from "swr";
 import type { SWRInfiniteMutatorOptions } from "swr/infinite";
@@ -12,8 +12,8 @@ import type { SWRInfiniteMutatorOptions } from "swr/infinite";
 const DEFAULT_LIMIT = 100;
 
 type ConversationsUpdater = (
-  prevData: ConversationWithoutContentType[] | undefined
-) => ConversationWithoutContentType[] | undefined;
+  prevData: ConversationListItemType[] | undefined
+) => ConversationListItemType[] | undefined;
 
 type MutateOptions = {
   revalidate?: boolean;
@@ -58,7 +58,7 @@ export function useConversations({
 
   const conversations = useMemo(() => {
     if (!data) {
-      return emptyArray<ConversationWithoutContentType>();
+      return emptyArray<ConversationListItemType>();
     }
     return data.flatMap((page) => page.conversations);
   }, [data]);

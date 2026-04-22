@@ -26,13 +26,15 @@ import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { WorkspaceType } from "@app/types/user";
 import { beforeEach, describe, expect, it } from "vitest";
 
-function createForkedFrom(user: NonNullable<UserMessageType["user"]>) {
+function createForkedData(user: NonNullable<UserMessageType["user"]>) {
   return {
-    parentConversationId: "conv_parent",
-    parentConversationTitle: "Parent conversation",
-    sourceMessageId: "msg_parent_source",
-    branchedAt: Date.now(),
-    user,
+    forkedFrom: {
+      parentConversationId: "conv_parent",
+      parentConversationTitle: "Parent conversation",
+      sourceMessageId: "msg_parent_source",
+      branchedAt: Date.now(),
+      user,
+    },
   };
 }
 
@@ -334,7 +336,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
       equippedSkills: [],
       conversation: {
         ...conversation1,
-        forkedFrom: createForkedFrom(branchingUser1),
+        forkingData: createForkedData(branchingUser1),
       } satisfies ConversationWithoutContentType,
     };
 
@@ -375,7 +377,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
       equippedSkills: [],
       conversation: {
         ...conversation1,
-        forkedFrom: createForkedFrom(branchingUser1),
+        forkingData: createForkedData(branchingUser1),
       } satisfies ConversationWithoutContentType,
     };
 

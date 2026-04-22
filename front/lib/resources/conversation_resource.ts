@@ -37,6 +37,7 @@ import type {
   ConversationForkedChildType,
   ConversationForkedFromType,
   ConversationForkingDataType,
+  ConversationListItemType,
   ConversationMCPServerViewType,
   ConversationMetadata,
   ConversationUrlAccessMode,
@@ -46,6 +47,7 @@ import type {
 } from "@app/types/assistant/conversation";
 import {
   ConversationError,
+  getConversationDisplayTitle,
   getConversationUrlAccessMode,
 } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -1515,6 +1517,29 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     lastValue: string | null;
   }> {
     return this.fetchPrivateConversationsPaginated(auth, { pagination });
+  }
+
+  static async listPrivateConversationsForUserPaginatedFromDB(
+    auth: Authenticator,
+    pagination: {
+      limit: number;
+      lastValue?: string;
+      orderDirection?: "asc" | "desc";
+    }
+  ): Promise<{
+    conversations: ConversationListItemType[];
+    hasMore: boolean;
+    lastValue: string | null;
+  }> {
+    const result = await this.listPrivateConversationsForUserPaginated(
+      auth,
+      pagination
+    );
+    return {
+      conversations: result.conversations.map((c) => c.toListItem()),
+      hasMore: result.hasMore,
+      lastValue: result.lastValue,
+    };
   }
 
   static async listSpaceUnreadConversationsAndActivityForUser(
@@ -3340,26 +3365,35 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     );
   }
 
-  toJSON(): ConversationWithoutContentType {
+  toListItem(): ConversationListItemType {
     return {
       actionRequired: this.userParticipation?.actionRequired ?? false,
       created: this.createdAt.getTime(),
-      updated: this.updatedAt.getTime(),
-      spaceId: this.space?.sId ?? null,
-      triggerId: this.triggerSId,
       hasError: this.hasError,
-      id: this.id,
-      // TODO(REQUESTED_SPACE_IDS 2025-10-24): Stop exposing this once all logic is centralized
-      // in baseFetchWithAuthorization.
+      lastReadMs: this.userLastReadAt?.getTime() ?? null,
+      metadata: this.metadata ?? {},
       requestedSpaceIds: this.getRequestedSpaceIdsFromModel(),
       sId: this.sId,
-      title: this.title,
+      spaceId: this.space?.sId ?? null,
+      title: getConversationDisplayTitle({
+        created: this.createdAt.getTime(),
+        forkingData: this.forkingData,
+        title: this.title,
+      }),
+      triggerId: this.triggerSId,
       unread:
-        this.userLastReadAt === null ||
-        (!!this.updatedAt && this.updatedAt > this.userLastReadAt),
-      lastReadMs: this.userLastReadAt?.getTime() ?? null,
+        this.userLastReadAt === null || this.updatedAt > this.userLastReadAt,
+      updated: this.updatedAt.getTime(),
+    };
+  }
+
+  toJSON(): ConversationWithoutContentType {
+    return {
+      ...this.toListItem(),
+      // When listing with to JSON, return the title stored with the model.
+      title: this.title,
+      id: this.id,
       depth: this.depth,
-      metadata: this.metadata,
       branchId: null,
       ...(this.forkingData && { forkingData: this.forkingData }),
     };

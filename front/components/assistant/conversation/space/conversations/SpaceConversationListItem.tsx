@@ -122,7 +122,7 @@ export function SpaceConversationListItem({
   return (
     <>
       <ConversationListItem
-        key={conversation.id}
+        key={conversation.sId}
         conversation={{
           id: conversation.sId,
           title: conversationLabel,
