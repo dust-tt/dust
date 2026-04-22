@@ -1,11 +1,17 @@
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { InformationCircleIcon, SliderToggle, Tooltip } from "@dust-tt/sparkle";
 import { useFormContext } from "react-hook-form";
 
 export function SkillBuilderEnableSuggestionsSection() {
+  const { hasFeature } = useFeatureFlags();
   const { watch, setValue } = useFormContext<SkillBuilderFormData>();
   const reinforcement = watch("reinforcement");
   const enabled = reinforcement !== "off";
+
+  if (!hasFeature("reinforcement_ui")) {
+    return null;
+  }
 
   const handleToggle = () => {
     setValue("reinforcement", enabled ? "off" : "auto", { shouldDirty: true });
