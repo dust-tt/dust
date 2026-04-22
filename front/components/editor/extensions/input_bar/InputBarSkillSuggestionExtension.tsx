@@ -38,6 +38,7 @@ export interface InputBarSkillSuggestionExtensionOptions {
   onSkillSelectRef: RefObject<
     ((skill: SkillWithoutInstructionsAndToolsType) => void) | undefined
   >;
+  refreshKeyRef: RefObject<string>;
   selectedSkillIdsRef: RefObject<Set<string>>;
   skillsRef: RefObject<SkillWithoutInstructionsAndToolsType[]>;
 }
@@ -56,6 +57,7 @@ export const InputBarSkillSuggestionExtension =
       return {
         enabledRef: { current: false },
         onSkillSelectRef: { current: undefined },
+        refreshKeyRef: { current: "" },
         selectedSkillIdsRef: { current: new Set<string>() },
         skillsRef: { current: [] as SkillWithoutInstructionsAndToolsType[] },
       };
@@ -63,6 +65,50 @@ export const InputBarSkillSuggestionExtension =
 
     addProseMirrorPlugins() {
       const extensionStorage = this.storage;
+      let component: ReactRenderer<SlashCommandDropdownRef> | null = null;
+      let activeEditorView: EditorView | null = null;
+      let activeItemsCount = 0;
+      let activeTriggerStart: number | null = null;
+      let activeQuery: string | null = null;
+      let activeCommand:
+        | ((skill: SkillWithoutInstructionsAndToolsType) => void)
+        | null = null;
+      let activeClientRect: (() => DOMRect | null) | null = null;
+      let lastRefreshKey = this.options.refreshKeyRef.current ?? "";
+
+      const getFilteredSkills = (query: string) =>
+        filterInputBarSkills({
+          query,
+          selectedSkillIds:
+            this.options.selectedSkillIdsRef.current ?? new Set<string>(),
+          skills: this.options.skillsRef.current ?? [],
+        });
+
+      const closeSuggestionDropdown = () => {
+        if (activeTriggerStart !== null) {
+          extensionStorage.dismissedTriggerStart = activeTriggerStart;
+        }
+
+        if (activeEditorView) {
+          exitSuggestion(activeEditorView, inputBarSkillSuggestionPluginKey);
+        }
+      };
+
+      const refreshSuggestionDropdown = () => {
+        if (!component || activeQuery === null || !activeCommand) {
+          return;
+        }
+
+        const items = getFilteredSkills(activeQuery);
+        activeItemsCount = items.length;
+
+        component.updateProps({
+          clientRect: activeClientRect,
+          command: activeCommand,
+          items,
+          onClose: closeSuggestionDropdown,
+        });
+      };
 
       return [
         Suggestion<SkillWithoutInstructionsAndToolsType>({
@@ -71,13 +117,7 @@ export const InputBarSkillSuggestionExtension =
           pluginKey: inputBarSkillSuggestionPluginKey,
           allowSpaces: true,
           startOfLine: false,
-          items: ({ query }) =>
-            filterInputBarSkills({
-              query,
-              selectedSkillIds:
-                this.options.selectedSkillIdsRef.current ?? new Set<string>(),
-              skills: this.options.skillsRef.current ?? [],
-            }),
+          items: ({ query }) => getFilteredSkills(query),
           allow: ({ editor, range }) =>
             Boolean(this.options.enabledRef.current) &&
             editor.isFocused &&
@@ -88,28 +128,13 @@ export const InputBarSkillSuggestionExtension =
             this.options.onSkillSelectRef.current?.(props);
           },
           render: () => {
-            let component: ReactRenderer<SlashCommandDropdownRef> | null = null;
-            let activeEditorView: EditorView | null = null;
-            let activeItemsCount = 0;
-            let activeTriggerStart: number | null = null;
-
-            const closeSuggestionDropdown = () => {
-              if (activeTriggerStart !== null) {
-                extensionStorage.dismissedTriggerStart = activeTriggerStart;
-              }
-
-              if (activeEditorView) {
-                exitSuggestion(
-                  activeEditorView,
-                  inputBarSkillSuggestionPluginKey
-                );
-              }
-            };
-
             return {
               onStart: (props) => {
                 activeEditorView = props.editor.view;
                 activeItemsCount = props.items.length;
+                activeClientRect = props.clientRect ?? null;
+                activeCommand = props.command;
+                activeQuery = props.query;
                 activeTriggerStart = props.range.from;
                 component = new ReactRenderer(InputBarSkillSuggestionDropdown, {
                   props: {
@@ -129,6 +154,9 @@ export const InputBarSkillSuggestionExtension =
               onUpdate(props) {
                 activeEditorView = props.editor.view;
                 activeItemsCount = props.items.length;
+                activeClientRect = props.clientRect ?? null;
+                activeCommand = props.command;
+                activeQuery = props.query;
                 activeTriggerStart = props.range.from;
                 component?.updateProps({
                   ...props,
@@ -154,6 +182,9 @@ export const InputBarSkillSuggestionExtension =
               onExit() {
                 activeEditorView = null;
                 activeItemsCount = 0;
+                activeClientRect = null;
+                activeCommand = null;
+                activeQuery = null;
                 activeTriggerStart = null;
                 component?.element?.remove();
                 component?.destroy();
@@ -166,6 +197,12 @@ export const InputBarSkillSuggestionExtension =
           key: new PluginKey("inputBarSkillSuggestionCleanup"),
           view: () => ({
             update: (view) => {
+              const refreshKey = this.options.refreshKeyRef.current ?? "";
+              if (refreshKey !== lastRefreshKey) {
+                lastRefreshKey = refreshKey;
+                refreshSuggestionDropdown();
+              }
+
               const dismissedTriggerStart =
                 extensionStorage.dismissedTriggerStart;
 

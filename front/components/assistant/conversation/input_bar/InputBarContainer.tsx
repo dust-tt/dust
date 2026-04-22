@@ -255,6 +255,7 @@ const InputBarContainer = ({
   const availableSkillsRef = useRef(availableSkills);
   const selectedSkillIdsRef = useRef(selectedSkillIds);
   const shouldEnableSkillSelectionRef = useRef(shouldEnableSkillSelection);
+  const skillSuggestionRefreshKeyRef = useRef("");
   const onSkillSelectRef = useRef<
     ((skill: SkillWithoutInstructionsAndToolsType) => void) | undefined
   >(undefined);
@@ -486,6 +487,7 @@ const InputBarContainer = ({
       ].join("|"),
     [availableSkills, selectedSkills, shouldEnableSkillSelection]
   );
+  skillSuggestionRefreshKeyRef.current = skillSuggestionRefreshKey;
 
   // Current space is taken from the conversation (if already set) or from the space prop (if provided).
   const spaceId = conversation?.spaceId ?? space?.sId ?? undefined;
@@ -506,6 +508,7 @@ const InputBarContainer = ({
     skillSuggestion: {
       enabledRef: shouldEnableSkillSelectionRef,
       onSkillSelectRef,
+      refreshKeyRef: skillSuggestionRefreshKeyRef,
       selectedSkillIdsRef,
       skillsRef: availableSkillsRef,
     },
