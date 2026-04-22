@@ -1,4 +1,7 @@
-import type { Authenticator } from "@app/lib/auth";
+import { SubscriptionModel } from "@app/lib/models/plan";
+import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
+import { renderPlanFromModel } from "@app/lib/plans/renderers";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockGetLlmCredentials = vi.hoisted(() => vi.fn());
@@ -22,6 +25,7 @@ vi.mock("@app/lib/api/llm/clients/openai/imageGeneration", () => ({
   ImageGenerationOpenAILLM: mockOpenAIImageGenerationLLM,
 }));
 
+import { Authenticator } from "@app/lib/auth";
 import { GEMINI_3_PRO_IMAGE_MODEL_ID } from "@app/types/assistant/models/google_ai_studio";
 import { GPT_IMAGE_2_MODEL_ID } from "@app/types/assistant/models/openai";
 
@@ -32,11 +36,62 @@ const CREDENTIALS = {
   OPENAI_API_KEY: "test-openai-key",
 };
 
-const auth = {} as Authenticator;
+function makeAuth(): Authenticator {
+  const plan = renderPlanFromModel({
+    plan: {
+      ...FREE_NO_PLAN_DATA,
+      code: "FREE_TEST",
+      name: "Free",
+      maxMessages: 50,
+      maxImagesPerWeek: 50,
+      maxUsersInWorkspace: 1,
+      maxVaultsInWorkspace: 1,
+      maxDataSourcesCount: 5,
+      maxDataSourcesDocumentsCount: 10,
+      maxDataSourcesDocumentsSizeMb: 2,
+      canUseProduct: true,
+      isByok: false,
+    },
+  });
+
+  const subscription = new SubscriptionResource(
+    SubscriptionModel,
+    {
+      id: -1,
+      sId: "test-subscription",
+      status: "active",
+      trialing: null,
+      paymentFailingSince: null,
+      startDate: new Date(),
+      endDate: null,
+      planId: -1,
+      stripeSubscriptionId: null,
+      metronomeContractId: null,
+      requestCancelAt: null,
+      workspaceId: -1,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+    plan
+  );
+
+  return new Authenticator({
+    workspace: null,
+    user: null,
+    role: "none",
+    groupModelIds: [],
+    subscription,
+    authMethod: "internal",
+  });
+}
 
 describe("getImageGenerationLLM", () => {
+  let auth: Authenticator;
+
   beforeEach(() => {
     vi.clearAllMocks();
+
+    auth = makeAuth();
 
     mockGetLlmCredentials.mockResolvedValue(CREDENTIALS);
     mockIsProviderWhitelisted.mockReturnValue(false);
