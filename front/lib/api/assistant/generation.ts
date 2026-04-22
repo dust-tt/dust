@@ -82,10 +82,6 @@ function constructContextSection({
   return context;
 }
 
-function quotePromptText(text: string): string {
-  return JSON.stringify(text);
-}
-
 function constructBranchContextSection({
   conversation,
 }: {
@@ -97,7 +93,8 @@ function constructBranchContextSection({
   }
 
   const parentConversation = forkedFrom.parentConversationTitle
-    ? quotePromptText(forkedFrom.parentConversationTitle)
+    ? // stringify used for escacping
+      JSON.stringify(forkedFrom.parentConversationTitle)
     : `conversation ${forkedFrom.parentConversationId}`;
 
   return (
