@@ -26,6 +26,7 @@ import { DEFAULT_EMBEDDING_PROVIDER_ID } from "@app/types/assistant/models/embed
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import { CoreAPI, EMBEDDING_CONFIGS } from "@app/types/core/core_api";
 import type {
+  CoreAPIDataSource,
   CoreAPIDataSourceConfig,
   CoreAPIFolder,
 } from "@app/types/core/data_source";
@@ -604,34 +605,32 @@ describe("createDataSourceAndConnectorForProject", () => {
         })
       );
 
-      vi.spyOn(CoreAPI.prototype, "createDataSource").mockResolvedValue(
-        new Ok({
-          data_source: {
-            created: Date.now(),
-            data_source_id: mockDataSourceId,
-            data_source_internal_id: `internal-${mockDataSourceId}`,
-            name: getProjectConversationsDatasourceName(projectSpace),
-            config: {
-              embedder_config: {
-                embedder: {
-                  provider_id: DEFAULT_EMBEDDING_PROVIDER_ID,
-                  model_id:
-                    EMBEDDING_CONFIGS[DEFAULT_EMBEDDING_PROVIDER_ID].model_id,
-                  splitter_id:
-                    EMBEDDING_CONFIGS[DEFAULT_EMBEDDING_PROVIDER_ID]
-                      .splitter_id,
-                  max_chunk_size:
-                    EMBEDDING_CONFIGS[DEFAULT_EMBEDDING_PROVIDER_ID]
-                      .max_chunk_size,
-                },
-              },
-              qdrant_config: {
-                cluster: DEFAULT_QDRANT_CLUSTER,
-                shadow_write_cluster: null,
-              },
+      const data_source: CoreAPIDataSource = {
+        created: Date.now(),
+        data_source_id: mockDataSourceId,
+        data_source_internal_id: `internal-${mockDataSourceId}`,
+        name: getProjectConversationsDatasourceName(projectSpace),
+        config: {
+          embedder_config: {
+            embedder: {
+              provider_id: DEFAULT_EMBEDDING_PROVIDER_ID,
+              model_id:
+                EMBEDDING_CONFIGS[DEFAULT_EMBEDDING_PROVIDER_ID].model_id,
+              splitter_id:
+                EMBEDDING_CONFIGS[DEFAULT_EMBEDDING_PROVIDER_ID].splitter_id,
+              max_chunk_size:
+                EMBEDDING_CONFIGS[DEFAULT_EMBEDDING_PROVIDER_ID].max_chunk_size,
             },
           },
-        })
+          qdrant_config: {
+            cluster: DEFAULT_QDRANT_CLUSTER,
+            shadow_write_cluster: null,
+          },
+        },
+      };
+
+      vi.spyOn(CoreAPI.prototype, "createDataSource").mockResolvedValue(
+        new Ok({ data_source })
       );
 
       const folderError = {
@@ -641,6 +640,10 @@ describe("createDataSourceAndConnectorForProject", () => {
       const upsertFolderSpy = vi
         .spyOn(CoreAPI.prototype, "upsertDataSourceFolder")
         .mockResolvedValue(new Err(folderError));
+
+      const deleteDataSourceSpy = vi
+        .spyOn(CoreAPI.prototype, "deleteDataSource")
+        .mockResolvedValue(new Ok({ data_source }));
 
       const deleteProjectSpy = vi
         .spyOn(CoreAPI.prototype, "deleteProject")
@@ -665,6 +668,7 @@ describe("createDataSourceAndConnectorForProject", () => {
       });
 
       upsertFolderSpy.mockRestore();
+      deleteDataSourceSpy.mockRestore();
       deleteProjectSpy.mockRestore();
     });
 
@@ -769,7 +773,7 @@ describe("createDataSourceAndConnectorForProject", () => {
                   cluster: DEFAULT_QDRANT_CLUSTER,
                   shadow_write_cluster: null,
                 },
-              } as CoreAPIDataSourceConfig,
+              },
             },
           })
         );
