@@ -98,6 +98,7 @@ export async function launchTriggersWorkflows(
         title: `Webhook body (source id: ${webhookSource.id}, date: ${new Date().toISOString()})`,
       },
       fileName: `webhook_body_${webhookSource.id}_${Date.now()}.json`,
+      skipDataSourceIndexing: true,
     });
 
     if (contentFragmentRes.isErr()) {
