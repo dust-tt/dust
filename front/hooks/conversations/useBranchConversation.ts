@@ -9,6 +9,16 @@ import { useCallback } from "react";
 
 import { useConversationBranchingState } from "./useConversationBranchingState";
 
+const BRANCHING_WINDOW_TITLE = "Opening branched conversation...";
+
+function initializeBranchingWindow(newWindow: Window) {
+  newWindow.opener = null;
+  newWindow.document.write(
+    `<!doctype html><html><head><title>${BRANCHING_WINDOW_TITLE}</title></head><body><p>${BRANCHING_WINDOW_TITLE}</p></body></html>`
+  );
+  newWindow.document.close();
+}
+
 export function useBranchConversation({
   owner,
   conversationId,
@@ -37,7 +47,7 @@ export function useBranchConversation({
         typeof window !== "undefined" ? window.open("", "_blank") : null;
 
       if (childConversationWindow) {
-        childConversationWindow.opener = null;
+        initializeBranchingWindow(childConversationWindow);
       }
 
       try {
