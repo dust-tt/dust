@@ -29,10 +29,11 @@ export function ToolbarControls({
   const { theme, setTheme } = useTheme();
   const overrideCount = Object.keys(getFeatureFlagOverrides()).length;
   const colorOverrideCount = Object.keys(readColorOverrides()).length;
+  const fontFamilyOverrides = readFontFamilyOverrides();
   const typoOverrideCount =
     countTypoOverrides(readTypoOverrides()) +
-    (readFontFamilyOverrides().sans ? 1 : 0) +
-    (readFontFamilyOverrides().mono ? 1 : 0);
+    (fontFamilyOverrides.sans ? 1 : 0) +
+    (fontFamilyOverrides.mono ? 1 : 0);
 
   return (
     <>

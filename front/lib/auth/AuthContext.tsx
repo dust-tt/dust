@@ -1,8 +1,8 @@
 import {
-  applyFeatureFlagOverrides,
-  getFeatureFlagOverrideVersion,
-  subscribeFeatureFlagOverrides,
-} from "@app/components/dev/devFeatureFlagOverrides";
+  devFlagApply,
+  devFlagGetVersion,
+  devFlagSubscribe,
+} from "@app/components/dev/devFlagOverrideStore";
 import { DEV_MODE_ACTIVE } from "@app/components/dev/devModeConstants";
 import type { SubscriptionType } from "@app/types/plan";
 import type { ProvidersHealth } from "@app/types/provider_credential";
@@ -16,8 +16,8 @@ import {
   useSyncExternalStore,
 } from "react";
 
-// Stable no-op subscribe so useSyncExternalStore never actually listens when dev mode is off.
 const noopSubscribe = () => () => {};
+const noopGetVersion = () => 0;
 
 // Context for pages that have workspace (app pages, workspace-scoped poke pages).
 // User is non-nullable because authentication is guaranteed by the session wrapper.
@@ -46,17 +46,19 @@ export function useFeatureFlags() {
   const ctx = useContext(AuthContext);
   const serverFlags = ctx?.featureFlags ?? [];
 
-  // Third arg is the SSR snapshot — same function works because the initial version is 0 in both environments.
+  // Dev mode feature flag overrides: when dev mode is off, these resolve to
+  // no-ops (constant version 0, no subscriptions, identity apply). When on,
+  // the lazy-loaded dev panel registers the real override logic into
+  // devFlagOverrideStore. See that file for the full architecture overview.
   const overrideVersion = useSyncExternalStore(
-    DEV_MODE_ACTIVE ? subscribeFeatureFlagOverrides : noopSubscribe,
-    getFeatureFlagOverrideVersion,
-    getFeatureFlagOverrideVersion
+    DEV_MODE_ACTIVE ? devFlagSubscribe : noopSubscribe,
+    DEV_MODE_ACTIVE ? devFlagGetVersion : noopGetVersion,
+    noopGetVersion
   );
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: overrideVersion triggers recalculation when dev panel changes overrides
   const featureFlags = useMemo(
-    () =>
-      DEV_MODE_ACTIVE ? applyFeatureFlagOverrides(serverFlags) : serverFlags,
+    () => (DEV_MODE_ACTIVE ? devFlagApply(serverFlags) : serverFlags),
     [serverFlags, overrideVersion]
   );
 

@@ -34,7 +34,19 @@ const CSS_PROPERTY_MAP: Record<string, string> = {
 
 export function readColorOverrides(): ColorOverrides {
   try {
-    return JSON.parse(sessionStorage.getItem(COLOR_OVERRIDES_KEY) ?? "{}");
+    const parsed: unknown = JSON.parse(
+      sessionStorage.getItem(COLOR_OVERRIDES_KEY) ?? "{}"
+    );
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return {};
+    }
+    const overrides: ColorOverrides = {};
+    for (const [key, value] of Object.entries(parsed)) {
+      if (typeof value === "string") {
+        overrides[key] = value;
+      }
+    }
+    return overrides;
   } catch {
     return {};
   }
@@ -102,7 +114,19 @@ export function injectColorStyles(overrides: ColorOverrides): void {
 
 export function readTypoOverrides(): TypoOverrides {
   try {
-    return JSON.parse(sessionStorage.getItem(TYPO_OVERRIDES_KEY) ?? "{}");
+    const parsed: unknown = JSON.parse(
+      sessionStorage.getItem(TYPO_OVERRIDES_KEY) ?? "{}"
+    );
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return {};
+    }
+    const overrides: TypoOverrides = {};
+    for (const [key, value] of Object.entries(parsed)) {
+      if (value && typeof value === "object" && !Array.isArray(value)) {
+        overrides[key] = value as TypoOverrides[string];
+      }
+    }
+    return overrides;
   } catch {
     return {};
   }
@@ -167,9 +191,21 @@ export function injectTypoStyles(overrides: TypoOverrides): void {
 
 export function readFontFamilyOverrides(): FontFamilyOverrides {
   try {
-    return JSON.parse(
+    const parsed: unknown = JSON.parse(
       sessionStorage.getItem(FONT_FAMILY_OVERRIDES_KEY) ?? "{}"
     );
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return {};
+    }
+    const result: FontFamilyOverrides = {};
+    const obj = parsed as Record<string, unknown>;
+    if (typeof obj.sans === "string") {
+      result.sans = obj.sans;
+    }
+    if (typeof obj.mono === "string") {
+      result.mono = obj.mono;
+    }
+    return result;
   } catch {
     return {};
   }
@@ -229,7 +265,10 @@ export function injectFontFamilyStyles(overrides: FontFamilyOverrides): void {
   const rules: string[] = [];
   if (overrides.sans) {
     rules.push(
-      `* { font-family: "${overrides.sans}", sans-serif !important; }`
+      `body { font-family: "${overrides.sans}", sans-serif !important; }`
+    );
+    rules.push(
+      `body :not(.s-font-mono):not(code):not(pre):not(kbd):not(samp):not([class*="heading-mono"]):not([class*="icon"]):not([class*="Icon"]) { font-family: inherit !important; }`
     );
     if (!overrides.mono) {
       rules.push(
