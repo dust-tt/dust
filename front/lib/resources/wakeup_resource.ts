@@ -28,6 +28,37 @@ import type { Attributes, Transaction, WhereOptions } from "sequelize";
 const ACTIVE_WAKE_UP_STATUSES: WakeUpStatus[] = ["scheduled"];
 const MAX_WAKE_UP_FIRES = 32;
 
+// Minimum allowed interval between two cron fires, in minutes. Matches the per-conversation
+// guardrail in the wake-up design doc.
+const WAKE_UP_MIN_INTERVAL_MINUTES = 5;
+
+// Standard 5-field cron regex. Does not support # (nth occurrence) or L (last) operators.
+const WAKE_UP_CRON_REGEXP =
+  /^((((\d+,)+\d+|(\d+(\/|-)\d+)|\d+|\*(\/\d+)?|\?|[A-Z]{3}(-[A-Z]{3})?) ?){5,7})|(@(annually|yearly|monthly|weekly|daily|hourly|reboot))|(@every (\d+(ns|us|µs|ms|s|m|h))+)$/;
+
+function isValidIANATimezone(timezone: string): boolean {
+  const supportedTimezones = Intl.supportedValuesOf("timeZone");
+  return supportedTimezones.includes(timezone);
+}
+
+// A cron expression is considered too frequent if its minutes field fires more than once every
+// `WAKE_UP_MIN_INTERVAL_MINUTES` minutes. Accepts a literal minute ("0", "15") or a `*/N` step with
+// `N >= WAKE_UP_MIN_INTERVAL_MINUTES`.
+function isWakeUpCronTooFrequent(cron: string): boolean {
+  const minutes = cron.split(" ")[0];
+
+  if (/^\d+$/.test(minutes)) {
+    return false;
+  }
+
+  const stepMatch = /^\*\/(\d+)$/.exec(minutes);
+  if (stepMatch && parseInt(stepMatch[1], 10) >= WAKE_UP_MIN_INTERVAL_MINUTES) {
+    return false;
+  }
+
+  return true;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface WakeUpResource extends ReadonlyAttributesType<WakeUpModel> {}
 
@@ -75,6 +106,49 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
     return rows.map((row) => new this(this.model, row.get()));
   }
 
+  /**
+   * Validates a cron expression and its timezone for wake-ups. Mirrors the trigger schedule
+   * validation but enforces the wake-up specific minimum interval between fires.
+   */
+  static validateCron({
+    cron,
+    timezone,
+  }: {
+    cron: string;
+    timezone: string;
+  }): Result<void, Error> {
+    if (
+      !cron ||
+      cron.split(" ").length !== 5 ||
+      !cron.match(WAKE_UP_CRON_REGEXP)
+    ) {
+      return new Err(
+        new Error(
+          "Invalid wake-up cron expression: expected 5 fields (min hour dom mon dow) " +
+            "using standard operators (* , - / ?) or 3-letter names; '#' and 'L' are not supported."
+        )
+      );
+    }
+
+    if (isWakeUpCronTooFrequent(cron)) {
+      return new Err(
+        new Error(
+          `Wake-up cron cannot fire more often than every ${WAKE_UP_MIN_INTERVAL_MINUTES} minutes.`
+        )
+      );
+    }
+
+    if (!timezone || !isValidIANATimezone(timezone)) {
+      return new Err(
+        new Error(
+          'Invalid wake-up timezone (must be an IANA timezone, i.e. "Europe/Paris").'
+        )
+      );
+    }
+
+    return new Ok(undefined);
+  }
+
   static async makeNew(
     auth: Authenticator,
     blob:
@@ -98,6 +172,16 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
   ): Promise<Result<WakeUpResource, Error>> {
     const { scheduleType, fireAt, cronExpression, cronTimezone, reason } = blob;
     const user = auth.getNonNullableUser();
+
+    if (scheduleType === "cron") {
+      const validation = this.validateCron({
+        cron: cronExpression,
+        timezone: cronTimezone,
+      });
+      if (validation.isErr()) {
+        return validation;
+      }
+    }
 
     const row = await this.model.create(
       {

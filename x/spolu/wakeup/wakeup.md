@@ -15,8 +15,9 @@ supports one-shot delays ("in 2 hours"), absolute times ("at 2026-04-16T16:00Z")
 patterns ("0 9 * * MON-FRI").
 
 Current implementation status: the backend Temporal path is implemented for one-shot wake-ups, and
-cron wake-ups now have schedule create / delete plus `fireCount` / `maxFires` expiration. Cron
-validation and guardrails, the tool surface, API endpoints, and UI are still follow-up work.
+cron wake-ups now have schedule create / delete, `fireCount` / `maxFires` expiration, and
+validation of the cron expression and timezone at creation time. Cron-specific guardrails beyond
+validation, the tool surface, API endpoints, and UI are still follow-up work.
 
 ## Design Overview
 
@@ -115,6 +116,9 @@ Wraps `WakeUpModel`. Key methods:
   - `cron` otherwise → stays `scheduled`
 - `markExpired()` — sets status to `expired`.
 - `maxFires()` — returns the constant `MAX_WAKE_UP_FIRES` (currently 32).
+- `validateCron({ cron, timezone })` — validates a cron expression and its timezone for wake-ups:
+  well-formed 5-field cron, minimum interval of 5 minutes between fires, and valid IANA timezone.
+  Called from `makeNew(...)` as a defense-in-depth check.
 - `cleanupTemporalAfterFire(auth)` — deletes the Temporal schedule for cron wake-ups once they
   have reached `expired`.
 - `listByConversation(auth, conversationId)` — for UI display.
@@ -350,8 +354,9 @@ When a wake-up fires:
 - In the current codebase, `schedule_wakeup` should be wired through the internal MCP tool
   architecture rather than a legacy `front/lib/api/assistant/agent_action.ts` registry.
 - The current implementation can create / delete cron schedules, tracks `fireCount / maxFires`,
-  and automatically expires cron wake-ups once `fireCount >= maxFires`. Remaining cron work is
-  cron validation and cron-specific guardrails.
+  automatically expires cron wake-ups once `fireCount >= maxFires`, and validates the cron
+  expression and timezone at creation time. Remaining cron work is cron-specific guardrails
+  beyond validation.
 - Explicit duplicate-fire protection is not implemented. A follow-up should define the
   idempotency story clearly.
 - Cancel-vs-fire races are still best-effort today and should be tightened in `WakeUpResource`.
