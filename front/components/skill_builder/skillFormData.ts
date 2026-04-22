@@ -22,7 +22,7 @@ export function transformSkillTypeToFormData(
     icon: skill.icon ?? null,
     extendedSkillId: skill.extendedSkillId,
     isDefault: skill.isDefault,
-    reinforcement: skill.reinforcement ?? "auto",
+    reinforcement: skill.reinforcement,
   };
 }
 
