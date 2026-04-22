@@ -27,14 +27,14 @@ export const ConnectorDataUpdatedModal = ({
     REMOTE_DATABASE_CONNECTOR_PROVIDERS.includes(connectorProvider);
 
   return (
-    <Sheet open={isOpen}>
+    <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <SheetContent
         size="lg"
         onInteractOutside={(e) => {
           e.preventDefault();
         }}
       >
-        <SheetHeader hideButton>
+        <SheetHeader>
           <SheetTitle icon={SparklesIcon}>Data sync in progress...</SheetTitle>
         </SheetHeader>
         <SheetContainer>
