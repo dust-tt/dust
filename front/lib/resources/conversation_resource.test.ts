@@ -26,8 +26,10 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { launchIndexConversationEsWorkflow } from "@app/temporal/es_indexation/client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -6334,6 +6336,239 @@ describe("ConversationResource cleanup on delete", () => {
 
       expect(agentConfigurationIds).toHaveLength(0);
       expect(contentFragmentDatasourceViewIds).toHaveLength(0);
+    });
+  });
+
+  describe("ES indexation", () => {
+    const mockWorkflow = () => vi.mocked(launchIndexConversationEsWorkflow);
+
+    it("triggers workflow on makeNew when FF is enabled", async () => {
+      const { workspace, authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+
+      await FeatureFlagFactory.basic(auth, "conversation_search_indexing");
+      mockWorkflow().mockClear();
+
+      const resource = await ConversationResource.makeNew(
+        auth,
+        {
+          sId: generateRandomModelSId(),
+          title: null,
+          visibility: "unlisted",
+          requestedSpaceIds: [],
+        },
+        null
+      );
+
+      expect(mockWorkflow()).toHaveBeenCalledTimes(1);
+      expect(mockWorkflow()).toHaveBeenCalledWith({
+        conversationId: resource.sId,
+        workspaceId: workspace.sId,
+      });
+    });
+
+    it("does not trigger workflow on makeNew when FF is disabled", async () => {
+      const { authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+
+      mockWorkflow().mockClear();
+
+      await ConversationResource.makeNew(
+        auth,
+        {
+          sId: generateRandomModelSId(),
+          title: null,
+          visibility: "unlisted",
+          requestedSpaceIds: [],
+        },
+        null
+      );
+
+      expect(mockWorkflow()).not.toHaveBeenCalled();
+    });
+
+    it("triggers workflow on updateTitle when FF is enabled", async () => {
+      const { workspace, authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+
+      const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+        name: "Agent",
+        description: "Agent",
+      });
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: agent.sId,
+        messagesCreatedAt: [],
+      });
+
+      await FeatureFlagFactory.basic(auth, "conversation_search_indexing");
+      mockWorkflow().mockClear();
+
+      await ConversationResource.updateTitle(auth, conversation.sId, "New Title");
+
+      expect(mockWorkflow()).toHaveBeenCalledTimes(1);
+      expect(mockWorkflow()).toHaveBeenCalledWith({
+        conversationId: conversation.sId,
+        workspaceId: workspace.sId,
+      });
+    });
+
+    it("triggers workflow on markAsReadForAuthUser when FF is enabled", async () => {
+      const { workspace, authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+
+      const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+        name: "Agent",
+        description: "Agent",
+      });
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: agent.sId,
+        messagesCreatedAt: [],
+      });
+
+      await FeatureFlagFactory.basic(auth, "conversation_search_indexing");
+      mockWorkflow().mockClear();
+
+      await ConversationResource.markAsReadForAuthUser(auth, { conversation });
+
+      expect(mockWorkflow()).toHaveBeenCalledTimes(1);
+      expect(mockWorkflow()).toHaveBeenCalledWith({
+        conversationId: conversation.sId,
+        workspaceId: workspace.sId,
+      });
+    });
+
+    it("triggers workflow on upsertParticipation when a new participant is added", async () => {
+      const { workspace, authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+
+      const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+        name: "Agent",
+        description: "Agent",
+      });
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: agent.sId,
+        messagesCreatedAt: [],
+      });
+
+      const otherUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, otherUser, { role: "user" });
+      const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        otherUser.sId,
+        workspace.sId
+      );
+
+      await FeatureFlagFactory.basic(auth, "conversation_search_indexing");
+      mockWorkflow().mockClear();
+
+      await ConversationResource.upsertParticipation(otherAuth, {
+        conversation,
+        action: "posted",
+        user: otherAuth.getNonNullableUser().toJSON(),
+      });
+
+      expect(mockWorkflow()).toHaveBeenCalledTimes(1);
+      expect(mockWorkflow()).toHaveBeenCalledWith({
+        conversationId: conversation.sId,
+        workspaceId: workspace.sId,
+      });
+    });
+
+    it("does not trigger workflow on upsertParticipation with subscribed action on existing participant", async () => {
+      const { authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+
+      const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+        name: "Agent",
+        description: "Agent",
+      });
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: agent.sId,
+        messagesCreatedAt: [],
+      });
+
+      // Add auth user as a participant (FF is still disabled so no workflow call).
+      await ConversationResource.upsertParticipation(auth, {
+        conversation,
+        action: "posted",
+        user: auth.getNonNullableUser().toJSON(),
+      });
+
+      await FeatureFlagFactory.basic(auth, "conversation_search_indexing");
+      mockWorkflow().mockClear();
+
+      // "subscribed" on an existing participant → status "none" → no workflow trigger.
+      await ConversationResource.upsertParticipation(auth, {
+        conversation,
+        action: "subscribed",
+        user: auth.getNonNullableUser().toJSON(),
+      });
+
+      expect(mockWorkflow()).not.toHaveBeenCalled();
+    });
+
+    it("triggers workflow on markAsActionRequired when FF is enabled", async () => {
+      const { workspace, authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+
+      const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+        name: "Agent",
+        description: "Agent",
+      });
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: agent.sId,
+        messagesCreatedAt: [],
+      });
+
+      // Add auth user as participant first (FF disabled → no workflow call).
+      await ConversationResource.upsertParticipation(auth, {
+        conversation,
+        action: "posted",
+        user: auth.getNonNullableUser().toJSON(),
+      });
+
+      await FeatureFlagFactory.basic(auth, "conversation_search_indexing");
+      mockWorkflow().mockClear();
+
+      await ConversationResource.markAsActionRequired(auth, { conversation });
+
+      expect(mockWorkflow()).toHaveBeenCalledTimes(1);
+      expect(mockWorkflow()).toHaveBeenCalledWith({
+        conversationId: conversation.sId,
+        workspaceId: workspace.sId,
+      });
+    });
+
+    it("triggers workflow on clearActionRequired when FF is enabled", async () => {
+      const { workspace, authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+
+      const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+        name: "Agent",
+        description: "Agent",
+      });
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: agent.sId,
+        messagesCreatedAt: [],
+      });
+
+      await FeatureFlagFactory.basic(auth, "conversation_search_indexing");
+      mockWorkflow().mockClear();
+
+      await ConversationResource.clearActionRequired(auth, conversation.sId);
+
+      expect(mockWorkflow()).toHaveBeenCalledTimes(1);
+      expect(mockWorkflow()).toHaveBeenCalledWith({
+        conversationId: conversation.sId,
+        workspaceId: workspace.sId,
+      });
     });
   });
 });
