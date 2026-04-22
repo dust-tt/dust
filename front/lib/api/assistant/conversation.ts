@@ -109,6 +109,7 @@ import type {
   ToolErrorEvent,
 } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import type { CompactionSourceConversation } from "@app/types/assistant/compaction";
 import type {
   AgenticMessageData,
   AgentMessageType,
@@ -2689,10 +2690,7 @@ export async function compactConversation(
   }: {
     conversation: ConversationType;
     model: SupportedModel;
-    sourceConversation?: {
-      conversationId: string;
-      messageRank: number;
-    };
+    sourceConversation?: CompactionSourceConversation;
   }
 ): Promise<
   Result<{ compactionMessage: CompactionMessageType }, APIErrorWithStatusCode>

@@ -85,14 +85,27 @@ The target design uses the compaction flow from the parallel compaction proposal
 - the child remains blocked for posting while the initial compaction is in the
   `created` state
 
-This now lands in 3 steps:
+Repurposing compaction for branching adds one important constraint around
+attachments. The source conversation rendered for compaction contains the
+source conversation attachment ids. That is correct for normal in-conversation
+compaction, but wrong for a branched child because the child receives copied
+attachments with different ids. Branch creation therefore needs to compute a
+source-to-child attachment id map and apply it before the child compaction
+message is saved, so the persisted summary points at resources the child can
+actually access.
+
+This now lands in 4 steps:
 
 1. refactor compaction so the existing workflow can keep the compaction message
    and SSE on a target conversation while summarizing a separate source
    conversation snapshot
-2. switch fork creation from the placeholder message to a real child-side
-   compaction that targets the parent conversation at the resolved source rank
-3. refine model selection so fork compaction uses the source agent message
+2. add source-backed compaction support for rewriting exact standalone
+   attachment ids from a caller-provided source-to-target replacement map
+3. switch fork creation from the placeholder message to a real child-side
+   compaction that targets the parent conversation at the resolved source rank,
+   computes that map from carried-over child attachments, and launches
+   compaction only after those child attachments have been posted
+4. refine model selection so fork compaction uses the source agent message
    model instead of the default fallback
 
 Compaction happens after the fork is created. We never compact the
@@ -171,6 +184,8 @@ In the target design, step 7 uses the real compaction shape:
 - the child starts with a `CompactionMessage`
 - that message is the history boundary for the child
 - the compaction payload explicitly states that the child is a fork
+- any attachment ids preserved in the compaction summary are rewritten to the
+  child conversation ids before the compaction message is saved
 - the child remains blocked for posting until the compaction status leaves
   `created`
 
@@ -289,17 +304,23 @@ Scope:
 - PR 1: refactor `compactConversation` so the existing workflow can summarize
   a source conversation snapshot into a compaction message owned by another
   target conversation
-- PR 2: create that compaction message in the child during fork creation and
-  summarize the parent conversation up to the resolved source message rank
-- PR 3: refine model selection so fork compaction uses the source agent
+- PR 2: allow source-backed compaction to rewrite exact standalone attachment
+  ids using a source-to-target replacement map
+- PR 3: create that compaction message in the child during fork creation,
+  summarize the parent conversation up to the resolved source message rank,
+  and pass the attachment id replacement map built from the copied child
+  attachments
+- PR 4: refine model selection so fork compaction uses the source agent
   message model instead of the current default
 
 Why separate:
 
 - the compaction refactor is independently useful and lower risk than changing
   fork creation at the same time
+- the attachment id rewrite is specific to branching, but still fits cleanly as
+  compaction-side plumbing before the fork flow starts depending on it
 - the fork integration stays small once the workflow already supports separate
-  source and target conversations
+  source and target conversations and attachment-id rewrite support
 - model selection is not product-critical for the first internal rollout and
   can follow after the functional child-side compaction path exists
 
