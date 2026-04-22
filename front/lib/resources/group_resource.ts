@@ -1249,11 +1249,11 @@ export class GroupResource extends BaseResource<GroupModel> {
     {
       users,
       transaction,
-      allowProvisionnedGroups = false,
+      allowProvisionedGroups = false,
     }: {
       users: UserType[];
       transaction?: Transaction;
-      allowProvisionnedGroups?: boolean;
+      allowProvisionedGroups?: boolean;
     }
   ): Promise<
     Result<
@@ -1272,7 +1272,7 @@ export class GroupResource extends BaseResource<GroupModel> {
         this.kind === "space_editors" ||
         this.kind === "agent_editors" ||
         this.kind === "skill_editors" ||
-        (allowProvisionnedGroups && this.kind === "provisioned"),
+        (allowProvisionedGroups && this.kind === "provisioned"),
       `You can't add members to ${this.kind} groups.`
     );
     const owner = auth.getNonNullableWorkspace();
@@ -1394,11 +1394,11 @@ export class GroupResource extends BaseResource<GroupModel> {
     {
       user,
       transaction,
-      allowProvisionnedGroups = false,
+      allowProvisionedGroups = false,
     }: {
       user: UserType;
       transaction?: Transaction;
-      allowProvisionnedGroups?: boolean;
+      allowProvisionedGroups?: boolean;
     }
   ): Promise<
     Result<
@@ -1415,7 +1415,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     return this.dangerouslyAddMembers(auth, {
       users: [user],
       transaction,
-      allowProvisionnedGroups,
+      allowProvisionedGroups,
     });
   }
 
@@ -1427,11 +1427,11 @@ export class GroupResource extends BaseResource<GroupModel> {
     {
       users,
       transaction,
-      allowProvisionnedGroups = false,
+      allowProvisionedGroups = false,
     }: {
       users: UserType[];
       transaction?: Transaction;
-      allowProvisionnedGroups?: boolean;
+      allowProvisionedGroups?: boolean;
     }
   ): Promise<
     Result<
@@ -1449,7 +1449,7 @@ export class GroupResource extends BaseResource<GroupModel> {
         this.kind === "space_editors" ||
         this.kind === "agent_editors" ||
         this.kind === "skill_editors" ||
-        (allowProvisionnedGroups && this.kind === "provisioned"),
+        (allowProvisionedGroups && this.kind === "provisioned"),
       `You can't remove members from ${this.kind} groups.`
     );
     const owner = auth.getNonNullableWorkspace();
@@ -1554,11 +1554,11 @@ export class GroupResource extends BaseResource<GroupModel> {
     {
       user,
       transaction,
-      allowProvisionnedGroups = false,
+      allowProvisionedGroups = false,
     }: {
       user: UserType;
       transaction?: Transaction;
-      allowProvisionnedGroups?: boolean;
+      allowProvisionedGroups?: boolean;
     }
   ): Promise<
     Result<
@@ -1574,7 +1574,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     return this.dangerouslyRemoveMembers(auth, {
       users: [user],
       transaction,
-      allowProvisionnedGroups,
+      allowProvisionedGroups,
     });
   }
 
