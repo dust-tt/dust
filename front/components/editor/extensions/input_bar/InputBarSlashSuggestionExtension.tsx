@@ -85,7 +85,6 @@ export const InputBarSlashSuggestionExtension =
           allowSpaces: true,
           startOfLine: false,
           items: () => [],
-<<<<<<< HEAD
           allow: ({ editor, state, range }) =>
             Boolean(extensionOptions.owner) &&
             Boolean(extensionOptions.enabledRef.current) &&
@@ -93,14 +92,6 @@ export const InputBarSlashSuggestionExtension =
             editor.isFocused &&
             extensionStorage.dismissedTriggerStart !== range.from &&
             isAllowedSlashQuery(state, range),
-=======
-          allow: ({ editor, state, range }) =>
-            Boolean(extensionOptions.enabledRef.current) &&
-            extensionStorage.hasBeenFocused &&
-            editor.isFocused &&
-            extensionStorage.dismissedTriggerStart !== range.from &&
-            isAllowedSlashQuery(state, range),
->>>>>>> 3a9e1a2791 (Polish slash skill suggestion activation)
           command: ({ editor, range, props }) => {
             extensionStorage.dismissedTriggerStart = null;
             editor.chain().focus().deleteRange(range).run();
