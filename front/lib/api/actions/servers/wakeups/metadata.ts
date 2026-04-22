@@ -9,14 +9,14 @@ export const WAKEUPS_SERVER_NAME = "wakeups" as const;
 export const WAKEUPS_TOOLS_METADATA = createToolsRecord({
   schedule_wakeup: {
     description:
-      "Schedule a wake-up that re-posts in this conversation at a future time and re-invokes " +
-      "the agent. Use this to check back on something later, remind the user, or poll until a " +
-      "condition is met. The `when` field accepts three formats: " +
+      "Schedule a wake-up that posts a user message at a future time to re-invoke " +
+      "the agent. Use this to check back on something later, remind the user, poll until a " +
+      "condition is met or schedule recurring work. The `when` field accepts three formats: " +
       '(1) relative duration like "in 2h", "in 30m", "in 1d"; ' +
       '(2) absolute ISO 8601 timestamp like "2026-04-16T16:00:00Z"; ' +
-      '(3) 5-field cron expression like "0 9 * * MON-FRI". ' +
+      '(3) 5-field cron expression like "0 9 * * MON-FRI". (# and L are not supported).' +
       "Cron expressions fire recurrently until a fire cap is reached. Only one active wake-up " +
-      "is allowed per conversation at a time.",
+      "is allowed at a time.",
     schema: {
       when: z
         .string()
@@ -29,14 +29,14 @@ export const WAKEUPS_TOOLS_METADATA = createToolsRecord({
         .min(1)
         .describe(
           "Short, user-facing explanation of why the wake-up is being scheduled. " +
-            "Displayed in the UI and included in the wake-up prompt so the agent has context when it resumes."
+            "Displayed in the UI and included in the wake-up message so the agent has context when it resumes."
         ),
       timezone: z
         .string()
         .optional()
         .describe(
           "IANA timezone (e.g. 'Europe/Paris'). Required only when `when` is a cron expression. " +
-            "If omitted, falls back to the user's timezone from the conversation."
+            "If omitted, falls back to the user's timezone."
         ),
     },
     stake: "low",
@@ -47,9 +47,9 @@ export const WAKEUPS_TOOLS_METADATA = createToolsRecord({
   },
   list_wakeups: {
     description:
-      "List wake-ups for the current conversation with their status, schedule, and reason. " +
+      "List wake-ups with their status, schedule, and reason. " +
       "Useful for checking what's already scheduled before creating a new wake-up, or for " +
-      "finding the wakeUpId needed to cancel a wake-up.",
+      "finding the wake-up ID needed to cancel a wake-up.",
     schema: {},
     stake: "never_ask",
     displayLabels: {
@@ -59,13 +59,13 @@ export const WAKEUPS_TOOLS_METADATA = createToolsRecord({
   },
   cancel_wakeup: {
     description:
-      "Cancel a previously scheduled wake-up by its wakeUpId. The wake-up must belong to the " +
-      "current conversation. Cancelling an already-fired, cancelled, or expired wake-up is a no-op.",
+      "Cancel a previously scheduled wake-up by ID. " +
+      "Cancelling an already-fired, cancelled, or expired wake-up is a no-op.",
     schema: {
       wakeUpId: z
         .string()
         .describe(
-          "The sId of the wake-up to cancel, as returned by `schedule_wakeup` or `list_wakeups`."
+          "The ID of the wake-up to cancel, as returned by `schedule_wakeup` or `list_wakeups`."
         ),
     },
     stake: "low",
@@ -80,8 +80,7 @@ export const WAKEUPS_SERVER = {
   serverInfo: {
     name: WAKEUPS_SERVER_NAME,
     version: "1.0.0",
-    description:
-      "Schedule wake-ups that re-invoke the agent in this conversation at a later time.",
+    description: "Schedule wake-ups that re-invoke the agent at a later time.",
     authorization: null,
     icon: "ActionTimeIcon",
     documentationUrl: null,
