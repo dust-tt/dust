@@ -1,5 +1,63 @@
 import type { docs_v1 } from "googleapis";
 
+type HeaderFooterSegment = {
+  content?: docs_v1.Schema$StructuralElement[];
+};
+
+// Only paragraphs are rendered — the Docs API can technically return other
+// structural elements inside a header/footer, but in practice they contain
+// paragraph text and rendering tables/section breaks here adds noise.
+function assembleHeaderFooterSection(
+  kind: "Header" | "Footer",
+  segments: { [id: string]: HeaderFooterSegment } | null | undefined,
+  documentStyle: docs_v1.Schema$DocumentStyle | null | undefined
+): string[] {
+  if (!segments) {
+    return [];
+  }
+  const roleById: Array<[string | null | undefined, string]> =
+    kind === "Header"
+      ? [
+          [documentStyle?.defaultHeaderId, "Default"],
+          [documentStyle?.firstPageHeaderId, "First Page"],
+          [documentStyle?.evenPageHeaderId, "Even Pages"],
+        ]
+      : [
+          [documentStyle?.defaultFooterId, "Default"],
+          [documentStyle?.firstPageFooterId, "First Page"],
+          [documentStyle?.evenPageFooterId, "Even Pages"],
+        ];
+  const kindLower = kind.toLowerCase();
+  const lines: string[] = [];
+
+  for (const [segmentId, segment] of Object.entries(segments)) {
+    if (!segment?.content) {
+      continue;
+    }
+    const role = roleById.find(([id]) => id === segmentId)?.[1] ?? "Unknown";
+    lines.push(`## ${kind} (${role})`);
+    lines.push(
+      `Segment ID: ${segmentId}. replaceAllText operates document-wide and matches text here automatically. Use this segmentId only for targeted insertText or deleteContentRange requests within this ${kindLower}.`
+    );
+    lines.push("");
+    for (const el of segment.content) {
+      if (el.paragraph?.elements) {
+        lines.push(`### Paragraph [${el.startIndex}-${el.endIndex}]`);
+        for (const run of el.paragraph.elements) {
+          if (run.textRun?.content) {
+            lines.push(
+              `- Text (${run.startIndex}-${run.endIndex}): "${run.textRun.content.replace(/\n/g, "\\n")}"`
+            );
+          }
+        }
+        lines.push("");
+      }
+    }
+  }
+
+  return lines;
+}
+
 /**
  * Formats a Google Docs document structure into readable markdown.
  * Extracts key information like text content, tables, and indices while
@@ -20,28 +78,12 @@ export function formatDocumentStructure(
   lines.push(`Document ID: ${doc.documentId}`);
   lines.push("");
 
-  // Header content
-  const defaultHeaderId = doc.documentStyle?.defaultHeaderId;
-  if (defaultHeaderId && doc.headers?.[defaultHeaderId]?.content) {
-    lines.push("## Header");
-    lines.push(
-      `Segment ID: ${defaultHeaderId} — pass this as \`segmentId\` in batchUpdate requests to target the header.`
-    );
-    lines.push("");
-    for (const el of doc.headers[defaultHeaderId].content) {
-      if (el.paragraph?.elements) {
-        lines.push(`### Paragraph [${el.startIndex}-${el.endIndex}]`);
-        for (const run of el.paragraph.elements) {
-          if (run.textRun?.content) {
-            lines.push(
-              `- Text (${run.startIndex}-${run.endIndex}): "${run.textRun.content.replace(/\n/g, "\\n")}"`
-            );
-          }
-        }
-        lines.push("");
-      }
-    }
-  }
+  lines.push(
+    ...assembleHeaderFooterSection("Header", doc.headers, doc.documentStyle)
+  );
+  lines.push(
+    ...assembleHeaderFooterSection("Footer", doc.footers, doc.documentStyle)
+  );
 
   // Body content
   let hasMore = false;
