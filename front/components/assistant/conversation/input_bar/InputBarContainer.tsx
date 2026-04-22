@@ -128,6 +128,7 @@ export interface InputBarContainerProps {
   disableAutoFocus: boolean;
   disableUserMentions?: boolean;
   disableAgentMentions?: boolean;
+  restrictedAgents?: LightAgentConfigurationType[];
   fileUploaderService: FileUploaderService;
   getDraft: () => {
     text: string;
@@ -166,6 +167,7 @@ const InputBarContainer = ({
   disableAutoFocus,
   disableUserMentions,
   disableAgentMentions,
+  restrictedAgents,
   isSubmitting,
   fileUploaderService,
   getDraft,
@@ -1033,6 +1035,7 @@ const InputBarContainer = ({
                   <InputBarButtons
                     actions={actions}
                     allAgents={allAgents}
+                    restrictedAgents={restrictedAgents}
                     attachedNodes={attachedNodes}
                     buttonSize={buttonSize}
                     clientType={clientType}

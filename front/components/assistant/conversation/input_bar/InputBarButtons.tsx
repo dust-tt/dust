@@ -25,6 +25,7 @@ import React from "react";
 interface InputBarButtonsProps {
   actions: InputBarAction[];
   allAgents: LightAgentConfigurationType[];
+  restrictedAgents?: LightAgentConfigurationType[];
   attachedNodes: DataSourceViewContentNode[];
   buttonSize: "xs" | "sm";
   clientType: string;
@@ -49,6 +50,7 @@ interface InputBarButtonsProps {
 export const InputBarButtons = React.memo(function InputBarButtons({
   actions,
   allAgents,
+  restrictedAgents,
   attachedNodes,
   buttonSize,
   clientType,
@@ -86,7 +88,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
       onItemClick={(c) => {
         handleSingleAgentSelect(toRichAgentMentionType(c));
       }}
-      agents={allAgents}
+      agents={restrictedAgents ?? allAgents}
       showDropdownArrow={false}
       side={conversation ? "top" : "bottom"}
       showFooterButtons={

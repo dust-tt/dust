@@ -432,6 +432,7 @@ export const AgentInputBar = ({
         disableAutoFocus={isMobile}
         disableUserMentions={!!agentBuilderContext}
         disableAgentMentions={!!agentBuilderContext?.disableAgentMentions}
+        restrictedAgents={agentBuilderContext?.restrictedAgents}
         actions={agentBuilderContext?.actionsToShow}
         isSubmitting={agentBuilderContext?.isSubmitting === true}
         isAgentBuilder={!!agentBuilderContext}
