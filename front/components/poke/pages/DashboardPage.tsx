@@ -32,6 +32,7 @@ const WORKSPACE_LIMIT = 20;
 interface WorkspaceListProps {
   title: string;
   workspaces: PokeWorkspaceWithRegion[];
+  isWorkspacesLoading?: boolean;
   showRegion?: boolean;
   onWorkspaceClick?: (ws: PokeWorkspaceWithRegion) => void;
 }
@@ -39,15 +40,21 @@ interface WorkspaceListProps {
 function WorkspaceList({
   title,
   workspaces,
+  isWorkspacesLoading = false,
   showRegion = false,
   onWorkspaceClick,
 }: WorkspaceListProps) {
   return (
     <>
       <h1 className="mb-4 mt-8 text-2xl font-bold">{title}</h1>
-      <ul className="flex flex-wrap gap-4">
-        {workspaces.length === 0 && <p>No workspaces found.</p>}
-        {workspaces.map((ws) => (
+      {isWorkspacesLoading ? (
+        <div className="flex justify-center py-8">
+          <Spinner size="lg" variant="color" />
+        </div>
+      ) : (
+        <ul className="flex flex-wrap gap-4">
+          {workspaces.length === 0 && <p>No workspaces found.</p>}
+          {workspaces.map((ws) => (
           <div
             key={`${ws.region ?? "default"}-${ws.id}`}
             onClick={() => onWorkspaceClick?.(ws)}
@@ -116,7 +123,8 @@ function WorkspaceList({
             </LinkWrapper>
           </div>
         ))}
-      </ul>
+        </ul>
+      )}
     </>
   );
 }
@@ -148,15 +156,23 @@ function DashboardPageSPA() {
     regionUrls,
   });
 
-  const [searchTerm, setSearchTerm] = useState("");
-  const searchDisabled = searchTerm.trim().length < 3;
+  const {
+    inputValue: searchTerm,
+    debouncedValue: debouncedSearchTerm,
+    isDebouncing,
+    setValue: setSearchTerm,
+  } = useDebounce("", {
+    delay: SEARCH_DEBOUNCE_MS,
+    minLength: SEARCH_MIN_LENGTH,
+  });
+  const searchDisabled = !isDebouncing && !debouncedSearchTerm;
 
   const {
     workspaces: searchResults,
     isWorkspacesLoading: isSearchResultsLoading,
     isWorkspacesError: isSearchResultsError,
   } = usePokeWorkspacesAllRegions({
-    search: searchTerm,
+    search: debouncedSearchTerm,
     disabled: searchDisabled,
     limit: WORKSPACE_LIMIT,
     regionUrls,
@@ -185,29 +201,27 @@ function DashboardPageSPA() {
         value={searchTerm}
         onChange={handleSearchChange}
       />
-      {isSearchResultsError && (
-        <p>An error occurred while fetching search results.</p>
-      )}
-      {!isSearchResultsLoading && !isSearchResultsError && (
-        <WorkspaceList
-          title="Search Results"
-          workspaces={searchResults}
-          showRegion
-          onWorkspaceClick={handleWorkspaceClick}
-        />
-      )}
-      {isSearchResultsLoading && !searchDisabled && (
-        <Spinner size="lg" variant="color" />
-      )}
-      {!isUpgradedWorkspacesLoading && !isUpgradedWorkspacesError && (
+      {!searchDisabled &&
+        (isSearchResultsError ? (
+          <p>An error occurred while fetching search results.</p>
+        ) : (
+          <WorkspaceList
+            title="Search Results"
+            workspaces={searchResults}
+            isWorkspacesLoading={isSearchResultsLoading || isDebouncing}
+            showRegion
+            onWorkspaceClick={handleWorkspaceClick}
+          />
+        ))}
+      {!isUpgradedWorkspacesError && (
         <WorkspaceList
           title={`Last ${WORKSPACE_LIMIT} Upgraded Workspaces`}
           workspaces={upgradedWorkspaces}
+          isWorkspacesLoading={isUpgradedWorkspacesLoading}
           showRegion
           onWorkspaceClick={handleWorkspaceClick}
         />
       )}
-      {isUpgradedWorkspacesLoading && <Spinner size="lg" variant="color" />}
     </>
   );
 }
