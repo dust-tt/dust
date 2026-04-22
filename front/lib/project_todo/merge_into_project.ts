@@ -277,17 +277,19 @@ async function collectDocumentCandidates(
     })),
   ];
 
-  // Batch-fetch all existing source links for this takeaway in 3 queries
-  // instead of one per (item, user) pair.
-  const existingByKey = await ProjectTodoResource.fetchBySourceIds(auth, {
-    sourceIds: [takeawayWithSource.source.sourceId],
+  // Batch-fetch existing todos by itemId. The result map is keyed by
+  // `${itemId}:${userId}`, matching the lookup below so a hit means
+  // "this (item, user) pair is already linked to a todo — skip dedup".
+  const allItemIds = itemTriples.map((t) => t.itemId);
+  const existingByKey = await ProjectTodoResource.fetchByItemIds(auth, {
+    itemIds: allItemIds,
   });
 
   const candidates: PendingCandidate[] = [];
   let existingUpdated = 0;
   for (const { itemId, targetUserIds, blob } of itemTriples) {
     for (const userId of targetUserIds) {
-      const existing = existingByKey.get(`${itemId}:${userId}`) ?? null;
+      const existing = existingByKey.get(itemId)?.get(userId) ?? null;
       if (existing !== null) {
         // Source link exists — update content if it has changed.
         const updated = await updateTodoIfChanged(existing, auth, blob);
@@ -403,6 +405,7 @@ async function createOrLinkTodos(
       if (match !== null) {
         // Semantic duplicate found — link the new source to the existing todo.
         await match.upsertSource(auth, {
+          itemId: candidate.itemId,
           source: candidate.source,
         });
 
@@ -425,24 +428,20 @@ async function createOrLinkTodos(
         return;
       }
 
-      // No duplicate — create a fresh todo and link the source.
-      const todo = await ProjectTodoResource.makeNew(auth, {
-        spaceId: spaceModelId,
-        userId: candidate.userId,
-        createdByType: "agent",
-        createdByUserId: null,
-        createdByAgentConfigurationId: BUTLER_AGENT_SID,
-        category: candidate.blob.category,
-        text: candidate.blob.text,
-        status: candidate.blob.status,
-        doneAt: candidate.blob.doneAt,
-        actorRationale: null,
-        markedAsDoneByType: null,
-        markedAsDoneByUserId: null,
-        markedAsDoneByAgentConfigurationId: null,
-      });
-
-      await todo.upsertSource(auth, {
+      // No duplicate — create a fresh todo and link the source atomically so
+      // a Temporal retry after a partial success can't leave an orphan row.
+      const todo = await ProjectTodoResource.makeNewWithSource(auth, {
+        blob: {
+          spaceId: spaceModelId,
+          userId: candidate.userId,
+          createdByType: "agent",
+          createdByAgentConfigurationId: BUTLER_AGENT_SID,
+          category: candidate.blob.category,
+          text: candidate.blob.text,
+          status: candidate.blob.status,
+          doneAt: candidate.blob.doneAt,
+        },
+        itemId: candidate.itemId,
         source: candidate.source,
       });
 
