@@ -120,6 +120,12 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
         .array(z.string())
         .optional()
         .describe("The email addresses to BCC"),
+      replyTo: z
+        .array(z.string())
+        .optional()
+        .describe(
+          "Reply-to email addresses. Replies will go to these addresses instead of the sender."
+        ),
       subject: z.string().describe("The subject line of the email"),
       contentType: z
         .string()
@@ -201,6 +207,12 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
         .array(z.string())
         .optional()
         .describe("The email addresses to BCC"),
+      replyTo: z
+        .array(z.string())
+        .optional()
+        .describe(
+          "Reply-to email addresses. Replies will go to these addresses instead of the sender."
+        ),
       subject: z.string().describe("The subject line of the email"),
       contentType: z
         .enum(["text", "html"])

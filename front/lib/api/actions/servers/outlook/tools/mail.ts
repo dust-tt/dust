@@ -79,6 +79,12 @@ interface OutlookMessage {
       name?: string;
     };
   }>;
+  replyTo?: Array<{
+    emailAddress: {
+      address: string;
+      name?: string;
+    };
+  }>;
   body?: {
     contentType: string;
     content: string;
@@ -190,7 +196,7 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
     } else {
       params.append(
         "$select",
-        "id,conversationId,subject,bodyPreview,importance,receivedDateTime,sentDateTime,hasAttachments,isDraft,isRead,from,toRecipients,ccRecipients,parentFolderId"
+        "id,conversationId,subject,bodyPreview,importance,receivedDateTime,sentDateTime,hasAttachments,isDraft,isRead,from,toRecipients,ccRecipients,bccRecipients,replyTo,parentFolderId"
       );
     }
 
@@ -423,7 +429,7 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
   },
 
   create_draft: async (
-    { to, cc, bcc, subject, contentType, body, importance = "normal" },
+    { to, cc, bcc, replyTo, subject, contentType, body, importance = "normal" },
     { authInfo }
   ) => {
     const accessToken = authInfo?.token;
@@ -453,6 +459,12 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
 
     if (bcc && bcc.length > 0) {
       message.bccRecipients = bcc.map((email) => ({
+        emailAddress: { address: email },
+      }));
+    }
+
+    if (replyTo && replyTo.length > 0) {
+      message.replyTo = replyTo.map((email) => ({
         emailAddress: { address: email },
       }));
     }
@@ -641,6 +653,7 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
       to,
       cc,
       bcc,
+      replyTo,
       subject,
       contentType = "text",
       body,
@@ -672,6 +685,12 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
 
     if (bcc && bcc.length > 0) {
       message.bccRecipients = bcc.map((email) => ({
+        emailAddress: { address: email },
+      }));
+    }
+
+    if (replyTo && replyTo.length > 0) {
+      message.replyTo = replyTo.map((email) => ({
         emailAddress: { address: email },
       }));
     }
