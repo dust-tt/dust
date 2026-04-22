@@ -82,6 +82,10 @@ function constructContextSection({
   return context;
 }
 
+function quotePromptText(text: string): string {
+  return JSON.stringify(text);
+}
+
 function constructBranchContextSection({
   conversation,
 }: {
@@ -93,17 +97,17 @@ function constructBranchContextSection({
   }
 
   const parentConversation = forkedFrom.parentConversationTitle
-    ? JSON.stringify(forkedFrom.parentConversationTitle)
+    ? quotePromptText(forkedFrom.parentConversationTitle)
     : `conversation ${forkedFrom.parentConversationId}`;
 
   return (
     "# BRANCH CONTEXT\n\n" +
     `This conversation was branched from ${parentConversation}.\n` +
-    "This conversation starts from a summary of the parent conversation " +
-    `up to source message ${forkedFrom.sourceMessageId}.\n` +
-    "Readable conversation-level tool access and enabled skills from the " +
-    "parent conversation were carried over into this conversation.\n" +
-    "Direct attachments and tool outputs available at the branch point were " +
+    "This conversation starts from a summary of the parent conversation at " +
+    "the branch point.\n" +
+    "Available tools and enabled skills from the parent conversation were " +
+    "carried over into this conversation.\n" +
+    "Conversation attachments and tool outputs available at the branch point were " +
     "also carried over into this conversation.\n"
   );
 }

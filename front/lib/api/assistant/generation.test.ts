@@ -346,15 +346,16 @@ describe("constructPromptMultiActions - system prompt stability", () => {
       'This conversation was branched from "Parent conversation".'
     );
     expect(text).toContain(
-      "This conversation starts from a summary of the parent conversation up to source message msg_parent_source."
+      "This conversation starts from a summary of the parent conversation at the branch point."
     );
     expect(text).toContain(
-      "Readable conversation-level tool access and enabled skills from the parent conversation were carried over into this conversation."
+      "Available tools and enabled skills from the parent conversation were carried over into this conversation."
     );
     expect(text).toContain(
-      "Direct attachments and tool outputs available at the branch point were also carried over into this conversation."
+      "Conversation attachments and tool outputs available at the branch point were also carried over into this conversation."
     );
     expect(text).not.toContain("child conversation");
+    expect(text).not.toContain("source message");
   });
 
   it("should place branch context in ephemeral tier for structured prompts", () => {
