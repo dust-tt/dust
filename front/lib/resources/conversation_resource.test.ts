@@ -6406,7 +6406,11 @@ describe("ConversationResource cleanup on delete", () => {
       await FeatureFlagFactory.basic(auth, "conversation_search_indexing");
       mockWorkflow().mockClear();
 
-      await ConversationResource.updateTitle(auth, conversation.sId, "New Title");
+      await ConversationResource.updateTitle(
+        auth,
+        conversation.sId,
+        "New Title"
+      );
 
       expect(mockWorkflow()).toHaveBeenCalledTimes(1);
       expect(mockWorkflow()).toHaveBeenCalledWith({
