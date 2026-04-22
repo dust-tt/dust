@@ -3376,9 +3376,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       sId: this.sId,
       spaceId: this.space?.sId ?? null,
       title: getConversationDisplayTitle({
-        title: this.title,
         created: this.createdAt.getTime(),
-        forkedFrom: this.forkedFromInfo,
+        forkingData: this.forkingData,
+        title: this.title,
       }),
       triggerId: this.triggerSId,
       unread:
