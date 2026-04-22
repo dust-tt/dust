@@ -5,6 +5,10 @@ import {
   globalAgentInjectsUserContext,
   globalAgentInjectsWorkspaceContext,
 } from "@app/lib/api/assistant/global_agents/global_agents";
+import type {
+  AvailableSkillType,
+  EnabledSkillType,
+} from "@app/lib/api/assistant/skills_rendering";
 import {
   normalizePrompt,
   systemPromptToText,
@@ -496,6 +500,14 @@ describe("constructPromptMultiActions - system prompt stability", () => {
   });
 
   it("should keep enableable skills out of the system prompt", () => {
+    const equippedSkills = [
+      {
+        name: "commit",
+        agentFacingDescription:
+          "Create a git commit with a descriptive message.",
+      },
+    ] satisfies AvailableSkillType[];
+
     const params = {
       userMessage: userMessage1,
       agentConfiguration: agentConfig1,
@@ -503,13 +515,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
       hasAvailableActions: true,
       agentsList: null,
       enabledSkills: [],
-      equippedSkills: [
-        {
-          name: "commit",
-          agentFacingDescription:
-            "Create a git commit with a descriptive message.",
-        } as any,
-      ],
+      equippedSkills,
       renderSkillsAsUserMessages: true,
     };
 
@@ -523,6 +529,14 @@ describe("constructPromptMultiActions - system prompt stability", () => {
   });
 
   it("should keep enableable skills in the system prompt on the legacy path", () => {
+    const equippedSkills = [
+      {
+        name: "commit",
+        agentFacingDescription:
+          "Create a git commit with a descriptive message.",
+      },
+    ] satisfies AvailableSkillType[];
+
     const params = {
       userMessage: userMessage1,
       agentConfiguration: agentConfig1,
@@ -530,13 +544,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
       hasAvailableActions: true,
       agentsList: null,
       enabledSkills: [],
-      equippedSkills: [
-        {
-          name: "commit",
-          agentFacingDescription:
-            "Create a git commit with a descriptive message.",
-        } as any,
-      ],
+      equippedSkills,
     };
 
     const sections = constructPromptMultiActions(authenticator1, params);
@@ -549,6 +557,16 @@ describe("constructPromptMultiActions - system prompt stability", () => {
   });
 
   it("should keep system skill instructions in the system prompt", () => {
+    const systemSkills = [
+      {
+        isSystemSkill: true,
+        name: "Discover Tools",
+        instructions:
+          "List available toolsets and enable them for the current conversation.",
+        extendedSkill: null,
+      },
+    ] satisfies EnabledSkillType[];
+
     const params = {
       userMessage: userMessage1,
       agentConfiguration: agentConfig1,
@@ -556,15 +574,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
       hasAvailableActions: true,
       agentsList: null,
       enabledSkills: [],
-      systemSkills: [
-        {
-          isSystemSkill: true,
-          name: "Discover Tools",
-          instructions:
-            "List available toolsets and enable them for the current conversation.",
-          extendedSkill: null,
-        } as any,
-      ],
+      systemSkills,
       equippedSkills: [],
       renderSkillsAsUserMessages: true,
     };

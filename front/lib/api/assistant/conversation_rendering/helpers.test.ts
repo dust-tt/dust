@@ -1,4 +1,5 @@
 import {
+  type AvailableSkillType,
   renderAvailableSkillsUserMessage,
   renderEnabledSkillUserMessageFromInstructions,
 } from "@app/lib/api/assistant/skills_rendering";
@@ -195,23 +196,29 @@ describe("skill rendering helpers", () => {
         name: "commit",
         agentFacingDescription:
           "Create a git commit with a descriptive message.",
-      } as any,
+      },
       {
         name: "review-pr",
         agentFacingDescription:
           "Review a pull request for code quality and correctness.",
-      } as any,
-    ]);
+      },
+    ] satisfies AvailableSkillType[]);
 
-    expect(message).not.toBeNull();
-    expect(message?.role).toBe("user");
-    expect(message?.content[0].type).toBe("text");
-    expect((message?.content[0] as TextContent).text).toEqual(`<dust_system>
+    expect(message).toEqual({
+      role: "user",
+      name: "system",
+      content: [
+        {
+          type: "text",
+          text: `<dust_system>
 The following skills are available for use with the skill_management__enable_skill tool:
 
 - commit: Create a git commit with a descriptive message.
 - review-pr: Review a pull request for code quality and correctness.
-</dust_system>`);
+</dust_system>`,
+        },
+      ],
+    });
   });
 
   it("renders enabled skill instructions as a synthetic user message", () => {
@@ -221,14 +228,21 @@ The following skills are available for use with the skill_management__enable_ski
         "<commit>\nCreate a git commit with a descriptive message.\n</commit>",
     });
 
-    expect(message.role).toBe("user");
-    expect(message.content[0].type).toBe("text");
-    expect((message.content[0] as TextContent).text).toEqual(`<dust_system>
+    expect(message).toEqual({
+      role: "user",
+      name: "system",
+      content: [
+        {
+          type: "text",
+          text: `<dust_system>
 The skill "commit" is now enabled and remains active for the rest of the conversation.
 
 <commit>
 Create a git commit with a descriptive message.
 </commit>
-</dust_system>`);
+</dust_system>`,
+        },
+      ],
+    });
   });
 });

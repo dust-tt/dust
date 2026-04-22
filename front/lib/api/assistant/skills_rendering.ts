@@ -6,12 +6,21 @@ import { SKILL_MANAGEMENT_SERVER_NAME } from "@app/lib/actions/mcp_internal_acti
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { UserMessageTypeModel } from "@app/types/assistant/generation";
 
-export type EnabledSkillType = SkillResource & {
-  extendedSkill: SkillResource | null;
+type SkillInstructionsType = Pick<SkillResource, "instructions">;
+
+export type EnabledSkillType = Pick<
+  SkillResource,
+  "name" | "instructions" | "isSystemSkill"
+> & {
+  extendedSkill: SkillInstructionsType | null;
 };
 
-export const SKILLS_AS_USER_MESSAGES_FEATURE_FLAG =
-  "skills_as_user_messages" as const;
+export type AvailableSkillType = Pick<
+  SkillResource,
+  "name" | "agentFacingDescription"
+>;
+
+export const SKILLS_AS_USER_MESSAGES_FEATURE_FLAG = "skills_as_user_messages";
 
 const SKILLS_RENDERER_NAME = "system";
 
@@ -41,7 +50,7 @@ function renderSystemSkillMessage(text: string): UserMessageTypeModel {
 }
 
 export function renderAvailableSkillsUserMessage(
-  equippedSkills: Pick<SkillResource, "name" | "agentFacingDescription">[]
+  equippedSkills: AvailableSkillType[]
 ): UserMessageTypeModel | null {
   if (equippedSkills.length === 0) {
     return null;

@@ -1,6 +1,11 @@
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { tokenCountForTexts } from "@app/lib/tokenization";
-import type { ModelMessageTypeMultiActions } from "@app/types/assistant/generation";
+import type {
+  AssistantContentMessageTypeModel,
+  ContentFragmentMessageTypeModel,
+  FunctionMessageTypeModel,
+  UserMessageTypeModel,
+} from "@app/types/assistant/generation";
 import { Err, Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -34,40 +39,37 @@ function createConversation() {
   } as any;
 }
 
-function userMessage(
-  text: string,
-  name = "user"
-): ModelMessageTypeMultiActions {
+function userMessage(text: string, name = "user"): UserMessageTypeModel {
   return {
-    role: "user" as const,
+    role: "user",
     name,
-    content: [{ type: "text" as const, text }],
+    content: [{ type: "text", text }],
   };
 }
 
-function contentFragmentMessage(text: string): ModelMessageTypeMultiActions {
+function contentFragmentMessage(text: string): ContentFragmentMessageTypeModel {
   return {
-    role: "content_fragment" as const,
+    role: "content_fragment",
     name: "content_fragment",
-    content: [{ type: "text" as const, text }],
+    content: [{ type: "text", text }],
   };
 }
 
-function assistantMessage(text: string): ModelMessageTypeMultiActions {
+function assistantMessage(text: string): AssistantContentMessageTypeModel {
   return {
-    role: "assistant" as const,
+    role: "assistant",
     name: "assistant",
     content: text,
-    contents: [{ type: "text_content" as const, value: text }],
+    contents: [{ type: "text_content", value: text }],
   };
 }
 
 function functionMessage(
   name: string,
   content: string
-): ModelMessageTypeMultiActions {
+): FunctionMessageTypeModel {
   return {
-    role: "function" as const,
+    role: "function",
     name,
     function_call_id: `${name}_call`,
     content,
@@ -501,10 +503,7 @@ describe("renderConversationForModel", () => {
         interactionTokens: 20,
         availableDelta: 100,
       }),
-      prefaceMessages: [
-        userMessage("preface") as any,
-        userMessage("already_there") as any,
-      ],
+      prefaceMessages: [userMessage("preface"), userMessage("already_there")],
     });
 
     expect(res.isOk()).toBe(true);
@@ -512,9 +511,9 @@ describe("renderConversationForModel", () => {
       return;
     }
 
-    const messages = res.value.modelConversation.messages;
-    expect(messages).toHaveLength(2);
-    expect((messages[0] as any).content[0].text).toBe("preface");
-    expect((messages[1] as any).content[0].text).toBe("already_there");
+    expect(res.value.modelConversation.messages).toEqual([
+      userMessage("preface"),
+      userMessage("already_there"),
+    ]);
   });
 });

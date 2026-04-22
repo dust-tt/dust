@@ -329,11 +329,15 @@ export class ConversationFactory {
       workspace,
       conversation,
       agentConfig,
+      rank = 0,
+      parentId = null,
       mcpAction,
     }: {
       workspace: WorkspaceType;
       conversation: ConversationType | ConversationWithoutContentType;
       agentConfig: LightAgentConfigurationType;
+      rank?: number;
+      parentId?: ModelId | null;
       mcpAction?: {
         toolConfiguration: LightServerSideMCPToolConfigurationType;
       };
@@ -353,9 +357,9 @@ export class ConversationFactory {
 
     const messageRow = await MessageModel.create({
       sId: generateRandomModelSId(),
-      rank: 0,
+      rank,
       conversationId: conversation.id,
-      parentId: null,
+      parentId,
       agentMessageId: agentMessageRow.id,
       workspaceId: workspace.id,
     });
