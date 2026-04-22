@@ -11,9 +11,8 @@ import type { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId
 import type { ConnectorPermission } from "@app/types/connectors/connectors_api";
 import type { DataSourceType } from "@app/types/data_source";
 import {
-  isAPIErrorResponse,
-  type APIError,
   type APIErrorResponse,
+  isAPIErrorResponse,
   type RegionRedirectError,
 } from "@app/types/error";
 import type { LightWorkspaceType } from "@app/types/user";
