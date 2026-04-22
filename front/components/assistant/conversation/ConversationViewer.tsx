@@ -938,20 +938,18 @@ export const ConversationViewer = ({
           );
         }
 
-        ref.current.data.findAndDelete(
-          (m) =>
-            m.sId === placeholderUserMsg.sId ||
-            (isUserMessage(m) && m.sId === messageFromBackend.sId)
-        );
+        const nextData = ref.current.data
+          .get()
+          .filter(
+            (m) =>
+              m.sId !== placeholderUserMsg.sId &&
+              !(isUserMessage(m) && m.sId === messageFromBackend.sId)
+          );
 
-        const currentData = ref.current.data.get();
-        const offset = getBranchedInsertIndex(currentData, renderedUserMessage);
+        const offset = getBranchedInsertIndex(nextData, renderedUserMessage);
+        nextData.splice(offset, 0, renderedUserMessage);
 
-        if (offset < currentData.length) {
-          ref.current.data.insert([renderedUserMessage], offset, false);
-        } else {
-          ref.current.data.append([renderedUserMessage], false);
-        }
+        ref.current.data.replace(nextData);
 
         void mutateConversations(
           (currentData: ConversationWithoutContentType[] | undefined) =>
