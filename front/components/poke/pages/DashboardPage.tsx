@@ -5,6 +5,7 @@ import {
   PokeTableCell,
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
+import { useDebounce } from "@app/hooks/useDebounce";
 import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import {
@@ -25,9 +26,11 @@ import { UsersIcon } from "lucide-react";
 import moment from "moment";
 import type { ChangeEvent } from "react";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React, { useCallback, useState } from "react";
+import React, { useCallback } from "react";
 
 const WORKSPACE_LIMIT = 20;
+const SEARCH_MIN_LENGTH = 3;
+const SEARCH_DEBOUNCE_MS = 300;
 
 interface WorkspaceListProps {
   title: string;
