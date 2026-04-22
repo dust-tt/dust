@@ -99,12 +99,10 @@ function WorkspaceList({
                         <label
                           className={classNames(
                             "rounded px-1 text-sm text-gray-500 text-white",
-                            isEntreprisePlanPrefix(
-                              ws.subscription.plan.code
-                            ) && "bg-red-500",
-                            isFriendsAndFamilyPlan(
-                              ws.subscription.plan.code
-                            ) && "bg-pink-500",
+                            isEntreprisePlanPrefix(ws.subscription.plan.code) &&
+                              "bg-red-500",
+                            isFriendsAndFamilyPlan(ws.subscription.plan.code) &&
+                              "bg-pink-500",
                             isProPlanPrefix(ws.subscription.plan.code) &&
                               "bg-orange-500",
                             isFreePlan(ws.subscription.plan.code) &&
@@ -164,15 +162,17 @@ function DashboardPageSPA() {
     delay: SEARCH_DEBOUNCE_MS,
     minLength: SEARCH_MIN_LENGTH,
   });
-  const searchDisabled = !isDebouncing && !debouncedSearchTerm;
+
+  const searchQuery = debouncedSearchTerm.trim();
+  const isSearchInputTooShort = searchTerm.trim().length < SEARCH_MIN_LENGTH;
 
   const {
     workspaces: searchResults,
     isWorkspacesLoading: isSearchResultsLoading,
     isWorkspacesError: isSearchResultsError,
   } = usePokeWorkspacesAllRegions({
-    search: debouncedSearchTerm,
-    disabled: searchDisabled,
+    search: searchQuery,
+    disabled: !searchQuery,
     limit: WORKSPACE_LIMIT,
     regionUrls,
   });
@@ -201,7 +201,7 @@ function DashboardPageSPA() {
         onChange={handleSearchChange}
       />
       <h1 className="mb-4 mt-8 text-2xl font-bold">Search Results</h1>
-      {searchDisabled ? (
+      {isSearchInputTooShort ? (
         <p className="text-muted-foreground dark:text-muted-foreground-night">
           Type at least {SEARCH_MIN_LENGTH} characters to search.
         </p>
