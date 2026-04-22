@@ -557,14 +557,13 @@ export async function createConversationFork(
       },
       "Failed to reload parent conversation for fork attachment carryover."
     );
-    return new Ok(childConversation.value.sId);
+  } else {
+    await carryOverConversationAttachments(auth, {
+      parentConversation: parentConversationWithContent.value,
+      childConversation: childConversation.value,
+      sourceMessageRank: childConversationId.value.sourceMessageRank,
+    });
   }
-
-  await carryOverConversationAttachments(auth, {
-    parentConversation: parentConversationWithContent.value,
-    childConversation: childConversation.value,
-    sourceMessageRank: childConversationId.value.sourceMessageRank,
-  });
 
   const compactionResult = await compactConversation(auth, {
     conversation: childConversation.value,
