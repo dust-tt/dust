@@ -43,7 +43,6 @@ import type { WorkspaceType } from "@app/types/user";
 import {
   ContentMessage,
   Dialog,
-  DialogContainer,
   DialogContent,
   DialogFooter,
   DialogHeader,
@@ -537,7 +536,7 @@ export function CreateMCPServerDialog({
               Configure {toolName}
             </DialogTitle>
           </DialogHeader>
-          <DialogContainer className="max-h-[80vh]">
+          <div className="overflow-y-auto px-5 py-4">
             <div className="space-y-4">
               {serverError && (
                 <ContentMessage
@@ -610,7 +609,7 @@ export function CreateMCPServerDialog({
                 internalMCPServer={internalMCPServer}
               />
             </div>
-          </DialogContainer>
+          </div>
           <DialogFooter
             leftButtonProps={{
               label: "Cancel",
