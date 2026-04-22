@@ -279,9 +279,7 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
       return new Ok(undefined);
     }
     const currentUserId = auth.user()?.id ?? null;
-    const foreignWakeUp = activeWakeUps.find(
-      (w) => w.userId !== currentUserId
-    );
+    const foreignWakeUp = activeWakeUps.find((w) => w.userId !== currentUserId);
     if (!foreignWakeUp) {
       return new Ok(undefined);
     }
