@@ -78,7 +78,7 @@ export const InputBarSkillSuggestionDropdown = forwardRef<
       }}
       clientRect={clientRect}
       emptyMessage="No skills found"
-      header="Skills"
+      header="Capabilities"
       onClose={onClose}
     />
   );
