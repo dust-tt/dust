@@ -1,3 +1,4 @@
+import { SkillBuilderEnableSuggestionsSection } from "@app/components/skill_builder/SkillBuilderEnableSuggestionsSection";
 import { SkillBuilderIconSection } from "@app/components/skill_builder/SkillBuilderIconSection";
 import { SkillBuilderIsDefaultSection } from "@app/components/skill_builder/SkillBuilderIsDefaultSection";
 import { SkillBuilderNameSection } from "@app/components/skill_builder/SkillBuilderNameSection";
@@ -42,8 +43,9 @@ export function SkillBuilderSettingsSection({
         <Collapsible defaultOpen>
           <CollapsibleTrigger variant="secondary">Advanced</CollapsibleTrigger>
           <CollapsibleContent>
-            <div className="pt-3">
+            <div className="space-y-3 pt-3">
               <SkillBuilderIsDefaultSection />
+              <SkillBuilderEnableSuggestionsSection />
             </div>
           </CollapsibleContent>
         </Collapsible>
