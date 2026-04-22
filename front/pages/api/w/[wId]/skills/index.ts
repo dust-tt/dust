@@ -11,7 +11,7 @@ import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import {
   SKILL_VIEWS,
-  type SkillSummaryType,
+  type SkillWithoutInstructionsAndToolsType,
   type SkillType,
   type SkillViewType,
   type SkillWithRelationsType,
@@ -25,8 +25,8 @@ import * as reporter from "io-ts-reporters";
 import uniq from "lodash/uniq";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-export type GetSkillSummariesResponseBody = {
-  skills: SkillSummaryType[];
+export type GetSkillsWithoutInstructionsAndToolsResponseBody = {
+  skills: SkillWithoutInstructionsAndToolsType[];
 };
 
 export type GetSkillsResponseBody = {
@@ -103,7 +103,7 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
     WithAPIErrorResponse<
-      | GetSkillSummariesResponseBody
+      | GetSkillsWithoutInstructionsAndToolsResponseBody
       | GetSkillsResponseBody
       | GetSkillsWithRelationsResponseBody
       | PostSkillResponseBody
@@ -202,10 +202,14 @@ async function handler(
       if (skillView === "summary") {
         return res.status(200).json({
           skills: skills.map((sc) => {
-            const { instructions, instructionsHtml, tools, ...skillSummary } =
-              sc.toJSON(auth);
+            const {
+              instructions,
+              instructionsHtml,
+              tools,
+              ...skillWithoutInstructionsAndTools
+            } = sc.toJSON(auth);
 
-            return skillSummary;
+            return skillWithoutInstructionsAndTools;
           }),
         });
       }

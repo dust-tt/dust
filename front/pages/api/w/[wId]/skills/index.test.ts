@@ -16,7 +16,7 @@ import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory"
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type {
-  SkillSummaryType,
+  SkillWithoutInstructionsAndToolsType,
   SkillType,
   SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
@@ -227,11 +227,13 @@ describe("GET /api/w/[wId]/skills", () => {
 
     expect(res._getStatusCode()).toBe(200);
 
-    const skillSummary = res
+    const skillWithoutInstructionsAndTools = res
       ._getJSONData()
-      .skills.find((s: SkillSummaryType) => s.sId === skill.sId);
+      .skills.find(
+        (s: SkillWithoutInstructionsAndToolsType) => s.sId === skill.sId
+      );
 
-    expect(skillSummary).toMatchObject({
+    expect(skillWithoutInstructionsAndTools).toMatchObject({
       sId: skill.sId,
       name: "Picker Skill",
       userFacingDescription: "Shown in the capabilities picker",
@@ -243,13 +245,15 @@ describe("GET /api/w/[wId]/skills", () => {
       isDefault: false,
       extendedSkillId: null,
     });
-    expect(skillSummary).toHaveProperty("createdAt");
-    expect(skillSummary).toHaveProperty("updatedAt");
-    expect(skillSummary).toHaveProperty("source");
-    expect(skillSummary).toHaveProperty("sourceMetadata");
-    expect(skillSummary).not.toHaveProperty("instructions");
-    expect(skillSummary).not.toHaveProperty("instructionsHtml");
-    expect(skillSummary).not.toHaveProperty("tools");
+    expect(skillWithoutInstructionsAndTools).toHaveProperty("createdAt");
+    expect(skillWithoutInstructionsAndTools).toHaveProperty("updatedAt");
+    expect(skillWithoutInstructionsAndTools).toHaveProperty("source");
+    expect(skillWithoutInstructionsAndTools).toHaveProperty("sourceMetadata");
+    expect(skillWithoutInstructionsAndTools).not.toHaveProperty("instructions");
+    expect(skillWithoutInstructionsAndTools).not.toHaveProperty(
+      "instructionsHtml"
+    );
+    expect(skillWithoutInstructionsAndTools).not.toHaveProperty("tools");
   });
 
   it("should not fetch dynamic global instructions for viewType=summary", async () => {
@@ -274,7 +278,8 @@ describe("GET /api/w/[wId]/skills", () => {
         res
           ._getJSONData()
           .skills.some(
-            (s: SkillSummaryType) => s.sId === discoverToolsSkill.sId
+            (s: SkillWithoutInstructionsAndToolsType) =>
+              s.sId === discoverToolsSkill.sId
           )
       ).toBe(true);
       expect(fetchInstructionsSpy).not.toHaveBeenCalled();

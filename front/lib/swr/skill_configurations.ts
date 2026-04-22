@@ -4,7 +4,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import type { DetectedSkillSummary } from "@app/lib/skill_detection";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
-  GetSkillSummariesResponseBody,
+  GetSkillsWithoutInstructionsAndToolsResponseBody,
   GetSkillsResponseBody,
   GetSkillsWithRelationsResponseBody,
 } from "@app/pages/api/w/[wId]/skills";
@@ -35,7 +35,7 @@ const DETECT_SKILLS_DEBOUNCE_MS = 1_000;
 
 type SkillsResponseByViewType = {
   full: GetSkillsResponseBody;
-  summary: GetSkillSummariesResponseBody;
+  summary: GetSkillsWithoutInstructionsAndToolsResponseBody;
 };
 
 type SkillsByViewType<TViewType extends SkillViewType> =

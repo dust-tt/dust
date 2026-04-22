@@ -28,7 +28,7 @@ export const SkillSourceMetadataSchema = z.object({
 
 export type SkillSourceMetadata = z.infer<typeof SkillSourceMetadataSchema>;
 
-export const SkillSummarySchema = z.object({
+export const SkillWithoutInstructionsAndToolsSchema = z.object({
   id: z.number(),
   sId: z.string(),
   createdAt: z.number().nullable(),
@@ -56,9 +56,11 @@ export const SkillSummarySchema = z.object({
   extendedSkillId: z.string().nullable(),
 });
 
-export type SkillSummaryType = z.infer<typeof SkillSummarySchema>;
+export type SkillWithoutInstructionsAndToolsType = z.infer<
+  typeof SkillWithoutInstructionsAndToolsSchema
+>;
 
-export const SkillSchema = SkillSummarySchema.extend({
+export const SkillSchema = SkillWithoutInstructionsAndToolsSchema.extend({
   instructions: z.string().nullable(),
   instructionsHtml: z.string().nullable(),
   tools: z.array(MCPServerViewSchema),
