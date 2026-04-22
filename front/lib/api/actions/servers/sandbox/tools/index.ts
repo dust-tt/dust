@@ -31,7 +31,6 @@ import {
 } from "@app/lib/api/sandbox/image";
 import { wrapCommand } from "@app/lib/api/sandbox/image/profile";
 import { recordToolDuration } from "@app/lib/api/sandbox/instrumentation";
-import type { ExecResult } from "@app/lib/api/sandbox/provider";
 import { startTelemetry } from "@app/lib/api/sandbox/telemetry";
 import type { Authenticator } from "@app/lib/auth";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
@@ -44,51 +43,155 @@ const DEFAULT_EXEC_TIMEOUT_MS = 60_000;
 const MAX_OUTPUT_LINES = 2_000;
 const MAX_OUTPUT_BYTES = 50_000;
 
-// TODO(SANDBOX-S1): Offload large outputs to a temporary file on the sandbox
-// (like coding agents do). The model would only see tail-truncated output plus
-// the path to the full output file, which it can read back if needed.
-function formatExecOutput(result: ExecResult): string {
-  const parts: string[] = [];
+function textSize(text: string): { lines: number; bytes: number } {
+  return {
+    lines: text.split("\n").length,
+    bytes: Buffer.byteLength(text, "utf-8"),
+  };
+}
 
-  if (result.stdout) {
-    parts.push(result.stdout);
+function fitsInBudget(
+  text: string,
+  maxLines: number,
+  maxBytes: number
+): boolean {
+  const { lines, bytes } = textSize(text);
+  return lines <= maxLines && bytes <= maxBytes;
+}
+
+// Truncate a text block at a line boundary so it stays within limits.
+function truncateText(
+  text: string,
+  maxLines: number,
+  maxBytes: number
+): string {
+  let result = text;
+
+  const lines = result.split("\n");
+  if (lines.length > maxLines) {
+    result = lines.slice(0, maxLines).join("\n");
   }
-  if (result.stderr) {
-    parts.push(`[stderr]\n${result.stderr}`);
-  }
-  if (result.exitCode !== 0) {
-    parts.push(`[exit code: ${result.exitCode}]`);
-  }
 
-  let output = parts.join("\n");
-
-  const lines = output.split("\n");
-  const byteLength = Buffer.byteLength(output, "utf-8");
-
-  if (lines.length > MAX_OUTPUT_LINES || byteLength > MAX_OUTPUT_BYTES) {
-    if (lines.length > MAX_OUTPUT_LINES) {
-      output = lines.slice(0, MAX_OUTPUT_LINES).join("\n");
-    }
-
-    if (Buffer.byteLength(output, "utf-8") > MAX_OUTPUT_BYTES) {
-      // Truncate to MAX_OUTPUT_BYTES at a line boundary.
-      const truncatedLines: string[] = [];
-      let currentBytes = 0;
-      for (const line of output.split("\n")) {
-        const lineBytes = Buffer.byteLength(line + "\n", "utf-8");
-        if (currentBytes + lineBytes > MAX_OUTPUT_BYTES) {
-          break;
-        }
-        truncatedLines.push(line);
-        currentBytes += lineBytes;
+  if (Buffer.byteLength(result, "utf-8") > maxBytes) {
+    const kept: string[] = [];
+    let currentBytes = 0;
+    for (const line of result.split("\n")) {
+      const lineBytes = Buffer.byteLength(line + "\n", "utf-8");
+      if (currentBytes + lineBytes > maxBytes) {
+        break;
       }
-      output = truncatedLines.join("\n");
+      kept.push(line);
+      currentBytes += lineBytes;
     }
-
-    output += "\n[Output truncated — exceeded limit]";
+    result = kept.join("\n");
   }
 
-  return output || "(no output)";
+  return result;
+}
+
+interface TruncatedOutput {
+  stdout: string;
+  stderr: string;
+  stdoutTruncated: boolean;
+  stderrTruncated: boolean;
+}
+
+// Apply balanced truncation to stdout and stderr. When the combined output
+// exceeds the budget, the smaller stream is kept in full and the larger one
+// is truncated to fill the remainder. If both individually exceed half the
+// budget, they are split evenly.
+function truncateExecOutput(stdout: string, stderr: string): TruncatedOutput {
+  if (fitsInBudget(stdout + stderr, MAX_OUTPUT_LINES, MAX_OUTPUT_BYTES)) {
+    return { stdout, stderr, stdoutTruncated: false, stderrTruncated: false };
+  }
+
+  const stdoutSize = textSize(stdout);
+  const stderrSize = textSize(stderr);
+  const halfLines = Math.floor(MAX_OUTPUT_LINES / 2);
+  const halfBytes = Math.floor(MAX_OUTPUT_BYTES / 2);
+
+  const smaller = stdoutSize.bytes <= stderrSize.bytes ? "stdout" : "stderr";
+
+  if (
+    !fitsInBudget(smaller === "stdout" ? stdout : stderr, halfLines, halfBytes)
+  ) {
+    return {
+      stdout: truncateText(stdout, halfLines, halfBytes),
+      stderr: truncateText(stderr, halfLines, halfBytes),
+      stdoutTruncated: true,
+      stderrTruncated: true,
+    };
+  }
+
+  if (smaller === "stderr") {
+    const budgetLines = Math.max(MAX_OUTPUT_LINES - stderrSize.lines, 0);
+    const budgetBytes = Math.max(MAX_OUTPUT_BYTES - stderrSize.bytes, 0);
+    return {
+      stdout: truncateText(stdout, budgetLines, budgetBytes),
+      stderr,
+      stdoutTruncated: true,
+      stderrTruncated: false,
+    };
+  }
+
+  const budgetLines = Math.max(MAX_OUTPUT_LINES - stdoutSize.lines, 0);
+  const budgetBytes = Math.max(MAX_OUTPUT_BYTES - stdoutSize.bytes, 0);
+  return {
+    stdout,
+    stderr: truncateText(stderr, budgetLines, budgetBytes),
+    stdoutTruncated: false,
+    stderrTruncated: true,
+  };
+}
+
+interface FormatExecOutputOpts {
+  denyLogEntries?: string[];
+  stdoutFullPath?: string;
+  stderrFullPath?: string;
+}
+
+function formatExecOutput(
+  truncated: TruncatedOutput,
+  exitCode: number,
+  opts?: FormatExecOutputOpts
+): string {
+  const sections: string[] = [];
+
+  if (truncated.stdout) {
+    sections.push(`<stdout>\n${truncated.stdout}\n</stdout>`);
+  }
+  if (truncated.stdoutTruncated) {
+    const path = opts?.stdoutFullPath;
+    sections.push(
+      path
+        ? `<stdout_truncated>${path}</stdout_truncated>`
+        : "<stdout_truncated />"
+    );
+  }
+
+  if (truncated.stderr) {
+    sections.push(`<stderr>\n${truncated.stderr}\n</stderr>`);
+  }
+  if (truncated.stderrTruncated) {
+    const path = opts?.stderrFullPath;
+    sections.push(
+      path
+        ? `<stderr_truncated>${path}</stderr_truncated>`
+        : "<stderr_truncated />"
+    );
+  }
+
+  if (exitCode !== 0) {
+    sections.push(`<exit_code>${exitCode}</exit_code>`);
+  }
+
+  if (opts?.denyLogEntries && opts.denyLogEntries.length > 0) {
+    sections.push(
+      `<network_proxy_logs>\n${opts.denyLogEntries.join("\n")}\n</network_proxy_logs>`
+    );
+  }
+
+  return sections.join("\n") || "(no output)";
 }
 
 export function createSandboxTools(
@@ -256,8 +359,41 @@ export async function runSandboxBashTool(
     return new Err(new MCPError(execResult.error.message));
   }
 
-  let output = formatExecOutput(execResult.value);
+  const truncated = truncateExecOutput(
+    execResult.value.stdout || "",
+    execResult.value.stderr || ""
+  );
 
+  // When output was truncated, write the full content to temp files on the
+  // sandbox so the model can read/grep them if needed.
+  let stdoutFullPath: string | undefined;
+  let stderrFullPath: string | undefined;
+  if (truncated.stdoutTruncated && execResult.value.stdout) {
+    stdoutFullPath = `/tmp/dust-exec-${execId}-stdout.log`;
+    void sandbox
+      .writeFile(
+        auth,
+        stdoutFullPath,
+        new TextEncoder().encode(execResult.value.stdout).buffer
+      )
+      .catch((err) =>
+        logger.error({ err }, "Failed to write full stdout to sandbox")
+      );
+  }
+  if (truncated.stderrTruncated && execResult.value.stderr) {
+    stderrFullPath = `/tmp/dust-exec-${execId}-stderr.log`;
+    void sandbox
+      .writeFile(
+        auth,
+        stderrFullPath,
+        new TextEncoder().encode(execResult.value.stderr).buffer
+      )
+      .catch((err) =>
+        logger.error({ err }, "Failed to write full stderr to sandbox")
+      );
+  }
+
+  let denyLogEntries: string[] | undefined;
   const denyResult = await readNewDenyLogEntries(auth, sandbox);
   if (denyResult.isErr()) {
     logger.warn(
@@ -265,10 +401,14 @@ export async function runSandboxBashTool(
       "Failed to read egress deny log"
     );
   } else if (denyResult.value.length > 0) {
-    output +=
-      "\n[network proxy] Recent outbound request(s) denied by the sandbox proxy:\n" +
-      denyResult.value.map((line) => `  ${line}`).join("\n");
+    denyLogEntries = denyResult.value;
   }
+
+  const output = formatExecOutput(truncated, execResult.value.exitCode, {
+    denyLogEntries,
+    stdoutFullPath,
+    stderrFullPath,
+  });
 
   return new Ok([{ type: "text" as const, text: output }]);
 }
