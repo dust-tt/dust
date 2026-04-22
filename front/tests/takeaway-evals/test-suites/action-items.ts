@@ -1,5 +1,7 @@
 import {
   maxActionItems,
+  maxKeyDecisions,
+  maxNotableFacts,
   shouldExtractActionItem,
   shouldNotAssignTo,
   shouldNotExtractActionItem,
@@ -82,7 +84,7 @@ Score 3 if all 3 items extracted with correct assignees and open status.`,
         }),
         shouldNotExtractActionItem("look into"),
         shouldNotExtractActionItem("check for errors"),
-        maxActionItems(2),
+        maxActionItems(1),
       ],
       judgeCriteria: `This is a conversation with an AI agent. The agent's offer to "look into logs"
 and "check for errors" is NOT an action item — it's being handled in real-time.
@@ -223,6 +225,43 @@ Score 0 if vague items are extracted as action items.
 Score 1 if the hotfix is missing.
 Score 2 if the hotfix is extracted but vague items also appear.
 Score 3 if only the hotfix is extracted as an action item.`,
+    },
+
+    // ── No inline completion should be registered ──────────────────────────────
+
+    {
+      scenarioId: "no-inline-completion-done",
+      document: {
+        id: "doc-6",
+        title: "Morning update",
+        type: "slack",
+        text: [
+          "Alice: Quick update — I fixed the login bug this morning, the patch is live.",
+          "Bob: Thanks! I also deployed the rate limiter changes yesterday evening.",
+          "Alice: Nice. Bob, can you also update the runbook with the new rate limits?",
+        ].join("\n"),
+        uri: "https://example.com/doc-6",
+      },
+      members: [
+        { sId: "user-alice", fullName: "Alice Martin", email: "alice@co.com" },
+        { sId: "user-bob", fullName: "Bob Chen", email: "bob@co.com" },
+      ],
+      expectedAssertions: [
+        shouldExtractActionItem("runbook", {
+          assigneeUserId: "user-bob",
+          status: "open",
+        }),
+        maxActionItems(1),
+        maxNotableFacts(0),
+        maxKeyDecisions(0),
+      ],
+      judgeCriteria: `One new task assigned:
+- Bob asked to update the runbook (open)
+
+No notable facts or key decisions should be extracted from this status update.
+
+Score 0 if no tasks are extracted as open.
+Score 3 if the task item are correct with right statuses and no spurious extractions.`,
     },
   ],
 };
