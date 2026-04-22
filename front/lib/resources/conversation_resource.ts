@@ -36,8 +36,8 @@ import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   ConversationForkedChildType,
   ConversationForkedFromType,
-  ConversationListItemType,
   ConversationForkingDataType,
+  ConversationListItemType,
   ConversationMCPServerViewType,
   ConversationMetadata,
   ConversationUrlAccessMode,
