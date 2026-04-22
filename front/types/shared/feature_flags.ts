@@ -295,6 +295,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Show the browser extension MCP tools toggle in workspace access settings",
     stage: "dust_only",
   },
+  sensitivity_labels: {
+    description:
+      "Enable Microsoft sensitivity labels for data classification on connectors and MCP servers",
+    stage: "on_demand",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";

@@ -10,6 +10,12 @@ import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
+export type WorkspaceSensitivityLabelConfigType = {
+  sourceType: SensitivityLabelSourceType;
+  sourceId: string;
+  allowedLabels: AllowedLabel[];
+};
+
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface WorkspaceSensitivityLabelConfigResource
   extends ReadonlyAttributesType<WorkspaceSensitivityLabelConfigModel> {}
@@ -88,6 +94,14 @@ export class WorkspaceSensitivityLabelConfigResource extends BaseResource<Worksp
       transaction,
     });
     return new Ok(this.id);
+  }
+
+  toJSON(): WorkspaceSensitivityLabelConfigType {
+    return {
+      sourceType: this.sourceType,
+      sourceId: this.sourceId,
+      allowedLabels: this.allowedLabels,
+    };
   }
 
   toLogJSON() {

@@ -342,7 +342,7 @@ export const OUTLOOK_MAIL_SERVER = {
       provider: "microsoft_tools",
       supported_use_cases: ["personal_actions", "platform_actions"],
       scope:
-        "Mail.ReadWrite.Shared Mail.Send Contacts.ReadWrite Contacts.ReadWrite.Shared User.Read offline_access",
+        "Mail.ReadWrite.Shared Mail.Send Contacts.ReadWrite Contacts.ReadWrite.Shared User.Read SensitivityLabel.Read offline_access",
       availableScopes: [
         {
           value: "Mail.ReadWrite",
