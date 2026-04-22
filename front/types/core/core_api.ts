@@ -38,6 +38,7 @@ import chunk from "lodash/chunk";
 
 import type { EmbeddingProviderIdType } from "../assistant/models/types";
 import { formatDataSourceDisplayName } from "@app/types/core/utils";
+import { internalFetch } from "@app/lib/api/internal_fetch";
 
 export const MAX_CHUNK_SIZE = 512;
 
@@ -241,9 +242,6 @@ export const CoreAPIDatasourceViewFilterSchema = t.intersection([
 export type CoreAPIDatasourceViewFilter = t.TypeOf<
   typeof CoreAPIDatasourceViewFilterSchema
 >;
-
-// Edge-ngram starts at 2 characters.
-export const MIN_SEARCH_QUERY_SIZE = 2;
 
 export const CoreAPINodesSearchFilterSchema = t.intersection([
   t.type({
@@ -2356,8 +2354,7 @@ export class CoreAPI {
           Authorization: `Bearer ${this._apiKey}`,
         };
       }
-      // eslint-disable-next-line no-restricted-globals
-      const res = await fetch(url, params);
+      const res = await internalFetch(url, params);
       return new Ok({ response: res, duration: Date.now() - now });
     } catch (e) {
       const duration = Date.now() - now;

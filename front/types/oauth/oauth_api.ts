@@ -12,6 +12,7 @@ import type {
 import type { LoggerInterface } from "../shared/logger";
 import type { Result } from "../shared/result";
 import { Err, Ok } from "../shared/result";
+import { internalFetch } from "@app/lib/api/internal_fetch";
 
 export type OAuthAPIError = {
   message: string;
@@ -270,8 +271,7 @@ export class OAuthAPI {
       };
     }
     try {
-      // eslint-disable-next-line no-restricted-globals
-      const res = await fetch(url, params);
+      const res = await internalFetch(url, params);
       return new Ok({ response: res, duration: Date.now() - now });
     } catch (e) {
       const duration = Date.now() - now;
