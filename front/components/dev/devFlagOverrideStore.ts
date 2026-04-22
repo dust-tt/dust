@@ -1,56 +1,11 @@
-// Reactive store that bridges useFeatureFlags (main bundle) with the dev panel
-// feature flag overrides (lazy-loaded chunk).
+// Thin reactive store bridging useFeatureFlags (main bundle) with the dev panel
+// override logic (lazy chunk). Imported by AuthContext so it must stay tiny with
+// zero side effects.
 //
-// ## Problem
-//
-// useFeatureFlags() in AuthContext needs to reflect dev panel overrides in
-// real time, but the override logic (sessionStorage reads, validation, apply)
-// lives in devFeatureFlagOverrides.ts which is part of the lazy-loaded dev
-// panel chunk. We can't import it from AuthContext without pulling it into the
-// main bundle.
-//
-// ## Solution
-//
-// This file acts as a thin indirection layer:
-//
-//   ┌─────────────────────┐       ┌──────────────────────────┐
-//   │  AuthContext.tsx     │       │  devFeatureFlagOverrides  │
-//   │  (main bundle)      │       │  (lazy chunk)             │
-//   │                     │       │                           │
-//   │  useFeatureFlags()  │       │  reads sessionStorage     │
-//   │    ├ subscribe ──────┤──┐    │  validates flags          │
-//   │    ├ getVersion ─────┤  │    │  applies overrides        │
-//   │    └ apply ──────────┤  │    │                           │
-//   └─────────────────────┘  │    │  on module load:          │
-//                            │    │    registerDevFlag─────────┤──► sets _applyOverrides
-//                            │    │                           │
-//                            │    │  on override change:      │
-//                            │    │    notifyDevFlag───────────┤──► bumps _version
-//                            │    └──────────────────────────┘     → triggers re-render
-//                            │
-//                    devFlagOverrideStore.ts
-//                    (this file, main bundle, ~300 bytes)
-//                    Holds: _version, _listeners, _applyOverrides
-//
-// ## Lifecycle
-//
-// 1. Page loads. DEV_MODE_ACTIVE is false → useFeatureFlags uses noopSubscribe,
-//    _applyOverrides is identity. Zero runtime cost.
-//
-// 2. Page loads with dev mode on (localStorage flag set):
-//    a. useFeatureFlags subscribes via devFlagSubscribe, reads devFlagGetVersion.
-//       _applyOverrides is still identity → returns serverFlags as-is.
-//    b. AppAuthContextLayout lazy-imports DevFeatureFlagPanel.
-//    c. That chunk imports devFeatureFlagOverrides.ts, which at module load
-//       calls registerDevFlagOverrides(applyFn).
-//    d. registerDevFlagOverrides sets _applyOverrides and calls notify.
-//    e. notify bumps _version and fires _listeners → useSyncExternalStore
-//       detects the snapshot change → React re-renders → useMemo calls
-//       devFlagApply(serverFlags) → now applies overrides from sessionStorage.
-//
-// 3. User toggles a flag in the dev panel → writeFeatureFlagOverrides() updates
-//    sessionStorage then calls notifyDevFlagOverridesChanged() → same re-render
-//    cycle as step 2e.
+// The lazy-loaded devFeatureFlagOverrides module calls registerDevFlagOverrides()
+// at load time to inject its apply function, and notifyDevFlagOverridesChanged()
+// on each override change to trigger re-renders via useSyncExternalStore.
+// When dev mode is off, nothing registers and _applyOverrides stays as identity.
 
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import { DEV_MODE_ACTIVE } from "./devModeConstants";
