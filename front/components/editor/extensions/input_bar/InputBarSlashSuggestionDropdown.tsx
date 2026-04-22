@@ -137,5 +137,4 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
   }
 );
 
-InputBarSlashSuggestionDropdown.displayName =
-  "InputBarSlashSuggestionDropdown";
+InputBarSlashSuggestionDropdown.displayName = "InputBarSlashSuggestionDropdown";

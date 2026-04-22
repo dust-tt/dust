@@ -69,9 +69,7 @@ export const InputBarSlashSuggestionExtension =
             return {
               onStart: (props) => {
                 activeEditorView = props.editor.view;
-                component = new ReactRenderer(
-                  InputBarSlashSuggestionDropdown,
-                  {
+                component = new ReactRenderer(InputBarSlashSuggestionDropdown, {
                   props: {
                     ...props,
                     onClose: closeSuggestionDropdown,
@@ -79,8 +77,7 @@ export const InputBarSlashSuggestionExtension =
                     selectedSkillIdsRef: extensionOptions.selectedSkillIdsRef,
                   },
                   editor: props.editor,
-                  }
-                );
+                });
 
                 if (!props.clientRect) {
                   return;
