@@ -20,9 +20,10 @@ export function registerGetAgentConfigTool(
   const { getFormValues, getPendingSuggestions, getCommittedInstructionsHtml } =
     callbacks;
 
-  mcpServer.tool(
+  mcpServer.registerTool(
     "get_agent_config",
-    `Get the current (unsaved) agent configuration from the agent builder form.
+    {
+      description: `Get the current (unsaved) agent configuration from the agent builder form.
 Use this to understand what the user is currently configuring for their agent.
 
 The response includes:
@@ -30,7 +31,12 @@ The response includes:
 - instructionsHtml: HTML version of instructions with data-block-id attributes on each block.
   Use these block IDs when making instruction suggestions to target specific blocks.
 - pendingSuggestions: Array of suggestions that have been made but not yet accepted/rejected by the user`,
-    {},
+      _meta: {
+        dust: {
+          timeoutMs: 10_000,
+        },
+      },
+    },
     () => {
       const formData = getFormValues();
 

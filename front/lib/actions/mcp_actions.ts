@@ -258,6 +258,7 @@ function makeClientSideMCPToolConfigurations(
     icon: config.icon,
     argumentsRequiringApproval: tool.argumentsRequiringApproval,
     displayLabels: tool.displayLabels,
+    ...(tool.timeoutMs && { timeoutMs: tool.timeoutMs }),
   }));
 }
 
@@ -1279,6 +1280,7 @@ async function listToolsForClientSideMCPServer(
           stakeLevel:
             dustMeta?.stake ?? DEFAULT_CLIENT_SIDE_MCP_TOOL_STAKE_LEVEL,
           argumentsRequiringApproval: dustMeta?.argumentsRequiringApproval,
+          ...(dustMeta?.timeoutMs && { timeoutMs: dustMeta.timeoutMs }),
         };
       }),
     ];
