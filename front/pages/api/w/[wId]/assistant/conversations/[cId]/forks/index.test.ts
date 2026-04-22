@@ -165,7 +165,7 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/forks", () => {
     const { conversationId } = res._getJSONData();
     const conversation = await fetchConversationOrThrow(auth, conversationId);
 
-    expect(conversation.title).toBe("Parent conversation (forked)");
+    expect(conversation.title).toBeNull();
     expect(conversation.forkedFrom).toEqual({
       parentConversationId: parentConversation.sId,
       parentConversationTitle: "Parent conversation",

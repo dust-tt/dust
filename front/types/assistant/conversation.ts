@@ -466,15 +466,20 @@ export type ConversationWithoutContentType = {
 
 type ConversationDisplayTitleInput = Pick<
   ConversationWithoutContentType,
-  "created" | "title"
+  "created" | "title" | "forkedFrom"
 >;
-
 export function getConversationDisplayTitle(
   conversation: ConversationDisplayTitleInput,
   now = new Date()
 ): string {
   if (conversation.title) {
     return conversation.title;
+  }
+
+  if (conversation.forkedFrom) {
+    return conversation.forkedFrom.parentConversationTitle
+      ? `Branched from '${conversation.forkedFrom.parentConversationTitle}'`
+      : "Branched conversation";
   }
 
   return moment(conversation.created).isSame(now, "day")
