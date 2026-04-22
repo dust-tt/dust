@@ -29,7 +29,9 @@ export function buildPromptForSourceType(
         "or tasks that a human explicitly stated they need to do outside the thread.\n" +
         "- A user asking the bots to do something (e.g., 'can you check X?', 'please look into Y') " +
         "is NOT an action item — it is a query being handled in real-time by the bots.\n" +
-        "- Assignees and relevant users must always be human participants, never the bots.\n\n"
+        "- Assignees and relevant users must always be human participants, never the bots.\n" +
+        "- Short troubleshooting threads often have one action item at most and rarely contain " +
+        "notable facts or key decisions. Do not over-extract from casual back-and-forth.\n\n"
       );
     case "notion":
       return (

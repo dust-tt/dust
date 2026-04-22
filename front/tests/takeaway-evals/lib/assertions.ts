@@ -104,11 +104,41 @@ export function validateTakeawayAssertion(
       return { success: true };
     }
 
+    case "minNotableFacts": {
+      if (result.notableFacts.length < assertion.count) {
+        return {
+          success: false,
+          error: `Expected at least ${assertion.count} notable facts, but got ${result.notableFacts.length}`,
+        };
+      }
+      return { success: true };
+    }
+
     case "maxActionItems": {
       if (result.actionItems.length > assertion.count) {
         return {
           success: false,
           error: `Expected at most ${assertion.count} action items, but got ${result.actionItems.length}`,
+        };
+      }
+      return { success: true };
+    }
+
+    case "maxKeyDecisions": {
+      if (result.keyDecisions.length > assertion.count) {
+        return {
+          success: false,
+          error: `Expected at most ${assertion.count} key decisions, but got ${result.keyDecisions.length}`,
+        };
+      }
+      return { success: true };
+    }
+
+    case "maxNotableFacts": {
+      if (result.notableFacts.length > assertion.count) {
+        return {
+          success: false,
+          error: `Expected at most ${assertion.count} notable facts, but got ${result.notableFacts.length}`,
         };
       }
       return { success: true };
