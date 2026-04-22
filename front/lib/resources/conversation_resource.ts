@@ -816,7 +816,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     Array<{
       userId: string;
       actionRequired: boolean;
-      lastReadMs: number | null;
     }>
   > {
     const participants = await ConversationParticipantModel.findAll({
@@ -828,30 +827,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       include: [{ model: UserModel, attributes: ["sId"] }],
     });
 
-    const userModelIds = participants.map((p) => p.userId);
-    const reads = await UserConversationReadsModel.findAll({
-      where: {
-        conversationId: this.id,
-        workspaceId: this.workspaceId,
-        userId: userModelIds,
-      },
-      attributes: ["userId", "lastReadAt"],
-    });
-    const readsByUserId = new Map(reads.map((r) => [r.userId, r.lastReadAt]));
-
     return participants.flatMap((p) => {
       if (!p.user) {
         return [];
       }
-
-      const lastReadAt = readsByUserId.get(p.userId) ?? null;
-      return [
-        {
-          userId: p.user.sId,
-          actionRequired: p.actionRequired,
-          lastReadMs: lastReadAt ? lastReadAt.getTime() : null,
-        },
-      ];
+      return [{ userId: p.user.sId, actionRequired: p.actionRequired }];
     });
   }
 
@@ -2159,12 +2139,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       { transaction }
     );
 
-    await this.triggerEsIndexing(
-      auth,
-      conversation.sId,
-      auth.getNonNullableWorkspace().sId
-    );
-
     return new Ok(updated);
   }
 
@@ -2186,12 +2160,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         workspaceId: auth.getNonNullableWorkspace().id,
       },
     });
-
-    await this.triggerEsIndexing(
-      auth,
-      conversation.sId,
-      auth.getNonNullableWorkspace().sId
-    );
 
     return new Ok(undefined);
   }
