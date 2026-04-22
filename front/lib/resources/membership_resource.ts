@@ -307,13 +307,21 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     }
 
     // Get all the memberships matching the criteria.
-    const { rows, count } = await this.model.findAndCountAll({
+    const rows = await this.model.findAll({
       ...findOptions,
       // WORKSPACE_ISOLATION_BYPASS: Used to find latest memberships across users and workspace is
       // optional.
       // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
+
+    let count = rows.length;
+
+    // Only do the count if we are paginating, otherwise we can use the length of the rows as there is no limit by default
+    if (paginationParams) {
+      count = await MembershipModel.count(findOptions);
+    }
+
     // Then, we only keep the latest membership for each (user, workspace).
     const latestMembershipByUserAndWorkspace = new Map<
       string,
