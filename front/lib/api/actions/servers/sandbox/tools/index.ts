@@ -15,6 +15,7 @@ import {
 } from "@app/lib/api/sandbox/access_tokens";
 import {
   checkEgressForwarderHealth,
+  readNewDenyLogEntries,
   sandboxSupportsEgressForwarding,
   setupEgressForwarder,
 } from "@app/lib/api/sandbox/egress";
@@ -278,6 +279,21 @@ export async function runSandboxBashTool(
     return new Err(new MCPError(execResult.error.message));
   }
 
-  const output = formatExecOutput(execResult.value);
+  let output = formatExecOutput(execResult.value);
+
+  if (execUser) {
+    const denyResult = await readNewDenyLogEntries(auth, sandbox);
+    if (denyResult.isErr()) {
+      logger.warn(
+        { err: denyResult.error, providerId: sandbox.providerId },
+        "Failed to read egress deny log"
+      );
+    } else if (denyResult.value.length > 0) {
+      output +=
+        "\n[network proxy] Recent outbound request(s) denied by the sandbox proxy:\n" +
+        denyResult.value.map((line) => `  ${line}`).join("\n");
+    }
+  }
+
   return new Ok([{ type: "text" as const, text: output }]);
 }

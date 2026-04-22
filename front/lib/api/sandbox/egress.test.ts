@@ -50,6 +50,7 @@ vi.mock("node:dns/promises", () => ({
 
 import {
   mintEgressJwt,
+  readNewDenyLogEntries,
   sandboxSupportsEgressForwarding,
   setupEgressForwarder,
 } from "./egress";
@@ -153,6 +154,48 @@ describe("sandbox egress helpers", () => {
       }),
       "Sandbox egress forwarder is healthy"
     );
+  });
+
+  it("returns new deny log entries and advances the offset", async () => {
+    const sandbox = {
+      exec: vi.fn().mockResolvedValue(
+        new Ok({
+          exitCode: 0,
+          stdout: "google.com:443 denied\nevil.com:80 denied\n",
+          stderr: "",
+        })
+      ),
+    };
+
+    const result = await readNewDenyLogEntries({} as never, sandbox as never);
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toEqual([
+        "google.com:443 denied",
+        "evil.com:80 denied",
+      ]);
+    }
+    expect(sandbox.exec).toHaveBeenCalledWith(
+      {},
+      expect.stringContaining("dust-egress-denied.log"),
+      { user: "root", timeoutMs: 2_000 }
+    );
+  });
+
+  it("returns empty array when there are no new deny log entries", async () => {
+    const sandbox = {
+      exec: vi
+        .fn()
+        .mockResolvedValue(new Ok({ exitCode: 0, stdout: "", stderr: "" })),
+    };
+
+    const result = await readNewDenyLogEntries({} as never, sandbox as never);
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toEqual([]);
+    }
   });
 
   it("surfaces setup failures from sandbox commands", async () => {

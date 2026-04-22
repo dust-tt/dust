@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   mockCheckEgressForwarderHealth,
+  mockReadNewDenyLogEntries,
   mockGenerateExecId,
   mockGenerateSandboxExecToken,
   mockGetSandboxImage,
@@ -17,6 +18,7 @@ const {
   mockEnsureActive,
 } = vi.hoisted(() => ({
   mockCheckEgressForwarderHealth: vi.fn(),
+  mockReadNewDenyLogEntries: vi.fn(),
   mockGenerateExecId: vi.fn(),
   mockGenerateSandboxExecToken: vi.fn(),
   mockGetSandboxImage: vi.fn(),
@@ -40,6 +42,7 @@ vi.mock("@app/lib/api/config", () => ({
 
 vi.mock("@app/lib/api/sandbox/egress", () => ({
   checkEgressForwarderHealth: mockCheckEgressForwarderHealth,
+  readNewDenyLogEntries: mockReadNewDenyLogEntries,
   sandboxSupportsEgressForwarding: mockSandboxSupportsEgressForwarding,
   setupEgressForwarder: mockSetupEgressForwarder,
 }));
@@ -96,6 +99,7 @@ describe("runSandboxBashTool", () => {
     mockGetSandboxImage.mockReturnValue(new Ok({}));
     mockMountConversationFiles.mockResolvedValue(new Ok(undefined));
     mockRefreshGcsToken.mockResolvedValue(new Ok(undefined));
+    mockReadNewDenyLogEntries.mockResolvedValue(new Ok([]));
     mockRevokeExecToken.mockResolvedValue(undefined);
     mockSetupEgressForwarder.mockResolvedValue(new Ok(undefined));
     mockStartTelemetry.mockResolvedValue(undefined);
