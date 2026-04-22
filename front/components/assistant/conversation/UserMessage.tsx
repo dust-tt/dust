@@ -238,11 +238,17 @@ export function UserMessage({
       return;
     }
 
+    // Only mention the agent reply when the message actually triggered one.
+    const hasAgentReply = message.richMentions.some(isRichAgentMention);
+    const replyNote = hasAgentReply
+      ? " The agent's reply will also be removed."
+      : "";
+
     const confirmed = await confirm({
       title: isCurrentUser ? "Delete your message" : "Delete user message",
       message: isCurrentUser
-        ? "Are you sure you want to delete this message? This action cannot be undone."
-        : "Are you sure you want to delete this user's message? This the message will be deleted for all participants.",
+        ? `Are you sure you want to delete this message?${replyNote} This action cannot be undone.`
+        : `Are you sure you want to delete this user's message?${replyNote} This will be reflected for all participants.`,
       validateLabel: "Delete",
       validateVariant: "warning",
     });
@@ -267,6 +273,7 @@ export function UserMessage({
     deleteMessage,
     isCurrentUser,
     message.sId,
+    message.richMentions,
     methods,
   ]);
 

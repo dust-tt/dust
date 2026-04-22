@@ -422,8 +422,14 @@ export function AgentMessage({
     [agentMessage.citations]
   );
 
-  // GenerationContext: to know if we are generating or not.
-  const generationContext = useGenerationContext();
+  // GenerationContext: to know if we are generating or not. Destructure the (stable) mutators
+  // so the effect below doesn't re-run on every context value change — which happens on every
+  // add/remove since the context value ref is tied to the generatingMessages state.
+  const {
+    addGeneratingMessage,
+    removeGeneratingMessage,
+    getConversationGeneratingMessages,
+  } = useGenerationContext();
 
   // Once a handoff user message exists for this agent message, the agent has
   // effectively handed over: the child agent owns the generation from here.
@@ -440,18 +446,24 @@ export function AgentMessage({
 
   useEffect(() => {
     if (shouldStream && !isAgentMessageHandingOver) {
-      generationContext.addGeneratingMessage({
+      addGeneratingMessage({
         messageId: sId,
         conversationId,
         agentId: agentMessage.configuration.sId,
       });
     } else {
-      generationContext.removeGeneratingMessage({ messageId: sId });
+      removeGeneratingMessage({ messageId: sId });
     }
+    // Clean up on unmount so we don't leak a generating entry (e.g. when the message is replaced
+    // by a v+1 deletion placeholder mid-stream).
+    return () => {
+      removeGeneratingMessage({ messageId: sId });
+    };
   }, [
     shouldStream,
     isAgentMessageHandingOver,
-    generationContext,
+    addGeneratingMessage,
+    removeGeneratingMessage,
     sId,
     conversationId,
     agentMessage.configuration.sId,
@@ -546,8 +558,7 @@ export function AgentMessage({
   const hoverButtons: ReactElement[] = [];
 
   const hasMultiAgents =
-    generationContext.getConversationGeneratingMessages(conversationId).length >
-    1;
+    getConversationGeneratingMessages(conversationId).length > 1;
 
   // Show stop agent button only when streaming with multiple agents
   if (hasMultiAgents && shouldStream) {
