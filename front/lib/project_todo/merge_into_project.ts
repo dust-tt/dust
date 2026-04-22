@@ -406,11 +406,9 @@ async function createOrLinkTodos(
           source: candidate.source,
         });
 
-        // For agent-created todos also propagate content updates. User-created
-        // todos are left untouched: the user's text and status take priority.
-        if (match.createdByType === "agent") {
-          await updateTodoIfChanged(match, auth, candidate.blob);
-        }
+        // User-intent guard lives in updateTodoIfChanged — it is a no-op when
+        // the target todo was created by a user or already marked done by one.
+        await updateTodoIfChanged(match, auth, candidate.blob);
 
         deduplicated++;
 
@@ -468,13 +466,27 @@ async function createOrLinkTodos(
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-// Creates a new version of a todo only when text, status, or doneAt has changed.
-// Returns true if an update was performed.
-async function updateTodoIfChanged(
+// Creates a new version of a todo only when text, status, or doneAt has
+// changed, AND the todo's state is not user-owned. Returns true if an update
+// was performed.
+//
+// The agent path must never overwrite user-owned state:
+//   - If the todo was created by a user, the user's phrasing and status win.
+//   - If an agent-created todo was then marked done by a user, the user's
+//     completion sticks — even if the next extraction still reports the item
+//     as open.
+export async function updateTodoIfChanged(
   todo: ProjectTodoResource,
   auth: Authenticator,
   blob: TodoBlob
 ): Promise<boolean> {
+  if (todo.createdByType !== "agent") {
+    return false;
+  }
+  if (todo.markedAsDoneByType === "user") {
+    return false;
+  }
+
   const textChanged = todo.text !== blob.text;
   const statusChanged = todo.status !== blob.status;
   const doneAtChanged =
