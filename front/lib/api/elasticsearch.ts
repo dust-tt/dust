@@ -10,15 +10,17 @@ let esClient: Client | null = null;
 export const ANALYTICS_ALIAS_NAME = "front.agent_message_analytics";
 export const USER_SEARCH_ALIAS_NAME = "front.user_search";
 export const AGENT_DOCUMENT_OUTPUTS_ALIAS_NAME = "front.agent_document_outputs";
+export const CONVERSATION_SEARCH_ALIAS_NAME = "front.conversation_search";
 
 /**
  * Mapping of index names to their directory locations.
  * This allows different features to organize their indices in feature-specific directories.
  */
 export const INDEX_DIRECTORIES: Record<string, string> = {
-  agent_message_analytics: "lib/analytics/indices",
-  user_search: "lib/user_search/indices",
   agent_document_outputs: "lib/analytics/indices",
+  agent_message_analytics: "lib/analytics/indices",
+  conversation_search: "lib/conversation_search/indices",
+  user_search: "lib/user_search/indices",
 };
 
 export interface ElasticsearchBaseDocument {
