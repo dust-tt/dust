@@ -174,6 +174,7 @@ export function WorkspaceSourceChart({
                 title="Source breakdown"
                 rows={rows}
                 activeKey={hoveredOrigin ?? selectedKey}
+                selectedKey={selectedKey}
               />
             );
           }}

@@ -69,6 +69,7 @@ interface ToolUsageTooltipProps extends TooltipContentProps<number, string> {
   toolsWithData: string[];
   displayNameMap: Map<string, string>;
   activeKey?: string;
+  selectedKey?: string;
 }
 
 function ToolUsageTooltip({
@@ -78,6 +79,7 @@ function ToolUsageTooltip({
   active,
   payload,
   activeKey,
+  selectedKey,
 }: ToolUsageTooltipProps) {
   if (!active || !payload || payload.length === 0) {
     return null;
@@ -110,7 +112,14 @@ function ToolUsageTooltip({
     });
   }
 
-  return <ChartTooltipCard title={title} rows={rows} activeKey={activeKey} />;
+  return (
+    <ChartTooltipCard
+      title={title}
+      rows={rows}
+      activeKey={activeKey}
+      selectedKey={selectedKey}
+    />
+  );
 }
 
 interface WorkspaceToolUsageChartProps {
@@ -240,8 +249,14 @@ export function WorkspaceToolUsageChart({
     }
   };
 
-  const { activeKey, isDimmed, decorate, hoverHandlers } =
-    useSelectableSeries();
+  const {
+    selectedKey,
+    activeKey,
+    isDimmed,
+    lineActiveDot,
+    decorate,
+    hoverHandlers,
+  } = useSelectableSeries();
 
   const legendItems = decorate(
     toolsWithData.map((tool) => ({
@@ -364,6 +379,7 @@ export function WorkspaceToolUsageChart({
               toolsWithData={toolsWithData}
               displayNameMap={displayNameMap}
               activeKey={activeKey}
+              selectedKey={selectedKey}
             />
           )}
           cursor={false}
@@ -389,6 +405,8 @@ export function WorkspaceToolUsageChart({
             )}
             stroke="currentColor"
             dot={false}
+            activeDot={lineActiveDot(tool)}
+            isAnimationActive={false}
             {...hoverHandlers(tool)}
           />
         ))}

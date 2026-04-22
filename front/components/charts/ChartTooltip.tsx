@@ -32,6 +32,7 @@ interface ChartTooltipProps {
   rows: TooltipRow[];
   footer?: string;
   activeKey?: string;
+  selectedKey?: string;
 }
 
 export function ChartTooltipCard({
@@ -39,7 +40,17 @@ export function ChartTooltipCard({
   rows,
   footer,
   activeKey,
+  selectedKey,
 }: ChartTooltipProps) {
+  const visibleRows =
+    selectedKey !== undefined
+      ? rows.filter((r) => (r.key ?? r.label) === selectedKey)
+      : rows;
+
+  if (visibleRows.length === 0) {
+    return null;
+  }
+
   return (
     <div
       role="tooltip"
@@ -51,7 +62,7 @@ export function ChartTooltipCard({
         </div>
       )}
       <ul className="space-y-1.5">
-        {rows.map((r) => {
+        {visibleRows.map((r) => {
           const rowKey = r.key ?? r.label;
           const isActive = rowKey === activeKey;
           return (

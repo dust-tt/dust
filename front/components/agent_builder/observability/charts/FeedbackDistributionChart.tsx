@@ -67,8 +67,14 @@ export function FeedbackDistributionChart({
     disabled: !workspaceId || !agentConfigurationId || !isCustomAgent,
   });
 
-  const { activeKey, isDimmed, decorate, hoverHandlers } =
-    useSelectableSeries();
+  const {
+    selectedKey,
+    activeKey,
+    isDimmed,
+    lineActiveDot,
+    decorate,
+    hoverHandlers,
+  } = useSelectableSeries();
 
   const legendItems = decorate(
     legendFromConstant(
@@ -134,7 +140,11 @@ export function FeedbackDistributionChart({
         />
         <Tooltip
           content={(props: TooltipContentProps<number, string>) => (
-            <FeedbackDistributionTooltip {...props} activeKey={activeKey} />
+            <FeedbackDistributionTooltip
+              {...props}
+              activeKey={activeKey}
+              selectedKey={selectedKey}
+            />
           )}
           cursor={false}
           wrapperStyle={{ outline: "none", zIndex: 50 }}
@@ -157,6 +167,8 @@ export function FeedbackDistributionChart({
           stroke="currentColor"
           strokeWidth={2}
           dot={false}
+          activeDot={lineActiveDot("positive")}
+          isAnimationActive={false}
           {...hoverHandlers("positive")}
         />
         <Line
@@ -171,6 +183,8 @@ export function FeedbackDistributionChart({
           stroke="currentColor"
           strokeWidth={2}
           dot={false}
+          activeDot={lineActiveDot("negative")}
+          isAnimationActive={false}
           {...hoverHandlers("negative")}
         />
         {isCustomAgent && (
