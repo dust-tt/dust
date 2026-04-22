@@ -181,29 +181,46 @@ export interface ToolCall {
 }
 
 export type ToolCallAssertion =
-  | { type: "editSkillWithInstructions"; skillId: string }
-  | { type: "editSkillWithTool"; skillId: string; toolId: string }
-  | { type: "editSkill"; skillId: string }
+  | {
+      type: "editSkillWithInstructions";
+      skillId: string;
+      sourceSuggestionIds?: string[];
+    }
+  | {
+      type: "editSkillWithTool";
+      skillId: string;
+      toolId: string;
+      sourceSuggestionIds?: string[];
+    }
+  | { type: "editSkill"; skillId: string; sourceSuggestionIds?: string[] }
   | { type: "editSkillCallCount"; count: number }
+  | { type: "editSkillCallsWithSources"; sourceSuggestionIdGroups: string[][] }
   | { type: "noSuggestion" }
   | { type: "calledDescribeMcp"; mcpId: string };
 
 /** Expects an edit_skill call with instructionEdits for the given skill. */
-export function editSkillWithInstructions(skillId: string): ToolCallAssertion {
-  return { type: "editSkillWithInstructions", skillId };
+export function editSkillWithInstructions(
+  skillId: string,
+  sourceSuggestionIds?: string[]
+): ToolCallAssertion {
+  return { type: "editSkillWithInstructions", skillId, sourceSuggestionIds };
 }
 
 /** Expects an edit_skill call with a toolEdit for the given skill and tool. */
 export function editSkillWithTool(
   skillId: string,
-  toolId: string
+  toolId: string,
+  sourceSuggestionIds?: string[]
 ): ToolCallAssertion {
-  return { type: "editSkillWithTool", skillId, toolId };
+  return { type: "editSkillWithTool", skillId, toolId, sourceSuggestionIds };
 }
 
 /** Expects an edit_skill call for the given skill (any edit type). */
-export function editSkill(skillId: string): ToolCallAssertion {
-  return { type: "editSkill", skillId };
+export function editSkill(
+  skillId: string,
+  sourceSuggestionIds?: string[]
+): ToolCallAssertion {
+  return { type: "editSkill", skillId, sourceSuggestionIds };
 }
 
 export function noSuggestion(): ToolCallAssertion {
@@ -213,6 +230,16 @@ export function noSuggestion(): ToolCallAssertion {
 /** Expects exactly `count` edit_skill calls. */
 export function editSkillCallCount(count: number): ToolCallAssertion {
   return { type: "editSkillCallCount", count };
+}
+
+/**
+ * Expects one edit_skill call per group, where each call's sourceSuggestionIds
+ * matches exactly one of the provided groups (order of calls doesn't matter).
+ */
+export function editSkillCallsWithSources(
+  sourceSuggestionIdGroups: string[][]
+): ToolCallAssertion {
+  return { type: "editSkillCallsWithSources", sourceSuggestionIdGroups };
 }
 
 /** Expects describe_mcp to have been called with the given mcpId. */

@@ -62,11 +62,13 @@ There may be situations where suggestions are co-dependent. For example, there m
 
   suggestion_tool_calls: `
 You are provided all of the attributes associated with a conversation suggestion. You MUST use these EXACT attributes to create the final suggestion.
-The only exceptions are the "analysis" and "title" attributes; these MUST be newly authored for each final suggestion.
+The only exceptions are the "analysis", "title", and "sourceSuggestionIds" attributes; these MUST be newly authored for each final suggestion.
 
 For "analysis": Provide a user-facing explanation of why the suggestion is impactful and how many conversations support it. The end user does NOT care about the technical considerations behind your thought process.
 
 For "title": You MUST provide a short, action-oriented, user-facing title that summarizes what the suggestion changes. The title MUST be at most 25 characters. Examples: "Clarify response tone", "Add Slack search tool", "Remove GitHub tool". Each suggestion MUST have a distinct title.
+
+For "sourceSuggestionIds": You MUST include the sIds of ALL the source suggestions that were consolidated into this final suggestion. Each suggestion has an sId attribute. Every final suggestion MUST reference at least one source suggestion.
 `,
 };
 
@@ -80,7 +82,7 @@ export function buildSkillAggregationSystemPrompt(): string {
 function formatSuggestion(s: SkillSuggestionType): string {
   switch (s.kind) {
     case "edit": {
-      let xml = `<suggestion kind="edit"><skillId>${escapeXml(s.skillConfigurationId)}</skillId><analysis>${escapeXml(s.analysis ?? "N/A")}</analysis>`;
+      let xml = `<suggestion kind="edit" sId="${escapeXml(s.sId)}"><skillId>${escapeXml(s.skillConfigurationId)}</skillId><analysis>${escapeXml(s.analysis ?? "N/A")}</analysis>`;
       if (s.suggestion.instructionEdits?.length) {
         xml += "<instructionEdits>";
         for (const e of s.suggestion.instructionEdits) {
@@ -221,7 +223,15 @@ export async function buildSkillAggregationBatchMap(
     return null;
   }
 
-  return new Map([["aggregation", buildReinforcedSkillsLLMParams(ctx.prompt)]]);
+  return new Map([
+    [
+      "aggregation",
+      buildReinforcedSkillsLLMParams(
+        ctx.prompt,
+        "reinforcement_aggregate_suggestions"
+      ),
+    ],
+  ]);
 }
 
 /**

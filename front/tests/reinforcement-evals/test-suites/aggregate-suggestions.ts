@@ -1,5 +1,5 @@
 import {
-  editSkillCallCount,
+  editSkillCallsWithSources,
   editSkillWithInstructions,
   editSkillWithTool,
   mockTool,
@@ -32,6 +32,7 @@ function makeInstructionSuggestion(input: {
     state: "pending",
     source: input.source ?? "synthetic",
     sourceConversationId: null,
+    sourceConversationsCount: 0,
     updatedBy: null,
     kind: "edit",
     suggestion: {
@@ -62,6 +63,7 @@ function makeToolSuggestion(input: {
     state: "pending",
     source: input.source ?? "synthetic",
     sourceConversationId: null,
+    sourceConversationsCount: 0,
     updatedBy: null,
     kind: "edit",
     suggestion: {
@@ -136,7 +138,9 @@ export const aggregateSuggestionsSuite: TestSuite = {
         }),
       ],
       workspaceContext: WORKSPACE_CONTEXT,
-      expectedToolCalls: [editSkillWithInstructions(SKILL_SID)],
+      expectedToolCalls: [
+        editSkillWithInstructions(SKILL_SID, ["sug-1", "sug-2", "sug-3"]),
+      ],
       judgeCriteria: `The analyst MUST call edit_skill with instructionEdits for skill "${SKILL_SID}".
 The merged suggestion should:
 - Combine all three themes: warmth/empathy, natural language, and acknowledge-first approach
@@ -186,7 +190,13 @@ Score 3 if well-merged with all themes, clear structure, and analysis referencin
         }),
       ],
       workspaceContext: WORKSPACE_CONTEXT,
-      expectedToolCalls: [editSkillWithTool("skill_engineering", "mcp_jira")],
+      expectedToolCalls: [
+        editSkillWithTool("skill_engineering", "mcp_jira", [
+          "sug-1",
+          "sug-2",
+          "sug-3",
+        ]),
+      ],
       judgeCriteria: `The analyst MUST call edit_skill with toolEdits to suggest adding JIRA (mcp_jira)
 to skill "skill_engineering". The aggregated suggestion should:
 - Merge the 3 individual suggestions into a single recommendation
@@ -360,7 +370,12 @@ Score 3 if no suggestion is created.`,
         }),
       ],
       workspaceContext: WORKSPACE_CONTEXT,
-      expectedToolCalls: [editSkillCallCount(2)],
+      expectedToolCalls: [
+        editSkillCallsWithSources([
+          ["sug-tone-1", "sug-tone-2"],
+          ["sug-tool-1", "sug-tool-2"],
+        ]),
+      ],
       judgeCriteria: `The analyst receives 4 synthetic suggestions: 2 about tone (warmth/empathy and natural language)
 and 2 about CRM tool usage (search by ID, use refresh flag). These are unrelated topics and MUST
 result in 2 separate edit_skill calls — one for tone, one for CRM tool usage.

@@ -42,6 +42,33 @@ function getSkillId(args: Record<string, unknown>): string | undefined {
   return isString(args.skillId) ? args.skillId : undefined;
 }
 
+function getSourceSuggestionIds(args: Record<string, unknown>): string[] {
+  const ids = args.sourceSuggestionIds;
+  if (!Array.isArray(ids)) {
+    return [];
+  }
+  return ids.filter(isString);
+}
+
+function validateSourceSuggestionIds(
+  call: ToolCall,
+  expectedIds: string[]
+): AssertionResult | null {
+  const actualIds = getSourceSuggestionIds(call.arguments);
+  const expectedSet = new Set(expectedIds);
+  const actualSet = new Set(actualIds);
+  if (
+    expectedSet.size !== actualSet.size ||
+    [...expectedSet].some((id) => !actualSet.has(id))
+  ) {
+    return {
+      success: false,
+      error: `Expected sourceSuggestionIds ${JSON.stringify([...expectedSet].sort())} but got ${JSON.stringify([...actualSet].sort())}`,
+    };
+  }
+  return null;
+}
+
 function getInstructionEdits(
   args: Record<string, unknown>
 ): InstructionEditItem[] {
@@ -94,6 +121,15 @@ export function validateToolCallAssertion(
           error: `Expected edit_skill to contain instructionEdits for skillId "${assertion.skillId}", but instructionEdits is empty or missing`,
         };
       }
+      if (assertion.sourceSuggestionIds) {
+        const sourceResult = validateSourceSuggestionIds(
+          call,
+          assertion.sourceSuggestionIds
+        );
+        if (sourceResult) {
+          return sourceResult;
+        }
+      }
       return { success: true };
     }
     case "editSkillWithTool": {
@@ -118,6 +154,15 @@ export function validateToolCallAssertion(
           error: `Expected edit_skill to contain toolEdit with toolId "${assertion.toolId}", but got: ${JSON.stringify(toolEdits)}`,
         };
       }
+      if (assertion.sourceSuggestionIds) {
+        const sourceResult = validateSourceSuggestionIds(
+          call,
+          assertion.sourceSuggestionIds
+        );
+        if (sourceResult) {
+          return sourceResult;
+        }
+      }
       return { success: true };
     }
     case "editSkill": {
@@ -134,6 +179,15 @@ export function validateToolCallAssertion(
           success: false,
           error: `Expected edit_skill for skillId "${assertion.skillId}", but got skillId "${skillId}"`,
         };
+      }
+      if (assertion.sourceSuggestionIds) {
+        const sourceResult = validateSourceSuggestionIds(
+          call,
+          assertion.sourceSuggestionIds
+        );
+        if (sourceResult) {
+          return sourceResult;
+        }
       }
       return { success: true };
     }
@@ -160,6 +214,36 @@ export function validateToolCallAssertion(
           success: false,
           error: `Expected exactly ${assertion.count} edit_skill call(s), but got ${actual}`,
         };
+      }
+      return { success: true };
+    }
+    case "editSkillCallsWithSources": {
+      const editCalls = toolCalls.filter((tc) => tc.name === "edit_skill");
+      const expectedCount = assertion.sourceSuggestionIdGroups.length;
+      if (editCalls.length !== expectedCount) {
+        return {
+          success: false,
+          error: `Expected exactly ${expectedCount} edit_skill call(s), but got ${editCalls.length}`,
+        };
+      }
+      // Each call's sourceSuggestionIds must match exactly one group (order-independent).
+      const remainingGroups = assertion.sourceSuggestionIdGroups.map(
+        (g) => new Set(g)
+      );
+      for (const call of editCalls) {
+        const actualIds = new Set(getSourceSuggestionIds(call.arguments));
+        const matchIdx = remainingGroups.findIndex(
+          (group) =>
+            group.size === actualIds.size &&
+            [...group].every((id) => actualIds.has(id))
+        );
+        if (matchIdx === -1) {
+          return {
+            success: false,
+            error: `edit_skill call has sourceSuggestionIds ${JSON.stringify([...actualIds].sort())} which does not match any expected group: ${JSON.stringify(assertion.sourceSuggestionIdGroups.map((g) => g.sort()))}`,
+          };
+        }
+        remainingGroups.splice(matchIdx, 1);
       }
       return { success: true };
     }

@@ -120,6 +120,7 @@ const BaseSkillSuggestionSchema = z.object({
   state: z.enum(SKILL_SUGGESTION_STATES),
   source: z.enum(SKILL_SUGGESTION_SOURCES),
   sourceConversationId: z.string().nullable(),
+  sourceConversationsCount: z.number(),
   updatedBy: SkillSuggestionUpdatedBySchema.nullable(),
 });
 

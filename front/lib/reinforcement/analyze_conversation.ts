@@ -187,7 +187,13 @@ export async function buildSkillConversationAnalysisBatchMap(
       conversationRes.value.text,
       skillTypes
     );
-    batchMap.set(conversationId, buildReinforcedSkillsLLMParams(prompt));
+    batchMap.set(
+      conversationId,
+      buildReinforcedSkillsLLMParams(
+        prompt,
+        "reinforcement_analyze_conversation"
+      )
+    );
   }
 
   if (batchMap.size === 0) {

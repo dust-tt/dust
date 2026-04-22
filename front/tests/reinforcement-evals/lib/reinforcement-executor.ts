@@ -28,6 +28,7 @@ import {
   buildConversationText,
   type CategorizedTestCase,
   type ExecutionResult,
+  isAggregationTestCase,
   isAnalysisTestCase,
   type MockMcpDescription,
   type MockSkillConfig,
@@ -301,7 +302,10 @@ export async function executeReinforced(
 ): Promise<ExecutionResult> {
   const llm = await getLLMInstance(auth);
   const prompt = buildPromptForTestCase(testCase);
-  const params = buildReinforcedSkillsLLMParams(prompt);
+  const operationType = isAggregationTestCase(testCase)
+    ? "reinforcement_aggregate_suggestions"
+    : "reinforcement_analyze_conversation";
+  const params = buildReinforcedSkillsLLMParams(prompt, operationType);
 
   return executeMultiStep(
     llm,
@@ -349,7 +353,13 @@ export async function executeBatch(
   let pendingParams = new Map<string, LLMStreamParameters>();
   for (const tc of testCases) {
     const prompt = buildPromptForTestCase(tc);
-    pendingParams.set(tc.scenarioId, buildReinforcedSkillsLLMParams(prompt));
+    const operationType = isAggregationTestCase(tc)
+      ? "reinforcement_aggregate_suggestions"
+      : "reinforcement_analyze_conversation";
+    pendingParams.set(
+      tc.scenarioId,
+      buildReinforcedSkillsLLMParams(prompt, operationType)
+    );
   }
 
   const results = new Map<string, ExecutionResult>();

@@ -20,6 +20,7 @@ export class SkillSuggestionFactory {
       title: string | null;
       state: SkillSuggestionState;
       source: SkillSuggestionSource;
+      sourceConversationIds: string[] | null;
     }> = {}
   ): Promise<SkillSuggestionResource> {
     return SkillSuggestionResource.createSuggestionForSkill(auth, skill, {
@@ -37,6 +38,7 @@ export class SkillSuggestionFactory {
       title: overrides.title ?? null,
       state: overrides.state ?? "pending",
       source: overrides.source ?? "reinforcement",
+      sourceConversationIds: overrides.sourceConversationIds ?? null,
     });
   }
 
