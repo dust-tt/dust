@@ -937,7 +937,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     transaction?: Transaction
   ): Promise<Result<number, Error>> {
     await destroyMCPServerViewDependencies(auth, {
-      mcpServerViewId: this.id,
+      mcpServerViewIds: [this.id],
       transaction,
     });
 
