@@ -16,7 +16,6 @@ import {
 import {
   checkEgressForwarderHealth,
   readNewDenyLogEntries,
-  sandboxSupportsEgressForwarding,
   setupEgressForwarder,
 } from "@app/lib/api/sandbox/egress";
 import {
@@ -172,62 +171,40 @@ export async function runSandboxBashTool(
     );
   }
 
-  const egressCompatResult = await sandboxSupportsEgressForwarding(
-    auth,
-    sandbox
-  );
-  if (egressCompatResult.isErr()) {
-    return new Err(new MCPError(egressCompatResult.error.message));
+  if (freshlyCreated) {
+    const setupResult = await setupEgressForwarder(auth, sandbox);
+    if (setupResult.isErr()) {
+      return new Err(new MCPError(setupResult.error.message));
+    }
   }
 
-  let execUser: string | undefined;
-  if (!egressCompatResult.value) {
-    logger.info(
+  const healthResult = await checkEgressForwarderHealth(auth, sandbox);
+  if (healthResult.isErr()) {
+    return new Err(new MCPError(healthResult.error.message));
+  }
+
+  if (!healthResult.value) {
+    logger.warn(
       {
-        event: "egress.compat_skip",
+        event: "egress.health_fail",
         providerId: sandbox.providerId,
         sandboxId: sandbox.sId,
       },
-      "Skipping sandbox egress setup for an incompatible sandbox"
+      "Sandbox egress forwarder health check failed, restarting"
     );
+    const setupResult = await setupEgressForwarder(auth, sandbox);
+    if (setupResult.isErr()) {
+      return new Err(new MCPError(setupResult.error.message));
+    }
   } else {
-    if (freshlyCreated) {
-      const setupResult = await setupEgressForwarder(auth, sandbox);
-      if (setupResult.isErr()) {
-        return new Err(new MCPError(setupResult.error.message));
-      }
-    }
-
-    const healthResult = await checkEgressForwarderHealth(auth, sandbox);
-    if (healthResult.isErr()) {
-      return new Err(new MCPError(healthResult.error.message));
-    }
-
-    if (!healthResult.value) {
-      logger.warn(
-        {
-          event: "egress.health_fail",
-          providerId: sandbox.providerId,
-          sandboxId: sandbox.sId,
-        },
-        "Sandbox egress forwarder health check failed, restarting"
-      );
-      const setupResult = await setupEgressForwarder(auth, sandbox);
-      if (setupResult.isErr()) {
-        return new Err(new MCPError(setupResult.error.message));
-      }
-    } else {
-      logger.info(
-        {
-          event: "egress.health_ok",
-          providerId: sandbox.providerId,
-          sandboxId: sandbox.sId,
-        },
-        "Sandbox egress forwarder health check succeeded"
-      );
-    }
-
-    execUser = "agent-proxied";
+    logger.info(
+      {
+        event: "egress.health_ok",
+        providerId: sandbox.providerId,
+        sandboxId: sandbox.sId,
+      },
+      "Sandbox egress forwarder health check succeeded"
+    );
   }
 
   const execId = generateExecId();
@@ -260,7 +237,7 @@ export async function runSandboxBashTool(
       DUST_SANDBOX_TOKEN: sandboxToken,
       DUST_API_URL: `${sandboxAPIBase}/api/v1/w/${auth.getNonNullableWorkspace().sId}`,
     },
-    ...(execUser ? { user: execUser } : {}),
+    user: "agent-proxied",
   });
 
   const durationMs = performance.now() - startMs;
@@ -281,18 +258,16 @@ export async function runSandboxBashTool(
 
   let output = formatExecOutput(execResult.value);
 
-  if (execUser) {
-    const denyResult = await readNewDenyLogEntries(auth, sandbox);
-    if (denyResult.isErr()) {
-      logger.warn(
-        { err: denyResult.error, providerId: sandbox.providerId },
-        "Failed to read egress deny log"
-      );
-    } else if (denyResult.value.length > 0) {
-      output +=
-        "\n[network proxy] Recent outbound request(s) denied by the sandbox proxy:\n" +
-        denyResult.value.map((line) => `  ${line}`).join("\n");
-    }
+  const denyResult = await readNewDenyLogEntries(auth, sandbox);
+  if (denyResult.isErr()) {
+    logger.warn(
+      { err: denyResult.error, providerId: sandbox.providerId },
+      "Failed to read egress deny log"
+    );
+  } else if (denyResult.value.length > 0) {
+    output +=
+      "\n[network proxy] Recent outbound request(s) denied by the sandbox proxy:\n" +
+      denyResult.value.map((line) => `  ${line}`).join("\n");
   }
 
   return new Ok([{ type: "text" as const, text: output }]);

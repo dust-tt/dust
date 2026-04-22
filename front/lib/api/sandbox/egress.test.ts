@@ -51,7 +51,6 @@ vi.mock("node:dns/promises", () => ({
 import {
   mintEgressJwt,
   readNewDenyLogEntries,
-  sandboxSupportsEgressForwarding,
   setupEgressForwarder,
 } from "./egress";
 
@@ -77,31 +76,6 @@ describe("sandbox egress helpers", () => {
 
     expect(payload.sbId).toBe("provider-sandbox-id");
     expect(payload.exp).toBeGreaterThan(payload.iat ?? 0);
-  });
-
-  it("detects incompatible sandboxes from the compat probe exit code", async () => {
-    const sandbox = {
-      exec: vi
-        .fn()
-        .mockResolvedValue(new Ok({ exitCode: 1, stdout: "", stderr: "" })),
-    };
-
-    const result = await sandboxSupportsEgressForwarding(
-      {} as never,
-      sandbox as never
-    );
-
-    expect(result).toEqual(new Ok(false));
-    expect(sandbox.exec).toHaveBeenCalledWith(
-      {},
-      expect.stringContaining("test -x /opt/bin/dsbx")
-    );
-    expect(sandbox.exec).toHaveBeenCalledWith(
-      {},
-      expect.stringContaining(
-        "systemctl is-active --quiet dust-egress-nftables.service"
-      )
-    );
   });
 
   it("writes the token, starts the forwarder, and waits for health", async () => {

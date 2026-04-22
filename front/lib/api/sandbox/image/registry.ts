@@ -1,7 +1,7 @@
 import { PROFILE_DIR } from "@app/lib/api/sandbox/image/profile";
 import { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
 import {
-  ALLOWLIST_NETWORK_POLICY,
+  PROXY_ONLY_NETWORK_POLICY,
   type ToolEntry,
 } from "@app/lib/api/sandbox/image/types";
 import logger from "@app/logger/logger";
@@ -328,7 +328,7 @@ SHELLEOF`,
   ])
   .withCapability("gcsfuse")
   .withResources({ vcpu: 2, memoryMb: 2048 })
-  .withNetwork(ALLOWLIST_NETWORK_POLICY)
+  .withNetwork(PROXY_ONLY_NETWORK_POLICY)
   .setWorkdir("/home/agent")
   .withToolManifest()
   .register({
