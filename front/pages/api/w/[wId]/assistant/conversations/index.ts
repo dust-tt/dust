@@ -198,7 +198,7 @@ async function handler(
       const pagination = paginationRes.value;
 
       const result =
-        await ConversationResource.listPrivateConversationsForUserPaginatedFromDB(
+        await ConversationResource.listPrivateConversationsForUserPaginatedFromES(
           auth,
           {
             limit: pagination.limit,

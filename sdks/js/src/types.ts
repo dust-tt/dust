@@ -752,6 +752,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "browser_extension_mcp_tools"
   | "sensitivity_labels"
   | "conversation_search_indexing"
+  | "conversation_search_read"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;

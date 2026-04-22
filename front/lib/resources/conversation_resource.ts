@@ -1,5 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
+import { listPrivateConversationsFromES } from "@app/lib/conversation_search/search";
 import { ConversationMCPServerViewModel } from "@app/lib/models/agent/actions/conversation_mcp_server_view";
 import {
   AgentMessageModel,
@@ -33,6 +34,7 @@ import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
+import logger from "@app/logger/logger";
 import { launchIndexConversationEsWorkflow } from "@app/temporal/es_indexation/client";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
@@ -58,6 +60,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { UserType } from "@app/types/user";
 import assert from "assert";
+import isEqual from "lodash/isEqual";
 import uniq from "lodash/uniq";
 import type {
   Attributes,
@@ -1586,6 +1589,100 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     lastValue: string | null;
   }> {
     return this.fetchPrivateConversationsPaginated(auth, { pagination });
+  }
+
+  static async listPrivateConversationsForUserPaginatedFromES(
+    auth: Authenticator,
+    pagination: {
+      limit: number;
+      lastValue?: string;
+      orderDirection?: "asc" | "desc";
+    }
+  ): Promise<{
+    conversations: ConversationListItemType[];
+    hasMore: boolean;
+    lastValue: string | null;
+  }> {
+    const user = auth.user();
+    if (!user) {
+      return { conversations: [], hasMore: false, lastValue: null };
+    }
+
+    const hasFeature = await hasFeatureFlag(auth, "conversation_search_read");
+    if (!hasFeature) {
+      return this.listPrivateConversationsForUserPaginatedFromDB(
+        auth,
+        pagination
+      );
+    }
+
+    const workspace = auth.getNonNullableWorkspace();
+    const orderDirection = pagination.orderDirection ?? "desc";
+
+    const accessibleSpaces =
+      await SpaceResource.listWorkspaceSpacesAsMember(auth);
+    const accessibleSpaceIds = accessibleSpaces.map((s) => s.sId);
+
+    const esResult = await listPrivateConversationsFromES({
+      accessibleSpaceIds,
+      lastValue: pagination.lastValue,
+      limit: pagination.limit,
+      orderDirection,
+      userId: user.sId,
+      workspaceId: workspace.sId,
+    });
+
+    if (esResult.isErr()) {
+      logger.error(
+        { workspaceId: workspace.sId, error: esResult.error },
+        "[conversation_search] ES query failed, falling back to DB"
+      );
+      return this.listPrivateConversationsForUserPaginatedFromDB(
+        auth,
+        pagination
+      );
+    }
+
+    const { items, hasMore, lastValue } = esResult.value;
+
+    // Deep-validate ES results against DB: fetch with participation data so
+    // toListItem() produces fully comparable output, then log any divergence.
+    if (items.length > 0) {
+      const dbConversations = await this.fetchByIds(
+        auth,
+        items.map((i) => i.sId)
+      );
+      await this.enrichWithParticipationAndReadState(auth, dbConversations);
+
+      const dbMap = new Map(dbConversations.map((c) => [c.sId, c]));
+
+      for (const esItem of items) {
+        const dbResource = dbMap.get(esItem.sId);
+        if (!dbResource) {
+          logger.warn(
+            { workspaceId: workspace.sId, userId: user.sId, sId: esItem.sId },
+            "[conversation_search] ES returned conversation absent from DB (stale index)"
+          );
+          continue;
+        }
+
+        const dbItem = dbResource.toListItem();
+        if (!isEqual(esItem, dbItem)) {
+          logger.warn(
+            {
+              workspaceId: workspace.sId,
+              userId: user.sId,
+              sId: esItem.sId,
+              esItem,
+              dbItem,
+            },
+            "[conversation_search] ES item diverges from DB"
+          );
+        }
+      }
+    }
+
+    return { conversations: items, hasMore, lastValue };
   }
 
   static async listPrivateConversationsForUserPaginatedFromDB(

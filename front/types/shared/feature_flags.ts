@@ -304,6 +304,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Enable ES indexing of conversations on mutation (write path)",
     stage: "dust_only",
   },
+  conversation_search_read: {
+    description:
+      "Enable ES-backed conversation listing in the sidebar (read path)",
+    stage: "dust_only",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";
