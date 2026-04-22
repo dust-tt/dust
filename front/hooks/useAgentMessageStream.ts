@@ -203,7 +203,7 @@ export function updateProgress(
  * Append a thinking step to the inline activity steps if the content
  * is new (not a duplicate of the last thinking step).
  */
-function appendThinkingStep(
+export function appendThinkingStep(
   steps: InlineActivityStep[],
   cotContent: string,
   id: string

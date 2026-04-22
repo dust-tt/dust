@@ -1,9 +1,11 @@
 import type { PendingToolCall } from "@app/components/assistant/conversation/types";
 import {
+  appendThinkingStep,
   removePendingToolCallForAction,
   upsertPendingToolCall,
 } from "@app/hooks/useAgentMessageStream";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
+import type { InlineActivityStep } from "@app/types/assistant/conversation";
 import { describe, expect, it } from "vitest";
 
 function makeAction(
@@ -112,6 +114,54 @@ describe("removePendingToolCallForAction", () => {
       {
         toolName: "create_interactive_content_file",
         toolCallIndex: 1,
+      },
+    ]);
+  });
+});
+
+describe("appendThinkingStep", () => {
+  it("deduplicates replayed thinking content even when an action step is in between", () => {
+    const steps: InlineActivityStep[] = [
+      {
+        type: "thinking",
+        content: "Looking up the repository state",
+        id: "thinking-1",
+      },
+      {
+        type: "action",
+        label: "Listed files",
+        id: "action-1",
+        actionId: "act_1",
+        internalMCPServerName: null,
+      },
+    ];
+
+    expect(
+      appendThinkingStep(
+        steps,
+        "Looking up the repository state",
+        "thinking-replayed"
+      )
+    ).toEqual(steps);
+  });
+
+  it("appends distinct thinking content", () => {
+    const steps: InlineActivityStep[] = [
+      {
+        type: "thinking",
+        content: "Inspecting the request",
+        id: "thinking-1",
+      },
+    ];
+
+    expect(
+      appendThinkingStep(steps, "Planning the patch", "thinking-2")
+    ).toEqual([
+      ...steps,
+      {
+        type: "thinking",
+        content: "Planning the patch",
+        id: "thinking-2",
       },
     ]);
   });
