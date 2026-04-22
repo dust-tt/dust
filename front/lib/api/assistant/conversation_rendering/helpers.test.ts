@@ -1,3 +1,7 @@
+import {
+  renderAvailableSkillsUserMessage,
+  renderEnabledSkillUserMessageFromInstructions,
+} from "@app/lib/api/assistant/skills_rendering";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -181,5 +185,50 @@ Hello!`);
 </dust_system>
 
 Just text`);
+  });
+});
+
+describe("skill rendering helpers", () => {
+  it("renders available skills as a synthetic user message", () => {
+    const message = renderAvailableSkillsUserMessage([
+      {
+        name: "commit",
+        agentFacingDescription:
+          "Create a git commit with a descriptive message.",
+      } as any,
+      {
+        name: "review-pr",
+        agentFacingDescription:
+          "Review a pull request for code quality and correctness.",
+      } as any,
+    ]);
+
+    expect(message).not.toBeNull();
+    expect(message?.role).toBe("user");
+    expect(message?.content[0].type).toBe("text");
+    expect((message?.content[0] as TextContent).text).toEqual(`<dust_system>
+The following skills are available for use with the skill_management__enable_skill tool:
+
+- commit: Create a git commit with a descriptive message.
+- review-pr: Review a pull request for code quality and correctness.
+</dust_system>`);
+  });
+
+  it("renders enabled skill instructions as a synthetic user message", () => {
+    const message = renderEnabledSkillUserMessageFromInstructions({
+      skillName: "commit",
+      skillInstructions:
+        "<commit>\nCreate a git commit with a descriptive message.\n</commit>",
+    });
+
+    expect(message.role).toBe("user");
+    expect(message.content[0].type).toBe("text");
+    expect((message.content[0] as TextContent).text).toEqual(`<dust_system>
+The skill "commit" is now enabled and remains active for the rest of the conversation.
+
+<commit>
+Create a git commit with a descriptive message.
+</commit>
+</dust_system>`);
   });
 });

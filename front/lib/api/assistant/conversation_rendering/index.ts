@@ -40,6 +40,15 @@ const IMAGE_CONTENT_TOKEN_COUNT = 3100;
 export const TOOL_DEFINITIONS_COUNT_ADJUSTMENT_FACTOR = 0.7;
 export const TOKENS_MARGIN = 1024;
 
+function getMessageSignature(
+  message: ModelMessageTypeMultiActionsWithoutContentFragment
+): string {
+  const name = "name" in message ? message.name : "";
+  const content = getTextContentFromMessage(message);
+
+  return `${message.role}:${name}:${content}`;
+}
+
 export async function renderConversationForModel(
   auth: Authenticator,
   {
@@ -52,6 +61,7 @@ export async function renderConversationForModel(
     excludeImages,
     onMissingAction = "inject-placeholder",
     agentConfiguration,
+    prefaceMessages = [],
   }: {
     conversation: ConversationType;
     model: ModelConfigurationType;
@@ -63,6 +73,7 @@ export async function renderConversationForModel(
     onMissingAction?: "inject-placeholder" | "skip";
     enablePreviousInteractionsPruning?: boolean;
     agentConfiguration?: AgentConfigurationType;
+    prefaceMessages?: ModelMessageTypeMultiActionsWithoutContentFragment[];
   }
 ): Promise<
   Result<
@@ -77,7 +88,7 @@ export async function renderConversationForModel(
   const now = Date.now();
   let stepStart = now;
 
-  const messages = await renderAllMessages(auth, {
+  const renderedMessages = await renderAllMessages(auth, {
     conversation,
     model,
     excludeActions,
@@ -85,6 +96,28 @@ export async function renderConversationForModel(
     onMissingAction,
     agentConfiguration,
   });
+  const existingMessageSignatures = new Set(
+    renderedMessages
+      .filter(
+        (
+          message
+        ): message is ModelMessageTypeMultiActionsWithoutContentFragment =>
+          message.role !== "content_fragment"
+      )
+      .map(getMessageSignature)
+  );
+  const messages = [
+    ...prefaceMessages.filter((message) => {
+      const signature = getMessageSignature(message);
+      if (existingMessageSignatures.has(signature)) {
+        return false;
+      }
+
+      existingMessageSignatures.add(signature);
+      return true;
+    }),
+    ...renderedMessages,
+  ];
   const renderAllMessagesMs = Date.now() - stepStart;
   stepStart = Date.now();
 

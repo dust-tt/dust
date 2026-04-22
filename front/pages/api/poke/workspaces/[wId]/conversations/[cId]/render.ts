@@ -10,10 +10,14 @@ import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { getSkillServers } from "@app/lib/api/assistant/skill_actions";
+import {
+  renderAvailableSkillsUserMessage,
+  SKILLS_AS_USER_MESSAGES_FEATURE_FLAG,
+} from "@app/lib/api/assistant/skills_rendering";
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
-import { Authenticator } from "@app/lib/auth";
+import { Authenticator, hasFeatureFlag } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -27,7 +31,7 @@ import type {
 } from "@app/types/assistant/conversation";
 import { isUserMessageType } from "@app/types/assistant/conversation";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { isString } from "@app/types/shared/utils/general";
+import { isString, removeNulls } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 export type PostRenderConversationRequestBody = {
@@ -169,6 +173,11 @@ async function handler(
         attachments,
       });
 
+      const renderSkillsAsUserMessages = await hasFeatureFlag(
+        auth,
+        SKILLS_AS_USER_MESSAGES_FEATURE_FLAG
+      );
+
       const { enabledSkills, systemSkills, equippedSkills } =
         await SkillResource.listForAgentLoop(auth, {
           agentConfiguration,
@@ -262,11 +271,15 @@ async function handler(
         agentsList,
         conversation,
         serverToolsAndInstructions,
-        systemSkills,
         enabledSkills,
+        systemSkills,
         equippedSkills,
+        renderSkillsAsUserMessages,
       });
       const prompt = systemPromptToText(promptSections);
+      const prefaceMessages = renderSkillsAsUserMessages
+        ? removeNulls([renderAvailableSkillsUserMessage(equippedSkills)])
+        : [];
 
       // Build tool specifications to estimate tokens for tool definitions (names + schemas only).
       const specifications = availableActions.map((t) =>
@@ -300,6 +313,7 @@ async function handler(
         excludeImages,
         onMissingAction,
         agentConfiguration,
+        prefaceMessages,
       });
 
       if (convoRes.isErr()) {

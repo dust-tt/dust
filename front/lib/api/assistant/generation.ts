@@ -20,6 +20,9 @@ import {
 } from "@app/lib/api/actions/servers/conversation_files/metadata";
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
 import { isDustLikeAgent } from "@app/lib/api/assistant/global_agents/global_agents";
+import {
+  getEnabledSkillInstructions,
+} from "@app/lib/api/assistant/skills_rendering";
 import type {
   StructuredSystemPrompt,
   SystemPromptContext,
@@ -193,26 +196,24 @@ function constructToolsSection({
   return toolsSection;
 }
 
-/**
- * Get the full instructions for an enabled skill, including extended skill instructions if applicable.
- */
-function getEnabledSkillInstructions(
-  skill: SkillResource & { extendedSkill: SkillResource | null }
-): string {
-  const { name, instructions, extendedSkill } = skill;
-
-  if (!extendedSkill) {
-    return `<${name}>\n${instructions}\n</${name}>`;
+function constructSystemSkillsSection({
+  systemSkills,
+}: {
+  systemSkills: SkillResource[];
+}): string {
+  if (systemSkills.length === 0) {
+    return "";
   }
 
-  return [
-    `<${name}>`,
-    extendedSkill.instructions,
-    "<additional_guidelines>",
-    instructions,
-    "</additional_guidelines>",
-    `</${name}>`,
-  ].join("\n");
+  return (
+    "\n## SYSTEM SKILLS\n" +
+    "The following baseline skills are always active for this agent:\n" +
+    systemSkills
+      .map(
+        (skill) => `<${skill.name}>\n${skill.instructions}\n</${skill.name}>`
+      )
+      .join("\n")
+  );
 }
 
 function constructSkillsSection({
@@ -229,8 +230,6 @@ function constructSkillsSection({
     "Skills are modular capabilities that extend your abilities for specific tasks. " +
     "Each skill includes specialized instructions and may provide additional tools.\n\n" +
     "Skills can be in two states:\n" +
-    // We do not use the wording `equipped` with the model as `available` is more meaningful in context.
-    // `equipped` is the backend term.
     "- **Available**: Listed below but not active. Their instructions are not loaded yet. " +
     `You can enable them using the \`${SKILL_MANAGEMENT_SERVER_NAME}${TOOL_NAME_SEPARATOR}${ENABLE_SKILL_TOOL_NAME}\` ` +
     "tool when they become relevant to the conversation.\n" +
@@ -256,34 +255,26 @@ function constructSkillsSection({
     return skillsSection;
   }
 
-  // Enabled skills - inject their full instructions.
-  if (sortedSystemSkills.length > 0 || sortedEnabledSkills.length > 0) {
+  if (sortedEnabledSkills.length > 0) {
     skillsSection += "\n### ENABLED SKILLS\n";
     skillsSection += "The following skills are currently enabled:\n";
-
-    const skillInstructions = [
-      ...sortedSystemSkills.map(
-        (skill) => `<${skill.name}>\n${skill.instructions}\n</${skill.name}>`
-      ),
-      ...sortedEnabledSkills.map((skill) => getEnabledSkillInstructions(skill)),
-    ];
-
-    skillsSection += skillInstructions.join("\n");
+    skillsSection += sortedEnabledSkills
+      .map((skill) => getEnabledSkillInstructions(skill))
+      .join("\n");
   }
 
-  // Equipped but not yet enabled skills - show name and description only
   if (sortedEquippedSkills.length > 0) {
     skillsSection += "\n### AVAILABLE SKILLS\n";
     skillsSection +=
       `These skills can be enabled using the \`${ENABLE_SKILL_TOOL_NAME}\` tool. ` +
       "Review their descriptions and enable the appropriate skill when relevant:\n";
-    const skillList = sortedEquippedSkills
-      .map(
-        ({ name, agentFacingDescription }) =>
-          `- **${name}**: ${agentFacingDescription}`
-      )
-      .join("\n");
-    skillsSection += skillList + "\n\n";
+    skillsSection +=
+      sortedEquippedSkills
+        .map(
+          ({ name, agentFacingDescription }) =>
+            `- **${name}**: ${agentFacingDescription}`
+        )
+        .join("\n") + "\n\n";
   }
 
   return skillsSection;
@@ -413,9 +404,10 @@ export function constructPromptMultiActions(
     agentsList,
     conversation,
     serverToolsAndInstructions,
-    systemSkills,
     enabledSkills,
+    systemSkills,
     equippedSkills,
+    renderSkillsAsUserMessages = false,
     memoriesContext,
     toolsetsContext,
     userContext,
@@ -430,9 +422,10 @@ export function constructPromptMultiActions(
     agentsList: LightAgentConfigurationType[] | null;
     conversation?: ConversationWithoutContentType;
     serverToolsAndInstructions?: ServerToolsAndInstructions[];
-    systemSkills: SkillResource[];
     enabledSkills: (SkillResource & { extendedSkill: SkillResource | null })[];
+    systemSkills: SkillResource[];
     equippedSkills: SkillResource[];
+    renderSkillsAsUserMessages?: boolean;
     memoriesContext?: string;
     toolsetsContext?: string;
     userContext?: string;
@@ -471,11 +464,15 @@ export function constructPromptMultiActions(
     agentConfiguration,
     serverToolsAndInstructions,
   });
-  const skillsSection = constructSkillsSection({
-    systemSkills,
-    enabledSkills,
-    equippedSkills,
-  });
+  const skillsSection = renderSkillsAsUserMessages
+    ? constructSystemSkillsSection({
+        systemSkills,
+      })
+    : constructSkillsSection({
+        systemSkills,
+        enabledSkills,
+        equippedSkills,
+      });
   const attachmentsSection = constructAttachmentsSection();
   const pastedContentSection = constructPastedContentSection();
   const guidelinesSection = constructGuidelinesSection({ agentConfiguration });

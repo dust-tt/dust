@@ -1,6 +1,7 @@
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { AutoInternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
-import type { Authenticator } from "@app/lib/auth";
+import { SKILLS_AS_USER_MESSAGES_FEATURE_FLAG } from "@app/lib/api/assistant/skills_rendering";
+import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
@@ -9,7 +10,7 @@ import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 
 /**
- * Get the skill_management MCP server if the agent has configured skills.
+ * Get the skill_management MCP server if the agent has enableable skills.
  */
 export async function getSkillManagementServer(
   auth: Authenticator,
@@ -17,12 +18,20 @@ export async function getSkillManagementServer(
   conversation: ConversationWithoutContentType,
   autoInternalViews: Map<AutoInternalMCPServerNameType, MCPServerViewResource>
 ): Promise<ServerSideMCPServerConfigurationType | null> {
-  const refs = await SkillResource.getSkillReferencesForAgent(
+  const { availableSkills, equippedSkills } =
+    await SkillResource.listForAgentLoop(auth, {
+      agentConfiguration,
+      conversation,
+    });
+  const renderSkillsAsUserMessages = await hasFeatureFlag(
     auth,
-    agentConfiguration
+    SKILLS_AS_USER_MESSAGES_FEATURE_FLAG
   );
+  const managementEligibleSkills = renderSkillsAsUserMessages
+    ? availableSkills
+    : equippedSkills;
 
-  if (refs.length === 0) {
+  if (managementEligibleSkills.length === 0) {
     return null;
   }
 

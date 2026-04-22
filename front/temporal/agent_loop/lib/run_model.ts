@@ -32,6 +32,10 @@ import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent"
 import { getCompletionDuration } from "@app/lib/api/assistant/messages";
 import { getSkillServers } from "@app/lib/api/assistant/skill_actions";
 import {
+  renderAvailableSkillsUserMessage,
+  SKILLS_AS_USER_MESSAGES_FEATURE_FLAG,
+} from "@app/lib/api/assistant/skills_rendering";
+import {
   buildAuditLogTarget,
   emitAuditLogEventDirect,
 } from "@app/lib/api/audit/workos_audit";
@@ -44,7 +48,7 @@ import {
 import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import { DEFAULT_MCP_TOOL_RETRY_POLICY } from "@app/lib/api/mcp";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
-import type { Authenticator } from "@app/lib/auth";
+import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
 import type { DurationRecorder } from "@app/lib/duration_recorder";
 import {
   AgentMessageContentParser,
@@ -233,6 +237,7 @@ export async function runModel(
     enabledSkills,
     systemSkills,
     equippedSkills,
+    renderSkillsAsUserMessages,
     hasConditionalJITTools,
     mcpActions,
     mcpToolsListingError,
@@ -255,6 +260,10 @@ export async function runModel(
 
     const { enabledSkills, systemSkills, equippedSkills } =
       await SkillResource.listForAgentLoop(auth, runAgentData);
+    const renderSkillsAsUserMessages = await hasFeatureFlag(
+      auth,
+      SKILLS_AS_USER_MESSAGES_FEATURE_FLAG
+    );
 
     const skillServers = await getSkillServers(auth, {
       agentConfiguration,
@@ -280,8 +289,9 @@ export async function runModel(
     return {
       hasConditionalJITTools,
       enabledSkills,
-      systemSkills,
       equippedSkills,
+      systemSkills,
+      renderSkillsAsUserMessages,
       mcpActions,
       mcpToolsListingError,
     };
@@ -387,11 +397,15 @@ export async function runModel(
     systemSkills,
     enabledSkills,
     equippedSkills,
+    renderSkillsAsUserMessages,
     memoriesContext,
     toolsetsContext,
     userContext,
     workspaceContext,
   });
+  const prefaceMessages = renderSkillsAsUserMessages
+    ? removeNulls([renderAvailableSkillsUserMessage(equippedSkills)])
+    : [];
 
   const specifications: AgentActionSpecification[] = [];
   for (const a of availableActions) {
@@ -421,6 +435,7 @@ export async function runModel(
           tools,
           allowedTokenCount: model.contextSize - model.generationTokensCount,
           agentConfiguration,
+          prefaceMessages,
         })
       )
   );

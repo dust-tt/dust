@@ -495,6 +495,89 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     expect(text).not.toContain("<existing_memories>");
   });
 
+  it("should keep enableable skills out of the system prompt", () => {
+    const params = {
+      userMessage: userMessage1,
+      agentConfiguration: agentConfig1,
+      model: modelConfig,
+      hasAvailableActions: true,
+      agentsList: null,
+      enabledSkills: [],
+      equippedSkills: [
+        {
+          name: "commit",
+          agentFacingDescription:
+            "Create a git commit with a descriptive message.",
+        } as any,
+      ],
+      renderSkillsAsUserMessages: true,
+    };
+
+    const sections = constructPromptMultiActions(authenticator1, params);
+    const text = systemPromptToText(sections);
+
+    expect(text).not.toContain(
+      "Create a git commit with a descriptive message."
+    );
+    expect(text).not.toContain("## AVAILABLE SKILLS");
+  });
+
+  it("should keep enableable skills in the system prompt on the legacy path", () => {
+    const params = {
+      userMessage: userMessage1,
+      agentConfiguration: agentConfig1,
+      model: modelConfig,
+      hasAvailableActions: true,
+      agentsList: null,
+      enabledSkills: [],
+      equippedSkills: [
+        {
+          name: "commit",
+          agentFacingDescription:
+            "Create a git commit with a descriptive message.",
+        } as any,
+      ],
+    };
+
+    const sections = constructPromptMultiActions(authenticator1, params);
+    const text = systemPromptToText(sections);
+
+    expect(text).toContain("## AVAILABLE SKILLS");
+    expect(text).toContain(
+      "- **commit**: Create a git commit with a descriptive message."
+    );
+  });
+
+  it("should keep system skill instructions in the system prompt", () => {
+    const params = {
+      userMessage: userMessage1,
+      agentConfiguration: agentConfig1,
+      model: modelConfig,
+      hasAvailableActions: true,
+      agentsList: null,
+      enabledSkills: [],
+      systemSkills: [
+        {
+          isSystemSkill: true,
+          name: "Discover Tools",
+          instructions:
+            "List available toolsets and enable them for the current conversation.",
+          extendedSkill: null,
+        } as any,
+      ],
+      equippedSkills: [],
+      renderSkillsAsUserMessages: true,
+    };
+
+    const sections = constructPromptMultiActions(authenticator1, params);
+    const text = systemPromptToText(sections);
+
+    expect(text).toContain("## SYSTEM SKILLS");
+    expect(text).toContain(
+      "List available toolsets and enable them for the current conversation."
+    );
+  });
+
   it("should keep memory_guidelines in instructions but existing_memories in ephemeral tier for dust-like agents", () => {
     const dustConfig = {
       ...agentConfig1,
