@@ -18,10 +18,10 @@ export class DefaultRemoteMCPServerInMemoryResource {
     this.config = config;
   }
 
-  private static async init(
+  private static fetchById(
     auth: Authenticator,
     configId: number
-  ): Promise<DefaultRemoteMCPServerInMemoryResource | null> {
+  ): DefaultRemoteMCPServerInMemoryResource | null {
     const config = getDefaultRemoteMCPServerById(configId);
     if (!config) {
       return null;
@@ -32,7 +32,7 @@ export class DefaultRemoteMCPServerInMemoryResource {
       workspaceId: auth.getNonNullableWorkspace().id,
     });
 
-    return new DefaultRemoteMCPServerInMemoryResource(sId, config);
+    return new this(sId, config);
   }
 
   static async listAvailableDefaultRemoteMCPServers(
@@ -46,10 +46,7 @@ export class DefaultRemoteMCPServerInMemoryResource {
         continue;
       }
 
-      const resource = await DefaultRemoteMCPServerInMemoryResource.init(
-        auth,
-        config.id
-      );
+      const resource = this.fetchById(auth, config.id);
       if (resource) {
         resources.push(resource);
       }

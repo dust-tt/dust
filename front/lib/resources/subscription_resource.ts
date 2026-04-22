@@ -255,10 +255,23 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     };
   }
 
-  private static invalidateSubscriptionCache = invalidateCacheWithRedis(
+  private static _invalidateSubscriptionCache = invalidateCacheWithRedis(
     SubscriptionResource._fetchActiveByWorkspaceModelIdUncached,
     SubscriptionResource.subscriptionCacheKeyResolver
   );
+
+  private static invalidateSubscriptionCache = async (
+    workspaceModelId: ModelId
+  ) => {
+    logger.info(
+      {
+        workspaceModelId,
+        method: "SubscriptionResource.invalidateSubscriptionCache",
+      },
+      "Invalidating auth resource cache"
+    );
+    return SubscriptionResource._invalidateSubscriptionCache(workspaceModelId);
+  };
 
   /**
    * Invalidate subscription caches for all workspaces on a given plan.
@@ -324,6 +337,13 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
   ): Promise<SubscriptionResource | null> {
     // Bypass cache when transaction is provided for transactional consistency
     if (transaction) {
+      logger.info(
+        {
+          workspaceModelId,
+          method: "SubscriptionResource.fetchActiveByWorkspaceModelId",
+        },
+        "Skipping auth resource cache: transaction provided"
+      );
       const res = await SubscriptionResource.fetchActiveByWorkspacesModelId(
         [workspaceModelId],
         transaction

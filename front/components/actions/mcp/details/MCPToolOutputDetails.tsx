@@ -1,7 +1,8 @@
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ActionDetailsDisplayContext } from "@app/components/actions/mcp/details/types";
 import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
-import { toolGeneratedFileToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
+import { markdownCitationToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
+import type { MCPReferenceCitation } from "@app/components/markdown/MCPReferenceCitation";
 import type {
   SqlQueryOutputType,
   ThinkingOutputType,
@@ -15,6 +16,7 @@ import {
   isWarningResourceType,
   isWebsearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 import config from "@app/lib/api/config";
 import { getDocumentIcon } from "@app/lib/content_nodes";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -79,7 +81,7 @@ export function SqlQueryBlock({ resource }: SqlQueryBlockProps) {
 }
 
 interface ToolGeneratedFileDetailsProps {
-  resource: ToolGeneratedFileType;
+  resource: ToolGeneratedFileType | ActionGeneratedFileType;
   owner: LightWorkspaceType;
 }
 
@@ -87,15 +89,21 @@ export function ToolGeneratedFileDetails({
   resource,
   owner,
 }: ToolGeneratedFileDetailsProps) {
-  const file = {
-    ...resource,
-    sourceUrl: `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${resource.fileId}`,
+  const citation: MCPReferenceCitation = {
+    fileId: resource.fileId,
+    title: resource.title,
+    contentType: resource.contentType,
+    href: `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${resource.fileId}`,
+    description:
+      "text" in resource ? resource.text : (resource.snippet ?? undefined),
   };
+
   return (
     <AttachmentCitation
-      attachmentCitation={toolGeneratedFileToAttachmentCitation(file)}
+      attachmentCitation={markdownCitationToAttachmentCitation(citation)}
       owner={owner}
       conversationId={null}
+      compact
     />
   );
 }

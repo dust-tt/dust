@@ -28,8 +28,9 @@ import {
   getProjectRoute,
   setQueryParam,
 } from "@app/lib/utils/router";
-import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import {
+  type ConversationListItemType,
+  getConversationDisplayTitle,
   getConversationUrlAccessMode,
   isProjectConversation,
 } from "@app/types/assistant/conversation";
@@ -135,7 +136,7 @@ export function useConversationMenu() {
 
 interface ConversationMenuProps {
   activeConversationId: string | null;
-  conversation?: ConversationWithoutContentType;
+  conversation?: ConversationListItemType;
   onConversationBranched?: () => Promise<void> | void;
   owner: WorkspaceType;
   trigger: ReactElement;
@@ -357,8 +358,9 @@ export function ConversationMenu({
         onClose={() => setShowRenameDialog(false)}
         owner={owner}
         conversationId={activeConversationId}
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        currentTitle={conversation?.title || ""}
+        currentTitle={
+          conversation ? getConversationDisplayTitle(conversation) : ""
+        }
       />
       <DropdownMenu modal={false} open={isOpen} onOpenChange={onOpenChange}>
         {triggerPosition ? (

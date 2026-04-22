@@ -78,6 +78,7 @@ type ContextType = {
   useResourcesHook: UseResourcesHook;
   emptyComponent: ReactNode;
   defaultExpandedIds?: string[];
+  getLabel?: (node: ContentNode) => string;
 };
 
 const ContentNodeTreeContext = React.createContext<ContextType | undefined>(
@@ -146,6 +147,13 @@ function ContentNodeTreeInfiniteScroll({
   );
 }
 
+const PERMISSIONS_ERROR_MESSAGES: Record<string, string> = {
+  rate_limit_error:
+    "Connected service's API limit reached. Please retry shortly.",
+  data_source_auth_error:
+    "Failed to retrieve permissions due to a revoked authorization. Please re-authorize the connection.",
+};
+
 interface ContentNodeTreeChildrenProps {
   depth: number;
   isRoundedBackground?: boolean;
@@ -165,8 +173,16 @@ function ContentNodeTreeChildren({
   parentIsSelected,
   additionalActions = undefined,
 }: ContentNodeTreeChildrenProps) {
-  const { onDocumentViewClick, selectedNodes, setSelectedNodes, showExpand } =
-    useContentNodeTreeContext();
+  const {
+    onDocumentViewClick,
+    selectedNodes,
+    setSelectedNodes,
+    showExpand,
+    useResourcesHook,
+    emptyComponent,
+    defaultExpandedIds,
+    getLabel,
+  } = useContentNodeTreeContext();
 
   const sendNotification = useSendNotification();
   const [filter, setFilter] = useState("");
@@ -174,9 +190,6 @@ function ContentNodeTreeChildren({
   // If the user pressed "select all", we want to display "unselect all" and vice versa.
   // But if the user types in the search bar, we want to reset the button to "select all".
   const [selectAllClicked, setSelectAllClicked] = useState(false);
-
-  const { useResourcesHook, emptyComponent, defaultExpandedIds } =
-    useContentNodeTreeContext();
 
   const {
     resources,
@@ -226,18 +239,12 @@ function ContentNodeTreeChildren({
   );
 
   if (isResourcesError) {
-    return (
-      <div className="text-sm text-warning">
-        {resourcesError?.type === "rate_limit_error" ? (
-          <>Connected service's API limit reached. Please retry shortly.</>
-        ) : (
-          <>
-            Failed to retrieve permissions likely due to a revoked
-            authorization.
-          </>
-        )}
-      </div>
-    );
+    const errorMessage =
+      (resourcesError?.type &&
+        PERMISSIONS_ERROR_MESSAGES[resourcesError.type]) ||
+      "Failed to retrieve permissions due to an unexpected error. The resource may have been deleted, moved, or its sharing permissions changed.";
+
+    return <div className="text-sm text-warning">{errorMessage}</div>;
   }
 
   const tree = (
@@ -256,7 +263,7 @@ function ContentNodeTreeChildren({
             type={
               showExpand === false ? "item" : n.expandable ? "node" : "leaf"
             }
-            label={n.title}
+            label={getLabel ? getLabel(n) : n.title}
             labelClassName={
               n.providerVisibility === "private"
                 ? "after:content-['(private)'] after:text-warning after:ml-1"
@@ -447,6 +454,10 @@ interface ContentNodeTreeProps {
    * Additional actions to display on for each node.
    */
   additionalActionsForContentNode?: (contentNode: ContentNode) => ReactNode;
+  /**
+   * Optional function to compute the display label for a node. Defaults to node.title.
+   */
+  getLabel?: (node: ContentNode) => string;
 }
 
 export function ContentNodeTree({
@@ -461,6 +472,7 @@ export function ContentNodeTree({
   emptyComponent,
   defaultExpandedIds,
   additionalActionsForContentNode,
+  getLabel,
 }: ContentNodeTreeProps) {
   return (
     <ContentNodeTreeContextProvider
@@ -472,6 +484,7 @@ export function ContentNodeTree({
         useResourcesHook,
         emptyComponent,
         defaultExpandedIds,
+        getLabel,
       }}
     >
       <ContentNodeTreeChildren

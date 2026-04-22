@@ -1,14 +1,12 @@
 import { LinkWrapper } from "@app/lib/platform";
 import { getSkillAvatarIcon } from "@app/lib/skill";
-import type { SkillType } from "@app/types/assistant/skill_configuration";
+import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import type { LightWorkspaceType } from "@app/types/user";
 import { ExternalLinkIcon, Icon, Spinner } from "@dust-tt/sparkle";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React from "react";
 
 interface SimilarSkillsDisplayProps {
   owner: LightWorkspaceType;
-  similarSkills: SkillType[];
+  similarSkills: SkillWithoutInstructionsAndToolsType[];
   isLoading: boolean;
 }
 

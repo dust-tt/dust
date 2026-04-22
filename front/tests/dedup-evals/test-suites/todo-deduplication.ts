@@ -210,5 +210,172 @@ Score 0 if c-0 is not matched or c-1 is incorrectly matched.
 Score 2 if both decisions are correct but c-0 maps to wrong sId.
 Score 3 if c-0 correctly maps to existing-1 and c-1 is new.`,
     },
+
+    // ── Granularity mismatch: sub-task of existing ─────────────────────────
+
+    {
+      scenarioId: "granularity-mismatch",
+      existingTodos: [
+        {
+          sId: "existing-1",
+          text: "Migrate the database from MySQL to PostgreSQL",
+        },
+      ],
+      candidates: [
+        {
+          itemId: "c-0",
+          text: "Export all MySQL data and import it into the new PostgreSQL instance",
+        },
+      ],
+      expectedMatches: [shouldMatchExisting(0, "existing-1")],
+      judgeCriteria: `The candidate describes a sub-step of the existing migration TODO.
+Completing the existing TODO would make the candidate redundant — they are the same
+core task at different granularity levels.
+
+Score 0 if the candidate is treated as new.
+Score 2 if matched but reasoning doesn't address the granularity difference.
+Score 3 if correctly matched to existing-1.`,
+    },
+
+    // ── Same domain, opposite action ───────────────────────────────────────
+
+    {
+      scenarioId: "same-domain-opposite-action",
+      existingTodos: [
+        {
+          sId: "existing-1",
+          text: "Upgrade the Stripe integration to API v3",
+        },
+      ],
+      candidates: [
+        {
+          itemId: "c-0",
+          text: "Remove the Stripe integration and switch to a custom payment flow",
+        },
+      ],
+      expectedMatches: [shouldBeNew(0)],
+      judgeCriteria: `Both items mention Stripe payments, but the actions are opposite:
+one upgrades Stripe, the other removes it entirely. These are clearly distinct tasks
+that could both appear on a backlog. Keyword overlap should not cause a false match.
+
+Score 0 if the candidate is matched to existing-1.
+Score 3 if correctly identified as new.`,
+    },
+
+    // ── Temporal variation: same lifecycle task ────────────────────────────
+
+    {
+      scenarioId: "temporal-variation-same-task",
+      existingTodos: [
+        { sId: "existing-1", text: "Fix the login bug that causes 500 errors" },
+      ],
+      candidates: [
+        {
+          itemId: "c-0",
+          text: "Deploy the hotfix for the login 500 error to production",
+        },
+      ],
+      expectedMatches: [shouldMatchExisting(0, "existing-1")],
+      judgeCriteria: `The existing TODO is about fixing a login bug. The candidate is about
+deploying that fix. These are the same lifecycle task — completing the fix inherently
+includes deploying it. They are redundant.
+
+Score 0 if the candidate is treated as new.
+Score 2 if matched but reasoning is unclear.
+Score 3 if correctly matched to existing-1.`,
+    },
+
+    // ── Cross-match confusion: multiple plausible pairings ─────────────────
+
+    {
+      scenarioId: "cross-match-confusion",
+      existingTodos: [
+        {
+          sId: "existing-1",
+          text: "Write API documentation for the REST endpoints",
+        },
+        {
+          sId: "existing-2",
+          text: "Write a user guide for the admin dashboard",
+        },
+      ],
+      candidates: [
+        {
+          itemId: "c-0",
+          text: "Document all REST API endpoints with request/response examples",
+        },
+        {
+          itemId: "c-1",
+          text: "Create a step-by-step admin dashboard guide for new users",
+        },
+      ],
+      expectedMatches: [
+        shouldMatchExisting(0, "existing-1"),
+        shouldMatchExisting(1, "existing-2"),
+      ],
+      judgeCriteria: `Both candidates are about "writing documentation" and both existing TODOs
+are about "writing documentation." The model must pair them correctly:
+- c-0 (REST API docs) → existing-1 (API docs), NOT existing-2
+- c-1 (admin dashboard guide) → existing-2 (user guide), NOT existing-1
+
+A swapped pairing is wrong even though both would be "matches."
+
+Score 0 if any pairing is swapped or missing.
+Score 2 if both matched but one points to the wrong sId.
+Score 3 if both correctly paired: c-0→existing-1 and c-1→existing-2.`,
+    },
+
+    // ── Large candidate batch: index tracking ──────────────────────────────
+
+    {
+      scenarioId: "large-batch-index-tracking",
+      existingTodos: [
+        {
+          sId: "existing-1",
+          text: "Set up Datadog monitoring for API latency",
+        },
+        { sId: "existing-2", text: "Add input validation to the signup form" },
+      ],
+      candidates: [
+        {
+          itemId: "c-0",
+          text: "Implement WebSocket support for real-time notifications",
+        },
+        {
+          itemId: "c-1",
+          text: "Add server-side rendering for the landing page",
+        },
+        {
+          itemId: "c-2",
+          text: "Configure Datadog APM to track API response times",
+        },
+        { itemId: "c-3", text: "Create a CLI tool for database migrations" },
+        { itemId: "c-4", text: "Validate user input on the registration form" },
+        {
+          itemId: "c-5",
+          text: "Set up automated backups for the production database",
+        },
+      ],
+      expectedMatches: [
+        shouldBeNew(0),
+        shouldBeNew(1),
+        shouldMatchExisting(2, "existing-1"),
+        shouldBeNew(3),
+        shouldMatchExisting(4, "existing-2"),
+        shouldBeNew(5),
+      ],
+      judgeCriteria: `Six candidates against two existing TODOs. The model must:
+- Match c-2 (Datadog APM) to existing-1 (Datadog monitoring) — same observability task.
+- Match c-4 (registration form validation) to existing-2 (signup form validation) — same task.
+- Correctly identify c-0, c-1, c-3, c-5 as new — none overlap with existing TODOs.
+
+This tests index tracking accuracy in a larger batch. Getting the indices wrong
+(e.g., reporting candidate 3 instead of 2) is a common failure mode.
+
+Score 0 if more than one decision is wrong.
+Score 1 if exactly one decision is wrong.
+Score 2 if all decisions correct but one sId mapping is wrong.
+Score 3 if all 6 candidates are correctly classified with proper sId mappings.`,
+    },
   ],
 };

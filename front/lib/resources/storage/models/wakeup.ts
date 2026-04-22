@@ -15,7 +15,7 @@ export class WakeUpModel extends WorkspaceAwareModel<WakeUpModel> {
   declare updatedAt: CreationOptional<Date>;
 
   declare conversationId: ForeignKey<ConversationModel["id"]>;
-  declare userId: ForeignKey<UserModel["id"]> | null;
+  declare userId: ForeignKey<UserModel["id"]>;
   declare agentConfigurationId: ForeignKey<AgentConfigurationModel["sId"]>;
   declare scheduleType: WakeUpScheduleType;
   declare fireAt: Date | null;
@@ -48,7 +48,7 @@ WakeUpModel.init(
     },
     userId: {
       type: DataTypes.BIGINT,
-      allowNull: true,
+      allowNull: false,
       references: {
         model: UserModel,
         key: "id",
@@ -125,10 +125,10 @@ WakeUpModel.belongsTo(ConversationModel, {
 });
 
 UserModel.hasMany(WakeUpModel, {
-  foreignKey: { name: "userId", allowNull: true },
+  foreignKey: { name: "userId", allowNull: false },
   onDelete: "RESTRICT",
 });
 
 WakeUpModel.belongsTo(UserModel, {
-  foreignKey: { name: "userId", allowNull: true },
+  foreignKey: { name: "userId", allowNull: false },
 });

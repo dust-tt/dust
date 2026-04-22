@@ -85,17 +85,22 @@ export interface NetworkPolicy {
   readonly allowlist?: readonly string[];
 }
 
-export const ALLOWLIST_NETWORK_POLICY: NetworkPolicy = {
+// Agent commands run as agent-proxied (uid 1003) whose traffic is redirected
+// by nftables to the in-sandbox egress proxy. The E2B-level allowlist covers
+// services that root processes access directly (bypassing the proxy).
+export const PROXY_ONLY_NETWORK_POLICY: NetworkPolicy = {
   mode: "deny_all",
   allowlist: [
+    // GCS — gcsfuse mounts run as root
     "storage.googleapis.com",
-    "dust.tt",
-    "*.dust.tt",
-    // Datadog EU — sandbox telemetry
+    // Datadog EU — sandbox telemetry runs as root
     "http-intake.logs.datadoghq.eu",
     "api.datadoghq.eu",
-    // Regional egress proxy (eu.sandbox-egress.dust.tt, us.sandbox-egress.dust.tt, ...)
+    // Regional egress proxy — the forwarder (root) connects by resolved IP,
+    // but E2B's domain-based allowOut needs the wildcard too.
     "*.sandbox-egress.dust.tt",
+    "104.199.4.80/32", // eu.sandbox-egress.dust.tt
+    "104.154.146.142/32", // us.sandbox-egress.dust.tt
   ],
 };
 

@@ -27,6 +27,13 @@ const fetchFromOutlook = async (
   });
 };
 
+const getMailboxBasePath = (sharedMailboxAddress?: string): string => {
+  if (sharedMailboxAddress) {
+    return `/users/${encodeURIComponent(sharedMailboxAddress)}`;
+  }
+  return "/me";
+};
+
 const getErrorText = async (response: Response): Promise<string> => {
   try {
     const errorData = await response.json();
@@ -67,6 +74,12 @@ interface OutlookMessage {
     };
   }>;
   bccRecipients?: Array<{
+    emailAddress: {
+      address: string;
+      name?: string;
+    };
+  }>;
+  replyTo?: Array<{
     emailAddress: {
       address: string;
       name?: string;
@@ -120,7 +133,7 @@ interface OutlookFolder {
 
 const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
   get_messages: async (
-    { search, folderName, top = 10, skip = 0, select },
+    { search, folderName, top = 10, skip = 0, select, sharedMailboxAddress },
     { authInfo }
   ) => {
     const accessToken = authInfo?.token;
@@ -128,11 +141,13 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
       return new Err(new MCPError("Authentication required"));
     }
 
+    const basePath = getMailboxBasePath(sharedMailboxAddress);
+
     // If folderName is provided, search for the folder and get its ID
     let folderId: string | undefined;
     if (folderName) {
       const foldersResponse = await fetchFromOutlook(
-        "/me/mailFolders",
+        `${basePath}/mailFolders`,
         accessToken,
         {
           method: "GET",
@@ -181,14 +196,14 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
     } else {
       params.append(
         "$select",
-        "id,conversationId,subject,bodyPreview,importance,receivedDateTime,sentDateTime,hasAttachments,isDraft,isRead,from,toRecipients,ccRecipients,parentFolderId"
+        "id,conversationId,subject,bodyPreview,importance,receivedDateTime,sentDateTime,hasAttachments,isDraft,isRead,from,toRecipients,ccRecipients,bccRecipients,replyTo,parentFolderId"
       );
     }
 
     // Use different endpoint if folderId is provided
     const endpoint = folderId
-      ? `/me/mailFolders/${folderId}/messages?${params.toString()}`
-      : `/me/messages?${params.toString()}`;
+      ? `${basePath}/mailFolders/${folderId}/messages?${params.toString()}`
+      : `${basePath}/messages?${params.toString()}`;
 
     const response = await fetchFromOutlook(endpoint, accessToken, {
       method: "GET",
@@ -223,17 +238,21 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
     ]);
   },
 
-  get_attachments: async ({ messageId }, { authInfo }) => {
+  get_attachments: async (
+    { messageId, sharedMailboxAddress },
+    { authInfo }
+  ) => {
     const accessToken = authInfo?.token;
     if (!accessToken) {
       return new Err(new MCPError("Authentication required"));
     }
 
+    const basePath = getMailboxBasePath(sharedMailboxAddress);
     const encodedMessageId = encodeURIComponent(messageId);
 
     // List all attachments for the message
     const listResponse = await fetchFromOutlook(
-      `/me/messages/${encodedMessageId}/attachments`,
+      `${basePath}/messages/${encodedMessageId}/attachments`,
       accessToken,
       { method: "GET" }
     );
@@ -340,11 +359,16 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
     return new Ok(allContent);
   },
 
-  get_drafts: async ({ search, top = 10, skip = 0 }, { authInfo }) => {
+  get_drafts: async (
+    { search, top = 10, skip = 0, sharedMailboxAddress },
+    { authInfo }
+  ) => {
     const accessToken = authInfo?.token;
     if (!accessToken) {
       return new Err(new MCPError("Authentication required"));
     }
+
+    const basePath = getMailboxBasePath(sharedMailboxAddress);
 
     const params = new URLSearchParams();
     params.append("$filter", "isDraft eq true");
@@ -357,7 +381,7 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
     }
 
     const response = await fetchFromOutlook(
-      `/me/messages?${params.toString()}`,
+      `${basePath}/messages?${params.toString()}`,
       accessToken,
       { method: "GET" }
     );
@@ -374,7 +398,7 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
       result.value || [],
       async (draft: { id: string }): Promise<OutlookMessage | null> => {
         const draftResponse = await fetchFromOutlook(
-          `/me/messages/${draft.id}`,
+          `${basePath}/messages/${draft.id}`,
           accessToken,
           { method: "GET" }
         );
@@ -405,7 +429,7 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
   },
 
   create_draft: async (
-    { to, cc, bcc, subject, contentType, body, importance = "normal" },
+    { to, cc, bcc, replyTo, subject, contentType, body, importance = "normal" },
     { authInfo }
   ) => {
     const accessToken = authInfo?.token;
@@ -435,6 +459,12 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
 
     if (bcc && bcc.length > 0) {
       message.bccRecipients = bcc.map((email) => ({
+        emailAddress: { address: email },
+      }));
+    }
+
+    if (replyTo && replyTo.length > 0) {
+      message.replyTo = replyTo.map((email) => ({
         emailAddress: { address: email },
       }));
     }
@@ -623,6 +653,7 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
       to,
       cc,
       bcc,
+      replyTo,
       subject,
       contentType = "text",
       body,
@@ -654,6 +685,12 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
 
     if (bcc && bcc.length > 0) {
       message.bccRecipients = bcc.map((email) => ({
+        emailAddress: { address: email },
+      }));
+    }
+
+    if (replyTo && replyTo.length > 0) {
+      message.replyTo = replyTo.map((email) => ({
         emailAddress: { address: email },
       }));
     }

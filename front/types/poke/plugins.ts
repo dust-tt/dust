@@ -213,6 +213,7 @@ export function createIoTsCodecFromArgs(
 
 export const supportedResourceTypes = [
   "apps",
+  "conversations",
   "data_source_views",
   "data_sources",
   "mcp_server_views",

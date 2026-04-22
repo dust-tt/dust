@@ -36,6 +36,8 @@ import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   ConversationForkedChildType,
   ConversationForkedFromType,
+  ConversationForkingDataType,
+  ConversationListItemType,
   ConversationMCPServerViewType,
   ConversationMetadata,
   ConversationUrlAccessMode,
@@ -45,6 +47,7 @@ import type {
 } from "@app/types/assistant/conversation";
 import {
   ConversationError,
+  getConversationDisplayTitle,
   getConversationUrlAccessMode,
 } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -67,7 +70,7 @@ export type FetchConversationOptions = {
   includeDeleted?: boolean;
   excludeTest?: boolean; // Explicitly exclude test conversations
   dangerouslySkipPermissionFiltering?: boolean;
-  includeForkedChildrenInfo?: boolean;
+  includeForkingData?: boolean;
   updatedSince?: number; // Filter conversations updated after this timestamp (milliseconds)
 };
 
@@ -96,7 +99,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   // User-specific fields (populated when conversations are listed for a user).
   private userParticipation?: UserParticipation;
   private userLastReadAt: Date | null = null;
-  private forkedFromData?: ConversationForkedFromType;
+  private _forkingData?: ConversationForkingDataType;
 
   constructor(
     model: ModelStaticWorkspaceAware<ConversationModel>,
@@ -202,7 +205,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     space: SpaceResource | null
   ): ConversationResource {
     const resource = new this(this.model, conversation.get(), space);
-    resource.forkedFromData = this.getForkedFromData(conversation);
+    const forkedFrom = this.getForkedFromData(conversation);
+    if (forkedFrom) {
+      resource._forkingData = { forkedFrom };
+    }
 
     return resource;
   }
@@ -214,10 +220,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       transaction,
       excludeTest,
       updatedAfter,
+      includeForkingData,
     }: {
       transaction?: Transaction;
       excludeTest?: boolean;
       updatedAfter?: Date;
+      includeForkingData?: boolean;
     } = {}
   ): Promise<ConversationResource[]> {
     if (ids.length === 0) {
@@ -238,7 +246,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         visibility: { [Op.notIn]: excludedVisibilities },
         ...(updatedAfter ? { updatedAt: { [Op.gte]: updatedAfter } } : {}),
       } as WhereOptions<ConversationModel>,
-      include: this.getForkedFromInclude(),
+      ...(includeForkingData ? { include: this.getForkedFromInclude() } : {}),
       transaction,
     });
 
@@ -246,8 +254,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return conversations.map((c) => this.fromModel(c, null));
   }
 
-  get forkedFromInfo(): ConversationForkedFromType | undefined {
-    return this.forkedFromData;
+  get forkingData(): ConversationForkingDataType | undefined {
+    return this._forkingData;
   }
 
   private static async listSerializedChildForks(
@@ -348,6 +356,26 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         },
       ];
     });
+  }
+
+  async fetchForkingData(
+    auth: Authenticator
+  ): Promise<ConversationForkingDataType | undefined> {
+    const forkedChildren = await ConversationResource.listSerializedChildForks(
+      auth,
+      this
+    );
+
+    if (!this.forkingData?.forkedFrom && forkedChildren.length === 0) {
+      return undefined;
+    }
+
+    return {
+      ...(this.forkingData?.forkedFrom && {
+        forkedFrom: this.forkingData.forkedFrom,
+      }),
+      ...(forkedChildren.length > 0 && { forkedChildren }),
+    };
   }
 
   get space(): SpaceResource | null {
@@ -534,7 +562,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         ...options.where,
         workspaceId: workspace.id,
       },
-      include: this.getForkedFromInclude(),
+      ...(fetchConversationOptions?.includeForkingData
+        ? { include: this.getForkedFromInclude() }
+        : {}),
       limit: options.limit,
       order: options.order,
     });
@@ -592,7 +622,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       )
     );
 
-    if (!this.isPrivateConversationUrlsByDefaultEnabled(auth)) {
+    if (
+      !this.isPrivateConversationUrlsByDefaultEnabled(auth) ||
+      auth.isAdmin()
+    ) {
       return spaceBasedAccessible;
     }
 
@@ -1286,6 +1319,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       includeDeleted: options?.includeDeleted,
       dangerouslySkipPermissionFiltering:
         options?.dangerouslySkipPermissionFiltering,
+      includeForkingData: options?.includeForkingData,
     });
 
     if (!conversation) {
@@ -1297,9 +1331,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         auth,
         conversation.id
       );
-    const forkedChildren = options?.includeForkedChildrenInfo
-      ? await ConversationResource.listSerializedChildForks(auth, conversation)
-      : [];
+    const forkingData = options?.includeForkingData
+      ? await conversation.fetchForkingData(auth)
+      : undefined;
 
     return new Ok({
       id: conversation.id,
@@ -1318,10 +1352,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       depth: conversation.depth,
       metadata: conversation.metadata,
       branchId: null,
-      ...(conversation.forkedFromInfo && {
-        forkedFrom: conversation.forkedFromInfo,
-      }),
-      ...(forkedChildren.length > 0 && { forkedChildren }),
+      ...(forkingData && { forkingData }),
     });
   }
 
@@ -1486,6 +1517,29 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     lastValue: string | null;
   }> {
     return this.fetchPrivateConversationsPaginated(auth, { pagination });
+  }
+
+  static async listPrivateConversationsForUserPaginatedFromDB(
+    auth: Authenticator,
+    pagination: {
+      limit: number;
+      lastValue?: string;
+      orderDirection?: "asc" | "desc";
+    }
+  ): Promise<{
+    conversations: ConversationListItemType[];
+    hasMore: boolean;
+    lastValue: string | null;
+  }> {
+    const result = await this.listPrivateConversationsForUserPaginated(
+      auth,
+      pagination
+    );
+    return {
+      conversations: result.conversations.map((c) => c.toListItem()),
+      hasMore: result.hasMore,
+      lastValue: result.lastValue,
+    };
   }
 
   static async listSpaceUnreadConversationsAndActivityForUser(
@@ -2508,6 +2562,32 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return new Ok(message);
   }
 
+  static async getMessageByIds(
+    auth: Authenticator,
+    conversation: ConversationWithoutContentType,
+    messageIds: string[]
+  ): Promise<MessageModel[]> {
+    return MessageModel.findAll({
+      where: {
+        conversationId: conversation.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        sId: { [Op.in]: messageIds },
+      },
+      include: [
+        {
+          model: UserMessageModel,
+          as: "userMessage",
+          required: false,
+        },
+        {
+          model: AgentMessageModel,
+          as: "agentMessage",
+          required: false,
+        },
+      ],
+    });
+  }
+
   /**
    * This function retrieves the latest version of each message for the current page,
    * because there's no easy way to fetch only the latest version of a message.
@@ -3285,28 +3365,37 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     );
   }
 
-  toJSON(): ConversationWithoutContentType {
+  toListItem(): ConversationListItemType {
     return {
       actionRequired: this.userParticipation?.actionRequired ?? false,
       created: this.createdAt.getTime(),
-      updated: this.updatedAt.getTime(),
-      spaceId: this.space?.sId ?? null,
-      triggerId: this.triggerSId,
       hasError: this.hasError,
-      id: this.id,
-      // TODO(REQUESTED_SPACE_IDS 2025-10-24): Stop exposing this once all logic is centralized
-      // in baseFetchWithAuthorization.
+      lastReadMs: this.userLastReadAt?.getTime() ?? null,
+      metadata: this.metadata ?? {},
       requestedSpaceIds: this.getRequestedSpaceIdsFromModel(),
       sId: this.sId,
-      title: this.title,
+      spaceId: this.space?.sId ?? null,
+      title: getConversationDisplayTitle({
+        created: this.createdAt.getTime(),
+        forkingData: this.forkingData,
+        title: this.title,
+      }),
+      triggerId: this.triggerSId,
       unread:
-        this.userLastReadAt === null ||
-        (!!this.updatedAt && this.updatedAt > this.userLastReadAt),
-      lastReadMs: this.userLastReadAt?.getTime() ?? null,
+        this.userLastReadAt === null || this.updatedAt > this.userLastReadAt,
+      updated: this.updatedAt.getTime(),
+    };
+  }
+
+  toJSON(): ConversationWithoutContentType {
+    return {
+      ...this.toListItem(),
+      // When listing with to JSON, return the title stored with the model.
+      title: this.title,
+      id: this.id,
       depth: this.depth,
-      metadata: this.metadata,
       branchId: null,
-      ...(this.forkedFromInfo && { forkedFrom: this.forkedFromInfo }),
+      ...(this.forkingData && { forkingData: this.forkingData }),
     };
   }
 }

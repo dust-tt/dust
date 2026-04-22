@@ -7,12 +7,14 @@ import {
   postUserMessage,
   retryAgentMessage,
   softDeleteAgentMessage,
+  softDeleteUserMessageAndReplies,
 } from "@app/lib/api/assistant/conversation";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
 import {
   getConversation,
   getLightConversation,
 } from "@app/lib/api/assistant/conversation/fetch";
+import { gracefullyStopAgentLoop } from "@app/lib/api/assistant/pubsub";
 import { publishAgentMessagesEvents } from "@app/lib/api/assistant/streaming/events";
 import * as attachmentsModule from "@app/lib/api/files/attachments";
 import { fetchLatestProjectContextFileContentFragment } from "@app/lib/api/projects/context";
@@ -72,6 +74,10 @@ vi.mock("@app/lib/api/assistant/streaming/events", () => ({
   publishAgentMessagesEvents: vi.fn(),
   publishConversationEvent: vi.fn(),
   publishMessageEventsOnMessagePostOrEdit: vi.fn(),
+}));
+
+vi.mock("@app/lib/api/assistant/pubsub", () => ({
+  gracefullyStopAgentLoop: vi.fn(),
 }));
 
 vi.mock("@app/lib/api/assistant/conversation/content_fragment", () => ({
@@ -1180,6 +1186,213 @@ describe("softDeleteAgentMessage", () => {
       expect(result.error).toBeInstanceOf(ConversationError);
       expect(result.error.type).toBe("message_deletion_not_authorized");
     }
+  });
+});
+
+describe("softDeleteUserMessageAndReplies", () => {
+  let auth: Authenticator;
+  let conversation: ConversationType;
+  let agentConfig: LightAgentConfigurationType;
+
+  beforeEach(async () => {
+    vi.mocked(gracefullyStopAgentLoop).mockClear();
+
+    const setup = await createResourceTest({});
+    auth = setup.authenticator;
+
+    agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Test Agent",
+      description: "Test Agent Description",
+    });
+
+    // Two user/agent pairs so we can exercise the mid-conversation cascade.
+    const conversationWithoutContent = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [new Date(), new Date()],
+    });
+
+    const fetchedConversationResult = await getConversation(
+      auth,
+      conversationWithoutContent.sId
+    );
+    if (fetchedConversationResult.isErr()) {
+      throw new Error("Failed to fetch conversation");
+    }
+    conversation = fetchedConversationResult.value;
+  });
+
+  it("cascade-deletes the agent message that replied to the deleted user message", async () => {
+    const firstUserMessage = conversation.content
+      .flat()
+      .find((m): m is UserMessageType => isUserMessageType(m));
+    if (!firstUserMessage) {
+      throw new Error("No user message found in conversation");
+    }
+
+    const result = await softDeleteUserMessageAndReplies(auth, {
+      message: firstUserMessage,
+      conversation,
+    });
+
+    expect(result.isOk()).toBe(true);
+
+    const updated = await getConversation(auth, conversation.sId);
+    if (updated.isErr()) {
+      throw new Error("Failed to refetch conversation");
+    }
+
+    // Rank 0: user v1 ("deleted" placeholder).
+    const rank0Latest =
+      updated.value.content[0][updated.value.content[0].length - 1];
+    expect(rank0Latest.type).toBe("user_message");
+    expect(rank0Latest.visibility).toBe("deleted");
+
+    // Rank 1: agent v1 (cascade-deleted placeholder).
+    const rank1Latest =
+      updated.value.content[1][updated.value.content[1].length - 1];
+    expect(rank1Latest.type).toBe("agent_message");
+    expect(rank1Latest.visibility).toBe("deleted");
+    expect(rank1Latest.version).toBe(1);
+
+    // Rank 2 (next turn's user) remains untouched.
+    const rank2Latest =
+      updated.value.content[2][updated.value.content[2].length - 1];
+    expect(rank2Latest.type).toBe("user_message");
+    expect(rank2Latest.visibility).toBe("visible");
+
+    // Rank 3 (next turn's agent) remains untouched.
+    const rank3Latest =
+      updated.value.content[3][updated.value.content[3].length - 1];
+    expect(rank3Latest.type).toBe("agent_message");
+    expect(rank3Latest.visibility).toBe("visible");
+  });
+
+  it("cascades to the trailing agent when the last user message is deleted", async () => {
+    const userMessages = conversation.content
+      .flat()
+      .filter((m): m is UserMessageType => isUserMessageType(m));
+    const lastUser = userMessages[userMessages.length - 1];
+
+    const result = await softDeleteUserMessageAndReplies(auth, {
+      message: lastUser,
+      conversation,
+    });
+    expect(result.isOk()).toBe(true);
+
+    const updated = await getConversation(auth, conversation.sId);
+    if (updated.isErr()) {
+      throw new Error("Failed to refetch conversation");
+    }
+
+    const rank3Latest =
+      updated.value.content[3][updated.value.content[3].length - 1];
+    expect(rank3Latest.visibility).toBe("deleted");
+  });
+
+  it("does not create a duplicate placeholder when the following agent is already deleted", async () => {
+    const agentMessages = conversation.content
+      .flat()
+      .filter((m): m is AgentMessageType => m.type === "agent_message");
+    const firstAgent = agentMessages[0];
+
+    // Pre-delete the agent directly.
+    const preDelete = await softDeleteAgentMessage(auth, {
+      message: firstAgent,
+      conversation,
+    });
+    expect(preDelete.isOk()).toBe(true);
+
+    // Refetch so we have the updated conversation with the existing v1 placeholder.
+    const refetched = await getConversation(auth, conversation.sId);
+    if (refetched.isErr()) {
+      throw new Error("Failed to refetch conversation");
+    }
+    const refetchedConversation = refetched.value;
+    const firstUser = refetchedConversation.content
+      .flat()
+      .find((m): m is UserMessageType => isUserMessageType(m));
+    if (!firstUser) {
+      throw new Error("No user message found");
+    }
+
+    // content[1] is the agent rank; pre-delete has given it v0 + v1 placeholder (2 versions).
+    const agentRankVersionsBefore = refetchedConversation.content[1].length;
+
+    const result = await softDeleteUserMessageAndReplies(auth, {
+      message: firstUser,
+      conversation: refetchedConversation,
+    });
+    expect(result.isOk()).toBe(true);
+
+    const updated = await getConversation(auth, conversation.sId);
+    if (updated.isErr()) {
+      throw new Error("Failed to refetch conversation");
+    }
+
+    // Cascade should not add a v2 placeholder when the orphan is already deleted.
+    expect(updated.value.content[1].length).toBe(agentRankVersionsBefore);
+  });
+
+  it("signals gracefullyStopAgentLoop when the cascaded agent reply is still running", async () => {
+    // ConversationFactory creates agent messages with status "created" by default, which
+    // simulates a mid-stream reply being orphaned by the user-message delete.
+    const firstUserMessage = conversation.content
+      .flat()
+      .find((m): m is UserMessageType => isUserMessageType(m));
+    if (!firstUserMessage) {
+      throw new Error("No user message found in conversation");
+    }
+    const firstAgentMessage = conversation.content
+      .flat()
+      .find((m): m is AgentMessageType => m.type === "agent_message");
+    if (!firstAgentMessage) {
+      throw new Error("No agent message found in conversation");
+    }
+
+    const result = await softDeleteUserMessageAndReplies(auth, {
+      message: firstUserMessage,
+      conversation,
+    });
+    expect(result.isOk()).toBe(true);
+
+    expect(gracefullyStopAgentLoop).toHaveBeenCalledWith(expect.anything(), {
+      messageIds: [firstAgentMessage.sId],
+      conversationId: conversation.sId,
+    });
+  });
+
+  it("does not signal gracefullyStopAgentLoop when the cascaded agent reply already finished", async () => {
+    const firstUserMessage = conversation.content
+      .flat()
+      .find((m): m is UserMessageType => isUserMessageType(m));
+    if (!firstUserMessage) {
+      throw new Error("No user message found in conversation");
+    }
+
+    // Flip the first agent's status away from "created" before cascading.
+    await AgentMessageModel.update(
+      { status: "succeeded" },
+      {
+        where: {
+          id: conversation.content
+            .flat()
+            .filter((m): m is AgentMessageType => m.type === "agent_message")
+            .map((m) => m.agentMessageId),
+        },
+      }
+    );
+    const refetched = await getConversation(auth, conversation.sId);
+    if (refetched.isErr()) {
+      throw new Error("Failed to refetch conversation");
+    }
+
+    const result = await softDeleteUserMessageAndReplies(auth, {
+      message: firstUserMessage,
+      conversation: refetched.value,
+    });
+    expect(result.isOk()).toBe(true);
+
+    expect(gracefullyStopAgentLoop).not.toHaveBeenCalled();
   });
 });
 
@@ -3650,7 +3863,7 @@ describe("isConversationEventAllowedForAuth", () => {
   });
 });
 
-describe("conversation fetch forkedFrom", () => {
+describe("conversation fetch forkingData", () => {
   it("includes forkedFrom in full and light conversation payloads", async () => {
     const { authenticator: auth, workspace } = await createResourceTest({
       role: "admin",
@@ -3717,12 +3930,14 @@ describe("conversation fetch forkedFrom", () => {
     expect(fullConversationResult.isOk()).toBe(true);
 
     if (fullConversationResult.isOk()) {
-      expect(fullConversationResult.value.forkedFrom).toEqual({
-        parentConversationId: parentConversation.sId,
-        parentConversationTitle,
-        sourceMessageId: sourceMessage.sId,
-        branchedAt: branchedAt.getTime(),
-        user: auth.getNonNullableUser().toJSON(),
+      expect(fullConversationResult.value.forkingData).toEqual({
+        forkedFrom: {
+          parentConversationId: parentConversation.sId,
+          parentConversationTitle,
+          sourceMessageId: sourceMessage.sId,
+          branchedAt: branchedAt.getTime(),
+          user: auth.getNonNullableUser().toJSON(),
+        },
       });
     }
 
@@ -3733,12 +3948,14 @@ describe("conversation fetch forkedFrom", () => {
     expect(lightConversationResult.isOk()).toBe(true);
 
     if (lightConversationResult.isOk()) {
-      expect(lightConversationResult.value.forkedFrom).toEqual({
-        parentConversationId: parentConversation.sId,
-        parentConversationTitle,
-        sourceMessageId: sourceMessage.sId,
-        branchedAt: branchedAt.getTime(),
-        user: auth.getNonNullableUser().toJSON(),
+      expect(lightConversationResult.value.forkingData).toEqual({
+        forkedFrom: {
+          parentConversationId: parentConversation.sId,
+          parentConversationTitle,
+          sourceMessageId: sourceMessage.sId,
+          branchedAt: branchedAt.getTime(),
+          user: auth.getNonNullableUser().toJSON(),
+        },
       });
     }
   });
@@ -3846,14 +4063,14 @@ describe("conversation fetch forkedFrom", () => {
       await ConversationResource.fetchConversationWithoutContent(
         auth,
         parentConversation.sId,
-        { includeForkedChildrenInfo: true }
+        { includeForkingData: true }
       );
     expect(conversationResult.isOk()).toBe(true);
 
     if (conversationResult.isOk()) {
-      expect(conversationResult.value.forkedChildren).toEqual(
-        expectedForkedChildren
-      );
+      expect(conversationResult.value.forkingData).toEqual({
+        forkedChildren: expectedForkedChildren,
+      });
     }
   });
 });

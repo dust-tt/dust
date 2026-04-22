@@ -11,12 +11,13 @@ import { ChartContainer } from "@app/components/charts/ChartContainer";
 import { legendFromConstant } from "@app/components/charts/ChartLegend";
 import { RoundedBarShape } from "@app/components/charts/ChartShapes";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
-import { useHoveredSeries } from "@app/components/charts/useHoveredSeries";
+import { useSelectableSeries } from "@app/components/charts/useSelectableSeries";
 import type { ToolLatencyView } from "@app/lib/api/assistant/observability/tool_latency";
 import {
   Button,
   ButtonsSwitch,
   ButtonsSwitchList,
+  cn,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -192,12 +193,12 @@ export function ToolExecutionTimeChart({
     emptyMessage = "No successful tool executions for this server.";
   }
 
-  const legendItems = legendFromConstant(
-    TOOL_EXECUTION_TIME_LEGEND,
-    TOOL_EXECUTION_TIME_PALETTE
-  );
+  const { activeKey, isDimmed, decorate, hoverHandlers } =
+    useSelectableSeries();
 
-  const { hoveredKey, hoverHandlers } = useHoveredSeries();
+  const legendItems = decorate(
+    legendFromConstant(TOOL_EXECUTION_TIME_LEGEND, TOOL_EXECUTION_TIME_PALETTE)
+  );
 
   const selectedServerLabel =
     serverOptions.find((server) => server.name === selectedServerName)?.label ??
@@ -285,7 +286,7 @@ export function ToolExecutionTimeChart({
         />
         <Tooltip
           content={(props: TooltipContentProps<number, string>) => (
-            <ToolExecutionTimeTooltip {...props} activeKey={hoveredKey} />
+            <ToolExecutionTimeTooltip {...props} activeKey={activeKey} />
           )}
           cursor={false}
           wrapperStyle={{ outline: "none", zIndex: 50 }}
@@ -300,7 +301,11 @@ export function ToolExecutionTimeChart({
           dataKey="p50LatencyMs"
           name="P50"
           fill="currentColor"
-          className={TOOL_EXECUTION_TIME_PALETTE.p50LatencyMs}
+          className={cn(
+            TOOL_EXECUTION_TIME_PALETTE.p50LatencyMs,
+            "transition-opacity",
+            isDimmed("p50LatencyMs") && "opacity-25"
+          )}
           shape={<RoundedBarShape />}
           {...hoverHandlers("p50LatencyMs")}
         />
@@ -308,7 +313,11 @@ export function ToolExecutionTimeChart({
           dataKey="avgLatencyMs"
           name="Average"
           fill="currentColor"
-          className={TOOL_EXECUTION_TIME_PALETTE.avgLatencyMs}
+          className={cn(
+            TOOL_EXECUTION_TIME_PALETTE.avgLatencyMs,
+            "transition-opacity",
+            isDimmed("avgLatencyMs") && "opacity-25"
+          )}
           shape={<RoundedBarShape />}
           {...hoverHandlers("avgLatencyMs")}
         />
@@ -316,7 +325,11 @@ export function ToolExecutionTimeChart({
           dataKey="p95LatencyMs"
           name="P95"
           fill="currentColor"
-          className={TOOL_EXECUTION_TIME_PALETTE.p95LatencyMs}
+          className={cn(
+            TOOL_EXECUTION_TIME_PALETTE.p95LatencyMs,
+            "transition-opacity",
+            isDimmed("p95LatencyMs") && "opacity-25"
+          )}
           shape={<RoundedBarShape />}
           {...hoverHandlers("p95LatencyMs")}
         />

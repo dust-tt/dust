@@ -706,6 +706,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "clari_copilot_mcp"
   | "gong_tool"
   | "google_sheets_tool"
+  | "gpt_image_2_feature"
   | "hootl_subscriptions"
   | "http_client_tool"
   | "index_private_slack_channel"
@@ -748,6 +749,8 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "collapsible_messages"
   | "use_dust_keys"
   | "enable_compaction"
+  | "browser_extension_mcp_tools"
+  | "sensitivity_labels"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;

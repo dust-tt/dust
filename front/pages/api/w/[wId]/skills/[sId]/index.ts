@@ -66,6 +66,11 @@ const PatchSkillRequestBodySchema = t.intersection([
     fileAttachments: t.array(t.type({ fileId: t.string })),
     isDefault: t.boolean,
     instructionsHtml: t.union([t.string, t.null]),
+    reinforcement: t.union([
+      t.literal("auto"),
+      t.literal("on"),
+      t.literal("off"),
+    ]),
   }),
 ]);
 
@@ -324,6 +329,7 @@ async function handler(
         isDefault: body.isDefault,
         mcpServerViews,
         name,
+        reinforcement: body.reinforcement,
         requestedSpaceIds,
         userFacingDescription: body.userFacingDescription,
         ...(shouldActivate ? { status: "active" as const } : {}),

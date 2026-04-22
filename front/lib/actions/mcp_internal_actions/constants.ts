@@ -556,9 +556,7 @@ export const INTERNAL_MCP_SERVERS = {
     id: 31,
     availability: "manual" as const,
     allowMultipleInstances: true,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("slack_bot_mcp");
-    },
+    isRestricted: undefined,
     isPreview: true,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
@@ -1137,6 +1135,7 @@ type InternalMCPServerEntryCommon = {
   tools_retry_policies: Record<string, MCPToolRetryPolicyType> | undefined;
   timeoutMs: number | undefined;
   requiresBearerToken?: boolean;
+  sensitivityLabelProvider?: string;
   // When false, the server is hidden from direct execution contexts (e.g. sandbox CLI).
   // Defaults to true.
 };
@@ -1385,4 +1384,22 @@ export function getInternalMCPServerMetadata<
   const server = INTERNAL_MCP_SERVERS[name];
 
   return server.metadata;
+}
+
+const SENSITIVITY_LABEL_PROVIDER_BY_SERVER: Partial<
+  Record<InternalMCPServerNameType, "microsoft">
+> = {
+  outlook: "microsoft",
+  microsoft_drive: "microsoft",
+  microsoft_teams: "microsoft",
+};
+
+export function getSensitivityLabelProviderForServerId(
+  sId: string
+): "microsoft" | null {
+  const r = getInternalMCPServerNameAndWorkspaceId(sId);
+  if (r.isErr()) {
+    return null;
+  }
+  return SENSITIVITY_LABEL_PROVIDER_BY_SERVER[r.value.name] ?? null;
 }

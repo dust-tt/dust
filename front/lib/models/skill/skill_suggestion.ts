@@ -1,6 +1,7 @@
 import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type {
   SkillSuggestionKind,
@@ -26,9 +27,11 @@ export class SkillSuggestionModel extends WorkspaceAwareModel<SkillSuggestionMod
   declare source: SkillSuggestionSource;
   declare sourceConversationId: ForeignKey<ConversationModel["id"]> | null;
   declare groupId: string | null;
+  declare updatedByUserId: ForeignKey<UserModel["id"]> | null;
 
   declare skillConfiguration: NonAttribute<SkillConfigurationModel>;
   declare sourceConversation: NonAttribute<ConversationModel | null>;
+  declare updatedByUser: NonAttribute<UserModel | null>;
 }
 
 SkillSuggestionModel.init(
@@ -82,6 +85,14 @@ SkillSuggestionModel.init(
       type: DataTypes.STRING,
       allowNull: true,
     },
+    updatedByUserId: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
+      references: {
+        model: UserModel,
+        key: "id",
+      },
+    },
   },
   {
     modelName: "skill_suggestion",
@@ -113,6 +124,12 @@ SkillSuggestionModel.init(
         concurrently: true,
         where: { groupId: { [Op.ne]: null } },
       },
+      {
+        name: "idx_skill_suggestions_updated_by_user_id",
+        fields: ["updatedByUserId"],
+        concurrently: true,
+        where: { updatedByUserId: { [Op.ne]: null } },
+      },
     ],
   }
 );
@@ -132,4 +149,13 @@ SkillSuggestionModel.belongsTo(ConversationModel, {
   foreignKey: { name: "sourceConversationId", allowNull: true },
   onDelete: "RESTRICT",
   as: "sourceConversation",
+});
+
+UserModel.hasMany(SkillSuggestionModel, {
+  foreignKey: { name: "updatedByUserId", allowNull: true },
+  onDelete: "SET NULL",
+});
+SkillSuggestionModel.belongsTo(UserModel, {
+  foreignKey: { name: "updatedByUserId", allowNull: true },
+  as: "updatedByUser",
 });

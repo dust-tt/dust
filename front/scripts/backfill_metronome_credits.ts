@@ -131,7 +131,7 @@ async function backfillCreditsOfType(
             startingAt: startingAt.toISOString(),
             endingBefore: endingBefore.toISOString(),
             name: `Monthly credit backfill (${startingAt.toISOString().split("T")[0]})`,
-            idempotencyKey: `cerateCredit-${workspace.sId}-${startingAt.getTime()}-${endingBefore.getTime()}`,
+            idempotencyKey: `createCredit-${workspace.sId}-${startingAt.getTime()}-${endingBefore.getTime()}`,
           })
         : await createMetronomeCommit({
             metronomeCustomerId,

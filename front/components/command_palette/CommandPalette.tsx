@@ -52,6 +52,7 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
     owner,
     disabled: !isOpen,
     status: "active",
+    viewType: "summary",
   });
 
   // Debounce the search query to avoid expensive fuzzy filtering on every keystroke.

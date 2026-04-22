@@ -128,8 +128,8 @@ export function UserAnswerRequired({
   return (
     <div
       className={cn(
-        "flex flex-col gap-4 rounded-3xl border border-border bg-background p-4",
-        "dark:border-border-night dark:bg-background-night"
+        "flex flex-col gap-4 rounded-2xl border border-dark bg-background p-5",
+        "dark:border-dark-night dark:bg-background-night"
       )}
     >
       <div className="text-base font-medium leading-tight text-foreground dark:text-foreground-night">

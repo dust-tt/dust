@@ -15,7 +15,7 @@ import type { DustError } from "@app/lib/error";
 import { useAppRouter } from "@app/lib/platform";
 import { classNames } from "@app/lib/utils";
 import { getConversationRoute } from "@app/lib/utils/router";
-import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import type { ConversationListItemType } from "@app/types/assistant/conversation";
 import type { RichMention } from "@app/types/assistant/mentions";
 import {
   toMentionType,
@@ -134,7 +134,7 @@ export function ConversationContainerVirtuoso({
         );
 
         await mutateConversations(
-          (currentData: ConversationWithoutContentType[] | undefined) => [
+          (currentData: ConversationListItemType[] | undefined) => [
             // Immediately update the list of conversations in the sidebar by adding the new conversation.
             ...(currentData ?? []),
             conversationRes.value,

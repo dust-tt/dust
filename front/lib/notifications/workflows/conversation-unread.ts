@@ -30,6 +30,7 @@ import { getConversationRoute } from "@app/lib/utils/router";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import {
   ConversationError,
+  getConversationDisplayTitle,
   isCompactionMessageType,
   isLightAgentMessageType,
   isProjectConversation,
@@ -218,7 +219,7 @@ const getConversationDetails = async ({
   const conversation = conversationRes.value;
 
   const workspaceName = auth.getNonNullableWorkspace().name;
-  const subject = conversation.title ?? "Dust conversation";
+  const subject = getConversationDisplayTitle(conversation);
   const isFromTrigger = !!conversation.triggerId;
 
   // Retrieve the message that triggered the notification.
@@ -614,7 +615,7 @@ const generateUnreadMessagesSummary = async ({
 
   const preamble = [
     `Conversation: ${conversation.sId}`,
-    `Title: ${conversation.title ?? "Untitled Conversation"}`,
+    `Title: ${getConversationDisplayTitle(conversation)}`,
     `Created: ${new Date(conversation.created).toISOString()}`,
     `Updated: ${new Date(conversation.updated).toISOString()}`,
     `Unread: ${conversation.unread}`,

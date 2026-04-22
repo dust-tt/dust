@@ -26,6 +26,18 @@ import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { WorkspaceType } from "@app/types/user";
 import { beforeEach, describe, expect, it } from "vitest";
 
+function createForkedData(user: NonNullable<UserMessageType["user"]>) {
+  return {
+    forkedFrom: {
+      parentConversationId: "conv_parent",
+      parentConversationTitle: "Parent conversation",
+      sourceMessageId: "msg_parent_source",
+      branchedAt: Date.now(),
+      user,
+    },
+  };
+}
+
 describe("constructPromptMultiActions - system prompt stability", () => {
   // This test ensures that the system prompt remains stable across multiple calls
   // with the same inputs. This is critical for prompt caching - high-entropy data
@@ -42,6 +54,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
   let agentConfig2: AgentConfigurationType;
   let userMessage2: UserMessageType;
   let conversation2: ConversationType;
+  let branchingUser1: NonNullable<UserMessageType["user"]>;
 
   let modelConfig: ModelConfigurationType;
 
@@ -72,6 +85,10 @@ describe("constructPromptMultiActions - system prompt stability", () => {
       origin: "web",
     });
     userMessage1 = um1;
+    if (!um1.user) {
+      throw new Error("Expected test user message to have a user.");
+    }
+    branchingUser1 = um1.user;
 
     // Set up second workspace with different conversation
     const setup2 = await createResourceTest({ role: "admin" });
@@ -306,6 +323,82 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     );
     expect(userSection).toBeDefined();
     expect(userSection?.content).toContain("Engineering");
+  });
+
+  it("should include branch context in flat prompts using user-facing branch wording", () => {
+    const params = {
+      userMessage: userMessage1,
+      agentConfiguration: agentConfig1,
+      model: modelConfig,
+      hasAvailableActions: true,
+      agentsList: null,
+      enabledSkills: [],
+      equippedSkills: [],
+      conversation: {
+        ...conversation1,
+        forkingData: createForkedData(branchingUser1),
+      } satisfies ConversationWithoutContentType,
+    };
+
+    const sections = constructPromptMultiActions(authenticator1, params);
+    const text = systemPromptToText(sections);
+
+    expect(text).toContain("# BRANCH CONTEXT");
+    expect(text).toContain(
+      'This conversation was branched from "Parent conversation".'
+    );
+    expect(text).toContain(
+      "This conversation starts from a summary of the parent conversation at the branch point."
+    );
+    expect(text).toContain(
+      "Available tools and enabled skills from the parent conversation were carried over into this conversation."
+    );
+    expect(text).toContain(
+      "Conversation attachments and tool outputs available at the branch point were also carried over into this conversation."
+    );
+    expect(text).not.toContain("child conversation");
+    expect(text).not.toContain("source message");
+  });
+
+  it("should place branch context in ephemeral tier for structured prompts", () => {
+    const deepDiveConfig = {
+      ...agentConfig1,
+      sId: GLOBAL_AGENTS_SID.DEEP_DIVE,
+      scope: "global" as const,
+    };
+
+    const params = {
+      userMessage: userMessage1,
+      agentConfiguration: deepDiveConfig,
+      model: modelConfig,
+      hasAvailableActions: true,
+      agentsList: null,
+      enabledSkills: [],
+      equippedSkills: [],
+      conversation: {
+        ...conversation1,
+        forkingData: createForkedData(branchingUser1),
+      } satisfies ConversationWithoutContentType,
+    };
+
+    const sections = constructPromptMultiActions(authenticator1, params);
+    const { instructions, sharedContext, ephemeralContext } =
+      normalizePrompt(sections);
+
+    expect(instructions[0]?.content).not.toContain("# BRANCH CONTEXT");
+    expect(
+      sharedContext.some((section) =>
+        section.content.includes("# BRANCH CONTEXT")
+      )
+    ).toBe(false);
+
+    const branchSection = ephemeralContext.find((section) =>
+      section.content.includes("# BRANCH CONTEXT")
+    );
+    expect(branchSection).toBeDefined();
+    expect(branchSection?.content).toContain(
+      'This conversation was branched from "Parent conversation".'
+    );
   });
 
   it("should include memoriesContext in prompt output when provided", () => {

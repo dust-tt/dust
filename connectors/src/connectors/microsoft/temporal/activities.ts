@@ -2,7 +2,6 @@
 import { getMicrosoftClient } from "@connectors/connectors/microsoft";
 import {
   clientApiPost,
-  extractPath,
   getAllPaginatedEntities,
   getDeltaResults,
   getDriveInternalIdFromItem,
@@ -212,7 +211,7 @@ export async function getRootNodesToSyncFromResources(
             );
             return {
               ...node,
-              name: `${node.name} (${extractPath(item)})`,
+              name: node.name,
             };
           } catch (error) {
             if (error instanceof GraphError && error.statusCode === 404) {
@@ -361,7 +360,7 @@ export async function getRootNodesToSyncFromResources(
           const driveNode = itemToMicrosoftNode("drive", driveItem);
           return {
             ...driveNode,
-            name: `${driveNode.name} + " (${extractPath(driveItem)})`,
+            name: driveNode.name,
           };
         });
       },
@@ -1078,10 +1077,6 @@ export async function syncDeltaForRootNodesInDrive({
           : { item: driveItem, type: "folder" as const };
 
         const blob = itemToMicrosoftNode(type, item);
-
-        if (rootNodeIds.includes(blob.internalId)) {
-          blob.name = blob.name + ` (${extractPath(item)})`;
-        }
 
         const existingResource = await MicrosoftNodeResource.fetchByInternalId(
           connectorId,
@@ -2337,10 +2332,6 @@ export async function processDeltaChangesFromGCS({
           : { item: driveItem, type: "folder" as const };
 
         const blob = itemToMicrosoftNode(type, item);
-
-        if (rootNodeIds.includes(blob.internalId)) {
-          blob.name = blob.name + ` (${extractPath(item)})`;
-        }
 
         const existingResource = await MicrosoftNodeResource.fetchByInternalId(
           connectorId,

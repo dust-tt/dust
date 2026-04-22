@@ -3,7 +3,7 @@ import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_act
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type { AgentContentItemType } from "@app/types/assistant/agent_message_content";
-
+import moment from "moment";
 import type { ContentFragmentType } from "../content_fragment";
 import type { AllSupportedWithDustSpecificFileContentType } from "../files";
 import type { ModelId } from "../shared/model_id";
@@ -438,31 +438,69 @@ export type ConversationForkedChildType = {
 };
 
 /**
+ * Fields needed to render a conversation row in the sidebar list. Served
+ * directly from Elasticsearch. No DB hydration required.
+ */
+export type ConversationListItemType = {
+  actionRequired: boolean;
+  created: number;
+  hasError: boolean;
+  lastReadMs: number | null;
+  metadata: ConversationMetadata;
+  requestedSpaceIds: string[];
+  sId: string;
+  spaceId: string | null;
+  title: string | null;
+  triggerId: string | null;
+  unread: boolean;
+  updated: number;
+};
+
+/**
+ * @swaggerschema PrivateConversationForkingData (swagger_private_schemas.ts)
+ */
+export type ConversationForkingDataType = {
+  forkedFrom?: ConversationForkedFromType;
+  forkedChildren?: ConversationForkedChildType[];
+};
+
+/**
  * A lighter version of Conversation without the content (for menu display).
+ * Extends ConversationListItemType with DB-layer fields used when the full conversation context is
+ * available (individual conversation pages, mutations).
  *
  * @swaggerschema PrivateConversation (swagger_private_schemas.ts)
  */
-export type ConversationWithoutContentType = {
+export type ConversationWithoutContentType = ConversationListItemType & {
   id: ModelId;
-  created: number;
-  updated: number;
-  unread: boolean;
-  lastReadMs: number | null;
-  actionRequired: boolean;
-  hasError: boolean;
-  sId: string;
-  title: string | null;
-  spaceId: string | null;
-  triggerId: string | null;
   depth: number;
-  metadata: ConversationMetadata;
   branchId: string | null;
-  forkedFrom?: ConversationForkedFromType;
-  forkedChildren?: ConversationForkedChildType[];
-
-  // Ideally, this property should be moved to the ConversationType.
-  requestedSpaceIds: string[];
+  forkingData?: ConversationForkingDataType;
 };
+
+type ConversationDisplayTitleInput = Pick<
+  ConversationWithoutContentType,
+  "created" | "title" | "forkingData"
+>;
+export function getConversationDisplayTitle(
+  conversation: ConversationDisplayTitleInput,
+  now = new Date()
+): string {
+  if (conversation.title) {
+    return conversation.title;
+  }
+
+  const forkedFrom = conversation.forkingData?.forkedFrom;
+  if (forkedFrom) {
+    return forkedFrom.parentConversationTitle
+      ? `Branched from '${forkedFrom.parentConversationTitle}'`
+      : "Branched conversation";
+  }
+
+  return moment(conversation.created).isSame(now, "day")
+    ? "New Conversation"
+    : `Conversation from ${new Date(conversation.created).toLocaleDateString()}`;
+}
 
 /**
  * content [][] structure is intended to allow retries (of agent messages) or edits (of user
@@ -503,7 +541,7 @@ export function isLightConversationType(
   return "content" in conversation && !Array.isArray(conversation.content[0]);
 }
 
-export const isProjectConversation = <T extends ConversationWithoutContentType>(
+export const isProjectConversation = <T extends ConversationListItemType>(
   conversation: T
 ): conversation is T & { spaceId: string } => !!conversation.spaceId;
 

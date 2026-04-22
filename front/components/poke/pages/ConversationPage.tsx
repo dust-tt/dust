@@ -1,3 +1,4 @@
+import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
@@ -39,6 +40,23 @@ import {
 } from "@dust-tt/sparkle";
 import { CodeBracketIcon, DocumentTextIcon } from "@heroicons/react/24/outline";
 import { useEffect, useState } from "react";
+
+const USER_VISIBILITY: Record<string, { label: string; classes: string }> = {
+  visible: { label: "sent", classes: "bg-green-100 text-green-800" },
+  pending: { label: "queued", classes: "bg-amber-100 text-amber-800" },
+  deleted: { label: "deleted", classes: "bg-red-100 text-red-800" },
+};
+
+const AGENT_STATUS: Record<string, { label: string; classes: string }> = {
+  created: { label: "generating", classes: "bg-amber-100 text-amber-800" },
+  succeeded: { label: "succeeded", classes: "bg-green-100 text-green-800" },
+  failed: { label: "failed", classes: "bg-red-100 text-red-800" },
+  cancelled: { label: "cancelled", classes: "bg-gray-100 text-gray-700" },
+  gracefully_stopped: {
+    label: "stopped",
+    classes: "bg-gray-100 text-gray-700",
+  },
+};
 
 interface UserMessageViewProps {
   message: UserMessageType;
@@ -83,8 +101,16 @@ const UserMessageView = ({ message, useMarkdown }: UserMessageViewProps) => {
               )}
             </>
           )}
-          <div className="mt-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
-            date: {new Date(message.created).toLocaleString()}
+          <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
+            <span>date: {new Date(message.created).toLocaleString()}</span>
+            <span
+              className={classNames(
+                "rounded-sm px-1 py-0.5 text-xs",
+                USER_VISIBILITY[message.visibility]?.classes
+              )}
+            >
+              {USER_VISIBILITY[message.visibility]?.label}
+            </span>
           </div>
         </ConversationMessage>
       </div>
@@ -150,6 +176,15 @@ const AgentMessageView = ({
           <div className="text-warning">{message.error.message}</div>
         )}
         <div className="mt-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
+          <span
+            className={classNames(
+              "mr-1 rounded-sm px-1 py-0.5 text-xs",
+              AGENT_STATUS[message.status]?.classes ??
+                "bg-gray-100 text-gray-700"
+            )}
+          >
+            {AGENT_STATUS[message.status]?.label ?? message.status}
+          </span>
           date: {new Date(message.created).toLocaleString()} • message version :{" "}
           {message.version} • message sId : {message.sId} {" • "} agent sId :
           <LinkWrapper
@@ -457,6 +492,14 @@ export function ConversationPage() {
   const { conversationDataSourceId, langfuseUiBaseUrl, temporalWorkspace } =
     conversationConfig;
 
+  const allMessages = conversation?.content.flat() ?? [];
+  const pendingUserCount = allMessages.filter(
+    (m) => m.type === "user_message" && m.visibility === "pending"
+  ).length;
+  const createdAgentCount = allMessages.filter(
+    (m) => m.type === "agent_message" && m.status === "created"
+  ).length;
+
   return (
     conversation && (
       <div className="max-w-4xl">
@@ -470,6 +513,13 @@ export function ConversationPage() {
           </LinkWrapper>
         </h3>
         <Page.Vertical align="stretch">
+          <PluginList
+            pluginResourceTarget={{
+              resourceId: conversation.sId,
+              resourceType: "conversations",
+              workspace: owner,
+            }}
+          />
           <div className="flex space-x-2">
             {langfuseUiBaseUrl && (
               <Button
@@ -631,6 +681,22 @@ export function ConversationPage() {
                   <CodeBlock wrapLongLines className="language-json">
                     {JSON.stringify(renderResult.modelConversation, null, 2)}
                   </CodeBlock>
+                </div>
+              )}
+            </div>
+          )}
+          {(pendingUserCount > 0 || createdAgentCount > 0) && (
+            <div className="flex flex-col gap-1 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              {pendingUserCount > 0 && (
+                <div>
+                  ⏳ {pendingUserCount} user message
+                  {pendingUserCount > 1 ? "s" : ""} queued
+                </div>
+              )}
+              {createdAgentCount > 0 && (
+                <div>
+                  🔄 {createdAgentCount} agent message
+                  {createdAgentCount > 1 ? "s" : ""} generating
                 </div>
               )}
             </div>

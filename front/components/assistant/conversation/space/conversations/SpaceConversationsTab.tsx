@@ -18,6 +18,7 @@ import type {
   ConversationWithoutContentType,
   LightConversationType,
 } from "@app/types/assistant/conversation";
+import { getConversationDisplayTitle } from "@app/types/assistant/conversation";
 import type { RichMention } from "@app/types/assistant/mentions";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import type { Result } from "@app/types/shared/result";
@@ -213,10 +214,7 @@ export function SpaceConversationsTab({
                     displayItemCount={true}
                     renderItem={(conversation, selected) => {
                       const conversationLabel =
-                        conversation.title ??
-                        (moment(conversation.created).isSame(moment(), "day")
-                          ? "New Conversation"
-                          : `Conversation from ${new Date(conversation.created).toLocaleDateString()}`);
+                        getConversationDisplayTitle(conversation);
                       const time = moment(conversation.updated).fromNow();
 
                       return (

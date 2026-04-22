@@ -307,13 +307,21 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     }
 
     // Get all the memberships matching the criteria.
-    const { rows, count } = await this.model.findAndCountAll({
+    const rows = await this.model.findAll({
       ...findOptions,
       // WORKSPACE_ISOLATION_BYPASS: Used to find latest memberships across users and workspace is
       // optional.
       // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
+
+    let count = rows.length;
+
+    // Only do the count if we are paginating, otherwise we can use the length of the rows as there is no limit by default
+    if (paginationParams) {
+      count = await MembershipModel.count(findOptions);
+    }
+
     // Then, we only keep the latest membership for each (user, workspace).
     const latestMembershipByUserAndWorkspace = new Map<
       string,
@@ -411,11 +419,26 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     { cacheNullValues: false }
   );
 
-  private static invalidateRoleCache = invalidateCacheWithRedis(
+  private static _invalidateRoleCache = invalidateCacheWithRedis(
     MembershipResource._getActiveRoleForUserInWorkspaceUncached,
     (params: { userModelId: ModelId; workspaceModelId: ModelId }) =>
       MembershipResource.roleCacheKeyResolver(params)
   );
+
+  private static invalidateRoleCache = async (params: {
+    userModelId: ModelId;
+    workspaceModelId: ModelId;
+  }) => {
+    logger.info(
+      {
+        userModelId: params.userModelId,
+        workspaceModelId: params.workspaceModelId,
+        method: "MembershipResource.invalidateRoleCache",
+      },
+      "Invalidating auth resource cache"
+    );
+    return MembershipResource._invalidateRoleCache(params);
+  };
 
   static async getActiveRoleForUserInWorkspace({
     user,
@@ -427,6 +450,14 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     transaction?: Transaction;
   }): Promise<MembershipRoleType | "none"> {
     if (transaction) {
+      logger.info(
+        {
+          userModelId: user.id,
+          workspaceModelId: workspace.id,
+          method: "MembershipResource.getActiveRoleForUserInWorkspace",
+        },
+        "Skipping auth resource cache: transaction provided"
+      );
       return this._getActiveRoleForUserInWorkspaceUncached({
         userModelId: user.id,
         workspaceModelId: workspace.id,

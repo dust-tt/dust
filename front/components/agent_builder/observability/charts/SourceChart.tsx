@@ -6,8 +6,10 @@ import {
 } from "@app/components/agent_builder/observability/utils";
 import { ChartContainer } from "@app/components/charts/ChartContainer";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
+import { useSelectableSeries } from "@app/components/charts/useSelectableSeries";
 import { useAgentContextOrigin } from "@app/lib/swr/assistants";
 import { isString } from "@app/types/shared/utils/general";
+import { cn } from "@dust-tt/sparkle";
 import { Cell, Pie, PieChart, Tooltip } from "recharts";
 
 interface SourceChartProps {
@@ -42,11 +44,15 @@ export function SourceChart({
 
   const data = buildSourceChartData(contextOrigin.buckets, total);
 
-  const legendItems = data.map((d) => ({
-    key: d.label,
-    label: d.label,
-    colorClassName: getSourceColor(d.origin),
-  }));
+  const { selectedKey, isDimmed, decorate } = useSelectableSeries();
+
+  const legendItems = decorate(
+    data.map((d) => ({
+      key: d.origin,
+      label: d.label,
+      colorClassName: getSourceColor(d.origin),
+    }))
+  );
 
   return (
     <ChartContainer
@@ -71,7 +77,7 @@ export function SourceChart({
               return null;
             }
             const rawOrigin = payload?.[0]?.payload?.origin;
-            const activeOrigin = isString(rawOrigin) ? rawOrigin : undefined;
+            const hoveredOrigin = isString(rawOrigin) ? rawOrigin : undefined;
             const rows = data.map((d) => ({
               key: d.origin,
               label: d.label,
@@ -83,7 +89,7 @@ export function SourceChart({
               <ChartTooltipCard
                 title="Source breakdown"
                 rows={rows}
-                activeKey={activeOrigin}
+                activeKey={hoveredOrigin ?? selectedKey}
               />
             );
           }}
@@ -107,7 +113,11 @@ export function SourceChart({
           {data.map((entry) => (
             <Cell
               key={entry.origin}
-              className={getSourceColor(entry.origin)}
+              className={cn(
+                getSourceColor(entry.origin),
+                "transition-opacity",
+                isDimmed(entry.origin) && "opacity-25"
+              )}
               fill="currentColor"
             />
           ))}

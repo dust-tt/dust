@@ -8,6 +8,7 @@ import { SlackOAuthExtraConfig } from "@app/components/data_source/SlackOAuthExt
 import { SalesforceOauthExtraConfig } from "@app/components/data_source/salesforce/SalesforceOAuthExtractConfig";
 import { ZendeskConfigView } from "@app/components/data_source/ZendeskConfigView";
 import { ZendeskOAuthExtraConfig } from "@app/components/data_source/ZendeskOAuthExtraConfig";
+import { AdvancedLabelsOptions } from "@app/components/shared/labels/AdvancedLabelsOptions";
 import type { ConnectorPermission } from "@app/types/connectors/connectors_api";
 import type { ConnectorProvider, DataSourceType } from "@app/types/data_source";
 import type { PlanType } from "@app/types/plan";
@@ -32,7 +33,7 @@ import {
   ZendeskLogo,
   ZendeskWhiteLogo,
 } from "@dust-tt/sparkle";
-import type { ComponentType } from "react";
+import React, { type ComponentType } from "react";
 
 export interface ConnectorOptionsProps {
   owner: WorkspaceType;
@@ -67,6 +68,7 @@ export type ConnectorProviderUIDetails = {
     isDark?: boolean
   ) => (props: React.SVGProps<SVGSVGElement>) => React.JSX.Element;
   optionsComponent?: ComponentType<ConnectorOptionsProps>;
+  advancedOptionsComponent?: ComponentType<ConnectorOptionsProps>;
   description: string;
   mismatchError: string;
   limitations: string | null;
@@ -296,6 +298,12 @@ export const CONNECTOR_UI_CONFIGURATIONS: Record<
     optionsComponent: createConnectorOptionsPdfEnabled(
       "When enabled, PDF documents from your Microsoft OneDrive and SharePoint will be synced and processed by Dust."
     ),
+    advancedOptionsComponent: ({ owner, readOnly, dataSource }) =>
+      React.createElement(AdvancedLabelsOptions, {
+        owner,
+        source: { dataSourceId: dataSource.sId },
+        readOnly,
+      }),
     isNested: true,
     isTitleFilterEnabled: true,
     oauthExtraConfigComponent: MicrosoftOAuthExtraConfig,

@@ -7,12 +7,14 @@ import {
   type ImageGenerationInput,
   ImageGenerationLLM,
   type ImageGenerationOutput,
+  type TokenCountDetails,
 } from "@app/lib/api/llm/imageGeneration";
 import type { Authenticator } from "@app/lib/auth";
 import { trustedFetch } from "@app/lib/egress/server";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import { concurrentExecutor } from "@app/temporal/workflow_utils";
 import type { ImageModelIdType } from "@app/types/assistant/models/models";
+import { GPT_IMAGE_2_MODEL_ID } from "@app/types/assistant/models/openai";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import { isString } from "@app/types/shared/utils/general";
@@ -135,13 +137,14 @@ export class ImageGenerationOpenAILLM extends ImageGenerationLLM {
       return validationResult;
     }
 
+    const usageMetadataResult = this.getUsageMetadata(response);
+    if (usageMetadataResult.isErr()) {
+      return usageMetadataResult;
+    }
+
     return new Ok({
       images: validationResult.value,
-      usageMetadata: {
-        inputTokens: response.usage?.input_tokens ?? 0,
-        outputTokens: response.usage?.output_tokens ?? 0,
-        totalTokens: response.usage?.total_tokens ?? 0,
-      },
+      usageMetadata: usageMetadataResult.value,
     });
   }
 
@@ -167,6 +170,25 @@ export class ImageGenerationOpenAILLM extends ImageGenerationLLM {
     }
 
     return new Ok(images);
+  }
+
+  private getUsageMetadata(
+    response: ImagesResponse
+  ): Result<TokenCountDetails, ImageGenerationError> {
+    if (this.modelId === GPT_IMAGE_2_MODEL_ID && !response.usage) {
+      return new Err(
+        new ImageGenerationError(
+          "api_error",
+          "OpenAI image generation response is missing usage metadata."
+        )
+      );
+    }
+
+    return new Ok({
+      inputTokens: response.usage?.input_tokens ?? 0,
+      outputTokens: response.usage?.output_tokens ?? 0,
+      totalTokens: response.usage?.total_tokens ?? 0,
+    });
   }
 
   getModelParameters({

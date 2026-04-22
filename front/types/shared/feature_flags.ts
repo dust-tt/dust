@@ -75,6 +75,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Google Sheets MCP tool",
     stage: "rolling_out",
   },
+  gpt_image_2_feature: {
+    description: "Force OpenAI gpt-image-2 for image generation",
+    stage: "on_demand",
+  },
   http_client_tool: {
     description: "HTTP Client MCP tool for making external API requests",
     stage: "on_demand",
@@ -171,10 +175,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description:
       "Enable splitting agent responses into multiple Slack messages for Slack (instead of truncation)",
     stage: "dust_only",
-  },
-  slack_bot_mcp: {
-    description: "Slack bot MCP server for workspace-level Slack integration",
-    stage: "on_demand",
   },
   legacy_dust_apps: {
     description: "Access to legacy Dust Apps (editor and associated tools)",
@@ -289,6 +289,16 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description:
       "Enable context compaction: summarize older messages to free up context window",
     stage: "dust_only",
+  },
+  browser_extension_mcp_tools: {
+    description:
+      "Show the browser extension MCP tools toggle in workspace access settings",
+    stage: "dust_only",
+  },
+  sensitivity_labels: {
+    description:
+      "Enable Microsoft sensitivity labels for data classification on connectors and MCP servers",
+    stage: "on_demand",
   },
 } as const satisfies Record<string, FeatureFlag>;
 

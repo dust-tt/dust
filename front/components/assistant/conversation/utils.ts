@@ -2,19 +2,22 @@ import { removeDiacritics, subFilter } from "@app/lib/utils";
 import type {
   AgentMessageType,
   CompactionMessageType,
-  ConversationWithoutContentType,
+  ConversationListItemType,
   LightAgentMessageType,
   UserMessageType,
   UserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";
-import { isReinforcedSkillNotificationMetadata } from "@app/types/assistant/conversation";
+import {
+  getConversationDisplayTitle,
+  isReinforcedSkillNotificationMetadata,
+} from "@app/types/assistant/conversation";
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import moment from "moment";
 
 import type { VirtuosoMessage } from "./types";
 
 function isReinforcedSkillConversation(
-  conversation: ConversationWithoutContentType
+  conversation: ConversationListItemType
 ): boolean {
   return isReinforcedSkillNotificationMetadata(
     conversation.metadata?.reinforcedSkillNotification
@@ -35,7 +38,7 @@ type GroupLabel =
 // the sidebar can show them in a dedicated "Skill suggestions" section above the Inbox; once
 // read they fall back into the date-grouped Conversations list like any other read conversation.
 export function getGroupConversationsByUnreadAndActionRequired(
-  conversations: ConversationWithoutContentType[],
+  conversations: ConversationListItemType[],
   titleFilter: string
 ) {
   return (
@@ -48,7 +51,9 @@ export function getGroupConversationsByUnreadAndActionRequired(
             titleFilter &&
             !subFilter(
               removeDiacritics(titleFilter).toLowerCase(),
-              removeDiacritics(conversation.title ?? "").toLowerCase()
+              removeDiacritics(
+                getConversationDisplayTitle(conversation)
+              ).toLowerCase()
             )
           ) {
             return acc;
@@ -71,28 +76,24 @@ export function getGroupConversationsByUnreadAndActionRequired(
           inboxConversations: [],
           skillSuggestionConversations: [],
         } as {
-          readConversations: ConversationWithoutContentType[];
-          inboxConversations: ConversationWithoutContentType[];
-          skillSuggestionConversations: ConversationWithoutContentType[];
+          readConversations: ConversationListItemType[];
+          inboxConversations: ConversationListItemType[];
+          skillSuggestionConversations: ConversationListItemType[];
         }
       )
   );
 }
 
-export function getGroupConversationsByDate({
-  conversations,
-  titleFilter,
-}: {
-  conversations: ConversationWithoutContentType[];
-  titleFilter: string;
-}) {
+export function getGroupConversationsByDate<
+  T extends ConversationListItemType,
+>({ conversations, titleFilter }: { conversations: T[]; titleFilter: string }) {
   const today = moment().startOf("day");
   const yesterday = moment().subtract(1, "days").startOf("day");
   const lastWeek = moment().subtract(1, "weeks").startOf("day");
   const lastMonth = moment().subtract(1, "months").startOf("day");
   const lastYear = moment().subtract(1, "years").startOf("day");
 
-  const groups: Record<GroupLabel, ConversationWithoutContentType[]> = {
+  const groups: Record<GroupLabel, T[]> = {
     Today: [],
     Yesterday: [],
     "Last Week": [],
@@ -101,12 +102,14 @@ export function getGroupConversationsByDate({
     Older: [],
   };
 
-  conversations.forEach((conversation: ConversationWithoutContentType) => {
+  conversations.forEach((conversation: T) => {
     if (
       titleFilter &&
       !subFilter(
         removeDiacritics(titleFilter).toLowerCase(),
-        removeDiacritics(conversation.title ?? "").toLowerCase()
+        removeDiacritics(
+          getConversationDisplayTitle(conversation)
+        ).toLowerCase()
       )
     ) {
       return;
@@ -132,9 +135,9 @@ export function getGroupConversationsByDate({
 }
 
 export function filterTriggeredConversations(
-  conversations: ConversationWithoutContentType[],
+  conversations: ConversationListItemType[],
   hideTriggered: boolean
-): ConversationWithoutContentType[] {
+): ConversationListItemType[] {
   if (!hideTriggered) {
     return conversations;
   }

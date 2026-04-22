@@ -51,6 +51,7 @@ export function SkillInfoTab({
       status: "active",
       isDefault: true,
       disabled: !showDiscoverableSkills,
+      viewType: "summary",
     });
 
   const shouldLoadSpaces = skill.requestedSpaceIds.length > 0;

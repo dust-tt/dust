@@ -118,7 +118,7 @@ export async function createUserMessage(
       agenticMessageData = metadata.message.agenticMessageData;
       break;
     case "delete":
-      // In case of delete, we use the message metadata to delete the user message.
+      // See softDeleteUserMessageAndReplies for why a v+1 placeholder is used instead of an UPDATE.
       rank = metadata.message.rank;
       version = metadata.message.version + 1;
       parentId = metadata.message.id;
@@ -335,6 +335,9 @@ export const createAgentMessages = async (
 
     case "delete":
       {
+        // See softDeleteUserMessageAndReplies / softDeleteAgentMessage for why a v+1 placeholder is used
+        // instead of an UPDATE. MessageModel's exclusivity constraint forces us to anchor the v+1
+        // row with a new AgentMessageModel (status "cancelled", it never ran).
         const agentConfiguration = metadata.agentMessage.configuration;
         const agentMessageRow = await AgentMessageModel.create({
           status: "cancelled",

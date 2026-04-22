@@ -2064,7 +2064,56 @@ export async function postNewContentFragment(
   return new Ok(render);
 }
 
-export async function softDeleteUserMessage(
+/**
+ * Returns the agent replies that follow `userMessage` in the conversation and would be orphaned
+ * by soft-deleting it. These are agent messages at subsequent ranks up to (but not including) the
+ * next non-agent rank. Already-deleted agent messages are skipped.
+ *
+ * Invariant: agent replies are immediately contiguous to the user message they respond to (no
+ * compaction, content fragment, or another user message inserted in between). If that ever
+ * changes, this walk will stop short and leave orphans that re-introduce the trailing-assistant
+ * bug this cascade is meant to fix.
+ *
+ * New conversations are capped at one mention per user message (enforced in postUserMessage) so
+ * in practice there's at most one, but legacy conversations can have multiple agent replies in a
+ * single turn, which is why the return type is an array.
+ */
+function getAgentRepliesToCascadeOnUserDelete(
+  conversation: ConversationType,
+  userMessage: UserMessageType
+): AgentMessageType[] {
+  const orphans: AgentMessageType[] = [];
+  let sawUserMessage = false;
+  for (const versions of conversation.content) {
+    const latest = versions[versions.length - 1];
+    if (!sawUserMessage) {
+      sawUserMessage = latest.sId === userMessage.sId;
+      continue;
+    }
+    if (!isAgentMessageType(latest)) {
+      break;
+    }
+    if (latest.visibility !== "deleted") {
+      orphans.push(latest);
+    }
+  }
+  return orphans;
+}
+
+/**
+ * Soft-delete a user message and the agent replies that followed it.
+ *
+ * Both deletions are represented as new v+1 `messages` rows with `visibility: "deleted"` rather
+ * than UPDATEs on the v0 rows. This is required so other clients viewing the conversation see the
+ * deletion in realtime: the message event stream fires on new rows (publishAgentMessagesEvents /
+ * publishMessageEventsOnMessagePostOrEdit), not on UPDATEs. As a side benefit, v0 stays intact as
+ * immutable history.
+ *
+ * The cascade to the following agent replies is necessary because otherwise the orphaned agent
+ * messages would be rendered for the model with no preceding user turn, producing a trailing
+ * assistant turn that providers like Anthropic reject (400 invalid_request_error).
+ */
+export async function softDeleteUserMessageAndReplies(
   auth: Authenticator,
   {
     message,
@@ -2086,6 +2135,15 @@ export async function softDeleteUserMessage(
     return new Err(new ConversationError("message_deletion_not_authorized"));
   }
 
+  // Known small race: this snapshot of `conversation.content` is taken before the rank lock
+  // below. A concurrent retry/edit that takes the lock first and writes a v+1 at the same rank
+  // could cause the cascade insert to hit the (rank, version) unique constraint.
+  const orphanAgentMessages = getAgentRepliesToCascadeOnUserDelete(
+    conversation,
+    message
+  );
+
+  const cascadedAgentMessages: AgentMessageType[] = [];
   const userMessage = await withTransaction(async (t) => {
     await getConversationRankVersionLock(auth, conversation, t);
 
@@ -2121,6 +2179,19 @@ export async function softDeleteUserMessage(
       );
     }
 
+    for (const orphan of orphanAgentMessages) {
+      const { agentMessages } = await createAgentMessages(auth, {
+        conversation,
+        metadata: {
+          type: "delete",
+          agentMessage: orphan,
+          parentId: message.id,
+        },
+        transaction: t,
+      });
+      cascadedAgentMessages.push(...agentMessages);
+    }
+
     await ConversationResource.markAsUpdated(auth, { conversation, t });
 
     return userMessage;
@@ -2131,6 +2202,23 @@ export async function softDeleteUserMessage(
     { ...userMessage, contentFragments: [], mentions: [], richMentions: [] },
     []
   );
+
+  if (cascadedAgentMessages.length > 0) {
+    await publishAgentMessagesEvents(conversation, cascadedAgentMessages);
+  }
+
+  // Signal any still-running agent loops to stop. Orphans with status "created" have a live
+  // Temporal workflow that would otherwise keep streaming to a deleted message. The gracefully-
+  // stopped event also lets the client flip the message status and hide the Stop button.
+  const runningOrphans = orphanAgentMessages.filter(
+    (m) => m.status === "created"
+  );
+  if (runningOrphans.length > 0) {
+    await gracefullyStopAgentLoop(auth, {
+      messageIds: runningOrphans.map((m) => m.sId),
+      conversationId: conversation.sId,
+    });
+  }
 
   auditLog(
     {
@@ -2147,6 +2235,12 @@ export async function softDeleteUserMessage(
   return new Ok({ success: true });
 }
 
+/**
+ * Soft-delete a single agent message.
+ *
+ * See {@link softDeleteUserMessageAndReplies} for the rationale of the v+1 placeholder pattern
+ * (realtime sync + immutable history).
+ */
 export async function softDeleteAgentMessage(
   auth: Authenticator,
   {
@@ -2202,6 +2296,15 @@ export async function softDeleteAgentMessage(
   });
 
   await publishAgentMessagesEvents(conversation, agentMessages);
+
+  // Stop the underlying agent loop if it's still running so the Temporal workflow doesn't keep
+  // streaming to a deleted message and the client sees the Stop button disappear.
+  if (message.status === "created") {
+    await gracefullyStopAgentLoop(auth, {
+      messageIds: [message.sId],
+      conversationId: conversation.sId,
+    });
+  }
 
   auditLog(
     {

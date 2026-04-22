@@ -199,6 +199,8 @@ async function handleWebbrowser(
           content: fileContent,
           snippet,
           hideFromUser: true,
+          // No need to index web page content in Qdrant.
+          skipDataSourceIndexing: true,
         });
 
         await uploadFileToConversationDataSource({ auth, file });

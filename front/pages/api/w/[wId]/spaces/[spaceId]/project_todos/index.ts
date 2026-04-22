@@ -3,6 +3,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { ProjectTodoResource } from "@app/lib/resources/project_todo_resource";
+import { ProjectTodoStateResource } from "@app/lib/resources/project_todo_state_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
@@ -11,6 +12,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 export interface GetProjectTodosResponseBody {
   todos: ProjectTodoType[];
+  lastReadAt: string | null;
 }
 
 async function handler(
@@ -31,9 +33,10 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const todos = await ProjectTodoResource.fetchLatestBySpace(auth, {
-        spaceId: space.id,
-      });
+      const [todos, state] = await Promise.all([
+        ProjectTodoResource.fetchLatestBySpace(auth, { spaceId: space.id }),
+        ProjectTodoStateResource.fetchBySpace(auth, { spaceId: space.id }),
+      ]);
 
       const todoIds = todos.map((t) => t.sId);
 
@@ -59,7 +62,10 @@ async function handler(
         };
       });
 
-      return res.status(200).json({ todos: todosWithSources });
+      return res.status(200).json({
+        todos: todosWithSources,
+        lastReadAt: state ? state.lastReadAt.toISOString() : null,
+      });
     }
 
     default:

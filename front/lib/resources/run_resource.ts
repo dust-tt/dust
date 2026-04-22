@@ -308,8 +308,6 @@ export class RunResource extends BaseResource<RunModel> {
       const tags = [
         `provider_id:${usage.providerId}`,
         `model_id:${usage.modelId}`,
-        // TODO(Consider removing workspace tag as it's high cardinality).
-        `workspace_id:${auth.getNonNullableWorkspace().sId}`,
       ];
 
       getStatsDClient().increment(
