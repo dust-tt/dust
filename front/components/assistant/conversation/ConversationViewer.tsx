@@ -805,6 +805,7 @@ export const ConversationViewer = ({
         };
 
         const lastMessageRank = Math.max(
+          0,
           ...ref.current.data.get().map((m) => m.rank)
         );
 
