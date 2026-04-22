@@ -19,6 +19,7 @@ import type {
   WakeUpStatus,
   WakeUpType,
 } from "@app/types/assistant/wakeups";
+import type { APIErrorWithStatusCode } from "@app/types/error";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -229,11 +230,13 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
 
   static async listByConversation(
     auth: Authenticator,
-    conversation: ConversationWithoutContentType
+    conversation: ConversationWithoutContentType,
+    { status }: { status?: WakeUpStatus | WakeUpStatus[] } = {}
   ): Promise<WakeUpResource[]> {
     return this.baseFetch(auth, {
       where: {
         conversationId: conversation.id,
+        ...(status !== undefined ? { status } : {}),
       },
       order: [
         ["createdAt", "ASC"],
@@ -253,6 +256,39 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
         ["createdAt", "ASC"],
         ["id", "ASC"],
       ],
+    });
+  }
+
+  /**
+   * Checks whether the caller can post or edit user messages in a conversation that has active
+   * wake-ups. Rejects when any active (scheduled) wake-up is owned by a user other than the current
+   * one (his keeps the agent running under the owner's auth from being steered by another user
+   * before the wake-up fires).
+   */
+  static async canUserInteract(
+    auth: Authenticator,
+    conversation: ConversationWithoutContentType
+  ): Promise<Result<void, APIErrorWithStatusCode>> {
+    const activeWakeUps = await this.listByConversation(auth, conversation, {
+      status: ACTIVE_WAKE_UP_STATUSES,
+    });
+    if (activeWakeUps.length === 0) {
+      return new Ok(undefined);
+    }
+    const currentUserId = auth.user()?.id ?? null;
+    const foreignWakeUp = activeWakeUps.find((w) => w.userId !== currentUserId);
+    if (!foreignWakeUp) {
+      return new Ok(undefined);
+    }
+    return new Err({
+      status_code: 409,
+      api_error: {
+        type: "invalid_request_error",
+        message:
+          "This conversation has an active wake-up owned by another user. " +
+          "Only the wake-up owner can post or edit messages until the " +
+          "wake-up fires or is cancelled.",
+      },
     });
   }
 
