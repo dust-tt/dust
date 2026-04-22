@@ -1,9 +1,8 @@
 import { ConversationModel } from "@app/lib/models/agent/conversation";
-import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { launchIndexConversationEsWorkflow } from "@app/temporal/es_indexation/client";
 import type { ModelId } from "@app/types/shared/model_id";
-import { Op, WhereOptions } from "sequelize";
+import { Op, type WhereOptions } from "sequelize";
 
 import { makeScript } from "./helpers";
 import { runOnAllWorkspaces } from "./workspace_helpers";
