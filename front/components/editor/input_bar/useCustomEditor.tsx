@@ -5,6 +5,7 @@ import {
   InputBarSlashSuggestionExtension,
   inputBarSlashSuggestionPluginKey,
 } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionExtension";
+import type { InputBarSlashSuggestionCapability } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
 import { KeyboardShortcutsExtension } from "@app/components/editor/extensions/input_bar/KeyboardShortcutsExtension";
 import { PastedAttachmentExtension } from "@app/components/editor/extensions/input_bar/PastedAttachmentExtension";
 import { URLDetectionExtension } from "@app/components/editor/extensions/input_bar/URLDetectionExtension";
@@ -26,7 +27,6 @@ import { isSubmitMessageKey } from "@app/lib/keymaps";
 import { extractFromEditorJSON } from "@app/lib/mentions/format";
 import { isMobile } from "@app/lib/utils";
 import type { RichMention } from "@app/types/assistant/mentions";
-import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import type { WorkspaceType } from "@app/types/user";
 import { markdownStyles } from "@dust-tt/sparkle";
 import { Placeholder } from "@tiptap/extensions";
@@ -226,9 +226,10 @@ export interface CustomEditorProps {
   >;
   slashSuggestion?: {
     enabledRef: React.RefObject<boolean>;
-    onSkillSelectRef: React.RefObject<
-      ((skill: SkillWithoutInstructionsAndToolsType) => void) | undefined
+    onSelectRef: React.RefObject<
+      ((capability: InputBarSlashSuggestionCapability) => void) | undefined
     >;
+    selectedMCPServerViewIdsRef: React.RefObject<Set<string>>;
     selectedSkillIdsRef: React.RefObject<Set<string>>;
   };
 }
@@ -364,7 +365,9 @@ export const buildEditorExtensions = ({
       InputBarSlashSuggestionExtension.configure({
         owner,
         enabledRef: slashSuggestion.enabledRef,
-        onSkillSelectRef: slashSuggestion.onSkillSelectRef,
+        onSelectRef: slashSuggestion.onSelectRef,
+        selectedMCPServerViewIdsRef:
+          slashSuggestion.selectedMCPServerViewIdsRef,
         selectedSkillIdsRef: slashSuggestion.selectedSkillIdsRef,
       })
     );

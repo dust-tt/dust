@@ -3,8 +3,17 @@ import type {
   SlashCommandDropdownRef,
 } from "@app/components/editor/extensions/skill_builder/SlashCommandDropdown";
 import { SlashCommandDropdown } from "@app/components/editor/extensions/skill_builder/SlashCommandDropdown";
+import {
+  getMcpServerViewDescription,
+  getMcpServerViewDisplayName,
+} from "@app/lib/actions/mcp_helper";
+import { getAvatar } from "@app/lib/actions/mcp_icons";
+import { isJITMCPServerView } from "@app/lib/actions/mcp_internal_actions/utils";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { getSkillAvatarIcon } from "@app/lib/skill";
+import { useMCPServerViewsFromSpaces } from "@app/lib/swr/mcp_servers";
 import { useSkills } from "@app/lib/swr/skill_configurations";
+import { useSpaces } from "@app/lib/swr/spaces";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { SuggestionProps } from "@tiptap/suggestion";
@@ -16,86 +25,196 @@ import {
   useRef,
 } from "react";
 
+import type { InputBarSlashSuggestionCapability } from "./InputBarSlashSuggestionTypes";
+
 const MAX_SLASH_SUGGESTIONS = 10;
+
+function matchesCapabilityQuery({
+  description,
+  label,
+  query,
+}: {
+  description?: string;
+  label: string;
+  query: string;
+}) {
+  if (query.length === 0) {
+    return true;
+  }
+
+  return (
+    label.toLowerCase().includes(query) ||
+    description?.toLowerCase().includes(query) === true
+  );
+}
 
 export function filterInputBarSlashSuggestions({
   query,
+  selectedMCPServerViewIds,
   selectedSkillIds,
+  serverViews,
   skills,
 }: {
   query: string;
+  selectedMCPServerViewIds: Set<string>;
   selectedSkillIds: Set<string>;
+  serverViews: MCPServerViewType[];
   skills: SkillWithoutInstructionsAndToolsType[];
-}) {
+}): InputBarSlashSuggestionCapability[] {
   const normalizedQuery = query.trim().toLowerCase();
 
-  return skills
-    .filter((skill) => !selectedSkillIds.has(skill.sId))
-    .filter((skill) => {
-      if (normalizedQuery.length === 0) {
-        return true;
-      }
+  const capabilities: Array<
+    InputBarSlashSuggestionCapability & { sortName: string }
+  > = [
+    ...skills
+      .filter((skill) => !selectedSkillIds.has(skill.sId))
+      .filter((skill) =>
+        matchesCapabilityQuery({
+          label: skill.name,
+          description: skill.userFacingDescription,
+          query: normalizedQuery,
+        })
+      )
+      .map((skill) => ({
+        kind: "skill" as const,
+        skill,
+        sortName: skill.name.toLowerCase(),
+      })),
+    ...serverViews
+      .filter((serverView) => isJITMCPServerView(serverView))
+      .filter((serverView) => !selectedMCPServerViewIds.has(serverView.sId))
+      .filter((serverView) =>
+        matchesCapabilityQuery({
+          label: getMcpServerViewDisplayName(serverView),
+          description: getMcpServerViewDescription(serverView),
+          query: normalizedQuery,
+        })
+      )
+      .map((serverView) => ({
+        kind: "tool" as const,
+        serverView,
+        sortName: getMcpServerViewDisplayName(serverView).toLowerCase(),
+      })),
+  ];
 
-      return skill.name.toLowerCase().includes(normalizedQuery);
-    })
-    .toSorted((a, b) => a.name.localeCompare(b.name))
+  return capabilities
+    .toSorted((a, b) => a.sortName.localeCompare(b.sortName))
+    .map(({ sortName: _sortName, ...capability }) => capability)
     .slice(0, MAX_SLASH_SUGGESTIONS);
 }
 
 export const InputBarSlashSuggestionDropdown = forwardRef<
   SlashCommandDropdownRef,
   Pick<
-    SuggestionProps<SkillWithoutInstructionsAndToolsType>,
+    SuggestionProps<InputBarSlashSuggestionCapability>,
     "clientRect" | "command" | "query"
   > & {
     onClose: () => void;
     owner: LightWorkspaceType;
+    selectedMCPServerViewIdsRef: RefObject<Set<string>>;
     selectedSkillIdsRef: RefObject<Set<string>>;
   }
 >(
   (
-    { clientRect, command, query, onClose, owner, selectedSkillIdsRef },
+    {
+      clientRect,
+      command,
+      query,
+      onClose,
+      owner,
+      selectedMCPServerViewIdsRef,
+      selectedSkillIdsRef,
+    },
     ref
   ) => {
     const dropdownRef = useRef<SlashCommandDropdownRef>(null);
+    const { spaces: globalSpaces, isSpacesLoading } = useSpaces({
+      workspaceId: owner.sId,
+      kinds: ["global"],
+    });
     const { skills, isSkillsLoading } = useSkills({
       owner,
       status: "active",
       globalSpaceOnly: true,
       viewType: "summary",
     });
+    const { serverViews, isLoading: isServerViewsLoading } =
+      useMCPServerViewsFromSpaces(owner, globalSpaces);
 
-    const filteredSkills = useMemo(
+    const filteredCapabilities = useMemo(
       () =>
         filterInputBarSlashSuggestions({
           query,
+          selectedMCPServerViewIds:
+            selectedMCPServerViewIdsRef.current ?? new Set<string>(),
           selectedSkillIds: selectedSkillIdsRef.current ?? new Set<string>(),
+          serverViews,
           skills,
         }),
-      [query, selectedSkillIdsRef, skills]
+      [
+        query,
+        selectedMCPServerViewIdsRef,
+        selectedSkillIdsRef,
+        serverViews,
+        skills,
+      ]
     );
 
-    const skillItems = useMemo<SlashCommand[]>(
+    const capabilityItems = useMemo<SlashCommand[]>(
       () =>
-        filteredSkills.map((skill) => ({
-          action: skill.sId,
-          description: skill.userFacingDescription,
-          icon: getSkillAvatarIcon(skill.icon),
-          id: skill.sId,
-          label: skill.name,
-          tooltip: skill.userFacingDescription
-            ? {
-                description: skill.userFacingDescription,
-              }
-            : undefined,
-        })),
-      [filteredSkills]
+        filteredCapabilities.map((capability) => {
+          switch (capability.kind) {
+            case "skill":
+              return {
+                action: capability.skill.sId,
+                description: capability.skill.userFacingDescription,
+                icon: getSkillAvatarIcon(capability.skill.icon),
+                id: capability.skill.sId,
+                label: capability.skill.name,
+                tooltip: capability.skill.userFacingDescription
+                  ? {
+                      description: capability.skill.userFacingDescription,
+                    }
+                  : undefined,
+              };
+            case "tool": {
+              const description = getMcpServerViewDescription(
+                capability.serverView
+              );
+
+              return {
+                action: capability.serverView.sId,
+                description,
+                icon: () => getAvatar(capability.serverView.server),
+                id: capability.serverView.sId,
+                label: getMcpServerViewDisplayName(capability.serverView),
+                tooltip: description
+                  ? {
+                      description,
+                    }
+                  : undefined,
+              };
+            }
+          }
+        }),
+      [filteredCapabilities]
     );
 
-    const skillsById = useMemo(
-      () => new Map(filteredSkills.map((skill) => [skill.sId, skill])),
-      [filteredSkills]
+    const capabilitiesById = useMemo(
+      () =>
+        new Map(
+          filteredCapabilities.map((capability) => [
+            capability.kind === "skill"
+              ? capability.skill.sId
+              : capability.serverView.sId,
+            capability,
+          ])
+        ),
+      [filteredCapabilities]
     );
+
+    const isCapabilitiesLoading =
+      isSkillsLoading || isSpacesLoading || isServerViewsLoading;
 
     useImperativeHandle(
       ref,
@@ -103,7 +222,7 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
         onKeyDown: ({ event }) => {
           if (
             (event.key === "Enter" || event.key === "Tab") &&
-            (isSkillsLoading || skillItems.length === 0)
+            (isCapabilitiesLoading || capabilityItems.length === 0)
           ) {
             event.preventDefault();
             return true;
@@ -112,23 +231,25 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
           return dropdownRef.current?.onKeyDown({ event }) ?? false;
         },
       }),
-      [isSkillsLoading, skillItems.length]
+      [capabilityItems.length, isCapabilitiesLoading]
     );
 
     return (
       <SlashCommandDropdown
         ref={dropdownRef}
-        items={skillItems}
+        items={capabilityItems}
         command={(item) => {
-          const skill = skillsById.get(item.id);
+          const capability = capabilitiesById.get(item.id);
 
-          if (skill) {
-            command(skill);
+          if (capability) {
+            command(capability);
           }
         }}
         clientRect={clientRect}
         emptyMessage={
-          isSkillsLoading ? "Loading capabilities..." : "No capabilities found"
+          isCapabilitiesLoading
+            ? "Loading capabilities..."
+            : "No capabilities found"
         }
         header="Capabilities"
         onClose={onClose}

@@ -7,6 +7,7 @@ import {
   getPastedFileName,
 } from "@app/components/assistant/conversation/input_bar/pasted_utils";
 import { ToolBarContent } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarContent";
+import type { InputBarSlashSuggestionCapability } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
 import type { MentionsStrippedPayload } from "@app/components/editor/extensions/MentionExtension";
 import type { CustomEditorProps } from "@app/components/editor/input_bar/useCustomEditor";
 import useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
@@ -244,12 +245,18 @@ const InputBarContainer = ({
     () => new Set(selectedSkills.map((skill) => skill.sId)),
     [selectedSkills]
   );
+  const selectedMCPServerViewIds = useMemo(
+    () => new Set(selectedMCPServerViews.map((serverView) => serverView.sId)),
+    [selectedMCPServerViews]
+  );
+  const selectedMCPServerViewIdsRef = useRef(selectedMCPServerViewIds);
   const selectedSkillIdsRef = useRef(selectedSkillIds);
   const shouldEnableSlashSuggestionRef = useRef(shouldEnableSlashSuggestion);
-  const onSkillSelectRef = useRef<
-    ((skill: SkillWithoutInstructionsAndToolsType) => void) | undefined
+  const onSelectRef = useRef<
+    ((capability: InputBarSlashSuggestionCapability) => void) | undefined
   >(undefined);
 
+  selectedMCPServerViewIdsRef.current = selectedMCPServerViewIds;
   selectedSkillIdsRef.current = selectedSkillIds;
   shouldEnableSlashSuggestionRef.current = shouldEnableSlashSuggestion;
 
@@ -459,13 +466,23 @@ const InputBarContainer = ({
   };
 
   const handleSlashSuggestionSelection = useCallback(
-    (skill: SkillWithoutInstructionsAndToolsType) => {
-      onSkillSelect(skill);
+    (capability: InputBarSlashSuggestionCapability) => {
+      switch (capability.kind) {
+        case "skill":
+          onSkillSelect(capability.skill);
+          break;
+        case "tool":
+          onMCPServerViewSelect(capability.serverView);
+          break;
+        default:
+          assertNever(capability);
+      }
+
       queueMicrotask(() => editorRef.current?.commands.focus());
     },
-    [onSkillSelect]
+    [onMCPServerViewSelect, onSkillSelect]
   );
-  onSkillSelectRef.current = handleSlashSuggestionSelection;
+  onSelectRef.current = handleSlashSuggestionSelection;
 
   // Current space is taken from the conversation (if already set) or from the space prop (if provided).
   const spaceId = conversation?.spaceId ?? space?.sId ?? undefined;
@@ -485,7 +502,8 @@ const InputBarContainer = ({
     onAgentMentionsStrippedRef,
     slashSuggestion: {
       enabledRef: shouldEnableSlashSuggestionRef,
-      onSkillSelectRef,
+      onSelectRef,
+      selectedMCPServerViewIdsRef,
       selectedSkillIdsRef,
     },
     onLongTextPaste: async ({ text, from, to }) => {
