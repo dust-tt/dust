@@ -1,7 +1,10 @@
 import { clientFetch } from "@app/lib/egress/client";
 import logger from "@app/logger/logger";
 import type { PatchConversationsRequestBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]";
-import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import type {
+  ConversationListItemType,
+  ConversationWithoutContentType,
+} from "@app/types/assistant/conversation";
 import { isProjectConversation } from "@app/types/assistant/conversation";
 import { useCallback, useEffect } from "react";
 import { useConversations } from "./useConversations";
@@ -52,7 +55,7 @@ export function useConversationMarkAsRead({
         }
         if (options?.mutateList) {
           void mutateConversations(
-            (prevState: ConversationWithoutContentType[] | undefined) =>
+            (prevState: ConversationListItemType[] | undefined) =>
               prevState?.map((c) =>
                 c.sId === conversationId ? { ...c, unread: false } : c
               ),

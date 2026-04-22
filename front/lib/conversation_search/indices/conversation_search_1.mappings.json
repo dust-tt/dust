@@ -18,6 +18,19 @@
     "requested_space_ids": {
       "type": "keyword"
     },
+    "title": {
+      "type": "keyword"
+    },
+    "has_error": {
+      "type": "boolean"
+    },
+    "metadata": {
+      "type": "object",
+      "dynamic": false
+    },
+    "trigger_id": {
+      "type": "keyword"
+    },
     "created_at": {
       "type": "date"
     },
@@ -29,6 +42,12 @@
       "properties": {
         "user_id": {
           "type": "keyword"
+        },
+        "action_required": {
+          "type": "boolean"
+        },
+        "last_read_at": {
+          "type": "date"
         }
       }
     }

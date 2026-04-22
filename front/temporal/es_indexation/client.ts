@@ -76,6 +76,12 @@ export async function launchIndexConversationEsWorkflow({
         workspaceId,
       },
     });
+
+    console.log(">> Signaled workflow to index conversation:", {
+      conversationId,
+      workspaceId,
+    });
+
     return new Ok(undefined);
   } catch (e) {
     logger.error(

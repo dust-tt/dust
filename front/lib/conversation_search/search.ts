@@ -3,11 +3,15 @@ import {
   CONVERSATION_SEARCH_ALIAS_NAME,
   withEs,
 } from "@app/lib/api/elasticsearch";
+import type {
+  ConversationListItemType,
+  ConversationMetadata,
+} from "@app/types/assistant/conversation";
 import type { ConversationSearchDocument } from "@app/types/conversation_search/conversation_search";
 import type { Result } from "@app/types/shared/result";
 import type { estypes } from "@elastic/elasticsearch";
 
-interface ListPrivateConversationIdsFromESParams {
+interface ListPrivateConversationsFromESParams {
   accessibleSpaceIds: string[];
   lastValue?: string;
   limit: number;
@@ -16,8 +20,8 @@ interface ListPrivateConversationIdsFromESParams {
   workspaceId: string;
 }
 
-interface ListPrivateConversationIdsFromESResult {
-  conversationIds: string[];
+interface ListPrivateConversationsFromESResult {
+  items: ConversationListItemType[];
   hasMore: boolean;
   lastValue: string | null;
 }
@@ -40,15 +44,15 @@ function parseSearchAfterCursor(
   return [ts, convId];
 }
 
-export async function listPrivateConversationIdsFromES({
+export async function listPrivateConversationsFromES({
   workspaceId,
   userId,
   accessibleSpaceIds,
   limit,
   lastValue,
   orderDirection,
-}: ListPrivateConversationIdsFromESParams): Promise<
-  Result<ListPrivateConversationIdsFromESResult, ElasticsearchError>
+}: ListPrivateConversationsFromESParams): Promise<
+  Result<ListPrivateConversationsFromESResult, ElasticsearchError>
 > {
   // Filter: all values in requested_space_ids must be in the user's accessible spaces.
   // terms_set with minimum_should_match_script = doc field length implements the
@@ -111,6 +115,10 @@ export async function listPrivateConversationIdsFromES({
               nested: {
                 path: "participants",
                 query: { term: { "participants.user_id": userId } },
+                // Return the matched participant's per-user fields alongside the hit.
+                inner_hits: {
+                  size: 1,
+                },
               },
             },
             requestedSpaceIdsFilter,
@@ -128,9 +136,42 @@ export async function listPrivateConversationIdsFromES({
     const hasMore = hits.length > limit;
     const resultHits = hasMore ? hits.slice(0, limit) : hits;
 
-    const conversationIds = resultHits.flatMap((hit) =>
-      hit._source?.conversation_id ? [hit._source.conversation_id] : []
-    );
+    const items: ConversationListItemType[] = resultHits.flatMap((hit) => {
+      const source = hit._source;
+      if (!source) {
+        return [];
+      }
+
+      const innerHit =
+        hit.inner_hits?.participants?.hits?.hits?.[0]?._source ?? {};
+      const participantData = innerHit as {
+        action_required?: boolean;
+        last_read_at?: string | null;
+      };
+
+      const actionRequired = participantData.action_required ?? false;
+      const lastReadAt = participantData.last_read_at ?? null;
+      const lastReadMs =
+        lastReadAt !== null ? new Date(lastReadAt).getTime() : null;
+      const updatedMs = new Date(source.updated_at).getTime();
+
+      return [
+        {
+          actionRequired,
+          created: new Date(source.created_at).getTime(),
+          hasError: source.has_error,
+          lastReadMs,
+          metadata: source.metadata as ConversationMetadata,
+          requestedSpaceIds: source.requested_space_ids,
+          sId: source.conversation_id,
+          spaceId: source.space_id ?? null,
+          title: source.title,
+          triggerId: source.trigger_id,
+          unread: lastReadMs === null || updatedMs > lastReadMs,
+          updated: updatedMs,
+        },
+      ];
+    });
 
     const lastHit = resultHits[resultHits.length - 1];
     const newLastValue =
@@ -138,6 +179,6 @@ export async function listPrivateConversationIdsFromES({
         ? `${lastHit.sort[0]}|${lastHit.sort[1]}`
         : null;
 
-    return { conversationIds, hasMore, lastValue: newLastValue };
+    return { items, hasMore, lastValue: newLastValue };
   });
 }

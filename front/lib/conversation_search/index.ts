@@ -11,13 +11,25 @@ import type { Result } from "@app/types/shared/result";
 export function buildConversationSearchDocument(
   auth: Authenticator,
   conversation: ConversationResource,
-  participantUserIds: string[]
+  participants: Array<{
+    userId: string;
+    actionRequired: boolean;
+    lastReadMs: number | null;
+  }>
 ): ConversationSearchDocument {
   return {
     conversation_id: conversation.sId,
     created_at: conversation.createdAt.toISOString(),
-    participants: participantUserIds.map((userId) => ({ user_id: userId })),
+    has_error: conversation.hasError,
+    metadata: conversation.metadata ?? {},
+    participants: participants.map(({ userId, actionRequired, lastReadMs }) => ({
+      action_required: actionRequired,
+      last_read_at: lastReadMs !== null ? new Date(lastReadMs).toISOString() : null,
+      user_id: userId,
+    })),
     requested_space_ids: conversation.getRequestedSpaceIdsFromModel(),
+    title: conversation.title,
+    trigger_id: conversation.triggerSId,
     updated_at: conversation.updatedAt.toISOString(),
     visibility: conversation.visibility,
     workspace_id: auth.getNonNullableWorkspace().sId,

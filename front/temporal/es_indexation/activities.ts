@@ -126,11 +126,17 @@ export async function indexConversationEsActivity({
   const participantUserIds =
     await conversation.listParticipantsForConversation();
 
+  console.log(
+    `Indexing conversation ${conversationId} with participants: ${JSON.stringify(participantUserIds, null, 2)}`
+  );
+
   const document = buildConversationSearchDocument(
     auth,
     conversation,
     participantUserIds
   );
+
+  console.log('>> document:', JSON.stringify(document, null, 2));
 
   const indexResult = await indexConversationDocument(document);
   if (indexResult.isErr()) {

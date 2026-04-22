@@ -438,30 +438,37 @@ export type ConversationForkedChildType = {
 };
 
 /**
+ * Fields needed to render a conversation row in the sidebar list. Served
+ * directly from Elasticsearch — no DB hydration required.
+ */
+export type ConversationListItemType = {
+  actionRequired: boolean;
+  created: number;
+  hasError: boolean;
+  lastReadMs: number | null;
+  metadata: ConversationMetadata;
+  requestedSpaceIds: string[];
+  sId: string;
+  spaceId: string | null;
+  title: string | null;
+  triggerId: string | null;
+  unread: boolean;
+  updated: number;
+};
+
+/**
  * A lighter version of Conversation without the content (for menu display).
+ * Extends ConversationListItemType with DB-layer fields used when the full
+ * conversation context is available (individual conversation pages, mutations).
  *
  * @swaggerschema PrivateConversation (swagger_private_schemas.ts)
  */
-export type ConversationWithoutContentType = {
+export type ConversationWithoutContentType = ConversationListItemType & {
   id: ModelId;
-  created: number;
-  updated: number;
-  unread: boolean;
-  lastReadMs: number | null;
-  actionRequired: boolean;
-  hasError: boolean;
-  sId: string;
-  title: string | null;
-  spaceId: string | null;
-  triggerId: string | null;
   depth: number;
-  metadata: ConversationMetadata;
   branchId: string | null;
   forkedFrom?: ConversationForkedFromType;
   forkedChildren?: ConversationForkedChildType[];
-
-  // Ideally, this property should be moved to the ConversationType.
-  requestedSpaceIds: string[];
 };
 
 type ConversationDisplayTitleInput = Pick<
@@ -521,7 +528,7 @@ export function isLightConversationType(
   return "content" in conversation && !Array.isArray(conversation.content[0]);
 }
 
-export const isProjectConversation = <T extends ConversationWithoutContentType>(
+export const isProjectConversation = <T extends ConversationListItemType>(
   conversation: T
 ): conversation is T & { spaceId: string } => !!conversation.spaceId;
 

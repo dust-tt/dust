@@ -748,6 +748,8 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "collapsible_messages"
   | "use_dust_keys"
   | "enable_compaction"
+  | "conversation_search_indexing"
+  | "conversation_search_read"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
