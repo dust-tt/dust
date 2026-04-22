@@ -10,6 +10,7 @@ import {
 } from "@app/lib/resources/skill/code_defined/shared";
 import type { AllSkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
 
+// Registry is a simple array.
 const SYSTEM_SKILLS_ARRAY = ensureUniqueSIds([
   discoverKnowledgeSkill,
   discoverSkillsSkill,
@@ -17,13 +18,17 @@ const SYSTEM_SKILLS_ARRAY = ensureUniqueSIds([
   sandboxSkill,
 ] as const);
 
+// Build lookup map for direct access by sId.
 const SYSTEM_SKILLS_BY_ID: Map<string, SystemSkillDefinition> = new Map(
   SYSTEM_SKILLS_ARRAY.map((skill) => [skill.sId, skill])
 );
 
+// Type derived from the actual array.
 export type SystemSkillId = (typeof SYSTEM_SKILLS_ARRAY)[number]["sId"];
 
 export class SystemSkillsRegistry {
+  // Internal sync lookup that does not check restrictions.
+  // Use for methods that operate on already-fetched skills.
   private static getByIdInternal(
     sId: string
   ): SystemSkillDefinition | undefined {

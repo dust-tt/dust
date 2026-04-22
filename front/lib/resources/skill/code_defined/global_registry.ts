@@ -10,6 +10,7 @@ import {
 } from "@app/lib/resources/skill/code_defined/shared";
 import type { AllSkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
 
+// Registry is a simple array.
 const GLOBAL_SKILLS_ARRAY = ensureUniqueSIds([
   framesSkill,
   goDeepSkill,
@@ -17,13 +18,17 @@ const GLOBAL_SKILLS_ARRAY = ensureUniqueSIds([
   projectsSkill,
 ] as const);
 
+// Build lookup map for direct access by sId.
 const GLOBAL_SKILLS_BY_ID: Map<string, GlobalSkillDefinition> = new Map(
   GLOBAL_SKILLS_ARRAY.map((skill) => [skill.sId, skill])
 );
 
+// Type derived from the actual array.
 export type GlobalSkillId = (typeof GLOBAL_SKILLS_ARRAY)[number]["sId"];
 
 export class GlobalSkillsRegistry {
+  // Internal sync lookup that does not check restrictions.
+  // Use for methods that operate on already-fetched skills.
   private static getByIdInternal(
     sId: string
   ): GlobalSkillDefinition | undefined {
