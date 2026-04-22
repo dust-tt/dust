@@ -611,6 +611,13 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       return spaceBasedAccessible;
     }
 
+    // When running a sub-agent, the user is not null and the authentication method is a
+    // system API key. Sub-conversations deliberately skip participant record creation,
+    // so the participant-restriction concept does not apply.
+    if (auth.isSystemKey()) {
+      return spaceBasedAccessible;
+    }
+
     if (spaceBasedAccessible.length === 0) {
       const participantRestrictedConversationIds = new Set(
         participantRestrictedConversations.map(
