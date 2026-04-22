@@ -7,7 +7,6 @@ import {
   getPastedFileName,
 } from "@app/components/assistant/conversation/input_bar/pasted_utils";
 import { ToolBarContent } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarContent";
-import { inputBarSkillSuggestionPluginKey } from "@app/components/editor/extensions/input_bar/InputBarSkillSuggestionExtension";
 import type { MentionsStrippedPayload } from "@app/components/editor/extensions/MentionExtension";
 import type { CustomEditorProps } from "@app/components/editor/input_bar/useCustomEditor";
 import useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
@@ -23,7 +22,6 @@ import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isNodeCandidate } from "@app/lib/connectors";
 import { useClientType } from "@app/lib/context/clientType";
-import { useSkills } from "@app/lib/swr/skill_configurations";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { classNames } from "@app/lib/utils";
@@ -240,27 +238,16 @@ const InputBarContainer = ({
   const editorRef = useRef<Editor | null>(null);
   const pastedAttachmentIdsRef = useRef<Set<string>>(new Set());
 
-  const { skills: availableSkills } = useSkills({
-    owner,
-    status: "active",
-    globalSpaceOnly: true,
-    viewType: "summary",
-    disabled: !shouldEnableSkillSelection,
-  });
-
   const selectedSkillIds = useMemo(
     () => new Set(selectedSkills.map((skill) => skill.sId)),
     [selectedSkills]
   );
-  const availableSkillsRef = useRef(availableSkills);
   const selectedSkillIdsRef = useRef(selectedSkillIds);
   const shouldEnableSkillSelectionRef = useRef(shouldEnableSkillSelection);
-  const skillSuggestionRefreshKeyRef = useRef("");
   const onSkillSelectRef = useRef<
     ((skill: SkillWithoutInstructionsAndToolsType) => void) | undefined
   >(undefined);
 
-  availableSkillsRef.current = availableSkills;
   selectedSkillIdsRef.current = selectedSkillIds;
   shouldEnableSkillSelectionRef.current = shouldEnableSkillSelection;
 
@@ -478,17 +465,6 @@ const InputBarContainer = ({
   );
   onSkillSelectRef.current = handleSkillPickerSelection;
 
-  const skillSuggestionRefreshKey = useMemo(
-    () =>
-      [
-        shouldEnableSkillSelection ? "enabled" : "disabled",
-        availableSkills.map((skill) => skill.sId).join(","),
-        selectedSkills.map((skill) => skill.sId).join(","),
-      ].join("|"),
-    [availableSkills, selectedSkills, shouldEnableSkillSelection]
-  );
-  skillSuggestionRefreshKeyRef.current = skillSuggestionRefreshKey;
-
   // Current space is taken from the conversation (if already set) or from the space prop (if provided).
   const spaceId = conversation?.spaceId ?? space?.sId ?? undefined;
 
@@ -508,9 +484,7 @@ const InputBarContainer = ({
     skillSuggestion: {
       enabledRef: shouldEnableSkillSelectionRef,
       onSkillSelectRef,
-      refreshKeyRef: skillSuggestionRefreshKeyRef,
       selectedSkillIdsRef,
-      skillsRef: availableSkillsRef,
     },
     onLongTextPaste: async ({ text, from, to }) => {
       let filename = "";
@@ -557,28 +531,6 @@ const InputBarContainer = ({
       }
     },
   });
-
-  // The slash suggestion plugin only recomputes its items on editor updates, so refresh it when
-  // the fetched skill list changes while the suggestion is already open.
-  useEffect(() => {
-    if (!editor || editor.isDestroyed) {
-      return;
-    }
-
-    const inputBarSkillSuggestionPluginState =
-      inputBarSkillSuggestionPluginKey.getState(editor.state);
-
-    if (!inputBarSkillSuggestionPluginState?.active) {
-      return;
-    }
-
-    editor.view.dispatch(
-      editor.state.tr.setMeta(
-        "inputBarSkillSuggestionRefresh",
-        skillSuggestionRefreshKey
-      )
-    );
-  }, [editor, skillSuggestionRefreshKey]);
 
   useEffect(() => {
     // If an attachment disappears from the uploader, remove its chip from the editor

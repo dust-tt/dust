@@ -229,9 +229,7 @@ export interface CustomEditorProps {
     onSkillSelectRef: React.RefObject<
       ((skill: SkillWithoutInstructionsAndToolsType) => void) | undefined
     >;
-    refreshKeyRef: React.RefObject<string>;
     selectedSkillIdsRef: React.RefObject<Set<string>>;
-    skillsRef: React.RefObject<SkillWithoutInstructionsAndToolsType[]>;
   };
 }
 
@@ -364,11 +362,10 @@ export const buildEditorExtensions = ({
   if (skillSuggestion) {
     extensions.push(
       InputBarSkillSuggestionExtension.configure({
+        owner,
         enabledRef: skillSuggestion.enabledRef,
         onSkillSelectRef: skillSuggestion.onSkillSelectRef,
-        refreshKeyRef: skillSuggestion.refreshKeyRef,
         selectedSkillIdsRef: skillSuggestion.selectedSkillIdsRef,
-        skillsRef: skillSuggestion.skillsRef,
       })
     );
   }
