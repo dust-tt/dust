@@ -70,8 +70,8 @@ export function ensureUniqueSIds<T extends readonly SkillDefinition[]>(
             ? "ERROR: sId cannot start with resource prefix"
             : // Otherwise, return the original sId type.
               T[I][K]
-        // For non-sId properties, just pass through unchanged.
-        : T[I][K];
+        : // For non-sId properties, just pass through unchanged.
+          T[I][K];
     };
   }
 ): T {
