@@ -10,25 +10,13 @@ import { isUserMessageType } from "@app/types/assistant/conversation";
 import type { WakeUpType } from "@app/types/assistant/wakeups";
 import { Err, Ok } from "@app/types/shared/result";
 
-// Per-conversation and per-workspace guardrails. Mirrors the limits documented in the wake-up
-// design doc; enforced at tool-call time so the agent gets a clear error instead of silently
-// over-scheduling.
+// Per-conversation guardrails. Enforced at tool-call time so the agent gets a clear error instead
+// of silently over-scheduling.
 const MAX_ACTIVE_WAKEUPS_PER_CONVERSATION = 1;
-const MAX_ACTIVE_WAKEUPS_PER_WORKSPACE = 256;
 
 // One-shot wake-ups cannot be scheduled further than this into the future. Prevents
 // far-future orphans. Matches the "Max one-shot delay | 1 month" guardrail.
 const MAX_ONE_SHOT_DELAY_MS = 31 * 24 * 60 * 60 * 1000;
-
-type ParsedWhen =
-  | {
-      kind: "one_shot";
-      fireAt: Date;
-    }
-  | {
-      kind: "cron";
-      cron: string;
-    };
 
 const RELATIVE_DURATION_REGEXP = /^in\s+(\d+)\s*(m|h|d)$/i;
 
@@ -69,11 +57,16 @@ function parseIsoTimestamp(input: string): Date | null {
   return date;
 }
 
-function looksLikeCron(input: string): boolean {
-  return input.trim().split(/\s+/).length === 5;
-}
-
-function parseWhen(when: string): ParsedWhen | null {
+function parseWhen(when: string):
+  | {
+      kind: "one_shot";
+      fireAt: Date;
+    }
+  | {
+      kind: "cron";
+      cron: string;
+    }
+  | null {
   const trimmed = when.trim();
 
   const relative = parseRelativeDuration(trimmed);
@@ -86,7 +79,8 @@ function parseWhen(when: string): ParsedWhen | null {
     return { kind: "one_shot", fireAt: iso };
   }
 
-  if (looksLikeCron(trimmed)) {
+  // If looks like cron
+  if (trimmed.split(/\s+/).length === 5) {
     return { kind: "cron", cron: trimmed };
   }
 
@@ -204,15 +198,6 @@ export function createWakeupsTools(
             `This conversation already has ${activeInConversation.length} active wake-up(s); ` +
               `the limit is ${MAX_ACTIVE_WAKEUPS_PER_CONVERSATION}. Cancel the existing wake-up ` +
               "before scheduling a new one."
-          )
-        );
-      }
-
-      const workspaceActive = await WakeUpResource.listActiveByWorkspace(auth);
-      if (workspaceActive.length >= MAX_ACTIVE_WAKEUPS_PER_WORKSPACE) {
-        return new Err(
-          new MCPError(
-            `Workspace has reached the maximum of ${MAX_ACTIVE_WAKEUPS_PER_WORKSPACE} active wake-ups.`
           )
         );
       }
