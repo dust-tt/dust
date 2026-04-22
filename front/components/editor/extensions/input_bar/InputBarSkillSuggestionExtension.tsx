@@ -3,7 +3,7 @@ import {
   InputBarSkillSuggestionDropdown,
 } from "@app/components/editor/extensions/input_bar/InputBarSkillSuggestionDropdown";
 import type { SkillWithoutToolsType } from "@app/types/assistant/skill_configuration";
-import { Extension, type Range } from "@tiptap/core";
+import { Extension } from "@tiptap/core";
 import { type EditorState, Plugin, PluginKey } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
 import { ReactRenderer } from "@tiptap/react";
@@ -31,16 +31,6 @@ function hasSlashCharacterAtPosition(state: EditorState, position: number) {
       "\ufffc"
     ) === "/"
   );
-}
-
-function isAllowedSlashQuery(state: EditorState, range: Range) {
-  const text = state.doc.textBetween(range.from, range.to, undefined, "\ufffc");
-
-  if (!text.startsWith("/")) {
-    return false;
-  }
-
-  return !text.slice(1).startsWith(" ");
 }
 
 export interface InputBarSkillSuggestionExtensionOptions {
@@ -88,11 +78,10 @@ export const InputBarSkillSuggestionExtension =
                 this.options.selectedSkillIdsRef.current ?? new Set<string>(),
               skills: this.options.skillsRef.current ?? [],
             }),
-          allow: ({ editor, state, range }) =>
+          allow: ({ editor, range }) =>
             Boolean(this.options.enabledRef.current) &&
             editor.isFocused &&
-            extensionStorage.dismissedTriggerStart !== range.from &&
-            isAllowedSlashQuery(state, range),
+            extensionStorage.dismissedTriggerStart !== range.from,
           command: ({ editor, range, props }) => {
             extensionStorage.dismissedTriggerStart = null;
             editor.chain().focus().deleteRange(range).run();
