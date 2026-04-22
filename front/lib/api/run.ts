@@ -10,25 +10,6 @@ import peg from "pegjs";
 
 import { recomputeIndents, restoreTripleBackticks } from "../specification";
 
-export const cleanSpecificationFromCore = (
-  specification: SpecificationType
-) => {
-  for (const block of specification) {
-    // we clear out the config for input blocks because the dataset might
-    // have changed or might not exist anymore
-    if (block.type === "input") {
-      block.config = {};
-    }
-
-    // we have to remove the hash and ID of the dataset in data blocks
-    // to prevent the app from becoming un-runable
-    if (block.type === "data") {
-      delete block.spec.dataset_id;
-      delete block.spec.hash;
-    }
-  }
-};
-
 export async function getSpecification(
   app: AppType,
   specificationHash: string

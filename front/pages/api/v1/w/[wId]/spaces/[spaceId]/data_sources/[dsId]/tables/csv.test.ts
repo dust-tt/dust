@@ -1,3 +1,4 @@
+import { internalFetch } from "@app/lib/api/internal_fetch";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
@@ -133,20 +134,18 @@ describe("POST /api/v1/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/tables/csv",
     };
 
     // First fetch is to create the table
-    global.fetch = vi.fn().mockImplementation(async (url, init) => {
-      const req = JSON.parse(init.body);
+    vi.mocked(internalFetch).mockImplementation(async (url, init) => {
+      const req = JSON.parse((init as RequestInit).body as string);
 
       if ((url as string).endsWith("/tables")) {
         expect(req.table_id).toBe("fooTable-1");
         expect(req.name).toBe("footable");
         expect(req.parents[0]).toBe("fooTable-1");
         expect(req.source_url).toBeNull();
-        return Promise.resolve(
-          new Response(JSON.stringify(CORE_TABLES_FAKE_RESPONSE), {
-            status: 200,
-            headers: { "Content-Type": "application/json" },
-          })
-        );
+        return new Response(JSON.stringify(CORE_TABLES_FAKE_RESPONSE), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
       }
 
       if ((url as string).endsWith("/csv")) {
@@ -154,32 +153,23 @@ describe("POST /api/v1/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/tables/csv",
           `files/w/${workspace.sId}/${file.sId}/original`
         );
         expect(req.truncate).toBe(true);
-        return Promise.resolve(
-          new Response(
-            JSON.stringify({
-              response: {
-                success: true,
-              },
-            }),
-            {
-              status: 200,
-              headers: { "Content-Type": "application/json" },
-            }
-          )
-        );
+        return new Response(JSON.stringify({ response: { success: true } }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
       }
 
       if ((url as string).endsWith("/validate_csv_content")) {
         expect(req.bucket_csv_path).toBe(
           `files/w/${workspace.sId}/${file.sId}/original`
         );
-        return Promise.resolve(
-          new Response(JSON.stringify(CORE_VALIDATE_CSV_FAKE_RESPONSE), {
-            status: 200,
-            headers: { "Content-Type": "application/json" },
-          })
-        );
+        return new Response(JSON.stringify(CORE_VALIDATE_CSV_FAKE_RESPONSE), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
       }
+
+      throw new Error(`Unexpected fetch call to ${url}`);
     });
 
     await handler(req, res);
@@ -219,15 +209,15 @@ describe("POST /api/v1/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/tables/csv",
       allowEmptySchema: true,
     };
 
-    global.fetch = vi.fn().mockImplementation(async (url: string) => {
-      if (url.endsWith("/validate_csv_content")) {
-        return Promise.resolve(
-          new Response(JSON.stringify(CORE_VALIDATE_CSV_FAKE_RESPONSE), {
-            status: 200,
-            headers: { "Content-Type": "application/json" },
-          })
-        );
+    vi.mocked(internalFetch).mockImplementation(async (url) => {
+      if ((url as string).endsWith("/validate_csv_content")) {
+        return new Response(JSON.stringify(CORE_VALIDATE_CSV_FAKE_RESPONSE), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
       }
+
+      throw new Error(`Unexpected fetch call to ${url}`);
     });
 
     await handler(req, res);

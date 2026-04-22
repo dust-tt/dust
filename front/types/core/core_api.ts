@@ -1,3 +1,4 @@
+import { internalFetch } from "@app/lib/api/internal_fetch";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { ProviderVisibility } from "@app/types/connectors/connectors_api";
 import type { CoreAPIContentNode } from "@app/types/core/content_node";
@@ -13,6 +14,7 @@ import type {
   CoreAPITableBlob,
   EmbedderType,
 } from "@app/types/core/data_source";
+import { formatDataSourceDisplayName } from "@app/types/core/utils";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { DustAppSecretType } from "@app/types/dust_app_secret";
 import type { Project } from "@app/types/project";
@@ -35,7 +37,6 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { createParser } from "eventsource-parser";
 import * as t from "io-ts";
 import chunk from "lodash/chunk";
-
 import type { EmbeddingProviderIdType } from "../assistant/models/types";
 
 export const MAX_CHUNK_SIZE = 512;
@@ -241,9 +242,6 @@ export type CoreAPIDatasourceViewFilter = t.TypeOf<
   typeof CoreAPIDatasourceViewFilterSchema
 >;
 
-// Edge-ngram starts at 2 characters.
-export const MIN_SEARCH_QUERY_SIZE = 2;
-
 export const CoreAPINodesSearchFilterSchema = t.intersection([
   t.type({
     data_source_views: t.array(CoreAPIDatasourceViewFilterSchema),
@@ -290,17 +288,6 @@ export interface CoreAPIUpsertDataSourceDocumentPayload {
   lightDocumentOutput?: boolean;
   title: string;
   mimeType: string;
-}
-
-// TODO(keyword-search): Until we remove the `managed-` prefix, we need to
-// sanitize the search name.
-export function formatDataSourceDisplayName(name: string) {
-  return name
-    .replace(/[-_]/g, " ") // Replace both hyphens and underscores with spaces.
-    .split(" ")
-    .filter((part) => part !== "managed")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
 }
 
 // Counter-part of `DatabasesTablesUpsertPayload` in `core/bin/core_api.rs`.
@@ -2366,8 +2353,7 @@ export class CoreAPI {
           Authorization: `Bearer ${this._apiKey}`,
         };
       }
-      // eslint-disable-next-line no-restricted-globals
-      const res = await fetch(url, params);
+      const res = await internalFetch(url, params);
       return new Ok({ response: res, duration: Date.now() - now });
     } catch (e) {
       const duration = Date.now() - now;

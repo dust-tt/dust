@@ -1,10 +1,11 @@
 /** @ignoreswagger */
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
-import { cleanSpecificationFromCore, getSpecification } from "@app/lib/api/run";
+import { getSpecification } from "@app/lib/api/run";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { AppResource } from "@app/lib/resources/app_resource";
+import { cleanSpecificationFromCore } from "@app/lib/specification";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { AppType, SpecificationType } from "@app/types/app";
