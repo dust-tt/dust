@@ -1,3 +1,4 @@
+import { internalFetch } from "@app/lib/api/internal_fetch";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { ProviderVisibility } from "@app/types/connectors/connectors_api";
 import type { CoreAPIContentNode } from "@app/types/core/content_node";
@@ -13,6 +14,7 @@ import type {
   CoreAPITableBlob,
   EmbedderType,
 } from "@app/types/core/data_source";
+import { formatDataSourceDisplayName } from "@app/types/core/utils";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { DustAppSecretType } from "@app/types/dust_app_secret";
 import type { Project } from "@app/types/project";
@@ -35,10 +37,7 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { createParser } from "eventsource-parser";
 import * as t from "io-ts";
 import chunk from "lodash/chunk";
-
 import type { EmbeddingProviderIdType } from "../assistant/models/types";
-import { formatDataSourceDisplayName } from "@app/types/core/utils";
-import { internalFetch } from "@app/lib/api/internal_fetch";
 
 export const MAX_CHUNK_SIZE = 512;
 

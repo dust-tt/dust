@@ -153,13 +153,10 @@ describe("POST /api/v1/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/tables/csv",
           `files/w/${workspace.sId}/${file.sId}/original`
         );
         expect(req.truncate).toBe(true);
-        return new Response(
-          JSON.stringify({ response: { success: true } }),
-          {
-            status: 200,
-            headers: { "Content-Type": "application/json" },
-          }
-        );
+        return new Response(JSON.stringify({ response: { success: true } }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
       }
 
       if ((url as string).endsWith("/validate_csv_content")) {

@@ -1,3 +1,4 @@
+import { internalFetch } from "@app/lib/api/internal_fetch";
 import type { ByokModelProviderIdType } from "@app/types/assistant/models/types";
 import type { ApiKeyCredentialsType } from "@app/types/provider_credential";
 import type {
@@ -12,7 +13,6 @@ import type {
 import type { LoggerInterface } from "../shared/logger";
 import type { Result } from "../shared/result";
 import { Err, Ok } from "../shared/result";
-import { internalFetch } from "@app/lib/api/internal_fetch";
 
 export type OAuthAPIError = {
   message: string;
