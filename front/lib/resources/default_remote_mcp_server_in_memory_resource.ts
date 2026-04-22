@@ -18,10 +18,10 @@ export class DefaultRemoteMCPServerInMemoryResource {
     this.config = config;
   }
 
-  private static async init(
+  private static init(
     auth: Authenticator,
     configId: number
-  ): Promise<DefaultRemoteMCPServerInMemoryResource | null> {
+  ): DefaultRemoteMCPServerInMemoryResource | null {
     const config = getDefaultRemoteMCPServerById(configId);
     if (!config) {
       return null;
@@ -46,7 +46,7 @@ export class DefaultRemoteMCPServerInMemoryResource {
         continue;
       }
 
-      const resource = await DefaultRemoteMCPServerInMemoryResource.init(
+      const resource = DefaultRemoteMCPServerInMemoryResource.init(
         auth,
         config.id
       );
