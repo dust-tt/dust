@@ -580,6 +580,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         mcpServerConfigurations,
         "skillConfigurationId"
       );
+      const mcpServerViewsById = new Map(
+        allMCPServerViews.map((view) => [view.id, view])
+      );
 
       const dataSourceConfigurations =
         await SkillDataSourceConfigurationModel.findAll({
@@ -669,8 +672,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         const skillDataSourceConfigs =
           dataSourceConfigsBySkillId[customSkill.id] ?? [];
 
-        const skillMCPServerViews = allMCPServerViews.filter((view) =>
-          skillMCPServerViewIds?.includes(view.id)
+        const skillMCPServerViews = removeNulls(
+          [...new Set(skillMCPServerViewIds ?? [])].map(
+            (viewId) => mcpServerViewsById.get(viewId) ?? null
+          )
         );
 
         return new this(this.model, customSkill.get(), {
