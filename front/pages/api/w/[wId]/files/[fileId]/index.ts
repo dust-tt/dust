@@ -327,6 +327,20 @@ async function handler(
     }
 
     case "DELETE": {
+      // Plan-mode files are agent-owned: the user interacts with them only through the agent
+      // (via messages and approval decisions), never by direct mutation. The agent can retire
+      // a plan via the `close_plan` tool.
+      if (file.useCaseMetadata?.isPlanFile) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message:
+              "plan.md is managed by the agent and cannot be deleted directly. Ask the agent to close the plan.",
+          },
+        });
+      }
+
       // Check if the user is a builder for the workspace or it's a conversation file
       if (
         isUploadUseCase &&
@@ -366,6 +380,17 @@ async function handler(
     }
 
     case "POST": {
+      // Plan-mode files are agent-owned; users cannot upload over them.
+      if (file.useCaseMetadata?.isPlanFile) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message:
+              "plan.md is managed by the agent and cannot be overwritten directly.",
+          },
+        });
+      }
       // Check if the user is a builder for the workspace or it's a conversation file or avatar
       if (
         isUploadUseCase &&

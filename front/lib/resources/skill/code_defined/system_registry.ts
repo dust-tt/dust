@@ -2,6 +2,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { discoverKnowledgeSkill } from "@app/lib/resources/skill/code_defined/discover_knowledge";
 import { discoverSkillsSkill } from "@app/lib/resources/skill/code_defined/discover_skills";
 import { discoverToolsSkill } from "@app/lib/resources/skill/code_defined/discover_tools";
+import { planModeSkill } from "@app/lib/resources/skill/code_defined/plan_mode";
 import { sandboxSkill } from "@app/lib/resources/skill/code_defined/sandbox";
 import {
   ensureUniqueSIds,
@@ -15,6 +16,7 @@ const SYSTEM_SKILLS_ARRAY = ensureUniqueSIds([
   discoverKnowledgeSkill,
   discoverSkillsSkill,
   discoverToolsSkill,
+  planModeSkill,
   sandboxSkill,
 ] as const);
 

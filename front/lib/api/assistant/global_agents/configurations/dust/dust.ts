@@ -605,6 +605,7 @@ function _getDustLikeGlobalAgent(
       "mention_users",
       "sandbox",
       "projects",
+      "plan_mode",
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
     omittedThinking: omittedThinking ?? false,

@@ -63,6 +63,17 @@ async function handler(
 
   switch (req.method) {
     case "PATCH": {
+      // Plan-mode files are agent-owned; users cannot rename them.
+      if (file.useCaseMetadata?.isPlanFile) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message:
+              "plan.md is managed by the agent and cannot be renamed directly.",
+          },
+        });
+      }
       // Check permissions for renaming
       if (file.useCase === "project_context") {
         if (!space || !space.canWrite(auth)) {

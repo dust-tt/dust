@@ -682,6 +682,19 @@ export type ConversationTitleEvent = {
   title: string;
 };
 
+// Event sent when the conversation's plan.md is created, edited, approved, or closed. Carries
+// only metadata (id, version, status flags) — the UI refetches the full file contents via the
+// plan_mode GET endpoint on receipt.
+export type PlanUpdatedEvent = {
+  type: "plan_updated";
+  created: number;
+  conversationId: string;
+  planFileId: string;
+  version: number;
+  isClosed: boolean;
+  hasApproval: boolean;
+};
+
 export const ConversationMCPServerViewOrigins = [
   "agent_enabled",
   "conversation",

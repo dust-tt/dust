@@ -742,6 +742,10 @@ export const ConversationViewer = ({
             void mutateContextUsage();
             window.dispatchEvent(new CompactionCompletedEvent());
             break;
+          case "plan_updated":
+            // Handled by a dedicated plan-mode UI hook (to be added in the UI PR); the
+            // conversation viewer itself doesn't need to react.
+            break;
           default:
             ((t: never) => {
               logger.error({ event: t }, "Unknown event type");

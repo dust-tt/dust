@@ -31,6 +31,14 @@ export type FileUseCase =
   // sandbox at /dust/skills/<skill-name>/<filename>.
   | "skill_attachment";
 
+// Audit trail for a plan-mode approval. Recorded on `plan.md.useCaseMetadata` when the user
+// approves a `request_plan_approval` call.
+export type PlanModeApproval = {
+  approvedAt: string; // ISO timestamp.
+  approvedByUserId: string; // sId of the approving user.
+  fileVersion: number; // FileModel.version at the moment of approval.
+};
+
 export type FileUseCaseMetadata = {
   conversationId?: string;
   skillId?: string;
@@ -42,6 +50,13 @@ export type FileUseCaseMetadata = {
   sourceIcon?: string;
   hideFromUser?: boolean;
   skipDataSourceIndexing?: boolean;
+  // Plan mode. `isPlanFile: true` marks a file as agent-owned (user can't directly mutate).
+  // `planModeLastApproval` is set when the agent's `request_plan_approval` is approved.
+  // `isPlanClosed: true` marks the plan as retired — hidden from UI and ignored by the skill.
+  // Active plans omit `isPlanClosed` (only closed plans have it set).
+  isPlanFile?: boolean;
+  planModeLastApproval?: PlanModeApproval | null;
+  isPlanClosed?: boolean;
 };
 
 export function isConversationFileUseCase(
