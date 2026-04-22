@@ -85,11 +85,7 @@ wake-up message with `username: "dust_system"` / `fullName: "Dust System"` inste
 
 ## Milestone 5: Security
 
-<<<<<<< HEAD
-### [x] PR 7 — Cancellation rights on `WakeUpResource`
-=======
 ### [x] PR 7 — Conversation interaction restrictions
->>>>>>> 32194272b4 (format check)
 
 Two slices:
 
