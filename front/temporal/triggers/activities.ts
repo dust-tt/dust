@@ -269,11 +269,22 @@ export async function runTriggeredAgentsActivity({
 }
 
 function buildWakeUpMessageContent(wakeUp: WakeUpType): string {
-  return `<dust_system>
-This is an automatic wake-up message for a previously scheduled follow-up using the wake-up tool.
-- Wake-up ID: ${wakeUp.sId}
-</dust_system>
-Wake-up reason: ${wakeUp.reason}`;
+  let content: string = "";
+
+  content = `<dust_system>\n`;
+  content += `This is an automatic wake-up message for a previously scheduled follow-up using the wake-up tool.\n`;
+  content += `- Wake-up ID: ${wakeUp.sId} [${wakeUp.scheduleConfig.type}]\n`;
+  if (wakeUp.scheduleConfig.type === "cron") {
+    content += `- Cron expression: ${wakeUp.scheduleConfig.cron}\n`;
+    content += `- Wake-up fireCount: ${wakeUp.fireCount + 1} / ${wakeUp.maxFires}\n`;
+    if (wakeUp.fireCount + 1 >= wakeUp.maxFires) {
+      content += `- Warning: This wake-up will be automatically expired after. Recreate a new wake-up if needed.\n`;
+    }
+  }
+  content += `</dust_system>\n`;
+  content += `Wake-up reason: ${wakeUp.reason}`;
+
+  return content;
 }
 
 export async function runWakeUpActivity({
@@ -361,6 +372,18 @@ export async function runWakeUpActivity({
   }
 
   await wakeUp.markFired(auth);
+
+  const cleanupRes = await wakeUp.cleanupTemporalIfCronExpired(auth);
+  if (cleanupRes.isErr()) {
+    logger.error(
+      {
+        wakeUpId,
+        workspaceId,
+        error: normalizeError(cleanupRes.error),
+      },
+      "Failed cleaning up wake-up temporal state after fire."
+    );
+  }
 }
 
 export async function expireWakeUpActivity({

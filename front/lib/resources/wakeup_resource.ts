@@ -26,6 +26,7 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { Attributes, Transaction, WhereOptions } from "sequelize";
 
 const ACTIVE_WAKE_UP_STATUSES: WakeUpStatus[] = ["scheduled"];
+const MAX_WAKE_UP_FIRES = 32;
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface WakeUpResource extends ReadonlyAttributesType<WakeUpModel> {}
@@ -284,6 +285,10 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
     );
   }
 
+  maxFires(): number {
+    return MAX_WAKE_UP_FIRES;
+  }
+
   async markFired(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
@@ -292,16 +297,31 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
       return;
     }
 
+    const nextFireCount = this.fireCount + 1;
     const nextStatus: WakeUpStatus =
-      this.scheduleType === "one_shot" ? "fired" : "scheduled";
+      this.scheduleType === "one_shot"
+        ? "fired"
+        : nextFireCount >= this.maxFires()
+          ? "expired"
+          : "scheduled";
 
     await this.update(
       {
-        fireCount: this.fireCount + 1,
+        fireCount: nextFireCount,
         status: nextStatus,
       },
       transaction
     );
+  }
+
+  async cleanupTemporalIfCronExpired(
+    auth: Authenticator
+  ): Promise<Result<void, Error>> {
+    if (this.scheduleType !== "cron" || this.status !== "expired") {
+      return new Ok(undefined);
+    }
+
+    return this.cancelTemporalWorkflow(auth);
   }
 
   async delete(
@@ -359,6 +379,7 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
       reason: this.reason,
       status: this.status,
       fireCount: this.fireCount,
+      maxFires: this.maxFires(),
     };
   }
 

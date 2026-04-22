@@ -43,5 +43,6 @@ export const WakeUpSchema = z.object({
   reason: z.string(),
   status: WakeUpStatusSchema,
   fireCount: z.number(),
+  maxFires: z.number(),
 });
 export type WakeUpType = z.infer<typeof WakeUpSchema>;
