@@ -1,4 +1,4 @@
-import type { SystemSkillDefinition } from "@app/lib/resources/skill/global/shared";
+import type { SystemSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 
 const DISCOVER_KNOWLEDGE_INSTRUCTIONS =
   "Default behavior: optimize for speed by starting with `semantic_search`.\n" +

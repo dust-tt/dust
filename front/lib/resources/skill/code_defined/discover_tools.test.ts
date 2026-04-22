@@ -1,5 +1,5 @@
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { buildDiscoverToolsInstructions } from "@app/lib/resources/skill/global/discover_tools";
+import { buildDiscoverToolsInstructions } from "@app/lib/resources/skill/code_defined/discover_tools";
 import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";

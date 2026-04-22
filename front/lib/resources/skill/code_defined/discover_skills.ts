@@ -1,4 +1,4 @@
-import type { SystemSkillDefinition } from "@app/lib/resources/skill/global/shared";
+import type { SystemSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 
 // This skill allows discovering skills from the workspace. When equipped on an
 // agent, it causes `listForAgentLoop` to include discoverable skills (custom

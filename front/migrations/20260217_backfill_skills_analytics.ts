@@ -10,9 +10,9 @@ import {
 } from "@app/lib/models/agent/conversation";
 import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { AgentMessageSkillModel } from "@app/lib/models/skill/conversation_skill";
-import type { SkillDefinition } from "@app/lib/resources/skill/global/shared";
-import { GlobalSkillsRegistry } from "@app/lib/resources/skill/global/registry";
-import { SystemSkillsRegistry } from "@app/lib/resources/skill/global/system_registry";
+import type { SkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
+import { GlobalSkillsRegistry } from "@app/lib/resources/skill/code_defined/global_registry";
+import { SystemSkillsRegistry } from "@app/lib/resources/skill/code_defined/system_registry";
 import { makeSId } from "@app/lib/resources/string_ids";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";

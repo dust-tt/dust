@@ -1,13 +1,13 @@
 import type { Authenticator } from "@app/lib/auth";
-import { discoverKnowledgeSkill } from "@app/lib/resources/skill/global/discover_knowledge";
-import { discoverSkillsSkill } from "@app/lib/resources/skill/global/discover_skills";
-import { discoverToolsSkill } from "@app/lib/resources/skill/global/discover_tools";
-import { sandboxSkill } from "@app/lib/resources/skill/global/sandbox";
+import { discoverKnowledgeSkill } from "@app/lib/resources/skill/code_defined/discover_knowledge";
+import { discoverSkillsSkill } from "@app/lib/resources/skill/code_defined/discover_skills";
+import { discoverToolsSkill } from "@app/lib/resources/skill/code_defined/discover_tools";
+import { sandboxSkill } from "@app/lib/resources/skill/code_defined/sandbox";
 import {
   ensureUniqueSIds,
   filterSkillDefinitions,
   type SystemSkillDefinition,
-} from "@app/lib/resources/skill/global/shared";
+} from "@app/lib/resources/skill/code_defined/shared";
 import type { AllSkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
 
 const SYSTEM_SKILLS_ARRAY = ensureUniqueSIds([

@@ -27,9 +27,9 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
-import { GlobalSkillsRegistry } from "@app/lib/resources/skill/global/registry";
-import type { SkillDefinition } from "@app/lib/resources/skill/global/shared";
-import { SystemSkillsRegistry } from "@app/lib/resources/skill/global/system_registry";
+import { GlobalSkillsRegistry } from "@app/lib/resources/skill/code_defined/global_registry";
+import type { SkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
+import { SystemSkillsRegistry } from "@app/lib/resources/skill/code_defined/system_registry";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { makeSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";

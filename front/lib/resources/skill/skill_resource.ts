@@ -30,9 +30,9 @@ import {
   createResourcePermissionsFromSpacesWithMap,
   createSpaceIdToGroupsMap,
 } from "@app/lib/resources/permission_utils";
-import { GlobalSkillsRegistry } from "@app/lib/resources/skill/global/registry";
-import type { SkillDefinition } from "@app/lib/resources/skill/global/shared";
-import { SystemSkillsRegistry } from "@app/lib/resources/skill/global/system_registry";
+import { GlobalSkillsRegistry } from "@app/lib/resources/skill/code_defined/global_registry";
+import type { SkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
+import { SystemSkillsRegistry } from "@app/lib/resources/skill/code_defined/system_registry";
 import type { SkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";

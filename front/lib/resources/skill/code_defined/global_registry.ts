@@ -1,13 +1,13 @@
 import type { Authenticator } from "@app/lib/auth";
-import { framesSkill } from "@app/lib/resources/skill/global/frames";
-import { goDeepSkill } from "@app/lib/resources/skill/global/go_deep";
-import { mentionUsersSkill } from "@app/lib/resources/skill/global/mention_users";
-import { projectsSkill } from "@app/lib/resources/skill/global/projects";
+import { framesSkill } from "@app/lib/resources/skill/code_defined/frames";
+import { goDeepSkill } from "@app/lib/resources/skill/code_defined/go_deep";
+import { mentionUsersSkill } from "@app/lib/resources/skill/code_defined/mention_users";
+import { projectsSkill } from "@app/lib/resources/skill/code_defined/projects";
 import {
   ensureUniqueSIds,
   filterSkillDefinitions,
   type GlobalSkillDefinition,
-} from "@app/lib/resources/skill/global/shared";
+} from "@app/lib/resources/skill/code_defined/shared";
 import type { AllSkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
 
 const GLOBAL_SKILLS_ARRAY = ensureUniqueSIds([
