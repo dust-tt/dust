@@ -7,6 +7,7 @@ import {
   getPastedFileName,
 } from "@app/components/assistant/conversation/input_bar/pasted_utils";
 import { ToolBarContent } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarContent";
+import { inputBarSkillSuggestionPluginKey } from "@app/components/editor/extensions/input_bar/InputBarSkillSuggestionExtension";
 import type { MentionsStrippedPayload } from "@app/components/editor/extensions/MentionExtension";
 import type { CustomEditorProps } from "@app/components/editor/input_bar/useCustomEditor";
 import useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
@@ -476,6 +477,16 @@ const InputBarContainer = ({
   );
   onSkillSelectRef.current = handleSkillPickerSelection;
 
+  const skillSuggestionRefreshKey = useMemo(
+    () =>
+      [
+        shouldEnableSkillSelection ? "enabled" : "disabled",
+        availableSkills.map((skill) => skill.sId).join(","),
+        selectedSkills.map((skill) => skill.sId).join(","),
+      ].join("|"),
+    [availableSkills, selectedSkills, shouldEnableSkillSelection]
+  );
+
   // Current space is taken from the conversation (if already set) or from the space prop (if provided).
   const spaceId = conversation?.spaceId ?? space?.sId ?? undefined;
 
@@ -543,6 +554,28 @@ const InputBarContainer = ({
       }
     },
   });
+
+  // The slash suggestion plugin only recomputes its items on editor updates, so refresh it when
+  // the fetched skill list changes while the suggestion is already open.
+  useEffect(() => {
+    if (!editor || editor.isDestroyed) {
+      return;
+    }
+
+    const inputBarSkillSuggestionPluginState =
+      inputBarSkillSuggestionPluginKey.getState(editor.state);
+
+    if (!inputBarSkillSuggestionPluginState?.active) {
+      return;
+    }
+
+    editor.view.dispatch(
+      editor.state.tr.setMeta(
+        "inputBarSkillSuggestionRefresh",
+        skillSuggestionRefreshKey
+      )
+    );
+  }, [editor, skillSuggestionRefreshKey]);
 
   useEffect(() => {
     // If an attachment disappears from the uploader, remove its chip from the editor
