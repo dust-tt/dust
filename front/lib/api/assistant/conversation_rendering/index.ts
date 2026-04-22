@@ -53,6 +53,7 @@ export async function renderConversationForModel(
     excludeImages,
     onMissingAction = "inject-placeholder",
     agentConfiguration,
+    renderSkillsAsUserMessages = false,
   }: {
     leadingMessages?: ModelMessageTypeMultiActionsWithoutContentFragment[];
     conversation: ConversationType;
@@ -65,6 +66,7 @@ export async function renderConversationForModel(
     onMissingAction?: "inject-placeholder" | "skip";
     enablePreviousInteractionsPruning?: boolean;
     agentConfiguration?: AgentConfigurationType;
+    renderSkillsAsUserMessages?: boolean;
   }
 ): Promise<
   Result<
@@ -86,6 +88,7 @@ export async function renderConversationForModel(
     excludeImages,
     onMissingAction,
     agentConfiguration,
+    renderSkillsAsUserMessages,
   });
   const messages = [...leadingMessages, ...renderedMessages];
   const renderAllMessagesMs = Date.now() - stepStart;

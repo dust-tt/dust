@@ -439,6 +439,7 @@ export async function runModel(
           allowedTokenCount: model.contextSize - model.generationTokensCount,
           agentConfiguration,
           leadingMessages,
+          renderSkillsAsUserMessages,
         })
       )
   );
