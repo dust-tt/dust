@@ -29,7 +29,11 @@ function traverse(node: unknown, visitor: Visitor): void {
       for (const item of val) {
         traverse(item, visitor);
       }
-    } else if (val && typeof val === "object" && typeof (val as Record<string, unknown>)["type"] === "string") {
+    } else if (
+      val &&
+      typeof val === "object" &&
+      typeof (val as Record<string, unknown>)["type"] === "string"
+    ) {
       traverse(val, visitor);
     }
   }

@@ -7,10 +7,10 @@ export interface CollectedFiles {
   css: string[];
 }
 
-export async function collectFiles(config: ScanConfig): Promise<CollectedFiles> {
-  const negativePatterns = config.excludeDirs.map(
-    (d) => `!**/${d}/**`
-  );
+export async function collectFiles(
+  config: ScanConfig
+): Promise<CollectedFiles> {
+  const negativePatterns = config.excludeDirs.map((d) => `!**/${d}/**`);
 
   const [tsx, css] = await Promise.all([
     fg(["**/*.tsx", "**/*.ts", "!**/*.d.ts"], {

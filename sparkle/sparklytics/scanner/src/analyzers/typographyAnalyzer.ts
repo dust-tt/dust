@@ -1,19 +1,30 @@
-import { AST_NODE_TYPES } from "@typescript-eslint/types";
 import type { TSESTree } from "@typescript-eslint/types";
-import type { Root, Declaration } from "postcss";
-import type { ParseCache } from "../parsers/tsxParser.js";
-import { parseCssFile } from "../parsers/cssParser.js";
+import { AST_NODE_TYPES } from "@typescript-eslint/types";
+import type { Declaration, Root } from "postcss";
 import { traverseAST } from "../parsers/astUtils.js";
-import { relativePath } from "../utils/fileCollector.js";
-import type { ScanConfig, SparkleTokenRegistry, TokenViolation, TypographyAnalysis } from "../types.js";
+import { parseCssFile } from "../parsers/cssParser.js";
+import type { ParseCache } from "../parsers/tsxParser.js";
 import { getFontSizeSet, getLineHeightSet } from "../tokens/registry.js";
+import type {
+  ScanConfig,
+  SparkleTokenRegistry,
+  TokenViolation,
+  TypographyAnalysis,
+} from "../types.js";
+import { relativePath } from "../utils/fileCollector.js";
 
 const TYPO_CSS_PROPS = new Set([
-  "font-family", "font-size", "font-weight", "line-height",
+  "font-family",
+  "font-size",
+  "font-weight",
+  "line-height",
 ]);
 
 const TYPO_STYLE_KEYS = new Set([
-  "fontFamily", "fontSize", "fontWeight", "lineHeight",
+  "fontFamily",
+  "fontSize",
+  "fontWeight",
+  "lineHeight",
 ]);
 
 const CSS_PROP_TO_STYLE: Record<string, string> = {
@@ -101,7 +112,8 @@ function analyzeTsxTypography(
     if (
       attr.name.type !== AST_NODE_TYPES.JSXIdentifier ||
       attr.name.name !== "style"
-    ) return;
+    )
+      return;
     if (attr.value?.type !== AST_NODE_TYPES.JSXExpressionContainer) return;
 
     const expr = attr.value.expression;
@@ -113,8 +125,8 @@ function analyzeTsxTypography(
         prop.key.type === AST_NODE_TYPES.Identifier
           ? prop.key.name
           : prop.key.type === AST_NODE_TYPES.Literal
-          ? String(prop.key.value)
-          : null;
+            ? String(prop.key.value)
+            : null;
       if (!key || !TYPO_STYLE_KEYS.has(key)) continue;
 
       let value: string | null = null;
@@ -130,9 +142,9 @@ function analyzeTsxTypography(
       if (!value) continue;
 
       // Map camelCase key back to CSS prop for the validator
-      const cssProp = Object.entries(CSS_PROP_TO_STYLE).find(
-        ([, v]) => v === key
-      )?.[0] ?? key;
+      const cssProp =
+        Object.entries(CSS_PROP_TO_STYLE).find(([, v]) => v === key)?.[0] ??
+        key;
 
       violations.push({
         filePath: relPath,

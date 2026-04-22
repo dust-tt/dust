@@ -1,12 +1,17 @@
-import { AST_NODE_TYPES } from "@typescript-eslint/types";
 import type { TSESTree } from "@typescript-eslint/types";
-import type { Root, Declaration } from "postcss";
-import type { ParseCache } from "../parsers/tsxParser.js";
-import { parseCssFile } from "../parsers/cssParser.js";
+import { AST_NODE_TYPES } from "@typescript-eslint/types";
+import type { Declaration, Root } from "postcss";
 import { traverseAST } from "../parsers/astUtils.js";
-import { relativePath } from "../utils/fileCollector.js";
-import type { ColorAnalysis, ScanConfig, SparkleTokenRegistry, TokenViolation } from "../types.js";
+import { parseCssFile } from "../parsers/cssParser.js";
+import type { ParseCache } from "../parsers/tsxParser.js";
 import { getColorHexSet } from "../tokens/registry.js";
+import type {
+  ColorAnalysis,
+  ScanConfig,
+  SparkleTokenRegistry,
+  TokenViolation,
+} from "../types.js";
+import { relativePath } from "../utils/fileCollector.js";
 
 // ─── Color Patterns ───────────────────────────────────────────────────────────
 
@@ -17,43 +22,197 @@ const CSS_VAR_RE = /^var\s*\(--/i;
 
 // Common CSS named colors (subset of the 140+ named colors)
 const NAMED_CSS_COLORS = new Set([
-  "aliceblue","antiquewhite","aqua","aquamarine","azure","beige","bisque","black",
-  "blanchedalmond","blue","blueviolet","brown","burlywood","cadetblue","chartreuse",
-  "chocolate","coral","cornflowerblue","cornsilk","crimson","cyan","darkblue",
-  "darkcyan","darkgoldenrod","darkgray","darkgreen","darkgrey","darkkhaki",
-  "darkmagenta","darkolivegreen","darkorange","darkorchid","darkred","darksalmon",
-  "darkseagreen","darkslateblue","darkslategray","darkslategrey","darkturquoise",
-  "darkviolet","deeppink","deepskyblue","dimgray","dimgrey","dodgerblue","firebrick",
-  "floralwhite","forestgreen","fuchsia","gainsboro","ghostwhite","gold","goldenrod",
-  "gray","green","greenyellow","grey","honeydew","hotpink","indianred","indigo",
-  "ivory","khaki","lavender","lavenderblush","lawngreen","lemonchiffon","lightblue",
-  "lightcoral","lightcyan","lightgoldenrodyellow","lightgray","lightgreen","lightgrey",
-  "lightpink","lightsalmon","lightseagreen","lightskyblue","lightslategray",
-  "lightslategrey","lightsteelblue","lightyellow","lime","limegreen","linen",
-  "magenta","maroon","mediumaquamarine","mediumblue","mediumorchid","mediumpurple",
-  "mediumseagreen","mediumslateblue","mediumspringgreen","mediumturquoise",
-  "mediumvioletred","midnightblue","mintcream","mistyrose","moccasin","navajowhite",
-  "navy","oldlace","olive","olivedrab","orange","orangered","orchid","palegoldenrod",
-  "palegreen","paleturquoise","palevioletred","papayawhip","peachpuff","peru","pink",
-  "plum","powderblue","purple","red","rosybrown","royalblue","saddlebrown","salmon",
-  "sandybrown","seagreen","seashell","sienna","silver","skyblue","slateblue",
-  "slategray","slategrey","snow","springgreen","steelblue","tan","teal","thistle",
-  "tomato","turquoise","violet","wheat","white","whitesmoke","yellow","yellowgreen",
+  "aliceblue",
+  "antiquewhite",
+  "aqua",
+  "aquamarine",
+  "azure",
+  "beige",
+  "bisque",
+  "black",
+  "blanchedalmond",
+  "blue",
+  "blueviolet",
+  "brown",
+  "burlywood",
+  "cadetblue",
+  "chartreuse",
+  "chocolate",
+  "coral",
+  "cornflowerblue",
+  "cornsilk",
+  "crimson",
+  "cyan",
+  "darkblue",
+  "darkcyan",
+  "darkgoldenrod",
+  "darkgray",
+  "darkgreen",
+  "darkgrey",
+  "darkkhaki",
+  "darkmagenta",
+  "darkolivegreen",
+  "darkorange",
+  "darkorchid",
+  "darkred",
+  "darksalmon",
+  "darkseagreen",
+  "darkslateblue",
+  "darkslategray",
+  "darkslategrey",
+  "darkturquoise",
+  "darkviolet",
+  "deeppink",
+  "deepskyblue",
+  "dimgray",
+  "dimgrey",
+  "dodgerblue",
+  "firebrick",
+  "floralwhite",
+  "forestgreen",
+  "fuchsia",
+  "gainsboro",
+  "ghostwhite",
+  "gold",
+  "goldenrod",
+  "gray",
+  "green",
+  "greenyellow",
+  "grey",
+  "honeydew",
+  "hotpink",
+  "indianred",
+  "indigo",
+  "ivory",
+  "khaki",
+  "lavender",
+  "lavenderblush",
+  "lawngreen",
+  "lemonchiffon",
+  "lightblue",
+  "lightcoral",
+  "lightcyan",
+  "lightgoldenrodyellow",
+  "lightgray",
+  "lightgreen",
+  "lightgrey",
+  "lightpink",
+  "lightsalmon",
+  "lightseagreen",
+  "lightskyblue",
+  "lightslategray",
+  "lightslategrey",
+  "lightsteelblue",
+  "lightyellow",
+  "lime",
+  "limegreen",
+  "linen",
+  "magenta",
+  "maroon",
+  "mediumaquamarine",
+  "mediumblue",
+  "mediumorchid",
+  "mediumpurple",
+  "mediumseagreen",
+  "mediumslateblue",
+  "mediumspringgreen",
+  "mediumturquoise",
+  "mediumvioletred",
+  "midnightblue",
+  "mintcream",
+  "mistyrose",
+  "moccasin",
+  "navajowhite",
+  "navy",
+  "oldlace",
+  "olive",
+  "olivedrab",
+  "orange",
+  "orangered",
+  "orchid",
+  "palegoldenrod",
+  "palegreen",
+  "paleturquoise",
+  "palevioletred",
+  "papayawhip",
+  "peachpuff",
+  "peru",
+  "pink",
+  "plum",
+  "powderblue",
+  "purple",
+  "red",
+  "rosybrown",
+  "royalblue",
+  "saddlebrown",
+  "salmon",
+  "sandybrown",
+  "seagreen",
+  "seashell",
+  "sienna",
+  "silver",
+  "skyblue",
+  "slateblue",
+  "slategray",
+  "slategrey",
+  "snow",
+  "springgreen",
+  "steelblue",
+  "tan",
+  "teal",
+  "thistle",
+  "tomato",
+  "turquoise",
+  "violet",
+  "wheat",
+  "white",
+  "whitesmoke",
+  "yellow",
+  "yellowgreen",
 ]);
 
 // CSS properties that carry color values
 const COLOR_CSS_PROPS = new Set([
-  "color","background","background-color","border","border-color","border-top-color",
-  "border-right-color","border-bottom-color","border-left-color","outline","outline-color",
-  "text-decoration-color","fill","stroke","stop-color","box-shadow","text-shadow",
-  "caret-color","column-rule-color","accent-color",
+  "color",
+  "background",
+  "background-color",
+  "border",
+  "border-color",
+  "border-top-color",
+  "border-right-color",
+  "border-bottom-color",
+  "border-left-color",
+  "outline",
+  "outline-color",
+  "text-decoration-color",
+  "fill",
+  "stroke",
+  "stop-color",
+  "box-shadow",
+  "text-shadow",
+  "caret-color",
+  "column-rule-color",
+  "accent-color",
 ]);
 
 // Inline style keys (camelCase)
 const COLOR_STYLE_KEYS = new Set([
-  "color","background","backgroundColor","borderColor","borderTopColor","borderRightColor",
-  "borderBottomColor","borderLeftColor","outlineColor","fill","stroke","textDecorationColor",
-  "caretColor","accentColor","boxShadow","textShadow",
+  "color",
+  "background",
+  "backgroundColor",
+  "borderColor",
+  "borderTopColor",
+  "borderRightColor",
+  "borderBottomColor",
+  "borderLeftColor",
+  "outlineColor",
+  "fill",
+  "stroke",
+  "textDecorationColor",
+  "caretColor",
+  "accentColor",
+  "boxShadow",
+  "textShadow",
 ]);
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -163,8 +322,8 @@ function analyzeTsxFile(
               prop.key.type === AST_NODE_TYPES.Identifier
                 ? prop.key.name
                 : prop.key.type === AST_NODE_TYPES.Literal
-                ? String(prop.key.value)
-                : null;
+                  ? String(prop.key.value)
+                  : null;
             if (!key || !COLOR_STYLE_KEYS.has(key)) continue;
 
             const val = stringLiteralValue(prop.value as TSESTree.Expression);
@@ -195,9 +354,7 @@ function analyzeTsxFile(
           attr.value?.type === AST_NODE_TYPES.JSXExpressionContainer &&
           attr.value.expression.type === AST_NODE_TYPES.Literal
         ) {
-          classStr = String(
-            (attr.value.expression as TSESTree.Literal).value
-          );
+          classStr = String((attr.value.expression as TSESTree.Literal).value);
         }
         if (classStr) {
           // Match arbitrary color values in Tailwind classes: bg-[#fff], text-[rgb(0,0,0)]

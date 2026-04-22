@@ -1,31 +1,71 @@
-import { AST_NODE_TYPES } from "@typescript-eslint/types";
 import type { TSESTree } from "@typescript-eslint/types";
-import type { Root, Declaration } from "postcss";
-import type { ParseCache } from "../parsers/tsxParser.js";
-import { parseCssFile } from "../parsers/cssParser.js";
+import { AST_NODE_TYPES } from "@typescript-eslint/types";
+import type { Declaration, Root } from "postcss";
 import { traverseAST } from "../parsers/astUtils.js";
-import { relativePath } from "../utils/fileCollector.js";
-import type { ScanConfig, SpacingAnalysis, SparkleTokenRegistry, TokenViolation } from "../types.js";
+import { parseCssFile } from "../parsers/cssParser.js";
+import type { ParseCache } from "../parsers/tsxParser.js";
 import { getSpacingSet } from "../tokens/registry.js";
+import type {
+  ScanConfig,
+  SpacingAnalysis,
+  SparkleTokenRegistry,
+  TokenViolation,
+} from "../types.js";
+import { relativePath } from "../utils/fileCollector.js";
 
 const SPACING_CSS_PROPS = new Set([
-  "margin", "margin-top", "margin-right", "margin-bottom", "margin-left",
-  "margin-inline", "margin-block", "margin-inline-start", "margin-inline-end",
-  "padding", "padding-top", "padding-right", "padding-bottom", "padding-left",
-  "padding-inline", "padding-block", "padding-inline-start", "padding-inline-end",
-  "gap", "row-gap", "column-gap",
+  "margin",
+  "margin-top",
+  "margin-right",
+  "margin-bottom",
+  "margin-left",
+  "margin-inline",
+  "margin-block",
+  "margin-inline-start",
+  "margin-inline-end",
+  "padding",
+  "padding-top",
+  "padding-right",
+  "padding-bottom",
+  "padding-left",
+  "padding-inline",
+  "padding-block",
+  "padding-inline-start",
+  "padding-inline-end",
+  "gap",
+  "row-gap",
+  "column-gap",
 ]);
 
 const SPACING_STYLE_KEYS = new Set([
-  "margin", "marginTop", "marginRight", "marginBottom", "marginLeft",
-  "marginInline", "marginBlock",
-  "padding", "paddingTop", "paddingRight", "paddingBottom", "paddingLeft",
-  "paddingInline", "paddingBlock",
-  "gap", "rowGap", "columnGap",
+  "margin",
+  "marginTop",
+  "marginRight",
+  "marginBottom",
+  "marginLeft",
+  "marginInline",
+  "marginBlock",
+  "padding",
+  "paddingTop",
+  "paddingRight",
+  "paddingBottom",
+  "paddingLeft",
+  "paddingInline",
+  "paddingBlock",
+  "gap",
+  "rowGap",
+  "columnGap",
 ]);
 
 // Values that are always compliant
-const ALWAYS_VALID = new Set(["0", "auto", "inherit", "initial", "unset", "revert"]);
+const ALWAYS_VALID = new Set([
+  "0",
+  "auto",
+  "inherit",
+  "initial",
+  "unset",
+  "revert",
+]);
 
 function splitShorthand(value: string): string[] {
   // Split on whitespace but don't split inside calc() or var()
@@ -33,7 +73,7 @@ function splitShorthand(value: string): string[] {
   let depth = 0;
   let current = "";
   for (const ch of value) {
-    if (ch === "(" ) depth++;
+    if (ch === "(") depth++;
     else if (ch === ")") depth--;
     else if (ch === " " && depth === 0) {
       if (current.trim()) parts.push(current.trim());
@@ -100,7 +140,8 @@ function analyzeTsxSpacing(
     if (
       attr.name.type !== AST_NODE_TYPES.JSXIdentifier ||
       attr.name.name !== "style"
-    ) return;
+    )
+      return;
     if (attr.value?.type !== AST_NODE_TYPES.JSXExpressionContainer) return;
 
     const expr = attr.value.expression;
@@ -112,8 +153,8 @@ function analyzeTsxSpacing(
         prop.key.type === AST_NODE_TYPES.Identifier
           ? prop.key.name
           : prop.key.type === AST_NODE_TYPES.Literal
-          ? String(prop.key.value)
-          : null;
+            ? String(prop.key.value)
+            : null;
       if (!key || !SPACING_STYLE_KEYS.has(key)) continue;
 
       let value: string | null = null;
@@ -163,7 +204,9 @@ export function analyzeSpacing(
     const root = parseCssFile(filePath);
     if (!root) continue;
     const ctx = filePath.endsWith(".scss") ? "scss" : "css";
-    all.push(...analyzeCssSpacing(root, filePath, config.targetDir, spacingSet, ctx));
+    all.push(
+      ...analyzeCssSpacing(root, filePath, config.targetDir, spacingSet, ctx)
+    );
   }
 
   for (const filePath of tsxFiles) {

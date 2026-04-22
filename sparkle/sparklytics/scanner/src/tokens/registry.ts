@@ -32,7 +32,9 @@ export function loadRegistry(customPath: string | null): SparkleTokenRegistry {
     ) as SparkleTokenRegistry;
     return _registry;
   } catch (e) {
-    throw new Error(`Failed to parse sparkle tokens file at ${tokensPath}: ${e}`);
+    throw new Error(
+      `Failed to parse sparkle tokens file at ${tokensPath}: ${e}`
+    );
   }
 }
 

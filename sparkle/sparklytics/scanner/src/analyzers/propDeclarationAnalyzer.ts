@@ -1,16 +1,18 @@
 import fs from "node:fs";
 import path from "node:path";
-import { AST_NODE_TYPES } from "@typescript-eslint/types";
 import type { TSESTree } from "@typescript-eslint/types";
-import { ParseCache, parseFile } from "../parsers/tsxParser.js";
+import { AST_NODE_TYPES } from "@typescript-eslint/types";
 import { traverseAST } from "../parsers/astUtils.js";
+import { type ParseCache, parseFile } from "../parsers/tsxParser.js";
 import type { ComponentUsage } from "../types.js";
 
 /** component name → declared prop names */
 export type DeclaredPropsMap = Map<string, Set<string>>;
 
 function inferComponentName(typeName: string): string | null {
-  const m = typeName.match(/^([A-Z][A-Za-z0-9]*)(?:Props|PropsType|Properties)$/);
+  const m = typeName.match(
+    /^([A-Z][A-Za-z0-9]*)(?:Props|PropsType|Properties)$/
+  );
   return m ? m[1] : null;
 }
 
@@ -50,7 +52,11 @@ function extractFromAST(ast: TSESTree.Program, map: DeclaredPropsMap): void {
   });
 }
 
-function mergeProps(map: DeclaredPropsMap, compName: string, names: string[]): void {
+function mergeProps(
+  map: DeclaredPropsMap,
+  compName: string,
+  names: string[]
+): void {
   if (!map.has(compName)) map.set(compName, new Set());
   for (const n of names) map.get(compName)!.add(n);
 }
@@ -58,7 +64,10 @@ function mergeProps(map: DeclaredPropsMap, compName: string, names: string[]): v
 function collectTsFiles(dir: string, results: string[] = []): string[] {
   try {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-      if (entry.isDirectory() && !["node_modules", ".git", "dist"].includes(entry.name)) {
+      if (
+        entry.isDirectory() &&
+        !["node_modules", ".git", "dist"].includes(entry.name)
+      ) {
         collectTsFiles(path.join(dir, entry.name), results);
       } else if (entry.isFile() && /\.(tsx?|d\.ts)$/.test(entry.name)) {
         results.push(path.join(dir, entry.name));

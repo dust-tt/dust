@@ -16,7 +16,15 @@ const ConfigFileSchema = z
 const DEFAULTS: ScanConfig = {
   targetDir: process.cwd(),
   packageName: "@dust-tt/sparkle",
-  excludeDirs: ["node_modules", ".next", "dist", "build", "coverage", ".git", "sparkle"],
+  excludeDirs: [
+    "node_modules",
+    ".next",
+    "dist",
+    "build",
+    "coverage",
+    ".git",
+    "sparkle",
+  ],
   sparkleTokensPath: null,
   outputDir: process.cwd(),
   verbose: false,
@@ -59,10 +67,7 @@ export function loadConfig(cliFlags: Partial<ScanConfig> = {}): ScanConfig {
   if (!path.isAbsolute(merged.outputDir)) {
     merged.outputDir = path.resolve(process.cwd(), merged.outputDir);
   }
-  if (
-    merged.sparkleTokensPath &&
-    !path.isAbsolute(merged.sparkleTokensPath)
-  ) {
+  if (merged.sparkleTokensPath && !path.isAbsolute(merged.sparkleTokensPath)) {
     merged.sparkleTokensPath = path.resolve(
       process.cwd(),
       merged.sparkleTokensPath

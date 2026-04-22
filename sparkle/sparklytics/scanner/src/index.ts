@@ -1,22 +1,32 @@
 import { Command } from "commander";
 import { loadConfig } from "./config.js";
-import { runScan } from "./runner.js";
 import { writeReport } from "./output/reportWriter.js";
-import { setVerbose, info, success, error, printSummaryTable } from "./utils/logger.js";
+import { runScan } from "./runner.js";
 import { loadRegistry } from "./tokens/registry.js";
+import {
+  error,
+  printSummaryTable,
+  setVerbose,
+  success,
+} from "./utils/logger.js";
 
 const program = new Command();
 
 program
   .name("sparkle-scan")
-  .description("Scan a codebase for Sparkle design system usage and token compliance")
+  .description(
+    "Scan a codebase for Sparkle design system usage and token compliance"
+  )
   .version("0.1.0");
 
 program
   .command("scan")
   .description("Scan a target directory and produce a JSON report")
   .option("--target-dir <path>", "Path to the codebase to scan")
-  .option("--package <name>", "Design system package name (default: @dust-tt/sparkle)")
+  .option(
+    "--package <name>",
+    "Design system package name (default: @dust-tt/sparkle)"
+  )
   .option("--exclude <dirs...>", "Directories to exclude")
   .option("--tokens <path>", "Path to custom sparkle-tokens.json")
   .option("--output <dir>", "Output directory for the report")
@@ -40,14 +50,20 @@ program
       success(`Report written to: ${outPath}`);
 
       printSummaryTable([
-        ["Components used", `${report.summary.totalComponents} / ${report.components.length > 0 ? report.components.length : "—"}`],
+        [
+          "Components used",
+          `${report.summary.totalComponents} / ${report.components.length > 0 ? report.components.length : "—"}`,
+        ],
         ["Total usages", report.summary.totalUsages],
         ["Adoption rate", `${(report.summary.adoptionRate * 100).toFixed(1)}%`],
         ["Health score", `${report.summary.healthScore}/100`],
         ["Non-token colors", report.summary.nonTokenColors],
         ["Non-token typography", report.summary.nonTokenTypographyCount],
         ["Non-token spacing", report.summary.nonTokenSpacingCount],
-        ["Color compliance", `${(report.summary.colorComplianceRate * 100).toFixed(1)}%`],
+        [
+          "Color compliance",
+          `${(report.summary.colorComplianceRate * 100).toFixed(1)}%`,
+        ],
         ["Scan duration", `${report.meta.durationMs}ms`],
       ]);
     } catch (e) {

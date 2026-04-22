@@ -1,15 +1,18 @@
-import path from "node:path";
 import fs from "node:fs";
-import { ParseCache } from "./parsers/tsxParser.js";
-import { collectFiles } from "./utils/fileCollector.js";
-import { info, debug } from "./utils/logger.js";
-import { loadRegistry } from "./tokens/registry.js";
-import { analyzeAllElements } from "./analyzers/componentAnalyzer.js";
-import { extractDeclaredProps, mergeDeclaredProps } from "./analyzers/propDeclarationAnalyzer.js";
+import path from "node:path";
 import { analyzeColors } from "./analyzers/colorAnalyzer.js";
-import { analyzeTypography } from "./analyzers/typographyAnalyzer.js";
+import { analyzeAllElements } from "./analyzers/componentAnalyzer.js";
+import {
+  extractDeclaredProps,
+  mergeDeclaredProps,
+} from "./analyzers/propDeclarationAnalyzer.js";
 import { analyzeSpacing } from "./analyzers/spacingAnalyzer.js";
+import { analyzeTypography } from "./analyzers/typographyAnalyzer.js";
+import { ParseCache } from "./parsers/tsxParser.js";
+import { loadRegistry } from "./tokens/registry.js";
 import type { ScanConfig, SparkleReport } from "./types.js";
+import { collectFiles } from "./utils/fileCollector.js";
+import { debug, info } from "./utils/logger.js";
 
 const SCANNER_VERSION = "0.1.0";
 
@@ -39,12 +42,16 @@ export async function runScan(config: ScanConfig): Promise<SparkleReport> {
   info(`Package:  ${config.packageName}`);
 
   const registry = loadRegistry(config.sparkleTokensPath);
-  debug(`Loaded token registry with ${Object.keys(registry.colors).length} colors`);
+  debug(
+    `Loaded token registry with ${Object.keys(registry.colors).length} colors`
+  );
 
   // Collect files
   info("Collecting files...");
   const { tsx: tsxFiles, css: cssFiles } = await collectFiles(config);
-  info(`Found ${tsxFiles.length} TSX/TS files, ${cssFiles.length} CSS/SCSS files`);
+  info(
+    `Found ${tsxFiles.length} TSX/TS files, ${cssFiles.length} CSS/SCSS files`
+  );
 
   // Parse all TSX files upfront (shared cache)
   const cache = new ParseCache();
@@ -64,8 +71,12 @@ export async function runScan(config: ScanConfig): Promise<SparkleReport> {
   const [allElements, colors, typography, spacing] = await Promise.all([
     Promise.resolve(analyzeAllElements(tsxFiles, cache, config)),
     Promise.resolve(analyzeColors(tsxFiles, cssFiles, cache, config, registry)),
-    Promise.resolve(analyzeTypography(tsxFiles, cssFiles, cache, config, registry)),
-    Promise.resolve(analyzeSpacing(tsxFiles, cssFiles, cache, config, registry)),
+    Promise.resolve(
+      analyzeTypography(tsxFiles, cssFiles, cache, config, registry)
+    ),
+    Promise.resolve(
+      analyzeSpacing(tsxFiles, cssFiles, cache, config, registry)
+    ),
   ]);
 
   // Merge declared-but-unused props (totalCount=0) into component data
@@ -76,22 +87,30 @@ export async function runScan(config: ScanConfig): Promise<SparkleReport> {
   const durationMs = Date.now() - startTime;
   const sparkleVersion = getSparkleVersion(config.targetDir);
 
-  const { sparkleComponents, totalSparkleUsages, totalCustomUsages, totalHtmlUsages, divCount, sparkleRatio } = allElements;
+  const {
+    sparkleComponents,
+    totalSparkleUsages,
+    totalCustomUsages,
+    totalHtmlUsages,
+    divCount,
+    sparkleRatio,
+  } = allElements;
 
   // Build summary
   const totalUsages = totalSparkleUsages;
   const totalSparkleComponents = registry.componentNames.length;
   const uniqueUsed = sparkleComponents.length;
-  const adoptionRate = totalSparkleComponents > 0
-    ? Math.min(1, uniqueUsed / totalSparkleComponents)
-    : 0;
+  const adoptionRate =
+    totalSparkleComponents > 0
+      ? Math.min(1, uniqueUsed / totalSparkleComponents)
+      : 0;
 
   // Health score: adoption 40% + color 20% + typography 20% + spacing 20%
   const healthScore = Math.round(
     adoptionRate * 40 +
-    colors.complianceRate * 20 +
-    typography.complianceRate * 20 +
-    spacing.complianceRate * 20
+      colors.complianceRate * 20 +
+      typography.complianceRate * 20 +
+      spacing.complianceRate * 20
   );
 
   const report: SparkleReport = {

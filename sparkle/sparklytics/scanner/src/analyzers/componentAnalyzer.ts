@@ -1,8 +1,7 @@
-import { AST_NODE_TYPES } from "@typescript-eslint/types";
 import type { TSESTree } from "@typescript-eslint/types";
-import type { ParseCache } from "../parsers/tsxParser.js";
+import { AST_NODE_TYPES } from "@typescript-eslint/types";
 import { traverseAST } from "../parsers/astUtils.js";
-import { relativePath } from "../utils/fileCollector.js";
+import type { ParseCache } from "../parsers/tsxParser.js";
 import type {
   AllElementsAnalysis,
   ComponentUsage,
@@ -12,6 +11,7 @@ import type {
   PropOccurrence,
   ScanConfig,
 } from "../types.js";
+import { relativePath } from "../utils/fileCollector.js";
 
 interface RawPropOccurrence {
   name: string;
@@ -38,7 +38,8 @@ class ComponentUsageBuilder {
   build(): ComponentUsage {
     const usageCount = this.occurrences.length;
     const defaultUsageCount = this.occurrences.filter(
-      (o) => o.props.filter((p) => p.name !== "key" && p.name !== "ref").length === 0
+      (o) =>
+        o.props.filter((p) => p.name !== "key" && p.name !== "ref").length === 0
     ).length;
 
     // Aggregate props
@@ -128,7 +129,10 @@ function resolveJSXName(
   if (name.type === AST_NODE_TYPES.JSXMemberExpression) {
     if (name.object.type === AST_NODE_TYPES.JSXIdentifier) {
       const nsKey = `__ns__${name.object.name}`;
-      if (bindings.has(nsKey) && name.property.type === AST_NODE_TYPES.JSXIdentifier) {
+      if (
+        bindings.has(nsKey) &&
+        name.property.type === AST_NODE_TYPES.JSXIdentifier
+      ) {
         return {
           localName: `${name.object.name}.${name.property.name}`,
           importedName: name.property.name,
@@ -140,9 +144,7 @@ function resolveJSXName(
   return null;
 }
 
-function serializePropValue(
-  value: TSESTree.JSXAttribute["value"]
-): string {
+function serializePropValue(value: TSESTree.JSXAttribute["value"]): string {
   if (value === null) return "true"; // <Button disabled />
 
   if (value.type === AST_NODE_TYPES.Literal) {
@@ -296,7 +298,8 @@ function resolveFromMaps(
 ): { binding: ImportBinding; isSparkle: boolean } | null {
   if (name.type === AST_NODE_TYPES.JSXIdentifier) {
     const tag = name.name;
-    if (sparkle.has(tag)) return { binding: sparkle.get(tag)!, isSparkle: true };
+    if (sparkle.has(tag))
+      return { binding: sparkle.get(tag)!, isSparkle: true };
     if (other.has(tag)) return { binding: other.get(tag)!, isSparkle: false };
     // Uppercase but not imported — treat as local component
     if (/^[A-Z]/.test(tag)) {
@@ -317,13 +320,21 @@ function resolveFromMaps(
       if (!propName) return null;
       if (sparkle.has(nsKey)) {
         return {
-          binding: { localName: `${name.object.name}.${propName}`, importedName: propName, importedFrom: sparkle.get(nsKey)!.importedFrom },
+          binding: {
+            localName: `${name.object.name}.${propName}`,
+            importedName: propName,
+            importedFrom: sparkle.get(nsKey)!.importedFrom,
+          },
           isSparkle: true,
         };
       }
       if (other.has(nsKey)) {
         return {
-          binding: { localName: `${name.object.name}.${propName}`, importedName: propName, importedFrom: other.get(nsKey)!.importedFrom },
+          binding: {
+            localName: `${name.object.name}.${propName}`,
+            importedName: propName,
+            importedFrom: other.get(nsKey)!.importedFrom,
+          },
           isSparkle: false,
         };
       }
@@ -339,7 +350,10 @@ export function analyzeAllElements(
 ): AllElementsAnalysis {
   const sparkleAgg = new Map<string, ComponentUsageBuilder>();
   const customAgg = new Map<string, ComponentUsageBuilder>();
-  const htmlAgg = new Map<string, { count: number; locations: FileLocation[] }>();
+  const htmlAgg = new Map<
+    string,
+    { count: number; locations: FileLocation[] }
+  >();
 
   for (const filePath of tsxFiles) {
     const ast = cache.get(filePath);
@@ -390,11 +404,21 @@ export function analyzeAllElements(
     .sort((a, b) => b.usageCount - a.usageCount);
 
   const htmlElements: HtmlElementUsage[] = Array.from(htmlAgg.entries())
-    .map(([tag, data]) => ({ tag, usageCount: data.count, locations: data.locations }))
+    .map(([tag, data]) => ({
+      tag,
+      usageCount: data.count,
+      locations: data.locations,
+    }))
     .sort((a, b) => b.usageCount - a.usageCount);
 
-  const totalSparkleUsages = sparkleComponents.reduce((s, c) => s + c.usageCount, 0);
-  const totalCustomUsages = customComponents.reduce((s, c) => s + c.usageCount, 0);
+  const totalSparkleUsages = sparkleComponents.reduce(
+    (s, c) => s + c.usageCount,
+    0
+  );
+  const totalCustomUsages = customComponents.reduce(
+    (s, c) => s + c.usageCount,
+    0
+  );
   const totalHtmlUsages = htmlElements.reduce((s, e) => s + e.usageCount, 0);
   const divCount = htmlElements.find((e) => e.tag === "div")?.usageCount ?? 0;
   const sparkleRatio =
