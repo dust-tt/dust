@@ -3,6 +3,7 @@ import { LinkWrapper } from "@app/lib/platform";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { getConversationDisplayTitle } from "@app/types/assistant/conversation";
 import type { WorkspaceType } from "@app/types/user";
+import { Spinner } from "@dust-tt/sparkle";
 
 interface ConversationForkNoticeProps {
   message: ConversationForkNoticeType;
@@ -23,18 +24,33 @@ export function ConversationForkNotice({
     <div className="flex items-center gap-3">
       <div className="h-px flex-1 bg-border dark:bg-border-dark-night" />
       <div className="min-w-0 break-words text-center text-sm text-muted-foreground dark:text-muted-foreground-night">
-        <span>
-          {getForkingUserDisplayName(message)} branched this conversation:{" "}
-        </span>
-        <LinkWrapper
-          href={getConversationRoute(owner.sId, message.childConversationId)}
-          className="text-foreground transition duration-200 hover:underline dark:text-foreground-night"
-        >
-          {getConversationDisplayTitle({
-            title: message.childConversationTitle,
-            created: message.created,
-          })}
-        </LinkWrapper>
+        {message.isPending ? (
+          <span className="inline-flex items-center gap-2">
+            <span>
+              {getForkingUserDisplayName(message)} is branching this
+              conversation
+            </span>
+            <Spinner size="xs" />
+          </span>
+        ) : (
+          <>
+            <span>
+              {getForkingUserDisplayName(message)} branched this conversation:{" "}
+            </span>
+            <LinkWrapper
+              href={getConversationRoute(
+                owner.sId,
+                message.childConversationId
+              )}
+              className="text-foreground transition duration-200 hover:underline dark:text-foreground-night"
+            >
+              {getConversationDisplayTitle({
+                title: message.childConversationTitle,
+                created: message.created,
+              })}
+            </LinkWrapper>
+          </>
+        )}
       </div>
       <div className="h-px flex-1 bg-border dark:bg-border-dark-night" />
     </div>

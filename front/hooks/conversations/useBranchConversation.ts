@@ -1,11 +1,13 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
-import { useAppRouter } from "@app/lib/platform";
+import { ConversationsUpdatedEvent } from "@app/lib/notifications/events";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { PostConversationForkResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/forks";
 import type { LightWorkspaceType } from "@app/types/user";
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
+
+import { useConversationBranchingState } from "./useConversationBranchingState";
 
 export function useBranchConversation({
   owner,
@@ -17,17 +19,26 @@ export function useBranchConversation({
   onConversationBranched?: () => Promise<void> | void;
 }) {
   const sendNotification = useSendNotification();
-  const router = useAppRouter();
-
-  const [isBranching, setIsBranching] = useState(false);
+  const {
+    isBranching,
+    startBranching,
+    markBranchCreated,
+    clearBranchingState,
+  } = useConversationBranchingState(conversationId);
 
   const branchConversation = useCallback(
     async (sourceMessageId?: string): Promise<boolean> => {
-      if (!conversationId) {
+      if (!conversationId || isBranching) {
         return false;
       }
 
-      setIsBranching(true);
+      startBranching(sourceMessageId);
+      const childConversationWindow =
+        typeof window !== "undefined" ? window.open("", "_blank") : null;
+
+      if (childConversationWindow) {
+        childConversationWindow.opener = null;
+      }
 
       try {
         const requestBody = sourceMessageId ? { sourceMessageId } : {};
@@ -51,6 +62,8 @@ export function useBranchConversation({
             title: "Failed to branch conversation",
             description: errorData.message,
           });
+          childConversationWindow?.close();
+          clearBranchingState();
 
           return false;
         }
@@ -59,34 +72,42 @@ export function useBranchConversation({
           conversationId: forkedConversationId,
         }: PostConversationForkResponseBody = await res.json();
 
+        markBranchCreated();
+        window.dispatchEvent(new ConversationsUpdatedEvent());
         void onConversationBranched?.();
 
-        await router.push(
-          getConversationRoute(owner.sId, forkedConversationId),
-          undefined,
-          {
-            shallow: true,
-          }
+        const forkedConversationRoute = getConversationRoute(
+          owner.sId,
+          forkedConversationId
         );
+
+        if (childConversationWindow) {
+          childConversationWindow.location.assign(forkedConversationRoute);
+        } else {
+          window.open(forkedConversationRoute, "_blank");
+        }
 
         return true;
       } catch {
+        childConversationWindow?.close();
+        clearBranchingState();
         sendNotification({
           type: "error",
           title: "Failed to branch conversation",
         });
 
         return false;
-      } finally {
-        setIsBranching(false);
       }
     },
     [
+      clearBranchingState,
       conversationId,
+      isBranching,
+      markBranchCreated,
       onConversationBranched,
       owner.sId,
-      router,
       sendNotification,
+      startBranching,
     ]
   );
 

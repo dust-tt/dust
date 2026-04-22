@@ -37,6 +37,10 @@ import {
   useConversations,
 } from "@app/hooks/conversations";
 import { useConversationAttachments } from "@app/hooks/conversations/useConversationAttachments";
+import {
+  type PendingConversationBranch,
+  useConversationBranchingState,
+} from "@app/hooks/conversations/useConversationBranchingState";
 import { useConversationEvents } from "@app/hooks/useConversationEvents";
 import { useEnableBrowserNotification } from "@app/hooks/useEnableBrowserNotification";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -176,6 +180,7 @@ function makeConversationForkNoticeMessage(
     rank: sourceMessage.rank,
     branchId: null,
     visibility: "visible",
+    isPending: false,
     sourceMessageId: forkedChild.sourceMessageId,
     childConversationId: forkedChild.childConversationId,
     childConversationTitle: forkedChild.childConversationTitle,
@@ -183,15 +188,59 @@ function makeConversationForkNoticeMessage(
   };
 }
 
+function getPendingForkSourceMessageId(
+  messages: VirtuosoMessage[],
+  pendingForkNotice: PendingConversationBranch
+): string | null {
+  if (pendingForkNotice.sourceMessageId) {
+    return pendingForkNotice.sourceMessageId;
+  }
+
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index];
+    if (message && isAgentMessageWithStreaming(message)) {
+      return message.sId;
+    }
+  }
+
+  return null;
+}
+
+function makePendingConversationForkNoticeMessage(
+  sourceMessage: VirtuosoMessage,
+  pendingForkNotice: PendingConversationBranch,
+  user: UserType
+): ConversationForkNotice {
+  return {
+    type: "conversation_fork_notice",
+    sId: `conversation-fork-notice-pending-${pendingForkNotice.startedAt}`,
+    created: sourceMessage.created,
+    rank: sourceMessage.rank,
+    branchId: null,
+    visibility: "visible",
+    isPending: true,
+    sourceMessageId: sourceMessage.sId,
+    childConversationId: null,
+    childConversationTitle: null,
+    user,
+  };
+}
+
 function addConversationForkNotices(
   messages: VirtuosoMessage[],
-  forkedChildren: ConversationForkedChildType[] = []
+  forkedChildren: ConversationForkedChildType[] = [],
+  pendingForkNotice: PendingConversationBranch | null,
+  currentUser: UserType
 ): VirtuosoMessage[] {
   const renderedMessages = messages.filter(
     (message) => !isConversationForkNotice(message)
   );
 
-  if (forkedChildren.length === 0) {
+  const pendingForkSourceMessageId = pendingForkNotice
+    ? getPendingForkSourceMessageId(renderedMessages, pendingForkNotice)
+    : null;
+
+  if (!pendingForkSourceMessageId && forkedChildren.length === 0) {
     return renderedMessages;
   }
 
@@ -227,6 +276,22 @@ function addConversationForkNotices(
         makeConversationForkNoticeMessage(message, forkedChild)
       )
     );
+
+    if (
+      pendingForkNotice &&
+      pendingForkSourceMessageId === message.sId &&
+      !forkedChildrenForMessage.some(
+        (forkedChild) => forkedChild.branchedAt >= pendingForkNotice.startedAt
+      )
+    ) {
+      mergedMessages.push(
+        makePendingConversationForkNoticeMessage(
+          message,
+          pendingForkNotice,
+          currentUser
+        )
+      );
+    }
   }
 
   return mergedMessages;
@@ -299,6 +364,8 @@ export const ConversationViewer = ({
   }, [shouldShowPushNotificationActivation, askForPermission]);
 
   const { mutateConversations } = useConversations({ workspaceId: owner.sId });
+  const { inFlightBranch, pendingForkNotice, clearPendingForkNotice } =
+    useConversationBranchingState(conversationId);
 
   const {
     isLoadingInitialData,
@@ -359,7 +426,9 @@ export const ConversationViewer = ({
       const messagesToRender = convertLightMessageTypeToVirtuosoMessages(raw);
       const messagesAndNotices = addConversationForkNotices(
         messagesToRender,
-        conversation.forkingData?.forkedChildren
+        conversation.forkingData?.forkedChildren,
+        pendingForkNotice,
+        user
       );
 
       setInitialListData(messagesAndNotices);
@@ -408,10 +477,12 @@ export const ConversationViewer = ({
     initialListData,
     conversation,
     messages,
+    pendingForkNotice,
     setInitialListData,
     isValidating,
     conversation?.unread,
     conversation?.lastReadMs,
+    user,
   ]);
 
   // Sync the virtuoso ref with the side panel context.
@@ -469,7 +540,9 @@ export const ConversationViewer = ({
       ref.current.data.prepend(
         addConversationForkNotices(
           renderedOlderMessages,
-          conversation?.forkingData?.forkedChildren
+          conversation?.forkingData?.forkedChildren,
+          pendingForkNotice,
+          user
         )
       );
     }
@@ -487,11 +560,18 @@ export const ConversationViewer = ({
       ref.current.data.append(
         addConversationForkNotices(
           renderedRecentMessages,
-          conversation?.forkingData?.forkedChildren
+          conversation?.forkingData?.forkedChildren,
+          pendingForkNotice,
+          user
         )
       );
     }
-  }, [conversation?.forkingData?.forkedChildren, messages]);
+  }, [
+    conversation?.forkingData?.forkedChildren,
+    messages,
+    pendingForkNotice,
+    user,
+  ]);
 
   useEffect(() => {
     if (!ref.current || !ref.current.data.get().length) {
@@ -501,7 +581,9 @@ export const ConversationViewer = ({
     const currentData = ref.current.data.get();
     const reconciledData = addConversationForkNotices(
       currentData,
-      conversation?.forkingData?.forkedChildren
+      conversation?.forkingData?.forkedChildren,
+      pendingForkNotice,
+      user
     );
 
     if (
@@ -527,7 +609,7 @@ export const ConversationViewer = ({
       }
       index += 1;
     }
-  }, [conversation?.forkingData?.forkedChildren]);
+  }, [conversation?.forkingData?.forkedChildren, pendingForkNotice, user]);
 
   const { feedbacks } = useConversationFeedbacks({
     conversationId: conversationId ?? "",
@@ -1027,13 +1109,53 @@ export const ConversationViewer = ({
     );
   }, [feedbacks]);
 
+  useEffect(() => {
+    if (!pendingForkNotice || inFlightBranch) {
+      return;
+    }
+
+    void mutateConversation();
+  }, [inFlightBranch, mutateConversation, pendingForkNotice]);
+
+  useEffect(() => {
+    if (!pendingForkNotice) {
+      return;
+    }
+
+    const sourceMessageId = getPendingForkSourceMessageId(
+      convertLightMessageTypeToVirtuosoMessages(
+        messages.flatMap((m) => m.messages)
+      ),
+      pendingForkNotice
+    );
+
+    if (!sourceMessageId) {
+      return;
+    }
+
+    const matchingFork = conversation?.forkingData?.forkedChildren?.some(
+      (forkedChild) =>
+        forkedChild.sourceMessageId === sourceMessageId &&
+        forkedChild.branchedAt >= pendingForkNotice.startedAt
+    );
+
+    if (matchingFork) {
+      clearPendingForkNotice();
+    }
+  }, [
+    clearPendingForkNotice,
+    conversation?.forkingData?.forkedChildren,
+    messages,
+    pendingForkNotice,
+  ]);
+
   const isProjectMember = conversation?.spaceId
     ? (spaceInfo?.isMember ?? false) // Default false while loading (restrictive)
     : undefined;
 
   const onConversationBranched = useCallback(() => {
-    void mutateConversations();
-  }, [mutateConversations]);
+    void mutateConversation();
+  }, [mutateConversation]);
 
   // After reversal in the hook, messages[0] is the oldest page. This only
   // returns the actual first conversation message when all pages are loaded

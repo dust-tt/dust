@@ -79,7 +79,7 @@ export type AgentMessageWithStreaming = LightAgentMessageWithActionsType & {
   };
 };
 
-export type ConversationForkNotice = {
+type BaseConversationForkNotice = {
   type: "conversation_fork_notice";
   sId: string;
   created: number;
@@ -87,10 +87,20 @@ export type ConversationForkNotice = {
   branchId: null;
   visibility: "visible";
   sourceMessageId: string;
-  childConversationId: string;
-  childConversationTitle: string | null;
   user: UserType;
 };
+
+export type ConversationForkNotice =
+  | (BaseConversationForkNotice & {
+      isPending: true;
+      childConversationId: null;
+      childConversationTitle: null;
+    })
+  | (BaseConversationForkNotice & {
+      isPending: false;
+      childConversationId: string;
+      childConversationTitle: string | null;
+    });
 
 export type AgentMessageStateEvent = (
   | AgentMessageEvents
