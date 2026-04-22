@@ -143,8 +143,8 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import { InternalPostConversationsRequestBodySchema } from "@app/types/api/internal/assistant";
 import type {
+  ConversationListItemType,
   ConversationType,
-  ConversationWithoutContentType,
   UserMessageType,
 } from "@app/types/assistant/conversation";
 import { ConversationError } from "@app/types/assistant/conversation";
@@ -155,7 +155,7 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 export type GetConversationsResponseBody = {
-  conversations: ConversationWithoutContentType[];
+  conversations: ConversationListItemType[];
   hasMore: boolean;
   lastValue: string | null;
 };
@@ -198,7 +198,7 @@ async function handler(
       const pagination = paginationRes.value;
 
       const result =
-        await ConversationResource.listPrivateConversationsForUserPaginated(
+        await ConversationResource.listPrivateConversationsForUserPaginatedFromDB(
           auth,
           {
             limit: pagination.limit,
@@ -208,7 +208,7 @@ async function handler(
         );
 
       res.status(200).json({
-        conversations: result.conversations.map((c) => c.toJSON()),
+        conversations: result.conversations,
         hasMore: result.hasMore,
         lastValue: result.lastValue,
       });

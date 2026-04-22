@@ -56,7 +56,7 @@ import { useSpaceInfo } from "@app/lib/swr/spaces";
 import logger from "@app/logger/logger";
 import {
   type ConversationForkedChildType,
-  type ConversationWithoutContentType,
+  type ConversationListItemType,
   isUserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";
 import type { RichMention } from "@app/types/assistant/mentions";
@@ -594,7 +594,7 @@ export const ConversationViewer = ({
                 );
 
                 void mutateConversations(
-                  (currentData: ConversationWithoutContentType[] | undefined) =>
+                  (currentData: ConversationListItemType[] | undefined) =>
                     currentData?.map((c) =>
                       c.sId === conversationId
                         ? { ...c, hasError: false, unread: false }
@@ -676,7 +676,7 @@ export const ConversationViewer = ({
 
             // to refresh the list of convos in the sidebar (title)
             void mutateConversations(
-              (currentData: ConversationWithoutContentType[] | undefined) =>
+              (currentData: ConversationListItemType[] | undefined) =>
                 currentData?.map((c) =>
                   c.sId === conversationId ? { ...c, title: event.title } : c
                 ),
@@ -694,7 +694,7 @@ export const ConversationViewer = ({
 
             // Update the conversation hasError state in the local cache without making a network request.
             void mutateConversations(
-              (currentData: ConversationWithoutContentType[] | undefined) =>
+              (currentData: ConversationListItemType[] | undefined) =>
                 currentData?.map((c) =>
                   c.sId === event.conversationId
                     ? { ...c, hasError: event.status === "error" }
@@ -943,7 +943,7 @@ export const ConversationViewer = ({
         );
 
         void mutateConversations(
-          (currentData: ConversationWithoutContentType[] | undefined) =>
+          (currentData: ConversationListItemType[] | undefined) =>
             currentData?.map((c) =>
               c.sId === conversationId
                 ? { ...c, updated: new Date().getTime() }

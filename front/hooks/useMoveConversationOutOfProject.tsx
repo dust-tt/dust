@@ -8,7 +8,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import {
-  type ConversationWithoutContentType,
+  type ConversationListItemType,
   getConversationDisplayTitle,
 } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -35,7 +35,7 @@ export function useMoveConversationOutOfProject(
   });
 
   return useCallback(
-    async (conversation: ConversationWithoutContentType): Promise<boolean> => {
+    async (conversation: ConversationListItemType): Promise<boolean> => {
       const confirmed = await confirm({
         title: "Remove from project?",
         message: (
