@@ -27,7 +27,6 @@ import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import { CoreAPI, EMBEDDING_CONFIGS } from "@app/types/core/core_api";
 import type {
   CoreAPIDataSource,
-  CoreAPIDataSourceConfig,
   CoreAPIFolder,
 } from "@app/types/core/data_source";
 import { DEFAULT_QDRANT_CLUSTER } from "@app/types/core/data_source";
