@@ -28,5 +28,11 @@
     "agentMessageId": "RADAMsg02",
     "thumbDirection": "down",
     "content": "The analysis is completely wrong. The haiku is about moonlight and shadows, not seasons. The agent fabricated an interpretation that has nothing to do with the actual poem."
+  },
+  {
+    "conversationId": "RADustConv04",
+    "agentMessageId": "RADAMsg05",
+    "thumbDirection": "down",
+    "content": "The analysis ignores the literal text and fabricates meaning. The poem clearly describes cherry blossoms scattering across a stream, not a snowstorm. The agent should ground its analysis in what the text actually says before inferring deeper themes."
   }
 ]

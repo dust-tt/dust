@@ -1,5 +1,6 @@
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import { Authenticator } from "@app/lib/auth";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -7,6 +8,7 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SkillSuggestionFactory } from "@app/tests/utils/SkillSuggestionFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import type { ConversationType } from "@app/types/assistant/conversation";
 import type { WorkspaceType } from "@app/types/user";
 import { beforeEach, describe, expect, it } from "vitest";
 
@@ -673,11 +675,12 @@ describe("SkillSuggestionResource", () => {
       expect(json.source).toBe("reinforcement");
       expect(json.skillConfigurationId).toBe(skill.sId);
       expect(json.sourceConversationsCount).toBe(0);
+      expect(json.visibleSourceConversationIds).toEqual([]);
       expect(typeof json.createdAt).toBe("number");
       expect(typeof json.updatedAt).toBe("number");
     });
 
-    it("should include sourceConversationIdsCount but not sourceConversationIds array", async () => {
+    it("should include sourceConversationsCount and empty visibleSourceConversationIds for non-existent conversations", async () => {
       const suggestion = await SkillSuggestionFactory.create(
         authenticator,
         skill,
@@ -689,7 +692,8 @@ describe("SkillSuggestionResource", () => {
       const json = suggestion.toJSON();
 
       expect(json.sourceConversationsCount).toBe(2);
-      expect("sourceConversationIds" in json).toBe(false);
+      // Non-existent conversation model IDs are not resolved.
+      expect(json.visibleSourceConversationIds).toEqual([]);
     });
 
     it("should round-trip a title through create, fetch, and toJSON", async () => {
@@ -707,6 +711,151 @@ describe("SkillSuggestionResource", () => {
         suggestion.sId
       );
       expect(fetched?.toJSON().title).toBe(title);
+    });
+  });
+
+  describe("visibleSourceConversationIds", () => {
+    let conversation1: ConversationType;
+    let conversation2: ConversationType;
+
+    beforeEach(async () => {
+      conversation1 = await createConversation(authenticator, {
+        title: "Test Conversation 1",
+        visibility: "unlisted",
+        spaceId: null,
+      });
+      conversation2 = await createConversation(authenticator, {
+        title: "Test Conversation 2",
+        visibility: "unlisted",
+        spaceId: null,
+      });
+
+      // Register the user as a participant in both conversations.
+      for (const conversation of [conversation1, conversation2]) {
+        await ConversationResource.upsertParticipation(authenticator, {
+          conversation,
+          action: "posted",
+          user: authenticator.getNonNullableUser().toJSON(),
+        });
+      }
+    });
+
+    it("should expose visible conversation IDs when user is a participant", async () => {
+      const suggestion = await SkillSuggestionFactory.create(
+        authenticator,
+        skill,
+        {
+          sourceConversationIds: [conversation1.id, conversation2.id],
+        }
+      );
+
+      const fetched = await SkillSuggestionResource.fetchById(
+        authenticator,
+        suggestion.sId
+      );
+
+      const json = fetched!.toJSON();
+      expect(json.sourceConversationsCount).toBe(2);
+      // The user created both conversations so is a participant.
+      expect(json.visibleSourceConversationIds.sort()).toEqual(
+        [conversation1.sId, conversation2.sId].sort()
+      );
+    });
+
+    it("should filter out conversations the user cannot access", async () => {
+      // Create a second user who can edit the skill but is not a participant
+      // of conversation2.
+      const otherUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, otherUser, {
+        role: "builder",
+      });
+      const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        otherUser.sId,
+        workspace.sId
+      );
+
+      // Create a conversation as the other user (they'll be a participant).
+      const otherConversation = await createConversation(otherAuth, {
+        title: "Other Conversation",
+        visibility: "unlisted",
+        spaceId: null,
+      });
+
+      // Create suggestion with both conversations.
+      const suggestion = await SkillSuggestionFactory.create(
+        authenticator,
+        skill,
+        {
+          sourceConversationIds: [conversation1.id, otherConversation.id],
+        }
+      );
+
+      // Fetch as the original user - they should only see conversation1.
+      const fetched = await SkillSuggestionResource.fetchById(
+        authenticator,
+        suggestion.sId
+      );
+
+      const json = fetched!.toJSON();
+      expect(json.sourceConversationsCount).toBe(2);
+      expect(json.visibleSourceConversationIds).toEqual([conversation1.sId]);
+    });
+
+    it("should bypass access check with dangerouslyBypassConversationsVisibilityCheck", async () => {
+      // Create a second user's conversation.
+      const otherUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, otherUser, {
+        role: "builder",
+      });
+      const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        otherUser.sId,
+        workspace.sId
+      );
+      const otherConversation = await createConversation(otherAuth, {
+        title: "Other Conversation",
+        visibility: "unlisted",
+        spaceId: null,
+      });
+
+      const suggestion = await SkillSuggestionFactory.create(
+        authenticator,
+        skill,
+        {
+          sourceConversationIds: [conversation1.id, otherConversation.id],
+        }
+      );
+
+      // Fetch with bypass - should see all conversations.
+      const fetched = await SkillSuggestionResource.fetchById(
+        authenticator,
+        suggestion.sId,
+        { dangerouslyBypassConversationsVisibilityCheck: true }
+      );
+
+      const json = fetched!.toJSON();
+      expect(json.sourceConversationsCount).toBe(2);
+      expect(json.visibleSourceConversationIds.sort()).toEqual(
+        [conversation1.sId, otherConversation.sId].sort()
+      );
+    });
+
+    it("should return empty visibleSourceConversationIds when sourceConversationIds is null", async () => {
+      const suggestion = await SkillSuggestionFactory.create(
+        authenticator,
+        skill,
+        {
+          sourceConversationIds: null,
+        }
+      );
+
+      const fetched = await SkillSuggestionResource.fetchById(
+        authenticator,
+        suggestion.sId
+      );
+
+      const json = fetched!.toJSON();
+      expect(json.sourceConversationsCount).toBe(0);
+      expect(json.visibleSourceConversationIds).toEqual([]);
     });
   });
 });

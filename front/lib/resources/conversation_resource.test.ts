@@ -6568,3 +6568,233 @@ describe("ConversationResource cleanup on delete", () => {
     });
   });
 });
+
+describe("filterVisibleConversations", () => {
+  let adminAuth: Authenticator;
+  let userAuth: Authenticator;
+  let workspace: LightWorkspaceType;
+  let globalSpace: SpaceResource;
+  let agents: LightAgentConfigurationType[];
+
+  beforeEach(async () => {
+    const {
+      authenticator,
+      globalSpace: gs,
+      user: adminUser,
+      workspace: w,
+    } = await createResourceTest({ role: "admin" });
+
+    workspace = w;
+    globalSpace = gs;
+    adminAuth = authenticator;
+
+    const regularUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, regularUser, { role: "user" });
+    userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      regularUser.sId,
+      workspace.sId
+    );
+
+    agents = await setupTestAgents(workspace, adminUser);
+  });
+
+  it("returns the user's own conversation as visible", async () => {
+    const conversation = await ConversationFactory.create(userAuth, {
+      agentConfigurationId: agents[0].sId,
+      messagesCreatedAt: [dateFromDaysAgo(1)],
+    });
+
+    // The creator must be a participant for the conversation to be visible.
+    await ConversationResource.upsertParticipation(userAuth, {
+      conversation,
+      action: "posted",
+      user: userAuth.getNonNullableUser().toJSON(),
+    });
+
+    const resource = await ConversationResource.fetchById(
+      userAuth,
+      conversation.sId
+    );
+    assert(resource);
+
+    const visible = await ConversationResource.filterVisibleConversations(
+      userAuth,
+      [resource]
+    );
+
+    expect(visible).toHaveLength(1);
+    expect(visible[0].sId).toBe(conversation.sId);
+  });
+
+  it("does not return another user's private conversation even if canAccess is true", async () => {
+    // Admin creates a private conversation referencing the global space.
+    const conversation = await ConversationFactory.create(adminAuth, {
+      agentConfigurationId: agents[0].sId,
+      requestedSpaceIds: [globalSpace.id],
+      messagesCreatedAt: [dateFromDaysAgo(1)],
+    });
+
+    // Verify the regular user can access it (via global space permissions).
+    const accessResult = await ConversationResource.canAccess(
+      userAuth,
+      conversation.sId
+    );
+    expect(accessResult).toBe("allowed");
+
+    // But filterVisibleConversations should NOT include it.
+    const resource = await ConversationResource.fetchById(
+      adminAuth,
+      conversation.sId
+    );
+    assert(resource);
+
+    const visible = await ConversationResource.filterVisibleConversations(
+      userAuth,
+      [resource]
+    );
+
+    expect(visible).toHaveLength(0);
+  });
+
+  it("returns another user's conversation when added as participant", async () => {
+    const conversation = await ConversationFactory.create(adminAuth, {
+      agentConfigurationId: agents[0].sId,
+      messagesCreatedAt: [dateFromDaysAgo(1)],
+    });
+
+    // Add regular user as participant.
+    await ConversationResource.upsertParticipation(userAuth, {
+      conversation,
+      action: "posted",
+      user: userAuth.getNonNullableUser().toJSON(),
+    });
+
+    const resource = await ConversationResource.fetchById(
+      adminAuth,
+      conversation.sId
+    );
+    assert(resource);
+
+    const visible = await ConversationResource.filterVisibleConversations(
+      userAuth,
+      [resource]
+    );
+
+    expect(visible).toHaveLength(1);
+    expect(visible[0].sId).toBe(conversation.sId);
+  });
+
+  it("does not return a conversation in a space the user cannot access", async () => {
+    // Create a restricted space only the admin belongs to.
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    const res = await restrictedSpace.addMembers(adminAuth, {
+      userIds: [adminAuth.getNonNullableUser().sId],
+    });
+    assert(res.isOk());
+
+    // Refresh admin auth after space membership change.
+    adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      adminAuth.getNonNullableUser().sId,
+      workspace.sId
+    );
+
+    const conversation = await ConversationFactory.create(adminAuth, {
+      agentConfigurationId: agents[0].sId,
+      requestedSpaceIds: [restrictedSpace.id],
+      messagesCreatedAt: [dateFromDaysAgo(1)],
+    });
+
+    const resource = await ConversationResource.fetchById(
+      adminAuth,
+      conversation.sId
+    );
+    assert(resource);
+
+    const visible = await ConversationResource.filterVisibleConversations(
+      userAuth,
+      [resource]
+    );
+
+    expect(visible).toHaveLength(0);
+  });
+
+  it("returns another user's conversation in a project where user is member", async () => {
+    const projectSpace = await SpaceFactory.project(workspace);
+    // Add both users to the project space.
+    const addAdmin = await projectSpace.addMembers(adminAuth, {
+      userIds: [adminAuth.getNonNullableUser().sId],
+    });
+    assert(addAdmin.isOk());
+
+    const addUser = await projectSpace.addMembers(adminAuth, {
+      userIds: [userAuth.getNonNullableUser().sId],
+    });
+    assert(addUser.isOk());
+
+    // Refresh user auth after space membership change.
+    userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      userAuth.getNonNullableUser().sId,
+      workspace.sId
+    );
+
+    // Admin creates a conversation in the project space.
+    adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      adminAuth.getNonNullableUser().sId,
+      workspace.sId
+    );
+    const conversation = await ConversationFactory.create(adminAuth, {
+      agentConfigurationId: agents[0].sId,
+      spaceId: projectSpace.id,
+      requestedSpaceIds: [projectSpace.id],
+      messagesCreatedAt: [dateFromDaysAgo(1)],
+    });
+
+    const resource = await ConversationResource.fetchById(
+      adminAuth,
+      conversation.sId
+    );
+    assert(resource);
+
+    const visible = await ConversationResource.filterVisibleConversations(
+      userAuth,
+      [resource]
+    );
+
+    expect(visible).toHaveLength(1);
+    expect(visible[0].sId).toBe(conversation.sId);
+  });
+
+  it("does not return another user's conversation in a project where user is not a member", async () => {
+    const projectSpace = await SpaceFactory.project(workspace);
+    // Only add admin to the project space, not the regular user.
+    const addAdmin = await projectSpace.addMembers(adminAuth, {
+      userIds: [adminAuth.getNonNullableUser().sId],
+    });
+    assert(addAdmin.isOk());
+
+    adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      adminAuth.getNonNullableUser().sId,
+      workspace.sId
+    );
+
+    const conversation = await ConversationFactory.create(adminAuth, {
+      agentConfigurationId: agents[0].sId,
+      spaceId: projectSpace.id,
+      requestedSpaceIds: [projectSpace.id],
+      messagesCreatedAt: [dateFromDaysAgo(1)],
+    });
+
+    const resource = await ConversationResource.fetchById(
+      adminAuth,
+      conversation.sId
+    );
+    assert(resource);
+
+    const visible = await ConversationResource.filterVisibleConversations(
+      userAuth,
+      [resource]
+    );
+
+    expect(visible).toHaveLength(0);
+  });
+});

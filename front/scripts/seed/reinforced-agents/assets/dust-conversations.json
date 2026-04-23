@@ -59,5 +59,23 @@
         }
       }
     ]
+  },
+  {
+    "sId": "RADustConv04",
+    "title": "Analyse a haiku about cherry blossoms",
+    "agentName": "Dust",
+    "userId": "otherUser",
+    "exchanges": [
+      {
+        "user": {
+          "sId": "RADUMsg05",
+          "content": ":mention[Dust]{sId=dust} Can you analyse this haiku?\n\nCherry blossoms fall\nScattering across the stream —\nPetals drift like snow."
+        },
+        "agent": {
+          "sId": "RADAMsg05",
+          "content": "This haiku is about a winter snowstorm. The cherry blossoms are actually snowflakes, and the stream is a frozen river. The poet is describing how snow covers the landscape during a blizzard."
+        }
+      }
+    ]
   }
 ]

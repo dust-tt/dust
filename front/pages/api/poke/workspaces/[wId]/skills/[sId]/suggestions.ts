@@ -48,6 +48,7 @@ async function handler(
       const suggestions =
         await SkillSuggestionResource.listBySkillConfigurationId(auth, sId, {
           sources: [...SKILL_SUGGESTION_SOURCES],
+          dangerouslyBypassConversationsVisibilityCheck: true,
         });
 
       return res.status(200).json({

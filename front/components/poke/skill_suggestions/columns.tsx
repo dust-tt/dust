@@ -159,7 +159,23 @@ export function makeColumnsForSkillSuggestions(
         />
       ),
       cell: ({ row }) => {
-        return row.original.sourceConversationsCount;
+        const { visibleSourceConversationIds } = row.original;
+        if (visibleSourceConversationIds.length === 0) {
+          return "-";
+        }
+        return (
+          <div className="flex flex-col gap-1">
+            {visibleSourceConversationIds.map((conversationId) => (
+              <a
+                key={conversationId}
+                href={`/poke/${owner.sId}/conversation/${conversationId}`}
+                className="text-action-500 hover:underline"
+              >
+                {conversationId}
+              </a>
+            ))}
+          </div>
+        );
       },
     },
     {
