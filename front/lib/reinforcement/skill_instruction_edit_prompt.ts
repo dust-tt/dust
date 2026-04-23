@@ -49,4 +49,30 @@ EXAMPLE 2: Full rewrite
 <structure_recommendations>
 Allowed inline formatting: \`<strong>\`, \`<em>\`, \`<code>\`, \`<a href="...">\`.
 Allowed block structures: \`<ul><li>\`, \`<ol><li>\`, \`<pre><code>\`.
-</structure_recommendations>`;
+</structure_recommendations>
+
+<knowledge_nodes>
+Instructions can reference specific workspace knowledge nodes using inline \`<knowledge>\` tags.
+During runtime, the content of the knowledge nodes is rendered directly in the instruction text.
+
+\`\`\`
+<knowledge id="NODE_ID" title="NODE_TITLE" space="SPACE_ID" dsv="DSV_ID" hasChildren="true|false"/>
+\`\`\`
+
+Attribute mapping from search_knowledge results:
+- \`id\` => \`nodeId\`
+- \`title\` => \`title\`
+- \`space\` => \`spaceId\`
+- \`dsv\` => \`dataSourceViewId\`
+- \`hasChildren\` => \`"true"\` or \`"false"\`
+
+To embed a knowledge node:
+1. Call \`search_knowledge\` with a relevant query to find candidate nodes.
+2. Pick the node whose title and content best match what the skill should reference.
+3. Embed the self-closing tag inline inside a \`<p>\` block.
+
+Example:
+\`\`\`
+<p data-block-id="a1b2c3d4">When answering questions about onboarding, refer to <knowledge id="doc_abc123" title="Onboarding Guide" space="space_xyz" dsv="dsv_456" hasChildren="false"/>.</p>
+\`\`\`
+</knowledge_nodes>`;

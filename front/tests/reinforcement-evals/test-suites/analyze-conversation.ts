@@ -670,5 +670,77 @@ Score 0 if no edit_skill call is made for skill_github_reporter, or if edit_skil
 Score 1 if edit_skill is called only for skill_github_reporter but the suggestion doesn't specifically mention adding DevCode to the project list.
 Score 3 if edit_skill is called only for skill_github_reporter, the suggestion adds DevCode to the project list, and no other skills are modified.`,
     },
+    {
+      scenarioId: "knowledge-tag-vague-runbook-instructions",
+      type: "analysis",
+      skillConfigs: [
+        {
+          name: "On-call runbook shortcut",
+          sId: "skill_eval_runbook",
+          description: "Surfaces the incident runbook from workspace knowledge",
+          instructions: "Always open the incident runbook document first.",
+        },
+      ],
+      conversation: [
+        {
+          role: "user",
+          content:
+            "According to our incident runbook, when should we page the on-call engineer?",
+        },
+        {
+          role: "agent",
+          content:
+            "The **Incident runbook** says to page on-call when customer-facing APIs return 5xx for more than five minutes or when the error budget burn rate exceeds the threshold in section 2.1.",
+          actions: [
+            {
+              functionCallName: "company_data__find",
+              status: "succeeded",
+              params: { query: "incident runbook" },
+            },
+            {
+              functionCallName: "company_data__list",
+              status: "succeeded",
+              params: { nodeId: null },
+            },
+            {
+              functionCallName: "company_data__cat",
+              status: "succeeded",
+              params: { nodeId: "doc_incident_runbook" },
+            },
+          ],
+        },
+      ],
+      workspaceContext: {
+        tools: [
+          mockTool(
+            "Company data",
+            "Search, list, and read documents from connected company data sources"
+          ),
+        ],
+        searchKnowledgeNodes: [
+          {
+            nodeId: "doc_incident_runbook",
+            title: "Incident runbook",
+            dataSourceViewId: "dsv_eval_handbook",
+            spaceId: "spc_eval_workspace",
+            hasChildren: false,
+            connectorProvider: null,
+            sourceUrl: null,
+          },
+        ],
+      },
+      expectedToolCalls: [editSkillWithInstructions("skill_eval_runbook")],
+      judgeCriteria: `The analyst should treat the runbook skill instructions as underspecified: they tell the agent to open a document but not which node to read, which led to search/list work before reading the file.
+The ideal improvement is to embed a direct <knowledge> reference to the runbook node so future runs can open it without exploratory browsing.
+
+The analyst SHOULD:
+1. Call search_knowledge to discover the incident runbook node in workspace knowledge.
+2. Call edit_skill with instructionEdits for skill "skill_eval_runbook" that embed a <knowledge id="doc_incident_runbook" title="Incident runbook" space="spc_eval_workspace" dsv="dsv_eval_handbook" hasChildren="false"/> tag inline in the replacement instruction content.
+
+Score 0 if no edit_skill call is made for skill_eval_runbook.
+Score 1 if edit_skill is called with instructionEdits for skill_eval_runbook but the instruction content does not include any <knowledge> tag.
+Score 2 if edit_skill is called with instructionEdits that include a <knowledge> tag but the tag attributes are missing or incorrect (wrong nodeId, missing dsv/space, etc.).
+Score 3 if edit_skill is called with instructionEdits for skill_eval_runbook and the instruction content includes a correctly formed <knowledge id="doc_incident_runbook" ...> tag with all required attributes aligned with the search_knowledge result.`,
+    },
   ],
 };

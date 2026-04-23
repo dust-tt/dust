@@ -1,5 +1,4 @@
 import { AgentInstructionDiffExtension } from "@app/components/editor/extensions/agent_builder/AgentInstructionDiffExtension";
-import { InstructionSuggestionExtension } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import { KNOWLEDGE_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
 import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
 import { SlashCommandExtension } from "@app/components/editor/extensions/skill_builder/SlashCommandExtension";
@@ -98,7 +97,6 @@ interface UseSkillInstructionsEditorProps {
 const skillInstructionsEditableExtensions = [
   SlashCommandExtension,
   AgentInstructionDiffExtension,
-  InstructionSuggestionExtension.configure({ showBlockHighlight: false }),
   Placeholder.configure({
     placeholder: "What does this skill do? How should it behave?",
     emptyNodeClass:

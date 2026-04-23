@@ -1,4 +1,3 @@
-import { InstructionSuggestionExtension } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import { useMaybeMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { getBlockOuterHtml } from "@app/components/shared/utils";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
@@ -101,10 +100,7 @@ function InstructionEditDiffBlock({
 
   const editor = useEditor(
     {
-      extensions: [
-        ...buildSkillInstructionsExtensions(true),
-        InstructionSuggestionExtension.configure({ showBlockHighlight: false }),
-      ],
+      extensions: [...buildSkillInstructionsExtensions(true)],
       editable: false,
       content: blockHtml,
       immediatelyRender: false,

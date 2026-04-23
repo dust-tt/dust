@@ -60,6 +60,24 @@ const REINFORCED_SKILLS_TOOL_DEFINITIONS: Record<
       mcpId: z.string().describe("The sId of the MCP server to describe"),
     },
   },
+  search_knowledge: {
+    description:
+      "Search workspace knowledge sources to discover relevant data nodes.",
+    schema: {
+      query: z
+        .string()
+        .describe("Natural language query describing the knowledge needed."),
+      topK: z
+        .number()
+        .int()
+        .positive()
+        .max(10)
+        .optional()
+        .describe(
+          "Maximum number of document hits to retrieve per data source (default: 5, only applies when query is provided)"
+        ),
+    },
+  },
   edit_skill: {
     description:
       "Suggest edits to a skill's instructions and/or configured tools.",

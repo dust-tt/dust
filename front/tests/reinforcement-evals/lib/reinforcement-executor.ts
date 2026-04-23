@@ -18,6 +18,7 @@ import {
   buildReinforcedSkillsLLMParams,
   classifySkillToolCalls,
 } from "@app/lib/reinforcement/run_reinforced_analysis";
+import { convertMarkdownToBlockHtml } from "@app/lib/reinforcement/skill_instructions_html";
 import { DESCRIBE_MCP_TOOL_NAME } from "@app/lib/reinforcement/types";
 import {
   BATCH_POLL_INTERVAL_MS,
@@ -31,6 +32,7 @@ import {
   isAggregationTestCase,
   isAnalysisTestCase,
   type MockMcpDescription,
+  type MockSearchKnowledgeNode,
   type MockSkillConfig,
   type TestCase,
   type ToolCall,
@@ -51,7 +53,9 @@ function makeSkillType(config: MockSkillConfig): SkillType {
     agentFacingDescription: config.description ?? "",
     userFacingDescription: config.description ?? "",
     instructions: config.instructions ?? null,
-    instructionsHtml: null,
+    instructionsHtml: config.instructions
+      ? convertMarkdownToBlockHtml(config.instructions)
+      : null,
     icon: null,
     source: null,
     sourceMetadata: null,
@@ -196,6 +200,26 @@ function simulateExploratoryTool(
         mcpId,
         mockDescriptionToFormatInput(mcpName, desc)
       );
+    }
+    case "search_knowledge": {
+      const nodes = workspaceContext.searchKnowledgeNodes ?? [];
+      const dsvMap = new Map<string, MockSearchKnowledgeNode>();
+      for (const node of nodes) {
+        if (!dsvMap.has(node.dataSourceViewId)) {
+          dsvMap.set(node.dataSourceViewId, node);
+        }
+      }
+      const dataSourceViews = [...dsvMap.values()].map((n) => ({
+        dataSourceViewId: n.dataSourceViewId,
+        name: n.title,
+        connectorProvider: n.connectorProvider ?? null,
+        category: "folder",
+        spaceId: n.spaceId,
+        childrenCount: nodes.filter(
+          (x) => x.dataSourceViewId === n.dataSourceViewId
+        ).length,
+      }));
+      return JSON.stringify({ dataSourceViews, nodes }, null, 2);
     }
     default:
       return `Unknown exploratory tool: ${toolName}`;
