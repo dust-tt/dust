@@ -1,3 +1,4 @@
+import { replaceStandaloneAttachmentIds } from "@app/lib/api/assistant/attachment_id_replacements";
 import {
   compactConversation,
   postNewContentFragment,
@@ -15,6 +16,7 @@ import {
   isFileTypeUpsertableForUseCase,
   processAndUpsertToDataSource,
 } from "@app/lib/api/files/upsert";
+import { getFileContent } from "@app/lib/api/files/utils";
 import { isProviderWhitelisted } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
@@ -42,7 +44,9 @@ import { MISTRAL_SMALL_MODEL_CONFIG } from "@app/types/assistant/models/mistral"
 import { GPT_5_MINI_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import type { SupportedModel } from "@app/types/assistant/models/types";
 import { GROK_4_1_FAST_NON_REASONING_MODEL_CONFIG } from "@app/types/assistant/models/xai";
+import type { ContentFragmentType } from "@app/types/content_fragment";
 import { isFileContentFragment } from "@app/types/content_fragment";
+import { isInteractiveContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -60,6 +64,12 @@ type CarriedAttachment = {
   carriedFile: FileResource | null;
   attachErrorMessage: string;
   attachLogMetadata: Record<string, string>;
+};
+
+type CarriedAttachmentResult = {
+  sourceAttachmentId: string;
+  targetAttachment: ContentFragmentType;
+  carriedFile: FileResource | null;
 };
 
 const ATTACHMENT_CARRY_OVER_CONCURRENCY = 4;
@@ -310,6 +320,74 @@ async function addFileToConversationDatasource(
   }
 }
 
+async function rewriteCopiedInteractiveContentAttachmentIds(
+  auth: Authenticator,
+  {
+    parentConversationId,
+    childConversationId,
+    copiedFiles,
+    attachmentIdReplacements,
+  }: {
+    parentConversationId: string;
+    childConversationId: string;
+    copiedFiles: FileResource[];
+    attachmentIdReplacements: CompactionAttachmentIdReplacements;
+  }
+): Promise<void> {
+  if (Object.keys(attachmentIdReplacements).length === 0) {
+    return;
+  }
+
+  const rewrittenFileIds = new Set<string>();
+
+  for (const file of copiedFiles) {
+    if (
+      rewrittenFileIds.has(file.sId) ||
+      !isInteractiveContentType(file.contentType)
+    ) {
+      continue;
+    }
+    rewrittenFileIds.add(file.sId);
+
+    const content = await getFileContent(auth, file, "original");
+    if (content === null) {
+      logger.error(
+        {
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          parentConversationId,
+          childConversationId,
+          copiedFileId: file.sId,
+        },
+        "Failed to read copied interactive content file in forked conversation."
+      );
+      continue;
+    }
+
+    const updatedContent = replaceStandaloneAttachmentIds(
+      content,
+      attachmentIdReplacements
+    );
+    if (updatedContent === content) {
+      continue;
+    }
+
+    try {
+      await file.uploadContent(auth, updatedContent);
+    } catch (error) {
+      logger.error(
+        {
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          parentConversationId,
+          childConversationId,
+          copiedFileId: file.sId,
+          error,
+        },
+        "Failed to rewrite copied interactive content file ids in forked conversation."
+      );
+    }
+  }
+}
+
 async function carryOverConversationAttachments(
   auth: Authenticator,
   {
@@ -342,7 +420,10 @@ async function carryOverConversationAttachments(
 
     return isContentNodeAttachmentType(attachment);
   });
-  const attachmentResults = await concurrentExecutor(
+  const attachmentResults = await concurrentExecutor<
+    (typeof directConversationAttachments)[number],
+    CarriedAttachmentResult | null
+  >(
     directConversationAttachments,
     async (attachment) => {
       let carriedResult: CarriedAttachment | null;
@@ -409,28 +490,41 @@ async function carryOverConversationAttachments(
         sourceAttachmentId: isFileAttachmentType(attachment)
           ? attachment.fileId
           : attachment.contentFragmentId,
+        carriedFile,
         targetAttachment: attachmentResult.value,
       };
     },
     { concurrency: ATTACHMENT_CARRY_OVER_CONCURRENCY }
   );
 
-  return attachmentResults.reduce<CompactionAttachmentIdReplacements>(
-    (acc, result) => {
-      if (!result) {
+  const attachmentIdReplacements =
+    attachmentResults.reduce<CompactionAttachmentIdReplacements>(
+      (acc, result) => {
+        if (!result) {
+          return acc;
+        }
+
+        acc[result.sourceAttachmentId] =
+          isFileContentFragment(result.targetAttachment) &&
+          result.targetAttachment.fileId !== null
+            ? result.targetAttachment.fileId
+            : result.targetAttachment.contentFragmentId;
+
         return acc;
-      }
+      },
+      {}
+    );
 
-      acc[result.sourceAttachmentId] =
-        isFileContentFragment(result.targetAttachment) &&
-        result.targetAttachment.fileId !== null
-          ? result.targetAttachment.fileId
-          : result.targetAttachment.contentFragmentId;
+  await rewriteCopiedInteractiveContentAttachmentIds(auth, {
+    parentConversationId: parentConversation.sId,
+    childConversationId: childConversation.sId,
+    copiedFiles: attachmentResults.flatMap((result) =>
+      result?.carriedFile ? [result.carriedFile] : []
+    ),
+    attachmentIdReplacements,
+  });
 
-      return acc;
-    },
-    {}
-  );
+  return attachmentIdReplacements;
 }
 
 export async function createConversationFork(

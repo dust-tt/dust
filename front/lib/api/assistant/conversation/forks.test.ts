@@ -12,6 +12,7 @@ import { createConversationFork } from "@app/lib/api/assistant/conversation/fork
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import * as dataSourcesModule from "@app/lib/api/data_sources";
 import * as fileUpsertModule from "@app/lib/api/files/upsert";
+import { getFileContent } from "@app/lib/api/files/utils";
 import { Authenticator } from "@app/lib/auth";
 import {
   AgentMCPActionModel,
@@ -50,6 +51,7 @@ import {
   isContentFragmentType,
   isContentNodeContentFragment,
 } from "@app/types/content_fragment";
+import { frameContentType } from "@app/types/files";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Ok } from "@app/types/shared/result";
 import { describe, expect, it, vi } from "vitest";
@@ -322,6 +324,11 @@ function mockCopyToConversation() {
         },
         snippet: sourceFile.snippet,
       });
+
+      const sourceContent = await getFileContent(auth, sourceFile, "original");
+      if (sourceContent !== null) {
+        await copiedFile.uploadContent(auth, sourceContent);
+      }
 
       return new Ok(copiedFile);
     });
@@ -821,6 +828,162 @@ describe("createConversationFork", () => {
         }),
       })
     );
+
+    copyToConversationSpy.mockRestore();
+    getOrCreateConversationDataSourceFromFileSpy.mockRestore();
+    processAndUpsertToDataSourceSpy.mockRestore();
+  }, 15_000);
+
+  it("rewrites copied frame file ids to the child attachment ids", async () => {
+    const { auth, workspace, globalSpace } =
+      await createPrivateApiMockRequest();
+    const copyToConversationSpy = mockCopyToConversation();
+    const dataSourceView = await DataSourceViewFactory.folder(
+      workspace,
+      globalSpace,
+      auth.user() ?? null
+    );
+    const {
+      getOrCreateConversationDataSourceFromFileSpy,
+      processAndUpsertToDataSourceSpy,
+    } = mockDatasourceSeeding(dataSourceView.dataSource);
+
+    const parentConversation = await createConversation(auth, {
+      title: "Parent conversation",
+      visibility: "unlisted",
+      spaceId: null,
+    });
+
+    const referencedFile = await createConversationFile(auth, {
+      conversationId: parentConversation.sId,
+      fileName: "data.csv",
+      snippet: "data",
+    });
+    const frameFile = await FileFactory.create(
+      auth,
+      auth.getNonNullableUser(),
+      {
+        contentType: frameContentType,
+        fileName: "dashboard.tsx",
+        fileSize: 16,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: {
+          conversationId: parentConversation.sId,
+        },
+      }
+    );
+    await frameFile.uploadContent(
+      auth,
+      `const referencedFileId = "${referencedFile.sId}";
+const frameFileId = "${frameFile.sId}";
+const untouched = "prefix${referencedFile.sId}suffix";`
+    );
+
+    let parentConversationWithContent = await fetchConversationOrThrow(
+      auth,
+      parentConversation.sId
+    );
+    const attachmentResult = await postNewContentFragment(
+      auth,
+      parentConversationWithContent,
+      {
+        title: "Data",
+        fileId: referencedFile.sId,
+      },
+      null
+    );
+    expect(attachmentResult.isOk()).toBe(true);
+    if (attachmentResult.isErr()) {
+      throw attachmentResult.error;
+    }
+
+    parentConversationWithContent = await fetchConversationOrThrow(
+      auth,
+      parentConversation.sId
+    );
+    const userMessage = await createUserMessage(auth, {
+      conversation: parentConversationWithContent,
+      rank: 1,
+      content: "Please branch this.",
+    });
+    const sourceMessage = await createAgentMessage(auth, {
+      conversation: parentConversationWithContent,
+      rank: 2,
+      parentId: userMessage.id,
+      status: "succeeded",
+      generatedFileId: frameFile.id,
+    });
+
+    const result = await createConversationFork(auth, {
+      conversationId: parentConversation.sId,
+      sourceMessageId: sourceMessage.sId,
+    });
+
+    expect(result.isErr()).toBe(false);
+    if (result.isErr()) {
+      throw result.error;
+    }
+
+    const childConversation = await fetchConversationOrThrow(
+      auth,
+      result.value
+    );
+
+    const childAttachments = await listAttachments(auth, {
+      conversation: childConversation,
+    });
+    const childFileAttachments = childAttachments.filter(isFileAttachmentType);
+
+    expect(childFileAttachments).toHaveLength(2);
+
+    const copiedDataAttachment = childFileAttachments.find(
+      (attachment) => attachment.title === "data.csv"
+    );
+    const copiedFrameAttachment = childFileAttachments.find(
+      (attachment) => attachment.title === "dashboard.tsx"
+    );
+
+    expect(copiedDataAttachment?.fileId).toBeDefined();
+    expect(copiedFrameAttachment?.fileId).toBeDefined();
+
+    const copiedFrameFile = await FileResource.fetchById(
+      auth,
+      copiedFrameAttachment!.fileId
+    );
+    expect(copiedFrameFile).not.toBeNull();
+    if (!copiedFrameFile) {
+      throw new Error("Missing copied frame file.");
+    }
+
+    const copiedFrameContent = await getFileContent(
+      auth,
+      copiedFrameFile,
+      "original"
+    );
+    expect(copiedFrameContent).toBe(
+      `const referencedFileId = "${copiedDataAttachment!.fileId}";
+const frameFileId = "${copiedFrameAttachment!.fileId}";
+const untouched = "prefix${referencedFile.sId}suffix";`
+    );
+    expect(vi.mocked(launchCompactionWorkflow)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        auth,
+        conversationId: childConversation.sId,
+        sourceConversation: expect.objectContaining({
+          conversationId: parentConversation.sId,
+          messageRank: sourceMessage.rank,
+          attachmentIdReplacements: expect.objectContaining({
+            [referencedFile.sId]: copiedDataAttachment!.fileId,
+            [frameFile.sId]: copiedFrameAttachment!.fileId,
+          }),
+        }),
+      })
+    );
+    expect(getOrCreateConversationDataSourceFromFileSpy).toHaveBeenCalledTimes(
+      1
+    );
+    expect(processAndUpsertToDataSourceSpy).toHaveBeenCalledTimes(1);
 
     copyToConversationSpy.mockRestore();
     getOrCreateConversationDataSourceFromFileSpy.mockRestore();
