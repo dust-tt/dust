@@ -4,8 +4,8 @@ import { launchIndexConversationEsWorkflow } from "@app/temporal/es_indexation/c
 import type { ModelId } from "@app/types/shared/model_id";
 import { Op, type WhereOptions } from "sequelize";
 
-import { makeScript } from "./helpers";
-import { runOnAllWorkspaces } from "./workspace_helpers";
+import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
+import { makeScript } from "@app/scripts/helpers";
 
 const BATCH_SIZE = 500;
 
