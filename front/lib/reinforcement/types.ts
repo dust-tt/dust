@@ -82,6 +82,13 @@ export const TOOL_SCHEMAS: Record<
         "A short, action-oriented user-facing title for this suggestion (MUST be at most 25 characters). " +
           "Only set this when producing final aggregated suggestions; leave unset for synthetic suggestions."
       ),
+    sourceSuggestionIds: z
+      .array(z.string())
+      .min(1)
+      .optional()
+      .describe(
+        "The sIds of the source suggestions consolidated into this suggestion."
+      ),
   }),
 };
 

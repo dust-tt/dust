@@ -534,6 +534,35 @@ describe("SkillSuggestionResource", () => {
     });
   });
 
+  describe("sourceConversationIds", () => {
+    it("should store and retrieve sourceConversationIds", async () => {
+      const suggestion = await SkillSuggestionFactory.create(
+        authenticator,
+        skill,
+        {
+          sourceConversationIds: [100, 200],
+        }
+      );
+
+      expect(suggestion.sourceConversationIds).toEqual([100, 200]);
+
+      const fetched = await SkillSuggestionResource.fetchById(
+        authenticator,
+        suggestion.sId
+      );
+      expect(fetched?.sourceConversationIds).toEqual([100, 200]);
+    });
+
+    it("should default sourceConversationIds to null", async () => {
+      const suggestion = await SkillSuggestionFactory.create(
+        authenticator,
+        skill
+      );
+
+      expect(suggestion.sourceConversationIds).toBeNull();
+    });
+  });
+
   describe("toJSON", () => {
     it("should return a properly formatted JSON object", async () => {
       const suggestion = await SkillSuggestionFactory.create(
@@ -572,8 +601,24 @@ describe("SkillSuggestionResource", () => {
       expect(json.source).toBe("reinforcement");
       expect(json.skillConfigurationId).toBe(skill.sId);
       expect(json.sourceConversationId).toBeNull();
+      expect(json.sourceConversationsCount).toBe(0);
       expect(typeof json.createdAt).toBe("number");
       expect(typeof json.updatedAt).toBe("number");
+    });
+
+    it("should include sourceConversationIdsCount but not sourceConversationIds array", async () => {
+      const suggestion = await SkillSuggestionFactory.create(
+        authenticator,
+        skill,
+        {
+          sourceConversationIds: [100, 200],
+        }
+      );
+
+      const json = suggestion.toJSON();
+
+      expect(json.sourceConversationsCount).toBe(2);
+      expect("sourceConversationIds" in json).toBe(false);
     });
 
     it("should round-trip a title through create, fetch, and toJSON", async () => {

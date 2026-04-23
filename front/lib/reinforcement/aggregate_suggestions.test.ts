@@ -44,6 +44,7 @@ function makeInstructionSuggestion(
     state: "pending",
     source: "synthetic",
     sourceConversationId: null,
+    sourceConversationsCount: 0,
     kind: "edit",
     suggestion: {
       instructionEdits: [
@@ -71,6 +72,7 @@ function makeToolSuggestion(
     state: "pending",
     source: "synthetic",
     sourceConversationId: null,
+    sourceConversationsCount: 0,
     kind: "edit",
     suggestion: {
       toolEdits: [{ action: "add", toolId: "tool-search" }],

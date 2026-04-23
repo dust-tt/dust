@@ -171,6 +171,18 @@ export function makeColumnsForSkillSuggestions(
       },
     },
     {
+      accessorKey: "sourceConversationsCount",
+      header: ({ column }) => (
+        <PokeColumnSortableHeader
+          column={column}
+          label="Source Conversations"
+        />
+      ),
+      cell: ({ row }) => {
+        return row.original.sourceConversationsCount;
+      },
+    },
+    {
       accessorKey: "analysis",
       header: ({ column }) => (
         <PokeColumnSortableHeader column={column} label="Analysis" />

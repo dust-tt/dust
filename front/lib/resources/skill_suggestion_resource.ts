@@ -432,6 +432,7 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
       state: this.state,
       source: this.source,
       sourceConversationId: this.sourceConversationSId,
+      sourceConversationsCount: this.sourceConversationIds?.length ?? 0,
       updatedBy: this.updatedBy,
       ...suggestionData,
     };

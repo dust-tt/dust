@@ -114,10 +114,30 @@ const REINFORCED_SKILLS_TOOL_DEFINITIONS: Record<
   },
 };
 
-export function buildReinforcedSkillsSpecifications(): AgentActionSpecification[] {
+const AGGREGATION_EXTRA_FIELDS: z.ZodRawShape = {
+  sourceSuggestionIds: z
+    .array(z.string())
+    .min(1)
+    .describe(
+      "The sIds of the source suggestions this suggestion is based on. " +
+        "Must include at least one suggestion sId."
+    ),
+};
+
+export function buildReinforcedSkillsSpecifications(
+  operationType: ReinforcedSkillsOperationType
+): AgentActionSpecification[] {
+  const extraEditSkillFields =
+    operationType === "reinforcement_aggregate_suggestions"
+      ? AGGREGATION_EXTRA_FIELDS
+      : undefined;
+
   return ALL_TOOLS.map((toolName) => {
     const meta = REINFORCED_SKILLS_TOOL_DEFINITIONS[toolName];
-    const schema = z.object(meta.schema);
+    const schema =
+      toolName === "edit_skill" && extraEditSkillFields
+        ? z.object({ ...meta.schema, ...extraEditSkillFields })
+        : z.object(meta.schema);
     return {
       name: toolName,
       description: meta.description,
@@ -191,13 +211,16 @@ export function reinforcedSkillsConversationTitle(
 /**
  * Build LLMStreamParameters for a reinforced skills prompt.
  */
-export function buildReinforcedSkillsLLMParams({
-  systemPrompt,
-  userMessage,
-}: {
-  systemPrompt: string;
-  userMessage: string;
-}): LLMStreamParameters {
+export function buildReinforcedSkillsLLMParams(
+  {
+    systemPrompt,
+    userMessage,
+  }: {
+    systemPrompt: string;
+    userMessage: string;
+  },
+  operationType: ReinforcedSkillsOperationType
+): LLMStreamParameters {
   return {
     conversation: {
       messages: [
@@ -209,7 +232,7 @@ export function buildReinforcedSkillsLLMParams({
       ],
     },
     prompt: systemPrompt,
-    specifications: buildReinforcedSkillsSpecifications(),
+    specifications: buildReinforcedSkillsSpecifications(operationType),
   };
 }
 
@@ -230,7 +253,7 @@ export async function createReinforcedSkillsConversation(
     skillIds: string[];
   }
 ): Promise<string> {
-  const llmParams = buildReinforcedSkillsLLMParams(prompt);
+  const llmParams = buildReinforcedSkillsLLMParams(prompt, operationType);
   const { conversation: llmConversation, ...llmParamsWithoutConversation } =
     llmParams;
   const writeResult = await writeBatchUserMessages(auth, {
@@ -443,6 +466,26 @@ async function createSkillSuggestionsFromToolCall({
         };
       }
 
+      // Resolve sourceSuggestionIds to sourceConversationIds for reinforcement suggestions.
+      let sourceConversationIds: number[] | null = null;
+      if (
+        source === "reinforcement" &&
+        parsed.data.sourceSuggestionIds &&
+        parsed.data.sourceSuggestionIds.length > 0
+      ) {
+        const sourceSuggestions = await SkillSuggestionResource.fetchByIds(
+          auth,
+          parsed.data.sourceSuggestionIds
+        );
+        sourceConversationIds = [
+          ...new Set(
+            sourceSuggestions
+              .map((s) => s.sourceConversationId)
+              .filter((id): id is number => id !== null)
+          ),
+        ];
+      }
+
       const newSuggestion =
         await SkillSuggestionResource.createSuggestionForSkill(auth, skill, {
           kind: "edit",
@@ -455,6 +498,7 @@ async function createSkillSuggestionsFromToolCall({
           state: "pending",
           source,
           sourceConversationId: conversation?.id ?? null,
+          sourceConversationIds,
           groupId: null,
         });
 

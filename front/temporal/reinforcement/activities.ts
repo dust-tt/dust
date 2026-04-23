@@ -107,7 +107,7 @@ async function runReinforcedSkillsStep({
     throw conversationRes.error;
   }
 
-  const specifications = buildReinforcedSkillsSpecifications();
+  const specifications = buildReinforcedSkillsSpecifications(operationType);
   const modelConfig = llm.getModelConfig();
   const toolsJson = JSON.stringify(
     specifications.map((s) => ({
@@ -596,7 +596,9 @@ export async function startSkillConversationAnalysisBatchActivity({
   }
 
   const systemPrompt = buildSkillAnalysisSystemPrompt();
-  const specifications = buildReinforcedSkillsSpecifications();
+  const specifications = buildReinforcedSkillsSpecifications(
+    "reinforcement_analyze_conversation"
+  );
 
   const batchConversations: LlmConversationOptions[] = [];
   const orderedAnalysedConversationIds: string[] = [];
@@ -839,7 +841,9 @@ export async function startSkillAggregationBatchActivity({
   }
 
   const systemPrompt = buildSkillAggregationSystemPrompt();
-  const specifications = buildReinforcedSkillsSpecifications();
+  const specifications = buildReinforcedSkillsSpecifications(
+    "reinforcement_aggregate_suggestions"
+  );
 
   let batchConversations: LlmConversationOptions[];
 

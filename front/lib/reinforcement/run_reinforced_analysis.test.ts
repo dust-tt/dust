@@ -4,19 +4,22 @@ import { describe, expect, it } from "vitest";
 
 describe("buildReinforcedSkillsLLMParams", () => {
   it("places the system prompt in the prompt field", () => {
-    const params = buildReinforcedSkillsLLMParams({
-      systemPrompt: "You are a skill analyst.",
-      userMessage: "Analyze this skill.",
-    });
+    const params = buildReinforcedSkillsLLMParams(
+      {
+        systemPrompt: "You are a skill analyst.",
+        userMessage: "Analyze this skill.",
+      },
+      "reinforcement_analyze_conversation"
+    );
 
     expect(params.prompt).toBe("You are a skill analyst.");
   });
 
   it("places the user message as a single user message in the conversation", () => {
-    const params = buildReinforcedSkillsLLMParams({
-      systemPrompt: "System.",
-      userMessage: "User content here.",
-    });
+    const params = buildReinforcedSkillsLLMParams(
+      { systemPrompt: "System.", userMessage: "User content here." },
+      "reinforcement_analyze_conversation"
+    );
 
     expect(params.conversation.messages).toHaveLength(1);
     const msg = params.conversation.messages[0];
@@ -25,10 +28,10 @@ describe("buildReinforcedSkillsLLMParams", () => {
   });
 
   it("includes tool specifications for the skill suggestion tools", () => {
-    const params = buildReinforcedSkillsLLMParams({
-      systemPrompt: "System.",
-      userMessage: "User.",
-    });
+    const params = buildReinforcedSkillsLLMParams(
+      { systemPrompt: "System.", userMessage: "User." },
+      "reinforcement_analyze_conversation"
+    );
 
     const toolNames = params.specifications?.map((s) => s.name) ?? [];
     expect(toolNames).toContain("edit_skill");
@@ -36,10 +39,10 @@ describe("buildReinforcedSkillsLLMParams", () => {
   });
 
   it("each specification has a non-empty description and inputSchema", () => {
-    const params = buildReinforcedSkillsLLMParams({
-      systemPrompt: "System.",
-      userMessage: "User.",
-    });
+    const params = buildReinforcedSkillsLLMParams(
+      { systemPrompt: "System.", userMessage: "User." },
+      "reinforcement_analyze_conversation"
+    );
 
     for (const spec of params.specifications ?? []) {
       expect(spec.description).toBeTruthy();
