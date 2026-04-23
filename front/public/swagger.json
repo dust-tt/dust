@@ -7548,6 +7548,129 @@
         }
       }
     },
+    "/api/w/{wId}/assistant/conversations/{cId}/wakeups/{wuId}": {
+      "delete": {
+        "summary": "Cancel a wake-up",
+        "description": "Cancel a scheduled wake-up. Only the wake-up owner or a workspace admin can cancel.",
+        "tags": [
+          "Private Conversations"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "cId",
+            "required": true,
+            "description": "ID of the conversation",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "wuId",
+            "required": true,
+            "description": "sId of the wake-up to cancel",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully cancelled (or already terminal)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "wakeUp": {
+                      "$ref": "#/components/schemas/PrivateWakeUp"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Caller is not the wake-up owner or a workspace admin"
+          },
+          "404": {
+            "description": "Wake-up not found in this conversation"
+          }
+        }
+      }
+    },
+    "/api/w/{wId}/assistant/conversations/{cId}/wakeups": {
+      "get": {
+        "summary": "List wake-ups for a conversation",
+        "description": "Retrieve all wake-ups scheduled in a conversation (any status).",
+        "tags": [
+          "Private Conversations"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "cId",
+            "required": true,
+            "description": "ID of the conversation",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved wake-ups",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "wakeUps": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/PrivateWakeUp"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
     "/api/w/{wId}/assistant/conversations": {
       "get": {
         "summary": "List conversations",
@@ -10946,6 +11069,101 @@
           },
           "dismissed": {
             "type": "boolean"
+          }
+        }
+      },
+      "PrivateWakeUp": {
+        "type": "object",
+        "description": "A wake-up scheduled in a conversation to re-invoke the agent at a later time.",
+        "required": [
+          "id",
+          "sId",
+          "createdAt",
+          "agentConfigurationId",
+          "scheduleConfig",
+          "reason",
+          "status",
+          "fireCount",
+          "maxFires"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "sId": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "integer",
+            "description": "Unix timestamp (milliseconds)."
+          },
+          "agentConfigurationId": {
+            "type": "string"
+          },
+          "scheduleConfig": {
+            "oneOf": [
+              {
+                "type": "object",
+                "required": [
+                  "type",
+                  "fireAt"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "one_shot"
+                    ]
+                  },
+                  "fireAt": {
+                    "type": "integer",
+                    "description": "Unix timestamp (milliseconds) when the wake-up should fire."
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "required": [
+                  "type",
+                  "cron",
+                  "timezone"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "cron"
+                    ]
+                  },
+                  "cron": {
+                    "type": "string",
+                    "description": "5-field cron expression."
+                  },
+                  "timezone": {
+                    "type": "string",
+                    "description": "IANA timezone name."
+                  }
+                }
+              }
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "scheduled",
+              "fired",
+              "cancelled",
+              "expired"
+            ]
+          },
+          "fireCount": {
+            "type": "integer"
+          },
+          "maxFires": {
+            "type": "integer"
           }
         }
       },

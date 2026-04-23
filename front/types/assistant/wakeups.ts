@@ -45,4 +45,8 @@ export const WakeUpSchema = z.object({
   fireCount: z.number(),
   maxFires: z.number(),
 });
+
+/**
+ * @swaggerschema PrivateWakeUp (swagger_private_schemas.ts)
+ */
 export type WakeUpType = z.infer<typeof WakeUpSchema>;
