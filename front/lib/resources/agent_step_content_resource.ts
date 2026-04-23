@@ -11,6 +11,7 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { makeSId } from "@app/lib/resources/string_ids";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
@@ -33,6 +34,13 @@ import type {
   WhereOptions,
 } from "sequelize";
 import { Op } from "sequelize";
+
+export const FETCH_BY_AGENT_MESSAGES_CHUNK_SIZE = 512;
+
+// DO NOT INCREASE THIS BLINDLY, instead you can first try
+// to bump up FETCH_BY_AGENT_MESSAGES_CHUNK_SIZE
+// value = max peak concurrency - 1
+const FETCH_BY_AGENT_MESSAGES_CONCURRENCY = 4;
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -172,20 +180,38 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
       agentMessageIds
     );
 
-    let contents = await this.model.findAll({
-      where: {
-        workspaceId: owner.id,
-        agentMessageId: {
-          [Op.in]: allowedAgentMessageIds,
-        },
-      },
-      order: [
-        ["step", "ASC"],
-        ["index", "ASC"],
-        ["version", "DESC"],
-      ],
-      transaction,
-    });
+    if (allowedAgentMessageIds.length === 0) {
+      return [];
+    }
+
+    const chunks = _.chunk(
+      allowedAgentMessageIds,
+      FETCH_BY_AGENT_MESSAGES_CHUNK_SIZE
+    );
+
+    const batchResults = await concurrentExecutor(
+      chunks,
+      async (chunk) =>
+        this.model.findAll({
+          where: {
+            workspaceId: owner.id,
+            agentMessageId: {
+              [Op.in]: chunk,
+            },
+          },
+          order: [
+            ["step", "ASC"],
+            ["index", "ASC"],
+            ["version", "DESC"],
+          ],
+          transaction,
+        }),
+      {
+        concurrency: transaction ? 1 : FETCH_BY_AGENT_MESSAGES_CONCURRENCY,
+      }
+    );
+
+    let contents = batchResults.flat();
 
     if (latestVersionsOnly) {
       contents = this.filterLatestVersions(contents, [
