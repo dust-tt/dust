@@ -1,5 +1,6 @@
 import { EmailAgentsToggle } from "@app/components/workspace/settings/EmailAgentsToggle";
 import { InteractiveContentSharingToggle } from "@app/components/workspace/settings/InteractiveContentSharingToggle";
+import { OpenProjectsPolicy } from "@app/components/workspace/settings/OpenProjectsPolicy";
 import { PrivateConversationUrlsToggle } from "@app/components/workspace/settings/PrivateConversationUrlsToggle";
 import { RestrictAgentsPublishingCapability } from "@app/components/workspace/settings/RestrictAgentsPublishingCapability";
 import { VoiceTranscriptionToggle } from "@app/components/workspace/settings/VoiceTranscriptionToggle";
@@ -27,6 +28,7 @@ export function CapabilitiesSection({
         {!subscription.plan.isByok && (
           <VoiceTranscriptionToggle owner={owner} />
         )}
+        <OpenProjectsPolicy owner={owner} />
         <EmailAgentsToggle owner={owner} />
         <PrivateConversationUrlsToggle owner={owner} />
         {publishingRestrictionMessage && (

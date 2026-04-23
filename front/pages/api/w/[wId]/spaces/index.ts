@@ -112,6 +112,7 @@ import { enrichProjectsWithMetadata } from "@app/lib/api/projects/list";
 import { createSpaceAndGroup } from "@app/lib/api/spaces";
 import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { areOpenProjectsAllowed } from "@app/lib/workspace_policies";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -227,6 +228,22 @@ async function handler(
       }
 
       const requestBody = bodyValidation.right;
+      const owner = auth.getNonNullableWorkspace();
+
+      if (
+        requestBody.spaceKind === "project" &&
+        !requestBody.isRestricted &&
+        !areOpenProjectsAllowed(owner)
+      ) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "Open projects are disabled by your workspace admin. Create a private project instead.",
+          },
+        });
+      }
 
       const spaceRes = await createSpaceAndGroup(auth, requestBody);
       if (spaceRes.isErr()) {
