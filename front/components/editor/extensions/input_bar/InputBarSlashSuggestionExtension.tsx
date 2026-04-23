@@ -85,10 +85,11 @@ export const InputBarSlashSuggestionExtension =
           allowSpaces: true,
           startOfLine: false,
           items: () => [],
-          allow: ({ editor, state, range }) =>
+          allow: ({ editor, state, range, isActive }) =>
             Boolean(extensionOptions.owner) &&
             Boolean(extensionOptions.enabledRef.current) &&
             extensionStorage.hasBeenFocused &&
+            (editor.isFocused || isActive) &&
             extensionStorage.dismissedTriggerStart !== range.from &&
             isAllowedSlashQuery(state, range),
           command: ({ editor, range, props }) => {
