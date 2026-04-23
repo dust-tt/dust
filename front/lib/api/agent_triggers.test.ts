@@ -42,6 +42,7 @@ describe("getWebhookSourcesUsage", () => {
         {
           sId: agent.sId,
           name: agent.name,
+          pictureUrl: agent.pictureUrl,
         },
       ],
     });
@@ -118,10 +119,12 @@ describe("getWebhookSourcesUsage", () => {
         {
           sId: agentAlpha.sId,
           name: agentAlpha.name,
+          pictureUrl: agentAlpha.pictureUrl,
         },
         {
           sId: agentBeta.sId,
           name: agentBeta.name,
+          pictureUrl: agentBeta.pictureUrl,
         },
       ],
     });
