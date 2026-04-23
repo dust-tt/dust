@@ -210,6 +210,15 @@ async function isExternalUserAllowed(
   // Whitelisted domains are in the format "domain:group_id".
   whitelistedDomains?: readonly string[]
 ): Promise<{ authorized: boolean; groupIds: string[] }> {
+  // If the email is confirmed by Slack AND the user is an active Dust workspace
+  // member, treat them like a regular member — no group restriction needed.
+  if (
+    slackUserInfo.is_email_confirmed &&
+    (await isUserAllowed(connector, slackUserInfo))
+  ) {
+    return { authorized: true, groupIds: [] };
+  }
+
   const { slackChannelId } = slackInfos;
 
   const userDomain = getSlackUserEmailDomainFromProfile(slackUserInfo);
@@ -246,6 +255,20 @@ async function isExternalUserAllowed(
   if (!isChannelPublic) {
     return { authorized: false, groupIds: [] };
   }
+
+  // Matteo 2026-04-23: Log when a whitelisted user is authorized with an unverified email.
+  // This helps us understand how many external users are being let through without
+  // Slack's email confirmation guarantee, before we decide whether to tighten this.
+  if (authorization.authorized && !slackUserInfo.is_email_confirmed) {
+    logger.warn(
+      {
+        connectorId: connector.id,
+        slackUserEmail: getSlackUserEmailFromProfile(slackUserInfo),
+      },
+      "Whitelisted Slack user authorized with unverified email."
+    );
+  }
+
   return authorization;
 }
 
