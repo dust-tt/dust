@@ -1,3 +1,4 @@
+import { UserSchema } from "@app/types/user";
 import { z } from "zod";
 
 export const WAKEUP_STATUSES = [
@@ -46,6 +47,7 @@ export const WakeUpSchema = z.object({
   status: WakeUpStatusSchema,
   fireCount: z.number(),
   maxFires: z.number(),
+  user: UserSchema,
 });
 
 /**

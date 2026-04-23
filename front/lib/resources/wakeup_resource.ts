@@ -70,6 +70,7 @@ export interface WakeUpResource extends ReadonlyAttributesType<WakeUpModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class WakeUpResource extends BaseResource<WakeUpModel> {
   static model: ModelStaticWorkspaceAware<WakeUpModel> = WakeUpModel;
+  user: UserResource;
 
   get sId(): string {
     return WakeUpResource.modelIdToSId({
@@ -90,9 +91,11 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
 
   constructor(
     model: ModelStaticWorkspaceAware<WakeUpModel>,
-    blob: Attributes<WakeUpModel>
+    blob: Attributes<WakeUpModel>,
+    user: UserResource
   ) {
     super(model, blob);
+    this.user = user;
   }
 
   private static async baseFetch(
@@ -108,7 +111,14 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
       ...rest,
     });
 
-    return rows.map((row) => new this(this.model, row.get()));
+    const users = await UserResource.fetchByModelIds(
+      rows.map((row) => row.get().userId)
+    );
+    const usersById = new Map(users.map((u) => [u.id, u]));
+
+    return rows.map(
+      (row) => new this(this.model, row.get(), usersById.get(row.get().userId)!)
+    );
   }
 
   /**
@@ -205,7 +215,7 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
       { transaction }
     );
 
-    const wakeUp = new this(this.model, row.get());
+    const wakeUp = new this(this.model, row.get(), user);
     const temporalResult = await wakeUp.startTemporalWorkflow(auth);
     if (temporalResult.isErr()) {
       return temporalResult;
@@ -517,6 +527,7 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
       status: this.status,
       fireCount: this.fireCount,
       maxFires: this.maxFires(),
+      user: this.user.toJSON(),
     };
   }
 
