@@ -36,6 +36,7 @@ export const USAGE_ORIGINS_CLASSIFICATION: Record<
   onboarding_conversation: "user",
   agent_sidekick: "user",
   project_kickoff: "user",
+  reinforced_agent_notification: "user",
   reinforced_skill_notification: "user",
   reinforcement: "user",
 };

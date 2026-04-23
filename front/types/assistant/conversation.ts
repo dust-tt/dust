@@ -87,6 +87,7 @@ export type ClientMessageOrigin =
   | "project_kickoff"
   | "extension"
   | "agent_sidekick"
+  | "reinforced_agent_notification"
   | "reinforced_skill_notification";
 
 export type UserMessageOrigin =

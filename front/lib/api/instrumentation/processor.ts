@@ -28,7 +28,8 @@ export class FilteredLangfuseSpanProcessor extends LangfuseSpanProcessor {
     // For Temporal client, capture workflow start spans for traced workflows.
     if (
       scopeName === "@temporalio/interceptor-client" &&
-      name === "StartWorkflow:agentLoopWorkflow"
+      (name === "StartWorkflow:agentLoopWorkflow" ||
+        name.startsWith("StartWorkflow:reinforcedAgent"))
     ) {
       return true;
     }
