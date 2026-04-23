@@ -27,7 +27,8 @@ pub async fn run(config: Config) -> Result<()> {
         config.policy_bucket.clone(),
         config.policy_cache_ttl,
         config.policy_base_url.clone(),
-    )?;
+    )
+    .await?;
     let state = Arc::new(ConnectionState::new(&config));
 
     // TODO(sandbox-egress): Confirm final certificate provisioning path once the Kubernetes

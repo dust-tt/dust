@@ -3,15 +3,11 @@ use anyhow::{anyhow, Context, Result};
 use moka::future::Cache;
 use moka::Expiry;
 use reqwest::{Client, StatusCode};
-use serde::Deserialize;
-use std::sync::Arc;
 use std::time::{Duration, Instant};
-use tokio::sync::Mutex;
 use tracing::warn;
 
 const DEFAULT_NEGATIVE_CACHE_TTL_SECONDS: u64 = 10;
-const GCP_METADATA_TOKEN_URL: &str =
-    "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token";
+const GCS_SCOPE: &str = "https://www.googleapis.com/auth/devstorage.read_only";
 
 #[derive(Clone)]
 pub struct GcsPolicyProvider {
@@ -19,7 +15,7 @@ pub struct GcsPolicyProvider {
     bucket: String,
     base_url: String,
     cache: Cache<String, CacheEntry>,
-    access_token_cache: Arc<Mutex<Option<(String, Instant)>>>,
+    auth: Option<std::sync::Arc<dyn gcp_auth::TokenProvider>>,
 }
 
 #[derive(Clone)]
@@ -34,14 +30,8 @@ struct CacheExpiry {
     negative_ttl: Duration,
 }
 
-#[derive(Debug, Deserialize)]
-struct TokenResponse {
-    access_token: String,
-    expires_in: u64,
-}
-
 impl GcsPolicyProvider {
-    pub fn new(bucket: String, positive_ttl: Duration, base_url: String) -> Result<Self> {
+    pub async fn new(bucket: String, positive_ttl: Duration, base_url: String) -> Result<Self> {
         let client = Client::builder()
             .timeout(Duration::from_secs(5))
             .build()
@@ -54,12 +44,23 @@ impl GcsPolicyProvider {
             })
             .build();
 
+        // Skip GCP auth setup when a static token is provided (tests).
+        let auth = if std::env::var("GOOGLE_CLOUD_ACCESS_TOKEN").is_ok() {
+            None
+        } else {
+            Some(
+                gcp_auth::provider()
+                    .await
+                    .context("failed to initialize GCP authentication")?,
+            )
+        };
+
         Ok(Self {
             client,
             bucket,
             base_url,
             cache,
-            access_token_cache: Arc::new(Mutex::new(None)),
+            auth,
         })
     }
 
@@ -151,6 +152,7 @@ impl GcsPolicyProvider {
     }
 
     async fn get_access_token(&self) -> Result<String> {
+        // Static token bypass for tests.
         if let Ok(token) = std::env::var("GOOGLE_CLOUD_ACCESS_TOKEN") {
             let trimmed = token.trim();
             if !trimmed.is_empty() {
@@ -158,37 +160,18 @@ impl GcsPolicyProvider {
             }
         }
 
-        {
-            let cache = self.access_token_cache.lock().await;
-            if let Some((token, expires_at)) = cache.as_ref() {
-                if Instant::now() < *expires_at {
-                    return Ok(token.clone());
-                }
-            }
-        }
+        let auth = self.auth.as_ref().ok_or_else(|| {
+            anyhow!(
+                "no GCP credentials: set GOOGLE_APPLICATION_CREDENTIALS or GOOGLE_CLOUD_ACCESS_TOKEN"
+            )
+        })?;
 
-        let response = self
-            .client
-            .get(GCP_METADATA_TOKEN_URL)
-            .header("Metadata-Flavor", "Google")
-            .send()
+        let token = auth
+            .token(&[GCS_SCOPE])
             .await
-            .context("failed to fetch GCP access token from metadata server")?
-            .error_for_status()
-            .context("metadata server returned an error for access token request")?;
-        let token_response = response
-            .json::<TokenResponse>()
-            .await
-            .context("failed to parse GCP access token response")?;
+            .context("failed to get GCP access token")?;
 
-        let expires_at =
-            Instant::now() + Duration::from_secs(token_response.expires_in.saturating_sub(300));
-        let token = token_response.access_token;
-
-        let mut cache = self.access_token_cache.lock().await;
-        *cache = Some((token.clone(), expires_at));
-
-        Ok(token)
+        Ok(token.as_str().to_string())
     }
 }
 

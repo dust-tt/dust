@@ -11,6 +11,7 @@ path = "src/main.rs"
 anyhow = "1.0"
 axum = "=0.8.4"
 clap = { version = "=4.5.40", features = ["derive", "env"] }
+gcp_auth = "0.12.6"
 jsonwebtoken = { version = "10.3.0", default-features = false, features = ["aws_lc_rs"] }
 moka = { version = "0.12", features = ["future"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
