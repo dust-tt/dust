@@ -211,19 +211,6 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
       [filteredCapabilities]
     );
 
-    const capabilitiesById = useMemo(
-      () =>
-        new Map(
-          filteredCapabilities.map((capability) => [
-            capability.kind === "skill"
-              ? capability.skill.sId
-              : capability.serverView.sId,
-            capability,
-          ])
-        ),
-      [filteredCapabilities]
-    );
-
     const isCapabilitiesLoading =
       isSkillsLoading || isSpacesLoading || isServerViewsLoading;
 
@@ -250,7 +237,11 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
         ref={dropdownRef}
         items={capabilityItems}
         command={(item) => {
-          const capability = capabilitiesById.get(item.id);
+          const capability = filteredCapabilities.find((capability) =>
+            capability.kind === "skill"
+              ? capability.skill.sId === item.id
+              : capability.serverView.sId === item.id
+          );
 
           if (capability) {
             command(capability);
