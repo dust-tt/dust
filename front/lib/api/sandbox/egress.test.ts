@@ -83,17 +83,13 @@ describe("sandbox egress helpers", () => {
     expect(payload.exp).toBeGreaterThan(payload.iat ?? 0);
   });
 
-  it("writes the token, starts the forwarder, and waits for health", async () => {
+  it("runs a single bundled setup exec that writes the token, starts the forwarder, and waits for health", async () => {
     const sandbox = {
       providerId: "provider-sandbox-id",
       sId: "sandbox-id",
-      writeFile: vi.fn().mockResolvedValue(new Ok(undefined)),
       exec: vi
         .fn()
-        .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
-        .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
-        .mockResolvedValueOnce(new Ok({ exitCode: 1, stdout: "", stderr: "" }))
-        .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" })),
+        .mockResolvedValue(new Ok({ exitCode: 0, stdout: "", stderr: "" })),
     };
 
     const result = await setupEgressForwarder(auth, sandbox as never);
@@ -102,29 +98,15 @@ describe("sandbox egress helpers", () => {
     expect(mockLookup).toHaveBeenCalledWith("eu.sandbox-egress.dust.tt", {
       family: 4,
     });
-    expect(sandbox.writeFile).toHaveBeenCalledWith(
-      auth,
-      "/etc/dust/egress-token",
-      expect.anything()
-    );
-    expect(sandbox.exec).toHaveBeenNthCalledWith(
-      1,
-      auth,
-      expect.stringContaining("chmod 600 '/etc/dust/egress-token'"),
-      { user: "root" }
-    );
-    expect(sandbox.exec).toHaveBeenNthCalledWith(
-      2,
-      auth,
-      expect.stringContaining("--proxy-addr '203.0.113.10:4443'"),
-      { user: "root" }
-    );
-    expect(sandbox.exec).toHaveBeenNthCalledWith(
-      2,
-      auth,
-      expect.stringContaining("--proxy-tls-name 'eu.sandbox-egress.dust.tt'"),
-      { user: "root" }
-    );
+    expect(sandbox.exec).toHaveBeenCalledTimes(1);
+    const [, script, opts] = sandbox.exec.mock.calls[0];
+    expect(script).toContain("printf '%s'");
+    expect(script).toContain("> /etc/dust/egress-token");
+    expect(script).toContain("chmod 600 /etc/dust/egress-token");
+    expect(script).toContain("--proxy-addr '203.0.113.10:4443'");
+    expect(script).toContain("--proxy-tls-name 'eu.sandbox-egress.dust.tt'");
+    expect(script).toContain("ss -tln sport = :9990");
+    expect(opts).toMatchObject({ user: "root" });
     expect(mockLoggerInfo).toHaveBeenCalledWith(
       expect.objectContaining({
         event: "egress.setup",
@@ -181,7 +163,6 @@ describe("sandbox egress helpers", () => {
     const sandbox = {
       providerId: "provider-sandbox-id",
       sId: "sandbox-id",
-      writeFile: vi.fn().mockResolvedValue(new Ok(undefined)),
       exec: vi
         .fn()
         .mockResolvedValue(new Err(new Error("sandbox command failed"))),
