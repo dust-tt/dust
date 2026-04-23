@@ -27,9 +27,10 @@ import type {
 } from "@app/types/core/content_node";
 import { DATA_SOURCE_NODE_ID } from "@app/types/core/content_node";
 import { CoreAPI } from "@app/types/core/core_api";
-import type { SupportedFileContentType } from "@app/types/files";
+import type { AllSupportedFileContentType } from "@app/types/files";
 import {
   extensionsForContentType,
+  isAllSupportedFileContentType,
   isConversationFileUseCase,
 } from "@app/types/files";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -40,13 +41,12 @@ import type { DustMimeType } from "@dust-tt/client";
 
 import {
   DATA_SOURCE_MIME_TYPE,
-  isSupportedFileContentType,
   // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 } from "@dust-tt/client";
 import assert from "assert";
 
 interface ContentFragmentBlob {
-  contentType: DustMimeType | SupportedFileContentType;
+  contentType: DustMimeType | AllSupportedFileContentType;
   fileId: ModelId | null;
   nodeId: string | null;
   nodeDataSourceViewId: ModelId | null;
@@ -121,7 +121,7 @@ export async function getContentFragmentBlob(
     }
 
     assert(
-      isSupportedFileContentType(file.contentType),
+      isAllSupportedFileContentType(file.contentType),
       "File must have a supported content type."
     );
 
