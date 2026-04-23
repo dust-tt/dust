@@ -14,7 +14,8 @@ import {
   OptionCard,
   Spinner,
 } from "@dust-tt/sparkle";
-import { useState } from "react";
+import type { KeyboardEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface UserAnswerRequiredProps {
   blockedAction: BlockedToolExecution & {
@@ -42,6 +43,8 @@ export function UserAnswerRequired({
   const [selectedOptions, setSelectedOptions] = useState<number[]>([]);
   const [customResponse, setCustomResponse] = useState("");
   const [isSkipPending, setIsSkipPending] = useState(false);
+  const [activeOptionIndex, setActiveOptionIndex] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const { question } = blockedAction;
   const isTriggeredByCurrentUser = blockedAction.userId === user?.sId;
@@ -49,9 +52,18 @@ export function UserAnswerRequired({
   const trimmedCustomResponse = customResponse.trim();
   const isCustomResponseSelected =
     trimmedCustomResponse.length > 0 && selectedOptions.length === 0;
+  const canSubmit =
+    trimmedCustomResponse.length > 0 || selectedOptions.length > 0;
 
   const isAnswerSubmitting = isSubmitting && !isSkipPending;
   const isSkipSubmitting = isSubmitting && isSkipPending;
+
+  // Reset the keyboard cursor and focus when a new blocked action replaces the current one.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: blockedAction.actionId is an intentional reset trigger
+  useEffect(() => {
+    setActiveOptionIndex(0);
+    containerRef.current?.focus();
+  }, [blockedAction.actionId]);
 
   async function submitAnswer(
     answer: UserQuestionAnswer,
@@ -71,10 +83,13 @@ export function UserAnswerRequired({
 
     setIsSkipPending(false);
   }
+
   function handleOptionClick(index: number) {
     if (isSubmitting) {
       return;
     }
+
+    setActiveOptionIndex(index);
 
     if (question.multiSelect) {
       setSelectedOptions((prev) =>
@@ -89,12 +104,23 @@ export function UserAnswerRequired({
     void submitAnswer({ selectedOptions: [index] });
   }
 
+  function moveActiveOption(direction: 1 | -1) {
+    if (question.options.length === 0) {
+      return;
+    }
+
+    setActiveOptionIndex(
+      (prev) =>
+        (prev + direction + question.options.length) % question.options.length
+    );
+  }
+
   function handleSubmit() {
     if (isSubmitting) {
       return;
     }
 
-    if (!isCustomResponseSelected && selectedOptions.length === 0) {
+    if (!canSubmit) {
       return;
     }
 
@@ -113,6 +139,52 @@ export function UserAnswerRequired({
     void submitAnswer({ selectedOptions: [] }, { isSkip: true });
   }
 
+  function handleActiveOptionSelection() {
+    if (question.options.length === 0) {
+      return;
+    }
+
+    handleOptionClick(activeOptionIndex);
+  }
+
+  function handleContainerKeyDown(e: KeyboardEvent<HTMLDivElement>) {
+    if (
+      e.target instanceof HTMLInputElement ||
+      e.target instanceof HTMLTextAreaElement ||
+      (e.target instanceof HTMLElement && e.target.isContentEditable)
+    ) {
+      return;
+    }
+
+    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+      if (question.multiSelect) {
+        e.preventDefault();
+        handleSubmit();
+      }
+      return;
+    }
+
+    switch (e.key) {
+      case "ArrowDown":
+        e.preventDefault();
+        moveActiveOption(1);
+        containerRef.current?.focus();
+        break;
+      case "ArrowUp":
+        e.preventDefault();
+        moveActiveOption(-1);
+        containerRef.current?.focus();
+        break;
+      case "Enter":
+      case " ":
+        if (e.currentTarget === e.target) {
+          e.preventDefault();
+          handleActiveOptionSelection();
+        }
+        break;
+    }
+  }
+
   if (!isTriggeredByCurrentUser) {
     return (
       <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
@@ -127,8 +199,11 @@ export function UserAnswerRequired({
 
   return (
     <div
+      ref={containerRef}
+      tabIndex={0}
+      onKeyDown={handleContainerKeyDown}
       className={cn(
-        "flex flex-col gap-4 rounded-2xl border border-dark bg-background p-5",
+        "flex flex-col gap-4 rounded-2xl border border-dark bg-background p-5 outline-none",
         "dark:border-dark-night dark:bg-background-night"
       )}
     >
@@ -142,15 +217,25 @@ export function UserAnswerRequired({
       ) : (
         <div className="flex flex-col gap-2">
           {question.options.map((option, index) => (
-            <OptionCard
+            <div
               key={index}
-              label={option.label}
-              description={option.description}
-              counterValue={index + 1}
-              selected={selectedOptions.includes(index)}
-              onClick={() => handleOptionClick(index)}
-              disabled={isAnswerSubmitting}
-            />
+              onFocusCapture={() => setActiveOptionIndex(index)}
+              onMouseEnter={() => setActiveOptionIndex(index)}
+            >
+              <OptionCard
+                label={option.label}
+                description={option.description}
+                counterValue={index + 1}
+                selected={selectedOptions.includes(index)}
+                className={cn(
+                  activeOptionIndex === index &&
+                    !selectedOptions.includes(index) &&
+                    "bg-muted-background/60 dark:bg-muted-background-night/60"
+                )}
+                onClick={() => handleOptionClick(index)}
+                disabled={isAnswerSubmitting}
+              />
+            </div>
           ))}
           <Card
             variant="tertiary"
@@ -193,7 +278,10 @@ export function UserAnswerRequired({
               }}
               onChange={(e) => setCustomResponse(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter") {
+                if (
+                  e.key === "Enter" &&
+                  (!question.multiSelect || e.metaKey || e.ctrlKey)
+                ) {
                   e.preventDefault();
                   handleSubmit();
                 }
@@ -222,9 +310,7 @@ export function UserAnswerRequired({
           variant="highlight"
           size="sm"
           isLoading={isAnswerSubmitting}
-          disabled={
-            trimmedCustomResponse.length === 0 && selectedOptions.length === 0
-          }
+          disabled={!canSubmit}
           onClick={handleSubmit}
           aria-label="Send answer"
         />
