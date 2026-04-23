@@ -1478,10 +1478,12 @@ export class FileResource extends BaseResource<FileModel> {
       sourceId,
       useCase,
       useCaseMetadata,
+      includeProcessedVersion,
     }: {
       sourceId: string;
       useCase: FileUseCase;
       useCaseMetadata?: FileUseCaseMetadata;
+      includeProcessedVersion?: boolean;
     }
   ): Promise<
     Result<
@@ -1507,7 +1509,9 @@ export class FileResource extends BaseResource<FileModel> {
         snippet: sourceFile.snippet,
       });
 
-      await copyContent(auth, sourceFile, newFile);
+      await copyContent(auth, sourceFile, newFile, {
+        includeProcessedVersion,
+      });
       await newFile.markAsReady(auth);
 
       return new Ok(newFile);
@@ -1521,9 +1525,11 @@ export class FileResource extends BaseResource<FileModel> {
     {
       sourceId,
       conversationId,
+      includeProcessedVersion,
     }: {
       sourceId: string;
       conversationId: string;
+      includeProcessedVersion?: boolean;
     }
   ): Promise<
     Result<
@@ -1559,6 +1565,7 @@ export class FileResource extends BaseResource<FileModel> {
         ...restMetadata,
         conversationId,
       },
+      includeProcessedVersion,
     });
   }
 }
