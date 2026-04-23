@@ -5,6 +5,7 @@ import { AST_NODE_TYPES } from "@typescript-eslint/types";
 import { traverseAST } from "../parsers/astUtils.js";
 import { type ParseCache, parseFile } from "../parsers/tsxParser.js";
 import type { ComponentUsage } from "../types.js";
+import { findSparkleSourceDir } from "../utils/sparkleSource.js";
 
 /** component name → declared prop names */
 export type DeclaredPropsMap = Map<string, Set<string>>;
@@ -80,19 +81,6 @@ function collectTsFiles(dir: string, results: string[] = []): string[] {
     // skip unreadable dirs
   }
   return results;
-}
-
-function findSparkleSourceDir(targetDir: string): string | null {
-  // Try common locations relative to targetDir
-  const candidates = [
-    path.join(targetDir, "node_modules/@dust-tt/sparkle/src"),
-    path.join(targetDir, "../sparkle/src"),
-    path.join(targetDir, "../../sparkle/src"),
-  ];
-  for (const c of candidates) {
-    if (fs.existsSync(c)) return c;
-  }
-  return null;
 }
 
 /**

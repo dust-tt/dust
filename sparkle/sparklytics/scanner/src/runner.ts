@@ -13,6 +13,7 @@ import { loadRegistry } from "./tokens/registry.js";
 import type { ScanConfig, SparkleReport } from "./types.js";
 import { collectFiles } from "./utils/fileCollector.js";
 import { debug, info } from "./utils/logger.js";
+import { extractSparkleComponentExports } from "./utils/sparkleSource.js";
 
 const SCANNER_VERSION = "0.1.0";
 
@@ -97,7 +98,8 @@ export async function runScan(config: ScanConfig): Promise<SparkleReport> {
 
   // Build summary
   const totalUsages = totalSparkleUsages;
-  const totalSparkleComponents = registry.componentNames.length;
+  const sparkleExports = extractSparkleComponentExports(config.targetDir);
+  const totalSparkleComponents = sparkleExports.length;
   const uniqueUsed = sparkleComponents.length;
   const adoptionRate =
     totalSparkleComponents > 0

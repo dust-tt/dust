@@ -18,7 +18,6 @@ export interface SparkleTokenRegistry {
   fontWeights: number[]; // [100, 200, ..., 900]
   lineHeights: string[]; // ["16px", "20px", ...]
   spacingScale: string[]; // ["0", "1px", "2px", "4px", ...]
-  componentNames: string[]; // all exported component names
 }
 
 // ─── File Location ────────────────────────────────────────────────────────────
