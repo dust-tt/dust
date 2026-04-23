@@ -77,5 +77,22 @@
         }
       ]
     }
+  },
+  {
+    "skillName": "BookKeeper",
+    "kind": "edit",
+    "title": "Check borrower history before recommending",
+    "analysis": "Before recommending a book, the skill should check the loan history to avoid suggesting a book the user has already borrowed. This requires referencing the borrowers.csv knowledge.",
+    "state": "pending",
+    "source": "reinforcement",
+    "suggestion": {
+      "instructionEdits": [
+        {
+          "targetBlockId": "bk05outr",
+          "content": "<p>Always cite specific book details from the catalog. If a book is not found, suggest similar alternatives.</p><p>Before recommending a book to a user, check <span data-type=\"knowledge-node\" data-knowledge-label=\"borrowers.csv\" data-knowledge-description=\"\" data-selected-items=\"%5B%7B%22dataSourceViewId%22%3A%22__BORROWERS_DSV_ID__%22%2C%22hasChildren%22%3Afalse%2C%22label%22%3A%22borrowers.csv%22%2C%22nodeId%22%3A%22borrowers_csv%22%2C%22spaceId%22%3A%22__BORROWERS_SPACE_ID__%22%7D%5D\">borrowers.csv</span> to see whether they have already borrowed it. If they have, mention it and suggest a different book instead.</p>",
+          "type": "replace"
+        }
+      ]
+    }
   }
 ]

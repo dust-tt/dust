@@ -1,0 +1,236 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<library>
+  <book id="1">
+    <title>The Pragmatic Programmer</title>
+    <author>Andrew Hunt</author>
+    <author>David Thomas</author>
+    <year>1999</year>
+    <publisher>Addison-Wesley</publisher>
+    <isbn>978-0201616224</isbn>
+    <genre>Programming</genre>
+    <pages>352</pages>
+    <price currency="USD">45.99</price>
+    <rating>4.8</rating>
+    <description>A practical guide to becoming a better programmer through tips, techniques, and best practices.</description>
+    <availability>In Stock</availability>
+    <location>
+      <shelf>A-1</shelf>
+      <section>Computer Science</section>
+    </location>
+  </book>
+  <book id="2">
+    <title>Clean Code</title>
+    <author>Robert C. Martin</author>
+    <year>2008</year>
+    <publisher>Prentice Hall</publisher>
+    <isbn>978-0132350884</isbn>
+    <genre>Programming</genre>
+    <pages>464</pages>
+    <price currency="USD">42.50</price>
+    <rating>4.7</rating>
+    <description>A handbook of agile software craftsmanship focusing on writing readable and maintainable code.</description>
+    <availability>In Stock</availability>
+    <location>
+      <shelf>A-2</shelf>
+      <section>Computer Science</section>
+    </location>
+  </book>
+  <book id="3">
+    <title>Design Patterns</title>
+    <author>Erich Gamma</author>
+    <author>Richard Helm</author>
+    <author>Ralph Johnson</author>
+    <author>John Vlissides</author>
+    <year>1994</year>
+    <publisher>Addison-Wesley</publisher>
+    <isbn>978-0201633612</isbn>
+    <genre>Software Engineering</genre>
+    <pages>395</pages>
+    <price currency="USD">54.99</price>
+    <rating>4.6</rating>
+    <description>Elements of reusable object-oriented software design patterns by the Gang of Four.</description>
+    <availability>In Stock</availability>
+    <location>
+      <shelf>A-3</shelf>
+      <section>Computer Science</section>
+    </location>
+  </book>
+  <book id="4">
+    <title>Refactoring</title>
+    <author>Martin Fowler</author>
+    <year>2018</year>
+    <publisher>Addison-Wesley</publisher>
+    <isbn>978-0134757599</isbn>
+    <genre>Programming</genre>
+    <pages>448</pages>
+    <price currency="USD">47.99</price>
+    <rating>4.5</rating>
+    <description>Improving the design of existing code through systematic refactoring techniques.</description>
+    <availability>In Stock</availability>
+    <location>
+      <shelf>A-4</shelf>
+      <section>Computer Science</section>
+    </location>
+  </book>
+  <book id="5">
+    <title>The Mythical Man-Month</title>
+    <author>Frederick P. Brooks Jr.</author>
+    <year>1995</year>
+    <publisher>Addison-Wesley</publisher>
+    <isbn>978-0201835953</isbn>
+    <genre>Project Management</genre>
+    <pages>322</pages>
+    <price currency="USD">39.99</price>
+    <rating>4.4</rating>
+    <description>Essays on software engineering and project management, including Brooks' Law.</description>
+    <availability>In Stock</availability>
+    <location>
+      <shelf>B-1</shelf>
+      <section>Management</section>
+    </location>
+  </book>
+  <book id="6">
+    <title>Code Complete</title>
+    <author>Steve McConnell</author>
+    <year>2004</year>
+    <publisher>Microsoft Press</publisher>
+    <isbn>978-0735619678</isbn>
+    <genre>Programming</genre>
+    <pages>960</pages>
+    <price currency="USD">49.99</price>
+    <rating>4.7</rating>
+    <description>A practical handbook of software construction covering coding techniques and best practices.</description>
+    <availability>Limited Stock</availability>
+    <location>
+      <shelf>A-5</shelf>
+      <section>Computer Science</section>
+    </location>
+  </book>
+  <book id="7">
+    <title>Effective Java</title>
+    <author>Joshua Bloch</author>
+    <year>2017</year>
+    <publisher>Addison-Wesley</publisher>
+    <isbn>978-0134685991</isbn>
+    <genre>Java Programming</genre>
+    <pages>416</pages>
+    <price currency="USD">44.99</price>
+    <rating>4.8</rating>
+    <description>Best practices for the Java programming language from a Java platform architect.</description>
+    <availability>In Stock</availability>
+    <location>
+      <shelf>C-1</shelf>
+      <section>Programming Languages</section>
+    </location>
+  </book>
+  <book id="8">
+    <title>You Don't Know JS</title>
+    <author>Kyle Simpson</author>
+    <year>2015</year>
+    <publisher>O'Reilly Media</publisher>
+    <isbn>978-1491924464</isbn>
+    <genre>JavaScript Programming</genre>
+    <pages>278</pages>
+    <price currency="USD">29.99</price>
+    <rating>4.6</rating>
+    <description>Deep dive into the core mechanisms of the JavaScript language.</description>
+    <availability>In Stock</availability>
+    <location>
+      <shelf>C-2</shelf>
+      <section>Programming Languages</section>
+    </location>
+  </book>
+  <book id="9">
+    <title>Introduction to Algorithms</title>
+    <author>Thomas H. Cormen</author>
+    <author>Charles E. Leiserson</author>
+    <author>Ronald L. Rivest</author>
+    <author>Clifford Stein</author>
+    <year>2009</year>
+    <publisher>MIT Press</publisher>
+    <isbn>978-0262033848</isbn>
+    <genre>Algorithms</genre>
+    <pages>1312</pages>
+    <price currency="USD">89.99</price>
+    <rating>4.5</rating>
+    <description>Comprehensive introduction to the modern study of computer algorithms.</description>
+    <availability>In Stock</availability>
+    <location>
+      <shelf>D-1</shelf>
+      <section>Computer Science Theory</section>
+    </location>
+  </book>
+  <book id="10">
+    <title>Clean Architecture</title>
+    <author>Robert C. Martin</author>
+    <year>2017</year>
+    <publisher>Prentice Hall</publisher>
+    <isbn>978-0134494166</isbn>
+    <genre>Software Architecture</genre>
+    <pages>432</pages>
+    <price currency="USD">41.99</price>
+    <rating>4.4</rating>
+    <description>A craftsman's guide to software structure and design principles.</description>
+    <availability>In Stock</availability>
+    <location>
+      <shelf>A-6</shelf>
+      <section>Computer Science</section>
+    </location>
+  </book>
+  <book id="11">
+    <title>System Design Interview</title>
+    <author>Alex Xu</author>
+    <year>2020</year>
+    <publisher>ByteByteGo</publisher>
+    <isbn>978-1736049112</isbn>
+    <genre>System Design</genre>
+    <pages>322</pages>
+    <price currency="USD">38.99</price>
+    <rating>4.7</rating>
+    <description>An insider's guide to system design interviews with practical examples.</description>
+    <availability>In Stock</availability>
+    <location>
+      <shelf>E-1</shelf>
+      <section>Interview Preparation</section>
+    </location>
+  </book>
+  <book id="12">
+    <title>Designing Data-Intensive Applications</title>
+    <author>Martin Kleppmann</author>
+    <year>2017</year>
+    <publisher>O'Reilly Media</publisher>
+    <isbn>978-1449373320</isbn>
+    <genre>Data Engineering</genre>
+    <pages>616</pages>
+    <price currency="USD">55.99</price>
+    <rating>4.8</rating>
+    <description>The big ideas behind reliable, scalable, and maintainable systems.</description>
+    <availability>In Stock</availability>
+    <location>
+      <shelf>F-1</shelf>
+      <section>Data Science</section>
+    </location>
+  </book>
+  <metadata>
+    <total_books>12</total_books>
+    <last_updated>2024-09-25</last_updated>
+    <library_info>
+      <name>Tech Library Central</name>
+      <address>123 Programming Lane, Code City, CC 12345</address>
+      <phone>(555) 123-TECH</phone>
+      <email>info@techlibrary.com</email>
+      <hours>
+        <weekdays>9:00 AM - 8:00 PM</weekdays>
+        <weekends>10:00 AM - 6:00 PM</weekends>
+      </hours>
+    </library_info>
+    <categories>
+      <category name="Computer Science" count="6"/>
+      <category name="Programming Languages" count="2"/>
+      <category name="Management" count="1"/>
+      <category name="Computer Science Theory" count="1"/>
+      <category name="Interview Preparation" count="1"/>
+      <category name="Data Science" count="1"/>
+    </categories>
+  </metadata>
+</library>

@@ -1,8 +1,8 @@
-import { buildAgentInstructionsReadOnlyExtensions } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsEditor";
 import { InstructionSuggestionExtension } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import { useMaybeMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { getBlockOuterHtml } from "@app/components/shared/utils";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
+import { buildSkillInstructionsExtensions } from "@app/lib/editor/build_skill_instructions_extensions";
 import type {
   SkillInstructionEditItemType,
   SkillSuggestionType,
@@ -102,7 +102,7 @@ function InstructionEditDiffBlock({
   const editor = useEditor(
     {
       extensions: [
-        ...buildAgentInstructionsReadOnlyExtensions(),
+        ...buildSkillInstructionsExtensions(true),
         InstructionSuggestionExtension.configure({ showBlockHighlight: false }),
       ],
       editable: false,
