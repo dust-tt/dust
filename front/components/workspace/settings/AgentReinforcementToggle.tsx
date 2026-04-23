@@ -4,6 +4,8 @@ import {
 } from "@app/lib/swr/useReinforcementToggle";
 import type { WorkspaceType } from "@app/types/user";
 import {
+  Chip,
+  ContentMessage,
   ContextItem,
   Page,
   SliderToggle,
@@ -22,7 +24,16 @@ export function ReinforcementSection({ owner }: ReinforcementSectionProps) {
   // TODO(reinforcement): Add link to doc
   return (
     <Page.Vertical align="stretch" gap="md">
-      <Page.H variant="h4">Reinforcement</Page.H>
+      <div className="flex items-center gap-2">
+        <Page.H variant="h4">Reinforcement</Page.H>
+        <Chip size="xs" color="golden" label="Beta" />
+      </div>
+      <ContentMessage variant="info" size="lg">
+        This feature is currently in beta, and only available to a select group
+        of customers. We are very interested in your feedback to improve the
+        feature. Note that the feature is currently free during beta testing but
+        will generate additional costs upon release.
+      </ContentMessage>
       <ContextItem.List>
         <div className="h-full border-b border-border dark:border-border-night" />
         <ContextItem

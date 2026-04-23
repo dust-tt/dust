@@ -1,5 +1,10 @@
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
-import { InformationCircleIcon, SliderToggle, Tooltip } from "@dust-tt/sparkle";
+import {
+  Chip,
+  InformationCircleIcon,
+  SliderToggle,
+  Tooltip,
+} from "@dust-tt/sparkle";
 import { useFormContext } from "react-hook-form";
 
 export function SkillBuilderEnableSuggestionsSection() {
@@ -17,6 +22,7 @@ export function SkillBuilderEnableSuggestionsSection() {
       <span className="text-sm text-foreground dark:text-foreground-night">
         Enable suggestions
       </span>
+      <Chip size="xs" color="golden" label="Beta" />
       <Tooltip
         label="Dust will analyze how this skill is used and suggest improvements to its instructions over time."
         trigger={

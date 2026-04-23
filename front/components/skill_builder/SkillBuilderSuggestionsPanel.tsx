@@ -8,7 +8,13 @@ import {
   useSkillSuggestions,
 } from "@app/hooks/useSkillSuggestions";
 import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
-import { LightbulbIcon, ScrollArea, Spinner } from "@dust-tt/sparkle";
+import {
+  Chip,
+  ContentMessage,
+  LightbulbIcon,
+  ScrollArea,
+  Spinner,
+} from "@dust-tt/sparkle";
 import { useCallback } from "react";
 import { useFormContext } from "react-hook-form";
 
@@ -115,9 +121,16 @@ export function SkillBuilderSuggestionsPanel() {
   return (
     <div className="flex h-full flex-col">
       <div className="flex flex-col gap-1 px-4 pb-3 pt-4">
-        <h2 className="heading-lg font-semibold text-foreground dark:text-foreground-night">
-          Suggestions
-        </h2>
+        <div className="flex items-center gap-2">
+          <h2 className="heading-lg font-semibold text-foreground dark:text-foreground-night">
+            Suggestions
+          </h2>
+          <Chip size="xs" color="golden" label="Beta" />
+        </div>
+        <ContentMessage variant="info" size="lg">
+          Skill suggestions are currently in beta testing. We are very
+          interested in your feedback to improve the feature.
+        </ContentMessage>
         <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
           Dust continuously analyses conversations using this skill to suggest
           improvements.
