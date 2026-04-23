@@ -98,7 +98,7 @@ export async function moveConversationToProject(
     const participants = await conversationResource.listParticipants(auth);
 
     // Move the conversation to the project (this will update updatedAt)
-    await conversationResource.updateSpaceId(project, t);
+    await conversationResource.updateSpaceId(auth, project, t);
     // See front/lib/api/assistant/conversation/mentions.ts updateConversationRequirements for more details
     await conversationResource.updateRequirements([project.id], t);
 
@@ -184,7 +184,7 @@ export async function moveConversationOutOfProject(
   const participants = await conversationResource.listParticipants(auth);
 
   // Remove the project association.
-  await conversationResource.clearSpaceId();
+  await conversationResource.clearSpaceId(auth);
 
   // Rebuild requestedSpaceIds from all agents and content fragments in the conversation.
   // When a conversation is in a project, its requestedSpaceIds is set to [projectSpaceId] only.

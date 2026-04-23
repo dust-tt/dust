@@ -1,11 +1,10 @@
 import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { makeScript } from "@app/scripts/helpers";
+import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import { launchIndexConversationEsWorkflow } from "@app/temporal/es_indexation/client";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Op, type WhereOptions } from "sequelize";
-
-import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
-import { makeScript } from "@app/scripts/helpers";
 
 const BATCH_SIZE = 500;
 

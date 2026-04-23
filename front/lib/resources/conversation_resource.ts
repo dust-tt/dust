@@ -2827,7 +2827,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       return new Err(new ConversationError("conversation_not_found"));
     }
 
-    await conversation.updateRequirements(requestedSpaceIds, transaction);
+    await conversation.updateRequirements(auth, requestedSpaceIds, transaction);
     return new Ok(undefined);
   }
 
@@ -3014,37 +3014,79 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return new Ok(undefined);
   }
 
-  async updateTitle(title: string) {
-    return this.update({ title });
+  async updateTitle(auth: Authenticator, title: string) {
+    await this.update({ title });
+
+    await ConversationResource.triggerEsIndexing(
+      auth,
+      this.sId,
+      auth.getNonNullableWorkspace().sId
+    );
   }
 
-  async updateVisibilityToDeleted() {
-    return this.update({ visibility: "deleted" });
+  async updateVisibilityToDeleted(auth: Authenticator) {
+    await this.update({ visibility: "deleted" });
+
+    await ConversationResource.triggerEsIndexing(
+      auth,
+      this.sId,
+      auth.getNonNullableWorkspace().sId
+    );
   }
 
-  async updateVisibilityToUnlisted() {
-    return this.update({ visibility: "unlisted" });
+  async updateVisibilityToUnlisted(auth: Authenticator) {
+    await this.update({ visibility: "unlisted" });
+
+    await ConversationResource.triggerEsIndexing(
+      auth,
+      this.sId,
+      auth.getNonNullableWorkspace().sId
+    );
   }
 
   async updateRequirements(
+    auth: Authenticator,
     requestedSpaceIds: number[],
     transaction?: Transaction
   ) {
-    return this.update(
+    await this.update(
       {
         requestedSpaceIds: uniq(requestedSpaceIds),
       },
       transaction
     );
+
+    await ConversationResource.triggerEsIndexing(
+      auth,
+      this.sId,
+      auth.getNonNullableWorkspace().sId
+    );
   }
 
-  async updateSpaceId(space: SpaceResource, transaction?: Transaction) {
+  async updateSpaceId(
+    auth: Authenticator,
+    space: SpaceResource,
+    transaction?: Transaction
+  ) {
     await this.update({ spaceId: space.id }, transaction);
+
+    await ConversationResource.triggerEsIndexing(
+      auth,
+      this.sId,
+      auth.getNonNullableWorkspace().sId
+    );
   }
 
-  async clearSpaceId() {
+  async clearSpaceId(auth?: Authenticator) {
     await this.update({ spaceId: null });
     this._space = null;
+    if (auth) {
+      await ConversationResource.triggerEsIndexing(
+        auth,
+        this.sId,
+        auth.getNonNullableWorkspace().sId
+      );
+    }
   }
 
   /**
@@ -3295,10 +3337,16 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         },
         transaction,
       });
-      return new Ok(undefined);
     } catch (err) {
       return new Err(normalizeError(err));
     }
+
+    // Trigger ES cleanup via the same Temporal worker used for all ES writes.
+    // The activity will find the conversation absent from DB and call
+    // deleteConversationDocument itself.
+    await ConversationResource.triggerEsIndexing(auth, this.sId, owner.sId);
+
+    return new Ok(undefined);
   }
 
   getRequestedSpaceIdsFromModel() {

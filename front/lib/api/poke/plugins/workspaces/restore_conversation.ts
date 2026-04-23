@@ -43,7 +43,7 @@ export const restoreConversationPlugin = createPlugin({
     }
 
     for (const conversation of conversations) {
-      await conversation.updateVisibilityToUnlisted();
+      await conversation.updateVisibilityToUnlisted(auth);
     }
 
     return new Ok({

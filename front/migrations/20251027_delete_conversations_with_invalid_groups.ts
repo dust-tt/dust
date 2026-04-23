@@ -19,7 +19,7 @@ makeScript({}, async ({ execute }, logger) => {
 
   const invalidConversations = await frontSequelize.query<InvalidConversation>(
     `
-    SELECT 
+    SELECT
       ac.id,
       ac."sId",
       ac."workspaceId",
@@ -27,11 +27,11 @@ makeScript({}, async ({ execute }, logger) => {
     FROM conversations ac
     CROSS JOIN UNNEST(ac."requestedGroupIds") as requested_group_id
     WHERE NOT EXISTS (
-      SELECT 1 
-      FROM groups g 
-      WHERE g.id = requested_group_id 
+      SELECT 1
+      FROM groups g
+      WHERE g.id = requested_group_id
       AND g."workspaceId" = ac."workspaceId"
-    ) 
+    )
     ORDER BY ac.id, requested_group_id
     `,
     { type: QueryTypes.SELECT }
@@ -109,7 +109,7 @@ makeScript({}, async ({ execute }, logger) => {
         );
 
         if (execute) {
-          await conversation.updateVisibilityToDeleted();
+          await conversation.updateVisibilityToDeleted(auth);
         }
       }
     },
