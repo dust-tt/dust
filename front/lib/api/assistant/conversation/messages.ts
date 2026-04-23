@@ -494,7 +494,7 @@ export const createAgentMessages = async (
             });
           },
           {
-            // jd @ 23/04/2026
+            // TODO(20260423 jd)
             // all callsites of this function pass a transaction
             // so concurent executor is purely cosmetic
             // eventually we will get rid of these monstruous transactions
