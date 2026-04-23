@@ -163,49 +163,48 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
 
     const capabilityItems = useMemo<SlashCommand[]>(
       () =>
-        filteredCapabilities
-          .flatMap((capability) => {
-            switch (capability.kind) {
-              case "skill":
-                return [
-                  {
-                    action: capability.skill.sId,
-                    description: capability.skill.userFacingDescription,
-                    icon: getSkillAvatarIcon(capability.skill.icon),
-                    id: capability.skill.sId,
-                    label: capability.skill.name,
-                    tooltip: capability.skill.userFacingDescription
-                      ? {
-                          description: capability.skill.userFacingDescription,
-                        }
-                      : undefined,
-                  },
-                ];
-              case "tool": {
-                const description = getMcpServerViewDescription(
-                  capability.serverView
-                );
+        filteredCapabilities.flatMap((capability) => {
+          switch (capability.kind) {
+            case "skill":
+              return [
+                {
+                  action: capability.skill.sId,
+                  description: capability.skill.userFacingDescription,
+                  icon: getSkillAvatarIcon(capability.skill.icon),
+                  id: capability.skill.sId,
+                  label: capability.skill.name,
+                  tooltip: capability.skill.userFacingDescription
+                    ? {
+                        description: capability.skill.userFacingDescription,
+                      }
+                    : undefined,
+                },
+              ];
+            case "tool": {
+              const description = getMcpServerViewDescription(
+                capability.serverView
+              );
 
-                return [
-                  {
-                    action: capability.serverView.sId,
-                    description,
-                    icon: () => getAvatar(capability.serverView.server),
-                    id: capability.serverView.sId,
-                    label: getMcpServerViewDisplayName(capability.serverView),
-                    tooltip: description
-                      ? {
-                          description,
-                        }
-                      : undefined,
-                  },
-                ];
-              }
-              default:
-                assertNeverAndIgnore(capability);
-                return [];
+              return [
+                {
+                  action: capability.serverView.sId,
+                  description,
+                  icon: () => getAvatar(capability.serverView.server),
+                  id: capability.serverView.sId,
+                  label: getMcpServerViewDisplayName(capability.serverView),
+                  tooltip: description
+                    ? {
+                        description,
+                      }
+                    : undefined,
+                },
+              ];
             }
-          }),
+            default:
+              assertNeverAndIgnore(capability);
+              return [];
+          }
+        }),
       [filteredCapabilities]
     );
 
