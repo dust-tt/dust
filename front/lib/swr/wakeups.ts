@@ -1,8 +1,10 @@
+import { useConversations } from "@app/hooks/conversations/useConversations";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetConversationWakeUpsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/wakeups";
+import type { ConversationListItemType } from "@app/types/assistant/conversation";
 import { isActiveWakeUp } from "@app/types/assistant/wakeups";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useMemo } from "react";
@@ -59,6 +61,10 @@ export function useCancelWakeUp({
     conversationId,
     disabled: true,
   });
+  const { mutateConversations } = useConversations({
+    workspaceId: owner.sId,
+    options: { disabled: true },
+  });
 
   const cancelWakeUp = useCallback(
     async (wakeUpSId: string) => {
@@ -80,9 +86,22 @@ export function useCancelWakeUp({
 
       sendNotification({ type: "success", title: "Wake-up cancelled" });
       void mutateWakeUps();
+      void mutateConversations(
+        (currentData: ConversationListItemType[] | undefined) =>
+          currentData?.map((c) =>
+            c.sId === conversationId ? { ...c, nextWakeupAt: null } : c
+          ),
+        { revalidate: false }
+      );
       return true;
     },
-    [owner.sId, conversationId, sendNotification, mutateWakeUps]
+    [
+      owner.sId,
+      conversationId,
+      sendNotification,
+      mutateWakeUps,
+      mutateConversations,
+    ]
   );
 
   return { cancelWakeUp };
