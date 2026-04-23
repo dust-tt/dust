@@ -185,6 +185,7 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
           cronExpression: null;
           cronTimezone: null;
           reason: string;
+          triggeringMessageSId: string | null;
         }
       | {
           scheduleType: "cron";
@@ -192,12 +193,20 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
           cronExpression: string;
           cronTimezone: string;
           reason: string;
+          triggeringMessageSId: string | null;
         },
     conversation: ConversationResource,
     agentConfiguration: AgentConfigurationType,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<WakeUpResource, Error>> {
-    const { scheduleType, fireAt, cronExpression, cronTimezone, reason } = blob;
+    const {
+      scheduleType,
+      fireAt,
+      cronExpression,
+      cronTimezone,
+      reason,
+      triggeringMessageSId,
+    } = blob;
     const user = auth.getNonNullableUser();
 
     if (scheduleType === "cron") {
@@ -223,6 +232,7 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
         cronExpression,
         cronTimezone,
         reason,
+        triggeringMessageSId,
       },
       { transaction }
     );
@@ -599,6 +609,7 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
       fireCount: this.fireCount,
       maxFires: this.maxFires(),
       user: this.user.toJSON(),
+      triggeringMessageSId: this.triggeringMessageSId ?? null,
     };
   }
 

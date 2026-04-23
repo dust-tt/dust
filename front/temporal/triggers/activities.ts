@@ -359,6 +359,7 @@ export async function runWakeUpActivity({
       profilePictureUrl: null,
       origin: "wakeup",
     },
+    wakeupTriggeringMessageSId: wakeUp.triggeringMessageSId,
     skipToolsValidation: false,
   });
 

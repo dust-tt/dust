@@ -48,6 +48,7 @@ export const WakeUpSchema = z.object({
   fireCount: z.number(),
   maxFires: z.number(),
   user: UserSchema,
+  triggeringMessageSId: z.string().nullable(),
 });
 
 /**

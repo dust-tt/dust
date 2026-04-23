@@ -100,6 +100,18 @@ function getUserTimezone(
   return userMessage?.context.timezone ?? null;
 }
 
+function getTriggeringUserMessageSId(
+  agentLoopContext?: AgentLoopContextType
+): string | null {
+  const content = agentLoopContext?.runContext?.conversation?.content;
+  if (!content) {
+    return null;
+  }
+
+  const userMessage = content.flat().findLast(isUserMessageType);
+  return userMessage?.sId ?? null;
+}
+
 function renderScheduleConfig(wakeUp: WakeUpType): string {
   switch (wakeUp.scheduleConfig.type) {
     case "one_shot":
@@ -205,6 +217,8 @@ export function createWakeupsTools(
         );
       }
 
+      const triggeringMessageSId = getTriggeringUserMessageSId(agentLoopContext);
+
       const blob =
         parsed.kind === "one_shot"
           ? {
@@ -213,6 +227,7 @@ export function createWakeupsTools(
               cronExpression: null,
               cronTimezone: null,
               reason,
+              triggeringMessageSId,
             }
           : {
               scheduleType: "cron" as const,
@@ -221,6 +236,7 @@ export function createWakeupsTools(
               // parsed.kind === "cron" means we resolved cronTimezone above.
               cronTimezone: cronTimezone as string,
               reason,
+              triggeringMessageSId,
             };
 
       const result = await WakeUpResource.makeNew(

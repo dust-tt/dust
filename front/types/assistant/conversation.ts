@@ -180,6 +180,12 @@ export type UserMessageType = {
   content: string;
   context: UserMessageContext;
   agenticMessageData?: AgenticMessageData;
+  /**
+   * For wake-up-triggered user messages, the sId of the original user message
+   * that asked for the wake-up. Front-private; stripped by the public SDK
+   * Zod schema.
+   */
+  wakeupTriggeringMessageSId?: string | null;
   reactions: MessageReactionType[];
 };
 

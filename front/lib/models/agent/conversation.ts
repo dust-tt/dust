@@ -286,6 +286,7 @@ export class UserMessageModel extends WorkspaceAwareModel<UserMessageModel> {
 
   declare agenticMessageType: "run_agent" | "agent_handover" | null;
   declare agenticOriginMessageId: string | null;
+  declare wakeupTriggeringMessageSId: CreationOptional<string | null>;
 
   declare userContextLastTriggerRunAt: Date | null;
   declare userContextApiKeyId: ForeignKey<KeyModel["id"]> | null;
@@ -372,6 +373,11 @@ UserMessageModel.init(
     agenticOriginMessageId: {
       type: DataTypes.STRING(32),
       allowNull: true,
+    },
+    wakeupTriggeringMessageSId: {
+      type: DataTypes.STRING(32),
+      allowNull: true,
+      defaultValue: null,
     },
   },
   {

@@ -24,6 +24,7 @@ export class WakeUpModel extends WorkspaceAwareModel<WakeUpModel> {
   declare reason: string;
   declare status: CreationOptional<WakeUpStatus>;
   declare fireCount: CreationOptional<number>;
+  declare triggeringMessageSId: CreationOptional<string | null>;
 }
 
 WakeUpModel.init(
@@ -90,6 +91,11 @@ WakeUpModel.init(
       type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: 0,
+    },
+    triggeringMessageSId: {
+      type: DataTypes.STRING(32),
+      allowNull: true,
+      defaultValue: null,
     },
   },
   {

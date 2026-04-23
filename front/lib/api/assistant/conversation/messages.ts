@@ -91,6 +91,7 @@ export async function createUserMessage(
           rank: number;
           context: UserMessageContext;
           agenticMessageData?: AgenticMessageData;
+          wakeupTriggeringMessageSId?: string | null;
           visibility?: MessageVisibility;
         };
     transaction: Transaction;
@@ -104,6 +105,7 @@ export async function createUserMessage(
 
   let context: UserMessageContext | null = null;
   let agenticMessageData: AgenticMessageData | undefined = undefined;
+  let wakeupTriggeringMessageSId: string | null = null;
   let visibility: MessageVisibility = "visible";
 
   switch (metadata.type) {
@@ -116,6 +118,8 @@ export async function createUserMessage(
 
       context = metadata.message.context;
       agenticMessageData = metadata.message.agenticMessageData;
+      wakeupTriggeringMessageSId =
+        metadata.message.wakeupTriggeringMessageSId ?? null;
       break;
     case "delete":
       // See softDeleteUserMessageAndReplies for why a v+1 placeholder is used instead of an UPDATE.
@@ -126,6 +130,8 @@ export async function createUserMessage(
 
       context = metadata.message.context;
       agenticMessageData = metadata.message.agenticMessageData;
+      wakeupTriggeringMessageSId =
+        metadata.message.wakeupTriggeringMessageSId ?? null;
       visibility = "deleted";
       break;
     case "create":
@@ -142,6 +148,7 @@ export async function createUserMessage(
 
       context = metadata.context;
       agenticMessageData = metadata.agenticMessageData;
+      wakeupTriggeringMessageSId = metadata.wakeupTriggeringMessageSId ?? null;
       if (metadata.visibility) {
         visibility = metadata.visibility;
       }
@@ -194,6 +201,7 @@ export async function createUserMessage(
       userContextAuthMethod: context.authMethod ?? null,
       agenticMessageType,
       agenticOriginMessageId,
+      wakeupTriggeringMessageSId,
       userId: user?.id,
       workspaceId: workspace.id,
     },

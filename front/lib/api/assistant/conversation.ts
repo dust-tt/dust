@@ -570,6 +570,7 @@ export async function postUserMessage(
     mentions,
     context,
     agenticMessageData,
+    wakeupTriggeringMessageSId,
     skipToolsValidation,
     skipDustAutoMention,
     doNotAssociateUser,
@@ -579,6 +580,7 @@ export async function postUserMessage(
     mentions: MentionType[];
     context: UserMessageContext;
     agenticMessageData?: AgenticMessageData;
+    wakeupTriggeringMessageSId?: string | null;
     skipToolsValidation: boolean;
     doNotAssociateUser?: boolean;
     skipDustAutoMention?: boolean;
@@ -937,6 +939,7 @@ export async function postUserMessage(
         rank: nextMessageRank++,
         context: enrichedContext,
         agenticMessageData,
+        wakeupTriggeringMessageSId: wakeupTriggeringMessageSId ?? null,
         visibility,
       },
       transaction: t,
