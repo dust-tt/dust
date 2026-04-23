@@ -52,6 +52,7 @@ export function buildPromptKeyDecisions(
     "- Write each description as an objective factual statement. Name people by their actual " +
     "name when relevant. Do not use 'You' or 'Your' — these items are shown to all project " +
     "members, not just one person.\n" +
+    "- Make descriptions self-sufficient: include the decision AND its context so it is understandable without opening the source — not 'Use monorepo' but 'Adopt monorepo structure for the SDK, replacing separate per-package repositories'.\n" +
     "- Include relevant_user_ids (from the project members list) for people involved in making this decision.\n\n";
   if (previousKeyDecisions.length > 0) {
     prompt +=
