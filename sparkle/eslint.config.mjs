@@ -24,6 +24,7 @@ export default [
       "**/*.stories.tsx",
       ".storybook/**",
       "scripts/**",
+      "sparklytics/**",
     ],
   },
 

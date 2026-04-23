@@ -1,6 +1,6 @@
 # Sparkle Analytics
 
-Internal analytics platform for tracking [`@dust-tt/sparkle`](../sparkle) design system usage.
+Internal analytics platform for tracking [`@dust-tt/sparkle`](..) design system usage.
 
 ## Overview
 
@@ -16,24 +16,24 @@ Internal analytics platform for tracking [`@dust-tt/sparkle`](../sparkle) design
 ### 1. Build the scanner
 
 ```bash
-cd sparklytics/scanner
+cd sparkle/sparklytics/scanner
 npm install
 npm run build
 ```
 
 ### 2. Run a scan
 
-From the `sparklytics/scanner/` directory:
+From the `sparkle/sparklytics/scanner/` directory:
 
 ```bash
 # Scan the front/ app and output report to dashboard/reports/
 node dist/index.js scan \
-  --target-dir ../../front \
+  --target-dir ../../../front \
   --output ../dashboard/reports \
   --verbose
 ```
 
-Or use the `sparkle.config.json` in `sparklytics/` (set `targetDir` first):
+Or use the `sparkle.config.json` in `sparkle/sparklytics/` (set `targetDir` first):
 
 ```bash
 node dist/index.js scan
@@ -44,7 +44,7 @@ The scanner outputs `sparkle-report-{timestamp}.json` to the configured output d
 ### 3. Start the dashboard
 
 ```bash
-cd sparklytics/dashboard
+cd sparkle/sparklytics/dashboard
 npm install
 npm run dev
 ```
@@ -127,4 +127,4 @@ Reports are immutable JSON files named `sparkle-report-{ISO_TIMESTAMP}.json`. Dr
 
 - **Scanner** uses `@typescript-eslint/parser` for AST-based TSX/TS analysis and `postcss` for CSS/SCSS.
 - **Dashboard** uses Next.js 14 App Router with Server Components reading reports directly from disk — no database required.
-- Both packages are isolated from the root monorepo (not in npm workspaces, not covered by root Biome config).
+- Both packages have their own `package.json` and are not part of the root npm workspaces; run `npm install` inside each before building.
