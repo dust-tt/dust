@@ -4,12 +4,15 @@ import type {
   ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import { truncate } from "@app/types/shared/utils/string_utils";
 import {
   AnimatedText,
   ContentMessage,
   ExclamationCircleIcon,
   Spinner,
 } from "@dust-tt/sparkle";
+
+const MAX_SOURCE_CONVERSATION_TITLE_LENGTH = 50;
 
 interface CompactionMessageProps {
   message: CompactionMessageType;
@@ -32,10 +35,10 @@ function getCompactionSuccessLabel(
     parentConversation?.parentConversationId === message.sourceConversationId;
 
   if (isParentConversation && parentConversation.parentConversationTitle) {
-    return `Summary context gathered from conversation '${parentConversation.parentConversationTitle}'`;
+    return `Summarized '${truncate(parentConversation.parentConversationTitle, MAX_SOURCE_CONVERSATION_TITLE_LENGTH)}' here`;
   }
 
-  return "Summary context gathered from another conversation";
+  return "Summarized another conversation here";
 }
 
 export function CompactionMessage({
