@@ -304,7 +304,8 @@ export function SkillBuilderInstructionsEditor({
           class: cn(
             editorVariants({
               error: displayError,
-              disabled: isDiffMode || hasSuggestions,
+              disabled: isDiffMode,
+              readOnly: hasSuggestions,
             }),
             INSTRUCTIONS_EDITOR_SIZE
           ),
