@@ -90,7 +90,7 @@ async function handler(
     return apiError(req, res, {
       status_code: 404,
       api_error: {
-        type: "wake_up_not_found",
+        type: "wakeup_not_found",
         message: "Wake-up not found in this conversation.",
       },
     });

@@ -160,7 +160,7 @@ const API_ERROR_TYPES = [
   // Suggestions
   "agent_suggestion_not_found",
   // Wake-ups
-  "wake_up_not_found",
+  "wakeup_not_found",
 ] as const;
 
 export type RegionRedirectError = {

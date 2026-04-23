@@ -117,7 +117,7 @@ selecting an existing agent message.
   admin). Returns `{ wakeUp: WakeUpType }` with the updated status. 403 on permission
   denied, 404 when the wake-up does not belong to the conversation.
 
-Added `wake_up_not_found` to `APIErrorType`, `PrivateWakeUp` schema to
+Added `wakeup_not_found` to `APIErrorType`, `PrivateWakeUp` schema to
 `swagger_private_schemas.ts`, and the `@swaggerschema` annotation on `WakeUpType`.
 
 ### PR 9 — Conversation UI
