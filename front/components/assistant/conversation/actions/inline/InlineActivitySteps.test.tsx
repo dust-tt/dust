@@ -27,6 +27,13 @@ vi.mock(
   })
 );
 
+vi.mock("@virtuoso.dev/message-list", () => ({
+  useVirtuosoMethods: () => ({
+    data: { findIndex: () => -1 },
+    scrollToItem: vi.fn(),
+  }),
+}));
+
 const mockOwner: WorkspaceType = {
   id: 1,
   sId: "w_test",

@@ -5,6 +5,7 @@ import { useConversationSidePanelContext } from "@app/components/assistant/conve
 import type {
   AgentStateClassification,
   PendingToolCall,
+  VirtuosoMessage,
 } from "@app/components/assistant/conversation/types";
 import { InternalActionIcons } from "@app/components/resources/resources_icons";
 import { getInternalMCPServerIconByName } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -30,6 +31,7 @@ import {
   ToolsIcon,
   XCircleIcon,
 } from "@dust-tt/sparkle";
+import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
 import { useState } from "react";
 
 interface InlineActivityStepsProps {
@@ -97,6 +99,7 @@ export function InlineActivitySteps({
   const chainOfThought = agentMessage.chainOfThought ?? "";
 
   const { openPanel } = useConversationSidePanelContext();
+  const virtuosoMethods = useVirtuosoMethods<VirtuosoMessage>();
 
   const isDone =
     lastAgentStateClassification === "done" ||
@@ -115,6 +118,17 @@ export function InlineActivitySteps({
       messageId: agentMessage.sId,
       actionId,
     });
+  };
+
+  const scrollToMessage = (targetSId: string) => {
+    const index = virtuosoMethods.data.findIndex((m) => m.sId === targetSId);
+    if (index >= 0) {
+      virtuosoMethods.scrollToItem({
+        index,
+        align: "start",
+        behavior: "smooth",
+      });
+    }
   };
 
   const isThinking = lastAgentStateClassification === "thinking";
@@ -301,7 +315,11 @@ export function InlineActivitySteps({
                 }
                 case "wakeup": {
                   return (
-                    <div key={step.id}>
+                    <div
+                      key={step.id}
+                      className="cursor-pointer"
+                      onClick={() => scrollToMessage(step.targetMessageSId)}
+                    >
                       <TimelineRow
                         icon={InternalActionIcons.ActionTimeIcon}
                         isLast={isLast}
