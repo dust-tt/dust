@@ -8,6 +8,7 @@ import {
 import type { ZipDetectedSkill } from "@app/lib/api/skills/detection/zip/types";
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
 import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
+import { convertMarkdownToBlockHtml } from "@app/lib/reinforcement/skill_instructions_html";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -190,6 +191,7 @@ export async function importSkillsFromFiles(
           agentFacingDescription: skill.description,
           userFacingDescription: skill.description,
           instructions: skill.instructions,
+          instructionsHtml: convertMarkdownToBlockHtml(skill.instructions),
           icon: existing.icon,
           mcpServerViews: existing.mcpServerViews,
           attachedKnowledge,
@@ -235,6 +237,7 @@ export async function importSkillsFromFiles(
             agentFacingDescription: skill.description,
             userFacingDescription: skill.description,
             instructions: skill.instructions,
+            instructionsHtml: convertMarkdownToBlockHtml(skill.instructions),
             editedBy: user?.id ?? null,
             requestedSpaceIds: [],
             extendedSkillId: null,
