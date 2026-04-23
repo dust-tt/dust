@@ -600,7 +600,6 @@ describe("SkillSuggestionResource", () => {
       expect(json.state).toBe("pending");
       expect(json.source).toBe("reinforcement");
       expect(json.skillConfigurationId).toBe(skill.sId);
-      expect(json.sourceConversationId).toBeNull();
       expect(json.sourceConversationsCount).toBe(0);
       expect(typeof json.createdAt).toBe("number");
       expect(typeof json.updatedAt).toBe("number");

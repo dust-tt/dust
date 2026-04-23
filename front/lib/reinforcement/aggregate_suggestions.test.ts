@@ -43,7 +43,6 @@ function makeInstructionSuggestion(
     title: null,
     state: "pending",
     source: "synthetic",
-    sourceConversationId: null,
     sourceConversationsCount: 0,
     kind: "edit",
     suggestion: {
@@ -71,7 +70,6 @@ function makeToolSuggestion(
     title: null,
     state: "pending",
     source: "synthetic",
-    sourceConversationId: null,
     sourceConversationsCount: 0,
     kind: "edit",
     suggestion: {

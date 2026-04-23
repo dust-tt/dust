@@ -466,7 +466,9 @@ async function createSkillSuggestionsFromToolCall({
         };
       }
 
-      // Resolve sourceSuggestionIds to sourceConversationIds for reinforcement suggestions.
+      // Build sourceConversationIds:
+      // - For synthetic suggestions: use the current conversation's model ID.
+      // - For reinforcement suggestions: resolve sourceSuggestionIds to conversation model IDs.
       let sourceConversationIds: number[] | null = null;
       if (
         source === "reinforcement" &&
@@ -477,13 +479,12 @@ async function createSkillSuggestionsFromToolCall({
           auth,
           parsed.data.sourceSuggestionIds
         );
-        sourceConversationIds = [
-          ...new Set(
-            sourceSuggestions
-              .map((s) => s.sourceConversationId)
-              .filter((id): id is number => id !== null)
-          ),
-        ];
+        const ids = sourceSuggestions.flatMap(
+          (s) => s.sourceConversationIds ?? []
+        );
+        sourceConversationIds = ids.length > 0 ? [...new Set(ids)] : null;
+      } else if (conversation) {
+        sourceConversationIds = [conversation.id];
       }
 
       const newSuggestion =
@@ -497,7 +498,6 @@ async function createSkillSuggestionsFromToolCall({
           title: parsed.data.title ?? null,
           state: "pending",
           source,
-          sourceConversationId: conversation?.id ?? null,
           sourceConversationIds,
           groupId: null,
         });

@@ -151,26 +151,6 @@ export function makeColumnsForSkillSuggestions(
       },
     },
     {
-      accessorKey: "sourceConversationId",
-      header: ({ column }) => (
-        <PokeColumnSortableHeader column={column} label="Conversation" />
-      ),
-      cell: ({ row }) => {
-        const conversationId = row.original.sourceConversationId;
-        if (!conversationId) {
-          return "-";
-        }
-        return (
-          <a
-            href={`/${owner.sId}/conversation/${conversationId}`}
-            className="text-action-500 hover:underline"
-          >
-            {conversationId}
-          </a>
-        );
-      },
-    },
-    {
       accessorKey: "sourceConversationsCount",
       header: ({ column }) => (
         <PokeColumnSortableHeader
