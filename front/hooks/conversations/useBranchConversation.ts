@@ -2,12 +2,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import type { LightWorkspaceType } from "@app/types/user";
-import { useCallback, useEffect, useState } from "react";
-
-const CONVERSATION_BRANCHING_CURSOR_CLASSES = [
-  "!cursor-progress",
-  "[&_*]:!cursor-progress",
-];
+import { useCallback, useState } from "react";
 
 export function useBranchConversation({
   owner,
@@ -21,18 +16,6 @@ export function useBranchConversation({
   const sendNotification = useSendNotification();
 
   const [isBranching, setIsBranching] = useState(false);
-
-  useEffect(() => {
-    if (!isBranching) {
-      return;
-    }
-
-    document.body.classList.add(...CONVERSATION_BRANCHING_CURSOR_CLASSES);
-
-    return () => {
-      document.body.classList.remove(...CONVERSATION_BRANCHING_CURSOR_CLASSES);
-    };
-  }, [isBranching]);
 
   const branchConversation = useCallback(
     async (sourceMessageId?: string): Promise<boolean> => {

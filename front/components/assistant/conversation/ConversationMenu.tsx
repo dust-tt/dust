@@ -140,7 +140,7 @@ interface ConversationMenuProps {
   conversation?: ConversationListItemType;
   onConversationBranched?: () => Promise<void> | void;
   owner: WorkspaceType;
-  trigger: ReactElement;
+  trigger: ({ isBranching }: { isBranching: boolean }) => ReactElement;
   isConversationDisplayed: boolean;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
@@ -281,6 +281,7 @@ export function ConversationMenu({
     conversationId: activeConversationId,
     onConversationBranched: handleConversationBranched,
   });
+  const menuTrigger = trigger({ isBranching });
 
   const conversationLink = getConversationRoute(
     owner.sId,
@@ -378,7 +379,7 @@ export function ConversationMenu({
       <DropdownMenu modal={false} open={isOpen} onOpenChange={onOpenChange}>
         {triggerPosition ? (
           <>
-            {trigger}
+            {menuTrigger}
             <DropdownMenuTrigger asChild>
               <div
                 style={{
@@ -393,7 +394,7 @@ export function ConversationMenu({
             </DropdownMenuTrigger>
           </>
         ) : (
-          <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
+          <DropdownMenuTrigger asChild>{menuTrigger}</DropdownMenuTrigger>
         )}
         <DropdownMenuContent onFocusOutside={(e) => e.preventDefault()}>
           <DropdownMenuItem

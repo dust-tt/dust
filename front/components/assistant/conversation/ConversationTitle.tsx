@@ -160,19 +160,21 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
             conversation={conversation}
             onConversationBranched={onConversationBranched}
             owner={owner}
-            trigger={
+            trigger={({ isBranching }) => (
               <Button
                 size="sm"
                 variant="ghost"
                 icon={MoreIcon}
                 aria-label="Conversation menu"
+                isLoading={isBranching}
                 disabled={
                   activeConversationId === null ||
                   conversation === null ||
-                  user === null
+                  user === null ||
+                  isBranching
                 }
               />
-            }
+            )}
             isConversationDisplayed={true}
             isOpen={isMenuOpen}
             onOpenChange={handleMenuOpenChange}

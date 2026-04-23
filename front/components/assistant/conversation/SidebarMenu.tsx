@@ -1285,7 +1285,7 @@ const ConversationListItem = memo(
             conversation={conversation}
             onConversationBranched={onConversationBranched}
             owner={owner}
-            trigger={<NavigationListItemAction />}
+            trigger={() => <NavigationListItemAction />}
             isConversationDisplayed={activeConversationId === conversation.sId}
             isOpen={isMenuOpen}
             onOpenChange={handleMenuOpenChange}
