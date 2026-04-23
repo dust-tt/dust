@@ -2477,15 +2477,24 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   // Return the latest run from an agent message. We accept all statuses as they all have valid
   // runIds that represent the actual latest run.
   async getLatestAgentMessageRun(
-    auth: Authenticator
+    auth: Authenticator,
+    {
+      maxRank,
+      transaction,
+    }: {
+      maxRank?: number;
+      transaction?: Transaction;
+    } = {}
   ): Promise<{ rank: number; run: RunResource } | null> {
     const owner = auth.getNonNullableWorkspace();
+    const where: WhereOptions<MessageModel> = {
+      conversationId: this.id,
+      workspaceId: owner.id,
+      ...(maxRank !== undefined ? { rank: { [Op.lte]: maxRank } } : {}),
+    };
 
     const message = await MessageModel.findOne({
-      where: {
-        conversationId: this.id,
-        workspaceId: owner.id,
-      },
+      where,
       include: [
         {
           model: AgentMessageModel,
@@ -2494,6 +2503,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         },
       ],
       order: [["rank", "DESC"]],
+      transaction,
     });
 
     if (!message?.agentMessage?.runIds?.length) {

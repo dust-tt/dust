@@ -15,9 +15,10 @@ import {
   isFileTypeUpsertableForUseCase,
   processAndUpsertToDataSource,
 } from "@app/lib/api/files/upsert";
-import { isProviderWhitelisted } from "@app/lib/assistant";
+import { getSmallWhitelistedModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
+import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import { ConversationForkResource } from "@app/lib/resources/conversation_fork_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -36,12 +37,7 @@ import type {
   ConversationType,
   ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
-import { CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
-import { GEMINI_3_FLASH_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
-import { MISTRAL_SMALL_MODEL_CONFIG } from "@app/types/assistant/models/mistral";
-import { GPT_5_MINI_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import type { SupportedModel } from "@app/types/assistant/models/types";
-import { GROK_4_1_FAST_NON_REASONING_MODEL_CONFIG } from "@app/types/assistant/models/xai";
 import { isFileContentFragment } from "@app/types/content_fragment";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -77,22 +73,49 @@ function filterConversationContentUpToRank(
   };
 }
 
-function getForkCompactionModel(auth: Authenticator): SupportedModel | null {
-  const modelConfiguration = [
-    GPT_5_MINI_MODEL_CONFIG,
-    CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
-    GEMINI_3_FLASH_MODEL_CONFIG,
-    MISTRAL_SMALL_MODEL_CONFIG,
-    GROK_4_1_FAST_NON_REASONING_MODEL_CONFIG,
-  ].find((model) => isProviderWhitelisted(auth, model.providerId));
+async function getForkCompactionModel(
+  auth: Authenticator,
+  {
+    conversation,
+    sourceMessageRank,
+    transaction,
+  }: {
+    conversation: ConversationResource;
+    sourceMessageRank: number;
+    transaction?: Transaction;
+  }
+): Promise<SupportedModel | null> {
+  const sourceMessageRun = await conversation.getLatestAgentMessageRun(auth, {
+    maxRank: sourceMessageRank,
+    transaction,
+  });
 
-  if (!modelConfiguration) {
+  if (sourceMessageRun && sourceMessageRun.rank === sourceMessageRank) {
+    const runUsages = await sourceMessageRun.run.listRunUsages(auth);
+
+    if (runUsages.length > 0) {
+      const sourceUsage = runUsages.reduce((max, usage) =>
+        usage.promptTokens > max.promptTokens ? usage : max
+      );
+      const modelConfiguration = getModelConfigByModelId(sourceUsage.modelId);
+
+      if (modelConfiguration) {
+        return {
+          providerId: modelConfiguration.providerId,
+          modelId: modelConfiguration.modelId,
+        };
+      }
+    }
+  }
+
+  const fallbackModel = getSmallWhitelistedModel(auth);
+  if (!fallbackModel) {
     return null;
   }
 
   return {
-    providerId: modelConfiguration.providerId,
-    modelId: modelConfiguration.modelId,
+    providerId: fallbackModel.providerId,
+    modelId: fallbackModel.modelId,
   };
 }
 
@@ -454,16 +477,6 @@ export async function createConversationFork(
     );
   }
 
-  const forkCompactionModel = getForkCompactionModel(auth);
-  if (!forkCompactionModel) {
-    return new Err(
-      new DustError(
-        "internal_error",
-        "No whitelisted model available for fork compaction."
-      )
-    );
-  }
-
   const branchedAt = new Date();
 
   const childConversationId = await withTransaction(async (transaction) => {
@@ -479,6 +492,20 @@ export async function createConversationFork(
     if (sourceMessage.isErr()) {
       return new Err(
         new DustError("invalid_request_error", sourceMessage.error.message)
+      );
+    }
+
+    const forkCompactionModel = await getForkCompactionModel(auth, {
+      conversation: parentConversation,
+      sourceMessageRank: sourceMessage.value.rank,
+      transaction,
+    });
+    if (!forkCompactionModel) {
+      return new Err(
+        new DustError(
+          "internal_error",
+          "No whitelisted model available for fork compaction."
+        )
       );
     }
 
@@ -542,6 +569,7 @@ export async function createConversationFork(
 
     return new Ok({
       childConversationId: childConversation.sId,
+      forkCompactionModel,
       sourceMessageRank: sourceMessage.value.rank,
     });
   });
@@ -602,7 +630,7 @@ export async function createConversationFork(
 
   const compactionResult = await compactConversation(auth, {
     conversation: childConversation.value,
-    model: forkCompactionModel,
+    model: childConversationId.value.forkCompactionModel,
     sourceConversation,
   });
 
