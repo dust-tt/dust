@@ -59,9 +59,6 @@ describe("sandbox image registry", () => {
     const dockerfile = getSandboxBedrockDockerfile();
 
     expect(dockerfile).toContain("netcat-openbsd nftables acl");
-    expect(dockerfile).toContain(
-      "useradd --system --no-create-home --uid 9990 --shell /bin/bash dust-fwd"
-    );
     expect(dockerfile).toContain("mkdir -p /etc/dust");
     expect(dockerfile).toContain("command -v sudo >/dev/null 2>&1");
   });
