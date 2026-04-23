@@ -1,4 +1,3 @@
-use crate::policy::TemporaryAllowlist;
 use anyhow::{anyhow, Result};
 use clap::Parser;
 use std::net::SocketAddr;
@@ -14,7 +13,6 @@ pub struct Config {
     pub tls_cert_path: PathBuf,
     pub tls_key_path: PathBuf,
     pub jwt_secret: String,
-    pub temporary_allowlist: TemporaryAllowlist,
     pub policy_bucket: String,
     pub policy_base_url: String,
     pub policy_cache_ttl: Duration,
@@ -38,9 +36,6 @@ struct RawConfig {
 
     #[arg(long, env = "EGRESS_PROXY_JWT_SECRET")]
     jwt_secret: String,
-
-    #[arg(long, env = "EGRESS_PROXY_ALLOWED_DOMAINS")]
-    allowed_domains: String,
 
     #[arg(long, env = "EGRESS_PROXY_POLICY_BUCKET")]
     policy_bucket: String,
@@ -76,8 +71,6 @@ impl TryFrom<RawConfig> for Config {
             return Err(anyhow!("EGRESS_PROXY_JWT_SECRET must not be empty"));
         }
 
-        let temporary_allowlist = TemporaryAllowlist::parse(&raw.allowed_domains)?;
-
         if raw.policy_bucket.trim().is_empty() {
             return Err(anyhow!("EGRESS_PROXY_POLICY_BUCKET must not be empty"));
         }
@@ -108,7 +101,6 @@ impl TryFrom<RawConfig> for Config {
             tls_cert_path: raw.tls_cert,
             tls_key_path: raw.tls_key,
             jwt_secret: raw.jwt_secret,
-            temporary_allowlist,
             policy_bucket: raw.policy_bucket,
             policy_base_url,
             policy_cache_ttl: Duration::from_secs(raw.policy_cache_ttl_secs),
@@ -173,7 +165,6 @@ mod tests {
             tls_cert: PathBuf::from("tls.crt"),
             tls_key: PathBuf::from("tls.key"),
             jwt_secret: "secret".to_string(),
-            allowed_domains: "example.com".to_string(),
             policy_bucket: "test-bucket".to_string(),
             policy_cache_ttl_secs: 60,
             policy_base_url: DEFAULT_POLICY_BASE_URL.to_string(),

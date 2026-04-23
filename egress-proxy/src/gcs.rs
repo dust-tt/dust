@@ -74,7 +74,6 @@ impl GcsPolicyProvider {
             .await
     }
 
-    #[allow(dead_code)]
     pub async fn evaluate(&self, w_id: Option<&str>, sb_id: &str, domain: &str) -> bool {
         let workspace_allows = match w_id {
             Some(workspace_id) => match self.get_workspace_policy(workspace_id).await {

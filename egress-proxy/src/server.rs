@@ -29,17 +29,11 @@ pub async fn run(config: Config) -> Result<()> {
         config.policy_base_url.clone(),
     )
     .await?;
-    let state = Arc::new(ConnectionState::new(&config));
+    let state = Arc::new(ConnectionState::new(&config, policy_provider));
 
-    // TODO(sandbox-egress): Confirm final certificate provisioning path once the Kubernetes
-    // deployment and DNS name are introduced.
     let (shutdown_tx, shutdown_rx) = watch::channel(false);
 
-    let mut health_handle = tokio::spawn(health::serve(
-        health_listener,
-        policy_provider,
-        shutdown_rx.clone(),
-    ));
+    let mut health_handle = tokio::spawn(health::serve(health_listener, shutdown_rx.clone()));
     let mut proxy_handle = tokio::spawn(run_proxy_listener(
         listener,
         tls_acceptor,
