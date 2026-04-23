@@ -7,10 +7,6 @@ import {
   MessageModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
-import {
-  getReinforcementMetadata,
-  REINFORCEMENT_METADATA_KEYS,
-} from "@app/lib/reinforced_agent/types";
 import { getReinforcedSkillsMetadata } from "@app/lib/reinforcement/types";
 import { ConversationBranchResource } from "@app/lib/resources/conversation_branch_resource";
 import { ConversationForkResource } from "@app/lib/resources/conversation_fork_resource";
@@ -517,107 +513,6 @@ describe("destroyConversation", () => {
       agentMessageDestroyCounts.reduce((sum, count) => sum + count, 0)
     ).toBe(30);
     expect(Math.max(...agentMessageDestroyCounts)).toBeLessThan(30);
-  });
-});
-
-describe("listReinforcementConversations", () => {
-  let auth: Authenticator;
-  let anotherAuth: Authenticator;
-
-  beforeEach(async () => {
-    const workspace = await WorkspaceFactory.basic();
-    const user = await UserFactory.basic();
-    await MembershipFactory.associate(workspace, user, { role: "admin" });
-    auth = await Authenticator.fromUserIdAndWorkspaceId(
-      user.sId,
-      workspace.sId
-    );
-
-    const anotherWorkspace = await WorkspaceFactory.basic();
-    const anotherUser = await UserFactory.basic();
-    await MembershipFactory.associate(anotherWorkspace, anotherUser, {
-      role: "admin",
-    });
-    anotherAuth = await Authenticator.fromUserIdAndWorkspaceId(
-      anotherUser.sId,
-      anotherWorkspace.sId
-    );
-  });
-
-  it("should return only conversations with reinforcedAgent metadata for the given agent", async () => {
-    // Create reinforcement conversation for agent-1.
-    const reinforcedConvo1 = await ConversationResource.makeNew(
-      auth,
-      {
-        sId: generateRandomModelSId(),
-        title: "Reinforcement for agent-1",
-        visibility: "test",
-        requestedSpaceIds: [],
-        metadata: getReinforcementMetadata(
-          "reinforced_agent_analyze_conversation",
-          "agent-1"
-        ),
-      },
-      null
-    );
-
-    // Create reinforcement conversation for agent-2 (should be excluded).
-    await ConversationResource.makeNew(
-      auth,
-      {
-        sId: generateRandomModelSId(),
-        title: "Reinforcement for agent-2",
-        visibility: "test",
-        requestedSpaceIds: [],
-        metadata: getReinforcementMetadata(
-          "reinforced_agent_aggregate_suggestions",
-          "agent-2"
-        ),
-      },
-      null
-    );
-
-    // Create a regular (non-reinforcement) conversation (should be excluded).
-    await ConversationResource.makeNew(
-      auth,
-      {
-        sId: generateRandomModelSId(),
-        title: "Regular conversation",
-        visibility: "unlisted",
-        requestedSpaceIds: [],
-        metadata: {},
-      },
-      null
-    );
-
-    // Create reinforcement conversation in another workspace (should be excluded).
-    await ConversationResource.makeNew(
-      anotherAuth,
-      {
-        sId: generateRandomModelSId(),
-        title: "Other workspace reinforcement",
-        visibility: "test",
-        requestedSpaceIds: [],
-        metadata: getReinforcementMetadata(
-          "reinforced_agent_analyze_conversation",
-          "agent-1"
-        ),
-      },
-      null
-    );
-
-    const results = await ConversationResource.listReinforcementConversations(
-      auth,
-      "agent-1"
-    );
-
-    expect(results).toHaveLength(1);
-    expect(results[0].sId).toBe(reinforcedConvo1.sId);
-    expect(results[0].title).toBe("Reinforcement for agent-1");
-    expect(results[0].metadata).toMatchObject({
-      [REINFORCEMENT_METADATA_KEYS.reinforcedAgent]: true,
-      [REINFORCEMENT_METADATA_KEYS.reinforcedAgentConfigurationId]: "agent-1",
-    });
   });
 });
 

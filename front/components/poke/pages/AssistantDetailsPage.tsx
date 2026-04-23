@@ -1,6 +1,5 @@
 import { AgentOverviewTable } from "@app/components/poke/assistants/AgentOverviewTable";
 import { ConversationAgentDataTable } from "@app/components/poke/conversation/agent_table";
-import { ReinforcementConversationDataTable } from "@app/components/poke/conversation/reinforcement_table";
 import { DatasourceRetrievalTreemapPluginChart } from "@app/components/poke/plugins/components/DatasourceRetrievalTreemapPluginChart";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { SuggestionDataTable } from "@app/components/poke/suggestions/table";
@@ -140,13 +139,6 @@ export function AssistantDetailsPage() {
 
           <div className="mt-4">
             <ConversationAgentDataTable
-              owner={owner}
-              agentId={agentConfigurations[0].sId}
-            />
-          </div>
-
-          <div className="mt-4">
-            <ReinforcementConversationDataTable
               owner={owner}
               agentId={agentConfigurations[0].sId}
             />
