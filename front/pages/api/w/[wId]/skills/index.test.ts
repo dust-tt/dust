@@ -504,6 +504,7 @@ describe("POST /api/w/[wId]/skills", () => {
       tools: [],
       extendedSkillId: null,
       attachedKnowledge: [],
+      instructionsHtml: null,
     };
 
     await handler(req, res);
@@ -565,6 +566,7 @@ describe("POST /api/w/[wId]/skills", () => {
       ],
       extendedSkillId: null,
       attachedKnowledge: [],
+      instructionsHtml: null,
     };
 
     await handler(req, res);
@@ -637,6 +639,7 @@ describe("POST /api/w/[wId]/skills", () => {
       tools: [{ mcpServerViewId: serverView.sId }],
       extendedSkillId: null,
       attachedKnowledge: [],
+      instructionsHtml: null,
     };
 
     await handler(req, res);
@@ -683,6 +686,7 @@ describe("POST /api/w/[wId]/skills", () => {
       instructions: "Instructions",
       icon: "PuzzleIcon",
       tools: [],
+      instructionsHtml: null,
       attachedKnowledge: [
         {
           dataSourceViewId: dataSourceView.sId,
@@ -736,6 +740,7 @@ describe("POST /api/w/[wId]/skills", () => {
       instructions: `Read file: <knowledge id="${nodeId}" title="${title}" space="${regularSpace.sId}" dsv="${dataSourceView.sId}" hasChildren="false" />`,
       icon: "PuzzleIcon",
       tools: [],
+      instructionsHtml: null,
       attachedKnowledge: [
         {
           dataSourceViewId: dataSourceView.sId,
@@ -799,6 +804,7 @@ describe("POST /api/w/[wId]/skills - file attachments", () => {
       tools: [],
       extendedSkillId: null,
       attachedKnowledge: [],
+      instructionsHtml: null,
       fileAttachments: [{ fileId: file1.sId }, { fileId: file2.sId }],
     };
 
@@ -840,6 +846,7 @@ describe("POST /api/w/[wId]/skills - file attachments", () => {
       tools: [],
       extendedSkillId: null,
       attachedKnowledge: [],
+      instructionsHtml: null,
       fileAttachments: [{ fileId: file.sId }],
     };
 
@@ -862,6 +869,7 @@ describe("POST /api/w/[wId]/skills - file attachments", () => {
       tools: [],
       extendedSkillId: null,
       attachedKnowledge: [],
+      instructionsHtml: null,
     };
 
     await handler(req, res);
@@ -897,6 +905,7 @@ describe("POST /api/w/[wId]/skills - file attachments", () => {
       tools: [],
       extendedSkillId: null,
       attachedKnowledge: [],
+      instructionsHtml: null,
       fileAttachments: [{ fileId: file.sId }],
     };
 

@@ -169,6 +169,7 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
       icon: null,
       tools: [],
       attachedKnowledge: [],
+      instructionsHtml: null,
     };
 
     await handler(req, res);
@@ -201,6 +202,7 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
       icon: null,
       tools: [],
       attachedKnowledge: [],
+      instructionsHtml: null,
     };
 
     await handler(req, res);
@@ -227,6 +229,7 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
       icon: null,
       tools: [{ mcpServerViewId: "invalid_id" }],
       attachedKnowledge: [],
+      instructionsHtml: null,
     };
 
     await handler(req, res);
@@ -249,6 +252,7 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
       icon: null,
       tools: [{ mcpServerViewId: "msv_nonexistent123456" }],
       attachedKnowledge: [],
+      instructionsHtml: null,
     };
 
     await handler(req, res);
@@ -290,6 +294,7 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
       icon: null,
       tools: [],
       attachedKnowledge: [],
+      instructionsHtml: null,
     };
 
     await handler(req, res);
@@ -355,6 +360,7 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
         { mcpServerViewId: serverView2.sId },
       ],
       attachedKnowledge: [],
+      instructionsHtml: null,
     };
 
     await handler(req, res);
@@ -405,6 +411,7 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
       icon: null,
       tools: [{ mcpServerViewId: serverView.sId }],
       attachedKnowledge: [],
+      instructionsHtml: null,
     };
 
     await handler(req, res);
@@ -461,6 +468,7 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
       instructions: skill.instructions,
       icon: null,
       tools: [],
+      instructionsHtml: null,
       attachedKnowledge: [
         {
           dataSourceViewId: dataSourceView1.sId,
@@ -528,6 +536,7 @@ describe("PATCH /api/w/[wId]/skills/[sId] - Suggested skill activation", () => {
       icon: null,
       tools: [],
       attachedKnowledge: [],
+      instructionsHtml: null,
     };
 
     await handler(req, res);
@@ -585,6 +594,7 @@ describe("PATCH /api/w/[wId]/skills/[sId] - file attachments", () => {
       icon: null,
       tools: [],
       attachedKnowledge: [],
+      instructionsHtml: null,
       fileAttachments: [{ fileId: file.sId }],
     };
 
@@ -623,6 +633,7 @@ describe("PATCH /api/w/[wId]/skills/[sId] - file attachments", () => {
       icon: null,
       tools: [],
       attachedKnowledge: [],
+      instructionsHtml: null,
     };
 
     await handler(req, res);
@@ -645,6 +656,7 @@ describe("PATCH /api/w/[wId]/skills/[sId] - file attachments", () => {
       icon: null,
       tools: [],
       attachedKnowledge: [],
+      instructionsHtml: null,
     };
 
     await handler(req, res);
@@ -700,6 +712,7 @@ describe("PATCH /api/w/[wId]/skills/[sId] - file attachments", () => {
       icon: null,
       tools: [],
       attachedKnowledge: [],
+      instructionsHtml: null,
       fileAttachments: [],
     };
 
