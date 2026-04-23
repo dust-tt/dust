@@ -299,6 +299,22 @@ export function InlineActivitySteps({
                     </div>
                   );
                 }
+                case "wakeup": {
+                  return (
+                    <div key={step.id}>
+                      <TimelineRow
+                        icon={InternalActionIcons.ActionTimeIcon}
+                        isLast={isLast}
+                      >
+                        <span className="text-muted-foreground dark:text-muted-foreground-night flex items-center gap-1">
+                          Woke-Up to &ldquo;
+                          <span className="underline">{step.label}</span>
+                          &rdquo;
+                        </span>
+                      </TimelineRow>
+                    </div>
+                  );
+                }
                 default:
                   assertNever(step);
               }

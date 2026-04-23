@@ -265,6 +265,12 @@ export type InlineActivityStep =
       id: string;
       actionId: string;
       internalMCPServerName: InternalMCPServerNameType | null;
+    }
+  | {
+      type: "wakeup";
+      label: string;
+      id: string;
+      targetMessageSId: string;
     };
 
 export type ParsedContentItem =
