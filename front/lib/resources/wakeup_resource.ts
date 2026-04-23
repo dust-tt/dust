@@ -28,11 +28,14 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { Attributes, Transaction, WhereOptions } from "sequelize";
 
+// Maximum fire counts for each wake-up to prevent run-away situations. The limit is exposed to
+// agents to let them reschedule their wake-ups if they want to keep being triggered after reaching
+// the limit.
 const MAX_WAKE_UP_FIRES = 32;
 
 // Minimum allowed interval between two cron fires, in minutes. Matches the per-conversation
 // guardrail in the wake-up design doc.
-export const WAKE_UP_MIN_INTERVAL_MINUTES = 5;
+const WAKE_UP_MIN_INTERVAL_MINUTES = 5;
 
 // Standard 5-field cron regex. Does not support # (nth occurrence) or L (last) operators.
 const WAKE_UP_CRON_REGEXP =
