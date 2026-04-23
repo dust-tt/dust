@@ -3,6 +3,7 @@ mod config;
 mod connection;
 mod dns;
 mod domain;
+mod gcs;
 mod handshake;
 mod health;
 mod jwt;
@@ -10,7 +11,7 @@ mod policy;
 mod server;
 mod tls;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use config::Config;
 use tracing::{error, info};
 
@@ -23,6 +24,9 @@ async fn main() {
 }
 
 async fn run() -> Result<()> {
+    rustls::crypto::ring::default_provider()
+        .install_default()
+        .map_err(|_| anyhow!("failed to install rustls crypto provider"))?;
     init_tracing();
 
     let config = Config::from_env()?;

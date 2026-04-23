@@ -1,13 +1,21 @@
 use anyhow::{anyhow, Result};
+use axum::extract::State;
+use axum::http::{header, StatusCode, Uri};
+use axum::response::{IntoResponse, Response};
+use axum::routing::any;
+use axum::Router;
 use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
 use rustls::pki_types::{pem::PemObject, CertificateDer, ServerName};
 use rustls::RootCertStore;
 use serde::Serialize;
+use serde_json::{json, Value};
+use std::collections::HashMap;
 use std::fs::write;
 use std::net::{Ipv6Addr, SocketAddr, TcpListener as StdTcpListener};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::Arc;
+use std::sync::Once;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tempfile::TempDir;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -18,13 +26,40 @@ use tokio_rustls::TlsConnector;
 const SECRET: &str = "test-secret";
 const ALLOW_RESPONSE: u8 = 0x00;
 const DENY_RESPONSE: u8 = 0x01;
+const TEST_BUCKET: &str = "test-egress-policies";
+const TEST_WORKSPACE_ID: &str = "workspace-123";
+const TEST_SANDBOX_ID: &str = "sandbox-123";
+static INSTALL_RUSTLS_PROVIDER: Once = Once::new();
 
 struct ProxyProcess {
     child: Child,
     _temp_dir: TempDir,
+    _mock_gcs: Option<MockGcsServer>,
     ca_cert_path: PathBuf,
     proxy_addr: SocketAddr,
     health_addr: SocketAddr,
+}
+
+struct MockGcsServer {
+    addr: SocketAddr,
+    handle: tokio::task::JoinHandle<()>,
+}
+
+#[derive(Clone)]
+struct MockGcsState {
+    objects: Arc<HashMap<String, MockGcsResponse>>,
+}
+
+#[derive(Clone)]
+enum MockGcsResponse {
+    Policy(String),
+    Status(StatusCode),
+}
+
+#[derive(Default)]
+struct MockPolicies {
+    sandbox: Option<MockGcsResponse>,
+    workspace: Option<MockGcsResponse>,
 }
 
 #[derive(Debug, Serialize)]
@@ -40,6 +75,12 @@ impl Drop for ProxyProcess {
     fn drop(&mut self) {
         let _ = self.child.kill();
         let _ = self.child.wait();
+    }
+}
+
+impl Drop for MockGcsServer {
+    fn drop(&mut self) {
+        self.handle.abort();
     }
 }
 
@@ -69,6 +110,9 @@ async fn invalid_tls_assets_fail_startup() -> Result<()> {
         .env("EGRESS_PROXY_TLS_KEY", &tls_key_path)
         .env("EGRESS_PROXY_JWT_SECRET", SECRET)
         .env("EGRESS_PROXY_ALLOWED_DOMAINS", "example.com")
+        .env("EGRESS_PROXY_POLICY_BUCKET", TEST_BUCKET)
+        .env("EGRESS_PROXY_POLICY_BASE_URL", "http://127.0.0.1:1")
+        .env("GOOGLE_CLOUD_ACCESS_TOKEN", "test-access-token")
         .env("EGRESS_PROXY_ENV", "production")
         .stdout(Stdio::null())
         .stderr(Stdio::null())
@@ -91,6 +135,33 @@ async fn invalid_allowed_domain_fails_startup() -> Result<()> {
         .env("EGRESS_PROXY_TLS_KEY", &certs.server_key_path)
         .env("EGRESS_PROXY_JWT_SECRET", SECRET)
         .env("EGRESS_PROXY_ALLOWED_DOMAINS", "example..com")
+        .env("EGRESS_PROXY_POLICY_BUCKET", TEST_BUCKET)
+        .env("EGRESS_PROXY_POLICY_BASE_URL", "http://127.0.0.1:1")
+        .env("GOOGLE_CLOUD_ACCESS_TOKEN", "test-access-token")
+        .env("EGRESS_PROXY_ENV", "production")
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()?;
+
+    wait_for_startup_failure(&mut child).await
+}
+
+#[tokio::test]
+async fn missing_policy_bucket_fails_startup() -> Result<()> {
+    let temp_dir = TempDir::new()?;
+    let certs = generate_test_certs(temp_dir.path())?;
+    let proxy_addr = free_addr()?;
+    let health_addr = free_addr()?;
+
+    let mut child = Command::new(env!("CARGO_BIN_EXE_egress-proxy"))
+        .env("EGRESS_PROXY_LISTEN_ADDR", proxy_addr.to_string())
+        .env("EGRESS_PROXY_HEALTH_ADDR", health_addr.to_string())
+        .env("EGRESS_PROXY_TLS_CERT", &certs.server_cert_path)
+        .env("EGRESS_PROXY_TLS_KEY", &certs.server_key_path)
+        .env("EGRESS_PROXY_JWT_SECRET", SECRET)
+        .env("EGRESS_PROXY_ALLOWED_DOMAINS", "example.com")
+        .env("EGRESS_PROXY_POLICY_BASE_URL", "http://127.0.0.1:1")
+        .env("GOOGLE_CLOUD_ACCESS_TOKEN", "test-access-token")
         .env("EGRESS_PROXY_ENV", "production")
         .stdout(Stdio::null())
         .stderr(Stdio::null())
@@ -122,6 +193,98 @@ async fn allowed_domain_forwards_bytes() -> Result<()> {
 
     drop(stream);
     wait_for_upstream_completion(&mut upstream_handles, Duration::from_secs(2)).await?;
+    Ok(())
+}
+
+#[tokio::test]
+async fn debug_policy_returns_fetched_workspace_and_sandbox_policies() -> Result<()> {
+    let proxy = start_proxy_with_mock_gcs(
+        "example.com",
+        MockPolicies {
+            workspace: Some(policy_response(&["github.com", "*.github.com"])),
+            sandbox: Some(policy_response(&["sandbox.example.com"])),
+        },
+        false,
+        "production",
+    )
+    .await?;
+
+    let response = http_get(
+        proxy.health_addr,
+        &format!("/debug/policy?wId={TEST_WORKSPACE_ID}&sbId={TEST_SANDBOX_ID}"),
+    )
+    .await?;
+
+    assert!(response.starts_with("HTTP/1.1 200 OK"));
+    let body: Value = serde_json::from_str(http_response_body(&response)?)?;
+
+    assert_eq!(
+        body["workspace"]["policy"]["allowedDomains"],
+        json!(["github.com", "*.github.com"])
+    );
+    assert_eq!(body["workspace"]["error"], Value::Null);
+    assert_eq!(
+        body["sandbox"]["policy"]["allowedDomains"],
+        json!(["sandbox.example.com"])
+    );
+    assert_eq!(body["sandbox"]["error"], Value::Null);
+    Ok(())
+}
+
+#[tokio::test]
+async fn debug_policy_returns_null_for_missing_policies() -> Result<()> {
+    let proxy =
+        start_proxy_with_mock_gcs("example.com", MockPolicies::default(), false, "production")
+            .await?;
+
+    let response = http_get(
+        proxy.health_addr,
+        &format!("/debug/policy?wId={TEST_WORKSPACE_ID}&sbId={TEST_SANDBOX_ID}"),
+    )
+    .await?;
+
+    assert!(response.starts_with("HTTP/1.1 200 OK"));
+    let body: Value = serde_json::from_str(http_response_body(&response)?)?;
+
+    assert_eq!(body["workspace"]["policy"], Value::Null);
+    assert_eq!(body["workspace"]["error"], Value::Null);
+    assert_eq!(body["sandbox"]["policy"], Value::Null);
+    assert_eq!(body["sandbox"]["error"], Value::Null);
+    Ok(())
+}
+
+#[tokio::test]
+async fn debug_policy_returns_errors_for_failed_fetches() -> Result<()> {
+    let proxy = start_proxy_with_mock_gcs(
+        "example.com",
+        MockPolicies {
+            workspace: Some(MockGcsResponse::Status(StatusCode::INTERNAL_SERVER_ERROR)),
+            sandbox: Some(policy_response(&["sandbox.example.com"])),
+        },
+        false,
+        "production",
+    )
+    .await?;
+
+    let response = http_get(
+        proxy.health_addr,
+        &format!("/debug/policy?wId={TEST_WORKSPACE_ID}&sbId={TEST_SANDBOX_ID}"),
+    )
+    .await?;
+
+    assert!(response.starts_with("HTTP/1.1 200 OK"));
+    let body: Value = serde_json::from_str(http_response_body(&response)?)?;
+
+    assert_eq!(body["workspace"]["policy"], Value::Null);
+    assert!(body["workspace"]["error"]
+        .as_str()
+        .expect("workspace error should be present")
+        .contains("GCS policy fetch returned status 500 Internal Server Error"));
+    assert_eq!(
+        body["sandbox"]["policy"]["allowedDomains"],
+        json!(["sandbox.example.com"])
+    );
+    assert_eq!(body["sandbox"]["error"], Value::Null);
     Ok(())
 }
 
@@ -361,6 +524,9 @@ async fn unsafe_ssrf_bypass_fails_startup_outside_test_env() -> Result<()> {
         .env("EGRESS_PROXY_TLS_KEY", certs.server_key_path)
         .env("EGRESS_PROXY_JWT_SECRET", SECRET)
         .env("EGRESS_PROXY_ALLOWED_DOMAINS", "127.0.0.1")
+        .env("EGRESS_PROXY_POLICY_BUCKET", TEST_BUCKET)
+        .env("EGRESS_PROXY_POLICY_BASE_URL", "http://127.0.0.1:1")
+        .env("GOOGLE_CLOUD_ACCESS_TOKEN", "test-access-token")
         .env("EGRESS_PROXY_ENV", "production")
         .env("EGRESS_PROXY_UNSAFE_SKIP_SSRF_CHECK", "1")
         .stdout(Stdio::null())
@@ -385,6 +551,9 @@ async fn health_bind_failure_fails_startup() -> Result<()> {
         .env("EGRESS_PROXY_TLS_KEY", certs.server_key_path)
         .env("EGRESS_PROXY_JWT_SECRET", SECRET)
         .env("EGRESS_PROXY_ALLOWED_DOMAINS", "localhost")
+        .env("EGRESS_PROXY_POLICY_BUCKET", TEST_BUCKET)
+        .env("EGRESS_PROXY_POLICY_BASE_URL", "http://127.0.0.1:1")
+        .env("GOOGLE_CLOUD_ACCESS_TOKEN", "test-access-token")
         .env("EGRESS_PROXY_ENV", "production")
         .stdout(Stdio::null())
         .stderr(Stdio::null())
@@ -509,10 +678,26 @@ async fn start_proxy(
     unsafe_skip_ssrf_check: bool,
     environment: &str,
 ) -> Result<ProxyProcess> {
+    start_proxy_with_mock_gcs(
+        allowed_domains,
+        MockPolicies::default(),
+        unsafe_skip_ssrf_check,
+        environment,
+    )
+    .await
+}
+
+async fn start_proxy_with_mock_gcs(
+    allowed_domains: &str,
+    policies: MockPolicies,
+    unsafe_skip_ssrf_check: bool,
+    environment: &str,
+) -> Result<ProxyProcess> {
     let temp_dir = TempDir::new()?;
     let certs = generate_test_certs(temp_dir.path())?;
     let proxy_addr = free_addr()?;
     let health_addr = free_addr()?;
+    let mock_gcs = start_mock_gcs_server(policies).await?;
 
     let mut command = Command::new(env!("CARGO_BIN_EXE_egress-proxy"));
     command
@@ -522,9 +707,15 @@ async fn start_proxy(
         .env("EGRESS_PROXY_TLS_KEY", &certs.server_key_path)
         .env("EGRESS_PROXY_JWT_SECRET", SECRET)
         .env("EGRESS_PROXY_ALLOWED_DOMAINS", allowed_domains)
+        .env("EGRESS_PROXY_POLICY_BUCKET", TEST_BUCKET)
+        .env(
+            "EGRESS_PROXY_POLICY_BASE_URL",
+            format!("http://{}", mock_gcs.addr),
+        )
+        .env("GOOGLE_CLOUD_ACCESS_TOKEN", "test-access-token")
         .env("EGRESS_PROXY_ENV", environment)
         .stdout(Stdio::null())
-        .stderr(Stdio::null());
+        .stderr(Stdio::piped());
 
     if unsafe_skip_ssrf_check {
         command.env("EGRESS_PROXY_UNSAFE_SKIP_SSRF_CHECK", "1");
@@ -533,6 +724,7 @@ async fn start_proxy(
     let mut proxy = ProxyProcess {
         child: command.spawn()?,
         _temp_dir: temp_dir,
+        _mock_gcs: Some(mock_gcs),
         ca_cert_path: certs.ca_cert_path,
         proxy_addr,
         health_addr,
@@ -543,10 +735,66 @@ async fn start_proxy(
     Ok(proxy)
 }
 
+async fn start_mock_gcs_server(policies: MockPolicies) -> Result<MockGcsServer> {
+    let mut objects = HashMap::new();
+    if let Some(workspace) = policies.workspace {
+        objects.insert(format!("workspaces/{TEST_WORKSPACE_ID}.json"), workspace);
+    }
+    if let Some(sandbox) = policies.sandbox {
+        objects.insert(format!("sandboxes/{TEST_SANDBOX_ID}.json"), sandbox);
+    }
+
+    let listener = TcpListener::bind("127.0.0.1:0").await?;
+    let addr = listener.local_addr()?;
+    let state = MockGcsState {
+        objects: Arc::new(objects),
+    };
+    let app = Router::new()
+        .fallback(any(mock_gcs_handler))
+        .with_state(state);
+    let handle = tokio::spawn(async move {
+        let _ = axum::serve(listener, app).await;
+    });
+
+    Ok(MockGcsServer { addr, handle })
+}
+
+async fn mock_gcs_handler(State(state): State<MockGcsState>, uri: Uri) -> Response {
+    let Some(encoded_object) = uri.path().split("/o/").nth(1) else {
+        return StatusCode::NOT_FOUND.into_response();
+    };
+    let Ok(object_name) = urlencoding::decode(encoded_object) else {
+        return StatusCode::BAD_REQUEST.into_response();
+    };
+
+    match state.objects.get(object_name.as_ref()) {
+        Some(MockGcsResponse::Policy(body)) => (
+            StatusCode::OK,
+            [(header::CONTENT_TYPE, "application/json")],
+            body.clone(),
+        )
+            .into_response(),
+        Some(MockGcsResponse::Status(status)) => status.into_response(),
+        None => StatusCode::NOT_FOUND.into_response(),
+    }
+}
+
+fn policy_response(domains: &[&str]) -> MockGcsResponse {
+    MockGcsResponse::Policy(
+        json!({
+            "allowedDomains": domains,
+        })
+        .to_string(),
+    )
+}
+
 async fn wait_for_health(child: &mut Child, health_addr: SocketAddr) -> Result<()> {
     for _ in 0..100 {
         if let Some(status) = child.try_wait()? {
-            return Err(anyhow!("proxy exited before becoming healthy: {status}"));
+            let stderr = read_child_stderr(child)?;
+            return Err(anyhow!(
+                "proxy exited before becoming healthy: {status}; stderr: {stderr}"
+            ));
         }
 
         if let Ok(response) = http_get(health_addr, "/healthz").await {
@@ -559,6 +807,16 @@ async fn wait_for_health(child: &mut Child, health_addr: SocketAddr) -> Result<(
     }
 
     Err(anyhow!("proxy did not become healthy"))
+}
+
+fn read_child_stderr(child: &mut Child) -> Result<String> {
+    let Some(stderr) = child.stderr.as_mut() else {
+        return Ok("<stderr not captured>".to_string());
+    };
+
+    let mut output = String::new();
+    std::io::Read::read_to_string(stderr, &mut output)?;
+    Ok(output.trim().to_string())
 }
 
 async fn wait_for_startup_failure(child: &mut Child) -> Result<()> {
@@ -583,6 +841,13 @@ async fn http_get(addr: SocketAddr, path: &str) -> Result<String> {
     let mut response = Vec::new();
     stream.read_to_end(&mut response).await?;
     Ok(String::from_utf8(response)?)
+}
+
+fn http_response_body(response: &str) -> Result<&str> {
+    response
+        .split("\r\n\r\n")
+        .nth(1)
+        .ok_or_else(|| anyhow!("HTTP response missing body"))
 }
 
 async fn send_handshake(
@@ -611,6 +876,10 @@ async fn send_raw_frame(proxy: &ProxyProcess, frame: &[u8]) -> Result<Option<u8>
 async fn connect_forwarder(
     proxy: &ProxyProcess,
 ) -> Result<tokio_rustls::client::TlsStream<TcpStream>> {
+    INSTALL_RUSTLS_PROVIDER.call_once(|| {
+        let _ = rustls::crypto::ring::default_provider().install_default();
+    });
+
     let mut root_store = RootCertStore::empty();
     for cert in load_certs(&proxy.ca_cert_path)? {
         root_store.add(cert)?;
