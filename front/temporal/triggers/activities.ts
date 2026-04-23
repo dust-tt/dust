@@ -391,17 +391,6 @@ export async function runWakeUpActivity({
       "Failed cleaning up wake-up temporal state after fire."
     );
   }
-
-  // Re-index after markFired so the conversation document reflects the updated wake-up status.
-  // postUserMessage already triggers a re-index, but it fires before markFired completes.
-  try {
-    await ConversationResource.triggerEsIndexing(auth, c.sId, workspaceId);
-  } catch (e) {
-    logger.error(
-      { conversationId: c.sId, wakeUpId, workspaceId, error: normalizeError(e) },
-      "Failed to trigger conversation re-index after wake-up fired."
-    );
-  }
 }
 
 export async function expireWakeUpActivity({
@@ -427,24 +416,4 @@ export async function expireWakeUpActivity({
   const { auth, wakeUp } = wakeUpAndAuthRes.value;
 
   await wakeUp.markExpired(auth);
-
-  // Re-index best-effort so the conversation document reflects the expired wake-up status.
-  const [c] = await ConversationResource.fetchByModelIds(auth, [
-    wakeUp.conversationId,
-  ]);
-  if (c) {
-    try {
-      await ConversationResource.triggerEsIndexing(auth, c.sId, workspaceId);
-    } catch (e) {
-      logger.error(
-        {
-          conversationId: c.sId,
-          wakeUpId,
-          workspaceId,
-          error: normalizeError(e),
-        },
-        "Failed to trigger conversation re-index after wake-up expired."
-      );
-    }
-  }
 }

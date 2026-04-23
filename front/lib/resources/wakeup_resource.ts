@@ -1,6 +1,6 @@
 import { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
-import type { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { CronExpressionParser } from "cron-parser";
 import { WakeUpModel } from "@app/lib/resources/storage/models/wakeup";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -275,8 +275,9 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
     // nextFireAt are sorted last and excluded from the result.
     const withDate = active
       .map((w) => ({ wakeUp: w, nextAt: w.nextFireAt() }))
-      .filter((entry): entry is { wakeUp: WakeUpResource; nextAt: Date } =>
-        entry.nextAt !== null
+      .filter(
+        (entry): entry is { wakeUp: WakeUpResource; nextAt: Date } =>
+          entry.nextAt !== null
       )
       .sort((a, b) => a.nextAt.getTime() - b.nextAt.getTime());
     return withDate[0]?.wakeUp ?? null;
@@ -437,6 +438,8 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
       },
       transaction
     );
+
+    void this.triggerConversationESIndexing(auth);
   }
 
   async markExpired(
@@ -453,6 +456,8 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
       },
       transaction
     );
+
+    void this.triggerConversationESIndexing(auth);
   }
 
   maxFires(): number {
@@ -513,6 +518,8 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
       },
       transaction
     );
+
+    void this.triggerConversationESIndexing(auth);
   }
 
   async cleanupTemporalIfCronExpired(
@@ -582,6 +589,22 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
       fireCount: this.fireCount,
       maxFires: this.maxFires(),
     };
+  }
+
+  private async triggerConversationESIndexing(
+    auth: Authenticator
+  ): Promise<void> {
+    const conversation =
+      (
+        await ConversationResource.fetchByModelIds(auth, [this.conversationId])
+      )[0] ?? null;
+    if (conversation) {
+      void ConversationResource.triggerEsIndexing(
+        auth,
+        conversation.sId,
+        auth.getNonNullableWorkspace().sId
+      );
+    }
   }
 
   private async startTemporalWorkflow(

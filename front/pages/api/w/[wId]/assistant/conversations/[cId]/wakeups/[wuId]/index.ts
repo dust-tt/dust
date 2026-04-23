@@ -108,11 +108,6 @@ async function handler(
           },
         });
       }
-      void ConversationResource.triggerEsIndexing(
-        auth,
-        conversation.sId,
-        auth.getNonNullableWorkspace().sId
-      );
       res.status(200).json({ wakeUp: wakeUp.toJSON() });
       return;
     }
