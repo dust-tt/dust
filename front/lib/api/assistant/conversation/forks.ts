@@ -383,15 +383,25 @@ async function carryOverConversationAttachments(
   });
   const sourceFileContentFragmentIdsByFileId =
     getLatestFileContentFragmentIdsByFileId(parentConversationAtSource);
+  const sourceFileContentFragmentIndexByFileId = new Map<string, number>();
   const attachmentsToCarryOver: AttachmentToCarryOver[] =
     directConversationAttachments.map((attachment) => {
       if (isFileAttachmentType(attachment)) {
-        const sourceContentFragmentId =
-          attachment.source === "user"
-            ? (sourceFileContentFragmentIdsByFileId
-                .get(attachment.fileId)
-                ?.shift() ?? null)
-            : null;
+        let sourceContentFragmentId: string | null = null;
+
+        if (attachment.source === "user") {
+          const contentFragmentIds =
+            sourceFileContentFragmentIdsByFileId.get(attachment.fileId) ?? [];
+          const nextContentFragmentIndex =
+            sourceFileContentFragmentIndexByFileId.get(attachment.fileId) ?? 0;
+
+          sourceContentFragmentId =
+            contentFragmentIds[nextContentFragmentIndex] ?? null;
+          sourceFileContentFragmentIndexByFileId.set(
+            attachment.fileId,
+            nextContentFragmentIndex + 1
+          );
+        }
 
         return {
           attachment,
