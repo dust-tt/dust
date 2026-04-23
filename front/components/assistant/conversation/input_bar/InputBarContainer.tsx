@@ -38,7 +38,10 @@ import {
 } from "@app/types/assistant/mentions";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import {
+  assertNever,
+  assertNeverAndIgnore,
+} from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { SpaceType } from "@app/types/space";
 import type { UserType, WorkspaceType } from "@app/types/user";
@@ -475,7 +478,7 @@ const InputBarContainer = ({
           onMCPServerViewSelect(capability.serverView);
           break;
         default:
-          assertNever(capability);
+          assertNeverAndIgnore(capability);
       }
 
       queueMicrotask(() => editorRef.current?.commands.focus());

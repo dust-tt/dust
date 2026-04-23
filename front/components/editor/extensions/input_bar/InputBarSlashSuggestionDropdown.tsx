@@ -15,6 +15,7 @@ import { useMCPServerViewsFromSpaces } from "@app/lib/swr/mcp_servers";
 import { useSkills } from "@app/lib/swr/skill_configurations";
 import { useSpaces } from "@app/lib/swr/spaces";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { SuggestionProps } from "@tiptap/suggestion";
 import {
@@ -162,41 +163,49 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
 
     const capabilityItems = useMemo<SlashCommand[]>(
       () =>
-        filteredCapabilities.map((capability) => {
-          switch (capability.kind) {
-            case "skill":
-              return {
-                action: capability.skill.sId,
-                description: capability.skill.userFacingDescription,
-                icon: getSkillAvatarIcon(capability.skill.icon),
-                id: capability.skill.sId,
-                label: capability.skill.name,
-                tooltip: capability.skill.userFacingDescription
-                  ? {
-                      description: capability.skill.userFacingDescription,
-                    }
-                  : undefined,
-              };
-            case "tool": {
-              const description = getMcpServerViewDescription(
-                capability.serverView
-              );
+        filteredCapabilities
+          .flatMap((capability) => {
+            switch (capability.kind) {
+              case "skill":
+                return [
+                  {
+                    action: capability.skill.sId,
+                    description: capability.skill.userFacingDescription,
+                    icon: getSkillAvatarIcon(capability.skill.icon),
+                    id: capability.skill.sId,
+                    label: capability.skill.name,
+                    tooltip: capability.skill.userFacingDescription
+                      ? {
+                          description: capability.skill.userFacingDescription,
+                        }
+                      : undefined,
+                  },
+                ];
+              case "tool": {
+                const description = getMcpServerViewDescription(
+                  capability.serverView
+                );
 
-              return {
-                action: capability.serverView.sId,
-                description,
-                icon: () => getAvatar(capability.serverView.server),
-                id: capability.serverView.sId,
-                label: getMcpServerViewDisplayName(capability.serverView),
-                tooltip: description
-                  ? {
-                      description,
-                    }
-                  : undefined,
-              };
+                return [
+                  {
+                    action: capability.serverView.sId,
+                    description,
+                    icon: () => getAvatar(capability.serverView.server),
+                    id: capability.serverView.sId,
+                    label: getMcpServerViewDisplayName(capability.serverView),
+                    tooltip: description
+                      ? {
+                          description,
+                        }
+                      : undefined,
+                  },
+                ];
+              }
+              default:
+                assertNeverAndIgnore(capability);
+                return [];
             }
-          }
-        }),
+          }),
       [filteredCapabilities]
     );
 
