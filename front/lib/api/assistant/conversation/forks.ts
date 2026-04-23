@@ -206,6 +206,7 @@ async function carryOverFile(
   const copiedFile = await FileResource.copyToConversation(auth, {
     sourceId: attachment.fileId,
     conversationId: childConversationId,
+    includeProcessedVersion: true,
   });
 
   if (copiedFile.isErr()) {

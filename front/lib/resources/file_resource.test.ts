@@ -3,6 +3,7 @@ import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { FileModel } from "@app/lib/resources/storage/models/files";
+import { copyContent } from "@app/lib/utils/files";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -226,6 +227,11 @@ describe("FileResource", () => {
       expect(copiedFile.snippet).toBe("copied snippet");
       expect(copiedFile.useCaseMetadata?.conversationId).toBe("new-conv-id");
       expect(copiedFile.isReady).toBe(true);
+      const copyCall = vi.mocked(copyContent).mock.calls.at(-1);
+      expect(copyCall?.[0]).toBe(auth);
+      expect(copyCall?.[1].sId).toBe(sourceFile.sId);
+      expect(copyCall?.[2].sId).toBe(copiedFile.sId);
+      expect(copyCall?.[3]).toEqual({ includeProcessedVersion: undefined });
     });
 
     it("should return error when source file not found", async () => {
@@ -322,6 +328,11 @@ describe("FileResource", () => {
       expect(copiedFile.useCase).toBe("upsert_document");
       expect(copiedFile.useCaseMetadata?.spaceId).toBe("space-1");
       expect(copiedFile.useCaseMetadata?.conversationId).toBeUndefined();
+      const copyCall = vi.mocked(copyContent).mock.calls.at(-1);
+      expect(copyCall?.[0]).toBe(auth);
+      expect(copyCall?.[1].sId).toBe(sourceFile.sId);
+      expect(copyCall?.[2].sId).toBe(copiedFile.sId);
+      expect(copyCall?.[3]).toEqual({ includeProcessedVersion: undefined });
     });
 
     it("should copy a conversation file to a different conversation", async () => {
@@ -365,6 +376,40 @@ describe("FileResource", () => {
         sourceIcon: "github",
         hideFromUser: true,
       });
+      const copyCall = vi.mocked(copyContent).mock.calls.at(-1);
+      expect(copyCall?.[0]).toBe(auth);
+      expect(copyCall?.[1].sId).toBe(sourceFile.sId);
+      expect(copyCall?.[2].sId).toBe(copiedFile.sId);
+      expect(copyCall?.[3]).toEqual({ includeProcessedVersion: undefined });
+    });
+
+    it("should opt into processed version copying for conversation copies when requested", async () => {
+      const { authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+
+      const sourceFile = await FileFactory.create(auth, null, {
+        contentType: "application/pdf",
+        fileName: "source.pdf",
+        fileSize: testFileContent.length,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: { conversationId: "parent-conv-id" },
+      });
+
+      const result = await FileResource.copyToConversation(auth, {
+        sourceId: sourceFile.sId,
+        conversationId: "child-conv-id",
+        includeProcessedVersion: true,
+      });
+
+      assert(result.isOk(), "copyToConversation should succeed");
+
+      const copyCall = vi.mocked(copyContent).mock.calls.at(-1);
+      expect(copyCall?.[0]).toBe(auth);
+      expect(copyCall?.[1].sId).toBe(sourceFile.sId);
+      expect(copyCall?.[2].sId).toBe(result.value.sId);
+      expect(copyCall?.[3]).toEqual({ includeProcessedVersion: true });
     });
 
     it("should preserve tool_output use case when copying to a conversation", async () => {

@@ -79,7 +79,7 @@ describe("copyContent", () => {
     expect(processedChunks).toHaveLength(0);
   });
 
-  it("copies both original and processed versions for processed files", async () => {
+  it("copies only the original version for processed files by default", async () => {
     const auth = {} as Authenticator;
     const originalChunks: Buffer[] = [];
     const processedChunks: Buffer[] = [];
@@ -103,6 +103,47 @@ describe("copyContent", () => {
       auth,
       sourceFile as unknown as Parameters<typeof copyContent>[1],
       targetFile as unknown as Parameters<typeof copyContent>[2]
+    );
+
+    expect(sourceFile.getReadStream).toHaveBeenCalledTimes(1);
+    expect(sourceFile.getReadStream).toHaveBeenCalledWith({
+      auth,
+      version: "original",
+    });
+    expect(targetFile.getWriteStream).toHaveBeenCalledTimes(1);
+    expect(targetFile.getWriteStream).toHaveBeenCalledWith({
+      auth,
+      version: "original",
+    });
+    expect(Buffer.concat(originalChunks)).toEqual(sourceFile.originalContent);
+    expect(processedChunks).toHaveLength(0);
+  });
+
+  it("copies both original and processed versions when requested", async () => {
+    const auth = {} as Authenticator;
+    const originalChunks: Buffer[] = [];
+    const processedChunks: Buffer[] = [];
+    const sourceFile = makeSourceFile("application/pdf");
+    const targetFile = {
+      getWriteStream: vi.fn(
+        ({
+          version,
+        }: {
+          auth: Authenticator;
+          version: FileVersion;
+          overrideContentType?: string;
+        }) =>
+          version === "original"
+            ? makeWritable(originalChunks)
+            : makeWritable(processedChunks)
+      ),
+    };
+
+    await copyContent(
+      auth,
+      sourceFile as unknown as Parameters<typeof copyContent>[1],
+      targetFile as unknown as Parameters<typeof copyContent>[2],
+      { includeProcessedVersion: true }
     );
 
     expect(sourceFile.getReadStream).toHaveBeenCalledTimes(2);

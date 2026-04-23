@@ -10,7 +10,10 @@ import { pipeline } from "stream/promises";
 export async function copyContent(
   auth: Authenticator,
   sourceFile: FileResource,
-  targetFile: FileResource
+  targetFile: FileResource,
+  {
+    includeProcessedVersion = false,
+  }: { includeProcessedVersion?: boolean } = {}
 ) {
   // Get a read stream from the source file's original version.
   const readStream = sourceFile.getReadStream({
@@ -24,7 +27,10 @@ export async function copyContent(
     targetFile.getWriteStream({ auth, version: "original" })
   );
 
-  if (!hasProcessedVersion(sourceFile.contentType)) {
+  if (
+    !includeProcessedVersion ||
+    !hasProcessedVersion(sourceFile.contentType)
+  ) {
     return;
   }
 
