@@ -42,9 +42,7 @@ export const UsedByButton = ({
       : usage.agents.filter((a) => a.name.toLowerCase().includes(query));
 
   return (
-    // 1. modal={false} to make the dropdown menu non-modal and avoid a timing issue when we open the Agent side-panel modal.
     <DropdownMenu
-      modal={false}
       open={isOpen}
       onOpenChange={(open) => {
         setIsOpen(open);
@@ -57,11 +55,10 @@ export const UsedByButton = ({
         <Button
           icon={RobotIcon}
           variant="ghost-secondary"
-          isSelect={true}
+          isSelect
           size="xs"
           label={`${usage.count}`}
           onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
-            // 2. Avoid propagating the click to the parent element.
             e.stopPropagation();
           }}
         />
@@ -69,6 +66,7 @@ export const UsedByButton = ({
       <DropdownMenuContent
         className="h-96 w-72"
         align="end"
+        onClick={(e) => e.stopPropagation()}
         dropdownHeaders={
           <>
             <DropdownMenuSearchbar
