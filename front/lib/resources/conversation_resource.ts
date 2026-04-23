@@ -835,7 +835,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     });
   }
 
-  private static async triggerEsIndexing(
+  static async triggerEsIndexing(
     auth: Authenticator,
     conversationId: string,
     workspaceId: string

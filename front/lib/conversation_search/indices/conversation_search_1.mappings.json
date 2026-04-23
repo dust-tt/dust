@@ -47,6 +47,9 @@
           "type": "boolean"
         }
       }
+    },
+    "next_wakeup_at": {
+      "type": "date"
     }
   }
 }

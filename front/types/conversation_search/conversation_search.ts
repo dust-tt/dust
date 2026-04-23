@@ -21,4 +21,5 @@ export interface ConversationSearchDocument extends ElasticsearchBaseDocument {
   trigger_id: string | null;
   updated_at: string;
   visibility: string;
+  next_wakeup_at?: string | null;
 }

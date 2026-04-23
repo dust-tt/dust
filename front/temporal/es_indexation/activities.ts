@@ -7,6 +7,7 @@ import {
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { deleteUserDocument, indexUserDocument } from "@app/lib/user_search";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
@@ -126,10 +127,16 @@ export async function indexConversationEsActivity({
   const participantUserIds =
     await conversation.listParticipantsForConversation();
 
+  const nextWakeUp = await WakeUpResource.nextActiveWakeUpForConversation(
+    auth,
+    conversation
+  );
+
   const document = buildConversationSearchDocument(
     auth,
     conversation,
-    participantUserIds
+    participantUserIds,
+    nextWakeUp
   );
 
   const indexResult = await indexConversationDocument(document);
