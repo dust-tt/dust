@@ -100,7 +100,7 @@ export async function moveConversationToProject(
     // Move the conversation to the project (this will update updatedAt)
     await conversationResource.updateSpaceId(auth, project, t);
     // See front/lib/api/assistant/conversation/mentions.ts updateConversationRequirements for more details
-    await conversationResource.updateRequirements([project.id], t);
+    await conversationResource.updateRequirements(auth, [project.id], t);
 
     // For participants who had already read the conversation (unread = false),
     // mark them as read using markAsReadForAuthUser to preserve their read status.
