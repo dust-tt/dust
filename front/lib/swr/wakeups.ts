@@ -1,12 +1,10 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { WakeUpType } from "@app/types/assistant/wakeups";
+import type { GetConversationWakeUpsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/wakeups";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useMemo } from "react";
 import type { Fetcher } from "swr";
-
-type GetConversationWakeUpsResponseBody = { wakeUps: WakeUpType[] };
 
 export function useConversationWakeUps({
   owner,
