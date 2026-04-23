@@ -160,6 +160,11 @@ export function UserAnswerRequired({
     customResponseInputRef.current?.focus();
   }
 
+  function handleCustomResponseChange(value: string) {
+    setSelectedOptions([]);
+    setCustomResponse(value);
+  }
+
   function handleContainerKeyDownCapture(e: KeyboardEvent<HTMLDivElement>) {
     if (
       e.target instanceof HTMLInputElement ||
@@ -302,10 +307,7 @@ export function UserAnswerRequired({
               )}
               placeholder="Type something else"
               value={customResponse}
-              onFocus={() => {
-                setSelectedOptions([]);
-              }}
-              onChange={(e) => setCustomResponse(e.target.value)}
+              onChange={(e) => handleCustomResponseChange(e.target.value)}
               onKeyDown={(e) => {
                 if (
                   e.key === "Enter" &&

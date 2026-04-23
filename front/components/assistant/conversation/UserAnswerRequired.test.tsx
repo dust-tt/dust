@@ -335,6 +335,32 @@ describe("UserAnswerRequired", () => {
     });
   });
 
+  it("keeps selected options on input focus and clears them once typing starts", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <UserAnswerRequired
+        blockedAction={makeBlockedAction({ multiSelect: true })}
+        triggeringUser={null}
+        owner={owner}
+        conversationId="conv_1"
+        messageId="msg_1"
+      />
+    );
+
+    const alphaOption = screen.getByRole("button", { name: /Alpha/i });
+    const customInput = screen.getByPlaceholderText("Type something else");
+
+    await user.click(alphaOption);
+    expect(alphaOption).toHaveAttribute("data-selected", "true");
+
+    await user.click(customInput);
+    expect(alphaOption).toHaveAttribute("data-selected", "true");
+
+    await user.type(customInput, "x");
+    expect(alphaOption).toHaveAttribute("data-selected", "false");
+  });
+
   it("submits the current multi-select choices when Cmd+Enter is pressed on a focused option", async () => {
     const user = userEvent.setup();
 
