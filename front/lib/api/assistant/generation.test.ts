@@ -518,6 +518,11 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     const sections = constructPromptMultiActions(authenticator1, params);
     const text = systemPromptToText(sections);
 
+    expect(text).toContain("## SKILLS");
+    expect(text).toContain(
+      "Skills are modular capabilities that extend your abilities for specific tasks."
+    );
+    expect(text).toContain("skill_management__enable_skill");
     expect(text).not.toContain(
       "Create a git commit with a descriptive message."
     );
@@ -576,7 +581,8 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     const sections = constructPromptMultiActions(authenticator1, params);
     const text = systemPromptToText(sections);
 
-    expect(text).toContain("## SYSTEM SKILLS");
+    expect(text).toContain("## SKILLS");
+    expect(text).toContain("### SYSTEM SKILLS");
     expect(text).toContain(discoverSkills.instructions);
   });
 
