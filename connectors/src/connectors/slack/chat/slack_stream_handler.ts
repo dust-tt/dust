@@ -4,6 +4,9 @@ import { throttleWithRedis } from "@connectors/lib/throttle";
 import logger from "@connectors/logger/logger";
 import type { ChatStreamer, WebClient } from "@slack/web-api";
 
+// Matches a complete :cite[...] marker.
+const CITE_REGEX = /:cite\[[a-zA-Z0-9, ]+\]/g;
+
 export class SlackStreamHandler {
   private streamer: ChatStreamer;
   private stopped = false;
@@ -59,12 +62,19 @@ export class SlackStreamHandler {
       return;
     }
 
+    // Strip complete citation markers — they'll be rendered as numbered
+    // footnotes in the final chat.update via annotateCitations().
+    const toSend = text.replace(CITE_REGEX, "");
+    if (!toSend) {
+      return;
+    }
+
     try {
       const res = await throttleWithRedis(
         RATE_LIMITS["chat.appendStream"],
         `${this.connectorId}-chat-appendStream`,
         { canBeIgnored: false },
-        () => this.streamer.append({ markdown_text: text }),
+        () => this.streamer.append({ markdown_text: toSend }),
         {}
       );
 
