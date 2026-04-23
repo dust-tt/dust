@@ -335,7 +335,7 @@ describe("UserAnswerRequired", () => {
     });
   });
 
-  it("keeps selected options on input focus and clears them once typing starts", async () => {
+  it("clears selected options when the custom input receives focus", async () => {
     const user = userEvent.setup();
 
     render(
@@ -355,9 +355,6 @@ describe("UserAnswerRequired", () => {
     expect(alphaOption).toHaveAttribute("data-selected", "true");
 
     await user.click(customInput);
-    expect(alphaOption).toHaveAttribute("data-selected", "true");
-
-    await user.type(customInput, "x");
     expect(alphaOption).toHaveAttribute("data-selected", "false");
   });
 

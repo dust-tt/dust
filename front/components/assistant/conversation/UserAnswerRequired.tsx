@@ -307,6 +307,7 @@ export function UserAnswerRequired({
               )}
               placeholder="Type something else"
               value={customResponse}
+              onFocus={() => setSelectedOptions([])}
               onChange={(e) => handleCustomResponseChange(e.target.value)}
               onKeyDown={(e) => {
                 if (
