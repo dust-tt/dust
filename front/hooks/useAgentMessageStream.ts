@@ -298,11 +298,10 @@ export function useAgentMessageStream({
     VirtuosoMessage,
     VirtuosoMessageListContext
   >();
-  const updateMessageThrottledRef = useRef(null);
-  if (!updateMessageThrottledRef.current) {
-    updateMessageThrottledRef.current = createUpdateMessageThrottled();
-  }
-  const updateMessageThrottled = updateMessageThrottledRef.current;
+  const updateMessageThrottled = useMemo(
+    () => createUpdateMessageThrottled(),
+    []
+  );
 
   useEffect(() => {
     return () => {
