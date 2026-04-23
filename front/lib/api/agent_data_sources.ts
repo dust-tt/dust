@@ -33,22 +33,21 @@ export type DataSourcesUsageByAgent = Record<ModelId, AgentsUsageType | null>;
 const AGENT_CONFIG_PATH =
   '"agent_mcp_server_configuration->agent_configuration"';
 
-const agentAggregates = (): ProjectionAlias[] =>
-  (
-    [
-      ["name", "names"],
-      ["sId", "sIds"],
-      ["pictureUrl", "pictureUrls"],
-    ] as const
-  ).map(([column, alias]) => [
-    Sequelize.fn(
-      "array_agg",
-      Sequelize.literal(
-        `${AGENT_CONFIG_PATH}."${column}" ORDER BY ${AGENT_CONFIG_PATH}."name"`
-      )
-    ),
-    alias,
-  ]);
+const agentAggregates: ProjectionAlias[] = (
+  [
+    ["name", "names"],
+    ["sId", "sIds"],
+    ["pictureUrl", "pictureUrls"],
+  ] as const
+).map(([column, alias]) => [
+  Sequelize.fn(
+    "array_agg",
+    Sequelize.literal(
+      `${AGENT_CONFIG_PATH}."${column}" ORDER BY ${AGENT_CONFIG_PATH}."name"`
+    )
+  ),
+  alias,
+]);
 
 export async function getDataSourceViewsUsageByCategory({
   auth,
@@ -142,7 +141,7 @@ export async function getDataSourceViewsUsageByCategory({
       },
       attributes: [
         [Sequelize.col("dataSourceView.id"), "dataSourceViewId"],
-        ...agentAggregates(),
+        ...agentAggregates,
       ],
       include: [
         {
@@ -179,7 +178,7 @@ export async function getDataSourceViewsUsageByCategory({
       },
       attributes: [
         [Sequelize.col("dataSourceView.id"), "dataSourceViewId"],
-        ...agentAggregates(),
+        ...agentAggregates,
       ],
       include: [
         {
@@ -308,7 +307,7 @@ export async function getDataSourcesUsageByCategory({
       },
       attributes: [
         [Sequelize.col("dataSource.id"), "dataSourceId"],
-        ...agentAggregates(),
+        ...agentAggregates,
       ],
       include: [
         {
@@ -348,7 +347,7 @@ export async function getDataSourcesUsageByCategory({
       },
       attributes: [
         [Sequelize.col("dataSource.id"), "dataSourceId"],
-        ...agentAggregates(),
+        ...agentAggregates,
       ],
       include: [
         {
@@ -449,7 +448,7 @@ export async function getDataSourceUsage({
   const res = (await Promise.all([
     AgentDataSourceConfigurationModel.findOne({
       raw: true,
-      attributes: [...agentAggregates()],
+      attributes: [...agentAggregates],
       where: {
         workspaceId: owner.id,
         dataSourceId: dataSource.id,
@@ -477,7 +476,7 @@ export async function getDataSourceUsage({
     }),
     AgentTablesQueryConfigurationTableModel.findOne({
       raw: true,
-      attributes: [...agentAggregates()],
+      attributes: [...agentAggregates],
       where: {
         workspaceId: owner.id,
         dataSourceId: dataSource.id,
@@ -559,7 +558,7 @@ export async function getDataSourceViewUsage({
   const res = (await Promise.all([
     AgentDataSourceConfigurationModel.findOne({
       raw: true,
-      attributes: [...agentAggregates()],
+      attributes: [...agentAggregates],
       where: {
         workspaceId: owner.id,
         dataSourceViewId: dataSourceView.id,
@@ -587,7 +586,7 @@ export async function getDataSourceViewUsage({
     }),
     AgentTablesQueryConfigurationTableModel.findOne({
       raw: true,
-      attributes: [...agentAggregates()],
+      attributes: [...agentAggregates],
       where: {
         workspaceId: owner.id,
         dataSourceViewId: dataSourceView.id,
