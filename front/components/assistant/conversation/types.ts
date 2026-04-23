@@ -206,7 +206,9 @@ export const makeInitialMessageStreamState = (
     streaming: {
       actionProgress: new Map(),
       agentState: message.status === "created" ? "thinking" : "done",
-      inlineActivitySteps: message.activitySteps ?? [],
+      // Live messages rebuild inline steps from the SSE replay on mount.
+      inlineActivitySteps:
+        message.status === "created" ? [] : (message.activitySteps ?? []),
       isRetrying: false,
       lastUpdated: new Date(),
       pendingToolCalls: [],

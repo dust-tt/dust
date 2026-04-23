@@ -26,37 +26,38 @@ import type { VirtuosoMessageListMethods } from "@virtuoso.dev/message-list";
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
 // biome-ignore lint/plugin/noBulkLodash: existing usage
 import _ from "lodash";
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 
-// Throttle the update of the message to avoid excessive re-renders.
-const updateMessageThrottled = _.throttle(
-  ({
-    chainOfThought,
-    content,
-    methods,
-    sId,
-  }: {
-    chainOfThought: string;
-    content: string;
-    methods: VirtuosoMessageListMethods<
-      VirtuosoMessage,
-      VirtuosoMessageListContext
-    >;
-    sId: string;
-  }) => {
-    methods.data.map((m) => {
-      if (isAgentMessageWithStreaming(m) && m.sId === sId) {
-        return {
-          ...m,
-          content,
-          chainOfThought,
-        };
-      }
-      return m;
-    });
-  },
-  100
-);
+function createUpdateMessageThrottled() {
+  return _.throttle(
+    ({
+      chainOfThought,
+      content,
+      methods,
+      sId,
+    }: {
+      chainOfThought: string;
+      content: string;
+      methods: VirtuosoMessageListMethods<
+        VirtuosoMessage,
+        VirtuosoMessageListContext
+      >;
+      sId: string;
+    }) => {
+      methods.data.map((m) => {
+        if (isAgentMessageWithStreaming(m) && m.sId === sId) {
+          return {
+            ...m,
+            content,
+            chainOfThought,
+          };
+        }
+        return m;
+      });
+    },
+    100
+  );
+}
 
 export function upsertPendingToolCall(
   pendingToolCalls: PendingToolCall[],
@@ -203,7 +204,7 @@ export function updateProgress(
  * Append a thinking step to the inline activity steps if the content
  * is new (not a duplicate of the last thinking step).
  */
-function appendThinkingStep(
+export function appendThinkingStep(
   steps: InlineActivityStep[],
   cotContent: string,
   id: string
@@ -297,6 +298,16 @@ export function useAgentMessageStream({
     VirtuosoMessage,
     VirtuosoMessageListContext
   >();
+  const updateMessageThrottled = useMemo(
+    () => createUpdateMessageThrottled(),
+    []
+  );
+
+  useEffect(() => {
+    return () => {
+      updateMessageThrottled.cancel();
+    };
+  }, [updateMessageThrottled]);
 
   const shouldStream = useMemo(
     () =>
@@ -363,6 +374,17 @@ export function useAgentMessageStream({
           ) {
             content.current = "";
             chainOfThought.current = "";
+            methods.data.map((m) => {
+              if (!isAgentMessageWithStreaming(m) || m.sId !== sId) {
+                return m;
+              }
+
+              return {
+                ...m,
+                content: "",
+                chainOfThought: "",
+              };
+            });
             isFreshMountWithContent.current = false;
           }
 
@@ -378,6 +400,7 @@ export function useAgentMessageStream({
               lastClassification.current !== null &&
               classification !== lastClassification.current
             ) {
+              updateMessageThrottled.cancel();
               const newAgentState =
                 classification === "tokens" ? "writing" : "thinking";
               methods.data.map((m) => {
@@ -479,6 +502,7 @@ export function useAgentMessageStream({
           break;
 
         case "tool_params":
+          updateMessageThrottled.cancel();
           const toolParams = eventPayload.data;
           methods.data.map((m) => {
             if (!isAgentMessageWithStreaming(m) || m.sId !== sId) {
@@ -546,6 +570,7 @@ export function useAgentMessageStream({
 
         case "tool_error":
         case "agent_error":
+          updateMessageThrottled.cancel();
           const error = eventPayload.data.error;
           methods.data.map((m) => {
             if (!isAgentMessageWithStreaming(m) || m.sId !== sId) {
@@ -585,6 +610,7 @@ export function useAgentMessageStream({
           break;
 
         case "agent_generation_cancelled": {
+          updateMessageThrottled.cancel();
           methods.data.map((m) => {
             if (!isAgentMessageWithStreaming(m) || m.sId !== sId) {
               return m;
@@ -613,6 +639,7 @@ export function useAgentMessageStream({
 
         case "agent_message_gracefully_stopped":
         case "agent_message_success": {
+          updateMessageThrottled.cancel();
           const messageSuccess = eventPayload.data;
           // Flush any remaining CoT (but not content — the final text segment
           // becomes the message body via the server's canonical message).
@@ -676,7 +703,13 @@ export function useAgentMessageStream({
         customOnEventCallback(eventPayload);
       }
     },
-    [customOnEventCallback, methods, sId, mutateContextUsage]
+    [
+      customOnEventCallback,
+      methods,
+      sId,
+      mutateContextUsage,
+      updateMessageThrottled,
+    ]
   );
 
   const { isError } = useEventSource(
