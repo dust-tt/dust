@@ -91,6 +91,10 @@ const WorkspaceExtensionMcpToolsUpdateBodySchema = t.type({
   disableExtensionMcpTools: t.boolean,
 });
 
+const WorkspaceOpenProjectsUpdateBodySchema = t.type({
+  allowOpenProjects: t.boolean,
+});
+
 const PostWorkspaceRequestBodySchema = t.union([
   WorkspaceAllowedDomainUpdateBodySchema,
   WorkspaceBatchDomainUpdateBodySchema,
@@ -106,6 +110,7 @@ const PostWorkspaceRequestBodySchema = t.union([
   WorkspaceAgentReinforcementUpdateBodySchema,
   WorkspaceReinforcementBatchModeUpdateBodySchema,
   WorkspaceExtensionMcpToolsUpdateBodySchema,
+  WorkspaceOpenProjectsUpdateBodySchema,
 ]);
 
 async function handler(
@@ -267,6 +272,14 @@ async function handler(
         const newMetadata = {
           ...previousMetadata,
           disableExtensionMcpTools: body.disableExtensionMcpTools,
+        };
+        await workspace.updateWorkspaceSettings({ metadata: newMetadata });
+        owner.metadata = newMetadata;
+      } else if ("allowOpenProjects" in body) {
+        const previousMetadata = owner.metadata ?? {};
+        const newMetadata = {
+          ...previousMetadata,
+          allowOpenProjects: body.allowOpenProjects,
         };
         await workspace.updateWorkspaceSettings({ metadata: newMetadata });
         owner.metadata = newMetadata;

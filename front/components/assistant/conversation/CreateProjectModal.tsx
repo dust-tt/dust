@@ -3,6 +3,7 @@ import { useAppRouter } from "@app/lib/platform";
 import { useCheckProjectName } from "@app/lib/swr/projects";
 import { useCreateSpace } from "@app/lib/swr/spaces";
 import { getProjectRoute } from "@app/lib/utils/router";
+import { areOpenProjectsAllowed } from "@app/lib/workspace_policies";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -14,6 +15,7 @@ import {
   DialogTitle,
   Input,
   SliderToggle,
+  Tooltip,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useState } from "react";
 
@@ -24,12 +26,16 @@ interface CreateProjectModalProps {
   owner: LightWorkspaceType;
 }
 
+const OPEN_PROJECTS_DISABLED_TOOLTIP =
+  "Open projects are disabled by your workspace admin.";
+
 export function CreateProjectModal({
   isOpen,
   onClose,
   onCreated,
   owner,
 }: CreateProjectModalProps) {
+  const areWorkspaceOpenProjectsAllowed = areOpenProjectsAllowed(owner);
   const [projectName, setProjectName] = useState<string>("");
   const [isSaving, setIsSaving] = useState(false);
   const [isPublic, setIsPublic] = useState(false);
@@ -54,15 +60,23 @@ export function CreateProjectModal({
     if (isOpen) {
       setProjectName("");
       setIsSaving(false);
+      setIsPublic(false);
       setNameToCheck("");
     }
   }, [isOpen, setNameToCheck]);
+
+  useEffect(() => {
+    if (!areWorkspaceOpenProjectsAllowed && isPublic) {
+      setIsPublic(false);
+    }
+  }, [areWorkspaceOpenProjectsAllowed, isPublic]);
 
   const handleClose = useCallback(() => {
     onClose();
     setTimeout(() => {
       setProjectName("");
       setIsSaving(false);
+      setIsPublic(false);
       setNameToCheck("");
     }, 500);
   }, [onClose, setNameToCheck]);
@@ -157,11 +171,27 @@ export function CreateProjectModal({
                   Anyone in the workspace can find and join the project.
                 </div>
               </div>
-              <SliderToggle
-                size="xs"
-                selected={isPublic}
-                onClick={() => setIsPublic((prev) => !prev)}
-              />
+              {areWorkspaceOpenProjectsAllowed ? (
+                <SliderToggle
+                  size="xs"
+                  selected={isPublic}
+                  onClick={() => setIsPublic((prev) => !prev)}
+                />
+              ) : (
+                <Tooltip
+                  label={OPEN_PROJECTS_DISABLED_TOOLTIP}
+                  trigger={
+                    <div>
+                      <SliderToggle
+                        size="xs"
+                        selected={isPublic}
+                        onClick={() => setIsPublic((prev) => !prev)}
+                        disabled
+                      />
+                    </div>
+                  }
+                />
+              )}
             </div>
           </div>
         </DialogContainer>

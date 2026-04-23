@@ -10,6 +10,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { notifyProjectMembersAdded } from "@app/lib/notifications/workflows/project-added-as-member";
 import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_member_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { areOpenProjectsAllowed } from "@app/lib/workspace_policies";
 import { auditLog } from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
@@ -95,6 +96,23 @@ export async function handler(
       // Track current members before update to identify newly added ones.
       let currentMemberIds: Set<string> | undefined;
       const body = bodyValidation.right;
+      const owner = auth.getNonNullableWorkspace();
+
+      if (
+        space.isProjectAndRestricted() &&
+        !body.isRestricted &&
+        !areOpenProjectsAllowed(owner)
+      ) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "Open projects are disabled by your workspace admin. Keep this project private.",
+          },
+        });
+      }
+
       if (space.isProject() && body.managementMode === "manual") {
         const memberGroupSpaces = await GroupSpaceMemberResource.fetchBySpace({
           space,

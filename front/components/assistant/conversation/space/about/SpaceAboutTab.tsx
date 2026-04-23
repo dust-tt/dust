@@ -11,6 +11,7 @@ import {
   useUpdateSpace,
 } from "@app/lib/swr/spaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import { areOpenProjectsAllowed } from "@app/lib/workspace_policies";
 import type { RichSpaceType } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
 import type { PatchProjectMetadataBodyType } from "@app/types/api/internal/spaces";
 import { PatchProjectMetadataBodySchema } from "@app/types/api/internal/spaces";
@@ -30,6 +31,7 @@ import {
   SearchInput,
   SliderToggle,
   TextArea,
+  Tooltip,
   UserGroupIcon,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -42,6 +44,9 @@ interface SpaceAboutTabProps {
   onOpenMembersPanel?: () => void;
 }
 
+const OPEN_PROJECTS_DISABLED_TOOLTIP =
+  "Open projects are disabled by your workspace admin.";
+
 export function SpaceAboutTab({
   owner,
   space,
@@ -53,6 +58,9 @@ export function SpaceAboutTab({
     isRestricted,
   } = space;
   const isPublic = !isRestricted;
+  const areWorkspaceOpenProjectsAllowed = areOpenProjectsAllowed(owner);
+  const isVisibilityToggleDisabled =
+    !isProjectEditor || (!areWorkspaceOpenProjectsAllowed && !isPublic);
   const [searchSelectedMembers, setSearchSelectedMembers] = useState("");
 
   const confirm = useContext(ConfirmContext);
@@ -343,12 +351,30 @@ export function SpaceAboutTab({
                 Anyone in the workspace can find and join the project.
               </div>
             </div>
-            <SliderToggle
-              size="xs"
-              selected={isPublic}
-              onClick={handleVisibilityToggle}
-              disabled={!isProjectEditor}
-            />
+            {isVisibilityToggleDisabled &&
+            !areWorkspaceOpenProjectsAllowed &&
+            !isPublic ? (
+              <Tooltip
+                label={OPEN_PROJECTS_DISABLED_TOOLTIP}
+                trigger={
+                  <div>
+                    <SliderToggle
+                      size="xs"
+                      selected={isPublic}
+                      onClick={handleVisibilityToggle}
+                      disabled
+                    />
+                  </div>
+                }
+              />
+            ) : (
+              <SliderToggle
+                size="xs"
+                selected={isPublic}
+                onClick={handleVisibilityToggle}
+                disabled={isVisibilityToggleDisabled}
+              />
+            )}
           </div>
         </div>
 
