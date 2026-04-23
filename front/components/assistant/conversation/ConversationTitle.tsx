@@ -4,7 +4,7 @@ import {
 } from "@app/components/assistant/conversation/ConversationMenu";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
-import { useConversation } from "@app/hooks/conversations";
+import { useConversation, useConversations } from "@app/hooks/conversations";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
@@ -24,7 +24,7 @@ import {
   MoreIcon,
   Tooltip,
 } from "@dust-tt/sparkle";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 import { EditConversationTitleDialog } from "./EditConversationTitleDialog";
 
@@ -40,6 +40,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
     workspaceId: owner.sId,
     spaceId: conversation?.spaceId ?? null,
   });
+  const { mutateConversations } = useConversations({ workspaceId: owner.sId });
   const router = useAppRouter();
   const isMobile = useIsMobile();
 
@@ -51,6 +52,9 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
     handleRightClick,
     handleMenuOpenChange,
   } = useConversationMenu();
+  const onConversationBranched = useCallback(() => {
+    void mutateConversations();
+  }, [mutateConversations]);
 
   const currentTitle = conversation
     ? getConversationDisplayTitle(conversation)
@@ -154,20 +158,23 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
           <ConversationMenu
             activeConversationId={activeConversationId}
             conversation={conversation}
+            onConversationBranched={onConversationBranched}
             owner={owner}
-            trigger={
+            trigger={({ isPendingAction }) => (
               <Button
                 size="sm"
                 variant="ghost"
                 icon={MoreIcon}
                 aria-label="Conversation menu"
+                isLoading={isPendingAction}
                 disabled={
                   activeConversationId === null ||
                   conversation === null ||
-                  user === null
+                  user === null ||
+                  isPendingAction
                 }
               />
-            }
+            )}
             isConversationDisplayed={true}
             isOpen={isMenuOpen}
             onOpenChange={handleMenuOpenChange}

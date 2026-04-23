@@ -4,6 +4,7 @@ import { LeaveConversationDialog } from "@app/components/assistant/conversation/
 import { ConfirmContext } from "@app/components/Confirm";
 import {
   useBranchConversation,
+  useConversation,
   useConversationParticipants,
   useConversationParticipationOptions,
   useConversationUrlAccessMode,
@@ -139,7 +140,9 @@ interface ConversationMenuProps {
   conversation?: ConversationListItemType;
   onConversationBranched?: () => Promise<void> | void;
   owner: WorkspaceType;
-  trigger: ReactElement;
+  trigger:
+    | ReactElement
+    | (({ isPendingAction }: { isPendingAction: boolean }) => ReactElement);
   isConversationDisplayed: boolean;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
@@ -214,6 +217,11 @@ export function ConversationMenu({
 
   const shouldWaitBeforeFetching =
     activeConversationId === null || user?.sId === undefined || !isOpen;
+  const { mutateConversation } = useConversation({
+    conversationId: isConversationDisplayed ? activeConversationId : null,
+    workspaceId: owner.sId,
+    options: { disabled: !isConversationDisplayed },
+  });
   const conversationParticipationOptions = useConversationParticipationOptions({
     ownerId: owner.sId,
     conversationId: activeConversationId,
@@ -263,11 +271,22 @@ export function ConversationMenu({
   const [showDeleteDialog, setShowDeleteDialog] = useState<boolean>(false);
   const [showLeaveDialog, setShowLeaveDialog] = useState<boolean>(false);
   const [showRenameDialog, setShowRenameDialog] = useState<boolean>(false);
+  const handleConversationBranched = useCallback(() => {
+    if (isConversationDisplayed) {
+      void mutateConversation();
+    }
+
+    void onConversationBranched?.();
+  }, [isConversationDisplayed, mutateConversation, onConversationBranched]);
   const { branchConversation, isBranching } = useBranchConversation({
     owner,
     conversationId: activeConversationId,
-    onConversationBranched,
+    onConversationBranched: handleConversationBranched,
   });
+  const menuTrigger =
+    typeof trigger === "function"
+      ? trigger({ isPendingAction: isBranching })
+      : trigger;
 
   const conversationLink = getConversationRoute(
     owner.sId,
@@ -365,7 +384,7 @@ export function ConversationMenu({
       <DropdownMenu modal={false} open={isOpen} onOpenChange={onOpenChange}>
         {triggerPosition ? (
           <>
-            {trigger}
+            {menuTrigger}
             <DropdownMenuTrigger asChild>
               <div
                 style={{
@@ -380,7 +399,7 @@ export function ConversationMenu({
             </DropdownMenuTrigger>
           </>
         ) : (
-          <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
+          <DropdownMenuTrigger asChild>{menuTrigger}</DropdownMenuTrigger>
         )}
         <DropdownMenuContent onFocusOutside={(e) => e.preventDefault()}>
           <DropdownMenuItem

@@ -1,9 +1,6 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
-import { useAppRouter } from "@app/lib/platform";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
-import { getConversationRoute } from "@app/lib/utils/router";
-import type { PostConversationForkResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/forks";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useState } from "react";
 
@@ -17,7 +14,6 @@ export function useBranchConversation({
   onConversationBranched?: () => Promise<void> | void;
 }) {
   const sendNotification = useSendNotification();
-  const router = useAppRouter();
 
   const [isBranching, setIsBranching] = useState(false);
 
@@ -55,19 +51,9 @@ export function useBranchConversation({
           return false;
         }
 
-        const {
-          conversationId: forkedConversationId,
-        }: PostConversationForkResponseBody = await res.json();
+        await res.json();
 
         void onConversationBranched?.();
-
-        await router.push(
-          getConversationRoute(owner.sId, forkedConversationId),
-          undefined,
-          {
-            shallow: true,
-          }
-        );
 
         return true;
       } catch {
@@ -81,13 +67,7 @@ export function useBranchConversation({
         setIsBranching(false);
       }
     },
-    [
-      conversationId,
-      onConversationBranched,
-      owner.sId,
-      router,
-      sendNotification,
-    ]
+    [conversationId, onConversationBranched, sendNotification, owner.sId]
   );
 
   return {
