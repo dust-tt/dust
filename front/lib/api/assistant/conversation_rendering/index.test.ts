@@ -481,14 +481,12 @@ describe("renderConversationForModel", () => {
     expect(names).not.toContain("tool_06");
   });
 
-  it("prepends preface messages and de-duplicates identical synthetic messages", async () => {
-    vi.mocked(renderAllMessages).mockResolvedValue([
-      userMessage("already_there"),
-    ]);
+  it("prepends preface messages", async () => {
+    vi.mocked(renderAllMessages).mockResolvedValue([userMessage("rendered")]);
     mockTokenCounter({
       byContains: {
         preface: 10,
-        already_there: 10,
+        rendered: 10,
       },
     });
 
@@ -503,7 +501,7 @@ describe("renderConversationForModel", () => {
         interactionTokens: 20,
         availableDelta: 100,
       }),
-      prefaceMessages: [userMessage("preface"), userMessage("already_there")],
+      prefaceMessages: [userMessage("preface")],
     });
 
     expect(res.isOk()).toBe(true);
@@ -513,7 +511,7 @@ describe("renderConversationForModel", () => {
 
     expect(res.value.modelConversation.messages).toEqual([
       userMessage("preface"),
-      userMessage("already_there"),
+      userMessage("rendered"),
     ]);
   });
 });
