@@ -27,6 +27,12 @@ interface UserAnswerRequiredProps {
   messageId: string;
 }
 
+function isPrintableKey(e: KeyboardEvent<HTMLDivElement>) {
+  return (
+    e.key.length === 1 && e.key !== " " && !e.altKey && !e.ctrlKey && !e.metaKey
+  );
+}
+
 export function UserAnswerRequired({
   blockedAction,
   triggeringUser,
@@ -45,6 +51,7 @@ export function UserAnswerRequired({
   const [isSkipPending, setIsSkipPending] = useState(false);
   const [activeOptionIndex, setActiveOptionIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
+  const customResponseInputRef = useRef<HTMLInputElement>(null);
 
   const { question } = blockedAction;
   const isTriggeredByCurrentUser = blockedAction.userId === user?.sId;
@@ -147,6 +154,12 @@ export function UserAnswerRequired({
     handleOptionClick(activeOptionIndex);
   }
 
+  function handleStartCustomResponse(character: string) {
+    setSelectedOptions([]);
+    setCustomResponse((prev) => `${prev}${character}`);
+    customResponseInputRef.current?.focus();
+  }
+
   function handleContainerKeyDownCapture(e: KeyboardEvent<HTMLDivElement>) {
     if (
       e.target instanceof HTMLInputElement ||
@@ -169,6 +182,12 @@ export function UserAnswerRequired({
       e.target instanceof HTMLTextAreaElement ||
       (e.target instanceof HTMLElement && e.target.isContentEditable)
     ) {
+      return;
+    }
+
+    if (isPrintableKey(e)) {
+      e.preventDefault();
+      handleStartCustomResponse(e.key);
       return;
     }
 
@@ -271,6 +290,7 @@ export function UserAnswerRequired({
               )}
             />
             <Input
+              ref={customResponseInputRef}
               id={`custom-response-${blockedAction.actionId}`}
               containerClassName="flex-1"
               className={cn(
