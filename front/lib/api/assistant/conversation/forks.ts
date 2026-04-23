@@ -31,6 +31,7 @@ import type {
   ContentFragmentInputWithContentNode,
   ContentFragmentInputWithFileIdType,
 } from "@app/types/api/internal/assistant";
+import type { CompactionAttachmentIdReplacements } from "@app/types/assistant/compaction";
 import type {
   ConversationType,
   ConversationWithoutContentType,
@@ -41,6 +42,7 @@ import { MISTRAL_SMALL_MODEL_CONFIG } from "@app/types/assistant/models/mistral"
 import { GPT_5_MINI_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import type { SupportedModel } from "@app/types/assistant/models/types";
 import { GROK_4_1_FAST_NON_REASONING_MODEL_CONFIG } from "@app/types/assistant/models/xai";
+import { isFileContentFragment } from "@app/types/content_fragment";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -319,7 +321,7 @@ async function carryOverConversationAttachments(
     childConversation: ConversationType;
     sourceMessageRank: number;
   }
-): Promise<void> {
+): Promise<CompactionAttachmentIdReplacements> {
   const parentConversationAtSource = filterConversationContentUpToRank(
     parentConversation,
     sourceMessageRank
@@ -340,8 +342,7 @@ async function carryOverConversationAttachments(
 
     return isContentNodeAttachmentType(attachment);
   });
-
-  await concurrentExecutor(
+  const attachmentResults = await concurrentExecutor(
     directConversationAttachments,
     async (attachment) => {
       let carriedResult: CarriedAttachment | null;
@@ -359,7 +360,7 @@ async function carryOverConversationAttachments(
       }
 
       if (!carriedResult) {
-        return;
+        return null;
       }
 
       const {
@@ -388,7 +389,7 @@ async function carryOverConversationAttachments(
           attachErrorMessage
         );
 
-        return;
+        return null;
       }
 
       const shouldCopyFileToDatasource =
@@ -403,8 +404,32 @@ async function carryOverConversationAttachments(
           carriedFile,
         });
       }
+
+      return {
+        sourceAttachmentId: isFileAttachmentType(attachment)
+          ? attachment.fileId
+          : attachment.contentFragmentId,
+        targetAttachment: attachmentResult.value,
+      };
     },
     { concurrency: ATTACHMENT_CARRY_OVER_CONCURRENCY }
+  );
+
+  return attachmentResults.reduce<CompactionAttachmentIdReplacements>(
+    (acc, result) => {
+      if (!result) {
+        return acc;
+      }
+
+      acc[result.sourceAttachmentId] =
+        isFileContentFragment(result.targetAttachment) &&
+        result.targetAttachment.fileId !== null
+          ? result.targetAttachment.fileId
+          : result.targetAttachment.contentFragmentId;
+
+      return acc;
+    },
+    {}
   );
 }
 
@@ -557,21 +582,28 @@ export async function createConversationFork(
       },
       "Failed to reload parent conversation for fork attachment carryover."
     );
-  } else {
-    await carryOverConversationAttachments(auth, {
-      parentConversation: parentConversationWithContent.value,
-      childConversation: childConversation.value,
-      sourceMessageRank: childConversationId.value.sourceMessageRank,
-    });
   }
+
+  const attachmentIdReplacements = parentConversationWithContent.isOk()
+    ? await carryOverConversationAttachments(auth, {
+        parentConversation: parentConversationWithContent.value,
+        childConversation: childConversation.value,
+        sourceMessageRank: childConversationId.value.sourceMessageRank,
+      })
+    : undefined;
+  const sourceConversation = {
+    conversationId: parentConversation.sId,
+    messageRank: childConversationId.value.sourceMessageRank,
+    ...(attachmentIdReplacements &&
+    Object.keys(attachmentIdReplacements).length > 0
+      ? { attachmentIdReplacements }
+      : {}),
+  };
 
   const compactionResult = await compactConversation(auth, {
     conversation: childConversation.value,
     model: forkCompactionModel,
-    sourceConversation: {
-      conversationId: parentConversation.sId,
-      messageRank: childConversationId.value.sourceMessageRank,
-    },
+    sourceConversation,
   });
 
   if (compactionResult.isErr()) {
