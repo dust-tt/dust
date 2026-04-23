@@ -50,6 +50,11 @@ body {
   overflow-x: hidden;
 }
 
+.conversation-branching-in-progress,
+.conversation-branching-in-progress * {
+  cursor: progress !important;
+}
+
 #__next {
   @apply h-full;
 }

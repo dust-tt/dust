@@ -4,6 +4,7 @@ import { LeaveConversationDialog } from "@app/components/assistant/conversation/
 import { ConfirmContext } from "@app/components/Confirm";
 import {
   useBranchConversation,
+  useConversation,
   useConversationParticipants,
   useConversationParticipationOptions,
   useConversationUrlAccessMode,
@@ -214,6 +215,11 @@ export function ConversationMenu({
 
   const shouldWaitBeforeFetching =
     activeConversationId === null || user?.sId === undefined || !isOpen;
+  const { mutateConversation } = useConversation({
+    conversationId: isConversationDisplayed ? activeConversationId : null,
+    workspaceId: owner.sId,
+    options: { disabled: !isConversationDisplayed },
+  });
   const conversationParticipationOptions = useConversationParticipationOptions({
     ownerId: owner.sId,
     conversationId: activeConversationId,
@@ -263,10 +269,17 @@ export function ConversationMenu({
   const [showDeleteDialog, setShowDeleteDialog] = useState<boolean>(false);
   const [showLeaveDialog, setShowLeaveDialog] = useState<boolean>(false);
   const [showRenameDialog, setShowRenameDialog] = useState<boolean>(false);
+  const handleConversationBranched = useCallback(() => {
+    if (isConversationDisplayed) {
+      void mutateConversation();
+    }
+
+    void onConversationBranched?.();
+  }, [isConversationDisplayed, mutateConversation, onConversationBranched]);
   const { branchConversation, isBranching } = useBranchConversation({
     owner,
     conversationId: activeConversationId,
-    onConversationBranched,
+    onConversationBranched: handleConversationBranched,
   });
 
   const conversationLink = getConversationRoute(
