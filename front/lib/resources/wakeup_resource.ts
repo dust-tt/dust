@@ -1,7 +1,6 @@
 import { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { CronExpressionParser } from "cron-parser";
 import { WakeUpModel } from "@app/lib/resources/storage/models/wakeup";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
@@ -28,6 +27,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { CronExpressionParser } from "cron-parser";
 import type { Attributes, Transaction, WhereOptions } from "sequelize";
 
 // Maximum fire counts for each wake-up to prevent run-away situations. The limit is exposed to
@@ -263,7 +263,7 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
 
   static async nextActiveWakeUpForConversation(
     auth: Authenticator,
-    conversation: { id: ModelId }
+    conversation: ConversationWithoutContentType | ConversationResource
   ): Promise<WakeUpResource | null> {
     const active = await this.listByConversation(auth, conversation, {
       status: ACTIVE_WAKE_UP_STATUSES,
