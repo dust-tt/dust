@@ -1,6 +1,5 @@
 import { InputBarSlashSuggestionDropdown } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionDropdown";
 import type { SlashCommandDropdownRef } from "@app/components/editor/extensions/skill_builder/SlashCommandDropdown";
-import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import type { WorkspaceType } from "@app/types/user";
 import { Extension, type Range } from "@tiptap/core";
 import { type EditorState, Plugin, PluginKey } from "@tiptap/pm/state";
@@ -9,6 +8,7 @@ import { ReactRenderer } from "@tiptap/react";
 import { exitSuggestion, Suggestion } from "@tiptap/suggestion";
 import type { RefObject } from "react";
 
+import type { InputBarSlashSuggestionCapability } from "./InputBarSlashSuggestionTypes";
 export const inputBarSlashSuggestionPluginKey = new PluginKey(
   "inputBarSlashSuggestion"
 );
@@ -43,9 +43,10 @@ function isAllowedSlashQuery(state: EditorState, range: Range) {
 export interface InputBarSlashSuggestionExtensionOptions {
   owner?: WorkspaceType;
   enabledRef: RefObject<boolean>;
-  onSkillSelectRef: RefObject<
-    ((skill: SkillWithoutInstructionsAndToolsType) => void) | undefined
+  onSelectRef: RefObject<
+    ((capability: InputBarSlashSuggestionCapability) => void) | undefined
   >;
+  selectedMCPServerViewIdsRef: RefObject<Set<string>>;
   selectedSkillIdsRef: RefObject<Set<string>>;
 }
 
@@ -68,7 +69,8 @@ export const InputBarSlashSuggestionExtension =
       return {
         owner: undefined,
         enabledRef: { current: false },
-        onSkillSelectRef: { current: undefined },
+        onSelectRef: { current: undefined },
+        selectedMCPServerViewIdsRef: { current: new Set<string>() },
         selectedSkillIdsRef: { current: new Set<string>() },
       };
     },
@@ -78,7 +80,7 @@ export const InputBarSlashSuggestionExtension =
       const extensionStorage = this.storage;
 
       return [
-        Suggestion<SkillWithoutInstructionsAndToolsType>({
+        Suggestion<InputBarSlashSuggestionCapability>({
           editor: this.editor,
           char: "/",
           pluginKey: inputBarSlashSuggestionPluginKey,
@@ -95,7 +97,7 @@ export const InputBarSlashSuggestionExtension =
           command: ({ editor, range, props }) => {
             extensionStorage.dismissedTriggerStart = null;
             editor.chain().focus().deleteRange(range).run();
-            extensionOptions.onSkillSelectRef.current?.(props);
+            extensionOptions.onSelectRef.current?.(props);
           },
           render: () => {
             let component: ReactRenderer<SlashCommandDropdownRef> | null = null;
@@ -129,6 +131,8 @@ export const InputBarSlashSuggestionExtension =
                     ...props,
                     onClose: closeSuggestionDropdown,
                     owner,
+                    selectedMCPServerViewIdsRef:
+                      extensionOptions.selectedMCPServerViewIdsRef,
                     selectedSkillIdsRef: extensionOptions.selectedSkillIdsRef,
                   },
                   editor: props.editor,
@@ -151,6 +155,8 @@ export const InputBarSlashSuggestionExtension =
                   ...props,
                   onClose: closeSuggestionDropdown,
                   owner,
+                  selectedMCPServerViewIdsRef:
+                    extensionOptions.selectedMCPServerViewIdsRef,
                   selectedSkillIdsRef: extensionOptions.selectedSkillIdsRef,
                 });
               },
