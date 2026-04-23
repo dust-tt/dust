@@ -67,7 +67,10 @@ export function ConversationContainerVirtuoso({
 
   const sendNotification = useSendNotification();
 
-  const { mutateConversations } = useConversations({ workspaceId: owner.sId });
+  const { mutateConversations } = useConversations({
+    workspaceId: owner.sId,
+    options: { disabled: true },
+  });
 
   const createConversationWithMessage = useCreateConversationWithMessage({
     owner,

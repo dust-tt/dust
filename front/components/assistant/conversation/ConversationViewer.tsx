@@ -298,7 +298,10 @@ export const ConversationViewer = ({
     }
   }, [shouldShowPushNotificationActivation, askForPermission]);
 
-  const { mutateConversations } = useConversations({ workspaceId: owner.sId });
+  const { mutateConversations } = useConversations({
+    workspaceId: owner.sId,
+    options: { disabled: true },
+  });
 
   const {
     isLoadingInitialData,

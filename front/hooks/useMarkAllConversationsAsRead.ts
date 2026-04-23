@@ -20,7 +20,10 @@ export function useMarkAllConversationsAsRead({
 }: useMarkAllConversationsAsReadParams) {
   const [isMarkingAllAsRead, setIsMarkingAllAsRead] = useState(false);
   const sendNotification = useSendNotification();
-  const { mutateConversations } = useConversations({ workspaceId: owner.sId });
+  const { mutateConversations } = useConversations({
+    workspaceId: owner.sId,
+    options: { disabled: true },
+  });
 
   const { mutate: mutateSpaceSummary } = useSpaceConversationsSummary({
     workspaceId: owner.sId,

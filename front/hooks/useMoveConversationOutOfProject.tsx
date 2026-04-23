@@ -21,7 +21,10 @@ export function useMoveConversationOutOfProject(
   const sendNotification = useSendNotification();
   const confirm = useContext(ConfirmContext);
 
-  const { mutateConversations } = useConversations({ workspaceId: owner.sId });
+  const { mutateConversations } = useConversations({
+    workspaceId: owner.sId,
+    options: { disabled: true },
+  });
 
   const { mutate: mutateSpaceSummary } = useSpaceConversationsSummary({
     workspaceId: owner.sId,
