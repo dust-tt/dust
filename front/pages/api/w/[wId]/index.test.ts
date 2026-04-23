@@ -354,6 +354,29 @@ describe("POST /api/w/[wId]", () => {
     });
   });
 
+  it("disables manual project knowledge management", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
+
+    req.body = {
+      allowManualProjectKnowledgeManagement: false,
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(res._getJSONData()).toEqual({
+      workspace: expect.objectContaining({
+        id: workspace.id,
+        metadata: expect.objectContaining({
+          allowManualProjectKnowledgeManagement: false,
+        }),
+      }),
+    });
+  });
+
   it("returns 405 for non-POST methods", async () => {
     for (const method of ["PUT", "DELETE"] as const) {
       const { req, res } = await createPrivateApiMockRequest({

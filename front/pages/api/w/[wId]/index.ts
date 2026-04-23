@@ -95,6 +95,10 @@ const WorkspaceOpenProjectsUpdateBodySchema = t.type({
   allowOpenProjects: t.boolean,
 });
 
+const WorkspaceManualProjectKnowledgeManagementUpdateBodySchema = t.type({
+  allowManualProjectKnowledgeManagement: t.boolean,
+});
+
 const PostWorkspaceRequestBodySchema = t.union([
   WorkspaceAllowedDomainUpdateBodySchema,
   WorkspaceBatchDomainUpdateBodySchema,
@@ -111,6 +115,7 @@ const PostWorkspaceRequestBodySchema = t.union([
   WorkspaceReinforcementBatchModeUpdateBodySchema,
   WorkspaceExtensionMcpToolsUpdateBodySchema,
   WorkspaceOpenProjectsUpdateBodySchema,
+  WorkspaceManualProjectKnowledgeManagementUpdateBodySchema,
 ]);
 
 async function handler(
@@ -280,6 +285,15 @@ async function handler(
         const newMetadata = {
           ...previousMetadata,
           allowOpenProjects: body.allowOpenProjects,
+        };
+        await workspace.updateWorkspaceSettings({ metadata: newMetadata });
+        owner.metadata = newMetadata;
+      } else if ("allowManualProjectKnowledgeManagement" in body) {
+        const previousMetadata = owner.metadata ?? {};
+        const newMetadata = {
+          ...previousMetadata,
+          allowManualProjectKnowledgeManagement:
+            body.allowManualProjectKnowledgeManagement,
         };
         await workspace.updateWorkspaceSettings({ metadata: newMetadata });
         owner.metadata = newMetadata;

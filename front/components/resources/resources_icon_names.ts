@@ -175,6 +175,7 @@ export const INTERNAL_ALLOWED_ICONS = [
   "ActionGlobeAltIcon",
   "ActionImageIcon",
   "ActionLightbulbIcon",
+  "ActionListCheckIcon",
   "ActionLockIcon",
   "ActionMagnifyingGlassIcon",
   "ActionMegaphoneIcon",

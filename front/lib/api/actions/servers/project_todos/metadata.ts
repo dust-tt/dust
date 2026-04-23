@@ -166,7 +166,7 @@ export const PROJECT_TODOS_SERVER = {
     version: "1.0.0",
     description:
       "Manage the current user's project TODOs: list, create, and complete personal action items.",
-    icon: "ActionDocumentTextIcon",
+    icon: "ActionListCheckIcon",
     authorization: null,
     documentationUrl: null,
     instructions: null,
