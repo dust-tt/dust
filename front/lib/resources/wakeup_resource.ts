@@ -439,7 +439,7 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
       transaction
     );
 
-    void this.triggerConversationESIndexing(auth);
+    await this.triggerConversationESIndexing(auth);
   }
 
   async markExpired(
@@ -457,7 +457,7 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
       transaction
     );
 
-    void this.triggerConversationESIndexing(auth);
+    await this.triggerConversationESIndexing(auth);
   }
 
   maxFires(): number {
@@ -519,7 +519,7 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
       transaction
     );
 
-    void this.triggerConversationESIndexing(auth);
+    await this.triggerConversationESIndexing(auth);
   }
 
   async cleanupTemporalIfCronExpired(
@@ -599,7 +599,7 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
         await ConversationResource.fetchByModelIds(auth, [this.conversationId])
       )[0] ?? null;
     if (conversation) {
-      void ConversationResource.triggerEsIndexing(
+      await ConversationResource.triggerEsIndexing(
         auth,
         conversation.sId,
         auth.getNonNullableWorkspace().sId
