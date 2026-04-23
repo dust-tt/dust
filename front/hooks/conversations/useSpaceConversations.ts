@@ -41,10 +41,12 @@ export function useSpaceConversations({
   workspaceId,
   spaceId,
   limit = DEFAULT_CONVERSATIONS_PAGE_SIZE,
+  options,
 }: {
   workspaceId: string;
   spaceId: string | null;
   limit?: number;
+  options?: { disabled?: boolean };
 }) {
   const { fetcher } = useFetcher();
   const conversationsFetcher: Fetcher<GetSpaceConversationsResponseBody> =
@@ -74,6 +76,7 @@ export function useSpaceConversations({
       {
         revalidateAll: false,
         revalidateOnFocus: false,
+        disabled: options?.disabled,
       }
     );
 
@@ -94,7 +97,7 @@ export function useSpaceConversations({
 
   return {
     conversations,
-    isConversationsLoading: !error && !data,
+    isConversationsLoading: !error && !data && !options?.disabled,
     isConversationsError: error,
     isLoadingMore: isValidating && size > 1,
     isValidating,

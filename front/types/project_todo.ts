@@ -36,6 +36,7 @@ export type ProjectTodoSourceInfo = {
 export type ProjectTodoType = {
   id: ModelId;
   sId: string;
+  conversationId: string | null;
   category: ProjectTodoCategory;
   text: string;
   status: ProjectTodoStatus;

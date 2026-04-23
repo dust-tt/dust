@@ -11,6 +11,7 @@ import type {
   PostProjectContextContentNodeResponseBody,
 } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_context";
 import type { PatchProjectTodoResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_todos/[todoId]/index";
+import type { PostStartProjectTodoResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_todos/[todoId]/start";
 import type { PostCleanDoneTodosResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_todos/clean";
 import type { GetProjectTodosResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_todos/index";
 import type { CheckNameResponseBody } from "@app/pages/api/w/[wId]/spaces/check-name";
@@ -441,6 +442,46 @@ export function useDeleteProjectTodo({
       sendNotification({
         type: "error",
         title: "Failed to delete todo",
+        description: errorMessage,
+      });
+      return new Err(new Error(errorMessage));
+    }
+  };
+}
+
+export function useStartProjectTodoConversation({
+  owner,
+  spaceId,
+}: {
+  owner: LightWorkspaceType;
+  spaceId: string;
+}) {
+  const sendNotification = useSendNotification();
+
+  return async (todoId: string): Promise<Result<ProjectTodoType, Error>> => {
+    try {
+      const res = await clientFetch(
+        `/api/w/${owner.sId}/spaces/${spaceId}/project_todos/${todoId}/start`,
+        { method: "POST" }
+      );
+
+      if (!res.ok) {
+        const errorData = await getErrorFromResponse(res);
+        sendNotification({
+          type: "error",
+          title: "Failed to start todo work",
+          description: errorData.message,
+        });
+        return new Err(new Error(errorData.message));
+      }
+
+      const responseData: PostStartProjectTodoResponseBody = await res.json();
+      return new Ok(responseData.todo);
+    } catch (e) {
+      const errorMessage = normalizeError(e).message;
+      sendNotification({
+        type: "error",
+        title: "Failed to start todo work",
         description: errorMessage,
       });
       return new Err(new Error(errorMessage));
