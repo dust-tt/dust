@@ -12,9 +12,6 @@ import { isLightConversationType } from "@app/types/assistant/conversation";
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
-const MAX_ACTION_INPUT_CHARS = 500;
-const MAX_ACTION_OUTPUT_CHARS = 1_000;
-
 type AnyMessageType =
   | UserMessageType
   | AgentMessageType
@@ -34,6 +31,10 @@ export interface RenderConversationAsTextOptions {
   includeActions?: boolean;
   // Include action input params and output (requires includeActions).
   includeActionDetails?: boolean;
+  // Truncate action input (params) to this many characters.
+  truncateActionInputChars?: number;
+  // Truncate action output to this many characters.
+  truncateActionOutputChars?: number;
   // Include user feedback inline after each agent message.
   includeFeedback?: boolean;
   // Skip agent messages with status "created" (still running).
@@ -301,16 +302,15 @@ function renderAgentMessageAsText(
       lines.push(`- ${action.functionCallName} (${actionStatus})`);
 
       if (options.includeActionDetails) {
-        const paramsStr = truncateString(
-          JSON.stringify(action.params),
-          MAX_ACTION_INPUT_CHARS
+        const paramsStr = JSON.stringify(action.params);
+        lines.push(
+          `  Input: ${options.truncateActionInputChars ? truncateString(paramsStr, options.truncateActionInputChars) : paramsStr}`
         );
-        lines.push(`  Input: ${paramsStr}`);
         if (action.output) {
           const outputText = serializeActionOutput(action.output);
           if (outputText) {
             lines.push(
-              `  Output: ${truncateString(outputText, MAX_ACTION_OUTPUT_CHARS)}`
+              `  Output: ${options.truncateActionOutputChars ? truncateString(outputText, options.truncateActionOutputChars) : outputText}`
             );
           }
         }
