@@ -41,18 +41,21 @@ async function handler(
       const todoIds = todos.map((t) => t.sId);
 
       // Fetch sources for all todos (across all version rows).
-      const sourcesByTodoId = await ProjectTodoResource.fetchSourcesForTodoIds(
-        auth,
-        {
+      const [sourcesByTodoId, conversationIdByTodoId] = await Promise.all([
+        ProjectTodoResource.fetchSourcesForTodoIds(auth, {
           sIds: todoIds,
-        }
-      );
+        }),
+        ProjectTodoResource.fetchConversationIdsForTodoIds(auth, {
+          sIds: todoIds,
+        }),
+      ]);
 
       // TODO: enrich todos with creator/done-by user info when supporting multiple users.
       const todosWithSources: ProjectTodoType[] = todos.map((t) => {
         const sources = sourcesByTodoId.get(t.sId) ?? [];
         return {
           ...t.toJSON(),
+          conversationId: conversationIdByTodoId.get(t.sId) ?? null,
           sources: sources.map((s) => ({
             sourceType: s.sourceType,
             sourceId: s.sourceId,

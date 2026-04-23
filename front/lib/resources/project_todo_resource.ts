@@ -1,4 +1,5 @@
 import type { Authenticator } from "@app/lib/auth";
+import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import {
   ProjectTodoConversationModel,
@@ -337,6 +338,84 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
     return result;
   }
 
+  static async fetchConversationIdsForTodoIds(
+    auth: Authenticator,
+    { sIds }: { sIds: string[] }
+  ): Promise<Map<string, string>> {
+    if (sIds.length === 0) {
+      return new Map();
+    }
+
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    const idToSId = new Map<number, string>();
+    for (const sId of sIds) {
+      const id = getResourceIdFromSId(sId);
+      if (id !== null) {
+        idToSId.set(id, sId);
+      }
+    }
+
+    if (idToSId.size === 0) {
+      return new Map();
+    }
+
+    const rows = await ProjectTodoConversationModel.findAll({
+      where: {
+        workspaceId,
+        projectTodoId: { [Op.in]: [...idToSId.keys()] },
+      },
+      include: [
+        {
+          model: ConversationModel,
+          as: "conversation",
+          attributes: ["sId"],
+          required: true,
+        },
+      ],
+      order: [["createdAt", "DESC"]],
+    });
+
+    const result = new Map<string, string>();
+    for (const row of rows) {
+      const todoSId = idToSId.get(row.projectTodoId);
+      const conversationSId = row.conversation?.sId;
+      if (!todoSId || !conversationSId || result.has(todoSId)) {
+        continue;
+      }
+      result.set(todoSId, conversationSId);
+    }
+
+    return result;
+  }
+
+  async getLatestConversationId(auth: Authenticator): Promise<string | null> {
+    const conversationIds =
+      await ProjectTodoResource.fetchConversationIdsForTodoIds(auth, {
+        sIds: [this.sId],
+      });
+    return conversationIds.get(this.sId) ?? null;
+  }
+
+  async addConversation(
+    auth: Authenticator,
+    { conversationModelId }: { conversationModelId: ModelId },
+    transaction?: Transaction
+  ): Promise<void> {
+    await ProjectTodoConversationModel.findOrCreate({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        projectTodoId: this.id,
+        conversationId: conversationModelId,
+      },
+      defaults: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        projectTodoId: this.id,
+        conversationId: conversationModelId,
+      },
+      transaction,
+    });
+  }
+
   // ── Source links (* => todo) ─────────────────────────────────────────────
 
   async upsertSource(
@@ -382,6 +461,7 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
     return {
       id: this.id,
       sId: this.sId,
+      conversationId: null,
       category: this.category,
       text: this.text,
       status: this.status,

@@ -120,8 +120,14 @@ async function handler(
       }
 
       const updatedTodo = await todo.updateWithVersion(auth, updates);
+      const conversationId = await updatedTodo.getLatestConversationId(auth);
 
-      return res.status(200).json({ todo: updatedTodo.toJSON() });
+      return res.status(200).json({
+        todo: {
+          ...updatedTodo.toJSON(),
+          conversationId,
+        },
+      });
     }
 
     case "DELETE": {

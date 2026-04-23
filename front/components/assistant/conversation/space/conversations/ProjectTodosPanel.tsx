@@ -1,3 +1,7 @@
+import {
+  useSpaceConversations,
+  useSpaceConversationsSummary,
+} from "@app/hooks/conversations";
 import { useAppRouter } from "@app/lib/platform";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import {
@@ -5,9 +9,11 @@ import {
   useDeleteProjectTodo,
   useMarkProjectTodosRead,
   useProjectTodos,
+  useStartProjectTodoConversation,
   useUpdateProjectTodo,
 } from "@app/lib/swr/projects";
 import { timeAgoFrom } from "@app/lib/utils";
+import { getConversationRoute } from "@app/lib/utils/router";
 import type { GetProjectTodosResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_todos/index";
 import type {
   ProjectTodoActorType,
@@ -19,6 +25,7 @@ import { PROJECT_TODO_CATEGORIES } from "@app/types/project_todo";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
+  AnimatedText,
   BookOpenIcon,
   Button,
   ChatBubbleLeftRightIcon,
@@ -31,6 +38,7 @@ import {
   IconButton,
   MicrosoftLogo,
   NotionLogo,
+  PlayIcon,
   SlackLogo,
   Spinner,
   SquareIcon,
@@ -122,8 +130,18 @@ function TodoMetadataTooltip({
       )
     : null;
 
+  const isAssistantWorkInProgress =
+    todo.category === "to_do" &&
+    !!todo.conversationId &&
+    todo.status !== "done";
+
   const label = (
     <div className="flex flex-col gap-1">
+      {isAssistantWorkInProgress && (
+        <div className="text-xs font-medium text-foreground dark:text-foreground-night">
+          An Agent is working on this todo.
+        </div>
+      )}
       <div className="text-xs">
         Created by {creatorLabel} · {formatFriendlyDate(todo.createdAt)}
       </div>
@@ -462,6 +480,7 @@ interface EditableTodoItemProps {
   todo: ProjectTodoType;
   onToggleDone: (todo: ProjectTodoType) => void;
   onDelete: (todo: ProjectTodoType) => void;
+  onStartWorking: (todo: ProjectTodoType) => void;
   owner: LightWorkspaceType;
   agentNameById: Map<string, string>;
   isExiting: boolean;
@@ -469,12 +488,14 @@ interface EditableTodoItemProps {
   isEntering: boolean;
   isTyping: boolean;
   isNewlyDone: boolean;
+  isStarting: boolean;
 }
 
 function EditableTodoItem({
   todo,
   onToggleDone,
   onDelete,
+  onStartWorking,
   owner,
   agentNameById,
   isExiting,
@@ -482,8 +503,12 @@ function EditableTodoItem({
   isEntering,
   isTyping,
   isNewlyDone,
+  isStarting,
 }: EditableTodoItemProps) {
+  const router = useAppRouter();
   const isDone = todo.status === "done";
+  const showInProgressTextAnimation =
+    todo.category === "to_do" && !!todo.conversationId && !isDone;
   const [isFlashing, setIsFlashing] = useState(isNewlyDone);
 
   useEffect(() => {
@@ -501,13 +526,13 @@ function EditableTodoItem({
   return (
     <div
       className={cn(
-        "group/todo flex items-start gap-3 overflow-hidden",
+        "group/todo flex items-start gap-3",
         "transition-all duration-200",
         isExiting
-          ? "max-h-0 opacity-0"
+          ? "max-h-0 overflow-hidden opacity-0"
           : isAdded && !isEntering
-            ? "max-h-0 opacity-0"
-            : "max-h-32 opacity-100"
+            ? "max-h-0 overflow-hidden opacity-0"
+            : "max-h-[1000px] opacity-100"
       )}
     >
       <div className="mt-1 shrink-0">
@@ -536,6 +561,8 @@ function EditableTodoItem({
           >
             {isTyping ? (
               <TypingAnimation text={todo.text} duration={16} />
+            ) : showInProgressTextAnimation ? (
+              <AnimatedText variant="muted">{todo.text}</AnimatedText>
             ) : (
               todo.text
             )}
@@ -543,11 +570,39 @@ function EditableTodoItem({
           <TodoSources sources={todo.sources} owner={owner} isDone={isDone} />
         </button>
       </TodoMetadataTooltip>
-      <div className="mt-0.5 shrink-0 opacity-0 transition-opacity group-hover/todo:opacity-100">
+      <div className="mt-0.5 flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover/todo:opacity-100">
+        {todo.category === "to_do" &&
+          (todo.conversationId ? (
+            <IconButton
+              icon={ChatBubbleLeftRightIcon}
+              size="xs"
+              variant="ghost"
+              className="!text-muted-foreground hover:!text-foreground"
+              tooltip={"Open todo conversation"}
+              onClick={() => {
+                void router.push(
+                  getConversationRoute(owner.sId, todo.conversationId),
+                  undefined,
+                  { shallow: true }
+                );
+              }}
+            />
+          ) : (
+            <IconButton
+              icon={PlayIcon}
+              size="xs"
+              variant="ghost"
+              className="!text-muted-foreground hover:!text-foreground"
+              tooltip="Start working on todo"
+              disabled={isStarting}
+              onClick={() => onStartWorking(todo)}
+            />
+          ))}
         <IconButton
           icon={TrashIcon}
           size="xs"
           variant="ghost"
+          className="!text-muted-foreground hover:!text-foreground"
           tooltip="Delete todo"
           onClick={() => onDelete(todo)}
         />
@@ -570,8 +625,26 @@ function EditableProjectTodosPanel({
   const agentNameById = useAgentNameById(owner);
   const doUpdate = useUpdateProjectTodo({ owner, spaceId });
   const doDelete = useDeleteProjectTodo({ owner, spaceId });
+  const doStartConversation = useStartProjectTodoConversation({
+    owner,
+    spaceId,
+  });
   const doCleanDone = useCleanDoneProjectTodos({ owner, spaceId });
   const markRead = useMarkProjectTodosRead({ owner, spaceId });
+
+  // Disabled subscriptions used only to invalidate the space conversations list
+  // and summary when a todo conversation is started — the parent page already
+  // owns the active fetch for these keys.
+  const { mutateConversations: mutateSpaceConversations } =
+    useSpaceConversations({
+      workspaceId: owner.sId,
+      spaceId,
+      options: { disabled: true },
+    });
+  const { mutate: mutateSpaceSummary } = useSpaceConversationsSummary({
+    workspaceId: owner.sId,
+    options: { disabled: true },
+  });
   const markReadRef = useRef(markRead);
   markReadRef.current = markRead;
 
@@ -580,6 +653,9 @@ function EditableProjectTodosPanel({
     new Set()
   );
   const [isCleaning, setIsCleaning] = useState(false);
+  const [startingTodoIds, setStartingTodoIds] = useState<Set<string>>(
+    new Set()
+  );
 
   // ── Diff animation state ────────────────────────────────────────────────────
 
@@ -758,6 +834,43 @@ function EditableProjectTodosPanel({
     [doDelete, mutateTodos]
   );
 
+  const handleStartWorking = useCallback(
+    async (todo: ProjectTodoType) => {
+      setStartingTodoIds((prev) => new Set([...prev, todo.sId]));
+      const result = await doStartConversation(todo.sId);
+      if (result.isOk()) {
+        const { conversationId } = result.value;
+        // Reflect the new todo state (conversationId set) immediately.
+        // Only patch conversationId — the server-side toJSON doesn't rehydrate
+        // sources, so replacing the whole todo would transiently drop them.
+        void mutateTodos(
+          (prev: GetProjectTodosResponseBody | undefined) => ({
+            lastReadAt: prev?.lastReadAt ?? null,
+            todos: (prev?.todos ?? []).map((t) =>
+              t.sId === todo.sId ? { ...t, conversationId } : t
+            ),
+          }),
+          { revalidate: false }
+        );
+        // Revalidate the conversations list below so the new conversation
+        // appears right away.
+        void mutateSpaceConversations();
+        void mutateSpaceSummary();
+      }
+      setStartingTodoIds((prev) => {
+        const next = new Set(prev);
+        next.delete(todo.sId);
+        return next;
+      });
+    },
+    [
+      doStartConversation,
+      mutateTodos,
+      mutateSpaceConversations,
+      mutateSpaceSummary,
+    ]
+  );
+
   return (
     <div className="flex flex-col gap-3">
       {/* Header */}
@@ -830,6 +943,7 @@ function EditableProjectTodosPanel({
                       todo={todo}
                       onToggleDone={handleToggleDone}
                       onDelete={handleDelete}
+                      onStartWorking={handleStartWorking}
                       owner={owner}
                       agentNameById={agentNameById}
                       isExiting={pendingRemovalIds.has(todo.sId)}
@@ -840,6 +954,7 @@ function EditableProjectTodosPanel({
                       isEntering={enteringKeys.has(todo.sId)}
                       isTyping={typingKeys.has(todo.sId)}
                       isNewlyDone={doneFlashKeys.has(todo.sId)}
+                      isStarting={startingTodoIds.has(todo.sId)}
                     />
                   ))}
                 </div>
