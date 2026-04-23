@@ -1,80 +1,48 @@
-// TODO(wake-up): Replace stub with real SWR fetch when wake-up API endpoints land (PR 7).
-// Will use useSWRWithDefaults + useFetcher pattern (see front/lib/swr/agent_memories.ts).
-
+import { useSendNotification } from "@app/hooks/useNotification";
+import { clientFetch } from "@app/lib/egress/client";
+import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { WakeUpType } from "@app/types/assistant/wakeups";
+import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useMemo } from "react";
+import type { Fetcher } from "swr";
 
-const STUB_ENABLED = false;
-// Toggle to preview the non-owner (viewer) disabled-input state. When false,
-// the active wake-up is treated as belonging to someone else, so the banner
-// hides the cancel action and the input bar shows the "conversation paused"
-// placeholder + disabled send button. PR 7 will replace this with an `isOwner`
-// boolean on the real API response (see TODO in AgentInputBar.tsx).
-const STUB_IS_OWNER = true;
-
-const buildStubWakeUps = (agentConfigurationId: string): WakeUpType[] => [
-  {
-    id: 1,
-    sId: "stub-wakeup-1",
-    createdAt: Date.now(),
-    agentConfigurationId,
-    // One-shot "snooze"-style wake-up: the agent wakes up once at a specific
-    // timestamp (Date.now() + N minutes). This is the common V1 flow.
-    // Swap in the cron block below to preview the recurring-schedule variant.
-    scheduleConfig: {
-      type: "one_shot",
-      fireAt: Date.now() + 45 * 60 * 1000,
-    },
-    // scheduleConfig: {
-    //   type: "cron",
-    //   cron: "38 10 * * *",
-    //   timezone: "UTC",
-    // },
-    reason: "Check error rate post-deploy v2.4.3",
-    status: "scheduled",
-    fireCount: 0,
-    maxFires: 1,
-  },
-];
+type GetConversationWakeUpsResponseBody = { wakeUps: WakeUpType[] };
 
 export function useConversationWakeUps({
   owner,
   conversationId,
   disabled,
 }: {
-  owner: { sId: string };
+  owner: LightWorkspaceType;
   conversationId: string;
   disabled?: boolean;
 }) {
-  const wakeUps = useMemo<WakeUpType[]>(() => {
-    if (disabled || !conversationId) {
-      return [];
-    }
-    if (STUB_ENABLED) {
-      return buildStubWakeUps(`stub-agent-${owner.sId}`);
-    }
-    return [];
-  }, [disabled, conversationId, owner.sId]);
+  const { fetcher } = useFetcher();
+  const wakeUpsFetcher: Fetcher<GetConversationWakeUpsResponseBody> = fetcher;
 
+  const { data, error, mutate } = useSWRWithDefaults(
+    conversationId
+      ? `/api/w/${owner.sId}/assistant/conversations/${conversationId}/wakeups`
+      : null,
+    wakeUpsFetcher,
+    { disabled }
+  );
+
+  const wakeUps = data?.wakeUps ?? emptyArray();
   const activeWakeUp = useMemo(
     () => wakeUps.find((w) => w.status === "scheduled") ?? null,
     [wakeUps]
   );
 
-  const mutateWakeUps = useCallback(async () => {
-    // no-op in stub
-  }, []);
-
   return {
     wakeUps,
     activeWakeUp,
-    // TODO(wake-up): PR 7 will derive this per-wake-up from the API response,
-    // following the triggers isEditor pattern. For now the stub treats every
-    // active wake-up as (not) owned by the current user based on STUB_IS_OWNER.
-    isActiveWakeUpOwner: activeWakeUp ? STUB_IS_OWNER : false,
-    isWakeUpsLoading: false,
-    isWakeUpsError: false,
-    mutateWakeUps,
+    // TODO(wake-up): derive from the API response once it exposes ownership info; for now the
+    // cancel endpoint 403s if the caller is not the wake-up owner or a workspace admin.
+    isActiveWakeUpOwner: !!activeWakeUp,
+    isWakeUpsLoading: !error && !data && !disabled,
+    isWakeUpsError: !!error,
+    mutateWakeUps: mutate,
   };
 }
 
@@ -82,20 +50,39 @@ export function useCancelWakeUp({
   owner,
   conversationId,
 }: {
-  owner: { sId: string };
+  owner: LightWorkspaceType;
   conversationId: string;
 }) {
+  const sendNotification = useSendNotification();
+  const { mutateWakeUps } = useConversationWakeUps({
+    owner,
+    conversationId,
+    disabled: true,
+  });
+
   const cancelWakeUp = useCallback(
     async (wakeUpSId: string) => {
-      // eslint-disable-next-line no-console
-      console.log("[stub] cancelWakeUp", {
-        workspaceId: owner.sId,
-        conversationId,
-        wakeUpSId,
-      });
+      const res = await clientFetch(
+        `/api/w/${owner.sId}/assistant/conversations/${conversationId}/wakeups/${wakeUpSId}`,
+        { method: "DELETE" }
+      );
+
+      if (!res.ok) {
+        const json = await res.json();
+        sendNotification({
+          type: "error",
+          title: "Failed to cancel wake-up",
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+          description: json.error?.message || "Failed to cancel wake-up",
+        });
+        return false;
+      }
+
+      sendNotification({ type: "success", title: "Wake-up cancelled" });
+      void mutateWakeUps();
       return true;
     },
-    [owner.sId, conversationId]
+    [owner.sId, conversationId, sendNotification, mutateWakeUps]
   );
 
   return { cancelWakeUp };
