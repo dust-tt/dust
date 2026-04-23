@@ -11,6 +11,7 @@ import {
 import {
   provisionEnterpriseMetronomeContract,
   switchMetronomeContractPackage,
+  syncContractQuantities,
 } from "@app/lib/metronome/contracts";
 import { invalidateContractCache } from "@app/lib/metronome/plan_type";
 import {
@@ -558,6 +559,19 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     return res !== null;
   }
 
+  static async isMetronomeContractIdAlreadyUsed(
+    metronomeContractId: string
+  ): Promise<boolean> {
+    const res = await this.model.findOne({
+      where: { metronomeContractId },
+      // WORKSPACE_ISOLATION_BYPASS: Used to check across all workspaces.
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
+    });
+
+    return res !== null;
+  }
+
   static async internalFetchWorkspacesWithFreeEndedSubscriptions(): Promise<{
     workspaces: LightWorkspaceType[];
   }> {
@@ -749,7 +763,12 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
   static async pokeUpgradeWorkspaceToEnterprise(
     auth: Authenticator,
     enterpriseDetails: EnterpriseUpgradeFormType,
-    stripeSubscription: Stripe.Subscription
+    stripeSubscription: Stripe.Subscription | null,
+    metronome?: {
+      metronomeCustomerId: string;
+      metronomeContractId: string;
+      startingAt: string;
+    }
   ) {
     const owner = auth.getNonNullableWorkspace();
 
@@ -758,6 +777,9 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     }
 
     const plan = await this.findPlanOrThrow(enterpriseDetails.planCode);
+    if (!isEntreprisePlanPrefix(plan.code)) {
+      throw new Error(`Plan ${plan.code} is not an enterprise plan.`);
+    }
     // End the current subscription if any.
     const newSubscription = await this.internalSubscribeWorkspaceToFreePlan({
       workspaceId: owner.sId,
@@ -772,34 +794,66 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       throw new Error(`Workspace not found: ${owner.sId}`);
     }
 
-    const metronomeResult = await provisionEnterpriseMetronomeContract({
-      workspace: renderLightWorkspaceType({ workspace: workspaceResource }),
-      stripeSubscription,
-    });
-    if (metronomeResult.isErr()) {
-      // Shadow-billed: Stripe owns billing, Metronome failure is not critical.
-      logger.error(
-        {
-          workspaceId: owner.sId,
-          error: metronomeResult.error.message,
-        },
-        "Failed to provision Metronome contract for enterprise upgrade"
-      );
-      return;
-    }
+    if (metronome) {
+      if (!workspaceResource.metronomeCustomerId) {
+        await WorkspaceResource.updateMetronomeCustomerId(
+          workspaceResource.id,
+          metronome.metronomeCustomerId
+        );
+      }
 
-    const { metronomeCustomerId, metronomeContractId } = metronomeResult.value;
+      await SubscriptionResource.updateMetronomeContractId(
+        newSubscription.id,
+        metronome.metronomeContractId
+      );
 
-    if (!workspaceResource.metronomeCustomerId) {
-      await WorkspaceResource.updateMetronomeCustomerId(
-        workspaceResource.id,
-        metronomeCustomerId
+      const syncResult = await syncContractQuantities(
+        metronome.metronomeCustomerId,
+        metronome.metronomeContractId,
+        renderLightWorkspaceType({ workspace: workspaceResource }),
+        metronome.startingAt
+      );
+
+      if (syncResult.isErr()) {
+        logger.error(
+          {
+            workspaceId: owner.sId,
+            error: syncResult.error.message,
+          },
+          "Failed to sync initial seat/MAU quantities on Metronome contract"
+        );
+      }
+    } else if (stripeSubscription) {
+      const metronomeResult = await provisionEnterpriseMetronomeContract({
+        workspace: renderLightWorkspaceType({ workspace: workspaceResource }),
+        stripeSubscription,
+      });
+
+      if (metronomeResult.isErr()) {
+        logger.error(
+          {
+            workspaceId: owner.sId,
+            error: metronomeResult.error.message,
+          },
+          "Failed to provision Metronome contract for enterprise upgrade"
+        );
+        return;
+      }
+
+      const { metronomeCustomerId, metronomeContractId } =
+        metronomeResult.value;
+
+      if (!workspaceResource.metronomeCustomerId) {
+        await WorkspaceResource.updateMetronomeCustomerId(
+          workspaceResource.id,
+          metronomeCustomerId
+        );
+      }
+      await SubscriptionResource.updateMetronomeContractId(
+        newSubscription.id,
+        metronomeContractId
       );
     }
-    await SubscriptionResource.updateMetronomeContractId(
-      newSubscription.id,
-      metronomeContractId
-    );
   }
 
   /**

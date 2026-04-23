@@ -26,6 +26,7 @@ export type PokeGetWorkspaceInfo = {
   activeSubscription: SubscriptionType;
   baseUrl: string;
   extensionConfig: ExtensionConfigurationType | null;
+  hasMetronomeBilling: boolean;
   hasDummyFeature: boolean;
   membersCount: number;
   metronomeCustomerId: string | null;
@@ -96,6 +97,10 @@ async function handler(
       const programmaticUsageConfig =
         await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
 
+      const hasMetronomeBilling = await hasFeatureFlag(
+        auth,
+        "metronome_billing"
+      );
       const hasDummyFeature = await hasFeatureFlag(
         auth,
         "dummy_feature_for_flag_testing"
@@ -117,6 +122,7 @@ async function handler(
 
       return res.status(200).json({
         activeSubscription,
+        hasMetronomeBilling,
         hasDummyFeature,
         membersCount,
         metronomeCustomerId: workspaceResource.metronomeCustomerId ?? null,

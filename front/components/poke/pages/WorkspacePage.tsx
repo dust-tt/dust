@@ -127,6 +127,7 @@ export function WorkspacePage() {
 
   const {
     activeSubscription,
+    hasMetronomeBilling,
     hasDummyFeature,
     membersCount,
     metronomeCustomerId,
@@ -227,6 +228,7 @@ export function WorkspacePage() {
                   subscription={activeSubscription}
                   subscriptions={subscriptions}
                   programmaticUsageConfig={programmaticUsageConfig}
+                  hasMetronomeBilling={hasMetronomeBilling}
                 />
               </TabsContent>
               <TabsContent value="planlimitations">
