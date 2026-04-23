@@ -1,4 +1,4 @@
-import { renderAvailableSkillsUserMessage } from "@app/lib/api/assistant/skills_rendering";
+import { renderEquippedSkillsUserMessage } from "@app/lib/api/assistant/skills_rendering";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -200,7 +200,7 @@ describe("skill rendering helpers", () => {
         "Review a pull request for code quality and correctness.",
     });
 
-    const message = renderAvailableSkillsUserMessage([
+    const message = renderEquippedSkillsUserMessage([
       commitSkill,
       reviewPrSkill,
     ]);

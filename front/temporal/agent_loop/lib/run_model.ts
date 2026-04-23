@@ -32,7 +32,7 @@ import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent"
 import { getCompletionDuration } from "@app/lib/api/assistant/messages";
 import { getSkillServers } from "@app/lib/api/assistant/skill_actions";
 import {
-  renderAvailableSkillsUserMessage,
+  renderEquippedSkillsUserMessage,
   SKILLS_AS_USER_MESSAGES_FEATURE_FLAG,
 } from "@app/lib/api/assistant/skills_rendering";
 import {
@@ -404,7 +404,7 @@ export async function runModel(
     workspaceContext,
   });
   const prefaceMessages = renderSkillsAsUserMessages
-    ? removeNulls([renderAvailableSkillsUserMessage(equippedSkills)])
+    ? removeNulls([renderEquippedSkillsUserMessage(equippedSkills)])
     : [];
 
   const specifications: AgentActionSpecification[] = [];

@@ -11,7 +11,7 @@ import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { getSkillServers } from "@app/lib/api/assistant/skill_actions";
 import {
-  renderAvailableSkillsUserMessage,
+  renderEquippedSkillsUserMessage,
   SKILLS_AS_USER_MESSAGES_FEATURE_FLAG,
 } from "@app/lib/api/assistant/skills_rendering";
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
@@ -278,7 +278,7 @@ async function handler(
       });
       const prompt = systemPromptToText(promptSections);
       const prefaceMessages = renderSkillsAsUserMessages
-        ? removeNulls([renderAvailableSkillsUserMessage(equippedSkills)])
+        ? removeNulls([renderEquippedSkillsUserMessage(equippedSkills)])
         : [];
 
       // Build tool specifications to estimate tokens for tool definitions (names + schemas only).

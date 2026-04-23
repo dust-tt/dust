@@ -18,7 +18,7 @@ function renderSystemSkillMessage(text: string): UserMessageTypeModel {
   };
 }
 
-export function renderAvailableSkillsUserMessage(
+export function renderEquippedSkillsUserMessage(
   equippedSkills: SkillResource[]
 ): UserMessageTypeModel | null {
   if (equippedSkills.length === 0) {
