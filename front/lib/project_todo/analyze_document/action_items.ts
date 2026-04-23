@@ -58,6 +58,7 @@ export function buildPromptActionItems(
     "- Include an assignee_name only when clearly stated in the document.\n" +
     "- Include an assignee_user_id (from the project members list) when the assignee matches a known project member.\n" +
     "- Be concise: one action item per distinct task.\n" +
+    "- Make descriptions self-sufficient: include both the action AND its subject so the item is understandable without opening the source document. Prefer specific over vague — not 'Fix the bug' but 'Fix crash in batchRenderMessages when agent config is unavailable'; not 'Review PR' but 'Review PR #24679 — improves takeaway extraction prompts'.\n" +
     "- In the description, mention users and agents by their name, NOT via their id or via a generic term like User, Agent or Bot.\n" +
     "- In the description, refer to the assignee by Your pronouns (e.g., 'You', 'Your', 'Yours'), not by their name.\n\n";
   if (previousActionItems.length > 0) {

@@ -47,6 +47,7 @@ export function buildPromptNotableFacts(
     "Formatting rules:\n" +
     "- Be concise and specific — one fact per distinct piece of information. Do not combine " +
     "multiple facts into a single entry.\n" +
+    "- Make descriptions self-sufficient: include enough specifics that a project member reading the list can grasp the fact without reading the original source — not 'Deadline moved' but 'Q3 launch deadline moved to October 15 due to infrastructure constraints found in the audit'.\n" +
     "- Mention users and agents by their name, NOT via their id or via a generic term " +
     "like User, Agent or Bot.\n" +
     "- Write each description as an objective factual statement. Name people by their actual " +
