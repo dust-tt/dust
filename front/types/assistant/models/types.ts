@@ -92,6 +92,10 @@ export type ModelConfigurationType = Omit<
 };
 
 export type ModelConfig = (typeof SUPPORTED_MODEL_CONFIGS)[number];
+export type ModelIdentifier = Pick<
+  ModelConfigurationType,
+  "providerId" | "modelId"
+>;
 // this creates a union type of all the {providerId: string, modelId: string}
 // pairs that are in SUPPORTED_MODELS
 export type SupportedModel = ExtractSpecificKeys<

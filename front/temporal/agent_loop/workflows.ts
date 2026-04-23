@@ -24,7 +24,7 @@ import type {
   AgentLoopArgsWithTiming,
 } from "@app/types/assistant/agent_run";
 import type { CompactionSourceConversation } from "@app/types/assistant/compaction";
-import type { SupportedModel } from "@app/types/assistant/models/types";
+import type { ModelIdentifier } from "@app/types/assistant/models/types";
 import { WorkflowExecutionAlreadyStartedError } from "@temporalio/common";
 import type {
   ChildWorkflowHandle,
@@ -148,7 +148,7 @@ export async function compactionWorkflow({
   conversationId: string;
   compactionMessageId: string;
   compactionMessageVersion: number;
-  model: SupportedModel;
+  model: ModelIdentifier;
   sourceConversation?: CompactionSourceConversation;
 }) {
   await compactionActivity(authType, {

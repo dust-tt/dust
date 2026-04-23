@@ -1,7 +1,7 @@
 import { Authenticator, type AuthenticatorType } from "@app/lib/auth";
 import { runCompaction } from "@app/temporal/agent_loop/lib/compaction";
 import type { CompactionSourceConversation } from "@app/types/assistant/compaction";
-import type { SupportedModel } from "@app/types/assistant/models/types";
+import type { ModelIdentifier } from "@app/types/assistant/models/types";
 
 export async function compactionActivity(
   authType: AuthenticatorType,
@@ -15,7 +15,7 @@ export async function compactionActivity(
     conversationId: string;
     compactionMessageId: string;
     compactionMessageVersion: number;
-    model: SupportedModel;
+    model: ModelIdentifier;
     sourceConversation?: CompactionSourceConversation;
   }
 ): Promise<void> {
