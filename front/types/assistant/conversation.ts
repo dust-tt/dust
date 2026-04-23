@@ -360,6 +360,7 @@ export type CompactionMessageType = {
   version: number;
   rank: number;
   branchId: string | null;
+  sourceConversationId?: string | null;
   status: CompactionMessageStatus; // Lifecycle: created → succeeded | failed.
   content: string | null; // null while status is "created".
 };

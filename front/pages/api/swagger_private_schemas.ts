@@ -634,6 +634,9 @@
  *         branchId:
  *           type: string
  *           nullable: true
+ *         sourceConversationId:
+ *           type: string
+ *           nullable: true
  *         status:
  *           type: string
  *           enum: [created, succeeded, failed]

@@ -666,6 +666,7 @@ export class CompactionMessageModel extends WorkspaceAwareModel<CompactionMessag
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare runIds: string[] | null;
+  declare sourceConversationId: string | null;
 
   declare status: CompactionMessageStatus;
   declare content: string | null;
@@ -685,6 +686,10 @@ CompactionMessageModel.init(
     },
     runIds: {
       type: DataTypes.ARRAY(DataTypes.STRING),
+      allowNull: true,
+    },
+    sourceConversationId: {
+      type: DataTypes.STRING,
       allowNull: true,
     },
     status: {
