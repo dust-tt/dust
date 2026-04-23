@@ -28,6 +28,7 @@ import type {
 import type {
   AgentMessageType,
   CompactionMessageType,
+  InlineActivityStep,
   LegacyLightMessageType,
   LightAgentMessageType,
   LightMessageType,
@@ -253,6 +254,7 @@ function renderUserMessage(
             originMessageId: userMessage.agenticOriginMessageId,
           }
         : undefined,
+    wakeupTriggeringMessageSId: userMessage.wakeupTriggeringMessageSId ?? null,
     reactions: [],
   };
 }
@@ -670,6 +672,67 @@ export async function batchRenderAgentMessages<V extends RenderMessageVariant>(
   );
 }
 
+function truncateLabel(content: string, maxLength = 50): string {
+  return content.length > maxLength
+    ? `${content.substring(0, maxLength - 3)}...`
+    : content;
+}
+
+/**
+ * When the agent message was triggered by a wake-up, build a "wakeup" activity
+ * step pointing at the original user message that asked for the wake-up. The
+ * triggering message sId is carried on the trigger user message itself via
+ * `wakeupTriggeringMessageSId` (copied from the WakeUp row at fire time), so
+ * we only need one lookup to fetch that message's content for the label.
+ */
+async function buildWakeupActivityStepIfNeeded({
+  auth,
+  message,
+  userMessage,
+  parentMessage,
+  allMessagesById,
+}: {
+  auth: Authenticator;
+  message: MessageModel;
+  userMessage: UserMessageModel;
+  parentMessage: MessageModel;
+  allMessagesById: Map<ModelId, MessageModel>;
+}): Promise<InlineActivityStep | null> {
+  if (
+    userMessage.userContextOrigin !== "wakeup" ||
+    !userMessage.wakeupTriggeringMessageSId
+  ) {
+    return null;
+  }
+
+  const originMessageSId = userMessage.wakeupTriggeringMessageSId;
+  const originMessage =
+    [...allMessagesById.values()].find((m) => m.sId === originMessageSId) ??
+    (await MessageModel.findOne({
+      where: {
+        sId: originMessageSId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        conversationId: message.conversationId,
+      },
+      include: [
+        {
+          model: UserMessageModel,
+          as: "userMessage",
+          required: true,
+        },
+      ],
+    }));
+
+  return {
+    type: "wakeup",
+    label: truncateLabel(
+      originMessage?.userMessage?.content ?? userMessage.content
+    ),
+    id: `wakeup-${message.sId}`,
+    targetMessageSId: originMessage?.sId ?? parentMessage.sId,
+  };
+}
+
 type RenderSingleAgentMessageContext = {
   actionsByAgentMessageId: Record<number, AgentMCPActionWithOutputType[]>;
   agentConfigurations: LightAgentConfigurationType[];
@@ -878,12 +941,24 @@ async function renderSingleAgentMessage(
     return new Ok(renderedMessage);
   }
 
-  const activitySteps = await contentsToActivitySteps(
+  const baseActivitySteps = await contentsToActivitySteps(
     agentStepContents,
     actions,
     agentConfiguration,
     message.sId
   );
+
+  const wakeupStep = await buildWakeupActivityStepIfNeeded({
+    auth,
+    message,
+    userMessage,
+    parentMessage,
+    allMessagesById,
+  });
+
+  const activitySteps = wakeupStep
+    ? [wakeupStep, ...baseActivitySteps]
+    : baseActivitySteps;
 
   return new Ok({
     ...getLightAgentMessageFromAgentMessage(renderedMessage),

@@ -491,18 +491,21 @@
  *             properties:
  *               type:
  *                 type: string
- *                 enum: [thinking, action]
+ *                 enum: [thinking, content, action, wakeup]
  *               content:
  *                 type: string
- *                 description: Chain of thought text (thinking steps only)
+ *                 description: Chain of thought or intermediate text (thinking and content steps only)
  *               label:
  *                 type: string
- *                 description: Action display label (action steps only)
+ *                 description: Display label (action and wakeup steps only)
  *               id:
  *                 type: string
  *               actionId:
  *                 type: string
  *                 description: Action string identifier (action steps only)
+ *               targetMessageSId:
+ *                 type: string
+ *                 description: Message sId the step links back to (wakeup steps only)
  *         reactions:
  *           type: array
  *           items:
