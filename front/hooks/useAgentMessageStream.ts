@@ -298,7 +298,11 @@ export function useAgentMessageStream({
     VirtuosoMessage,
     VirtuosoMessageListContext
   >();
-  const updateMessageThrottled = useRef(createUpdateMessageThrottled()).current;
+  const updateMessageThrottledRef = useRef(null);
+  if (!updateMessageThrottledRef.current) {
+    updateMessageThrottledRef.current = createUpdateMessageThrottled();
+  }
+  const updateMessageThrottled = updateMessageThrottledRef.current;
 
   useEffect(() => {
     return () => {
@@ -700,7 +704,13 @@ export function useAgentMessageStream({
         customOnEventCallback(eventPayload);
       }
     },
-    [customOnEventCallback, methods, sId, mutateContextUsage]
+    [
+      customOnEventCallback,
+      methods,
+      sId,
+      mutateContextUsage,
+      updateMessageThrottled,
+    ]
   );
 
   const { isError } = useEventSource(
