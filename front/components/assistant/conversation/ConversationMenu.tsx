@@ -140,7 +140,9 @@ interface ConversationMenuProps {
   conversation?: ConversationListItemType;
   onConversationBranched?: () => Promise<void> | void;
   owner: WorkspaceType;
-  trigger: ({ isBranching }: { isBranching: boolean }) => ReactElement;
+  trigger:
+    | ReactElement
+    | (({ isPendingAction }: { isPendingAction: boolean }) => ReactElement);
   isConversationDisplayed: boolean;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
@@ -281,7 +283,10 @@ export function ConversationMenu({
     conversationId: activeConversationId,
     onConversationBranched: handleConversationBranched,
   });
-  const menuTrigger = trigger({ isBranching });
+  const menuTrigger =
+    typeof trigger === "function"
+      ? trigger({ isPendingAction: isBranching })
+      : trigger;
 
   const conversationLink = getConversationRoute(
     owner.sId,

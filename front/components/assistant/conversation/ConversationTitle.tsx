@@ -160,18 +160,18 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
             conversation={conversation}
             onConversationBranched={onConversationBranched}
             owner={owner}
-            trigger={({ isBranching }) => (
+            trigger={({ isPendingAction }) => (
               <Button
                 size="sm"
                 variant="ghost"
                 icon={MoreIcon}
                 aria-label="Conversation menu"
-                isLoading={isBranching}
+                isLoading={isPendingAction}
                 disabled={
                   activeConversationId === null ||
                   conversation === null ||
                   user === null ||
-                  isBranching
+                  isPendingAction
                 }
               />
             )}
