@@ -342,14 +342,6 @@ export async function runWakeUpActivity({
       "Cancelling wake-up: conversation not accessible."
     );
     await wakeUp.markCancelled(auth);
-    try {
-      await ConversationResource.triggerEsIndexing(auth, c.sId, workspaceId);
-    } catch (e) {
-      logger.error(
-        { conversationId: c.sId, wakeUpId, workspaceId, error: normalizeError(e) },
-        "Failed to trigger conversation re-index after wake-up cancellation."
-      );
-    }
     throw new WakeUpNonRetryableError("Conversation not accessible.");
   }
 
