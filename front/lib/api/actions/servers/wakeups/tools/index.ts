@@ -7,7 +7,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
 import { isUserMessageType } from "@app/types/assistant/conversation";
-import type { WakeUpType } from "@app/types/assistant/wakeups";
+import { isActiveWakeUp, type WakeUpType } from "@app/types/assistant/wakeups";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
@@ -192,8 +192,8 @@ export function createWakeupsTools(
         auth,
         runConversation
       );
-      const activeInConversation = conversationWakeUps.filter(
-        (w) => w.status === "scheduled"
+      const activeInConversation = conversationWakeUps.filter((w) =>
+        isActiveWakeUp(w.toJSON())
       );
       if (activeInConversation.length >= MAX_ACTIVE_WAKEUPS_PER_CONVERSATION) {
         return new Err(

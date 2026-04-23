@@ -14,10 +14,12 @@ import {
 } from "@app/temporal/triggers/wakeup_client";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
-import type {
-  WakeUpScheduleConfig,
-  WakeUpStatus,
-  WakeUpType,
+import {
+  ACTIVE_WAKE_UP_STATUSES,
+  isActiveWakeUp,
+  type WakeUpScheduleConfig,
+  type WakeUpStatus,
+  type WakeUpType,
 } from "@app/types/assistant/wakeups";
 import type { APIErrorWithStatusCode } from "@app/types/error";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -26,12 +28,11 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { Attributes, Transaction, WhereOptions } from "sequelize";
 
-const ACTIVE_WAKE_UP_STATUSES: WakeUpStatus[] = ["scheduled"];
 const MAX_WAKE_UP_FIRES = 32;
 
 // Minimum allowed interval between two cron fires, in minutes. Matches the per-conversation
 // guardrail in the wake-up design doc.
-const WAKE_UP_MIN_INTERVAL_MINUTES = 5;
+export const WAKE_UP_MIN_INTERVAL_MINUTES = 5;
 
 // Standard 5-field cron regex. Does not support # (nth occurrence) or L (last) operators.
 const WAKE_UP_CRON_REGEXP =
@@ -331,9 +332,7 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
   ): Promise<void> {
     const wakeUps = await this.listByConversation(auth, conversation);
 
-    const activeWakeUps = wakeUps.filter((wakeUp) =>
-      ACTIVE_WAKE_UP_STATUSES.includes(wakeUp.status)
-    );
+    const activeWakeUps = wakeUps.filter((w) => isActiveWakeUp(w.toJSON()));
 
     const cancelResults = await concurrentExecutor(
       activeWakeUps,
