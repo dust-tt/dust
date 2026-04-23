@@ -149,6 +149,7 @@ export async function withSlackErrorHandling<T>(
 
 export type SlackUserInfo = {
   email: string | null;
+  is_email_confirmed: boolean;
   is_bot: boolean;
   display_name?: string;
   real_name?: string;
@@ -205,6 +206,7 @@ async function _getSlackUserInfo(
       // From our perspective, a Slack user bot is a bot.
       is_bot: res.user?.is_bot || false,
       email: res.user?.profile?.email || null,
+      is_email_confirmed: res.user?.is_email_confirmed || false,
       display_name: res.user?.profile?.display_name,
       real_name: res.user?.profile?.real_name,
       is_restricted: res.user?.is_restricted || false,
@@ -246,6 +248,7 @@ export async function getSlackBotInfo(
     display_name: slackBot.bot?.name,
     real_name: slackBot.bot.name,
     email: null,
+    is_email_confirmed: false,
     image_512: slackBot.bot?.icons?.image_72 || null,
     tz: null,
     is_restricted: false,
