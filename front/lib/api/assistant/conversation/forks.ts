@@ -18,7 +18,7 @@ import {
 import { getSmallWhitelistedModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
-import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
+import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { ConversationForkResource } from "@app/lib/resources/conversation_fork_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -97,7 +97,10 @@ async function getForkCompactionModel(
       const sourceUsage = runUsages.reduce((max, usage) =>
         usage.promptTokens > max.promptTokens ? usage : max
       );
-      const modelConfiguration = getModelConfigByModelId(sourceUsage.modelId);
+      const modelConfiguration = getSupportedModelConfig({
+        providerId: sourceUsage.providerId,
+        modelId: sourceUsage.modelId,
+      });
 
       if (modelConfiguration) {
         return {
