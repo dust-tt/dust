@@ -19,7 +19,7 @@ import type {
 } from "@app/types/assistant/conversation";
 import { isCompactionMessageType } from "@app/types/assistant/conversation";
 import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
-import type { ModelIdentifier } from "@app/types/assistant/models/types";
+import type { SupportedModel } from "@app/types/assistant/models/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -148,7 +148,7 @@ export async function runCompaction(
     conversationId: string;
     compactionMessageId: string;
     compactionMessageVersion: number;
-    model: ModelIdentifier;
+    model: SupportedModel;
     sourceConversation?: CompactionSourceConversation;
   }
 ): Promise<Result<void, Error>> {
@@ -283,7 +283,7 @@ async function generateCompactionSummary(
     sourceMessageRank?: number;
     targetConversationId: string;
     compactionMessage: CompactionMessageType;
-    model: ModelIdentifier;
+    model: SupportedModel;
   }
 ): Promise<Result<string, Error>> {
   const owner = auth.getNonNullableWorkspace();

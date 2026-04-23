@@ -140,7 +140,7 @@ import {
   isUserMention,
   toMentionType,
 } from "@app/types/assistant/mentions";
-import type { ModelIdentifier } from "@app/types/assistant/models/types";
+import type { SupportedModel } from "@app/types/assistant/models/types";
 import type {
   ContentFragmentContextType,
   ContentFragmentType,
@@ -2706,7 +2706,7 @@ export async function compactConversation(
     sourceConversation,
   }: {
     conversation: ConversationType;
-    model: ModelIdentifier;
+    model: SupportedModel;
     sourceConversation?: CompactionSourceConversation;
   }
 ): Promise<

@@ -15,9 +15,14 @@ import {
   isFileTypeUpsertableForUseCase,
   processAndUpsertToDataSource,
 } from "@app/lib/api/files/upsert";
-import { getSmallWhitelistedModel } from "@app/lib/assistant";
-import type { Authenticator } from "@app/lib/auth";
+import {
+  getSmallWhitelistedModel,
+  isModelAvailable,
+  isProviderWhitelisted,
+} from "@app/lib/assistant";
+import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
+import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { ConversationForkResource } from "@app/lib/resources/conversation_fork_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -36,7 +41,7 @@ import type {
   ConversationType,
   ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
-import type { ModelIdentifier } from "@app/types/assistant/models/types";
+import type { SupportedModel } from "@app/types/assistant/models/types";
 import { isFileContentFragment } from "@app/types/content_fragment";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -83,7 +88,7 @@ async function getForkCompactionModel(
     sourceMessageRank: number;
     transaction?: Transaction;
   }
-): Promise<ModelIdentifier | null> {
+): Promise<SupportedModel | null> {
   const sourceMessageRun = await conversation.getLatestAgentMessageRun(auth, {
     maxRank: sourceMessageRank,
     transaction,
@@ -96,11 +101,25 @@ async function getForkCompactionModel(
       const sourceUsage = runUsages.reduce((max, usage) =>
         usage.promptTokens > max.promptTokens ? usage : max
       );
-
-      return {
+      const modelConfiguration = getSupportedModelConfig({
         providerId: sourceUsage.providerId,
         modelId: sourceUsage.modelId,
-      };
+      });
+
+      if (
+        modelConfiguration &&
+        isProviderWhitelisted(auth, modelConfiguration.providerId) &&
+        isModelAvailable(
+          modelConfiguration,
+          await getFeatureFlags(auth),
+          auth.plan()
+        )
+      ) {
+        return {
+          providerId: modelConfiguration.providerId,
+          modelId: modelConfiguration.modelId,
+        };
+      }
     }
   }
 
