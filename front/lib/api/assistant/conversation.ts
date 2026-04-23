@@ -2794,6 +2794,11 @@ export async function compactConversation(
     const compactionMessage = await createCompactionMessage(auth, {
       conversation,
       rank: nextMessageRank,
+      sourceConversationId:
+        sourceConversation?.conversationId &&
+        sourceConversation.conversationId !== conversation.sId
+          ? sourceConversation.conversationId
+          : undefined,
       transaction: t,
     });
 

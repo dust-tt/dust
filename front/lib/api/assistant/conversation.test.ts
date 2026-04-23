@@ -2749,6 +2749,53 @@ describe("compactConversation", () => {
     expect(compactionMessage.content).toBeNull();
   });
 
+  it("should persist the source conversation id for cross-conversation compactions", async () => {
+    const sourceConversationWithoutContent = await ConversationFactory.create(
+      auth,
+      {
+        agentConfigurationId: agentConfig.sId,
+        messagesCreatedAt: [],
+      }
+    );
+
+    const sourceConversationResult = await getConversation(
+      auth,
+      sourceConversationWithoutContent.sId
+    );
+    expect(sourceConversationResult.isOk()).toBe(true);
+    if (sourceConversationResult.isErr()) {
+      return;
+    }
+
+    const result = await compactConversation(auth, {
+      conversation,
+      model: { providerId: "anthropic", modelId: "claude-haiku-4-5-20251001" },
+      sourceConversation: {
+        conversationId: sourceConversationResult.value.sId,
+        messageRank: 0,
+      },
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      return;
+    }
+
+    expect(result.value.compactionMessage.sourceConversationId).toBe(
+      sourceConversationResult.value.sId
+    );
+
+    const compactionMessageRow = await CompactionMessageModel.findOne({
+      where: {
+        id: result.value.compactionMessage.compactionMessageId,
+        workspaceId: workspace.id,
+      },
+    });
+    expect(compactionMessageRow?.sourceConversationId).toBe(
+      sourceConversationResult.value.sId
+    );
+  });
+
   it("should reject compaction when the last message is already a compaction message", async () => {
     const compactionMessageRow = await CompactionMessageModel.create({
       status: "succeeded",
