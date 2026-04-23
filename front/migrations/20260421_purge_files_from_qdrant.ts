@@ -19,33 +19,45 @@ const CONCURRENCY = 20;
 const WORKSPACE_CONCURRENCY = 20;
 
 /**
- * Purges two classes of conversation files from Qdrant and stamps them with
- * `skipDataSourceIndexing` so future conversation renders no longer advertise them as
- * searchable. The source `FileResource` is preserved in both cases — only the index side is
- * cleaned.
+ * Purges files that should not be in Qdrant and stamps them with `skipDataSourceIndexing`
+ * so future conversation renders no longer advertise them as searchable. The source
+ * `FileResource` is preserved in all cases — only the index side is cleaned.
  *
- * 1. Webhook payloads: `webhook_body_<sourceId>_<epoch>.json`, created by
- *    `launchTriggersWorkflows` in `front/temporal/triggers/webhook_client.ts` whenever a
- *    trigger has `includePayload: true`, then attached as a content fragment (which sets
- *    `useCaseMetadata.conversationId` and triggers the conversation-data-source upsert in
- *    `front/lib/api/files/attachments.ts`).
- * 2. Pasted text from the input bar: `contentType: "text/vnd.dust.attachment.pasted"`,
- *    created by the paste handler in `front/components/assistant/conversation/input_bar/`.
- *    Same-turn context — the agent already reads them inline, semantic retrieval adds
- *    nothing.
+ * Six classes covered:
+ *
+ * 1. `webhook_body`: `webhook_body_<sourceId>_<epoch>.json` from
+ *    `launchTriggersWorkflows` in `front/temporal/triggers/webhook_client.ts`.
+ * 2. `pasted_text`: input-bar pasted attachments, mime
+ *    `text/vnd.dust.attachment.pasted`.
+ * 3. `slack_thread`: connector attachments, mime
+ *    `text/vnd.dust.attachment.slack.thread`. Biggest single bleeder by volume.
+ * 4. `chrome_text`: Chrome-extension page-capture attachments, fileName starts with
+ *    `"[text] "`. Created by `extension/ui/hooks/useFileUploaderService.ts`.
+ * 5. `voice_audio`: audio content fragments, mime `audio/webm`. Bug: binary audio bytes
+ *    are read as UTF-8 and embedded into Qdrant (`lib/api/files/utils.ts:getFileContent`),
+ *    producing garbage vectors. Scoped to `audio/webm` — the only audio mime observed in
+ *    the conversation DS sample (100% of voice files). Easy to broaden later if needed.
+ * 6. `tool_output_section`: tool-output files with mime
+ *    `application/vnd.dust.section.json`. New writes are already stamped with
+ *    `skipDataSourceIndexing: true` at `lib/actions/action_file_helpers.ts`, but pre-flag
+ *    rows remain in Qdrant — this cleans up that backlog.
+ *
+ * All classes share the same end state: the file record stays around (users can still
+ * download it / the model can still read it inline), but it's no longer indexed for
+ * retrieval. Most are same-turn context that the agent reads once and never searches.
  *
  * Implementation notes — we don't have indexes on `contentType` / `fileName` / `useCase`,
  * so filtering those fields in SQL would force a per-workspace scan per filter. Instead we
  * paginate the workspace's `FileModel` rows using the `(workspaceId, id)` composite index
- * and classify each row client-side into one of (to-keep / webhook_body / pasted_text).
- * Single bulk scan per workspace, no repeated DB hammering.
+ * and classify each row client-side. Single bulk scan per workspace, no repeated DB
+ * hammering.
  *
  * Safe to re-run: files already stamped with `skipDataSourceIndexing` are skipped.
  *
  * Re-indexing: when `--execute` is set, each deleted document is appended as an NDJSON line
  * to the manifest file (`--manifest`, defaults to `purge_manifest_<timestamp>.ndjson` in
- * cwd). Each line carries a `reason` field (`"webhook_body"` or `"pasted_text"`) so subsets
- * can be re-indexed if needed.
+ * cwd). Each line carries a `reason` field (one of the six above) so subsets can be
+ * re-indexed if needed.
  */
 
 // Created in webhook_client.ts as:
@@ -56,7 +68,23 @@ const WEBHOOK_BODY_RE = /^webhook_body_\d+_\d+\.json$/;
 // front/components/assistant/conversation/input_bar/pasted_utils.ts).
 const PASTED_CONTENT_TYPE = "text/vnd.dust.attachment.pasted";
 
-type PurgeReason = "webhook_body" | "pasted_text";
+// Content type for Slack thread attachments pulled in by the Slack connector.
+const SLACK_THREAD_CONTENT_TYPE = "text/vnd.dust.attachment.slack.thread";
+
+// Content type for tool-output section files created at
+// lib/actions/action_file_helpers.ts. Only emitter in the codebase.
+const SECTION_JSON_CONTENT_TYPE = "application/vnd.dust.section.json";
+
+// Chrome extension page-capture filenames (extension/ui/hooks/useFileUploaderService.ts).
+const CHROME_TEXT_PREFIX = "[text] ";
+
+type PurgeReason =
+  | "webhook_body"
+  | "pasted_text"
+  | "slack_thread"
+  | "chrome_text"
+  | "voice_audio"
+  | "tool_output_section";
 
 type PurgeStats = {
   totalProcessed: number;
@@ -69,17 +97,31 @@ function classify(row: {
   contentType: string;
   fileName: string;
 }): PurgeReason | null {
-  if (row.useCase !== "conversation") {
-    return null;
+  if (row.useCase === "conversation") {
+    if (
+      row.contentType === "application/json" &&
+      WEBHOOK_BODY_RE.test(row.fileName)
+    ) {
+      return "webhook_body";
+    }
+    if (row.contentType === PASTED_CONTENT_TYPE) {
+      return "pasted_text";
+    }
+    if (row.contentType === SLACK_THREAD_CONTENT_TYPE) {
+      return "slack_thread";
+    }
+    if (row.fileName.startsWith(CHROME_TEXT_PREFIX)) {
+      return "chrome_text";
+    }
+    if (row.contentType === "audio/webm") {
+      return "voice_audio";
+    }
   }
   if (
-    row.contentType === "application/json" &&
-    WEBHOOK_BODY_RE.test(row.fileName)
+    row.useCase === "tool_output" &&
+    row.contentType === SECTION_JSON_CONTENT_TYPE
   ) {
-    return "webhook_body";
-  }
-  if (row.contentType === PASTED_CONTENT_TYPE) {
-    return "pasted_text";
+    return "tool_output_section";
   }
   return null;
 }
