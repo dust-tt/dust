@@ -8,6 +8,7 @@ const mockGetLlmCredentials = vi.hoisted(() => vi.fn());
 const mockIsProviderWhitelisted = vi.hoisted(() => vi.fn());
 const mockGoogleImageGenerationLLM = vi.hoisted(() => vi.fn());
 const mockOpenAIImageGenerationLLM = vi.hoisted(() => vi.fn());
+const mockGetCurrentRegion = vi.hoisted(() => vi.fn());
 
 vi.mock("@app/lib/api/provider_credentials", () => ({
   getLlmCredentials: mockGetLlmCredentials,
@@ -23,6 +24,12 @@ vi.mock("@app/lib/api/llm/clients/google/imageGeneration", () => ({
 
 vi.mock("@app/lib/api/llm/clients/openai/imageGeneration", () => ({
   ImageGenerationOpenAILLM: mockOpenAIImageGenerationLLM,
+}));
+
+vi.mock("@app/lib/api/regions/config", () => ({
+  config: {
+    getCurrentRegion: mockGetCurrentRegion,
+  },
 }));
 
 import { Authenticator } from "@app/lib/auth";
@@ -95,6 +102,7 @@ describe("getImageGenerationLLM", () => {
 
     mockGetLlmCredentials.mockResolvedValue(CREDENTIALS);
     mockIsProviderWhitelisted.mockReturnValue(false);
+    mockGetCurrentRegion.mockReturnValue("us-central1");
 
     mockGoogleImageGenerationLLM.mockImplementation(function (_auth, args) {
       return { provider: "google", args };
@@ -157,6 +165,36 @@ describe("getImageGenerationLLM", () => {
   });
 
   it("returns null when neither openai nor google is whitelisted", async () => {
+    const llm = await getImageGenerationLLM(auth);
+
+    expect(llm).toBeNull();
+    expect(mockOpenAIImageGenerationLLM).not.toHaveBeenCalled();
+    expect(mockGoogleImageGenerationLLM).not.toHaveBeenCalled();
+  });
+
+  it("falls back to Gemini in the EU region even when openai is whitelisted", async () => {
+    mockGetCurrentRegion.mockReturnValue("europe-west1");
+    mockIsProviderWhitelisted.mockReturnValue(true);
+
+    const llm = await getImageGenerationLLM(auth);
+
+    expect(mockGoogleImageGenerationLLM).toHaveBeenCalledWith(auth, {
+      modelId: GEMINI_3_PRO_IMAGE_MODEL_ID,
+      credentials: CREDENTIALS,
+    });
+    expect(mockOpenAIImageGenerationLLM).not.toHaveBeenCalled();
+    expect(llm).toEqual({
+      provider: "google",
+      args: { modelId: GEMINI_3_PRO_IMAGE_MODEL_ID, credentials: CREDENTIALS },
+    });
+  });
+
+  it("returns null in the EU region when only openai is whitelisted", async () => {
+    mockGetCurrentRegion.mockReturnValue("europe-west1");
+    mockIsProviderWhitelisted.mockImplementation(
+      (_auth, providerId) => providerId === "openai"
+    );
+
     const llm = await getImageGenerationLLM(auth);
 
     expect(llm).toBeNull();
