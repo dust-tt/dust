@@ -763,7 +763,7 @@ describe("createConversationFork", () => {
     const childFileAttachments = childAttachments.filter(isFileAttachmentType);
 
     expect(childFileAttachments).toHaveLength(1);
-    expect(childFileAttachments[0]?.title).toBe("Notes");
+    expect(childFileAttachments[0]?.title).toBe("notes.txt");
     expect(childFileAttachments[0]?.fileId).not.toBe(sourceFile.sId);
 
     const copiedFiles = await FileResource.fetchByIds(auth, [
@@ -885,7 +885,7 @@ describe("createConversationFork", () => {
     const childFileAttachments = childAttachments.filter(isFileAttachmentType);
 
     expect(childFileAttachments).toHaveLength(1);
-    expect(childFileAttachments[0]?.title).toBe("First attachment");
+    expect(childFileAttachments[0]?.title).toBe("first.txt");
 
     copyToConversationSpy.mockRestore();
     getOrCreateConversationDataSourceFromFileSpy.mockRestore();

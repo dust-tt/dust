@@ -824,6 +824,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
               : null))
           : source.file;
 
+      let title: string = fr.title;
       let fileStringId: string | null = null;
       let snippet: string | null = null;
       let generatedTables: string[] = [];
@@ -833,6 +834,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       let hidden = true;
 
       if (fileResource) {
+        title = fileResource.fileName;
         fileStringId = fileResource.sId;
         snippet = fileResource.snippet;
         generatedTables = fileResource.useCaseMetadata?.generatedTables ?? [];
@@ -851,6 +853,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
 
       return {
         ...baseContentFragment,
+        title,
         contentFragmentType: "file",
         expiredReason: null,
         fileId: fileStringId,
