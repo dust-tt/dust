@@ -54,6 +54,7 @@ import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import type { DustError } from "@app/lib/error";
 import { FILE_ID_PATTERN } from "@app/lib/files";
+import { useConversationWakeUps } from "@app/lib/swr/wakeups";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import type { FetchConversationMessageResponseLight } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages/[mId]";
@@ -234,6 +235,11 @@ export function AgentMessage({
     owner,
     options: { disabled: true },
   });
+  const { mutateWakeUps } = useConversationWakeUps({
+    owner,
+    conversationId,
+    disabled: true,
+  });
 
   const methods = useVirtuosoMethods<
     VirtuosoMessage,
@@ -367,6 +373,9 @@ export function AgentMessage({
               void mutateSandboxStatus();
               void mutateSandboxFiles();
             }
+            if (action.internalMCPServerName === "wakeups") {
+              void mutateWakeUps();
+            }
             break;
           }
           case "end-of-stream":
@@ -388,6 +397,7 @@ export function AgentMessage({
         mutateConversationAttachments,
         mutateSandboxStatus,
         mutateSandboxFiles,
+        mutateWakeUps,
       ]
     ),
     streamId,
