@@ -195,7 +195,7 @@ function constructToolsSection({
 }
 
 function getEnabledSkillInstructions(
-  skill: SkillResource & { extendedSkill: SkillResource | null }
+  skill: SkillResource & { extendedSkill?: SkillResource | null }
 ): string {
   const { name, instructions, extendedSkill } = skill;
 

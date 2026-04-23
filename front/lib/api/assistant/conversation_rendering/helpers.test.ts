@@ -187,7 +187,7 @@ Just text`);
 });
 
 describe("skill rendering helpers", () => {
-  it("renders available skills as a synthetic user message", async () => {
+  it("renders equipped skills as a synthetic user message", async () => {
     const { authenticator } = await createResourceTest({ role: "admin" });
 
     const commitSkill = await SkillFactory.create(authenticator, {
