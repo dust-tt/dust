@@ -139,7 +139,7 @@ vi.mock("@dust-tt/sparkle", () => {
   };
 });
 
-const owner = {
+const owner: LightWorkspaceType = {
   id: 1,
   sId: "w_1",
   name: "Workspace",
@@ -149,7 +149,7 @@ const owner = {
   defaultEmbeddingProvider: null,
   sharingPolicy: "workspace_only",
   metronomeCustomerId: null,
-} as LightWorkspaceType;
+};
 
 function makeBlockedAction({
   multiSelect = false,
