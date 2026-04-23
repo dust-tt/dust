@@ -1,9 +1,10 @@
+import type { PendingToolCall } from "@app/components/assistant/conversation/types";
 import { makeInitialMessageStreamState } from "@app/components/assistant/conversation/types";
 import {
   appendThinkingStep,
   removePendingToolCallForAction,
-  useAgentMessageStream,
   upsertPendingToolCall,
+  useAgentMessageStream,
 } from "@app/hooks/useAgentMessageStream";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type {
@@ -13,7 +14,6 @@ import type {
 import type { LightWorkspaceType } from "@app/types/user";
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { PendingToolCall } from "@app/components/assistant/conversation/types";
 
 const mockUseEventSource = vi.fn();
 const mockMutateContextUsage = vi.fn();
@@ -292,7 +292,9 @@ describe("useAgentMessageStream", () => {
 
     mockUseVirtuosoMethods.mockReturnValue({
       data: {
-        map: (updater: (message: typeof currentMessage) => typeof currentMessage) => {
+        map: (
+          updater: (message: typeof currentMessage) => typeof currentMessage
+        ) => {
           currentMessage = updater(currentMessage);
           snapshots.push({
             content: currentMessage.content,

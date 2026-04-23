@@ -31,10 +31,10 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 function createUpdateMessageThrottled() {
   return _.throttle(
     ({
-       chainOfThought,
-       content,
-       methods,
-       sId
+      chainOfThought,
+      content,
+      methods,
+      sId,
     }: {
       chainOfThought: string;
       content: string;
