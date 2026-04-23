@@ -64,9 +64,9 @@ export function filterInputBarSlashSuggestions({
 }): InputBarSlashSuggestionCapability[] {
   const normalizedQuery = query.trim().toLowerCase();
 
-  const capabilities: Array<
-    InputBarSlashSuggestionCapability & { sortName: string }
-  > = [
+  const capabilities: (InputBarSlashSuggestionCapability & {
+    sortName: string;
+  })[] = [
     ...skills
       .filter((skill) => !selectedSkillIds.has(skill.sId))
       .filter((skill) =>
@@ -129,18 +129,21 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
     ref
   ) => {
     const dropdownRef = useRef<SlashCommandDropdownRef>(null);
+    const isOpen = Boolean(clientRect);
     const { spaces: globalSpaces, isSpacesLoading } = useSpaces({
+      disabled: !isOpen,
       workspaceId: owner.sId,
       kinds: ["global"],
     });
     const { skills, isSkillsLoading } = useSkills({
+      disabled: !isOpen,
       owner,
       status: "active",
       globalSpaceOnly: true,
       viewType: "summary",
     });
     const { serverViews, isLoading: isServerViewsLoading } =
-      useMCPServerViewsFromSpaces(owner, globalSpaces);
+      useMCPServerViewsFromSpaces(owner, globalSpaces, { disabled: !isOpen });
 
     const filteredCapabilities = useMemo(
       () =>
@@ -168,7 +171,7 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
             case "skill":
               return [
                 {
-                  action: capability.skill.sId,
+                  action: "select-skill",
                   description: capability.skill.userFacingDescription,
                   icon: getSkillAvatarIcon(capability.skill.icon),
                   id: capability.skill.sId,
@@ -187,7 +190,7 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
 
               return [
                 {
-                  action: capability.serverView.sId,
+                  action: "select-tool",
                   description,
                   icon: () => getAvatar(capability.serverView.server),
                   id: capability.serverView.sId,
@@ -256,7 +259,7 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
         clientRect={clientRect}
         emptyMessage={
           isCapabilitiesLoading
-            ? "Loading capabilities..."
+            ? "Loading capabilities…"
             : "No capabilities found"
         }
         header="Capabilities"
