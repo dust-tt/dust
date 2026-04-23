@@ -10,25 +10,6 @@ export const SKILLS_AS_USER_MESSAGES_FEATURE_FLAG = "skills_as_user_messages";
 
 const SKILLS_RENDERER_NAME = "system";
 
-export function getEnabledSkillInstructions(
-  skill: SkillResource & { extendedSkill: SkillResource | null }
-): string {
-  const { name, instructions, extendedSkill } = skill;
-
-  if (!extendedSkill) {
-    return `<${name}>\n${instructions}\n</${name}>`;
-  }
-
-  return [
-    `<${name}>`,
-    extendedSkill.instructions,
-    "<additional_guidelines>",
-    instructions,
-    "</additional_guidelines>",
-    `</${name}>`,
-  ].join("\n");
-}
-
 function renderSystemSkillMessage(text: string): UserMessageTypeModel {
   return {
     role: "user",
@@ -54,30 +35,6 @@ export function renderAvailableSkillsUserMessage(
     `<dust_system>\n` +
       `The following skills are available for use with the ${enableSkillToolName} tool:\n\n` +
       `${lines.join("\n")}\n` +
-      `</dust_system>`
-  );
-}
-
-export function renderEnabledSkillUserMessage(
-  skill: SkillResource & { extendedSkill: SkillResource | null }
-): UserMessageTypeModel {
-  return renderEnabledSkillUserMessageFromInstructions({
-    skillName: skill.name,
-    skillInstructions: getEnabledSkillInstructions(skill),
-  });
-}
-
-export function renderEnabledSkillUserMessageFromInstructions({
-  skillName,
-  skillInstructions,
-}: {
-  skillName: string;
-  skillInstructions: string;
-}): UserMessageTypeModel {
-  return renderSystemSkillMessage(
-    `<dust_system>\n` +
-      `The skill "${skillName}" is now enabled and remains active for the rest of the conversation.\n\n` +
-      `${skillInstructions}\n` +
       `</dust_system>`
   );
 }

@@ -1,7 +1,4 @@
-import {
-  renderAvailableSkillsUserMessage,
-  renderEnabledSkillUserMessageFromInstructions,
-} from "@app/lib/api/assistant/skills_rendering";
+import { renderAvailableSkillsUserMessage } from "@app/lib/api/assistant/skills_rendering";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -219,31 +216,6 @@ The following skills are available for use with the skill_management__enable_ski
 
 - **commit**: Create a git commit with a descriptive message.
 - **review-pr**: Review a pull request for code quality and correctness.
-</dust_system>`,
-        },
-      ],
-    });
-  });
-
-  it("renders enabled skill instructions as a synthetic user message", () => {
-    const message = renderEnabledSkillUserMessageFromInstructions({
-      skillName: "commit",
-      skillInstructions:
-        "<commit>\nCreate a git commit with a descriptive message.\n</commit>",
-    });
-
-    expect(message).toEqual({
-      role: "user",
-      name: "system",
-      content: [
-        {
-          type: "text",
-          text: `<dust_system>
-The skill "commit" is now enabled and remains active for the rest of the conversation.
-
-<commit>
-Create a git commit with a descriptive message.
-</commit>
 </dust_system>`,
         },
       ],

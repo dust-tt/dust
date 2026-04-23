@@ -24,7 +24,6 @@ import type {
   UserMessageType,
 } from "@app/types/assistant/conversation";
 import type { SupportedContentFragmentType } from "@app/types/content_fragment";
-import type { ModelId } from "@app/types/shared/model_id";
 import type { WorkspaceType } from "@app/types/user";
 import type { Transaction } from "sequelize";
 
@@ -329,15 +328,11 @@ export class ConversationFactory {
       workspace,
       conversation,
       agentConfig,
-      rank = 0,
-      parentId = null,
       mcpAction,
     }: {
       workspace: WorkspaceType;
       conversation: ConversationType | ConversationWithoutContentType;
       agentConfig: LightAgentConfigurationType;
-      rank?: number;
-      parentId?: ModelId | null;
       mcpAction?: {
         toolConfiguration: LightServerSideMCPToolConfigurationType;
       };
@@ -357,9 +352,9 @@ export class ConversationFactory {
 
     const messageRow = await MessageModel.create({
       sId: generateRandomModelSId(),
-      rank,
+      rank: 0,
       conversationId: conversation.id,
-      parentId,
+      parentId: null,
       agentMessageId: agentMessageRow.id,
       workspaceId: workspace.id,
     });

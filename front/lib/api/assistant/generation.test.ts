@@ -562,16 +562,13 @@ describe("constructPromptMultiActions - system prompt stability", () => {
       return;
     }
 
-    const systemSkills = [SkillFactory.withExtendedSkill(discoverSkills)];
-
     const params = {
       userMessage: userMessage1,
       agentConfiguration: agentConfig1,
       model: modelConfig,
       hasAvailableActions: true,
       agentsList: null,
-      enabledSkills: [],
-      systemSkills,
+      enabledSkills: [SkillFactory.withExtendedSkill(discoverSkills)],
       equippedSkills: [],
       renderSkillsAsUserMessages: true,
     };
