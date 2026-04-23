@@ -15,7 +15,7 @@ import { notifySkillSuggestionsReady } from "@app/lib/notifications/workflows/sk
 import {
   buildSkillAggregationBatchMap,
   buildSkillAggregationSystemPrompt,
-  createSkillSuggestionsConversations,
+  createSkillSuggestionsConversation,
   loadSkillAggregationContext,
 } from "@app/lib/reinforcement/aggregate_suggestions";
 import {
@@ -497,7 +497,7 @@ export async function finalizeSkillAggregationActivity({
       editors: editorTypes,
       suggestionCount: suggestionsCreated,
     });
-    await createSkillSuggestionsConversations(auth, skill, editorTypes);
+    await createSkillSuggestionsConversation(auth, skill, editorTypes);
   }
 
   logger.info(

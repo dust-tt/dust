@@ -67,6 +67,17 @@ export function SkillSuggestionDetailsPage() {
         >
           {suggestion.skillConfigurationId}
         </LinkWrapper>
+        {suggestion.notificationConversationId && (
+          <>
+            &nbsp;· Notification&nbsp;
+            <LinkWrapper
+              href={`/poke/${owner.sId}/conversation/${suggestion.notificationConversationId}`}
+              className="text-highlight-500"
+            >
+              {suggestion.notificationConversationId}
+            </LinkWrapper>
+          </>
+        )}
       </p>
 
       <div className="mt-4 space-y-6">

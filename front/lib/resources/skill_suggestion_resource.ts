@@ -1,4 +1,5 @@
 import type { Authenticator } from "@app/lib/auth";
+import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { SkillSuggestionModel } from "@app/lib/models/skill/skill_suggestion";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -44,18 +45,21 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
   readonly editorsGroupId: ModelId | null;
   readonly skillConfigurationSId: string;
   readonly updatedBy: SkillSuggestionUpdatedBy | null;
+  readonly notificationConversationSId: string | null;
 
   constructor(
     model: ModelStatic<SkillSuggestionModel>,
     blob: Attributes<SkillSuggestionModel>,
     editorsGroupId: ModelId | null,
     skillConfigurationSId: string,
-    updatedBy: SkillSuggestionUpdatedBy | null
+    updatedBy: SkillSuggestionUpdatedBy | null,
+    notificationConversationSId: string | null
   ) {
     super(SkillSuggestionModel, blob);
     this.editorsGroupId = editorsGroupId;
     this.skillConfigurationSId = skillConfigurationSId;
     this.updatedBy = updatedBy;
+    this.notificationConversationSId = notificationConversationSId;
   }
 
   /**
@@ -96,6 +100,7 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
       suggestion.get(),
       skill.editorGroup?.id ?? null,
       skill.sId,
+      null,
       null
     );
   }
@@ -123,6 +128,12 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
           as: "updatedByUser",
           required: false,
           attributes: ["sId", "firstName", "lastName", "email"],
+        },
+        {
+          model: ConversationModel,
+          as: "notificationConversation",
+          required: false,
+          attributes: ["sId"],
         },
       ],
       ...otherOptions,
@@ -170,7 +181,8 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
           suggestion.get(),
           skillResource.editorGroup?.id ?? null,
           skillResource.sId,
-          updatedBy
+          updatedBy,
+          suggestion.notificationConversation?.sId ?? null
         );
       })
     );
@@ -276,6 +288,31 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
       ],
       limit: filters?.limit,
     });
+  }
+
+  /**
+   * Sets the notification conversation on every given suggestion. Used after
+   * creating the reinforcement notification conversation to link back from each
+   * suggestion that was surfaced in it.
+   */
+  static async bulkSetNotificationConversation(
+    auth: Authenticator,
+    suggestions: SkillSuggestionResource[],
+    notificationConversationId: ModelId
+  ): Promise<void> {
+    if (suggestions.length === 0) {
+      return;
+    }
+
+    await this.model.update(
+      { notificationConversationId },
+      {
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          id: { [Op.in]: suggestions.map((s) => s.id) },
+        },
+      }
+    );
   }
 
   static async bulkUpdateState(
@@ -420,6 +457,7 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
       state: this.state,
       source: this.source,
       sourceConversationsCount: this.sourceConversationIds?.length ?? 0,
+      notificationConversationId: this.notificationConversationSId,
       updatedBy: this.updatedBy,
       ...suggestionData,
     };
