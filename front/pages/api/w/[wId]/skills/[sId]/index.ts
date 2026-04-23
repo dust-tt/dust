@@ -60,12 +60,11 @@ const PatchSkillRequestBodySchema = t.intersection([
       })
     ),
     attachedKnowledge: t.array(AttachedKnowledgeSchema),
+    instructionsHtml: t.union([t.string, t.null]),
   }),
-  // TODO(2026-03-02): make mandatory once always sent by the client.
   t.partial({
     fileAttachments: t.array(t.type({ fileId: t.string })),
     isDefault: t.boolean,
-    instructionsHtml: t.union([t.string, t.null]),
     reinforcement: t.union([
       t.literal("auto"),
       t.literal("on"),
