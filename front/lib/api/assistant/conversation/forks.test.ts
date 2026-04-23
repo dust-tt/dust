@@ -356,7 +356,11 @@ function getLatestContentNodeContentFragmentId(
   throw new Error(`Missing content node content fragment for node ${nodeId}.`);
 }
 
-function mockCopyToConversation() {
+function mockCopyToConversation({
+  copyContent = false,
+}: {
+  copyContent?: boolean;
+} = {}) {
   return vi
     .spyOn(FileResource, "copyToConversation")
     .mockImplementation(async (auth, { sourceId, conversationId }) => {
@@ -378,9 +382,15 @@ function mockCopyToConversation() {
         snippet: sourceFile.snippet,
       });
 
-      const sourceContent = await getFileContent(auth, sourceFile, "original");
-      if (sourceContent !== null) {
-        await copiedFile.uploadContent(auth, sourceContent);
+      if (copyContent) {
+        const sourceContent = await getFileContent(
+          auth,
+          sourceFile,
+          "original"
+        );
+        if (sourceContent !== null) {
+          await copiedFile.uploadContent(auth, sourceContent);
+        }
       }
 
       return new Ok(copiedFile);
@@ -843,7 +853,7 @@ describe("createConversationFork", () => {
   it("copies direct conversation file attachments into the child conversation", async () => {
     const { auth, workspace, globalSpace } =
       await createPrivateApiMockRequest();
-    const copyToConversationSpy = mockCopyToConversation();
+    const copyToConversationSpy = mockCopyToConversation({ copyContent: true });
     const dataSourceView = await DataSourceViewFactory.folder(
       workspace,
       globalSpace,
