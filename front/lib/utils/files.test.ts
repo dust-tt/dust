@@ -1,3 +1,4 @@
+import { getProcessedContentType } from "@app/lib/api/files/processing";
 import type { Authenticator } from "@app/lib/auth";
 import { copyContent } from "@app/lib/utils/files";
 import type { AllSupportedFileContentType } from "@app/types/files";
@@ -29,6 +30,11 @@ function makeSourceFile(contentType: AllSupportedFileContentType) {
           version === "original" ? originalContent : processedContent,
         ])
     ),
+  } satisfies {
+    contentType: AllSupportedFileContentType;
+    originalContent: Buffer;
+    processedContent: Buffer;
+    getReadStream: ReturnType<typeof vi.fn>;
   };
 }
 
@@ -40,7 +46,13 @@ describe("copyContent", () => {
     const sourceFile = makeSourceFile("text/plain");
     const targetFile = {
       getWriteStream: vi.fn(
-        ({ version }: { auth: Authenticator; version: FileVersion }) =>
+        ({
+          version,
+        }: {
+          auth: Authenticator;
+          version: FileVersion;
+          overrideContentType?: string;
+        }) =>
           version === "original"
             ? makeWritable(originalChunks)
             : makeWritable(processedChunks)
@@ -74,7 +86,13 @@ describe("copyContent", () => {
     const sourceFile = makeSourceFile("application/pdf");
     const targetFile = {
       getWriteStream: vi.fn(
-        ({ version }: { auth: Authenticator; version: FileVersion }) =>
+        ({
+          version,
+        }: {
+          auth: Authenticator;
+          version: FileVersion;
+          overrideContentType?: string;
+        }) =>
           version === "original"
             ? makeWritable(originalChunks)
             : makeWritable(processedChunks)
@@ -104,6 +122,7 @@ describe("copyContent", () => {
     expect(targetFile.getWriteStream).toHaveBeenNthCalledWith(2, {
       auth,
       version: "processed",
+      overrideContentType: getProcessedContentType(sourceFile.contentType),
     });
     expect(Buffer.concat(originalChunks)).toEqual(sourceFile.originalContent);
     expect(Buffer.concat(processedChunks)).toEqual(sourceFile.processedContent);
