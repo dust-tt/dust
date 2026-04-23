@@ -1,7 +1,18 @@
 import { PLAN_MODE_SKELETON } from "@app/lib/api/actions/servers/plan_mode/metadata";
 import type { Authenticator } from "@app/lib/auth";
+import { executeWithLock } from "@app/lib/lock";
 import { FileResource } from "@app/lib/resources/file_resource";
 import type { PlanModeApproval } from "@app/types/files";
+
+// Conversation-scoped lock for all plan-mode operations. One plan per conversation, so a single
+// lock keyed on conversation sId serializes create/edit/approve/close and prevents races (e.g.
+// edit landing on a just-closed plan, two concurrent creates, approval stamping a closed plan).
+export async function withPlanModeLock<T>(
+  conversationId: string,
+  fn: () => Promise<T>
+): Promise<T> {
+  return executeWithLock(`plan_mode:${conversationId}`, fn);
+}
 
 // Find the currently active plan file for a conversation. "Active" = attached to the conversation
 // with `isPlanFile: true` and NOT `isPlanClosed: true`. Returns null if no active plan exists.
