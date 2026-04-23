@@ -1,5 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
+import { listPrivateConversationsFromES } from "@app/lib/conversation_search/search";
 import { ConversationMCPServerViewModel } from "@app/lib/models/agent/actions/conversation_mcp_server_view";
 import {
   AgentMessageModel,
@@ -32,6 +33,7 @@ import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
+import logger from "@app/logger/logger";
 import { launchIndexConversationEsWorkflow } from "@app/temporal/es_indexation/client";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
@@ -57,6 +59,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { UserType } from "@app/types/user";
 import assert from "assert";
+import isEqual from "lodash/isEqual";
 import uniq from "lodash/uniq";
 import type {
   Attributes,
@@ -1565,6 +1568,126 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     lastValue: string | null;
   }> {
     return this.fetchPrivateConversationsPaginated(auth, { pagination });
+  }
+
+  static async listPrivateConversationsForUserPaginatedFromES(
+    auth: Authenticator,
+    pagination: {
+      limit: number;
+      lastValue?: string;
+      orderDirection?: "asc" | "desc";
+    }
+  ): Promise<{
+    conversations: ConversationListItemType[];
+    hasMore: boolean;
+    lastValue: string | null;
+  }> {
+    const user = auth.user();
+    if (!user) {
+      return { conversations: [], hasMore: false, lastValue: null };
+    }
+
+    const hasFeature = await hasFeatureFlag(auth, "conversation_search_read");
+    if (!hasFeature) {
+      return this.listPrivateConversationsForUserPaginatedFromDB(
+        auth,
+        pagination
+      );
+    }
+
+    const workspace = auth.getNonNullableWorkspace();
+    const orderDirection = pagination.orderDirection ?? "desc";
+
+    const accessibleSpaces =
+      await SpaceResource.listWorkspaceSpacesAsMember(auth);
+    const accessibleSpaceIds = accessibleSpaces.map((s) => s.sId);
+
+    const esResult = await listPrivateConversationsFromES({
+      accessibleSpaceIds,
+      lastValue: pagination.lastValue,
+      limit: pagination.limit,
+      orderDirection,
+      userId: user.sId,
+      workspaceId: workspace.sId,
+    });
+
+    if (esResult.isErr()) {
+      logger.error(
+        { workspaceId: workspace.sId, error: esResult.error },
+        "[conversation_search] ES query failed, falling back to DB"
+      );
+      return this.listPrivateConversationsForUserPaginatedFromDB(
+        auth,
+        pagination
+      );
+    }
+
+    const { items, hasMore, lastValue } = esResult.value;
+
+    if (items.length === 0) {
+      return { conversations: [], hasMore, lastValue };
+    }
+
+    // Fetch DB resources once: needed for (a) hydrating volatile read state and
+    // (b) shadow-validating ES structural fields against DB.
+    const dbConversations = await this.fetchByIds(
+      auth,
+      items.map((i) => i.sId)
+    );
+
+    // (a) Hydrate lastReadMs / unread from DB with one bounded query scoped to these N
+    // conversations. `last_read_at` is not stored in ES because every mark-as-read would force a
+    // full document re-index (write amplification).
+    const readMap = await this.fetchReadMapForUser(
+      auth,
+      dbConversations.map((c) => c.id)
+    );
+    const idToModelId = new Map(dbConversations.map((c) => [c.sId, c.id]));
+
+    const hydratedItems = items.map((item) => {
+      const modelId = idToModelId.get(item.sId);
+      const lastReadAt =
+        modelId !== undefined ? readMap.get(modelId) : undefined;
+
+      const lastReadMs = lastReadAt ? lastReadAt.getTime() : null;
+
+      return {
+        ...item,
+        lastReadMs,
+        unread: lastReadMs === null || item.updated > lastReadMs,
+      };
+    });
+
+    // (b) Shadow-validate ES structural fields against DB.
+    await this.enrichWithParticipationAndReadState(auth, dbConversations);
+    const dbMap = new Map(dbConversations.map((c) => [c.sId, c]));
+
+    for (const esItem of hydratedItems) {
+      const dbResource = dbMap.get(esItem.sId);
+      if (!dbResource) {
+        logger.warn(
+          { workspaceId: workspace.sId, userId: user.sId, sId: esItem.sId },
+          "[conversation_search] ES returned conversation absent from DB (stale index)"
+        );
+        continue;
+      }
+
+      const dbItem = dbResource.toListItem();
+      if (!isEqual(esItem, dbItem)) {
+        logger.warn(
+          {
+            workspaceId: workspace.sId,
+            userId: user.sId,
+            sId: esItem.sId,
+            esItem,
+            dbItem,
+          },
+          "[conversation_search] ES item diverges from DB"
+        );
+      }
+    }
+
+    return { conversations: hydratedItems, hasMore, lastValue };
   }
 
   static async listPrivateConversationsForUserPaginatedFromDB(
