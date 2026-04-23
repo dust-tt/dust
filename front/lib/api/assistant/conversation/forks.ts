@@ -15,8 +15,12 @@ import {
   isFileTypeUpsertableForUseCase,
   processAndUpsertToDataSource,
 } from "@app/lib/api/files/upsert";
-import { getSmallWhitelistedModel } from "@app/lib/assistant";
-import type { Authenticator } from "@app/lib/auth";
+import {
+  getSmallWhitelistedModel,
+  isModelAvailable,
+  isProviderWhitelisted,
+} from "@app/lib/assistant";
+import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { ConversationForkResource } from "@app/lib/resources/conversation_fork_resource";
@@ -102,7 +106,15 @@ async function getForkCompactionModel(
         modelId: sourceUsage.modelId,
       });
 
-      if (modelConfiguration) {
+      if (
+        modelConfiguration &&
+        isProviderWhitelisted(auth, modelConfiguration.providerId) &&
+        isModelAvailable(
+          modelConfiguration,
+          await getFeatureFlags(auth),
+          auth.plan()
+        )
+      ) {
         return {
           providerId: modelConfiguration.providerId,
           modelId: modelConfiguration.modelId,

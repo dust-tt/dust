@@ -2502,7 +2502,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           required: true,
         },
       ],
-      order: [["rank", "DESC"]],
+      order: [
+        ["rank", "DESC"],
+        ["version", "DESC"],
+      ],
       transaction,
     });
 
