@@ -3077,16 +3077,15 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     );
   }
 
-  async clearSpaceId(auth?: Authenticator) {
+  async clearSpaceId(auth: Authenticator) {
     await this.update({ spaceId: null });
     this._space = null;
-    if (auth) {
-      await ConversationResource.triggerEsIndexing(
-        auth,
-        this.sId,
-        auth.getNonNullableWorkspace().sId
-      );
-    }
+
+    await ConversationResource.triggerEsIndexing(
+      auth,
+      this.sId,
+      auth.getNonNullableWorkspace().sId
+    );
   }
 
   /**
