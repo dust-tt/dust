@@ -154,18 +154,16 @@ async function handler(
       // Find user by email
       const users = await UserResource.listByEmail(userEmail);
       if (users.length > 0) {
-        // Get the first user (there might be multiple with same email)
         const workspace = auth.getNonNullableWorkspace();
-        for (const u of users) {
-          const memberships = await MembershipResource.getActiveMemberships({
-            users: [u],
-            workspace,
-          });
-          if (memberships.memberships.length > 0) {
-            userResource = u;
-            user = u.toJSON();
-            break;
-          }
+        const { memberships } = await MembershipResource.getActiveMemberships({
+          users,
+          workspace,
+        });
+        const activeUserIds = new Set(memberships.map((m) => m.userId));
+        const firstActive = users.find((u) => activeUserIds.has(u.id));
+        if (firstActive) {
+          userResource = firstActive;
+          user = firstActive.toJSON();
         }
       }
     }
