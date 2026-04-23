@@ -2,8 +2,8 @@ import { InputBarSlashSuggestionDropdown } from "@app/components/editor/extensio
 import type { SlashCommandDropdownRef } from "@app/components/editor/extensions/skill_builder/SlashCommandDropdown";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import type { WorkspaceType } from "@app/types/user";
-import { Extension } from "@tiptap/core";
-import { PluginKey } from "@tiptap/pm/state";
+import { Extension, type Range } from "@tiptap/core";
+import { type EditorState, Plugin, PluginKey } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
 import { ReactRenderer } from "@tiptap/react";
 import { exitSuggestion, Suggestion } from "@tiptap/suggestion";
@@ -12,6 +12,33 @@ import type { RefObject } from "react";
 export const inputBarSlashSuggestionPluginKey = new PluginKey(
   "inputBarSlashSuggestion"
 );
+
+function hasSlashCharacterAtPosition(state: EditorState, position: number) {
+  const docSize = state.doc.content.size;
+
+  if (position < 1 || position > docSize) {
+    return false;
+  }
+
+  return (
+    state.doc.textBetween(
+      position,
+      Math.min(position + 1, docSize + 1),
+      undefined,
+      "\ufffc"
+    ) === "/"
+  );
+}
+
+function isAllowedSlashQuery(state: EditorState, range: Range) {
+  const text = state.doc.textBetween(range.from, range.to, undefined, "\ufffc");
+
+  if (!text.startsWith("/")) {
+    return false;
+  }
+
+  return !text.slice(1).startsWith(" ");
+}
 
 export interface InputBarSlashSuggestionExtensionOptions {
   owner?: WorkspaceType;
@@ -26,6 +53,17 @@ export const InputBarSlashSuggestionExtension =
   Extension.create<InputBarSlashSuggestionExtensionOptions>({
     name: "inputBarSlashSuggestion",
 
+    addStorage() {
+      return {
+        hasBeenFocused: false,
+        dismissedTriggerStart: null as number | null,
+      };
+    },
+
+    onFocus() {
+      this.storage.hasBeenFocused = true;
+    },
+
     addOptions() {
       return {
         owner: undefined,
@@ -37,6 +75,7 @@ export const InputBarSlashSuggestionExtension =
 
     addProseMirrorPlugins() {
       const extensionOptions = this.options;
+      const extensionStorage = this.storage;
 
       return [
         Suggestion<SkillWithoutInstructionsAndToolsType>({
@@ -46,19 +85,28 @@ export const InputBarSlashSuggestionExtension =
           allowSpaces: true,
           startOfLine: false,
           items: () => [],
-          allow: ({ editor }) =>
+          allow: ({ editor, state, range, isActive }) =>
             Boolean(extensionOptions.owner) &&
             Boolean(extensionOptions.enabledRef.current) &&
-            editor.isFocused,
+            extensionStorage.hasBeenFocused &&
+            (editor.isFocused || isActive) &&
+            extensionStorage.dismissedTriggerStart !== range.from &&
+            isAllowedSlashQuery(state, range),
           command: ({ editor, range, props }) => {
+            extensionStorage.dismissedTriggerStart = null;
             editor.chain().focus().deleteRange(range).run();
             extensionOptions.onSkillSelectRef.current?.(props);
           },
           render: () => {
             let component: ReactRenderer<SlashCommandDropdownRef> | null = null;
             let activeEditorView: EditorView | null = null;
+            let activeTriggerStart: number | null = null;
 
             const closeSuggestionDropdown = () => {
+              if (activeTriggerStart !== null) {
+                extensionStorage.dismissedTriggerStart = activeTriggerStart;
+              }
+
               if (activeEditorView) {
                 exitSuggestion(
                   activeEditorView,
@@ -85,6 +133,7 @@ export const InputBarSlashSuggestionExtension =
                   },
                   editor: props.editor,
                 });
+                activeTriggerStart = props.range.from;
 
                 document.body.appendChild(component.element);
               },
@@ -97,6 +146,7 @@ export const InputBarSlashSuggestionExtension =
                 }
 
                 activeEditorView = props.editor.view;
+                activeTriggerStart = props.range.from;
                 component?.updateProps({
                   ...props,
                   onClose: closeSuggestionDropdown,
@@ -117,12 +167,29 @@ export const InputBarSlashSuggestionExtension =
 
               onExit() {
                 activeEditorView = null;
+                activeTriggerStart = null;
                 component?.element?.remove();
                 component?.destroy();
                 component = null;
               },
             };
           },
+        }),
+        new Plugin({
+          key: new PluginKey("inputBarSlashSuggestionCleanup"),
+          view: () => ({
+            update: (view) => {
+              const dismissedTriggerStart =
+                extensionStorage.dismissedTriggerStart;
+
+              if (
+                dismissedTriggerStart !== null &&
+                !hasSlashCharacterAtPosition(view.state, dismissedTriggerStart)
+              ) {
+                extensionStorage.dismissedTriggerStart = null;
+              }
+            },
+          }),
         }),
       ];
     },

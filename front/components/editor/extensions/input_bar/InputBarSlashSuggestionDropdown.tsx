@@ -132,6 +132,7 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
         }
         header="Capabilities"
         onClose={onClose}
+        size="wide"
       />
     );
   }
