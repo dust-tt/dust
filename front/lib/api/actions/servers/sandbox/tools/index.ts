@@ -122,13 +122,19 @@ export async function runSandboxBashTool(
     return new Err(new MCPError("No conversation context available."));
   }
 
+  const prepStartMs = performance.now();
+
+  const ensureStartMs = performance.now();
   const ensureResult = await SandboxResource.ensureActive(auth, conversation);
   if (ensureResult.isErr()) {
     return new Err(new MCPError(ensureResult.error.message));
   }
+  const ensureActiveDurationMs = performance.now() - ensureStartMs;
 
   const { sandbox, freshlyCreated, wokeFromSleep } = ensureResult.value;
 
+  let gcsDurationMs = 0;
+  let gcsOp: "mount" | "refresh" | "skipped" = "skipped";
   const imageResult = getSandboxImage(auth);
   if (imageResult.isOk()) {
     const image = imageResult.value;
@@ -137,7 +143,9 @@ export async function runSandboxBashTool(
       logger.error({ err }, "Telemetry start failed (fire-and-forget)")
     );
 
+    const gcsStartMs = performance.now();
     if (freshlyCreated || wokeFromSleep) {
+      gcsOp = "mount";
       const mountResult = await mountConversationFiles(
         auth,
         sandbox,
@@ -148,6 +156,7 @@ export async function runSandboxBashTool(
         return new Err(new MCPError(mountResult.error.message));
       }
     } else {
+      gcsOp = "refresh";
       const refreshResult = await refreshGcsToken(
         auth,
         sandbox,
@@ -158,6 +167,7 @@ export async function runSandboxBashTool(
         return new Err(new MCPError(refreshResult.error.message));
       }
     }
+    gcsDurationMs = performance.now() - gcsStartMs;
   } else {
     logger.error(
       { err: imageResult.error },
@@ -165,13 +175,17 @@ export async function runSandboxBashTool(
     );
   }
 
+  let egressSetupDurationMs = 0;
   if (freshlyCreated) {
+    const egressSetupStartMs = performance.now();
     const setupResult = await setupEgressForwarder(auth, sandbox);
     if (setupResult.isErr()) {
       return new Err(new MCPError(setupResult.error.message));
     }
+    egressSetupDurationMs = performance.now() - egressSetupStartMs;
   }
 
+  const healthStartMs = performance.now();
   const healthResult = await checkEgressForwarderHealth(auth, sandbox);
   if (healthResult.isErr()) {
     return new Err(new MCPError(healthResult.error.message));
@@ -200,7 +214,9 @@ export async function runSandboxBashTool(
       "Sandbox egress forwarder health check succeeded"
     );
   }
+  const healthDurationMs = performance.now() - healthStartMs;
 
+  const tokenGenStartMs = performance.now();
   const execId = generateExecId();
   const sandboxToken = await generateSandboxExecToken(auth, {
     agentConfiguration,
@@ -210,6 +226,26 @@ export async function runSandboxBashTool(
     execId,
     expiryMs: DEFAULT_EXEC_TIMEOUT_MS,
   });
+  const tokenGenDurationMs = performance.now() - tokenGenStartMs;
+
+  const totalPrepDurationMs = performance.now() - prepStartMs;
+  logger.info(
+    {
+      sandboxId: sandbox.sId,
+      conversationId: conversation.sId,
+      workspaceId: auth.getNonNullableWorkspace().sId,
+      freshlyCreated,
+      wokeFromSleep,
+      gcsOp,
+      totalPrepDurationMs,
+      ensureActiveDurationMs,
+      gcsDurationMs,
+      egressSetupDurationMs,
+      healthDurationMs,
+      tokenGenDurationMs,
+    },
+    "Sandbox ready for first command"
+  );
 
   const metricsCtx = { workspaceId: auth.getNonNullableWorkspace().sId };
   const startMs = performance.now();

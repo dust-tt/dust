@@ -336,6 +336,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
 
         const createConfig = imageResult.value.toCreateConfig();
 
+        const createStartMs = performance.now();
         const createResult = await provider.create(
           {
             ...createConfig,
@@ -352,6 +353,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         if (createResult.isErr()) {
           return createResult;
         }
+        const createDurationMs = performance.now() - createStartMs;
 
         const sandbox = await SandboxResource.makeNew(auth, {
           conversationId: conversation.id,
@@ -373,7 +375,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         }
 
         logger.info(
-          { sandbox: sandbox.toLogJSON() },
+          { sandbox: sandbox.toLogJSON(), createDurationMs },
           "Created new sandbox for conversation"
         );
 
@@ -392,6 +394,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
           // The sandbox was paused (betaPause) while waiting for tool approval.
           // Wake it, but do NOT fall through to recreation on failure — the
           // frozen process state and output files are unrecoverable.
+          const pendingWakeStartMs = performance.now();
           const pendingWakeResult = await provider.wake(
             existing.providerId,
             tracingOpts
@@ -403,11 +406,20 @@ export class SandboxResource extends BaseResource<SandboxModel> {
               )
             );
           }
+          logger.info(
+            {
+              sandbox: existing.toLogJSON(),
+              wakeDurationMs: performance.now() - pendingWakeStartMs,
+              previousStatus: "pending_approval",
+            },
+            "Woke sandbox"
+          );
           wokeFromSleep = true;
           break;
         }
 
         case "sleeping": {
+          const wakeStartMs = performance.now();
           const wakeResult = await provider.wake(
             existing.providerId,
             tracingOpts
@@ -424,6 +436,14 @@ export class SandboxResource extends BaseResource<SandboxModel> {
               "Failed to wake sandbox — will recreate"
             );
           } else {
+            logger.info(
+              {
+                sandbox: existing.toLogJSON(),
+                wakeDurationMs: performance.now() - wakeStartMs,
+                previousStatus: "sleeping",
+              },
+              "Woke sandbox"
+            );
             wokeFromSleep = true;
 
             break;
@@ -439,6 +459,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
 
           const createConfig = imageResult.value.toCreateConfig();
 
+          const createStartMs = performance.now();
           const createResult = await provider.create(
             {
               ...createConfig,
@@ -455,6 +476,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
           if (createResult.isErr()) {
             return createResult;
           }
+          const createDurationMs = performance.now() - createStartMs;
           await existing.update({ providerId: createResult.value.providerId });
           freshlyCreated = true;
 
@@ -475,6 +497,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
             {
               sandbox: existing.toLogJSON(),
               newProviderId: createResult.value.providerId,
+              createDurationMs,
             },
             "Recreated sandbox from deleted state"
           );

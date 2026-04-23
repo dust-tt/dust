@@ -31,6 +31,7 @@ export async function mountConversationFiles(
     return new Ok(undefined);
   }
 
+  const startMs = performance.now();
   const bucket = fileStorageConfig.getGcsPrivateUploadsBucket();
 
   const workspaceId = auth.getNonNullableWorkspace().sId;
@@ -123,7 +124,11 @@ export async function mountConversationFiles(
     return new Err(new Error(msg));
   }
 
-  childLogger.info({}, "GCS mount: conversation files mounted successfully");
+  const durationMs = performance.now() - startMs;
+  childLogger.info(
+    { durationMs },
+    "GCS mount: conversation files mounted successfully"
+  );
   return new Ok(undefined);
 }
 
@@ -143,6 +148,7 @@ export async function refreshGcsToken(
     return new Ok(undefined);
   }
 
+  const startMs = performance.now();
   const bucket = fileStorageConfig.getGcsPrivateUploadsBucket();
 
   const workspaceId = auth.getNonNullableWorkspace().sId;
@@ -170,11 +176,13 @@ export async function refreshGcsToken(
     return writeResult;
   }
 
+  const durationMs = performance.now() - startMs;
   logger.info(
     {
       sandboxId: sandbox.sId,
       workspaceId,
       conversationId: conversation.sId,
+      durationMs,
     },
     "GCS token refreshed"
   );
