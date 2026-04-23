@@ -1,0 +1,117 @@
+[
+  {
+    "sId": "RAConv01",
+    "title": "Laptop won't turn on",
+    "agentName": "Internal_IT_Helpdesk_Bot_2",
+    "exchanges": [
+      {
+        "user": {
+          "sId": "RAUMsg01",
+          "content": ":mention[Internal_IT_Helpdesk_Bot]{sId=__IT_HELPDESK_SID__} My laptop won't turn on, I've tried everything."
+        },
+        "agent": {
+          "sId": "RAAMsg01",
+          "content": "I don't know, please contact someone."
+        }
+      },
+      {
+        "user": {
+          "sId": "RAUMsg02",
+          "content": "But who should I contact?"
+        },
+        "agent": {
+          "sId": "RAAMsg02",
+          "content": "I don't have this information, try to contact the IT department."
+        }
+      }
+    ]
+  },
+  {
+    "sId": "RAConv02",
+    "title": "Can't access Slack",
+    "agentName": "Internal_IT_Helpdesk_Bot_2",
+    "exchanges": [
+      {
+        "user": {
+          "sId": "RAUMsg03",
+          "content": ":mention[Internal_IT_Helpdesk_Bot]{sId=__IT_HELPDESK_SID__} I can't access Slack since this morning, I have a call in 10 min!"
+        },
+        "agent": {
+          "sId": "RAAMsg03",
+          "content": "Try restarting the app."
+        }
+      }
+    ]
+  },
+  {
+    "sId": "RAConv03",
+    "title": "VPN keeps disconnecting",
+    "agentName": "Internal_IT_Helpdesk_Bot_2",
+    "exchanges": [
+      {
+        "user": {
+          "sId": "RAUMsg04",
+          "content": ":mention[Internal_IT_Helpdesk_Bot]{sId=__IT_HELPDESK_SID__} My VPN keeps disconnecting."
+        },
+        "agent": {
+          "sId": "RAAMsg04",
+          "content": "The VPN might have issues. Check your internet."
+        }
+      }
+    ]
+  },
+  {
+    "sId": "RAConv04",
+    "title": "Locked out of Google account",
+    "agentName": "Internal_IT_Helpdesk_Bot_2",
+    "exchanges": [
+      {
+        "user": {
+          "sId": "RAUMsg05",
+          "content": ":mention[Internal_IT_Helpdesk_Bot]{sId=__IT_HELPDESK_SID__} I've been locked out of my Google account for 2 hours, I can't work at all."
+        },
+        "agent": {
+          "sId": "RAAMsg05",
+          "content": "Account lockouts can happen for security reasons. Unfortunately I don't have information on how to resolve this. You should contact the right person."
+        }
+      },
+      {
+        "user": {
+          "sId": "RAUMsg06",
+          "content": "Who is the right person??"
+        },
+        "agent": {
+          "sId": "RAAMsg06",
+          "content": "I'm not sure, maybe someone in IT?"
+        }
+      },
+      {
+        "user": {
+          "sId": "RAUMsg07",
+          "content": "That's not helpful at all."
+        },
+        "agent": {
+          "sId": "RAAMsg07",
+          "content": "I'm sorry, I don't have more specific information available. I hope you can find the right person to help you."
+        }
+      }
+    ]
+  },
+  {
+    "sId": "RAConv05",
+    "title": "Password reset",
+    "agentName": "Internal_IT_Helpdesk_Bot_2",
+    "exchanges": [
+      {
+        "user": {
+          "sId": "RAUMsg08",
+          "content": ":mention[Internal_IT_Helpdesk_Bot]{sId=__IT_HELPDESK_SID__} How do I reset my password?"
+        },
+        "agent": {
+          "sId": "RAAMsg08",
+          "content": "Go to settings > security > reset password, then check your email for a reset link. The link expires after 24 hours. If you need further assistance, feel free to ask!"
+        }
+      }
+    ]
+  }
+]
