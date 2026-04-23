@@ -49,7 +49,6 @@ import { isCompactionMessageType } from "@app/types/assistant/conversation";
 import {
   isContentFragmentType,
   isContentNodeContentFragment,
-  isFileContentFragment,
 } from "@app/types/content_fragment";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Ok } from "@app/types/shared/result";
@@ -280,26 +279,6 @@ async function fetchConversationOrThrow(
   }
 
   return result.value;
-}
-
-function getLatestFileContentFragmentId(
-  conversation: ConversationType,
-  fileId: string
-): string {
-  for (const versions of conversation.content) {
-    const latestVersion = versions[versions.length - 1];
-
-    if (
-      latestVersion &&
-      isContentFragmentType(latestVersion) &&
-      isFileContentFragment(latestVersion) &&
-      latestVersion.fileId === fileId
-    ) {
-      return latestVersion.contentFragmentId;
-    }
-  }
-
-  throw new Error(`Missing file content fragment for file ${fileId}.`);
 }
 
 function getLatestContentNodeContentFragmentId(
@@ -813,10 +792,6 @@ describe("createConversationFork", () => {
     expect(childFileAttachments).toHaveLength(1);
     expect(childFileAttachments[0]?.title).toBe("Notes");
     expect(childFileAttachments[0]?.fileId).not.toBe(sourceFile.sId);
-    const childFileContentFragmentId = getLatestFileContentFragmentId(
-      childConversation,
-      childFileAttachments[0]!.fileId
-    );
 
     const copiedFiles = await FileResource.fetchByIds(auth, [
       childFileAttachments[0]!.fileId,
@@ -842,8 +817,6 @@ describe("createConversationFork", () => {
           messageRank: sourceMessage.rank,
           attachmentIdReplacements: {
             [sourceFile.sId]: childFileAttachments[0]!.fileId,
-            [attachmentResult.value.contentFragmentId]:
-              childFileContentFragmentId,
           },
         }),
       })
