@@ -7,6 +7,8 @@ export const WAKEUP_STATUSES = [
   "expired",
 ] as const;
 
+export const ACTIVE_WAKE_UP_STATUSES: WakeUpStatus[] = ["scheduled"];
+
 export const WakeUpStatusSchema = z.enum(WAKEUP_STATUSES);
 export type WakeUpStatus = z.infer<typeof WakeUpStatusSchema>;
 
@@ -50,3 +52,7 @@ export const WakeUpSchema = z.object({
  * @swaggerschema PrivateWakeUp (swagger_private_schemas.ts)
  */
 export type WakeUpType = z.infer<typeof WakeUpSchema>;
+
+export function isActiveWakeUp(wakeUp: WakeUpType): boolean {
+  return ACTIVE_WAKE_UP_STATUSES.includes(wakeUp.status);
+}

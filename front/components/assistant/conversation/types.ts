@@ -159,6 +159,10 @@ export const isTriggeredOrigin = (origin?: UserMessageOrigin | null) => {
   );
 };
 
+export const isWakeUpOrigin = (origin?: UserMessageOrigin | null) => {
+  return origin === "wakeup";
+};
+
 // Central helper to control which user message should be hidden in the UI.
 // Extend this list as we introduce more bootstrap/system user messages.
 export const isHiddenMessage = (message: VirtuosoMessage): boolean => {

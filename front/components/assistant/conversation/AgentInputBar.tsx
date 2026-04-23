@@ -12,10 +12,13 @@ import {
   isHiddenMessage,
   isUserMessage,
 } from "@app/components/assistant/conversation/types";
+import { WakeUpBanner } from "@app/components/assistant/conversation/WakeUpBanner";
 import { ProjectJoinCTA } from "@app/components/spaces/ProjectJoinCTA";
 import { useCancelMessage, useConversation } from "@app/hooks/conversations";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
+import { useConversationWakeUps } from "@app/lib/swr/wakeups";
+import { formatWakeUpTime } from "@app/lib/utils/wakeup_description";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import {
   isRichAgentMention,
@@ -102,6 +105,17 @@ export const AgentInputBar = ({
   )
     ? "Wait for compaction to finish"
     : null;
+
+  const { activeWakeUp, isActiveWakeUpOwner } = useConversationWakeUps({
+    owner: context.owner,
+    conversationId: context.conversation?.sId ?? "",
+    disabled: !context.conversation,
+  });
+
+  const wakeUpBlockMessage =
+    activeWakeUp && !isActiveWakeUpOwner
+      ? `Conversation paused - a wake-up is scheduled for ${formatWakeUpTime(activeWakeUp)}`
+      : null;
 
   const autoMentions = useMemo(() => {
     // If we are in the agent builder, we show the draft agent as the sticky mention, all the time.
@@ -422,6 +436,14 @@ export const AgentInputBar = ({
           )}
         </ContentMessageInline>
       )}
+      {activeWakeUp && context.conversation && (
+        <WakeUpBanner
+          wakeUp={activeWakeUp}
+          owner={context.owner}
+          conversationId={context.conversation.sId}
+          isOwner={isActiveWakeUpOwner}
+        />
+      )}
       <InputBar
         owner={context.owner}
         user={context.user}
@@ -434,7 +456,7 @@ export const AgentInputBar = ({
         actions={agentBuilderContext?.actionsToShow}
         isSubmitting={agentBuilderContext?.isSubmitting === true}
         isAgentBuilder={!!agentBuilderContext}
-        submitBlockMessage={compactionBlockMessage}
+        submitBlockMessage={wakeUpBlockMessage ?? compactionBlockMessage}
       />
     </div>
   );

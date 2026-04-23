@@ -34,6 +34,9 @@ interface InputBarButtonsProps {
   fileInputRef: React.MutableRefObject<HTMLInputElement | null>;
   fileUploaderService: FileUploaderService;
   handleSingleAgentSelect: (mention: RichMention) => void;
+  // When true, disables every picker (tools, attachment) in addition to the
+  // agent selector which is muted via `disableAgentSelector`.
+  isInputDisabled: boolean;
   onMCPServerViewSelect: (serverView: MCPServerViewType) => void;
   onNodeSelect: (node: DataSourceViewContentNode) => void;
   onNodeUnselect: (node: DataSourceViewContentNode) => void;
@@ -58,6 +61,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
   fileInputRef,
   fileUploaderService,
   handleSingleAgentSelect,
+  isInputDisabled,
   onMCPServerViewSelect,
   onNodeSelect,
   onNodeUnselect,
@@ -100,6 +104,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
             size={buttonSize}
             icon={() => <Avatar size="xxs" visual={selectedAgent.pictureUrl} />}
             label={selectedAgent.label}
+            disabled={isInputDisabled}
             className={cn(
               disableAgentSelector && "bg-gray-150 dark:bg-gray-800"
             )}
@@ -110,6 +115,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
             size={buttonSize}
             icon={RobotIcon}
             label="Agent"
+            disabled={isInputDisabled}
             className={cn(
               disableAgentSelector && "bg-gray-150 dark:bg-gray-800"
             )}
@@ -127,6 +133,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
       selectedSkills={selectedSkills}
       onSkillSelect={onSkillSelect}
       buttonSize={buttonSize}
+      disabled={isInputDisabled}
     />
   );
   const attachmentButton = actions.includes("attachment") &&
@@ -162,6 +169,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
           }}
           spaceId={spaceId}
           type="dropdown"
+          disabled={isInputDisabled}
         />
       </>
     );
