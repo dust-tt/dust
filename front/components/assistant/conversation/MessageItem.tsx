@@ -277,7 +277,10 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
             !nextData && "mb-10"
           )}
         >
-          <CompactionMessage message={data} />
+          <CompactionMessage
+            message={data}
+            conversation={context.conversation}
+          />
         </div>
       );
     }

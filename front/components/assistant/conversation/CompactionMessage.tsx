@@ -1,5 +1,8 @@
 import { formatTimestring } from "@app/lib/utils/timestamps";
-import type { CompactionMessageType } from "@app/types/assistant/conversation";
+import type {
+  CompactionMessageType,
+  ConversationWithoutContentType,
+} from "@app/types/assistant/conversation";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
   AnimatedText,
@@ -10,9 +13,35 @@ import {
 
 interface CompactionMessageProps {
   message: CompactionMessageType;
+  conversation: ConversationWithoutContentType;
 }
 
-export function CompactionMessage({ message }: CompactionMessageProps) {
+function getCompactionSuccessLabel(
+  message: CompactionMessageType,
+  conversation: ConversationWithoutContentType
+): string {
+  if (
+    !message.sourceConversationId ||
+    message.sourceConversationId === conversation.sId
+  ) {
+    return "Context compacted";
+  }
+
+  const parentConversation = conversation.forkingData?.forkedFrom;
+  const isParentConversation =
+    parentConversation?.parentConversationId === message.sourceConversationId;
+
+  if (isParentConversation && parentConversation.parentConversationTitle) {
+    return `Summary context gathered from conversation '${parentConversation.parentConversationTitle}'`;
+  }
+
+  return `Summary context gathered from conversation ${message.sourceConversationId}`;
+}
+
+export function CompactionMessage({
+  message,
+  conversation,
+}: CompactionMessageProps) {
   switch (message.status) {
     case "failed":
       return (
@@ -31,7 +60,8 @@ export function CompactionMessage({ message }: CompactionMessageProps) {
       return (
         <div className="flex items-center justify-center gap-1.5">
           <span className="text-sm text-muted-foreground">
-            Context compacted · {formatTimestring(message.created)}
+            {getCompactionSuccessLabel(message, conversation)} ·{" "}
+            {formatTimestring(message.created)}
           </span>
         </div>
       );
