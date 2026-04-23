@@ -43,7 +43,7 @@ type RowData = {
 
 type Info = CellContext<RowData, unknown>;
 
-const getTableColumns = (onAgentClick: (agentSid: string) => void) => {
+const getTableColumns = (onAgentClick: (agentId: string) => void) => {
   return [
     {
       header: "Name",
@@ -103,7 +103,7 @@ export const SpaceCategoriesList = ({
   const { hasFeature } = useFeatureFlags();
   const { setIsSearchDisabled } = React.useContext(SpaceSearchContext);
 
-  const [assistantSId, setAssistantSId] = React.useState<string | null>(null);
+  const [assistantId, setAssistantId] = React.useState<string | null>(null);
 
   const rows: RowData[] = spaceInfo
     ? removeNulls(
@@ -200,8 +200,8 @@ export const SpaceCategoriesList = ({
       <AgentDetailsSheet
         owner={owner}
         user={user}
-        agentId={assistantSId}
-        onClose={() => setAssistantSId(null)}
+        agentId={assistantId}
+        onClose={() => setAssistantId(null)}
       />
       {isEmpty && (
         <div
@@ -217,7 +217,7 @@ export const SpaceCategoriesList = ({
       {rows.length > 0 && (
         <DataTable
           data={rows}
-          columns={getTableColumns(setAssistantSId)}
+          columns={getTableColumns(setAssistantId)}
           className="pb-4"
           columnsBreakpoints={{
             usage: "md",
