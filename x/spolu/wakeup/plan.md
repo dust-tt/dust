@@ -120,23 +120,23 @@ selecting an existing agent message.
 Added `wakeup_not_found` to `APIErrorType`, `PrivateWakeUp` schema to
 `swagger_private_schemas.ts`, and the `@swaggerschema` annotation on `WakeUpType`.
 
-### [partial] PR 9 — Conversation UI
+### [x] PR 9 — Conversation UI
 
 SWR hooks (`useConversationWakeUps`, `useCancelWakeUp` in `front/lib/swr/wakeups.ts`) wired
 to the real endpoints from PR 8. Wake-up banner ("Waiting until {time} — {reason}" + cancel
 button), wake-up message rendering, and the sidebar active/dormant treatment are live. For
 V1, the UI assumes max 1 active wake-up per conversation.
 
-Follow-ups:
-- Wake-up ownership: `isActiveWakeUpOwner` currently returns `!!activeWakeUp` with a TODO;
-  needs the API to expose per-wake-up ownership (e.g., `isOwner: boolean` on the
-  serialized `WakeUpType`), then used to disable the cancel action for non-owners and
-  drive the "conversation paused" input state.
-- `mutate` on wake-up creation: when `schedule_wakeup` fires from the agent tool, the UI
-  doesn't re-fetch the wake-up list automatically, so the banner only appears after the
-  next natural SWR refresh. Needs to invalidate `useConversationWakeUps` when a new
-  wake-up is created in the current conversation (e.g., via a conversation-events hook or
-  post-tool-call mutation).
+Two follow-ups landed on top of the initial UI PR:
+- `mutate`-on-tool-success: `AgentMessage.tsx` invalidates `useConversationWakeUps` when
+  an `agent_action_success` event arrives with `internalMCPServerName === "wakeups"`, so
+  the banner appears / clears as soon as the agent's `schedule_wakeup` / `cancel_wakeup`
+  tool resolves (mirrors the existing sandbox pattern).
+- Wake-up ownership: `WakeUpType` now carries the `user: UserType` of the owner (threaded
+  through `WakeUpResource.toJSON`), and `useConversationWakeUps` derives
+  `isActiveWakeUpOwner` by comparing `activeWakeUp.user.sId` to the current `useAuth()`
+  user's sId. Drives the disabled cancel action for non-owners and the "conversation
+  paused" input state.
 
 ## Milestone 7: Cleanup + GA
 

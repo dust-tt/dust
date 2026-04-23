@@ -1,4 +1,5 @@
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetConversationWakeUpsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/wakeups";
@@ -27,6 +28,8 @@ export function useConversationWakeUps({
     { disabled }
   );
 
+  const { user } = useAuth();
+
   const wakeUps = data?.wakeUps ?? emptyArray();
   const activeWakeUp = useMemo(
     () => wakeUps.find((w) => isActiveWakeUp(w)) ?? null,
@@ -36,9 +39,7 @@ export function useConversationWakeUps({
   return {
     wakeUps,
     activeWakeUp,
-    // TODO(wake-up): derive from the API response once it exposes ownership info; for now the
-    // cancel endpoint 403s if the caller is not the wake-up owner or a workspace admin.
-    isActiveWakeUpOwner: !!activeWakeUp,
+    isActiveWakeUpOwner: activeWakeUp?.user.sId === user.sId,
     isWakeUpsLoading: !error && !data && !disabled,
     isWakeUpsError: !!error,
     mutateWakeUps: mutate,
