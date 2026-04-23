@@ -5,6 +5,7 @@ import {
 } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
+import type { WakeUpResource } from "@app/lib/resources/wakeup_resource";
 import type { ConversationSearchDocument } from "@app/types/conversation_search/conversation_search";
 import type { Result } from "@app/types/shared/result";
 
@@ -14,7 +15,8 @@ export function buildConversationSearchDocument(
   participants: Array<{
     userId: string;
     actionRequired: boolean;
-  }>
+  }>,
+  activeWakeUp?: WakeUpResource | null
 ): ConversationSearchDocument {
   return {
     conversation_id: conversation.sId,
@@ -32,6 +34,17 @@ export function buildConversationSearchDocument(
     visibility: conversation.visibility,
     workspace_id: auth.getNonNullableWorkspace().sId,
     ...(conversation.space?.sId && { space_id: conversation.space.sId }),
+    wakeup: activeWakeUp
+      ? {
+          schedule_type: activeWakeUp.scheduleType,
+          ...(activeWakeUp.scheduleType === "one_shot" && activeWakeUp.fireAt
+            ? { fire_at: activeWakeUp.fireAt.toISOString() }
+            : {}),
+          ...(activeWakeUp.scheduleType === "cron" && activeWakeUp.cronExpression
+            ? { cron: activeWakeUp.cronExpression }
+            : {}),
+        }
+      : null,
   };
 }
 

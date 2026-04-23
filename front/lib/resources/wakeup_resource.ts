@@ -1,6 +1,7 @@
 import { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { CronExpressionParser } from "cron-parser";
 import { WakeUpModel } from "@app/lib/resources/storage/models/wakeup";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
@@ -26,6 +27,7 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { Attributes, Transaction, WhereOptions } from "sequelize";
 
 // Maximum fire counts for each wake-up to prevent run-away situations. The limit is exposed to
@@ -151,6 +153,16 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
       );
     }
 
+    try {
+      CronExpressionParser.parse(cron, { tz: timezone });
+    } catch (e) {
+      return new Err(
+        new Error(
+          `Invalid wake-up cron expression: ${normalizeError(e).message}`
+        )
+      );
+    }
+
     return new Ok(undefined);
   }
 
@@ -234,7 +246,7 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
 
   static async listByConversation(
     auth: Authenticator,
-    conversation: ConversationWithoutContentType,
+    conversation: ConversationWithoutContentType | ConversationResource,
     { status }: { status?: WakeUpStatus | WakeUpStatus[] } = {}
   ): Promise<WakeUpResource[]> {
     return this.baseFetch(auth, {
@@ -247,6 +259,27 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
         ["id", "ASC"],
       ],
     });
+  }
+
+  static async nextActiveWakeUpForConversation(
+    auth: Authenticator,
+    conversation: { id: ModelId }
+  ): Promise<WakeUpResource | null> {
+    const active = await this.listByConversation(auth, conversation, {
+      status: ACTIVE_WAKE_UP_STATUSES,
+    });
+    if (active.length === 0) {
+      return null;
+    }
+    // Pick the wake-up with the earliest next fire time. Wake-ups that cannot produce a
+    // nextFireAt are sorted last and excluded from the result.
+    const withDate = active
+      .map((w) => ({ wakeUp: w, nextAt: w.nextFireAt() }))
+      .filter((entry): entry is { wakeUp: WakeUpResource; nextAt: Date } =>
+        entry.nextAt !== null
+      )
+      .sort((a, b) => a.nextAt.getTime() - b.nextAt.getTime());
+    return withDate[0]?.wakeUp ?? null;
   }
 
   static async listActiveByWorkspace(
@@ -424,6 +457,37 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
 
   maxFires(): number {
     return MAX_WAKE_UP_FIRES;
+  }
+
+  /**
+   * Returns the next Date this wake-up will fire, or null if it will not fire again.
+   * For one-shot, returns fireAt while still scheduled. For cron, computes the next
+   * occurrence from the expression and timezone.
+   */
+  nextFireAt(): Date | null {
+    if (this.status !== "scheduled") {
+      return null;
+    }
+    switch (this.scheduleType) {
+      case "one_shot":
+        return this.fireAt ?? null;
+      case "cron": {
+        if (!this.cronExpression || !this.cronTimezone) {
+          return null;
+        }
+        try {
+          return CronExpressionParser.parse(this.cronExpression, {
+            tz: this.cronTimezone,
+          })
+            .next()
+            .toDate();
+        } catch {
+          return null;
+        }
+      }
+      default:
+        return assertNever(this.scheduleType);
+    }
   }
 
   async markFired(

@@ -21,4 +21,9 @@ export interface ConversationSearchDocument extends ElasticsearchBaseDocument {
   trigger_id: string | null;
   updated_at: string;
   visibility: string;
+  wakeup?: {
+    schedule_type: "one_shot" | "cron";
+    fire_at?: string;
+    cron?: string;
+  } | null;
 }
