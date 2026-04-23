@@ -117,7 +117,6 @@ function serializePropValue(value: TSESTree.JSXAttribute["value"]): string {
   }
 
   if (value.type === AST_NODE_TYPES.JSXElement) return "{jsx}";
-  if (value.type === AST_NODE_TYPES.JSXFragment) return "{fragment}";
 
   return "{unknown}";
 }
@@ -157,10 +156,11 @@ function collectAllBindings(
 
     for (const specifier of node.specifiers) {
       if (specifier.type === AST_NODE_TYPES.ImportSpecifier) {
+        const imported = specifier.imported;
         const importedName =
-          specifier.imported.type === AST_NODE_TYPES.Identifier
-            ? specifier.imported.name
-            : (specifier.imported as TSESTree.StringLiteral).value;
+          imported.type === AST_NODE_TYPES.Identifier
+            ? imported.name
+            : imported.value;
         target.set(specifier.local.name, {
           localName: specifier.local.name,
           importedName,
@@ -256,19 +256,18 @@ export function analyzeAllElements(
 
     traverseAST(ast, (node) => {
       if (node.type !== AST_NODE_TYPES.JSXOpeningElement) return;
-      const jsxNode = node as TSESTree.JSXOpeningElement;
       const loc: FileLocation = {
         filePath: relativePath(config.targetDir, filePath),
-        line: jsxNode.loc.start.line,
-        column: jsxNode.loc.start.column,
+        line: node.loc.start.line,
+        column: node.loc.start.column,
       };
 
       // HTML element — JSXIdentifier that starts lowercase
       if (
-        jsxNode.name.type === AST_NODE_TYPES.JSXIdentifier &&
-        /^[a-z]/.test(jsxNode.name.name)
+        node.name.type === AST_NODE_TYPES.JSXIdentifier &&
+        /^[a-z]/.test(node.name.name)
       ) {
-        const tag = jsxNode.name.name;
+        const tag = node.name.name;
         if (!htmlAgg.has(tag)) htmlAgg.set(tag, { count: 0, locations: [] });
         const e = htmlAgg.get(tag)!;
         e.count++;
@@ -277,14 +276,14 @@ export function analyzeAllElements(
       }
 
       // Component element
-      const resolved = resolveFromMaps(jsxNode.name, sparkle, other);
+      const resolved = resolveFromMaps(node.name, sparkle, other);
       if (!resolved) return;
 
       const { binding, isSparkle } = resolved;
       const agg = isSparkle ? sparkleAgg : customAgg;
       const key = binding.importedName;
       if (!agg.has(key)) agg.set(key, new ComponentUsageBuilder(binding));
-      agg.get(key)!.addOccurrence(loc, extractProps(jsxNode.attributes));
+      agg.get(key)!.addOccurrence(loc, extractProps(node.attributes));
     });
   }
 

@@ -17,13 +17,16 @@ function inferComponentName(typeName: string): string | null {
 }
 
 function extractMemberNames(members: TSESTree.TypeElement[]): string[] {
-  return members
-    .filter(
-      (m): m is TSESTree.TSPropertySignature =>
-        m.type === AST_NODE_TYPES.TSPropertySignature &&
-        m.key.type === AST_NODE_TYPES.Identifier
-    )
-    .map((m) => (m.key as TSESTree.Identifier).name);
+  const names: string[] = [];
+  for (const m of members) {
+    if (
+      m.type === AST_NODE_TYPES.TSPropertySignature &&
+      m.key.type === AST_NODE_TYPES.Identifier
+    ) {
+      names.push(m.key.name);
+    }
+  }
+  return names;
 }
 
 function extractFromAST(ast: TSESTree.Program, map: DeclaredPropsMap): void {

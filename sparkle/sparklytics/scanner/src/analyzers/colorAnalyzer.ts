@@ -288,7 +288,7 @@ function analyzeCssRoot(
 
 // ─── TSX Inline Style Analysis ───────────────────────────────────────────────
 
-function stringLiteralValue(node: TSESTree.Expression): string | null {
+function stringLiteralValue(node: TSESTree.Node): string | null {
   if (node.type === AST_NODE_TYPES.Literal && typeof node.value === "string") {
     return node.value;
   }
@@ -305,76 +305,73 @@ function analyzeTsxFile(
   const relPath = relativePath(targetDir, filePath);
 
   traverseAST(ast, (node) => {
+    if (node.type !== AST_NODE_TYPES.JSXAttribute) return;
+    if (node.name.type !== AST_NODE_TYPES.JSXIdentifier) return;
+    const attrName = node.name.name;
+
     // Inline style={{ ... }}
-    if (node.type === AST_NODE_TYPES.JSXAttribute) {
-      const attr = node as TSESTree.JSXAttribute;
-      if (
-        attr.name.type === AST_NODE_TYPES.JSXIdentifier &&
-        attr.name.name === "style" &&
-        attr.value?.type === AST_NODE_TYPES.JSXExpressionContainer
-      ) {
-        const expr = attr.value.expression;
-        if (expr.type === AST_NODE_TYPES.ObjectExpression) {
-          for (const prop of expr.properties) {
-            if (prop.type !== AST_NODE_TYPES.Property) continue;
-            const key =
-              prop.key.type === AST_NODE_TYPES.Identifier
-                ? prop.key.name
-                : prop.key.type === AST_NODE_TYPES.Literal
-                  ? String(prop.key.value)
-                  : null;
-            if (!key || !COLOR_STYLE_KEYS.has(key)) continue;
+    if (
+      attrName === "style" &&
+      node.value?.type === AST_NODE_TYPES.JSXExpressionContainer
+    ) {
+      const expr = node.value.expression;
+      if (expr.type === AST_NODE_TYPES.ObjectExpression) {
+        for (const prop of expr.properties) {
+          if (prop.type !== AST_NODE_TYPES.Property) continue;
+          const key =
+            prop.key.type === AST_NODE_TYPES.Identifier
+              ? prop.key.name
+              : prop.key.type === AST_NODE_TYPES.Literal
+                ? String(prop.key.value)
+                : null;
+          if (!key || !COLOR_STYLE_KEYS.has(key)) continue;
 
-            const val = stringLiteralValue(prop.value as TSESTree.Expression);
-            if (!val || !detectColorValue(val)) continue;
+          const val = stringLiteralValue(prop.value);
+          if (!val || !detectColorValue(val)) continue;
 
-            violations.push({
-              filePath: relPath,
-              line: prop.loc.start.line,
-              column: prop.loc.start.column,
-              property: key,
-              value: val,
-              context: "inline-style",
-              isSparkleToken: isSparkleColorToken(val, hexSet),
-            });
-          }
+          violations.push({
+            filePath: relPath,
+            line: prop.loc.start.line,
+            column: prop.loc.start.column,
+            property: key,
+            value: val,
+            context: "inline-style",
+            isSparkleToken: isSparkleColorToken(val, hexSet),
+          });
         }
       }
+      return;
+    }
 
-      // className="..." — detect arbitrary Tailwind color values like text-[#fff]
-      if (
-        attr.name.type === AST_NODE_TYPES.JSXIdentifier &&
-        (attr.name.name === "className" || attr.name.name === "class")
-      ) {
-        let classStr: string | null = null;
-        if (attr.value?.type === AST_NODE_TYPES.Literal) {
-          classStr = String(attr.value.value);
-        } else if (
-          attr.value?.type === AST_NODE_TYPES.JSXExpressionContainer &&
-          attr.value.expression.type === AST_NODE_TYPES.Literal
-        ) {
-          classStr = String((attr.value.expression as TSESTree.Literal).value);
-        }
-        if (classStr) {
-          // Match arbitrary color values in Tailwind classes: bg-[#fff], text-[rgb(0,0,0)]
-          const arbitrary = /\[([^\]]+)\]/g;
-          let m;
-          while ((m = arbitrary.exec(classStr)) !== null) {
-            const val = m[1];
-            if (detectColorValue(val)) {
-              violations.push({
-                filePath: relPath,
-                line: attr.loc.start.line,
-                column: attr.loc.start.column,
-                property: "className",
-                value: val,
-                context: "className",
-                isSparkleToken: isSparkleColorToken(val, hexSet),
-              });
-            }
-          }
-        }
-      }
+    // className="..." — detect arbitrary Tailwind color values like text-[#fff]
+    if (attrName !== "className" && attrName !== "class") return;
+
+    let classStr: string | null = null;
+    if (node.value?.type === AST_NODE_TYPES.Literal) {
+      classStr = String(node.value.value);
+    } else if (
+      node.value?.type === AST_NODE_TYPES.JSXExpressionContainer &&
+      node.value.expression.type === AST_NODE_TYPES.Literal
+    ) {
+      classStr = String(node.value.expression.value);
+    }
+    if (!classStr) return;
+
+    // Match arbitrary color values in Tailwind classes: bg-[#fff], text-[rgb(0,0,0)]
+    const arbitrary = /\[([^\]]+)\]/g;
+    let m: RegExpExecArray | null;
+    while ((m = arbitrary.exec(classStr)) !== null) {
+      const val = m[1];
+      if (!detectColorValue(val)) continue;
+      violations.push({
+        filePath: relPath,
+        line: node.loc.start.line,
+        column: node.loc.start.column,
+        property: "className",
+        value: val,
+        context: "className",
+        isSparkleToken: isSparkleColorToken(val, hexSet),
+      });
     }
   });
 

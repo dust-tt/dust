@@ -12,28 +12,32 @@ export function traverseAST(root: ASTNode, visitor: Visitor): void {
   traverse(root, visitor);
 }
 
+function isAstNodeLike(val: unknown): val is Record<string, unknown> {
+  return (
+    typeof val === "object" &&
+    val !== null &&
+    typeof (val as { type?: unknown }).type === "string"
+  );
+}
+
 function traverse(node: unknown, visitor: Visitor): void {
-  if (!node || typeof node !== "object") return;
+  if (!isAstNodeLike(node)) return;
 
-  // Only visit actual AST nodes (they have a `type` string)
-  const n = node as Record<string, unknown>;
-  if (typeof n["type"] === "string") {
-    visitor(n as unknown as ASTNode);
-  }
+  // Cast via `unknown` — AST walkers traverse a generic object graph, so the
+  // type system can't verify the shape here. The `isAstNodeLike` guard is the
+  // best runtime check we can do without adopting a visitor-keys library.
+  visitor(node as unknown as ASTNode);
 
-  // Recurse into all values that could be nodes or arrays of nodes
-  for (const key of Object.keys(n)) {
-    if (key === "parent") continue; // avoid circular references
-    const val = n[key];
+  // Recurse into all values that could be nodes or arrays of nodes.
+  // Skip `parent` — it's a back-edge added by some parsers and causes cycles.
+  for (const key of Object.keys(node)) {
+    if (key === "parent") continue;
+    const val = node[key];
     if (Array.isArray(val)) {
       for (const item of val) {
         traverse(item, visitor);
       }
-    } else if (
-      val &&
-      typeof val === "object" &&
-      typeof (val as Record<string, unknown>)["type"] === "string"
-    ) {
+    } else if (isAstNodeLike(val)) {
       traverse(val, visitor);
     }
   }

@@ -118,15 +118,14 @@ function analyzeTsxSpacing(
 
   traverseAST(ast, (node) => {
     if (node.type !== AST_NODE_TYPES.JSXAttribute) return;
-    const attr = node as TSESTree.JSXAttribute;
     if (
-      attr.name.type !== AST_NODE_TYPES.JSXIdentifier ||
-      attr.name.name !== "style"
+      node.name.type !== AST_NODE_TYPES.JSXIdentifier ||
+      node.name.name !== "style"
     )
       return;
-    if (attr.value?.type !== AST_NODE_TYPES.JSXExpressionContainer) return;
+    if (node.value?.type !== AST_NODE_TYPES.JSXExpressionContainer) return;
 
-    const expr = attr.value.expression;
+    const expr = node.value.expression;
     if (expr.type !== AST_NODE_TYPES.ObjectExpression) return;
 
     for (const prop of expr.properties) {
@@ -139,12 +138,12 @@ function analyzeTsxSpacing(
             : null;
       if (!key || !SPACING_STYLE_KEYS.has(key)) continue;
 
+      const valNode = prop.value;
       let value: string | null = null;
-      const valNode = prop.value as TSESTree.Expression;
       if (valNode.type === AST_NODE_TYPES.Literal) {
-        value = String(valNode.value);
         // Numeric 0 is always valid
         if (typeof valNode.value === "number" && valNode.value === 0) continue;
+        value = String(valNode.value);
       } else if (
         valNode.type === AST_NODE_TYPES.TemplateLiteral &&
         valNode.quasis.length === 1

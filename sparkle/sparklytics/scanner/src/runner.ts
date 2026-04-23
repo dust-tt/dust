@@ -66,18 +66,17 @@ export async function runScan(config: ScanConfig): Promise<SparkleReport> {
   }
   info(`Parsed ${cache.size} files successfully`);
 
-  // Run all analyzers in parallel
   info("Analyzing components, colors, typography, and spacing...");
-  const [allElements, colors, typography, spacing] = await Promise.all([
-    Promise.resolve(analyzeAllElements(tsxFiles, cache, config)),
-    Promise.resolve(analyzeColors(tsxFiles, cssFiles, cache, config, registry)),
-    Promise.resolve(
-      analyzeTypography(tsxFiles, cssFiles, cache, config, registry)
-    ),
-    Promise.resolve(
-      analyzeSpacing(tsxFiles, cssFiles, cache, config, registry)
-    ),
-  ]);
+  const allElements = analyzeAllElements(tsxFiles, cache, config);
+  const colors = analyzeColors(tsxFiles, cssFiles, cache, config, registry);
+  const typography = analyzeTypography(
+    tsxFiles,
+    cssFiles,
+    cache,
+    config,
+    registry
+  );
+  const spacing = analyzeSpacing(tsxFiles, cssFiles, cache, config, registry);
 
   // Merge declared-but-unused props (totalCount=0) into component data
   const declaredProps = extractDeclaredProps(cache, config.targetDir);
