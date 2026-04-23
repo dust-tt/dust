@@ -927,6 +927,9 @@ async function batchRenderCompactionMessages(
       branchId: m.getBranchId(),
       status: compactionMessage.status,
       content: compactionMessage.content,
+      ...(compactionMessage.sourceConversationId
+        ? { sourceConversationId: compactionMessage.sourceConversationId }
+        : {}),
     };
   });
 }
