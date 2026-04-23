@@ -53,7 +53,9 @@ export type GetConversationWakeUpsResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetConversationWakeUpsResponseBody>>,
+  res: NextApiResponse<
+    WithAPIErrorResponse<GetConversationWakeUpsResponseBody>
+  >,
   auth: Authenticator
 ): Promise<void> {
   const { cId } = req.query;
