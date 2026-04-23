@@ -44,6 +44,9 @@ export const NON_REMOTE_DATABASE_TABLE_MIME_TYPES = [
   INTERNAL_MIME_TYPES.MICROSOFT.SPREADSHEET,
   INTERNAL_MIME_TYPES.FOLDER.SPREADSHEET,
   INTERNAL_MIME_TYPES.GENERIC.TABLE,
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.google-apps.spreadsheet",
+  "text/csv",
 ] as readonly string[];
 
 export const UNTITLED_TITLE = "Untitled Document";
