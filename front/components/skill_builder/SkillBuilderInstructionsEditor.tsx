@@ -160,7 +160,7 @@ export function SkillBuilderInstructionsEditor({
   const { editor, isContentReady } = useSkillInstructionsEditor({
     content: instructionsField.value ?? "",
     htmlContent: instructionsHtmlField.value ?? undefined,
-    isReadOnly: false,
+    isReadOnly: hasSuggestions,
     onUpdate: handleUpdate,
     onBlur: handleBlur,
     onDelete: handleDelete,
@@ -368,7 +368,10 @@ export function SkillBuilderInstructionsEditor({
 
   return (
     <div className="space-y-1 p-px">
-      <SkillInstructionsEditorContent editor={editor} isReadOnly={false} />
+      <SkillInstructionsEditorContent
+        editor={editor}
+        isReadOnly={hasSuggestions}
+      />
 
       {instructionsFieldState.error && (
         <div className="dark:text-warning-night ml-2 text-xs text-warning">

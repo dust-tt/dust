@@ -28,10 +28,22 @@ export interface MockMcpDescription {
   tools: MockMcpTool[];
 }
 
+export interface MockSearchKnowledgeNode {
+  nodeId: string;
+  title: string;
+  dataSourceViewId: string;
+  spaceId: string;
+  hasChildren: boolean;
+  connectorProvider?: string | null;
+  sourceUrl?: string | null;
+}
+
 export interface WorkspaceContext {
   tools: AvailableTool[];
   /** Optional MCP details returned when describe_mcp is called during eval. */
   mcpDescriptions?: MockMcpDescription[];
+  /** Optional knowledge nodes returned when search_knowledge is called during eval. */
+  searchKnowledgeNodes?: MockSearchKnowledgeNode[];
 }
 
 function slugify(name: string): string {

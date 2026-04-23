@@ -8,11 +8,36 @@ import {
   KnowledgeNodeView,
 } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
 import { Node } from "@tiptap/core";
-import { ReactNodeViewRenderer } from "@tiptap/react";
+import type { NodeViewProps } from "@tiptap/react";
+import { NodeViewWrapper, ReactNodeViewRenderer } from "@tiptap/react";
+import type React from "react";
 
 export interface KnowledgeNodeAttributes {
   selectedItems: KnowledgeItem[];
 }
+
+const KNOWLEDGE_CHIP_CLASS =
+  "inline-flex items-center gap-0.5 border border-current/40 rounded px-0.5 text-xs leading-tight";
+// We use this instead of Sparkle's DocumentIcon because renderHTML returns a plain DOMOutputSpec which cannot
+// contain React components, and ProseMirror's renderSpec doesn't support SVG
+// namespace elements. Using the emoji in both paths keeps additions and deletions
+// visually consistent in the suggestion diff view.
+const DOCUMENT_ICON = "📄";
+
+const KnowledgeNodeReadOnlyView: React.FC<NodeViewProps> = ({ node }) => {
+  const { selectedItems } = node.attrs;
+  const item = selectedItems[0] as KnowledgeItem | undefined;
+  if (!item) {
+    return null;
+  }
+  // No background or explicit color so diff decorations act on the content directly
+  return (
+    <NodeViewWrapper as="span" className={KNOWLEDGE_CHIP_CLASS}>
+      <span>{DOCUMENT_ICON}</span>
+      <span>{` ${item.label}`}</span>
+    </NodeViewWrapper>
+  );
+};
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
@@ -29,7 +54,14 @@ export const KNOWLEDGE_TAG_REGEX = new RegExp(
   `^<${KNOWLEDGE_TAG}\\s+([^>]+)\\s*/>`
 );
 
-export const KnowledgeNode = Node.create<{}>({
+export interface KnowledgeNodeOptions {
+  readOnly: boolean;
+}
+
+export const KnowledgeNode = Node.create<KnowledgeNodeOptions>({
+  addOptions() {
+    return { readOnly: false };
+  },
   name: KNOWLEDGE_NODE_TYPE,
 
   group: "inline",
@@ -147,7 +179,17 @@ export const KnowledgeNode = Node.create<{}>({
     const { selectedItems } = node.attrs;
 
     if (selectedItems.length > 0) {
-      return [KNOWLEDGE_TAG, HTMLAttributes];
+      const label = selectedItems[0].label;
+      return [
+        "knowledge",
+        HTMLAttributes,
+        [
+          "span",
+          { class: KNOWLEDGE_CHIP_CLASS },
+          ["span", {}, DOCUMENT_ICON],
+          ["span", {}, ` ${label}`],
+        ],
+      ];
     }
 
     // Search state is transient UI — nothing to serialize.
@@ -204,7 +246,9 @@ export const KnowledgeNode = Node.create<{}>({
   },
 
   addNodeView() {
-    return ReactNodeViewRenderer(KnowledgeNodeView);
+    return ReactNodeViewRenderer(
+      this.options.readOnly ? KnowledgeNodeReadOnlyView : KnowledgeNodeView
+    );
   },
 
   addCommands() {

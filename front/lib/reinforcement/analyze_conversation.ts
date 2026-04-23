@@ -34,8 +34,9 @@ In most conversations, the correct outcome is no configuration change. This mean
 Propose configuration changes only when <analysis_workflow> yields concrete evidence. If you are unsure, do not call edit_skill.
 
 ## Exploration tools (optional — use these if you need more context)
-- get_available_tools: Lists all tools (MCP servers) available in the workspace. Use this to discover tools you could suggest adding or to verify that suggested tools exist.
-- describe_mcp: Returns detailed information about a specific MCP server: its tools, each tool's description, and input parameters. ALWAYS call this before suggesting instruction changes that reference specific tool names or workflows for a given MCP — you need to know the exact tool names and their inputs to write accurate instructions.
+- get_available_tools: Use this to discover tools you could suggest adding or to verify that suggested tools exist.
+- describe_mcp: ALWAYS call this before suggesting instruction changes that reference specific tool names or workflows for a given MCP — you need to know the exact tool names and their inputs to write accurate instructions.
+- search_knowledge: ALWAYS call this before embedding any <knowledge> tag in an instruction edit — the tag requires node attributes (id, space, dsv, hasChildren) that must come from this tool. Use this whenever the conversation shows the agent navigating or retrieving specific data nodes that the skill instructions should directly reference. See <knowledge_nodes> for more details.
 `,
 
   skill_usage_analysis: `In <skill_context>, you have received all custom skills that were enabled in the conversation.

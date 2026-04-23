@@ -1,3 +1,4 @@
+import { InstructionSuggestionExtension } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import { CodeExtension } from "@app/components/editor/extensions/CodeExtension";
 import { HeadingExtension } from "@app/components/editor/extensions/HeadingExtension";
 import { BlockIdExtension } from "@app/components/editor/extensions/instructions/BlockIdExtension";
@@ -84,7 +85,8 @@ export function buildSkillInstructionsExtensions(
       },
     }),
     BlockIdExtension,
-    KnowledgeNode,
+    KnowledgeNode.configure({ readOnly: isReadOnly }),
+    InstructionSuggestionExtension.configure({ showBlockHighlight: false }),
     RawMarkdownBlock,
     ...rawMarkdownBlockParsers,
   ];
