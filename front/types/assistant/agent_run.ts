@@ -29,20 +29,6 @@ import { Err, Ok } from "../shared/result";
 import { isGlobalAgentId } from "./assistant";
 import { ConversationError } from "./conversation";
 
-function isReinforcedAgentNotificationMetadata(
-  value: unknown
-): value is { agentName: string; agentConfigurationId: string } {
-  if (typeof value !== "object" || value === null) {
-    return false;
-  }
-  return (
-    "agentName" in value &&
-    typeof value.agentName === "string" &&
-    "agentConfigurationId" in value &&
-    typeof value.agentConfigurationId === "string"
-  );
-}
-
 /**
  * Error types for getAgentLoopData that indicate soft-deleted resources.
  * These are safe to ignore in callers since the resource was intentionally deleted.
@@ -322,13 +308,6 @@ export async function getAgentLoopDataWithAuth(
 
   const agentId = agentMessage.configuration.sId;
 
-  const reinforcedMeta = conversation.metadata?.reinforcedAgentNotification;
-  const reinforcedAgentNotification = isReinforcedAgentNotificationMetadata(
-    reinforcedMeta
-  )
-    ? reinforcedMeta
-    : undefined;
-
   const reinforcedSkillMeta =
     conversation.metadata?.reinforcedSkillNotification;
   const reinforcedSkillNotification = isReinforcedSkillNotificationMetadata(
@@ -342,7 +321,6 @@ export async function getAgentLoopDataWithAuth(
     sidekickIsNewAgentFromScratch:
       conversation.metadata?.sidekickIsNewAgentFromScratch === true ||
       undefined,
-    reinforcedAgentNotification,
     reinforcedSkillNotification,
   };
 

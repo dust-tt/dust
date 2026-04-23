@@ -10,7 +10,7 @@ import type { SkillSuggestionState } from "@app/types/suggestions/skill_suggesti
 import type { RequestMethod } from "node-mocks-http";
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("@app/lib/reinforced_agent/workspace_check", () => ({
+vi.mock("@app/lib/reinforcement/workspace_check", () => ({
   hasReinforcementEnabled: vi.fn().mockResolvedValue(true),
 }));
 
@@ -358,7 +358,7 @@ describe("PATCH /api/w/[wId]/assistant/skills/[sId]/suggestions", () => {
 
   it("returns 400 when reinforcement is disabled", async () => {
     const { hasReinforcementEnabled } = await import(
-      "@app/lib/reinforced_agent/workspace_check"
+      "@app/lib/reinforcement/workspace_check"
     );
     vi.mocked(hasReinforcementEnabled).mockResolvedValueOnce(false);
 
@@ -510,7 +510,7 @@ describe("GET /api/w/[wId]/assistant/skills/[sId]/suggestions", () => {
 
   it("returns empty suggestions when reinforcement is disabled", async () => {
     const { hasReinforcementEnabled } = await import(
-      "@app/lib/reinforced_agent/workspace_check"
+      "@app/lib/reinforcement/workspace_check"
     );
     vi.mocked(hasReinforcementEnabled).mockResolvedValueOnce(false);
 
