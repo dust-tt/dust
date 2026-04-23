@@ -52,6 +52,7 @@ struct MockGcsState {
 #[derive(Clone)]
 enum MockGcsResponse {
     Policy(String),
+    Status(StatusCode),
 }
 
 #[derive(Default)]
@@ -180,6 +181,7 @@ async fn workspace_policy_allows_domain() -> Result<()> {
             workspace: Some(policy_response(&["localhost"])),
             sandbox: None,
         },
+        None,
         true,
         "test",
     )
@@ -214,6 +216,7 @@ async fn sandbox_policy_allows_when_workspace_has_no_policy() -> Result<()> {
             workspace: None,
             sandbox: Some(policy_response(&["localhost"])),
         },
+        None,
         true,
         "test",
     )
@@ -246,6 +249,7 @@ async fn denied_when_neither_workspace_nor_sandbox_allows_domain() -> Result<()>
             workspace: Some(policy_response(&["other.example.com"])),
             sandbox: Some(policy_response(&["another.example.com"])),
         },
+        None,
         false,
         "production",
     )
@@ -255,6 +259,88 @@ async fn denied_when_neither_workspace_nor_sandbox_allows_domain() -> Result<()>
     let response = send_handshake(&proxy, &token, "denied.example.com", 443).await?;
 
     assert_eq!(response, Some(DENY_RESPONSE));
+    Ok(())
+}
+
+#[tokio::test]
+async fn workspace_gcs_failure_falls_back_to_sandbox() -> Result<()> {
+    let (upstream_port, mut upstream_handles) =
+        start_localhost_servers(UpstreamBehavior::EchoFixed { read_len: 4 }).await?;
+    let proxy = start_proxy_with_mock_gcs(
+        MockPolicies {
+            workspace: Some(MockGcsResponse::Status(StatusCode::INTERNAL_SERVER_ERROR)),
+            sandbox: Some(policy_response(&["localhost"])),
+        },
+        None,
+        true,
+        "test",
+    )
+    .await?;
+    let token = make_token_with_workspace(SECRET, 60);
+    let mut stream = connect_forwarder(&proxy).await?;
+
+    stream
+        .write_all(&build_frame(&token, "localhost", upstream_port)?)
+        .await?;
+
+    let mut response = [0; 1];
+    stream.read_exact(&mut response).await?;
+    assert_eq!(response[0], ALLOW_RESPONSE);
+
+    stream.write_all(b"ping").await?;
+    let mut echoed = [0; 4];
+    stream.read_exact(&mut echoed).await?;
+    assert_eq!(&echoed, b"ping");
+
+    drop(stream);
+    wait_for_upstream_completion(&mut upstream_handles, Duration::from_secs(2)).await?;
+    Ok(())
+}
+
+#[tokio::test]
+async fn sandbox_gcs_failure_denies_connection() -> Result<()> {
+    let proxy = start_proxy_with_mock_gcs(
+        MockPolicies {
+            workspace: None,
+            sandbox: Some(MockGcsResponse::Status(StatusCode::INTERNAL_SERVER_ERROR)),
+        },
+        None,
+        false,
+        "production",
+    )
+    .await?;
+    let token = make_token(SECRET, 60);
+
+    let response = send_handshake(&proxy, &token, "example.com", 443).await?;
+
+    assert_eq!(response, Some(DENY_RESPONSE));
+    Ok(())
+}
+
+#[tokio::test]
+async fn default_allowlist_allows_when_gcs_has_no_policy() -> Result<()> {
+    let (upstream_port, mut upstream_handles) =
+        start_localhost_servers(UpstreamBehavior::EchoFixed { read_len: 4 }).await?;
+    let proxy =
+        start_proxy_with_mock_gcs(MockPolicies::default(), Some("localhost"), true, "test").await?;
+    let token = make_token(SECRET, 60);
+    let mut stream = connect_forwarder(&proxy).await?;
+
+    stream
+        .write_all(&build_frame(&token, "localhost", upstream_port)?)
+        .await?;
+
+    let mut response = [0; 1];
+    stream.read_exact(&mut response).await?;
+    assert_eq!(response[0], ALLOW_RESPONSE);
+
+    stream.write_all(b"ping").await?;
+    let mut echoed = [0; 4];
+    stream.read_exact(&mut echoed).await?;
+    assert_eq!(&echoed, b"ping");
+
+    drop(stream);
+    wait_for_upstream_completion(&mut upstream_handles, Duration::from_secs(2)).await?;
     Ok(())
 }
 
@@ -652,7 +738,13 @@ async fn sigterm_aborts_stuck_tunnel_after_drain_timeout() -> Result<()> {
 }
 
 async fn start_proxy(unsafe_skip_ssrf_check: bool, environment: &str) -> Result<ProxyProcess> {
-    start_proxy_with_mock_gcs(MockPolicies::default(), unsafe_skip_ssrf_check, environment).await
+    start_proxy_with_mock_gcs(
+        MockPolicies::default(),
+        None,
+        unsafe_skip_ssrf_check,
+        environment,
+    )
+    .await
 }
 
 async fn start_proxy_with_sandbox_policy(
@@ -665,6 +757,7 @@ async fn start_proxy_with_sandbox_policy(
             workspace: None,
             sandbox: Some(policy_response(allowed_domains)),
         },
+        None,
         unsafe_skip_ssrf_check,
         environment,
     )
@@ -673,6 +766,7 @@ async fn start_proxy_with_sandbox_policy(
 
 async fn start_proxy_with_mock_gcs(
     policies: MockPolicies,
+    default_allowed_domains: Option<&str>,
     unsafe_skip_ssrf_check: bool,
     environment: &str,
 ) -> Result<ProxyProcess> {
@@ -698,6 +792,10 @@ async fn start_proxy_with_mock_gcs(
         .env("EGRESS_PROXY_ENV", environment)
         .stdout(Stdio::null())
         .stderr(Stdio::piped());
+
+    if let Some(domains) = default_allowed_domains {
+        command.env("EGRESS_PROXY_ALLOWED_DOMAINS", domains);
+    }
 
     if unsafe_skip_ssrf_check {
         command.env("EGRESS_PROXY_UNSAFE_SKIP_SSRF_CHECK", "1");
@@ -756,6 +854,7 @@ async fn mock_gcs_handler(State(state): State<MockGcsState>, uri: Uri) -> Respon
             body.clone(),
         )
             .into_response(),
+        Some(MockGcsResponse::Status(status)) => (*status).into_response(),
         None => StatusCode::NOT_FOUND.into_response(),
     }
 }

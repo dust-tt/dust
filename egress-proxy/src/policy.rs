@@ -14,11 +14,46 @@ enum DomainPattern {
     WildcardSuffix(String),
 }
 
+/// Per-sandbox or per-workspace policy deserialized from GCS.
 impl Policy {
     pub fn allows(&self, domain: &str) -> bool {
         self.allowed_domains
             .iter()
             .any(|pattern| pattern.matches(domain))
+    }
+}
+
+/// Global default allowlist parsed from `EGRESS_PROXY_ALLOWED_DOMAINS`. Domains in this list are
+/// allowed for every sandbox regardless of GCS policy. Intended for infrastructure domains like
+/// `dust.tt` that all sandboxes need.
+#[derive(Debug, Clone)]
+pub struct DefaultAllowlist {
+    patterns: Vec<DomainPattern>,
+}
+
+impl DefaultAllowlist {
+    pub fn parse(value: &str) -> Result<Self> {
+        let mut patterns = Vec::new();
+
+        for raw_entry in value.split(',') {
+            let entry = raw_entry.trim();
+            if entry.is_empty() {
+                continue;
+            }
+            patterns.push(DomainPattern::parse_policy_entry(entry)?);
+        }
+
+        if patterns.is_empty() {
+            return Err(anyhow!(
+                "EGRESS_PROXY_ALLOWED_DOMAINS is set but contains no valid domain entries"
+            ));
+        }
+
+        Ok(Self { patterns })
+    }
+
+    pub fn allows(&self, domain: &str) -> bool {
+        self.patterns.iter().any(|pattern| pattern.matches(domain))
     }
 }
 
@@ -75,7 +110,7 @@ impl Serialize for DomainPattern {
 
 #[cfg(test)]
 mod tests {
-    use super::Policy;
+    use super::{DefaultAllowlist, Policy};
 
     #[test]
     fn policy_matches_exact_domains_case_insensitively_after_parse() {
@@ -116,6 +151,37 @@ mod tests {
         assert!(policy.allows("api.example.com"));
         assert!(policy.allows("other.example.com"));
         assert!(!policy.allows("dust.tt"));
+    }
+
+    #[test]
+    fn default_allowlist_matches_exact_and_wildcard_domains() {
+        let allowlist =
+            DefaultAllowlist::parse("dust.tt, *.dust.tt").expect("valid entries should parse");
+
+        assert!(allowlist.allows("dust.tt"));
+        assert!(allowlist.allows("eu.dust.tt"));
+        assert!(allowlist.allows("app.eu.dust.tt"));
+        assert!(!allowlist.allows("example.com"));
+    }
+
+    #[test]
+    fn default_allowlist_rejects_ip_literals() {
+        assert!(DefaultAllowlist::parse("127.0.0.1").is_err());
+        assert!(DefaultAllowlist::parse("::1").is_err());
+        assert!(DefaultAllowlist::parse("dust.tt, 10.0.0.1").is_err());
+    }
+
+    #[test]
+    fn default_allowlist_rejects_empty_input() {
+        assert!(DefaultAllowlist::parse("").is_err());
+        assert!(DefaultAllowlist::parse(" , ").is_err());
+    }
+
+    #[test]
+    fn default_allowlist_rejects_invalid_entries() {
+        assert!(DefaultAllowlist::parse("*.com").is_err());
+        assert!(DefaultAllowlist::parse("example..com").is_err());
+        assert!(DefaultAllowlist::parse("bad domain").is_err());
     }
 
     #[test]

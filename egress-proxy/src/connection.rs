@@ -4,6 +4,7 @@ use crate::dns::DnsResolver;
 use crate::gcs::GcsPolicyProvider;
 use crate::handshake::{read_handshake, Handshake, HandshakeError, ALLOW_RESPONSE, DENY_RESPONSE};
 use crate::jwt::{JwtValidationError, JwtValidator, ValidatedSandboxToken};
+use crate::policy::DefaultAllowlist;
 use std::fmt;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -21,6 +22,7 @@ const UPSTREAM_CONNECT_TIMEOUT_SECONDS: u64 = 5;
 #[derive(Clone)]
 pub struct ConnectionState {
     jwt_validator: JwtValidator,
+    default_allowlist: Option<DefaultAllowlist>,
     policy_provider: GcsPolicyProvider,
     dns_resolver: DnsResolver,
     unsafe_skip_ssrf_check: bool,
@@ -51,6 +53,7 @@ impl ConnectionState {
     pub fn new(config: &Config, policy_provider: GcsPolicyProvider) -> Self {
         Self {
             jwt_validator: JwtValidator::new(&config.jwt_secret),
+            default_allowlist: config.default_allowlist.clone(),
             policy_provider,
             dns_resolver: DnsResolver::new(),
             unsafe_skip_ssrf_check: config.unsafe_skip_ssrf_check,
@@ -170,10 +173,16 @@ async fn handle_connection_inner(
         return Err(DenyReason::GlobalBlocklist);
     }
 
-    if !state
-        .policy_provider
-        .evaluate(token.w_id.as_deref(), &token.sb_id, &request.domain)
-        .await
+    let default_allows = state
+        .default_allowlist
+        .as_ref()
+        .is_some_and(|allowlist| allowlist.allows(&request.domain));
+
+    if !default_allows
+        && !state
+            .policy_provider
+            .evaluate(token.w_id.as_deref(), &token.sb_id, &request.domain)
+            .await
     {
         deny(
             stream,
