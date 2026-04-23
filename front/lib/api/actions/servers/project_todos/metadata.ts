@@ -51,6 +51,11 @@ export const PROJECT_TODOS_TOOLS_METADATA = createToolsRecord({
   create_todo: {
     description: "Create a new TODO for the current user in the project.",
     schema: {
+      creatorType: z
+        .enum(["user", "agent"])
+        .describe(
+          "Who has the initiative of creating the TODO ? Use 'user' when the user explicitely asked for it."
+        ),
       text: z.string().min(1).describe("The TODO description."),
       category: z
         .enum(PROJECT_TODO_CATEGORIES)
@@ -79,6 +84,11 @@ export const PROJECT_TODOS_TOOLS_METADATA = createToolsRecord({
       "Create multiple TODOs at once for the current user in the project. " +
       "Useful for extracting action items from meeting notes or conversation summaries.",
     schema: {
+      creatorType: z
+        .enum(["user", "agent"])
+        .describe(
+          "Who has the initiative of creating the TODOs ? Use 'user' when the user explicitely asked for it."
+        ),
       todos: z
         .array(
           z.object({
@@ -109,6 +119,11 @@ export const PROJECT_TODOS_TOOLS_METADATA = createToolsRecord({
   mark_todo_done: {
     description: "Mark one of the current user's TODOs as done.",
     schema: {
+      actorType: z
+        .enum(["user", "agent"])
+        .describe(
+          "Who has the initiative of marking the TODO as done ? Use 'user' when the user explicitely asked for it."
+        ),
       todoId: z.string().describe("The sId of the TODO to mark as done."),
       dustProject: ConfigurableToolInputSchemas[
         INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT

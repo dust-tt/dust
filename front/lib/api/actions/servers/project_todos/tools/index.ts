@@ -116,7 +116,7 @@ export function createProjectTodosTools(
       }, "Failed to list TODOs");
     },
 
-    create_todo: async ({ text, category, dustProject }) => {
+    create_todo: async ({ creatorType, text, category, dustProject }) => {
       return withErrorHandling(async () => {
         const contextRes = await getProjectSpace(auth, {
           agentLoopContext,
@@ -132,13 +132,12 @@ export function createProjectTodosTools(
         const todo = await ProjectTodoResource.makeNew(auth, {
           spaceId: space.id,
           userId: currentUser.id,
-          createdByType: "agent",
-          createdByUserId: currentUser.id,
+          createdByType: creatorType,
           createdByAgentConfigurationId:
-            agentLoopContext?.runContext?.agentConfiguration?.sId ?? null,
-          markedAsDoneByType: null,
-          markedAsDoneByUserId: null,
-          markedAsDoneByAgentConfigurationId: null,
+            creatorType === "agent"
+              ? (agentLoopContext?.runContext?.agentConfiguration?.sId ?? null)
+              : null,
+          createdByUserId: creatorType === "user" ? currentUser.id : null,
           category: category ?? "to_do",
           text,
           status: "todo",
@@ -155,7 +154,7 @@ export function createProjectTodosTools(
       }, "Failed to create TODO");
     },
 
-    create_todos_batch: async ({ todos, dustProject }) => {
+    create_todos_batch: async ({ creatorType, todos, dustProject }) => {
       return withErrorHandling(async () => {
         const contextRes = await getProjectSpace(auth, {
           agentLoopContext,
@@ -175,12 +174,10 @@ export function createProjectTodosTools(
           const todo = await ProjectTodoResource.makeNew(auth, {
             spaceId: space.id,
             userId: currentUser.id,
-            createdByType: "agent",
-            createdByUserId: currentUser.id,
-            createdByAgentConfigurationId: agentConfigId,
-            markedAsDoneByType: null,
-            markedAsDoneByUserId: null,
-            markedAsDoneByAgentConfigurationId: null,
+            createdByType: creatorType,
+            createdByAgentConfigurationId:
+              creatorType === "agent" ? agentConfigId : null,
+            createdByUserId: creatorType === "user" ? currentUser.id : null,
             category: item.category ?? "to_do",
             text: item.text,
             status: "todo",
@@ -200,7 +197,7 @@ export function createProjectTodosTools(
       }, "Failed to create TODOs");
     },
 
-    mark_todo_done: async ({ todoId, dustProject }) => {
+    mark_todo_done: async ({ actorType, todoId, dustProject }) => {
       return withErrorHandling(async () => {
         const contextRes = await getProjectSpace(auth, {
           agentLoopContext,
@@ -236,10 +233,12 @@ export function createProjectTodosTools(
         await todo.updateWithVersion(auth, {
           status: "done",
           doneAt: new Date(),
-          markedAsDoneByType: "agent",
-          markedAsDoneByUserId: currentUser.id,
+          markedAsDoneByType: actorType,
+          markedAsDoneByUserId: actorType === "user" ? currentUser.id : null,
           markedAsDoneByAgentConfigurationId:
-            agentLoopContext?.runContext?.agentConfiguration?.sId ?? null,
+            actorType === "agent"
+              ? (agentLoopContext?.runContext?.agentConfiguration?.sId ?? null)
+              : null,
         });
 
         return new Ok([

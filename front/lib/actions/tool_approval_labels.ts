@@ -6,6 +6,7 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { isString } from "@app/types/shared/utils/general";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
+import { isResourceSId } from "../resources/string_ids";
 
 export async function getApprovalArgsLabel({
   auth,
@@ -45,7 +46,7 @@ export async function getApprovalArgsLabel({
     if (
       inputName.toLowerCase().includes("fileid") &&
       isString(inputValue) &&
-      inputValue.startsWith("fil_")
+      isResourceSId("file", inputValue)
     ) {
       const file = await FileResource.fetchById(auth, inputValue);
       if (file) {
