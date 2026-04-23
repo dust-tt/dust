@@ -4,8 +4,10 @@ import { getErrorFromResponse } from "@app/lib/swr/swr";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useEffect, useState } from "react";
 
-const CONVERSATION_BRANCHING_CURSOR_CLASSNAME =
-  "conversation-branching-in-progress";
+const CONVERSATION_BRANCHING_CURSOR_CLASSES = [
+  "!cursor-progress",
+  "[&_*]:!cursor-progress",
+];
 
 export function useBranchConversation({
   owner,
@@ -25,10 +27,10 @@ export function useBranchConversation({
       return;
     }
 
-    document.body.classList.add(CONVERSATION_BRANCHING_CURSOR_CLASSNAME);
+    document.body.classList.add(...CONVERSATION_BRANCHING_CURSOR_CLASSES);
 
     return () => {
-      document.body.classList.remove(CONVERSATION_BRANCHING_CURSOR_CLASSNAME);
+      document.body.classList.remove(...CONVERSATION_BRANCHING_CURSOR_CLASSES);
     };
   }, [isBranching]);
 
