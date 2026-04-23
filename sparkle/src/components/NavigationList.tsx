@@ -80,6 +80,7 @@ interface NavigationListItemProps
   status?: NavigationListItemStatus;
   count?: number;
   hasActivity?: boolean;
+  suffix?: React.ReactNode;
 }
 
 const NavigationListItem = React.forwardRef<
@@ -102,6 +103,7 @@ const NavigationListItem = React.forwardRef<
       status = "idle",
       count,
       hasActivity,
+      suffix,
       ...props
     },
     ref
@@ -168,12 +170,19 @@ const NavigationListItem = React.forwardRef<
             {label && (
               <span
                 className={cn(
-                  "s-grow s-overflow-hidden s-text-ellipsis s-whitespace-nowrap group-focus-within/menu-item:s-pr-8 group-hover/menu-item:s-pr-8 group-data-[selected=true]/menu-item:s-pr-8",
+                  "s-overflow-hidden s-text-ellipsis s-whitespace-nowrap",
+                  !suffix &&
+                    "s-grow group-focus-within/menu-item:s-pr-8 group-hover/menu-item:s-pr-8 group-data-[selected=true]/menu-item:s-pr-8",
                   hasActivity && "s-font-semibold"
                 )}
               >
                 {label}
               </span>
+            )}
+            {suffix && (
+              <div className="s-flex s-grow s-flex-shrink-0 s-items-center">
+                {suffix}
+              </div>
             )}
             {counterValue !== undefined && !shouldHideStatusIndicators && (
               <Counter
