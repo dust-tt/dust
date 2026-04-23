@@ -2,6 +2,7 @@ import {
   closeConversationBranch,
   mergeConversationBranch,
 } from "@app/lib/api/assistant/conversation/branches";
+import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import { Authenticator } from "@app/lib/auth";
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import {
@@ -12,14 +13,231 @@ import {
 } from "@app/lib/models/agent/conversation";
 import { ConversationBranchModel } from "@app/lib/models/agent/conversation_branch";
 import { ConversationBranchResource } from "@app/lib/resources/conversation_branch_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { describe, expect, it } from "vitest";
 
 describe("mergeConversationBranch", () => {
+  it("keeps main conversation renderable after merging a restricted-agent branch", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const mergerUser = await UserFactory.basic();
+    const projectMemberUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, mergerUser, { role: "user" });
+    await MembershipFactory.associate(workspace, projectMemberUser, {
+      role: "user",
+    });
+
+    const initialMergerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      mergerUser.sId,
+      workspace.sId
+    );
+    if (!initialMergerAuth) {
+      throw new Error("Merger auth should exist.");
+    }
+
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    const projectSpace = await SpaceFactory.project(workspace);
+    const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+
+    const projectGroup = projectSpace.groups.find((g) => g.kind === "regular");
+    if (!projectGroup) {
+      throw new Error("Project group should exist.");
+    }
+
+    const addMergerToProjectRes = await projectGroup.dangerouslyAddMember(
+      internalAdminAuth,
+      {
+        user: mergerUser.toJSON(),
+      }
+    );
+    if (addMergerToProjectRes.isErr()) {
+      throw new Error(addMergerToProjectRes.error.message);
+    }
+
+    const addProjectMemberToProjectRes =
+      await projectGroup.dangerouslyAddMember(internalAdminAuth, {
+        user: projectMemberUser.toJSON(),
+      });
+    if (addProjectMemberToProjectRes.isErr()) {
+      throw new Error(addProjectMemberToProjectRes.error.message);
+    }
+
+    const restrictedGroup = restrictedSpace.groups.find(
+      (g) => g.kind === "regular"
+    );
+    if (!restrictedGroup) {
+      throw new Error("Restricted space group should exist.");
+    }
+
+    const addMergerToRestrictedRes = await restrictedGroup.dangerouslyAddMember(
+      internalAdminAuth,
+      {
+        user: mergerUser.toJSON(),
+      }
+    );
+    if (addMergerToRestrictedRes.isErr()) {
+      throw new Error(addMergerToRestrictedRes.error.message);
+    }
+
+    const mergerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      mergerUser.sId,
+      workspace.sId
+    );
+    const projectMemberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      projectMemberUser.sId,
+      workspace.sId
+    );
+    if (!mergerAuth || !projectMemberAuth) {
+      throw new Error("Authenticators should exist.");
+    }
+
+    const restrictedAgent = await AgentConfigurationFactory.createTestAgent(
+      mergerAuth,
+      {
+        name: "Restricted Agent",
+        requestedSpaceIds: [restrictedSpace.id],
+      }
+    );
+
+    const conversation = await ConversationFactory.create(mergerAuth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [new Date()],
+      spaceId: projectSpace.id,
+    });
+
+    const conversationResourceForProjectMember =
+      await ConversationResource.fetchById(projectMemberAuth, conversation.sId);
+    expect(conversationResourceForProjectMember).not.toBeNull();
+    if (!conversationResourceForProjectMember) {
+      throw new Error("Conversation resource should exist.");
+    }
+
+    const fetchMainConversationMessages = async () =>
+      MessageModel.findAll({
+        where: {
+          workspaceId: workspace.id,
+          conversationId: conversation.id,
+          branchId: null,
+        },
+        include: [
+          { model: UserMessageModel, as: "userMessage", required: false },
+          { model: AgentMessageModel, as: "agentMessage", required: false },
+        ],
+        order: [
+          ["rank", "ASC"],
+          ["version", "DESC"],
+        ],
+      });
+
+    const beforeMergeRenderRes = await batchRenderMessages(
+      projectMemberAuth,
+      conversationResourceForProjectMember,
+      await fetchMainConversationMessages(),
+      "full"
+    );
+    expect(beforeMergeRenderRes.isOk()).toBe(true);
+
+    const previousMessage = await MessageModel.findOne({
+      where: {
+        workspaceId: workspace.id,
+        conversationId: conversation.id,
+        rank: 0,
+        branchId: null,
+      },
+    });
+    if (!previousMessage) {
+      throw new Error("Previous message should exist.");
+    }
+
+    const branch = await ConversationBranchResource.makeNew(mergerAuth, {
+      state: "open",
+      previousMessageId: previousMessage.id,
+      conversationId: conversation.id,
+      userId: mergerUser.id,
+    });
+
+    const branchUserMessage = await UserMessageModel.create({
+      userId: mergerUser.id,
+      workspaceId: workspace.id,
+      content: "Branch message from restricted agent flow",
+      userContextUsername: "testuser",
+      userContextTimezone: "UTC",
+      userContextFullName: "Test User",
+      userContextEmail: "test@example.com",
+      userContextProfilePictureUrl: null,
+      userContextOrigin: "api",
+      clientSideMCPServerIds: [],
+    });
+
+    const branchUserMessageRow = await MessageModel.create({
+      workspaceId: workspace.id,
+      sId: generateRandomModelSId(),
+      rank: 2,
+      conversationId: conversation.id,
+      branchId: branch.id,
+      parentId: null,
+      userMessageId: branchUserMessage.id,
+      agentMessageId: null,
+      contentFragmentId: null,
+    });
+
+    const branchAgentMessage = await AgentMessageModel.create({
+      workspaceId: workspace.id,
+      status: "succeeded",
+      agentConfigurationId: restrictedAgent.sId,
+      agentConfigurationVersion: restrictedAgent.version,
+      skipToolsValidation: true,
+      completedAt: new Date(),
+    });
+
+    await MessageModel.create({
+      workspaceId: workspace.id,
+      sId: generateRandomModelSId(),
+      rank: 3,
+      conversationId: conversation.id,
+      branchId: branch.id,
+      parentId: branchUserMessageRow.id,
+      userMessageId: null,
+      agentMessageId: branchAgentMessage.id,
+      contentFragmentId: null,
+    });
+
+    await AgentStepContentModel.create({
+      workspaceId: workspace.id,
+      agentMessageId: branchAgentMessage.id,
+      step: 0,
+      index: 0,
+      version: 0,
+      type: "text_content",
+      value: { type: "text_content", value: "restricted answer" },
+    });
+
+    const mergeRes = await mergeConversationBranch(mergerAuth, {
+      branchId: branch.sId,
+      conversationId: conversation.sId,
+    });
+    if (mergeRes.isErr()) {
+      throw mergeRes.error;
+    }
+
+    const afterMergeRenderRes = await batchRenderMessages(
+      projectMemberAuth,
+      conversationResourceForProjectMember,
+      await fetchMainConversationMessages(),
+      "full"
+    );
+    expect(afterMergeRenderRes.isOk()).toBe(true);
+  });
+
   it("should append duplicated user message and content-only agent messages", async () => {
     const workspace = await WorkspaceFactory.basic();
     const user = await UserFactory.basic();
@@ -186,7 +404,7 @@ describe("mergeConversationBranch", () => {
     expect(mergedStepContents.length).toBe(1);
     expect(mergedStepContents[0].type).toBe("text_content");
     expect((mergedStepContents[0].value as any).value).toBe(
-      "first\nfinal answer"
+      "> From :mention[dust]{sId=dust}\n\nfirst\nfinal answer"
     );
 
     const updatedBranch = await ConversationBranchModel.findOne({
