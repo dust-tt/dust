@@ -1,6 +1,7 @@
 import type { LLMConfig } from "@app/lib/api/assistant/call_llm";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import { updateCompactionMessageWithContentAndFinalStatus } from "@app/lib/api/assistant/conversation";
+import { replaceStandaloneAttachmentIds } from "@app/lib/api/assistant/conversation/compaction_attachment_id_replacements";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { renderConversationAsText } from "@app/lib/api/assistant/conversation/render_as_text";
 import { PREVIOUS_INTERACTIONS_TO_PRESERVE } from "@app/lib/api/assistant/conversation_rendering";
@@ -9,10 +10,7 @@ import { isProviderWhitelisted } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
-import type {
-  CompactionAttachmentIdReplacements,
-  CompactionSourceConversation,
-} from "@app/types/assistant/compaction";
+import type { CompactionSourceConversation } from "@app/types/assistant/compaction";
 import type {
   CompactionMessageType,
   ConversationType,
@@ -70,36 +68,6 @@ function extractSummary(generation: string): string {
   }
   // Fallback: if no <summary> tags, return the full generation stripped of <analysis>.
   return generation.replace(/<analysis>[\s\S]*?<\/analysis>/g, "").trim();
-}
-
-function escapeRegex(text: string): string {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function replaceAttachmentIdsInSummary(
-  summary: string,
-  replacements: CompactionAttachmentIdReplacements | undefined
-): string {
-  if (!replacements || Object.keys(replacements).length === 0) {
-    return summary;
-  }
-
-  let nextSummary = summary;
-
-  for (const [sourceId, targetId] of Object.entries(replacements).sort(
-    ([leftId], [rightId]) => rightId.length - leftId.length
-  )) {
-    const pattern = new RegExp(
-      `(^|[^A-Za-z0-9_])(${escapeRegex(sourceId)})(?=$|[^A-Za-z0-9_])`,
-      "g"
-    );
-
-    nextSummary = nextSummary.replace(pattern, (_match, prefix) => {
-      return `${prefix}${targetId}`;
-    });
-  }
-
-  return nextSummary;
 }
 
 function filterConversationContentUpToRank(
@@ -215,7 +183,7 @@ export async function runCompaction(
   let status: "succeeded" | "failed";
 
   if (summaryRes.isOk()) {
-    content = replaceAttachmentIdsInSummary(
+    content = replaceStandaloneAttachmentIds(
       summaryRes.value,
       sourceConversation?.attachmentIdReplacements
     );
