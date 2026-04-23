@@ -1027,6 +1027,61 @@
  *           type: boolean
  *         dismissed:
  *           type: boolean
+ *     PrivateWakeUp:
+ *       type: object
+ *       description: A wake-up scheduled in a conversation to re-invoke the agent at a later time.
+ *       required:
+ *         - id
+ *         - sId
+ *         - createdAt
+ *         - agentConfigurationId
+ *         - scheduleConfig
+ *         - reason
+ *         - status
+ *         - fireCount
+ *         - maxFires
+ *       properties:
+ *         id:
+ *           type: integer
+ *         sId:
+ *           type: string
+ *         createdAt:
+ *           type: integer
+ *           description: Unix timestamp (milliseconds).
+ *         agentConfigurationId:
+ *           type: string
+ *         scheduleConfig:
+ *           oneOf:
+ *             - type: object
+ *               required: [type, fireAt]
+ *               properties:
+ *                 type:
+ *                   type: string
+ *                   enum: [one_shot]
+ *                 fireAt:
+ *                   type: integer
+ *                   description: Unix timestamp (milliseconds) when the wake-up should fire.
+ *             - type: object
+ *               required: [type, cron, timezone]
+ *               properties:
+ *                 type:
+ *                   type: string
+ *                   enum: [cron]
+ *                 cron:
+ *                   type: string
+ *                   description: 5-field cron expression.
+ *                 timezone:
+ *                   type: string
+ *                   description: IANA timezone name.
+ *         reason:
+ *           type: string
+ *         status:
+ *           type: string
+ *           enum: [scheduled, fired, cancelled, expired]
+ *         fireCount:
+ *           type: integer
+ *         maxFires:
+ *           type: integer
  *     PrivateMention:
  *       type: object
  *       description: A mention in a message (agent or user).

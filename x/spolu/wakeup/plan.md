@@ -108,16 +108,23 @@ selecting an existing agent message.
 
 ## Milestone 6: API + UI
 
-### PR 8 — Wake-up API endpoints
+### [x] PR 8 — Wake-up API endpoints
 
-`GET/DELETE /api/w/[wId]/assistant/conversations/[cId]/wakeups`. List active wake-ups, cancel by
-sId. SWR hooks. Keep private Swagger docs/annotations in sync.
+- `GET /api/w/[wId]/assistant/conversations/[cId]/wakeups` — lists all wake-ups for the
+  conversation (any status). Response: `{ wakeUps: WakeUpType[] }`.
+- `DELETE /api/w/[wId]/assistant/conversations/[cId]/wakeups/[wuId]` — cancels the
+  referenced wake-up; permission-gated by `WakeUpResource.cancel(...)` (owner or workspace
+  admin). Returns `{ wakeUp: WakeUpType }` with the updated status. 403 on permission
+  denied, 404 when the wake-up does not belong to the conversation.
+
+Added `wake_up_not_found` to `APIErrorType`, `PrivateWakeUp` schema to
+`swagger_private_schemas.ts`, and the `@swaggerschema` annotation on `WakeUpType`.
 
 ### PR 9 — Conversation UI
 
-Wake-up banner ("Waiting until {time} — {reason}" + cancel button). Wake-up message rendering
-(system-style message from "Dust"). Conversation moves to active in sidebar when wake-up fires.
-For V1, the UI can assume max 1 active wake-up per conversation.
+SWR Hooks. Wake-up banner ("Waiting until {time} — {reason}" + cancel button). Wake-up message
+rendering (system-style message from "Dust"). Conversation moves to active in sidebar when wake-up
+fires.  For V1, the UI can assume max 1 active wake-up per conversation.
 
 ## Milestone 7: Cleanup + GA
 

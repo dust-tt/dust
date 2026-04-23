@@ -159,6 +159,8 @@ const API_ERROR_TYPES = [
   "project_metadata_not_found",
   // Suggestions
   "agent_suggestion_not_found",
+  // Wake-ups
+  "wake_up_not_found",
 ] as const;
 
 export type RegionRedirectError = {
