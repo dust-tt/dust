@@ -28,8 +28,12 @@ interface ListPrivateConversationsFromESResult {
 
 // Cursor encodes two sort values: "<updatedAtMs>|<conversationId>". The conversation_id
 // tiebreaker guarantees stable pagination when multiple conversations share the same updated_at.
+// A plain-timestamp cursor (from the DB path) is also accepted: a synthetic tiebreaker is
+// injected so pagination continues from approximately the right place rather than restarting
+// from page 1.
 function parseSearchAfterCursor(
-  lastValue: string | undefined
+  lastValue: string | undefined,
+  orderDirection: "asc" | "desc"
 ): estypes.SortResults | undefined {
   if (!lastValue) {
     return undefined;
@@ -37,11 +41,14 @@ function parseSearchAfterCursor(
 
   const [tsStr, convId] = lastValue.split("|");
   const ts = parseInt(tsStr, 10);
-  if (Number.isNaN(ts) || !convId) {
+  if (Number.isNaN(ts)) {
     return undefined;
   }
 
-  return [ts, convId];
+  // For a DB-style cursor (no convId), synthesise a tiebreaker that places us just past
+  // the timestamp boundary: max string for desc, empty string for asc.
+  const tiebreaker = convId ?? (orderDirection === "desc" ? "\\uFFFF" : "");
+  return [ts, tiebreaker];
 }
 
 export async function listPrivateConversationsFromES({
@@ -97,7 +104,7 @@ export async function listPrivateConversationsFromES({
 
   const sortOrder = orderDirection === "desc" ? "desc" : "asc";
   const fetchLimit = limit + 1;
-  const searchAfter = parseSearchAfterCursor(lastValue);
+  const searchAfter = parseSearchAfterCursor(lastValue, orderDirection);
 
   return withEs(async (client) => {
     const response = await client.search<ConversationSearchDocument>({
