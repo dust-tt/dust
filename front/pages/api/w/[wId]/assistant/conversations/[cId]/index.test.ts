@@ -138,7 +138,7 @@ describe("GET /api/w/[wId]/assistant/conversations/[cId]", () => {
     expect(res._getStatusCode()).toBe(200);
   });
 
-  it.skip("returns 404 conversation_not_found for admins when private conversation URLs are enabled and they are not participants", async () => {
+  it("returns 404 conversation_not_found for admins when private conversation URLs are enabled and they are not participants", async () => {
     const { req, res, workspace, globalSpace } =
       await createPrivateApiMockRequest({
         role: "admin",

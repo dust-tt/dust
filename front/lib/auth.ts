@@ -64,14 +64,12 @@ const DUST_INTERNAL_EMAIL_REGEXP = /^[^@]+@dust\.tt$/;
 
 const DustApiKeyNameHeader = "x-dust-api-key-name";
 
-const SANDBOX_TOKEN_AUTH_METHOD = "sandbox_token" as const;
-
 export type AuthMethodType =
   | "system_api_key"
   | "api_key"
   | "oauth"
   | "session"
-  | typeof SANDBOX_TOKEN_AUTH_METHOD
+  | "sandbox_token"
   | "internal";
 
 export const isSandboxTokenPrefix = (token: string): boolean =>
@@ -540,7 +538,7 @@ export class Authenticator {
 
     return new Ok(
       new Authenticator({
-        authMethod: SANDBOX_TOKEN_AUTH_METHOD,
+        authMethod: "sandbox_token",
         workspace,
         user,
         role: authData.role,
@@ -960,7 +958,7 @@ export class Authenticator {
   }
 
   isSandboxToken(): boolean {
-    return this._authMethod === SANDBOX_TOKEN_AUTH_METHOD;
+    return this._authMethod === "sandbox_token";
   }
 
   authMethod(): AuthMethodType {
