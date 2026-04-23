@@ -274,12 +274,14 @@ function UpdateConnectionOAuthModal({
 
   const isSlack = connectorProvider === "slack";
   const isMicrosoft = connectorProvider === "microsoft";
+  const isZendesk = connectorProvider === "zendesk";
 
   // Fetch existing OAuth metadata when modal is open
   const { metadata, isMetadataLoading } = useOAuthMetadata({
     dataSource,
     owner,
-    disabled: !isOpen || !dataSource.connectorId || !isMicrosoft,
+    disabled:
+      !isOpen || !dataSource.connectorId || (!isMicrosoft && !isZendesk),
   });
 
   // Populate extraConfig from metadata on first load only
@@ -299,7 +301,19 @@ function UpdateConnectionOAuthModal({
         setExtraConfig(stringMetadata);
       }
     }
-  }, [isOpen, metadata, isMetadataLoading, isMicrosoft, dataSource.sId]);
+    if (isZendesk && metadata?.zendesk_subdomain) {
+      setExtraConfig({
+        zendesk_subdomain: metadata.zendesk_subdomain as string,
+      });
+    }
+  }, [
+    isOpen,
+    metadata,
+    isMetadataLoading,
+    isMicrosoft,
+    isZendesk,
+    dataSource.sId,
+  ]);
 
   const { configValue: slackCredentialId } = useConnectorConfig({
     configKey: "privateIntegrationCredentialId",
@@ -464,6 +478,7 @@ function UpdateConnectionOAuthModal({
         )}
         {connectorUIConfiguration.oauthExtraConfigComponent &&
           ((isMicrosoft && !isMetadataLoading) ||
+            (isZendesk && !isMetadataLoading) ||
             showSlackOauthExtraComponent) && (
             <connectorUIConfiguration.oauthExtraConfigComponent
               extraConfig={extraConfig}
