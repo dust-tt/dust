@@ -310,14 +310,17 @@ describe("UserAnswerRequired", () => {
     );
 
     const keyboardContainer = getKeyboardContainer(container);
+    const alphaOption = screen.getByRole("button", { name: /Alpha/i });
     const customInput = screen.getByPlaceholderText("Type something else");
 
     await waitFor(() => expect(keyboardContainer).toHaveFocus());
+    expect(alphaOption).toHaveClass("bg-muted-background/60");
 
     await user.keyboard("h");
 
     expect(customInput).toHaveFocus();
     expect(customInput).toHaveValue("h");
+    expect(alphaOption).not.toHaveClass("bg-muted-background/60");
 
     await user.type(customInput, "ello");
     fireEvent.keyDown(customInput, { key: "Enter", metaKey: true });

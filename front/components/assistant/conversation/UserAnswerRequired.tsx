@@ -50,6 +50,7 @@ export function UserAnswerRequired({
   const [customResponse, setCustomResponse] = useState("");
   const [isSkipPending, setIsSkipPending] = useState(false);
   const [activeOptionIndex, setActiveOptionIndex] = useState(0);
+  const [isCustomResponseFocused, setIsCustomResponseFocused] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const customResponseInputRef = useRef<HTMLInputElement>(null);
 
@@ -59,6 +60,8 @@ export function UserAnswerRequired({
   const trimmedCustomResponse = customResponse.trim();
   const isCustomResponseSelected =
     trimmedCustomResponse.length > 0 && selectedOptions.length === 0;
+  const isCustomResponseActive =
+    isCustomResponseFocused || isCustomResponseSelected;
   const canSubmit =
     trimmedCustomResponse.length > 0 || selectedOptions.length > 0;
 
@@ -69,6 +72,7 @@ export function UserAnswerRequired({
   // biome-ignore lint/correctness/useExhaustiveDependencies: blockedAction.actionId is an intentional reset trigger
   useEffect(() => {
     setActiveOptionIndex(0);
+    setIsCustomResponseFocused(false);
     containerRef.current?.focus({ preventScroll: true });
   }, [blockedAction.actionId]);
 
@@ -96,6 +100,7 @@ export function UserAnswerRequired({
       return;
     }
 
+    setIsCustomResponseFocused(false);
     setActiveOptionIndex(index);
 
     if (question.multiSelect) {
@@ -155,6 +160,7 @@ export function UserAnswerRequired({
   }
 
   function handleStartCustomResponse(character: string) {
+    setIsCustomResponseFocused(true);
     setSelectedOptions([]);
     setCustomResponse((prev) => `${prev}${character}`);
     customResponseInputRef.current?.focus();
@@ -199,11 +205,13 @@ export function UserAnswerRequired({
     switch (e.key) {
       case "ArrowDown":
         e.preventDefault();
+        setIsCustomResponseFocused(false);
         moveActiveOption(1);
         containerRef.current?.focus();
         break;
       case "ArrowUp":
         e.preventDefault();
+        setIsCustomResponseFocused(false);
         moveActiveOption(-1);
         containerRef.current?.focus();
         break;
@@ -252,8 +260,14 @@ export function UserAnswerRequired({
           {question.options.map((option, index) => (
             <div
               key={index}
-              onFocusCapture={() => setActiveOptionIndex(index)}
-              onMouseEnter={() => setActiveOptionIndex(index)}
+              onFocusCapture={() => {
+                setIsCustomResponseFocused(false);
+                setActiveOptionIndex(index);
+              }}
+              onMouseEnter={() => {
+                setIsCustomResponseFocused(false);
+                setActiveOptionIndex(index);
+              }}
             >
               <OptionCard
                 label={option.label}
@@ -262,6 +276,7 @@ export function UserAnswerRequired({
                 selected={selectedOptions.includes(index)}
                 className={cn(
                   activeOptionIndex === index &&
+                    !isCustomResponseActive &&
                     !selectedOptions.includes(index) &&
                     "bg-muted-background/60 dark:bg-muted-background-night/60"
                 )}
@@ -307,7 +322,11 @@ export function UserAnswerRequired({
               )}
               placeholder="Type something else"
               value={customResponse}
-              onFocus={() => setSelectedOptions([])}
+              onFocus={() => {
+                setIsCustomResponseFocused(true);
+                setSelectedOptions([]);
+              }}
+              onBlur={() => setIsCustomResponseFocused(false)}
               onChange={(e) => handleCustomResponseChange(e.target.value)}
               onKeyDown={(e) => {
                 if (
