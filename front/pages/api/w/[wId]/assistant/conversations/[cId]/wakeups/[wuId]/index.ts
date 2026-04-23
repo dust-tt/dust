@@ -76,6 +76,8 @@ async function handler(
     });
   }
 
+  // The fetchConversationWithoutContent method checks for conversation accessibility (inside the
+  // resource through `baseFetchWithAuthorization`
   const conversationRes =
     await ConversationResource.fetchConversationWithoutContent(auth, cId);
   if (conversationRes.isErr()) {
