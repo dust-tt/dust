@@ -34,17 +34,7 @@ export function buildConversationSearchDocument(
     visibility: conversation.visibility,
     workspace_id: auth.getNonNullableWorkspace().sId,
     ...(conversation.space?.sId && { space_id: conversation.space.sId }),
-    wakeup: activeWakeUp
-      ? {
-          schedule_type: activeWakeUp.scheduleType,
-          ...(activeWakeUp.scheduleType === "one_shot" && activeWakeUp.fireAt
-            ? { fire_at: activeWakeUp.fireAt.toISOString() }
-            : {}),
-          ...(activeWakeUp.scheduleType === "cron" && activeWakeUp.cronExpression
-            ? { cron: activeWakeUp.cronExpression }
-            : {}),
-        }
-      : null,
+    next_wakeup_at: activeWakeUp?.nextFireAt()?.toISOString() ?? null,
   };
 }
 

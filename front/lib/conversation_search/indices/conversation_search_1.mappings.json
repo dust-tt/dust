@@ -48,20 +48,8 @@
         }
       }
     },
-    "wakeup": {
-      "type": "object",
-      "dynamic": false,
-      "properties": {
-        "schedule_type": {
-          "type": "keyword"
-        },
-        "fire_at": {
-          "type": "date"
-        },
-        "cron": {
-          "type": "keyword"
-        }
-      }
+    "next_wakeup_at": {
+      "type": "date"
     }
   }
 }
