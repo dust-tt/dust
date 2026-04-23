@@ -13,6 +13,15 @@ import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
 import { notifySkillSuggestionsReady } from "@app/lib/notifications/workflows/skill-suggestions-ready";
 import {
+  prepareReinforcedToolActions,
+  type ReinforcedToolActionInfo,
+  storeTerminalToolCallResults,
+} from "@app/lib/reinforced_agent/tool_execution";
+import {
+  hasReinforcementEnabled,
+  isReinforcementBatchModeAllowed,
+} from "@app/lib/reinforced_agent/workspace_check";
+import {
   buildSkillAggregationBatchMap,
   buildSkillAggregationSystemPrompt,
   createSkillSuggestionsConversation,
@@ -38,17 +47,8 @@ import {
   reinforcedSkillsConversationTitle,
 } from "@app/lib/reinforcement/run_reinforced_analysis";
 import { findConversationsWithSkills } from "@app/lib/reinforcement/selection";
-import {
-  prepareReinforcedToolActions,
-  type ReinforcedToolActionInfo,
-  storeTerminalToolCallResults,
-} from "@app/lib/reinforcement/tool_execution";
 import type { ReinforcedSkillsOperationType } from "@app/lib/reinforcement/types";
 import { getAuthForWorkspace } from "@app/lib/reinforcement/utils";
-import {
-  hasReinforcementEnabled,
-  isReinforcementBatchModeAllowed,
-} from "@app/lib/reinforcement/workspace_check";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
@@ -181,9 +181,15 @@ async function runReinforcedSkillsStep({
     });
 
     // Store results for all terminal tool calls so the conversation is complete.
+    // The skill types have the same shape as agent types (id, name, arguments)
+    // but different nominal type names, so we cast through unknown.
     await storeTerminalToolCallResults(auth, {
-      successfulToolCalls: result.successfulToolCalls,
-      failedToolCalls: result.failedToolCalls,
+      successfulToolCalls: result.successfulToolCalls as unknown as Parameters<
+        typeof storeTerminalToolCallResults
+      >[1]["successfulToolCalls"],
+      failedToolCalls: result.failedToolCalls as unknown as Parameters<
+        typeof storeTerminalToolCallResults
+      >[1]["failedToolCalls"],
       agentMessageModelId: storedResult.agentMessageModelId,
     });
 
@@ -204,8 +210,11 @@ async function runReinforcedSkillsStep({
   }
 
   // Prepare tool actions for the workflow to execute via runRetryableToolActivity.
+  // The skill exploratory tool call type has the same shape as the agent type.
   const toolActionInfo = await prepareReinforcedToolActions(auth, {
-    exploratoryToolCalls,
+    exploratoryToolCalls: exploratoryToolCalls as unknown as Parameters<
+      typeof prepareReinforcedToolActions
+    >[1]["exploratoryToolCalls"],
     agentMessageModelId: storedResult.agentMessageModelId,
     agentMessageId: storedResult.agentMessageId,
     userMessageId: storedResult.userMessageId,
@@ -746,8 +755,13 @@ export async function processSkillConversationAnalysisBatchResultActivity({
       const storedInfo = storedResultInfo.get(reinforcementConvId);
       if (storedInfo) {
         await storeTerminalToolCallResults(auth, {
-          successfulToolCalls: result.successfulToolCalls,
-          failedToolCalls: result.failedToolCalls,
+          successfulToolCalls:
+            result.successfulToolCalls as unknown as Parameters<
+              typeof storeTerminalToolCallResults
+            >[1]["successfulToolCalls"],
+          failedToolCalls: result.failedToolCalls as unknown as Parameters<
+            typeof storeTerminalToolCallResults
+          >[1]["failedToolCalls"],
           agentMessageModelId: storedInfo.agentMessageModelId,
         });
 
@@ -764,7 +778,9 @@ export async function processSkillConversationAnalysisBatchResultActivity({
       const storedInfo = storedResultInfo.get(reinforcementConvId);
       if (storedInfo) {
         const toolActionInfo = await prepareReinforcedToolActions(auth, {
-          exploratoryToolCalls,
+          exploratoryToolCalls: exploratoryToolCalls as unknown as Parameters<
+            typeof prepareReinforcedToolActions
+          >[1]["exploratoryToolCalls"],
           agentMessageModelId: storedInfo.agentMessageModelId,
           agentMessageId: storedInfo.agentMessageId,
           userMessageId: storedInfo.userMessageId,
@@ -952,8 +968,13 @@ export async function processSkillAggregationBatchResultActivity({
     const storedInfo = storedResultInfo.get(firstConvId);
     if (storedInfo) {
       await storeTerminalToolCallResults(auth, {
-        successfulToolCalls: result.successfulToolCalls,
-        failedToolCalls: result.failedToolCalls,
+        successfulToolCalls:
+          result.successfulToolCalls as unknown as Parameters<
+            typeof storeTerminalToolCallResults
+          >[1]["successfulToolCalls"],
+        failedToolCalls: result.failedToolCalls as unknown as Parameters<
+          typeof storeTerminalToolCallResults
+        >[1]["failedToolCalls"],
         agentMessageModelId: storedInfo.agentMessageModelId,
       });
 
@@ -989,7 +1010,9 @@ export async function processSkillAggregationBatchResultActivity({
   }
 
   const toolActionInfo = await prepareReinforcedToolActions(auth, {
-    exploratoryToolCalls,
+    exploratoryToolCalls: exploratoryToolCalls as unknown as Parameters<
+      typeof prepareReinforcedToolActions
+    >[1]["exploratoryToolCalls"],
     agentMessageModelId: storedInfo.agentMessageModelId,
     agentMessageId: storedInfo.agentMessageId,
     userMessageId: storedInfo.userMessageId,

@@ -344,6 +344,7 @@ const USER_MESSAGE_ORIGINS = [
   "onboarding_conversation",
   "agent_sidekick",
   "project_kickoff",
+  "reinforced_agent_notification",
   "reinforced_skill_notification",
   "reinforcement",
 ] as const;

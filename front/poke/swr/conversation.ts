@@ -6,6 +6,7 @@ import type { Fetcher } from "swr";
 export interface PokeConversationsFetchProps extends PokeConditionalFetchProps {
   agentId?: string;
   triggerId?: string;
+  reinforcedAgentId?: string;
   reinforcedSkillId?: string;
 }
 
@@ -14,13 +15,16 @@ export function usePokeConversations({
   owner,
   agentId,
   triggerId,
+  reinforcedAgentId,
   reinforcedSkillId,
 }: PokeConversationsFetchProps) {
   const { fetcher } = useFetcher();
   const conversationsFetcher: Fetcher<PokeListConversations> = fetcher;
 
   let url: string | null = null;
-  if (reinforcedSkillId) {
+  if (reinforcedAgentId) {
+    url = `/api/poke/workspaces/${owner.sId}/conversations?reinforcedAgentId=${reinforcedAgentId}`;
+  } else if (reinforcedSkillId) {
     url = `/api/poke/workspaces/${owner.sId}/conversations?reinforcedSkillId=${reinforcedSkillId}`;
   } else if (agentId) {
     url = `/api/poke/workspaces/${owner.sId}/conversations?agentId=${agentId}`;

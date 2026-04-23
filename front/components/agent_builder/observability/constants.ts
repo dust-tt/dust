@@ -114,7 +114,9 @@ export const FEEDBACK_DISTRIBUTION_LEGEND = [
 
 export type AnalyticsVisibleOrigin = Exclude<
   UserMessageOrigin,
-  "reinforced_skill_notification" | "reinforcement"
+  | "reinforced_agent_notification"
+  | "reinforced_skill_notification"
+  | "reinforcement"
 >;
 
 export const USER_MESSAGE_ORIGIN_LABELS: Record<

@@ -1,11 +1,14 @@
-import { AGENT_SIDEKICK_CONTEXT_TOOL_NAME } from "@app/lib/api/actions/servers/agent_sidekick_context/metadata";
+import {
+  AGENT_SIDEKICK_CONTEXT_TOOL_NAME,
+  AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA,
+} from "@app/lib/api/actions/servers/agent_sidekick_context/metadata";
 import type { Authenticator, AuthenticatorType } from "@app/lib/auth";
 import type {
   ExploratoryToolCallInfo,
-  ReinforcedSkillsToolCallInfo,
+  ReinforcedToolCallInfo,
   TerminalToolCallFailure,
   TerminalToolCallSuccess,
-} from "@app/lib/reinforcement/types";
+} from "@app/lib/reinforced_agent/types";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -33,6 +36,9 @@ export interface ReinforcedToolActionInfo {
   exploratoryToolCalls: ExploratoryToolCallInfo[];
 }
 
+/**
+ * Fetch function_call step contents for an agent message and index them by call ID.
+ */
 async function fetchStepContentByCallId(
   auth: Authenticator,
   agentMessageModelId: ModelId
@@ -58,6 +64,9 @@ async function fetchStepContentByCallId(
   return new Map(functionCallStepContents.map((s) => [s.value.value.id, s]));
 }
 
+/**
+ * Resolve the MCPServerViewResource sId for the agent_sidekick_context internal server.
+ */
 async function getAgentSidekickContextViewId(
   auth: Authenticator
 ): Promise<string> {
@@ -73,6 +82,9 @@ async function getAgentSidekickContextViewId(
   return view.sId;
 }
 
+/**
+ * Create an AgentMCPActionResource for a reinforced tool call.
+ */
 async function createReinforcedAction(
   auth: Authenticator,
   {
@@ -81,12 +93,14 @@ async function createReinforcedAction(
     stepContentId,
     mcpServerViewId,
   }: {
-    toolCall: ReinforcedSkillsToolCallInfo;
+    toolCall: ReinforcedToolCallInfo;
     agentMessageModelId: ModelId;
     stepContentId: ModelId;
     mcpServerViewId: string;
   }
 ): Promise<AgentMCPActionResource> {
+  const meta = AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA[toolCall.name];
+
   return AgentMCPActionResource.makeNew(auth, {
     agentMessageId: agentMessageModelId,
     augmentedInputs: toolCall.arguments,
@@ -120,7 +134,7 @@ async function createReinforcedAction(
       secretName: null,
       dustProject: null,
       availability: "auto",
-      permission: "never_ask",
+      permission: meta?.stake ?? "never_ask",
       toolServerId: "agent_sidekick_context",
       retryPolicy: "no_retry",
     },
@@ -247,6 +261,7 @@ export async function storeTerminalToolCallResults(
     await action.createOutputItems(auth, [
       { content: { type: "text", text: errorMessage } },
     ]);
+    // TODO(reinforced agent) Do not hardcode execution time to 0.
     await action.markAsErrored({ executionDurationMs: 0 });
   }
 }

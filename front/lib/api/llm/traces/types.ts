@@ -24,6 +24,8 @@ interface LLMTraceContextBase {
     | "agent_suggestion"
     | "conversation_title_suggestion"
     | "conversation_unread_summary"
+    | "reinforced_agent_aggregate_suggestions"
+    | "reinforced_agent_analyze_conversation"
     | "reinforcement_aggregate_suggestions"
     | "reinforcement_analyze_conversation"
     | "sidekick_template_suggestion"
