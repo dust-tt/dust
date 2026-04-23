@@ -291,8 +291,8 @@ export function UserAnswerRequired({
               "flex w-full items-center gap-2 rounded-2xl p-3 transition-colors",
               isCustomResponseSelected &&
                 "border-border dark:border-border-night",
-              isCustomResponseSelected
-                ? "bg-muted-background dark:bg-muted-background-night"
+              isCustomResponseActive
+                ? "bg-muted-background/60 dark:bg-muted-background-night/60"
                 : [
                     "bg-background hover:bg-muted-background/60",
                     "dark:bg-background-night",
