@@ -13,11 +13,13 @@ const DISABLE_QUERIES = false;
 
 export type WebhookSourcesUsage = Record<ModelId, AgentsUsageType>;
 
+type AgentInfo = { sId: string; name: string; pictureUrl: string };
+
 async function getAccessibleAgentsInfoBySId({
   auth,
 }: {
   auth: Authenticator;
-}): Promise<Map<string, { sId: string; name: string }>> {
+}): Promise<Map<string, AgentInfo>> {
   const owner = auth.workspace();
 
   if (!owner || !auth.isUser()) {
@@ -50,14 +52,14 @@ async function getAccessibleAgentsInfoBySId({
       };
 
   const accessibleAgents = await AgentConfigurationModel.findAll({
-    attributes: ["id", "sId", "name"],
+    attributes: ["id", "sId", "name", "pictureUrl"],
     where: agentWhereClause,
   });
 
   return new Map(
     accessibleAgents.map((agent) => [
       agent.sId,
-      { sId: agent.sId, name: agent.name },
+      { sId: agent.sId, name: agent.name, pictureUrl: agent.pictureUrl },
     ])
   );
 }
@@ -67,7 +69,7 @@ async function getTriggersWithAgentAccesibleAgent({
   agentInfoById,
 }: {
   auth: Authenticator;
-  agentInfoById: Map<string, { sId: string; name: string }>;
+  agentInfoById: Map<string, AgentInfo>;
 }): Promise<
   Array<{
     webhookSourceViewId: number | string | null;
@@ -142,7 +144,7 @@ export async function getWebhookSourcesUsage({
     return {};
   }
 
-  const usageMap = new Map<ModelId, Map<string, string>>();
+  const usageMap = new Map<ModelId, Map<string, AgentInfo>>();
 
   for (const trigger of filteredTriggers) {
     const viewId = Number(trigger.webhookSourceViewId);
@@ -162,19 +164,19 @@ export async function getWebhookSourcesUsage({
 
     let agentsForSource = usageMap.get(sourceId);
     if (!agentsForSource) {
-      agentsForSource = new Map<string, string>();
+      agentsForSource = new Map<string, AgentInfo>();
       usageMap.set(sourceId, agentsForSource);
     }
 
-    agentsForSource.set(agentInfo.sId, agentInfo.name);
+    agentsForSource.set(agentInfo.sId, agentInfo);
   }
 
   const usage: WebhookSourcesUsage = {};
 
   usageMap.forEach((agentsMap, sourceId) => {
-    const agents = Array.from(agentsMap.entries())
-      .map(([sId, name]) => ({ sId, name }))
-      .sort((a, b) => a.name.localeCompare(b.name));
+    const agents = Array.from(agentsMap.values()).sort((a, b) =>
+      a.name.localeCompare(b.name)
+    );
 
     usage[sourceId] = {
       count: agents.length,

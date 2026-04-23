@@ -21,7 +21,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import sortBy from "lodash/sortBy";
 import uniqBy from "lodash/uniqBy";
-import type { WhereAttributeHashValue } from "sequelize";
+import type { ProjectionAlias, WhereAttributeHashValue } from "sequelize";
 import { Op, Sequelize } from "sequelize";
 
 // To use in case of heavy db load emergency with these usages queries
@@ -29,6 +29,26 @@ import { Op, Sequelize } from "sequelize";
 const DISABLE_QUERIES = false;
 
 export type DataSourcesUsageByAgent = Record<ModelId, AgentsUsageType | null>;
+
+const agentAggregates = (qualifiedAgentConfig: string): ProjectionAlias[] =>
+  (
+    [
+      ["name", "names"],
+      ["sId", "sIds"],
+      ["pictureUrl", "pictureUrls"],
+    ] as const
+  ).map(([column, alias]) => [
+    Sequelize.fn(
+      "array_agg",
+      Sequelize.literal(
+        `${qualifiedAgentConfig}."${column}" ORDER BY ${qualifiedAgentConfig}."name"`
+      )
+    ),
+    alias,
+  ]);
+
+const MCP_AGENT_CONFIG_PATH =
+  '"agent_mcp_server_configuration->agent_configuration"';
 
 export async function getDataSourceViewsUsageByCategory({
   auth,
@@ -122,24 +142,7 @@ export async function getDataSourceViewsUsageByCategory({
       },
       attributes: [
         [Sequelize.col("dataSourceView.id"), "dataSourceViewId"],
-        [
-          Sequelize.fn(
-            "array_agg",
-            Sequelize.literal(
-              '"agent_mcp_server_configuration->agent_configuration"."name" ORDER BY "agent_mcp_server_configuration->agent_configuration"."name"'
-            )
-          ),
-          "names",
-        ],
-        [
-          Sequelize.fn(
-            "array_agg",
-            Sequelize.literal(
-              '"agent_mcp_server_configuration->agent_configuration"."sId" ORDER BY "agent_mcp_server_configuration->agent_configuration"."name"'
-            )
-          ),
-          "sIds",
-        ],
+        ...agentAggregates(MCP_AGENT_CONFIG_PATH),
       ],
       include: [
         {
@@ -176,24 +179,7 @@ export async function getDataSourceViewsUsageByCategory({
       },
       attributes: [
         [Sequelize.col("dataSourceView.id"), "dataSourceViewId"],
-        [
-          Sequelize.fn(
-            "array_agg",
-            Sequelize.literal(
-              '"agent_mcp_server_configuration->agent_configuration"."name" ORDER BY "agent_mcp_server_configuration->agent_configuration"."name"'
-            )
-          ),
-          "names",
-        ],
-        [
-          Sequelize.fn(
-            "array_agg",
-            Sequelize.literal(
-              '"agent_mcp_server_configuration->agent_configuration"."sId" ORDER BY "agent_mcp_server_configuration->agent_configuration"."name"'
-            )
-          ),
-          "sIds",
-        ],
+        ...agentAggregates(MCP_AGENT_CONFIG_PATH),
       ],
       include: [
         {
@@ -237,6 +223,7 @@ export async function getDataSourceViewsUsageByCategory({
     dataSourceViewId: ModelId;
     names: string[];
     sIds: string[];
+    pictureUrls: string[];
   }[][];
 
   const result = res
@@ -256,6 +243,7 @@ export async function getDataSourceViewsUsageByCategory({
         .map((sId, index) => ({
           sId,
           name: dsViewConfig.names[index],
+          pictureUrl: dsViewConfig.pictureUrls[index],
         }))
         .filter(
           (agent) =>
@@ -320,24 +308,7 @@ export async function getDataSourcesUsageByCategory({
       },
       attributes: [
         [Sequelize.col("dataSource.id"), "dataSourceId"],
-        [
-          Sequelize.fn(
-            "array_agg",
-            Sequelize.literal(
-              '"agent_mcp_server_configuration->agent_configuration"."name" ORDER BY "agent_mcp_server_configuration->agent_configuration"."name"'
-            )
-          ),
-          "names",
-        ],
-        [
-          Sequelize.fn(
-            "array_agg",
-            Sequelize.literal(
-              '"agent_mcp_server_configuration->agent_configuration"."sId" ORDER BY "agent_mcp_server_configuration->agent_configuration"."name"'
-            )
-          ),
-          "sIds",
-        ],
+        ...agentAggregates(MCP_AGENT_CONFIG_PATH),
       ],
       include: [
         {
@@ -377,24 +348,7 @@ export async function getDataSourcesUsageByCategory({
       },
       attributes: [
         [Sequelize.col("dataSource.id"), "dataSourceId"],
-        [
-          Sequelize.fn(
-            "array_agg",
-            Sequelize.literal(
-              '"agent_mcp_server_configuration->agent_configuration"."name" ORDER BY "agent_mcp_server_configuration->agent_configuration"."name"'
-            )
-          ),
-          "names",
-        ],
-        [
-          Sequelize.fn(
-            "array_agg",
-            Sequelize.literal(
-              '"agent_mcp_server_configuration->agent_configuration"."sId" ORDER BY "agent_mcp_server_configuration->agent_configuration"."name"'
-            )
-          ),
-          "sIds",
-        ],
+        ...agentAggregates(MCP_AGENT_CONFIG_PATH),
       ],
       include: [
         {
@@ -430,6 +384,7 @@ export async function getDataSourcesUsageByCategory({
     dataSourceId: ModelId;
     names: string[];
     sIds: string[];
+    pictureUrls: string[];
   }[][];
 
   const result = res.flat().reduce<DataSourcesUsageByAgent>((acc, dsConfig) => {
@@ -447,6 +402,7 @@ export async function getDataSourcesUsageByCategory({
       .map((sId, index) => ({
         sId,
         name: dsConfig.names[index],
+        pictureUrl: dsConfig.pictureUrls[index],
       }))
       .filter(
         (agent) =>
@@ -493,26 +449,7 @@ export async function getDataSourceUsage({
   const res = (await Promise.all([
     AgentDataSourceConfigurationModel.findOne({
       raw: true,
-      attributes: [
-        [
-          Sequelize.fn(
-            "array_agg",
-            Sequelize.literal(
-              '"agent_mcp_server_configuration->agent_configuration"."name" ORDER BY "agent_mcp_server_configuration->agent_configuration"."name"'
-            )
-          ),
-          "names",
-        ],
-        [
-          Sequelize.fn(
-            "array_agg",
-            Sequelize.literal(
-              '"agent_mcp_server_configuration->agent_configuration"."sId" ORDER BY "agent_mcp_server_configuration->agent_configuration"."name"'
-            )
-          ),
-          "sIds",
-        ],
-      ],
+      attributes: [...agentAggregates(MCP_AGENT_CONFIG_PATH)],
       where: {
         workspaceId: owner.id,
         dataSourceId: dataSource.id,
@@ -540,26 +477,7 @@ export async function getDataSourceUsage({
     }),
     AgentTablesQueryConfigurationTableModel.findOne({
       raw: true,
-      attributes: [
-        [
-          Sequelize.fn(
-            "array_agg",
-            Sequelize.literal(
-              '"agent_mcp_server_configuration->agent_configuration"."name" ORDER BY "agent_mcp_server_configuration->agent_configuration"."name"'
-            )
-          ),
-          "names",
-        ],
-        [
-          Sequelize.fn(
-            "array_agg",
-            Sequelize.literal(
-              '"agent_mcp_server_configuration->agent_configuration"."sId" ORDER BY "agent_mcp_server_configuration->agent_configuration"."name"'
-            )
-          ),
-          "sIds",
-        ],
-      ],
+      attributes: [...agentAggregates(MCP_AGENT_CONFIG_PATH)],
       where: {
         workspaceId: owner.id,
         dataSourceId: dataSource.id,
@@ -585,7 +503,9 @@ export async function getDataSourceUsage({
         },
       ],
     }),
-  ])) as unknown as { names: string[]; sIds: string[] }[] | null;
+  ])) as unknown as
+    | { names: string[]; sIds: string[]; pictureUrls: string[] }[]
+    | null;
 
   if (!res) {
     return new Ok({ count: 0, agents: [] });
@@ -596,6 +516,7 @@ export async function getDataSourceUsage({
         r.sIds.map((sId, index) => ({
           sId,
           name: r.names[index],
+          pictureUrl: r.pictureUrls[index],
         }))
       )
       .filter(
@@ -638,26 +559,7 @@ export async function getDataSourceViewUsage({
   const res = (await Promise.all([
     AgentDataSourceConfigurationModel.findOne({
       raw: true,
-      attributes: [
-        [
-          Sequelize.fn(
-            "array_agg",
-            Sequelize.literal(
-              '"agent_mcp_server_configuration->agent_configuration"."name" ORDER BY "agent_mcp_server_configuration->agent_configuration"."name"'
-            )
-          ),
-          "names",
-        ],
-        [
-          Sequelize.fn(
-            "array_agg",
-            Sequelize.literal(
-              '"agent_mcp_server_configuration->agent_configuration"."sId" ORDER BY "agent_mcp_server_configuration->agent_configuration"."name"'
-            )
-          ),
-          "sIds",
-        ],
-      ],
+      attributes: [...agentAggregates(MCP_AGENT_CONFIG_PATH)],
       where: {
         workspaceId: owner.id,
         dataSourceViewId: dataSourceView.id,
@@ -685,26 +587,7 @@ export async function getDataSourceViewUsage({
     }),
     AgentTablesQueryConfigurationTableModel.findOne({
       raw: true,
-      attributes: [
-        [
-          Sequelize.fn(
-            "array_agg",
-            Sequelize.literal(
-              '"agent_mcp_server_configuration->agent_configuration"."name" ORDER BY "agent_mcp_server_configuration->agent_configuration"."name"'
-            )
-          ),
-          "names",
-        ],
-        [
-          Sequelize.fn(
-            "array_agg",
-            Sequelize.literal(
-              '"agent_mcp_server_configuration->agent_configuration"."sId" ORDER BY "agent_mcp_server_configuration->agent_configuration"."name"'
-            )
-          ),
-          "sIds",
-        ],
-      ],
+      attributes: [...agentAggregates(MCP_AGENT_CONFIG_PATH)],
       where: {
         workspaceId: owner.id,
         dataSourceViewId: dataSourceView.id,
@@ -730,7 +613,9 @@ export async function getDataSourceViewUsage({
         },
       ],
     }),
-  ])) as unknown as { names: string[]; sIds: string[] }[] | null;
+  ])) as unknown as
+    | { names: string[]; sIds: string[]; pictureUrls: string[] }[]
+    | null;
 
   if (!res) {
     return new Ok({ count: 0, agents: [] });
@@ -741,6 +626,7 @@ export async function getDataSourceViewUsage({
         r.sIds.map((sId, index) => ({
           sId,
           name: r.names[index],
+          pictureUrl: r.pictureUrls[index],
         }))
       )
       .filter(
