@@ -11,6 +11,8 @@ export interface OptionCardProps {
   disabled?: boolean;
   className?: string;
   onClick?: () => void;
+  onFocusCapture?: React.FocusEventHandler<HTMLDivElement>;
+  onMouseEnter?: React.MouseEventHandler<HTMLDivElement>;
 }
 
 export function OptionCard({
@@ -21,6 +23,8 @@ export function OptionCard({
   disabled = false,
   className,
   onClick,
+  onFocusCapture,
+  onMouseEnter,
 }: OptionCardProps) {
   const variant: CardVariantType = selected ? "active" : "tertiary";
   const isInteractive = onClick !== undefined && !disabled;
@@ -45,6 +49,8 @@ export function OptionCard({
       )}
       onClick={disabled ? undefined : onClick}
       onKeyDown={isInteractive ? handleKeyDown : undefined}
+      onFocusCapture={onFocusCapture}
+      onMouseEnter={onMouseEnter}
       tabIndex={disabled ? -1 : isInteractive ? 0 : undefined}
       aria-pressed={isInteractive ? selected : undefined}
     >

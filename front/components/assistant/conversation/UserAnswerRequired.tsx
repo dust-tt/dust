@@ -258,8 +258,12 @@ export function UserAnswerRequired({
       ) : (
         <div className="flex flex-col gap-2">
           {question.options.map((option, index) => (
-            <div
+            <OptionCard
               key={index}
+              label={option.label}
+              description={option.description}
+              counterValue={index + 1}
+              selected={selectedOptions.includes(index)}
               onFocusCapture={() => {
                 setIsCustomResponseFocused(false);
                 setActiveOptionIndex(index);
@@ -268,22 +272,15 @@ export function UserAnswerRequired({
                 setIsCustomResponseFocused(false);
                 setActiveOptionIndex(index);
               }}
-            >
-              <OptionCard
-                label={option.label}
-                description={option.description}
-                counterValue={index + 1}
-                selected={selectedOptions.includes(index)}
-                className={cn(
-                  activeOptionIndex === index &&
-                    !isCustomResponseActive &&
-                    !selectedOptions.includes(index) &&
-                    "bg-muted-background/60 dark:bg-muted-background-night/60"
-                )}
-                onClick={() => handleOptionClick(index)}
-                disabled={isAnswerSubmitting}
-              />
-            </div>
+              className={cn(
+                activeOptionIndex === index &&
+                  !isCustomResponseActive &&
+                  !selectedOptions.includes(index) &&
+                  "bg-muted-background/60 dark:bg-muted-background-night/60"
+              )}
+              onClick={() => handleOptionClick(index)}
+              disabled={isAnswerSubmitting}
+            />
           ))}
           <Card
             variant="tertiary"

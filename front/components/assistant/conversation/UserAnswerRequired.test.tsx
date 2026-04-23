@@ -53,6 +53,8 @@ vi.mock("@dust-tt/sparkle", () => {
     className,
     onClick,
     disabled,
+    onFocusCapture,
+    onMouseEnter,
   }: {
     label: string;
     description?: string | null;
@@ -60,16 +62,20 @@ vi.mock("@dust-tt/sparkle", () => {
     className?: string;
     onClick?: () => void;
     disabled?: boolean;
+    onFocusCapture?: React.FocusEventHandler<HTMLButtonElement>;
+    onMouseEnter?: React.MouseEventHandler<HTMLButtonElement>;
   }) => (
     <button
       type="button"
       onClick={onClick}
+      onFocusCapture={onFocusCapture}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
           onClick?.();
         }
       }}
+      onMouseEnter={onMouseEnter}
       disabled={disabled}
       className={className}
       data-selected={selected ? "true" : "false"}
