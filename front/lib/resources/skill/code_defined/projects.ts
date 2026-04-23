@@ -68,7 +68,7 @@ When you need to find information, uses this order (skip steps if the relevant t
 
     return instructions;
   },
-  mcpServers: [{ name: "project_manager" }],
+  mcpServers: [{ name: "project_manager" }, { name: "project_todos" }],
   version: 1,
   icon: "ActionFolderIcon",
   isRestricted: async (auth: Authenticator) => {
