@@ -102,9 +102,7 @@ export async function runScan(config: ScanConfig): Promise<SparkleReport> {
   const totalSparkleComponents = sparkleExports.length;
   const uniqueUsed = sparkleComponents.length;
   const adoptionRate =
-    totalSparkleComponents > 0
-      ? Math.min(1, uniqueUsed / totalSparkleComponents)
-      : 0;
+    totalSparkleComponents > 0 ? uniqueUsed / totalSparkleComponents : 0;
 
   // Health score: adoption 40% + color 20% + typography 20% + spacing 20%
   const healthScore = Math.round(

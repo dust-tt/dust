@@ -16,15 +16,7 @@ const ConfigFileSchema = z
 const DEFAULTS: ScanConfig = {
   targetDir: process.cwd(),
   packageName: "@dust-tt/sparkle",
-  excludeDirs: [
-    "node_modules",
-    ".next",
-    "dist",
-    "build",
-    "coverage",
-    ".git",
-    "sparkle",
-  ],
+  excludeDirs: ["node_modules", ".next", "dist", "build", "coverage", ".git"],
   sparkleTokensPath: null,
   outputDir: process.cwd(),
   verbose: false,

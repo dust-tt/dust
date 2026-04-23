@@ -67,7 +67,8 @@ program
         ["Scan duration", `${report.meta.durationMs}ms`],
       ]);
     } catch (e) {
-      error(`Scan failed: ${String(e)}`);
+      error("Scan failed");
+      console.error(e);
       process.exit(1);
     }
   });
@@ -81,7 +82,8 @@ program
       const registry = loadRegistry(opts.tokens ?? null);
       console.log(JSON.stringify(registry, null, 2));
     } catch (e) {
-      error(`Could not load tokens: ${String(e)}`);
+      error("Could not load tokens");
+      console.error(e);
       process.exit(1);
     }
   });
