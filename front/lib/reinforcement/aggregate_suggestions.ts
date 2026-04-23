@@ -284,6 +284,7 @@ export async function createSkillSuggestionsConversations(
       url: null,
     },
     fileName: "suggestions.txt",
+    skipDataSourceIndexing: true,
   });
 
   if (contentFragmentRes.isErr()) {
