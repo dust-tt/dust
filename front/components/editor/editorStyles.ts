@@ -30,7 +30,7 @@ export const editorVariants = cva(
         ],
         false: [],
       },
-      // Used skill suggestions. Just changes the cursor
+      // Used for skill suggestions. It just changes the cursor.
       readOnly: {
         true: ["cursor-not-allowed"],
         false: [],
