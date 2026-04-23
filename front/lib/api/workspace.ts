@@ -433,6 +433,7 @@ export interface WorkspaceMetadata {
   allowContentCreationFileSharing?: boolean;
   allowVoiceTranscription?: boolean;
   allowOpenProjects?: boolean;
+  allowManualProjectKnowledgeManagement?: boolean;
   privateConversationUrlsByDefault?: boolean;
   autoCreateSpaceForProvisionedGroups?: boolean;
   disableManualInvitations?: boolean;

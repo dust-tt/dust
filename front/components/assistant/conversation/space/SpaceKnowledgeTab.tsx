@@ -20,6 +20,7 @@ import {
   useRemoveProjectContextFile,
 } from "@app/lib/swr/projects";
 import { useSpaces } from "@app/lib/swr/spaces";
+import { isManualProjectKnowledgeManagementAllowed } from "@app/lib/workspace_policies";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import { getSupportedFileExtensions } from "@app/types/files";
 import type { ProjectType } from "@app/types/space";
@@ -53,6 +54,9 @@ interface SpaceKnowledgeTabProps {
   owner: WorkspaceType;
   space: ProjectType;
 }
+
+const PROJECT_KNOWLEDGE_MANAGEMENT_DISABLED_TOOLTIP =
+  "Adding knowledge to projects is disabled by your workspace admin.";
 
 type MenuItem = {
   kind: "item";
@@ -137,6 +141,8 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
   } | null>(null);
   const [showPreviewSheet, setShowPreviewSheet] = useState(false);
   const isArchived = !!space.archivedAt;
+  const canManuallyManageProjectKnowledge =
+    isManualProjectKnowledgeManagementAllowed(owner);
   const confirm = useContext(ConfirmContext);
 
   const { spaces } = useSpaces({
@@ -456,6 +462,8 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
   const hasFiles = attachments.length > 0;
   const isUploading = projectFileUpload.isProcessingFiles;
   const uploadButtonLabel = isUploading ? "Uploading..." : "Add knowledge";
+  const isAddKnowledgeDisabled =
+    !canManuallyManageProjectKnowledge || isUploading;
 
   if (isProjectContextAttachmentsLoading) {
     return (
@@ -492,6 +500,7 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
       }}
       attachedNodes={[]}
       isLoading={isUploading}
+      disabled={isAddKnowledgeDisabled}
       buttonLabel={uploadButtonLabel}
       buttonSize="sm"
       buttonVariant="outline"
@@ -503,6 +512,15 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
       }}
       spaceId={globalSpace?.sId}
       type="dropdown"
+    />
+  );
+
+  const attachButtonWithPolicyTooltip = canManuallyManageProjectKnowledge ? (
+    attachButton
+  ) : (
+    <Tooltip
+      label={PROJECT_KNOWLEDGE_MANAGEMENT_DISABLED_TOOLTIP}
+      trigger={<div>{attachButton}</div>}
     />
   );
 
@@ -538,7 +556,7 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
         <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 py-8">
           <div className="flex gap-2">
             <h3 className="heading-2xl flex-1 items-center">Knowledge</h3>
-            {hasFiles && !isArchived && attachButton}
+            {hasFiles && !isArchived && attachButtonWithPolicyTooltip}
           </div>
 
           {!hasFiles ? (
@@ -548,7 +566,7 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
                   ? "This project is archived. No knowledge has been added."
                   : "No knowledge added to this project yet."
               }
-              action={isArchived ? null : attachButton}
+              action={isArchived ? null : attachButtonWithPolicyTooltip}
             />
           ) : (
             <>

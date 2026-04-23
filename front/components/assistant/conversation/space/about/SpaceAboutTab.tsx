@@ -59,8 +59,10 @@ export function SpaceAboutTab({
   } = space;
   const isPublic = !isRestricted;
   const areWorkspaceOpenProjectsAllowed = areOpenProjectsAllowed(owner);
+  const isPrivateProjectAndOpenProjectsDisallowed =
+    !areWorkspaceOpenProjectsAllowed && !isPublic;
   const isVisibilityToggleDisabled =
-    !isProjectEditor || (!areWorkspaceOpenProjectsAllowed && !isPublic);
+    !isProjectEditor || isPrivateProjectAndOpenProjectsDisallowed;
   const [searchSelectedMembers, setSearchSelectedMembers] = useState("");
 
   const confirm = useContext(ConfirmContext);
@@ -351,9 +353,7 @@ export function SpaceAboutTab({
                 Anyone in the workspace can find and join the project.
               </div>
             </div>
-            {isVisibilityToggleDisabled &&
-            !areWorkspaceOpenProjectsAllowed &&
-            !isPublic ? (
+            {isVisibilityToggleDisabled ? (
               <Tooltip
                 label={OPEN_PROJECTS_DISABLED_TOOLTIP}
                 trigger={
