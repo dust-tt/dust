@@ -1625,44 +1625,70 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     const { items, hasMore, lastValue } = esResult.value;
 
-    // Deep-validate ES results against DB: fetch with participation data so
-    // toListItem() produces fully comparable output, then log any divergence.
-    if (items.length > 0) {
-      const dbConversations = await this.fetchByIds(
-        auth,
-        items.map((i) => i.sId)
-      );
-      await this.enrichWithParticipationAndReadState(auth, dbConversations);
+    if (items.length === 0) {
+      return { conversations: [], hasMore, lastValue };
+    }
 
-      const dbMap = new Map(dbConversations.map((c) => [c.sId, c]));
+    // Fetch DB resources once: needed for (a) hydrating volatile read state and
+    // (b) shadow-validating ES structural fields against DB.
+    const dbConversations = await this.fetchByIds(
+      auth,
+      items.map((i) => i.sId)
+    );
 
-      for (const esItem of items) {
-        const dbResource = dbMap.get(esItem.sId);
-        if (!dbResource) {
-          logger.warn(
-            { workspaceId: workspace.sId, userId: user.sId, sId: esItem.sId },
-            "[conversation_search] ES returned conversation absent from DB (stale index)"
-          );
-          continue;
-        }
+    // (a) Hydrate lastReadMs / unread from DB with one bounded query scoped to these N
+    // conversations. `last_read_at` is not stored in ES because every mark-as-read would force a
+    // full document re-index (write amplification).
+    const readMap = await this.fetchReadMapForUser(
+      auth,
+      dbConversations.map((c) => c.id)
+    );
+    const idToModelId = new Map(dbConversations.map((c) => [c.sId, c.id]));
 
-        const dbItem = dbResource.toListItem();
-        if (!isEqual(esItem, dbItem)) {
-          logger.warn(
-            {
-              workspaceId: workspace.sId,
-              userId: user.sId,
-              sId: esItem.sId,
-              esItem,
-              dbItem,
-            },
-            "[conversation_search] ES item diverges from DB"
-          );
-        }
+    const hydratedItems = items.map((item) => {
+      const modelId = idToModelId.get(item.sId);
+      const lastReadAt =
+        modelId !== undefined ? readMap.get(modelId) : undefined;
+
+      const lastReadMs = lastReadAt ? lastReadAt.getTime() : null;
+
+      return {
+        ...item,
+        lastReadMs,
+        unread: lastReadMs === null || item.updated > lastReadMs,
+      };
+    });
+
+    // (b) Shadow-validate ES structural fields against DB.
+    await this.enrichWithParticipationAndReadState(auth, dbConversations);
+    const dbMap = new Map(dbConversations.map((c) => [c.sId, c]));
+
+    for (const esItem of hydratedItems) {
+      const dbResource = dbMap.get(esItem.sId);
+      if (!dbResource) {
+        logger.warn(
+          { workspaceId: workspace.sId, userId: user.sId, sId: esItem.sId },
+          "[conversation_search] ES returned conversation absent from DB (stale index)"
+        );
+        continue;
+      }
+
+      const dbItem = dbResource.toListItem();
+      if (!isEqual(esItem, dbItem)) {
+        logger.warn(
+          {
+            workspaceId: workspace.sId,
+            userId: user.sId,
+            sId: esItem.sId,
+            esItem,
+            dbItem,
+          },
+          "[conversation_search] ES item diverges from DB"
+        );
       }
     }
 
-    return { conversations: items, hasMore, lastValue };
+    return { conversations: hydratedItems, hasMore, lastValue };
   }
 
   static async listPrivateConversationsForUserPaginatedFromDB(
