@@ -1,4 +1,4 @@
-use crate::domain::{normalize_domain_or_ip, DomainValidationError};
+use crate::domain::{normalize_dns_name, DomainValidationError};
 use thiserror::Error;
 use tokio::io::{AsyncRead, AsyncReadExt};
 
@@ -92,7 +92,7 @@ fn normalize_domain(domain: &str) -> Result<String, HandshakeError> {
         return Ok(String::new());
     }
 
-    match normalize_domain_or_ip(domain) {
+    match normalize_dns_name(domain) {
         Ok(domain) => Ok(domain),
         Err(DomainValidationError::Empty) => Err(HandshakeError::MalformedHandshake),
         Err(DomainValidationError::Invalid) => Err(HandshakeError::MalformedHandshake),
@@ -195,6 +195,10 @@ mod tests {
             build_frame("token", "host:443", 443),
             build_frame("token", ".", 443),
             build_frame("token", "example.com", 0),
+            build_frame("token", "127.0.0.1", 443),
+            build_frame("token", "::1", 443),
+            build_frame("token", "::ffff:127.0.0.1", 443),
+            build_frame("token", "169.254.169.254", 443),
         ] {
             let mut reader = frame.as_slice();
 

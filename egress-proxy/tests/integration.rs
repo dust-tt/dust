@@ -56,13 +56,18 @@ enum MockGcsResponse {
 
 #[derive(Default)]
 struct MockPolicies {
+    workspace: Option<MockGcsResponse>,
     sandbox: Option<MockGcsResponse>,
 }
+
+const TEST_WORKSPACE_ID: &str = "workspace-456";
 
 #[derive(Debug, Serialize)]
 struct TestClaims {
     #[serde(rename = "sbId")]
     sb_id: String,
+    #[serde(rename = "wId", skip_serializing_if = "Option::is_none")]
+    w_id: Option<String>,
     iss: String,
     aud: String,
     exp: usize,
@@ -167,6 +172,93 @@ async fn allowed_domain_forwards_bytes() -> Result<()> {
 }
 
 #[tokio::test]
+async fn workspace_policy_allows_domain() -> Result<()> {
+    let (upstream_port, mut upstream_handles) =
+        start_localhost_servers(UpstreamBehavior::EchoFixed { read_len: 4 }).await?;
+    let proxy = start_proxy_with_mock_gcs(
+        MockPolicies {
+            workspace: Some(policy_response(&["localhost"])),
+            sandbox: None,
+        },
+        true,
+        "test",
+    )
+    .await?;
+    let token = make_token_with_workspace(SECRET, 60);
+    let mut stream = connect_forwarder(&proxy).await?;
+
+    stream
+        .write_all(&build_frame(&token, "localhost", upstream_port)?)
+        .await?;
+
+    let mut response = [0; 1];
+    stream.read_exact(&mut response).await?;
+    assert_eq!(response[0], ALLOW_RESPONSE);
+
+    stream.write_all(b"ping").await?;
+    let mut echoed = [0; 4];
+    stream.read_exact(&mut echoed).await?;
+    assert_eq!(&echoed, b"ping");
+
+    drop(stream);
+    wait_for_upstream_completion(&mut upstream_handles, Duration::from_secs(2)).await?;
+    Ok(())
+}
+
+#[tokio::test]
+async fn sandbox_policy_allows_when_workspace_has_no_policy() -> Result<()> {
+    let (upstream_port, mut upstream_handles) =
+        start_localhost_servers(UpstreamBehavior::EchoFixed { read_len: 4 }).await?;
+    let proxy = start_proxy_with_mock_gcs(
+        MockPolicies {
+            workspace: None,
+            sandbox: Some(policy_response(&["localhost"])),
+        },
+        true,
+        "test",
+    )
+    .await?;
+    let token = make_token_with_workspace(SECRET, 60);
+    let mut stream = connect_forwarder(&proxy).await?;
+
+    stream
+        .write_all(&build_frame(&token, "localhost", upstream_port)?)
+        .await?;
+
+    let mut response = [0; 1];
+    stream.read_exact(&mut response).await?;
+    assert_eq!(response[0], ALLOW_RESPONSE);
+
+    stream.write_all(b"ping").await?;
+    let mut echoed = [0; 4];
+    stream.read_exact(&mut echoed).await?;
+    assert_eq!(&echoed, b"ping");
+
+    drop(stream);
+    wait_for_upstream_completion(&mut upstream_handles, Duration::from_secs(2)).await?;
+    Ok(())
+}
+
+#[tokio::test]
+async fn denied_when_neither_workspace_nor_sandbox_allows_domain() -> Result<()> {
+    let proxy = start_proxy_with_mock_gcs(
+        MockPolicies {
+            workspace: Some(policy_response(&["other.example.com"])),
+            sandbox: Some(policy_response(&["another.example.com"])),
+        },
+        false,
+        "production",
+    )
+    .await?;
+    let token = make_token_with_workspace(SECRET, 60);
+
+    let response = send_handshake(&proxy, &token, "denied.example.com", 443).await?;
+
+    assert_eq!(response, Some(DENY_RESPONSE));
+    Ok(())
+}
+
+#[tokio::test]
 async fn denied_domain_returns_deny() -> Result<()> {
     let proxy = start_proxy(false, "production").await?;
     let token = make_token(SECRET, 60);
@@ -206,6 +298,7 @@ async fn invalid_issuer_returns_deny() -> Result<()> {
         SECRET,
         FullClaims {
             sb_id: TEST_SANDBOX_ID,
+            w_id: None,
             iss: "wrong-front",
             aud: "dust-egress-proxy",
             exp_offset_seconds: 60,
@@ -225,6 +318,7 @@ async fn invalid_audience_returns_deny() -> Result<()> {
         SECRET,
         FullClaims {
             sb_id: TEST_SANDBOX_ID,
+            w_id: None,
             iss: "dust-front",
             aud: "wrong-audience",
             exp_offset_seconds: 60,
@@ -244,6 +338,7 @@ async fn empty_sandbox_id_claim_returns_deny() -> Result<()> {
         SECRET,
         FullClaims {
             sb_id: "   ",
+            w_id: None,
             iss: "dust-front",
             aud: "dust-egress-proxy",
             exp_offset_seconds: 60,
@@ -567,6 +662,7 @@ async fn start_proxy_with_sandbox_policy(
 ) -> Result<ProxyProcess> {
     start_proxy_with_mock_gcs(
         MockPolicies {
+            workspace: None,
             sandbox: Some(policy_response(allowed_domains)),
         },
         unsafe_skip_ssrf_check,
@@ -623,6 +719,9 @@ async fn start_proxy_with_mock_gcs(
 
 async fn start_mock_gcs_server(policies: MockPolicies) -> Result<MockGcsServer> {
     let mut objects = HashMap::new();
+    if let Some(workspace) = policies.workspace {
+        objects.insert(format!("workspaces/{TEST_WORKSPACE_ID}.json"), workspace);
+    }
     if let Some(sandbox) = policies.sandbox {
         objects.insert(format!("sandboxes/{TEST_SANDBOX_ID}.json"), sandbox);
     }
@@ -809,6 +908,20 @@ fn make_token(secret: &str, exp_offset_seconds: i64) -> String {
         secret,
         FullClaims {
             sb_id: TEST_SANDBOX_ID,
+            w_id: None,
+            iss: "dust-front",
+            aud: "dust-egress-proxy",
+            exp_offset_seconds,
+        },
+    )
+}
+
+fn make_token_with_workspace(secret: &str, exp_offset_seconds: i64) -> String {
+    make_token_with_claims(
+        secret,
+        FullClaims {
+            sb_id: TEST_SANDBOX_ID,
+            w_id: Some(TEST_WORKSPACE_ID),
             iss: "dust-front",
             aud: "dust-egress-proxy",
             exp_offset_seconds,
@@ -828,6 +941,7 @@ fn make_token_with_claims(secret: &str, claims: FullClaims<'_>) -> String {
     };
     let claims = TestClaims {
         sb_id: claims.sb_id.to_string(),
+        w_id: claims.w_id.map(|s| s.to_string()),
         iss: claims.iss.to_string(),
         aud: claims.aud.to_string(),
         exp: usize::try_from(exp).expect("expiration timestamp should fit in usize"),
@@ -849,6 +963,7 @@ struct TestCerts {
 
 struct FullClaims<'a> {
     sb_id: &'a str,
+    w_id: Option<&'a str>,
     iss: &'a str,
     aud: &'a str,
     exp_offset_seconds: i64,
