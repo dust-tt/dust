@@ -1,9 +1,15 @@
 import type { CompactionAttachmentIdReplacements } from "@app/types/assistant/compaction";
 
-function escapeRegex(text: string): string {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
+/**
+ * Source-backed compaction is reused when creating conversation forks.
+ *
+ * In that flow we need to rewrite attachment ids from the source conversation to the ids that
+ * exist in the child conversation, both in the persisted compaction summary and in copied
+ * interactive-content files that embed those ids.
+ *
+ * The replacement is intentionally limited to standalone id tokens so surrounding prose and
+ * concatenated strings remain unchanged.
+ */
 export function replaceStandaloneAttachmentIds(
   content: string,
   replacements: CompactionAttachmentIdReplacements | undefined
@@ -28,4 +34,8 @@ export function replaceStandaloneAttachmentIds(
   }
 
   return nextContent;
+}
+
+function escapeRegex(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
