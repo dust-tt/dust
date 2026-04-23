@@ -1,7 +1,7 @@
 /** @ignoreswagger */
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 
-import { getShrinkWrappedConversation } from "@app/lib/api/assistant/conversation/shrink_wrap";
+import { renderConversationAsTextWithFeedback } from "@app/lib/api/assistant/conversation/render_conversation_with_feedback";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -114,7 +114,7 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const conversationRes = await getShrinkWrappedConversation(auth, {
+      const conversationRes = await renderConversationAsTextWithFeedback(auth, {
         conversationId,
       });
 

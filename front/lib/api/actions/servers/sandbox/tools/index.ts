@@ -138,13 +138,25 @@ export async function runSandboxBashTool(
     );
 
     if (freshlyCreated || wokeFromSleep) {
-      void mountConversationFiles(auth, sandbox, conversation, image).catch(
-        (err) => logger.error({ err }, "GCS mount failed (fire-and-forget)")
+      const mountResult = await mountConversationFiles(
+        auth,
+        sandbox,
+        conversation,
+        image
       );
+      if (mountResult.isErr()) {
+        return new Err(new MCPError(mountResult.error.message));
+      }
     } else {
-      void refreshGcsToken(auth, sandbox, conversation, image).catch((err) =>
-        logger.error({ err }, "GCS token refresh failed (fire-and-forget)")
+      const refreshResult = await refreshGcsToken(
+        auth,
+        sandbox,
+        conversation,
+        image
       );
+      if (refreshResult.isErr()) {
+        return new Err(new MCPError(refreshResult.error.message));
+      }
     }
   } else {
     logger.error(

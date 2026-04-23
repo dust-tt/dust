@@ -45,9 +45,6 @@
         },
         "action_required": {
           "type": "boolean"
-        },
-        "last_read_at": {
-          "type": "date"
         }
       }
     }

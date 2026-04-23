@@ -20,10 +20,6 @@ const MOUNT_POINT = "/files/conversation";
  *  2. Write the token JSON to /tmp/token.json in the sandbox.
  *  3. Start the token HTTP server (netcat loop on :9876) and wait for it.
  *  4. Run gcsfuse with --token-url pointing to the local token server.
- *
- * This function is designed to be called fire-and-forget (non-blocking) after sandbox creation or
- * wake. The .mount-pending sentinel file signals to code running in the sandbox that the mount is
- * not yet ready.
  */
 export async function mountConversationFiles(
   auth: Authenticator,

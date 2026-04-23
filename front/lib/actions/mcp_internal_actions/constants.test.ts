@@ -69,6 +69,7 @@ describe("INTERNAL_MCP_SERVERS", () => {
       { name: "sandbox", id: 1024 },
       { name: "user_mentions", id: 1026 },
       { name: "ask_user_question", id: 1028 },
+      { name: "wakeups", id: 1031 },
     ];
     expect(
       autoInternalTools,

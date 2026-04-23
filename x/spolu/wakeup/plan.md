@@ -72,20 +72,39 @@ Done:
 
 ## Milestone 4: Agent action
 
-### PR 6 — schedule_wakeup tool (one-shot + cron)
+### [x] PR 6 — `wakeups` internal MCP server
 
-Agent tool definition for `schedule_wakeup`. Deterministic `when` parsing (relative durations, ISO
-timestamps, cron expressions). Guardrail enforcement (max 1 active per conversation, min interval,
-max delay, workspace limits). Returns confirmation with scheduled time and wake-up sId. Gate
-behind feature flag. In the current codebase, wire this through the internal MCP tool
-architecture rather than a legacy `agent_action.ts` registry.
+Adds the `wakeups` internal MCP server (id 1031, `availability: "auto"`, preview, gated
+behind the new `enable_wakeups` feature flag) exposing `schedule_wakeup`, `list_wakeups`,
+and `cancel_wakeup` to agents. `when` is parsed deterministically (relative duration, ISO
+8601, 5-field cron); cron timezone falls back to the last user message's timezone.
+Guardrails enforced at tool-call time: max 1 active wake-up per conversation, max 256 per
+workspace, max 31-day one-shot delay. Also updates `runWakeUpActivity` to post the
+wake-up message with `username: "dust_system"` / `fullName: "Dust System"` instead of
+`doNotAssociateUser: true`.
 
 ## Milestone 5: Security
 
-### PR 7 — Conversation interaction restrictions
+### [x] PR 7 — Conversation interaction restrictions
 
-Enforce that only the wake-up owner can post in a conversation with an active wake-up.
-Cancellation permissions are owner + workspace admins.
+Two slices:
+
+1. **Cancellation rights (`WakeUpResource.cancel`)** — only the wake-up owner (`userId`) or
+   a workspace admin can cancel. Enforced via a `canCancel(auth)` check in `cancel(...)`
+   that returns an `Err` before touching the Temporal workflow or marking the row
+   cancelled.
+
+2. **Post / edit restriction** — while a conversation has an active (scheduled) wake-up,
+   only the wake-up owner can post or edit user messages. Shared logic lives on
+   `WakeUpResource.canUserInteract(auth, conversation)`, which returns an
+   `APIErrorWithStatusCode` (409 `invalid_request_error`) when any active wake-up is
+   owned by a user other than the caller. Called from both `postUserMessage` and
+   `editUserMessage` in `front/lib/api/assistant/conversation.ts`. The wake-up activity
+   posts under the owner's auth (via `fetchWakeUpAndAuthenticatorById`), so fires are
+   never blocked.
+
+`retryAgentMessage` is intentionally not gated — it does not take user input beyond
+selecting an existing agent message.
 
 ## Milestone 6: API + UI
 

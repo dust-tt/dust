@@ -55,6 +55,10 @@ import {
 } from "./egress";
 
 describe("sandbox egress helpers", () => {
+  const auth = {
+    getNonNullableWorkspace: () => ({ sId: "workspace-id" }),
+  } as never;
+
   beforeEach(() => {
     vi.clearAllMocks();
 
@@ -67,7 +71,7 @@ describe("sandbox egress helpers", () => {
   });
 
   it("mints a proxy JWT bound to the provider sandbox id", () => {
-    const token = mintEgressJwt("provider-sandbox-id");
+    const token = mintEgressJwt("provider-sandbox-id", "workspace-id");
     const payload = jwt.verify(token, "egress-secret", {
       algorithms: ["HS256"],
       audience: "dust-egress-proxy",
@@ -75,6 +79,7 @@ describe("sandbox egress helpers", () => {
     }) as jwt.JwtPayload;
 
     expect(payload.sbId).toBe("provider-sandbox-id");
+    expect(payload.wId).toBe("workspace-id");
     expect(payload.exp).toBeGreaterThan(payload.iat ?? 0);
   });
 
@@ -91,32 +96,32 @@ describe("sandbox egress helpers", () => {
         .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" })),
     };
 
-    const result = await setupEgressForwarder({} as never, sandbox as never);
+    const result = await setupEgressForwarder(auth, sandbox as never);
 
     expect(result).toEqual(new Ok(undefined));
     expect(mockLookup).toHaveBeenCalledWith("eu.sandbox-egress.dust.tt", {
       family: 4,
     });
     expect(sandbox.writeFile).toHaveBeenCalledWith(
-      {},
+      auth,
       "/etc/dust/egress-token",
       expect.anything()
     );
     expect(sandbox.exec).toHaveBeenNthCalledWith(
       1,
-      {},
-      expect.stringContaining("chmod 600"),
+      auth,
+      expect.stringContaining("chmod 600 '/etc/dust/egress-token'"),
       { user: "root" }
     );
     expect(sandbox.exec).toHaveBeenNthCalledWith(
       2,
-      {},
+      auth,
       expect.stringContaining("--proxy-addr '203.0.113.10:4443'"),
       { user: "root" }
     );
     expect(sandbox.exec).toHaveBeenNthCalledWith(
       2,
-      {},
+      auth,
       expect.stringContaining("--proxy-tls-name 'eu.sandbox-egress.dust.tt'"),
       { user: "root" }
     );
@@ -141,7 +146,7 @@ describe("sandbox egress helpers", () => {
       ),
     };
 
-    const result = await readNewDenyLogEntries({} as never, sandbox as never);
+    const result = await readNewDenyLogEntries(auth, sandbox as never);
 
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
@@ -151,7 +156,7 @@ describe("sandbox egress helpers", () => {
       ]);
     }
     expect(sandbox.exec).toHaveBeenCalledWith(
-      {},
+      auth,
       expect.stringContaining("dust-egress-denied.log"),
       { user: "root", timeoutMs: 2_000 }
     );
@@ -164,7 +169,7 @@ describe("sandbox egress helpers", () => {
         .mockResolvedValue(new Ok({ exitCode: 0, stdout: "", stderr: "" })),
     };
 
-    const result = await readNewDenyLogEntries({} as never, sandbox as never);
+    const result = await readNewDenyLogEntries(auth, sandbox as never);
 
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
@@ -182,7 +187,7 @@ describe("sandbox egress helpers", () => {
         .mockResolvedValue(new Err(new Error("sandbox command failed"))),
     };
 
-    const result = await setupEgressForwarder({} as never, sandbox as never);
+    const result = await setupEgressForwarder(auth, sandbox as never);
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {

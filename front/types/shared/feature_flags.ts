@@ -75,10 +75,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Google Sheets MCP tool",
     stage: "rolling_out",
   },
-  gpt_image_2_feature: {
-    description: "Force OpenAI gpt-image-2 for image generation",
-    stage: "on_demand",
-  },
   http_client_tool: {
     description: "HTTP Client MCP tool for making external API requests",
     stage: "on_demand",
@@ -295,6 +291,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Show the browser extension MCP tools toggle in workspace access settings",
     stage: "dust_only",
   },
+  input_bar_slash_suggestions: {
+    description:
+      "Enable slash-triggered suggestions in the conversation input bar",
+    stage: "dust_only",
+  },
   sensitivity_labels: {
     description:
       "Enable Microsoft sensitivity labels for data classification on connectors and MCP servers",
@@ -307,6 +308,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   conversation_search_read: {
     description:
       "Enable ES-backed conversation listing in the sidebar (read path)",
+    stage: "dust_only",
+  },
+  enable_wakeups: {
+    description:
+      "Enable the wakeups MCP server, letting agents schedule wake-ups in a conversation.",
     stage: "dust_only",
   },
 } as const satisfies Record<string, FeatureFlag>;

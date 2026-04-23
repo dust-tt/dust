@@ -20,11 +20,11 @@ import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { ConversationForkResource } from "@app/lib/resources/conversation_fork_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type {
@@ -59,6 +59,8 @@ type CarriedAttachment = {
   attachErrorMessage: string;
   attachLogMetadata: Record<string, string>;
 };
+
+const ATTACHMENT_CARRY_OVER_CONCURRENCY = 4;
 
 function filterConversationContentUpToRank(
   conversation: ConversationType,
@@ -260,43 +262,35 @@ async function addFileToConversationDatasource(
     parentConversationId,
     childConversationId,
     carriedFile,
-    childConversationDataSource,
   }: {
     parentConversationId: string;
     childConversationId: string;
     carriedFile: FileResource;
-    childConversationDataSource: DataSourceResource | null;
   }
-): Promise<DataSourceResource | null> {
-  let nextChildConversationDataSource = childConversationDataSource;
+): Promise<void> {
+  const childDataSourceRes = await getOrCreateConversationDataSourceFromFile(
+    auth,
+    carriedFile
+  );
 
-  if (!nextChildConversationDataSource) {
-    const childDataSourceRes = await getOrCreateConversationDataSourceFromFile(
-      auth,
-      carriedFile
+  if (childDataSourceRes.isErr()) {
+    logger.error(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        parentConversationId,
+        childConversationId,
+        copiedFileId: carriedFile.sId,
+        error: childDataSourceRes.error,
+      },
+      "Failed to get or create child conversation datasource for forked file."
     );
 
-    if (childDataSourceRes.isErr()) {
-      logger.error(
-        {
-          workspaceId: auth.getNonNullableWorkspace().sId,
-          parentConversationId,
-          childConversationId,
-          copiedFileId: carriedFile.sId,
-          error: childDataSourceRes.error,
-        },
-        "Failed to get or create child conversation datasource for forked file."
-      );
-
-      return childConversationDataSource;
-    }
-
-    nextChildConversationDataSource = childDataSourceRes.value;
+    return;
   }
 
   const upsertRes = await processAndUpsertToDataSource(
     auth,
-    nextChildConversationDataSource,
+    childDataSourceRes.value,
     { file: carriedFile }
   );
 
@@ -312,8 +306,6 @@ async function addFileToConversationDatasource(
       "Failed to seed child conversation datasource for forked file."
     );
   }
-
-  return nextChildConversationDataSource;
 }
 
 async function carryOverConversationAttachments(
@@ -348,73 +340,72 @@ async function carryOverConversationAttachments(
 
     return isContentNodeAttachmentType(attachment);
   });
-  let childConversationDataSource: DataSourceResource | null = null;
 
-  for (const attachment of directConversationAttachments) {
-    let carriedResult: CarriedAttachment | null;
+  await concurrentExecutor(
+    directConversationAttachments,
+    async (attachment) => {
+      let carriedResult: CarriedAttachment | null;
 
-    if (isFileAttachmentType(attachment)) {
-      carriedResult = await carryOverFile(auth, {
-        attachment,
-        parentConversationId: parentConversation.sId,
-        childConversationId: childConversation.sId,
-      });
-    } else if (isContentNodeAttachmentType(attachment)) {
-      carriedResult = carryOverContentNode(attachment);
-    } else {
-      assertNever(attachment);
-    }
-
-    if (!carriedResult) {
-      continue;
-    }
-
-    const {
-      carriedAttachment,
-      carriedFile,
-      attachErrorMessage,
-      attachLogMetadata,
-    } = carriedResult;
-
-    const attachmentResult = await postNewContentFragment(
-      auth,
-      childConversation,
-      carriedAttachment,
-      null
-    );
-
-    if (attachmentResult.isErr()) {
-      logger.error(
-        {
-          workspaceId: auth.getNonNullableWorkspace().sId,
+      if (isFileAttachmentType(attachment)) {
+        carriedResult = await carryOverFile(auth, {
+          attachment,
           parentConversationId: parentConversation.sId,
           childConversationId: childConversation.sId,
-          ...attachLogMetadata,
-          error: attachmentResult.error,
-        },
-        attachErrorMessage
+        });
+      } else if (isContentNodeAttachmentType(attachment)) {
+        carriedResult = carryOverContentNode(attachment);
+      } else {
+        assertNever(attachment);
+      }
+
+      if (!carriedResult) {
+        return;
+      }
+
+      const {
+        carriedAttachment,
+        carriedFile,
+        attachErrorMessage,
+        attachLogMetadata,
+      } = carriedResult;
+
+      const attachmentResult = await postNewContentFragment(
+        auth,
+        childConversation,
+        carriedAttachment,
+        null
       );
 
-      continue;
-    }
+      if (attachmentResult.isErr()) {
+        logger.error(
+          {
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            parentConversationId: parentConversation.sId,
+            childConversationId: childConversation.sId,
+            ...attachLogMetadata,
+            error: attachmentResult.error,
+          },
+          attachErrorMessage
+        );
 
-    const shouldCopyFileToDatasource =
-      carriedFile !== null &&
-      !carriedFile.useCaseMetadata?.skipDataSourceIndexing &&
-      isFileTypeUpsertableForUseCase(carriedFile);
+        return;
+      }
 
-    if (shouldCopyFileToDatasource) {
-      childConversationDataSource = await addFileToConversationDatasource(
-        auth,
-        {
+      const shouldCopyFileToDatasource =
+        carriedFile !== null &&
+        !carriedFile.useCaseMetadata?.skipDataSourceIndexing &&
+        isFileTypeUpsertableForUseCase(carriedFile);
+
+      if (shouldCopyFileToDatasource) {
+        await addFileToConversationDatasource(auth, {
           parentConversationId: parentConversation.sId,
           childConversationId: childConversation.sId,
           carriedFile,
-          childConversationDataSource,
-        }
-      );
-    }
-  }
+        });
+      }
+    },
+    { concurrency: ATTACHMENT_CARRY_OVER_CONCURRENCY }
+  );
 }
 
 export async function createConversationFork(
@@ -552,6 +543,28 @@ export async function createConversationFork(
     return new Ok(childConversationId.value.childConversationId);
   }
 
+  const parentConversationWithContent = await getConversation(
+    auth,
+    conversationId
+  );
+  if (parentConversationWithContent.isErr()) {
+    logger.error(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        parentConversationId: conversationId,
+        childConversationId: childConversation.value.sId,
+        error: parentConversationWithContent.error,
+      },
+      "Failed to reload parent conversation for fork attachment carryover."
+    );
+  } else {
+    await carryOverConversationAttachments(auth, {
+      parentConversation: parentConversationWithContent.value,
+      childConversation: childConversation.value,
+      sourceMessageRank: childConversationId.value.sourceMessageRank,
+    });
+  }
+
   const compactionResult = await compactConversation(auth, {
     conversation: childConversation.value,
     model: forkCompactionModel,
@@ -573,29 +586,6 @@ export async function createConversationFork(
     );
     return new Ok(childConversation.value.sId);
   }
-
-  const parentConversationWithContent = await getConversation(
-    auth,
-    conversationId
-  );
-  if (parentConversationWithContent.isErr()) {
-    logger.error(
-      {
-        workspaceId: auth.getNonNullableWorkspace().sId,
-        parentConversationId: conversationId,
-        childConversationId: childConversation.value.sId,
-        error: parentConversationWithContent.error,
-      },
-      "Failed to reload parent conversation for fork attachment carryover."
-    );
-    return new Ok(childConversation.value.sId);
-  }
-
-  await carryOverConversationAttachments(auth, {
-    parentConversation: parentConversationWithContent.value,
-    childConversation: childConversation.value,
-    sourceMessageRank: childConversationId.value.sourceMessageRank,
-  });
 
   return new Ok(childConversation.value.sId);
 }

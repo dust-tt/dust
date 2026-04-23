@@ -2394,17 +2394,11 @@ describe("agent_sidekick_context tools", () => {
         expect(content.type).toBe("text");
         if (content.type === "text") {
           const text = content.text;
-          // Header should contain conversation sId and title.
-          expect(text).toContain(`# ${conversation.sId}: Test Conversation`);
-          // Should not indicate truncation.
-          expect(text).not.toContain("_(conversation truncated)_");
-          // 2 user messages + 2 agent messages = 4 "## Message" headers.
-          const messageHeaders = text.match(/^## Message \d+: \S+$/gm) ?? [];
-          expect(messageHeaders).toHaveLength(4);
-          // First message should be from user.
-          expect(text).toContain("from user");
-          // Second message should be from agent.
-          expect(text).toContain("from agent");
+          // 2 user messages + 2 agent messages = 4 message headers.
+          const userHeaders = text.match(/^>> User \(/gm) ?? [];
+          const agentHeaders = text.match(/^>> Agent \(/gm) ?? [];
+          expect(userHeaders).toHaveLength(2);
+          expect(agentHeaders).toHaveLength(2);
         }
       }
     });
@@ -2560,11 +2554,9 @@ describe("agent_sidekick_context tools", () => {
         expect(content.type).toBe("text");
         if (content.type === "text") {
           const text = content.text;
-          // Should have 2 messages (index 1 and 2).
-          const messageHeaders = text.match(/^## Message \d+: \S+$/gm) ?? [];
-          expect(messageHeaders).toHaveLength(2);
-          // Should indicate truncation.
-          expect(text).toContain("_(conversation truncated)_");
+          const userHeaders = text.match(/^>> User \(/gm) ?? [];
+          const agentHeaders = text.match(/^>> Agent \(/gm) ?? [];
+          expect(userHeaders.length + agentHeaders.length).toBe(2);
         }
       }
     });

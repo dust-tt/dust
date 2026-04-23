@@ -3,9 +3,8 @@ import type { ElasticsearchBaseDocument } from "@app/lib/api/elasticsearch";
 /**
  * Elasticsearch document for conversation listing.
  *
- * Stores all fields needed to build a ConversationListItemType without any DB
- * round-trip. Per-user state (actionRequired, lastReadMs) lives in the nested
- * participants array and is retrieved per-user via inner_hits.
+ * Stores stable shared fields only. Volatile per-user state (lastReadMs, unread)
+ * is hydrated from DB after the ES page is returned.
  */
 export interface ConversationSearchDocument extends ElasticsearchBaseDocument {
   conversation_id: string;
@@ -14,7 +13,6 @@ export interface ConversationSearchDocument extends ElasticsearchBaseDocument {
   metadata: Record<string, unknown>;
   participants: Array<{
     action_required: boolean;
-    last_read_at: string | null;
     user_id: string;
   }>;
   requested_space_ids: string[];

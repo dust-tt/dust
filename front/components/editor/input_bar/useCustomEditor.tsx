@@ -1,6 +1,10 @@
 import { CodeExtension } from "@app/components/editor/extensions/CodeExtension";
 import { EmojiExtension } from "@app/components/editor/extensions/EmojiExtension";
 import { DataSourceLinkExtension } from "@app/components/editor/extensions/input_bar/DataSourceLinkExtension";
+import {
+  InputBarSlashSuggestionExtension,
+  inputBarSlashSuggestionPluginKey,
+} from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionExtension";
 import { KeyboardShortcutsExtension } from "@app/components/editor/extensions/input_bar/KeyboardShortcutsExtension";
 import { PastedAttachmentExtension } from "@app/components/editor/extensions/input_bar/PastedAttachmentExtension";
 import { URLDetectionExtension } from "@app/components/editor/extensions/input_bar/URLDetectionExtension";
@@ -22,6 +26,7 @@ import { isSubmitMessageKey } from "@app/lib/keymaps";
 import { extractFromEditorJSON } from "@app/lib/mentions/format";
 import { isMobile } from "@app/lib/utils";
 import type { RichMention } from "@app/types/assistant/mentions";
+import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import type { WorkspaceType } from "@app/types/user";
 import { markdownStyles } from "@dust-tt/sparkle";
 import { Placeholder } from "@tiptap/extensions";
@@ -219,6 +224,13 @@ export interface CustomEditorProps {
   onAgentMentionsStrippedRef?: React.RefObject<
     ((payload: MentionsStrippedPayload) => void) | undefined
   >;
+  slashSuggestion?: {
+    enabledRef: React.RefObject<boolean>;
+    onSkillSelectRef: React.RefObject<
+      ((skill: SkillWithoutInstructionsAndToolsType) => void) | undefined
+    >;
+    selectedSkillIdsRef: React.RefObject<Set<string>>;
+  };
 }
 
 export const buildEditorExtensions = ({
@@ -233,6 +245,7 @@ export const buildEditorExtensions = ({
   shouldSuggestAgentRef,
   onFirstAgentMentionPasteRef,
   onAgentMentionsStrippedRef,
+  slashSuggestion,
 }: {
   owner: WorkspaceType;
   conversationId?: string | null;
@@ -249,6 +262,7 @@ export const buildEditorExtensions = ({
   onAgentMentionsStrippedRef?: React.RefObject<
     ((payload: MentionsStrippedPayload) => void) | undefined
   >;
+  slashSuggestion?: CustomEditorProps["slashSuggestion"];
 }) => {
   const extensions = [
     KeyboardShortcutsExtension,
@@ -344,6 +358,18 @@ export const buildEditorExtensions = ({
     }),
     URLStorageExtension,
   ];
+
+  if (slashSuggestion) {
+    extensions.push(
+      InputBarSlashSuggestionExtension.configure({
+        owner,
+        enabledRef: slashSuggestion.enabledRef,
+        onSkillSelectRef: slashSuggestion.onSkillSelectRef,
+        selectedSkillIdsRef: slashSuggestion.selectedSkillIdsRef,
+      })
+    );
+  }
+
   if (onUrlDetected) {
     extensions.push(
       URLDetectionExtension.configure({
@@ -371,6 +397,7 @@ const useCustomEditor = ({
   shouldSuggestAgentRef,
   onFirstAgentMentionPasteRef,
   onAgentMentionsStrippedRef,
+  slashSuggestion,
 }: CustomEditorProps) => {
   const editor = useEditor(
     {
@@ -387,6 +414,7 @@ const useCustomEditor = ({
         shouldSuggestAgentRef,
         onFirstAgentMentionPasteRef,
         onAgentMentionsStrippedRef,
+        slashSuggestion,
       }),
       shouldRerenderOnTransaction: true, // necessary to update the editor state (and so the toolbar icons "activation") in real time
       editorProps: {
@@ -456,6 +484,12 @@ const useCustomEditor = ({
             const emojiPluginState = emojiPluginKey.getState(view.state);
             // Let the emoji extension handle the event if its dropdown is currently opened.
             if (emojiPluginState?.active) {
+              return false;
+            }
+
+            const inputBarSlashSuggestionPluginState =
+              inputBarSlashSuggestionPluginKey.getState(view.state);
+            if (inputBarSlashSuggestionPluginState?.active) {
               return false;
             }
 

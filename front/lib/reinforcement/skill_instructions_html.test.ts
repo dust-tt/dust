@@ -126,7 +126,8 @@ describe("convertMarkdownToBlockHtml", () => {
     const html = convertMarkdownToBlockHtml(md);
 
     expect(html).not.toContain("&lt;knowledge");
-    expect(html).toContain('data-type="knowledge-node"');
-    expect(html).toContain("My Doc");
+    expect(html).toContain("<knowledge");
+    expect(html).toContain('id="n1"');
+    expect(html).toContain('title="My Doc"');
   });
 });

@@ -1,5 +1,6 @@
 import type {
   AgentMessageType,
+  AgentMessageWithFeedbackType,
   CompactionMessageType,
   ConversationType,
   LightAgentMessageType,
@@ -30,6 +31,8 @@ export interface RenderConversationAsTextOptions {
   includeActions?: boolean;
   // Include action input params and output (requires includeActions).
   includeActionDetails?: boolean;
+  // Include user feedback inline after each agent message.
+  includeFeedback?: boolean;
   // Skip agent messages with status "created" (still running).
   skipRunningAgentMessages?: boolean;
   // Truncate each message's content to this many characters.
@@ -248,6 +251,14 @@ function renderUserMessageAsText(
   };
 }
 
+function hasFeedback(
+  msg: AgentMessageType | LightAgentMessageType
+): msg is AgentMessageWithFeedbackType {
+  return (
+    "feedback" in msg && Array.isArray(msg.feedback) && msg.feedback.length > 0
+  );
+}
+
 function renderAgentMessageAsText(
   msg: AgentMessageType | LightAgentMessageType,
   lastReadMs: number | null,
@@ -300,6 +311,16 @@ function renderAgentMessageAsText(
   }
 
   lines.push(content);
+
+  if (options.includeFeedback && hasFeedback(msg)) {
+    lines.push("User feedback:");
+    for (const f of msg.feedback) {
+      const sentiment = f.thumbDirection === "up" ? "Positive" : "Negative";
+      const comment = f.content ? `: ${f.content}` : "";
+      lines.push(`- ${sentiment}: ${comment}`);
+    }
+  }
+
   lines.push("");
 
   return {

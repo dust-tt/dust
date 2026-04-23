@@ -1313,7 +1313,7 @@ describe("baseFetchWithAuthorization with space-based permissions", () => {
     );
 
     assert(conversationResource, "Conversation resource not found");
-    await conversationResource.updateVisibilityToDeleted();
+    await conversationResource.updateVisibilityToDeleted(adminAuth);
 
     // Without includeDeleted, should not be visible
     const withoutDeleted = await ConversationResource.listAll(adminAuth);
@@ -3375,7 +3375,7 @@ describe("Space Handling", () => {
         { includeDeleted: false }
       );
       assert(conversationResource, "Conversation resource not found");
-      await conversationResource.updateVisibilityToDeleted();
+      await conversationResource.updateVisibilityToDeleted(adminAuth);
 
       const result = await ConversationResource.canAccess(
         userAuth,
@@ -6419,8 +6419,8 @@ describe("ConversationResource cleanup on delete", () => {
       });
     });
 
-    it("triggers workflow on markAsReadForAuthUser when FF is enabled", async () => {
-      const { workspace, authenticator: auth } = await createResourceTest({
+    it("does not trigger workflow on markAsReadForAuthUser (volatile state not in ES)", async () => {
+      const { authenticator: auth } = await createResourceTest({
         role: "admin",
       });
 
@@ -6437,6 +6437,101 @@ describe("ConversationResource cleanup on delete", () => {
       mockWorkflow().mockClear();
 
       await ConversationResource.markAsReadForAuthUser(auth, { conversation });
+
+      expect(mockWorkflow()).not.toHaveBeenCalled();
+    });
+
+    it("triggers workflow on updateVisibilityToDeleted when FF is enabled", async () => {
+      const { workspace, authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+
+      const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+        name: "Agent",
+        description: "Agent",
+      });
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: agent.sId,
+        messagesCreatedAt: [],
+      });
+      const resource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      if (!resource) {
+        throw new Error("Conversation not found");
+      }
+
+      await FeatureFlagFactory.basic(auth, "conversation_search_indexing");
+      mockWorkflow().mockClear();
+
+      await resource.updateVisibilityToDeleted(auth);
+
+      expect(mockWorkflow()).toHaveBeenCalledTimes(1);
+      expect(mockWorkflow()).toHaveBeenCalledWith({
+        conversationId: conversation.sId,
+        workspaceId: workspace.sId,
+      });
+    });
+
+    it("triggers workflow on updateVisibilityToUnlisted when FF is enabled", async () => {
+      const { workspace, authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+
+      const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+        name: "Agent",
+        description: "Agent",
+      });
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: agent.sId,
+        messagesCreatedAt: [],
+      });
+      const resource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      if (!resource) {
+        throw new Error("Conversation not found");
+      }
+
+      await FeatureFlagFactory.basic(auth, "conversation_search_indexing");
+      mockWorkflow().mockClear();
+
+      await resource.updateVisibilityToUnlisted(auth);
+
+      expect(mockWorkflow()).toHaveBeenCalledTimes(1);
+      expect(mockWorkflow()).toHaveBeenCalledWith({
+        conversationId: conversation.sId,
+        workspaceId: workspace.sId,
+      });
+    });
+
+    it("triggers workflow on delete when FF is enabled", async () => {
+      const { workspace, authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+
+      const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+        name: "Agent",
+        description: "Agent",
+      });
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: agent.sId,
+        messagesCreatedAt: [],
+      });
+      const resource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      if (!resource) {
+        throw new Error("Conversation not found");
+      }
+
+      await FeatureFlagFactory.basic(auth, "conversation_search_indexing");
+      mockWorkflow().mockClear();
+
+      await resource.delete(auth);
 
       expect(mockWorkflow()).toHaveBeenCalledTimes(1);
       expect(mockWorkflow()).toHaveBeenCalledWith({

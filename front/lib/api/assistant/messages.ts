@@ -259,7 +259,8 @@ function renderUserMessage(
 
 async function batchRenderUserMessages(
   auth: Authenticator,
-  messages: MessageModel[]
+  messages: MessageModel[],
+  mentionsByMessageId?: Map<ModelId, MentionModel[]>
 ): Promise<UserMessageType[]> {
   const userMessages = messages.filter(
     (m) => m.userMessage !== null && m.userMessage !== undefined
@@ -269,12 +270,14 @@ async function batchRenderUserMessages(
     return [];
   }
 
-  const mentionRows = await MentionModel.findAll({
-    where: {
-      workspaceId: auth.getNonNullableWorkspace().id,
-      messageId: userMessages.map((message) => message.id),
-    },
-  });
+  const mentionRows = mentionsByMessageId
+    ? userMessages.flatMap((m) => mentionsByMessageId.get(m.id) ?? [])
+    : await MentionModel.findAll({
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          messageId: userMessages.map((message) => message.id),
+        },
+      });
 
   const userIds = [
     ...new Set(
@@ -969,7 +972,11 @@ export async function batchRenderMessages<V extends RenderMessageVariant>(
     }
   }
 
-  const userMessages = await batchRenderUserMessages(auth, messages);
+  const userMessages = await batchRenderUserMessages(
+    auth,
+    messages,
+    mentionsByMessageId
+  );
   const agentMessagesRes = await batchRenderAgentMessages(
     auth,
     messages,

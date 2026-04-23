@@ -1,6 +1,7 @@
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
+import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type { AgentContentItemType } from "@app/types/assistant/agent_message_content";
 import moment from "moment";
@@ -32,6 +33,11 @@ export type MessageReactionType = {
     username: string;
     fullName: string | null;
   }[];
+};
+
+export type MessageFeedback = {
+  thumbDirection: AgentMessageFeedbackDirection;
+  content: string | null;
 };
 
 export type MessageType =
@@ -315,6 +321,14 @@ export function isLightAgentMessageWithActionsType(
   // LightAgentMessageWithActionsType; message.actions can therefore only be a AgentMCPActionType[].
   return "actions" in message;
 }
+
+// An agent message enriched with user feedback
+export type AgentMessageWithFeedbackType = (
+  | AgentMessageType
+  | LightAgentMessageType
+) & {
+  feedback: MessageFeedback[];
+};
 
 export function isAgentMessageType(arg: MessageType): arg is AgentMessageType {
   return arg.type === "agent_message";

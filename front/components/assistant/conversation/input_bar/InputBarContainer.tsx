@@ -189,6 +189,9 @@ const InputBarContainer = ({
   const isMobile = useIsMobile();
   const { hasFeature } = useFeatureFlags();
   const isCompactionEnabled = hasFeature("enable_compaction");
+  const isInputBarSlashSuggestionsEnabled = hasFeature(
+    "input_bar_slash_suggestions"
+  );
   const { selectedSingleAgent, setSelectedSingleAgent } =
     useContext(InputBarContext);
 
@@ -227,6 +230,8 @@ const InputBarContainer = ({
   const [showKnowledgePicker, setShowKnowledgePicker] = useState(false);
   const plusButtonRef = useRef<HTMLDivElement>(null);
   const clientType = useClientType();
+  const shouldEnableSlashSuggestion =
+    actions.includes("capabilities") && isInputBarSlashSuggestionsEnabled;
 
   const [selectedNode, setSelectedNode] =
     useState<DataSourceViewContentNode | null>(null);
@@ -234,6 +239,19 @@ const InputBarContainer = ({
   // Create a ref to hold the editor instance
   const editorRef = useRef<Editor | null>(null);
   const pastedAttachmentIdsRef = useRef<Set<string>>(new Set());
+
+  const selectedSkillIds = useMemo(
+    () => new Set(selectedSkills.map((skill) => skill.sId)),
+    [selectedSkills]
+  );
+  const selectedSkillIdsRef = useRef(selectedSkillIds);
+  const shouldEnableSlashSuggestionRef = useRef(shouldEnableSlashSuggestion);
+  const onSkillSelectRef = useRef<
+    ((skill: SkillWithoutInstructionsAndToolsType) => void) | undefined
+  >(undefined);
+
+  selectedSkillIdsRef.current = selectedSkillIds;
+  shouldEnableSlashSuggestionRef.current = shouldEnableSlashSuggestion;
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const removePastedAttachmentChip = useCallback(
@@ -439,6 +457,16 @@ const InputBarContainer = ({
       description,
     });
   };
+
+  const handleSlashSuggestionSelection = useCallback(
+    (skill: SkillWithoutInstructionsAndToolsType) => {
+      onSkillSelect(skill);
+      queueMicrotask(() => editorRef.current?.commands.focus());
+    },
+    [onSkillSelect]
+  );
+  onSkillSelectRef.current = handleSlashSuggestionSelection;
+
   // Current space is taken from the conversation (if already set) or from the space prop (if provided).
   const spaceId = conversation?.spaceId ?? space?.sId ?? undefined;
 
@@ -455,6 +483,11 @@ const InputBarContainer = ({
     shouldSuggestAgentRef,
     onFirstAgentMentionPasteRef,
     onAgentMentionsStrippedRef,
+    slashSuggestion: {
+      enabledRef: shouldEnableSlashSuggestionRef,
+      onSkillSelectRef,
+      selectedSkillIdsRef,
+    },
     onLongTextPaste: async ({ text, from, to }) => {
       let filename = "";
       let inserted = false;

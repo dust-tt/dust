@@ -1,92 +1,103 @@
-import {
-  formatConversationForShrinkWrap,
-  type ShrinkWrapAgentMessage,
-  type ShrinkWrapConversationData,
-  type ShrinkWrapUserMessage,
-} from "@app/lib/api/assistant/conversation/shrink_wrap";
+import { renderConversationAsText } from "@app/lib/api/assistant/conversation/render_as_text";
 import { buildFirstMessage } from "@app/pages/api/w/[wId]/assistant/builder/sidekick/prompt/shrink-wrap";
+import {
+  mockAgentMessage,
+  mockConversation,
+  mockUserMessage,
+} from "@app/tests/utils/conversation_test_factories";
 
 import type { ConversationMessage, TestSuite } from "../lib/types";
 import { BLANK_AGENT } from "../shared-mock-states/index";
 
-function userMsg(
-  index: number,
-  username: string,
-  content: string,
-  mentions: Array<{ configurationId: string }> = []
-): ShrinkWrapUserMessage {
-  return {
-    type: "user_message",
-    sId: `msg_${index}`,
-    created: 1708000000000 + index * 60000,
-    content,
-    context: { username },
-    mentions,
-  };
+interface MockAction {
+  functionCallName: string;
+  status: "succeeded" | "failed";
+  internalMCPServerName: string | null;
+  params: Record<string, unknown>;
 }
 
-function agentMsg(
-  index: number,
-  agentId: string,
-  agentName: string,
-  content: string | null,
-  actions: ShrinkWrapAgentMessage["actions"] = []
-): ShrinkWrapAgentMessage {
-  return {
-    type: "agent_message",
-    sId: `msg_${index}`,
-    created: 1708000000000 + index * 60000,
-    content,
-    status: "succeeded",
-    configuration: { sId: agentId, name: agentName },
-    actions,
-    parentAgentMessageId: null,
-  };
+interface MockUserMessage {
+  role: "user";
+  username: string;
+  content: string;
 }
 
-const BUG_TRIAGE_CONVERSATION: ShrinkWrapConversationData = {
-  sId: "conv_abc123",
-  title: "Bug Triage - NullPointerException in PaymentService",
-  messages: [
-    userMsg(
-      0,
-      "john.doe",
-      "Hey @helper, I'm seeing this error in production: `NullPointerException in PaymentService.processRefund() at line 142`. Can you search for similar occurrences on Datadog?",
-      [{ configurationId: "helper_agent" }]
+interface MockAgentMessage {
+  role: "agent";
+  agentId: string;
+  agentName: string;
+  content: string | null;
+  actions?: MockAction[];
+}
+
+type MockMessage = MockUserMessage | MockAgentMessage;
+
+/**
+ * Build a conversation string using the real serializer so the output format
+ * always stays in sync with production rendering.
+ */
+function buildConversationString(messages: MockMessage[]): string {
+  return renderConversationAsText(
+    mockConversation(
+      messages.map((msg) =>
+        msg.role === "user"
+          ? mockUserMessage(msg.content, msg.username)
+          : mockAgentMessage({
+              agentName: msg.agentName,
+              content: msg.content,
+              actions: msg.actions?.map((a) => ({
+                functionCallName: a.functionCallName,
+                status: a.status,
+                params: a.params,
+              })),
+            })
+      )
     ),
-    agentMsg(
-      1,
-      "helper_agent",
-      "Helper",
-      `I found 2 other occurrences of this error in the last 24 hours:
+    { includeActions: true, includeActionDetails: true }
+  );
+}
+
+const BUG_TRIAGE_MESSAGES: MockMessage[] = [
+  {
+    role: "user",
+    username: "john.doe",
+    content:
+      "Hey @helper, I'm seeing this error in production: `NullPointerException in PaymentService.processRefund() at line 142`. Can you search for similar occurrences on Datadog?",
+  },
+  {
+    role: "agent",
+    agentId: "helper_agent",
+    agentName: "Helper",
+    content: `I found 2 other occurrences of this error in the last 24 hours:
 
 1. **2024-02-15 14:23 UTC** - \`NullPointerException in PaymentService.processRefund()\` - user_id: usr_4521
 2. **2024-02-15 16:45 UTC** - \`NullPointerException in PaymentService.processRefund()\` - user_id: usr_7834
 
 Both errors occur in the same method and seem related to refund processing.`,
-      [
-        {
-          functionCallName: "datadog__search_logs",
-          status: "succeeded",
-          internalMCPServerName: null,
-          params: {
-            query: "NullPointerException PaymentService.processRefund",
-            timeRange: "24h",
-            service: "payment-service",
-          },
+    actions: [
+      {
+        functionCallName: "datadog__search_logs",
+        status: "succeeded",
+        internalMCPServerName: null,
+        params: {
+          query: "NullPointerException PaymentService.processRefund",
+          timeRange: "24h",
+          service: "payment-service",
         },
-      ]
-    ),
-    userMsg(
-      2,
-      "john.doe",
-      "Interesting, can you check in our database who these users are? Search on Snowflake."
-    ),
-    agentMsg(
-      3,
-      "helper_agent",
-      "Helper",
-      `Here are the user details from Snowflake:
+      },
+    ],
+  },
+  {
+    role: "user",
+    username: "john.doe",
+    content:
+      "Interesting, can you check in our database who these users are? Search on Snowflake.",
+  },
+  {
+    role: "agent",
+    agentId: "helper_agent",
+    agentName: "Helper",
+    content: `Here are the user details from Snowflake:
 
 | User ID | Name | Plan | Account Created |
 |---------|------|------|-----------------|
@@ -94,51 +105,53 @@ Both errors occur in the same method and seem related to refund processing.`,
 | usr_7834 | Bob Chen | Pro | 2023-06-20 |
 
 Both are paying customers on premium plans.`,
-      [
-        {
-          functionCallName: "data_warehouses__query",
-          status: "succeeded",
-          internalMCPServerName: "data_warehouses",
-          params: {
-            query:
-              "SELECT user_id, name, plan, created_at FROM users WHERE user_id IN ('usr_4521', 'usr_7834')",
-            database: "production",
-          },
+    actions: [
+      {
+        functionCallName: "data_warehouses__query",
+        status: "succeeded",
+        internalMCPServerName: "data_warehouses",
+        params: {
+          query:
+            "SELECT user_id, name, plan, created_at FROM users WHERE user_id IN ('usr_4521', 'usr_7834')",
+          database: "production",
         },
-      ]
-    ),
-    userMsg(
-      4,
-      "john.doe",
-      "Are there any open JIRA issues related to this error?"
-    ),
-    agentMsg(
-      5,
-      "helper_agent",
-      "Helper",
+      },
+    ],
+  },
+  {
+    role: "user",
+    username: "john.doe",
+    content: "Are there any open JIRA issues related to this error?",
+  },
+  {
+    role: "agent",
+    agentId: "helper_agent",
+    agentName: "Helper",
+    content:
       "I searched JIRA for issues related to `PaymentService.processRefund NullPointerException` and found **no open tickets**. There are no existing bug reports or tasks tracking this issue.",
-      [
-        {
-          functionCallName: "jira__search_issues",
-          status: "succeeded",
-          internalMCPServerName: "jira",
-          params: {
-            jql: "text ~ 'PaymentService processRefund NullPointerException' AND status != Done",
-            project: "ENG",
-          },
+    actions: [
+      {
+        functionCallName: "jira__search_issues",
+        status: "succeeded",
+        internalMCPServerName: "jira",
+        params: {
+          jql: "text ~ 'PaymentService processRefund NullPointerException' AND status != Done",
+          project: "ENG",
         },
-      ]
-    ),
-    userMsg(
-      6,
-      "john.doe",
-      "Ok, can you search our codebase on GitHub to find the root cause?"
-    ),
-    agentMsg(
-      7,
-      "helper_agent",
-      "Helper",
-      `I found the root cause by examining the code:
+      },
+    ],
+  },
+  {
+    role: "user",
+    username: "john.doe",
+    content:
+      "Ok, can you search our codebase on GitHub to find the root cause?",
+  },
+  {
+    role: "agent",
+    agentId: "helper_agent",
+    agentName: "Helper",
+    content: `I found the root cause by examining the code:
 
 **File: src/services/PaymentService.ts (line 142)**
 The method \`processRefund\` accesses \`payment.user.subscription.refundPolicy\` without a null check. The \`subscription\` field can be null when a user has cancelled their subscription.
@@ -147,46 +160,47 @@ The method \`processRefund\` accesses \`payment.user.subscription.refundPolicy\`
 The Payment model defines \`user.subscription\` as optional (\`Subscription | null\`), confirming this is an expected nullable field.
 
 **Root cause**: Missing null check on \`subscription\` before accessing \`refundPolicy\`. When a user cancels their subscription and then requests a refund for a previous charge, the subscription is null, causing the NullPointerException.`,
-      [
-        {
-          functionCallName: "github__search_code",
-          status: "succeeded",
-          internalMCPServerName: "github",
-          params: {
-            query: "processRefund PaymentService",
-            repo: "acme/payment-service",
-          },
+    actions: [
+      {
+        functionCallName: "github__search_code",
+        status: "succeeded",
+        internalMCPServerName: "github",
+        params: {
+          query: "processRefund PaymentService",
+          repo: "acme/payment-service",
         },
-        {
-          functionCallName: "github__get_file",
-          status: "succeeded",
-          internalMCPServerName: "github",
-          params: {
-            repo: "acme/payment-service",
-            path: "src/services/PaymentService.ts",
-          },
+      },
+      {
+        functionCallName: "github__get_file",
+        status: "succeeded",
+        internalMCPServerName: "github",
+        params: {
+          repo: "acme/payment-service",
+          path: "src/services/PaymentService.ts",
         },
-        {
-          functionCallName: "github__get_file",
-          status: "succeeded",
-          internalMCPServerName: "github",
-          params: {
-            repo: "acme/payment-service",
-            path: "src/models/Payment.ts",
-          },
+      },
+      {
+        functionCallName: "github__get_file",
+        status: "succeeded",
+        internalMCPServerName: "github",
+        params: {
+          repo: "acme/payment-service",
+          path: "src/models/Payment.ts",
         },
-      ]
-    ),
-    userMsg(
-      8,
-      "john.doe",
-      "Great analysis! Can you write a full triage report with all findings? Include the occurences, the root cause analysis and recommended fixes"
-    ),
-    agentMsg(
-      9,
-      "helper_agent",
-      "Helper",
-      `# Bug Triage Report: NullPointerException in PaymentService.processRefund()
+      },
+    ],
+  },
+  {
+    role: "user",
+    username: "john.doe",
+    content:
+      "Great analysis! Can you write a full triage report with all findings? Include the occurences, the root cause analysis and recommended fixes",
+  },
+  {
+    role: "agent",
+    agentId: "helper_agent",
+    agentName: "Helper",
+    content: `# Bug Triage Report: NullPointerException in PaymentService.processRefund()
 
 ## Summary
 A NullPointerException occurs at line 142 of PaymentService.processRefund() when processing refunds for users with cancelled subscriptions.
@@ -211,25 +225,22 @@ Missing null check on payment.user.subscription in PaymentService.processRefund(
 3. Add unit tests covering the cancelled-subscription refund path
 
 ## Severity
-**High** - Affects paying customers on premium plans. 3 occurrences in 24 hours.`
-    ),
-  ],
-};
+**High** - Affects paying customers on premium plans. 3 occurrences in 24 hours.`,
+  },
+];
 
-function buildShrinkWrapInitialMessage(
-  conversation: ShrinkWrapConversationData
-): string {
-  const conversationText = formatConversationForShrinkWrap(conversation);
+function buildShrinkWrapInitialMessage(messages: MockMessage[]): string {
+  const conversationText = buildConversationString(messages);
   return buildFirstMessage(conversationText);
 }
 
 function buildShrinkWrapConversationWithClarifyingInstructions(
-  conversation: ShrinkWrapConversationData,
+  messages: MockMessage[],
   agentClarifyingResponse: string,
   userInstruction: string
 ): ConversationMessage[] {
   return [
-    { role: "user", content: buildShrinkWrapInitialMessage(conversation) },
+    { role: "user", content: buildShrinkWrapInitialMessage(messages) },
     { role: "assistant", content: agentClarifyingResponse },
     { role: "user", content: userInstruction },
   ];
@@ -241,7 +252,7 @@ export const shrinkWrapSuite: TestSuite = {
   testCases: [
     {
       scenarioId: "bug-triage-clarificationclarification",
-      userMessage: buildShrinkWrapInitialMessage(BUG_TRIAGE_CONVERSATION),
+      userMessage: buildShrinkWrapInitialMessage(BUG_TRIAGE_MESSAGES),
       mockState: BLANK_AGENT,
       judgeCriteria: `This is a shrink-wrap scenario where the sidekick receives a conversation but NO explicit user instruction. The sidekick must clarify with the user before making changes.
 
@@ -252,7 +263,7 @@ Score 0-1 if the sidekick starts building the agent (calling suggest_prompt_edit
     {
       scenarioId: "bug-triage-report",
       conversation: buildShrinkWrapConversationWithClarifyingInstructions(
-        BUG_TRIAGE_CONVERSATION,
+        BUG_TRIAGE_MESSAGES,
         `I can see this conversation follows a clear bug investigation workflow. Before I create the agent, let me confirm a few things:
 
 - **Inputs**: The user provides an error message or stack trace.

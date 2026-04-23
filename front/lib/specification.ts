@@ -615,3 +615,17 @@ export function dumpSpecification(
   }
   return out.slice(0, -1);
 }
+
+export function cleanSpecificationFromCore(
+  specification: SpecificationType
+): void {
+  for (const block of specification) {
+    if (block.type === "input") {
+      block.config = {};
+    }
+    if (block.type === "data") {
+      delete block.spec.dataset_id;
+      delete block.spec.hash;
+    }
+  }
+}

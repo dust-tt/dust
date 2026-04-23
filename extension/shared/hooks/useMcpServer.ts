@@ -116,7 +116,7 @@ export function useMcpServer() {
       setIsConnected(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- workspace object excluded; workspaceId triggers re-runs.
-  }, [platform.mcp, workspaceId]);
+  }, [platform.mcp, workspaceId, hasFeature]);
 
   return {
     server,

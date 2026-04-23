@@ -3,6 +3,7 @@ import {
   BLOCK_ID_UNIQUE_ID_NODE_TYPES,
 } from "@app/components/editor/extensions/instructions/BlockIdExtension";
 import { INSTRUCTIONS_ROOT_NODE_NAME } from "@app/components/editor/extensions/instructions/InstructionsRootExtension";
+import { KNOWLEDGE_TAG_REGEX } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
 import { buildSkillInstructionsExtensions } from "@app/lib/editor/build_skill_instructions_extensions";
 import { preprocessMarkdownForEditor } from "@app/lib/editor/skill_instructions_preprocessing";
 import { generateShortBlockId } from "@app/lib/generate_short_block_id";
@@ -81,7 +82,8 @@ function stripPresentationAttributes(html: string): string {
   // the round-trip mechanism for recovering the language on generateJSON
   $("[class]").not("code").removeAttr("class");
   $("[style]").removeAttr("style");
-  $("[id]").removeAttr("id");
+  // Must maintain id on <knowledge> elements for knowledgeNode parsing
+  $("[id]").not("knowledge").removeAttr("id");
   return $.html();
 }
 
@@ -92,8 +94,6 @@ function stripPresentationAttributes(html: string): string {
  * parsed JSON tree and restore any such nodes back to proper knowledgeNode
  * JSONContent before rendering to HTML.
  */
-const KNOWLEDGE_TAG_REGEX = /^<knowledge\s+([^>]+)\s*\/>$/;
-
 function recoverKnowledgeNodes(node: JSONContent): JSONContent {
   if (node.type === "paragraph" && node.content?.length === 1) {
     const child = node.content[0];

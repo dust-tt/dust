@@ -94,6 +94,9 @@ describe("runCompaction", () => {
       sourceConversation: {
         conversationId: "conv_source",
         messageRank: 3,
+        attachmentIdReplacements: {
+          file_parent_1: "file_child_1",
+        },
       },
     });
 
@@ -112,6 +115,9 @@ describe("runCompaction", () => {
         sourceConversation: {
           conversationId: "conv_source",
           messageRank: 3,
+          attachmentIdReplacements: {
+            file_parent_1: "file_child_1",
+          },
         },
       })
     );
@@ -315,5 +321,54 @@ describe("runCompaction", () => {
         .flat()
         .some((message) => isCompactionMessageType(message))
     ).toBe(false);
+  });
+
+  it("rewrites standalone attachment ids in source compaction summaries", async () => {
+    const sourceConversationWithoutContent = await ConversationFactory.create(
+      auth,
+      {
+        agentConfigurationId: agentConfig.sId,
+        messagesCreatedAt: [],
+      }
+    );
+
+    const compactionMessage = await createCompactionMessage();
+
+    vi.mocked(runMultiActionsAgent).mockImplementationOnce(async () => {
+      return new Ok({
+        actions: [],
+        generation:
+          '<analysis>Scratchpad.</analysis><summary>Use file_parent_1, `file_parent_2`, and "cf_parent_1". Keep prefixfile_parent_1suffix unchanged.</summary>',
+      });
+    });
+
+    const result = await runCompaction(auth, {
+      conversationId: conversation.sId,
+      compactionMessageId: compactionMessage.sId,
+      compactionMessageVersion: compactionMessage.version,
+      model: MODEL,
+      sourceConversation: {
+        conversationId: sourceConversationWithoutContent.sId,
+        messageRank: 0,
+        attachmentIdReplacements: {
+          file_parent_1: "file_child_1",
+          file_parent_2: "file_child_2",
+          cf_parent_1: "cf_child_1",
+        },
+      },
+    });
+
+    expect(result.isOk()).toBe(true);
+
+    const updatedCompactionMessageRow = await CompactionMessageModel.findOne({
+      where: {
+        id: compactionMessage.compactionMessageId,
+        workspaceId: workspace.id,
+      },
+    });
+
+    expect(updatedCompactionMessageRow?.content).toBe(
+      'Use file_child_1, `file_child_2`, and "cf_child_1". Keep prefixfile_parent_1suffix unchanged.'
+    );
   });
 });

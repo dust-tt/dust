@@ -243,7 +243,7 @@ export async function rebuildConversationRequirements(
   conversationResource: ConversationResource
 ): Promise<void> {
   // Clear existing requirements so that updateConversationRequirements starts from a clean state.
-  await conversationResource.updateRequirements([]);
+  await conversationResource.updateRequirements(auth, []);
 
   const { agentConfigurationIds, contentFragmentDatasourceViewIds } =
     await conversationResource.fetchAgentConfigurationAndContentFragmentIds(

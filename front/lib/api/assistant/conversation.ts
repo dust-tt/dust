@@ -85,8 +85,10 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
+import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
 
 import { ServerSideTracking } from "@app/lib/tracking/server";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import {
   getTimeframeSecondsFromLiteral,
   rateLimiter,
@@ -108,6 +110,7 @@ import type {
   ToolErrorEvent,
 } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import type { CompactionSourceConversation } from "@app/types/assistant/compaction";
 import type {
   AgenticMessageData,
   AgentMessageType,
@@ -308,7 +311,7 @@ export async function deleteOrLeaveConversation(
       },
       "Conversation soft-deleted"
     );
-    await conversation.updateVisibilityToDeleted();
+    await conversation.updateVisibilityToDeleted(auth);
   }
 
   return new Ok({ success: true });
@@ -657,6 +660,14 @@ export async function postUserMessage(
           "User messages cannot be posted while conversation is being compacted.",
       },
     });
+  }
+
+  const canInteractRes = await WakeUpResource.canUserInteract(
+    auth,
+    conversation
+  );
+  if (canInteractRes.isErr()) {
+    return canInteractRes;
   }
 
   const agentMentions = mentions.filter(isAgentMention);
@@ -1149,6 +1160,14 @@ export async function editUserMessage(
         message: "Only the author of the message can edit it",
       },
     });
+  }
+
+  const canInteractRes = await WakeUpResource.canUserInteract(
+    auth,
+    conversation
+  );
+  if (canInteractRes.isErr()) {
+    return canInteractRes;
   }
 
   let userMessage: UserMessageType | null = null;
@@ -2614,8 +2633,9 @@ async function isMessagesLimitReached(
     activeSeats,
   });
   const agentMentions = mentions.filter(isAgentMention);
-  const remainingMentions = await Promise.all(
-    agentMentions.map(() =>
+  const remainingMentions = await concurrentExecutor(
+    agentMentions,
+    () =>
       rateLimiter({
         key: makeAgentMentionsRateLimitKeyForWorkspace(
           owner,
@@ -2624,8 +2644,8 @@ async function isMessagesLimitReached(
         maxPerTimeframe: effectiveMaxMessages,
         timeframeSeconds: getTimeframeSecondsFromLiteral(maxMessagesTimeframe),
         logger,
-      })
-    )
+      }),
+    { concurrency: 4 }
   );
   // We let the user talk to all agents if any of the rate limiter answered "ok".
   // Subsequent calls to this function would block the user anyway.
@@ -2687,10 +2707,7 @@ export async function compactConversation(
   }: {
     conversation: ConversationType;
     model: SupportedModel;
-    sourceConversation?: {
-      conversationId: string;
-      messageRank: number;
-    };
+    sourceConversation?: CompactionSourceConversation;
   }
 ): Promise<
   Result<{ compactionMessage: CompactionMessageType }, APIErrorWithStatusCode>

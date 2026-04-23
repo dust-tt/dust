@@ -1,3 +1,4 @@
+import { internalFetch } from "@app/lib/api/internal_fetch";
 import type { ByokModelProviderIdType } from "@app/types/assistant/models/types";
 import type { ApiKeyCredentialsType } from "@app/types/provider_credential";
 import type {
@@ -270,8 +271,7 @@ export class OAuthAPI {
       };
     }
     try {
-      // eslint-disable-next-line no-restricted-globals
-      const res = await fetch(url, params);
+      const res = await internalFetch(url, params);
       return new Ok({ response: res, duration: Date.now() - now });
     } catch (e) {
       const duration = Date.now() - now;

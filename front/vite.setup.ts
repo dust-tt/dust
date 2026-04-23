@@ -175,6 +175,12 @@ vi.mock("@app/lib/api/sandbox", () => ({
   getSandboxProvider: vi.fn().mockReturnValue(undefined),
 }));
 
+// Mock internal fetch (undici-based) so tests can intercept CoreAPI/OAuthAPI calls
+// without needing real network access. Tests override with vi.mocked(internalFetch).mockImplementation(...).
+vi.mock("@app/lib/api/internal_fetch", () => ({
+  internalFetch: vi.fn(),
+}));
+
 // Mock Temporal - must be at module level
 vi.mock("@app/lib/temporal", () => ({
   getTemporalClientForAgentNamespace: vi.fn().mockResolvedValue({

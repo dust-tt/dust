@@ -14,7 +14,6 @@ export function buildConversationSearchDocument(
   participants: Array<{
     userId: string;
     actionRequired: boolean;
-    lastReadMs: number | null;
   }>
 ): ConversationSearchDocument {
   return {
@@ -22,14 +21,10 @@ export function buildConversationSearchDocument(
     created_at: conversation.createdAt.toISOString(),
     has_error: conversation.hasError,
     metadata: conversation.metadata ?? {},
-    participants: participants.map(
-      ({ userId, actionRequired, lastReadMs }) => ({
-        action_required: actionRequired,
-        last_read_at:
-          lastReadMs !== null ? new Date(lastReadMs).toISOString() : null,
-        user_id: userId,
-      })
-    ),
+    participants: participants.map(({ userId, actionRequired }) => ({
+      action_required: actionRequired,
+      user_id: userId,
+    })),
     requested_space_ids: conversation.getRequestedSpaceIdsFromModel(),
     title: conversation.title,
     trigger_id: conversation.triggerSId,

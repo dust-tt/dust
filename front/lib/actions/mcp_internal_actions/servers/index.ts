@@ -74,6 +74,7 @@ import { default as ukgReadyServer } from "@app/lib/api/actions/servers/ukg_read
 import { default as userMentionsServer } from "@app/lib/api/actions/servers/user_mentions";
 import { default as valtownServer } from "@app/lib/api/actions/servers/val_town";
 import { default as vantaServer } from "@app/lib/api/actions/servers/vanta";
+import { default as wakeupsServer } from "@app/lib/api/actions/servers/wakeups";
 import { default as webSearchBrowseServer } from "@app/lib/api/actions/servers/web_search_browse";
 import { default as zendeskServer } from "@app/lib/api/actions/servers/zendesk";
 import type { Authenticator } from "@app/lib/auth";
@@ -261,6 +262,8 @@ export async function getInternalMCPServer(
       return statuspageServer(auth, agentLoopContext);
     case "sandbox":
       return sandboxServer(auth, agentLoopContext);
+    case "wakeups":
+      return wakeupsServer(auth, agentLoopContext);
     default:
       assertNever(internalMCPServerName);
   }

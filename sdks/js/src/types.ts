@@ -709,6 +709,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "gpt_image_2_feature"
   | "hootl_subscriptions"
   | "http_client_tool"
+  | "input_bar_slash_suggestions"
   | "index_private_slack_channel"
   | "labs_mcp_actions_dashboard"
   | "labs_transcripts"
@@ -753,6 +754,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "sensitivity_labels"
   | "conversation_search_indexing"
   | "conversation_search_read"
+  | "enable_wakeups"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
