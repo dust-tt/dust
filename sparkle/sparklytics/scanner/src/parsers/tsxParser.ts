@@ -3,8 +3,6 @@ import * as parser from "@typescript-eslint/parser";
 import type { TSESTree } from "@typescript-eslint/types";
 import { debug, warn } from "../utils/logger.js";
 
-export type { TSESTree };
-
 export class ParseCache {
   private cache = new Map<string, TSESTree.Program | null>();
 

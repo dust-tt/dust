@@ -83,67 +83,6 @@ class ComponentUsageBuilder {
   }
 }
 
-function collectSparkleBindings(
-  ast: TSESTree.Program,
-  packageName: string
-): Map<string, ImportBinding> {
-  const bindings = new Map<string, ImportBinding>();
-
-  for (const node of ast.body) {
-    if (node.type !== AST_NODE_TYPES.ImportDeclaration) continue;
-    if (node.source.value !== packageName) continue;
-
-    for (const specifier of node.specifiers) {
-      if (specifier.type === AST_NODE_TYPES.ImportSpecifier) {
-        const importedName =
-          specifier.imported.type === AST_NODE_TYPES.Identifier
-            ? specifier.imported.name
-            : (specifier.imported as TSESTree.StringLiteral).value;
-        const localName = specifier.local.name;
-        bindings.set(localName, {
-          localName,
-          importedName,
-          importedFrom: packageName,
-        });
-      } else if (specifier.type === AST_NODE_TYPES.ImportNamespaceSpecifier) {
-        // import * as Sparkle from "@dust-tt/sparkle"
-        bindings.set(`__ns__${specifier.local.name}`, {
-          localName: specifier.local.name,
-          importedName: "__namespace__",
-          importedFrom: packageName,
-        });
-      }
-    }
-  }
-
-  return bindings;
-}
-
-function resolveJSXName(
-  name: TSESTree.JSXTagNameExpression,
-  bindings: Map<string, ImportBinding>
-): ImportBinding | null {
-  if (name.type === AST_NODE_TYPES.JSXIdentifier) {
-    return bindings.get(name.name) ?? null;
-  }
-  if (name.type === AST_NODE_TYPES.JSXMemberExpression) {
-    if (name.object.type === AST_NODE_TYPES.JSXIdentifier) {
-      const nsKey = `__ns__${name.object.name}`;
-      if (
-        bindings.has(nsKey) &&
-        name.property.type === AST_NODE_TYPES.JSXIdentifier
-      ) {
-        return {
-          localName: `${name.object.name}.${name.property.name}`,
-          importedName: name.property.name,
-          importedFrom: bindings.get(nsKey)!.importedFrom,
-        };
-      }
-    }
-  }
-  return null;
-}
-
 function serializePropValue(value: TSESTree.JSXAttribute["value"]): string {
   if (value === null) return "true"; // <Button disabled />
 
@@ -202,52 +141,6 @@ function extractProps(
   }
   return props;
 }
-
-export function analyzeComponents(
-  tsxFiles: string[],
-  cache: ParseCache,
-  config: ScanConfig
-): ComponentUsage[] {
-  const aggregator = new Map<string, ComponentUsageBuilder>();
-
-  for (const filePath of tsxFiles) {
-    const ast = cache.get(filePath);
-    if (!ast) continue;
-
-    const bindings = collectSparkleBindings(ast, config.packageName);
-    if (bindings.size === 0) continue;
-
-    traverseAST(ast, (node) => {
-      if (node.type !== AST_NODE_TYPES.JSXOpeningElement) return;
-
-      const jsxNode = node as TSESTree.JSXOpeningElement;
-      const resolved = resolveJSXName(jsxNode.name, bindings);
-      if (!resolved) return;
-
-      const location: FileLocation = {
-        filePath: relativePath(config.targetDir, filePath),
-        line: jsxNode.loc.start.line,
-        column: jsxNode.loc.start.column,
-      };
-
-      const rawProps = extractProps(jsxNode.attributes);
-
-      if (!aggregator.has(resolved.importedName)) {
-        aggregator.set(
-          resolved.importedName,
-          new ComponentUsageBuilder(resolved)
-        );
-      }
-      aggregator.get(resolved.importedName)!.addOccurrence(location, rawProps);
-    });
-  }
-
-  return Array.from(aggregator.values())
-    .map((b) => b.build())
-    .sort((a, b) => b.usageCount - a.usageCount);
-}
-
-// ─── All-elements analysis ────────────────────────────────────────────────────
 
 /** Collect every import in the file, bucketed by whether it's the design system package */
 function collectAllBindings(

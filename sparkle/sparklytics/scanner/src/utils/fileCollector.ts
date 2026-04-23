@@ -10,25 +10,22 @@ export interface CollectedFiles {
 export async function collectFiles(
   config: ScanConfig
 ): Promise<CollectedFiles> {
-  const negativePatterns = config.excludeDirs.map((d) => `!**/${d}/**`);
+  const ignore = config.excludeDirs.map((d) => `**/${d}/**`);
 
   const [tsx, css] = await Promise.all([
     fg(["**/*.tsx", "**/*.ts", "!**/*.d.ts"], {
       cwd: config.targetDir,
       absolute: true,
-      ignore: config.excludeDirs.map((d) => `**/${d}/**`),
+      ignore,
       dot: false,
     }),
     fg(["**/*.css", "**/*.scss"], {
       cwd: config.targetDir,
       absolute: true,
-      ignore: config.excludeDirs.map((d) => `**/${d}/**`),
+      ignore,
       dot: false,
     }),
   ]);
-
-  // Suppress unused variable warning for negativePatterns
-  void negativePatterns;
 
   return {
     tsx: tsx.sort(),

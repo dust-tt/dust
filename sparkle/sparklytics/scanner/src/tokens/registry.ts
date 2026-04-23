@@ -38,10 +38,6 @@ export function loadRegistry(customPath: string | null): SparkleTokenRegistry {
   }
 }
 
-export function resetRegistry(): void {
-  _registry = null;
-}
-
 /** Returns a Set of all known hex values (lowercase) for fast lookup */
 export function getColorHexSet(registry: SparkleTokenRegistry): Set<string> {
   return new Set(Object.values(registry.colors).map((c) => c.toLowerCase()));
