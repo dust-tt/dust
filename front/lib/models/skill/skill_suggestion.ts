@@ -1,4 +1,3 @@
-import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
@@ -25,13 +24,11 @@ export class SkillSuggestionModel extends WorkspaceAwareModel<SkillSuggestionMod
 
   declare state: SkillSuggestionState;
   declare source: SkillSuggestionSource;
-  declare sourceConversationId: ForeignKey<ConversationModel["id"]> | null;
   declare sourceConversationIds: number[] | null;
   declare groupId: string | null;
   declare updatedByUserId: ForeignKey<UserModel["id"]> | null;
 
   declare skillConfiguration: NonAttribute<SkillConfigurationModel>;
-  declare sourceConversation: NonAttribute<ConversationModel | null>;
   declare updatedByUser: NonAttribute<UserModel | null>;
 }
 
@@ -76,12 +73,6 @@ SkillSuggestionModel.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    sourceConversationId: {
-      type: DataTypes.BIGINT,
-      allowNull: true,
-      comment:
-        "FK to the conversation that triggered this suggestion (only set when applicable, e.g. synthetic)",
-    },
     sourceConversationIds: {
       type: DataTypes.ARRAY(DataTypes.BIGINT),
       allowNull: true,
@@ -121,11 +112,6 @@ SkillSuggestionModel.init(
         concurrently: true,
       },
       {
-        name: "idx_skill_suggestions_source_conversation_id",
-        fields: ["sourceConversationId"],
-        concurrently: true,
-      },
-      {
         name: "idx_skill_suggestions_group",
         fields: ["groupId"],
         concurrently: true,
@@ -150,12 +136,6 @@ SkillConfigurationModel.hasMany(SkillSuggestionModel, {
   foreignKey: { name: "skillConfigurationId", allowNull: false },
   onDelete: "RESTRICT",
   as: "skillSuggestions",
-});
-
-SkillSuggestionModel.belongsTo(ConversationModel, {
-  foreignKey: { name: "sourceConversationId", allowNull: true },
-  onDelete: "RESTRICT",
-  as: "sourceConversation",
 });
 
 UserModel.hasMany(SkillSuggestionModel, {

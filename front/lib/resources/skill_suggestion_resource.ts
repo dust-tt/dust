@@ -1,5 +1,4 @@
 import type { Authenticator } from "@app/lib/auth";
-import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { SkillSuggestionModel } from "@app/lib/models/skill/skill_suggestion";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -44,7 +43,6 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
 
   readonly editorsGroupId: ModelId | null;
   readonly skillConfigurationSId: string;
-  readonly sourceConversationSId: string | null;
   readonly updatedBy: SkillSuggestionUpdatedBy | null;
 
   constructor(
@@ -52,13 +50,11 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
     blob: Attributes<SkillSuggestionModel>,
     editorsGroupId: ModelId | null,
     skillConfigurationSId: string,
-    sourceConversationSId: string | null,
     updatedBy: SkillSuggestionUpdatedBy | null
   ) {
     super(SkillSuggestionModel, blob);
     this.editorsGroupId = editorsGroupId;
     this.skillConfigurationSId = skillConfigurationSId;
-    this.sourceConversationSId = sourceConversationSId;
     this.updatedBy = updatedBy;
   }
 
@@ -100,7 +96,6 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
       suggestion.get(),
       skill.editorGroup?.id ?? null,
       skill.sId,
-      null,
       null
     );
   }
@@ -122,12 +117,6 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
           model: SkillConfigurationModel,
           as: "skillConfiguration",
           required: true,
-        },
-        {
-          model: ConversationModel,
-          as: "sourceConversation",
-          required: false,
-          attributes: ["sId"],
         },
         {
           model: UserModel,
@@ -181,7 +170,6 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
           suggestion.get(),
           skillResource.editorGroup?.id ?? null,
           skillResource.sId,
-          suggestion.sourceConversation?.sId ?? null,
           updatedBy
         );
       })
@@ -431,7 +419,6 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
       title: this.title,
       state: this.state,
       source: this.source,
-      sourceConversationId: this.sourceConversationSId,
       sourceConversationsCount: this.sourceConversationIds?.length ?? 0,
       updatedBy: this.updatedBy,
       ...suggestionData,

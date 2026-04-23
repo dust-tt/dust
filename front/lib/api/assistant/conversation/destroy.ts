@@ -15,7 +15,6 @@ import {
   AgentMessageSkillModel,
   ConversationSkillModel,
 } from "@app/lib/models/skill/conversation_skill";
-import { SkillSuggestionModel } from "@app/lib/models/skill/skill_suggestion";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
@@ -282,13 +281,6 @@ export async function destroyConversation(
     where: {
       workspaceId: owner.id,
       conversationId: conversation.id,
-    },
-  });
-
-  await SkillSuggestionModel.destroy({
-    where: {
-      workspaceId: owner.id,
-      sourceConversationId: conversation.id,
     },
   });
 
