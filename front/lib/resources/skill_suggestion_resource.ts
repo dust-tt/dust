@@ -45,21 +45,21 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
   readonly editorsGroupId: ModelId | null;
   readonly skillConfigurationSId: string;
   readonly updatedBy: SkillSuggestionUpdatedBy | null;
-  readonly notificationConversationSId: string | null;
+  readonly notificationConversationId: string | null;
 
   constructor(
     model: ModelStatic<SkillSuggestionModel>,
     blob: Attributes<SkillSuggestionModel>,
     editorsGroupId: ModelId | null,
-    skillConfigurationSId: string,
+    skillConfigurationId: string,
     updatedBy: SkillSuggestionUpdatedBy | null,
-    notificationConversationSId: string | null
+    notificationConversationId: string | null
   ) {
     super(SkillSuggestionModel, blob);
     this.editorsGroupId = editorsGroupId;
-    this.skillConfigurationSId = skillConfigurationSId;
+    this.skillConfigurationSId = skillConfigurationId;
     this.updatedBy = updatedBy;
-    this.notificationConversationSId = notificationConversationSId;
+    this.notificationConversationId = notificationConversationId;
   }
 
   /**
@@ -305,7 +305,7 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
     }
 
     await this.model.update(
-      { notificationConversationId },
+      { notificationConversationModelId: notificationConversationId },
       {
         where: {
           workspaceId: auth.getNonNullableWorkspace().id,
@@ -457,7 +457,7 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
       state: this.state,
       source: this.source,
       sourceConversationsCount: this.sourceConversationIds?.length ?? 0,
-      notificationConversationId: this.notificationConversationSId,
+      notificationConversationId: this.notificationConversationId,
       updatedBy: this.updatedBy,
       ...suggestionData,
     };

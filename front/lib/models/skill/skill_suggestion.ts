@@ -28,7 +28,7 @@ export class SkillSuggestionModel extends WorkspaceAwareModel<SkillSuggestionMod
   declare sourceConversationIds: number[] | null;
   declare groupId: string | null;
   declare updatedByUserId: ForeignKey<UserModel["id"]> | null;
-  declare notificationConversationId: ForeignKey<
+  declare notificationConversationModelId: ForeignKey<
     ConversationModel["id"]
   > | null;
 
@@ -96,13 +96,14 @@ SkillSuggestionModel.init(
         key: "id",
       },
     },
-    notificationConversationId: {
+    notificationConversationModelId: {
       type: DataTypes.BIGINT,
       allowNull: true,
       references: {
         model: ConversationModel,
         key: "id",
       },
+      field: "notificationConversationId",
       comment:
         "Conversation created to notify editors about this reinforcement suggestion.",
     },
