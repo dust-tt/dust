@@ -5,6 +5,7 @@ import {
   PokeTableCell,
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
+import { useDebounce } from "@app/hooks/useDebounce";
 import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import {
@@ -25,99 +26,103 @@ import { UsersIcon } from "lucide-react";
 import moment from "moment";
 import type { ChangeEvent } from "react";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React, { useCallback, useState } from "react";
+import React, { useCallback } from "react";
 
 const WORKSPACE_LIMIT = 20;
+const SEARCH_MIN_LENGTH = 3;
+const SEARCH_DEBOUNCE_MS = 300;
 
 interface WorkspaceListProps {
-  title: string;
   workspaces: PokeWorkspaceWithRegion[];
+  isWorkspacesLoading?: boolean;
   showRegion?: boolean;
   onWorkspaceClick?: (ws: PokeWorkspaceWithRegion) => void;
 }
 
 function WorkspaceList({
-  title,
   workspaces,
+  isWorkspacesLoading = false,
   showRegion = false,
   onWorkspaceClick,
 }: WorkspaceListProps) {
-  return (
-    <>
-      <h1 className="mb-4 mt-8 text-2xl font-bold">{title}</h1>
-      <ul className="flex flex-wrap gap-4">
-        {workspaces.length === 0 && <p>No workspaces found.</p>}
-        {workspaces.map((ws) => (
-          <div
-            key={`${ws.region ?? "default"}-${ws.id}`}
-            onClick={() => onWorkspaceClick?.(ws)}
-          >
-            <LinkWrapper href={`/poke/${ws.sId}`}>
-              <li className="border-material-100 w-80 rounded-lg border p-4 transition-colors duration-200 hover:bg-gray-100 dark:hover:bg-gray-800">
-                <div className="flex items-center justify-between pb-2">
-                  <h2 className="text-md flex-grow font-bold">{ws.name}</h2>
-                  {showRegion && ws.region && (
-                    <Chip size="xs" color={getRegionChipColor(ws.region)}>
-                      {getRegionDisplay(ws.region)}
-                    </Chip>
-                  )}
-                </div>
-                <PokeTable>
-                  <PokeTableBody>
-                    <PokeTableRow>
-                      <PokeTableCell className="space-x-2" colSpan={3}>
-                        <label>
-                          Created: {moment(ws.createdAt).format("DD-MM-YYYY")}
+  return isWorkspacesLoading ? (
+    <div className="flex h-44 w-80 items-center justify-center">
+      <Spinner size="lg" variant="color" />
+    </div>
+  ) : workspaces.length === 0 ? (
+    <p className="text-muted-foreground dark:text-muted-foreground-night">
+      No workspaces found.
+    </p>
+  ) : (
+    <ul className="flex flex-wrap gap-4">
+      {workspaces.map((ws) => (
+        <div
+          key={`${ws.region ?? "default"}-${ws.id}`}
+          onClick={() => onWorkspaceClick?.(ws)}
+        >
+          <LinkWrapper href={`/poke/${ws.sId}`}>
+            <li className="border-material-100 w-80 rounded-lg border p-4 transition-colors duration-200 hover:bg-gray-100 dark:hover:bg-gray-800">
+              <div className="flex items-center justify-between pb-2">
+                <h2 className="text-md flex-grow font-bold">{ws.name}</h2>
+                {showRegion && ws.region && (
+                  <Chip size="xs" color={getRegionChipColor(ws.region)}>
+                    {getRegionDisplay(ws.region)}
+                  </Chip>
+                )}
+              </div>
+              <PokeTable>
+                <PokeTableBody>
+                  <PokeTableRow>
+                    <PokeTableCell className="space-x-2" colSpan={3}>
+                      <label>
+                        Created: {moment(ws.createdAt).format("DD-MM-YYYY")}
+                      </label>
+                    </PokeTableCell>
+                  </PokeTableRow>
+                  <PokeTableRow>
+                    <PokeTableCell className="space-x-2" colSpan={3}>
+                      <div className="flex items-center gap-1.5">
+                        <Icon visual={UsersIcon} size="xs" />
+                        <span>
+                          {ws.membersCount}&nbsp; member
+                          {pluralize(ws.membersCount)}
+                        </span>
+                      </div>
+                    </PokeTableCell>
+                  </PokeTableRow>
+                  <PokeTableRow>
+                    <PokeTableCell className="space-x-2" colSpan={3}>
+                      <label className="rounded bg-green-500 px-1 text-sm text-white">
+                        {ws.sId}
+                      </label>
+                      {ws.subscription && (
+                        <label
+                          className={classNames(
+                            "rounded px-1 text-sm text-gray-500 text-white",
+                            isEntreprisePlanPrefix(ws.subscription.plan.code) &&
+                              "bg-red-500",
+                            isFriendsAndFamilyPlan(ws.subscription.plan.code) &&
+                              "bg-pink-500",
+                            isProPlanPrefix(ws.subscription.plan.code) &&
+                              "bg-orange-500",
+                            isFreePlan(ws.subscription.plan.code) &&
+                              "bg-blue-500",
+                            isOldFreePlan(ws.subscription.plan.code) &&
+                              "bg-gray-300"
+                          )}
+                        >
+                          {ws.subscription.plan.name}
                         </label>
-                      </PokeTableCell>
-                    </PokeTableRow>
-                    <PokeTableRow>
-                      <PokeTableCell className="space-x-2" colSpan={3}>
-                        <div className="flex items-center gap-1.5">
-                          <Icon visual={UsersIcon} size="xs" />
-                          <span>
-                            {ws.membersCount}&nbsp; member
-                            {pluralize(ws.membersCount)}
-                          </span>
-                        </div>
-                      </PokeTableCell>
-                    </PokeTableRow>
-                    <PokeTableRow>
-                      <PokeTableCell className="space-x-2" colSpan={3}>
-                        <label className="rounded bg-green-500 px-1 text-sm text-white">
-                          {ws.sId}
-                        </label>
-                        {ws.subscription && (
-                          <label
-                            className={classNames(
-                              "rounded px-1 text-sm text-gray-500 text-white",
-                              isEntreprisePlanPrefix(
-                                ws.subscription.plan.code
-                              ) && "bg-red-500",
-                              isFriendsAndFamilyPlan(
-                                ws.subscription.plan.code
-                              ) && "bg-pink-500",
-                              isProPlanPrefix(ws.subscription.plan.code) &&
-                                "bg-orange-500",
-                              isFreePlan(ws.subscription.plan.code) &&
-                                "bg-blue-500",
-                              isOldFreePlan(ws.subscription.plan.code) &&
-                                "bg-gray-300"
-                            )}
-                          >
-                            {ws.subscription.plan.name}
-                          </label>
-                        )}
-                      </PokeTableCell>
-                    </PokeTableRow>
-                  </PokeTableBody>
-                </PokeTable>
-              </li>
-            </LinkWrapper>
-          </div>
-        ))}
-      </ul>
-    </>
+                      )}
+                    </PokeTableCell>
+                  </PokeTableRow>
+                </PokeTableBody>
+              </PokeTable>
+            </li>
+          </LinkWrapper>
+        </div>
+      ))}
+    </ul>
   );
 }
 
@@ -148,16 +153,26 @@ function DashboardPageSPA() {
     regionUrls,
   });
 
-  const [searchTerm, setSearchTerm] = useState("");
-  const searchDisabled = searchTerm.trim().length < 3;
+  const {
+    inputValue: searchTerm,
+    debouncedValue: debouncedSearchTerm,
+    isDebouncing,
+    setValue: setSearchTerm,
+  } = useDebounce("", {
+    delay: SEARCH_DEBOUNCE_MS,
+    minLength: SEARCH_MIN_LENGTH,
+  });
+
+  const searchQuery = debouncedSearchTerm.trim();
+  const isSearchInputTooShort = searchTerm.trim().length < SEARCH_MIN_LENGTH;
 
   const {
     workspaces: searchResults,
     isWorkspacesLoading: isSearchResultsLoading,
     isWorkspacesError: isSearchResultsError,
   } = usePokeWorkspacesAllRegions({
-    search: searchTerm,
-    disabled: searchDisabled,
+    search: searchQuery,
+    disabled: !searchQuery,
     limit: WORKSPACE_LIMIT,
     regionUrls,
   });
@@ -185,29 +200,38 @@ function DashboardPageSPA() {
         value={searchTerm}
         onChange={handleSearchChange}
       />
-      {isSearchResultsError && (
-        <p>An error occurred while fetching search results.</p>
-      )}
-      {!isSearchResultsLoading && !isSearchResultsError && (
+      <h1 className="mb-4 mt-8 text-2xl font-bold">Search Results</h1>
+      {isSearchInputTooShort ? (
+        <p className="text-muted-foreground dark:text-muted-foreground-night">
+          Type at least {SEARCH_MIN_LENGTH} characters to search.
+        </p>
+      ) : isSearchResultsError ? (
+        <p className="text-muted-foreground dark:text-muted-foreground-night">
+          An error occurred while fetching search results.
+        </p>
+      ) : (
         <WorkspaceList
-          title="Search Results"
           workspaces={searchResults}
+          isWorkspacesLoading={isSearchResultsLoading || isDebouncing}
           showRegion
           onWorkspaceClick={handleWorkspaceClick}
         />
       )}
-      {isSearchResultsLoading && !searchDisabled && (
-        <Spinner size="lg" variant="color" />
-      )}
-      {!isUpgradedWorkspacesLoading && !isUpgradedWorkspacesError && (
+      <h1 className="mb-4 mt-8 text-2xl font-bold">
+        Last {WORKSPACE_LIMIT} Upgraded Workspaces
+      </h1>
+      {isUpgradedWorkspacesError ? (
+        <p className="text-muted-foreground dark:text-muted-foreground-night">
+          An error occurred while fetching upgraded workspaces.
+        </p>
+      ) : (
         <WorkspaceList
-          title={`Last ${WORKSPACE_LIMIT} Upgraded Workspaces`}
           workspaces={upgradedWorkspaces}
+          isWorkspacesLoading={isUpgradedWorkspacesLoading}
           showRegion
           onWorkspaceClick={handleWorkspaceClick}
         />
       )}
-      {isUpgradedWorkspacesLoading && <Spinner size="lg" variant="color" />}
     </>
   );
 }

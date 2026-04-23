@@ -160,7 +160,8 @@ export function usePokeWorkspacesAllRegions({
       return;
     }
 
-    let cancelled = false;
+    // Abort in-flight fetches when the effect re-runs (e.g. user is typing).
+    const abortController = new AbortController();
     setIsLoading(true);
     setIsError(false);
 
@@ -181,7 +182,10 @@ export function usePokeWorkspacesAllRegions({
           const baseUrl = regionUrls[region];
           const url = `${baseUrl}/api/poke/workspaces?${queryParams.toString()}`;
 
-          const response = await clientFetch(url, { credentials: "include" });
+          const response = await clientFetch(url, {
+            credentials: "include",
+            signal: abortController.signal,
+          });
           if (!response.ok) {
             throw new Error(`Failed to fetch from ${region}`);
           }
@@ -202,13 +206,13 @@ export function usePokeWorkspacesAllRegions({
           }
         }
 
-        if (!cancelled) {
+        if (!abortController.signal.aborted) {
           setWorkspaces(allWorkspaces);
           setIsError(hasErrors);
           setIsLoading(false);
         }
       } catch {
-        if (!cancelled) {
+        if (!abortController.signal.aborted) {
           setIsError(true);
           setIsLoading(false);
         }
@@ -218,13 +222,13 @@ export function usePokeWorkspacesAllRegions({
     void run();
 
     return () => {
-      cancelled = true;
+      abortController.abort();
     };
   }, [disabled, search, upgraded, limit, regionUrls]);
 
   return {
     workspaces,
-    isWorkspacesLoading: isLoading,
+    isWorkspacesLoading: !disabled && isLoading,
     isWorkspacesError: isError,
   };
 }
