@@ -1,5 +1,6 @@
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import { isUploadSupportedForContentType } from "@app/lib/api/files/processing";
+import { shouldSkipDataSourceIndexing } from "@app/lib/api/files/should_skip_indexing";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
@@ -170,6 +171,13 @@ async function handler(
         });
       }
 
+      const effectiveUseCaseMetadata = shouldSkipDataSourceIndexing({
+        contentType,
+        fileName,
+      })
+        ? { ...(useCaseMetadata ?? {}), skipDataSourceIndexing: true }
+        : useCaseMetadata;
+
       const file = await FileResource.makeNew({
         contentType,
         fileName,
@@ -177,7 +185,7 @@ async function handler(
         userId: user?.id ?? null,
         workspaceId: owner.id,
         useCase,
-        useCaseMetadata: useCaseMetadata,
+        useCaseMetadata: effectiveUseCaseMetadata,
       });
 
       res.status(200).json({ file: file.toPublicJSONWithUploadUrl(auth) });

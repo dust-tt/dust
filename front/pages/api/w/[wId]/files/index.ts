@@ -53,9 +53,9 @@
  *       429:
  *         description: Rate limit exceeded
  */
-import { isPastedFile } from "@app/components/assistant/conversation/input_bar/pasted_utils";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { isUploadSupportedForContentType } from "@app/lib/api/files/processing";
+import { shouldSkipDataSourceIndexing } from "@app/lib/api/files/should_skip_indexing";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
@@ -206,9 +206,10 @@ async function handler(
         });
       }
 
-      // Pasted text from the input bar is attached as same-turn context; indexing it in the
-      // conversation data source adds noise without improving retrieval.
-      const effectiveUseCaseMetadata = isPastedFile(contentType)
+      const effectiveUseCaseMetadata = shouldSkipDataSourceIndexing({
+        contentType,
+        fileName,
+      })
         ? { ...(useCaseMetadata ?? {}), skipDataSourceIndexing: true }
         : useCaseMetadata;
 

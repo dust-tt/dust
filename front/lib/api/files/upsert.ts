@@ -478,11 +478,7 @@ const getProcessingFunction = ({
   }
 
   if (isSupportedAudioContentType(contentType)) {
-    if (
-      useCase === "conversation" ||
-      useCase === "upsert_document" ||
-      useCase === "project_context"
-    ) {
+    if (useCase === "upsert_document" || useCase === "project_context") {
       return upsertDocumentToDatasource;
     }
     return undefined;
