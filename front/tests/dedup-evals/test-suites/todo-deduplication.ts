@@ -325,6 +325,35 @@ Score 2 if both matched but one points to the wrong sId.
 Score 3 if both correctly paired: c-0→existing-1 and c-1→existing-2.`,
     },
 
+    // ── Intra-batch near-duplicates: both must be reported as new ──────────
+
+    {
+      scenarioId: "intra-batch-near-duplicates",
+      existingTodos: [
+        { sId: "existing-1", text: "Upgrade Node.js to version 22" },
+      ],
+      candidates: [
+        {
+          itemId: "c-0",
+          text: "Add caching layer to the search API using Redis",
+        },
+        {
+          itemId: "c-1",
+          text: "Introduce Redis caching for search API responses",
+        },
+      ],
+      expectedMatches: [shouldBeNew(0), shouldBeNew(1)],
+      judgeCriteria: `Both candidates describe essentially the same task (Redis caching for the
+search API) but neither is a duplicate of any existing TODO. The system only deduplicates
+candidates against existing TODOs — intra-batch deduplication is out of scope by design.
+Both candidates must therefore be reported as new.
+
+Score 0 if either candidate is matched to existing-1.
+Score 0 if the model attempts to report one candidate as a duplicate of the other
+(the tool schema has no way to express this, so any such attempt is a hallucination).
+Score 3 if both candidates are correctly reported as new.`,
+    },
+
     // ── Large candidate batch: index tracking ──────────────────────────────
 
     {
