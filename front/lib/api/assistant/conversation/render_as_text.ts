@@ -12,6 +12,9 @@ import { isLightConversationType } from "@app/types/assistant/conversation";
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
+const MAX_ACTION_INPUT_CHARS = 500;
+const MAX_ACTION_OUTPUT_CHARS = 1_000;
+
 type AnyMessageType =
   | UserMessageType
   | AgentMessageType
@@ -298,12 +301,17 @@ function renderAgentMessageAsText(
       lines.push(`- ${action.functionCallName} (${actionStatus})`);
 
       if (options.includeActionDetails) {
-        const paramsStr = JSON.stringify(action.params);
+        const paramsStr = truncateString(
+          JSON.stringify(action.params),
+          MAX_ACTION_INPUT_CHARS
+        );
         lines.push(`  Input: ${paramsStr}`);
         if (action.output) {
           const outputText = serializeActionOutput(action.output);
           if (outputText) {
-            lines.push(`  Output: ${outputText}`);
+            lines.push(
+              `  Output: ${truncateString(outputText, MAX_ACTION_OUTPUT_CHARS)}`
+            );
           }
         }
       }
@@ -327,6 +335,13 @@ function renderAgentMessageAsText(
     text: lines.join("\n"),
     contentLength: content.length,
   };
+}
+
+function truncateString(str: string, maxChars: number): string {
+  if (str.length <= maxChars) {
+    return str;
+  }
+  return str.slice(0, maxChars) + " (truncated)";
 }
 
 function serializeActionOutput(
