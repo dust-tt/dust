@@ -1,5 +1,6 @@
 import type { AgentsUsageType } from "@app/types/data_source";
 import {
+  Avatar,
   Button,
   DropdownMenu,
   DropdownMenuContent,
@@ -9,7 +10,7 @@ import {
   DropdownMenuTrigger,
   RobotIcon,
 } from "@dust-tt/sparkle";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 export const UsedByButton = ({
   usage,
@@ -20,16 +21,6 @@ export const UsedByButton = ({
 }) => {
   const [searchText, setSearchText] = useState("");
   const [isOpen, setIsOpen] = useState(false);
-
-  const filteredAgents = useMemo(() => {
-    if (!usage) {
-      return [];
-    }
-    const q = searchText.toLowerCase();
-    return q.length === 0
-      ? usage.agents
-      : usage.agents.filter((a) => a.name.toLowerCase().includes(q));
-  }, [usage, searchText]);
 
   if (!usage || usage.count === 0) {
     return (
@@ -43,6 +34,12 @@ export const UsedByButton = ({
       />
     );
   }
+
+  const query = searchText.toLowerCase();
+  const filteredAgents =
+    query.length === 0
+      ? usage.agents
+      : usage.agents.filter((a) => a.name.toLowerCase().includes(query));
 
   return (
     // 1. modal={false} to make the dropdown menu non-modal and avoid a timing issue when we open the Agent side-panel modal.
@@ -96,8 +93,10 @@ export const UsedByButton = ({
           filteredAgents.map((agent) => (
             <DropdownMenuItem
               key={`assistant-picker-${agent.sId}`}
+              icon={() => <Avatar size="xs" visual={agent.pictureUrl} />}
               label={agent.name}
               truncateText
+              className="py-1"
               onClick={(e) => {
                 e.stopPropagation();
                 onItemClick(agent.sId);
