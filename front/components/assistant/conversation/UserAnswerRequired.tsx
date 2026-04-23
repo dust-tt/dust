@@ -276,7 +276,7 @@ export function UserAnswerRequired({
                 activeOptionIndex === index &&
                   !isCustomResponseActive &&
                   !selectedOptions.includes(index) &&
-                  "bg-muted-background/60 dark:bg-muted-background-night/60"
+                  "bg-primary-100 dark:bg-primary-100-night"
               )}
               onClick={() => handleOptionClick(index)}
               disabled={isAnswerSubmitting}
@@ -287,11 +287,11 @@ export function UserAnswerRequired({
             className={cn(
               "flex w-full items-center gap-2 rounded-2xl p-3 transition-colors",
               isCustomResponseActive
-                ? "bg-muted-background/60 dark:bg-muted-background-night/60"
+                ? "bg-primary-100 dark:bg-primary-100-night"
                 : [
-                    "bg-background hover:bg-muted-background/60",
+                    "bg-background hover:bg-primary-100",
                     "dark:bg-background-night",
-                    "dark:hover:bg-muted-background-night/60",
+                    "dark:hover:bg-primary-100-night",
                   ]
             )}
           >

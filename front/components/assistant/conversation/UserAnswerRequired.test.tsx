@@ -228,13 +228,13 @@ describe("UserAnswerRequired", () => {
     const betaOption = screen.getByRole("button", { name: /Beta/i });
 
     await waitFor(() => expect(keyboardContainer).toHaveFocus());
-    expect(alphaOption).toHaveClass("bg-muted-background/60");
-    expect(betaOption).not.toHaveClass("bg-muted-background/60");
+    expect(alphaOption).toHaveClass("bg-primary-100");
+    expect(betaOption).not.toHaveClass("bg-primary-100");
 
     fireEvent.keyDown(keyboardContainer, { key: "ArrowDown" });
 
-    expect(betaOption).toHaveClass("bg-muted-background/60");
-    expect(alphaOption).not.toHaveClass("bg-muted-background/60");
+    expect(betaOption).toHaveClass("bg-primary-100");
+    expect(alphaOption).not.toHaveClass("bg-primary-100");
   });
 
   it("submits the active option with Enter in single-select mode", async () => {
@@ -320,13 +320,13 @@ describe("UserAnswerRequired", () => {
     const customInput = screen.getByPlaceholderText("Type something else");
 
     await waitFor(() => expect(keyboardContainer).toHaveFocus());
-    expect(alphaOption).toHaveClass("bg-muted-background/60");
+    expect(alphaOption).toHaveClass("bg-primary-100");
 
     await user.keyboard("h");
 
     expect(customInput).toHaveFocus();
     expect(customInput).toHaveValue("h");
-    expect(alphaOption).not.toHaveClass("bg-muted-background/60");
+    expect(alphaOption).not.toHaveClass("bg-primary-100");
 
     await user.type(customInput, "ello");
     fireEvent.keyDown(customInput, { key: "Enter", metaKey: true });
