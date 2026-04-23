@@ -1173,14 +1173,12 @@ export async function editUserMessage(
   let agentMessages: AgentMessageType[] = [];
 
   const results = await Promise.all([
-    Promise.all(
-      mentions.filter(isAgentMention).map((mention) =>
-        getAgentConfiguration(auth, {
-          agentId: mention.configurationId,
-          variant: "light",
-        })
-      )
-    ),
+    getAgentConfigurations(auth, {
+      agentIds: mentions
+        .filter(isAgentMention)
+        .map((mention) => mention.configurationId),
+      variant: "light",
+    }),
     ConversationResource.upsertParticipation(auth, {
       conversation,
       action: "posted",
@@ -1188,7 +1186,7 @@ export async function editUserMessage(
     }),
   ]);
 
-  const agentConfigurations = removeNulls(results[0]);
+  const agentConfigurations = results[0];
 
   for (const agentConfig of agentConfigurations) {
     if (!canAccessAgent(agentConfig)) {

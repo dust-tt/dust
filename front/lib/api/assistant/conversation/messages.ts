@@ -494,7 +494,13 @@ export const createAgentMessages = async (
             });
           },
           {
-            concurrency: 10,
+            // jd @ 23/04/2026
+            // all callsites of this function pass a transaction
+            // so concurent executor is purely cosmetic
+            // eventually we will get rid of these monstruous transactions
+            // so not putting a for loop
+            // and downsizing from 10 to max peak concurrency - 1
+            concurrency: 4,
           }
         );
       }
