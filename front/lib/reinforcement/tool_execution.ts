@@ -1,7 +1,4 @@
-import {
-  AGENT_SIDEKICK_CONTEXT_TOOL_NAME,
-  AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA,
-} from "@app/lib/api/actions/servers/agent_sidekick_context/metadata";
+import { AGENT_SIDEKICK_CONTEXT_TOOL_NAME } from "@app/lib/api/actions/servers/agent_sidekick_context/metadata";
 import type { Authenticator, AuthenticatorType } from "@app/lib/auth";
 import type {
   ExploratoryToolCallInfo,
@@ -90,11 +87,6 @@ async function createReinforcedAction(
     mcpServerViewId: string;
   }
 ): Promise<AgentMCPActionResource> {
-  const meta =
-    AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA[
-      toolCall.name as keyof typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA
-    ];
-
   return AgentMCPActionResource.makeNew(auth, {
     agentMessageId: agentMessageModelId,
     augmentedInputs: toolCall.arguments,
@@ -128,7 +120,7 @@ async function createReinforcedAction(
       secretName: null,
       dustProject: null,
       availability: "auto",
-      permission: meta?.stake ?? "never_ask",
+      permission: "never_ask",
       toolServerId: "agent_sidekick_context",
       retryPolicy: "no_retry",
     },
