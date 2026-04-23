@@ -11,6 +11,7 @@ import type {
   SeedContext,
   SkillAsset,
   SkillSuggestionAsset,
+  UserAsset,
 } from "@app/scripts/seed/factories";
 import {
   seedAgents,
@@ -20,12 +21,21 @@ import {
   seedFeedbacks,
   seedSkill,
   seedSkillSuggestions,
+  seedUsers,
 } from "@app/scripts/seed/factories";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import * as fs from "fs";
 import * as path from "path";
 
 const AGENT_NAME = "Internal_IT_Helpdesk_Bot_2";
+
+const OTHER_USER: UserAsset = {
+  sId: "otherUser",
+  username: "jdoe",
+  email: "jane.doe@dust.tt",
+  firstName: "Jane",
+  lastName: "Doe",
+};
 
 interface Assets {
   agents: AgentAsset[];
@@ -161,11 +171,16 @@ export async function seedReinforcement(
     },
   });
 
+  // Seed additional users for Dust conversations.
+  ctx.logger.info("Seeding additional users...");
+  const additionalUsers = await seedUsers(ctx, [OTHER_USER]);
+
   // Add Dust global agent and seed Dust conversations
   createdAgents.set("Dust", { sId: GLOBAL_AGENTS_SID.DUST, name: "Dust" });
   ctx.logger.info("Seeding Dust conversations...");
   await seedConversations(ctx, dustConversations, {
     agents: createdAgents,
+    additionalUsers,
   });
 
   // Activate the Poem Analyser skill as JIT skill in Dust conversations

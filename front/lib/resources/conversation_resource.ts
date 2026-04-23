@@ -1468,6 +1468,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     {
       pagination,
       extraWhereClause,
+      restrictToConversationModelIds,
     }: {
       pagination: {
         limit: number;
@@ -1475,6 +1476,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         orderDirection?: "asc" | "desc";
       };
       extraWhereClause?: WhereOptions<InferAttributes<ConversationModel>>;
+      restrictToConversationModelIds?: ModelId[];
     }
   ): Promise<{
     conversations: ConversationResource[];
@@ -1487,8 +1489,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       lastValue: null,
     };
 
-    const participationMap = await this.fetchParticipationMapForUser(auth);
-    const conversationIds = Array.from(participationMap.keys());
+    const participationMap = await this.fetchParticipationMapForUser(
+      auth,
+      restrictToConversationModelIds
+    );
+    let conversationIds = Array.from(participationMap.keys());
 
     if (conversationIds.length === 0) {
       return emptyResult;
@@ -1876,6 +1881,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       spaceId,
       options,
       pagination,
+      restrictToConversationModelIds,
     }: {
       spaceId: string;
       options?: FetchConversationOptions;
@@ -1884,6 +1890,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         lastValue?: string;
         orderDirection?: "asc" | "desc";
       };
+      restrictToConversationModelIds?: ModelId[];
     }
   ): Promise<{
     conversations: ConversationResource[];
@@ -1907,6 +1914,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const whereClause: WhereOptions<InferAttributes<ConversationModel>> = {
       ...filterWhere,
       spaceId: spaceModelId,
+      ...(restrictToConversationModelIds && {
+        id: { [Op.in]: restrictToConversationModelIds },
+      }),
     };
 
     if (pagination.lastValue) {
@@ -2268,6 +2278,69 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       actionRequired: participant?.actionRequired ?? false,
       lastReadAt: conversationRead?.lastReadAt ?? null,
     };
+  }
+
+  /**
+   * Filters the provided conversations to those "visible" to the current user.
+   *
+   * A conversation is visible when:
+   *   - It is a private conversation (spaceId = null) where the user is a participant
+   *     (same rules as `fetchPrivateConversationsPaginated`), or
+   *   - It lives in a project space where the user is a member
+   *     (same rules as `listConversationsInSpacePaginated`).
+   *
+   * Returns the visible subset of the input conversations.
+   */
+  static async filterVisibleConversations(
+    auth: Authenticator,
+    conversations: ConversationResource[]
+  ): Promise<ConversationResource[]> {
+    const user = auth.user();
+    if (!user || conversations.length === 0) {
+      return [];
+    }
+
+    const modelIds = conversations.map((c) => c.id);
+    const visibleModelIds = new Set<ModelId>();
+
+    // 1. Private conversations (spaceId = null): visible if user is participant.
+    const { conversations: privateConvs } =
+      await this.fetchPrivateConversationsPaginated(auth, {
+        // limit page size to the number of convs we are searching for to have a single page
+        pagination: { limit: modelIds.length },
+        restrictToConversationModelIds: modelIds,
+      });
+    for (const c of privateConvs) {
+      visibleModelIds.add(c.id);
+    }
+
+    // 2. Space conversations: visible if in a project space where user is member.
+    const uniqueSpaceIds = uniq(
+      conversations
+        .map((c) => c.spaceId)
+        .filter((id): id is number => id !== null)
+    );
+
+    if (uniqueSpaceIds.length > 0) {
+      const spaces = await SpaceResource.fetchByModelIds(auth, uniqueSpaceIds);
+      for (const space of spaces) {
+        if (!space.isProject() || !space.isMember(auth)) {
+          continue;
+        }
+        const { conversations: spaceConvs } =
+          await this.listConversationsInSpacePaginated(auth, {
+            spaceId: space.sId,
+            // limit page size to the number of convs we are searching for to have a single page
+            pagination: { limit: modelIds.length },
+            restrictToConversationModelIds: modelIds,
+          });
+        for (const c of spaceConvs) {
+          visibleModelIds.add(c.id);
+        }
+      }
+    }
+
+    return conversations.filter((c) => visibleModelIds.has(c.id));
   }
 
   static async isConversationParticipant(

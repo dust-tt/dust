@@ -3,6 +3,7 @@ import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { SkillSuggestionModel } from "@app/lib/models/skill/skill_suggestion";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -47,6 +48,8 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
   readonly updatedBy: SkillSuggestionUpdatedBy | null;
   readonly notificationConversationId: string | null;
 
+  // Populated by baseFetch after conversation access filtering.
+  visibleConversationIds: string[] = [];
   constructor(
     model: ModelStatic<SkillSuggestionModel>,
     blob: Attributes<SkillSuggestionModel>,
@@ -107,9 +110,15 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
 
   private static async baseFetch(
     auth: Authenticator,
-    options?: ResourceFindOptions<SkillSuggestionModel>
+    options?: ResourceFindOptions<SkillSuggestionModel> & {
+      dangerouslyBypassConversationsVisibilityCheck?: boolean;
+    }
   ) {
-    const { where, ...otherOptions } = options ?? {};
+    const {
+      where,
+      dangerouslyBypassConversationsVisibilityCheck,
+      ...otherOptions
+    } = options ?? {};
     const owner = auth.getNonNullableWorkspace();
 
     const suggestions = await SkillSuggestionModel.findAll({
@@ -158,7 +167,7 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
     );
 
     // Filter suggestions to only include those for skills the user can edit.
-    return removeNulls(
+    const resources = removeNulls(
       suggestions.map((suggestion) => {
         const skillResource = skillResourceByModelId.get(
           suggestion.skillConfigurationId
@@ -186,24 +195,64 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
         );
       })
     );
+
+    // Enrich resources with visible source conversation IDs.
+    const allConversationModelIds = [
+      ...new Set(
+        resources.flatMap((r) => r.sourceConversationIds ?? []).map(Number)
+      ),
+    ];
+
+    if (allConversationModelIds.length > 0) {
+      const allConversations = await ConversationResource.fetchByModelIds(
+        auth,
+        allConversationModelIds
+      );
+
+      const visibleConversations = dangerouslyBypassConversationsVisibilityCheck
+        ? allConversations
+        : await ConversationResource.filterVisibleConversations(
+            auth,
+            allConversations
+          );
+
+      const visibleMap = new Map(
+        visibleConversations.map((c) => [c.id, c.sId])
+      );
+
+      for (const resource of resources) {
+        const sourceModelIds = (resource.sourceConversationIds ?? []).map(
+          Number
+        );
+        resource.visibleConversationIds = removeNulls(
+          sourceModelIds.map((id) => visibleMap.get(id))
+        );
+      }
+    }
+
+    return resources;
   }
 
   static async fetchByIds(
     auth: Authenticator,
-    ids: string[]
+    ids: string[],
+    options?: { dangerouslyBypassConversationsVisibilityCheck?: boolean }
   ): Promise<SkillSuggestionResource[]> {
     return this.baseFetch(auth, {
       where: {
         id: removeNulls(ids.map(getResourceIdFromSId)),
       },
+      dangerouslyBypassConversationsVisibilityCheck:
+        options?.dangerouslyBypassConversationsVisibilityCheck,
     });
   }
 
   static async fetchById(
     auth: Authenticator,
-    id: string
+    id: string,
+    options?: { dangerouslyBypassConversationsVisibilityCheck?: boolean }
   ): Promise<SkillSuggestionResource | null> {
-    const [suggestion] = await this.fetchByIds(auth, [id]);
+    const [suggestion] = await this.fetchByIds(auth, [id], options);
     return suggestion ?? null;
   }
 
@@ -219,6 +268,7 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
       sources?: SkillSuggestionSource[];
       kind?: SkillSuggestionKind;
       limit?: number;
+      dangerouslyBypassConversationsVisibilityCheck?: boolean;
     }
   ): Promise<SkillSuggestionResource[]> {
     const skillModelId = getResourceIdFromSId(skillId);
@@ -249,6 +299,8 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
         ["id", "DESC"],
       ],
       limit: filters?.limit,
+      dangerouslyBypassConversationsVisibilityCheck:
+        filters?.dangerouslyBypassConversationsVisibilityCheck,
     });
   }
 
@@ -263,6 +315,7 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
       kind?: SkillSuggestionKind;
       limit?: number;
       createdAfter?: Date;
+      dangerouslyBypassConversationsVisibilityCheck?: boolean;
     }
   ): Promise<SkillSuggestionResource[]> {
     const sourceFilter =
@@ -287,6 +340,8 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
         ["id", "DESC"],
       ],
       limit: filters?.limit,
+      dangerouslyBypassConversationsVisibilityCheck:
+        filters?.dangerouslyBypassConversationsVisibilityCheck,
     });
   }
 
@@ -457,6 +512,7 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
       state: this.state,
       source: this.source,
       sourceConversationsCount: this.sourceConversationIds?.length ?? 0,
+      visibleSourceConversationIds: this.visibleConversationIds,
       notificationConversationId: this.notificationConversationId,
       updatedBy: this.updatedBy,
       ...suggestionData,
