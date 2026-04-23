@@ -291,6 +291,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Show the browser extension MCP tools toggle in workspace access settings",
     stage: "dust_only",
   },
+  input_bar_slash_suggestions: {
+    description:
+      "Enable slash-triggered suggestions in the conversation input bar",
+    stage: "dust_only",
+  },
   sensitivity_labels: {
     description:
       "Enable Microsoft sensitivity labels for data classification on connectors and MCP servers",
