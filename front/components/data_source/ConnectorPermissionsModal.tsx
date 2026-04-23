@@ -49,6 +49,7 @@ import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { APIError } from "@app/types/error";
 import { isOAuthProvider } from "@app/types/oauth/lib";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import { isString } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
 import type { NotificationType } from "@dust-tt/sparkle";
 import {
@@ -301,9 +302,13 @@ function UpdateConnectionOAuthModal({
         setExtraConfig(stringMetadata);
       }
     }
-    if (isZendesk && metadata?.zendesk_subdomain) {
+    if (isZendesk) {
+      const { zendesk_subdomain } = metadata ?? {};
+      if (!isString(zendesk_subdomain)) {
+        return;
+      }
       setExtraConfig({
-        zendesk_subdomain: metadata.zendesk_subdomain as string,
+        zendesk_subdomain,
       });
     }
   }, [
@@ -478,7 +483,6 @@ function UpdateConnectionOAuthModal({
         )}
         {connectorUIConfiguration.oauthExtraConfigComponent &&
           ((isMicrosoft && !isMetadataLoading) ||
-            (isZendesk && !isMetadataLoading) ||
             showSlackOauthExtraComponent) && (
             <connectorUIConfiguration.oauthExtraConfigComponent
               extraConfig={extraConfig}
