@@ -311,7 +311,7 @@ export async function deleteOrLeaveConversation(
       },
       "Conversation soft-deleted"
     );
-    await conversation.updateVisibilityToDeleted();
+    await conversation.updateVisibilityToDeleted(auth);
   }
 
   return new Ok({ success: true });

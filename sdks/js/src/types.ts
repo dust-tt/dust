@@ -752,6 +752,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "enable_compaction"
   | "browser_extension_mcp_tools"
   | "sensitivity_labels"
+  | "conversation_search_indexing"
   | "enable_wakeups"
 >();
 

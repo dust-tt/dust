@@ -47,7 +47,7 @@ export async function updateConversationTitle(
     return new Err(new ConversationError("conversation_not_found"));
   }
 
-  await conversation.updateTitle(title);
+  await conversation.updateTitle(auth, title);
 
   await publishConversationEvent(
     {

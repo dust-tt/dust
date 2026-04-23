@@ -301,6 +301,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Enable Microsoft sensitivity labels for data classification on connectors and MCP servers",
     stage: "on_demand",
   },
+  conversation_search_indexing: {
+    description: "Enable ES indexing of conversations on mutation (write path)",
+    stage: "dust_only",
+  },
   enable_wakeups: {
     description:
       "Enable the wakeups MCP server, letting agents schedule wake-ups in a conversation.",

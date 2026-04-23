@@ -56,7 +56,7 @@ export const softDeleteConversationPlugin = createPlugin({
     const destroyedCount = await conversation.removeAllParticipants(auth);
 
     // Soft delete the conversation.
-    await conversation.updateVisibilityToDeleted();
+    await conversation.updateVisibilityToDeleted(auth);
 
     // Format output with participant emails.
     const emailList = participantEmails.join("\n  - ");

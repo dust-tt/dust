@@ -1,0 +1,52 @@
+{
+  "_routing": {
+    "required": true
+  },
+  "properties": {
+    "workspace_id": {
+      "type": "keyword"
+    },
+    "conversation_id": {
+      "type": "keyword"
+    },
+    "space_id": {
+      "type": "keyword"
+    },
+    "visibility": {
+      "type": "keyword"
+    },
+    "requested_space_ids": {
+      "type": "keyword"
+    },
+    "title": {
+      "type": "keyword"
+    },
+    "has_error": {
+      "type": "boolean"
+    },
+    "metadata": {
+      "type": "object",
+      "dynamic": false
+    },
+    "trigger_id": {
+      "type": "keyword"
+    },
+    "created_at": {
+      "type": "date"
+    },
+    "updated_at": {
+      "type": "date"
+    },
+    "participants": {
+      "type": "nested",
+      "properties": {
+        "user_id": {
+          "type": "keyword"
+        },
+        "action_required": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

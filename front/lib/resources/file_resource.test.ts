@@ -114,7 +114,7 @@ describe("FileResource", () => {
         conversation.sId
       );
       assert(conversationResource, "Conversation resource should be defined");
-      await conversationResource.updateVisibilityToDeleted();
+      await conversationResource.updateVisibilityToDeleted(auth);
 
       // Should successfully fetch file.
       const result = await FileResource.fetchByShareTokenWithContent(token);
