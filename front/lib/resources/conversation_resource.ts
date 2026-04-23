@@ -53,6 +53,7 @@ import {
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { UserType } from "@app/types/user";
 import assert from "assert";
@@ -84,6 +85,23 @@ export type ConversationAccessType =
   | "conversation_not_found"
   | "conversation_access_restricted"
   | "conversation_access_restricted_by_private_by_default_url_restriction";
+
+const shouldByPassPrivateByDefaultUrlRestriction = (auth: Authenticator) => {
+  const authMethod = auth.authMethod();
+  switch (authMethod) {
+    case "api_key":
+    case "system_api_key":
+    case "internal":
+      // Support api key and internalAdminForWorkspace auth methods.
+      return true;
+    case "oauth":
+    case "session":
+    case "sandbox_token":
+      return false;
+    default:
+      assertNever(authMethod);
+  }
+};
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -196,8 +214,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
   private static shouldApplyPrivateByDefaultUrlRestriction(conversation: {
     spaceId: ModelId | null;
+    depth: number;
   }): boolean {
-    return conversation.spaceId === null;
+    // Project and sub-conversations ignore the private by default url restriction.
+    return conversation.spaceId === null && conversation.depth === 0;
   }
 
   private static fromModel(
@@ -622,11 +642,22 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       )
     );
 
+    if (spaceBasedAccessible.length === 0) {
+      return [];
+    }
+
     if (
       !this.isPrivateConversationUrlsByDefaultEnabled(auth) ||
-      auth.isAdmin()
+      shouldByPassPrivateByDefaultUrlRestriction(auth)
     ) {
       return spaceBasedAccessible;
+    }
+
+    const user = auth.user();
+    if (!user) {
+      throw new Error(
+        "User not found while auth method is not api key, system api key, or internal"
+      );
     }
 
     const participantRestrictedConversations = spaceBasedAccessible.filter(
@@ -636,30 +667,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           "participants_only"
     );
 
-    const user = auth.user();
-    // API key auth has no user and never creates participant records, so the
-    // participant-restriction concept doesn't apply.
-    // TODO(2026-04-20 sebastien): Review implementation to support API Keys.
-    if (!user) {
-      return spaceBasedAccessible;
-    }
-
-    if (spaceBasedAccessible.length === 0) {
-      const participantRestrictedConversationIds = new Set(
-        participantRestrictedConversations.map(
-          (conversation) => conversation.id
-        )
-      );
-      return spaceBasedAccessible.filter(
-        (conversation) =>
-          !participantRestrictedConversationIds.has(conversation.id)
-      );
-    }
-
+    // No participant-restricted conversations, return the space-based accessible conversations.
     if (participantRestrictedConversations.length === 0) {
       return spaceBasedAccessible;
     }
 
+    // For all participant-restricted conversations, check if the user is a participant.
     const participations = await ConversationParticipantModel.findAll({
       where: {
         workspaceId: workspace.id,
@@ -675,6 +688,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       participations.map((p) => p.conversationId)
     );
 
+    // Return the space-based accessible conversations that are not participant-restricted.
+    // Or are participant-restricted and the user is a participant.
     return spaceBasedAccessible.filter(
       (conversation) =>
         !this.shouldApplyPrivateByDefaultUrlRestriction(conversation) ||
@@ -700,6 +715,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       this.getConversationUrlAccessModeForPrivateByDefault(conversation) ===
       "workspace_members"
     ) {
+      return true;
+    }
+
+    if (shouldByPassPrivateByDefaultUrlRestriction(auth)) {
       return true;
     }
 

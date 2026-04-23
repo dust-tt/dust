@@ -255,6 +255,7 @@ export async function getAgentLoopDataWithAuth(
       conversationBranchId,
       PREVIOUS_INTERACTIONS_TO_PRESERVE + 1 // X previous + the last one
     );
+
     if (conversationRes.isErr()) {
       if (conversationRes.error.type === "conversation_not_found") {
         // Check if the conversation was soft-deleted.

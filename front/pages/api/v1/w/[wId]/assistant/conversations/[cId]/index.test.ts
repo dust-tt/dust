@@ -9,7 +9,7 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
-import { assert, describe, expect, it } from "vitest";
+import { assert, describe, expect, it, vi } from "vitest";
 
 import handler from "./index";
 
@@ -56,8 +56,7 @@ describe("GET /api/v1/w/[wId]/assistant/conversations/[cId]", () => {
     expect(res._getStatusCode()).toBe(200);
   });
 
-  // TODO(2026-04-20 sebastien): Re-enable this test once the API is updated to support API Keys and the concept of participant-restricted conversations is reviewed.
-  it.skip("returns 404 conversation_not_found when private conversation URLs are enabled", async () => {
+  it("returns 200 when private conversation URLs are enabled for API key auth", async () => {
     const { req, res, workspace } = await setupGetRequest();
 
     const updateResult = await WorkspaceResource.updateMetadata(workspace.id, {
@@ -67,8 +66,60 @@ describe("GET /api/v1/w/[wId]/assistant/conversations/[cId]", () => {
 
     await handler(req, res);
 
-    expect(res._getStatusCode()).toBe(404);
-    expect(res._getJSONData().error.type).toBe("conversation_not_found");
+    expect(res._getStatusCode()).toBe(200);
+  });
+
+  it("returns 404 conversation_not_found when private conversation URLs are enabled for oauth auth", async () => {
+    const { req, res, workspace } = await setupGetRequest();
+
+    const user = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user, { role: "builder" });
+
+    const authModule = await import("@app/lib/auth");
+    const getSessionSpy = vi.spyOn(authModule, "getSession").mockResolvedValue({
+      type: "workos",
+      sessionId: "test-oauth-session-id",
+      user: {
+        workOSUserId: user.workOSUserId!,
+        email: user.email!,
+        email_verified: true,
+        name: user.username!,
+        nickname: user.username!,
+      },
+      authenticationMethod: "bearer",
+      isSSO: false,
+      workspaceId: workspace.sId,
+      organizationId: workspace.workOSOrganizationId ?? undefined,
+      region: "us-central1",
+    });
+
+    const originalFromSession = Authenticator.fromSession;
+    const fromSessionSpy = vi
+      .spyOn(Authenticator, "fromSession")
+      .mockImplementation(async (session, wId) => {
+        const auth = await originalFromSession.call(
+          Authenticator,
+          session,
+          wId
+        );
+        vi.spyOn(auth, "authMethod").mockReturnValue("oauth");
+        return auth;
+      });
+
+    const updateResult = await WorkspaceResource.updateMetadata(workspace.id, {
+      privateConversationUrlsByDefault: true,
+    });
+    assert(updateResult.isOk(), "Failed to enable private conversation URLs");
+
+    try {
+      await handler(req, res);
+
+      expect(res._getStatusCode()).toBe(404);
+      expect(res._getJSONData().error.type).toBe("conversation_not_found");
+    } finally {
+      fromSessionSpy.mockRestore();
+      getSessionSpy.mockRestore();
+    }
   });
 
   it("returns 200 for project conversations when private conversation URLs are enabled", async () => {

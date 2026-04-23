@@ -1453,18 +1453,50 @@ describe("baseFetchWithAuthorization with space-based permissions", () => {
     expect(conversationIds).not.toContain(tempSpaceConvo.sId);
   });
 
-  it.skip("should require user participation when private conversation URLs are private by default (including admins)", async () => {
+  it("should bypass participant restriction for internal auth when private conversation URLs are private by default", async () => {
     const updateResult = await WorkspaceResource.updateMetadata(workspace.id, {
       privateConversationUrlsByDefault: true,
     });
     assert(updateResult.isOk(), "Failed to enable private conversation URLs");
 
-    const refreshedUserAuth = await Authenticator.fromUserIdAndWorkspaceId(
-      userAuth.getNonNullableUser().sId,
-      workspace.sId
-    );
     const refreshedAdminAuth = await Authenticator.fromUserIdAndWorkspaceId(
       adminAuth.getNonNullableUser().sId,
+      workspace.sId
+    );
+    expect(refreshedAdminAuth.authMethod()).toBe("internal");
+
+    const participantRequiredConversation = await ConversationFactory.create(
+      refreshedAdminAuth,
+      {
+        agentConfigurationId: agents[0].sId,
+        requestedSpaceIds: [globalSpace.id],
+        messagesCreatedAt: [dateFromDaysAgo(2)],
+      }
+    );
+
+    const internalAdminConversations =
+      await ConversationResource.listAll(refreshedAdminAuth);
+    expect(internalAdminConversations.map((c) => c.sId)).toContain(
+      participantRequiredConversation.sId
+    );
+  });
+
+  it.each([
+    ["session"],
+    ["oauth"],
+    ["sandbox_token"],
+  ] as const)("should require participation for %s auth when private conversation URLs are private by default", async (authMethod) => {
+    const updateResult = await WorkspaceResource.updateMetadata(workspace.id, {
+      privateConversationUrlsByDefault: true,
+    });
+    assert(updateResult.isOk(), "Failed to enable private conversation URLs");
+
+    const refreshedAdminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      adminAuth.getNonNullableUser().sId,
+      workspace.sId
+    );
+    const refreshedUserAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      userAuth.getNonNullableUser().sId,
       workspace.sId
     );
 
@@ -1477,28 +1509,130 @@ describe("baseFetchWithAuthorization with space-based permissions", () => {
       }
     );
 
-    const initialUserConversations =
-      await ConversationResource.listAll(refreshedUserAuth);
-    expect(initialUserConversations.map((c) => c.sId)).not.toContain(
+    const sessionUser = refreshedUserAuth.getNonNullableUser();
+    assert(
+      sessionUser.workOSUserId,
+      "Expected regular user to have a WorkOS user ID"
+    );
+    const userSessionAuth = await Authenticator.fromSession(
+      {
+        type: "workos",
+        sessionId: "test-session-id-user",
+        user: {
+          workOSUserId: sessionUser.workOSUserId,
+          email: sessionUser.email ?? "user@dust.tt",
+          email_verified: true,
+          name: sessionUser.username ?? "user",
+          nickname: sessionUser.username ?? "user",
+        },
+        authenticationMethod: "GoogleOAuth",
+        isSSO: false,
+        workspaceId: workspace.sId,
+        organizationId: workspace.workOSOrganizationId ?? undefined,
+        region: "us-central1",
+      },
+      workspace.sId
+    );
+
+    const userSandboxAuthRes = await Authenticator.fromSandboxToken(
+      {
+        wId: workspace.sId,
+        cId: participantRequiredConversation.sId,
+        uId: sessionUser.sId,
+        aId: agents[0].sId,
+        mId: "test-message-id-user",
+        sbId: "test-sandbox-id-user",
+        execId: "test-exec-id-user",
+      },
+      workspace.sId
+    );
+    assert(
+      userSandboxAuthRes.isOk(),
+      "Failed to create sandbox authenticator for regular user"
+    );
+
+    const userAuthForMethod =
+      authMethod === "sandbox_token"
+        ? userSandboxAuthRes.value
+        : userSessionAuth;
+    if (authMethod === "oauth") {
+      vi.spyOn(userAuthForMethod, "authMethod").mockReturnValue("oauth");
+    }
+    expect(userAuthForMethod.authMethod()).toBe(authMethod);
+
+    const nonParticipantUserConversations =
+      await ConversationResource.listAll(userAuthForMethod);
+    expect(nonParticipantUserConversations.map((c) => c.sId)).not.toContain(
       participantRequiredConversation.sId
     );
 
-    await ConversationResource.upsertParticipation(refreshedUserAuth, {
+    await ConversationResource.upsertParticipation(userAuthForMethod, {
       conversation: participantRequiredConversation,
       action: "posted",
-      user: refreshedUserAuth.getNonNullableUser().toJSON(),
+      user: userAuthForMethod.getNonNullableUser().toJSON(),
       lastReadAt: null,
     });
 
     const participantUserConversations =
-      await ConversationResource.listAll(refreshedUserAuth);
+      await ConversationResource.listAll(userAuthForMethod);
     expect(participantUserConversations.map((c) => c.sId)).toContain(
       participantRequiredConversation.sId
     );
 
-    const adminConversations =
-      await ConversationResource.listAll(refreshedAdminAuth);
-    expect(adminConversations.map((c) => c.sId)).not.toContain(
+    const sessionAdminUser = refreshedAdminAuth.getNonNullableUser();
+    assert(
+      sessionAdminUser.workOSUserId,
+      "Expected admin user to have a WorkOS user ID"
+    );
+    const adminSessionAuth = await Authenticator.fromSession(
+      {
+        type: "workos",
+        sessionId: "test-session-id-admin",
+        user: {
+          workOSUserId: sessionAdminUser.workOSUserId,
+          email: sessionAdminUser.email ?? "admin@dust.tt",
+          email_verified: true,
+          name: sessionAdminUser.username ?? "admin",
+          nickname: sessionAdminUser.username ?? "admin",
+        },
+        authenticationMethod: "GoogleOAuth",
+        isSSO: false,
+        workspaceId: workspace.sId,
+        organizationId: workspace.workOSOrganizationId ?? undefined,
+        region: "us-central1",
+      },
+      workspace.sId
+    );
+
+    const adminSandboxAuthRes = await Authenticator.fromSandboxToken(
+      {
+        wId: workspace.sId,
+        cId: participantRequiredConversation.sId,
+        uId: sessionAdminUser.sId,
+        aId: agents[0].sId,
+        mId: "test-message-id-admin",
+        sbId: "test-sandbox-id-admin",
+        execId: "test-exec-id-admin",
+      },
+      workspace.sId
+    );
+    assert(
+      adminSandboxAuthRes.isOk(),
+      "Failed to create sandbox authenticator for admin user"
+    );
+
+    const adminAuthForMethod =
+      authMethod === "sandbox_token"
+        ? adminSandboxAuthRes.value
+        : adminSessionAuth;
+    if (authMethod === "oauth") {
+      vi.spyOn(adminAuthForMethod, "authMethod").mockReturnValue("oauth");
+    }
+    expect(adminAuthForMethod.authMethod()).toBe(authMethod);
+
+    const nonParticipantAdminConversations =
+      await ConversationResource.listAll(adminAuthForMethod);
+    expect(nonParticipantAdminConversations.map((c) => c.sId)).not.toContain(
       participantRequiredConversation.sId
     );
   });
@@ -1528,6 +1662,131 @@ describe("baseFetchWithAuthorization with space-based permissions", () => {
     );
     expect(fetched).not.toBeNull();
     expect(fetched?.sId).toBe(conversation.sId);
+  });
+
+  it("should keep project conversations accessible for oauth auth when private conversation URLs are private by default", async () => {
+    const updateResult = await WorkspaceResource.updateMetadata(workspace.id, {
+      privateConversationUrlsByDefault: true,
+    });
+    assert(updateResult.isOk(), "Failed to enable private conversation URLs");
+
+    const refreshedAdminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      adminAuth.getNonNullableUser().sId,
+      workspace.sId
+    );
+    const refreshedUserAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      userAuth.getNonNullableUser().sId,
+      workspace.sId
+    );
+
+    const projectSpace = await SpaceFactory.project(
+      workspace,
+      refreshedAdminAuth.getNonNullableUser().id
+    );
+    const addMemberResult = await projectSpace.addMembers(refreshedAdminAuth, {
+      userIds: [
+        refreshedAdminAuth.getNonNullableUser().sId,
+        refreshedUserAuth.getNonNullableUser().sId,
+      ],
+    });
+    assert(addMemberResult.isOk(), "Failed to add users to project space");
+
+    const refreshedProjectAdminAuth =
+      await Authenticator.fromUserIdAndWorkspaceId(
+        refreshedAdminAuth.getNonNullableUser().sId,
+        workspace.sId
+      );
+    const refreshedProjectReaderAuth =
+      await Authenticator.fromUserIdAndWorkspaceId(
+        refreshedUserAuth.getNonNullableUser().sId,
+        workspace.sId
+      );
+    vi.spyOn(refreshedProjectReaderAuth, "authMethod").mockReturnValue("oauth");
+
+    const projectConversation = await ConversationFactory.create(
+      refreshedProjectAdminAuth,
+      {
+        agentConfigurationId: agents[0].sId,
+        requestedSpaceIds: [projectSpace.id],
+        spaceId: projectSpace.id,
+        messagesCreatedAt: [dateFromDaysAgo(2)],
+      }
+    );
+
+    const oauthConversations = await ConversationResource.listAll(
+      refreshedProjectReaderAuth
+    );
+    expect(oauthConversations.map((c) => c.sId)).toContain(
+      projectConversation.sId
+    );
+  });
+
+  it("should keep sub-conversations accessible for session auth when private conversation URLs are private by default", async () => {
+    const updateResult = await WorkspaceResource.updateMetadata(workspace.id, {
+      privateConversationUrlsByDefault: true,
+    });
+    assert(updateResult.isOk(), "Failed to enable private conversation URLs");
+
+    const refreshedAdminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      adminAuth.getNonNullableUser().sId,
+      workspace.sId
+    );
+    const refreshedUserAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      userAuth.getNonNullableUser().sId,
+      workspace.sId
+    );
+    const sessionUser = refreshedUserAuth.getNonNullableUser();
+    assert(
+      sessionUser.workOSUserId,
+      "Expected regular user to have a WorkOS user ID"
+    );
+
+    const userSessionAuth = await Authenticator.fromSession(
+      {
+        type: "workos",
+        sessionId: "test-session-id-subconversation",
+        user: {
+          workOSUserId: sessionUser.workOSUserId,
+          email: sessionUser.email ?? "user@dust.tt",
+          email_verified: true,
+          name: sessionUser.username ?? "user",
+          nickname: sessionUser.username ?? "user",
+        },
+        authenticationMethod: "GoogleOAuth",
+        isSSO: false,
+        workspaceId: workspace.sId,
+        organizationId: workspace.workOSOrganizationId ?? undefined,
+        region: "us-central1",
+      },
+      workspace.sId
+    );
+
+    const subConversation = await ConversationFactory.create(
+      refreshedAdminAuth,
+      {
+        agentConfigurationId: agents[0].sId,
+        requestedSpaceIds: [globalSpace.id],
+        messagesCreatedAt: [dateFromDaysAgo(2)],
+      }
+    );
+
+    await ConversationModel.update(
+      {
+        depth: 1,
+      },
+      {
+        where: {
+          workspaceId: workspace.id,
+          sId: subConversation.sId,
+        },
+      }
+    );
+
+    const sessionConversations =
+      await ConversationResource.listAll(userSessionAuth);
+    expect(sessionConversations.map((c) => c.sId)).toContain(
+      subConversation.sId
+    );
   });
 });
 
@@ -3501,7 +3760,7 @@ describe("Space Handling", () => {
       expect(result).toBe("allowed");
     });
 
-    it("should return 'conversation_access_restricted' for non-participants when private conversation URLs are private by default", async () => {
+    it("should keep space conversations accessible to non-participants when private conversation URLs are private by default", async () => {
       const updateResult = await WorkspaceResource.updateMetadata(
         workspace.id,
         {
@@ -3520,9 +3779,7 @@ describe("Space Handling", () => {
         conversations.accessible
       );
 
-      expect(result).toBe(
-        "conversation_access_restricted_by_private_by_default_url_restriction"
-      );
+      expect(result).toBe("allowed");
     });
 
     it("should return 'allowed' for non-participants when URL access mode is workspace_members", async () => {
@@ -3684,7 +3941,7 @@ describe("Space Handling", () => {
       expect(result).toBe("conversation_access_restricted");
     });
 
-    it("should restrict admin access when private conversation URLs are private by default and admin is not a participant", async () => {
+    it("should keep space conversations accessible to admins when private conversation URLs are private by default and they are not participants", async () => {
       const updateResult = await WorkspaceResource.updateMetadata(
         workspace.id,
         {
@@ -3703,9 +3960,7 @@ describe("Space Handling", () => {
         conversations.accessible
       );
 
-      expect(result).toBe(
-        "conversation_access_restricted_by_private_by_default_url_restriction"
-      );
+      expect(result).toBe("allowed");
     });
 
     it("should restore previous behavior when private conversation URLs are disabled again", async () => {
@@ -3723,9 +3978,7 @@ describe("Space Handling", () => {
         refreshedUserAuth,
         conversations.accessible
       );
-      expect(result).toBe(
-        "conversation_access_restricted_by_private_by_default_url_restriction"
-      );
+      expect(result).toBe("allowed");
 
       updateResult = await WorkspaceResource.updateMetadata(workspace.id, {
         privateConversationUrlsByDefault: false,
