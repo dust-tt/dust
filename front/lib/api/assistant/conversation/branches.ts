@@ -7,6 +7,7 @@ import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
+import { serializeMention } from "@app/lib/mentions/format";
 import {
   AgentMCPActionModel,
   AgentMCPActionOutputItemModel,
@@ -17,6 +18,7 @@ import { ConversationBranchModel } from "@app/lib/models/agent/conversation_bran
 import { ConversationBranchResource } from "@app/lib/resources/conversation_branch_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import {
   type CitationType,
   isUserMessageType,
@@ -314,7 +316,11 @@ export async function mergeConversationBranch(
     if (!renderedAgent || renderedAgent.type !== "agent_message") {
       continue;
     }
-    const contentOnly = renderedAgent.content ?? "";
+    const contentOnly = `> From ${serializeMention({
+      id: renderedAgent.configuration.sId,
+      type: "agent",
+      label: renderedAgent.configuration.name,
+    })}\n\n${renderedAgent.content ?? ""}`;
 
     const citationsAndFilesFromOutputItems =
       branchAgentMessage.agentMessageId !== null
@@ -331,8 +337,8 @@ export async function mergeConversationBranch(
       content: contentOnly,
       citationsAndFilesFromOutputItems,
       agentConfiguration: {
-        sId: branchAgentMessage.agentMessage!.agentConfigurationId,
-        version: branchAgentMessage.agentMessage!.agentConfigurationVersion,
+        sId: GLOBAL_AGENTS_SID.DUST,
+        version: 0,
       },
       skipToolsValidation: branchAgentMessage.agentMessage!.skipToolsValidation,
     });
