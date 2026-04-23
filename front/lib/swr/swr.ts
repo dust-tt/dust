@@ -158,8 +158,8 @@ export function useSWRInfiniteWithDefaults<TKey extends Key, TData>(
     ) => {
       // When disabled, the SWR key is null so result.mutate is a no-op.
       // unstable_serialize produces the exact internal cache key useSWRInfinite uses,
-      // so globalMutate correctly reaches all mounted subscribers — including for
-      // optimistic updaters passed as the data argument.
+      // so globalMutate correctly reaches all mounted subscribers (including for
+      // optimistic updaters passed as the data argument).
       const key = unstable_serialize(getKey);
       if (data !== undefined || opts !== undefined) {
         return globalMutate(key, data, opts);
