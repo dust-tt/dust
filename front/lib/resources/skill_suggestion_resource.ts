@@ -51,13 +51,13 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
     model: ModelStatic<SkillSuggestionModel>,
     blob: Attributes<SkillSuggestionModel>,
     editorsGroupId: ModelId | null,
-    skillConfigurationId: string,
+    skillConfigurationSId: string,
     updatedBy: SkillSuggestionUpdatedBy | null,
     notificationConversationId: string | null
   ) {
     super(SkillSuggestionModel, blob);
     this.editorsGroupId = editorsGroupId;
-    this.skillConfigurationSId = skillConfigurationId;
+    this.skillConfigurationSId = skillConfigurationSId;
     this.updatedBy = updatedBy;
     this.notificationConversationId = notificationConversationId;
   }
