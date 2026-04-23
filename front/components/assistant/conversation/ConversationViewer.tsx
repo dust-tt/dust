@@ -57,6 +57,7 @@ import logger from "@app/logger/logger";
 import {
   type ConversationForkedChildType,
   type ConversationListItemType,
+  type InlineActivityStep,
   isUserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";
 import type { RichMention } from "@app/types/assistant/mentions";
@@ -626,9 +627,59 @@ export const ConversationViewer = ({
 
           case "agent_message_new":
             if (ref.current) {
-              const agentMessage = makeInitialMessageStreamState(
-                getLightAgentMessageFromAgentMessage(event.message)
+              const baseLightAgentMessage =
+                getLightAgentMessageFromAgentMessage(event.message);
+
+              // If the triggering parent user message is a wake-up, seed the
+              // activity chain with a "Woke-Up to ..." step so it appears
+              // immediately during live streaming (not only on reload). The
+              // trigger user message carries the triggering user message sId
+              // directly via `wakeupTriggeringMessageSId` (copied from the
+              // WakeUp row at fire time).
+              const data = ref.current.data.get();
+              const triggerMessage = data.find(
+                (m) =>
+                  isUserMessage(m) &&
+                  m.sId === baseLightAgentMessage.parentMessageId
               );
+              let wakeupStep: InlineActivityStep | null = null;
+              if (
+                triggerMessage &&
+                isUserMessage(triggerMessage) &&
+                triggerMessage.wakeupTriggeringMessageSId
+              ) {
+                const originMessageSId =
+                  triggerMessage.wakeupTriggeringMessageSId;
+                const originMessage = data.find(
+                  (m) => isUserMessage(m) && m.sId === originMessageSId
+                );
+                const labelSource =
+                  (originMessage && isUserMessage(originMessage)
+                    ? originMessage.content
+                    : null) ?? triggerMessage.content;
+                const label =
+                  labelSource.length > 50
+                    ? `${labelSource.substring(0, 47)}...`
+                    : labelSource;
+                wakeupStep = {
+                  type: "wakeup",
+                  label,
+                  id: `wakeup-${baseLightAgentMessage.sId}`,
+                  targetMessageSId: originMessageSId,
+                };
+              }
+
+              const lightAgentMessage = wakeupStep
+                ? {
+                    ...baseLightAgentMessage,
+                    activitySteps: [
+                      wakeupStep,
+                      ...baseLightAgentMessage.activitySteps,
+                    ],
+                  }
+                : baseLightAgentMessage;
+              const agentMessage =
+                makeInitialMessageStreamState(lightAgentMessage);
 
               // Replace the message in the exist list data, or append.
               const predicate = getPredicateForRankAndBranch(agentMessage);

@@ -210,9 +210,14 @@ export const makeInitialMessageStreamState = (
     streaming: {
       actionProgress: new Map(),
       agentState: message.status === "created" ? "thinking" : "done",
-      // Live messages rebuild inline steps from the SSE replay on mount.
+      // Live messages rebuild inline steps from the SSE replay on mount, but
+      // wakeup steps are server-injected (not produced by SSE) so we preserve
+      // them — dropping them here would make them disappear mid-stream and
+      // only come back on full reload after completion.
       inlineActivitySteps:
-        message.status === "created" ? [] : (message.activitySteps ?? []),
+        message.status === "created"
+          ? (message.activitySteps ?? []).filter((s) => s.type === "wakeup")
+          : (message.activitySteps ?? []),
       isRetrying: false,
       lastUpdated: new Date(),
       pendingToolCalls: [],
