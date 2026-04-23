@@ -62,7 +62,7 @@ export function UserAnswerRequired({
   // biome-ignore lint/correctness/useExhaustiveDependencies: blockedAction.actionId is an intentional reset trigger
   useEffect(() => {
     setActiveOptionIndex(0);
-    containerRef.current?.focus();
+    containerRef.current?.focus({ preventScroll: true });
   }, [blockedAction.actionId]);
 
   async function submitAnswer(
@@ -147,7 +147,7 @@ export function UserAnswerRequired({
     handleOptionClick(activeOptionIndex);
   }
 
-  function handleContainerKeyDown(e: KeyboardEvent<HTMLDivElement>) {
+  function handleContainerKeyDownCapture(e: KeyboardEvent<HTMLDivElement>) {
     if (
       e.target instanceof HTMLInputElement ||
       e.target instanceof HTMLTextAreaElement ||
@@ -156,11 +156,19 @@ export function UserAnswerRequired({
       return;
     }
 
-    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-      if (question.multiSelect) {
-        e.preventDefault();
-        handleSubmit();
-      }
+    if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && question.multiSelect) {
+      e.preventDefault();
+      e.stopPropagation();
+      handleSubmit();
+    }
+  }
+
+  function handleContainerKeyDown(e: KeyboardEvent<HTMLDivElement>) {
+    if (
+      e.target instanceof HTMLInputElement ||
+      e.target instanceof HTMLTextAreaElement ||
+      (e.target instanceof HTMLElement && e.target.isContentEditable)
+    ) {
       return;
     }
 
@@ -201,6 +209,7 @@ export function UserAnswerRequired({
     <div
       ref={containerRef}
       tabIndex={0}
+      onKeyDownCapture={handleContainerKeyDownCapture}
       onKeyDown={handleContainerKeyDown}
       className={cn(
         "flex flex-col gap-4 rounded-2xl border border-dark bg-background p-5 outline-none",
