@@ -137,18 +137,14 @@ export async function setupEgressForwarder(
     return tokenWriteResult;
   }
 
-  // Older sandboxes may still have root-owned log files from before the
-  // forwarder switched to dust-fwd, so clear them before dropping privileges.
-  const prepareRuntimeFilesResult = await runSuccessfulSandboxCommand(
+  const prepareTokenResult = await runSuccessfulSandboxCommand(
     auth,
     sandbox,
-    `chown dust-fwd:dust-fwd ${shellEscape(EGRESS_TOKEN_PATH)} && ` +
-      `chmod 600 ${shellEscape(EGRESS_TOKEN_PATH)} && ` +
-      `rm -f ${shellEscape(EGRESS_FORWARDER_LOG_PATH)} ${shellEscape(EGRESS_DENY_LOG_PATH)}`,
+    `chmod 600 ${shellEscape(EGRESS_TOKEN_PATH)}`,
     "root"
   );
-  if (prepareRuntimeFilesResult.isErr()) {
-    return prepareRuntimeFilesResult;
+  if (prepareTokenResult.isErr()) {
+    return prepareTokenResult;
   }
 
   const startForwarderCommand =
@@ -164,7 +160,7 @@ export async function setupEgressForwarder(
     auth,
     sandbox,
     startForwarderCommand,
-    "dust-fwd"
+    "root"
   );
   if (startResult.isErr()) {
     return startResult;

@@ -110,22 +110,20 @@ describe("sandbox egress helpers", () => {
     expect(sandbox.exec).toHaveBeenNthCalledWith(
       1,
       auth,
-      expect.stringContaining(
-        "chown dust-fwd:dust-fwd '/etc/dust/egress-token' && chmod 600 '/etc/dust/egress-token' && rm -f '/tmp/dust-forwarder.log' '/tmp/dust-egress-denied.log'"
-      ),
+      expect.stringContaining("chmod 600 '/etc/dust/egress-token'"),
       { user: "root" }
     );
     expect(sandbox.exec).toHaveBeenNthCalledWith(
       2,
       auth,
       expect.stringContaining("--proxy-addr '203.0.113.10:4443'"),
-      { user: "dust-fwd" }
+      { user: "root" }
     );
     expect(sandbox.exec).toHaveBeenNthCalledWith(
       2,
       auth,
       expect.stringContaining("--proxy-tls-name 'eu.sandbox-egress.dust.tt'"),
-      { user: "dust-fwd" }
+      { user: "root" }
     );
     expect(mockLoggerInfo).toHaveBeenCalledWith(
       expect.objectContaining({
