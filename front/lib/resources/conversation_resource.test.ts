@@ -6093,7 +6093,6 @@ const KNOWN_CONVERSATION_RELATED_MODELS = [
   "message",
   "project_todo_conversation",
   "sandbox",
-  "skill_suggestion",
   "user_conversation_reads",
   "wake_up",
 ];
