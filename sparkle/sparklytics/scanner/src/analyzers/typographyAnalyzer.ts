@@ -34,6 +34,49 @@ const CSS_PROP_TO_STYLE: Record<string, string> = {
   "line-height": "lineHeight",
 };
 
+// Generic family keywords that are always acceptable as fallbacks.
+const GENERIC_FONT_FAMILIES = new Set([
+  "serif",
+  "sans-serif",
+  "monospace",
+  "cursive",
+  "fantasy",
+  "system-ui",
+  "ui-sans-serif",
+  "ui-serif",
+  "ui-monospace",
+  "ui-rounded",
+  "emoji",
+  "math",
+  "fangsong",
+  "inherit",
+  "initial",
+  "unset",
+  "revert",
+]);
+
+function parseFontFamilyStack(value: string): string[] {
+  return value
+    .split(",")
+    .map((f) =>
+      f
+        .trim()
+        .replace(/^["']|["']$/g, "")
+        .toLowerCase()
+    )
+    .filter((f) => f.length > 0);
+}
+
+function isSparkleFontFamily(
+  value: string,
+  registry: SparkleTokenRegistry
+): boolean {
+  const allowed = new Set(registry.fontFamilies.map((f) => f.toLowerCase()));
+  const families = parseFontFamilyStack(value);
+  if (families.length === 0) return false;
+  return families.every((f) => allowed.has(f) || GENERIC_FONT_FAMILIES.has(f));
+}
+
 function isSparkleTypographyToken(
   prop: string,
   value: string,
@@ -44,9 +87,7 @@ function isSparkleTypographyToken(
   const key = CSS_PROP_TO_STYLE[prop] ?? prop;
   switch (key) {
     case "fontFamily":
-      return registry.fontFamilies.some((f) =>
-        value.toLowerCase().includes(f.toLowerCase())
-      );
+      return isSparkleFontFamily(value, registry);
     case "fontSize":
       return fontSizeSet.has(value.trim());
     case "fontWeight": {

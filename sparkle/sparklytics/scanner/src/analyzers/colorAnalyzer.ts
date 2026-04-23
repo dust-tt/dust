@@ -11,6 +11,7 @@ import type {
   SparkleTokenRegistry,
   TokenViolation,
 } from "../types.js";
+import { splitCssValue } from "../utils/cssValue.js";
 import { relativePath } from "../utils/fileCollector.js";
 
 // ─── Color Patterns ───────────────────────────────────────────────────────────
@@ -268,9 +269,7 @@ function analyzeCssRoot(
 
   root.walkDecls((decl: Declaration) => {
     if (!COLOR_CSS_PROPS.has(decl.prop.toLowerCase())) return;
-    const values = decl.value.split(/[\s,]+/);
-    for (const val of values) {
-      const v = val.trim();
+    for (const v of splitCssValue(decl.value)) {
       if (!detectColorValue(v)) continue;
       violations.push({
         filePath: relPath,

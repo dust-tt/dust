@@ -11,6 +11,7 @@ import type {
   SparkleTokenRegistry,
   TokenViolation,
 } from "../types.js";
+import { splitCssValue } from "../utils/cssValue.js";
 import { relativePath } from "../utils/fileCollector.js";
 
 const SPACING_CSS_PROPS = new Set([
@@ -67,25 +68,6 @@ const ALWAYS_VALID = new Set([
   "revert",
 ]);
 
-function splitShorthand(value: string): string[] {
-  // Split on whitespace but don't split inside calc() or var()
-  const parts: string[] = [];
-  let depth = 0;
-  let current = "";
-  for (const ch of value) {
-    if (ch === "(") depth++;
-    else if (ch === ")") depth--;
-    else if (ch === " " && depth === 0) {
-      if (current.trim()) parts.push(current.trim());
-      current = "";
-      continue;
-    }
-    current += ch;
-  }
-  if (current.trim()) parts.push(current.trim());
-  return parts;
-}
-
 function isSparkleSpacing(value: string, spacingSet: Set<string>): boolean {
   const v = value.trim();
   if (ALWAYS_VALID.has(v)) return true;
@@ -106,7 +88,7 @@ function analyzeCssSpacing(
 
   root.walkDecls((decl: Declaration) => {
     if (!SPACING_CSS_PROPS.has(decl.prop.toLowerCase())) return;
-    const parts = splitShorthand(decl.value);
+    const parts = splitCssValue(decl.value);
     for (const part of parts) {
       const v = part.trim();
       if (!v || ALWAYS_VALID.has(v)) continue;
@@ -171,7 +153,7 @@ function analyzeTsxSpacing(
       }
       if (!value) continue;
 
-      for (const part of splitShorthand(value)) {
+      for (const part of splitCssValue(value)) {
         const v = part.trim();
         if (!v || ALWAYS_VALID.has(v)) continue;
         violations.push({

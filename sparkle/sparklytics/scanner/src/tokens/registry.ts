@@ -3,27 +3,38 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { SparkleTokenRegistry } from "../types.js";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const TOKENS_FILENAME = "sparkle-tokens.json";
+const MAX_UPWARD_WALK = 6;
 
-// Path to the bundled default tokens.
-// In dev (src/tokens/registry.ts): __dirname = scanner/src/tokens/ → ../../.. = sparklytics/
-// In build (dist/index.js, bundled):  __dirname = scanner/dist/    → ../..    = sparklytics/
-// We resolve relative to the scanner package root first, then up one to sparklytics/.
-const SCANNER_ROOT = path.resolve(__dirname, "..", "..");
-const DEFAULT_TOKENS_PATH = path.resolve(SCANNER_ROOT, "sparkle-tokens.json");
+/**
+ * Walks up from this module's directory looking for `sparkle-tokens.json`.
+ * Works in both layouts: dev (`scanner/src/tokens/registry.ts`, tokens at
+ * `sparklytics/sparkle-tokens.json`, 3 levels up) and built (`scanner/dist/
+ * index.js`, tokens 2 levels up).
+ */
+function resolveDefaultTokensPath(): string {
+  let dir = path.dirname(fileURLToPath(import.meta.url));
+  for (let i = 0; i < MAX_UPWARD_WALK; i++) {
+    const candidate = path.join(dir, TOKENS_FILENAME);
+    if (fs.existsSync(candidate)) return candidate;
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  throw new Error(
+    `Could not locate default ${TOKENS_FILENAME}. Pass --tokens <path> to specify a custom registry.`
+  );
+}
 
 let _registry: SparkleTokenRegistry | null = null;
 
 export function loadRegistry(customPath: string | null): SparkleTokenRegistry {
   if (_registry) return _registry;
 
-  const tokensPath = customPath ?? DEFAULT_TOKENS_PATH;
+  const tokensPath = customPath ?? resolveDefaultTokensPath();
 
   if (!fs.existsSync(tokensPath)) {
-    throw new Error(
-      `Sparkle tokens file not found at: ${tokensPath}\n` +
-        "Run `sparkle-scan` from the sparklytics directory or provide --tokens <path>."
-    );
+    throw new Error(`Sparkle tokens file not found at: ${tokensPath}`);
   }
 
   try {
