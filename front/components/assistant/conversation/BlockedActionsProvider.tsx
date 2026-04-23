@@ -211,7 +211,10 @@ export function BlockedActionsProvider({
     [blockedActionsQueue]
   );
 
-  const { mutateConversations } = useConversations({ workspaceId: owner.sId });
+  const { mutateConversations } = useConversations({
+    workspaceId: owner.sId,
+    options: { disabled: true },
+  });
 
   const removeAllBlockedActionsForMessage = useCallback(
     ({

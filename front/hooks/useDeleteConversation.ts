@@ -8,7 +8,10 @@ import { useCallback } from "react";
 
 export function useDeleteConversation(owner: LightWorkspaceType) {
   const sendNotification = useSendNotification();
-  const { mutateConversations } = useConversations({ workspaceId: owner.sId });
+  const { mutateConversations } = useConversations({
+    workspaceId: owner.sId,
+    options: { disabled: true },
+  });
 
   return useCallback(
     async (

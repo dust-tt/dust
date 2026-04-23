@@ -19,7 +19,10 @@ export function useConversationMarkAsRead({
   conversation?: ConversationWithoutContentType;
   workspaceId: string;
 }) {
-  const { mutateConversations } = useConversations({ workspaceId });
+  const { mutateConversations } = useConversations({
+    workspaceId,
+    options: { disabled: true },
+  });
 
   const { mutate: mutateSpaceSummary } = useSpaceConversationsSummary({
     workspaceId,

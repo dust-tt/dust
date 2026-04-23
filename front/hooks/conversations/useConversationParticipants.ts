@@ -102,7 +102,10 @@ export const useJoinConversation = ({
 }): (() => Promise<boolean>) => {
   const sendNotification = useSendNotification();
 
-  const { mutateConversations } = useConversations({ workspaceId: ownerId });
+  const { mutateConversations } = useConversations({
+    workspaceId: ownerId,
+    options: { disabled: true },
+  });
   const { mutateConversationParticipants } = useConversationParticipants({
     conversationId,
     workspaceId: ownerId,

@@ -17,7 +17,10 @@ export function useUpdateConversationTitle({
     workspaceId: owner.sId,
     options: { disabled: true },
   });
-  const { mutateConversations } = useConversations({ workspaceId: owner.sId });
+  const { mutateConversations } = useConversations({
+    workspaceId: owner.sId,
+    options: { disabled: true },
+  });
 
   return useCallback(
     async (title: string): Promise<boolean> => {

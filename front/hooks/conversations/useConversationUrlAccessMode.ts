@@ -22,7 +22,10 @@ export function useConversationUrlAccessMode({
     workspaceId: owner.sId,
     options: { disabled: true },
   });
-  const { mutateConversations } = useConversations({ workspaceId: owner.sId });
+  const { mutateConversations } = useConversations({
+    workspaceId: owner.sId,
+    options: { disabled: true },
+  });
   const [
     isUpdatingConversationUrlAccessMode,
     setIsUpdatingConversationUrlAccessMode,
