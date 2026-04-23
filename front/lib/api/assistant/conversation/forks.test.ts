@@ -28,6 +28,7 @@ import { ConversationForkModel } from "@app/lib/models/agent/conversation_fork";
 import { ConversationBranchResource } from "@app/lib/resources/conversation_branch_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { RunResource } from "@app/lib/resources/run_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { launchCompactionWorkflow } from "@app/temporal/agent_loop/client";
@@ -46,6 +47,9 @@ import type {
   ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
 import { isCompactionMessageType } from "@app/types/assistant/conversation";
+import { CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
+import { GPT_5_MINI_MODEL_CONFIG } from "@app/types/assistant/models/openai";
+import type { SupportedModel } from "@app/types/assistant/models/types";
 import {
   isContentFragmentType,
   isContentNodeContentFragment,
@@ -236,6 +240,55 @@ async function createConversationFile(
     },
     snippet,
   });
+}
+
+async function attachRunToAgentMessage(
+  auth: Authenticator,
+  {
+    message,
+    model,
+    promptTokens = 100,
+  }: {
+    message: MessageModel;
+    model: SupportedModel;
+    promptTokens?: number;
+  }
+): Promise<void> {
+  if (!message.agentMessageId) {
+    throw new Error("Expected an agent message.");
+  }
+
+  const run = await RunResource.makeNew({
+    appId: null,
+    dustRunId: generateRandomModelSId(),
+    runType: "deploy",
+    useWorkspaceCredentials: false,
+    workspaceId: auth.getNonNullableWorkspace().id,
+  });
+
+  await run.recordTokenUsage(
+    auth,
+    {
+      inputTokens: promptTokens,
+      outputTokens: 20,
+      totalTokens: promptTokens + 20,
+    },
+    model.modelId
+  );
+
+  const [updatedCount] = await AgentMessageModel.update(
+    { runIds: [run.dustRunId] },
+    {
+      where: {
+        id: message.agentMessageId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    }
+  );
+
+  if (updatedCount !== 1) {
+    throw new Error(`Missing agent message ${message.agentMessageId}.`);
+  }
 }
 
 async function createToolOutputFile(
@@ -459,6 +512,77 @@ describe("createConversationFork", () => {
         action: "subscribed",
       },
     ]);
+  });
+
+  it("uses the source agent message model for fork compaction", async () => {
+    const { auth } = await createPrivateApiMockRequest();
+
+    const parentConversation = await createConversation(auth, {
+      title: "Parent conversation",
+      visibility: "unlisted",
+      spaceId: null,
+    });
+
+    const firstUserMessage = await createUserMessage(auth, {
+      conversation: parentConversation,
+      rank: 0,
+      content: "First turn",
+    });
+    const firstAgentMessage = await createAgentMessage(auth, {
+      conversation: parentConversation,
+      rank: 1,
+      parentId: firstUserMessage.id,
+      status: "succeeded",
+    });
+    await attachRunToAgentMessage(auth, {
+      message: firstAgentMessage,
+      model: {
+        providerId: CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG.providerId,
+        modelId: CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG.modelId,
+      },
+      promptTokens: 300,
+    });
+
+    const secondUserMessage = await createUserMessage(auth, {
+      conversation: parentConversation,
+      rank: 2,
+      content: "Second turn",
+    });
+    const secondAgentMessage = await createAgentMessage(auth, {
+      conversation: parentConversation,
+      rank: 3,
+      parentId: secondUserMessage.id,
+      status: "succeeded",
+    });
+    await attachRunToAgentMessage(auth, {
+      message: secondAgentMessage,
+      model: {
+        providerId: GPT_5_MINI_MODEL_CONFIG.providerId,
+        modelId: GPT_5_MINI_MODEL_CONFIG.modelId,
+      },
+      promptTokens: 150,
+    });
+
+    const result = await createConversationFork(auth, {
+      conversationId: parentConversation.sId,
+      sourceMessageId: firstAgentMessage.sId,
+    });
+
+    expect(result.isErr()).toBe(false);
+    expect(vi.mocked(launchCompactionWorkflow)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        auth,
+        conversationId: expect.any(String),
+        model: {
+          providerId: CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG.providerId,
+          modelId: CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG.modelId,
+        },
+        sourceConversation: {
+          conversationId: parentConversation.sId,
+          messageRank: firstAgentMessage.rank,
+        },
+      })
+    );
   });
 
   it("resolves the latest completed main-thread agent message when no source is provided", async () => {
