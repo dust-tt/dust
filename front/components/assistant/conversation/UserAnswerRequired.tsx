@@ -286,8 +286,6 @@ export function UserAnswerRequired({
             variant="tertiary"
             className={cn(
               "flex w-full items-center gap-2 rounded-2xl p-3 transition-colors",
-              isCustomResponseSelected &&
-                "border-border dark:border-border-night",
               isCustomResponseActive
                 ? "bg-muted-background/60 dark:bg-muted-background-night/60"
                 : [
