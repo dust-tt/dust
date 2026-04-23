@@ -41,7 +41,6 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { DataSourceViewCategory } from "@app/types/api/public/spaces";
 import type {
@@ -58,14 +57,12 @@ import { isAgentMention } from "@app/types/assistant/mentions";
 import { isModelProviderId } from "@app/types/assistant/models/providers";
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import { isContentFragmentType } from "@app/types/content_fragment";
-import { DATA_SOURCE_NODE_ID } from "@app/types/core/content_node";
 import { CoreAPI } from "@app/types/core/core_api";
 import { isJobType } from "@app/types/job_type";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { isString, removeNulls } from "@app/types/shared/utils/general";
-import type { SpaceType } from "@app/types/space";
+import { isString } from "@app/types/shared/utils/general";
 import type {
   AgentSuggestionSource,
   AgentSuggestionState,
@@ -98,24 +95,16 @@ type LimitedSuggestionKind =
   | "skills"
   | "knowledge";
 
-interface KnowledgeDataSource {
-  dataSourceViewId: string;
+interface SearchKnowledgeNode {
   nodeId: string;
-  name: string;
+  title: string;
+  parentFolderId: string;
+  parents: string[];
+  dataSourceViewId: string;
+  spaceId: string;
+  hasChildren: boolean;
   connectorProvider: string | null;
-}
-
-interface KnowledgeCategoryData {
-  category: DataSourceViewCategory;
-  displayName: string;
-  dataSources: KnowledgeDataSource[];
-}
-
-interface KnowledgeSpace {
-  sId: string;
-  name: string;
-  kind: SpaceType["kind"];
-  categories: KnowledgeCategoryData[];
+  sourceUrl: string | null;
 }
 
 function getMaxPendingSuggestions(kind: LimitedSuggestionKind): number {
@@ -548,120 +537,25 @@ import type { z } from "zod";
 
 /**
  * Lists all knowledge data source views across all spaces the user has access to.
- * Filters to knowledge categories (managed, folder, website).
+ * Filters to knowledge categories (managed, folder, website), with optional category narrowing.
  */
 async function listAllKnowledgeDataSourceViews(
-  auth: Authenticator
+  auth: Authenticator,
+  category?: DataSourceViewCategory
 ): Promise<DataSourceViewResource[]> {
   const spaces = await SpaceResource.listWorkspaceSpacesAsMember(auth);
   const allViews = await DataSourceViewResource.listBySpaces(auth, spaces);
 
-  return allViews.filter((dsv) =>
-    SIDEKICK_KNOWLEDGE_CATEGORIES_SET.has(dsv.toJSON().category)
-  );
+  return allViews.filter((dsv) => {
+    const dsvCategory = dsv.toJSON().category;
+    if (category) {
+      return dsvCategory === category;
+    }
+    return SIDEKICK_KNOWLEDGE_CATEGORIES_SET.has(dsvCategory);
+  });
 }
 
 const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
-  get_available_knowledge: async ({ spaceId, category }, { auth }) => {
-    // Get all spaces the user is a member of.
-    let spaces = await SpaceResource.listWorkspaceSpacesAsMember(auth);
-
-    // Filter to specific space if provided.
-    if (spaceId) {
-      spaces = spaces.filter((s) => s.sId === spaceId);
-      if (spaces.length === 0) {
-        return new Err(
-          new MCPError(`Space not found or not accessible: ${spaceId}`, {
-            tracked: false,
-          })
-        );
-      }
-    }
-
-    // Determine which categories to fetch.
-    const categoriesToFetch: DataSourceViewCategory[] = category
-      ? [category]
-      : SIDEKICK_KNOWLEDGE_CATEGORIES;
-
-    // Fetch data source views for all spaces in parallel.
-    const spaceResults = await concurrentExecutor(
-      spaces,
-      async (space) => {
-        // Fetch data source views for this space.
-        const dataSourceViews = await DataSourceViewResource.listBySpace(
-          auth,
-          space
-        );
-
-        // Filter and group by category.
-        const categoriesData: KnowledgeCategoryData[] = [];
-
-        for (const cat of categoriesToFetch) {
-          const viewsForCategory = dataSourceViews
-            .filter((dsv) => dsv.toJSON().category === cat)
-            .map((dsv) => {
-              const json = dsv.toJSON();
-              return {
-                dataSourceViewId: json.sId,
-                nodeId: `${DATA_SOURCE_NODE_ID}-${json.dataSource.dustAPIDataSourceId}`,
-                name: getDisplayNameForDataSource(json.dataSource),
-                connectorProvider: json.dataSource.connectorProvider,
-              };
-            });
-
-          if (viewsForCategory.length > 0) {
-            categoriesData.push({
-              category: cat,
-              displayName: getCategoryDisplayName(cat),
-              dataSources: viewsForCategory,
-            });
-          }
-        }
-
-        // Only include spaces that have at least one category with data.
-        if (categoriesData.length === 0) {
-          return null;
-        }
-
-        return {
-          sId: space.sId,
-          name: space.name,
-          kind: space.kind,
-          categories: categoriesData,
-        } satisfies KnowledgeSpace;
-      },
-      { concurrency: 8 }
-    );
-
-    // Filter out null results (spaces with no data sources).
-    const knowledgeSpaces = removeNulls(spaceResults);
-
-    // Calculate totals.
-    let totalDataSources = 0;
-    for (const space of knowledgeSpaces) {
-      for (const cat of space.categories) {
-        totalDataSources += cat.dataSources.length;
-      }
-    }
-
-    return new Ok([
-      {
-        type: "text" as const,
-        text: JSON.stringify(
-          {
-            count: {
-              spaces: knowledgeSpaces.length,
-              dataSources: totalDataSources,
-            },
-            spaces: knowledgeSpaces,
-          },
-          null,
-          2
-        ),
-      },
-    ]);
-  },
-
   get_available_models: async ({ providerId }, { auth }) => {
     let models = await getAvailableModelsForWorkspace(auth);
 
@@ -1302,15 +1196,19 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     }
   },
 
-  search_knowledge: async ({ query, topK }, { auth }) => {
-    const dataSourceViews = await listAllKnowledgeDataSourceViews(auth);
+  search_knowledge: async ({ query, topK, category }, { auth }) => {
+    const dataSourceViews = await listAllKnowledgeDataSourceViews(
+      auth,
+      category
+    );
 
     if (dataSourceViews.length === 0) {
       return new Ok([
         {
           type: "text" as const,
           text: JSON.stringify({
-            matches: [],
+            dataSourceViews: [],
+            nodes: [],
             message: "No knowledge sources found in the workspace.",
           }),
         },
@@ -1318,14 +1216,17 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     }
 
     const dataSourceEntries = dataSourceViews.map((view) => {
-      const dataSource = view.toJSON().dataSource;
+      const viewJson = view.toJSON();
+      const dataSource = viewJson.dataSource;
       return {
         apiId: dataSource.dustAPIDataSourceId,
         dataSourceView: {
           sId: view.sId,
           name: getDisplayNameForDataSource(dataSource),
           connectorProvider: dataSource.connectorProvider,
+          category: viewJson.category,
         },
+        spaceId: viewJson.spaceId,
         searchArg: {
           projectId: dataSource.dustAPIProjectId,
           dataSourceId: dataSource.dustAPIDataSourceId,
@@ -1334,6 +1235,25 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
         documentTitles: <string[]>[],
       };
     });
+
+    // Browse mode: no query, return all DSVs with no nodes.
+    if (!query) {
+      const dataSourceViews = dataSourceEntries.map((entry) => ({
+        dataSourceViewId: entry.dataSourceView.sId,
+        name: entry.dataSourceView.name,
+        connectorProvider: entry.dataSourceView.connectorProvider,
+        category: entry.dataSourceView.category,
+        spaceId: entry.spaceId,
+      }));
+      return new Ok([
+        {
+          type: "text" as const,
+          text: JSON.stringify({ dataSourceViews, nodes: [] }, null, 2),
+        },
+      ]);
+    }
+
+    // Search mode: semantic search, return matching data source views + individual nodes.
     const dataSourceByDustAPIId = new Map(
       dataSourceEntries.map((entry) => [entry.apiId, entry])
     );
@@ -1356,25 +1276,44 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       );
     }
 
+    const nodes: SearchKnowledgeNode[] = [];
+
     for (const document of searchResults.value.documents) {
       const entry = dataSourceByDustAPIId.get(document.data_source_id);
       if (entry) {
         entry.documentTitles.push(document.title ?? document.document_id);
+        const ancestors = document.parents.filter(
+          (p) => p !== document.document_id
+        );
+        nodes.push({
+          nodeId: document.document_id,
+          title: document.title ?? document.document_id,
+          parentFolderId: document.parent_id ?? entry.dataSourceView.sId,
+          parents: [...ancestors, entry.dataSourceView.sId],
+          dataSourceViewId: entry.dataSourceView.sId,
+          spaceId: entry.spaceId,
+          hasChildren: false,
+          connectorProvider: entry.dataSourceView.connectorProvider,
+          sourceUrl: document.source_url ?? null,
+        });
       }
     }
 
-    const matches = dataSourceEntries
+    const roots = dataSourceEntries
       .filter((entry) => entry.documentTitles.length > 0)
       .map((entry) => ({
-        dataSourceView: entry.dataSourceView,
-        matchCount: entry.documentTitles.length,
-        documentTitles: entry.documentTitles,
+        dataSourceViewId: entry.dataSourceView.sId,
+        name: entry.dataSourceView.name,
+        connectorProvider: entry.dataSourceView.connectorProvider,
+        category: entry.dataSourceView.category,
+        spaceId: entry.spaceId,
+        childrenCount: entry.documentTitles.length,
       }));
 
     return new Ok([
       {
         type: "text" as const,
-        text: JSON.stringify({ matches }, null, 2),
+        text: JSON.stringify({ dataSourceViews: roots, nodes }, null, 2),
       },
     ]);
   },
@@ -1393,14 +1332,15 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     }
 
     // Validate that the data source view exists and is accessible.
-    const { action, method, dataSourceViewId, description } = params.suggestion;
+    const { action, method, dataSourceViewId, nodeIds, description } =
+      params.suggestion;
     const view = await DataSourceViewResource.fetchById(auth, dataSourceViewId);
 
     if (!view) {
       return new Err(
         new MCPError(
           `The data source view ID "${dataSourceViewId}" is invalid or not accessible. ` +
-            `Use get_available_knowledge or search_knowledge to find valid data source views.`,
+            `Use search_knowledge to find valid data source views.`,
           { tracked: false }
         )
       );
@@ -1450,6 +1390,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       action,
       method,
       dataSourceViewId,
+      nodeIds,
       description,
     };
 
@@ -1885,19 +1826,6 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     ]);
   },
 };
-
-function getCategoryDisplayName(category: DataSourceViewCategory): string {
-  switch (category) {
-    case "managed":
-      return "Connected data";
-    case "folder":
-      return "Folders";
-    case "website":
-      return "Websites";
-    default:
-      return category;
-  }
-}
 
 export const TOOLS = buildTools(
   AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA,

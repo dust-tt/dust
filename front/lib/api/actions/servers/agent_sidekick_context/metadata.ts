@@ -74,7 +74,13 @@ const KnowledgeSuggestionSchema = z.object({
   dataSourceViewId: z
     .string()
     .describe(
-      "The string id of the data source view to add or remove as knowledge (for method 'search', from get_available_knowledge/search_knowledge)"
+      "The string id of the data source view to add or remove as knowledge (can be found from the search_knowledge results)"
+    ),
+  nodeIds: z
+    .array(z.string())
+    .optional()
+    .describe(
+      "Optional node IDs to scope the knowledge to specific documents within the data source view. Omit to add the whole data source."
     ),
   description: z
     .string()
@@ -96,29 +102,6 @@ const ModelSuggestionSchema = z.object({
 });
 
 export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
-  get_available_knowledge: {
-    description:
-      "List available knowledge data source views grouped by space and category. " +
-      "Returns spaces, each with categories (managed, folder, website) containing data source views. " +
-      "Use dataSourceViewId when calling suggest_knowledge. " +
-      "Use nodeId for list/find/cat on company_data. " +
-      "Optionally filter by spaceId or category.",
-    schema: {
-      spaceId: z
-        .string()
-        .optional()
-        .describe("Optional space ID to filter results to a specific space."),
-      category: z
-        .enum(KNOWLEDGE_CATEGORIES)
-        .optional()
-        .describe("Optional category to filter: managed, folder, or website."),
-    },
-    stake: "never_ask",
-    displayLabels: {
-      running: "Listing available knowledge",
-      done: "List available knowledge",
-    },
-  },
   get_available_models: {
     description:
       "Get the list of available models. Can optionally filter by provider.",
@@ -370,13 +353,15 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
   },
   search_knowledge: {
     description:
-      "Semantic search across workspace **search** knowledge sources (documents, folders, websites) to find which contain content relevant to a query. " +
-      "Returns matching data source views with hit counts and document titles. Use for suggesting search knowledge (method 'search').",
+      "Browse or search workspace knowledge sources. " +
+      "Without a query: lists all available data source views. " +
+      "With a query: semantically searches and returns matching data source views with individual document nodes.",
     schema: {
       query: z
         .string()
+        .optional()
         .describe(
-          "Natural language query describing the knowledge needed (e.g., 'historical closed opportunities', 'customer support tickets')"
+          "Natural language query describing the knowledge needed. Omit to list all available sources."
         ),
       topK: z
         .number()
@@ -386,7 +371,13 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
         .optional()
         .default(5)
         .describe(
-          "Maximum number of documents to retrieve per data source (default: 5)"
+          "Maximum number of document hits to retrieve per data source (default: 5, only applies when query is provided)"
+        ),
+      category: z
+        .enum(KNOWLEDGE_CATEGORIES)
+        .optional()
+        .describe(
+          "Optional category to filter results: 'managed' (connected platforms), 'folder', or 'website'."
         ),
     },
     stake: "never_ask",
@@ -397,7 +388,7 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
   },
   suggest_knowledge: {
     description:
-      "Suggest adding or removing knowledge. Get sources from \`get_available_knowledge\` (one call returns all); each source has a knowledgeMethod field — use that as the method here. " +
+      "Suggest adding or removing knowledge. Get sources from \`search_knowledge\` (call without a query to list all); each source has a knowledgeMethod field — use that as the method here. " +
       "method 'search': semantic search over documents, folders, websites. method 'query_tables': SQL over Snowflake/BigQuery warehouses. " +
       "If a pending suggestion for the same data source already exists, it will be automatically marked as outdated. " +
       `There can't be more than ${MAX_PENDING_KNOWLEDGE_SUGGESTIONS} pending knowledge suggestions. ` +

@@ -85,94 +85,64 @@ export function getMockToolResponse(
         "</available_tools>",
       ].join("\n"),
 
-    get_available_knowledge: () => ({
-      count: {
-        spaces: 3,
-        dataSources: 6,
-      },
-      spaces: [
+    search_knowledge: () => ({
+      dataSourceViews: [
         {
-          sId: "space_1",
-          name: "Engineering",
-          kind: "regular",
-          categories: [
-            {
-              category: "managed",
-              displayName: "Connected data",
-              dataSources: [
-                {
-                  dataSourceViewId: "dsv_notion_1",
-                  nodeId: "datasource_node_id-notion_ds_1",
-                  name: "Notion",
-                  connectorProvider: "notion",
-                },
-                {
-                  dataSourceViewId: "dsv_slack_1",
-                  nodeId: "datasource_node_id-slack_ds_1",
-                  name: "Slack",
-                  connectorProvider: "slack",
-                },
-              ],
-            },
-            {
-              category: "folder",
-              displayName: "Folders",
-              dataSources: [
-                {
-                  dataSourceViewId: "dsv_folder_1",
-                  nodeId: "datasource_node_id-folder_ds_1",
-                  name: "Product Requirements",
-                  connectorProvider: null,
-                },
-              ],
-            },
-          ],
+          dataSourceView: {
+            sId: "dsv_notion_1",
+            name: "Notion",
+            connectorProvider: "notion",
+            category: "managed",
+          },
+          spaceId: "space_1",
         },
         {
-          sId: "space_2",
-          name: "Marketing",
-          kind: "regular",
-          categories: [
-            {
-              category: "website",
-              displayName: "Websites",
-              dataSources: [
-                {
-                  dataSourceViewId: "dsv_website_1",
-                  nodeId: "datasource_node_id-website_ds_1",
-                  name: "Company Blog",
-                  connectorProvider: "webcrawler",
-                },
-              ],
-            },
-          ],
+          dataSourceView: {
+            sId: "dsv_slack_1",
+            name: "Slack",
+            connectorProvider: "slack",
+            category: "managed",
+          },
+          spaceId: "space_1",
         },
         {
-          sId: "space_3",
-          name: "Company Data",
-          kind: "global",
-          categories: [
-            {
-              category: "managed",
-              displayName: "Connected data",
-              dataSources: [
-                {
-                  dataSourceViewId: "dsv_snowflake_1",
-                  nodeId: "datasource_node_id-snowflake_ds_1",
-                  name: "Snowflake",
-                  connectorProvider: "snowflake",
-                },
-                {
-                  dataSourceViewId: "dsv_github_1",
-                  nodeId: "datasource_node_id-github_ds_1",
-                  name: "GitHub",
-                  connectorProvider: "github",
-                },
-              ],
-            },
-          ],
+          dataSourceView: {
+            sId: "dsv_folder_1",
+            name: "Product Requirements",
+            connectorProvider: null,
+            category: "folder",
+          },
+          spaceId: "space_1",
+        },
+        {
+          dataSourceView: {
+            sId: "dsv_website_1",
+            name: "Company Blog",
+            connectorProvider: "webcrawler",
+            category: "website",
+          },
+          spaceId: "space_2",
+        },
+        {
+          dataSourceView: {
+            sId: "dsv_snowflake_1",
+            name: "Snowflake",
+            connectorProvider: "snowflake",
+            category: "managed",
+          },
+          spaceId: "space_3",
+        },
+        {
+          dataSourceView: {
+            sId: "dsv_github_1",
+            name: "GitHub",
+            connectorProvider: "github",
+            category: "managed",
+          },
+          spaceId: "space_3",
         },
       ],
+      nodes: [],
     }),
 
     get_agent_feedback: () => ({
@@ -246,20 +216,6 @@ export function getMockToolResponse(
 
     suggest_sub_agent: () =>
       `:agent_suggestion[]{sId=mock_sId_${++mockSuggestionCounter} kind=sub_agent}`,
-
-    search_knowledge: () => ({
-      results: [
-        {
-          dataSourceViewId: "ds_notion_1",
-          dataSourceName: "Engineering Wiki",
-          hitCount: 5,
-          documents: [
-            { title: "Product FAQ", score: 0.92 },
-            { title: "Troubleshooting Guide", score: 0.88 },
-          ],
-        },
-      ],
-    }),
 
     search_agent_templates: () => ({
       templates: [

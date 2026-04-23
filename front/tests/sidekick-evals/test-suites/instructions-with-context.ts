@@ -23,7 +23,7 @@ export const instructionsWithContextSuite: TestSuite = {
       expectedToolCalls: ["get_agent_config"],
       judgeCriteria: `Should map knowledge sources to agent's needs (HR policies, security, expenses).
 Should make specific recommendations with rationale.
-May use get_available_knowledge or search_knowledge to discover sources.
+May use search_knowledge to discover sources.
 May offer to update instructions once knowledge is connected.`,
     },
     {
