@@ -1,3 +1,4 @@
+import { hasProcessedVersion } from "@app/lib/api/files/processing";
 import type { Authenticator } from "@app/lib/auth";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import { pipeline } from "stream/promises";
@@ -17,5 +18,14 @@ export async function copyContent(
   await pipeline(
     readStream,
     targetFile.getWriteStream({ auth, version: "original" })
+  );
+
+  if (!hasProcessedVersion(sourceFile.contentType)) {
+    return;
+  }
+
+  await pipeline(
+    sourceFile.getReadStream({ auth, version: "processed" }),
+    targetFile.getWriteStream({ auth, version: "processed" })
   );
 }
