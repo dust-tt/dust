@@ -32,6 +32,7 @@ function makeInstructionSuggestion(input: {
     state: "pending",
     source: input.source ?? "synthetic",
     sourceConversationsCount: 0,
+    notificationConversationId: null,
     updatedBy: null,
     kind: "edit",
     suggestion: {
@@ -62,6 +63,7 @@ function makeToolSuggestion(input: {
     state: "pending",
     source: input.source ?? "synthetic",
     sourceConversationsCount: 0,
+    notificationConversationId: null,
     updatedBy: null,
     kind: "edit",
     suggestion: {

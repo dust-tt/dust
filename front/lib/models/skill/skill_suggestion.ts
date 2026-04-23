@@ -1,3 +1,4 @@
+import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
@@ -27,9 +28,13 @@ export class SkillSuggestionModel extends WorkspaceAwareModel<SkillSuggestionMod
   declare sourceConversationIds: number[] | null;
   declare groupId: string | null;
   declare updatedByUserId: ForeignKey<UserModel["id"]> | null;
+  declare notificationConversationModelId: ForeignKey<
+    ConversationModel["id"]
+  > | null;
 
   declare skillConfiguration: NonAttribute<SkillConfigurationModel>;
   declare updatedByUser: NonAttribute<UserModel | null>;
+  declare notificationConversation: NonAttribute<ConversationModel | null>;
 }
 
 SkillSuggestionModel.init(
@@ -91,6 +96,17 @@ SkillSuggestionModel.init(
         key: "id",
       },
     },
+    notificationConversationModelId: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
+      references: {
+        model: ConversationModel,
+        key: "id",
+      },
+      field: "notificationConversationId",
+      comment:
+        "Conversation created to notify editors about this reinforcement suggestion.",
+    },
   },
   {
     modelName: "skill_suggestion",
@@ -123,6 +139,11 @@ SkillSuggestionModel.init(
         concurrently: true,
         where: { updatedByUserId: { [Op.ne]: null } },
       },
+      {
+        name: "idx_skill_suggestions_notification_conversation_id",
+        fields: ["notificationConversationId"],
+        concurrently: true,
+      },
     ],
   }
 );
@@ -145,4 +166,14 @@ UserModel.hasMany(SkillSuggestionModel, {
 SkillSuggestionModel.belongsTo(UserModel, {
   foreignKey: { name: "updatedByUserId", allowNull: true },
   as: "updatedByUser",
+});
+
+SkillSuggestionModel.belongsTo(ConversationModel, {
+  foreignKey: { name: "notificationConversationId", allowNull: true },
+  onDelete: "SET NULL",
+  as: "notificationConversation",
+});
+ConversationModel.hasMany(SkillSuggestionModel, {
+  foreignKey: { name: "notificationConversationId", allowNull: true },
+  onDelete: "SET NULL",
 });

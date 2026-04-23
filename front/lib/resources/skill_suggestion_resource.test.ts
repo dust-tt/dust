@@ -1,3 +1,4 @@
+import { createConversation } from "@app/lib/api/assistant/conversation";
 import { Authenticator } from "@app/lib/auth";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
@@ -529,6 +530,77 @@ describe("SkillSuggestionResource", () => {
         authenticator,
         [],
         "approved"
+      );
+      // No error thrown.
+    });
+  });
+
+  describe("bulkSetNotificationConversation", () => {
+    it("should set the notification conversation on every given suggestion", async () => {
+      const s1 = await SkillSuggestionFactory.create(authenticator, skill);
+      const s2 = await SkillSuggestionFactory.create(authenticator, skill);
+
+      const conversation = await createConversation(authenticator, {
+        title: "Notification",
+        visibility: "unlisted",
+        spaceId: null,
+      });
+
+      await SkillSuggestionResource.bulkSetNotificationConversation(
+        authenticator,
+        [s1, s2],
+        conversation.id
+      );
+
+      const fetched = await SkillSuggestionResource.fetchByIds(authenticator, [
+        s1.sId,
+        s2.sId,
+      ]);
+      expect(fetched).toHaveLength(2);
+      expect(
+        fetched.every((s) => s.notificationConversationId === conversation.sId)
+      ).toBe(true);
+      expect(
+        fetched.every(
+          (s) => s.toJSON().notificationConversationId === conversation.sId
+        )
+      ).toBe(true);
+    });
+
+    it("should not affect other suggestions", async () => {
+      const s1 = await SkillSuggestionFactory.create(authenticator, skill);
+      const s2 = await SkillSuggestionFactory.create(authenticator, skill);
+
+      const conversation = await createConversation(authenticator, {
+        title: "Notification",
+        visibility: "unlisted",
+        spaceId: null,
+      });
+
+      await SkillSuggestionResource.bulkSetNotificationConversation(
+        authenticator,
+        [s1],
+        conversation.id
+      );
+
+      const fetchedS2 = await SkillSuggestionResource.fetchById(
+        authenticator,
+        s2.sId
+      );
+      expect(fetchedS2?.notificationConversationId).toBeNull();
+    });
+
+    it("should be a no-op for empty array", async () => {
+      const conversation = await createConversation(authenticator, {
+        title: "Notification",
+        visibility: "unlisted",
+        spaceId: null,
+      });
+
+      await SkillSuggestionResource.bulkSetNotificationConversation(
+        authenticator,
+        [],
+        conversation.id
       );
       // No error thrown.
     });

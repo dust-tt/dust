@@ -236,8 +236,9 @@ export async function buildSkillAggregationBatchMap(
 
 /**
  * Create a conversation with the pending suggestions for the skill editors.
+ * It's a single notification conversation that's sent to all editors of the skill.
  */
-export async function createSkillSuggestionsConversations(
+export async function createSkillSuggestionsConversation(
   auth: Authenticator,
   skill: SkillResource,
   editors: UserType[]
@@ -275,6 +276,12 @@ export async function createSkillSuggestionsConversations(
       },
     },
   });
+
+  await SkillSuggestionResource.bulkSetNotificationConversation(
+    auth,
+    pendingSuggestions,
+    conversation.id
+  );
 
   const contentFragmentRes = await toFileContentFragment(auth, {
     contentFragment: {
