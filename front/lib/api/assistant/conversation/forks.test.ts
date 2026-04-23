@@ -276,12 +276,19 @@ async function attachRunToAgentMessage(
     model.modelId
   );
 
-  const agentMessage = await AgentMessageModel.findByPk(message.agentMessageId);
-  if (!agentMessage) {
+  const [updatedCount] = await AgentMessageModel.update(
+    { runIds: [run.dustRunId] },
+    {
+      where: {
+        id: message.agentMessageId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    }
+  );
+
+  if (updatedCount !== 1) {
     throw new Error(`Missing agent message ${message.agentMessageId}.`);
   }
-
-  await agentMessage.update({ runIds: [run.dustRunId] });
 }
 
 async function createToolOutputFile(
