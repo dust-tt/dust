@@ -24,6 +24,7 @@ import type {
   UserMessageType,
 } from "@app/types/assistant/conversation";
 import type { SupportedContentFragmentType } from "@app/types/content_fragment";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { WorkspaceType } from "@app/types/user";
 import type { Transaction } from "sequelize";
 
