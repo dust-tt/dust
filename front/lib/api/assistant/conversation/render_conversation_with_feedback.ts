@@ -13,6 +13,8 @@ import { Err, Ok } from "@app/types/shared/result";
 
 const MAX_CONTENT_CHARS_PER_MESSAGE = 2_000;
 const MAX_TOTAL_CONTENT_CHARS = 20_000;
+const MAX_ACTION_INPUT_CHARS = 500;
+const MAX_ACTION_OUTPUT_CHARS = 1_000;
 
 export async function renderConversationAsTextWithFeedback(
   auth: Authenticator,
@@ -55,6 +57,8 @@ export async function renderConversationAsTextWithFeedback(
     includeFeedback: true,
     truncateMessageChars: MAX_CONTENT_CHARS_PER_MESSAGE,
     truncateTotalChars: MAX_TOTAL_CONTENT_CHARS,
+    truncateActionInputChars: MAX_ACTION_INPUT_CHARS,
+    truncateActionOutputChars: MAX_ACTION_OUTPUT_CHARS,
     fromMessageIndex,
     toMessageIndex,
   });

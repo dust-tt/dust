@@ -31,6 +31,10 @@ export interface RenderConversationAsTextOptions {
   includeActions?: boolean;
   // Include action input params and output (requires includeActions).
   includeActionDetails?: boolean;
+  // Truncate action input (params) to this many characters.
+  truncateActionInputChars?: number;
+  // Truncate action output to this many characters.
+  truncateActionOutputChars?: number;
   // Include user feedback inline after each agent message.
   includeFeedback?: boolean;
   // Skip agent messages with status "created" (still running).
@@ -299,11 +303,15 @@ function renderAgentMessageAsText(
 
       if (options.includeActionDetails) {
         const paramsStr = JSON.stringify(action.params);
-        lines.push(`  Input: ${paramsStr}`);
+        lines.push(
+          `  Input: ${options.truncateActionInputChars ? truncateString(paramsStr, options.truncateActionInputChars) : paramsStr}`
+        );
         if (action.output) {
           const outputText = serializeActionOutput(action.output);
           if (outputText) {
-            lines.push(`  Output: ${outputText}`);
+            lines.push(
+              `  Output: ${options.truncateActionOutputChars ? truncateString(outputText, options.truncateActionOutputChars) : outputText}`
+            );
           }
         }
       }
@@ -327,6 +335,13 @@ function renderAgentMessageAsText(
     text: lines.join("\n"),
     contentLength: content.length,
   };
+}
+
+function truncateString(str: string, maxChars: number): string {
+  if (str.length <= maxChars) {
+    return str;
+  }
+  return str.slice(0, maxChars) + " (truncated)";
 }
 
 function serializeActionOutput(
