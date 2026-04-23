@@ -35,7 +35,7 @@ function getCompactionSuccessLabel(
     return `Summary context gathered from conversation '${parentConversation.parentConversationTitle}'`;
   }
 
-  return `Summary context gathered from conversation ${message.sourceConversationId}`;
+  return "Summary context gathered from another conversation";
 }
 
 export function CompactionMessage({
