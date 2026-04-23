@@ -44,6 +44,7 @@ import {
 import { useConversationAttachments } from "@app/hooks/conversations/useConversationAttachments";
 import { useConversationSandboxFiles } from "@app/hooks/conversations/useConversationSandboxFiles";
 import { useConversationSandboxStatus } from "@app/hooks/conversations/useConversationSandboxStatus";
+import { useConversations } from "@app/hooks/conversations/useConversations";
 import { useAgentMessageStream } from "@app/hooks/useAgentMessageStream";
 import { useDeleteAgentMessage } from "@app/hooks/useDeleteAgentMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -63,11 +64,13 @@ import {
   isGlobalAgentId,
   isGlobalAgentWithFeedback,
 } from "@app/types/assistant/assistant";
+import type { ConversationListItemType } from "@app/types/assistant/conversation";
 import { isLightAgentMessageType } from "@app/types/assistant/conversation";
 import type {
   RichAgentMention,
   RichMention,
 } from "@app/types/assistant/mentions";
+import { isActiveWakeUp } from "@app/types/assistant/wakeups";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import {
   isInteractiveContentType,
@@ -240,6 +243,10 @@ export function AgentMessage({
     conversationId,
     disabled: true,
   });
+  const { mutateConversations } = useConversations({
+    workspaceId: owner.sId,
+    options: { disabled: true },
+  });
 
   const methods = useVirtuosoMethods<
     VirtuosoMessage,
@@ -374,7 +381,21 @@ export function AgentMessage({
               void mutateSandboxFiles();
             }
             if (action.internalMCPServerName === "wakeups") {
-              void mutateWakeUps();
+              void mutateWakeUps().then((updated) => {
+                const activeWakeUp =
+                  updated?.wakeUps.find(isActiveWakeUp) ?? null;
+                const nextWakeupAt =
+                  activeWakeUp?.scheduleConfig.type === "one_shot"
+                    ? activeWakeUp.scheduleConfig.fireAt
+                    : null;
+                void mutateConversations(
+                  (currentData: ConversationListItemType[] | undefined) =>
+                    currentData?.map((c) =>
+                      c.sId === conversationId ? { ...c, nextWakeupAt } : c
+                    ),
+                  { revalidate: false }
+                );
+              });
             }
             break;
           }
@@ -398,6 +419,7 @@ export function AgentMessage({
         mutateSandboxStatus,
         mutateSandboxFiles,
         mutateWakeUps,
+        mutateConversations,
       ]
     ),
     streamId,

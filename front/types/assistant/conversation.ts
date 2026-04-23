@@ -462,6 +462,7 @@ export type ConversationListItemType = {
   hasError: boolean;
   lastReadMs: number | null;
   metadata: ConversationMetadata;
+  nextWakeupAt?: number | null;
   requestedSpaceIds: string[];
   sId: string;
   spaceId: string | null;

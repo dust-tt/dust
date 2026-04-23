@@ -167,6 +167,9 @@ export async function listPrivateConversationsFromES({
           hasError: source.has_error,
           lastReadMs: null,
           metadata: source.metadata as ConversationMetadata,
+          nextWakeupAt: source.next_wakeup_at
+            ? new Date(source.next_wakeup_at).getTime()
+            : null,
           requestedSpaceIds: source.requested_space_ids,
           sId: source.conversation_id,
           spaceId: source.space_id ?? null,

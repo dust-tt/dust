@@ -56,6 +56,7 @@ import type { ProjectType, SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import { isBuilder } from "@app/types/user";
 import {
+  ActionTimeIcon,
   Avatar,
   BoltIcon,
   BoltOffIcon,
@@ -77,6 +78,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
   FolderOpenIcon,
+  Icon,
   Label,
   ListCheckIcon,
   MagicIcon,
@@ -1184,6 +1186,24 @@ const ConversationList = ({
   );
 };
 
+interface WakeUpSuffixProps {
+  nextWakeupAt: number;
+}
+
+function WakeUpSuffix({ nextWakeupAt }: WakeUpSuffixProps) {
+  const date = new Date(nextWakeupAt);
+  const hours = date.getHours() % 12 || 12;
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  const timeStr = `${hours}:${minutes}`;
+
+  return (
+    <span className="copy-xs flex items-center gap-1 text-muted-foreground dark:text-muted-foreground-night">
+      <Icon visual={ActionTimeIcon} size="xs" />
+      {timeStr}
+    </span>
+  );
+}
+
 function getConversationDotStatus(
   conversation: ConversationListItemType
 ): "blocked" | "unread" | "idle" {
@@ -1278,6 +1298,11 @@ const ConversationListItem = memo(
           !conversation.spaceId
             ? "cursor-grab active:cursor-grabbing"
             : undefined
+        }
+        suffix={
+          conversation.nextWakeupAt ? (
+            <WakeUpSuffix nextWakeupAt={conversation.nextWakeupAt} />
+          ) : undefined
         }
         moreMenu={
           <ConversationMenu
