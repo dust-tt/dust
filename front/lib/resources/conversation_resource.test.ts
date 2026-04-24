@@ -6819,6 +6819,45 @@ describe("ConversationResource cleanup on delete", () => {
         workspaceId: workspace.sId,
       });
     });
+
+    it("triggers workflow for each conversation on batchMarkAsReadAndClearActionRequired when FF is enabled", async () => {
+      const { workspace, authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+
+      const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+        name: "Agent",
+        description: "Agent",
+      });
+      const [conv1, conv2] = await Promise.all([
+        ConversationFactory.create(auth, {
+          agentConfigurationId: agent.sId,
+          messagesCreatedAt: [],
+        }),
+        ConversationFactory.create(auth, {
+          agentConfigurationId: agent.sId,
+          messagesCreatedAt: [],
+        }),
+      ]);
+
+      await FeatureFlagFactory.basic(auth, "conversation_search_indexing");
+      mockWorkflow().mockClear();
+
+      await ConversationResource.batchMarkAsReadAndClearActionRequired(auth, [
+        conv1.sId,
+        conv2.sId,
+      ]);
+
+      expect(mockWorkflow()).toHaveBeenCalledTimes(2);
+      expect(mockWorkflow()).toHaveBeenCalledWith({
+        conversationId: conv1.sId,
+        workspaceId: workspace.sId,
+      });
+      expect(mockWorkflow()).toHaveBeenCalledWith({
+        conversationId: conv2.sId,
+        workspaceId: workspace.sId,
+      });
+    });
   });
 });
 
