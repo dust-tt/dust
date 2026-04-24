@@ -100,8 +100,8 @@ export const PROJECT_TODOS_TOOLS_METADATA = createToolsRecord({
           })
         )
         .min(1)
-        .max(20)
-        .describe("List of TODOs to create (max 20)."),
+        .max(30)
+        .describe("List of TODOs to create (max 30)."),
       dustProject: ConfigurableToolInputSchemas[
         INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
       ]
@@ -117,14 +117,18 @@ export const PROJECT_TODOS_TOOLS_METADATA = createToolsRecord({
     },
   },
   mark_todo_done: {
-    description: "Mark one of the current user's TODOs as done.",
+    description: "Mark one or more of the current user's TODOs as done.",
     schema: {
       actorType: z
         .enum(["user", "agent"])
         .describe(
           "Who has the initiative of marking the TODO as done ? Use 'user' when the user explicitely asked for it."
         ),
-      todoId: z.string().describe("The sId of the TODO to mark as done."),
+      todoIds: z
+        .array(z.string())
+        .min(1)
+        .max(50)
+        .describe("List of TODO sIds to mark as done."),
       dustProject: ConfigurableToolInputSchemas[
         INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
       ]
@@ -135,8 +139,8 @@ export const PROJECT_TODOS_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Marking TODO as done",
-      done: "Mark TODO as done",
+      running: "Marking TODOs as done",
+      done: "Mark TODOs as done",
     },
   },
   reopen_todo: {
@@ -156,6 +160,33 @@ export const PROJECT_TODOS_TOOLS_METADATA = createToolsRecord({
     displayLabels: {
       running: "Reopening TODO",
       done: "Reopen TODO",
+    },
+  },
+  start_todo_agent: {
+    description:
+      "Start an agent conversation to work on one of your 'to_do' TODOs. " +
+      "If already started, it reuses the existing linked conversation.",
+    schema: {
+      todoId: z.string().describe("The sId of the TODO to start working on."),
+      agentName: z
+        .string()
+        .min(3)
+        .optional()
+        .describe(
+          "Optional agent name. If provided, the tool searches matching agent configurations and uses the best match. Defaults to Dust."
+        ),
+      dustProject: ConfigurableToolInputSchemas[
+        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+      ]
+        .optional()
+        .describe(
+          "Optional project to look up the TODO in, will fallback to the conversation's project."
+        ),
+    },
+    stake: "low",
+    displayLabels: {
+      running: "Starting TODO work",
+      done: "Start TODO work",
     },
   },
 });
