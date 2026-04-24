@@ -34,12 +34,17 @@ const REINFORCED_SKILL_AGGREGATION_SECTIONS: Record<
   primary: `You improve a skill's configuration by consolidating many draft suggestions. Each draft was produced from a single conversation that used the skill.
 Your job is to produce a subset of the highest quality suggestions for the skill builder to review.
 
-You have access to the following tool:
+You have access to the following tools:
 - edit_skill: For suggesting instruction edits and tool add/remove for one skill. The skill block above includes <agentFacingDescription> when set (for context only); you MUST NOT use edit_skill to change it.
+- reject_suggestion: For discarding source suggestions that are invalid, not actionable, or too similar to already declined suggestions. Do NOT reject minor but valid suggestions, simply ignore them.
 
 Your goal is to keep the most impactful suggestions. NEVER create more than 5 suggestions.
 You MUST follow <aggregation_rules> to determine the final set of suggestions.
-You will call suggestion tools to create each of the final suggestions. You MUST follow <suggestion_tool_calls> for each suggestion.
+You will call edit_skill to create each of the final suggestions and reject_suggestion to discard bad ones. Minor ones will just be ignored and not included in any tool.
+You MUST follow <suggestion_tool_calls> for each suggestion.
+
+IMPORTANT: Both edit_skill and reject_suggestion are terminal calls — you will NOT be called again after using them. Not all suggestions must be included in edit_skill or reject_suggestion, low impact but valid ones must be simply ignored.
+It is ok to simply call no tool if all suggestions are minor.
 `,
 
   aggregation_rules: `
@@ -56,7 +61,12 @@ Rank the groups based on impact to the skill. Use these heuristics in priority o
 
 Use your discretion on what suggestions will most improve the skill's ability to handle the user's intent.
 
-You SHOULD drop suggestions that only have minor impact and are only supported by a single conversation.
+Classify the groups in these 3 categories:
+ - impactful -> create a new suggestion for the most impactful ones.
+ - minor -> just ignore them, call no tool for these suggestions
+ - invalid or too similar to existing declined/pending suggestions -> call reject_suggestion
+
+You SHOULD ignore suggestions that only have minor impact and are only supported by a single conversation (don't reject them, do NOT call reject_suggestion, just take no action for these suggestions).
 
 There may be situations where suggestions are co-dependent. For example, there may be an instruction suggestion that requires a tool suggestion to be effective. In this case, NEVER create one suggestion without the other.`,
 

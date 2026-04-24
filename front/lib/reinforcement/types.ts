@@ -8,9 +8,12 @@ export type ExploratoryToolName =
   | "search_knowledge"
   | typeof DESCRIBE_MCP_TOOL_NAME;
 
-export type TerminalToolName = "edit_skill";
+export type TerminalToolName = "edit_skill" | "reject_suggestion";
 
-export const TERMINAL_TOOLS: TerminalToolName[] = ["edit_skill"];
+export const TERMINAL_TOOLS: TerminalToolName[] = [
+  "edit_skill",
+  "reject_suggestion",
+];
 
 export const EXPLORATORY_TOOLS: ExploratoryToolName[] = [
   "get_available_tools",
@@ -92,6 +95,14 @@ export const TOOL_SCHEMAS: Record<
         "The sIds of the source suggestions consolidated into this suggestion."
       ),
   }),
+  reject_suggestion: z.object({
+    sourceSuggestionIds: z
+      .array(z.string())
+      .min(1)
+      .describe(
+        "The sIds of the source suggestions to reject. Must include at least one suggestion sId."
+      ),
+  }),
 };
 
 export interface TerminalToolCallEvent extends ToolCallEvent {
@@ -126,6 +137,8 @@ export interface TerminalToolCallFailure {
 
 export interface ProcessReinforcedSkillsEventsResult {
   suggestionsCreated: number;
+  suggestionsRejected: number;
+  approvedSourceSuggestionIds: string[];
   successfulToolCalls: TerminalToolCallSuccess[];
   failedToolCalls: TerminalToolCallFailure[];
 }

@@ -141,6 +141,7 @@ interface ReinforcedToolActionInfo {
 interface ReinforcedStepResult {
   isTerminal: boolean;
   suggestionsCreated: number;
+  approvedSourceSuggestionIds: string[];
   reinforcementConversationId?: string;
   toolActionInfo?: ReinforcedToolActionInfo;
 }
@@ -181,15 +182,20 @@ async function runMultiStepStreamingLoop(
   stepFn: (
     reinforcementConversationId: string | undefined
   ) => Promise<ReinforcedStepResult>
-): Promise<{ suggestionsCreated: number }> {
+): Promise<{
+  suggestionsCreated: number;
+  approvedSourceSuggestionIds: string[];
+}> {
   let reinforcementConversationId: string | undefined;
   let totalSuggestionsCreated = 0;
+  const allApprovedSourceSuggestionIds: string[] = [];
 
   for (let step = 0; step < MAX_REINFORCED_ANALYSIS_STEPS; step++) {
     const result = await stepFn(reinforcementConversationId);
 
     reinforcementConversationId = result.reinforcementConversationId;
     totalSuggestionsCreated += result.suggestionsCreated;
+    allApprovedSourceSuggestionIds.push(...result.approvedSourceSuggestionIds);
 
     if (result.isTerminal) {
       break;
@@ -200,7 +206,10 @@ async function runMultiStepStreamingLoop(
     }
   }
 
-  return { suggestionsCreated: totalSuggestionsCreated };
+  return {
+    suggestionsCreated: totalSuggestionsCreated,
+    approvedSourceSuggestionIds: allApprovedSourceSuggestionIds,
+  };
 }
 
 /**
@@ -217,6 +226,7 @@ async function aggregateSkillWithMultiStepBatch({
 }): Promise<void> {
   let reinforcementConversationId: string | undefined;
   let totalSuggestionsCreated = 0;
+  const allApprovedSourceSuggestionIds: string[] = [];
 
   for (let step = 0; step < MAX_REINFORCED_ANALYSIS_STEPS; step++) {
     const batchResult = await startSkillAggregationBatchActivity({
@@ -239,6 +249,7 @@ async function aggregateSkillWithMultiStepBatch({
     });
 
     totalSuggestionsCreated += result.suggestionsCreated;
+    allApprovedSourceSuggestionIds.push(...result.approvedSourceSuggestionIds);
 
     if (!result.needsContinuation) {
       break;
@@ -255,6 +266,7 @@ async function aggregateSkillWithMultiStepBatch({
     workspaceId,
     skillId,
     suggestionsCreated: totalSuggestionsCreated,
+    approvedSourceSuggestionIds: allApprovedSourceSuggestionIds,
     disableNotifications,
   });
 }
@@ -419,15 +431,19 @@ export async function reinforcementWorkspaceWorkflow({
     const aggregationResults = await concurrentExecutor(
       skillIdsWithSuggestions,
       async (currentSkillId) => {
-        const { suggestionsCreated } = await runMultiStepStreamingLoop(
-          (reinforcementConversationId) =>
+        const { suggestionsCreated, approvedSourceSuggestionIds } =
+          await runMultiStepStreamingLoop((reinforcementConversationId) =>
             aggregateSuggestionsForSkillStepActivity({
               workspaceId,
               skillId: currentSkillId,
               reinforcementConversationId,
             })
-        );
-        return { skillId: currentSkillId, suggestionsCreated };
+          );
+        return {
+          skillId: currentSkillId,
+          suggestionsCreated,
+          approvedSourceSuggestionIds,
+        };
       },
       { concurrency: SKILL_AGGREGATION_CONCURRENCY }
     );
@@ -436,11 +452,13 @@ export async function reinforcementWorkspaceWorkflow({
     for (const {
       skillId: currentSkillId,
       suggestionsCreated,
+      approvedSourceSuggestionIds,
     } of aggregationResults) {
       await finalizeSkillAggregationActivity({
         workspaceId,
         skillId: currentSkillId,
         suggestionsCreated,
+        approvedSourceSuggestionIds,
         disableNotifications,
       });
     }

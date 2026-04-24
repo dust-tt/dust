@@ -87,6 +87,7 @@ async function runReinforcedSkillsStep({
 }): Promise<{
   isTerminal: boolean;
   suggestionsCreated: number;
+  approvedSourceSuggestionIds: string[];
   reinforcementConversationId?: string;
   toolActionInfo?: ReinforcedToolActionInfo;
 }> {
@@ -96,7 +97,11 @@ async function runReinforcedSkillsStep({
       { contextId, workspaceId: auth.getNonNullableWorkspace().sId },
       "ReinforcedSkills: no LLM available for step activity"
     );
-    return { isTerminal: true, suggestionsCreated: 0 };
+    return {
+      isTerminal: true,
+      suggestionsCreated: 0,
+      approvedSourceSuggestionIds: [],
+    };
   }
 
   const conversationRes = await getConversation(
@@ -192,6 +197,7 @@ async function runReinforcedSkillsStep({
       return {
         isTerminal: false,
         suggestionsCreated: result.suggestionsCreated,
+        approvedSourceSuggestionIds: result.approvedSourceSuggestionIds,
         reinforcementConversationId,
       };
     }
@@ -199,6 +205,7 @@ async function runReinforcedSkillsStep({
     return {
       isTerminal: true,
       suggestionsCreated: result.suggestionsCreated,
+      approvedSourceSuggestionIds: result.approvedSourceSuggestionIds,
       reinforcementConversationId,
     };
   }
@@ -215,6 +222,7 @@ async function runReinforcedSkillsStep({
   return {
     isTerminal: false,
     suggestionsCreated: 0,
+    approvedSourceSuggestionIds: [],
     reinforcementConversationId,
     toolActionInfo,
   };
@@ -292,6 +300,7 @@ export async function analyzeConversationStepActivity({
 }): Promise<{
   isTerminal: boolean;
   suggestionsCreated: number;
+  approvedSourceSuggestionIds: string[];
   reinforcementConversationId?: string;
   toolActionInfo?: ReinforcedToolActionInfo;
 }> {
@@ -311,7 +320,11 @@ export async function analyzeConversationStepActivity({
         { conversationId },
         "ReinforcedSkills: conversation not found for step activity"
       );
-      return { isTerminal: true, suggestionsCreated: 0 };
+      return {
+        isTerminal: true,
+        suggestionsCreated: 0,
+        approvedSourceSuggestionIds: [],
+      };
     }
 
     if (skills.length === 0) {
@@ -319,7 +332,11 @@ export async function analyzeConversationStepActivity({
         { conversationId, skillIds },
         "ReinforcedSkills: no skills found for step activity"
       );
-      return { isTerminal: true, suggestionsCreated: 0 };
+      return {
+        isTerminal: true,
+        suggestionsCreated: 0,
+        approvedSourceSuggestionIds: [],
+      };
     }
 
     const skillTypes = skills.map((s) => s.toJSON(auth));
@@ -414,6 +431,7 @@ export async function aggregateSuggestionsForSkillStepActivity({
 }): Promise<{
   isTerminal: boolean;
   suggestionsCreated: number;
+  approvedSourceSuggestionIds: string[];
   reinforcementConversationId?: string;
   toolActionInfo?: ReinforcedToolActionInfo;
 }> {
@@ -423,7 +441,11 @@ export async function aggregateSuggestionsForSkillStepActivity({
   if (!reinforcementConversationId) {
     const ctx = await loadSkillAggregationContext(auth, skillId);
     if (!ctx) {
-      return { isTerminal: true, suggestionsCreated: 0 };
+      return {
+        isTerminal: true,
+        suggestionsCreated: 0,
+        approvedSourceSuggestionIds: [],
+      };
     }
 
     reinforcementConversationId = await createReinforcedSkillsConversation(
@@ -455,27 +477,30 @@ export async function finalizeSkillAggregationActivity({
   workspaceId,
   skillId,
   suggestionsCreated,
+  approvedSourceSuggestionIds,
   disableNotifications,
 }: {
   workspaceId: string;
   skillId: string;
   suggestionsCreated: number;
+  approvedSourceSuggestionIds: string[];
   disableNotifications: boolean;
 }): Promise<void> {
   const auth = await getAuthForWorkspace(workspaceId);
 
-  // Mark synthetic suggestions as approved (consumed by aggregation).
-  const syntheticSuggestions =
-    await SkillSuggestionResource.listBySkillConfigurationId(auth, skillId, {
-      sources: ["synthetic"],
-      states: ["pending"],
-    });
-
-  await SkillSuggestionResource.bulkUpdateState(
-    auth,
-    syntheticSuggestions,
-    "approved"
-  );
+  // Mark only the synthetic suggestions that were used by edit_skill as approved.
+  // Rejected ones were already marked during processing; the rest stay pending.
+  if (approvedSourceSuggestionIds.length > 0) {
+    const approvedSuggestions = await SkillSuggestionResource.fetchByIds(
+      auth,
+      approvedSourceSuggestionIds
+    );
+    await SkillSuggestionResource.bulkUpdateState(
+      auth,
+      approvedSuggestions,
+      "approved"
+    );
+  }
 
   // Record that reinforcement analysis has completed for this skill.
   const skill = await SkillResource.fetchById(auth, skillId);
@@ -503,7 +528,7 @@ export async function finalizeSkillAggregationActivity({
   logger.info(
     {
       skillId,
-      syntheticCount: syntheticSuggestions.length,
+      approvedCount: approvedSourceSuggestionIds.length,
       pendingCreated: suggestionsCreated,
       disableNotifications,
     },
@@ -904,6 +929,7 @@ export async function processSkillAggregationBatchResultActivity({
 }): Promise<{
   needsContinuation: boolean;
   suggestionsCreated: number;
+  approvedSourceSuggestionIds: string[];
   reinforcementConversationId?: string;
   toolActionInfo?: ReinforcedToolActionInfo;
 }> {
@@ -914,7 +940,11 @@ export async function processSkillAggregationBatchResultActivity({
     "reinforcement_aggregate_suggestions"
   );
   if (!llm) {
-    return { needsContinuation: false, suggestionsCreated: 0 };
+    return {
+      needsContinuation: false,
+      suggestionsCreated: 0,
+      approvedSourceSuggestionIds: [],
+    };
   }
 
   // Download results and store agent messages in reinforcement conversations.
@@ -932,7 +962,11 @@ export async function processSkillAggregationBatchResultActivity({
   const events = batchEvents.get(firstConvId);
 
   if (!events) {
-    return { needsContinuation: false, suggestionsCreated: 0 };
+    return {
+      needsContinuation: false,
+      suggestionsCreated: 0,
+      approvedSourceSuggestionIds: [],
+    };
   }
 
   const { exploratoryToolCalls, terminalToolCalls } =
@@ -962,6 +996,7 @@ export async function processSkillAggregationBatchResultActivity({
         return {
           needsContinuation: true,
           suggestionsCreated: result.suggestionsCreated,
+          approvedSourceSuggestionIds: result.approvedSourceSuggestionIds,
           reinforcementConversationId: firstConvId,
         };
       }
@@ -979,13 +1014,18 @@ export async function processSkillAggregationBatchResultActivity({
     return {
       needsContinuation: false,
       suggestionsCreated: result.suggestionsCreated,
+      approvedSourceSuggestionIds: result.approvedSourceSuggestionIds,
     };
   }
 
   // Only exploratory tools — prepare actions for the workflow to execute.
   const storedInfo = storedResultInfo.get(firstConvId);
   if (!storedInfo) {
-    return { needsContinuation: false, suggestionsCreated: 0 };
+    return {
+      needsContinuation: false,
+      suggestionsCreated: 0,
+      approvedSourceSuggestionIds: [],
+    };
   }
 
   const toolActionInfo = await prepareReinforcedToolActions(auth, {
@@ -999,6 +1039,7 @@ export async function processSkillAggregationBatchResultActivity({
   return {
     needsContinuation: true,
     suggestionsCreated: 0,
+    approvedSourceSuggestionIds: [],
     reinforcementConversationId: firstConvId,
     toolActionInfo,
   };
