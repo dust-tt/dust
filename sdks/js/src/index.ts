@@ -1187,7 +1187,9 @@ export class DustAPI {
   }: {
     createRequest: (
       lastEventId?: string | null
-    ) => Promise<Result<{ response: DustResponse; duration: number }, APIError>>;
+    ) => Promise<
+      Result<{ response: DustResponse; duration: number }, APIError>
+    >;
     signal?: AbortSignal;
     options: {
       maxReconnectAttempts: number;
