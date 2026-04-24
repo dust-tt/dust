@@ -4,6 +4,9 @@ import { useEffect, useRef, useState } from "react";
 
 import styles from "./ThinkingStep.module.css";
 
+// Matches --clamp-height (3.75rem) in ThinkingStep.module.css.
+const CLAMP_HEIGHT_PX = 60;
+
 interface ThinkingStepProps {
   content: string;
   isStreaming: boolean;
@@ -17,7 +20,9 @@ export function ThinkingStep({
   isMessageDone,
   isLast,
 }: ThinkingStepProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
+  // When the message is still in progress, this step just transitioned from
+  // streaming — start expanded so there's no visible collapse flash.
+  const [isExpanded, setIsExpanded] = useState(!isMessageDone);
   const [needsTruncation, setNeedsTruncation] = useState(true);
   const contentRef = useRef<HTMLDivElement>(null);
   const isMeasured = useRef(false);
@@ -28,7 +33,14 @@ export function ThinkingStep({
       return;
     }
 
-    setNeedsTruncation(el.scrollHeight > el.clientHeight);
+    // When isExpanded is true the CSS sets max-height: max-content, so
+    // scrollHeight === clientHeight. Compare against the known clamp
+    // height instead so the check works in either state.
+    const overflows = el.scrollHeight > CLAMP_HEIGHT_PX;
+    setNeedsTruncation(overflows);
+    if (overflows) {
+      setIsExpanded(false);
+    }
     isMeasured.current = true;
   }, [isStreaming, isMessageDone]);
 
