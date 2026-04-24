@@ -38,7 +38,6 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Dialog,
-  DialogContainer,
   DialogContent,
   DialogFooter,
   DialogHeader,
@@ -387,7 +386,7 @@ export function ConnectMCPServerDialog({
               Connect {toolName}
             </DialogTitle>
           </DialogHeader>
-          <DialogContainer>
+          <div className="overflow-y-auto px-5 py-4">
             {authorization && (
               <MCPServerAuthConnection
                 toolName={toolName}
@@ -398,7 +397,7 @@ export function ConnectMCPServerDialog({
                 staticCredentialConfig={staticCredentialConfig}
               />
             )}
-          </DialogContainer>
+          </div>
           <DialogFooter
             leftButtonProps={{
               label: "Cancel",
