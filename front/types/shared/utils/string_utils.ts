@@ -203,6 +203,10 @@ export function asDisplayToolName(name?: string | null) {
     return "Query Tables";
   }
 
+  if (name === "wakeups") {
+    return "Wake-ups";
+  }
+
   return formatAsDisplayName(name);
 }
 
