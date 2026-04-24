@@ -321,6 +321,18 @@ export function UserAnswerRequired({
               onChange={(e) => handleCustomResponseChange(e.target.value)}
               onKeyDown={(e) => {
                 if (
+                  e.key === "Backspace" &&
+                  customResponse.length === 0 &&
+                  question.options.length > 0
+                ) {
+                  e.preventDefault();
+                  setIsCustomResponseFocused(false);
+                  setActiveOptionIndex(question.options.length - 1);
+                  containerRef.current?.focus();
+                  return;
+                }
+
+                if (
                   e.key === "Enter" &&
                   (!question.multiSelect || e.metaKey || e.ctrlKey)
                 ) {

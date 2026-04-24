@@ -367,6 +367,33 @@ describe("UserAnswerRequired", () => {
     expect(alphaOption).toHaveAttribute("data-selected", "false");
   });
 
+  it("moves back to the last option when Backspace is pressed on an empty custom input", async () => {
+    const user = userEvent.setup();
+    const { container } = render(
+      <UserAnswerRequired
+        blockedAction={makeBlockedAction()}
+        triggeringUser={null}
+        owner={owner}
+        conversationId="conv_1"
+        messageId="msg_1"
+      />
+    );
+
+    const keyboardContainer = getKeyboardContainer(container);
+    const alphaOption = screen.getByRole("button", { name: /Alpha/i });
+    const betaOption = screen.getByRole("button", { name: /Beta/i });
+    const customInput = screen.getByPlaceholderText("Type something else");
+
+    await user.click(customInput);
+    expect(customInput).toHaveFocus();
+
+    fireEvent.keyDown(customInput, { key: "Backspace" });
+
+    expect(keyboardContainer).toHaveFocus();
+    expect(betaOption).toHaveClass("bg-primary-100");
+    expect(alphaOption).not.toHaveClass("bg-primary-100");
+  });
+
   it("submits the current multi-select choices when Cmd+Enter is pressed on a focused option", async () => {
     const user = userEvent.setup();
 
