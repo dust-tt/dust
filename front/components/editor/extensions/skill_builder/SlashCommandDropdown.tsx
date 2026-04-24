@@ -251,7 +251,7 @@ export const SlashCommandDropdown = forwardRef<
                       onMouseEnter={() => setSelectedIndex(index)}
                       className={
                         index === selectedIndex
-                          ? "bg-muted-background dark:bg-muted-night"
+                          ? "bg-muted-background dark:bg-muted-night !transition-none !duration-0"
                           : ""
                       }
                     />
