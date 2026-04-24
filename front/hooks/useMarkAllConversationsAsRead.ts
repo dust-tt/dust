@@ -57,7 +57,12 @@ export function useMarkAllConversationsAsRead({
         (prev) =>
           prev?.map((c) =>
             markedIds.has(c.sId)
-              ? { ...c, actionRequired: false, unread: false, lastReadMs: nowMs }
+              ? {
+                  ...c,
+                  actionRequired: false,
+                  unread: false,
+                  lastReadMs: nowMs,
+                }
               : c
           ),
         { revalidate: false }

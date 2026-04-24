@@ -1476,8 +1476,8 @@ function NavigationListWithInbox({
               selectedConversations={selectedConversations}
               toggleConversationSelection={toggleConversationSelection}
               activeConversationId={activeConversationId}
-          owner={owner}
-          />
+              owner={owner}
+            />
           </motion.div>
         )}
       </AnimatePresence>
