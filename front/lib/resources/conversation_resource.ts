@@ -61,8 +61,8 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { UserType } from "@app/types/user";
 import assert from "assert";
 import isEqual from "lodash/isEqual";
-import uniq from "lodash/uniq";
 import omit from "lodash/omit";
+import uniq from "lodash/uniq";
 import type {
   Attributes,
   CreationAttributes,
