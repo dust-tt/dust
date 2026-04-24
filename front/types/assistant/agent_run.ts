@@ -314,7 +314,15 @@ export async function getAgentLoopDataWithAuth(
   const reinforcedSkillNotification = isReinforcedSkillNotificationMetadata(
     reinforcedSkillMeta
   )
-    ? reinforcedSkillMeta
+    ? {
+        ...reinforcedSkillMeta,
+        // The skill-notification flow posts hidden user messages with this origin
+        // whose content is the pre-formatted text we want Dust to echo.
+        staticText:
+          userMessage.context.origin === "reinforced_skill_notification"
+            ? userMessage.content
+            : undefined,
+      }
     : undefined;
 
   const globalAgentContext: GlobalAgentContext = {

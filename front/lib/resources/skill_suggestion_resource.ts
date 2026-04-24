@@ -353,14 +353,14 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
   static async bulkSetNotificationConversation(
     auth: Authenticator,
     suggestions: SkillSuggestionResource[],
-    notificationConversationId: ModelId
+    notificationConversationModelId: ModelId
   ): Promise<void> {
     if (suggestions.length === 0) {
       return;
     }
 
     await this.model.update(
-      { notificationConversationModelId: notificationConversationId },
+      { notificationConversationModelId: notificationConversationModelId },
       {
         where: {
           workspaceId: auth.getNonNullableWorkspace().id,

@@ -166,6 +166,11 @@ export type GlobalAgentContext = {
   reinforcedSkillNotification?: {
     skillName: string;
     skillId: string;
+    // Pre-formatted text that Dust should echo as its static (NOOP) response.
+    // Populated when the triggering user message carries the
+    // `reinforced_skill_notification` origin, which covers both the initial
+    // TODO-list bootstrap and every accept/reject status update.
+    staticText?: string;
   };
 };
 
