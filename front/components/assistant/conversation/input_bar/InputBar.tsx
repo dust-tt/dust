@@ -495,6 +495,7 @@ export const InputBar = React.memo(function InputBar({
             disableAgentSelector={
               isBlockedByAgentSwitch || submitBlockMessage !== null
             }
+            disableInput={submitBlockMessage !== null}
             submitBlockMessage={submitBlockMessage ?? agentSwitchBlockMessage}
             onShake={handleShake}
           />

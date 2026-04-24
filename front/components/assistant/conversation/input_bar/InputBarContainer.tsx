@@ -125,6 +125,12 @@ export interface InputBarContainerProps {
   allAgents: LightAgentConfigurationType[];
   attachedNodes: DataSourceViewContentNode[];
   disableAgentSelector: boolean;
+  // When true, the editor is made non-editable and every picker (agent,
+  // tools, attachment, voice) is disabled. Reserved for states where the user
+  // cannot interact at all (e.g. non-owner viewing a conversation with an
+  // active wake-up, or compaction in progress). `submitBlockMessage` on its
+  // own only mutes the send button.
+  disableInput: boolean;
   submitBlockMessage: string | null;
   onShake: () => void;
   conversation?: ConversationWithoutContentType;
@@ -185,6 +191,7 @@ const InputBarContainer = ({
   saveDraft,
   user,
   disableAgentSelector,
+  disableInput,
   submitBlockMessage,
   onShake,
 }: InputBarContainerProps) => {
@@ -509,7 +516,7 @@ const InputBarContainer = ({
       selectedMCPServerViewIdsRef,
       selectedSkillIdsRef,
     },
-    placeholderOverride: submitBlockMessage,
+    placeholderOverride: disableInput ? submitBlockMessage : null,
     onLongTextPaste: async ({ text, from, to }) => {
       let filename = "";
       let inserted = false;
@@ -605,16 +612,18 @@ const InputBarContainer = ({
     },
   });
 
-  // Keep the editor non-editable while submission is blocked (e.g. a non-owner
-  // viewing a conversation with an active wake-up). The placeholder already
+  // Keep the editor non-editable while the input is fully disabled (e.g. a
+  // non-owner viewing a conversation with an active wake-up). The placeholder
   // reads the block reason via `placeholderOverride`; disabling editability
-  // prevents typing into the field.
+  // prevents typing. Note: this must not fire for send-button-only blocks
+  // (such as "another agent is answering"), otherwise the user loses the
+  // ability to steer while the other agent is still generating.
   useEffect(() => {
     if (!editor || editor.isDestroyed) {
       return;
     }
-    editor.setEditable(!isSubmitBlocked);
-  }, [editor, isSubmitBlocked]);
+    editor.setEditable(!disableInput);
+  }, [editor, disableInput]);
 
   // Ref to expose the current selectedSingleAgent to the editor update listener
   // without re-registering it on every selection change.
@@ -1105,7 +1114,7 @@ const InputBarContainer = ({
                     fileInputRef={fileInputRef}
                     fileUploaderService={fileUploaderService}
                     handleSingleAgentSelect={handleSingleAgentSelect}
-                    isInputDisabled={isSubmitBlocked}
+                    isInputDisabled={disableInput}
                     onMCPServerViewSelect={onMCPServerViewSelect}
                     onNodeSelect={onNodeSelect}
                     onNodeUnselect={onNodeUnselect}
@@ -1213,7 +1222,7 @@ const InputBarContainer = ({
                   externalOpen={showKnowledgePicker}
                   onExternalOpenChange={setShowKnowledgePicker}
                   anchorRef={plusButtonRef}
-                  disabled={isSubmitBlocked}
+                  disabled={disableInput}
                 />
               )}
             </>
@@ -1237,7 +1246,7 @@ const InputBarContainer = ({
                   onRecordStop={voiceTranscriberService.stopRecording}
                   size={buttonSize}
                   showStopLabel={!isMobile}
-                  disabled={isSubmitBlocked}
+                  disabled={disableInput}
                 />
               )}
           </div>
