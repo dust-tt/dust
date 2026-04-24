@@ -1697,14 +1697,20 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
           const dbItem = dbResource.toListItem();
           // Omit `nextWakeupAt`: DB always returns null vs ES has the real wakeup time.
-          if (
-            !isEqual(omit(esItem, "nextWakeupAt"), omit(dbItem, "nextWakeupAt"))
-          ) {
+          const esCleaned = omit(esItem, "nextWakeupAt");
+          const dbCleaned = omit(dbItem, "nextWakeupAt");
+          if (!isEqual(esCleaned, dbCleaned)) {
+            const divergingKeys = (
+              Object.keys({ ...esCleaned, ...dbCleaned }) as Array<
+                keyof typeof esCleaned
+              >
+            ).filter((k) => !isEqual(esCleaned[k], dbCleaned[k]));
             logger.warn(
               {
                 workspaceId: workspace.sId,
                 userId: user.sId,
                 sId: esItem.sId,
+                divergingKeys,
                 esItem,
                 dbItem,
               },

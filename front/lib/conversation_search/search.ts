@@ -166,7 +166,7 @@ export async function listPrivateConversationsFromES({
           created: new Date(source.created_at).getTime(),
           hasError: source.has_error,
           lastReadMs: null,
-          metadata: source.metadata as ConversationMetadata,
+          metadata: (source.metadata ?? {}) as ConversationMetadata,
           nextWakeupAt: source.next_wakeup_at
             ? new Date(source.next_wakeup_at).getTime()
             : null,
@@ -174,7 +174,7 @@ export async function listPrivateConversationsFromES({
           sId: source.conversation_id,
           spaceId: source.space_id ?? null,
           title: source.title,
-          triggerId: source.trigger_id,
+          triggerId: source.trigger_id ?? null,
           unread: true,
           updated: updatedMs,
         },
