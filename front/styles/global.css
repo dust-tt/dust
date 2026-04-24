@@ -168,30 +168,6 @@ body {
   animation: fade-collapse 500ms ease-out forwards;
 }
 
-/* Thinking-step collapse/expand: animate block spacing with max-height.
-   The wrapper toggles .is-collapsed to zero out vertical spacing; CSS transitions
-   handle the animation so no React re-render is needed during the motion. */
-.thinking-clamp > * > * {
-  transition:
-    padding 180ms cubic-bezier(0.32, 0.72, 0, 1),
-    margin 180ms cubic-bezier(0.32, 0.72, 0, 1),
-    gap 180ms cubic-bezier(0.32, 0.72, 0, 1);
-}
-
-.thinking-clamp.is-collapsed > * > * {
-  padding-top: 0 !important;
-  padding-bottom: 0 !important;
-  margin-top: 0 !important;
-  margin-bottom: 0 !important;
-  gap: 0 !important;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .thinking-clamp > * > * {
-    transition: none;
-  }
-}
-
 /* Privacy mask style for dd-privacy-mask elements - only when enabled */
 .privacy-mask-enabled .dd-privacy-mask {
   filter: blur(5px) !important;
