@@ -964,6 +964,8 @@ export class DustAPI {
     return new Ok(r.value);
   }
 
+  // Wait for the parent user message to move to `visible` when the agent message is not direclty
+  // found in the conversation. This provides natural suoport for steering through the SDK.
   async waitForAgentMessage({
     conversation,
     parentUserMessageId,
