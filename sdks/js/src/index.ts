@@ -51,7 +51,6 @@ import type {
   Result,
   SearchRequestBodyType,
   SearchWarningCode,
-  UserMessageType,
   ValidateActionRequestBodyType,
   ValidateActionResponseType,
 } from "./types";
@@ -965,6 +964,78 @@ export class DustAPI {
     return new Ok(r.value);
   }
 
+  async waitForAgentMessage({
+    conversation,
+    parentUserMessageId,
+    signal,
+  }: {
+    conversation: ConversationPublicType;
+    parentUserMessageId: string;
+    signal?: AbortSignal;
+  }): Promise<
+    Result<
+      AgentMessagePublicType | null,
+      { type: string; message: string } | Error
+    >
+  > {
+    let agentMessage =
+      conversation.content
+        .map((versions) => versions[versions.length - 1])
+        .find((message): message is AgentMessagePublicType => {
+          return (
+            message?.type === "agent_message" &&
+            message.parentMessageId === parentUserMessageId
+          );
+        }) ?? null;
+    if (agentMessage) {
+      return new Ok(agentMessage);
+    }
+
+    const streamRes = await this.streamConversationEvents({
+      conversationId: conversation.sId,
+      signal,
+    });
+    if (streamRes.isErr()) {
+      return streamRes;
+    }
+
+    for await (const event of streamRes.value.eventStream) {
+      if (
+        event.type === "user_message_new" &&
+        event.messageId === parentUserMessageId &&
+        event.message.visibility === "visible"
+      ) {
+        break;
+      }
+
+      if (
+        event.type === "user_message_promoted" &&
+        event.messageId === parentUserMessageId
+      ) {
+        break;
+      }
+    }
+
+    const conversationRes = await this.getConversation({
+      conversationId: conversation.sId,
+    });
+    if (conversationRes.isErr()) {
+      return conversationRes;
+    }
+
+    agentMessage =
+      conversationRes.value.content
+        .map((versions) => versions[versions.length - 1])
+        .find((message): message is AgentMessagePublicType => {
+          return (
+            message?.type === "agent_message" &&
+            message.parentMessageId === parentUserMessageId
+          );
+        }) ?? null;
+
+    return new Ok(agentMessage);
+  }
+
   async streamAgentAnswerEvents({
     conversation,
     userMessageId,
@@ -991,22 +1062,21 @@ export class DustAPI {
       { type: string; message: string } | Error
     >
   > {
-    const agentMessages = conversation.content
-      .map((versions) => {
-        const m = versions[versions.length - 1];
-        return m;
-      })
-      .filter((m): m is AgentMessagePublicType => {
-        return (
-          m && m.type === "agent_message" && m.parentMessageId === userMessageId
-        );
-      });
+    const agentMessageRes = await this.waitForAgentMessage({
+      conversation,
+      parentUserMessageId: userMessageId,
+      signal,
+    });
+    if (agentMessageRes.isErr()) {
+      return agentMessageRes;
+    }
 
-    if (agentMessages.length === 0) {
+    const agentMessage = agentMessageRes.value;
+
+    if (agentMessage === null) {
       return new Err(new Error("Failed to retrieve agent message"));
     }
 
-    const agentMessage = agentMessages[0];
     return this.streamAgentMessageEvents({
       conversationId: conversation.sId,
       agentMessageId: agentMessage.sId,
@@ -1018,55 +1088,6 @@ export class DustAPI {
         autoReconnect: options.autoReconnect ?? true,
       },
     });
-  }
-
-  async waitForAgentMessage({
-    conversation,
-    userMessage,
-  }: {
-    conversation: ConversationPublicType;
-    userMessage: UserMessageType;
-  }): Promise<
-    Result<AgentMessagePublicType, { type: string; message: string } | Error>
-  > {
-    for (const versions of conversation.content) {
-      const message = versions[versions.length - 1];
-
-      if (
-        message?.type === "agent_message" &&
-        message.parentMessageId === userMessage.sId
-      ) {
-        return new Ok(message);
-      }
-    }
-
-    const streamRes = await this.streamConversationEvents({
-      conversationId: conversation.sId,
-    });
-    if (streamRes.isErr()) {
-      return streamRes;
-    }
-
-    for await (const event of streamRes.value.eventStream) {
-      if (
-        event.type === "user_message_new" &&
-        event.messageId === userMessage.sId &&
-        event.message.visibility === "visible"
-      ) {
-        // TODO: Fetch the updated conversation and return the newly created agent message.
-        break;
-      }
-
-      if (
-        event.type === "user_message_promoted" &&
-        event.messageId === userMessage.sId
-      ) {
-        // TODO: Fetch the updated conversation and return the newly created agent message.
-        break;
-      }
-    }
-
-    return new Err(new Error("Failed to retrieve agent message"));
   }
 
   async streamConversationEvents({
