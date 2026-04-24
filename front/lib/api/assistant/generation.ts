@@ -234,7 +234,7 @@ function constructSkillsAsUserMessagesSection({
     "Only enable skills you actually need—enabling a skill loads its full instructions into context.\n" +
     "If you need to enable multiple skills, enable them in parallel.\n\n" +
     "When in doubt about enabling a skill, prefer enabling it as it may give you a new " +
-    "perspective on the currently available context.\n"
+    "perspective on the currently available context.\n";
 
   if (systemSkills.length > 0) {
     skillsSection +=
