@@ -62,7 +62,7 @@ import {
   GEMINI_3_PRO_MODEL_CONFIG,
 } from "@app/types/assistant/models/google_ai_studio";
 import { NOOP_MODEL_CONFIG } from "@app/types/assistant/models/noop";
-import { GPT_5_4_MODEL_CONFIG } from "@app/types/assistant/models/openai";
+import { GPT_5_5_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import type {
   ModelConfigurationType,
   ModelProviderIdType,
@@ -864,7 +864,7 @@ export function _getDustOaiGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_OAI,
     name: "dust-oai",
-    preferredModelConfiguration: GPT_5_4_MODEL_CONFIG,
+    preferredModelConfiguration: GPT_5_5_MODEL_CONFIG,
     preferredReasoningEffort: "light",
   });
 }
@@ -876,7 +876,7 @@ export function _getDustOaiMediumGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_OAI_MEDIUM,
     name: "dust-oai-medium",
-    preferredModelConfiguration: GPT_5_4_MODEL_CONFIG,
+    preferredModelConfiguration: GPT_5_5_MODEL_CONFIG,
     preferredReasoningEffort: "medium",
   });
 }
@@ -888,7 +888,7 @@ export function _getDustOaiHighGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_OAI_HIGH,
     name: "dust-oai-high",
-    preferredModelConfiguration: GPT_5_4_MODEL_CONFIG,
+    preferredModelConfiguration: GPT_5_5_MODEL_CONFIG,
     preferredReasoningEffort: "high",
   });
 }

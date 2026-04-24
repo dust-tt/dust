@@ -19,7 +19,7 @@ import {
   MISTRAL_SMALL_MODEL_CONFIG,
 } from "@app/types/assistant/models/mistral";
 import {
-  GPT_5_4_MODEL_CONFIG,
+  GPT_5_5_MODEL_CONFIG,
   GPT_5_MINI_MODEL_CONFIG,
 } from "@app/types/assistant/models/openai";
 import {
@@ -152,7 +152,7 @@ function _getLargeWhitelistedModel(
     return CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG;
   }
   if (whitelistedProviders.has("openai")) {
-    return GPT_5_4_MODEL_CONFIG;
+    return GPT_5_5_MODEL_CONFIG;
   }
   if (whitelistedProviders.has("google_ai_studio")) {
     return GEMINI_3_PRO_MODEL_CONFIG;

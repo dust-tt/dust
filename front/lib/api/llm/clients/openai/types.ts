@@ -13,6 +13,7 @@ import {
   GPT_5_1_MODEL_ID,
   GPT_5_2_MODEL_ID,
   GPT_5_4_MODEL_ID,
+  GPT_5_5_MODEL_ID,
   GPT_5_MINI_MODEL_ID,
   GPT_5_MODEL_ID,
   GPT_5_NANO_MODEL_ID,
@@ -47,6 +48,7 @@ export const OPENAI_WHITELISTED_MODEL_IDS = [
   GPT_5_1_MODEL_ID,
   GPT_5_2_MODEL_ID,
   GPT_5_4_MODEL_ID,
+  GPT_5_5_MODEL_ID,
 ] as const;
 export type OpenAIWhitelistedModelId =
   (typeof OPENAI_WHITELISTED_MODEL_IDS)[number];
@@ -93,6 +95,7 @@ export const OPENAI_MODEL_CONFIGS: Record<
   [GPT_5_1_MODEL_ID]: { overwrites: THINKING_OVERWRITES },
   [GPT_5_2_MODEL_ID]: { overwrites: THINKING_OVERWRITES },
   [GPT_5_4_MODEL_ID]: { overwrites: THINKING_OVERWRITES },
+  [GPT_5_5_MODEL_ID]: { overwrites: THINKING_OVERWRITES },
 };
 
 export function overwriteLLMParameters(
