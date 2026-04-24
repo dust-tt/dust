@@ -5,6 +5,7 @@ import {
 import { useAppRouter } from "@app/lib/platform";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import {
+  useBulkUpdateProjectTodoStatus,
   useCleanDoneProjectTodos,
   useDeleteProjectTodo,
   useMarkProjectTodosRead,
@@ -624,6 +625,7 @@ function EditableProjectTodosPanel({
   });
   const agentNameById = useAgentNameById(owner);
   const doUpdate = useUpdateProjectTodo({ owner, spaceId });
+  const doBulkUpdateStatus = useBulkUpdateProjectTodoStatus({ owner, spaceId });
   const doDelete = useDeleteProjectTodo({ owner, spaceId });
   const doStartConversation = useStartProjectTodoConversation({
     owner,
@@ -795,16 +797,35 @@ function EditableProjectTodosPanel({
     [handleSetStatus]
   );
 
-  const handleCheckAllInSection = useCallback(
-    async (category: ProjectTodoCategory) => {
+  // Bulk set the status of every todo in a category in a single request.
+  // Optimistically updates the SWR cache, then revalidates on failure.
+  const handleSetStatusForSection = useCallback(
+    async (category: ProjectTodoCategory, status: ProjectTodoStatus) => {
       const sectionTodos = todosByCategory[category] ?? [];
-      for (const todo of sectionTodos) {
-        if (todo.status !== "done") {
-          void handleSetStatus(todo, "done");
-        }
+      const targetIds = sectionTodos
+        .filter((t) => t.status !== status)
+        .map((t) => t.sId);
+
+      if (targetIds.length === 0) {
+        return;
+      }
+
+      const targetIdSet = new Set(targetIds);
+      const optimistic = (prev: GetProjectTodosResponseBody | undefined) => ({
+        lastReadAt: prev?.lastReadAt ?? null,
+        todos: (prev?.todos ?? []).map((t) =>
+          targetIdSet.has(t.sId) ? { ...t, status } : t
+        ),
+      });
+
+      void mutateTodos(optimistic, { revalidate: false });
+
+      const result = await doBulkUpdateStatus(targetIds, status);
+      if (result.isErr()) {
+        void mutateTodos();
       }
     },
-    [handleSetStatus, todosByCategory]
+    [doBulkUpdateStatus, mutateTodos, todosByCategory]
   );
 
   const handleClean = useCallback(async () => {
@@ -936,7 +957,9 @@ function EditableProjectTodosPanel({
                       checked={allDone}
                       onCheckedChange={(checked) => {
                         if (checked === true) {
-                          void handleCheckAllInSection(cat);
+                          void handleSetStatusForSection(cat, "done");
+                        } else if (checked === false) {
+                          void handleSetStatusForSection(cat, "todo");
                         }
                       }}
                     />

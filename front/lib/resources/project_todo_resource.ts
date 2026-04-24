@@ -17,7 +17,7 @@ import type {
   ProjectTodoType,
 } from "@app/types/project_todo";
 import type { ModelId } from "@app/types/shared/model_id";
-import { Ok, type Result } from "@app/types/shared/result";
+import { Err, Ok, type Result } from "@app/types/shared/result";
 import type { WhereOptions } from "sequelize";
 import {
   type Attributes,
@@ -533,6 +533,55 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
     });
 
     return new Ok({ cleanedCount: doneTodos.length });
+  }
+
+  // Applies the same updates to a batch of todos in a single transaction.
+  // Scoped to the authenticated user + given space so unrelated or cross-user
+  // todos cannot be touched via this path.
+  static async bulkUpdateWithVersionBySIds(
+    auth: Authenticator,
+    {
+      sIds,
+      spaceId,
+      updates,
+    }: {
+      sIds: string[];
+      spaceId: ModelId;
+      updates: Parameters<ProjectTodoResource["updateWithVersion"]>[1];
+    }
+  ): Promise<Result<{ updatedCount: number }, Error>> {
+    if (sIds.length === 0) {
+      return new Ok({ updatedCount: 0 });
+    }
+
+    const ids: ModelId[] = [];
+    for (const sId of sIds) {
+      const id = getResourceIdFromSId(sId);
+      if (id === null) {
+        return new Err(new Error(`Invalid todo id: ${sId}`));
+      }
+      ids.push(id);
+    }
+
+    const todos = await this.baseFetch(auth, {
+      where: {
+        id: { [Op.in]: ids },
+        spaceId,
+        userId: auth.getNonNullableUser().id,
+      },
+    });
+
+    if (todos.length !== sIds.length) {
+      return new Err(new Error("Some todos were not found or not accessible."));
+    }
+
+    await withTransaction(async (t) => {
+      for (const todo of todos) {
+        await todo.updateWithVersion(auth, updates, t);
+      }
+    });
+
+    return new Ok({ updatedCount: todos.length });
   }
 
   async softDelete(auth: Authenticator): Promise<Result<undefined, Error>> {

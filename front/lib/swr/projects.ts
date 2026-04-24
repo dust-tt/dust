@@ -12,7 +12,7 @@ import type {
 } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_context";
 import type { PatchProjectTodoResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_todos/[todoId]/index";
 import type { PostStartProjectTodoResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_todos/[todoId]/start";
-import type { PostCleanDoneTodosResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_todos/clean";
+import type { BulkActionsResponse } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_todos/bulk-actions";
 import type { GetProjectTodosResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_todos/index";
 import type { CheckNameResponseBody } from "@app/pages/api/w/[wId]/spaces/check-name";
 import type { ContentFragmentInputWithContentNode } from "@app/types/api/internal/assistant";
@@ -410,6 +410,56 @@ export function useUpdateProjectTodo({
   };
 }
 
+export function useBulkUpdateProjectTodoStatus({
+  owner,
+  spaceId,
+}: {
+  owner: LightWorkspaceType;
+  spaceId: string;
+}) {
+  const sendNotification = useSendNotification();
+
+  return async (
+    todoIds: string[],
+    status: ProjectTodoStatus
+  ): Promise<Result<void, Error>> => {
+    try {
+      const res = await clientFetch(
+        `/api/w/${owner.sId}/spaces/${spaceId}/project_todos/bulk-actions`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "set_status", todoIds, status }),
+        }
+      );
+
+      if (!res.ok) {
+        const errorData = await getErrorFromResponse(res);
+        sendNotification({
+          type: "error",
+          title: "Failed to update todos",
+          description: errorData.message,
+        });
+        return new Err(new Error(errorData.message));
+      }
+
+      const data: BulkActionsResponse = await res.json();
+      if (!data.success) {
+        return new Err(new Error("Failed to update todos"));
+      }
+      return new Ok(undefined);
+    } catch (e) {
+      const errorMessage = normalizeError(e).message;
+      sendNotification({
+        type: "error",
+        title: "Failed to update todos",
+        description: errorMessage,
+      });
+      return new Err(new Error(errorMessage));
+    }
+  };
+}
+
 export function useDeleteProjectTodo({
   owner,
   spaceId,
@@ -501,8 +551,12 @@ export function useCleanDoneProjectTodos({
   return async (): Promise<Result<{ cleanedCount: number }, Error>> => {
     try {
       const res = await clientFetch(
-        `/api/w/${owner.sId}/spaces/${spaceId}/project_todos/clean`,
-        { method: "POST" }
+        `/api/w/${owner.sId}/spaces/${spaceId}/project_todos/bulk-actions`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "clean_done" }),
+        }
       );
 
       if (!res.ok) {
@@ -515,8 +569,8 @@ export function useCleanDoneProjectTodos({
         return new Err(new Error(errorData.message));
       }
 
-      const data: PostCleanDoneTodosResponseBody = await res.json();
-      return new Ok({ cleanedCount: data.cleanedCount });
+      const data: BulkActionsResponse = await res.json();
+      return new Ok({ cleanedCount: data.cleanedCount ?? 0 });
     } catch (e) {
       const errorMessage = normalizeError(e).message;
       sendNotification({
