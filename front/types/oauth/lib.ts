@@ -110,6 +110,7 @@ const SUPPORTED_OAUTH_CREDENTIALS = [
   "snowflake_role",
   "snowflake_warehouse",
   "ukg_ready_company_id",
+  "jira_cloud_url",
 ] as const;
 
 export type SupportedOAuthCredentials =
@@ -306,6 +307,22 @@ export function getProviderRequiredOAuthCredentialInputs({
         return result;
       }
       return null;
+    case "jira":
+      if (useCase === "platform_actions" || useCase === "personal_actions") {
+        const result: OAuthCredentialInputs = {
+          jira_cloud_url: {
+            label: "Jira Cloud URL",
+            value: undefined,
+            helpMessage:
+              "Your Atlassian Cloud URL (e.g. https://company.atlassian.net). " +
+              "Optional — leave blank to use the first accessible instance.",
+            validator: isValidJiraCloudUrlOrEmpty,
+            overridableAtPersonalAuth: false,
+          },
+        };
+        return result;
+      }
+      return null;
     case "hubspot":
     case "slack":
     case "slack_tools":
@@ -319,7 +336,6 @@ export function getProviderRequiredOAuthCredentialInputs({
     case "github":
     case "google_drive":
     case "intercom":
-    case "jira":
     case "linear":
     case "mcp":
     case "discord":
@@ -477,6 +493,33 @@ export function isValidZendeskSubdomain(s: unknown): s is string {
   return (
     typeof s === "string" && /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(s)
   );
+}
+
+const ATLASSIAN_CLOUD_URL_REGEX =
+  /^https:\/\/[a-z0-9][a-z0-9-]*\.atlassian\.net$/i;
+
+export function normalizeJiraCloudUrl(raw: string): string {
+  let url = raw.trim();
+  if (!url.startsWith("http://") && !url.startsWith("https://")) {
+    url = "https://" + url;
+  }
+  return url.replace(/\/+$/, "");
+}
+
+export function isValidJiraCloudUrl(cloudUrl: string | undefined): boolean {
+  if (!cloudUrl) {
+    return false;
+  }
+  return ATLASSIAN_CLOUD_URL_REGEX.test(normalizeJiraCloudUrl(cloudUrl));
+}
+
+export function isValidJiraCloudUrlOrEmpty(
+  cloudUrl: string | undefined
+): boolean {
+  if (!cloudUrl || cloudUrl.trim() === "") {
+    return true;
+  }
+  return ATLASSIAN_CLOUD_URL_REGEX.test(normalizeJiraCloudUrl(cloudUrl));
 }
 
 export function isValidSalesforceDomain(s: unknown): s is string {
