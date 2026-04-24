@@ -9,7 +9,7 @@ import {
 } from "@app/types/assistant/models/anthropic";
 import { GEMINI_3_PRO_MODEL_ID } from "@app/types/assistant/models/google_ai_studio";
 import { MISTRAL_LARGE_MODEL_ID } from "@app/types/assistant/models/mistral";
-import { GPT_5_4_MODEL_ID } from "@app/types/assistant/models/openai";
+import { GPT_5_5_MODEL_ID } from "@app/types/assistant/models/openai";
 import type {
   ModelConfigurationType,
   ModelIdType,
@@ -63,7 +63,7 @@ export function transformAgentConfigurationToFormData(
 
 const PREFERRED_LARGE_MODEL_IDS: ModelIdType[] = [
   CLAUDE_SONNET_4_6_MODEL_ID,
-  GPT_5_4_MODEL_ID,
+  GPT_5_5_MODEL_ID,
   GEMINI_3_PRO_MODEL_ID,
   MISTRAL_LARGE_MODEL_ID,
   GROK_4_MODEL_ID,
