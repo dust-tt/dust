@@ -51,6 +51,7 @@ import type {
   Result,
   SearchRequestBodyType,
   SearchWarningCode,
+  UserMessageType,
   ValidateActionRequestBodyType,
   ValidateActionResponseType,
 } from "./types";
@@ -1017,6 +1018,55 @@ export class DustAPI {
         autoReconnect: options.autoReconnect ?? true,
       },
     });
+  }
+
+  async waitForAgentMessage({
+    conversation,
+    userMessage,
+  }: {
+    conversation: ConversationPublicType;
+    userMessage: UserMessageType;
+  }): Promise<
+    Result<AgentMessagePublicType, { type: string; message: string } | Error>
+  > {
+    for (const versions of conversation.content) {
+      const message = versions[versions.length - 1];
+
+      if (
+        message?.type === "agent_message" &&
+        message.parentMessageId === userMessage.sId
+      ) {
+        return new Ok(message);
+      }
+    }
+
+    const streamRes = await this.streamConversationEvents({
+      conversationId: conversation.sId,
+    });
+    if (streamRes.isErr()) {
+      return streamRes;
+    }
+
+    for await (const event of streamRes.value.eventStream) {
+      if (
+        event.type === "user_message_new" &&
+        event.messageId === userMessage.sId &&
+        event.message.visibility === "visible"
+      ) {
+        // TODO: Fetch the updated conversation and return the newly created agent message.
+        break;
+      }
+
+      if (
+        event.type === "user_message_promoted" &&
+        event.messageId === userMessage.sId
+      ) {
+        // TODO: Fetch the updated conversation and return the newly created agent message.
+        break;
+      }
+    }
+
+    return new Err(new Error("Failed to retrieve agent message"));
   }
 
   async streamConversationEvents({
