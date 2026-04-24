@@ -38,10 +38,7 @@ import {
 import type { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import {
-  getAgentBuilderRoute,
-  getSkillBuilderRoute,
-} from "@app/lib/utils/router";
+import { getSkillBuilderRoute } from "@app/lib/utils/router";
 import type {
   AgentConfigurationType,
   AgentModelConfigurationType,
@@ -304,19 +301,6 @@ function buildInstructions({
   return parts.join("\n\n");
 }
 
-function buildReinforcedAgentStaticResponse(
-  workspaceId: string,
-  agentName: string,
-  agentConfigurationId: string
-): string {
-  const builderUrl = getAgentBuilderRoute(workspaceId, agentConfigurationId);
-  return [
-    `Dust has analysed your workspace conversations with agent @${agentName} and found suggestions to improve it.`,
-    `You can view and apply these suggestions by going to the [agent builder](${builderUrl}).`,
-    "Let me know if you have further questions.",
-  ].join("\n");
-}
-
 function buildReinforcedSkillStaticResponse(
   workspaceId: string,
   skillName: string,
@@ -382,12 +366,9 @@ function _getDustLikeGlobalAgent(
   const isFirstUserMessage =
     globalAgentContext?.userMessageRank !== undefined &&
     globalAgentContext.userMessageRank <= 1;
-  const isReinforcedAgentNotificationFirstTurn =
-    isFirstUserMessage && globalAgentContext?.reinforcedAgentNotification;
   const isReinforcedSkillNotificationFirstTurn =
     isFirstUserMessage && globalAgentContext?.reinforcedSkillNotification;
   const isReinforcedNotificationFirstTurn =
-    isReinforcedAgentNotificationFirstTurn ||
     isReinforcedSkillNotificationFirstTurn;
 
   let isPreferredModel = false;
@@ -414,16 +395,6 @@ function _getDustLikeGlobalAgent(
   })();
 
   const reinforcedStaticResponse = (() => {
-    if (
-      isReinforcedAgentNotificationFirstTurn &&
-      globalAgentContext?.reinforcedAgentNotification
-    ) {
-      return buildReinforcedAgentStaticResponse(
-        owner.sId,
-        globalAgentContext.reinforcedAgentNotification.agentName,
-        globalAgentContext.reinforcedAgentNotification.agentConfigurationId
-      );
-    }
     if (
       isReinforcedSkillNotificationFirstTurn &&
       globalAgentContext?.reinforcedSkillNotification

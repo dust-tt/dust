@@ -9,8 +9,6 @@ import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
-import type { ExploratoryToolCallInfo as AgentExploratoryToolCallInfo } from "@app/lib/reinforced_agent/types";
-import { buildContinuationMessages } from "@app/lib/reinforced_agent/utils";
 import { buildSkillAggregationPrompt } from "@app/lib/reinforcement/aggregate_suggestions";
 import { buildSkillAnalysisPrompt } from "@app/lib/reinforcement/analyze_conversation";
 import { MAX_REINFORCED_ANALYSIS_STEPS } from "@app/lib/reinforcement/constants";
@@ -20,6 +18,7 @@ import {
 } from "@app/lib/reinforcement/run_reinforced_analysis";
 import { convertMarkdownToBlockHtml } from "@app/lib/reinforcement/skill_instructions_html";
 import { DESCRIBE_MCP_TOOL_NAME } from "@app/lib/reinforcement/types";
+import { buildContinuationMessages } from "@app/lib/reinforcement/utils";
 import {
   BATCH_POLL_INTERVAL_MS,
   MODEL_ID,
@@ -281,11 +280,8 @@ async function executeMultiStep(
     }
 
     // Build continuation messages and extend conversation.
-    // The ExploratoryToolCallInfo shapes are compatible between the two modules.
-    // The skills ExploratoryToolCallInfo has the same shape as the agent one
-    // (name is a subset: "get_available_tools" vs "get_available_tools" | "get_available_skills").
     const continuationMessages = buildContinuationMessages(
-      exploratoryToolCalls as AgentExploratoryToolCallInfo[],
+      exploratoryToolCalls,
       toolResults
     );
 
@@ -435,9 +431,7 @@ export async function executeBatch(
         }
 
         const continuationMessages = buildContinuationMessages(
-          exploratoryToolCalls as unknown as Parameters<
-            typeof buildContinuationMessages
-          >[0],
+          exploratoryToolCalls,
           toolResultsMap
         );
 
