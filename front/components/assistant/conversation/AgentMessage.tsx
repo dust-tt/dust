@@ -1168,7 +1168,7 @@ function AgentMessageContent({
         return [...prev, { index, document }];
       });
     },
-    []
+    [setActiveReferences]
   );
 
   const citationsContextValue = useMemo(
