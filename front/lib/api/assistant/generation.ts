@@ -284,16 +284,18 @@ function constructSkillsSection({
   const sortedEnabledSkills = sortByName(enabledSkills);
   const sortedEquippedSkills = sortByName(equippedSkills);
 
+  const allEnabledSkills = [...sortedSystemSkills, ...sortedEnabledSkills];
+
   if (!systemSkills.length && !enabledSkills.length && !equippedSkills.length) {
     skillsSection +=
       "\nNo skills are currently available or enabled for this agent.\n";
     return skillsSection;
   }
 
-  if (sortedEnabledSkills.length > 0) {
+  if (allEnabledSkills.length > 0) {
     skillsSection += "\n### ENABLED SKILLS\n";
     skillsSection += "The following skills are currently enabled:\n";
-    skillsSection += sortedEnabledSkills
+    skillsSection += allEnabledSkills
       .map((skill) => getEnabledSkillInstructions(skill))
       .join("\n");
   }
