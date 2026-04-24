@@ -64,6 +64,7 @@ export const SlashCommandDropdown = forwardRef<
     ref
   ) => {
     const [selectedIndex, setSelectedIndex] = useState(0);
+    const contentRef = useRef<HTMLDivElement>(null);
     const triggerRef = useRef<HTMLDivElement>(null);
     const itemRefs = useRef<(HTMLElement | null)[]>([]);
     const viewportRef = useRef<HTMLDivElement>(null);
@@ -71,7 +72,6 @@ export const SlashCommandDropdown = forwardRef<
       useState<React.CSSProperties>({});
     const [maxViewportHeight, setMaxViewportHeight] = useState<number>();
     const [hasOverflow, setHasOverflow] = useState(false);
-    const [isScrolledToBottom, setIsScrolledToBottom] = useState(true);
 
     const selectItem = useCallback(
       (index: number) => {
@@ -133,28 +133,11 @@ export const SlashCommandDropdown = forwardRef<
       });
     }, [selectedIndex]);
 
-    const updateScrollState = useCallback(() => {
-      const viewport = viewportRef.current;
-
-      if (!viewport) {
-        setHasOverflow(false);
-        setIsScrolledToBottom(true);
-        return;
-      }
-
-      const nextHasOverflow = viewport.scrollHeight > viewport.clientHeight + 1;
-      const nextIsScrolledToBottom =
-        !nextHasOverflow ||
-        viewport.scrollTop + viewport.clientHeight >= viewport.scrollHeight - 1;
-
-      setHasOverflow(nextHasOverflow);
-      setIsScrolledToBottom(nextIsScrolledToBottom);
-    }, []);
-
-    const updateViewportHeight = useCallback(() => {
+    const updateViewportLayout = useCallback(() => {
       const viewport = viewportRef.current;
       if (!viewport) {
         setMaxViewportHeight(undefined);
+        setHasOverflow(false);
         return;
       }
 
@@ -168,11 +151,22 @@ export const SlashCommandDropdown = forwardRef<
       );
       const fallbackMaxHeight =
         24 * (Number.isFinite(rootFontSize) ? rootFontSize : 16);
-      const maxAllowedHeight = Math.min(
-        fallbackMaxHeight,
-        Number.isFinite(availableHeightVar)
-          ? availableHeightVar
-          : fallbackMaxHeight
+      const contentRect = contentRef.current?.getBoundingClientRect();
+      const viewportRect = viewport.getBoundingClientRect();
+      const verticalChrome =
+        contentRect != null
+          ? viewportRect.top -
+            contentRect.top +
+            (contentRect.bottom - viewportRect.bottom)
+          : 0;
+      const maxAllowedHeight = Math.max(
+        0,
+        Math.min(
+          fallbackMaxHeight,
+          Number.isFinite(availableHeightVar)
+            ? availableHeightVar
+            : fallbackMaxHeight
+        ) - verticalChrome
       );
 
       const itemHeights = itemRefs.current
@@ -181,9 +175,14 @@ export const SlashCommandDropdown = forwardRef<
 
       if (itemHeights.length === 0) {
         setMaxViewportHeight(undefined);
+        setHasOverflow(false);
         return;
       }
 
+      const totalItemsHeight = itemHeights.reduce(
+        (totalHeight, itemHeight) => totalHeight + itemHeight,
+        0
+      );
       let nextMaxHeight = 0;
       for (const itemHeight of itemHeights) {
         if (
@@ -195,37 +194,23 @@ export const SlashCommandDropdown = forwardRef<
         nextMaxHeight += itemHeight;
       }
 
-      setMaxViewportHeight(
-        Math.ceil(Math.min(nextMaxHeight, maxAllowedHeight))
+      const snappedViewportHeight = Math.ceil(
+        Math.min(nextMaxHeight, maxAllowedHeight)
       );
+
+      setMaxViewportHeight(snappedViewportHeight);
+      setHasOverflow(totalItemsHeight > snappedViewportHeight + 1);
     }, []);
 
     useEffect(() => {
       if (items.length === 0) {
         setMaxViewportHeight(undefined);
         setHasOverflow(false);
-        setIsScrolledToBottom(true);
         return;
       }
 
-      updateViewportHeight();
-      updateScrollState();
-    }, [items, updateScrollState, updateViewportHeight]);
-
-    useEffect(() => {
-      const viewport = viewportRef.current;
-      if (!viewport) {
-        return;
-      }
-
-      viewport.addEventListener("scroll", updateScrollState, {
-        passive: true,
-      });
-
-      return () => {
-        viewport.removeEventListener("scroll", updateScrollState);
-      };
-    }, [updateScrollState]);
+      updateViewportLayout();
+    }, [items, updateViewportLayout]);
 
     useEffect(() => {
       if (items.length === 0) {
@@ -239,8 +224,7 @@ export const SlashCommandDropdown = forwardRef<
 
       const content = viewport.firstElementChild as HTMLElement | null;
       const resizeObserver = new ResizeObserver(() => {
-        updateViewportHeight();
-        updateScrollState();
+        updateViewportLayout();
       });
 
       resizeObserver.observe(viewport);
@@ -251,7 +235,7 @@ export const SlashCommandDropdown = forwardRef<
       return () => {
         resizeObserver.disconnect();
       };
-    }, [items.length, updateScrollState, updateViewportHeight]);
+    }, [items.length, updateViewportLayout]);
 
     // Update virtual trigger position.
     const updateTriggerPosition = useCallback(() => {
@@ -288,6 +272,7 @@ export const SlashCommandDropdown = forwardRef<
           <div ref={triggerRef} style={virtualTriggerStyle} />
         </DropdownMenuTrigger>
         <DropdownMenuContent
+          ref={contentRef}
           className={size === "wide" ? "w-80" : "w-64"}
           align="start"
           avoidCollisions
@@ -358,7 +343,7 @@ export const SlashCommandDropdown = forwardRef<
                   return menuItem;
                 })}
               </div>
-              {hasOverflow && !isScrolledToBottom ? (
+              {hasOverflow ? (
                 <div
                   className={cn(
                     "pointer-events-none absolute inset-x-0 bottom-0 h-10 rounded-b-xl bg-gradient-to-t",
