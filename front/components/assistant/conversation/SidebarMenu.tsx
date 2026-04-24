@@ -96,6 +96,7 @@ import {
   TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   memo,
   useCallback,
@@ -1094,6 +1095,10 @@ const ConversationListContainer = ({
   return <div className="sm:flex sm:flex-col sm:gap-0.5">{children}</div>;
 };
 
+const GRID_ANIMATE = { gridTemplateRows: "1fr", opacity: 1 };
+const GRID_EXIT = { gridTemplateRows: "0fr", opacity: 0 };
+const GRID_STYLE = { display: "grid" } as const;
+
 function UnreadConversationsSection({
   label,
   conversations,
@@ -1131,18 +1136,29 @@ function UnreadConversationsSection({
         ) : null
       }
     >
-      {conversations.map((conversation) => (
-        <ConversationListItem
-          key={conversation.sId}
-          conversation={conversation}
-          isMultiSelect={isMultiSelect}
-          onConversationBranched={onConversationBranched}
-          selectedConversations={selectedConversations}
-          toggleConversationSelection={toggleConversationSelection}
-          activeConversationId={activeConversationId}
-          owner={owner}
-        />
-      ))}
+      <AnimatePresence initial={false}>
+        {conversations.map((conversation) => (
+          <motion.div
+            key={conversation.sId}
+            style={GRID_STYLE}
+            animate={GRID_ANIMATE}
+            exit={GRID_EXIT}
+            transition={{ ease: "easeOut", duration: 0.1 }}
+          >
+            <div className="overflow-hidden">
+              <ConversationListItem
+                conversation={conversation}
+                isMultiSelect={isMultiSelect}
+                onConversationBranched={onConversationBranched}
+                selectedConversations={selectedConversations}
+                toggleConversationSelection={toggleConversationSelection}
+                activeConversationId={activeConversationId}
+                owner={owner}
+              />
+            </div>
+          </motion.div>
+        ))}
+      </AnimatePresence>
     </NavigationListCollapsibleSection>
   );
 }
@@ -1429,36 +1445,58 @@ function NavigationListWithInbox({
       ref={scrollContainerRef}
       className="dd-privacy-mask h-full w-full overflow-y-auto"
     >
-      {skillSuggestionConversations.length > 0 && (
-        <UnreadConversationsSection
-          label="Skill suggestions"
-          conversations={skillSuggestionConversations}
-          isMultiSelect={isMultiSelect}
-          isMarkingAllAsRead={isMarkingAllAsRead}
-          titleFilter={titleFilter}
-          onMarkAllAsRead={markAllAsRead}
-          onConversationBranched={onConversationBranched}
-          selectedConversations={selectedConversations}
-          toggleConversationSelection={toggleConversationSelection}
-          activeConversationId={activeConversationId}
-          owner={owner}
-        />
-      )}
-      {inboxConversations.length > 0 && (
-        <UnreadConversationsSection
-          label="Inbox"
-          conversations={inboxConversations}
-          isMultiSelect={isMultiSelect}
-          isMarkingAllAsRead={isMarkingAllAsRead}
-          titleFilter={titleFilter}
-          onMarkAllAsRead={markAllAsRead}
-          onConversationBranched={onConversationBranched}
-          selectedConversations={selectedConversations}
-          toggleConversationSelection={toggleConversationSelection}
-          activeConversationId={activeConversationId}
-          owner={owner}
-        />
-      )}
+      <AnimatePresence initial={false}>
+        {skillSuggestionConversations.length > 0 && (
+          <motion.div
+            key="skill-suggestions"
+            style={GRID_STYLE}
+            animate={GRID_ANIMATE}
+            exit={GRID_EXIT}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+          >
+            <div className="overflow-hidden">
+              <UnreadConversationsSection
+                label="Skill suggestions"
+                conversations={skillSuggestionConversations}
+                isMultiSelect={isMultiSelect}
+                isMarkingAllAsRead={isMarkingAllAsRead}
+                titleFilter={titleFilter}
+                onMarkAllAsRead={markAllAsRead}
+                onConversationBranched={onConversationBranched}
+                selectedConversations={selectedConversations}
+                toggleConversationSelection={toggleConversationSelection}
+                activeConversationId={activeConversationId}
+                owner={owner}
+              />
+            </div>
+          </motion.div>
+        )}
+        {inboxConversations.length > 0 && (
+          <motion.div
+            key="inbox"
+            style={GRID_STYLE}
+            animate={{ gridTemplateRows: "1fr" }}
+            exit={{ gridTemplateRows: "0fr" }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+          >
+            <div className="overflow-hidden">
+              <UnreadConversationsSection
+                label="Inbox"
+                conversations={inboxConversations}
+                isMultiSelect={isMultiSelect}
+                isMarkingAllAsRead={isMarkingAllAsRead}
+                titleFilter={titleFilter}
+                onMarkAllAsRead={markAllAsRead}
+                onConversationBranched={onConversationBranched}
+                selectedConversations={selectedConversations}
+                toggleConversationSelection={toggleConversationSelection}
+                activeConversationId={activeConversationId}
+                owner={owner}
+              />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       {projectsSection}
       <NavigationList className="px-2">
         <NavigationListCollapsibleSection

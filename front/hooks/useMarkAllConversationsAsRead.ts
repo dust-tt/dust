@@ -50,6 +50,23 @@ export function useMarkAllConversationsAsRead({
       setIsMarkingAllAsRead(true);
 
       const total = conversationIds.length;
+      const markedIds = new Set(conversationIds);
+      const nowMs = Date.now();
+
+      void mutateConversations(
+        (prev) =>
+          prev?.map((c) =>
+            markedIds.has(c.sId)
+              ? {
+                  ...c,
+                  actionRequired: false,
+                  unread: false,
+                  lastReadMs: nowMs,
+                }
+              : c
+          ),
+        { revalidate: false }
+      );
 
       try {
         const response = await clientFetch(
@@ -76,7 +93,6 @@ export function useMarkAllConversationsAsRead({
           throw new Error("Failed to mark conversations as read");
         }
 
-        void mutateConversations();
         void mutateSpaceSummary();
         void mutateSpaceConversations();
         void mutateUnreadConversationIds();
@@ -87,6 +103,8 @@ export function useMarkAllConversationsAsRead({
           description: `${total} conversation${total > 1 ? "s" : ""} marked as read.`,
         });
       } catch {
+        void mutateConversations();
+
         sendNotification({
           type: "error",
           title: "Failed to mark conversations as read",

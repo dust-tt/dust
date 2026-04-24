@@ -32,6 +32,7 @@ import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrapp
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import { launchIndexConversationEsWorkflow } from "@app/temporal/es_indexation/client";
@@ -3570,6 +3571,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         workspaceId: workspaceModelId,
         lastReadAt: new Date(),
       }))
+    );
+
+    await concurrentExecutor(
+      conversations,
+      (c) => ConversationResource.triggerEsIndexing(auth, c.sId),
+      { concurrency: 8 }
     );
 
     return new Ok(undefined);
