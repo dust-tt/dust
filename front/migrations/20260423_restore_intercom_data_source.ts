@@ -61,14 +61,45 @@ function buildIntercomParentRewriter(
   };
 }
 
-function mapParents(
+type ParentsDiff = {
+  before: string[] | null;
+  after: string[] | null;
+  changedCount: number;
+};
+
+function diffParents(
   parents: string[] | null,
   rewrite: (s: string) => string
-): string[] | null {
+): ParentsDiff {
   if (parents === null) {
-    return null;
+    return { before: null, after: null, changedCount: 0 };
   }
-  return parents.map(rewrite);
+  const after = parents.map(rewrite);
+  let changedCount = 0;
+  for (let i = 0; i < parents.length; i++) {
+    if (parents[i] !== after[i]) {
+      changedCount++;
+    }
+  }
+  return { before: parents, after, changedCount };
+}
+
+type RestoreStats = {
+  snapshotRowCount: number;
+  inserted: number;
+  reused: number;
+  skippedOrphan: number;
+  parentsRewritten: number;
+};
+
+function emptyStats(): RestoreStats {
+  return {
+    snapshotRowCount: 0,
+    inserted: 0,
+    reused: 0,
+    skippedOrphan: 0,
+    parentsRewritten: 0,
+  };
 }
 
 async function resolveDataSource({
@@ -134,7 +165,7 @@ async function restoreDataSourceViews({
   newDs: DataSourceModel;
   rewrite: (s: string) => string;
   execute: boolean;
-}): Promise<Map<number, number>> {
+}): Promise<{ oldToNewDsvId: Map<number, number>; stats: RestoreStats }> {
   const snapshotDsvs = await snapshot.query<DataSourceViewModel>(
     `
     SELECT *
@@ -150,6 +181,9 @@ async function restoreDataSourceViews({
       },
     }
   );
+
+  const stats = emptyStats();
+  stats.snapshotRowCount = snapshotDsvs.length;
 
   logger.info(
     { count: snapshotDsvs.length },
@@ -173,28 +207,63 @@ async function restoreDataSourceViews({
     });
 
     if (existing && existing.kind === snap.kind) {
+      const snapParentsRewritten = snap.parentsIn?.map(rewrite) ?? null;
+      const existingParents = existing.parentsIn ?? null;
+      const parentsMatch =
+        (snapParentsRewritten === null && existingParents === null) ||
+        (snapParentsRewritten !== null &&
+          existingParents !== null &&
+          snapParentsRewritten.length === existingParents.length &&
+          snapParentsRewritten.every((p, i) => p === existingParents[i]));
+
       logger.info(
         {
           oldDsvId: snap.id,
           existingDsvId: existing.id,
           vaultId: snap.vaultId,
           kind: snap.kind,
+          snapParentsIn: snap.parentsIn,
+          existingParentsIn: existing.parentsIn,
+          parentsMatch,
         },
         "Reusing existing live DSV (auto-created on re-creation of the data source)"
       );
+
+      if (!parentsMatch) {
+        logger.warn(
+          {
+            oldDsvId: snap.id,
+            existingDsvId: existing.id,
+            snapParentsIn: snap.parentsIn,
+            snapParentsRewritten,
+            existingParentsIn: existing.parentsIn,
+          },
+          "Reused DSV has different parentsIn than snapshot — snapshot state NOT restored on this DSV"
+        );
+      }
+
       oldToNewDsvId.set(snap.id, existing.id);
+      stats.reused++;
       continue;
     }
 
-    const parentsIn = mapParents(snap.parentsIn, rewrite);
+    const parents = diffParents(snap.parentsIn, rewrite);
+    stats.parentsRewritten += parents.changedCount;
 
     logger.info(
       {
         oldDsvId: snap.id,
         vaultId: snap.vaultId,
         kind: snap.kind,
-        parentsInSample: parentsIn?.slice(0, 3),
-        parentsInCount: parentsIn?.length ?? 0,
+        parentsInBefore: parents.before,
+        parentsInAfter: parents.after,
+        parentsInCount: parents.after?.length ?? 0,
+        parentsRewrittenCount: parents.changedCount,
+        editedByUserId: snap.editedByUserId,
+        editedAt: snap.editedAt,
+        createdAt: snap.createdAt,
+        updatedAt: snap.updatedAt,
+        deletedAt: snap.deletedAt,
         dryRun: !execute,
       },
       execute ? "Restoring DSV" : "[dry-run] Would restore DSV"
@@ -205,6 +274,7 @@ async function restoreDataSourceViews({
       // every referenced DSV has a mapping entry. Negative ids make it
       // obvious in logs that these are not real live ids.
       oldToNewDsvId.set(snap.id, -snap.id);
+      stats.inserted++;
       continue;
     }
 
@@ -217,7 +287,7 @@ async function restoreDataSourceViews({
         dataSourceId: newDs.id,
         vaultId: snap.vaultId,
         kind: snap.kind,
-        parentsIn,
+        parentsIn: parents.after,
         editedByUserId: snap.editedByUserId,
         editedAt: snap.editedAt,
         createdAt: snap.createdAt,
@@ -227,10 +297,21 @@ async function restoreDataSourceViews({
       { transaction, silent: true }
     );
 
+    logger.info(
+      {
+        oldDsvId: snap.id,
+        newDsvId: created.id,
+        vaultId: created.vaultId,
+        kind: created.kind,
+      },
+      "Restored DSV (inserted)"
+    );
+
     oldToNewDsvId.set(snap.id, created.id);
+    stats.inserted++;
   }
 
-  return oldToNewDsvId;
+  return { oldToNewDsvId, stats };
 }
 
 async function restoreAgentDataSourceConfigurations({
@@ -251,7 +332,7 @@ async function restoreAgentDataSourceConfigurations({
   oldToNewDsvId: Map<number, number>;
   rewrite: (s: string) => string;
   execute: boolean;
-}): Promise<void> {
+}): Promise<RestoreStats> {
   const rows = await snapshot.query<AgentDataSourceConfigurationModel>(
     `
     SELECT *
@@ -268,6 +349,9 @@ async function restoreAgentDataSourceConfigurations({
     }
   );
 
+  const stats = emptyStats();
+  stats.snapshotRowCount = rows.length;
+
   logger.info(
     { count: rows.length },
     "Found agent_data_source_configurations in snapshot"
@@ -283,9 +367,6 @@ async function restoreAgentDataSourceConfigurations({
       })
     ).map((m) => m.id)
   );
-
-  let inserted = 0;
-  let skippedOrphan = 0;
 
   for (const row of rows) {
     const newDsvId = oldToNewDsvId.get(row.dataSourceViewId);
@@ -306,21 +387,33 @@ async function restoreAgentDataSourceConfigurations({
         },
         "Skipping agent_data_source_configuration: parent MCP server config no longer exists"
       );
-      skippedOrphan++;
+      stats.skippedOrphan++;
       continue;
     }
 
-    const parentsIn = mapParents(row.parentsIn, rewrite);
-    const parentsNotIn = mapParents(row.parentsNotIn, rewrite);
+    const parentsIn = diffParents(row.parentsIn, rewrite);
+    const parentsNotIn = diffParents(row.parentsNotIn, rewrite);
+    stats.parentsRewritten +=
+      parentsIn.changedCount + parentsNotIn.changedCount;
 
     logger.info(
       {
         snapshotRowId: row.id,
         newDataSourceId: newDs.id,
+        oldDataSourceViewId: row.dataSourceViewId,
         newDataSourceViewId: newDsvId,
         mcpServerConfigurationId: row.mcpServerConfigurationId,
-        parentsInCount: parentsIn?.length ?? 0,
-        parentsNotInCount: parentsNotIn?.length ?? 0,
+        parentsInBefore: parentsIn.before,
+        parentsInAfter: parentsIn.after,
+        parentsInRewrittenCount: parentsIn.changedCount,
+        parentsNotInBefore: parentsNotIn.before,
+        parentsNotInAfter: parentsNotIn.after,
+        parentsNotInRewrittenCount: parentsNotIn.changedCount,
+        tagsMode: row.tagsMode,
+        tagsIn: row.tagsIn,
+        tagsNotIn: row.tagsNotIn,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
         dryRun: !execute,
       },
       execute
@@ -329,18 +422,18 @@ async function restoreAgentDataSourceConfigurations({
     );
 
     if (!execute) {
-      inserted++;
+      stats.inserted++;
       continue;
     }
 
-    await AgentDataSourceConfigurationModel.create(
+    const created = await AgentDataSourceConfigurationModel.create(
       {
         workspaceId: newDs.workspaceId,
         dataSourceId: newDs.id,
         dataSourceViewId: newDsvId,
         mcpServerConfigurationId: row.mcpServerConfigurationId,
-        parentsIn,
-        parentsNotIn,
+        parentsIn: parentsIn.after,
+        parentsNotIn: parentsNotIn.after,
         tagsMode: row.tagsMode,
         tagsIn: row.tagsIn,
         tagsNotIn: row.tagsNotIn,
@@ -349,13 +442,20 @@ async function restoreAgentDataSourceConfigurations({
       },
       { transaction, silent: true }
     );
-    inserted++;
+
+    logger.info(
+      {
+        snapshotRowId: row.id,
+        newRowId: created.id,
+        newDataSourceViewId: created.dataSourceViewId,
+      },
+      "Restored agent_data_source_configuration (inserted)"
+    );
+    stats.inserted++;
   }
 
-  logger.info(
-    { inserted, skippedOrphan },
-    "Done agent_data_source_configurations"
-  );
+  logger.info(stats, "Done agent_data_source_configurations");
+  return stats;
 }
 
 async function restoreAgentTablesQueryConfigurationTables({
@@ -374,7 +474,7 @@ async function restoreAgentTablesQueryConfigurationTables({
   newDs: DataSourceModel;
   oldToNewDsvId: Map<number, number>;
   execute: boolean;
-}): Promise<void> {
+}): Promise<RestoreStats> {
   // Intercom never produces tables. Included defensively; expected count: 0.
   const rows = await snapshot.query<AgentTablesQueryConfigurationTableModel>(
     `
@@ -392,13 +492,16 @@ async function restoreAgentTablesQueryConfigurationTables({
     }
   );
 
+  const stats = emptyStats();
+  stats.snapshotRowCount = rows.length;
+
   logger.info(
     { count: rows.length },
     "Found agent_tables_query_configuration_tables in snapshot (expected 0 for Intercom)"
   );
 
   if (rows.length === 0) {
-    return;
+    return stats;
   }
 
   const liveMcpIds = new Set(
@@ -420,24 +523,38 @@ async function restoreAgentTablesQueryConfigurationTables({
     }
     if (!liveMcpIds.has(row.mcpServerConfigurationId)) {
       logger.warn(
-        { snapshotRowId: row.id },
+        {
+          snapshotRowId: row.id,
+          mcpServerConfigurationId: row.mcpServerConfigurationId,
+        },
         "Skipping agent_tables_query_configuration_table: parent MCP server config no longer exists"
       );
+      stats.skippedOrphan++;
       continue;
     }
 
     logger.info(
-      { snapshotRowId: row.id, tableId: row.tableId, dryRun: !execute },
+      {
+        snapshotRowId: row.id,
+        tableId: row.tableId,
+        oldDataSourceViewId: row.dataSourceViewId,
+        newDataSourceViewId: newDsvId,
+        mcpServerConfigurationId: row.mcpServerConfigurationId,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+        dryRun: !execute,
+      },
       execute
         ? "Restoring agent_tables_query_configuration_table"
         : "[dry-run] Would restore agent_tables_query_configuration_table"
     );
 
     if (!execute) {
+      stats.inserted++;
       continue;
     }
 
-    await AgentTablesQueryConfigurationTableModel.create(
+    const created = await AgentTablesQueryConfigurationTableModel.create(
       {
         workspaceId: newDs.workspaceId,
         dataSourceId: newDs.id,
@@ -449,7 +566,20 @@ async function restoreAgentTablesQueryConfigurationTables({
       },
       { transaction, silent: true }
     );
+
+    logger.info(
+      {
+        snapshotRowId: row.id,
+        newRowId: created.id,
+        tableId: created.tableId,
+      },
+      "Restored agent_tables_query_configuration_table (inserted)"
+    );
+    stats.inserted++;
   }
+
+  logger.info(stats, "Done agent_tables_query_configuration_tables");
+  return stats;
 }
 
 async function restoreSkillDataSourceConfigurations({
@@ -470,7 +600,7 @@ async function restoreSkillDataSourceConfigurations({
   oldToNewDsvId: Map<number, number>;
   rewrite: (s: string) => string;
   execute: boolean;
-}): Promise<void> {
+}): Promise<RestoreStats> {
   const rows = await snapshot.query<SkillDataSourceConfigurationModel>(
     `
     SELECT *
@@ -487,6 +617,9 @@ async function restoreSkillDataSourceConfigurations({
     }
   );
 
+  const stats = emptyStats();
+  stats.snapshotRowCount = rows.length;
+
   logger.info(
     { count: rows.length },
     "Found skill_data_source_configurations in snapshot"
@@ -501,9 +634,6 @@ async function restoreSkillDataSourceConfigurations({
       })
     ).map((s) => s.id)
   );
-
-  let inserted = 0;
-  let skippedOrphan = 0;
 
   for (const row of rows) {
     const newDsvId = oldToNewDsvId.get(row.dataSourceViewId);
@@ -520,18 +650,26 @@ async function restoreSkillDataSourceConfigurations({
         },
         "Skipping skill_data_source_configuration: skill_configuration no longer exists"
       );
-      skippedOrphan++;
+      stats.skippedOrphan++;
       continue;
     }
 
-    const parentsIn = row.parentsIn.map(rewrite);
+    // parentsIn on this model is non-nullable (required).
+    const parentsIn = diffParents(row.parentsIn, rewrite);
+    stats.parentsRewritten += parentsIn.changedCount;
 
     logger.info(
       {
         snapshotRowId: row.id,
         skillConfigurationId: row.skillConfigurationId,
+        oldDataSourceViewId: row.dataSourceViewId,
         newDataSourceViewId: newDsvId,
-        parentsInCount: parentsIn.length,
+        parentsInBefore: parentsIn.before,
+        parentsInAfter: parentsIn.after,
+        parentsInCount: parentsIn.after?.length ?? 0,
+        parentsRewrittenCount: parentsIn.changedCount,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
         dryRun: !execute,
       },
       execute
@@ -540,29 +678,37 @@ async function restoreSkillDataSourceConfigurations({
     );
 
     if (!execute) {
-      inserted++;
+      stats.inserted++;
       continue;
     }
 
-    await SkillDataSourceConfigurationModel.create(
+    const created = await SkillDataSourceConfigurationModel.create(
       {
         workspaceId: newDs.workspaceId,
         skillConfigurationId: row.skillConfigurationId,
         dataSourceId: newDs.id,
         dataSourceViewId: newDsvId,
-        parentsIn,
+        parentsIn: parentsIn.after ?? [],
         createdAt: row.createdAt,
         updatedAt: row.updatedAt,
       },
       { transaction, silent: true }
     );
-    inserted++;
+
+    logger.info(
+      {
+        snapshotRowId: row.id,
+        newRowId: created.id,
+        skillConfigurationId: created.skillConfigurationId,
+        newDataSourceViewId: created.dataSourceViewId,
+      },
+      "Restored skill_data_source_configuration (inserted)"
+    );
+    stats.inserted++;
   }
 
-  logger.info(
-    { inserted, skippedOrphan },
-    "Done skill_data_source_configurations"
-  );
+  logger.info(stats, "Done skill_data_source_configurations");
+  return stats;
 }
 
 makeScript(
@@ -672,17 +818,28 @@ makeScript(
       // the --execute flag (no throw-to-rollback dance).
       const transaction = await frontSequelize.transaction();
       try {
-        const oldToNewDsvId = await restoreDataSourceViews({
-          snapshot,
-          transaction,
-          logger,
-          oldDs,
-          newDs,
-          rewrite,
-          execute,
-        });
+        const { oldToNewDsvId, stats: dsvStats } = await restoreDataSourceViews(
+          {
+            snapshot,
+            transaction,
+            logger,
+            oldDs,
+            newDs,
+            rewrite,
+            execute,
+          }
+        );
 
-        await restoreAgentDataSourceConfigurations({
+        logger.info(
+          {
+            dsvMapping: Array.from(oldToNewDsvId.entries()).map(
+              ([oldId, newId]) => ({ oldDsvId: oldId, newDsvId: newId })
+            ),
+          },
+          "DSV old→new id mapping"
+        );
+
+        const agentConfigStats = await restoreAgentDataSourceConfigurations({
           snapshot,
           transaction,
           logger,
@@ -693,7 +850,7 @@ makeScript(
           execute,
         });
 
-        await restoreAgentTablesQueryConfigurationTables({
+        const tablesStats = await restoreAgentTablesQueryConfigurationTables({
           snapshot,
           transaction,
           logger,
@@ -703,7 +860,7 @@ makeScript(
           execute,
         });
 
-        await restoreSkillDataSourceConfigurations({
+        const skillStats = await restoreSkillDataSourceConfigurations({
           snapshot,
           transaction,
           logger,
@@ -718,12 +875,25 @@ makeScript(
           "Skipping content_fragment restore (single stale row, not worth the risk)."
         );
 
+        logger.info(
+          {
+            execute,
+            dataSourceViews: dsvStats,
+            agentDataSourceConfigurations: agentConfigStats,
+            agentTablesQueryConfigurationTables: tablesStats,
+            skillDataSourceConfigurations: skillStats,
+          },
+          "=== Reconciliation summary ==="
+        );
+
         if (execute) {
           await transaction.commit();
-          logger.info("Reconciliation complete.");
+          logger.info("Reconciliation complete — transaction committed.");
         } else {
           await transaction.rollback();
-          logger.info("Dry-run complete. Re-run with --execute to commit.");
+          logger.info(
+            "Dry-run complete — transaction rolled back. Re-run with --execute to commit."
+          );
         }
       } catch (err) {
         await transaction.rollback();
