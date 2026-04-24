@@ -1,11 +1,14 @@
 import { getProcessedContentType } from "@app/lib/api/files/processing";
-import type { Authenticator } from "@app/lib/auth";
+import type { FileVersion } from "@app/lib/resources/file_resource";
 import { copyContent } from "@app/lib/utils/files";
+import { FileFactory } from "@app/tests/utils/FileFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type { AllSupportedFileContentType } from "@app/types/files";
 import { Readable, Writable } from "stream";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-type FileVersion = "original" | "processed";
+const ORIGINAL_CONTENT = Buffer.from("original-content");
+const PROCESSED_CONTENT = Buffer.from("processed-content");
 
 function makeWritable(chunks: Buffer[]) {
   return new Writable({
@@ -16,156 +19,136 @@ function makeWritable(chunks: Buffer[]) {
   });
 }
 
-function makeSourceFile(contentType: AllSupportedFileContentType) {
-  const originalContent = Buffer.from("original-content");
-  const processedContent = Buffer.from("processed-content");
+async function createCopyTestContext(contentType: AllSupportedFileContentType) {
+  const { authenticator: auth } = await createResourceTest({
+    role: "admin",
+  });
+
+  const fileExtension = contentType === "application/pdf" ? "pdf" : "txt";
+  const sourceFile = await FileFactory.create(auth, null, {
+    contentType,
+    fileName: `source.${fileExtension}`,
+    fileSize: ORIGINAL_CONTENT.length,
+    status: "created",
+    useCase: "conversation",
+  });
+  const targetFile = await FileFactory.create(auth, null, {
+    contentType,
+    fileName: `copy.${fileExtension}`,
+    fileSize: ORIGINAL_CONTENT.length,
+    status: "created",
+    useCase: "conversation",
+  });
+
+  const originalChunks: Buffer[] = [];
+  const processedChunks: Buffer[] = [];
+
+  const getReadStreamSpy = vi
+    .spyOn(sourceFile, "getReadStream")
+    .mockImplementation(
+      ({ version }: { auth: typeof auth; version: FileVersion }) =>
+        Readable.from([
+          version === "original" ? ORIGINAL_CONTENT : PROCESSED_CONTENT,
+        ])
+    );
+  const getWriteStreamSpy = vi
+    .spyOn(targetFile, "getWriteStream")
+    .mockImplementation(
+      ({
+        version,
+      }: {
+        auth: typeof auth;
+        version: FileVersion;
+        overrideContentType?: string;
+      }) =>
+        version === "original"
+          ? makeWritable(originalChunks)
+          : makeWritable(processedChunks)
+    );
 
   return {
-    contentType,
-    originalContent,
-    processedContent,
-    getReadStream: vi.fn(
-      ({ version }: { auth: Authenticator; version: FileVersion }) =>
-        Readable.from([
-          version === "original" ? originalContent : processedContent,
-        ])
-    ),
-  } satisfies {
-    contentType: AllSupportedFileContentType;
-    originalContent: Buffer;
-    processedContent: Buffer;
-    getReadStream: ReturnType<typeof vi.fn>;
+    auth,
+    sourceFile,
+    targetFile,
+    originalChunks,
+    processedChunks,
+    getReadStreamSpy,
+    getWriteStreamSpy,
   };
 }
 
 describe("copyContent", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("copies only the original version for files without processing", async () => {
-    const auth = {} as Authenticator;
-    const originalChunks: Buffer[] = [];
-    const processedChunks: Buffer[] = [];
-    const sourceFile = makeSourceFile("text/plain");
-    const targetFile = {
-      getWriteStream: vi.fn(
-        ({
-          version,
-        }: {
-          auth: Authenticator;
-          version: FileVersion;
-          overrideContentType?: string;
-        }) =>
-          version === "original"
-            ? makeWritable(originalChunks)
-            : makeWritable(processedChunks)
-      ),
-    };
+    const context = await createCopyTestContext("text/plain");
 
-    await copyContent(
-      auth,
-      sourceFile as unknown as Parameters<typeof copyContent>[1],
-      targetFile as unknown as Parameters<typeof copyContent>[2]
-    );
+    await copyContent(context.auth, context.sourceFile, context.targetFile);
 
-    expect(sourceFile.getReadStream).toHaveBeenCalledTimes(1);
-    expect(sourceFile.getReadStream).toHaveBeenCalledWith({
-      auth,
+    expect(context.getReadStreamSpy).toHaveBeenCalledTimes(1);
+    expect(context.getReadStreamSpy).toHaveBeenCalledWith({
+      auth: context.auth,
       version: "original",
     });
-    expect(targetFile.getWriteStream).toHaveBeenCalledTimes(1);
-    expect(targetFile.getWriteStream).toHaveBeenCalledWith({
-      auth,
+    expect(context.getWriteStreamSpy).toHaveBeenCalledTimes(1);
+    expect(context.getWriteStreamSpy).toHaveBeenCalledWith({
+      auth: context.auth,
       version: "original",
     });
-    expect(Buffer.concat(originalChunks)).toEqual(sourceFile.originalContent);
-    expect(processedChunks).toHaveLength(0);
+    expect(Buffer.concat(context.originalChunks)).toEqual(ORIGINAL_CONTENT);
+    expect(context.processedChunks).toHaveLength(0);
   });
 
   it("copies only the original version for processed files by default", async () => {
-    const auth = {} as Authenticator;
-    const originalChunks: Buffer[] = [];
-    const processedChunks: Buffer[] = [];
-    const sourceFile = makeSourceFile("application/pdf");
-    const targetFile = {
-      getWriteStream: vi.fn(
-        ({
-          version,
-        }: {
-          auth: Authenticator;
-          version: FileVersion;
-          overrideContentType?: string;
-        }) =>
-          version === "original"
-            ? makeWritable(originalChunks)
-            : makeWritable(processedChunks)
-      ),
-    };
+    const context = await createCopyTestContext("application/pdf");
 
-    await copyContent(
-      auth,
-      sourceFile as unknown as Parameters<typeof copyContent>[1],
-      targetFile as unknown as Parameters<typeof copyContent>[2]
-    );
+    await copyContent(context.auth, context.sourceFile, context.targetFile);
 
-    expect(sourceFile.getReadStream).toHaveBeenCalledTimes(1);
-    expect(sourceFile.getReadStream).toHaveBeenCalledWith({
-      auth,
+    expect(context.getReadStreamSpy).toHaveBeenCalledTimes(1);
+    expect(context.getReadStreamSpy).toHaveBeenCalledWith({
+      auth: context.auth,
       version: "original",
     });
-    expect(targetFile.getWriteStream).toHaveBeenCalledTimes(1);
-    expect(targetFile.getWriteStream).toHaveBeenCalledWith({
-      auth,
+    expect(context.getWriteStreamSpy).toHaveBeenCalledTimes(1);
+    expect(context.getWriteStreamSpy).toHaveBeenCalledWith({
+      auth: context.auth,
       version: "original",
     });
-    expect(Buffer.concat(originalChunks)).toEqual(sourceFile.originalContent);
-    expect(processedChunks).toHaveLength(0);
+    expect(Buffer.concat(context.originalChunks)).toEqual(ORIGINAL_CONTENT);
+    expect(context.processedChunks).toHaveLength(0);
   });
 
   it("copies both original and processed versions when requested", async () => {
-    const auth = {} as Authenticator;
-    const originalChunks: Buffer[] = [];
-    const processedChunks: Buffer[] = [];
-    const sourceFile = makeSourceFile("application/pdf");
-    const targetFile = {
-      getWriteStream: vi.fn(
-        ({
-          version,
-        }: {
-          auth: Authenticator;
-          version: FileVersion;
-          overrideContentType?: string;
-        }) =>
-          version === "original"
-            ? makeWritable(originalChunks)
-            : makeWritable(processedChunks)
+    const context = await createCopyTestContext("application/pdf");
+
+    await copyContent(context.auth, context.sourceFile, context.targetFile, {
+      includeProcessedVersion: true,
+    });
+
+    expect(context.getReadStreamSpy).toHaveBeenCalledTimes(2);
+    expect(context.getReadStreamSpy).toHaveBeenNthCalledWith(1, {
+      auth: context.auth,
+      version: "original",
+    });
+    expect(context.getReadStreamSpy).toHaveBeenNthCalledWith(2, {
+      auth: context.auth,
+      version: "processed",
+    });
+    expect(context.getWriteStreamSpy).toHaveBeenCalledTimes(2);
+    expect(context.getWriteStreamSpy).toHaveBeenNthCalledWith(1, {
+      auth: context.auth,
+      version: "original",
+    });
+    expect(context.getWriteStreamSpy).toHaveBeenNthCalledWith(2, {
+      auth: context.auth,
+      version: "processed",
+      overrideContentType: getProcessedContentType(
+        context.sourceFile.contentType
       ),
-    };
-
-    await copyContent(
-      auth,
-      sourceFile as unknown as Parameters<typeof copyContent>[1],
-      targetFile as unknown as Parameters<typeof copyContent>[2],
-      { includeProcessedVersion: true }
-    );
-
-    expect(sourceFile.getReadStream).toHaveBeenCalledTimes(2);
-    expect(sourceFile.getReadStream).toHaveBeenNthCalledWith(1, {
-      auth,
-      version: "original",
     });
-    expect(sourceFile.getReadStream).toHaveBeenNthCalledWith(2, {
-      auth,
-      version: "processed",
-    });
-    expect(targetFile.getWriteStream).toHaveBeenCalledTimes(2);
-    expect(targetFile.getWriteStream).toHaveBeenNthCalledWith(1, {
-      auth,
-      version: "original",
-    });
-    expect(targetFile.getWriteStream).toHaveBeenNthCalledWith(2, {
-      auth,
-      version: "processed",
-      overrideContentType: getProcessedContentType(sourceFile.contentType),
-    });
-    expect(Buffer.concat(originalChunks)).toEqual(sourceFile.originalContent);
-    expect(Buffer.concat(processedChunks)).toEqual(sourceFile.processedContent);
+    expect(Buffer.concat(context.originalChunks)).toEqual(ORIGINAL_CONTENT);
+    expect(Buffer.concat(context.processedChunks)).toEqual(PROCESSED_CONTENT);
   });
 });
