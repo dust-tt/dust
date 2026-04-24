@@ -77,6 +77,7 @@ import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_me
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -86,11 +87,18 @@ function getCacheKeyForUser(userId: number, workspaceId: number): string {
   return `cacheWithRedis--groups:user:${userId}:workspace:${workspaceId}`;
 }
 
+function getCacheKeyForWorkspaceGroupsFromSystemKey(
+  workspaceId: number
+): string {
+  return `cacheWithRedis-_listWorkspaceGroupsFromSystemKeyUncached-workspace-groups-from-system-key:${workspaceId}`;
+}
+
 describe("GroupResource", () => {
   let workspace: LightWorkspaceType;
   let user: UserResource;
   let authenticator: Authenticator;
   let globalGroup: GroupResource;
+  let systemGroup: GroupResource;
 
   beforeEach(async () => {
     const testSetup = await createResourceTest({ role: "admin" });
@@ -98,6 +106,7 @@ describe("GroupResource", () => {
     user = testSetup.user;
     authenticator = testSetup.authenticator;
     globalGroup = testSetup.globalGroup;
+    systemGroup = testSetup.systemGroup;
     // Clear cache after setup since Authenticator creation may populate it
     inMemoryCache.clear();
   });
@@ -554,6 +563,149 @@ describe("GroupResource", () => {
         await transaction.commit();
 
         // NOW cache should be invalidated
+        expect(inMemoryCache.has(cacheKey)).toBe(false);
+      } catch (err) {
+        await transaction.rollback();
+        throw err;
+      }
+    });
+  });
+
+  describe("listWorkspaceGroupsFromKey", () => {
+    it("system key: populates cache on first call and serves from cache on second", async () => {
+      const key = await KeyFactory.system(systemGroup);
+      const cacheKey = getCacheKeyForWorkspaceGroupsFromSystemKey(workspace.id);
+
+      expect(inMemoryCache.has(cacheKey)).toBe(false);
+
+      const first = await GroupResource.listWorkspaceGroupsFromKey(key);
+      expect(inMemoryCache.has(cacheKey)).toBe(true);
+
+      const second = await GroupResource.listWorkspaceGroupsFromKey(key);
+      expect(inMemoryCache.has(cacheKey)).toBe(true);
+
+      expect(first.map((g) => g.id).sort()).toEqual(
+        second.map((g) => g.id).sort()
+      );
+    });
+
+    it("system key: returns groups matching the cached kinds", async () => {
+      const regularGroup = await GroupResource.makeNew({
+        name: "Listed Regular Group",
+        workspaceId: workspace.id,
+        kind: "regular",
+      });
+      const key = await KeyFactory.system(systemGroup);
+
+      const groups = await GroupResource.listWorkspaceGroupsFromKey(key);
+      const ids = groups.map((g) => g.id);
+
+      expect(ids).toContain(globalGroup.id);
+      expect(ids).toContain(systemGroup.id);
+      expect(ids).toContain(regularGroup.id);
+    });
+
+    it("non-system key: does not touch the system-key cache", async () => {
+      const key = await KeyFactory.regular(globalGroup);
+      const cacheKey = getCacheKeyForWorkspaceGroupsFromSystemKey(workspace.id);
+
+      const groups = await GroupResource.listWorkspaceGroupsFromKey(key);
+
+      expect(inMemoryCache.has(cacheKey)).toBe(false);
+      expect(groups.map((g) => g.id)).toEqual([globalGroup.id]);
+    });
+
+    it("makeNew invalidates the cache", async () => {
+      const key = await KeyFactory.system(systemGroup);
+      const cacheKey = getCacheKeyForWorkspaceGroupsFromSystemKey(workspace.id);
+
+      await GroupResource.listWorkspaceGroupsFromKey(key);
+      expect(inMemoryCache.has(cacheKey)).toBe(true);
+
+      const newGroup = await GroupResource.makeNew({
+        name: "Cache Invalidation Regular",
+        workspaceId: workspace.id,
+        kind: "regular",
+      });
+
+      expect(inMemoryCache.has(cacheKey)).toBe(false);
+
+      const groups = await GroupResource.listWorkspaceGroupsFromKey(key);
+      expect(groups.map((g) => g.id)).toContain(newGroup.id);
+    });
+
+    it("delete of a group invalidates the cache", async () => {
+      const regularGroup = await GroupResource.makeNew({
+        name: "Delete Invalidates System Key Cache",
+        workspaceId: workspace.id,
+        kind: "regular",
+      });
+      const key = await KeyFactory.system(systemGroup);
+      const cacheKey = getCacheKeyForWorkspaceGroupsFromSystemKey(workspace.id);
+
+      const before = await GroupResource.listWorkspaceGroupsFromKey(key);
+      expect(before.map((g) => g.id)).toContain(regularGroup.id);
+      expect(inMemoryCache.has(cacheKey)).toBe(true);
+
+      const deleteResult = await regularGroup.delete(authenticator);
+      expect(deleteResult.isOk()).toBe(true);
+
+      expect(inMemoryCache.has(cacheKey)).toBe(false);
+
+      const after = await GroupResource.listWorkspaceGroupsFromKey(key);
+      expect(after.map((g) => g.id)).not.toContain(regularGroup.id);
+    });
+
+    it("updateName does not invalidate the cache", async () => {
+      const regularGroup = await GroupResource.makeNew({
+        name: "Name Before",
+        workspaceId: workspace.id,
+        kind: "regular",
+      });
+      const key = await KeyFactory.system(systemGroup);
+      const cacheKey = getCacheKeyForWorkspaceGroupsFromSystemKey(workspace.id);
+
+      await GroupResource.listWorkspaceGroupsFromKey(key);
+      expect(inMemoryCache.has(cacheKey)).toBe(true);
+
+      const updateResult = await regularGroup.updateName(
+        authenticator,
+        "Name After"
+      );
+      expect(updateResult.isOk()).toBe(true);
+
+      expect(inMemoryCache.has(cacheKey)).toBe(true);
+    });
+
+    it("defers cache invalidation from makeNew until after transaction commits", async () => {
+      const key = await KeyFactory.system(systemGroup);
+      const cacheKey = getCacheKeyForWorkspaceGroupsFromSystemKey(workspace.id);
+
+      await GroupResource.listWorkspaceGroupsFromKey(key);
+      expect(inMemoryCache.has(cacheKey)).toBe(true);
+
+      const namespace = getNamespace("test-namespace");
+      const parentTransaction = namespace?.get("transaction");
+      expect(parentTransaction).toBeDefined();
+
+      const transaction = await frontSequelize.transaction({
+        transaction: parentTransaction,
+      });
+
+      try {
+        await GroupResource.makeNew(
+          {
+            name: "Deferred Invalidation Group",
+            workspaceId: workspace.id,
+            kind: "regular",
+          },
+          { transaction }
+        );
+
+        expect(inMemoryCache.has(cacheKey)).toBe(true);
+
+        await transaction.commit();
+
         expect(inMemoryCache.has(cacheKey)).toBe(false);
       } catch (err) {
         await transaction.rollback();
