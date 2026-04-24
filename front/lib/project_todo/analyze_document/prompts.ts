@@ -7,7 +7,7 @@ export function buildPromptForSourceType(
   switch (sourceType) {
     case "project_conversation":
       return (
-        "IMPORTANT CONTEXT: This is a conversation between human users and Dust AI agents.\n" +
+        "IMPORTANT CONTEXT: This is a conversation that was created within the project itself.\n" +
         "Messages from the agents are AI-generated responses, NOT from a human participant.\n" +
         "- Do NOT treat user questions that the agents already answered as open action items.\n" +
         "- Only extract action items that represent real commitments between human participants, " +

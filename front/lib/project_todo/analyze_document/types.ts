@@ -37,57 +37,7 @@ const ActionItemSchema = z.object({
     ),
 });
 
-const NotableFactSchema = z.object({
-  // Present when the fact matches a previously known notable fact. The LLM
-  // should copy the sId verbatim from the list provided in the prompt.
-  sId: z
-    .string()
-    .optional()
-    .describe(
-      "Stable identifier for this notable fact. Copy verbatim from the known notable facts list if this fact was previously tracked. Omit for brand-new facts."
-    ),
-  short_description: z
-    .string()
-    .optional()
-    .describe("Short description of the notable fact."),
-  relevant_user_ids: z
-    .array(z.string())
-    .optional()
-    .describe(
-      "Participant ids of people this fact is relevant to or was stated by. Must be ids from the participant list in the prompt."
-    ),
-});
-
-const KeyDecisionSchema = z.object({
-  // Present when the decision matches a previously known key decision. The LLM
-  // should copy the sId verbatim from the list provided in the prompt.
-  sId: z
-    .string()
-    .optional()
-    .describe(
-      "Stable identifier for this key decision. Copy verbatim from the known key decisions list if this decision was previously tracked. Omit for brand-new decisions."
-    ),
-  short_description: z
-    .string()
-    .optional()
-    .describe("Short description of the key decision."),
-  relevant_user_ids: z
-    .array(z.string())
-    .optional()
-    .describe(
-      "Participant ids of people involved in making this decision. Must be ids from the participant list in the prompt."
-    ),
-  status: z
-    .enum(["decided", "open"])
-    .optional()
-    .describe(
-      "'decided' if the decision is finalized, 'open' if still being deliberated."
-    ),
-});
-
 export type ActionItem = z.infer<typeof ActionItemSchema>;
-export type NotableFact = z.infer<typeof NotableFactSchema>;
-export type KeyDecision = z.infer<typeof KeyDecisionSchema>;
 
 export const ExtractTakeawaysInputSchema = z.object({
   topic: z
@@ -96,8 +46,6 @@ export const ExtractTakeawaysInputSchema = z.object({
       "One-line summary of the document topic, e.g. 'Debugging the embed timeout issue'."
     ),
   action_items: z.array(ActionItemSchema),
-  notable_facts: z.array(NotableFactSchema),
-  key_decisions: z.array(KeyDecisionSchema),
 });
 
 export type ExtractionResult = z.infer<typeof ExtractTakeawaysInputSchema>;

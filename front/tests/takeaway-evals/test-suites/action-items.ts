@@ -1,7 +1,5 @@
 import {
   maxActionItems,
-  maxKeyDecisions,
-  maxNotableFacts,
   shouldExtractActionItem,
   shouldNotAssignTo,
   shouldNotExtractActionItem,
@@ -252,13 +250,9 @@ Score 3 if only the hotfix is extracted as an action item.`,
           status: "open",
         }),
         maxActionItems(1),
-        maxNotableFacts(0),
-        maxKeyDecisions(0),
       ],
       judgeCriteria: `One new task assigned:
 - Bob asked to update the runbook (open)
-
-No notable facts or key decisions should be extracted from this status update.
 
 Score 0 if no tasks are extracted as open.
 Score 3 if the task item are correct with right statuses and no spurious extractions.`,

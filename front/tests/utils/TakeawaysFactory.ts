@@ -10,8 +10,6 @@ export class TakeawaysFactory {
     return TakeawaysResource.makeNew(auth, {
       spaceId: space.id,
       actionItems: [],
-      notableFacts: [],
-      keyDecisions: [],
     });
   }
 }

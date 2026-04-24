@@ -38,23 +38,11 @@ export type TakeawayAssertion =
       status?: "open" | "done";
     }
   | { type: "shouldNotExtractActionItem"; descriptionContains: string }
-  | {
-      type: "shouldExtractNotableFact";
-      descriptionContains: string;
-    }
-  | {
-      type: "shouldExtractKeyDecision";
-      descriptionContains: string;
-      status?: "decided" | "open";
-    }
   | { type: "minActionItems"; count: number }
-  | { type: "minNotableFacts"; count: number }
   | { type: "maxActionItems"; count: number }
-  | { type: "maxNotableFacts"; count: number }
-  | { type: "maxKeyDecisions"; count: number }
   | {
       type: "shouldPreserveSId";
-      category: "actionItem" | "notableFact" | "keyDecision";
+      category: "actionItem";
       sId: string;
     }
   | { type: "shouldNotAssignTo"; userId: string };
@@ -78,45 +66,16 @@ export function shouldNotExtractActionItem(
   return { type: "shouldNotExtractActionItem", descriptionContains };
 }
 
-export function shouldExtractNotableFact(
-  descriptionContains: string
-): TakeawayAssertion {
-  return { type: "shouldExtractNotableFact", descriptionContains };
-}
-
-export function shouldExtractKeyDecision(
-  descriptionContains: string,
-  opts?: { status?: "decided" | "open" }
-): TakeawayAssertion {
-  return {
-    type: "shouldExtractKeyDecision",
-    descriptionContains,
-    ...opts,
-  };
-}
-
 export function minActionItems(count: number): TakeawayAssertion {
   return { type: "minActionItems", count };
-}
-
-export function minNotableFacts(count: number): TakeawayAssertion {
-  return { type: "minNotableFacts", count };
 }
 
 export function maxActionItems(count: number): TakeawayAssertion {
   return { type: "maxActionItems", count };
 }
 
-export function maxNotableFacts(count: number): TakeawayAssertion {
-  return { type: "maxNotableFacts", count };
-}
-
-export function maxKeyDecisions(count: number): TakeawayAssertion {
-  return { type: "maxKeyDecisions", count };
-}
-
 export function shouldPreserveSId(
-  category: "actionItem" | "notableFact" | "keyDecision",
+  category: "actionItem",
   sId: string
 ): TakeawayAssertion {
   return { type: "shouldPreserveSId", category, sId };
@@ -154,8 +113,6 @@ export interface TakeawayTestSuite {
 export interface TakeawayExecutionResult {
   extraction: ExtractionResult | null;
   actionItems: TodoVersionedActionItem[];
-  notableFacts: TodoVersionedNotableFact[];
-  keyDecisions: TodoVersionedKeyDecision[];
 }
 
 // ── Display helpers ─────────────────────────────────────────────────────────
@@ -197,20 +154,6 @@ export function formatExtractionResult(
       )
       .join("\n");
     parts.push(`Action items:\n${items}`);
-  }
-
-  if (result.notableFacts.length > 0) {
-    const facts = result.notableFacts
-      .map((f) => `  - ${f.shortDescription}`)
-      .join("\n");
-    parts.push(`Notable facts:\n${facts}`);
-  }
-
-  if (result.keyDecisions.length > 0) {
-    const decisions = result.keyDecisions
-      .map((d) => `  - [${d.status}] ${d.shortDescription}`)
-      .join("\n");
-    parts.push(`Key decisions:\n${decisions}`);
   }
 
   if (parts.length === 0) {
