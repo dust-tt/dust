@@ -12,7 +12,6 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
-  useLayoutEffect,
   useRef,
   useState,
 } from "react";
@@ -23,8 +22,6 @@ interface SlashCommandTooltip {
 }
 
 const DEFAULT_EMPTY_MESSAGE = "No commands found";
-const MAX_VISIBLE_ITEMS = 7;
-
 export interface SlashCommand {
   action: string;
   description?: string;
@@ -71,10 +68,8 @@ export const SlashCommandDropdown = forwardRef<
     const viewportRef = useRef<HTMLDivElement>(null);
     const [virtualTriggerStyle, setVirtualTriggerStyle] =
       useState<React.CSSProperties>({});
-    const [maxVisibleHeight, setMaxVisibleHeight] = useState<number>();
     const [hasOverflow, setHasOverflow] = useState(false);
     const [isScrolledToBottom, setIsScrolledToBottom] = useState(true);
-    const hasItems = items.length > 0;
 
     const selectItem = useCallback(
       (index: number) => {
@@ -136,29 +131,6 @@ export const SlashCommandDropdown = forwardRef<
       });
     }, [selectedIndex]);
 
-    useLayoutEffect(() => {
-      if (items.length === 0) {
-        setMaxVisibleHeight(undefined);
-        return;
-      }
-
-      const visibleItems = itemRefs.current
-        .slice(0, Math.min(items.length, MAX_VISIBLE_ITEMS))
-        .filter((item): item is HTMLElement => Boolean(item));
-
-      if (visibleItems.length === 0) {
-        return;
-      }
-
-      const nextMaxVisibleHeight = visibleItems.reduce(
-        (totalHeight, item) =>
-          totalHeight + item.getBoundingClientRect().height,
-        0
-      );
-
-      setMaxVisibleHeight(Math.ceil(nextMaxVisibleHeight));
-    }, [items]);
-
     const updateScrollState = useCallback(() => {
       const viewport = viewportRef.current;
 
@@ -177,8 +149,8 @@ export const SlashCommandDropdown = forwardRef<
       setIsScrolledToBottom(nextIsScrolledToBottom);
     }, []);
 
-    useLayoutEffect(() => {
-      if (!hasItems) {
+    useEffect(() => {
+      if (items.length === 0) {
         setHasOverflow(false);
         setIsScrolledToBottom(true);
         return;
@@ -209,7 +181,7 @@ export const SlashCommandDropdown = forwardRef<
         resizeObserver.disconnect();
         viewport.removeEventListener("scroll", updateScrollState);
       };
-    }, [hasItems, updateScrollState]);
+    }, [items.length, updateScrollState]);
 
     // Update virtual trigger position.
     const updateTriggerPosition = useCallback(() => {
@@ -270,12 +242,7 @@ export const SlashCommandDropdown = forwardRef<
             <div className="relative">
               <div
                 ref={viewportRef}
-                className="overflow-y-auto"
-                style={
-                  maxVisibleHeight
-                    ? { maxHeight: `${maxVisibleHeight}px` }
-                    : undefined
-                }
+                className="max-h-[min(24rem,var(--radix-dropdown-menu-content-available-height))] overflow-y-auto"
               >
                 {items.map((item, index) => {
                   const menuItem = (
