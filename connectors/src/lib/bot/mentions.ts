@@ -63,10 +63,7 @@ export function processMentions({
     agentId: bestCandidate.agentId,
     agentName: bestCandidate.agentName,
   };
-  const processedMessage = message.replace(
-    mentionCandidate,
-    `:mention[${bestCandidate.agentName}]{sId=${bestCandidate.agentId}}`
-  );
+  const processedMessage = message.replace(mentionCandidate, "").trim();
 
   return new Ok({
     mention,
@@ -163,11 +160,6 @@ export function processMessageForMention({
       agentId: defaultAgent.sId,
       agentName: defaultAgent.name,
     };
-  }
-
-  if (!processedMessage.includes(":mention")) {
-    // if the message does not contain the mention, we add it as a prefix.
-    processedMessage = `:mention[${mention.agentName}]{sId=${mention.agentId}} ${processedMessage}`;
   }
 
   return new Ok({

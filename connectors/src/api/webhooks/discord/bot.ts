@@ -50,10 +50,8 @@ export async function sendMessageToAgent(
     logger
   );
 
-  const messageWithMention = `:mention[${agentConfiguration.name}]{sId=${agentConfiguration.sId}} ${message}`;
-
   const messageReqBody = {
-    content: messageWithMention,
+    content: message,
     mentions: [{ configurationId: agentConfiguration.sId }],
     context: {
       timezone: "UTC",

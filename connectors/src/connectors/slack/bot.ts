@@ -1179,11 +1179,6 @@ async function answerMessage(
     );
   };
 
-  if (!message.includes(":mention")) {
-    // if the message does not contain the mention, we add it as a prefix.
-    message = `:mention[${mention.agentName}]{sId=${mention.agentId}} ${message}`;
-  }
-
   const origin = slackBotId ? "slack_workflow" : "slack";
 
   const messageReqBody: PublicPostMessagesRequestBody = {
