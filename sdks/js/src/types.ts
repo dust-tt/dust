@@ -1602,6 +1602,16 @@ const UserMessageNewEventSchema = z.object({
 });
 export type UserMessageNewEvent = z.infer<typeof UserMessageNewEventSchema>;
 
+// Event sent when a pending user message is promoted to visible.
+const UserMessagePromotedEventSchema = z.object({
+  type: z.literal("user_message_promoted"),
+  created: z.number(),
+  messageId: z.string(),
+});
+export type UserMessagePromotedEvent = z.infer<
+  typeof UserMessagePromotedEventSchema
+>;
+
 // Event sent when a new message is created (empty) and the agent is about to be executed.
 const AgentMessageNewEventSchema = z.object({
   type: z.literal("agent_message_new"),
@@ -1624,6 +1634,7 @@ export type ConversationTitleEvent = z.infer<
 
 export const ConversationEventDataSchema = z.union([
   UserMessageNewEventSchema,
+  UserMessagePromotedEventSchema,
   AgentMessageNewEventSchema,
   AgentMessageDoneEventSchema,
   ConversationTitleEventSchema,
