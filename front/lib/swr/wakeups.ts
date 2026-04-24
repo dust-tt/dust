@@ -1,6 +1,5 @@
 import { useConversations } from "@app/hooks/conversations/useConversations";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { useAuth } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetConversationWakeUpsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/wakeups";
@@ -30,8 +29,6 @@ export function useConversationWakeUps({
     { disabled }
   );
 
-  const { user } = useAuth();
-
   const wakeUps = data?.wakeUps ?? emptyArray();
   const activeWakeUp = useMemo(
     () => wakeUps.find((w) => isActiveWakeUp(w)) ?? null,
@@ -41,7 +38,6 @@ export function useConversationWakeUps({
   return {
     wakeUps,
     activeWakeUp,
-    isActiveWakeUpOwner: activeWakeUp?.user.sId === user.sId,
     isWakeUpsLoading: !error && !data && !disabled,
     isWakeUpsError: !!error,
     mutateWakeUps: mutate,
