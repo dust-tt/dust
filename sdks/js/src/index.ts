@@ -183,12 +183,49 @@ export type AgentEvent =
 
 export type ConversationEvent = ConversationEventType["data"];
 
+const AGENT_EVENT_TYPES: ReadonlySet<string> = new Set<AgentEvent["type"]>([
+  "agent_action_success",
+  "agent_context_pruned",
+  "agent_error",
+  "agent_generation_cancelled",
+  "agent_message_done",
+  "agent_message_gracefully_stopped",
+  "agent_message_success",
+  "generation_tokens",
+  "tool_approve_execution",
+  "tool_ask_user_question",
+  "tool_call_started",
+  "tool_error",
+  "tool_file_auth_required",
+  "tool_notification",
+  "tool_params",
+  "tool_personal_auth_required",
+  "user_message_error",
+]);
+
+const CONVERSATION_EVENT_TYPES: ReadonlySet<string> = new Set<
+  ConversationEvent["type"]
+>([
+  "agent_message_done",
+  "agent_message_new",
+  "conversation_title",
+  "user_message_new",
+]);
+
 function isAgentEvent(value: unknown): value is AgentEvent {
-  return isRecord(value) && typeof value.type === "string";
+  return (
+    isRecord(value) &&
+    typeof value.type === "string" &&
+    AGENT_EVENT_TYPES.has(value.type)
+  );
 }
 
 function isConversationEvent(value: unknown): value is ConversationEvent {
-  return isRecord(value) && typeof value.type === "string";
+  return (
+    isRecord(value) &&
+    typeof value.type === "string" &&
+    CONVERSATION_EVENT_TYPES.has(value.type)
+  );
 }
 
 const textFromResponse = async (response: DustResponse): Promise<string> => {
