@@ -4,6 +4,7 @@ import { buildProjectRetrieveDataSources } from "@app/lib/api/actions/servers/pr
 import { Authenticator } from "@app/lib/auth";
 import { extractDocumentTakeaways } from "@app/lib/project_todo/analyze_document";
 import { mergeTakeawaysIntoProject } from "@app/lib/project_todo/merge_into_project";
+import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { TakeawaySourceDocument } from "@app/lib/resources/takeaways_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
@@ -13,6 +14,7 @@ import logger from "@app/logger/logger";
 import type { ConnectorProvider } from "@app/types/data_source";
 import type { ProjectTodoSourceType } from "@app/types/project_todo";
 import { removeNulls } from "@app/types/shared/utils/general";
+import type { TimeFrame } from "@app/types/shared/utils/time_frame";
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
@@ -138,13 +140,20 @@ export async function analyzeProjectTodosActivity({
     return;
   }
 
+  const metadata = await ProjectMetadataResource.fetchBySpace(auth, space);
+  let timeFrame: TimeFrame = { duration: 1, unit: "day" }; // Default to one day if no metadata is found
+  if (metadata?.lastTodoAnalysisAt) {
+    const deltaMs = Date.now() - metadata.lastTodoAnalysisAt.getTime();
+    const MS_PER_HOUR = 1000 * 60 * 60;
+    timeFrame = { duration: deltaMs / MS_PER_HOUR, unit: "hour" };
+  }
+
   // Fetch all recent documents changes from the project knowledge and conversations.
   const results = await runIncludeDataRetrieval(auth, {
     citationsOffset: 0,
     retrievalTopK: 128,
     dataSources: await buildProjectRetrieveDataSources(auth, space),
-    // TODO: compute this from the last time the project todo was analyzed.
-    timeFrame: { duration: 1, unit: "day" },
+    timeFrame,
   });
 
   if (results.isErr()) {
@@ -153,6 +162,13 @@ export async function analyzeProjectTodosActivity({
       "Failed to retrieve include data"
     );
     return;
+  }
+
+  if (metadata) {
+    await metadata.updateLastTodoAnalysisAt(new Date());
+  } else {
+    // We should always have a metadata row for a project space, but just in case.
+    logger.warn({ spaceId }, "No project metadata found for space");
   }
 
   const documents = removeNulls(

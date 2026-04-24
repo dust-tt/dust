@@ -83,15 +83,15 @@ export function timeFrameFromNow(timeFrame: TimeFrame): number {
 
   switch (timeFrame.unit) {
     case "hour":
-      return now - timeFrame.duration * 60 * 60 * 1000;
+      return Math.round(now - timeFrame.duration * 60 * 60 * 1000);
     case "day":
-      return now - timeFrame.duration * 24 * 60 * 60 * 1000;
+      return Math.round(now - timeFrame.duration * 24 * 60 * 60 * 1000);
     case "week":
-      return now - timeFrame.duration * 7 * 24 * 60 * 60 * 1000;
+      return Math.round(now - timeFrame.duration * 7 * 24 * 60 * 60 * 1000);
     case "month":
-      return now - timeFrame.duration * 30 * 24 * 60 * 60 * 1000;
+      return Math.round(now - timeFrame.duration * 30 * 24 * 60 * 60 * 1000);
     case "year":
-      return now - timeFrame.duration * 365 * 24 * 60 * 60 * 1000;
+      return Math.round(now - timeFrame.duration * 365 * 24 * 60 * 60 * 1000);
     default:
       ((x: never) => {
         throw new Error(`Unexpected time frame unit ${x}`);

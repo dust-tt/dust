@@ -121,6 +121,13 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
     await this.update({ description }, transaction);
   }
 
+  async updateLastTodoAnalysisAt(
+    lastTodoAnalysisAt: Date,
+    transaction?: Transaction
+  ) {
+    await this.update({ lastTodoAnalysisAt }, transaction);
+  }
+
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction }
