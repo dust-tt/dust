@@ -20,7 +20,6 @@ import {
 } from "@app/lib/api/actions/servers/conversation_files/metadata";
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
 import { isDustLikeAgent } from "@app/lib/api/assistant/global_agents/global_agents";
-import { getEnabledSkillInstructions } from "@app/lib/api/assistant/skills_rendering";
 import type {
   StructuredSystemPrompt,
   SystemPromptContext,
@@ -194,8 +193,11 @@ function constructToolsSection({
   return toolsSection;
 }
 
+/**
+ * Get the full instructions for an enabled skill, including extended skill instructions if applicable.
+ */
 function getEnabledSkillInstructions(
-  skill: SkillResource & { extendedSkill?: SkillResource | null }
+  skill: SkillResource & { extendedSkill: SkillResource | null }
 ): string {
   const { name, instructions, extendedSkill } = skill;
 
