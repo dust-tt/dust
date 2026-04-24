@@ -710,6 +710,11 @@ CompactionMessageModel.init(
         fields: ["workspaceId"],
         concurrently: true,
       },
+      {
+        fields: ["workspaceId", "sourceConversationId"],
+        name: "compaction_messages_workspace_id_source_conversation_id_idx",
+        concurrently: true,
+      },
     ],
   }
 );

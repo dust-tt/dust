@@ -314,6 +314,18 @@ export async function destroyConversation(
   //     conversationId: conversation.sId,
   //   })
   // );
+
+  // Preserve child compaction messages if their source conversation is hard-deleted.
+  await CompactionMessageModel.update(
+    { sourceConversationId: null },
+    {
+      where: {
+        workspaceId: owner.id,
+        sourceConversationId: conversation.sId,
+      },
+    }
+  );
+
   const result = await conversation.delete(auth);
   if (result.isErr()) {
     return result;
