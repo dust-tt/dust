@@ -130,7 +130,6 @@ makeScript(
         markedAsDoneByType: null,
         markedAsDoneByUserId: null,
         markedAsDoneByAgentConfigurationId: null,
-        category: "to_do",
         text: seed.text,
         status: "todo",
         doneAt: null,

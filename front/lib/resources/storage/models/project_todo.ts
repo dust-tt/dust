@@ -5,7 +5,6 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type {
   ProjectTodoActorType,
-  ProjectTodoCategory,
   ProjectTodoSourceType,
   ProjectTodoStatus,
 } from "@app/types/project_todo";
@@ -127,7 +126,7 @@ export class ProjectTodoModel extends WorkspaceAwareModel<ProjectTodoModel> {
   declare markedAsDoneByUserId: ForeignKey<UserModel["id"]> | null;
   declare markedAsDoneByAgentConfigurationId: string | null;
 
-  declare category: ProjectTodoCategory;
+  declare category: "to_do";
   declare text: string;
   declare status: ProjectTodoStatus;
   declare doneAt: Date | null;

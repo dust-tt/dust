@@ -125,8 +125,6 @@ describe("TakeawaysResource", () => {
         conversationId,
         spaceId: space.sId,
         actionItems: [],
-        notableFacts: [],
-        keyDecisions: [],
       });
 
       expect(takeaway.sId).toMatch(/^tka_/);
@@ -149,16 +147,12 @@ describe("TakeawaysResource", () => {
         conversationId,
         spaceId: space.sId,
         actionItems: [],
-        notableFacts: [],
-        keyDecisions: [],
       });
 
       const second = await TakeawaysResource.makeNewForConversation(auth, {
         conversationId,
         spaceId: space.sId,
         actionItems: [actionItem],
-        keyDecisions: [],
-        notableFacts: [],
       });
 
       // Same stable identity — the main row was updated in place.
@@ -177,8 +171,6 @@ describe("TakeawaysResource", () => {
         conversationId,
         spaceId: space.sId,
         actionItems: [],
-        notableFacts: [],
-        keyDecisions: [],
       });
 
       const fetched = await TakeawaysResource.fetchLatestByConversationId(
@@ -205,8 +197,6 @@ describe("TakeawaysResource", () => {
         conversationId,
         spaceId: space.sId,
         actionItems: [],
-        notableFacts: [],
-        keyDecisions: [],
       });
 
       const otherSetup = await createResourceTest({ role: "user" });
@@ -227,8 +217,6 @@ describe("TakeawaysResource", () => {
         conversationId,
         spaceId: space.sId,
         actionItems: [],
-        notableFacts: [],
-        keyDecisions: [],
       });
 
       expect(takeaway).not.toBeNull();
@@ -260,8 +248,6 @@ describe("TakeawaysResource", () => {
         conversationId,
         spaceId: space.sId,
         actionItems: [],
-        notableFacts: [],
-        keyDecisions: [],
       });
 
       // Create a version snapshot.

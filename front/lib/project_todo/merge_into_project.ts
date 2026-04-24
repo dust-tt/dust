@@ -38,7 +38,7 @@ import {
   batchDeduplicateCandidates,
   type DeduplicateCandidate,
   type DeduplicatedGroup,
-  type ExistingTodosByGroup,
+  type ExistingTodosByUser,
 } from "@app/lib/project_todo/deduplicate_candidates";
 import { ProjectTodoResource } from "@app/lib/resources/project_todo_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
@@ -48,16 +48,9 @@ import {
 } from "@app/lib/resources/takeaways_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import type {
-  ProjectTodoCategory,
-  ProjectTodoSourceInfo,
-} from "@app/types/project_todo";
+import type { ProjectTodoSourceInfo } from "@app/types/project_todo";
 import type { ModelId } from "@app/types/shared/model_id";
-import type {
-  TodoVersionedActionItem,
-  TodoVersionedKeyDecision,
-  TodoVersionedNotableFact,
-} from "@app/types/takeaways";
+import type { TodoVersionedActionItem } from "@app/types/takeaways";
 import type { Logger } from "pino";
 
 // Stable identifier used when recording the creating actor for butler-created
@@ -68,7 +61,6 @@ const BUTLER_AGENT_SID = "butler";
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type TodoBlob = {
-  category: "to_do" | "to_know";
   text: string;
   status: "todo" | "done";
   doneAt: Date | null;
@@ -144,16 +136,6 @@ export async function mergeTakeawaysIntoProject({
     for (const item of takeaway.actionItems) {
       if (item.assigneeUserId) {
         allUserIds.add(item.assigneeUserId);
-      }
-    }
-    for (const item of takeaway.keyDecisions) {
-      for (const userId of item.relevantUserIds) {
-        allUserIds.add(userId);
-      }
-    }
-    for (const item of takeaway.notableFacts) {
-      for (const userId of item.relevantUserIds) {
-        allUserIds.add(userId);
       }
     }
   }
@@ -267,16 +249,6 @@ async function collectDocumentCandidates(
       ),
       blob: actionItemBlob(item),
     })),
-    ...takeawayWithSource.takeaway.keyDecisions.map((item) => ({
-      itemId: item.sId,
-      targetUserIds: resolveTargetUserIds(item.relevantUserIds),
-      blob: keyDecisionBlob(item),
-    })),
-    ...takeawayWithSource.takeaway.notableFacts.map((item) => ({
-      itemId: item.sId,
-      targetUserIds: resolveTargetUserIds(item.relevantUserIds),
-      blob: notableFactBlob(item),
-    })),
   ];
 
   // Batch-fetch existing todos by itemId. The result map is keyed by
@@ -334,7 +306,6 @@ async function buildDeduplicationGroups(
       itemId: c.itemId,
       userId: c.userId,
       text: c.blob.text,
-      category: c.blob.category,
     })
   );
 
@@ -350,7 +321,7 @@ async function buildDeduplicationGroups(
   // then nest them under userId → category → todos for lookup by the LLM
   // calls.
   const uniqueUserIds = [...new Set(newCandidates.map((c) => c.userId))];
-  const existingTodosByGroup: ExistingTodosByGroup = new Map();
+  const existingTodosByUser: ExistingTodosByUser = new Map();
 
   await concurrentExecutor(
     uniqueUserIds,
@@ -359,15 +330,11 @@ async function buildDeduplicationGroups(
         spaceId: spaceModelId,
         userId,
       });
-      const byCategory =
-        existingTodosByGroup.get(userId) ??
-        new Map<ProjectTodoCategory, ProjectTodoResource[]>();
       for (const todo of todos) {
-        const bucket = byCategory.get(todo.category) ?? [];
+        const bucket = existingTodosByUser.get(todo.userId) ?? [];
         bucket.push(todo);
-        byCategory.set(todo.category, bucket);
+        existingTodosByUser.set(todo.userId, bucket);
       }
-      existingTodosByGroup.set(userId, byCategory);
     },
     { concurrency: 4 }
   );
@@ -375,7 +342,7 @@ async function buildDeduplicationGroups(
   return batchDeduplicateCandidates(auth, {
     model,
     candidates: deduplicateCandidates,
-    existingTodosByGroup,
+    existingTodosByUser,
   });
 }
 
@@ -464,7 +431,6 @@ async function createOrLinkTodos(
           createdByType: "agent",
           createdByUserId: null,
           createdByAgentConfigurationId: BUTLER_AGENT_SID,
-          category: primary.blob.category,
           text: primary.blob.text,
           status: primary.blob.status,
           doneAt: primary.blob.doneAt,
@@ -556,28 +522,9 @@ export async function updateTodoIfChanged(
 export function actionItemBlob(item: TodoVersionedActionItem): TodoBlob {
   const isDone = item.status === "done";
   return {
-    category: "to_do",
     text: item.shortDescription,
     status: isDone ? "done" : "todo",
     doneAt:
       isDone && item.detectedDoneAt ? new Date(item.detectedDoneAt) : null,
-  };
-}
-
-export function keyDecisionBlob(item: TodoVersionedKeyDecision): TodoBlob {
-  return {
-    category: "to_know",
-    text: item.shortDescription,
-    status: "todo",
-    doneAt: null,
-  };
-}
-
-export function notableFactBlob(item: TodoVersionedNotableFact): TodoBlob {
-  return {
-    category: "to_know",
-    text: item.shortDescription,
-    status: "todo",
-    doneAt: null,
   };
 }

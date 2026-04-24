@@ -18,11 +18,9 @@ import { getConversationRoute } from "@app/lib/utils/router";
 import type { GetProjectTodosResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_todos/index";
 import type {
   ProjectTodoActorType,
-  ProjectTodoCategory,
   ProjectTodoStatus,
   ProjectTodoType,
 } from "@app/types/project_todo";
-import { PROJECT_TODO_CATEGORIES } from "@app/types/project_todo";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -42,10 +40,8 @@ import {
   PlayIcon,
   SlackLogo,
   Spinner,
-  SquareIcon,
   Tooltip,
   TrashIcon,
-  TriangleIcon,
   TypingAnimation,
   WindIcon,
 } from "@dust-tt/sparkle";
@@ -53,30 +49,6 @@ import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const SUMMARY_ITEM_TRANSITION_MS = 240;
-
-// ── Category display configuration ────────────────────────────────────────────
-
-type CategoryConfig = {
-  label: string;
-  icon: React.ComponentType;
-  iconClassName: string;
-};
-
-const CATEGORY_CONFIG: Record<ProjectTodoCategory, CategoryConfig> = {
-  to_do: {
-    label: "Need to do",
-    icon: TriangleIcon,
-    iconClassName: "text-warning-300 dark:text-warning-300-night",
-  },
-  to_know: {
-    label: "Need to know",
-    icon: SquareIcon,
-    iconClassName: "text-golden-300 dark:text-golden-300-night",
-  },
-};
-
-// Stable display order for categories.
-const ORDERED_CATEGORIES: ProjectTodoCategory[] = [...PROJECT_TODO_CATEGORIES];
 
 // ── Metadata tooltip ──────────────────────────────────────────────────────────
 
@@ -132,9 +104,7 @@ function TodoMetadataTooltip({
     : null;
 
   const isAssistantWorkInProgress =
-    todo.category === "to_do" &&
-    !!todo.conversationId &&
-    todo.status !== "done";
+    !!todo.conversationId && todo.status !== "done";
 
   const label = (
     <div className="flex flex-col gap-1">
@@ -293,35 +263,6 @@ function TodoSources({
   );
 }
 
-function CategorySectionHeader({ config }: { config: CategoryConfig }) {
-  return (
-    <div className="flex items-center gap-3 pt-2">
-      <div className="flex h-4 w-4 items-center">
-        <Icon visual={config.icon} size="xs" className={config.iconClassName} />
-      </div>
-      <h4 className="heading-lg text-foreground dark:text-foreground-night">
-        {config.label}
-      </h4>
-    </div>
-  );
-}
-
-function groupTodosByCategory(todos: ProjectTodoType[]) {
-  const todosByCategory = todos.reduce<
-    Partial<Record<ProjectTodoCategory, ProjectTodoType[]>>
-  >((acc, todo) => {
-    const cat = todo.category;
-    const existing = acc[cat] ?? [];
-    return { ...acc, [cat]: [...existing, todo] };
-  }, {});
-
-  const activeSections = ORDERED_CATEGORIES.filter(
-    (cat) => (todosByCategory[cat]?.length ?? 0) > 0
-  );
-
-  return { todosByCategory, activeSections };
-}
-
 // ── Collapsible wrapper ──────────────────────────────────────────────────────
 
 const COLLAPSED_MAX_HEIGHT_PX = 260;
@@ -430,12 +371,11 @@ function ReadOnlyProjectTodosPanel({
 }) {
   const { todos, isTodosLoading } = useProjectTodos({ owner, spaceId });
   const agentNameById = useAgentNameById(owner);
-  const { todosByCategory, activeSections } = groupTodosByCategory(todos);
 
   return (
     <div className="flex flex-col gap-3">
       <h3 className="heading-2xl text-foreground dark:text-foreground-night">
-        What's new?
+        To-dos
       </h3>
       {isTodosLoading ? (
         <div className="flex justify-center py-4">
@@ -443,28 +383,17 @@ function ReadOnlyProjectTodosPanel({
         </div>
       ) : (
         <CollapsibleTodoList>
-          {activeSections.map((cat) => {
-            const config = CATEGORY_CONFIG[cat];
-            const items = todosByCategory[cat] ?? [];
-
-            return (
-              <div key={cat} className="flex flex-col gap-1">
-                <CategorySectionHeader config={config} />
-                <div className="flex flex-col">
-                  {items.map((todo) => (
-                    <ReadOnlyTodoItem
-                      key={todo.sId}
-                      todo={todo}
-                      owner={owner}
-                      agentNameById={agentNameById}
-                    />
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-
-          {activeSections.length === 0 && (
+          <div className="flex flex-col">
+            {todos.map((todo) => (
+              <ReadOnlyTodoItem
+                key={todo.sId}
+                todo={todo}
+                owner={owner}
+                agentNameById={agentNameById}
+              />
+            ))}
+          </div>
+          {todos.length === 0 && (
             <p className="text-base italic text-faint dark:text-faint-night">
               You're all caught up!
             </p>
@@ -508,8 +437,7 @@ function EditableTodoItem({
 }: EditableTodoItemProps) {
   const router = useAppRouter();
   const isDone = todo.status === "done";
-  const showInProgressTextAnimation =
-    todo.category === "to_do" && !!todo.conversationId && !isDone;
+  const showInProgressTextAnimation = !!todo.conversationId && !isDone;
   const [isFlashing, setIsFlashing] = useState(isNewlyDone);
 
   useEffect(() => {
@@ -572,33 +500,32 @@ function EditableTodoItem({
         </button>
       </TodoMetadataTooltip>
       <div className="mt-0.5 flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover/todo:opacity-100">
-        {todo.category === "to_do" &&
-          (todo.conversationId ? (
-            <IconButton
-              icon={ChatBubbleLeftRightIcon}
-              size="xs"
-              variant="ghost"
-              className="!text-muted-foreground hover:!text-foreground"
-              tooltip={"Open todo conversation"}
-              onClick={() => {
-                void router.push(
-                  getConversationRoute(owner.sId, todo.conversationId),
-                  undefined,
-                  { shallow: true }
-                );
-              }}
-            />
-          ) : (
-            <IconButton
-              icon={PlayIcon}
-              size="xs"
-              variant="ghost"
-              className="!text-muted-foreground hover:!text-foreground"
-              tooltip="Start working on todo"
-              disabled={isStarting}
-              onClick={() => onStartWorking(todo)}
-            />
-          ))}
+        {todo.conversationId ? (
+          <IconButton
+            icon={ChatBubbleLeftRightIcon}
+            size="xs"
+            variant="ghost"
+            className="!text-muted-foreground hover:!text-foreground"
+            tooltip={"Open todo conversation"}
+            onClick={() => {
+              void router.push(
+                getConversationRoute(owner.sId, todo.conversationId),
+                undefined,
+                { shallow: true }
+              );
+            }}
+          />
+        ) : (
+          <IconButton
+            icon={PlayIcon}
+            size="xs"
+            variant="ghost"
+            className="!text-muted-foreground hover:!text-foreground"
+            tooltip="Start working on todo"
+            disabled={isStarting}
+            onClick={() => onStartWorking(todo)}
+          />
+        )}
         <IconButton
           icon={TrashIcon}
           size="xs"
@@ -762,8 +689,6 @@ function EditableProjectTodosPanel({
 
   const hasDoneItems = todos.some((t) => t.status === "done");
 
-  const { todosByCategory, activeSections } = groupTodosByCategory(todos);
-
   // Optimistically update a todo's status in the SWR cache and send the PATCH.
   // On failure the cache is revalidated from the server.
   const handleSetStatus = useCallback(
@@ -799,10 +724,9 @@ function EditableProjectTodosPanel({
 
   // Bulk set the status of every todo in a category in a single request.
   // Optimistically updates the SWR cache, then revalidates on failure.
-  const handleSetStatusForSection = useCallback(
-    async (category: ProjectTodoCategory, status: ProjectTodoStatus) => {
-      const sectionTodos = todosByCategory[category] ?? [];
-      const targetIds = sectionTodos
+  const _handleSetStatusForSection = useCallback(
+    async (status: ProjectTodoStatus) => {
+      const targetIds = todos
         .filter((t) => t.status !== status)
         .map((t) => t.sId);
 
@@ -825,7 +749,7 @@ function EditableProjectTodosPanel({
         void mutateTodos();
       }
     },
-    [doBulkUpdateStatus, mutateTodos, todosByCategory]
+    [doBulkUpdateStatus, mutateTodos, todos]
   );
 
   const handleClean = useCallback(async () => {
@@ -908,7 +832,7 @@ function EditableProjectTodosPanel({
       {/* Header */}
       <div className="inline-flex items-center gap-2">
         <h3 className="heading-2xl text-foreground dark:text-foreground-night">
-          What's new?
+          To-dos
         </h3>
         <div className="flex-1" />
         {hasDoneItems && (
@@ -931,73 +855,31 @@ function EditableProjectTodosPanel({
         </div>
       ) : (
         <CollapsibleTodoList>
-          {/* Per-category sections */}
-          {activeSections.map((cat) => {
-            const config = CATEGORY_CONFIG[cat];
-            const items = todosByCategory[cat] ?? [];
-            const allDone =
-              items.length > 0 && items.every((t) => t.status === "done");
-
-            return (
-              <div key={cat} className="flex flex-col gap-1">
-                {/* Section header: icon by default, checkbox on hover */}
-                <div className="group/section-title flex items-center gap-3 pt-2">
-                  <div className="flex h-4 w-4 items-center">
-                    <Icon
-                      visual={config.icon}
-                      size="xs"
-                      className={cn(
-                        "group-hover/section-title:hidden",
-                        config.iconClassName
-                      )}
-                    />
-                    <Checkbox
-                      size="xs"
-                      className="hidden group-hover/section-title:inline-block"
-                      checked={allDone}
-                      onCheckedChange={(checked) => {
-                        if (checked === true) {
-                          void handleSetStatusForSection(cat, "done");
-                        } else if (checked === false) {
-                          void handleSetStatusForSection(cat, "todo");
-                        }
-                      }}
-                    />
-                  </div>
-                  <h4 className="heading-lg text-foreground dark:text-foreground-night">
-                    {config.label}
-                  </h4>
-                </div>
-
-                {/* Todo items */}
-                <div className="flex flex-col">
-                  {items.map((todo) => (
-                    <EditableTodoItem
-                      key={todo.sId}
-                      todo={todo}
-                      onToggleDone={handleToggleDone}
-                      onDelete={handleDelete}
-                      onStartWorking={handleStartWorking}
-                      owner={owner}
-                      agentNameById={agentNameById}
-                      isExiting={pendingRemovalIds.has(todo.sId)}
-                      isAdded={
-                        diffKeys.added.has(todo.sId) &&
-                        !enteredKeys.has(todo.sId)
-                      }
-                      isEntering={enteringKeys.has(todo.sId)}
-                      isTyping={typingKeys.has(todo.sId)}
-                      isNewlyDone={doneFlashKeys.has(todo.sId)}
-                      isStarting={startingTodoIds.has(todo.sId)}
-                    />
-                  ))}
-                </div>
-              </div>
-            );
-          })}
+          {/* Todo items */}
+          <div className="flex flex-col">
+            {todos.map((todo) => (
+              <EditableTodoItem
+                key={todo.sId}
+                todo={todo}
+                onToggleDone={handleToggleDone}
+                onDelete={handleDelete}
+                onStartWorking={handleStartWorking}
+                owner={owner}
+                agentNameById={agentNameById}
+                isExiting={pendingRemovalIds.has(todo.sId)}
+                isAdded={
+                  diffKeys.added.has(todo.sId) && !enteredKeys.has(todo.sId)
+                }
+                isEntering={enteringKeys.has(todo.sId)}
+                isTyping={typingKeys.has(todo.sId)}
+                isNewlyDone={doneFlashKeys.has(todo.sId)}
+                isStarting={startingTodoIds.has(todo.sId)}
+              />
+            ))}
+          </div>
 
           {/* Empty state */}
-          {activeSections.length === 0 && (
+          {todos.length === 0 && (
             <p className="text-base italic text-faint dark:text-faint-night">
               You're all caught up!
             </p>

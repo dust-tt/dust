@@ -72,7 +72,10 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
 
   static async makeNew(
     auth: Authenticator,
-    blob: Omit<CreationAttributes<ProjectTodoModel>, "workspaceId">,
+    blob: Omit<
+      CreationAttributes<ProjectTodoModel>,
+      "workspaceId" | "category"
+    >,
     transaction?: Transaction
   ): Promise<ProjectTodoResource> {
     return withTransaction(async (t) => {
@@ -80,6 +83,7 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
         {
           ...blob,
           workspaceId: auth.getNonNullableWorkspace().id,
+          category: "to_do",
         },
         { transaction: t }
       );
@@ -473,7 +477,10 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
       itemId,
       source,
     }: {
-      blob: Omit<CreationAttributes<ProjectTodoModel>, "workspaceId">;
+      blob: Omit<
+        CreationAttributes<ProjectTodoModel>,
+        "workspaceId" | "category"
+      >;
       itemId: string;
       source: ProjectTodoSourceInfo;
     },
@@ -493,7 +500,6 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
       id: this.id,
       sId: this.sId,
       conversationId: null,
-      category: this.category,
       text: this.text,
       status: this.status,
       doneAt: this.doneAt,

@@ -122,7 +122,7 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
   }
 
   async updateLastTodoAnalysisAt(
-    lastTodoAnalysisAt: Date,
+    lastTodoAnalysisAt: Date | null,
     transaction?: Transaction
   ) {
     await this.update({ lastTodoAnalysisAt }, transaction);

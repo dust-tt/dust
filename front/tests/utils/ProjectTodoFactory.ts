@@ -1,7 +1,6 @@
 import { Authenticator } from "@app/lib/auth";
 import { ProjectTodoResource } from "@app/lib/resources/project_todo_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import type { ProjectTodoCategory } from "@app/types/project_todo";
 import type { WorkspaceType } from "@app/types/user";
 
 export class ProjectTodoFactory {
@@ -10,7 +9,6 @@ export class ProjectTodoFactory {
     space: SpaceResource,
     params: {
       userId: number;
-      category?: ProjectTodoCategory;
       text?: string;
     }
   ): Promise<ProjectTodoResource> {
@@ -25,7 +23,6 @@ export class ProjectTodoFactory {
       markedAsDoneByType: null,
       markedAsDoneByUserId: null,
       markedAsDoneByAgentConfigurationId: null,
-      category: params.category ?? "to_do",
       text: params.text ?? "A test todo item.",
       status: "todo",
       doneAt: null,

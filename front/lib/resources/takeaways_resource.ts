@@ -16,11 +16,7 @@ import type {
 } from "@app/types/project_todo";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Ok, type Result } from "@app/types/shared/result";
-import type {
-  TodoVersionedActionItem,
-  TodoVersionedKeyDecision,
-  TodoVersionedNotableFact,
-} from "@app/types/takeaways";
+import type { TodoVersionedActionItem } from "@app/types/takeaways";
 import type {
   Attributes,
   CreationAttributes,
@@ -464,14 +460,10 @@ export class TakeawaysResource extends BaseResource<TakeawaysModel> {
       conversationId,
       spaceId,
       actionItems,
-      notableFacts,
-      keyDecisions,
     }: {
       conversationId: string;
       spaceId: string;
       actionItems: TodoVersionedActionItem[];
-      notableFacts: TodoVersionedNotableFact[];
-      keyDecisions: TodoVersionedKeyDecision[];
     },
     transaction?: Transaction
   ): Promise<TakeawaysResource> {
