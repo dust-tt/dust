@@ -37,7 +37,8 @@
       "!!extension/packages",
       "!!**/package-lock.json",
       "!!**/__snapshots__",
-      "!!**/.git"
+      "!!**/.git",
+      "!!sparkle/sparklytics/**"
     ]
   },
   "formatter": {
