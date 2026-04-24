@@ -5,6 +5,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import Metronome, { ConflictError } from "@metronome/sdk";
 import type { Commit, ContractV2, Credit } from "@metronome/sdk/resources";
+import type { Invoice } from "@metronome/sdk/resources/v1/customers";
 import type {
   MetronomeBalance,
   MetronomeEvent,
@@ -724,6 +725,38 @@ export async function listMetronomeProducts(): Promise<
   } catch (err) {
     const error = normalizeError(err);
     logger.error({ error }, "[Metronome] Failed to list products");
+    return new Err(error);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Invoices
+// ---------------------------------------------------------------------------
+
+/**
+ * List draft invoices for a Metronome customer.
+ * Draft invoices reflect up-to-date spend for the current billing period
+ * before final billing. Used to compute estimated current-period billing.
+ */
+export async function listMetronomeDraftInvoices(
+  metronomeCustomerId: string
+): Promise<Result<Invoice[], Error>> {
+  try {
+    const invoices: Invoice[] = [];
+    for await (const entry of getMetronomeClient().v1.customers.invoices.list({
+      customer_id: metronomeCustomerId,
+      status: "DRAFT",
+      skip_zero_qty_line_items: true,
+    })) {
+      invoices.push(entry);
+    }
+    return new Ok(invoices);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId },
+      "[Metronome] Failed to list draft invoices"
+    );
     return new Err(error);
   }
 }

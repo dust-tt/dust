@@ -88,6 +88,30 @@ export type SubscriptionType = {
   requestCancelAt: number | null;
 };
 
+type StripeBilledSubscriptionType = SubscriptionType & {
+  stripeSubscriptionId: string;
+};
+
+type MetronomeBilledSubscriptionType = SubscriptionType & {
+  stripeSubscriptionId: null;
+  metronomeContractId: string;
+};
+
+export function isSubscriptionStripeBilled(
+  subscription: SubscriptionType
+): subscription is StripeBilledSubscriptionType {
+  return subscription.stripeSubscriptionId !== null;
+}
+
+export function isSubscriptionMetronomeBilled(
+  subscription: SubscriptionType
+): subscription is MetronomeBilledSubscriptionType {
+  return (
+    subscription.metronomeContractId !== null &&
+    !isSubscriptionStripeBilled(subscription)
+  );
+}
+
 export type BillingPeriod = "monthly" | "yearly";
 
 export type SubscriptionPerSeatPricing = {
