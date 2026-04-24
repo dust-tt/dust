@@ -9,7 +9,7 @@ export class ProjectMetadataModel extends WorkspaceAwareModel<ProjectMetadataMod
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare archivedAt: CreationOptional<Date | null>;
-
+  declare lastTodoAnalysisAt: CreationOptional<Date | null>;
   declare spaceId: ForeignKey<SpaceModel["id"]>;
 
   declare description: string | null;
@@ -32,6 +32,10 @@ ProjectMetadataModel.init(
       allowNull: true,
     },
     archivedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    lastTodoAnalysisAt: {
       type: DataTypes.DATE,
       allowNull: true,
     },
