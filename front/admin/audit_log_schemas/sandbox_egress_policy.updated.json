@@ -1,0 +1,16 @@
+{
+  "action": "sandbox_egress_policy.updated",
+  "targets": [
+    {
+      "type": "workspace"
+    },
+    {
+      "type": "sandbox_egress_policy"
+    }
+  ],
+  "metadata": {
+    "allowedDomainCount": "string",
+    "allowedDomains": "string",
+    "actor_type": "string"
+  }
+}

@@ -211,6 +211,9 @@ const config = {
   getEgressProxyTlsName: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("EGRESS_PROXY_TLS_NAME");
   },
+  getEgressPolicyBucket: (): string => {
+    return EnvironmentConfig.getEnvVariable("EGRESS_PROXY_POLICY_BUCKET");
+  },
   getOAuthAPIConfig: (): { url: string; apiKey: string | null } => {
     return {
       url: EnvironmentConfig.getEnvVariable("OAUTH_API"),

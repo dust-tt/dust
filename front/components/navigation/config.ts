@@ -15,6 +15,7 @@ import {
   CompanyIcon,
   DocumentTextIcon,
   FolderOpenIcon,
+  GlobeAltIcon,
   LockIcon,
   PlanetIcon,
   ShapesIcon,
@@ -80,6 +81,7 @@ export type SubNavigationAdminId =
   | "providers"
   | "api_keys"
   | "dev_secrets"
+  | "egress_policy"
   | "analytics"
   | "credits_usage";
 
@@ -93,6 +95,7 @@ export const ADMIN_ROUTE_PATTERNS: Record<SubNavigationAdminId, string[]> = {
   credits_usage: ["/w/[wId]/developers/credits-usage"],
   providers: ["/w/[wId]/developers/providers"],
   dev_secrets: ["/w/[wId]/developers/dev-secrets"],
+  egress_policy: ["/w/[wId]/developers/egress-policy"],
 };
 
 export type SubNavigationAppId =
@@ -201,6 +204,7 @@ export const getTopNavigationTabs = (
           "/w/[wId]/developers/providers",
           "/w/[wId]/developers/api-keys",
           "/w/[wId]/developers/dev-secrets",
+          "/w/[wId]/developers/egress-policy",
         ]),
       sizing: "hug",
     });
@@ -312,6 +316,14 @@ export const subNavigationAdmin = ({
           icon: BracesIcon,
           href: `/w/${owner.sId}/developers/dev-secrets`,
           current: isCurrent("dev_secrets"),
+        },
+        {
+          id: "egress_policy",
+          label: "Network",
+          icon: GlobeAltIcon,
+          href: `/w/${owner.sId}/developers/egress-policy`,
+          current: isCurrent("egress_policy"),
+          featureFlag: "sandbox_tools",
         },
       ],
     });
