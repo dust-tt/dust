@@ -1259,6 +1259,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       | Pick<AgentLoopExecutionData, "agentConfiguration" | "conversation">
   ): Promise<{
     enabledSkills: (SkillResource & { extendedSkill: SkillResource | null })[];
+    systemSkills: SkillResource[];
     equippedSkills: SkillResource[];
   }> {
     const { agentConfiguration, conversation } = params;
@@ -1335,6 +1336,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     return {
       enabledSkills: augmentedEnabledSkills,
+      systemSkills,
       equippedSkills,
     };
   }

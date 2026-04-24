@@ -156,6 +156,32 @@ describe("getJITServers", () => {
 
       expect(skillManagementServer).toBeUndefined();
     });
+
+    it("should return system skills separately from equipped skills", async () => {
+      await SkillFactory.linkGlobalSkillToAgent(auth, {
+        globalSkillId: "discover_tools",
+        agentConfigurationId: agentConfig.id,
+      });
+
+      const customSkill = await SkillFactory.create(auth, {
+        name: "Test Skill",
+      });
+      await SkillFactory.linkToAgent(auth, {
+        skillId: customSkill.id,
+        agentConfigurationId: agentConfig.id,
+      });
+
+      const { enabledSkills, systemSkills, equippedSkills } =
+        await SkillResource.listForAgentLoop(auth, {
+          agentConfiguration: agentConfig,
+          conversation,
+        });
+
+      expect(systemSkills.map((s) => s.sId)).toContain("discover_tools");
+      expect(enabledSkills.map((s) => s.sId)).toContain("discover_tools");
+      expect(equippedSkills.map((s) => s.sId)).toContain(customSkill.sId);
+      expect(equippedSkills.map((s) => s.sId)).not.toContain("discover_tools");
+    });
   });
 
   describe("projects feature", () => {
