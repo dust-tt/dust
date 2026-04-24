@@ -157,20 +157,12 @@ export const SlashCommandDropdown = forwardRef<
       }
 
       updateScrollState();
+    }, [items, updateScrollState]);
 
+    useEffect(() => {
       const viewport = viewportRef.current;
       if (!viewport) {
         return;
-      }
-
-      const content = viewport.firstElementChild as HTMLElement | null;
-      const resizeObserver = new ResizeObserver(() => {
-        updateScrollState();
-      });
-
-      resizeObserver.observe(viewport);
-      if (content) {
-        resizeObserver.observe(content);
       }
 
       viewport.addEventListener("scroll", updateScrollState, {
@@ -178,10 +170,9 @@ export const SlashCommandDropdown = forwardRef<
       });
 
       return () => {
-        resizeObserver.disconnect();
         viewport.removeEventListener("scroll", updateScrollState);
       };
-    }, [items.length, updateScrollState]);
+    }, [updateScrollState]);
 
     // Update virtual trigger position.
     const updateTriggerPosition = useCallback(() => {
