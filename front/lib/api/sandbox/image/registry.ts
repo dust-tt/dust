@@ -307,10 +307,6 @@ SHELLEOF`,
     `${PROFILE_DIR}/common.sh`
   )
   .copy(
-    getLocalContent(PROFILE_LOCAL_DIR, "_truncate.sh"),
-    `${PROFILE_DIR}/_truncate.sh`
-  )
-  .copy(
     getLocalContent(PROFILE_LOCAL_DIR, "shell.sh"),
     `${PROFILE_DIR}/shell.sh`
   )

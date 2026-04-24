@@ -16,6 +16,7 @@ import * as glob from "./tools/glob";
 import * as grepFiles from "./tools/grep_files";
 import * as listDir from "./tools/list_dir";
 import * as readFile from "./tools/read_file";
+import * as shell from "./tools/shell";
 import * as writeFile from "./tools/write_file";
 
 type ToolModule = {
@@ -32,6 +33,7 @@ const TOOLS: Record<string, ToolModule> = {
   grep_files: grepFiles,
   list_dir: listDir,
   read_file: readFile,
+  shell,
   write_file: writeFile,
 };
 

@@ -1,19 +1,9 @@
-import { execSync } from "child_process";
 import * as fs from "fs";
 import * as path from "path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { cleanupTempDir, createTempDir, runBashFunction } from "./_test_utils";
-
-function hasTimeoutCommand(): boolean {
-  try {
-    execSync("command -v timeout", { encoding: "utf-8" });
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 describe("shell", () => {
   let tempDir: string;
@@ -71,22 +61,44 @@ describe("shell", () => {
     expect(exitCode).not.toBe(0);
   });
 
-  it("truncates long output and saves to file", () => {
-    // seq 1 15000 produces ~90000 chars, exceeding 50000 limit
+  it("truncates long stdout and saves full output to file", () => {
+    // seq 1 15000 produces ~80000 chars, exceeding 50000 budget
     const { stdout } = runBashFunction('shell "seq 1 15000"', tempDir);
     expect(stdout).toContain("[Output too long");
     expect(stdout).toContain("[BEGIN TAIL]");
     expect(stdout).toContain("[END TAIL]");
-    expect(stdout).toContain("/tmp/shell_output_");
+    expect(stdout).toMatch(/\/tmp\/shell_output_\d+\.stdout\.txt/);
     expect(stdout).toContain("15000");
   });
 
+  it("reserves at least 1k for stderr when both streams exceed budget", () => {
+    // Each seq 1 20000 ≈ 108k chars on stdout and stderr.
+    const { stdout, stderr } = runBashFunction(
+      'shell "seq 1 20000; seq 1 20000 >&2"',
+      tempDir
+    );
+    expect(stdout).toContain("[Output too long");
+    expect(stderr).toContain("[Output too long");
+    // stdout allocation ≈ 49000 (reserve 1000 for stderr).
+    expect(stdout.length).toBeGreaterThan(48_000);
+    expect(stdout.length).toBeLessThan(50_500);
+    // stderr allocation ≈ 1000.
+    expect(stderr.length).toBeGreaterThan(500);
+    expect(stderr.length).toBeLessThan(2_500);
+  });
+
+  it("preserves small stderr untruncated and gives remainder to stdout", () => {
+    const { stdout, stderr } = runBashFunction(
+      'shell "seq 1 20000; echo small-err >&2"',
+      tempDir
+    );
+    expect(stderr).toBe("small-err");
+    expect(stdout).toContain("[Output too long");
+    // stdout budget = 50000 - 10 (length of "small-err\n") ≈ 49990.
+    expect(stdout.length).toBeGreaterThan(49_500);
+  });
+
   it("timeout_sec param causes timeout after N seconds", () => {
-    if (!hasTimeoutCommand()) {
-      // timeout command not available on macOS, skip
-      return;
-    }
-    // Use a 1 second timeout with a 5 second sleep
     const { stderr, exitCode } = runBashFunction('shell "sleep 5" 1', tempDir);
     expect(exitCode).toBe(124);
     expect(stderr).toContain("timed out after 1s");
