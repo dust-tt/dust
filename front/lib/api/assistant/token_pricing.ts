@@ -13,18 +13,16 @@ type TieredRates = {
   cache_read_input_tokens?: number;
 };
 
-// Some providers charge a higher rate card once the prompt reaches a token
-// threshold (e.g. OpenAI gpt-5.x at 272k, Gemini 3 Pro at 200k). The higher
-// tier applies to the entire request when `promptTokens >= thresholdTokens`,
-// not just to the tokens above the threshold.
+// Optional higher rate card applied to the entire request when
+// promptTokens >= thresholdTokens.
 type LongContextPricing = TieredRates & { thresholdTokens: number };
 
 type PricingEntry = TieredRates & {
   longContext?: LongContextPricing;
 };
 
-// https://developers.openai.com/api/docs/pricing — gpt-5.x flagship models
-// switch to long-context pricing once the prompt exceeds 272k input tokens.
+// https://developers.openai.com/api/docs/pricing — gpt-5.x uses long-context
+// pricing at >=272k input tokens.
 const OPENAI_LONG_CONTEXT_THRESHOLD = 272_000;
 
 export const DUST_MARKUP_PERCENT = 30;
@@ -579,9 +577,6 @@ export function computeTokensCostForUsageInMicroUsd({
 }): number {
   const pricing = MODEL_PRICING[modelId] ?? DEFAULT_PRICING;
 
-  // promptTokens is the total input tokens for the request (including cached
-  // reads, per the note above), which matches the quantity providers compare
-  // against their long-context threshold.
   const rates: TieredRates =
     pricing.longContext && promptTokens >= pricing.longContext.thresholdTokens
       ? pricing.longContext
