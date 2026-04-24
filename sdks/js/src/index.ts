@@ -55,13 +55,11 @@ import type {
   ValidateActionResponseType,
 } from "./types";
 import {
-  AgentMessageEventDataTypeSchema,
   AnswerUserQuestionResponseSchema,
   APIErrorSchema,
   AppsCheckResponseSchema,
   BlockedActionsResponseSchema,
   CancelMessageGenerationResponseSchema,
-  ConversationEventDataTypeSchema,
   CreateConversationResponseSchema,
   CreateGenericAgentConfigurationResponseSchema,
   DataSourceViewResponseSchema,
@@ -161,20 +159,6 @@ const DEFAULT_RECONNECT_DELAY = 5000;
 export type AgentEvent = AgentMessageEventData;
 
 export type ConversationEvent = ConversationEventData;
-
-function isAgentEvent(value: unknown): value is AgentEvent {
-  return (
-    isRecord(value) &&
-    AgentMessageEventDataTypeSchema.safeParse(value.type).success
-  );
-}
-
-function isConversationEvent(value: unknown): value is ConversationEvent {
-  return (
-    isRecord(value) &&
-    ConversationEventDataTypeSchema.safeParse(value.type).success
-  );
-}
 
 const textFromResponse = async (response: DustResponse): Promise<string> => {
   if (typeof response.body === "string") {
@@ -1088,7 +1072,7 @@ export class DustAPI {
             return null;
           }
           const { data } = eventData;
-          return isConversationEvent(data) ? data : null;
+          return isRecord(data) ? (data as ConversationEvent) : null;
         },
       }),
     });
@@ -1150,7 +1134,7 @@ export class DustAPI {
             return null;
           }
           const { data } = eventData;
-          return isAgentEvent(data) ? data : null;
+          return isRecord(data) ? (data as AgentEvent) : null;
         },
         onEvent: (event) => {
           if (terminalEventTypes.includes(event.type)) {
