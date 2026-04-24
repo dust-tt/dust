@@ -52,11 +52,46 @@ export async function executeDedup(
   const existingTodos = buildMockExistingTodos(testCase);
   const candidates = buildCandidates(testCase);
 
-  const matchMap = await runDeduplicationLLMCall(auth, {
+  const llmGroups = await runDeduplicationLLMCall(auth, {
     model,
     candidates,
     existingTodos,
   });
+
+  // Current eval assertions only cover candidate→existing matches. The LLM
+  // now returns a partition over [...existingTodos, ...candidates]; project
+  // each group that contains ≥1 existing down to "candidate idx → first
+  // existing sId", dropping intra-batch follower info. Adding assertion
+  // types for intra-batch dedup is tracked separately.
+  const existingCount = existingTodos.length;
+  const matchMap = new Map<number, string>();
+  const seen = new Set<number>();
+  for (const group of llmGroups) {
+    let winnerSId: string | null = null;
+    const candidateIdxs: number[] = [];
+    for (const idx of group) {
+      if (
+        idx < 0 ||
+        idx >= existingCount + candidates.length ||
+        seen.has(idx)
+      ) {
+        continue;
+      }
+      seen.add(idx);
+      if (idx < existingCount) {
+        if (winnerSId === null) {
+          winnerSId = existingTodos[idx].sId;
+        }
+      } else {
+        candidateIdxs.push(idx - existingCount);
+      }
+    }
+    if (winnerSId !== null) {
+      for (const candidateIdx of candidateIdxs) {
+        matchMap.set(candidateIdx, winnerSId);
+      }
+    }
+  }
 
   return { matchMap };
 }

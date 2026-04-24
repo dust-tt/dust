@@ -37,9 +37,8 @@ import { Authenticator } from "@app/lib/auth";
 import {
   batchDeduplicateCandidates,
   type DeduplicateCandidate,
-  type DeduplicationMap,
-  makeDedupGroupKey,
-  makeDedupResultKey,
+  type DeduplicatedGroup,
+  type ExistingTodosByGroup,
 } from "@app/lib/project_todo/deduplicate_candidates";
 import { ProjectTodoResource } from "@app/lib/resources/project_todo_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
@@ -49,7 +48,10 @@ import {
 } from "@app/lib/resources/takeaways_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import type { ProjectTodoSourceInfo } from "@app/types/project_todo";
+import type {
+  ProjectTodoCategory,
+  ProjectTodoSourceInfo,
+} from "@app/types/project_todo";
 import type { ModelId } from "@app/types/shared/model_id";
 import type {
   TodoVersionedActionItem,
@@ -178,7 +180,7 @@ export async function mergeTakeawaysIntoProject({
 
   // ── Phase 2: semantic deduplication ──────────────────────────────────────
 
-  const dedupMap = await buildDeduplicationMap(adminAuth, {
+  const dedupGroups = await buildDeduplicationGroups(adminAuth, {
     localLogger,
     newCandidates,
     spaceModelId,
@@ -189,7 +191,7 @@ export async function mergeTakeawaysIntoProject({
   const { deduplicated, createdNew } = await createOrLinkTodos(adminAuth, {
     localLogger,
     newCandidates,
-    dedupMap,
+    dedupGroups,
     spaceModelId,
   });
 
@@ -313,9 +315,9 @@ async function collectDocumentCandidates(
 // ── Phase 2 ───────────────────────────────────────────────────────────────────
 
 // Pre-fetches all existing todos per (userId, category) and runs batch semantic
-// deduplication via LLM. Returns an empty map if no model is available, which
-// causes all candidates to be treated as new in phase 3.
-async function buildDeduplicationMap(
+// deduplication via LLM. Returns one singleton "new" group per candidate if no
+// model is available — Phase 3 then creates fresh todos for all of them.
+async function buildDeduplicationGroups(
   auth: Authenticator,
   {
     localLogger,
@@ -326,19 +328,29 @@ async function buildDeduplicationMap(
     newCandidates: PendingCandidate[];
     spaceModelId: ModelId;
   }
-): Promise<DeduplicationMap> {
+): Promise<DeduplicatedGroup[]> {
+  const deduplicateCandidates: DeduplicateCandidate[] = newCandidates.map(
+    (c) => ({
+      itemId: c.itemId,
+      userId: c.userId,
+      text: c.blob.text,
+      category: c.blob.category,
+    })
+  );
+
   const model = getFastestWhitelistedModel(auth);
   if (!model) {
     localLogger.warn(
       "Project todo merge: no whitelisted model, skipping deduplication"
     );
-    return new Map();
+    return deduplicateCandidates.map((c) => ({ kind: "new", candidates: [c] }));
   }
 
-  // Fetch all existing todos for each unique target user in a single pass, then
-  // group them by `${userId}:${category}` for efficient lookup in the LLM calls.
+  // Fetch all existing todos for each unique target user in a single pass,
+  // then nest them under userId → category → todos for lookup by the LLM
+  // calls.
   const uniqueUserIds = [...new Set(newCandidates.map((c) => c.userId))];
-  const existingTodosByGroup = new Map<string, ProjectTodoResource[]>();
+  const existingTodosByGroup: ExistingTodosByGroup = new Map();
 
   await concurrentExecutor(
     uniqueUserIds,
@@ -347,23 +359,17 @@ async function buildDeduplicationMap(
         spaceId: spaceModelId,
         userId,
       });
+      const byCategory =
+        existingTodosByGroup.get(userId) ??
+        new Map<ProjectTodoCategory, ProjectTodoResource[]>();
       for (const todo of todos) {
-        const key = makeDedupGroupKey(userId, todo.category);
-        const group = existingTodosByGroup.get(key) ?? [];
-        group.push(todo);
-        existingTodosByGroup.set(key, group);
+        const bucket = byCategory.get(todo.category) ?? [];
+        bucket.push(todo);
+        byCategory.set(todo.category, bucket);
       }
+      existingTodosByGroup.set(userId, byCategory);
     },
     { concurrency: 4 }
-  );
-
-  const deduplicateCandidates: DeduplicateCandidate[] = newCandidates.map(
-    (c) => ({
-      itemId: c.itemId,
-      userId: c.userId,
-      text: c.blob.text,
-      category: c.blob.category,
-    })
   );
 
   return batchDeduplicateCandidates(auth, {
@@ -375,87 +381,129 @@ async function buildDeduplicationMap(
 
 // ── Phase 3 ───────────────────────────────────────────────────────────────────
 
-// For each candidate: if a semantic duplicate was found, attach the source link
-// to the existing todo (updating content for agent-created ones if needed).
-// Otherwise, create a new todo and link the source.
+// Executes one dedup group per call, atomically: groups don't share state, so
+// they run in parallel at concurrency 4.
 async function createOrLinkTodos(
   auth: Authenticator,
   {
     localLogger,
     newCandidates,
-    dedupMap,
+    dedupGroups,
     spaceModelId,
   }: {
     localLogger: Logger;
     newCandidates: PendingCandidate[];
-    dedupMap: DeduplicationMap;
+    dedupGroups: DeduplicatedGroup[];
     spaceModelId: ModelId;
   }
 ): Promise<{ deduplicated: number; createdNew: number }> {
   let deduplicated = 0;
   let createdNew = 0;
 
+  // Dedup groups reference candidates by (userId, itemId); fetch the original
+  // PendingCandidate (with blob + source) by that pair.
+  const pendingByUserItem = new Map<ModelId, Map<string, PendingCandidate>>();
+  for (const c of newCandidates) {
+    const inner =
+      pendingByUserItem.get(c.userId) ?? new Map<string, PendingCandidate>();
+    inner.set(c.itemId, c);
+    pendingByUserItem.set(c.userId, inner);
+  }
+
+  function lookupPending(c: DeduplicateCandidate): PendingCandidate | null {
+    return pendingByUserItem.get(c.userId)?.get(c.itemId) ?? null;
+  }
+
   await concurrentExecutor(
-    newCandidates,
-    async (candidate) => {
-      const match =
-        dedupMap.get(makeDedupResultKey(candidate.userId, candidate.itemId)) ??
-        null;
+    dedupGroups,
+    async (group) => {
+      if (group.kind === "existing") {
+        // Attach every candidate's source to the existing todo. The update
+        // guard lives in updateTodoIfChanged — no-op when the target todo was
+        // created by a user or already marked done by one.
+        const primary = lookupPending(group.candidates[0]);
+        if (primary) {
+          await updateTodoIfChanged(group.todo, auth, primary.blob);
+        }
+        for (const candidate of group.candidates) {
+          const pending = lookupPending(candidate);
+          if (!pending) {
+            continue;
+          }
+          await group.todo.upsertSource(auth, {
+            itemId: pending.itemId,
+            source: pending.source,
+          });
+          deduplicated++;
 
-      if (match !== null) {
-        // Semantic duplicate found — link the new source to the existing todo.
-        await match.upsertSource(auth, {
-          itemId: candidate.itemId,
-          source: candidate.source,
-        });
-
-        // User-intent guard lives in updateTodoIfChanged — it is a no-op when
-        // the target todo was created by a user or already marked done by one.
-        await updateTodoIfChanged(match, auth, candidate.blob);
-
-        deduplicated++;
-
-        localLogger.info(
-          {
-            existingTodoId: match.sId,
-            itemId: candidate.itemId,
-            userId: candidate.userId,
-            source: candidate.source,
-            createdByType: match.createdByType,
-          },
-          "Project todo merge: linked source to existing todo (semantic duplicate)"
-        );
+          localLogger.info(
+            {
+              existingTodoId: group.todo.sId,
+              itemId: pending.itemId,
+              userId: pending.userId,
+              source: pending.source,
+              createdByType: group.todo.createdByType,
+            },
+            "Project todo merge: linked source to existing todo (semantic duplicate)"
+          );
+        }
         return;
       }
 
-      // No duplicate — create a fresh todo and link the source atomically so
-      // a Temporal retry after a partial success can't leave an orphan row.
+      // kind === "new": create one todo from the first candidate, attach every
+      // other candidate's source to it.
+      const primary = lookupPending(group.candidates[0]);
+      if (!primary) {
+        return;
+      }
+
       const todo = await ProjectTodoResource.makeNewWithSource(auth, {
         blob: {
           spaceId: spaceModelId,
-          userId: candidate.userId,
+          userId: primary.userId,
           createdByType: "agent",
           createdByAgentConfigurationId: BUTLER_AGENT_SID,
-          category: candidate.blob.category,
-          text: candidate.blob.text,
-          status: candidate.blob.status,
-          doneAt: candidate.blob.doneAt,
+          category: primary.blob.category,
+          text: primary.blob.text,
+          status: primary.blob.status,
+          doneAt: primary.blob.doneAt,
         },
-        itemId: candidate.itemId,
-        source: candidate.source,
+        itemId: primary.itemId,
+        source: primary.source,
       });
-
       createdNew++;
 
       localLogger.info(
         {
           todoId: todo.sId,
-          itemId: candidate.itemId,
-          userId: candidate.userId,
-          source: candidate.source,
+          itemId: primary.itemId,
+          userId: primary.userId,
+          source: primary.source,
         },
         "Project todo merge: created new todo"
       );
+
+      for (let i = 1; i < group.candidates.length; i++) {
+        const pending = lookupPending(group.candidates[i]);
+        if (!pending) {
+          continue;
+        }
+        await todo.upsertSource(auth, {
+          itemId: pending.itemId,
+          source: pending.source,
+        });
+        deduplicated++;
+
+        localLogger.info(
+          {
+            todoId: todo.sId,
+            itemId: pending.itemId,
+            userId: pending.userId,
+            source: pending.source,
+          },
+          "Project todo merge: linked source to new todo (intra-batch duplicate)"
+        );
+      }
     },
     { concurrency: 4 }
   );
