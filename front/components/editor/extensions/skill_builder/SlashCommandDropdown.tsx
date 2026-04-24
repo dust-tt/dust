@@ -12,6 +12,7 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useLayoutEffect,
   useRef,
   useState,
 } from "react";
@@ -22,6 +23,7 @@ interface SlashCommandTooltip {
 }
 
 const DEFAULT_EMPTY_MESSAGE = "No commands found";
+const MAX_VISIBLE_ITEMS = 7;
 
 export interface SlashCommand {
   action: string;
@@ -64,10 +66,15 @@ export const SlashCommandDropdown = forwardRef<
     ref
   ) => {
     const [selectedIndex, setSelectedIndex] = useState(0);
-    const containerRef = useRef<HTMLDivElement>(null);
     const triggerRef = useRef<HTMLDivElement>(null);
+    const itemRefs = useRef<(HTMLElement | null)[]>([]);
+    const viewportRef = useRef<HTMLDivElement>(null);
     const [virtualTriggerStyle, setVirtualTriggerStyle] =
       useState<React.CSSProperties>({});
+    const [maxVisibleHeight, setMaxVisibleHeight] = useState<number>();
+    const [hasOverflow, setHasOverflow] = useState(false);
+    const [isScrolledToBottom, setIsScrolledToBottom] = useState(true);
+    const hasItems = items.length > 0;
 
     const selectItem = useCallback(
       (index: number) => {
@@ -89,13 +96,18 @@ export const SlashCommandDropdown = forwardRef<
 
           if (event.key === "ArrowDown") {
             event.preventDefault();
-            setSelectedIndex((selectedIndex + 1) % items.length);
+            setSelectedIndex(
+              (prevSelectedIndex) => (prevSelectedIndex + 1) % items.length
+            );
             return true;
           }
 
           if (event.key === "ArrowUp") {
             event.preventDefault();
-            setSelectedIndex((selectedIndex + items.length - 1) % items.length);
+            setSelectedIndex(
+              (prevSelectedIndex) =>
+                (prevSelectedIndex + items.length - 1) % items.length
+            );
             return true;
           }
 
@@ -114,8 +126,90 @@ export const SlashCommandDropdown = forwardRef<
     // Reset selected index when items change.
     // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
     useEffect(() => {
+      itemRefs.current = [];
       setSelectedIndex(0);
-    }, [items.length]);
+    }, [items]);
+
+    useEffect(() => {
+      itemRefs.current[selectedIndex]?.scrollIntoView({
+        block: "nearest",
+      });
+    }, [selectedIndex]);
+
+    useLayoutEffect(() => {
+      if (items.length === 0) {
+        setMaxVisibleHeight(undefined);
+        return;
+      }
+
+      const visibleItems = itemRefs.current
+        .slice(0, Math.min(items.length, MAX_VISIBLE_ITEMS))
+        .filter((item): item is HTMLElement => Boolean(item));
+
+      if (visibleItems.length === 0) {
+        return;
+      }
+
+      const nextMaxVisibleHeight = visibleItems.reduce(
+        (totalHeight, item) =>
+          totalHeight + item.getBoundingClientRect().height,
+        0
+      );
+
+      setMaxVisibleHeight(Math.ceil(nextMaxVisibleHeight));
+    }, [items]);
+
+    const updateScrollState = useCallback(() => {
+      const viewport = viewportRef.current;
+
+      if (!viewport) {
+        setHasOverflow(false);
+        setIsScrolledToBottom(true);
+        return;
+      }
+
+      const nextHasOverflow = viewport.scrollHeight > viewport.clientHeight + 1;
+      const nextIsScrolledToBottom =
+        !nextHasOverflow ||
+        viewport.scrollTop + viewport.clientHeight >= viewport.scrollHeight - 1;
+
+      setHasOverflow(nextHasOverflow);
+      setIsScrolledToBottom(nextIsScrolledToBottom);
+    }, []);
+
+    useLayoutEffect(() => {
+      if (!hasItems) {
+        setHasOverflow(false);
+        setIsScrolledToBottom(true);
+        return;
+      }
+
+      updateScrollState();
+
+      const viewport = viewportRef.current;
+      if (!viewport) {
+        return;
+      }
+
+      const content = viewport.firstElementChild as HTMLElement | null;
+      const resizeObserver = new ResizeObserver(() => {
+        updateScrollState();
+      });
+
+      resizeObserver.observe(viewport);
+      if (content) {
+        resizeObserver.observe(content);
+      }
+
+      viewport.addEventListener("scroll", updateScrollState, {
+        passive: true,
+      });
+
+      return () => {
+        resizeObserver.disconnect();
+        viewport.removeEventListener("scroll", updateScrollState);
+      };
+    }, [hasItems, updateScrollState]);
 
     // Update virtual trigger position.
     const updateTriggerPosition = useCallback(() => {
@@ -152,7 +246,6 @@ export const SlashCommandDropdown = forwardRef<
           <div ref={triggerRef} style={virtualTriggerStyle} />
         </DropdownMenuTrigger>
         <DropdownMenuContent
-          ref={containerRef}
           className={size === "wide" ? "w-80" : "w-64"}
           align="start"
           avoidCollisions
@@ -174,42 +267,58 @@ export const SlashCommandDropdown = forwardRef<
               {emptyMessage}
             </div>
           ) : (
-            <div className="max-h-96 overflow-y-auto">
-              {items.map((item, index) => {
-                const menuItem = (
-                  <DropdownMenuItem
-                    key={item.id}
-                    icon={item.icon}
-                    label={item.label}
-                    description={item.description}
-                    truncateText
-                    onClick={() => selectItem(index)}
-                    onMouseEnter={() => setSelectedIndex(index)}
-                    className={
-                      index === selectedIndex
-                        ? "bg-gray-100 dark:bg-gray-800"
-                        : ""
-                    }
-                  />
-                );
-
-                // Wrap with DropdownTooltipTrigger if command has tooltip property.
-                if (item.tooltip) {
-                  return (
-                    <DropdownTooltipTrigger
-                      key={item.id}
-                      description={item.tooltip.description}
-                      media={item.tooltip.media}
-                      side="right"
-                      sideOffset={8}
-                    >
-                      {menuItem}
-                    </DropdownTooltipTrigger>
-                  );
+            <div className="relative">
+              <div
+                ref={viewportRef}
+                className="overflow-y-auto"
+                style={
+                  maxVisibleHeight
+                    ? { maxHeight: `${maxVisibleHeight}px` }
+                    : undefined
                 }
+              >
+                {items.map((item, index) => {
+                  const menuItem = (
+                    <DropdownMenuItem
+                      key={item.id}
+                      ref={(element) => {
+                        itemRefs.current[index] = element;
+                      }}
+                      icon={item.icon}
+                      label={item.label}
+                      description={item.description}
+                      truncateText
+                      onClick={() => selectItem(index)}
+                      onMouseEnter={() => setSelectedIndex(index)}
+                      className={
+                        index === selectedIndex
+                          ? "bg-gray-100 dark:bg-gray-800"
+                          : ""
+                      }
+                    />
+                  );
 
-                return menuItem;
-              })}
+                  // Wrap with DropdownTooltipTrigger if command has tooltip property.
+                  if (item.tooltip) {
+                    return (
+                      <DropdownTooltipTrigger
+                        key={item.id}
+                        description={item.tooltip.description}
+                        media={item.tooltip.media}
+                        side="right"
+                        sideOffset={8}
+                      >
+                        {menuItem}
+                      </DropdownTooltipTrigger>
+                    );
+                  }
+
+                  return menuItem;
+                })}
+              </div>
+              {hasOverflow && !isScrolledToBottom ? (
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-10 rounded-b-xl bg-gradient-to-t from-background via-background/95 to-transparent dark:from-muted-background-night dark:via-muted-background-night/95" />
+              ) : null}
             </div>
           )}
         </DropdownMenuContent>
