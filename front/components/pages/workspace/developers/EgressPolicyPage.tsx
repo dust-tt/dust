@@ -160,10 +160,12 @@ export function EgressPolicyPage() {
           <div className="flex w-full flex-col divide-y divide-separator dark:divide-separator-night">
             {policy.allowedDomains.map((domain) => (
               <div key={domain} className="flex items-center gap-3 py-3">
-                <pre className="rounded bg-muted-background p-2 text-sm text-foreground dark:bg-muted-background-night dark:text-foreground-night">
+                <pre
+                  title={domain}
+                  className="min-w-0 grow overflow-x-auto whitespace-nowrap rounded bg-muted-background p-2 text-sm text-foreground dark:bg-muted-background-night dark:text-foreground-night"
+                >
                   {domain}
                 </pre>
-                <div className="grow" />
                 <Button
                   variant="warning"
                   size="mini"
@@ -173,6 +175,7 @@ export function EgressPolicyPage() {
                   onClick={() => {
                     void handleRemoveDomain(domain);
                   }}
+                  className="shrink-0"
                 />
               </div>
             ))}
