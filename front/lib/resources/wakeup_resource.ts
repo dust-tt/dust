@@ -1,3 +1,8 @@
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -234,6 +239,21 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
       return temporalResult;
     }
 
+    void emitAuditLogEvent({
+      auth,
+      action: "wake_up.created",
+      targets: [
+        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+        buildAuditLogTarget("wake_up", { sId: wakeUp.sId, name: wakeUp.reason }),
+      ],
+      context: getAuditLogContext(auth),
+      metadata: {
+        scheduleType: wakeUp.scheduleType,
+        agentConfigurationId: wakeUp.agentConfigurationId,
+        conversationId: conversation.sId,
+      },
+    });
+
     return new Ok(wakeUp);
   }
 
@@ -466,6 +486,19 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
     }
 
     await this.markCancelled(auth, { transaction });
+
+    void emitAuditLogEvent({
+      auth,
+      action: "wake_up.cancelled",
+      targets: [
+        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+        buildAuditLogTarget("wake_up", { sId: this.sId, name: this.reason }),
+      ],
+      context: getAuditLogContext(auth),
+      metadata: {
+        agentConfigurationId: this.agentConfigurationId,
+      },
+    });
 
     return new Ok(undefined);
   }

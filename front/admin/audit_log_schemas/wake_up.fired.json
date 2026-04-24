@@ -1,0 +1,14 @@
+{
+  "action": "wake_up.fired",
+  "targets": [
+    { "type": "workspace" },
+    { "type": "wake_up" }
+  ],
+  "metadata": {
+    "actor_type": "string",
+    "scheduleType": "string",
+    "agentConfigurationId": "string",
+    "userId": "string",
+    "userEmail": "string"
+  }
+}

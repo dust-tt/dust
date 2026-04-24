@@ -8,6 +8,7 @@ import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
+  emitAuditLogEventDirect,
 } from "@app/lib/api/audit/workos_audit";
 import { Authenticator } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
@@ -383,6 +384,23 @@ export async function runWakeUpActivity({
 
   await wakeUp.markFired(auth);
 
+  void emitAuditLogEventDirect({
+    workspace: auth.getNonNullableWorkspace(),
+    action: "wake_up.fired",
+    actor: { type: "system", id: "temporal", name: "Temporal" },
+    targets: [
+      buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+      buildAuditLogTarget("wake_up", { sId: wakeUp.sId, name: wakeUp.reason }),
+    ],
+    context: { location: "internal" },
+    metadata: {
+      scheduleType: wakeUp.scheduleType,
+      agentConfigurationId: wakeUp.agentConfigurationId,
+      userId: auth.user()?.sId ?? "",
+      userEmail: auth.user()?.email ?? "",
+    },
+  });
+
   const cleanupRes = await wakeUp.cleanupTemporalIfCronExpired(auth);
   if (cleanupRes.isErr()) {
     logger.error(
@@ -419,4 +437,21 @@ export async function expireWakeUpActivity({
   const { auth, wakeUp } = wakeUpAndAuthRes.value;
 
   await wakeUp.markExpired(auth);
+
+  void emitAuditLogEventDirect({
+    workspace: auth.getNonNullableWorkspace(),
+    action: "wake_up.expired",
+    actor: { type: "system", id: "temporal", name: "Temporal" },
+    targets: [
+      buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+      buildAuditLogTarget("wake_up", { sId: wakeUp.sId, name: wakeUp.reason }),
+    ],
+    context: { location: "internal" },
+    metadata: {
+      scheduleType: wakeUp.scheduleType,
+      agentConfigurationId: wakeUp.agentConfigurationId,
+      userId: auth.user()?.sId ?? "",
+      userEmail: auth.user()?.email ?? "",
+    },
+  });
 }

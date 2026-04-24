@@ -1,0 +1,10 @@
+{
+  "action": "wake_up.cancelled",
+  "targets": [
+    { "type": "workspace" },
+    { "type": "wake_up" }
+  ],
+  "metadata": {
+    "agentConfigurationId": "string"
+  }
+}
