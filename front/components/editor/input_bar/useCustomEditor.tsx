@@ -229,6 +229,8 @@ export interface CustomEditorProps {
     onSelectRef: React.RefObject<
       ((capability: InputBarSlashSuggestionCapability) => void) | undefined
     >;
+    selectedMCPServerViewIdsRef: React.RefObject<Set<string>>;
+    selectedSkillIdsRef: React.RefObject<Set<string>>;
   };
   // Override the default editor placeholder (e.g. to show a blocked-state reason).
   placeholderOverride?: string | null;
@@ -365,10 +367,12 @@ export const buildEditorExtensions = ({
   if (slashSuggestion) {
     extensions.push(
       InputBarSlashSuggestionExtension.configure({
-        conversationId,
         owner,
         enabledRef: slashSuggestion.enabledRef,
         onSelectRef: slashSuggestion.onSelectRef,
+        selectedMCPServerViewIdsRef:
+          slashSuggestion.selectedMCPServerViewIdsRef,
+        selectedSkillIdsRef: slashSuggestion.selectedSkillIdsRef,
       })
     );
   }
