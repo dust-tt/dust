@@ -16,9 +16,13 @@ function resolveDefaultTokensPath(): string {
   let dir = path.dirname(fileURLToPath(import.meta.url));
   for (let i = 0; i < MAX_UPWARD_WALK; i++) {
     const candidate = path.join(dir, TOKENS_FILENAME);
-    if (fs.existsSync(candidate)) return candidate;
+    if (fs.existsSync(candidate)) {
+      return candidate;
+    }
     const parent = path.dirname(dir);
-    if (parent === dir) break;
+    if (parent === dir) {
+      break;
+    }
     dir = parent;
   }
   throw new Error(
@@ -29,7 +33,9 @@ function resolveDefaultTokensPath(): string {
 let _registry: SparkleTokenRegistry | null = null;
 
 export function loadRegistry(customPath: string | null): SparkleTokenRegistry {
-  if (_registry) return _registry;
+  if (_registry) {
+    return _registry;
+  }
 
   const tokensPath = customPath ?? resolveDefaultTokensPath();
 

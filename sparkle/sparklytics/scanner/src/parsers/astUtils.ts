@@ -21,7 +21,9 @@ function isAstNodeLike(val: unknown): val is Record<string, unknown> {
 }
 
 function traverse(node: unknown, visitor: Visitor): void {
-  if (!isAstNodeLike(node)) return;
+  if (!isAstNodeLike(node)) {
+    return;
+  }
 
   // Cast via `unknown` — AST walkers traverse a generic object graph, so the
   // type system can't verify the shape here. The `isAstNodeLike` guard is the
@@ -31,7 +33,9 @@ function traverse(node: unknown, visitor: Visitor): void {
   // Recurse into all values that could be nodes or arrays of nodes.
   // Skip `parent` — it's a back-edge added by some parsers and causes cycles.
   for (const key of Object.keys(node)) {
-    if (key === "parent") continue;
+    if (key === "parent") {
+      continue;
+    }
     const val = node[key];
     if (Array.isArray(val)) {
       for (const item of val) {

@@ -70,9 +70,15 @@ const ALWAYS_VALID = new Set([
 
 function isSparkleSpacing(value: string, spacingSet: Set<string>): boolean {
   const v = value.trim();
-  if (ALWAYS_VALID.has(v)) return true;
-  if (v.startsWith("var(--")) return true; // CSS variable
-  if (v.startsWith("calc(")) return true; // calc() expressions are allowed
+  if (ALWAYS_VALID.has(v)) {
+    return true;
+  }
+  if (v.startsWith("var(--")) {
+    return true; // CSS variable
+  }
+  if (v.startsWith("calc(")) {
+    return true; // calc() expressions are allowed
+  }
   return spacingSet.has(v);
 }
 
@@ -87,11 +93,15 @@ function analyzeCssSpacing(
   const relPath = relativePath(targetDir, filePath);
 
   root.walkDecls((decl: Declaration) => {
-    if (!SPACING_CSS_PROPS.has(decl.prop.toLowerCase())) return;
+    if (!SPACING_CSS_PROPS.has(decl.prop.toLowerCase())) {
+      return;
+    }
     const parts = splitCssValue(decl.value);
     for (const part of parts) {
       const v = part.trim();
-      if (!v || ALWAYS_VALID.has(v)) continue;
+      if (!v || ALWAYS_VALID.has(v)) {
+        continue;
+      }
       violations.push({
         filePath: relPath,
         line: decl.source?.start?.line ?? 0,
@@ -117,32 +127,45 @@ function analyzeTsxSpacing(
   const relPath = relativePath(targetDir, filePath);
 
   traverseAST(ast, (node) => {
-    if (node.type !== AST_NODE_TYPES.JSXAttribute) return;
+    if (node.type !== AST_NODE_TYPES.JSXAttribute) {
+      return;
+    }
     if (
       node.name.type !== AST_NODE_TYPES.JSXIdentifier ||
       node.name.name !== "style"
-    )
+    ) {
       return;
-    if (node.value?.type !== AST_NODE_TYPES.JSXExpressionContainer) return;
+    }
+    if (node.value?.type !== AST_NODE_TYPES.JSXExpressionContainer) {
+      return;
+    }
 
     const expr = node.value.expression;
-    if (expr.type !== AST_NODE_TYPES.ObjectExpression) return;
+    if (expr.type !== AST_NODE_TYPES.ObjectExpression) {
+      return;
+    }
 
     for (const prop of expr.properties) {
-      if (prop.type !== AST_NODE_TYPES.Property) continue;
+      if (prop.type !== AST_NODE_TYPES.Property) {
+        continue;
+      }
       const key =
         prop.key.type === AST_NODE_TYPES.Identifier
           ? prop.key.name
           : prop.key.type === AST_NODE_TYPES.Literal
             ? String(prop.key.value)
             : null;
-      if (!key || !SPACING_STYLE_KEYS.has(key)) continue;
+      if (!key || !SPACING_STYLE_KEYS.has(key)) {
+        continue;
+      }
 
       const valNode = prop.value;
       let value: string | null = null;
       if (valNode.type === AST_NODE_TYPES.Literal) {
         // Numeric 0 is always valid
-        if (typeof valNode.value === "number" && valNode.value === 0) continue;
+        if (typeof valNode.value === "number" && valNode.value === 0) {
+          continue;
+        }
         value = String(valNode.value);
       } else if (
         valNode.type === AST_NODE_TYPES.TemplateLiteral &&
@@ -150,11 +173,15 @@ function analyzeTsxSpacing(
       ) {
         value = valNode.quasis[0].value.raw;
       }
-      if (!value) continue;
+      if (!value) {
+        continue;
+      }
 
       for (const part of splitCssValue(value)) {
         const v = part.trim();
-        if (!v || ALWAYS_VALID.has(v)) continue;
+        if (!v || ALWAYS_VALID.has(v)) {
+          continue;
+        }
         violations.push({
           filePath: relPath,
           line: prop.loc.start.line,
@@ -183,7 +210,9 @@ export function analyzeSpacing(
 
   for (const filePath of cssFiles) {
     const root = parseCssFile(filePath);
-    if (!root) continue;
+    if (!root) {
+      continue;
+    }
     const ctx = filePath.endsWith(".scss") ? "scss" : "css";
     all.push(
       ...analyzeCssSpacing(root, filePath, config.targetDir, spacingSet, ctx)
@@ -192,7 +221,9 @@ export function analyzeSpacing(
 
   for (const filePath of tsxFiles) {
     const ast = cache.get(filePath);
-    if (!ast) continue;
+    if (!ast) {
+      continue;
+    }
     all.push(...analyzeTsxSpacing(ast, filePath, config.targetDir, spacingSet));
   }
 

@@ -268,9 +268,13 @@ function analyzeCssRoot(
   const relPath = relativePath(targetDir, filePath);
 
   root.walkDecls((decl: Declaration) => {
-    if (!COLOR_CSS_PROPS.has(decl.prop.toLowerCase())) return;
+    if (!COLOR_CSS_PROPS.has(decl.prop.toLowerCase())) {
+      return;
+    }
     for (const v of splitCssValue(decl.value)) {
-      if (!detectColorValue(v)) continue;
+      if (!detectColorValue(v)) {
+        continue;
+      }
       violations.push({
         filePath: relPath,
         line: decl.source?.start?.line ?? 0,
@@ -305,8 +309,12 @@ function analyzeTsxFile(
   const relPath = relativePath(targetDir, filePath);
 
   traverseAST(ast, (node) => {
-    if (node.type !== AST_NODE_TYPES.JSXAttribute) return;
-    if (node.name.type !== AST_NODE_TYPES.JSXIdentifier) return;
+    if (node.type !== AST_NODE_TYPES.JSXAttribute) {
+      return;
+    }
+    if (node.name.type !== AST_NODE_TYPES.JSXIdentifier) {
+      return;
+    }
     const attrName = node.name.name;
 
     // Inline style={{ ... }}
@@ -317,17 +325,23 @@ function analyzeTsxFile(
       const expr = node.value.expression;
       if (expr.type === AST_NODE_TYPES.ObjectExpression) {
         for (const prop of expr.properties) {
-          if (prop.type !== AST_NODE_TYPES.Property) continue;
+          if (prop.type !== AST_NODE_TYPES.Property) {
+            continue;
+          }
           const key =
             prop.key.type === AST_NODE_TYPES.Identifier
               ? prop.key.name
               : prop.key.type === AST_NODE_TYPES.Literal
                 ? String(prop.key.value)
                 : null;
-          if (!key || !COLOR_STYLE_KEYS.has(key)) continue;
+          if (!key || !COLOR_STYLE_KEYS.has(key)) {
+            continue;
+          }
 
           const val = stringLiteralValue(prop.value);
-          if (!val || !detectColorValue(val)) continue;
+          if (!val || !detectColorValue(val)) {
+            continue;
+          }
 
           violations.push({
             filePath: relPath,
@@ -344,7 +358,9 @@ function analyzeTsxFile(
     }
 
     // className="..." — detect arbitrary Tailwind color values like text-[#fff]
-    if (attrName !== "className" && attrName !== "class") return;
+    if (attrName !== "className" && attrName !== "class") {
+      return;
+    }
 
     let classStr: string | null = null;
     if (node.value?.type === AST_NODE_TYPES.Literal) {
@@ -355,14 +371,18 @@ function analyzeTsxFile(
     ) {
       classStr = String(node.value.expression.value);
     }
-    if (!classStr) return;
+    if (!classStr) {
+      return;
+    }
 
     // Match arbitrary color values in Tailwind classes: bg-[#fff], text-[rgb(0,0,0)]
     const arbitrary = /\[([^\]]+)\]/g;
     let m: RegExpExecArray | null;
     while ((m = arbitrary.exec(classStr)) !== null) {
       const val = m[1];
-      if (!detectColorValue(val)) continue;
+      if (!detectColorValue(val)) {
+        continue;
+      }
       violations.push({
         filePath: relPath,
         line: node.loc.start.line,
@@ -392,14 +412,18 @@ export function analyzeColors(
 
   for (const filePath of cssFiles) {
     const root = parseCssFile(filePath) as Root | null;
-    if (!root) continue;
+    if (!root) {
+      continue;
+    }
     const ctx = filePath.endsWith(".scss") ? "scss" : "css";
     all.push(...analyzeCssRoot(root, filePath, config.targetDir, hexSet, ctx));
   }
 
   for (const filePath of tsxFiles) {
     const ast = cache.get(filePath);
-    if (!ast) continue;
+    if (!ast) {
+      continue;
+    }
     all.push(...analyzeTsxFile(ast, filePath, config.targetDir, hexSet));
   }
 

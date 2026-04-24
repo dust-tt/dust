@@ -114,7 +114,10 @@ pre-commit:
       stage_fixed: true
 
     # Biome checks (all JS/TS files in monorepo)
+    # sparklytics is excluded here and handled by its own local biome config.
     biome:
       glob: "*.{js,jsx,ts,tsx,css,scss}"
+      exclude:
+        - "sparkle/sparklytics/**"
       run: npm run biome:lefthook -- {staged_files}
       stage_fixed: true

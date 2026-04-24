@@ -84,7 +84,9 @@ class ComponentUsageBuilder {
 }
 
 function serializePropValue(value: TSESTree.JSXAttribute["value"]): string {
-  if (value === null) return "true"; // <Button disabled />
+  if (value === null) {
+    return "true"; // <Button disabled />
+  }
 
   if (value.type === AST_NODE_TYPES.Literal) {
     return JSON.stringify(value.value); // <Button variant="primary" />
@@ -92,15 +94,25 @@ function serializePropValue(value: TSESTree.JSXAttribute["value"]): string {
 
   if (value.type === AST_NODE_TYPES.JSXExpressionContainer) {
     const expr = value.expression;
-    if (expr.type === AST_NODE_TYPES.JSXEmptyExpression) return "{empty}";
+    if (expr.type === AST_NODE_TYPES.JSXEmptyExpression) {
+      return "{empty}";
+    }
     if (expr.type === AST_NODE_TYPES.Literal) {
       return JSON.stringify(expr.value); // <Button size={3} />
     }
     if (expr.type === AST_NODE_TYPES.Identifier) {
-      if (expr.name === "undefined") return "undefined";
-      if (expr.name === "null") return "null";
-      if (expr.name === "true") return "true";
-      if (expr.name === "false") return "false";
+      if (expr.name === "undefined") {
+        return "undefined";
+      }
+      if (expr.name === "null") {
+        return "null";
+      }
+      if (expr.name === "true") {
+        return "true";
+      }
+      if (expr.name === "false") {
+        return "false";
+      }
       return `{${expr.name}}`; // <Button icon={ChevronIcon} />
     }
     if (
@@ -116,7 +128,9 @@ function serializePropValue(value: TSESTree.JSXAttribute["value"]): string {
     return "{expression}";
   }
 
-  if (value.type === AST_NODE_TYPES.JSXElement) return "{jsx}";
+  if (value.type === AST_NODE_TYPES.JSXElement) {
+    return "{jsx}";
+  }
 
   return "{unknown}";
 }
@@ -150,7 +164,9 @@ function collectAllBindings(
   const other = new Map<string, ImportBinding>();
 
   for (const node of ast.body) {
-    if (node.type !== AST_NODE_TYPES.ImportDeclaration) continue;
+    if (node.type !== AST_NODE_TYPES.ImportDeclaration) {
+      continue;
+    }
     const source = String(node.source.value);
     const target = source === packageName ? sparkle : other;
 
@@ -191,9 +207,12 @@ function resolveFromMaps(
 ): { binding: ImportBinding; isSparkle: boolean } | null {
   if (name.type === AST_NODE_TYPES.JSXIdentifier) {
     const tag = name.name;
-    if (sparkle.has(tag))
+    if (sparkle.has(tag)) {
       return { binding: sparkle.get(tag)!, isSparkle: true };
-    if (other.has(tag)) return { binding: other.get(tag)!, isSparkle: false };
+    }
+    if (other.has(tag)) {
+      return { binding: other.get(tag)!, isSparkle: false };
+    }
     // Uppercase but not imported — treat as local component
     if (/^[A-Z]/.test(tag)) {
       return {
@@ -210,7 +229,9 @@ function resolveFromMaps(
         name.property.type === AST_NODE_TYPES.JSXIdentifier
           ? name.property.name
           : null;
-      if (!propName) return null;
+      if (!propName) {
+        return null;
+      }
       if (sparkle.has(nsKey)) {
         return {
           binding: {
@@ -250,12 +271,16 @@ export function analyzeAllElements(
 
   for (const filePath of tsxFiles) {
     const ast = cache.get(filePath);
-    if (!ast) continue;
+    if (!ast) {
+      continue;
+    }
 
     const { sparkle, other } = collectAllBindings(ast, config.packageName);
 
     traverseAST(ast, (node) => {
-      if (node.type !== AST_NODE_TYPES.JSXOpeningElement) return;
+      if (node.type !== AST_NODE_TYPES.JSXOpeningElement) {
+        return;
+      }
       const loc: FileLocation = {
         filePath: relativePath(config.targetDir, filePath),
         line: node.loc.start.line,
@@ -268,7 +293,9 @@ export function analyzeAllElements(
         /^[a-z]/.test(node.name.name)
       ) {
         const tag = node.name.name;
-        if (!htmlAgg.has(tag)) htmlAgg.set(tag, { count: 0, locations: [] });
+        if (!htmlAgg.has(tag)) {
+          htmlAgg.set(tag, { count: 0, locations: [] });
+        }
         const e = htmlAgg.get(tag)!;
         e.count++;
         e.locations.push(loc);
@@ -277,12 +304,16 @@ export function analyzeAllElements(
 
       // Component element
       const resolved = resolveFromMaps(node.name, sparkle, other);
-      if (!resolved) return;
+      if (!resolved) {
+        return;
+      }
 
       const { binding, isSparkle } = resolved;
       const agg = isSparkle ? sparkleAgg : customAgg;
       const key = binding.importedName;
-      if (!agg.has(key)) agg.set(key, new ComponentUsageBuilder(binding));
+      if (!agg.has(key)) {
+        agg.set(key, new ComponentUsageBuilder(binding));
+      }
       agg.get(key)!.addOccurrence(loc, extractProps(node.attributes));
     });
   }

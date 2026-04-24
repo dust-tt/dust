@@ -34,13 +34,17 @@ function extractFromAST(ast: TSESTree.Program, map: DeclaredPropsMap): void {
   traverseAST(ast, (node) => {
     if (node.type === AST_NODE_TYPES.TSInterfaceDeclaration) {
       const compName = inferComponentName(node.id.name);
-      if (!compName) return;
+      if (!compName) {
+        return;
+      }
       const names = extractMemberNames(node.body.body);
       mergeProps(map, compName, names);
     }
     if (node.type === AST_NODE_TYPES.TSTypeAliasDeclaration) {
       const compName = inferComponentName(node.id.name);
-      if (!compName) return;
+      if (!compName) {
+        return;
+      }
       const ta = node.typeAnnotation;
       if (ta.type === AST_NODE_TYPES.TSTypeLiteral) {
         mergeProps(map, compName, extractMemberNames(ta.members));
@@ -61,8 +65,12 @@ function mergeProps(
   compName: string,
   names: string[]
 ): void {
-  if (!map.has(compName)) map.set(compName, new Set());
-  for (const n of names) map.get(compName)!.add(n);
+  if (!map.has(compName)) {
+    map.set(compName, new Set());
+  }
+  for (const n of names) {
+    map.get(compName)!.add(n);
+  }
 }
 
 function collectTsFiles(dir: string, results: string[] = []): string[] {
@@ -97,7 +105,9 @@ export function extractDeclaredProps(
   // 1. Scan all already-parsed codebase files
   for (const filePath of cache.keys()) {
     const ast = cache.get(filePath);
-    if (ast) extractFromAST(ast, map);
+    if (ast) {
+      extractFromAST(ast, map);
+    }
   }
 
   // 2. Scan Sparkle source files (not in codebase cache)
@@ -106,7 +116,9 @@ export function extractDeclaredProps(
     const sparkleFiles = collectTsFiles(sparkleDir);
     for (const f of sparkleFiles) {
       const ast = parseFile(f);
-      if (ast) extractFromAST(ast, map);
+      if (ast) {
+        extractFromAST(ast, map);
+      }
     }
   }
 
@@ -123,7 +135,9 @@ export function mergeDeclaredProps(
 ): void {
   for (const comp of components) {
     const declaredSet = declared.get(comp.name);
-    if (!declaredSet) continue;
+    if (!declaredSet) {
+      continue;
+    }
     const usedNames = new Set(comp.props.map((p) => p.name));
     for (const propName of declaredSet) {
       if (!usedNames.has(propName)) {

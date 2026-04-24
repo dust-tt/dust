@@ -73,7 +73,9 @@ function isSparkleFontFamily(
 ): boolean {
   const allowed = new Set(registry.fontFamilies.map((f) => f.toLowerCase()));
   const families = parseFontFamilyStack(value);
-  if (families.length === 0) return false;
+  if (families.length === 0) {
+    return false;
+  }
   return families.every((f) => allowed.has(f) || GENERIC_FONT_FAMILIES.has(f));
 }
 
@@ -114,7 +116,9 @@ function analyzeCssTypography(
   const relPath = relativePath(targetDir, filePath);
 
   root.walkDecls((decl: Declaration) => {
-    if (!TYPO_CSS_PROPS.has(decl.prop.toLowerCase())) return;
+    if (!TYPO_CSS_PROPS.has(decl.prop.toLowerCase())) {
+      return;
+    }
     const value = decl.value.trim();
     violations.push({
       filePath: relPath,
@@ -148,26 +152,37 @@ function analyzeTsxTypography(
   const relPath = relativePath(targetDir, filePath);
 
   traverseAST(ast, (node) => {
-    if (node.type !== AST_NODE_TYPES.JSXAttribute) return;
+    if (node.type !== AST_NODE_TYPES.JSXAttribute) {
+      return;
+    }
     if (
       node.name.type !== AST_NODE_TYPES.JSXIdentifier ||
       node.name.name !== "style"
-    )
+    ) {
       return;
-    if (node.value?.type !== AST_NODE_TYPES.JSXExpressionContainer) return;
+    }
+    if (node.value?.type !== AST_NODE_TYPES.JSXExpressionContainer) {
+      return;
+    }
 
     const expr = node.value.expression;
-    if (expr.type !== AST_NODE_TYPES.ObjectExpression) return;
+    if (expr.type !== AST_NODE_TYPES.ObjectExpression) {
+      return;
+    }
 
     for (const prop of expr.properties) {
-      if (prop.type !== AST_NODE_TYPES.Property) continue;
+      if (prop.type !== AST_NODE_TYPES.Property) {
+        continue;
+      }
       const key =
         prop.key.type === AST_NODE_TYPES.Identifier
           ? prop.key.name
           : prop.key.type === AST_NODE_TYPES.Literal
             ? String(prop.key.value)
             : null;
-      if (!key || !TYPO_STYLE_KEYS.has(key)) continue;
+      if (!key || !TYPO_STYLE_KEYS.has(key)) {
+        continue;
+      }
 
       const valNode = prop.value;
       let value: string | null = null;
@@ -179,7 +194,9 @@ function analyzeTsxTypography(
       ) {
         value = valNode.quasis[0].value.raw;
       }
-      if (!value) continue;
+      if (!value) {
+        continue;
+      }
 
       // Map camelCase key back to CSS prop for the validator
       const cssProp =
@@ -220,7 +237,9 @@ export function analyzeTypography(
 
   for (const filePath of cssFiles) {
     const root = parseCssFile(filePath);
-    if (!root) continue;
+    if (!root) {
+      continue;
+    }
     const ctx = filePath.endsWith(".scss") ? "scss" : "css";
     all.push(
       ...analyzeCssTypography(
@@ -237,7 +256,9 @@ export function analyzeTypography(
 
   for (const filePath of tsxFiles) {
     const ast = cache.get(filePath);
-    if (!ast) continue;
+    if (!ast) {
+      continue;
+    }
     all.push(
       ...analyzeTsxTypography(
         ast,
