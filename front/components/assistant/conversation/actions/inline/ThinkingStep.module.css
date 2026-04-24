@@ -19,14 +19,14 @@
   transition-duration: var(--dur-open);
 }
 
-.content > * > * {
+.content > * * {
   transition:
     padding var(--dur-close) var(--ease),
     margin var(--dur-close) var(--ease),
     gap var(--dur-close) var(--ease);
 }
 
-.root:not(.expanded) .content > * > * {
+.root:not(.expanded) .content > * * {
   padding-top: 0 !important;
   padding-bottom: 0 !important;
   margin-top: 0 !important;
@@ -34,7 +34,7 @@
   gap: 0 !important;
 }
 
-.expanded .content > * > * {
+.expanded .content > * * {
   transition-duration: var(--dur-open);
 }
 
