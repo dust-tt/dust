@@ -125,7 +125,6 @@
         "sparkle/.storybook/**",
         "sparkle/playground/**",
         "sparkle/scripts/**",
-        "sparkle/sparklytics/**",
         "sparkle/rollup.config.js",
         "sparkle/svgr.config.js",
         "sparkle/postcss.config.js",

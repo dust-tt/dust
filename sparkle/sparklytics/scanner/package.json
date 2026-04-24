@@ -10,7 +10,10 @@
     "build": "tsup",
     "dev": "tsup --watch",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "format": "biome check --write --error-on-warnings src",
+    "format:check": "biome check --error-on-warnings src",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@typescript-eslint/parser": "^8.0.0",
@@ -23,6 +26,7 @@
     "zod": "^3.25.0"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.4.8",
     "@types/node": "^22.0.0",
     "tsup": "^8.4.0",
     "typescript": "^5.6.0",
