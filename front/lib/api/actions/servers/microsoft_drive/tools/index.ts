@@ -446,7 +446,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
   },
 
   copy_file: async (
-    { itemId, driveId, siteId, parentItemId, name },
+    { itemId, driveId, siteId, parentReference, name },
     { authInfo }
   ) => {
     if (!driveId && !siteId) {
@@ -467,12 +467,13 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
         siteId
       );
 
-      const requestBody: { name: string; parentReference?: { id: string } } = {
-        name,
-      };
+      const requestBody: {
+        name: string;
+        parentReference?: { id: string; driveId: string };
+      } = { name };
 
-      if (parentItemId) {
-        requestBody.parentReference = { id: parentItemId };
+      if (parentReference) {
+        requestBody.parentReference = parentReference;
       }
 
       const response = (await client

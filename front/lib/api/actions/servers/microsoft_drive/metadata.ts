@@ -179,11 +179,16 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = createToolsRecord({
         .describe(
           "ID of the SharePoint site containing the file (used if driveId not provided)"
         ),
-      parentItemId: z
-        .string()
+      parentReference: z
+        .object({
+          id: z.string().describe("ID of the destination folder for the copy."),
+          driveId: z
+            .string()
+            .describe("ID of the drive containing the destination folder"),
+        })
         .optional()
         .describe(
-          "ID of the destination folder for the copy (defaults to same folder if not specified)"
+          "Reference to the destination folder for the copy. If omitted, the item is copied into the same folder as the source."
         ),
       name: z.string().describe("Name for the copied item"),
     },
