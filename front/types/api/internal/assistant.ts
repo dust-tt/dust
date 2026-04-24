@@ -15,7 +15,6 @@ const UserMessageOriginSchema = t.union([
   t.literal("agent_sidekick"),
   t.literal("project_kickoff"),
   t.literal("extension"),
-  t.literal("reinforced_agent_notification"),
   t.literal("reinforced_skill_notification"),
 ]);
 
