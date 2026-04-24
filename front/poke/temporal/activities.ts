@@ -69,6 +69,7 @@ import { TakeawaysResource } from "@app/lib/resources/takeaways_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserProjectNotificationPreferenceResource } from "@app/lib/resources/user_project_notification_preferences_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -559,6 +560,10 @@ export async function deleteMembersActivity({
           },
         });
         await OnboardingTaskResource.deleteAllForUser(auth, user.toJSON());
+
+        // Cancel any remaining Temporal workflows/schedules and delete wake-up rows owned by the
+        // user in this workspace.
+        await WakeUpResource.deleteAllForUser(auth, user.toJSON());
 
         await user.delete(auth, {});
       }

@@ -27,6 +27,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { UserType } from "@app/types/user";
 import { CronExpressionParser } from "cron-parser";
 import type { Attributes, Transaction, WhereOptions } from "sequelize";
 
@@ -396,6 +397,41 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         conversationId: conversation.id,
+      } as WhereOptions<WakeUpModel>,
+      transaction,
+    });
+  }
+
+  /**
+   * Cancels Temporal workflows / schedules for any active wake-up owned by `user` in the current
+   * workspace, then deletes all wake-up rows (any status) for that user.
+   */
+  static async deleteAllForUser(
+    auth: Authenticator,
+    user: UserType,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<void> {
+    const wakeUps = await this.baseFetch(auth, {
+      where: { userId: user.id },
+    });
+
+    const activeWakeUps = wakeUps.filter((w) => isActiveWakeUp(w.toJSON()));
+
+    const cancelResults = await concurrentExecutor(
+      activeWakeUps,
+      async (wakeUp) => wakeUp.cancelTemporalWorkflow(auth),
+      { concurrency: 10 }
+    );
+
+    const cancellationError = cancelResults.find((result) => result.isErr());
+    if (cancellationError?.isErr()) {
+      throw cancellationError.error;
+    }
+
+    await this.model.destroy({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        userId: user.id,
       } as WhereOptions<WakeUpModel>,
       transaction,
     });
