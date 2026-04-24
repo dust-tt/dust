@@ -56,7 +56,8 @@ async function handler(
 
   const suggestion = await SkillSuggestionResource.fetchById(
     auth,
-    suggestionId
+    suggestionId,
+    { dangerouslyBypassConversationsVisibilityCheck: true }
   );
   if (!suggestion) {
     return apiError(req, res, {
