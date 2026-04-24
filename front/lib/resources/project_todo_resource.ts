@@ -235,27 +235,29 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
     });
   }
 
-  // Batch variant: fetches the current todo row for each sourceId in one pass.
-  // Returns a map from `${sourceId}:${userId}` to the matching ProjectTodoResource.
-  static async fetchBySourceIds(
+  // Batch variant: fetches the current todo row for each itemId in one pass.
+  // Returns a map from `${itemId}:${userId}` to the matching ProjectTodoResource
+  // — missing entries mean no todo yet exists for that (item, user) pair.
+  //
+  // This is the identity lookup used by the merge workflow's Phase 1 to detect
+  // items that are already linked to a todo and can therefore skip dedup.
+  static async fetchByItemIds(
     auth: Authenticator,
-    { sourceIds }: { sourceIds: string[] }
-  ): Promise<Map<string, ProjectTodoResource>> {
-    if (sourceIds.length === 0) {
+    { itemIds }: { itemIds: string[] }
+  ): Promise<Map<string, Map<ModelId, ProjectTodoResource>>> {
+    if (itemIds.length === 0) {
       return new Map();
     }
 
     const workspaceId = auth.getNonNullableWorkspace().id;
 
-    // Step 1: Find all source links for the given item IDs.
     const sources = await ProjectTodoSourceModel.findAll({
-      where: { workspaceId, sourceId: { [Op.in]: sourceIds } },
+      where: { workspaceId, itemId: { [Op.in]: itemIds } },
     });
     if (sources.length === 0) {
       return new Map();
     }
 
-    // Step 2: Fetch the linked todo rows.
     const linkedModelIds = [...new Set(sources.map((s) => s.projectTodoId))];
     const linkedRows = await this.baseFetch(auth, {
       where: { id: { [Op.in]: linkedModelIds } },
@@ -264,19 +266,20 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
       return new Map();
     }
 
-    // Build a lookup from model id → resource.
     const rowById = new Map<ModelId, ProjectTodoResource>(
       linkedRows.map((t) => [t.id, t])
     );
 
-    // Result: `${sourceId}:${userId}` → ProjectTodoResource.
-    const result = new Map<string, ProjectTodoResource>();
+    const result = new Map<string, Map<ModelId, ProjectTodoResource>>();
     for (const source of sources) {
       const todo = rowById.get(source.projectTodoId);
       if (!todo) {
         continue;
       }
-      result.set(`${source.sourceId}:${todo.userId}`, todo);
+      const byUser =
+        result.get(source.itemId) ?? new Map<ModelId, ProjectTodoResource>();
+      byUser.set(source.userId, todo);
+      result.set(source.itemId, byUser);
     }
 
     return result;
@@ -418,41 +421,69 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
 
   // ── Source links (* => todo) ─────────────────────────────────────────────
 
+  // Links the given takeaway item + source document to this todo. Idempotent
+  // by (workspaceId, itemId, userId): if a row already exists for this
+  // (item, user) pair, its fields are updated to point at this todo and
+  // source — so a Temporal activity retry after a partial success converges
+  // to the same state instead of creating a duplicate.
   async upsertSource(
     auth: Authenticator,
     {
+      itemId,
       source,
     }: {
+      itemId: string;
       source: ProjectTodoSourceInfo;
     },
     transaction?: Transaction
   ): Promise<void> {
-    const where = {
-      workspaceId: auth.getNonNullableWorkspace().id,
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    const identity = {
+      workspaceId,
+      itemId,
+      userId: this.userId,
+    };
+    const payload = {
       projectTodoId: this.id,
       sourceType: source.sourceType,
       sourceId: source.sourceId,
+      sourceTitle: source.sourceTitle,
+      sourceUrl: source.sourceUrl,
     };
+
     const [sourceInstance, created] = await ProjectTodoSourceModel.findOrCreate(
       {
-        where,
-        defaults: {
-          ...where,
-          sourceTitle: source.sourceTitle,
-          sourceUrl: source.sourceUrl,
-        },
+        where: identity,
+        defaults: { ...identity, ...payload },
         transaction,
       }
     );
     if (!created) {
-      await sourceInstance.update(
-        {
-          sourceTitle: source.sourceTitle,
-          sourceUrl: source.sourceUrl,
-        },
-        { transaction }
-      );
+      await sourceInstance.update(payload, { transaction });
     }
+  }
+
+  // Atomic create + link: inserts the todo row and its first source link in
+  // a single transaction so Temporal retries can't observe a half-written
+  // state (orphan todo without a source row, or vice versa).
+  static async makeNewWithSource(
+    auth: Authenticator,
+    {
+      blob,
+      itemId,
+      source,
+    }: {
+      blob: Omit<CreationAttributes<ProjectTodoModel>, "workspaceId">;
+      itemId: string;
+      source: ProjectTodoSourceInfo;
+    },
+    transaction?: Transaction
+  ): Promise<ProjectTodoResource> {
+    return withTransaction(async (t) => {
+      const todo = await ProjectTodoResource.makeNew(auth, blob, t);
+      await todo.upsertSource(auth, { itemId, source }, t);
+      return todo;
+    }, transaction);
   }
 
   // ── Serialization ──────────────────────────────────────────────────────────
