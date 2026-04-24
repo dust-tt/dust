@@ -138,9 +138,9 @@ export function ConversationContainerVirtuoso({
 
         await mutateConversations(
           (currentData: ConversationListItemType[] | undefined) => [
-            // Immediately update the list of conversations in the sidebar by adding the new conversation.
-            ...(currentData ?? []),
+            // Prepend so the new conversation appears at the top of the DESC-sorted list.
             conversationRes.value,
+            ...(currentData ?? []),
           ],
           { revalidate: false }
         );
