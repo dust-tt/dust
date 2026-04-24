@@ -2,7 +2,12 @@ import { TimelineRow } from "@app/components/assistant/conversation/actions/inli
 import { cn, Markdown } from "@dust-tt/sparkle";
 import { useEffect, useRef, useState } from "react";
 
-import styles from "./ThinkingStep.module.css";
+const CLAMP_HEIGHT = "3.75rem";
+const FADE_HEIGHT = "2rem";
+const EASE = "cubic-bezier(0.32, 0.72, 0, 1)";
+const DUR_OPEN_MS = "180ms";
+const DUR_CLOSE_MS = "145ms";
+const FADE_DELAY_MS = "40ms";
 
 interface ThinkingStepProps {
   content: string;
@@ -66,23 +71,52 @@ export function ThinkingStep({
       }
     : undefined;
 
+  const isCollapsed = needsTruncation && !isExpanded;
+
+  const contentStyle: React.CSSProperties = {
+    maxHeight: isCollapsed ? CLAMP_HEIGHT : "max-content",
+    transition: `max-height ${isCollapsed ? DUR_CLOSE_MS : DUR_OPEN_MS} ${EASE}`,
+  };
+
+  const fadeStyle: React.CSSProperties = {
+    height: FADE_HEIGHT,
+    opacity: isExpanded ? 0 : 1,
+    transition: isExpanded
+      ? `opacity ${DUR_OPEN_MS} ${EASE} ${FADE_DELAY_MS}`
+      : `opacity ${DUR_CLOSE_MS} ${EASE}`,
+  };
+
   return (
     <div
       className={cn(needsTruncation && "cursor-pointer")}
       onClick={handleClick}
     >
       <TimelineRow icon="circle" isLast={isLast}>
-        <div
-          className={cn(
-            "relative min-w-0 flex-1",
-            styles.root,
-            (!needsTruncation || isExpanded) && styles.expanded
-          )}
-        >
-          <div ref={contentRef} className={styles.content}>
+        <div className="relative min-w-0 flex-1">
+          <div
+            ref={contentRef}
+            className={cn(
+              "relative min-w-0 overflow-hidden",
+              "[&_*]:transition-[padding,margin,gap]",
+              isCollapsed
+                ? "[&_*]:!py-0 [&_*]:!my-0 [&_*]:!gap-0 [&_*]:duration-[145ms]"
+                : "[&_*]:duration-[180ms]"
+            )}
+            style={contentStyle}
+          >
             {markdown}
           </div>
-          {needsTruncation && <div className={styles.fade} aria-hidden />}
+          {needsTruncation && (
+            <div
+              className={cn(
+                "pointer-events-none absolute inset-x-0 bottom-0",
+                "bg-gradient-to-b from-transparent via-white/85 via-65% to-white",
+                "dark:via-gray-950/85 dark:to-gray-950"
+              )}
+              style={fadeStyle}
+              aria-hidden
+            />
+          )}
         </div>
       </TimelineRow>
     </div>
