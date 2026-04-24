@@ -480,6 +480,12 @@ describe("renderConversationForModel", () => {
   });
 
   it("prepends leading messages", async () => {
+    const leadingMessage = {
+      role: "user" as const,
+      name: "user",
+      content: [{ type: "text" as const, text: "preface" }],
+    };
+
     vi.mocked(renderAllMessages).mockResolvedValue([userMessage("rendered")]);
     mockTokenCounter({
       byContains: {
@@ -499,7 +505,7 @@ describe("renderConversationForModel", () => {
         interactionTokens: 20,
         availableDelta: 100,
       }),
-      leadingMessages: [userMessage("preface")],
+      leadingMessages: [leadingMessage],
     });
 
     expect(res.isOk()).toBe(true);
@@ -508,7 +514,7 @@ describe("renderConversationForModel", () => {
     }
 
     expect(res.value.modelConversation.messages).toEqual([
-      userMessage("preface"),
+      leadingMessage,
       userMessage("rendered"),
     ]);
   });

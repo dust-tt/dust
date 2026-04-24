@@ -1318,7 +1318,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       enabledSkills
     );
 
-    // Compute the equipped skills: all enableable non-system agent skills plus
+    // Compute the equipped skills: all non-system agent skills plus
     // discoverable skills that are not already equipped. Keep this list stable
     // even after a skill is enabled.
     const agentEquippedSkills = allAgentSkills.filter((s) => !s.isSystemSkill);

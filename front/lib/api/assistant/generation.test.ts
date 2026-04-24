@@ -495,7 +495,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     expect(text).not.toContain("<existing_memories>");
   });
 
-  it("should keep enableable skills out of the system prompt", async () => {
+  it("should keep equipped skills out of the system prompt", async () => {
     const equippedSkills = [
       await SkillFactory.create(authenticator1, {
         name: "commit",
@@ -530,7 +530,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     expect(text).not.toContain("## AVAILABLE SKILLS");
   });
 
-  it("should keep enableable skills in the system prompt on the legacy path", async () => {
+  it("should keep equipped skills in the system prompt on the legacy path", async () => {
     const equippedSkills = [
       await SkillFactory.create(authenticator1, {
         name: "commit",
