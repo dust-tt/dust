@@ -33,14 +33,10 @@ import type { WithAPIErrorResponse } from "@app/types/error";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-export type GetWorkspaceFeatureFlagsResponseType = {
-  feature_flags: WhitelistableFeature[];
-};
-
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorResponse<GetWorkspaceFeatureFlagsResponseType>
+    WithAPIErrorResponse<{ feature_flags: WhitelistableFeature[] }>
   >,
   auth: Authenticator
 ): Promise<void> {
