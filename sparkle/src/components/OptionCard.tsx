@@ -40,7 +40,7 @@ export function OptionCard({
     <Card
       variant={variant}
       className={cn(
-        "s-flex s-w-full s-items-center s-gap-2 s-rounded-2xl s-p-3 s-text-left s-transition-colors",
+        "s-w-full s-items-center s-gap-2 s-rounded-2xl s-text-left s-transition-colors",
         !disabled && "s-cursor-pointer",
         disabled && "s-pointer-events-none s-opacity-60",
         !selected &&
@@ -59,13 +59,10 @@ export function OptionCard({
           value={counterValue}
           size="sm"
           variant="ghost"
-          className={cn(
-            "s-shrink-0 s-bg-border-dark s-text-muted-foreground",
-            "dark:s-bg-border-dark-night dark:s-text-muted-foreground-night"
-          )}
+          className="s-shrink-0 s-bg-border-dark dark:s-bg-border-dark-night"
         />
       )}
-      <div className="s-flex s-flex-col">
+      <div className="s-flex s-min-w-0 s-flex-1 s-flex-col">
         <span className="s-text-sm s-font-medium s-text-foreground dark:s-text-foreground-night">
           {label}
         </span>

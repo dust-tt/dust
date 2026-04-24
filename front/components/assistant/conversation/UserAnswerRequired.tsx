@@ -285,13 +285,12 @@ export function UserAnswerRequired({
           <Card
             variant="tertiary"
             className={cn(
-              "flex w-full items-center gap-2 rounded-2xl p-3 transition-colors",
+              "w-full items-center gap-2 transition-colors",
               isCustomResponseActive
                 ? "bg-primary-100 dark:bg-primary-100-night"
                 : [
-                    "bg-background hover:bg-primary-100",
-                    "dark:bg-background-night",
-                    "dark:hover:bg-primary-100-night",
+                    "bg-background dark:bg-background-night ",
+                    "hover:bg-primary-100 dark:hover:bg-primary-100-night",
                   ]
             )}
           >
@@ -299,10 +298,7 @@ export function UserAnswerRequired({
               value={question.options.length + 1}
               size="sm"
               variant="ghost"
-              className={cn(
-                "shrink-0 bg-border-dark text-muted-foreground",
-                "dark:bg-border-dark-night dark:text-muted-foreground-night"
-              )}
+              className="shrink-0 bg-border-dark dark:bg-border-dark-night"
             />
             <Input
               ref={customResponseInputRef}
