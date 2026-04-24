@@ -6,6 +6,7 @@ const migrationAckLabel = "migration-ack";
 const documentationAckLabel = "documentation-ack";
 const rawSqlAckLabel = "raw-sql-ack";
 const sparkleVersionAckLabel = "sparkle-version-ack";
+const sseAckLabel = "sse-ack";
 
 const REMOVE_INDEX_WARNING =
   "\n\nBefore deleting an index, make sure it is actually not used by running:" +
@@ -49,6 +50,56 @@ function checkMigrationLabel() {
     failMigrationAck();
   } else {
     warnMigrationAck(migrationAckLabel);
+  }
+}
+
+function failSSEEndpointAck() {
+  fail(
+    "SSE endpoint files have been modified. These endpoints are served by " +
+      "both `front` and `front-sse` pods (via `/api/sse/` re-exports).\n\n" +
+      `Please add the \`${sseAckLabel}\` label to acknowledge ` +
+      "that a `front-sse` deploy is required alongside the `front` deploy."
+  );
+}
+
+function warnSSEEndpointAck(sseAckLabel: string) {
+  warn(
+    "SSE endpoint files have been modified and the PR has the `" +
+      sseAckLabel +
+      "` label. Don't forget to deploy `front-sse` alongside `front`."
+  );
+}
+
+function checkSSEEndpointLabel() {
+  if (!hasLabel(sseAckLabel)) {
+    failSSEEndpointAck();
+  } else {
+    warnSSEEndpointAck(sseAckLabel);
+  }
+}
+
+function failSSESharedFilesAck() {
+  fail(
+    "`front/lib/auth.ts` (Authenticator) has been modified. This code runs " +
+      "on `front-sse` pods as well.\n\n" +
+      `Please add the \`${sseAckLabel}\` label to acknowledge ` +
+      "that a `front-sse` deploy is required alongside the `front` deploy."
+  );
+}
+
+function warnSSESharedFilesAck(sseAckLabel: string) {
+  warn(
+    "`front/lib/auth.ts` (Authenticator) has been modified and the PR has the `" +
+      sseAckLabel +
+      "` label. Don't forget to deploy `front-sse` alongside `front`."
+  );
+}
+
+function checkSSESharedFilesLabel() {
+  if (!hasLabel(sseAckLabel)) {
+    failSSESharedFilesAck();
+  } else {
+    warnSSESharedFilesAck(sseAckLabel);
   }
 }
 
@@ -335,11 +386,7 @@ async function checkDiffFiles() {
     sseEndpointFiles.includes(path)
   );
   if (modifiedSseFiles.length > 0) {
-    warn(
-      "SSE endpoint files have been modified. These endpoints are served by " +
-        "both `front` and `front-sse` pods (via `/api/sse/` re-exports). " +
-        "A `front-sse` deploy is required alongside the `front` deploy."
-    );
+    checkSSEEndpointLabel();
   }
 
   // Shared code used by front-sse — changes here require a front-sse deploy too.
@@ -348,11 +395,7 @@ async function checkDiffFiles() {
     sseSharedFiles.includes(path)
   );
   if (modifiedSseSharedFiles.length > 0) {
-    warn(
-      "`front/lib/auth.ts` (Authenticator) has been modified. This code runs " +
-        "on `front-sse` pods as well. A `front-sse` deploy is required " +
-        "alongside the `front` deploy."
-    );
+    checkSSESharedFilesLabel();
   }
 }
 
