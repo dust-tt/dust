@@ -49,6 +49,7 @@ import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { APIError } from "@app/types/error";
 import { isOAuthProvider } from "@app/types/oauth/lib";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import { isString } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
 import type { NotificationType } from "@dust-tt/sparkle";
 import {
@@ -274,12 +275,14 @@ function UpdateConnectionOAuthModal({
 
   const isSlack = connectorProvider === "slack";
   const isMicrosoft = connectorProvider === "microsoft";
+  const isZendesk = connectorProvider === "zendesk";
 
   // Fetch existing OAuth metadata when modal is open
   const { metadata, isMetadataLoading } = useOAuthMetadata({
     dataSource,
     owner,
-    disabled: !isOpen || !dataSource.connectorId || !isMicrosoft,
+    disabled:
+      !isOpen || !dataSource.connectorId || (!isMicrosoft && !isZendesk),
   });
 
   // Populate extraConfig from metadata on first load only
@@ -299,7 +302,23 @@ function UpdateConnectionOAuthModal({
         setExtraConfig(stringMetadata);
       }
     }
-  }, [isOpen, metadata, isMetadataLoading, isMicrosoft, dataSource.sId]);
+    if (isZendesk) {
+      const { zendesk_subdomain } = metadata ?? {};
+      if (!isString(zendesk_subdomain)) {
+        return;
+      }
+      setExtraConfig({
+        zendesk_subdomain,
+      });
+    }
+  }, [
+    isOpen,
+    metadata,
+    isMetadataLoading,
+    isMicrosoft,
+    isZendesk,
+    dataSource.sId,
+  ]);
 
   const { configValue: slackCredentialId } = useConnectorConfig({
     configKey: "privateIntegrationCredentialId",
