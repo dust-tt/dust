@@ -134,6 +134,7 @@ export async function getPromptForProcessDustApp({
         "Process the retrieved data to extract structured information based on the provided schema.",
       model,
       hasAvailableActions: false,
+      systemSkills: [],
       enabledSkills: [],
       equippedSkills: [],
       agentsList: null,

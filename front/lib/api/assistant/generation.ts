@@ -216,11 +216,11 @@ function getEnabledSkillInstructions(
 }
 
 function constructSkillsSection({
-  systemSkills = [],
+  systemSkills,
   enabledSkills,
   equippedSkills,
 }: {
-  systemSkills?: SkillResource[];
+  systemSkills: SkillResource[];
   enabledSkills: (SkillResource & { extendedSkill: SkillResource | null })[];
   equippedSkills: SkillResource[];
 }): string {
@@ -406,7 +406,7 @@ export function constructPromptMultiActions(
     agentsList,
     conversation,
     serverToolsAndInstructions,
-    systemSkills = [],
+    systemSkills,
     enabledSkills,
     equippedSkills,
     memoriesContext,
@@ -423,7 +423,7 @@ export function constructPromptMultiActions(
     agentsList: LightAgentConfigurationType[] | null;
     conversation?: ConversationWithoutContentType;
     serverToolsAndInstructions?: ServerToolsAndInstructions[];
-    systemSkills?: SkillResource[];
+    systemSkills: SkillResource[];
     enabledSkills: (SkillResource & { extendedSkill: SkillResource | null })[];
     equippedSkills: SkillResource[];
     memoriesContext?: string;

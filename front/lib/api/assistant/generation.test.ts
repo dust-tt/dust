@@ -134,6 +134,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
       model: modelConfig,
       hasAvailableActions: true,
       agentsList: null,
+      systemSkills: [],
       enabledSkills: [],
       equippedSkills: [],
     };
@@ -152,6 +153,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
       model: modelConfig,
       hasAvailableActions: true,
       agentsList: null,
+      systemSkills: [],
       enabledSkills: [],
       equippedSkills: [],
     };
@@ -195,6 +197,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
       model: modelConfig,
       hasAvailableActions: true,
       agentsList: null,
+      systemSkills: [],
       enabledSkills: [],
       equippedSkills: [],
       conversation: conversation1,
@@ -206,6 +209,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
       model: modelConfig,
       hasAvailableActions: true,
       agentsList: null,
+      systemSkills: [],
       enabledSkills: [],
       equippedSkills: [],
       conversation: conversation2,
@@ -232,6 +236,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
       model: modelConfig,
       hasAvailableActions: true,
       agentsList: null,
+      systemSkills: [],
       enabledSkills: [],
       equippedSkills: [],
     };
@@ -259,6 +264,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
       model: modelConfig,
       hasAvailableActions: true,
       agentsList: null,
+      systemSkills: [],
       enabledSkills: [],
       equippedSkills: [],
     };
@@ -295,6 +301,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
       model: modelConfig,
       hasAvailableActions: true,
       agentsList: null,
+      systemSkills: [],
       enabledSkills: [],
       equippedSkills: [],
       userContext: userCtx,
@@ -334,6 +341,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
       model: modelConfig,
       hasAvailableActions: true,
       agentsList: null,
+      systemSkills: [],
       enabledSkills: [],
       equippedSkills: [],
       conversation: {
@@ -375,6 +383,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
       model: modelConfig,
       hasAvailableActions: true,
       agentsList: null,
+      systemSkills: [],
       enabledSkills: [],
       equippedSkills: [],
       conversation: {
@@ -413,6 +422,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
       model: modelConfig,
       hasAvailableActions: true,
       agentsList: null,
+      systemSkills: [],
       enabledSkills: [],
       equippedSkills: [],
       memoriesContext,
@@ -472,6 +482,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
       model: modelConfig,
       hasAvailableActions: true,
       agentsList: null,
+      systemSkills: [],
       enabledSkills: [],
       equippedSkills: [],
     };
@@ -501,6 +512,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
       model: modelConfig,
       hasAvailableActions: true,
       agentsList: null,
+      systemSkills: [],
       enabledSkills: [],
       equippedSkills: [],
       memoriesContext,
