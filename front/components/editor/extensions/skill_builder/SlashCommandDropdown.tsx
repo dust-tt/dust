@@ -12,7 +12,6 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
-  useRef,
   useState,
 } from "react";
 
@@ -63,8 +62,6 @@ export const SlashCommandDropdown = forwardRef<
     ref
   ) => {
     const [selectedIndex, setSelectedIndex] = useState(0);
-    const triggerRef = useRef<HTMLDivElement>(null);
-    const itemRefs = useRef<(HTMLElement | null)[]>([]);
     const [virtualTriggerStyle, setVirtualTriggerStyle] =
       useState<React.CSSProperties>({});
 
@@ -118,20 +115,13 @@ export const SlashCommandDropdown = forwardRef<
     // Reset selected index when items change.
     // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
     useEffect(() => {
-      itemRefs.current = [];
       setSelectedIndex(0);
     }, [items]);
-
-    useEffect(() => {
-      itemRefs.current[selectedIndex]?.scrollIntoView({
-        block: "nearest",
-      });
-    }, [selectedIndex]);
 
     // Update virtual trigger position.
     const updateTriggerPosition = useCallback(() => {
       const triggerRect = clientRect?.();
-      if (triggerRect && triggerRef.current) {
+      if (triggerRect) {
         setVirtualTriggerStyle({
           position: "fixed",
           left: triggerRect.left,
@@ -160,7 +150,7 @@ export const SlashCommandDropdown = forwardRef<
     return (
       <DropdownMenu open={true}>
         <DropdownMenuTrigger asChild>
-          <div ref={triggerRef} style={virtualTriggerStyle} />
+          <div style={virtualTriggerStyle} />
         </DropdownMenuTrigger>
         <DropdownMenuContent
           className={size === "wide" ? "w-80" : "w-64"}
@@ -184,48 +174,41 @@ export const SlashCommandDropdown = forwardRef<
               {emptyMessage}
             </div>
           ) : (
-            <div className="relative">
-              <div className="max-h-[min(24rem,var(--radix-dropdown-menu-content-available-height))] overflow-y-auto">
-                {items.map((item, index) => {
-                  const menuItem = (
-                    <DropdownMenuItem
-                      key={item.id}
-                      ref={(element) => {
-                        itemRefs.current[index] = element;
-                      }}
-                      icon={item.icon}
-                      label={item.label}
-                      description={item.description}
-                      truncateText
-                      onClick={() => selectItem(index)}
-                      onMouseEnter={() => setSelectedIndex(index)}
-                      className={
-                        index === selectedIndex
-                          ? "bg-muted-background dark:bg-muted-night [transition-duration:0ms]"
-                          : ""
-                      }
-                    />
-                  );
-
-                  // Wrap with DropdownTooltipTrigger if command has tooltip property.
-                  if (item.tooltip) {
-                    return (
-                      <DropdownTooltipTrigger
-                        key={item.id}
-                        description={item.tooltip.description}
-                        media={item.tooltip.media}
-                        side="right"
-                        sideOffset={8}
-                      >
-                        {menuItem}
-                      </DropdownTooltipTrigger>
-                    );
+            items.map((item, index) => {
+              const menuItem = (
+                <DropdownMenuItem
+                  key={item.id}
+                  icon={item.icon}
+                  label={item.label}
+                  description={item.description}
+                  truncateText
+                  onClick={() => selectItem(index)}
+                  onMouseEnter={() => setSelectedIndex(index)}
+                  className={
+                    index === selectedIndex
+                      ? "bg-muted-background dark:bg-muted-night [transition-duration:0ms]"
+                      : ""
                   }
+                />
+              );
 
-                  return menuItem;
-                })}
-              </div>
-            </div>
+              // Wrap with DropdownTooltipTrigger if command has tooltip property.
+              if (item.tooltip) {
+                return (
+                  <DropdownTooltipTrigger
+                    key={item.id}
+                    description={item.tooltip.description}
+                    media={item.tooltip.media}
+                    side="right"
+                    sideOffset={8}
+                  >
+                    {menuItem}
+                  </DropdownTooltipTrigger>
+                );
+              }
+
+              return menuItem;
+            })
           )}
         </DropdownMenuContent>
       </DropdownMenu>
