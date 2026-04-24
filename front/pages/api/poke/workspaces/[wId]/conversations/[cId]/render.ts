@@ -169,7 +169,7 @@ async function handler(
         attachments,
       });
 
-      const { enabledSkills, equippedSkills } =
+      const { enabledSkills, systemSkills, equippedSkills } =
         await SkillResource.listForAgentLoop(auth, {
           agentConfiguration,
           conversation,
@@ -177,7 +177,7 @@ async function handler(
 
       const skillServers = await getSkillServers(auth, {
         agentConfiguration,
-        skills: enabledSkills,
+        skills: [...systemSkills, ...enabledSkills],
       });
 
       const clientSideMCPActionConfigurations =
@@ -262,6 +262,7 @@ async function handler(
         agentsList,
         conversation,
         serverToolsAndInstructions,
+        systemSkills,
         enabledSkills,
         equippedSkills,
       });

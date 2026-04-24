@@ -216,9 +216,11 @@ function getEnabledSkillInstructions(
 }
 
 function constructSkillsSection({
+  systemSkills = [],
   enabledSkills,
   equippedSkills,
 }: {
+  systemSkills?: SkillResource[];
   enabledSkills: (SkillResource & { extendedSkill: SkillResource | null })[];
   equippedSkills: SkillResource[];
 }): string {
@@ -241,20 +243,23 @@ function constructSkillsSection({
     "perspective on the currently available context.\n" +
     "Decisions taken prior to enabling a skill may need to be revisited after enabling it.\n";
 
-  if (!enabledSkills.length && !equippedSkills.length) {
+  if (!systemSkills.length && !enabledSkills.length && !equippedSkills.length) {
     skillsSection +=
       "\nNo skills are currently available or enabled for this agent.\n";
     return skillsSection;
   }
 
-  // Enabled skills - inject their full instructions
-  if (enabledSkills && enabledSkills.length > 0) {
+  // Enabled skills - inject their full instructions.
+  if (systemSkills.length > 0 || enabledSkills.length > 0) {
     skillsSection += "\n### ENABLED SKILLS\n";
     skillsSection += "The following skills are currently enabled:\n";
 
-    const skillInstructions = enabledSkills.map((skill) =>
-      getEnabledSkillInstructions(skill)
-    );
+    const skillInstructions = [
+      ...systemSkills.map(
+        (skill) => `<${skill.name}>\n${skill.instructions}\n</${skill.name}>`
+      ),
+      ...enabledSkills.map((skill) => getEnabledSkillInstructions(skill)),
+    ];
 
     skillsSection += skillInstructions.join("\n");
   }
@@ -401,6 +406,7 @@ export function constructPromptMultiActions(
     agentsList,
     conversation,
     serverToolsAndInstructions,
+    systemSkills = [],
     enabledSkills,
     equippedSkills,
     memoriesContext,
@@ -417,6 +423,7 @@ export function constructPromptMultiActions(
     agentsList: LightAgentConfigurationType[] | null;
     conversation?: ConversationWithoutContentType;
     serverToolsAndInstructions?: ServerToolsAndInstructions[];
+    systemSkills?: SkillResource[];
     enabledSkills: (SkillResource & { extendedSkill: SkillResource | null })[];
     equippedSkills: SkillResource[];
     memoriesContext?: string;
@@ -458,6 +465,7 @@ export function constructPromptMultiActions(
     serverToolsAndInstructions,
   });
   const skillsSection = constructSkillsSection({
+    systemSkills,
     enabledSkills,
     equippedSkills,
   });

@@ -231,6 +231,7 @@ export async function runModel(
 
   const {
     enabledSkills,
+    systemSkills,
     equippedSkills,
     hasConditionalJITTools,
     mcpActions,
@@ -252,12 +253,12 @@ export async function runModel(
         userMessage.context.clientSideMCPServerIds
       );
 
-    const { enabledSkills, equippedSkills } =
+    const { enabledSkills, systemSkills, equippedSkills } =
       await SkillResource.listForAgentLoop(auth, runAgentData);
 
     const skillServers = await getSkillServers(auth, {
       agentConfiguration,
-      skills: enabledSkills,
+      skills: [...systemSkills, ...enabledSkills],
     });
 
     const {
@@ -279,6 +280,7 @@ export async function runModel(
     return {
       hasConditionalJITTools,
       enabledSkills,
+      systemSkills,
       equippedSkills,
       mcpActions,
       mcpToolsListingError,
@@ -382,6 +384,7 @@ export async function runModel(
     agentsList,
     conversation,
     serverToolsAndInstructions: filteredMcpActions,
+    systemSkills,
     enabledSkills,
     equippedSkills,
     memoriesContext,

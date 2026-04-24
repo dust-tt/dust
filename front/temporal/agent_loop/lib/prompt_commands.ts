@@ -168,14 +168,14 @@ async function listAvailableTools(
       userMessage.context.clientSideMCPServerIds
     );
 
-  const { enabledSkills } = await SkillResource.listForAgentLoop(
+  const { enabledSkills, systemSkills } = await SkillResource.listForAgentLoop(
     auth,
     runAgentData
   );
 
   const skillServers = await getSkillServers(auth, {
     agentConfiguration,
-    skills: enabledSkills,
+    skills: [...systemSkills, ...enabledSkills],
   });
 
   const { serverToolsAndInstructions: mcpActions } = await tryListMCPTools(

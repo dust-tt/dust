@@ -46,15 +46,18 @@ export async function fetchTemplateContent(
   const { agentConfiguration, conversation } = runContext;
 
   // Fetch skills for this agent and conversation (same pattern as agent loop).
-  const { enabledSkills } = await SkillResource.listForAgentLoop(auth, {
-    agentConfiguration,
-    conversation,
-  });
+  const { enabledSkills, systemSkills } = await SkillResource.listForAgentLoop(
+    auth,
+    {
+      agentConfiguration,
+      conversation,
+    }
+  );
 
   // Get merged data source configurations from skills.
   const { documentDataSourceConfigurations: skillDataSourceConfigurations } =
     await getSkillDataSourceConfigurations(auth, {
-      skills: enabledSkills,
+      skills: [...systemSkills, ...enabledSkills],
     });
 
   // Also collect data source configurations from the agent's actions.
