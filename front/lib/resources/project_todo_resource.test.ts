@@ -73,6 +73,53 @@ describe("ProjectTodoResource", () => {
 
       expect(todo.sId).toBe(computed);
     });
+
+    // Regression: the merge workflow creates agent-owned todos. The Sequelize
+    // createdByXor validator compares `this.createdByUserId !== null`, so the
+    // field must be explicitly null — omitting it leaves it undefined and
+    // trips the validator.
+    it("should create an agent-owned todo when createdByUserId is explicitly null", async () => {
+      const todo = await ProjectTodoResource.makeNew(auth, {
+        spaceId: space.id,
+        userId: user.id,
+        createdByType: "agent",
+        createdByUserId: null,
+        createdByAgentConfigurationId: "butler",
+        markedAsDoneByType: null,
+        markedAsDoneByUserId: null,
+        markedAsDoneByAgentConfigurationId: null,
+        category: "to_do",
+        text: "Agent-created todo",
+        status: "todo",
+        doneAt: null,
+        actorRationale: null,
+      });
+
+      expect(todo.createdByType).toBe("agent");
+      expect(todo.createdByUserId).toBeNull();
+      expect(todo.createdByAgentConfigurationId).toBe("butler");
+    });
+
+    it("should reject an agent-owned todo when createdByUserId is omitted", async () => {
+      await expect(
+        ProjectTodoResource.makeNew(auth, {
+          spaceId: space.id,
+          userId: user.id,
+          createdByType: "agent",
+          createdByAgentConfigurationId: "butler",
+          markedAsDoneByType: null,
+          markedAsDoneByUserId: null,
+          markedAsDoneByAgentConfigurationId: null,
+          category: "to_do",
+          text: "Agent-created todo",
+          status: "todo",
+          doneAt: null,
+          actorRationale: null,
+        } as unknown as CreationAttributes<ProjectTodoModel>)
+      ).rejects.toThrow(
+        "createdByType is agent: createdByAgentConfigurationId must be set and createdByUserId must be null."
+      );
+    });
   });
 
   describe("fetchBySId", () => {
