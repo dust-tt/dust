@@ -1,10 +1,8 @@
 import { TimelineRow } from "@app/components/assistant/conversation/actions/inline/TimelineRow";
 import { cn, Markdown } from "@dust-tt/sparkle";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import styles from "./ThinkingStep.module.css";
-
-const MAX_THINKING_DISPLAY_LENGTH = 250;
 
 interface ThinkingStepProps {
   content: string;
@@ -20,11 +18,24 @@ export function ThinkingStep({
   isLast,
 }: ThinkingStepProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [needsTruncation, setNeedsTruncation] = useState(true);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const measuredRef = useRef(false);
 
-  const needsTruncation =
-    !isStreaming &&
-    isMessageDone &&
-    content.length > MAX_THINKING_DISPLAY_LENGTH;
+  useEffect(() => {
+    const el = contentRef.current;
+    if (!el || isStreaming || !isMessageDone || measuredRef.current) {
+      return;
+    }
+
+    // Wait one frame for Markdown to paint, then measure once.
+    const id = requestAnimationFrame(() => {
+      setNeedsTruncation(el.scrollHeight > el.clientHeight);
+      measuredRef.current = true;
+    });
+
+    return () => cancelAnimationFrame(id);
+  }, [isStreaming, isMessageDone, content]);
 
   const markdown = content ? (
     <Markdown
@@ -68,7 +79,9 @@ export function ThinkingStep({
             (!needsTruncation || isExpanded) && styles.expanded
           )}
         >
-          <div className={styles.content}>{markdown}</div>
+          <div ref={contentRef} className={styles.content}>
+            {markdown}
+          </div>
           {needsTruncation && (
             <div className={styles.fade} aria-hidden />
           )}
