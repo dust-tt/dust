@@ -6,7 +6,7 @@ pub enum DomainValidationError {
     Invalid,
 }
 
-pub fn normalize_domain_or_ip(value: &str) -> Result<String, DomainValidationError> {
+fn normalize_domain_or_ip(value: &str) -> Result<String, DomainValidationError> {
     let value = value.to_ascii_lowercase();
     let value = value.strip_suffix('.').unwrap_or(&value).to_string();
 

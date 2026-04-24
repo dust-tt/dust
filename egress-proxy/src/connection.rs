@@ -1,9 +1,10 @@
 use crate::blocklist::{is_globally_blocked_domain, is_unsafe_ip};
 use crate::config::Config;
 use crate::dns::DnsResolver;
+use crate::gcs::GcsPolicyProvider;
 use crate::handshake::{read_handshake, Handshake, HandshakeError, ALLOW_RESPONSE, DENY_RESPONSE};
 use crate::jwt::{JwtValidationError, JwtValidator, ValidatedSandboxToken};
-use crate::policy::TemporaryAllowlist;
+use crate::policy::DefaultAllowlist;
 use std::fmt;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -21,7 +22,8 @@ const UPSTREAM_CONNECT_TIMEOUT_SECONDS: u64 = 5;
 #[derive(Clone)]
 pub struct ConnectionState {
     jwt_validator: JwtValidator,
-    temporary_allowlist: TemporaryAllowlist,
+    default_allowlist: Option<DefaultAllowlist>,
+    policy_provider: GcsPolicyProvider,
     dns_resolver: DnsResolver,
     unsafe_skip_ssrf_check: bool,
 }
@@ -40,7 +42,7 @@ pub enum DenyReason {
     ExpiredJwt,
     InvalidClaims,
     GlobalBlocklist,
-    NotInTemporaryAllowlist,
+    PolicyDenied,
     DnsResolutionFailed,
     UnsafeResolvedIp,
     UpstreamConnectFailed,
@@ -48,10 +50,11 @@ pub enum DenyReason {
 }
 
 impl ConnectionState {
-    pub fn new(config: &Config) -> Self {
+    pub fn new(config: &Config, policy_provider: GcsPolicyProvider) -> Self {
         Self {
             jwt_validator: JwtValidator::new(&config.jwt_secret),
-            temporary_allowlist: config.temporary_allowlist.clone(),
+            default_allowlist: config.default_allowlist.clone(),
+            policy_provider,
             dns_resolver: DnsResolver::new(),
             unsafe_skip_ssrf_check: config.unsafe_skip_ssrf_check,
         }
@@ -70,7 +73,7 @@ impl DenyReason {
             Self::ExpiredJwt => "expired_jwt",
             Self::InvalidClaims => "invalid_claims",
             Self::GlobalBlocklist => "global_blocklist",
-            Self::NotInTemporaryAllowlist => "not_in_temporary_allowlist",
+            Self::PolicyDenied => "policy_denied",
             Self::DnsResolutionFailed => "dns_resolution_failed",
             Self::UnsafeResolvedIp => "unsafe_resolved_ip",
             Self::UpstreamConnectFailed => "upstream_connect_failed",
@@ -170,18 +173,25 @@ async fn handle_connection_inner(
         return Err(DenyReason::GlobalBlocklist);
     }
 
-    if !state
-        .temporary_allowlist
-        .allows(&request.domain, &token.sb_id)
+    let default_allows = state
+        .default_allowlist
+        .as_ref()
+        .is_some_and(|allowlist| allowlist.allows(&request.domain));
+
+    if !default_allows
+        && !state
+            .policy_provider
+            .evaluate(token.w_id.as_deref(), &token.sb_id, &request.domain)
+            .await
     {
         deny(
             stream,
-            DenyReason::NotInTemporaryAllowlist,
+            DenyReason::PolicyDenied,
             Some(&token),
             Some(&request),
         )
         .await;
-        return Err(DenyReason::NotInTemporaryAllowlist);
+        return Err(DenyReason::PolicyDenied);
     }
 
     let upstream_addresses = match timeout(
