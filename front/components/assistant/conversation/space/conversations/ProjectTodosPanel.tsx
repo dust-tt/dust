@@ -699,12 +699,13 @@ function EditableProjectTodosPanel({
   const [enteredKeys, setEnteredKeys] = useState<Set<string>>(new Set());
   const [typingKeys, setTypingKeys] = useState<Set<string>>(new Set());
   const [doneFlashKeys, setDoneFlashKeys] = useState<Set<string>>(new Set());
-  const startTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const startRaf1Ref = useRef<number | null>(null);
+  const startRaf2Ref = useRef<number | null>(null);
   const cleanupTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasRunRef = useRef(false);
 
   // diffKeys is intentionally excluded: it is memoized and stable during
-  // animation (no SWR updates occur while animation state updates fire).
+  // animation (no SWR updates occur while animation state updates fire).\
   // markReadRef is a ref — .current is updated synchronously every render so
   // it never needs to be a dep. Including either would cause the cleanup to
   // fire on every animation state update and cancel the in-flight timeouts.
@@ -725,10 +726,17 @@ function EditableProjectTodosPanel({
     setTypingKeys(new Set(added));
     setDoneFlashKeys(new Set(newlyDone));
 
-    startTimeoutRef.current = setTimeout(() => {
-      setEnteringKeys(new Set(added));
-      startTimeoutRef.current = null;
-    }, 0);
+    // Double-RAF: wait for the browser to paint the initial hidden state of
+    // new items (isAdded && !isEntering → max-h-0 opacity-0) before triggering
+    // the entering animation. setTimeout(0) could fire before the first paint,
+    // causing items to flash visible before animating in.
+    startRaf1Ref.current = requestAnimationFrame(() => {
+      startRaf2Ref.current = requestAnimationFrame(() => {
+        setEnteringKeys(new Set(added));
+        startRaf1Ref.current = null;
+        startRaf2Ref.current = null;
+      });
+    });
 
     cleanupTimeoutRef.current = setTimeout(() => {
       void markReadRef.current();
@@ -738,8 +746,11 @@ function EditableProjectTodosPanel({
     }, SUMMARY_ITEM_TRANSITION_MS);
 
     return () => {
-      if (startTimeoutRef.current !== null) {
-        clearTimeout(startTimeoutRef.current);
+      if (startRaf1Ref.current !== null) {
+        cancelAnimationFrame(startRaf1Ref.current);
+      }
+      if (startRaf2Ref.current !== null) {
+        cancelAnimationFrame(startRaf2Ref.current);
       }
       if (cleanupTimeoutRef.current !== null) {
         clearTimeout(cleanupTimeoutRef.current);
