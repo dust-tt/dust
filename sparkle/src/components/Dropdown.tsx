@@ -906,6 +906,8 @@ const DropdownTooltip = ({ description, media }: DropdownTooltipProps) => (
 
 DropdownTooltip.displayName = "DropdownTooltip";
 
+let suppressDropdownTooltipOpenUntilMs = 0;
+
 export interface DropdownTooltipTriggerProps {
   children: React.ReactElement;
   className?: string;
@@ -937,13 +939,30 @@ const DropdownTooltipTrigger = React.forwardRef<
     ref
   ) => {
     const [isOpen, setIsOpen] = React.useState(false);
+    const dismissedByScrollRef = React.useRef(false);
+    const openTimeoutMsRef = React.useRef<number | null>(null);
+    const wrapperRef = React.useRef<HTMLSpanElement>(null);
+
+    const clearPendingOpen = React.useCallback(() => {
+      if (openTimeoutMsRef.current !== null) {
+        window.clearTimeout(openTimeoutMsRef.current);
+        openTimeoutMsRef.current = null;
+      }
+    }, []);
+
+    const closeTooltip = React.useCallback(() => {
+      clearPendingOpen();
+      setIsOpen(false);
+      onVisibilityChange?.(false);
+    }, [clearPendingOpen, onVisibilityChange]);
 
     const handleOpenChange = React.useCallback(
       (open: boolean) => {
-        setIsOpen(open);
-        onVisibilityChange?.(open);
+        if (!open) {
+          closeTooltip();
+        }
       },
-      [onVisibilityChange]
+      [closeTooltip]
     );
 
     React.useEffect(() => {
@@ -951,18 +970,59 @@ const DropdownTooltipTrigger = React.forwardRef<
         return;
       }
 
-      const closeTooltip = () => {
-        handleOpenChange(false);
+      const getScrollableAncestors = (element: HTMLElement | null) => {
+        const scrollableAncestors: HTMLElement[] = [];
+        let currentElement = element?.parentElement ?? null;
+
+        while (currentElement) {
+          const style = window.getComputedStyle(currentElement);
+          const isScrollable =
+            /(auto|scroll|overlay)/.test(style.overflowY) ||
+            /(auto|scroll|overlay)/.test(style.overflow);
+
+          if (isScrollable) {
+            scrollableAncestors.push(currentElement);
+          }
+
+          currentElement = currentElement.parentElement;
+        }
+
+        return scrollableAncestors;
       };
 
-      window.addEventListener("scroll", closeTooltip, true);
-      window.visualViewport?.addEventListener("scroll", closeTooltip);
+      const closeTooltipOnScroll = () => {
+        dismissedByScrollRef.current = true;
+        suppressDropdownTooltipOpenUntilMs = Date.now() + 300;
+        closeTooltip();
+      };
+
+      const scrollableAncestors = getScrollableAncestors(wrapperRef.current);
+
+      scrollableAncestors.forEach((ancestor) => {
+        ancestor.addEventListener("scroll", closeTooltipOnScroll, {
+          passive: true,
+        });
+      });
+      document.addEventListener("scroll", closeTooltipOnScroll, true);
+      window.visualViewport?.addEventListener("scroll", closeTooltipOnScroll);
 
       return () => {
-        window.removeEventListener("scroll", closeTooltip, true);
-        window.visualViewport?.removeEventListener("scroll", closeTooltip);
+        scrollableAncestors.forEach((ancestor) => {
+          ancestor.removeEventListener("scroll", closeTooltipOnScroll);
+        });
+        document.removeEventListener("scroll", closeTooltipOnScroll, true);
+        window.visualViewport?.removeEventListener(
+          "scroll",
+          closeTooltipOnScroll
+        );
       };
-    }, [handleOpenChange, isOpen]);
+    }, [closeTooltip, isOpen]);
+
+    React.useEffect(() => {
+      return () => {
+        clearPendingOpen();
+      };
+    }, [clearPendingOpen]);
 
     const tooltipContent = (
       <TooltipPrimitive.Content
@@ -984,7 +1044,35 @@ const DropdownTooltipTrigger = React.forwardRef<
         <TooltipPrimitive.Root open={isOpen} onOpenChange={handleOpenChange}>
           <TooltipPrimitive.Trigger asChild className={className} ref={ref}>
             {/* Wrapper allows pointer events even when child is disabled, while maintaining proper positioning */}
-            <span className="s-block s-w-full">{children}</span>
+            <span
+              ref={wrapperRef}
+              className="s-block s-w-full"
+              onPointerEnter={() => {
+                if (
+                  dismissedByScrollRef.current ||
+                  Date.now() < suppressDropdownTooltipOpenUntilMs
+                ) {
+                  return;
+                }
+
+                clearPendingOpen();
+                openTimeoutMsRef.current = window.setTimeout(() => {
+                  openTimeoutMsRef.current = null;
+                  setIsOpen(true);
+                  onVisibilityChange?.(true);
+                }, 700);
+              }}
+              onPointerLeave={() => {
+                clearPendingOpen();
+                dismissedByScrollRef.current = false;
+                closeTooltip();
+              }}
+              onPointerDown={() => {
+                closeTooltip();
+              }}
+            >
+              {children}
+            </span>
           </TooltipPrimitive.Trigger>
           {mountPortal ? (
             <TooltipPrimitive.Portal container={container}>
