@@ -215,6 +215,7 @@ function getEnabledSkillInstructions(
   ].join("\n");
 }
 
+// TODO(2026-04-24 aubin): rename this function into constructSkillsSection once the other one is removed.
 function constructSkillsAsUserMessagesSection({
   systemSkills,
 }: {
@@ -228,14 +229,12 @@ function constructSkillsAsUserMessagesSection({
     "- **Available**: Shared with you in user messages but not active yet. Their instructions are not loaded. " +
     `You can enable them using the \`${SKILL_MANAGEMENT_SERVER_NAME}${TOOL_NAME_SEPARATOR}${ENABLE_SKILL_TOOL_NAME}\` ` +
     "tool when they become relevant to the conversation.\n" +
-    "- **Enabled**: Fully active with instructions loaded. Once enabled, a skill remains active " +
-    "for the rest of the conversation.\n\n" +
+    "- **Enabled**: Fully active with instructions loaded.\n\n" +
     "Enable skills proactively when a user's request matches a skill's purpose.\n" +
     "Only enable skills you actually need—enabling a skill loads its full instructions into context.\n" +
     "If you need to enable multiple skills, enable them in parallel.\n\n" +
     "When in doubt about enabling a skill, prefer enabling it as it may give you a new " +
-    "perspective on the currently available context.\n" +
-    "Decisions taken prior to enabling a skill may need to be revisited after enabling it.\n";
+    "perspective on the currently available context.\n"
 
   if (systemSkills.length > 0) {
     skillsSection +=
