@@ -503,6 +503,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "list_todos": "never_ask",
     "mark_todo_done": "low",
     "reopen_todo": "low",
+    "start_todo_agent": "low",
   },
   "query_tables_v2": {
     "execute_database_query": "never_ask",
