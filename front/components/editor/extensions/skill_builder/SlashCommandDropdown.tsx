@@ -1,4 +1,5 @@
 import {
+  cn,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -275,7 +276,10 @@ export const SlashCommandDropdown = forwardRef<
                 })}
               </div>
               {hasOverflow && !isScrolledToBottom ? (
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-10 rounded-b-xl bg-gradient-to-t from-background via-background/95 to-transparent dark:from-muted-background-night dark:via-muted-background-night/95" />
+                <div className={
+                  cn("pointer-events-none absolute inset-x-0 bottom-0 h-10 rounded-b-xl bg-gradient-to-t",
+                  "from-background via-background/95 to-transparent",
+                    "dark:from-muted-background-night dark:via-muted-background-night/95")} />
               ) : null}
             </div>
           )}
