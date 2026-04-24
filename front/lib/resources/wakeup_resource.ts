@@ -610,11 +610,7 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
         await ConversationResource.fetchByModelIds(auth, [this.conversationId])
       )[0] ?? null;
     if (conversation) {
-      await ConversationResource.triggerEsIndexing(
-        auth,
-        conversation.sId,
-        auth.getNonNullableWorkspace().sId
-      );
+      await ConversationResource.triggerEsIndexing(auth, conversation.sId);
     }
   }
 
