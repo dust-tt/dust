@@ -2683,6 +2683,7 @@ export async function isConversationEventAllowedForAuth(
     case "compaction_message_done":
     case "conversation_title":
     case "user_message_promoted":
+    case "plan_updated":
       return true;
     default:
       assertNever(type);

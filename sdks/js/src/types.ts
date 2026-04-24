@@ -729,6 +729,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "reinforcement_on_openai"
   | "reinforcement_ui"
   | "metronome_billing"
+  | "plan_mode"
   | "poke_mcp"
   | "restrict_agents_publishing"
   | "restrict_agents_publishing_to_admins"

@@ -452,6 +452,12 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "list_events": "never_ask",
     "update_event": "low",
   },
+  "plan_mode": {
+    "close_plan": "never_ask",
+    "create_plan": "never_ask",
+    "edit_plan": "never_ask",
+    "request_plan_approval": "high",
+  },
   "poke": {
     "check_notion_page": "high",
     "check_slack_channel": "high",

@@ -357,6 +357,28 @@ export class FileResource extends BaseResource<FileModel> {
     return files.map((f) => new this(this.model, f.get()));
   }
 
+  // List plan-mode files attached to a conversation. Callers filter active vs. closed via the
+  // returned `useCaseMetadata.isPlanClosed` flag (present only on closed plans). Ordered by
+  // createdAt DESC so the most recent plan is first.
+  static async listPlanFilesForConversation(
+    auth: Authenticator,
+    { conversationId }: { conversationId: string }
+  ): Promise<FileResource[]> {
+    const owner = auth.getNonNullableWorkspace();
+
+    const files = await this.model.findAll({
+      where: {
+        workspaceId: owner.id,
+        useCase: "conversation",
+        status: "ready",
+        useCaseMetadata: { conversationId, isPlanFile: true },
+      },
+      order: [["createdAt", "DESC"]],
+    });
+
+    return files.map((f) => new this(this.model, f.get()));
+  }
+
   static async fetchByMountFilePaths(
     auth: Authenticator,
     mountFilePaths: string[]
