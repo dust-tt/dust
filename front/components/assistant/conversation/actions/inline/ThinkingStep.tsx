@@ -28,13 +28,8 @@ export function ThinkingStep({
       return;
     }
 
-    // Wait one frame for Markdown to paint, then measure once.
-    const id = requestAnimationFrame(() => {
-      setNeedsTruncation(el.scrollHeight > el.clientHeight);
-      measuredRef.current = true;
-    });
-
-    return () => cancelAnimationFrame(id);
+    setNeedsTruncation(el.scrollHeight > el.clientHeight);
+    measuredRef.current = true;
   }, [isStreaming, isMessageDone]);
 
   const markdown = content ? (
