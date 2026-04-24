@@ -1137,7 +1137,7 @@ function UnreadConversationsSection({
           <motion.div
             key={conversation.sId}
             exit={{ opacity: 0, height: 0, overflow: "hidden" }}
-            transition={{ duration: 0.2 }}
+            transition={{ ease: "easeIn", duration: 0.3 }}
           >
             <ConversationListItem
               conversation={conversation}
