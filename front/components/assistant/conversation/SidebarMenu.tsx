@@ -1095,6 +1095,10 @@ const ConversationListContainer = ({
   return <div className="sm:flex sm:flex-col sm:gap-0.5">{children}</div>;
 };
 
+const GRID_ANIMATE = { gridTemplateRows: "1fr", opacity: 1 };
+const GRID_EXIT = { gridTemplateRows: "0fr", opacity: 0 };
+const GRID_STYLE = { display: "grid" } as const;
+
 function UnreadConversationsSection({
   label,
   conversations,
@@ -1136,18 +1140,22 @@ function UnreadConversationsSection({
         {conversations.map((conversation) => (
           <motion.div
             key={conversation.sId}
-            exit={{ opacity: 0, height: 0, overflow: "hidden" }}
-            transition={{ ease: "easeIn", duration: 0.3 }}
+            style={GRID_STYLE}
+            animate={GRID_ANIMATE}
+            exit={GRID_EXIT}
+            transition={{ ease: "easeOut", duration: 0.1 }}
           >
-            <ConversationListItem
-              conversation={conversation}
-              isMultiSelect={isMultiSelect}
-              onConversationBranched={onConversationBranched}
-              selectedConversations={selectedConversations}
-              toggleConversationSelection={toggleConversationSelection}
-              activeConversationId={activeConversationId}
-              owner={owner}
-            />
+            <div className="overflow-hidden">
+              <ConversationListItem
+                conversation={conversation}
+                isMultiSelect={isMultiSelect}
+                onConversationBranched={onConversationBranched}
+                selectedConversations={selectedConversations}
+                toggleConversationSelection={toggleConversationSelection}
+                activeConversationId={activeConversationId}
+                owner={owner}
+              />
+            </div>
           </motion.div>
         ))}
       </AnimatePresence>
@@ -1392,9 +1400,10 @@ function NavigationListWithInbox({
     );
   }, [conversations, titleFilter]);
 
-  const { markAllAsRead, isMarkingAllAsRead } = useMarkAllConversationsAsRead({
-    owner,
-  });
+  const { markAllAsRead, isMarkingAllAsRead } =
+    useMarkAllConversationsAsRead({
+      owner,
+    });
 
   const conversationsByDate = readConversations?.length
     ? getGroupConversationsByDate({
@@ -1441,43 +1450,51 @@ function NavigationListWithInbox({
         {skillSuggestionConversations.length > 0 && (
           <motion.div
             key="skill-suggestions"
-            exit={{ opacity: 0, height: 0, overflow: "hidden" }}
-            transition={{ duration: 0.2 }}
+            style={GRID_STYLE}
+            animate={GRID_ANIMATE}
+            exit={GRID_EXIT}
+            transition={{ duration: 0.2, ease: "easeOut" }}
           >
-            <UnreadConversationsSection
-              label="Skill suggestions"
-              conversations={skillSuggestionConversations}
-              isMultiSelect={isMultiSelect}
-              isMarkingAllAsRead={isMarkingAllAsRead}
-              titleFilter={titleFilter}
-              onMarkAllAsRead={markAllAsRead}
-              onConversationBranched={onConversationBranched}
-              selectedConversations={selectedConversations}
-              toggleConversationSelection={toggleConversationSelection}
-              activeConversationId={activeConversationId}
-              owner={owner}
-            />
+            <div className="overflow-hidden">
+              <UnreadConversationsSection
+                label="Skill suggestions"
+                conversations={skillSuggestionConversations}
+                isMultiSelect={isMultiSelect}
+                isMarkingAllAsRead={isMarkingAllAsRead}
+                titleFilter={titleFilter}
+                onMarkAllAsRead={markAllAsRead}
+                onConversationBranched={onConversationBranched}
+                selectedConversations={selectedConversations}
+                toggleConversationSelection={toggleConversationSelection}
+                activeConversationId={activeConversationId}
+                owner={owner}
+              />
+            </div>
           </motion.div>
         )}
         {inboxConversations.length > 0 && (
           <motion.div
             key="inbox"
-            exit={{ opacity: 0, height: 0, overflow: "hidden" }}
-            transition={{ duration: 0.2 }}
+            style={GRID_STYLE}
+            animate={{ gridTemplateRows: "1fr" }}
+            exit={{ gridTemplateRows: "0fr" }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
           >
-            <UnreadConversationsSection
-              label="Inbox"
-              conversations={inboxConversations}
-              isMultiSelect={isMultiSelect}
-              isMarkingAllAsRead={isMarkingAllAsRead}
-              titleFilter={titleFilter}
-              onMarkAllAsRead={markAllAsRead}
-              onConversationBranched={onConversationBranched}
-              selectedConversations={selectedConversations}
-              toggleConversationSelection={toggleConversationSelection}
-              activeConversationId={activeConversationId}
-              owner={owner}
-            />
+            <div className="overflow-hidden">
+              <UnreadConversationsSection
+                label="Inbox"
+                conversations={inboxConversations}
+                isMultiSelect={isMultiSelect}
+                isMarkingAllAsRead={isMarkingAllAsRead}
+                titleFilter={titleFilter}
+                onMarkAllAsRead={markAllAsRead}
+                onConversationBranched={onConversationBranched}
+                selectedConversations={selectedConversations}
+                toggleConversationSelection={toggleConversationSelection}
+                activeConversationId={activeConversationId}
+                owner={owner}
+              />
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
