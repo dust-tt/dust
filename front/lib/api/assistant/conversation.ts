@@ -2790,14 +2790,33 @@ export async function compactConversation(
       transaction: t,
     });
 
+    let sourceConversationId: string | undefined;
+    let sourceConversationModelId: ModelId | undefined;
+
+    if (
+      sourceConversation?.conversationId &&
+      sourceConversation.conversationId !== conversation.sId
+    ) {
+      const sourceConversationRow = await ConversationModel.findOne({
+        attributes: ["id"],
+        where: {
+          workspaceId: owner.id,
+          sId: sourceConversation.conversationId,
+        },
+        transaction: t,
+      });
+
+      if (sourceConversationRow) {
+        sourceConversationId = sourceConversation.conversationId;
+        sourceConversationModelId = sourceConversationRow.id;
+      }
+    }
+
     const compactionMessage = await createCompactionMessage(auth, {
       conversation,
       rank: nextMessageRank,
-      sourceConversationId:
-        sourceConversation?.conversationId &&
-        sourceConversation.conversationId !== conversation.sId
-          ? sourceConversation.conversationId
-          : undefined,
+      sourceConversationId,
+      sourceConversationModelId,
       transaction: t,
     });
 
