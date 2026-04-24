@@ -25,6 +25,14 @@ type ToolOverride = {
   ) => string;
 };
 
+type ServerOverride = {
+  title?: (
+    agentName: string,
+    toolName: string,
+    inputs: Record<string, unknown>
+  ) => string;
+};
+
 /** Overrides title and alwaysAllowLabel for specific MCP tools */
 const MCP_TOOL_OVERRIDES: Partial<
   Record<string, Partial<Record<string, ToolOverride>>>
@@ -43,6 +51,14 @@ const MCP_TOOL_OVERRIDES: Partial<
         `Allow ${asDisplayName(agentName)} to ${inputs.humanReadableDescription}?`,
       alwaysAllowLabel: () => "Allow all the interactions with this tab",
     },
+  },
+};
+
+/** Overrides applied to all tools of a given MCP server unless a tool-level override exists. */
+const MCP_SERVER_OVERRIDES: Partial<Record<string, ServerOverride>> = {
+  wakeups: {
+    title: (agentName, toolName) =>
+      `Allow ${asDisplayName(agentName)} to ${asDisplayName(toolName)}?`,
   },
 };
 
@@ -117,6 +133,15 @@ export function MCPToolValidationRequired({
     if (toolOverride?.title) {
       return toolOverride.title(
         blockedAction.metadata.agentName,
+        blockedAction.inputs
+      );
+    }
+    const serverOverride =
+      MCP_SERVER_OVERRIDES[blockedAction.metadata.mcpServerName];
+    if (serverOverride?.title) {
+      return serverOverride.title(
+        blockedAction.metadata.agentName,
+        blockedAction.metadata.toolName,
         blockedAction.inputs
       );
     }

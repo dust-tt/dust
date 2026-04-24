@@ -39,7 +39,7 @@ export const WAKEUPS_TOOLS_METADATA = createToolsRecord({
             "If omitted, falls back to the user's timezone."
         ),
     },
-    stake: "low",
+    stake: "never_ask",
     displayLabels: {
       running: "Scheduling wake-up",
       done: "Schedule wake-up",
