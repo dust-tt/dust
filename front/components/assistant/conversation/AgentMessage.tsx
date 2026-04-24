@@ -1091,12 +1091,9 @@ function AgentMessageContent({
   streaming: boolean;
   streamError: Error | null;
   activeReferences: { index: number; document: MCPReferenceCitation }[];
-  setActiveReferences: (
-    references: {
-      index: number;
-      document: MCPReferenceCitation;
-    }[]
-  ) => void;
+  setActiveReferences: React.Dispatch<
+    React.SetStateAction<{ index: number; document: MCPReferenceCitation }[]>
+  >;
   onQuickReplySend: (message: string) => Promise<void>;
   // True once a handoff user message pointing to this agent message exists —
   // the child agent owns generation from that point, so this message should
@@ -1164,12 +1161,14 @@ function AgentMessageContent({
   // References logic.
   const updateActiveReferences = useCallback(
     (document: MCPReferenceCitation, index: number) => {
-      const existingIndex = activeReferences.find((r) => r.index === index);
-      if (!existingIndex) {
-        setActiveReferences([...activeReferences, { index, document }]);
-      }
+      setActiveReferences((prev) => {
+        if (prev.some((r) => r.index === index)) {
+          return prev;
+        }
+        return [...prev, { index, document }];
+      });
     },
-    [activeReferences, setActiveReferences]
+    []
   );
 
   const citationsContextValue = useMemo(

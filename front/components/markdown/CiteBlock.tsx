@@ -36,6 +36,9 @@ export function CiteBlock(props: ReactMarkdownProps) {
         ).filter((r) => r.ref in references)
       : undefined;
 
+  const referencesString =
+    isCiteProps(props) && props.references ? props.references : undefined;
+
   useEffect(() => {
     if (refs) {
       refs.forEach((r) => {
@@ -43,7 +46,10 @@ export function CiteBlock(props: ReactMarkdownProps) {
         updateActiveReferences(document, r.counter);
       });
     }
-  }, [refs, references, updateActiveReferences]);
+    // Use referencesString (the raw prop) as dependency instead of refs
+    // to avoid re-firing on every render due to JSON.parse creating new objects.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [referencesString, references, updateActiveReferences]);
 
   if (refs) {
     return (
