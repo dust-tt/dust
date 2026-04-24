@@ -178,7 +178,7 @@ describe("getJITServers", () => {
         });
 
       expect(systemSkills.map((s) => s.sId)).toContain("discover_tools");
-      expect(enabledSkills.map((s) => s.sId)).toContain("discover_tools");
+      expect(enabledSkills.map((s) => s.sId)).not.toContain("discover_tools");
       expect(equippedSkills.map((s) => s.sId)).toContain(customSkill.sId);
       expect(equippedSkills.map((s) => s.sId)).not.toContain("discover_tools");
     });
