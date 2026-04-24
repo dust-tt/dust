@@ -257,6 +257,9 @@ export const AgentInputBar = ({
   }, [methods, listOffset, visibleListHeight, bottomOffset]);
 
   const blockedActions = getBlockedActions(context.user.sId);
+  const hasUserAnswerRequired = blockedActions.some(
+    (action) => action.status === "blocked_user_answer_required"
+  );
 
   // Keep blockedActionIndex in sync when blockedActions array changes.
   useEffect(() => {
@@ -452,7 +455,7 @@ export const AgentInputBar = ({
         stickyMentions={autoMentions}
         conversation={context.conversation}
         draftKey={context.draftKey}
-        disableAutoFocus={isMobile}
+        disableAutoFocus={isMobile || hasUserAnswerRequired}
         disableUserMentions={!!agentBuilderContext}
         actions={agentBuilderContext?.actionsToShow}
         isSubmitting={agentBuilderContext?.isSubmitting === true}
