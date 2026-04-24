@@ -126,7 +126,6 @@ async function handler(
       for await (const event of eventStream) {
         // Internal events are not exposed via the public API.
         if (
-          event.data.type === "user_message_promoted" ||
           event.data.type === "compaction_message_new" ||
           event.data.type === "compaction_message_done" ||
           event.data.type === "plan_updated"
