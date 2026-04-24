@@ -39,6 +39,13 @@ function normalizeDnsName(value: string): Result<string, Error> {
     }
   }
 
+  const tld = labels[labels.length - 1];
+  if (!/[a-z]/.test(tld)) {
+    return new Err(
+      new Error("Domain must have a top-level label containing a letter.")
+    );
+  }
+
   return new Ok(normalized);
 }
 

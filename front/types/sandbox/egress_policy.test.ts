@@ -39,6 +39,9 @@ describe("egress policy domain validation", () => {
       "*github.com",
       "bad domain",
       "github..com",
+      "127.0.0",
+      "192.168",
+      "10",
     ]) {
       expect(normalizeEgressPolicyDomain(domain).isErr()).toBe(true);
     }
