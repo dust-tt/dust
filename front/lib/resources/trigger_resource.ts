@@ -82,13 +82,13 @@ export class TriggerResource extends BaseResource<TriggerModel> {
         buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
         buildAuditLogTarget("trigger", {
           sId: resource.sId,
-          name: resource.name ?? resource.sId,
+          name: resource.name,
         }),
       ],
       metadata: {
         triggerType: resource.kind,
         agentId: resource.agentConfigurationId,
-        triggerName: resource.name ?? resource.sId,
+        triggerName: resource.name,
       },
     });
 
@@ -316,6 +316,24 @@ export class TriggerResource extends BaseResource<TriggerModel> {
         },
         `Trigger status changed: ${blob.status}`
       );
+
+      void emitAuditLogEvent({
+        auth,
+        action:
+          blob.status === "enabled" ? "trigger.enabled" : "trigger.disabled",
+        targets: [
+          buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+          buildAuditLogTarget("trigger", {
+            sId: trigger.sId,
+            name: trigger.name,
+          }),
+        ],
+        metadata: {
+          triggerType: trigger.kind,
+          agentId: trigger.agentConfigurationId,
+          triggerName: trigger.name,
+        },
+      });
     }
 
     let r = null;
@@ -393,13 +411,13 @@ export class TriggerResource extends BaseResource<TriggerModel> {
           buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
           buildAuditLogTarget("trigger", {
             sId: this.sId,
-            name: this.name ?? this.sId,
+            name: this.name,
           }),
         ],
         metadata: {
           triggerType: this.kind,
           agentId: this.agentConfigurationId,
-          triggerName: this.name ?? this.sId,
+          triggerName: this.name,
         },
       });
 
@@ -666,12 +684,13 @@ export class TriggerResource extends BaseResource<TriggerModel> {
         buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
         buildAuditLogTarget("trigger", {
           sId: this.sId,
-          name: this.name ?? this.sId,
+          name: this.name,
         }),
       ],
       metadata: {
         triggerType: this.kind,
         agentId: this.agentConfigurationId,
+        triggerName: this.name,
       },
     });
 
@@ -730,12 +749,13 @@ export class TriggerResource extends BaseResource<TriggerModel> {
         buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
         buildAuditLogTarget("trigger", {
           sId: this.sId,
-          name: this.name ?? this.sId,
+          name: this.name,
         }),
       ],
       metadata: {
         triggerType: this.kind,
         agentId: this.agentConfigurationId,
+        triggerName: this.name,
       },
     });
 
