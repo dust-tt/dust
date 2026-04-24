@@ -29,16 +29,15 @@ export function ThinkingStep({
 
   useEffect(() => {
     const el = contentRef.current;
-    if (!el || isStreaming || !isMessageDone || isMeasured.current) {
+    if (!el || isStreaming || isMeasured.current) {
       return;
     }
 
-    // When isExpanded is true the CSS sets max-height: max-content, so
-    // scrollHeight === clientHeight. Compare against the known clamp
-    // height instead so the check works in either state.
+    // Compare against the known clamp height so it works whether the
+    // CSS is currently expanded or collapsed.
     const overflows = el.scrollHeight > CLAMP_HEIGHT_PX;
     setNeedsTruncation(overflows);
-    if (overflows) {
+    if (overflows && isMessageDone) {
       setIsExpanded(false);
     }
     isMeasured.current = true;
