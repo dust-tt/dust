@@ -29,7 +29,7 @@ makeScript(
       describe: "Workspace sId to clean todos for.",
       demandOption: true,
     },
-    projectId: {
+    pId: {
       type: "string",
       describe: "Project (space) sId to clean todos for.",
       demandOption: true,
@@ -41,7 +41,7 @@ makeScript(
         "wipes todos for all users in the project plus project-wide takeaways.",
     },
   },
-  async ({ execute, wId, projectId, userId }, logger) => {
+  async ({ execute, wId, pId, userId }, logger) => {
     const workspace = await WorkspaceResource.fetchById(wId);
     if (!workspace) {
       throw new Error(`Workspace not found: ${wId}`);
@@ -49,13 +49,13 @@ makeScript(
 
     const auth = await Authenticator.internalAdminForWorkspace(wId);
 
-    const space = await SpaceResource.fetchById(auth, projectId);
+    const space = await SpaceResource.fetchById(auth, pId);
     if (!space) {
-      throw new Error(`Space not found: ${projectId}`);
+      throw new Error(`Space not found: ${pId}`);
     }
     if (space.kind !== "project") {
       throw new Error(
-        `Space ${projectId} is not a project space (kind=${space.kind}).`
+        `Space ${pId} is not a project space (kind=${space.kind}).`
       );
     }
 
@@ -94,7 +94,7 @@ makeScript(
     logger.info(
       {
         workspaceId: wId,
-        spaceId: projectId,
+        spaceId: pId,
         userId: userId ?? null,
         todoCount: todoIds.length,
         takeawaysCount: takeawaysIds.length,
@@ -108,12 +108,12 @@ makeScript(
     }
 
     logger.info(
-      { workspaceId: wId, spaceId: projectId },
+      { workspaceId: wId, spaceId: pId },
       "Stopping project todo workflow"
     );
     await stopProjectTodoWorkflow({
       workspaceId: wId,
-      spaceId: projectId,
+      spaceId: pId,
       stopReason: "clean_project_todos script",
     });
 
@@ -130,7 +130,7 @@ makeScript(
           transaction,
         });
         const sourceDeleted = await ProjectTodoSourceModel.destroy({
-          where: todoWhere,
+          where: todoChildWhere,
           transaction,
         });
         const takeawayLinkDeleted =
@@ -196,16 +196,16 @@ makeScript(
     });
 
     logger.info(
-      { workspaceId: wId, spaceId: projectId },
+      { workspaceId: wId, spaceId: pId },
       "Restarting project todo workflow"
     );
     await launchOrSignalProjectTodoWorkflow({
       workspaceId: wId,
-      spaceId: projectId,
+      spaceId: pId,
     });
 
     logger.info(
-      { workspaceId: wId, spaceId: projectId, userId: userId ?? null },
+      { workspaceId: wId, spaceId: pId, userId: userId ?? null },
       "Clean project todos complete"
     );
   }
