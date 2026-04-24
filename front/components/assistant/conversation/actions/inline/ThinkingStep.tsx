@@ -57,12 +57,19 @@ export function ThinkingStep({
     );
   }
 
+  const handleClick = needsTruncation
+    ? () => {
+        if (window.getSelection()?.toString()) {
+          return;
+        }
+        setIsExpanded((prev) => !prev);
+      }
+    : undefined;
+
   return (
     <div
-      className={cn(needsTruncation && "cursor-pointer select-none")}
-      onClick={
-        needsTruncation ? () => setIsExpanded((prev) => !prev) : undefined
-      }
+      className={cn(needsTruncation && "cursor-pointer")}
+      onClick={handleClick}
     >
       <TimelineRow icon="circle" isLast={isLast}>
         <div

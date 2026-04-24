@@ -1,13 +1,10 @@
-/* Collapse/expand animation for thinking step content.
-   All transitions are CSS-driven — React only toggles .expanded. */
-
 .root {
-  --clamp-height: 4.95em; /* 1.65 line-height × 3 lines */
-  --fade-height: 2.64em; /* 1.65 × 1.6 */
+  --clamp-height: 3.75rem; /* ~3 lines of text-sm (20px line-height) */
+  --fade-height: 2rem;
   --dur-open: 180ms;
   --dur-close: 145ms;
   --ease: cubic-bezier(0.32, 0.72, 0, 1);
-  --fade-delay: 60ms; /* wait for height animation to finish */
+  --fade-delay: 40ms;
 }
 
 .content {
@@ -22,7 +19,6 @@
   transition-duration: var(--dur-open);
 }
 
-/* Block spacing: zero when collapsed, transition on expand */
 .content > * > * {
   transition:
     padding var(--dur-close) var(--ease),
@@ -42,7 +38,6 @@
   transition-duration: var(--dur-open);
 }
 
-/* Gradient fade */
 .fade {
   position: absolute;
   left: 0;
