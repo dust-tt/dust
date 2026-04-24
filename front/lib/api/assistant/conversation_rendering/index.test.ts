@@ -1,11 +1,6 @@
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { tokenCountForTexts } from "@app/lib/tokenization";
-import type {
-  AssistantContentMessageTypeModel,
-  ContentFragmentMessageTypeModel,
-  FunctionMessageTypeModel,
-  UserMessageTypeModel,
-} from "@app/types/assistant/generation";
+import type { ModelMessageTypeMultiActions } from "@app/types/assistant/generation";
 import { Err, Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -39,37 +34,40 @@ function createConversation() {
   } as any;
 }
 
-function userMessage(text: string, name = "user"): UserMessageTypeModel {
+function userMessage(
+  text: string,
+  name = "user"
+): ModelMessageTypeMultiActions {
   return {
-    role: "user",
+    role: "user" as const,
     name,
-    content: [{ type: "text", text }],
+    content: [{ type: "text" as const, text }],
   };
 }
 
-function contentFragmentMessage(text: string): ContentFragmentMessageTypeModel {
+function contentFragmentMessage(text: string): ModelMessageTypeMultiActions {
   return {
-    role: "content_fragment",
+    role: "content_fragment" as const,
     name: "content_fragment",
-    content: [{ type: "text", text }],
+    content: [{ type: "text" as const, text }],
   };
 }
 
-function assistantMessage(text: string): AssistantContentMessageTypeModel {
+function assistantMessage(text: string): ModelMessageTypeMultiActions {
   return {
-    role: "assistant",
+    role: "assistant" as const,
     name: "assistant",
     content: text,
-    contents: [{ type: "text_content", value: text }],
+    contents: [{ type: "text_content" as const, value: text }],
   };
 }
 
 function functionMessage(
   name: string,
   content: string
-): FunctionMessageTypeModel {
+): ModelMessageTypeMultiActions {
   return {
-    role: "function",
+    role: "function" as const,
     name,
     function_call_id: `${name}_call`,
     content,
