@@ -1567,7 +1567,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const agents = await this.listActiveAgents(auth);
 
     const sortedAgents = agents
-      .map((agent) => ({ sId: agent.sId, name: agent.name }))
+      .map((agent) => ({
+        sId: agent.sId,
+        name: agent.name,
+        pictureUrl: agent.pictureUrl,
+      }))
       .sort((a, b) => a.name.localeCompare(b.name));
 
     return {

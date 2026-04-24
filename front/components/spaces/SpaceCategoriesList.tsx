@@ -1,9 +1,10 @@
+import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchContext";
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { MCP_SPECIFICATION } from "@app/lib/actions/utils_ui";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { CATEGORY_DETAILS } from "@app/lib/spaces";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { DATA_SOURCE_VIEW_CATEGORIES } from "@app/types/api/public/spaces";
@@ -42,7 +43,7 @@ type RowData = {
 
 type Info = CellContext<RowData, unknown>;
 
-const getTableColumns = () => {
+const getTableColumns = (onAgentClick: (agentId: string) => void) => {
   return [
     {
       header: "Name",
@@ -66,7 +67,7 @@ const getTableColumns = () => {
         <DataTable.CellContent>
           <UsedByButton
             usage={info.row.original.usage}
-            onItemClick={() => {}}
+            onItemClick={onAgentClick}
           />
         </DataTable.CellContent>
       ),
@@ -98,8 +99,11 @@ export const SpaceCategoriesList = ({
     spaceId: space.sId,
   });
 
+  const { user } = useAuth();
   const { hasFeature } = useFeatureFlags();
   const { setIsSearchDisabled } = React.useContext(SpaceSearchContext);
+
+  const [assistantId, setAssistantId] = React.useState<string | null>(null);
 
   const rows: RowData[] = spaceInfo
     ? removeNulls(
@@ -193,6 +197,12 @@ export const SpaceCategoriesList = ({
 
   return (
     <>
+      <AgentDetailsSheet
+        owner={owner}
+        user={user}
+        agentId={assistantId}
+        onClose={() => setAssistantId(null)}
+      />
       {isEmpty && (
         <div
           className={cn(
@@ -207,7 +217,7 @@ export const SpaceCategoriesList = ({
       {rows.length > 0 && (
         <DataTable
           data={rows}
-          columns={getTableColumns()}
+          columns={getTableColumns(setAssistantId)}
           className="pb-4"
           columnsBreakpoints={{
             usage: "md",

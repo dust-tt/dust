@@ -86,6 +86,15 @@ export async function getToolsUsage(
         ),
         "sIds",
       ],
+      [
+        Sequelize.fn(
+          "array_agg",
+          Sequelize.literal(
+            '"agent_configuration"."pictureUrl" ORDER BY "agent_configuration"."name"'
+          )
+        ),
+        "pictureUrls",
+      ],
     ],
     include: [
       {
@@ -108,6 +117,7 @@ export async function getToolsUsage(
     remoteMCPServerId: ModelId;
     names: string[];
     sIds: string[];
+    pictureUrls: string[];
   }[];
 
   return res.reduce<MCPServersUsageByAgent>((acc, mcpServerViewConfig) => {
@@ -122,6 +132,7 @@ export async function getToolsUsage(
       agents: mcpServerViewConfig.sIds.map((sId, index) => ({
         sId,
         name: mcpServerViewConfig.names[index],
+        pictureUrl: mcpServerViewConfig.pictureUrls[index],
       })),
     };
     return acc;

@@ -1,12 +1,16 @@
 import type { AgentsUsageType } from "@app/types/data_source";
 import {
+  Avatar,
   Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSearchbar,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
   RobotIcon,
 } from "@dust-tt/sparkle";
+import { useState } from "react";
 
 export const UsedByButton = ({
   usage,
@@ -15,42 +19,94 @@ export const UsedByButton = ({
   usage: AgentsUsageType | null;
   onItemClick: (assistantSid: string) => void;
 }) => {
-  return !usage || usage.count === 0 ? (
-    <Button
-      icon={RobotIcon}
-      variant="ghost-secondary"
-      isSelect={false}
-      size="xs"
-      label="0"
-      disabled
-    />
-  ) : (
-    // 1. modal={false} to make the dropdown menu non-modal and avoid a timing issue when we open the Agent side-panel modal.
-    <DropdownMenu modal={false}>
+  const [searchText, setSearchText] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
+
+  if (!usage || usage.count === 0) {
+    return (
+      <Button
+        icon={RobotIcon}
+        variant="ghost-secondary"
+        isSelect={false}
+        size="xs"
+        label="0"
+        disabled
+      />
+    );
+  }
+
+  const query = searchText.toLowerCase();
+  const filteredAgents =
+    query.length === 0
+      ? usage.agents
+      : usage.agents.filter((a) => a.name.toLowerCase().includes(query));
+
+  return (
+    <DropdownMenu
+      open={isOpen}
+      onOpenChange={(open) => {
+        setIsOpen(open);
+        if (open) {
+          setSearchText("");
+        }
+      }}
+    >
       <DropdownMenuTrigger asChild>
         <Button
           icon={RobotIcon}
           variant="ghost-secondary"
-          isSelect={true}
+          isSelect
           size="xs"
           label={`${usage.count}`}
           onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
-            // 2. Avoid propagating the click to the parent element.
             e.stopPropagation();
           }}
         />
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="max-w-48">
-        {usage.agents.map((agent) => (
-          <DropdownMenuItem
-            key={`assistant-picker-${agent.sId}`}
-            label={agent.name}
-            onClick={(e) => {
-              e.stopPropagation();
-              onItemClick(agent.sId);
-            }}
-          />
-        ))}
+      <DropdownMenuContent
+        className="h-96 w-72"
+        align="end"
+        onClick={(e) => e.stopPropagation()}
+        dropdownHeaders={
+          <>
+            <DropdownMenuSearchbar
+              autoFocus
+              name="search-used-by-agents"
+              placeholder="Search agents"
+              value={searchText}
+              onChange={setSearchText}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && filteredAgents.length > 0) {
+                  onItemClick(filteredAgents[0].sId);
+                  setSearchText("");
+                  setIsOpen(false);
+                }
+              }}
+            />
+            <DropdownMenuSeparator />
+          </>
+        }
+      >
+        {filteredAgents.length > 0 ? (
+          filteredAgents.map((agent) => (
+            <DropdownMenuItem
+              key={`assistant-picker-${agent.sId}`}
+              icon={() => <Avatar size="xs" visual={agent.pictureUrl} />}
+              label={agent.name}
+              truncateText
+              className="py-1"
+              onClick={(e) => {
+                e.stopPropagation();
+                onItemClick(agent.sId);
+                setIsOpen(false);
+              }}
+            />
+          ))
+        ) : (
+          <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
+            No agents found
+          </div>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

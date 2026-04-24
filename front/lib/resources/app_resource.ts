@@ -134,6 +134,7 @@ export class AppResource extends ResourceWithSpace<AppModel> {
           agentConfigurations.map((a) => ({
             sId: a.sId,
             name: a.name,
+            pictureUrl: a.pictureUrl,
           }))
         ),
       ],
