@@ -24,8 +24,6 @@ const CASE_STUDIES: Record<string, string> = {
   kyriba: "/customers/kyriba-accelerating-innovation-with-dust",
   malt: "/customers/malt-customer-support",
   mirakl: "/customers/why-mirakl-chose-dust-as-its-go-to-agentic-solution",
-  patch:
-    "/customers/how-patch-empowered-70-of-its-team-to-use-ai-agents-weekly",
   payfit:
     "/customers/less-admin-more-selling-how-dust-frees-up-payfits-sales-team-to-close-more-deals",
   pennylane: "/customers/pennylane-customer-support-journey",
@@ -49,7 +47,7 @@ const LOGO_SETS = {
       { name: "assembled", src: "/static/landing/logos/gray/assembled.svg" },
       { name: "decagon", src: "/static/landing/logos/gray/decagon.svg" },
       { name: "kyriba", src: "/static/landing/logos/gray/kyriba.svg" },
-      { name: "patch", src: "/static/landing/logos/gray/patch.svg" },
+      { name: "evenup", src: "/static/landing/logos/gray/evenup.svg" },
       { name: "persona", src: "/static/landing/logos/gray/persona.svg" },
       { name: "1password", src: "/static/landing/logos/gray/1password.svg" },
       { name: "vanta", src: "/static/landing/logos/gray/vanta.svg" },
@@ -80,7 +78,7 @@ const LOGO_SETS = {
       { name: "assembled", src: "/static/landing/logos/gray/assembled.svg" },
       { name: "decagon", src: "/static/landing/logos/gray/decagon.svg" },
       { name: "laurel", src: "/static/landing/logos/gray/laurel.svg" },
-      { name: "patch", src: "/static/landing/logos/gray/patch.svg" },
+      { name: "evenup", src: "/static/landing/logos/gray/evenup.svg" },
       { name: "persona", src: "/static/landing/logos/gray/persona.svg" },
       { name: "1password", src: "/static/landing/logos/gray/1password.svg" },
       { name: "vanta", src: "/static/landing/logos/gray/vanta.svg" },
