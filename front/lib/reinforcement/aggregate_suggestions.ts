@@ -247,30 +247,34 @@ export async function buildSkillAggregationBatchMap(
 }
 
 /**
- * Random canned intro that opens the notification conversation. Returns the
- * two-sentence variant; the caller appends the TODO list of suggestion titles.
+ * Random canned opener for the notification conversation, merged into a single
+ * message with the suggestion titles between the intro and outro lines.
  */
-function buildReinforcedSkillCannedIntro(
+function buildReinforcedSkillInitialMessage(
   workspaceId: string,
   skillName: string,
-  skillId: string
+  skillId: string,
+  titles: string[]
 ): string {
   const builderUrl = getSkillBuilderRoute(workspaceId, skillId);
-  const messages = [
-    [
-      `Dust has analyzed conversations in your workspace that use the ${skillName} skill and found suggestions to improve it.`,
-      `You can view and apply these suggestions by going to the [skill builder](${builderUrl}).`,
-    ],
-    [
-      `Based on recent conversations, Dust has identified ways to enhance the ${skillName} skill.`,
-      `Head over to the [skill builder](${builderUrl}) to review and apply these improvements.`,
-    ],
-    [
-      `Dust has reviewed how the ${skillName} skill is being used and has new improvement suggestions.`,
-      `Check them out in the [skill builder](${builderUrl}) and apply the ones you like.`,
-    ],
+  const variants: Array<{ intro: string; outro: string }> = [
+    {
+      intro: `Dust has analyzed conversations in your workspace that use the ${skillName} skill and found suggestions to improve it:`,
+      outro: `You can view and apply these suggestions by going to the [skill builder](${builderUrl}).`,
+    },
+    {
+      intro: `Based on recent conversations, Dust has identified ways to enhance the ${skillName} skill:`,
+      outro: `Head over to the [skill builder](${builderUrl}) to review and apply these improvements.`,
+    },
+    {
+      intro: `Dust has reviewed how the ${skillName} skill is being used and has new improvement suggestions:`,
+      outro: `Check them out in the [skill builder](${builderUrl}) and apply the ones you like.`,
+    },
   ];
-  return messages[Math.floor(Math.random() * messages.length)].join("\n");
+  const { intro, outro } =
+    variants[Math.floor(Math.random() * variants.length)];
+  const list = titles.map((t) => `- ${t}`).join("\n");
+  return `${intro}\n${list}\n\n${outro}`;
 }
 
 /**
@@ -369,19 +373,16 @@ export async function createSkillSuggestionsConversation(
     return;
   }
 
-  const suggestionList = pendingSuggestions
-    .map((s) => `- [ ] ${s.title ?? s.sId}`)
-    .join("\n");
-  const canned = buildReinforcedSkillCannedIntro(
+  const content = buildReinforcedSkillInitialMessage(
     auth.getNonNullableWorkspace().sId,
     skillType.name,
-    skillType.sId
+    skillType.sId,
+    pendingSuggestions.map((s) => s.title ?? s.sId)
   );
-  const todoIntro = `I'll update this thread as each suggestion is accepted or rejected:`;
 
   const messageRes = await postUserMessage(auth, {
     conversation,
-    content: `${canned}\n\n${todoIntro}\n${suggestionList}`,
+    content,
     mentions: [{ configurationId: GLOBAL_AGENTS_SID.DUST }],
     context: {
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC",
@@ -500,7 +501,18 @@ export async function postSkillSuggestionStatusUpdate(
           },
           "ReinforcedSkills: failed to post status update to notification conversation"
         );
+        return;
       }
+
+      // postUserMessage marks the conversation read at T1, but the Dust static
+      // reply will bump `updatedAt` to T2 and make the conversation re-appear
+      // as unread for the acting editor. Push `lastReadAt` a minute into the
+      // future so the ack holds through the imminent agent completion — the
+      // NOOP reply lands within milliseconds.
+      await ConversationResource.markAsReadForAuthUser(auth, {
+        conversation,
+        lastReadAt: new Date(Date.now() + 60_000),
+      });
     },
     { concurrency: 4 }
   );
