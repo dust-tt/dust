@@ -6,12 +6,10 @@ import { SKILL_MANAGEMENT_SERVER_NAME } from "@app/lib/actions/mcp_internal_acti
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { UserMessageTypeModel } from "@app/types/assistant/generation";
 
-const SKILLS_RENDERER_NAME = "system";
-
 function renderSystemSkillMessage(text: string): UserMessageTypeModel {
   return {
     role: "user",
-    name: SKILLS_RENDERER_NAME,
+    name: "system",
     content: [{ type: "text", text }],
   };
 }

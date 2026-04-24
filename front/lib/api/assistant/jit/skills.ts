@@ -9,7 +9,7 @@ import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 
 /**
- * Get the skill_management MCP server if the agent has enableable skills.
+ * Get the skill_management MCP server if the agent has skills that can be enabled.
  */
 export async function getSkillManagementServer(
   auth: Authenticator,
