@@ -145,7 +145,6 @@ import type {
   ContentFragmentContextType,
   ContentFragmentType,
 } from "@app/types/content_fragment";
-import { isContentFragmentType } from "@app/types/content_fragment";
 import type { APIErrorWithStatusCode } from "@app/types/error";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -499,12 +498,6 @@ async function getNextConversationMessageRank(
       transaction,
     })) ?? -1) + 1
   );
-}
-
-function isConversationWithContent(
-  conversation: ConversationWithoutContentType
-): conversation is ConversationType {
-  return "content" in conversation;
 }
 
 export function isUserMessageContextValid(
@@ -1981,23 +1974,12 @@ export async function postNewContentFragment(
         cf.fileId
       );
       if (r) {
-        const alreadyPresent = isConversationWithContent(conversation)
-          ? conversation.content.some((versions) => {
-              const latest = versions[versions.length - 1];
-              return (
-                isContentFragmentType(latest) &&
-                latest.contentFragmentVersion === "latest" &&
-                latest.contentFragmentId === r.fragment.sId
-              );
-            })
-          : await ConversationResource.hasMessageForContentFragmentSeries(
-              auth,
-              {
-                conversation,
-                contentFragmentId: r.fragment.sId,
-                contentFragmentVersion: "latest",
-              }
-            );
+        const alreadyPresent =
+          await ConversationResource.hasMessageForContentFragmentSeries(auth, {
+            conversation,
+            contentFragmentId: r.fragment.sId,
+            contentFragmentVersion: "latest",
+          });
 
         if (!alreadyPresent) {
           await withTransaction(async (t) => {
@@ -2057,18 +2039,13 @@ export async function postNewContentFragment(
   // If the request is superseding an existing content fragment, we need to validate that it exists
   // and is part of the conversation.
   if (supersededContentFragmentId) {
-    const found = isConversationWithContent(conversation)
-      ? conversation.content.some((versions) => {
-          const latest = versions[versions.length - 1];
-          return (
-            isContentFragmentType(latest) &&
-            latest.contentFragmentId === supersededContentFragmentId
-          );
-        })
-      : await ConversationResource.hasMessageForContentFragmentSeries(auth, {
-          conversation,
-          contentFragmentId: supersededContentFragmentId,
-        });
+    const found = await ConversationResource.hasMessageForContentFragmentSeries(
+      auth,
+      {
+        conversation,
+        contentFragmentId: supersededContentFragmentId,
+      }
+    );
 
     if (!found) {
       return new Err(new Error("Superseded content fragment not found."));
