@@ -56,6 +56,8 @@ type AuditAction =
   // Projects.
   | "project.joined"
   | "project.left"
+  // Sandbox.
+  | "sandbox_egress_policy.updated"
   // SCIM / Directory Sync.
   | "scim.user_provisioned"
   | "scim.user_updated"
