@@ -537,16 +537,16 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     }
 
     // Filter triggers to only include those pointing to active agents
-    const activatableTriggers = matchingTriggers.filter((trigger) =>
+    const enableableTriggers = matchingTriggers.filter((trigger) =>
       activeAgentIds.has(trigger.agentConfigurationId)
     );
 
-    if (activatableTriggers.length === 0) {
+    if (enableableTriggers.length === 0) {
       return new Ok(undefined);
     }
 
     const enabledTriggersResult = await concurrentExecutor(
-      activatableTriggers,
+      enableableTriggers,
       async (trigger) => trigger.enable(auth),
       {
         concurrency: 10,
