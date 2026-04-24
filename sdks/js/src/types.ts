@@ -1622,29 +1622,40 @@ export type ConversationTitleEvent = z.infer<
   typeof ConversationTitleEventSchema
 >;
 
+export const ConversationEventDataSchema = z.union([
+  UserMessageNewEventSchema,
+  AgentMessageNewEventSchema,
+  AgentMessageDoneEventSchema,
+  ConversationTitleEventSchema,
+]);
+export type ConversationEventData = z.infer<typeof ConversationEventDataSchema>;
+
 const ConversationEventTypeSchema = z.object({
   eventId: z.string(),
-  data: z.union([
-    UserMessageNewEventSchema,
-    AgentMessageNewEventSchema,
-    AgentMessageDoneEventSchema,
-    ConversationTitleEventSchema,
-  ]),
+  data: ConversationEventDataSchema,
 });
 
 export type ConversationEventType = z.infer<typeof ConversationEventTypeSchema>;
 
+export const AgentMessageEventDataSchema = z.union([
+  AgentActionSpecificEventSchema,
+  AgentActionSuccessEventSchema,
+  AgentContextPrunedEventSchema,
+  AgentErrorEventSchema,
+  AgentGenerationCancelledEventSchema,
+  AgentMessageDoneEventSchema,
+  AgentMessageGracefullyStoppedEventSchema,
+  AgentMessageSuccessEventSchema,
+  AgentToolCallStartedEventSchema,
+  GenerationTokensEventSchema,
+  ToolErrorEventSchema,
+  UserMessageErrorEventSchema,
+]);
+export type AgentMessageEventData = z.infer<typeof AgentMessageEventDataSchema>;
+
 const AgentMessageEventTypeSchema = z.object({
   eventId: z.string(),
-  data: z.union([
-    AgentErrorEventSchema,
-    AgentActionSpecificEventSchema,
-    AgentToolCallStartedEventSchema,
-    AgentActionSuccessEventSchema,
-    AgentContextPrunedEventSchema,
-    AgentGenerationCancelledEventSchema,
-    GenerationTokensEventSchema,
-  ]),
+  data: AgentMessageEventDataSchema,
 });
 
 export type AgentMessageEventType = z.infer<typeof AgentMessageEventTypeSchema>;

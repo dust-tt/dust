@@ -7,17 +7,9 @@ import { ConversationsAPI } from "./high_level/conversations";
 import { FilesAPI } from "./high_level/files";
 import type { DustAPIOptions } from "./high_level/types";
 import type {
-  AgentActionSpecificEvent,
-  AgentActionSuccessEvent,
   AgentConfigurationViewType,
-  AgentContextPrunedEvent,
-  AgentErrorEvent,
-  AgentGenerationCancelledEvent,
-  AgentMessageDoneEvent,
-  AgentMessageGracefullyStoppedEvent,
+  AgentMessageEventData,
   AgentMessagePublicType,
-  AgentMessageSuccessEvent,
-  AgentToolCallStartedEvent,
   AnswerUserQuestionRequestBodyType,
   AnswerUserQuestionResponseType,
   APIError,
@@ -25,6 +17,7 @@ import type {
   BlockedActionsResponseType,
   CancelMessageGenerationRequestType,
   ContentNodeType,
+  ConversationEventData,
   ConversationPublicType,
   CreateConversationResponseType,
   DataSourceContentNodeType,
@@ -42,7 +35,6 @@ import type {
   DustAppRunRunStatusEvent,
   DustAppRunTokensEvent,
   FileUploadUrlRequestType,
-  GenerationTokensEvent,
   HeartbeatMCPResponseType,
   LoggerInterface,
   PatchConversationRequestType,
@@ -59,8 +51,6 @@ import type {
   Result,
   SearchRequestBodyType,
   SearchWarningCode,
-  ToolErrorEvent,
-  UserMessageErrorEvent,
   ValidateActionRequestBodyType,
   ValidateActionResponseType,
 } from "./types";
@@ -158,23 +148,17 @@ function isTransientHttpStatus(status: number): boolean {
   return status === 408 || status === 429;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
 // Copied from front/hooks/useEventSource.ts
 const DEFAULT_MAX_RECONNECT_ATTEMPTS = 10;
 const DEFAULT_RECONNECT_DELAY = 5000;
 
-export type AgentEvent =
-  | AgentActionSpecificEvent
-  | AgentActionSuccessEvent
-  | AgentContextPrunedEvent
-  | AgentErrorEvent
-  | AgentGenerationCancelledEvent
-  | AgentMessageGracefullyStoppedEvent
-  | AgentMessageSuccessEvent
-  | AgentMessageDoneEvent
-  | AgentToolCallStartedEvent
-  | GenerationTokensEvent
-  | UserMessageErrorEvent
-  | ToolErrorEvent;
+export type AgentEvent = AgentMessageEventData;
+
+export type ConversationEvent = ConversationEventData;
 
 const textFromResponse = async (response: DustResponse): Promise<string> => {
   if (typeof response.body === "string") {
@@ -1035,6 +1019,65 @@ export class DustAPI {
     });
   }
 
+  async streamConversationEvents({
+    conversationId,
+    signal,
+    options = {
+      maxReconnectAttempts: DEFAULT_MAX_RECONNECT_ATTEMPTS,
+      reconnectDelay: DEFAULT_RECONNECT_DELAY,
+      autoReconnect: true,
+    },
+  }: {
+    conversationId: string;
+    signal?: AbortSignal;
+    options?: {
+      maxReconnectAttempts?: number;
+      reconnectDelay?: number;
+      autoReconnect?: boolean;
+    };
+  }): Promise<
+    Result<
+      {
+        eventStream: AsyncGenerator<ConversationEvent, void, unknown>;
+      },
+      { type: string; message: string } | Error
+    >
+  > {
+    const createRequest = async (lastId?: string | null) => {
+      let path = `assistant/conversations/${conversationId}/events`;
+      if (lastId) {
+        path += `?lastEventId=${lastId}`;
+      }
+
+      return this.request({
+        method: "GET",
+        path,
+        signal,
+        stream: true,
+      });
+    };
+
+    return new Ok({
+      eventStream: this._streamEventsWithReconnection({
+        createRequest,
+        signal,
+        options: {
+          maxReconnectAttempts:
+            options.maxReconnectAttempts ?? DEFAULT_MAX_RECONNECT_ATTEMPTS,
+          reconnectDelay: options.reconnectDelay ?? DEFAULT_RECONNECT_DELAY,
+          autoReconnect: options.autoReconnect ?? true,
+        },
+        parseEvent: (eventData) => {
+          if (!isRecord(eventData)) {
+            return null;
+          }
+          const { data } = eventData;
+          return isRecord(data) ? (data as ConversationEvent) : null;
+        },
+      }),
+    });
+  }
+
   async streamAgentMessageEvents({
     conversationId,
     agentMessageId,
@@ -1057,10 +1100,6 @@ export class DustAPI {
       { type: string; message: string }
     >
   > {
-    const { maxReconnectAttempts, reconnectDelay, autoReconnect } = options;
-
-    let lastEventId: string | null = null;
-
     const terminalEventTypes: AgentEvent["type"][] = [
       "agent_message_success",
       "agent_message_gracefully_stopped",
@@ -1083,151 +1122,189 @@ export class DustAPI {
       });
     };
 
-    const logger = this._logger;
-    let reconnectAttempts = 0;
     let receivedTerminalEvent = false;
 
-    const streamEventsWithReconnection = async function* () {
-      while (true) {
-        if (signal?.aborted) {
-          return;
-        }
-
-        const res = await createRequest(lastEventId);
-
-        if (res.isErr()) {
-          // Treat request errors as transient and apply reconnection policy when enabled.
-          if (autoReconnect) {
-            reconnectAttempts += 1;
-            if (reconnectAttempts >= maxReconnectAttempts) {
-              throw new Error(
-                `Exceeded maximum reconnection attempts (request error): ${res.error.message}`
-              );
-            }
-            await new Promise((resolve) => setTimeout(resolve, reconnectDelay));
-            continue;
+    return new Ok({
+      eventStream: this._streamEventsWithReconnection({
+        createRequest,
+        signal,
+        options,
+        parseEvent: (eventData) => {
+          if (!isRecord(eventData)) {
+            return null;
           }
-          const error = res.error;
-          throw new Error(`Error requesting event stream: ${error.message}`);
-        }
-
-        if (!res.value.response.ok || !res.value.response.body) {
-          if (
-            autoReconnect &&
-            isTransientHttpStatus(res.value.response.status)
-          ) {
-            reconnectAttempts += 1;
-            if (reconnectAttempts >= maxReconnectAttempts) {
-              throw new Error(
-                `Exceeded maximum reconnection attempts (http ${res.value.response.status})`
-              );
-            }
-            await new Promise((resolve) => setTimeout(resolve, reconnectDelay));
-            continue;
+          const { data } = eventData;
+          return isRecord(data) ? (data as AgentEvent) : null;
+        },
+        onEvent: (event) => {
+          if (terminalEventTypes.includes(event.type)) {
+            receivedTerminalEvent = true;
           }
-          throw new Error(
-            `Error requesting event stream: status_code=${res.value.response.status}`
-          );
-        }
+        },
+        shouldReconnect: () => !receivedTerminalEvent,
+      }),
+    });
+  }
 
-        let pendingEvents: AgentEvent[] = [];
-        let receivedEventsInThisConnection = false;
+  private async *_streamEventsWithReconnection<T>({
+    createRequest,
+    signal,
+    options,
+    parseEvent,
+    onEvent,
+    shouldReconnect = () => true,
+  }: {
+    createRequest: (
+      lastEventId?: string | null
+    ) => Promise<
+      Result<{ response: DustResponse; duration: number }, APIError>
+    >;
+    signal?: AbortSignal;
+    options: {
+      maxReconnectAttempts: number;
+      reconnectDelay: number;
+      autoReconnect: boolean;
+    };
+    parseEvent: (eventData: unknown) => T | null;
+    onEvent?: (event: T) => void;
+    shouldReconnect?: () => boolean;
+  }): AsyncGenerator<T, void, unknown> {
+    const { maxReconnectAttempts, reconnectDelay, autoReconnect } = options;
 
-        const parser = createParser((event) => {
-          if (event.type === "event") {
-            if (event.data) {
-              try {
-                const eventData = JSON.parse(event.data);
-                if (eventData.eventId) {
-                  lastEventId = eventData.eventId;
-                }
-                pendingEvents.push(eventData.data);
-              } catch (err) {
-                logger.error(
-                  { error: err },
-                  "Failed parsing chunk from Dust API"
-                );
-              }
-            }
-          }
-        });
+    const logger = this._logger;
+    let lastEventId: string | null = null;
+    let reconnectAttempts = 0;
 
-        if (
-          !res.value.response.body ||
-          typeof res.value.response.body === "string"
-        ) {
-          throw new Error(
-            "Expected a stream response, but got a string or null"
-          );
-        }
+    while (true) {
+      if (signal?.aborted) {
+        return;
+      }
 
-        const reader = res.value.response.body.getReader();
-        const decoder = new TextDecoder();
+      const res = await createRequest(lastEventId);
 
-        let streamEndedWithError = false;
-
-        try {
-          for (;;) {
-            const { value, done } = await reader.read();
-            if (value) {
-              parser.feed(decoder.decode(value, { stream: true }));
-
-              for (const event of pendingEvents) {
-                yield event;
-                receivedEventsInThisConnection = true;
-
-                if (terminalEventTypes.includes(event.type)) {
-                  receivedTerminalEvent = true;
-                }
-              }
-              pendingEvents = [];
-            }
-
-            if (done) {
-              break;
-            }
-          }
-        } catch (e) {
-          logger.error({ error: e }, "Failed processing event stream");
-          streamEndedWithError = true;
-
-          // Respect caller-initiated aborts.
-          if (signal?.aborted) {
-            return;
-          }
-          // Apply reconnection policy on stream termination/abort; otherwise propagate.
-          if (!isStreamTerminationError(e)) {
-            throw new Error(`Error processing event stream: ${e}`);
-          }
-          // Do not throw; flow continues to reconnection block below.
-        } finally {
-          reader.releaseLock();
-        }
-
-        // Stream ended - check if we need to reconnect
-        if (!receivedTerminalEvent && autoReconnect) {
-          if (streamEndedWithError || !receivedEventsInThisConnection) {
-            // Increment on errors AND empty clean closures (stale/finished stream).
-            reconnectAttempts += 1;
-          } else {
-            // Successful connection with events: reset counter (like EventSource onopen).
-            reconnectAttempts = 0;
-          }
-
+      if (res.isErr()) {
+        // Treat request errors as transient and apply reconnection policy when enabled.
+        if (autoReconnect) {
+          reconnectAttempts += 1;
           if (reconnectAttempts >= maxReconnectAttempts) {
-            throw new Error("Exceeded maximum reconnection attempts");
+            throw new Error(
+              `Exceeded maximum reconnection attempts (request error): ${res.error.message}`
+            );
           }
-
           await new Promise((resolve) => setTimeout(resolve, reconnectDelay));
           continue;
         }
-
-        // terminal event or autoReconnect disabled, exit the generator
-        return;
+        const error = res.error;
+        throw new Error(`Error requesting event stream: ${error.message}`);
       }
-    };
 
-    return new Ok({ eventStream: streamEventsWithReconnection() });
+      if (!res.value.response.ok || !res.value.response.body) {
+        if (autoReconnect && isTransientHttpStatus(res.value.response.status)) {
+          reconnectAttempts += 1;
+          if (reconnectAttempts >= maxReconnectAttempts) {
+            throw new Error(
+              `Exceeded maximum reconnection attempts (http ${res.value.response.status})`
+            );
+          }
+          await new Promise((resolve) => setTimeout(resolve, reconnectDelay));
+          continue;
+        }
+        throw new Error(
+          `Error requesting event stream: status_code=${res.value.response.status}`
+        );
+      }
+
+      let pendingEvents: T[] = [];
+      let receivedEventsInThisConnection = false;
+
+      const parser = createParser((event) => {
+        if (event.type === "event" && event.data && event.data !== "done") {
+          try {
+            const eventData: unknown = JSON.parse(event.data);
+
+            if (isRecord(eventData) && typeof eventData.eventId === "string") {
+              lastEventId = eventData.eventId;
+            }
+
+            const parsedEvent = parseEvent(eventData);
+
+            if (parsedEvent) {
+              pendingEvents.push(parsedEvent);
+            }
+          } catch (err) {
+            logger.error({ error: err }, "Failed parsing chunk from Dust API");
+          }
+        }
+      });
+
+      if (
+        !res.value.response.body ||
+        typeof res.value.response.body === "string"
+      ) {
+        throw new Error("Expected a stream response, but got a string or null");
+      }
+
+      const reader = res.value.response.body.getReader();
+      const decoder = new TextDecoder();
+
+      let streamEndedWithError = false;
+
+      try {
+        for (;;) {
+          const { value, done } = await reader.read();
+          if (value) {
+            parser.feed(decoder.decode(value, { stream: true }));
+
+            for (const event of pendingEvents) {
+              yield event;
+              receivedEventsInThisConnection = true;
+              onEvent?.(event);
+            }
+            pendingEvents = [];
+          }
+
+          if (done) {
+            break;
+          }
+        }
+      } catch (e) {
+        logger.error({ error: e }, "Failed processing event stream");
+        streamEndedWithError = true;
+
+        // Respect caller-initiated aborts.
+        if (signal?.aborted) {
+          return;
+        }
+        // Apply reconnection policy on stream termination or abort; otherwise propagate.
+        if (!isStreamTerminationError(e)) {
+          throw new Error(`Error processing event stream: ${e}`);
+        }
+        // Do not throw; flow continues to reconnection block below.
+      } finally {
+        reader.releaseLock();
+      }
+
+      // Stream ended; check whether we need to reconnect.
+      if (shouldReconnect() && autoReconnect) {
+        if (streamEndedWithError || !receivedEventsInThisConnection) {
+          // Increment on errors and empty clean closures from stale or finished streams.
+          reconnectAttempts += 1;
+        } else {
+          // Successful connections with events reset the counter like EventSource onopen.
+          reconnectAttempts = 0;
+        }
+
+        if (reconnectAttempts >= maxReconnectAttempts) {
+          throw new Error("Exceeded maximum reconnection attempts");
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, reconnectDelay));
+        continue;
+      }
+
+      // Exit the generator after a terminal event or when auto-reconnect is disabled.
+      return;
+    }
   }
 
   async cancelMessageGeneration({
