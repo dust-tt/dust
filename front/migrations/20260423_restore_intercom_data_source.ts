@@ -22,93 +22,43 @@ import {
 } from "@app/lib/models/skill";
 import type { Logger } from "@app/logger/logger";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import { makeScript } from "@app/scripts/helpers";
-import type { DataSourceViewKind } from "@app/types/data_source_view";
 import { EnvironmentConfig } from "@app/types/shared/utils/config";
 
-class DryRunRollback extends Error {
-  constructor() {
-    super("dry-run rollback");
-    this.name = "DryRunRollback";
-  }
-}
-
-type DataSourceRow = {
-  id: number;
-  name: string;
-  workspaceId: number;
-  vaultId: number;
-  connectorId: string | null;
-  connectorProvider: string | null;
-  dustAPIDataSourceId: string;
-};
-
-type DataSourceViewRow = {
-  id: number;
-  workspaceId: number;
-  dataSourceId: number;
-  vaultId: number;
-  kind: DataSourceViewKind;
-  parentsIn: string[] | null;
-  editedByUserId: number | null;
-  editedAt: Date;
-  createdAt: Date;
-  updatedAt: Date;
-  deletedAt: Date | null;
-};
-
-type AgentDataSourceConfigurationRow = {
-  id: number;
-  workspaceId: number;
-  dataSourceId: number;
-  dataSourceViewId: number;
-  mcpServerConfigurationId: number | null;
-  parentsIn: string[] | null;
-  parentsNotIn: string[] | null;
-  tagsMode: "custom" | "auto" | null;
-  tagsIn: string[] | null;
-  tagsNotIn: string[] | null;
-  createdAt: Date;
-  updatedAt: Date;
-};
-
-type AgentTablesQueryTableRow = {
-  id: number;
-  workspaceId: number;
-  dataSourceViewId: number;
-  mcpServerConfigurationId: number;
-  tableId: string;
-  createdAt: Date;
-  updatedAt: Date;
-};
-
-type SkillDataSourceConfigurationRow = {
-  id: number;
-  workspaceId: number;
-  skillConfigurationId: number;
-  dataSourceId: number;
-  dataSourceViewId: number;
-  parentsIn: string[];
-  createdAt: Date;
-  updatedAt: Date;
-};
+// Every Intercom content node is identified by `intercom-<kind>-<connectorId>`
+// optionally followed by `-<resourceId>`. See
+// connectors/src/connectors/intercom/lib/utils.ts.
+const INTERCOM_KIND_PREFIXES = [
+  "intercom-help-center-",
+  "intercom-collection-",
+  "intercom-article-",
+  "intercom-teams-", // all-teams folder, no trailing resource id
+  "intercom-team-",
+  "intercom-conversation-",
+] as const;
 
 function buildIntercomParentRewriter(
   oldConnectorId: string,
   newConnectorId: string
 ): (s: string) => string {
-  // Longest alternatives first so `team` doesn't eat `teams`.
-  const kind = "(teams|team|help-center|collection|article|conversation)";
-  const re = new RegExp(
-    `^intercom-${kind}-${oldConnectorId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(-|$)`
-  );
-  return (s: string) =>
-    s.replace(
-      re,
-      (_match, k: string, tail: string) =>
-        `intercom-${k}-${newConnectorId}${tail}`
-    );
+  return (s) => {
+    const prefix = INTERCOM_KIND_PREFIXES.find((p) => s.startsWith(p));
+    if (!prefix) {
+      return s;
+    }
+    const afterPrefix = s.slice(prefix.length);
+    // Two shapes: `<connectorId>` alone (e.g. intercom-teams-123)
+    // or `<connectorId>-<resourceId...>`.
+    if (afterPrefix === oldConnectorId) {
+      return prefix + newConnectorId;
+    }
+    if (afterPrefix.startsWith(`${oldConnectorId}-`)) {
+      return prefix + newConnectorId + afterPrefix.slice(oldConnectorId.length);
+    }
+    return s;
+  };
 }
 
 function mapParents(
@@ -124,37 +74,29 @@ function mapParents(
 async function resolveDataSource({
   sequelize,
   workspaceModelId,
-  name,
+  dataSourceModelId,
   label,
 }: {
   sequelize: Sequelize;
   workspaceModelId: number;
-  name: string;
+  dataSourceModelId: number;
   label: string;
-}): Promise<DataSourceRow> {
-  const rows = await sequelize.query<DataSourceRow>(
+}): Promise<DataSourceModel> {
+  const rows = await sequelize.query<DataSourceModel>(
     `
-    SELECT
-      id,
-      name,
-      "workspaceId",
-      "vaultId",
-      "connectorId",
-      "connectorProvider",
-      "dustAPIDataSourceId"
+    SELECT *
     FROM data_sources
-    WHERE "workspaceId" = :workspaceModelId
-      AND name = :name
-      AND "deletedAt" IS NULL
+    WHERE id = :dataSourceModelId
+      AND "workspaceId" = :workspaceModelId
     `,
     {
       type: QueryTypes.SELECT,
-      replacements: { workspaceModelId, name },
+      replacements: { dataSourceModelId, workspaceModelId },
     }
   );
   if (rows.length !== 1) {
     throw new Error(
-      `Expected 1 ${label} data source (workspaceModelId=${workspaceModelId}, name=${name}), got ${rows.length}.`
+      `Expected 1 ${label} data source (id=${dataSourceModelId}, workspaceModelId=${workspaceModelId}), got ${rows.length}.`
     );
   }
   return rows[0];
@@ -188,23 +130,24 @@ async function restoreDataSourceViews({
   snapshot: Sequelize;
   transaction: Transaction;
   logger: Logger;
-  oldDs: DataSourceRow;
-  newDs: DataSourceRow;
+  oldDs: DataSourceModel;
+  newDs: DataSourceModel;
   rewrite: (s: string) => string;
   execute: boolean;
 }): Promise<Map<number, number>> {
-  const snapshotDsvs = await snapshot.query<DataSourceViewRow>(
+  const snapshotDsvs = await snapshot.query<DataSourceViewModel>(
     `
-    SELECT
-      id, "workspaceId", "dataSourceId", "vaultId", kind, "parentsIn",
-      "editedByUserId", "editedAt", "createdAt", "updatedAt", "deletedAt"
+    SELECT *
     FROM data_source_views
-    WHERE "dataSourceId" = :oldDsId
+    WHERE "dataSourceId" = :oldDataSourceModelId
       AND "workspaceId" = :workspaceModelId
     `,
     {
       type: QueryTypes.SELECT,
-      replacements: { oldDsId: oldDs.id, workspaceModelId: oldDs.workspaceId },
+      replacements: {
+        oldDataSourceModelId: oldDs.id,
+        workspaceModelId: oldDs.workspaceId,
+      },
     }
   );
 
@@ -225,9 +168,7 @@ async function restoreDataSourceViews({
         workspaceId: newDs.workspaceId,
         dataSourceId: newDs.id,
         vaultId: snap.vaultId,
-        deletedAt: null,
       },
-      paranoid: false,
       transaction,
     });
 
@@ -267,6 +208,9 @@ async function restoreDataSourceViews({
       continue;
     }
 
+    // `silent: true` prevents Sequelize from overwriting our explicit
+    // `updatedAt` with `new Date()` — we want to preserve the snapshot's
+    // timestamps on restored rows.
     const created = await DataSourceViewModel.create(
       {
         workspaceId: newDs.workspaceId,
@@ -302,25 +246,25 @@ async function restoreAgentDataSourceConfigurations({
   snapshot: Sequelize;
   transaction: Transaction;
   logger: Logger;
-  oldDs: DataSourceRow;
-  newDs: DataSourceRow;
+  oldDs: DataSourceModel;
+  newDs: DataSourceModel;
   oldToNewDsvId: Map<number, number>;
   rewrite: (s: string) => string;
   execute: boolean;
 }): Promise<void> {
-  const rows = await snapshot.query<AgentDataSourceConfigurationRow>(
+  const rows = await snapshot.query<AgentDataSourceConfigurationModel>(
     `
-    SELECT
-      id, "workspaceId", "dataSourceId", "dataSourceViewId",
-      "mcpServerConfigurationId", "parentsIn", "parentsNotIn",
-      "tagsMode", "tagsIn", "tagsNotIn", "createdAt", "updatedAt"
+    SELECT *
     FROM agent_data_source_configurations
-    WHERE "dataSourceId" = :oldDsId
+    WHERE "dataSourceId" = :oldDataSourceModelId
       AND "workspaceId" = :workspaceModelId
     `,
     {
       type: QueryTypes.SELECT,
-      replacements: { oldDsId: oldDs.id, workspaceModelId: oldDs.workspaceId },
+      replacements: {
+        oldDataSourceModelId: oldDs.id,
+        workspaceModelId: oldDs.workspaceId,
+      },
     }
   );
 
@@ -426,24 +370,25 @@ async function restoreAgentTablesQueryConfigurationTables({
   snapshot: Sequelize;
   transaction: Transaction;
   logger: Logger;
-  oldDs: DataSourceRow;
-  newDs: DataSourceRow;
+  oldDs: DataSourceModel;
+  newDs: DataSourceModel;
   oldToNewDsvId: Map<number, number>;
   execute: boolean;
 }): Promise<void> {
   // Intercom never produces tables. Included defensively; expected count: 0.
-  const rows = await snapshot.query<AgentTablesQueryTableRow>(
+  const rows = await snapshot.query<AgentTablesQueryConfigurationTableModel>(
     `
-    SELECT
-      id, "workspaceId", "dataSourceViewId",
-      "mcpServerConfigurationId", "tableId", "createdAt", "updatedAt"
+    SELECT *
     FROM agent_tables_query_configuration_tables
-    WHERE "dataSourceId" = :oldDsId
+    WHERE "dataSourceId" = :oldDataSourceModelId
       AND "workspaceId" = :workspaceModelId
     `,
     {
       type: QueryTypes.SELECT,
-      replacements: { oldDsId: oldDs.id, workspaceModelId: oldDs.workspaceId },
+      replacements: {
+        oldDataSourceModelId: oldDs.id,
+        workspaceModelId: oldDs.workspaceId,
+      },
     }
   );
 
@@ -520,24 +465,25 @@ async function restoreSkillDataSourceConfigurations({
   snapshot: Sequelize;
   transaction: Transaction;
   logger: Logger;
-  oldDs: DataSourceRow;
-  newDs: DataSourceRow;
+  oldDs: DataSourceModel;
+  newDs: DataSourceModel;
   oldToNewDsvId: Map<number, number>;
   rewrite: (s: string) => string;
   execute: boolean;
 }): Promise<void> {
-  const rows = await snapshot.query<SkillDataSourceConfigurationRow>(
+  const rows = await snapshot.query<SkillDataSourceConfigurationModel>(
     `
-    SELECT
-      id, "workspaceId", "skillConfigurationId", "dataSourceId",
-      "dataSourceViewId", "parentsIn", "createdAt", "updatedAt"
+    SELECT *
     FROM skill_data_source_configurations
-    WHERE "dataSourceId" = :oldDsId
+    WHERE "dataSourceId" = :oldDataSourceModelId
       AND "workspaceId" = :workspaceModelId
     `,
     {
       type: QueryTypes.SELECT,
-      replacements: { oldDsId: oldDs.id, workspaceModelId: oldDs.workspaceId },
+      replacements: {
+        oldDataSourceModelId: oldDs.id,
+        workspaceModelId: oldDs.workspaceId,
+      },
     }
   );
 
@@ -626,19 +572,20 @@ makeScript(
       demandOption: true,
       describe: "Workspace sId",
     },
-    oldDataSourceName: {
-      type: "string",
+    oldDataSourceModelId: {
+      type: "number",
       demandOption: true,
-      describe: "Name of the deleted Intercom data source (in snapshot)",
+      describe: "Numeric id of the deleted Intercom data source (in snapshot)",
     },
-    newDataSourceName: {
-      type: "string",
+    newDataSourceModelId: {
+      type: "number",
       demandOption: true,
-      describe: "Name of the re-created Intercom data source (in current DB)",
+      describe:
+        "Numeric id of the re-created Intercom data source (in current DB)",
     },
   },
   async (
-    { workspaceId, oldDataSourceName, newDataSourceName, execute },
+    { workspaceId, oldDataSourceModelId, newDataSourceModelId, execute },
     logger
   ) => {
     const snapshot = new Sequelize(
@@ -665,13 +612,13 @@ makeScript(
       const oldDs = await resolveDataSource({
         sequelize: snapshot,
         workspaceModelId,
-        name: oldDataSourceName,
+        dataSourceModelId: oldDataSourceModelId,
         label: "old (snapshot)",
       });
       const newDs = await resolveDataSource({
         sequelize: frontSequelize,
         workspaceModelId,
-        name: newDataSourceName,
+        dataSourceModelId: newDataSourceModelId,
         label: "new (live)",
       });
 
@@ -698,8 +645,8 @@ makeScript(
         {
           workspaceId,
           workspaceModelId,
-          oldDsId: oldDs.id,
-          newDsId: newDs.id,
+          oldDataSourceModelId: oldDs.id,
+          newDataSourceModelId: newDs.id,
           oldConnectorId: oldDs.connectorId,
           newConnectorId: newDs.connectorId,
           oldDustAPIDataSourceId: oldDs.dustAPIDataSourceId,
@@ -718,77 +665,70 @@ makeScript(
       const rewritten = rewrite(sample);
       logger.info({ sample, rewritten }, "Parent rewrite sanity check");
       if (rewritten === sample) {
-        throw new Error(
-          "Parent rewriter failed sanity check — connectorId regex escape broken?"
-        );
+        throw new Error("Parent rewriter failed sanity check");
       }
 
+      // Unmanaged transaction so we can commit/rollback explicitly based on
+      // the --execute flag (no throw-to-rollback dance).
+      const transaction = await frontSequelize.transaction();
       try {
-        await frontSequelize.transaction(async (transaction) => {
-          const oldToNewDsvId = await restoreDataSourceViews({
-            snapshot,
-            transaction,
-            logger,
-            oldDs,
-            newDs,
-            rewrite,
-            execute,
-          });
-
-          await restoreAgentDataSourceConfigurations({
-            snapshot,
-            transaction,
-            logger,
-            oldDs,
-            newDs,
-            oldToNewDsvId,
-            rewrite,
-            execute,
-          });
-
-          await restoreAgentTablesQueryConfigurationTables({
-            snapshot,
-            transaction,
-            logger,
-            oldDs,
-            newDs,
-            oldToNewDsvId,
-            execute,
-          });
-
-          await restoreSkillDataSourceConfigurations({
-            snapshot,
-            transaction,
-            logger,
-            oldDs,
-            newDs,
-            oldToNewDsvId,
-            rewrite,
-            execute,
-          });
-
-          logger.info(
-            "Skipping content_fragment restore (single stale row, not worth the risk)."
-          );
-
-          if (!execute) {
-            logger.info("Dry-run complete, rolling back transaction.");
-            // Force rollback by throwing a sentinel.
-            throw new DryRunRollback();
-          }
+        const oldToNewDsvId = await restoreDataSourceViews({
+          snapshot,
+          transaction,
+          logger,
+          oldDs,
+          newDs,
+          rewrite,
+          execute,
         });
-      } catch (err) {
-        if (!(err instanceof DryRunRollback)) {
-          throw err;
-        }
-      }
 
-      logger.info(
-        { execute },
-        execute
-          ? "Reconciliation complete."
-          : "Dry-run complete. Re-run with --execute to commit."
-      );
+        await restoreAgentDataSourceConfigurations({
+          snapshot,
+          transaction,
+          logger,
+          oldDs,
+          newDs,
+          oldToNewDsvId,
+          rewrite,
+          execute,
+        });
+
+        await restoreAgentTablesQueryConfigurationTables({
+          snapshot,
+          transaction,
+          logger,
+          oldDs,
+          newDs,
+          oldToNewDsvId,
+          execute,
+        });
+
+        await restoreSkillDataSourceConfigurations({
+          snapshot,
+          transaction,
+          logger,
+          oldDs,
+          newDs,
+          oldToNewDsvId,
+          rewrite,
+          execute,
+        });
+
+        logger.info(
+          "Skipping content_fragment restore (single stale row, not worth the risk)."
+        );
+
+        if (execute) {
+          await transaction.commit();
+          logger.info("Reconciliation complete.");
+        } else {
+          await transaction.rollback();
+          logger.info("Dry-run complete. Re-run with --execute to commit.");
+        }
+      } catch (err) {
+        await transaction.rollback();
+        throw err;
+      }
     } finally {
       await snapshot.close();
     }
