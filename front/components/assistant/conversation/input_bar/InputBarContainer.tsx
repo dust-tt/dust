@@ -243,24 +243,10 @@ const InputBarContainer = ({
   // Create a ref to hold the editor instance
   const editorRef = useRef<Editor | null>(null);
   const pastedAttachmentIdsRef = useRef<Set<string>>(new Set());
-
-  const selectedSkillIds = useMemo(
-    () => new Set(selectedSkills.map((skill) => skill.sId)),
-    [selectedSkills]
-  );
-  const selectedMCPServerViewIds = useMemo(
-    () => new Set(selectedMCPServerViews.map((serverView) => serverView.sId)),
-    [selectedMCPServerViews]
-  );
-  const selectedMCPServerViewIdsRef = useRef(selectedMCPServerViewIds);
-  const selectedSkillIdsRef = useRef(selectedSkillIds);
   const shouldEnableSlashSuggestionRef = useRef(shouldEnableSlashSuggestion);
   const onSelectRef = useRef<
     ((capability: InputBarSlashSuggestionCapability) => void) | undefined
   >(undefined);
-
-  selectedMCPServerViewIdsRef.current = selectedMCPServerViewIds;
-  selectedSkillIdsRef.current = selectedSkillIds;
   shouldEnableSlashSuggestionRef.current = shouldEnableSlashSuggestion;
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
@@ -506,8 +492,6 @@ const InputBarContainer = ({
     slashSuggestion: {
       enabledRef: shouldEnableSlashSuggestionRef,
       onSelectRef,
-      selectedMCPServerViewIdsRef,
-      selectedSkillIdsRef,
     },
     placeholderOverride: submitBlockMessage,
     onLongTextPaste: async ({ text, from, to }) => {

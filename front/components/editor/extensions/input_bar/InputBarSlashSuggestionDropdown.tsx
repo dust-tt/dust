@@ -3,6 +3,8 @@ import type {
   SlashCommandDropdownRef,
 } from "@app/components/editor/extensions/skill_builder/SlashCommandDropdown";
 import { SlashCommandDropdown } from "@app/components/editor/extensions/skill_builder/SlashCommandDropdown";
+import { useConversationSkills } from "@app/hooks/conversations/useConversationSkills";
+import { useConversationTools } from "@app/hooks/conversations/useConversationTools";
 import {
   getMcpServerViewDescription,
   getMcpServerViewDisplayName,
@@ -18,13 +20,7 @@ import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { SuggestionProps } from "@tiptap/suggestion";
-import {
-  forwardRef,
-  type RefObject,
-  useImperativeHandle,
-  useMemo,
-  useRef,
-} from "react";
+import { forwardRef, useImperativeHandle, useMemo, useRef } from "react";
 
 import type { InputBarSlashSuggestionCapability } from "./InputBarSlashSuggestionTypes";
 
@@ -110,155 +106,162 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
     SuggestionProps<InputBarSlashSuggestionCapability>,
     "clientRect" | "command" | "query"
   > & {
+    conversationId?: string | null;
     onClose: () => void;
     owner: LightWorkspaceType;
-    selectedMCPServerViewIdsRef: RefObject<Set<string>>;
-    selectedSkillIdsRef: RefObject<Set<string>>;
   }
->(
-  (
-    {
-      clientRect,
-      command,
-      query,
-      onClose,
-      owner,
-      selectedMCPServerViewIdsRef,
-      selectedSkillIdsRef,
-    },
-    ref
-  ) => {
-    const dropdownRef = useRef<SlashCommandDropdownRef>(null);
-    const isOpen = Boolean(clientRect);
-    const { spaces: globalSpaces, isSpacesLoading } = useSpaces({
-      disabled: !isOpen,
+>(({ clientRect, command, conversationId, query, onClose, owner }, ref) => {
+  const dropdownRef = useRef<SlashCommandDropdownRef>(null);
+  const isOpen = Boolean(clientRect);
+  const { spaces: globalSpaces, isSpacesLoading } = useSpaces({
+    disabled: !isOpen,
+    workspaceId: owner.sId,
+    kinds: ["global"],
+  });
+  const { skills, isSkillsLoading } = useSkills({
+    disabled: !isOpen,
+    owner,
+    status: "active",
+    globalSpaceOnly: true,
+    viewType: "summary",
+  });
+  const { serverViews, isLoading: isServerViewsLoading } =
+    useMCPServerViewsFromSpaces(owner, globalSpaces, { disabled: !isOpen });
+  const { conversationSkills, isConversationSkillsLoading } =
+    useConversationSkills({
+      conversationId,
       workspaceId: owner.sId,
-      kinds: ["global"],
+      options: {
+        disabled: !isOpen || !conversationId,
+      },
     });
-    const { skills, isSkillsLoading } = useSkills({
-      disabled: !isOpen,
-      owner,
-      status: "active",
-      globalSpaceOnly: true,
-      viewType: "summary",
+  const { conversationTools, isConversationToolsLoading } =
+    useConversationTools({
+      conversationId,
+      workspaceId: owner.sId,
+      options: {
+        disabled: !isOpen || !conversationId,
+      },
     });
-    const { serverViews, isLoading: isServerViewsLoading } =
-      useMCPServerViewsFromSpaces(owner, globalSpaces, { disabled: !isOpen });
+  const selectedSkillIds = useMemo(
+    () => new Set(conversationSkills.map((skill) => skill.sId)),
+    [conversationSkills]
+  );
+  const selectedMCPServerViewIds = useMemo(
+    () => new Set(conversationTools.map((serverView) => serverView.sId)),
+    [conversationTools]
+  );
 
-    const filteredCapabilities = useMemo(
-      () =>
-        filterInputBarSlashSuggestions({
-          query,
-          selectedMCPServerViewIds:
-            selectedMCPServerViewIdsRef.current ?? new Set<string>(),
-          selectedSkillIds: selectedSkillIdsRef.current ?? new Set<string>(),
-          serverViews,
-          skills,
-        }),
-      [
+  const filteredCapabilities = useMemo(
+    () =>
+      filterInputBarSlashSuggestions({
         query,
-        selectedMCPServerViewIdsRef,
-        selectedSkillIdsRef,
+        selectedMCPServerViewIds,
+        selectedSkillIds,
         serverViews,
         skills,
-      ]
-    );
-
-    const capabilityItems = useMemo<SlashCommand[]>(
-      () =>
-        filteredCapabilities.flatMap((capability) => {
-          switch (capability.kind) {
-            case "skill":
-              return [
-                {
-                  action: "select-skill",
-                  description: capability.skill.userFacingDescription,
-                  icon: getSkillAvatarIcon(capability.skill.icon),
-                  id: capability.skill.sId,
-                  label: capability.skill.name,
-                  tooltip: capability.skill.userFacingDescription
-                    ? {
-                        description: capability.skill.userFacingDescription,
-                      }
-                    : undefined,
-                },
-              ];
-            case "tool": {
-              const description = getMcpServerViewDescription(
-                capability.serverView
-              );
-
-              return [
-                {
-                  action: "select-tool",
-                  description,
-                  icon: () => getAvatar(capability.serverView.server),
-                  id: capability.serverView.sId,
-                  label: getMcpServerViewDisplayName(capability.serverView),
-                  tooltip: description
-                    ? {
-                        description,
-                      }
-                    : undefined,
-                },
-              ];
-            }
-            default:
-              assertNeverAndIgnore(capability);
-              return [];
-          }
-        }),
-      [filteredCapabilities]
-    );
-
-    const isCapabilitiesLoading =
-      isSkillsLoading || isSpacesLoading || isServerViewsLoading;
-
-    useImperativeHandle(
-      ref,
-      () => ({
-        onKeyDown: ({ event }) => {
-          if (
-            (event.key === "Enter" || event.key === "Tab") &&
-            (isCapabilitiesLoading || capabilityItems.length === 0)
-          ) {
-            event.preventDefault();
-            return true;
-          }
-
-          return dropdownRef.current?.onKeyDown({ event }) ?? false;
-        },
       }),
-      [capabilityItems.length, isCapabilitiesLoading]
-    );
+    [query, selectedMCPServerViewIds, selectedSkillIds, serverViews, skills]
+  );
 
-    return (
-      <SlashCommandDropdown
-        ref={dropdownRef}
-        items={capabilityItems}
-        command={(item) => {
-          const capability = filteredCapabilities.find((capability) =>
-            capability.kind === "skill"
-              ? capability.skill.sId === item.id
-              : capability.serverView.sId === item.id
-          );
+  const capabilityItems = useMemo<SlashCommand[]>(
+    () =>
+      filteredCapabilities.flatMap((capability) => {
+        switch (capability.kind) {
+          case "skill":
+            return [
+              {
+                action: "select-skill",
+                description: capability.skill.userFacingDescription,
+                icon: getSkillAvatarIcon(capability.skill.icon),
+                id: capability.skill.sId,
+                label: capability.skill.name,
+                tooltip: capability.skill.userFacingDescription
+                  ? {
+                      description: capability.skill.userFacingDescription,
+                    }
+                  : undefined,
+              },
+            ];
+          case "tool": {
+            const description = getMcpServerViewDescription(
+              capability.serverView
+            );
 
-          if (capability) {
-            command(capability);
+            return [
+              {
+                action: "select-tool",
+                description,
+                icon: () => getAvatar(capability.serverView.server),
+                id: capability.serverView.sId,
+                label: getMcpServerViewDisplayName(capability.serverView),
+                tooltip: description
+                  ? {
+                      description,
+                    }
+                  : undefined,
+              },
+            ];
           }
-        }}
-        clientRect={clientRect}
-        emptyMessage={
-          isCapabilitiesLoading
-            ? "Loading capabilities…"
-            : "No capabilities found"
+          default:
+            assertNeverAndIgnore(capability);
+            return [];
         }
-        header="Capabilities"
-        onClose={onClose}
-        size="wide"
-      />
-    );
-  }
-);
+      }),
+    [filteredCapabilities]
+  );
+
+  const isCapabilitiesLoading =
+    isSkillsLoading ||
+    isSpacesLoading ||
+    isServerViewsLoading ||
+    isConversationSkillsLoading ||
+    isConversationToolsLoading;
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      onKeyDown: ({ event }) => {
+        if (
+          (event.key === "Enter" || event.key === "Tab") &&
+          (isCapabilitiesLoading || capabilityItems.length === 0)
+        ) {
+          event.preventDefault();
+          return true;
+        }
+
+        return dropdownRef.current?.onKeyDown({ event }) ?? false;
+      },
+    }),
+    [capabilityItems.length, isCapabilitiesLoading]
+  );
+
+  return (
+    <SlashCommandDropdown
+      ref={dropdownRef}
+      items={capabilityItems}
+      command={(item) => {
+        const capability = filteredCapabilities.find((capability) =>
+          capability.kind === "skill"
+            ? capability.skill.sId === item.id
+            : capability.serverView.sId === item.id
+        );
+
+        if (capability) {
+          command(capability);
+        }
+      }}
+      clientRect={clientRect}
+      emptyMessage={
+        isCapabilitiesLoading
+          ? "Loading capabilities…"
+          : "No capabilities found"
+      }
+      header="Capabilities"
+      onClose={onClose}
+      size="wide"
+    />
+  );
+});
 
 InputBarSlashSuggestionDropdown.displayName = "InputBarSlashSuggestionDropdown";

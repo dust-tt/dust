@@ -41,13 +41,12 @@ function isAllowedSlashQuery(state: EditorState, range: Range) {
 }
 
 export interface InputBarSlashSuggestionExtensionOptions {
+  conversationId?: string | null;
   owner?: WorkspaceType;
   enabledRef: RefObject<boolean>;
   onSelectRef: RefObject<
     ((capability: InputBarSlashSuggestionCapability) => void) | undefined
   >;
-  selectedMCPServerViewIdsRef: RefObject<Set<string>>;
-  selectedSkillIdsRef: RefObject<Set<string>>;
 }
 
 export const InputBarSlashSuggestionExtension =
@@ -67,11 +66,10 @@ export const InputBarSlashSuggestionExtension =
 
     addOptions() {
       return {
+        conversationId: null,
         owner: undefined,
         enabledRef: { current: false },
         onSelectRef: { current: undefined },
-        selectedMCPServerViewIdsRef: { current: new Set<string>() },
-        selectedSkillIdsRef: { current: new Set<string>() },
       };
     },
 
@@ -129,11 +127,9 @@ export const InputBarSlashSuggestionExtension =
                 component = new ReactRenderer(InputBarSlashSuggestionDropdown, {
                   props: {
                     ...props,
+                    conversationId: extensionOptions.conversationId,
                     onClose: closeSuggestionDropdown,
                     owner,
-                    selectedMCPServerViewIdsRef:
-                      extensionOptions.selectedMCPServerViewIdsRef,
-                    selectedSkillIdsRef: extensionOptions.selectedSkillIdsRef,
                   },
                   editor: props.editor,
                 });
@@ -153,11 +149,9 @@ export const InputBarSlashSuggestionExtension =
                 activeTriggerStart = props.range.from;
                 component?.updateProps({
                   ...props,
+                  conversationId: extensionOptions.conversationId,
                   onClose: closeSuggestionDropdown,
                   owner,
-                  selectedMCPServerViewIdsRef:
-                    extensionOptions.selectedMCPServerViewIdsRef,
-                  selectedSkillIdsRef: extensionOptions.selectedSkillIdsRef,
                 });
               },
 
