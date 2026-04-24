@@ -38,14 +38,17 @@ describe("GET/PUT /api/w/[wId]/sandbox/egress-policy", () => {
       new Ok({ allowedDomains: ["api.github.com"] })
     );
     mockWriteWorkspacePolicy.mockImplementation(
-      async ({ policy }: { policy: { allowedDomains: string[] } }) => {
+      async (
+        _auth: unknown,
+        { policy }: { policy: { allowedDomains: string[] } }
+      ) => {
         return new Ok(policy);
       }
     );
   });
 
   it("returns the workspace egress policy to workspace admins with sandbox tools enabled", async () => {
-    const { req, res, workspace, auth } = await createPrivateApiMockRequest({
+    const { req, res, auth } = await createPrivateApiMockRequest({
       method: "GET",
       role: "admin",
     });
@@ -57,7 +60,7 @@ describe("GET/PUT /api/w/[wId]/sandbox/egress-policy", () => {
     expect(JSON.parse(res._getData())).toEqual({
       policy: { allowedDomains: ["api.github.com"] },
     });
-    expect(mockReadWorkspacePolicy).toHaveBeenCalledWith(workspace.sId);
+    expect(mockReadWorkspacePolicy).toHaveBeenCalledWith(expect.any(Object));
   });
 
   it("updates the workspace egress policy with normalized domains", async () => {
@@ -73,8 +76,7 @@ describe("GET/PUT /api/w/[wId]/sandbox/egress-policy", () => {
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(200);
-    expect(mockWriteWorkspacePolicy).toHaveBeenCalledWith({
-      workspaceId: workspace.sId,
+    expect(mockWriteWorkspacePolicy).toHaveBeenCalledWith(expect.any(Object), {
       policy: {
         allowedDomains: ["api.github.com", "*.github.com"],
       },

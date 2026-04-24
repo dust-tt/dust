@@ -1,4 +1,5 @@
 import config from "@app/lib/api/config";
+import type { Authenticator } from "@app/lib/auth";
 import { getBucketInstance } from "@app/lib/file_storage";
 import { isGCSNotFoundError } from "@app/lib/file_storage/types";
 import type { EgressPolicy } from "@app/types/sandbox/egress_policy";
@@ -10,8 +11,8 @@ import {
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
-function getWorkspacePolicyPath(workspaceId: string): string {
-  return `workspaces/${workspaceId}.json`;
+function getWorkspacePolicyPath(auth: Authenticator): string {
+  return `workspaces/${auth.getNonNullableWorkspace().sId}.json`;
 }
 
 function getPolicyBucket() {
@@ -19,11 +20,11 @@ function getPolicyBucket() {
 }
 
 export async function readWorkspacePolicy(
-  workspaceId: string
+  auth: Authenticator
 ): Promise<Result<EgressPolicy, Error>> {
   try {
     const content = await getPolicyBucket().fetchFileContent(
-      getWorkspacePolicyPath(workspaceId)
+      getWorkspacePolicyPath(auth)
     );
     const parsed = parseEgressPolicy(JSON.parse(content));
 
@@ -41,13 +42,10 @@ export async function readWorkspacePolicy(
   }
 }
 
-export async function writeWorkspacePolicy({
-  workspaceId,
-  policy,
-}: {
-  workspaceId: string;
-  policy: EgressPolicy;
-}): Promise<Result<EgressPolicy, Error>> {
+export async function writeWorkspacePolicy(
+  auth: Authenticator,
+  { policy }: { policy: EgressPolicy }
+): Promise<Result<EgressPolicy, Error>> {
   const normalizedPolicy = normalizeEgressPolicy(policy);
 
   if (normalizedPolicy.isErr()) {
@@ -58,7 +56,7 @@ export async function writeWorkspacePolicy({
     await getPolicyBucket().uploadRawContentToBucket({
       content: JSON.stringify(normalizedPolicy.value),
       contentType: "application/json",
-      filePath: getWorkspacePolicyPath(workspaceId),
+      filePath: getWorkspacePolicyPath(auth),
     });
 
     return new Ok(normalizedPolicy.value);
@@ -68,10 +66,10 @@ export async function writeWorkspacePolicy({
 }
 
 export async function deleteWorkspacePolicy(
-  workspaceId: string
+  auth: Authenticator
 ): Promise<Result<void, Error>> {
   try {
-    await getPolicyBucket().delete(getWorkspacePolicyPath(workspaceId), {
+    await getPolicyBucket().delete(getWorkspacePolicyPath(auth), {
       ignoreNotFound: true,
     });
 

@@ -59,7 +59,7 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const result = await readWorkspacePolicy(owner.sId);
+      const result = await readWorkspacePolicy(auth);
       if (result.isErr()) {
         return apiError(req, res, {
           status_code: 500,
@@ -85,8 +85,7 @@ async function handler(
         });
       }
 
-      const result = await writeWorkspacePolicy({
-        workspaceId: owner.sId,
+      const result = await writeWorkspacePolicy(auth, {
         policy: parsedPolicy.value,
       });
       if (result.isErr()) {

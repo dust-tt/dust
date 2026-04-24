@@ -1,3 +1,4 @@
+import type { Authenticator } from "@app/lib/auth";
 import { Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -31,6 +32,10 @@ import {
   writeWorkspacePolicy,
 } from "./egress_policy";
 
+const mockAuth = {
+  getNonNullableWorkspace: () => ({ sId: "workspace-sid" }),
+} as unknown as Authenticator;
+
 describe("workspace egress policy storage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -49,7 +54,7 @@ describe("workspace egress policy storage", () => {
   });
 
   it("reads workspace policy files from the workspace prefix", async () => {
-    const result = await readWorkspacePolicy("workspace-sid");
+    const result = await readWorkspacePolicy(mockAuth);
 
     expect(result).toEqual(
       new Ok({
@@ -65,14 +70,13 @@ describe("workspace egress policy storage", () => {
   it("returns an empty policy when the workspace policy file is missing", async () => {
     mockFetchFileContent.mockRejectedValue({ code: 404 });
 
-    const result = await readWorkspacePolicy("workspace-sid");
+    const result = await readWorkspacePolicy(mockAuth);
 
     expect(result).toEqual(new Ok({ allowedDomains: [] }));
   });
 
   it("writes normalized workspace policy files", async () => {
-    const result = await writeWorkspacePolicy({
-      workspaceId: "workspace-sid",
+    const result = await writeWorkspacePolicy(mockAuth, {
       policy: {
         allowedDomains: ["API.GitHub.COM", "*.GitHub.COM"],
       },
@@ -93,8 +97,7 @@ describe("workspace egress policy storage", () => {
   });
 
   it("does not write invalid domain entries", async () => {
-    const result = await writeWorkspacePolicy({
-      workspaceId: "workspace-sid",
+    const result = await writeWorkspacePolicy(mockAuth, {
       policy: {
         allowedDomains: ["127.0.0.1"],
       },
@@ -105,7 +108,7 @@ describe("workspace egress policy storage", () => {
   });
 
   it("deletes workspace policy files and ignores missing objects", async () => {
-    const result = await deleteWorkspacePolicy("workspace-sid");
+    const result = await deleteWorkspacePolicy(mockAuth);
 
     expect(result).toEqual(new Ok(undefined));
     expect(mockDelete).toHaveBeenCalledWith("workspaces/workspace-sid.json", {
