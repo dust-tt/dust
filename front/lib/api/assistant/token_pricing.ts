@@ -5,13 +5,27 @@ import type {
 import type { ModelIdType } from "@app/types/assistant/models/types";
 
 // All pricing are in USD per million tokens (equivalent to micro-USD per token).
-type PricingEntry = {
+type TieredRates = {
   input: number;
   output: number;
   // Optional cached-token pricing.
   cache_creation_input_tokens?: number;
   cache_read_input_tokens?: number;
 };
+
+// Some providers charge a higher rate card once the prompt reaches a token
+// threshold (e.g. OpenAI gpt-5.x at 272k, Gemini 3 Pro at 200k). The higher
+// tier applies to the entire request when `promptTokens >= thresholdTokens`,
+// not just to the tokens above the threshold.
+type LongContextPricing = TieredRates & { thresholdTokens: number };
+
+type PricingEntry = TieredRates & {
+  longContext?: LongContextPricing;
+};
+
+// https://developers.openai.com/api/docs/pricing — gpt-5.x flagship models
+// switch to long-context pricing once the prompt exceeds 272k input tokens.
+const OPENAI_LONG_CONTEXT_THRESHOLD = 272_000;
 
 export const DUST_MARKUP_PERCENT = 30;
 
@@ -31,11 +45,23 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     input: 5.0,
     output: 30.0,
     cache_read_input_tokens: 0.5,
+    longContext: {
+      thresholdTokens: OPENAI_LONG_CONTEXT_THRESHOLD,
+      input: 10.0,
+      output: 45.0,
+      cache_read_input_tokens: 1.0,
+    },
   },
   "gpt-5.4": {
     input: 2.5,
     output: 15.0,
     cache_read_input_tokens: 0.25,
+    longContext: {
+      thresholdTokens: OPENAI_LONG_CONTEXT_THRESHOLD,
+      input: 5.0,
+      output: 22.5,
+      cache_read_input_tokens: 0.5,
+    },
   },
   "gpt-5.2": {
     input: 1.75,
@@ -553,16 +579,24 @@ export function computeTokensCostForUsageInMicroUsd({
 }): number {
   const pricing = MODEL_PRICING[modelId] ?? DEFAULT_PRICING;
 
+  // promptTokens is the total input tokens for the request (including cached
+  // reads, per the note above), which matches the quantity providers compare
+  // against their long-context threshold.
+  const rates: TieredRates =
+    pricing.longContext && promptTokens >= pricing.longContext.thresholdTokens
+      ? pricing.longContext
+      : pricing;
+
   const cachedReadTokens = cachedTokens ?? 0;
   const cacheWriteTokens = cacheCreationTokens ?? 0;
 
-  const cachedReadRate = pricing.cache_read_input_tokens ?? pricing.input;
-  const cacheWriteRate = pricing.cache_creation_input_tokens ?? pricing.input;
+  const cachedReadRate = rates.cache_read_input_tokens ?? rates.input;
+  const cacheWriteRate = rates.cache_creation_input_tokens ?? rates.input;
 
-  const basePromptCost = promptTokens * pricing.input;
-  const cachedReadDelta = cachedReadTokens * (cachedReadRate - pricing.input);
-  const cacheWriteDelta = cacheWriteTokens * (cacheWriteRate - pricing.input);
-  const outputCost = completionTokens * pricing.output;
+  const basePromptCost = promptTokens * rates.input;
+  const cachedReadDelta = cachedReadTokens * (cachedReadRate - rates.input);
+  const cacheWriteDelta = cacheWriteTokens * (cacheWriteRate - rates.input);
+  const outputCost = completionTokens * rates.output;
 
   const cost = basePromptCost + cachedReadDelta + cacheWriteDelta + outputCost;
 
