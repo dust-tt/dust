@@ -221,6 +221,10 @@ export const InputBar = React.memo(function InputBar({
     () => new Set(selectedSkills.map((skill) => skill.sId)),
     [selectedSkills]
   );
+  const selectedMCPServerViewIds = useMemo(
+    () => new Set(selectedMCPServerViews.map((serverView) => serverView.sId)),
+    [selectedMCPServerViews]
+  );
 
   // JIT skills apply to all agents in the conversation, so we pass null for agentConfigurationId
   const { addSkill, deleteSkill } = useAddDeleteConversationSkill({
@@ -228,19 +232,31 @@ export const InputBar = React.memo(function InputBar({
     workspaceId: owner.sId,
   });
 
-  const handleMCPServerViewSelect = (serverView: MCPServerViewType) => {
-    // Optimistic update
-    setSelectedMCPServerViews((prev) => [...prev, serverView]);
-    void addTool(serverView.sId);
-  };
+  const handleMCPServerViewSelect = useCallback(
+    (serverView: MCPServerViewType) => {
+      if (selectedMCPServerViewIds.has(serverView.sId)) {
+        return;
+      }
 
-  const handleMCPServerViewDeselect = (serverView: MCPServerViewType) => {
-    // Optimistic update
-    setSelectedMCPServerViews((prev) =>
-      prev.filter((sv) => sv.sId !== serverView.sId)
-    );
-    void deleteTool(serverView.sId);
-  };
+      setSelectedMCPServerViews((prev) => [...prev, serverView]);
+      void addTool(serverView.sId);
+    },
+    [addTool, selectedMCPServerViewIds]
+  );
+
+  const handleMCPServerViewDeselect = useCallback(
+    (serverView: MCPServerViewType) => {
+      if (!selectedMCPServerViewIds.has(serverView.sId)) {
+        return;
+      }
+
+      setSelectedMCPServerViews((prev) =>
+        prev.filter((sv) => sv.sId !== serverView.sId)
+      );
+      void deleteTool(serverView.sId);
+    },
+    [deleteTool, selectedMCPServerViewIds]
+  );
 
   const handleSkillSelect = useCallback(
     (skill: SkillWithoutInstructionsAndToolsType) => {
