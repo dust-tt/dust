@@ -12,9 +12,11 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfigs } from "@app/lib/llms/model_configurations";
 import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type {
@@ -132,6 +134,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
       model: modelConfig,
       hasAvailableActions: true,
       agentsList: null,
+      systemSkills: [],
       enabledSkills: [],
       equippedSkills: [],
     };
@@ -150,6 +153,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
       model: modelConfig,
       hasAvailableActions: true,
       agentsList: null,
+      systemSkills: [],
       enabledSkills: [],
       equippedSkills: [],
     };
@@ -193,6 +197,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
       model: modelConfig,
       hasAvailableActions: true,
       agentsList: null,
+      systemSkills: [],
       enabledSkills: [],
       equippedSkills: [],
       conversation: conversation1,
@@ -204,6 +209,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
       model: modelConfig,
       hasAvailableActions: true,
       agentsList: null,
+      systemSkills: [],
       enabledSkills: [],
       equippedSkills: [],
       conversation: conversation2,
@@ -230,6 +236,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
       model: modelConfig,
       hasAvailableActions: true,
       agentsList: null,
+      systemSkills: [],
       enabledSkills: [],
       equippedSkills: [],
     };
@@ -257,6 +264,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
       model: modelConfig,
       hasAvailableActions: true,
       agentsList: null,
+      systemSkills: [],
       enabledSkills: [],
       equippedSkills: [],
     };
@@ -293,6 +301,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
       model: modelConfig,
       hasAvailableActions: true,
       agentsList: null,
+      systemSkills: [],
       enabledSkills: [],
       equippedSkills: [],
       userContext: userCtx,
@@ -332,6 +341,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
       model: modelConfig,
       hasAvailableActions: true,
       agentsList: null,
+      systemSkills: [],
       enabledSkills: [],
       equippedSkills: [],
       conversation: {
@@ -373,6 +383,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
       model: modelConfig,
       hasAvailableActions: true,
       agentsList: null,
+      systemSkills: [],
       enabledSkills: [],
       equippedSkills: [],
       conversation: {
@@ -411,6 +422,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
       model: modelConfig,
       hasAvailableActions: true,
       agentsList: null,
+      systemSkills: [],
       enabledSkills: [],
       equippedSkills: [],
       memoriesContext,
@@ -423,6 +435,46 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     expect(text).toContain("User prefers TypeScript");
   });
 
+  it("should include system skills in the enabled skills section when passed separately", async () => {
+    await SkillFactory.linkGlobalSkillToAgent(authenticator1, {
+      globalSkillId: "discover_skills",
+      agentConfigurationId: agentConfig1.id,
+    });
+
+    const { systemSkills } = await SkillResource.listForAgentLoop(
+      authenticator1,
+      {
+        agentConfiguration: agentConfig1,
+        conversation: conversation1,
+      }
+    );
+    const discoverSkills = systemSkills.find(
+      (skill) => skill.sId === "discover_skills"
+    );
+    if (!discoverSkills) {
+      throw new Error("Expected discover_skills system skill to exist.");
+    }
+
+    const params = {
+      userMessage: userMessage1,
+      agentConfiguration: agentConfig1,
+      model: modelConfig,
+      hasAvailableActions: true,
+      agentsList: null,
+      systemSkills: [discoverSkills],
+      enabledSkills: [],
+      equippedSkills: [],
+    };
+
+    const sections = constructPromptMultiActions(authenticator1, params);
+    const text = systemPromptToText(sections);
+
+    expect(text).toContain("### ENABLED SKILLS");
+    expect(text).toContain(
+      "Some of the available skills come from the workspace"
+    );
+  });
+
   it("should produce a valid prompt when memoriesContext is omitted", () => {
     const params = {
       userMessage: userMessage1,
@@ -430,6 +482,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
       model: modelConfig,
       hasAvailableActions: true,
       agentsList: null,
+      systemSkills: [],
       enabledSkills: [],
       equippedSkills: [],
     };
@@ -459,6 +512,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
       model: modelConfig,
       hasAvailableActions: true,
       agentsList: null,
+      systemSkills: [],
       enabledSkills: [],
       equippedSkills: [],
       memoriesContext,

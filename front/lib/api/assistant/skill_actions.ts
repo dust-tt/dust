@@ -27,7 +27,7 @@ export async function getSkillServers(
     skills,
   }: {
     agentConfiguration: LightAgentConfigurationType;
-    skills: (SkillResource & { extendedSkill: SkillResource | null })[];
+    skills: (SkillResource & { extendedSkill?: SkillResource | null })[];
   }
 ): Promise<MCPServerConfigurationType[]> {
   const rawInheritedDataSourceViews = await concurrentExecutor(
@@ -277,17 +277,22 @@ export async function resolveSkillMCPServers(
     conversation: ConversationType;
   }
 ): Promise<MCPServerConfigurationType[]> {
-  const { enabledSkills } = await SkillResource.listForAgentLoop(auth, {
-    agentConfiguration,
-    conversation,
-  });
+  const { enabledSkills, systemSkills } = await SkillResource.listForAgentLoop(
+    auth,
+    {
+      agentConfiguration,
+      conversation,
+    }
+  );
 
-  if (enabledSkills.length === 0) {
+  const activeSkills = [...systemSkills, ...enabledSkills];
+
+  if (activeSkills.length === 0) {
     return [];
   }
 
   return getSkillServers(auth, {
     agentConfiguration,
-    skills: enabledSkills,
+    skills: activeSkills,
   });
 }

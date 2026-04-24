@@ -1250,7 +1250,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   /**
-   * List skills for the agent loop, returning both (extended) enabled skills and equipped skills.
+   * List skills for the agent loop, returning system skills, (extended) enabled skills,
+   * and equipped skills.
    */
   static async listForAgentLoop(
     auth: Authenticator,
@@ -1259,6 +1260,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       | Pick<AgentLoopExecutionData, "agentConfiguration" | "conversation">
   ): Promise<{
     enabledSkills: (SkillResource & { extendedSkill: SkillResource | null })[];
+    systemSkills: SkillResource[];
     equippedSkills: SkillResource[];
   }> {
     const { agentConfiguration, conversation } = params;
@@ -1302,9 +1304,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           )
         : [];
 
-    // Compute the enabled skills: system skills + conversation-enabled skills.
+    // Compute the enabled skills: conversation-enabled skills + project skill.
     const enabledSkills = [
-      ...systemSkills.sort(sortByName),
       ...conversationEnabledSkills.sort(sortByName),
       ...projectSkill,
     ];
@@ -1318,7 +1319,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     // discoverable skills not already enabled or equipped.
     const enabledSkillIds = new Set(enabledSkills.map((s) => s.sId));
     const agentEquippedSkills = allAgentSkills.filter(
-      (s) => !enabledSkillIds.has(s.sId)
+      (s) => !s.isSystemSkill && !enabledSkillIds.has(s.sId)
     );
 
     const agentEquippedSkillIds = new Set(
@@ -1335,6 +1336,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     return {
       enabledSkills: augmentedEnabledSkills,
+      systemSkills: systemSkills.sort(sortByName),
       equippedSkills,
     };
   }
