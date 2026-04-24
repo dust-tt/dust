@@ -633,6 +633,38 @@ export async function postUserMessage(
     }
   }
 
+  // Snapshot user-explicit agent mentions before any auto-injection. Steering and
+  // visibility decisions downstream depend on user intent, not on server-injected mentions.
+  const explicitAgentMentions = mentions.filter(isAgentMention);
+
+  // Auto-inject @dust for mention-less web/extension messages in single-user conversations.
+  // Must run before the plan rate-limit check so the resulting agent message is counted.
+  if (
+    !skipDustAutoMention &&
+    mentions.length === 0 &&
+    (context.origin === "web" || context.origin === "extension")
+  ) {
+    const hasOtherHumans =
+      uniq(
+        conversation.content
+          .map((versions) => versions[versions.length - 1])
+          .filter(isUserMessageType)
+          .filter((m) => m.user?.sId && m.user.sId !== auth.user()?.sId)
+      ).length >= 1;
+
+    if (!hasOtherHumans) {
+      const dustAgent = await getAgentConfiguration(auth, {
+        agentId: GLOBAL_AGENTS_SID.DUST,
+        variant: "extra_light",
+      });
+
+      if (dustAgent && dustAgent.status === "active") {
+        mentions.push({ configurationId: dustAgent.sId });
+        content = `${serializeMention({ id: dustAgent.sId, type: "agent", label: dustAgent.name })} ${content}`;
+      }
+    }
+  }
+
   // Check plan and rate limit.
   const limitResult = await checkMessagesLimit(auth, { mentions, context });
   if (limitResult.isErr()) {
@@ -669,7 +701,6 @@ export async function postUserMessage(
     return canInteractRes;
   }
 
-  const agentMentions = mentions.filter(isAgentMention);
   let runningAgentMessage = conversation.content
     .flat()
     .find(
@@ -678,7 +709,7 @@ export async function postUserMessage(
     );
 
   // Steering invariants: enforce single agent loop per conversation.
-  if (agentMentions.length > 1) {
+  if (explicitAgentMentions.length > 1) {
     return new Err({
       status_code: 400,
       api_error: {
@@ -695,8 +726,8 @@ export async function postUserMessage(
 
   if (
     runningAgentMessage &&
-    agentMentions.length > 0 &&
-    agentMentions[0].configurationId !==
+    explicitAgentMentions.length > 0 &&
+    explicitAgentMentions[0].configurationId !==
       runningAgentMessage.configuration.sId &&
     !isHandover
   ) {
@@ -735,36 +766,6 @@ export async function postUserMessage(
 
   let agentConfigurations = removeNulls(results[0]);
   let shouldCreateBranch = false;
-
-  // Check if no mentions, in that case, we might automatically append an @dust mention.
-  if (
-    !skipDustAutoMention &&
-    mentions.length === 0 &&
-    (context.origin === "web" || context.origin === "extension")
-  ) {
-    const hasOtherHumans =
-      uniq(
-        conversation.content
-          .map((versions) => versions[versions.length - 1])
-          .filter(isUserMessageType)
-          .filter((m) => m.user?.sId && m.user.sId !== auth.user()?.sId)
-      ).length >= 1;
-
-    if (!hasOtherHumans) {
-      // Check if the global @dust agent is active for this workspace.
-      const dustAgent = await getAgentConfiguration(auth, {
-        agentId: GLOBAL_AGENTS_SID.DUST,
-        variant: "extra_light",
-      });
-
-      if (dustAgent && dustAgent.status === "active") {
-        agentConfigurations.push(dustAgent);
-        const dustMention: MentionType = { configurationId: dustAgent.sId };
-        mentions.push(dustMention);
-        content = `${serializeMention({ id: dustAgent.sId, type: "agent", label: dustAgent.name })} ${content}`;
-      }
-    }
-  }
 
   for (const agentConfig of agentConfigurations) {
     if (!canAccessAgent(agentConfig)) {
@@ -922,7 +923,7 @@ export async function postUserMessage(
     // over we don't attempt steering as the intent is to start a new agentic loop and stop the
     // parent one ASAP.
     const visibility: MessageVisibility =
-      runningAgentMessage && agentMentions.length > 0 && !isHandover
+      runningAgentMessage && explicitAgentMentions.length > 0 && !isHandover
         ? "pending"
         : "visible";
 
