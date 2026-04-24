@@ -367,6 +367,17 @@ export async function runWakeUpActivity({
       api_error: { message, type },
     } = postMessageResult.error;
 
+    if (
+      type === "agent_configuration_not_found" ||
+      type === "agent_inaccessible" ||
+      type === "model_disabled"
+    ) {
+      await wakeUp.markCancelled(auth);
+      throw new WakeUpNonRetryableError(
+        `Cancelling wake-up: ${type} (${message}).`
+      );
+    }
+
     throw new Error(`Error posting wake-up message: [${type}] ${message}`);
   }
 
