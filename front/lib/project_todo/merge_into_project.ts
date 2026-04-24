@@ -462,6 +462,7 @@ async function createOrLinkTodos(
           spaceId: spaceModelId,
           userId: primary.userId,
           createdByType: "agent",
+          createdByUserId: null,
           createdByAgentConfigurationId: BUTLER_AGENT_SID,
           category: primary.blob.category,
           text: primary.blob.text,
