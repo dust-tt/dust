@@ -7,17 +7,9 @@ import { ConversationsAPI } from "./high_level/conversations";
 import { FilesAPI } from "./high_level/files";
 import type { DustAPIOptions } from "./high_level/types";
 import type {
-  AgentActionSpecificEvent,
-  AgentActionSuccessEvent,
   AgentConfigurationViewType,
-  AgentContextPrunedEvent,
-  AgentErrorEvent,
-  AgentGenerationCancelledEvent,
-  AgentMessageDoneEvent,
-  AgentMessageGracefullyStoppedEvent,
+  AgentMessageEventData,
   AgentMessagePublicType,
-  AgentMessageSuccessEvent,
-  AgentToolCallStartedEvent,
   AnswerUserQuestionRequestBodyType,
   AnswerUserQuestionResponseType,
   APIError,
@@ -25,7 +17,7 @@ import type {
   BlockedActionsResponseType,
   CancelMessageGenerationRequestType,
   ContentNodeType,
-  ConversationEventType,
+  ConversationEventData,
   ConversationPublicType,
   CreateConversationResponseType,
   DataSourceContentNodeType,
@@ -43,7 +35,6 @@ import type {
   DustAppRunRunStatusEvent,
   DustAppRunTokensEvent,
   FileUploadUrlRequestType,
-  GenerationTokensEvent,
   HeartbeatMCPResponseType,
   LoggerInterface,
   PatchConversationRequestType,
@@ -60,17 +51,17 @@ import type {
   Result,
   SearchRequestBodyType,
   SearchWarningCode,
-  ToolErrorEvent,
-  UserMessageErrorEvent,
   ValidateActionRequestBodyType,
   ValidateActionResponseType,
 } from "./types";
 import {
+  AgentMessageEventDataSchema,
   AnswerUserQuestionResponseSchema,
   APIErrorSchema,
   AppsCheckResponseSchema,
   BlockedActionsResponseSchema,
   CancelMessageGenerationResponseSchema,
+  ConversationEventDataSchema,
   CreateConversationResponseSchema,
   CreateGenericAgentConfigurationResponseSchema,
   DataSourceViewResponseSchema,
@@ -167,65 +158,16 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 const DEFAULT_MAX_RECONNECT_ATTEMPTS = 10;
 const DEFAULT_RECONNECT_DELAY = 5000;
 
-export type AgentEvent =
-  | AgentActionSpecificEvent
-  | AgentActionSuccessEvent
-  | AgentContextPrunedEvent
-  | AgentErrorEvent
-  | AgentGenerationCancelledEvent
-  | AgentMessageGracefullyStoppedEvent
-  | AgentMessageSuccessEvent
-  | AgentMessageDoneEvent
-  | AgentToolCallStartedEvent
-  | GenerationTokensEvent
-  | UserMessageErrorEvent
-  | ToolErrorEvent;
+export type AgentEvent = AgentMessageEventData;
 
-export type ConversationEvent = ConversationEventType["data"];
-
-const AGENT_EVENT_TYPES: ReadonlySet<string> = new Set<AgentEvent["type"]>([
-  "agent_action_success",
-  "agent_context_pruned",
-  "agent_error",
-  "agent_generation_cancelled",
-  "agent_message_done",
-  "agent_message_gracefully_stopped",
-  "agent_message_success",
-  "generation_tokens",
-  "tool_approve_execution",
-  "tool_ask_user_question",
-  "tool_call_started",
-  "tool_error",
-  "tool_file_auth_required",
-  "tool_notification",
-  "tool_params",
-  "tool_personal_auth_required",
-  "user_message_error",
-]);
-
-const CONVERSATION_EVENT_TYPES: ReadonlySet<string> = new Set<
-  ConversationEvent["type"]
->([
-  "agent_message_done",
-  "agent_message_new",
-  "conversation_title",
-  "user_message_new",
-]);
+export type ConversationEvent = ConversationEventData;
 
 function isAgentEvent(value: unknown): value is AgentEvent {
-  return (
-    isRecord(value) &&
-    typeof value.type === "string" &&
-    AGENT_EVENT_TYPES.has(value.type)
-  );
+  return AgentMessageEventDataSchema.safeParse(value).success;
 }
 
 function isConversationEvent(value: unknown): value is ConversationEvent {
-  return (
-    isRecord(value) &&
-    typeof value.type === "string" &&
-    CONVERSATION_EVENT_TYPES.has(value.type)
-  );
+  return ConversationEventDataSchema.safeParse(value).success;
 }
 
 const textFromResponse = async (response: DustResponse): Promise<string> => {
