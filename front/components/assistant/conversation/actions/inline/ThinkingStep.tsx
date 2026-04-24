@@ -35,7 +35,7 @@ export function ThinkingStep({
     });
 
     return () => cancelAnimationFrame(id);
-  }, [isStreaming, isMessageDone, content]);
+  }, [isStreaming, isMessageDone]);
 
   const markdown = content ? (
     <Markdown
@@ -66,9 +66,7 @@ export function ThinkingStep({
     <div
       className={cn(needsTruncation && "cursor-pointer select-none")}
       onClick={
-        needsTruncation
-          ? () => setIsExpanded((prev) => !prev)
-          : undefined
+        needsTruncation ? () => setIsExpanded((prev) => !prev) : undefined
       }
     >
       <TimelineRow icon="circle" isLast={isLast}>
@@ -82,9 +80,7 @@ export function ThinkingStep({
           <div ref={contentRef} className={styles.content}>
             {markdown}
           </div>
-          {needsTruncation && (
-            <div className={styles.fade} aria-hidden />
-          )}
+          {needsTruncation && <div className={styles.fade} aria-hidden />}
         </div>
       </TimelineRow>
     </div>
