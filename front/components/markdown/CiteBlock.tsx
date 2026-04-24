@@ -36,6 +36,10 @@ export function CiteBlock(props: ReactMarkdownProps) {
         ).filter((r) => r.ref in references)
       : undefined;
 
+  const referencesString =
+    isCiteProps(props) && props.references ? props.references : undefined;
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Use referencesString (the raw prop) as dep instead of refs to avoid re-firing every render due to JSON.parse creating new objects.
   useEffect(() => {
     if (refs) {
       refs.forEach((r) => {
@@ -43,7 +47,7 @@ export function CiteBlock(props: ReactMarkdownProps) {
         updateActiveReferences(document, r.counter);
       });
     }
-  }, [refs, references, updateActiveReferences]);
+  }, [referencesString, references, updateActiveReferences]);
 
   if (refs) {
     return (
