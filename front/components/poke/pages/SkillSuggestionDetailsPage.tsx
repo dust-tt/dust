@@ -3,9 +3,11 @@ import { SkillSuggestionCard } from "@app/components/skill_builder/SkillSuggesti
 import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useRequiredPathParam } from "@app/lib/platform";
+import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { usePokeMCPServerViews } from "@app/poke/swr/mcp_server_views";
 import { usePokeSkillSuggestionDetails } from "@app/poke/swr/skill_suggestion_details";
-import { LinkWrapper, Spinner } from "@dust-tt/sparkle";
+import type { SkillSuggestionState } from "@app/types/suggestions/skill_suggestion";
+import { Chip, LinkWrapper, Spinner } from "@dust-tt/sparkle";
 import { useCallback, useMemo } from "react";
 
 export function SkillSuggestionDetailsPage() {
@@ -56,9 +58,29 @@ export function SkillSuggestionDetailsPage() {
 
   const { suggestion } = data;
 
+  const stateColorMap: Record<
+    SkillSuggestionState,
+    "info" | "primary" | "warning" | "rose"
+  > = {
+    pending: "warning",
+    approved: "primary",
+    rejected: "rose",
+    outdated: "info",
+  };
+
   return (
     <div>
-      <h2 className="text-2xl font-bold">{suggestion.title ?? "Suggestion"}</h2>
+      <div className="flex items-center gap-3">
+        <h2 className="text-2xl font-bold">
+          {suggestion.title ?? "Suggestion"}
+        </h2>
+        <Chip color={stateColorMap[suggestion.state]} size="sm">
+          {suggestion.state}
+        </Chip>
+        <Chip color="info" size="sm">
+          {suggestion.source}
+        </Chip>
+      </div>
       <p className="mt-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
         {suggestion.sId} · Skill&nbsp;
         <LinkWrapper
@@ -79,6 +101,33 @@ export function SkillSuggestionDetailsPage() {
           </>
         )}
       </p>
+      {suggestion.updatedBy && (
+        <p className="mt-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
+          Updated by{" "}
+          <span title={suggestion.updatedBy.email}>
+            {suggestion.updatedBy.fullName}
+          </span>{" "}
+          on {formatTimestampToFriendlyDate(suggestion.updatedAt)}
+        </p>
+      )}
+      {suggestion.visibleSourceConversationIds.length > 0 && (
+        <div className="mt-2">
+          <span className="text-sm font-medium">
+            Source conversations ({suggestion.sourceConversationsCount}):
+          </span>
+          <div className="mt-1 flex flex-wrap gap-2">
+            {suggestion.visibleSourceConversationIds.map((conversationId) => (
+              <LinkWrapper
+                key={conversationId}
+                href={`/poke/${owner.sId}/conversation/${conversationId}`}
+                className="text-sm text-highlight-500"
+              >
+                {conversationId}
+              </LinkWrapper>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="mt-4 space-y-6">
         <div>
