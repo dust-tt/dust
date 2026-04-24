@@ -20,16 +20,16 @@ export function ThinkingStep({
   const [isExpanded, setIsExpanded] = useState(false);
   const [needsTruncation, setNeedsTruncation] = useState(true);
   const contentRef = useRef<HTMLDivElement>(null);
-  const measuredRef = useRef(false);
+  const isMeasuredDoneRef = useRef(false);
 
   useEffect(() => {
     const el = contentRef.current;
-    if (!el || isStreaming || !isMessageDone || measuredRef.current) {
+    if (!el || isStreaming || !isMessageDone || isMeasuredDoneRef.current) {
       return;
     }
 
     setNeedsTruncation(el.scrollHeight > el.clientHeight);
-    measuredRef.current = true;
+    isMeasuredDoneRef.current = true;
   }, [isStreaming, isMessageDone]);
 
   const markdown = content ? (
