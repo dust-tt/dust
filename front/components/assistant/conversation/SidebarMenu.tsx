@@ -1477,7 +1477,7 @@ function NavigationListWithInbox({
             style={GRID_STYLE}
             animate={{ gridTemplateRows: "1fr" }}
             exit={{ gridTemplateRows: "0fr" }}
-            transition={{ duration: 0.3, ease: "easeOut" }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
           >
             <div className="overflow-hidden">
               <UnreadConversationsSection
