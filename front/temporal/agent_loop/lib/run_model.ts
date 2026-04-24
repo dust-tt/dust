@@ -31,10 +31,7 @@ import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent";
 import { getCompletionDuration } from "@app/lib/api/assistant/messages";
 import { getSkillServers } from "@app/lib/api/assistant/skill_actions";
-import {
-  renderEquippedSkillsUserMessage,
-  SKILLS_AS_USER_MESSAGES_FEATURE_FLAG,
-} from "@app/lib/api/assistant/skills_rendering";
+import { renderEquippedSkillsUserMessage } from "@app/lib/api/assistant/skills_rendering";
 import {
   buildAuditLogTarget,
   emitAuditLogEventDirect,
@@ -262,7 +259,7 @@ export async function runModel(
       await SkillResource.listForAgentLoop(auth, runAgentData);
     const renderSkillsAsUserMessages = await hasFeatureFlag(
       auth,
-      SKILLS_AS_USER_MESSAGES_FEATURE_FLAG
+      "skills_as_user_messages"
     );
 
     const skillServers = await getSkillServers(auth, {
@@ -403,7 +400,7 @@ export async function runModel(
     userContext,
     workspaceContext,
   });
-  const prefaceMessages = renderSkillsAsUserMessages
+  const leadingMessages = renderSkillsAsUserMessages
     ? removeNulls([renderEquippedSkillsUserMessage(equippedSkills)])
     : [];
 
@@ -435,7 +432,7 @@ export async function runModel(
           tools,
           allowedTokenCount: model.contextSize - model.generationTokensCount,
           agentConfiguration,
-          prefaceMessages,
+          leadingMessages,
         })
       )
   );

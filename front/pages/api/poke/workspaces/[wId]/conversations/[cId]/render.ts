@@ -10,10 +10,7 @@ import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { getSkillServers } from "@app/lib/api/assistant/skill_actions";
-import {
-  renderEquippedSkillsUserMessage,
-  SKILLS_AS_USER_MESSAGES_FEATURE_FLAG,
-} from "@app/lib/api/assistant/skills_rendering";
+import { renderEquippedSkillsUserMessage } from "@app/lib/api/assistant/skills_rendering";
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
@@ -175,7 +172,7 @@ async function handler(
 
       const renderSkillsAsUserMessages = await hasFeatureFlag(
         auth,
-        SKILLS_AS_USER_MESSAGES_FEATURE_FLAG
+        "skills_as_user_messages"
       );
 
       const { enabledSkills, systemSkills, equippedSkills } =
@@ -277,7 +274,7 @@ async function handler(
         renderSkillsAsUserMessages,
       });
       const prompt = systemPromptToText(promptSections);
-      const prefaceMessages = renderSkillsAsUserMessages
+      const leadingMessages = renderSkillsAsUserMessages
         ? removeNulls([renderEquippedSkillsUserMessage(equippedSkills)])
         : [];
 
@@ -313,7 +310,7 @@ async function handler(
         excludeImages,
         onMissingAction,
         agentConfiguration,
-        prefaceMessages,
+        leadingMessages,
       });
 
       if (convoRes.isErr()) {

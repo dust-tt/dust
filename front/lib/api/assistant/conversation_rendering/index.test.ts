@@ -481,7 +481,7 @@ describe("renderConversationForModel", () => {
     expect(names).not.toContain("tool_06");
   });
 
-  it("prepends preface messages", async () => {
+  it("prepends leading messages", async () => {
     vi.mocked(renderAllMessages).mockResolvedValue([userMessage("rendered")]);
     mockTokenCounter({
       byContains: {
@@ -501,7 +501,7 @@ describe("renderConversationForModel", () => {
         interactionTokens: 20,
         availableDelta: 100,
       }),
-      prefaceMessages: [userMessage("preface")],
+      leadingMessages: [userMessage("preface")],
     });
 
     expect(res.isOk()).toBe(true);

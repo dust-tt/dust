@@ -215,8 +215,7 @@ function getEnabledSkillInstructions(
   ].join("\n");
 }
 
-// TODO(2026-04-24 aubin): rename this function into constructSkillsSection once the other one is removed.
-function constructSkillsAsUserMessagesSection({
+function constructSkillsSectionForUserMessageRendering({
   systemSkills,
 }: {
   systemSkills: SkillResource[];
@@ -505,7 +504,7 @@ export function constructPromptMultiActions(
     serverToolsAndInstructions,
   });
   const skillsSection = renderSkillsAsUserMessages
-    ? constructSkillsAsUserMessagesSection({
+    ? constructSkillsSectionForUserMessageRendering({
         systemSkills,
       })
     : constructSkillsSection({
