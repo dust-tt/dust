@@ -247,6 +247,31 @@ export function validateToolCallAssertion(
       }
       return { success: true };
     }
+    case "rejectSuggestion": {
+      const rejectCalls = toolCalls.filter(
+        (tc) => tc.name === "reject_suggestion"
+      );
+      if (rejectCalls.length === 0) {
+        return {
+          success: false,
+          error: `Expected reject_suggestion to be called with sourceSuggestionIds ${JSON.stringify(assertion.sourceSuggestionIds.sort())}, but reject_suggestion was not called`,
+        };
+      }
+      const allRejectedIds = new Set(
+        rejectCalls.flatMap((tc) => getSourceSuggestionIds(tc.arguments))
+      );
+      const expectedSet = new Set(assertion.sourceSuggestionIds);
+      if (
+        expectedSet.size !== allRejectedIds.size ||
+        [...expectedSet].some((id) => !allRejectedIds.has(id))
+      ) {
+        return {
+          success: false,
+          error: `Expected reject_suggestion sourceSuggestionIds ${JSON.stringify([...expectedSet].sort())} but got ${JSON.stringify([...allRejectedIds].sort())}`,
+        };
+      }
+      return { success: true };
+    }
     case "calledDescribeMcp": {
       const called = toolCalls.some(
         (tc) =>

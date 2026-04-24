@@ -4,6 +4,7 @@ import {
   editSkillWithTool,
   mockTool,
   noSuggestion,
+  rejectSuggestion,
   type TestSuite,
   type WorkspaceContext,
 } from "@app/tests/reinforcement-evals/lib/types";
@@ -253,13 +254,14 @@ Score 3 if well-merged with clear analysis covering all use cases and conversati
         rejected: [],
       },
       workspaceContext: WORKSPACE_CONTEXT,
-      expectedToolCalls: [noSuggestion()],
+      expectedToolCalls: [noSuggestion(), rejectSuggestion(["sug-1"])],
       judgeCriteria: `The synthetic suggestion about tone/warmth is essentially the same as the existing pending
-suggestion. The analyst must not duplicate it.
+suggestion. The analyst must not duplicate it and must reject the source suggestion using reject_suggestion.
 
 Score 0 if it creates a suggestion similar to the existing pending one (tone/warmth/friendliness).
-Score 1 if it creates an unrelated suggestion.
-Score 3 if no suggestion is created.`,
+Score 1 if no edit_skill suggestion is created but reject_suggestion is not called for sug-1.
+Score 1 if reject_suggestion is called but with wrong sourceSuggestionIds.
+Score 3 if no edit_skill suggestion is created AND reject_suggestion is called with sourceSuggestionIds including "sug-1".`,
     },
     {
       scenarioId: "dedup-vs-rejected",
@@ -303,13 +305,14 @@ Score 3 if no suggestion is created.`,
         ],
       },
       workspaceContext: WORKSPACE_CONTEXT,
-      expectedToolCalls: [noSuggestion()],
+      expectedToolCalls: [noSuggestion(), rejectSuggestion(["sug-1"])],
       judgeCriteria: `The synthetic suggestion about empathy/acknowledging frustration is essentially the same
-as a previously rejected suggestion. The analyst must not recreate it.
+as a previously rejected suggestion. The analyst must not recreate it and must reject the source suggestion using reject_suggestion.
 
 Score 0 if it creates a suggestion similar to the rejected one (empathy/acknowledging frustration).
-Score 1 if it creates an unrelated suggestion.
-Score 3 if no suggestion is created.`,
+Score 1 if no edit_skill suggestion is created but reject_suggestion is not called for sug-1.
+Score 1 if reject_suggestion is called but with wrong sourceSuggestionIds.
+Score 3 if no edit_skill suggestion is created AND reject_suggestion is called with sourceSuggestionIds including "sug-1".`,
     },
     {
       scenarioId: "split-unrelated-topics",
@@ -404,10 +407,10 @@ tool usage (account ID + refresh flag), each with well-written merged instructio
           sId: "sug-1",
           skillConfigurationId: "skill_writing",
           analysis:
-            "User found responses slightly long. The skill tends to include one or two unnecessary filler sentences at the end.",
+            "Response was slightly long. The skill tends to include one or two unnecessary filler sentences at the end.",
           instructionEdits: [
             {
-              targetBlockId: "block-clarity",
+              targetBlockId: "instructions-root",
               content:
                 "<p>Focus on clarity and correctness. Keep responses concise. Avoid unnecessary filler sentences.</p>",
             },
@@ -418,10 +421,12 @@ tool usage (account ID + refresh flag), each with well-written merged instructio
       expectedToolCalls: [noSuggestion()],
       judgeCriteria: `There is only one synthetic suggestion from a single conversation, and the issue is minor
 (slight verbosity / filler sentences — a style preference). According to prioritisation rules,
-low-severity issues from a single conversation should be dropped.
+low-severity issues from a single conversation should be ignored, but not rejected.
 
-Score 0 if it creates any suggestion based on this single minor synthetic input.
-Score 3 if no suggestion is created (correct: single low-severity conversation is insufficient evidence).`,
+Score 0 if it creates any edit_skill suggestion based on this single minor synthetic input.
+Score 1 if no edit_skill suggestion is created but reject_suggestion is not called for sug-1.
+Score 1 if reject_suggestion is called.
+Score 3 if no edit_skill suggestion is created AND reject_suggestion is not called.`,
     },
   ],
 };

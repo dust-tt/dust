@@ -208,6 +208,10 @@ export type ToolCallAssertion =
   | { type: "editSkillCallCount"; count: number }
   | { type: "editSkillCallsWithSources"; sourceSuggestionIdGroups: string[][] }
   | { type: "noSuggestion" }
+  | {
+      type: "rejectSuggestion";
+      sourceSuggestionIds: string[];
+    }
   | { type: "calledDescribeMcp"; mcpId: string };
 
 /** Expects an edit_skill call with instructionEdits for the given skill. */
@@ -237,6 +241,13 @@ export function editSkill(
 
 export function noSuggestion(): ToolCallAssertion {
   return { type: "noSuggestion" };
+}
+
+/** Expects reject_suggestion to be called with the given sourceSuggestionIds. */
+export function rejectSuggestion(
+  sourceSuggestionIds: string[]
+): ToolCallAssertion {
+  return { type: "rejectSuggestion", sourceSuggestionIds };
 }
 
 /** Expects exactly `count` edit_skill calls. */

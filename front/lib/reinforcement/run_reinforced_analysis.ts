@@ -36,6 +36,7 @@ import logger from "@app/logger/logger";
 import { GPT_5_4_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { isString } from "@app/types/shared/utils/general";
 import type { SkillSuggestionSource } from "@app/types/suggestions/skill_suggestion";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
@@ -130,6 +131,20 @@ const REINFORCED_SKILLS_TOOL_DEFINITIONS: Record<
         ),
     },
   },
+  reject_suggestion: {
+    description:
+      "Reject source suggestions that are very bad quality, not actionable, or too similar to already declined suggestions. " +
+      "Use this tool in parallel with edit_skill calls — both are terminal and no further calls will be made after." +
+      "Do not use to ingore minor suggestions.",
+    schema: {
+      sourceSuggestionIds: z
+        .array(z.string())
+        .min(1)
+        .describe(
+          "The sIds of the source suggestions to reject. Must include at least one suggestion sId."
+        ),
+    },
+  },
 };
 
 const AGGREGATION_EXTRA_FIELDS: z.ZodRawShape = {
@@ -145,16 +160,19 @@ const AGGREGATION_EXTRA_FIELDS: z.ZodRawShape = {
 export function buildReinforcedSkillsSpecifications(
   operationType: ReinforcedSkillsOperationType
 ): AgentActionSpecification[] {
-  const extraEditSkillFields =
-    operationType === "reinforcement_aggregate_suggestions"
-      ? AGGREGATION_EXTRA_FIELDS
-      : undefined;
+  const isAggregation = operationType === "reinforcement_aggregate_suggestions";
 
-  return ALL_TOOLS.map((toolName) => {
+  return ALL_TOOLS.filter((toolName) => {
+    // reject_suggestion is only available during aggregation.
+    if (toolName === "reject_suggestion") {
+      return isAggregation;
+    }
+    return true;
+  }).map((toolName) => {
     const meta = REINFORCED_SKILLS_TOOL_DEFINITIONS[toolName];
     const schema =
-      toolName === "edit_skill" && extraEditSkillFields
-        ? z.object({ ...meta.schema, ...extraEditSkillFields })
+      toolName === "edit_skill" && isAggregation
+        ? z.object({ ...meta.schema, ...AGGREGATION_EXTRA_FIELDS })
         : z.object(meta.schema);
     return {
       name: toolName,
@@ -351,6 +369,8 @@ export async function processSkillReinforcedEvents({
     );
     return {
       suggestionsCreated: 0,
+      suggestionsRejected: 0,
+      approvedSourceSuggestionIds: [],
       successfulToolCalls: [],
       failedToolCalls: [],
     };
@@ -367,12 +387,16 @@ export async function processSkillReinforcedEvents({
     );
     return {
       suggestionsCreated: 0,
+      suggestionsRejected: 0,
+      approvedSourceSuggestionIds: [],
       successfulToolCalls: [],
       failedToolCalls: [],
     };
   }
 
   let totalCreated = 0;
+  let totalRejected = 0;
+  const approvedSourceSuggestionIds: string[] = [];
   const successfulToolCalls: TerminalToolCallSuccess[] = [];
   const failedToolCalls: TerminalToolCallFailure[] = [];
 
@@ -388,28 +412,51 @@ export async function processSkillReinforcedEvents({
       contextId,
       conversation,
     });
-    totalCreated += result.suggestionsCreated;
-    if (result.error) {
-      failedToolCalls.push({ toolCall, errorMessage: result.error });
-    } else {
-      successfulToolCalls.push({
-        toolCall,
-        message: `Successfully created ${result.suggestionsCreated} suggestion(s).`,
-      });
+    switch (result.type) {
+      case "created": {
+        totalCreated += result.suggestionsCreated;
+        // Collect sourceSuggestionIds from successful edit_skill calls.
+        const sourceIds = args.sourceSuggestionIds;
+        if (Array.isArray(sourceIds)) {
+          approvedSourceSuggestionIds.push(...sourceIds.filter(isString));
+        }
+        successfulToolCalls.push({
+          toolCall,
+          message: `Successfully created ${result.suggestionsCreated} suggestion(s).`,
+        });
+        break;
+      }
+      case "rejected":
+        totalRejected += result.suggestionsRejected;
+        successfulToolCalls.push({
+          toolCall,
+          message: `Successfully rejected ${result.suggestionsRejected} suggestion(s).`,
+        });
+        break;
+      case "error":
+        failedToolCalls.push({
+          toolCall,
+          errorMessage: result.errorMessage,
+        });
+        break;
+      default:
+        assertNever(result);
     }
   }
 
   return {
     suggestionsCreated: totalCreated,
+    suggestionsRejected: totalRejected,
+    approvedSourceSuggestionIds,
     successfulToolCalls,
     failedToolCalls,
   };
 }
 
-interface ToolCallResult {
-  suggestionsCreated: number;
-  error?: string;
-}
+type ToolCallResult =
+  | { type: "created"; suggestionsCreated: number }
+  | { type: "rejected"; suggestionsRejected: number }
+  | { type: "error"; errorMessage: string };
 
 async function createSkillSuggestionsFromToolCall({
   auth,
@@ -432,12 +479,14 @@ async function createSkillSuggestionsFromToolCall({
     case "edit_skill": {
       const parsed = TOOL_SCHEMAS.edit_skill.safeParse(actionArguments);
       if (!parsed.success) {
-        const errorMessage = `Invalid arguments for ${toolName}: ${parsed.error.message}`;
         logger.warn(
           { contextId, toolName, error: parsed.error },
           `ReinforcedSkills: invalid LLM response shape for ${operationType}`
         );
-        return { suggestionsCreated: 0, error: errorMessage };
+        return {
+          type: "error",
+          errorMessage: `Invalid arguments for ${toolName}: ${parsed.error.message}`,
+        };
       }
 
       const skill = await SkillResource.fetchById(auth, parsed.data.skillId);
@@ -446,7 +495,7 @@ async function createSkillSuggestionsFromToolCall({
           { skillId: parsed.data.skillId, contextId },
           "ReinforcedSkills: skill not found for edit_skill"
         );
-        return { suggestionsCreated: 0, error: "Skill not found" };
+        return { type: "error", errorMessage: "Skill not found" };
       }
 
       const hasInstructionEdits =
@@ -454,16 +503,16 @@ async function createSkillSuggestionsFromToolCall({
       const hasToolEdits = (parsed.data.toolEdits?.length ?? 0) > 0;
       if (!hasInstructionEdits && !hasToolEdits) {
         return {
-          suggestionsCreated: 0,
-          error:
+          type: "error",
+          errorMessage:
             "edit_skill requires at least one instruction edit or tool edit.",
         };
       }
 
       if (hasInstructionEdits && !skill.instructionsHtml) {
         return {
-          suggestionsCreated: 0,
-          error:
+          type: "error",
+          errorMessage:
             "edit_skill with instructionEdits requires the skill to have instructionsHtml.",
         };
       }
@@ -478,8 +527,8 @@ async function createSkillSuggestionsFromToolCall({
         )
       ) {
         return {
-          suggestionsCreated: 0,
-          error:
+          type: "error",
+          errorMessage:
             "Suggestion has conflicting edits (overlapping block targets or duplicate tool IDs).",
         };
       }
@@ -522,7 +571,49 @@ async function createSkillSuggestionsFromToolCall({
 
       await pruneConflictingSkillEditSuggestions(auth, skill, newSuggestion);
 
-      return { suggestionsCreated: 1 };
+      return { type: "created", suggestionsCreated: 1 };
+    }
+
+    case "reject_suggestion": {
+      const parsed = TOOL_SCHEMAS.reject_suggestion.safeParse(actionArguments);
+      if (!parsed.success) {
+        logger.warn(
+          { contextId, toolName, error: parsed.error },
+          `ReinforcedSkills: invalid LLM response shape for ${operationType}`
+        );
+        return {
+          type: "error",
+          errorMessage: `Invalid arguments for ${toolName}: ${parsed.error.message}`,
+        };
+      }
+
+      const suggestions = await SkillSuggestionResource.fetchByIds(
+        auth,
+        parsed.data.sourceSuggestionIds
+      );
+
+      if (suggestions.length === 0) {
+        return {
+          type: "error",
+          errorMessage: `No suggestions found for sourceSuggestionIds: ${parsed.data.sourceSuggestionIds.join(", ")}`,
+        };
+      }
+
+      await SkillSuggestionResource.bulkUpdateState(
+        auth,
+        suggestions,
+        "rejected"
+      );
+
+      logger.info(
+        {
+          contextId,
+          rejectedCount: suggestions.length,
+        },
+        `ReinforcedSkills: rejected ${suggestions.length} suggestion(s) via reject_suggestion`
+      );
+
+      return { type: "rejected", suggestionsRejected: suggestions.length };
     }
 
     default:
@@ -530,6 +621,9 @@ async function createSkillSuggestionsFromToolCall({
         { contextId, toolName },
         `ReinforcedSkills: unexpected tool name for ${operationType}`
       );
-      return { suggestionsCreated: 0 };
+      return {
+        type: "error",
+        errorMessage: `Unexpected tool name: ${toolName}`,
+      };
   }
 }
