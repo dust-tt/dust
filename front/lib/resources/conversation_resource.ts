@@ -61,6 +61,7 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { UserType } from "@app/types/user";
 import assert from "assert";
 import isEqual from "lodash/isEqual";
+import omit from "lodash/omit";
 import uniq from "lodash/uniq";
 import type {
   Attributes,
@@ -458,7 +459,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       space
     );
 
-    await this.triggerEsIndexing(auth, resource.sId, workspace.sId);
+    await this.triggerEsIndexing(auth, resource.sId);
 
     return resource;
   }
@@ -858,15 +859,14 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
   static async triggerEsIndexing(
     auth: Authenticator,
-    conversationId: string,
-    workspaceId: string
+    conversationId: string
   ): Promise<void> {
     if (!(await hasFeatureFlag(auth, "conversation_search_indexing"))) {
       return;
     }
     const result = await launchIndexConversationEsWorkflow({
       conversationId,
-      workspaceId,
+      workspaceId: auth.getNonNullableWorkspace().sId,
     });
     if (result.isErr()) {
       throw result.error;
@@ -1403,22 +1403,22 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       : undefined;
 
     return new Ok({
-      id: conversation.id,
-      created: conversation.createdAt.getTime(),
-      updated: conversation.updatedAt.getTime(),
-      sId: conversation.sId,
-      title: conversation.title,
-      triggerId: conversation.triggerSId,
       actionRequired,
-      unread: lastReadAt === null || conversation.updatedAt > lastReadAt,
-      lastReadMs: lastReadAt?.getTime() ?? null,
+      branchId: null,
+      created: conversation.createdAt.getTime(),
+      depth: conversation.depth,
       hasError: conversation.hasError,
+      id: conversation.id,
+      lastReadMs: lastReadAt?.getTime() ?? null,
+      metadata: conversation.metadata,
       requestedGroupIds: [],
       requestedSpaceIds: conversation.getRequestedSpaceIdsFromModel(),
+      sId: conversation.sId,
       spaceId: conversation.space?.sId ?? null,
-      depth: conversation.depth,
-      metadata: conversation.metadata,
-      branchId: null,
+      title: conversation.title,
+      triggerId: conversation.triggerSId,
+      unread: lastReadAt === null || conversation.updatedAt > lastReadAt,
+      updated: conversation.updatedAt.getTime(),
       ...(forkingData && { forkingData }),
     });
   }
@@ -1436,7 +1436,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     await conversation.update(blob, transaction);
 
-    await this.triggerEsIndexing(auth, sId, auth.getNonNullableWorkspace().sId);
+    await this.triggerEsIndexing(auth, sId);
 
     return new Ok(undefined);
   }
@@ -1652,16 +1652,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       return { conversations: [], hasMore, lastValue };
     }
 
-    // Fetch DB resources once: needed for (a) hydrating volatile read state and
-    // (b) shadow-validating ES structural fields against DB.
+    // Hydrate lastReadMs / unread from DB with one bounded query. `last_read_at` is not stored in
+    // ES because every mark-as-read would force a full document re-index (write amplification).
     const dbConversations = await this.fetchByIds(
       auth,
       items.map((i) => i.sId)
     );
-
-    // (a) Hydrate lastReadMs / unread from DB with one bounded query scoped to these N
-    // conversations. `last_read_at` is not stored in ES because every mark-as-read would force a
-    // full document re-index (write amplification).
     const readMap = await this.fetchReadMapForUser(
       auth,
       dbConversations.map((c) => c.id)
@@ -1682,34 +1678,47 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       };
     });
 
-    // (b) Shadow-validate ES structural fields against DB.
-    await this.enrichWithParticipationAndReadState(auth, dbConversations);
-    const dbMap = new Map(dbConversations.map((c) => [c.sId, c]));
+    // Shadow-validate ES structural fields against DB in the background so it doesn't add
+    // latency to the response.
+    void (async () => {
+      try {
+        await this.enrichWithParticipationAndReadState(auth, dbConversations);
+        const dbMap = new Map(dbConversations.map((c) => [c.sId, c]));
 
-    for (const esItem of hydratedItems) {
-      const dbResource = dbMap.get(esItem.sId);
-      if (!dbResource) {
-        logger.warn(
-          { workspaceId: workspace.sId, userId: user.sId, sId: esItem.sId },
-          "[conversation_search] ES returned conversation absent from DB (stale index)"
-        );
-        continue;
-      }
+        for (const esItem of hydratedItems) {
+          const dbResource = dbMap.get(esItem.sId);
+          if (!dbResource) {
+            logger.warn(
+              { workspaceId: workspace.sId, userId: user.sId, sId: esItem.sId },
+              "[conversation_search] ES returned conversation absent from DB (stale index)"
+            );
+            continue;
+          }
 
-      const dbItem = dbResource.toListItem();
-      if (!isEqual(esItem, dbItem)) {
-        logger.warn(
-          {
-            workspaceId: workspace.sId,
-            userId: user.sId,
-            sId: esItem.sId,
-            esItem,
-            dbItem,
-          },
-          "[conversation_search] ES item diverges from DB"
+          const dbItem = dbResource.toListItem();
+          // Omit `nextWakeupAt`: DB always returns null vs ES has the real wakeup time.
+          if (
+            !isEqual(omit(esItem, "nextWakeupAt"), omit(dbItem, "nextWakeupAt"))
+          ) {
+            logger.warn(
+              {
+                workspaceId: workspace.sId,
+                userId: user.sId,
+                sId: esItem.sId,
+                esItem,
+                dbItem,
+              },
+              "[conversation_search] ES item diverges from DB"
+            );
+          }
+        }
+      } catch (err) {
+        logger.error(
+          { workspaceId: workspace.sId, userId: user.sId, err },
+          "[conversation_search] Shadow validation failed"
         );
       }
-    }
+    })();
 
     return { conversations: hydratedItems, hasMore, lastValue };
   }
@@ -2146,11 +2155,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       }
     );
 
-    await this.triggerEsIndexing(
-      auth,
-      conversation.sId,
-      auth.getNonNullableWorkspace().sId
-    );
+    await this.triggerEsIndexing(auth, conversation.sId);
 
     return new Ok(updated);
   }
@@ -2179,11 +2184,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       }
     );
 
-    await this.triggerEsIndexing(
-      auth,
-      conversation.sId,
-      auth.getNonNullableWorkspace().sId
-    );
+    await this.triggerEsIndexing(auth, conversation.sId);
 
     return new Ok(updated);
   }
@@ -2208,11 +2209,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       }
     );
 
-    await this.triggerEsIndexing(
-      auth,
-      conversation.sId,
-      auth.getNonNullableWorkspace().sId
-    );
+    await this.triggerEsIndexing(auth, conversation.sId);
 
     return new Ok(updated[0]);
   }
@@ -2461,11 +2458,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     }, transaction);
 
     if (status !== "none") {
-      await this.triggerEsIndexing(
-        auth,
-        conversation.sId,
-        auth.getNonNullableWorkspace().sId
-      );
+      await this.triggerEsIndexing(auth, conversation.sId);
     }
 
     return status;
@@ -3194,31 +3187,19 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   async updateTitle(auth: Authenticator, title: string) {
     await this.update({ title });
 
-    await ConversationResource.triggerEsIndexing(
-      auth,
-      this.sId,
-      auth.getNonNullableWorkspace().sId
-    );
+    await ConversationResource.triggerEsIndexing(auth, this.sId);
   }
 
   async updateVisibilityToDeleted(auth: Authenticator) {
     await this.update({ visibility: "deleted" });
 
-    await ConversationResource.triggerEsIndexing(
-      auth,
-      this.sId,
-      auth.getNonNullableWorkspace().sId
-    );
+    await ConversationResource.triggerEsIndexing(auth, this.sId);
   }
 
   async updateVisibilityToUnlisted(auth: Authenticator) {
     await this.update({ visibility: "unlisted" });
 
-    await ConversationResource.triggerEsIndexing(
-      auth,
-      this.sId,
-      auth.getNonNullableWorkspace().sId
-    );
+    await ConversationResource.triggerEsIndexing(auth, this.sId);
   }
 
   async updateRequirements(
@@ -3233,11 +3214,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       transaction
     );
 
-    await ConversationResource.triggerEsIndexing(
-      auth,
-      this.sId,
-      auth.getNonNullableWorkspace().sId
-    );
+    await ConversationResource.triggerEsIndexing(auth, this.sId);
   }
 
   async updateSpaceId(
@@ -3247,22 +3224,14 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   ) {
     await this.update({ spaceId: space.id }, transaction);
 
-    await ConversationResource.triggerEsIndexing(
-      auth,
-      this.sId,
-      auth.getNonNullableWorkspace().sId
-    );
+    await ConversationResource.triggerEsIndexing(auth, this.sId);
   }
 
   async clearSpaceId(auth: Authenticator) {
     await this.update({ spaceId: null });
     this._space = null;
 
-    await ConversationResource.triggerEsIndexing(
-      auth,
-      this.sId,
-      auth.getNonNullableWorkspace().sId
-    );
+    await ConversationResource.triggerEsIndexing(auth, this.sId);
   }
 
   /**
@@ -3520,7 +3489,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     // Trigger ES cleanup via the same Temporal worker used for all ES writes.
     // The activity will find the conversation absent from DB and call
     // deleteConversationDocument itself.
-    await ConversationResource.triggerEsIndexing(auth, this.sId, owner.sId);
+    await ConversationResource.triggerEsIndexing(auth, this.sId);
 
     return new Ok(undefined);
   }
@@ -3673,6 +3642,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       hasError: this.hasError,
       lastReadMs: this.userLastReadAt?.getTime() ?? null,
       metadata: this.metadata ?? {},
+      nextWakeupAt: null,
       requestedSpaceIds: this.getRequestedSpaceIdsFromModel(),
       sId: this.sId,
       spaceId: this.space?.sId ?? null,
