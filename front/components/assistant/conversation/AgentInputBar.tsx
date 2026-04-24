@@ -106,12 +106,13 @@ export const AgentInputBar = ({
     ? "Wait for compaction to finish"
     : null;
 
-  const { activeWakeUp, isActiveWakeUpOwner } = useConversationWakeUps({
+  const { activeWakeUp } = useConversationWakeUps({
     owner: context.owner,
     conversationId: context.conversation?.sId ?? "",
     disabled: !context.conversation,
   });
 
+  const isActiveWakeUpOwner = activeWakeUp?.user.sId === context.user.sId;
   const wakeUpBlockMessage =
     activeWakeUp && !isActiveWakeUpOwner
       ? `Conversation paused - a wake-up is scheduled for ${formatWakeUpTime(activeWakeUp)}`
