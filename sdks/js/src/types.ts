@@ -1629,6 +1629,17 @@ export const ConversationEventDataSchema = z.union([
 ]);
 export type ConversationEventData = z.infer<typeof ConversationEventDataSchema>;
 
+export const CONVERSATION_EVENT_DATA_TYPES = [
+  "agent_message_done",
+  "agent_message_new",
+  "conversation_title",
+  "user_message_new",
+] as const satisfies readonly ConversationEventData["type"][];
+
+export const ConversationEventDataTypeSchema = z.enum(
+  CONVERSATION_EVENT_DATA_TYPES
+);
+
 const ConversationEventTypeSchema = z.object({
   eventId: z.string(),
   data: ConversationEventDataSchema,
@@ -1650,9 +1661,31 @@ export const AgentMessageEventDataSchema = z.union([
   ToolErrorEventSchema,
   UserMessageErrorEventSchema,
 ]);
-export type AgentMessageEventData = z.infer<
-  typeof AgentMessageEventDataSchema
->;
+export type AgentMessageEventData = z.infer<typeof AgentMessageEventDataSchema>;
+
+export const AGENT_MESSAGE_EVENT_DATA_TYPES = [
+  "agent_action_success",
+  "agent_context_pruned",
+  "agent_error",
+  "agent_generation_cancelled",
+  "agent_message_done",
+  "agent_message_gracefully_stopped",
+  "agent_message_success",
+  "generation_tokens",
+  "tool_approve_execution",
+  "tool_ask_user_question",
+  "tool_call_started",
+  "tool_error",
+  "tool_file_auth_required",
+  "tool_notification",
+  "tool_params",
+  "tool_personal_auth_required",
+  "user_message_error",
+] as const satisfies readonly AgentMessageEventData["type"][];
+
+export const AgentMessageEventDataTypeSchema = z.enum(
+  AGENT_MESSAGE_EVENT_DATA_TYPES
+);
 
 const AgentMessageEventTypeSchema = z.object({
   eventId: z.string(),

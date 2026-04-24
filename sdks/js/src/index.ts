@@ -55,13 +55,13 @@ import type {
   ValidateActionResponseType,
 } from "./types";
 import {
-  AgentMessageEventDataSchema,
+  AgentMessageEventDataTypeSchema,
   AnswerUserQuestionResponseSchema,
   APIErrorSchema,
   AppsCheckResponseSchema,
   BlockedActionsResponseSchema,
   CancelMessageGenerationResponseSchema,
-  ConversationEventDataSchema,
+  ConversationEventDataTypeSchema,
   CreateConversationResponseSchema,
   CreateGenericAgentConfigurationResponseSchema,
   DataSourceViewResponseSchema,
@@ -163,11 +163,17 @@ export type AgentEvent = AgentMessageEventData;
 export type ConversationEvent = ConversationEventData;
 
 function isAgentEvent(value: unknown): value is AgentEvent {
-  return AgentMessageEventDataSchema.safeParse(value).success;
+  return (
+    isRecord(value) &&
+    AgentMessageEventDataTypeSchema.safeParse(value.type).success
+  );
 }
 
 function isConversationEvent(value: unknown): value is ConversationEvent {
-  return ConversationEventDataSchema.safeParse(value).success;
+  return (
+    isRecord(value) &&
+    ConversationEventDataTypeSchema.safeParse(value.type).success
+  );
 }
 
 const textFromResponse = async (response: DustResponse): Promise<string> => {
