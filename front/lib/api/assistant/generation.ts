@@ -295,9 +295,12 @@ function constructSkillsSection({
   if (allEnabledSkills.length > 0) {
     skillsSection += "\n### ENABLED SKILLS\n";
     skillsSection += "The following skills are currently enabled:\n";
-    skillsSection += allEnabledSkills
-      .map((skill) => getEnabledSkillInstructions(skill))
-      .join("\n");
+    skillsSection += [
+      ...systemSkills.map(
+        (skill) => `<${skill.name}>\n${skill.instructions}\n</${skill.name}>`
+      ),
+      ...enabledSkills.map((skill) => getEnabledSkillInstructions(skill)),
+    ].join("\n");
   }
 
   if (sortedEquippedSkills.length > 0) {

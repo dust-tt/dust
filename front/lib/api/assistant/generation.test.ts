@@ -510,6 +510,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
       model: modelConfig,
       hasAvailableActions: true,
       agentsList: null,
+      systemSkills: [],
       enabledSkills: [],
       equippedSkills,
       renderSkillsAsUserMessages: true,
@@ -544,6 +545,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
       model: modelConfig,
       hasAvailableActions: true,
       agentsList: null,
+      systemSkills: [],
       enabledSkills: [],
       equippedSkills,
     };
@@ -573,7 +575,8 @@ describe("constructPromptMultiActions - system prompt stability", () => {
       model: modelConfig,
       hasAvailableActions: true,
       agentsList: null,
-      enabledSkills: [SkillFactory.withExtendedSkill(discoverSkills)],
+      systemSkills: [discoverSkills],
+      enabledSkills: [],
       equippedSkills: [],
       renderSkillsAsUserMessages: true,
     };
