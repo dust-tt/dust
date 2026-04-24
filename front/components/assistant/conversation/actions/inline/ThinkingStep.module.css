@@ -7,7 +7,7 @@
   --dur-open: 180ms;
   --dur-close: 145ms;
   --ease: cubic-bezier(0.32, 0.72, 0, 1);
-  --fade-delay: var(--dur-open); /* wait for height animation to finish */
+  --fade-delay: 60ms; /* wait for height animation to finish */
 }
 
 .content {
