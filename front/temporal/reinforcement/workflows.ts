@@ -70,15 +70,13 @@ const { checkBatchStatusActivity } = proxyActivities<typeof activities>({
 const {
   startSkillConversationAnalysisBatchActivity,
   startSkillAggregationBatchActivity,
-} = proxyActivities<typeof activities>({
-  startToCloseTimeout: "30 minutes",
-});
-
-const {
   processSkillConversationAnalysisBatchResultActivity,
   processSkillAggregationBatchResultActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "30 minutes",
+  retry: {
+    maximumAttempts: 5,
+  },
 });
 
 // runToolActivity is re-exported from the agent loop so the reinforced skills
