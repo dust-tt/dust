@@ -1,0 +1,6 @@
+{
+  "packageName": "@dust-tt/sparkle",
+  "excludeDirs": ["node_modules", ".next", "dist", "build", "coverage", ".git", "storybook-static", "sparkle"],
+  "outputDir": "../dashboard/reports",
+  "sparkleTokensPath": null
+}

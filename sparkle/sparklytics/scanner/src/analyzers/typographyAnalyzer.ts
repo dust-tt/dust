@@ -1,0 +1,262 @@
+import type { TSESTree } from "@typescript-eslint/types";
+import { AST_NODE_TYPES } from "@typescript-eslint/types";
+import type { Declaration, Root } from "postcss";
+import { traverseAST } from "../parsers/astUtils.js";
+import { parseCssFile } from "../parsers/cssParser.js";
+import type { ParseCache } from "../parsers/tsxParser.js";
+import { getFontSizeSet, getLineHeightSet } from "../tokens/registry.js";
+import type {
+  ScanConfig,
+  SparkleTokenRegistry,
+  TokenViolation,
+  TypographyAnalysis,
+} from "../types.js";
+import { relativePath } from "../utils/fileCollector.js";
+
+const TYPO_CSS_PROPS = new Set([
+  "font-family",
+  "font-size",
+  "font-weight",
+  "line-height",
+]);
+
+const TYPO_STYLE_KEYS = new Set([
+  "fontFamily",
+  "fontSize",
+  "fontWeight",
+  "lineHeight",
+]);
+
+const CSS_PROP_TO_STYLE: Record<string, string> = {
+  "font-family": "fontFamily",
+  "font-size": "fontSize",
+  "font-weight": "fontWeight",
+  "line-height": "lineHeight",
+};
+
+// Generic family keywords that are always acceptable as fallbacks.
+const GENERIC_FONT_FAMILIES = new Set([
+  "serif",
+  "sans-serif",
+  "monospace",
+  "cursive",
+  "fantasy",
+  "system-ui",
+  "ui-sans-serif",
+  "ui-serif",
+  "ui-monospace",
+  "ui-rounded",
+  "emoji",
+  "math",
+  "fangsong",
+  "inherit",
+  "initial",
+  "unset",
+  "revert",
+]);
+
+function parseFontFamilyStack(value: string): string[] {
+  return value
+    .split(",")
+    .map((f) =>
+      f
+        .trim()
+        .replace(/^["']|["']$/g, "")
+        .toLowerCase()
+    )
+    .filter((f) => f.length > 0);
+}
+
+function isSparkleFontFamily(
+  value: string,
+  registry: SparkleTokenRegistry
+): boolean {
+  const allowed = new Set(registry.fontFamilies.map((f) => f.toLowerCase()));
+  const families = parseFontFamilyStack(value);
+  if (families.length === 0) return false;
+  return families.every((f) => allowed.has(f) || GENERIC_FONT_FAMILIES.has(f));
+}
+
+function isSparkleTypographyToken(
+  prop: string,
+  value: string,
+  registry: SparkleTokenRegistry,
+  fontSizeSet: Set<string>,
+  lineHeightSet: Set<string>
+): boolean {
+  const key = CSS_PROP_TO_STYLE[prop] ?? prop;
+  switch (key) {
+    case "fontFamily":
+      return isSparkleFontFamily(value, registry);
+    case "fontSize":
+      return fontSizeSet.has(value.trim());
+    case "fontWeight": {
+      const n = parseInt(value, 10);
+      return !isNaN(n) && registry.fontWeights.includes(n);
+    }
+    case "lineHeight":
+      return lineHeightSet.has(value.trim());
+    default:
+      return false;
+  }
+}
+
+function analyzeCssTypography(
+  root: Root,
+  filePath: string,
+  targetDir: string,
+  registry: SparkleTokenRegistry,
+  fontSizeSet: Set<string>,
+  lineHeightSet: Set<string>,
+  context: "css" | "scss"
+): TokenViolation[] {
+  const violations: TokenViolation[] = [];
+  const relPath = relativePath(targetDir, filePath);
+
+  root.walkDecls((decl: Declaration) => {
+    if (!TYPO_CSS_PROPS.has(decl.prop.toLowerCase())) return;
+    const value = decl.value.trim();
+    violations.push({
+      filePath: relPath,
+      line: decl.source?.start?.line ?? 0,
+      column: decl.source?.start?.column ?? 0,
+      property: decl.prop.toLowerCase(),
+      value,
+      context,
+      isSparkleToken: isSparkleTypographyToken(
+        decl.prop.toLowerCase(),
+        value,
+        registry,
+        fontSizeSet,
+        lineHeightSet
+      ),
+    });
+  });
+
+  return violations;
+}
+
+function analyzeTsxTypography(
+  ast: TSESTree.Program,
+  filePath: string,
+  targetDir: string,
+  registry: SparkleTokenRegistry,
+  fontSizeSet: Set<string>,
+  lineHeightSet: Set<string>
+): TokenViolation[] {
+  const violations: TokenViolation[] = [];
+  const relPath = relativePath(targetDir, filePath);
+
+  traverseAST(ast, (node) => {
+    if (node.type !== AST_NODE_TYPES.JSXAttribute) return;
+    if (
+      node.name.type !== AST_NODE_TYPES.JSXIdentifier ||
+      node.name.name !== "style"
+    )
+      return;
+    if (node.value?.type !== AST_NODE_TYPES.JSXExpressionContainer) return;
+
+    const expr = node.value.expression;
+    if (expr.type !== AST_NODE_TYPES.ObjectExpression) return;
+
+    for (const prop of expr.properties) {
+      if (prop.type !== AST_NODE_TYPES.Property) continue;
+      const key =
+        prop.key.type === AST_NODE_TYPES.Identifier
+          ? prop.key.name
+          : prop.key.type === AST_NODE_TYPES.Literal
+            ? String(prop.key.value)
+            : null;
+      if (!key || !TYPO_STYLE_KEYS.has(key)) continue;
+
+      const valNode = prop.value;
+      let value: string | null = null;
+      if (valNode.type === AST_NODE_TYPES.Literal) {
+        value = String(valNode.value);
+      } else if (
+        valNode.type === AST_NODE_TYPES.TemplateLiteral &&
+        valNode.quasis.length === 1
+      ) {
+        value = valNode.quasis[0].value.raw;
+      }
+      if (!value) continue;
+
+      // Map camelCase key back to CSS prop for the validator
+      const cssProp =
+        Object.entries(CSS_PROP_TO_STYLE).find(([, v]) => v === key)?.[0] ??
+        key;
+
+      violations.push({
+        filePath: relPath,
+        line: prop.loc.start.line,
+        column: prop.loc.start.column,
+        property: key,
+        value,
+        context: "inline-style",
+        isSparkleToken: isSparkleTypographyToken(
+          cssProp,
+          value,
+          registry,
+          fontSizeSet,
+          lineHeightSet
+        ),
+      });
+    }
+  });
+
+  return violations;
+}
+
+export function analyzeTypography(
+  tsxFiles: string[],
+  cssFiles: string[],
+  cache: ParseCache,
+  config: ScanConfig,
+  registry: SparkleTokenRegistry
+): TypographyAnalysis {
+  const fontSizeSet = getFontSizeSet(registry);
+  const lineHeightSet = getLineHeightSet(registry);
+  const all: TokenViolation[] = [];
+
+  for (const filePath of cssFiles) {
+    const root = parseCssFile(filePath);
+    if (!root) continue;
+    const ctx = filePath.endsWith(".scss") ? "scss" : "css";
+    all.push(
+      ...analyzeCssTypography(
+        root,
+        filePath,
+        config.targetDir,
+        registry,
+        fontSizeSet,
+        lineHeightSet,
+        ctx
+      )
+    );
+  }
+
+  for (const filePath of tsxFiles) {
+    const ast = cache.get(filePath);
+    if (!ast) continue;
+    all.push(
+      ...analyzeTsxTypography(
+        ast,
+        filePath,
+        config.targetDir,
+        registry,
+        fontSizeSet,
+        lineHeightSet
+      )
+    );
+  }
+
+  const tokenTypography = all.filter((v) => v.isSparkleToken);
+  const nonTokenTypography = all.filter((v) => !v.isSparkleToken);
+
+  return {
+    tokenTypography,
+    nonTokenTypography,
+    totalUsages: all.length,
+    complianceRate: all.length > 0 ? tokenTypography.length / all.length : 1,
+  };
+}
