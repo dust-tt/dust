@@ -1400,10 +1400,9 @@ function NavigationListWithInbox({
     );
   }, [conversations, titleFilter]);
 
-  const { markAllAsRead, isMarkingAllAsRead } =
-    useMarkAllConversationsAsRead({
-      owner,
-    });
+  const { markAllAsRead, isMarkingAllAsRead } = useMarkAllConversationsAsRead({
+    owner,
+  });
 
   const conversationsByDate = readConversations?.length
     ? getGroupConversationsByDate({
