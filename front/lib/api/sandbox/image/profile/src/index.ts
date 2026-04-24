@@ -11,6 +11,7 @@ import { fileURLToPath } from "node:url";
 
 import { getProfile } from "./profile";
 import { isToolError, printToolError } from "./shared/errors";
+import { logToolInvocation } from "./shared/telemetry";
 import * as editFile from "./tools/edit_file";
 import * as glob from "./tools/glob";
 import * as grepFiles from "./tools/grep_files";
@@ -64,53 +65,69 @@ function installPipeHandlers(): void {
 export async function runCli(argv: readonly string[]): Promise<number> {
   installPipeHandlers();
 
+  const startedAtMs = Date.now();
+  let toolName = "unknown";
   let profileArg: string | undefined;
-  let index = 0;
-
-  if (argv[index] === "--profile") {
-    profileArg = argv[index + 1];
-    if (profileArg === undefined) {
-      process.stderr.write("Error: --profile requires a value\n");
-      return 1;
-    }
-    index += 2;
-  }
-
-  const remaining = argv.slice(index);
-  if (
-    remaining.length === 0 ||
-    (remaining.length === 1 && ["--help", "-h"].includes(remaining[0] ?? ""))
-  ) {
-    printGlobalUsage(process.stderr);
-    if (remaining.length === 0) {
-      return 1;
-    }
-    return 0;
-  }
-
-  const toolName = remaining[0] ?? "";
-  const toolArgs = remaining.slice(1);
-  const tool = TOOLS[toolName];
-
-  if (!tool) {
-    process.stderr.write(`Error: unknown tool: ${toolName}\n`);
-    printGlobalUsage(process.stderr);
-    return 1;
-  }
+  let exitCode = 0;
 
   try {
-    await tool.run(toolArgs, getProfile(profileArg));
-    return 0;
-  } catch (err: unknown) {
-    if (isToolError(err)) {
-      printToolError(err);
-      return err.exitCode;
+    let index = 0;
+
+    if (argv[index] === "--profile") {
+      profileArg = argv[index + 1];
+      if (profileArg === undefined) {
+        process.stderr.write("Error: --profile requires a value\n");
+        exitCode = 1;
+        return exitCode;
+      }
+      index += 2;
     }
 
-    process.stderr.write(
-      `Error: ${err instanceof Error ? err.message : String(err)}\n`
-    );
-    return 1;
+    const remaining = argv.slice(index);
+    if (
+      remaining.length === 0 ||
+      (remaining.length === 1 && ["--help", "-h"].includes(remaining[0] ?? ""))
+    ) {
+      printGlobalUsage(process.stderr);
+      exitCode = remaining.length === 0 ? 1 : 0;
+      return exitCode;
+    }
+
+    toolName = remaining[0] ?? "";
+    const toolArgs = remaining.slice(1);
+    const tool = TOOLS[toolName];
+
+    if (!tool) {
+      process.stderr.write(`Error: unknown tool: ${toolName}\n`);
+      printGlobalUsage(process.stderr);
+      exitCode = 1;
+      return exitCode;
+    }
+
+    try {
+      await tool.run(toolArgs, getProfile(profileArg));
+      exitCode = 0;
+      return exitCode;
+    } catch (err: unknown) {
+      if (isToolError(err)) {
+        printToolError(err);
+        exitCode = err.exitCode;
+        return exitCode;
+      }
+
+      process.stderr.write(
+        `Error: ${err instanceof Error ? err.message : String(err)}\n`
+      );
+      exitCode = 1;
+      return exitCode;
+    }
+  } finally {
+    logToolInvocation({
+      tool: toolName,
+      profile: getProfile(profileArg),
+      exitCode,
+      durationMs: Date.now() - startedAtMs,
+    });
   }
 }
 

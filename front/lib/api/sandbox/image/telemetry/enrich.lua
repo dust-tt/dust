@@ -5,6 +5,9 @@ function enrich_message(tag, timestamp, record)
     local exit_code = record["exit_code"]
     local msg = record["msg"] or record["message"]
     local data = record["data"]
+    local tool = record["tool"]
+    local profile = record["profile"]
+    local duration_ms = record["duration_ms"]
 
     local gcsfuse_severity = record["severity"]
     if gcsfuse_severity then
@@ -53,6 +56,8 @@ function enrich_message(tag, timestamp, record)
         record["message"] = string.format("[pid:%s] Started: %s", pid or "?", command)
     elseif event_type == "process_exit" and command then
         record["message"] = string.format("[pid:%s] Exited (code %s): %s", pid or "?", exit_code or "?", command)
+    elseif event_type == "tool_invocation" and tool then
+        record["message"] = string.format("[dust_tool] %s profile=%s exit=%s duration_ms=%s", tool, profile or "?", exit_code or "?", duration_ms or "?")
     elseif (event_type == "stdout" or event_type == "stderr") and data then
         record["message"] = string.format("[%s] %s", event_type, data)
     elseif event_type and msg then
