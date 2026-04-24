@@ -326,11 +326,6 @@ export const SlashCommandDropdown = forwardRef<
                       ref={(element) => {
                         itemRefs.current[index] = element;
                       }}
-                      style={
-                        index === selectedIndex
-                          ? { transitionDuration: "0ms" }
-                          : undefined
-                      }
                       icon={item.icon}
                       label={item.label}
                       description={item.description}
@@ -339,7 +334,7 @@ export const SlashCommandDropdown = forwardRef<
                       onMouseEnter={() => setSelectedIndex(index)}
                       className={
                         index === selectedIndex
-                          ? "bg-muted-background dark:bg-muted-night"
+                          ? "bg-muted-background dark:bg-muted-night [transition-duration:0ms]"
                           : ""
                       }
                     />
