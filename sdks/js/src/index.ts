@@ -1251,6 +1251,7 @@ export class DustAPI {
       const res = await createRequest(lastEventId);
 
       if (res.isErr()) {
+        // Treat request errors as transient and apply reconnection policy when enabled.
         if (autoReconnect) {
           reconnectAttempts += 1;
           if (reconnectAttempts >= maxReconnectAttempts) {
@@ -1338,20 +1339,26 @@ export class DustAPI {
         logger.error({ error: e }, "Failed processing event stream");
         streamEndedWithError = true;
 
+        // Respect caller-initiated aborts.
         if (signal?.aborted) {
           return;
         }
+        // Apply reconnection policy on stream termination or abort; otherwise propagate.
         if (!isStreamTerminationError(e)) {
           throw new Error(`Error processing event stream: ${e}`);
         }
+        // Do not throw; flow continues to reconnection block below.
       } finally {
         reader.releaseLock();
       }
 
+      // Stream ended; check whether we need to reconnect.
       if (shouldReconnect() && autoReconnect) {
         if (streamEndedWithError || !receivedEventsInThisConnection) {
+          // Increment on errors and empty clean closures from stale or finished streams.
           reconnectAttempts += 1;
         } else {
+          // Successful connections with events reset the counter like EventSource onopen.
           reconnectAttempts = 0;
         }
 
@@ -1363,6 +1370,7 @@ export class DustAPI {
         continue;
       }
 
+      // Exit the generator after a terminal event or when auto-reconnect is disabled.
       return;
     }
   }
