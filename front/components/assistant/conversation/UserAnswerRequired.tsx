@@ -298,7 +298,7 @@ export function UserAnswerRequired({
               value={question.options.length + 1}
               size="sm"
               variant="ghost"
-              className="shrink-0 bg-border-dark dark:bg-border-dark-night"
+              className="shrink-0 bg-border-darker dark:bg-border-darker-night"
             />
             <Input
               ref={customResponseInputRef}
