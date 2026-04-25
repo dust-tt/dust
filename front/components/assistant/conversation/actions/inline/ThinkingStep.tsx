@@ -37,7 +37,7 @@ export const ThinkingStep = memo(function ThinkingStep({
   isLast,
 }: ThinkingStepProps) {
   const [isExpanded, setIsExpanded] = useState(true);
-  const [needsTruncation, setNeedsTruncation] = useState(true);
+  const [needsTruncation, setNeedsTruncation] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
   const isMeasured = useRef(false);
 
@@ -49,11 +49,10 @@ export const ThinkingStep = memo(function ThinkingStep({
 
     if (isMessageDone) {
       const overflows = el.scrollHeight > getClampHeightPx(el);
+      setNeedsTruncation(overflows);
       if (overflows) {
-        setNeedsTruncation(overflows);
         setIsExpanded(false);
       }
-
       isMeasured.current = true;
     }
   }, [isStreaming, isMessageDone]);

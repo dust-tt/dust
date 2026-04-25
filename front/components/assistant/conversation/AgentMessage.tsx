@@ -1337,7 +1337,7 @@ function AgentMessageContent({
           agentMessage.content !== "" &&
           agentMessage.streaming.agentState === "done" && (
             <div>
-              {/* <AgentMessageMarkdown
+              <AgentMessageMarkdown
                 content={sanitizeVisualizationContent(agentMessage.content)}
                 owner={owner}
                 streamingState={
@@ -1346,7 +1346,7 @@ function AgentMessageContent({
                 isLastMessage={isLastMessage}
                 additionalMarkdownComponents={additionalMarkdownComponents}
                 additionalMarkdownPlugins={additionalMarkdownPlugins}
-              /> */}
+              />
             </div>
           )}
         {generatedFiles.length > 0 && (
