@@ -1,5 +1,5 @@
 .root {
-  --clamp-height: 3.75rem; /* ~3 lines of text-sm (20px line-height) */
+  --clamp-height: 3.75rem; /* ~3 lines of text-sm (1.25rem  line-height) */
   --fade-height: 2rem;
   --dur-open: 180ms;
   --dur-close: 145ms;

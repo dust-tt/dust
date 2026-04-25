@@ -7,6 +7,10 @@ import styles from "./ThinkingStep.module.css";
 // Resolved once from the CSS custom property --clamp-height; shared across all instances.
 let cachedClampHeightPx: number | null = null;
 
+// Converts the --clamp-height CSS variable from rem to px.
+// rem ("root em") is relative to the <html> element's font-size (typically 16px),
+// so 3.75rem = 3.75 × 16 = 60px. We need the px value to compare against
+// el.scrollHeight (which is always in px) when deciding whether to truncate.
 function getClampHeightPx(el: HTMLElement): number {
   if (cachedClampHeightPx !== null) {
     return cachedClampHeightPx;
