@@ -1,11 +1,20 @@
 import { TimelineRow } from "@app/components/assistant/conversation/actions/inline/TimelineRow";
 import { cn, Markdown } from "@dust-tt/sparkle";
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 
 import styles from "./ThinkingStep.module.css";
 
-// Matches --clamp-height (3.75rem) in ThinkingStep.module.css.
-const CLAMP_HEIGHT_PX = 60;
+function getClampHeightPx(el: HTMLElement): number {
+  const raw = getComputedStyle(el).getPropertyValue("--clamp-height").trim();
+  const rem = parseFloat(raw);
+  if (isNaN(rem)) {
+    return 60; // best guess if we cannot figure out the value
+  }
+  const fontSize = parseFloat(
+    getComputedStyle(document.documentElement).fontSize
+  );
+  return rem * fontSize;
+}
 
 interface ThinkingStepProps {
   content: string;
@@ -14,15 +23,13 @@ interface ThinkingStepProps {
   isLast: boolean;
 }
 
-export function ThinkingStep({
+export const ThinkingStep = memo(function ThinkingStep({
   content,
   isStreaming,
   isMessageDone,
   isLast,
 }: ThinkingStepProps) {
-  // When the message is still in progress, this step just transitioned from
-  // streaming — start expanded so there's no visible collapse flash.
-  const [isExpanded, setIsExpanded] = useState(!isMessageDone);
+  const [isExpanded, setIsExpanded] = useState(true);
   const [needsTruncation, setNeedsTruncation] = useState(true);
   const contentRef = useRef<HTMLDivElement>(null);
   const isMeasured = useRef(false);
@@ -33,14 +40,15 @@ export function ThinkingStep({
       return;
     }
 
-    // Compare against the known clamp height so it works whether the
-    // CSS is currently expanded or collapsed.
-    const overflows = el.scrollHeight > CLAMP_HEIGHT_PX;
-    setNeedsTruncation(overflows);
-    if (overflows && isMessageDone) {
-      setIsExpanded(false);
+    if (isMessageDone) {
+      const overflows = el.scrollHeight > getClampHeightPx(el);
+      if (overflows) {
+        setNeedsTruncation(overflows);
+        setIsExpanded(false);
+      }
+
+      isMeasured.current = true;
     }
-    isMeasured.current = true;
   }, [isStreaming, isMessageDone]);
 
   const markdown = content ? (
@@ -98,4 +106,4 @@ export function ThinkingStep({
       </TimelineRow>
     </div>
   );
-}
+});
