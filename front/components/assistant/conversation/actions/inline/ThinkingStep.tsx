@@ -36,8 +36,10 @@ export const ThinkingStep = memo(function ThinkingStep({
   isMessageDone,
   isLast,
 }: ThinkingStepProps) {
-  const [isExpanded, setIsExpanded] = useState(true);
-  const [needsTruncation, setNeedsTruncation] = useState(false);
+  // if it's currently streaming, default to open (we don't auto collapse until message is done)
+  // if it's not streaming, default to collapse to avoid glitchy effects (since most of thinking steps need to be collapsed)
+  const [isExpanded, setIsExpanded] = useState(!isMessageDone);
+  const [needsTruncation, setNeedsTruncation] = useState(isMessageDone);
   const contentRef = useRef<HTMLDivElement>(null);
   const isMeasured = useRef(false);
 
@@ -47,12 +49,12 @@ export const ThinkingStep = memo(function ThinkingStep({
       return;
     }
 
+    // we don't want to update the collapse state in the middle of streaming 
     if (isMessageDone) {
       const overflows = el.scrollHeight > getClampHeightPx(el);
       setNeedsTruncation(overflows);
-      if (overflows) {
-        setIsExpanded(false);
-      }
+      setIsExpanded(!overflows);
+    
       isMeasured.current = true;
     }
   }, [isStreaming, isMessageDone]);
