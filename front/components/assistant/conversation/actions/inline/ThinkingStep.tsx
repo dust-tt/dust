@@ -4,16 +4,23 @@ import { memo, useEffect, useRef, useState } from "react";
 
 import styles from "./ThinkingStep.module.css";
 
+// Resolved once from the CSS custom property --clamp-height; shared across all instances.
+let cachedClampHeightPx: number | null = null;
+
 function getClampHeightPx(el: HTMLElement): number {
+  if (cachedClampHeightPx !== null) {
+    return cachedClampHeightPx;
+  }
   const raw = getComputedStyle(el).getPropertyValue("--clamp-height").trim();
   const rem = parseFloat(raw);
   if (isNaN(rem)) {
-    return 60; // best guess if we cannot figure out the value
+    return 60; // 3.75rem × 16px default font size
   }
   const fontSize = parseFloat(
     getComputedStyle(document.documentElement).fontSize
   );
-  return rem * fontSize;
+  cachedClampHeightPx = rem * fontSize;
+  return cachedClampHeightPx;
 }
 
 interface ThinkingStepProps {
