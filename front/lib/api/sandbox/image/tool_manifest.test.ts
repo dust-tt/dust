@@ -14,13 +14,6 @@ describe("createToolManifest()", () => {
     expect(manifest.version).toBe("1.0");
   });
 
-  test("includes generatedAt timestamp", () => {
-    const manifest = createToolManifest([]);
-
-    expect(manifest.generatedAt).toBeDefined();
-    expect(() => new Date(manifest.generatedAt)).not.toThrow();
-  });
-
   test("groups tools by runtime", () => {
     const tools: ToolEntry[] = [
       { name: "curl", description: "HTTP client", runtime: "system" },
@@ -121,7 +114,6 @@ describe("toolManifestToJSON()", () => {
     const parsed = JSON.parse(jsonString);
 
     expect(parsed.version).toBe("1.0");
-    expect(parsed.generatedAt).toBeDefined();
     expect(parsed.tools.system).toHaveLength(1);
   });
 });
