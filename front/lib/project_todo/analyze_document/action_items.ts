@@ -41,16 +41,16 @@ export function buildPromptActionItems(
     "Action item guidelines:\n" +
     "Most documents contain few or no action items. Prefer fewer, high-confidence items " +
     "over a noisy list. When in doubt, leave it out.\n\n" +
-    "Only extract an action item if it passes ALL four tests:\n" +
-    "1. **Commitment**: someone explicitly committed to doing a concrete task, or was " +
+    "Only extract an action item if it passes ALL criterias:\n" +
+    "1. **Humans**: ignore any action items that was assigned or completed by an agent, assistant or bot." +
+    "2. **Commitment**: someone explicitly committed to doing a concrete task, or was " +
     "clearly asked to do one. Only extract tasks with a clear deliverable — 'I'll fix X' " +
     "qualifies, 'I'll think about it' does not.\n" +
-    "2. **Durability**: the task is still relevant — if it was already resolved within " +
+    "3. **Durability**: the task is still relevant — if it was already resolved within " +
     "the same conversation, set status to 'done'; if the request was immediately " +
     "fulfilled inline (e.g., answering a question), do not extract it at all.\n" +
-    "3. **Distinctness**: it is not a duplicate of another action item or a rephrasing " +
-    "of a key decision.\n" +
-    "4. **Relevance**: the task is work-related and project-relevant. Purely social plans " +
+    "4. **Distinctness**: it is not a duplicate of another action item or a rephrasing " +
+    "5. **Relevance**: the task is work-related and project-relevant. Purely social plans " +
     "(birthday lunches, personal events, casual meetups) are not action items even if someone " +
     "commits to arranging them.\n\n" +
     "Formatting rules:\n" +
