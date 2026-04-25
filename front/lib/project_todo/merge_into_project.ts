@@ -32,7 +32,7 @@
 //   keyDecisions (decided) → "to_know", status: "todo"
 //   notableFacts           → "to_know", status: "todo"
 
-import { getFastestWhitelistedModel } from "@app/lib/assistant";
+import { getSmallWhitelistedModel } from "@app/lib/assistant";
 import { Authenticator } from "@app/lib/auth";
 import {
   batchDeduplicateCandidates,
@@ -338,7 +338,7 @@ async function buildDeduplicationGroups(
     })
   );
 
-  const model = getFastestWhitelistedModel(auth);
+  const model = getSmallWhitelistedModel(auth);
   if (!model) {
     localLogger.warn(
       "Project todo merge: no whitelisted model, skipping deduplication"
