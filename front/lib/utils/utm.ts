@@ -16,6 +16,8 @@ export const MARKETING_PARAMS = [
   "msclkid",
   "li_fat_id",
   "posthog_id",
+  "seatbased",
+  "partner",
 ] as const;
 
 export type UTMParams = Partial<
