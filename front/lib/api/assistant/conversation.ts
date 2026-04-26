@@ -639,28 +639,6 @@ export async function postUserMessage(
     return limitResult;
   }
 
-  // Block posting while compaction is in progress, for now. It's not too hard to add support for
-  // pending messages on top of compaction. We start without support for it to simplify. Note that
-  // we don't currently re-check the existence of a compaction message inside the critical section
-  // below which means an agent loop could be triggered whle a compaction is running. This is not
-  // that problematic if it happens (agent message after the compaction message).
-  const runningCompactionMessage = conversation.content
-    .flat()
-    .find(
-      (m): m is CompactionMessageType =>
-        isCompactionMessageType(m) && m.status === "created"
-    );
-  if (runningCompactionMessage) {
-    return new Err({
-      status_code: 409,
-      api_error: {
-        type: "invalid_request_error",
-        message:
-          "User messages cannot be posted while conversation is being compacted.",
-      },
-    });
-  }
-
   const canInteractRes = await WakeUpResource.canUserInteract(
     auth,
     conversation
@@ -675,6 +653,12 @@ export async function postUserMessage(
     .find(
       (m): m is AgentMessageType =>
         isAgentMessageType(m) && m.status === "created"
+    );
+  let runningCompactionMessage = conversation.content
+    .flat()
+    .find(
+      (m): m is CompactionMessageType =>
+        isCompactionMessageType(m) && m.status === "created"
     );
 
   // Steering invariants: enforce single agent loop per conversation.
@@ -823,19 +807,23 @@ export async function postUserMessage(
 
   // In one big transaction create all Message, UserMessage, AgentMessage and Mention rows.
   const { userMessage, agentMessages } = await withTransaction(async (t) => {
-    // Since we are getting a transaction level lock, we can't execute any other SQL query outside of
-    // this transaction, otherwise this other query will be competing for a connection in the database
-    // connection pool, resulting in a deadlock.
+    // Since we are getting a transaction level lock, we can't execute any other SQL query outside
+    // of this transaction, otherwise this other query will be competing for a connection in the
+    // database connection pool, resulting in a deadlock.
     await getConversationRankVersionLock(auth, conversation, t);
 
     let nextMessageRank: number | undefined;
 
-    // We will do best effort to create a branch, but there a several conditions that we will not create a branch.
-    // - User is null, cannot create branch without a user, should never happen, but we will log an error and continue.
+    // We will do best effort to create a branch, but there a several conditions that we will not
+    // create a branch.
+    // - User is null, cannot create branch without a user, should never happen, but we will log an
+    //   error and continue.
     // - Message has user mentions, we don't support multiple users in a branch yet.
     // - Conversation has no content, we cannot create a branch as the start of the conversation.
-    // - Last message in conversation has no content should never happen, but we will log an error and continue.
-    // If we do not create a branch, the user will receive a notification that the agent is not usable.
+    // - Last message in conversation has no content should never happen, but we will log an error
+    //   and continue.
+    // If we do not create a branch, the user will receive a notification that the agent is not
+    // usable.
     if (shouldCreateBranch) {
       if (user === null) {
         // Should never happen, but we will log an error and continue.
@@ -869,7 +857,8 @@ export async function postUserMessage(
             t
           );
 
-          // Update the conversation with the new branch id so the rest of the functions will operate on the branch.
+          // Update the conversation with the new branch id so the rest of the functions will
+          // operate on the branch.
           conversation.branchId = branch.sId;
           // Set the next message rank to the rank of the previous message plus one.
           nextMessageRank = previousMessage.rank + 1;
@@ -911,18 +900,33 @@ export async function postUserMessage(
         },
         transaction: t,
       });
-
       if (agentMessageRow?.status !== "created") {
         runningAgentMessage = undefined;
       }
     }
+    // Re-read the compaction message status inside the critical section of the advisory lock. See
+    // comment above.
+    if (runningCompactionMessage) {
+      const compactionMessageRow = await CompactionMessageModel.findOne({
+        where: {
+          id: runningCompactionMessage.compactionMessageId,
+          workspaceId: owner.id,
+        },
+        transaction: t,
+      });
+      if (compactionMessageRow?.status !== "created") {
+        runningCompactionMessage = undefined;
+      }
+    }
 
-    // We set the visibility of the user message to "pending" if steering is enabled, we have a
-    // running agent message and there are agent mentions in the user messsage. If we are handing
-    // over we don't attempt steering as the intent is to start a new agentic loop and stop the
-    // parent one ASAP.
+    // We set the visibility of the user message to "pending" when we have a running agent or
+    // compaction message and there are agent mentions in the user messsage. If we are handing over
+    // we don't attempt steering as the intent is to start a new agentic loop and stop the parent
+    // one ASAP.
     const visibility: MessageVisibility =
-      runningAgentMessage && agentMentions.length > 0 && !isHandover
+      (runningAgentMessage || runningCompactionMessage) &&
+      agentMentions.length > 0 &&
+      !isHandover
         ? "pending"
         : "visible";
 
