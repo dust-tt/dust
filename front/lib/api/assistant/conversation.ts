@@ -2841,6 +2841,165 @@ export async function compactConversation(
   return new Ok({ compactionMessage });
 }
 
+/**
+ * This method is shared by `updateCompactionMessageWithContentAndFinalStatus` and
+ * `updateAgentMessageWithFinalStatus`. It is in charge of promoting pending user messages within a
+ * conversation by updating their status to "visible" and returning the "promotedAuth" that is the
+ * Authenticator associated with the last promoted user message's user authenticator.
+ *
+ * We have to use the last user message authenticator for all further operations since this is the
+ * only message that saw all previous pending messages. Otherwise it would be possible to hijack the
+ * authenticator of another user by steering the agent toward unexpected goals.
+ */
+async function promotePendingUserMessages(
+  auth: Authenticator,
+  {
+    conversation,
+    transaction,
+  }: {
+    conversation: ConversationWithoutContentType;
+    transaction?: Transaction;
+  }
+): Promise<{
+  promotedUserMessages: UserMessageTypeWithoutMentions[];
+  promotedUserMessage: UserMessageTypeWithoutMentions | null;
+  promotedAuth: Authenticator;
+}> {
+  const owner = auth.getNonNullableWorkspace();
+
+  const pendingMessages =
+    await ConversationResource.getPendingUserMessagesInConversation(auth, {
+      conversation,
+      transaction,
+    });
+
+  if (pendingMessages.length === 0) {
+    return {
+      promotedUserMessages: [] as UserMessageTypeWithoutMentions[],
+      promotedUserMessage: null,
+      promotedAuth: auth,
+    };
+  }
+
+  await MessageModel.update(
+    { visibility: "visible" },
+    {
+      where: {
+        id: pendingMessages.map((m) => m.id),
+        workspaceId: owner.id,
+      },
+      // Skip validation: Sequelize bulk update constructs a dummy instance with only the
+      // updated fields, so the beforeValidate hook (which checks that exactly one of
+      // userMessageId/agentMessageId/ contentFragmentId is set) fails because all three are
+      // undefined. The rows are already valid, we're only updating visibility.
+      validate: false,
+      transaction,
+    }
+  );
+
+  const promotedUserMessages = await batchRenderUserMessagesWithoutMentions(
+    auth,
+    {
+      messages: pendingMessages,
+      transaction,
+    }
+  );
+
+  // The new agent message is triggered by the last steering message (being promoted here from
+  // pending to visible). We need to use the promotedAuth of the associated user if it differs
+  // from the user who owns the current agent message.
+  const promotedUserMessage =
+    promotedUserMessages[promotedUserMessages.length - 1];
+  const promotedUser = promotedUserMessage.user;
+  let promotedAuth = auth;
+  if (promotedUser && promotedUser.sId !== auth.user()?.sId) {
+    promotedAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      promotedUser.sId,
+      owner.sId,
+      { transaction }
+    );
+  }
+
+  await ConversationResource.markAsUpdated(promotedAuth, {
+    conversation,
+    t: transaction,
+  });
+
+  return {
+    promotedAuth,
+    promotedUserMessage,
+    promotedUserMessages,
+  };
+}
+
+/**
+ * This method is shared by `updateCompactionMessageWithContentAndFinalStatus` and
+ * `updateAgentMessageWithFinalStatus`. It is in charge of running promotion related work that needs
+ * to happen outside of the critical lock.
+ */
+async function finalizeUserMessagePromotion(
+  auth: Authenticator,
+  {
+    conversation,
+    promotedUserMessage,
+    promotedUserMessages,
+    agentMessage,
+  }: {
+    conversation: ConversationWithoutContentType;
+    promotedUserMessages: UserMessageTypeWithoutMentions[];
+    promotedUserMessage: UserMessageTypeWithoutMentions | null;
+    agentMessage: AgentMessageType | null;
+  }
+) {
+  const owner = auth.getNonNullableWorkspace();
+
+  // Publish events and launch agent loop outside of the advisory lock.
+  if (promotedUserMessages.length > 0) {
+    for (const userMessage of promotedUserMessages) {
+      await publishConversationEvent(
+        {
+          type: "user_message_promoted",
+          created: Date.now(),
+          messageId: userMessage.sId,
+        },
+        { conversationId: conversation.sId }
+      );
+    }
+  }
+
+  if (agentMessage) {
+    assert(promotedUserMessage !== null);
+
+    await publishAgentMessagesEvents(conversation, [agentMessage]);
+
+    void emitAuditLogEvent({
+      auth: auth,
+      action: "agent.executed",
+      targets: [
+        buildAuditLogTarget("workspace", owner),
+        buildAuditLogTarget("agent", agentMessage.configuration),
+      ],
+      metadata: {
+        conversationId: conversation.sId,
+        agentName: agentMessage.configuration.name,
+        origin: "steering",
+        ...(conversation.triggerId
+          ? { triggerId: conversation.triggerId }
+          : {}),
+        initiating_user_id: auth.user()?.sId ?? "unknown",
+        initiating_user_email: auth.user()?.email ?? "unknown",
+      },
+    });
+
+    await runAgentLoopWorkflow({
+      auth,
+      agentMessages: [agentMessage],
+      conversation,
+      userMessage: promotedUserMessage,
+    });
+  }
+}
+
 export async function updateCompactionMessageWithContentAndFinalStatus(
   auth: Authenticator,
   {
@@ -2861,7 +3020,12 @@ export async function updateCompactionMessageWithContentAndFinalStatus(
   const completedAt = new Date();
   const owner = auth.getNonNullableWorkspace();
 
-  await withTransaction(async (t) => {
+  const {
+    promotedUserMessages,
+    promotedUserMessage,
+    promotedAuth,
+    agentMessage,
+  } = await withTransaction(async (t) => {
     await getConversationRankVersionLock(auth, conversation, t);
 
     await CompactionMessageModel.update(
@@ -2874,6 +3038,64 @@ export async function updateCompactionMessageWithContentAndFinalStatus(
         transaction: t,
       }
     );
+
+    // Promote *all* pending messages when the agent loop ends. If a pending message exists it will
+    // be promoted.
+    const { promotedUserMessages, promotedUserMessage, promotedAuth } =
+      await promotePendingUserMessages(auth, {
+        conversation,
+        transaction: t,
+      });
+
+    if (promotedUserMessages.length === 0 || !promotedUserMessage) {
+      return {
+        promotedUserMessage,
+        promotedUserMessages,
+        promotedAuth: auth,
+        agentMessage: null,
+      };
+    }
+
+    // TODO(compaction): In the case of promotion of user message post compaction we don't have a
+    // pre-existing agent message to pull the agent configuration from. We don't store structured
+    // mentions on user messages either. So we're a bit cooked here.
+
+    const nextMessageRank = await getNextConversationMessageRank(auth, {
+      conversation,
+      transaction: t,
+    });
+
+    // Create a new agent message using the last promoted user message. We loose the
+    // skipToolsValidation information when allowing pending user message on compaction.
+    const { agentMessages } = await createAgentMessages(promotedAuth, {
+      conversation,
+      metadata: {
+        type: "create",
+        mentions: [{ configurationId: agentMessage.configuration.sId }],
+        agentConfigurations: [agentMessage.configuration],
+        skipToolsValidation: false,
+        nextMessageRank,
+        userMessage: promotedUserMessage,
+      },
+      transaction: t,
+    });
+
+    return {
+      promotedUserMessage,
+      promotedUserMessages,
+      promotedAuth,
+      agentMessage: agentMessages[0] ?? null,
+    };
+  });
+
+  // Make sure to add any logic happening here to finalizeUserMessagePromotion if it applies to both
+  // user message pending on agent loop and compaction.
+
+  await finalizeUserMessagePromotion(promotedAuth, {
+    conversation,
+    promotedUserMessage,
+    promotedUserMessages,
+    agentMessage,
   });
 
   return {
@@ -2910,6 +3132,7 @@ export async function updateAgentMessageWithFinalStatus(
 
   const {
     promotedUserMessages,
+    promotedUserMessage,
     promotedAuth,
     agentMessage: newAgentMessage,
   } = await withTransaction(async (t) => {
@@ -2936,72 +3159,22 @@ export async function updateAgentMessageWithFinalStatus(
       }
     );
 
-    // Promote *all* pending messages when the agent loop ends. If a pending message exists it
-    // will be promoted and will trigger the ending agentMessage. The `enableSteering` invariants
-    // of postUserMessage ensure that we have only one running agentic loop so we can just
-    // recreate a new agentMessage for the same agent as the one that finished.
-    //
-    // There is an edge case here for API interactions which are not subject to the steering
-    // invariant in which case we could have more than one running agent message and could pick
-    // the wrong agent compared to user attempt. But should ~never happen so the simplicity is
-    // worth it.
-    const pendingMessages =
-      await ConversationResource.getPendingUserMessagesInConversation(auth, {
+    // Promote *all* pending messages when the agent loop ends. If a pending message exists it will
+    // be promoted.
+    const { promotedUserMessages, promotedUserMessage, promotedAuth } =
+      await promotePendingUserMessages(auth, {
         conversation,
         transaction: t,
       });
 
-    if (pendingMessages.length === 0) {
+    if (promotedUserMessages.length === 0 || !promotedUserMessage) {
       return {
-        promotedUserMessages: [] as UserMessageTypeWithoutMentions[],
+        promotedUserMessages,
+        promotedUserMessage,
         promotedAuth: auth,
-        agentMessage: null as AgentMessageType | null,
+        agentMessage: null,
       };
     }
-
-    await MessageModel.update(
-      { visibility: "visible" },
-      {
-        where: {
-          id: pendingMessages.map((m) => m.id),
-          workspaceId: owner.id,
-        },
-        // Skip validation: Sequelize bulk update constructs a dummy instance with only the
-        // updated fields, so the beforeValidate hook (which checks that exactly one of
-        // userMessageId/agentMessageId/ contentFragmentId is set) fails because all three are
-        // undefined. The rows are already valid, we're only updating visibility.
-        validate: false,
-        transaction: t,
-      }
-    );
-
-    const promotedUserMessages = await batchRenderUserMessagesWithoutMentions(
-      auth,
-      {
-        messages: pendingMessages,
-        transaction: t,
-      }
-    );
-
-    // The new agent message is triggered by the last steering message (being promoted here from
-    // pending to visible). We need to use the promotedAuth of the associated user if it differs
-    // from the user who owns the current agent message.
-    const promotedUserMessage =
-      promotedUserMessages[promotedUserMessages.length - 1];
-    const promotedUser = promotedUserMessage.user;
-    let promotedAuth = auth;
-    if (promotedUser && promotedUser.sId !== auth.user()?.sId) {
-      promotedAuth = await Authenticator.fromUserIdAndWorkspaceId(
-        promotedUser.sId,
-        owner.sId,
-        { transaction: t }
-      );
-    }
-
-    await ConversationResource.markAsUpdated(promotedAuth, {
-      conversation,
-      t,
-    });
 
     if (status === "cancelled") {
       // When the agent message is cancelled it means the user pushed the "stop" button so the
@@ -3009,17 +3182,26 @@ export async function updateAgentMessageWithFinalStatus(
       // message.
       return {
         promotedUserMessages,
+        promotedUserMessage,
         promotedAuth,
         agentMessage: null,
       };
     }
 
+    // The "steering" invariants of postUserMessage ensure that we have only one running agentic
+    // loop so we can just recreate a new agentMessage for the same agent as the one that finished.
+    //
+    // There is an edge case here for API interactions which are not subject to the steering
+    // invariants in which case we could have more than one running agent message and could pick the
+    // wrong agent compared to user attempt. But should ~never happen so the simplicity is worth it.
+
     if (!agentMessage.configuration) {
-      // Configuration is not available (e.g., workflow error path where the agent
-      // message is reconstructed without its configuration). Promote pending user
-      // messages but don't attempt to create a new agent message.
+      // Configuration is not available (e.g., workflow error path where the agent message is
+      // reconstructed without its configuration). Promote pending user messages but don't attempt
+      // to create a new agent message.
       return {
         promotedUserMessages,
+        promotedUserMessage,
         promotedAuth,
         agentMessage: null,
       };
@@ -3039,61 +3221,28 @@ export async function updateAgentMessageWithFinalStatus(
         agentConfigurations: [agentMessage.configuration],
         skipToolsValidation: agentMessage.skipToolsValidation,
         nextMessageRank,
-        userMessage: promotedUserMessages[promotedUserMessages.length - 1],
+        userMessage: promotedUserMessage,
       },
       transaction: t,
     });
 
     return {
       promotedUserMessages,
+      promotedUserMessage,
       promotedAuth,
       agentMessage: agentMessages[0] ?? null,
     };
   });
 
-  // Publish events and launch agent loop outside of the advisory lock.
-  if (promotedUserMessages.length > 0) {
-    for (const userMsg of promotedUserMessages) {
-      await publishConversationEvent(
-        {
-          type: "user_message_promoted",
-          created: Date.now(),
-          messageId: userMsg.sId,
-        },
-        { conversationId: conversation.sId }
-      );
-    }
-  }
+  // Make sure to add any logic happening here to finalizeUserMessagePromotion if it applies to both
+  // user message pending on agent loop and compaction.
 
-  if (newAgentMessage) {
-    await publishAgentMessagesEvents(conversation, [newAgentMessage]);
-
-    void emitAuditLogEvent({
-      auth: promotedAuth,
-      action: "agent.executed",
-      targets: [
-        buildAuditLogTarget("workspace", owner),
-        buildAuditLogTarget("agent", newAgentMessage.configuration),
-      ],
-      metadata: {
-        conversationId: conversation.sId,
-        agentName: newAgentMessage.configuration.name,
-        origin: "steering",
-        ...(conversation.triggerId
-          ? { triggerId: conversation.triggerId }
-          : {}),
-        initiating_user_id: promotedAuth.user()?.sId ?? "unknown",
-        initiating_user_email: promotedAuth.user()?.email ?? "unknown",
-      },
-    });
-
-    await runAgentLoopWorkflow({
-      auth: promotedAuth,
-      agentMessages: [newAgentMessage],
-      conversation,
-      userMessage: promotedUserMessages[promotedUserMessages.length - 1],
-    });
-  }
+  await finalizeUserMessagePromotion(promotedAuth, {
+    conversation,
+    promotedUserMessage,
+    promotedUserMessages,
+    agentMessage: newAgentMessage,
+  });
 
   return {
     completedTs: completedAt.getTime(),

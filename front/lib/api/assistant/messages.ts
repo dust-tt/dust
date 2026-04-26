@@ -347,7 +347,7 @@ export async function batchRenderUserMessagesWithoutMentions(
   {
     messages,
     transaction,
-  }: { messages: MessageModel[]; transaction: Transaction }
+  }: { messages: MessageModel[]; transaction?: Transaction }
 ): Promise<UserMessageTypeWithoutMentions[]> {
   const userMessages = messages.filter(
     (m) => m.userMessage !== null && m.userMessage !== undefined
