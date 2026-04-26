@@ -16,6 +16,7 @@ export class PluginRunModel extends BaseModel<PluginRunModel> {
   declare author: string;
   declare error: string | null;
   declare pluginId: string;
+  declare reason: string | null;
   declare result: string | null;
   declare status: "pending" | "success" | "error";
 
@@ -48,6 +49,10 @@ PluginRunModel.init(
     pluginId: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    reason: {
+      type: DataTypes.STRING(512),
+      allowNull: true,
     },
     result: {
       type: new DataTypes.STRING(POKE_PLUGIN_RUN_MAX_RESULT_AND_ERROR_LENGTH),

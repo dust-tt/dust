@@ -77,7 +77,8 @@ async function handler(
         {
           resourceId: owner.sId,
           resourceType: "workspaces",
-        }
+        },
+        null
       );
 
       const useMetronomeBilling = await hasFeatureFlag(
