@@ -1555,10 +1555,18 @@ function getGlobalFeatureFlags(): Promise<GlobalFeatureFlagResource[]> {
   });
 }
 
-const _getFeatureFlags = memoizer<LightWorkspaceType, WhitelistableFeature[]>({
+type FeatureFlagEntry = {
+  name: WhitelistableFeature;
+  groupIds: ModelId[] | null;
+};
+
+const _getFeatureFlags = memoizer<LightWorkspaceType, FeatureFlagEntry[]>({
   load: (workspace, callback) => {
     if (ACTIVATE_ALL_FEATURES_DEV && isDevelopment()) {
-      callback(null, [...WHITELISTABLE_FEATURES]);
+      callback(
+        null,
+        WHITELISTABLE_FEATURES.map((name) => ({ name, groupIds: null }))
+      );
       return;
     }
 
@@ -1571,8 +1579,10 @@ const _getFeatureFlags = memoizer<LightWorkspaceType, WhitelistableFeature[]>({
           workspaceFlags.map((flag) => flag.name)
         );
 
-        // Start with workspace-level flags (always take precedence).
-        const effectiveFlags = [...workspaceFlagNames];
+        // Start with workspace-level flags (always take precedence), preserving groupIds.
+        const effectiveFlags: FeatureFlagEntry[] = workspaceFlags.map(
+          (flag) => ({ name: flag.name, groupIds: flag.groupIds })
+        );
 
         // Add global flags that aren't already set at workspace level.
         for (const globalFlag of globalFlags) {
@@ -1583,7 +1593,7 @@ const _getFeatureFlags = memoizer<LightWorkspaceType, WhitelistableFeature[]>({
               globalFlag.rolloutPercentage
             )
           ) {
-            effectiveFlags.push(globalFlag.name);
+            effectiveFlags.push({ name: globalFlag.name, groupIds: null });
           }
         }
 
@@ -1598,11 +1608,9 @@ const _getFeatureFlags = memoizer<LightWorkspaceType, WhitelistableFeature[]>({
   ttl: 3000,
 });
 
-export function getFeatureFlags(
-  auth: Authenticator
-): Promise<WhitelistableFeature[]> {
-  const workspace = auth.getNonNullableWorkspace();
-
+function getWorkspaceFeatureFlags(
+  workspace: LightWorkspaceType
+): Promise<FeatureFlagEntry[]> {
   return new Promise((resolve, reject) => {
     _getFeatureFlags(workspace, (err, result) => {
       if (err) {
@@ -1612,6 +1620,22 @@ export function getFeatureFlags(
       }
     });
   });
+}
+
+export async function getFeatureFlags(
+  auth: Authenticator
+): Promise<WhitelistableFeature[]> {
+  const workspace = auth.getNonNullableWorkspace();
+  const flags = await getWorkspaceFeatureFlags(workspace);
+  const userGroupIds = new Set(auth.groupModelIds());
+
+  return flags
+    .filter(
+      (flag) =>
+        flag.groupIds === null ||
+        flag.groupIds.some((gId) => userGroupIds.has(gId))
+    )
+    .map((flag) => flag.name);
 }
 
 export async function hasFeatureFlag(
