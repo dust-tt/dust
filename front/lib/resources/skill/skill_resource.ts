@@ -1258,6 +1258,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     params:
       | AgentLoopExecutionData
       | Pick<AgentLoopExecutionData, "agentConfiguration" | "conversation">
+      | {
+          agentConfiguration: AgentConfigurationType;
+          conversation: ConversationWithoutContentType;
+        }
   ): Promise<{
     enabledSkills: (SkillResource & { extendedSkill: SkillResource | null })[];
     systemSkills: SkillResource[];
