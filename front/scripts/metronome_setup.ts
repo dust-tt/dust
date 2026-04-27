@@ -1533,9 +1533,11 @@ async function syncPackages(): Promise<void> {
     }
   }
 
+  const packages = getPackages();
+
   // Collect all desired aliases to identify stale packages.
   const desiredAliases = new Set(
-    getPackages().flatMap((p) => p.aliases.map((a) => a.name))
+    packages.flatMap((p) => p.aliases.map((a) => a.name))
   );
 
   // Archive packages whose aliases are not in the desired set (and not test objects).
@@ -1556,7 +1558,7 @@ async function syncPackages(): Promise<void> {
     }
   }
 
-  for (const desired of getPackages()) {
+  for (const desired of packages) {
     // Find existing package by alias (not name — name changes on version bumps).
     const primaryAlias = desired.aliases[0]?.name;
     const ex = primaryAlias ? byAlias.get(primaryAlias) : undefined;
