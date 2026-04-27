@@ -281,7 +281,6 @@ export function NewFileExplorer({
                     <FileExplorerFileCard
                       key={entry.path}
                       entry={entry}
-                      owner={owner}
                       viewMode={viewMode}
                       onOpen={handleOpen}
                       onDownload={handleDownload}
@@ -302,7 +301,6 @@ export function NewFileExplorer({
                     <FileExplorerFileCard
                       key={entry.path}
                       entry={entry}
-                      owner={owner}
                       viewMode={viewMode}
                       onOpen={handleOpen}
                       onDownload={handleDownload}
