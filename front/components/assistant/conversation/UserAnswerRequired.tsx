@@ -51,6 +51,7 @@ export function UserAnswerRequired({
   const [isSkipPending, setIsSkipPending] = useState(false);
   const [activeOptionIndex, setActiveOptionIndex] = useState(0);
   const [isCustomResponseFocused, setIsCustomResponseFocused] = useState(false);
+  const [isKeyboardNavigating, setIsKeyboardNavigating] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const customResponseInputRef = useRef<HTMLInputElement>(null);
 
@@ -73,6 +74,7 @@ export function UserAnswerRequired({
   useEffect(() => {
     setActiveOptionIndex(0);
     setIsCustomResponseFocused(false);
+    setIsKeyboardNavigating(false);
     containerRef.current?.focus({ preventScroll: true });
   }, [blockedAction.actionId]);
 
@@ -175,6 +177,7 @@ export function UserAnswerRequired({
     if (e.key === "Escape") {
       e.preventDefault();
       e.stopPropagation();
+      setIsKeyboardNavigating(true);
       handleSkip();
       return;
     }
@@ -190,6 +193,7 @@ export function UserAnswerRequired({
     if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && question.multiSelect) {
       e.preventDefault();
       e.stopPropagation();
+      setIsKeyboardNavigating(true);
       handleSubmit();
     }
   }
@@ -205,6 +209,7 @@ export function UserAnswerRequired({
 
     if (isPrintableKey(e)) {
       e.preventDefault();
+      setIsKeyboardNavigating(true);
       handleStartCustomResponse(e.key);
       return;
     }
@@ -212,12 +217,14 @@ export function UserAnswerRequired({
     switch (e.key) {
       case "ArrowDown":
         e.preventDefault();
+        setIsKeyboardNavigating(true);
         setIsCustomResponseFocused(false);
         moveActiveOption(1);
         containerRef.current?.focus();
         break;
       case "ArrowUp":
         e.preventDefault();
+        setIsKeyboardNavigating(true);
         setIsCustomResponseFocused(false);
         moveActiveOption(-1);
         containerRef.current?.focus();
@@ -226,6 +233,7 @@ export function UserAnswerRequired({
       case " ":
         if (e.currentTarget === e.target) {
           e.preventDefault();
+          setIsKeyboardNavigating(true);
           handleActiveOptionSelection();
         }
         break;
@@ -250,9 +258,11 @@ export function UserAnswerRequired({
       tabIndex={0}
       onKeyDownCapture={handleContainerKeyDownCapture}
       onKeyDown={handleContainerKeyDown}
+      onMouseMove={() => setIsKeyboardNavigating(false)}
       className={cn(
         "flex flex-col gap-4 rounded-2xl border border-dark bg-background p-5 outline-none",
-        "dark:border-dark-night dark:bg-background-night"
+        "dark:border-dark-night dark:bg-background-night",
+        isKeyboardNavigating && "cursor-none"
       )}
     >
       <div className="text-base font-medium leading-tight text-foreground dark:text-foreground-night">
@@ -271,6 +281,7 @@ export function UserAnswerRequired({
               description={option.description}
               counterValue={index + 1}
               selected={selectedOptions.includes(index)}
+              disableHover={isKeyboardNavigating}
               onFocusCapture={() => {
                 setIsCustomResponseFocused(false);
                 setActiveOptionIndex(index);
@@ -283,7 +294,8 @@ export function UserAnswerRequired({
                 activeOptionIndex === index &&
                   !isCustomResponseActive &&
                   !selectedOptions.includes(index) &&
-                  "bg-primary-100 dark:bg-primary-100-night"
+                  "bg-primary-100 dark:bg-primary-100-night",
+                isKeyboardNavigating && "cursor-none"
               )}
               onClick={() => handleOptionClick(index)}
               disabled={isAnswerSubmitting}
@@ -297,7 +309,8 @@ export function UserAnswerRequired({
                 ? "bg-primary-100 dark:bg-primary-100-night"
                 : [
                     "bg-background dark:bg-background-night ",
-                    "hover:bg-primary-100 dark:hover:bg-primary-100-night",
+                    !isKeyboardNavigating &&
+                      "hover:bg-primary-100 dark:hover:bg-primary-100-night",
                   ]
             )}
           >
@@ -316,7 +329,8 @@ export function UserAnswerRequired({
                 "px-0 py-0 text-sm shadow-none",
                 "dark:border-transparent dark:bg-transparent",
                 "focus-visible:border-transparent focus-visible:ring-0",
-                "dark:focus-visible:border-transparent dark:focus-visible:ring-0"
+                "dark:focus-visible:border-transparent dark:focus-visible:ring-0",
+                isKeyboardNavigating && "cursor-none"
               )}
               placeholder="Type something else"
               value={customResponse}
@@ -333,6 +347,7 @@ export function UserAnswerRequired({
                   question.options.length > 0
                 ) {
                   e.preventDefault();
+                  setIsKeyboardNavigating(true);
                   setIsCustomResponseFocused(false);
                   setActiveOptionIndex(question.options.length - 1);
                   containerRef.current?.focus();
@@ -344,6 +359,7 @@ export function UserAnswerRequired({
                   (!question.multiSelect || e.metaKey || e.ctrlKey)
                 ) {
                   e.preventDefault();
+                  setIsKeyboardNavigating(true);
                   handleSubmit();
                 }
               }}
