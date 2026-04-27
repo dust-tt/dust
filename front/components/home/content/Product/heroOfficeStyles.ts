@@ -159,6 +159,17 @@ export const SCENE_CSS = `
 }
 @keyframes dust-floor-spark-rotate { to { transform: rotate(360deg); } }
 
+/* Agent @name chip is hidden by default; the engine adds .active to
+   agents that belong to the currently-running scenario, so idle agents
+   from other scenarios stay quiet in the office. */
+.dust-floor-host .agent-tag {
+  opacity: 0;
+  transition: opacity 220ms ease;
+  pointer-events: none;
+}
+.dust-floor-host .agent.active .agent-tag {
+  opacity: 1;
+}
 .dust-floor-host .agent-tag rect {
   transition: fill 180ms ease, stroke 180ms ease, x 260ms cubic-bezier(.2,.8,.2,1), width 260ms cubic-bezier(.2,.8,.2,1);
   fill: #FFFFFF;

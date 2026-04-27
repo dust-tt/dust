@@ -416,9 +416,19 @@ export function mountFloorScene(
     while (!disposed) {
       const scenario = scenarios[(startIdx + i) % scenarios.length];
       pickCastFor(scenario);
+      // Mark only this scenario's agents as active so their @name chip is
+      // visible; idle agents from other scenarios stay nameless.
+      const activeAgentIds = new Set(scenario.agents.map((a) => a.id));
+      for (const a of agents) {
+        a.el.classList.toggle("active", activeAgentIds.has(a.def.id));
+      }
       await runScenario(scenario);
       if (disposed) {
         break;
+      }
+      // Hide all chips during the gap between scenarios.
+      for (const a of agents) {
+        a.el.classList.remove("active");
       }
       await sleep(scenario.loopGapMs ?? 2500);
       i++;
