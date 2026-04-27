@@ -24,6 +24,12 @@ interface SlashCommandTooltip {
 
 const DEFAULT_EMPTY_MESSAGE = "No commands found";
 const DEFAULT_LIST_MAX_HEIGHT = "24rem";
+
+interface ScrollFadeState {
+  hasContentAbove: boolean;
+  hasContentBelow: boolean;
+}
+
 export interface SlashCommand {
   action: string;
   description?: string;
@@ -69,7 +75,10 @@ export const SlashCommandDropdown = forwardRef<
     ref
   ) => {
     const [selectedIndex, setSelectedIndex] = useState(0);
-    const [canScrollDown, setCanScrollDown] = useState(false);
+    const [scrollFadeState, setScrollFadeState] = useState<ScrollFadeState>({
+      hasContentAbove: false,
+      hasContentBelow: false,
+    });
     const itemCount = items.length;
     const listRef = useRef<HTMLDivElement>(null);
     const [virtualTriggerStyle, setVirtualTriggerStyle] =
@@ -122,16 +131,28 @@ export const SlashCommandDropdown = forwardRef<
       [selectItem, selectedIndex, items.length]
     );
 
-    const updateCanScrollDown = useCallback(() => {
+    const updateScrollFadeState = useCallback(() => {
       const list = listRef.current;
 
       if (!showScrollFade || !list) {
-        setCanScrollDown(false);
+        setScrollFadeState({
+          hasContentAbove: false,
+          hasContentBelow: false,
+        });
         return;
       }
 
-      setCanScrollDown(
-        list.scrollTop + list.clientHeight < list.scrollHeight - 1
+      const nextState = {
+        hasContentAbove: list.scrollTop > 1,
+        hasContentBelow:
+          list.scrollTop + list.clientHeight < list.scrollHeight - 1,
+      };
+
+      setScrollFadeState((previousState) =>
+        previousState.hasContentAbove === nextState.hasContentAbove &&
+        previousState.hasContentBelow === nextState.hasContentBelow
+          ? previousState
+          : nextState
       );
     }, [showScrollFade]);
 
@@ -143,22 +164,31 @@ export const SlashCommandDropdown = forwardRef<
 
     useEffect(() => {
       if (itemCount === 0) {
-        setCanScrollDown(false);
+        setScrollFadeState({
+          hasContentAbove: false,
+          hasContentBelow: false,
+        });
         return;
       }
 
-      updateCanScrollDown();
+      updateScrollFadeState();
+      const animationFrame = window.requestAnimationFrame(
+        updateScrollFadeState
+      );
 
       const list = listRef.current;
       if (!list || typeof ResizeObserver === "undefined") {
-        return;
+        return () => window.cancelAnimationFrame(animationFrame);
       }
 
-      const resizeObserver = new ResizeObserver(updateCanScrollDown);
+      const resizeObserver = new ResizeObserver(updateScrollFadeState);
       resizeObserver.observe(list);
 
-      return () => resizeObserver.disconnect();
-    }, [itemCount, updateCanScrollDown]);
+      return () => {
+        window.cancelAnimationFrame(animationFrame);
+        resizeObserver.disconnect();
+      };
+    }, [itemCount, updateScrollFadeState]);
 
     // Update virtual trigger position.
     const updateTriggerPosition = useCallback(() => {
@@ -222,7 +252,7 @@ export const SlashCommandDropdown = forwardRef<
               <div
                 ref={listRef}
                 className="overflow-y-auto"
-                onScroll={updateCanScrollDown}
+                onScroll={updateScrollFadeState}
                 style={{ maxHeight: listMaxHeight }}
               >
                 {items.map((item, index) => {
@@ -264,8 +294,19 @@ export const SlashCommandDropdown = forwardRef<
               </div>
               <div
                 className={cn(
+                  "pointer-events-none absolute inset-x-0 top-0 h-8 bg-gradient-to-t from-transparent via-background/85 to-background opacity-0 transition-opacity duration-150 dark:via-muted-background-night/85 dark:to-muted-background-night",
+                  showScrollFade &&
+                    scrollFadeState.hasContentAbove &&
+                    "opacity-100"
+                )}
+                aria-hidden
+              />
+              <div
+                className={cn(
                   "pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-b from-transparent via-background/85 to-background opacity-0 transition-opacity duration-150 dark:via-muted-background-night/85 dark:to-muted-background-night",
-                  showScrollFade && canScrollDown && "opacity-100"
+                  showScrollFade &&
+                    scrollFadeState.hasContentBelow &&
+                    "opacity-100"
                 )}
                 aria-hidden
               />
