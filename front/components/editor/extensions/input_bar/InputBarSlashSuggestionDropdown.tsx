@@ -28,8 +28,6 @@ import {
 
 import type { InputBarSlashSuggestionCapability } from "./InputBarSlashSuggestionTypes";
 
-const MAX_SLASH_SUGGESTIONS = 10;
-
 function matchesCapabilityQuery({
   description,
   label,
@@ -100,8 +98,7 @@ export function filterInputBarSlashSuggestions({
 
   return capabilities
     .toSorted((a, b) => a.sortName.localeCompare(b.sortName))
-    .map(({ sortName: _sortName, ...capability }) => capability)
-    .slice(0, MAX_SLASH_SUGGESTIONS);
+    .map(({ sortName: _sortName, ...capability }) => capability);
 }
 
 export const InputBarSlashSuggestionDropdown = forwardRef<
@@ -234,6 +231,7 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
 
     return (
       <SlashCommandDropdown
+        key={isCapabilitiesLoading ? "loading" : "loaded"}
         ref={dropdownRef}
         items={capabilityItems}
         command={(item) => {
