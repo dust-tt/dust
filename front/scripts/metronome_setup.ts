@@ -532,7 +532,7 @@ function getRateCards(): RateCardDef[] {
         {
           product_name: "Programmatic Usage",
           starting_at: "2026-04-01T00:00:00.000Z",
-          entitled: false,
+          entitled: true,
           rate_type: "FLAT",
           price: 1,
           credit_type_id: getCreditTypeProgrammaticUsdId(),
