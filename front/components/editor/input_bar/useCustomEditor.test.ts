@@ -211,7 +211,7 @@ describe("buildEditorExtensions", () => {
   it("does not open slash suggestions for pasted slashes", () => {
     editor.destroy();
     editor = createSlashSuggestionEditor();
-    editor.storage.inputBarSlashSuggestion.hasBeenFocused = true;
+    editor.commands.focus();
 
     editor.view.dispatch(
       editor.state.tr
@@ -224,5 +224,4 @@ describe("buildEditorExtensions", () => {
       false
     );
   });
-
 });
