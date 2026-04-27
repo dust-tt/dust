@@ -11,6 +11,11 @@ import {
   buildHuman,
 } from "@app/components/home/content/Product/heroOfficeActors";
 import {
+  RAIL_Y,
+  ROOM_POPULATIONS,
+  ROOMS,
+} from "@app/components/home/content/Product/heroOfficeFloor";
+import {
   iso,
   SVG_NS,
 } from "@app/components/home/content/Product/heroOfficeIso";
@@ -109,32 +114,7 @@ export function mountFloorScene(
   // populations, scenario) is data-only.
   // ===========================================================================
 
-  const rooms = {
-    "office-d": {
-      door: { x: 180, y: 360 },
-      interior: [{ x: 20, y: 20, w: 320, h: 320 }],
-      lightId: "light-office-d",
-    },
-    "office-c": {
-      door: { x: 540, y: 360 },
-      interior: [{ x: 380, y: 20, w: 320, h: 320 }],
-      lightId: "light-office-c",
-    },
-    "office-bl": {
-      door: { x: 120, y: 540 },
-      interior: [{ x: 20, y: 560, w: 240, h: 140 }],
-      lightId: "light-office-bl",
-    },
-    "office-t": {
-      door: { x: 400, y: 360 },
-      interior: [
-        { x: 120, y: 380, w: 580, h: 150 },
-        { x: 380, y: 530, w: 180, h: 190 },
-      ],
-      lightId: "light-office-t",
-    },
-  };
-  const RAIL_Y = 780;
+  const rooms = ROOMS;
 
   // The teammate pool comes from the caller and is Fisher-Yates shuffled
   // here so each page load reseats the office.
@@ -145,41 +125,9 @@ export function mountFloorScene(
   }
 
   const humansLayer = $byId("humans");
-  const roomPopulations = {
-    "office-d": [
-      [50, 40],
-      [50, 200],
-      [140, 60],
-      [140, 280],
-      [220, 120],
-      [280, 180],
-    ],
-    "office-c": [
-      [420, 60],
-      [580, 60],
-      [500, 170],
-      [640, 160],
-      [580, 280],
-    ],
-    "office-bl": [
-      [40, 590],
-      [110, 680],
-      [180, 590],
-      [240, 620],
-    ],
-    "office-t": [
-      [150, 400],
-      [310, 400],
-      [470, 400],
-      [630, 400],
-      [400, 560],
-      [470, 680],
-      [440, 520],
-    ],
-  };
   let seed = 0;
-  for (const [room, pts] of Object.entries(roomPopulations)) {
-    for (const [x, y] of pts as [number, number][]) {
+  for (const [room, pts] of Object.entries(ROOM_POPULATIONS)) {
+    for (const [x, y] of pts) {
       const person = people[seed % people.length];
       humansLayer.appendChild(buildHuman(x, y, seed++, room, person));
     }

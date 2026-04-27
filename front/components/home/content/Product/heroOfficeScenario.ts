@@ -10,7 +10,9 @@
 // `ref` matches one of the cast slot keys ("lisa", "marco", "yuki" below).
 // Literal mentions like "@QualBot" are not cast refs and pass through as-is.
 
-export type RoomKey = "office-d" | "office-c" | "office-bl" | "office-t";
+import type { RoomKey } from "@app/components/home/content/Product/heroOfficeFloor";
+
+export type { RoomKey };
 
 export interface AgentDef {
   /** SVG element id, e.g. "a1". Beats reference agents by this id. */
