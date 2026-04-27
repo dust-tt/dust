@@ -336,6 +336,32 @@ export function createChatCard(deps: ChatCardDeps): ChatCardModule {
       beginLine(tokens[0] || { kind: "text", text: "" });
       curLine.appendChild(caret);
 
+      // Reduced motion: render the full message instantly, then schedule
+      // the hold + exit so the rest of the conductor flow is unaffected.
+      if (reduced) {
+        for (const tok of tokens) {
+          if (tok.kind === "newline") {
+            curTextNode = null;
+            const next = tokens[tokens.indexOf(tok) + 1];
+            if (next) {
+              beginLine(next);
+            }
+            continue;
+          }
+          const tn = writeSpan(tok);
+          tn.data = tok.text;
+        }
+        if (caret.parentNode) {
+          caret.parentNode.removeChild(caret);
+        }
+        trackedSetTimeout(() => {
+          fo.remove();
+          hostEl._chatCard = null;
+          resolve();
+        }, opts.holdMs || 2200);
+        return;
+      }
+
       const typeTimer = trackedSetInterval(
         () => {
           if (tokIdx >= tokens.length) {
@@ -412,7 +438,10 @@ export function createChatCard(deps: ChatCardDeps): ChatCardModule {
             curTextNode = null;
           }
         },
-        18 + Math.random() * 10
+        // ~8–14ms per character (≈ 90 cps). Faster than a human typing but
+        // still reads as a typewriter rather than a flash; long bullet
+        // responses now finish in ~3s instead of ~9s.
+        8 + Math.random() * 6
       );
     });
   }
