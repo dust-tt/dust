@@ -361,7 +361,7 @@ function ReadOnlyTodoItem({
 
   return (
     <div className="flex items-start gap-3 overflow-hidden">
-      <div className="mt-1 shrink-0">
+      <div className="mt-0.5 shrink-0">
         <Checkbox size="xs" checked={isDone} disabled />
       </div>
       <TodoMetadataTooltip todo={todo} agentNameById={agentNameById}>
@@ -490,7 +490,7 @@ function EditableTodoItem({
             : "max-h-[1000px] opacity-100"
       )}
     >
-      <div className="mt-1 shrink-0">
+      <div className="mt-0.5 shrink-0">
         <Checkbox
           size="xs"
           checked={isDone}
@@ -688,8 +688,6 @@ function EditableProjectTodosPanel({
     workspaceId: owner.sId,
     options: { disabled: true },
   });
-  const markReadRef = useRef(markRead);
-  markReadRef.current = markRead;
 
   // Tracks todos being animated out during a clean operation.
   const [pendingRemovalIds, setPendingRemovalIds] = useState<Set<string>>(
@@ -745,29 +743,62 @@ function EditableProjectTodosPanel({
   const startRaf1Ref = useRef<number | null>(null);
   const startRaf2Ref = useRef<number | null>(null);
   const cleanupTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const hasRunRef = useRef(false);
+  const inFlightAddedKeysRef = useRef<Set<string>>(new Set());
+  const flashedDoneKeysRef = useRef<Set<string>>(new Set());
 
-  // diffKeys is intentionally excluded: it is memoized and stable during
-  // animation (no SWR updates occur while animation state updates fire).\
-  // markReadRef is a ref — .current is updated synchronously every render so
-  // it never needs to be a dep. Including either would cause the cleanup to
-  // fire on every animation state update and cancel the in-flight timeouts.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional one-shot effect, see comment above
   useEffect(() => {
-    if (isTodosLoading || frozenLastReadAt === undefined || hasRunRef.current) {
+    if (isTodosLoading || frozenLastReadAt === undefined) {
       return;
     }
-    hasRunRef.current = true;
 
-    const { added, newlyDone } = diffKeys;
+    const added = new Set<string>();
+    for (const sId of diffKeys.added) {
+      if (!enteredKeys.has(sId) && !inFlightAddedKeysRef.current.has(sId)) {
+        added.add(sId);
+      }
+    }
+
+    const newlyDone = new Set<string>();
+    for (const sId of diffKeys.newlyDone) {
+      if (!flashedDoneKeysRef.current.has(sId)) {
+        newlyDone.add(sId);
+      }
+    }
 
     if (added.size === 0 && newlyDone.size === 0) {
-      void markReadRef.current();
       return;
     }
 
-    setTypingKeys(new Set(added));
-    setDoneFlashKeys(new Set(newlyDone));
+    // Mark as read immediately so navigating away/back during animation
+    // doesn't cause the same items to re-animate on next mount.
+    void markRead();
+
+    for (const sId of newlyDone) {
+      flashedDoneKeysRef.current.add(sId);
+    }
+
+    if (added.size > 0) {
+      inFlightAddedKeysRef.current = new Set(added);
+      setTypingKeys(new Set(added));
+    }
+    setDoneFlashKeys((prev) => new Set([...prev, ...newlyDone]));
+
+    // If a revalidation triggers another pass while an animation is in-flight,
+    // reschedule from the latest keys instead of letting React's effect cleanup
+    // cancel the previous run and leave items collapsed.
+    if (startRaf1Ref.current !== null) {
+      cancelAnimationFrame(startRaf1Ref.current);
+      startRaf1Ref.current = null;
+    }
+    if (startRaf2Ref.current !== null) {
+      cancelAnimationFrame(startRaf2Ref.current);
+      startRaf2Ref.current = null;
+    }
+    if (cleanupTimeoutRef.current !== null) {
+      clearTimeout(cleanupTimeoutRef.current);
+      cleanupTimeoutRef.current = null;
+    }
+    inFlightAddedKeysRef.current = new Set();
 
     // Double-RAF: wait for the browser to paint the initial hidden state of
     // new items (isAdded && !isEntering → max-h-0 opacity-0) before triggering
@@ -782,13 +813,18 @@ function EditableProjectTodosPanel({
     });
 
     cleanupTimeoutRef.current = setTimeout(() => {
-      void markReadRef.current();
       setEnteringKeys(new Set());
-      setEnteredKeys(new Set(added));
+      setEnteredKeys((prev) => new Set([...prev, ...added]));
+      inFlightAddedKeysRef.current = new Set();
       cleanupTimeoutRef.current = null;
     }, SUMMARY_ITEM_TRANSITION_MS);
+  }, [diffKeys, frozenLastReadAt, isTodosLoading, markRead, enteredKeys]);
 
+  // Cleanup only on unmount.
+  useEffect(() => {
     return () => {
+      const hadInFlightAnimation = inFlightAddedKeysRef.current.size > 0;
+
       if (startRaf1Ref.current !== null) {
         cancelAnimationFrame(startRaf1Ref.current);
       }
@@ -798,8 +834,15 @@ function EditableProjectTodosPanel({
       if (cleanupTimeoutRef.current !== null) {
         clearTimeout(cleanupTimeoutRef.current);
       }
+      inFlightAddedKeysRef.current = new Set();
+
+      // If the user navigates away before the animation cleanup timeout runs,
+      // persist the read marker so the same items don't re-animate on remount.
+      if (hadInFlightAnimation) {
+        void markRead();
+      }
     };
-  }, [isTodosLoading, frozenLastReadAt]);
+  }, [markRead]);
 
   const usersBySId = useMemo(
     () => new Map(users.map((user) => [user.sId, user])),

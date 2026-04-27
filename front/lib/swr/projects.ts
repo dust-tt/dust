@@ -24,8 +24,8 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
-import { useMemo } from "react";
-import type { Fetcher } from "swr";
+import { useCallback, useMemo } from "react";
+import { type Fetcher, useSWRConfig } from "swr";
 
 export function useProjectContextAttachments({
   owner,
@@ -336,15 +336,7 @@ export function useProjectTodos({
 
   const { data, error, mutate } = useSWRWithDefaults(
     disabled ? null : todosUrl,
-    todosFetcher,
-    {
-      // Ensure project todos refresh when the user returns to this page,
-      // even if SWR already has cached data for the key.
-      revalidateOnMount: true,
-      revalidateIfStale: true,
-      revalidateOnFocus: true,
-      revalidateOnReconnect: true,
-    }
+    todosFetcher
   );
 
   return {
@@ -365,7 +357,25 @@ export function useMarkProjectTodosRead({
   owner: LightWorkspaceType;
   spaceId: string;
 }) {
-  return async (): Promise<void> => {
+  const { mutate } = useSWRConfig();
+
+  return useCallback(async (): Promise<void> => {
+    const immediateReadAt = new Date().toISOString();
+    const todosKey = `/api/w/${owner.sId}/spaces/${spaceId}/project_todos`;
+
+    // Keep local UI state in sync immediately to avoid replaying new-item
+    // animations when navigating away/back before the network round-trip ends.
+    await mutate(
+      todosKey,
+      (prev: GetProjectTodosResponseBody | undefined) => ({
+        todos: prev?.todos ?? [],
+        users: prev?.users ?? [],
+        viewerUserId: prev?.viewerUserId ?? null,
+        lastReadAt: immediateReadAt,
+      }),
+      { revalidate: false }
+    );
+
     try {
       await clientFetch(
         `/api/w/${owner.sId}/spaces/${spaceId}/project_todos/mark_read`,
@@ -374,7 +384,7 @@ export function useMarkProjectTodosRead({
     } catch {
       // Silent — mark_read is best-effort.
     }
-  };
+  }, [mutate, owner.sId, spaceId]);
 }
 
 export function useUpdateProjectTodo({
