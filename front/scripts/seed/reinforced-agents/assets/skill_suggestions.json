@@ -6,6 +6,7 @@
     "analysis": "The skill should leverage web search to find up-to-date contact information and include instructions on how to use the web search tool effectively.",
     "state": "pending",
     "source": "reinforcement",
+    "sourceConversationIds": ["RADustConv04"],
     "suggestion": {
       "instructionEdits": [
         {
@@ -85,6 +86,7 @@
     "analysis": "Before recommending a book, the skill should check the loan history to avoid suggesting a book the user has already borrowed. This requires referencing the borrowers.csv knowledge.",
     "state": "pending",
     "source": "reinforcement",
+    "sourceConversationIds": ["RABookConv01", "RABookConv02"],
     "suggestion": {
       "instructionEdits": [
         {

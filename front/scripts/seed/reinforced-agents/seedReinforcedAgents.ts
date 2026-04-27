@@ -39,6 +39,7 @@ const OTHER_USER: UserAsset = {
 
 interface Assets {
   agents: AgentAsset[];
+  bookKeeperConversations: ConversationAsset[];
   conversations: ConversationAsset[];
   dataSources: DataSourceAsset[];
   dustConversations: ConversationAsset[];
@@ -71,6 +72,12 @@ function loadAssets(): Assets {
         : doc.content,
     })),
   }));
+  const bookKeeperConversations = JSON.parse(
+    fs.readFileSync(
+      path.join(assetsDir, "bookkeeper-conversations.json"),
+      "utf-8"
+    )
+  );
   const dustConversations = JSON.parse(
     fs.readFileSync(path.join(assetsDir, "dust-conversations.json"), "utf-8")
   );
@@ -85,6 +92,7 @@ function loadAssets(): Assets {
   );
   return {
     agents,
+    bookKeeperConversations,
     conversations,
     dataSources,
     dustConversations,
@@ -100,6 +108,7 @@ export async function seedReinforcement(
 ): Promise<void> {
   const {
     agents,
+    bookKeeperConversations,
     conversations,
     dataSources,
     dustConversations,
@@ -183,6 +192,12 @@ export async function seedReinforcement(
     additionalUsers,
   });
 
+  ctx.logger.info("Seeding BookKeeper conversations...");
+  await seedConversations(ctx, bookKeeperConversations, {
+    agents: createdAgents,
+    additionalUsers,
+  });
+
   // Activate the Poem Analyser skill as JIT skill in Dust conversations
   if (ctx.execute && poemAnalyserSkill) {
     ctx.logger.info("Activating JIT skills in Dust conversations...");
@@ -229,7 +244,11 @@ export async function seedReinforcement(
 
   if (!skipAnalytics) {
     ctx.logger.info("Indexing analytics to Elasticsearch...");
-    const allConversations = [...conversations, ...dustConversations];
+    const allConversations = [
+      ...conversations,
+      ...dustConversations,
+      ...bookKeeperConversations,
+    ];
     const conversationIds = allConversations.map((c) => c.sId);
     await seedAnalytics(ctx, conversationIds);
   }

@@ -160,6 +160,7 @@ export function SkillBuilderSuggestionsPanel() {
                 getSkillInstructionsHtml={getSkillInstructionsHtml}
                 isSelected={selectedSuggestionId === suggestion.sId}
                 onSelect={() => handleSelect(suggestion.sId)}
+                workspaceId={owner.sId}
               />
             ))
           )}
