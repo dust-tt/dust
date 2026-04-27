@@ -2066,6 +2066,14 @@ export type PatchAgentConfigurationRequestType = z.infer<
   typeof PatchAgentConfigurationRequestSchema
 >;
 
+export const DeleteAgentConfigurationResponseSchema = z.object({
+  success: z.boolean(),
+});
+
+export type DeleteAgentConfigurationResponseType = z.infer<
+  typeof DeleteAgentConfigurationResponseSchema
+>;
+
 export const GetAgentConfigurationYAMLExportResponseSchema = z.string();
 
 export type GetAgentConfigurationYAMLExportResponseType = z.infer<
