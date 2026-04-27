@@ -557,15 +557,6 @@ export function mountFloorScene(
   const ISO_ORIGIN_X = 800;
   const ISO_ORIGIN_Y = 210;
 
-  function _invIso(sx, sy) {
-    const cos30 = 0.8660254;
-    const sin30 = 0.5;
-    const dx = (sx - ISO_ORIGIN_X) / ISO_SCALE;
-    const dy = (sy - ISO_ORIGIN_Y) / ISO_SCALE;
-    const px = dx / (2 * cos30) + dy / (2 * sin30);
-    const py = -dx / (2 * cos30) + dy / (2 * sin30);
-    return [px, py];
-  }
   function iso(px, py, pz?) {
     if (pz === undefined) {
       pz = 0;
@@ -616,41 +607,9 @@ export function mountFloorScene(
     "#F47B2A",
     "#596170",
   ];
-  const initials = [
-    "AL",
-    "JM",
-    "SR",
-    "KT",
-    "MP",
-    "RD",
-    "NB",
-    "EH",
-    "CV",
-    "OF",
-    "TY",
-    "LG",
-    "ZW",
-    "HK",
-    "BC",
-    "DA",
-    "IM",
-    "PQ",
-    "UX",
-    "RN",
-  ];
-
   // The teammate pool comes from the caller and is Fisher-Yates shuffled
   // here so each page load reseats the office.
-  const PLACEHOLDER_PERSON: TeamMember = {
-    name: "",
-    title: "",
-    image: "",
-    linkedIn: null,
-    github: "",
-  };
-  const people: TeamMember[] = avatarPool.length
-    ? avatarPool.slice()
-    : Array.from({ length: 22 }, () => PLACEHOLDER_PERSON);
+  const people: TeamMember[] = avatarPool.slice();
   for (let i = people.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [people[i], people[j]] = [people[j], people[i]];
@@ -669,7 +628,6 @@ export function mountFloorScene(
 
   function buildHuman(cx, cy, seed = 0, roomKey = null, person: TeamMember) {
     const color = avatarColors[(seed * 7) % avatarColors.length];
-    const _initial = initials[seed % initials.length];
     const status = statuses[seed % statuses.length];
 
     const g = document.createElementNS(SVG_NS, "g");
@@ -805,7 +763,7 @@ export function mountFloorScene(
   let seed = 0;
   for (const [room, pts] of Object.entries(roomPopulations)) {
     for (const [x, y] of pts as [number, number][]) {
-      const person = people[seed % people.length] ?? PLACEHOLDER_PERSON;
+      const person = people[seed % people.length];
       humansLayer.appendChild(buildHuman(x, y, seed++, room, person));
     }
   }
@@ -912,10 +870,6 @@ export function mountFloorScene(
   }
 
   const agentsLayer = $byId("agents");
-  const agentPhrases: Record<string, string[]> = {};
-  for (const a of scenario.agents) {
-    agentPhrases[a.label] = [];
-  }
   const agents = scenario.agents.map((d: AgentDef) => {
     const el = buildAgent(d.id, d.startRoom, d.label);
     agentsLayer.appendChild(el);
@@ -944,131 +898,6 @@ export function mountFloorScene(
     ts.textContent = el._idleLabel;
     el._tagTxt.appendChild(ts);
     el.classList.remove("talking");
-  }
-
-  function wrapText(msg, maxChars) {
-    const paragraphs = msg.split("\n");
-    const lines: string[] = [];
-    for (const para of paragraphs) {
-      const words = para.split(" ");
-      let cur = "";
-      for (const w of words) {
-        if (!cur.length) {
-          cur = w;
-          continue;
-        }
-        if ((cur + " " + w).length <= maxChars) {
-          cur += " " + w;
-        } else {
-          lines.push(cur);
-          cur = w;
-        }
-      }
-      if (cur.length) {
-        lines.push(cur);
-      }
-      if (!words.length) {
-        lines.push("");
-      }
-    }
-    return lines;
-  }
-
-  function _showBubble(agent, explicitMsg?, opts: any = {}) {
-    const phrases = agentPhrases[agent.def.label] || ["Working on it…"];
-    const msg =
-      explicitMsg || phrases[Math.floor(Math.random() * phrases.length)];
-    const el = agent.el;
-    const rect = el._tagBg;
-    const txt = el._tagTxt;
-
-    if (el._bubbleTimer) {
-      clearTimeout(el._bubbleTimer);
-    }
-    if (el._typeTimer) {
-      clearInterval(el._typeTimer);
-    }
-
-    const maxChars = opts.maxChars || 42;
-    const lines = wrapText(msg, maxChars);
-    const lineH = 22;
-    const padX = 18,
-      padTop = 14,
-      padBottom = 14;
-    const longest = lines.reduce((m, l) => Math.max(m, l.length), 0);
-    const finalW = Math.max(el._idleWidth, longest * 10.2 + padX * 2);
-    const finalH = padTop + lines.length * lineH + padBottom;
-
-    const rectY = -(finalH - 4);
-    rect.setAttribute("x", -finalW / 2);
-    rect.setAttribute("width", finalW);
-    rect.setAttribute("y", rectY);
-    rect.setAttribute("height", finalH);
-    rect.setAttribute("rx", 14);
-
-    while (txt.firstChild) {
-      txt.removeChild(txt.firstChild);
-    }
-    const firstY = rectY + padTop + 16;
-    const tspans = lines.map((_, i) => {
-      const ts = document.createElementNS(SVG_NS, "tspan");
-      ts.setAttribute("x", "0");
-      ts.setAttribute("text-anchor", "middle");
-      if (i === 0) {
-        ts.setAttribute("y", String(firstY));
-      } else {
-        ts.setAttribute("dy", lineH + "");
-      }
-      txt.appendChild(ts);
-      return ts;
-    });
-    const caret = document.createElementNS(SVG_NS, "tspan");
-    caret.setAttribute("class", "caret");
-    caret.textContent = "▂";
-    el.classList.add("talking");
-    el._bubbleSize = { w: finalW, h: finalH };
-
-    return new Promise<void>((resolve) => {
-      let lineIdx = 0;
-      let charIdx = 0;
-      const typeStep = () => {
-        if (lineIdx >= lines.length) {
-          clearInterval(el._typeTimer);
-          if (caret.parentNode) {
-            caret.parentNode.removeChild(caret);
-          }
-          if (opts.hold) {
-            resolve();
-            return;
-          }
-          el._bubbleTimer = trackedSetTimeout(() => {
-            setTagIdle(el);
-            resolve();
-          }, opts.holdMs || 1800);
-          return;
-        }
-        const target = lines[lineIdx];
-        if (charIdx < target.length) {
-          charIdx++;
-          tspans[lineIdx].textContent = target.slice(0, charIdx);
-          if (caret.parentNode) {
-            caret.parentNode.removeChild(caret);
-          }
-          tspans[lineIdx].appendChild(caret);
-        } else {
-          lineIdx++;
-          charIdx = 0;
-        }
-      };
-      el._typeTimer = trackedSetInterval(typeStep, 22 + Math.random() * 14);
-    });
-  }
-
-  function _randomSpotIn(roomKey) {
-    const r = rooms[roomKey] as any;
-    const x = (r.x || 0) + 60 + Math.random() * ((r.w || 320) - 120);
-    const y = (r.y || 0) + 90 + Math.random() * ((r.h || 320) - 130);
-    return { x, y };
   }
 
   let moveAgent: any = function moveAgentImpl(agent, targetRoom) {
@@ -1106,15 +935,6 @@ export function mountFloorScene(
         void (l as any).getBoundingClientRect?.();
         l.classList.add("flash");
       };
-      const setRoomActive = (room, active) => {
-        const grp = $byId("room-" + room);
-        if (!grp) {
-          return;
-        }
-        grp.querySelector(".room-rect")?.classList.toggle("active", active);
-        grp.querySelector(".room-glow")?.classList.toggle("active", active);
-      };
-
       const jitter = (base, amt) => base + (Math.random() * 2 - 1) * amt;
       const waypoints: { x: number; y: number }[] = [];
       waypoints.push({ x: fromDoor.x, y: fromDoor.y });
@@ -1130,7 +950,6 @@ export function mountFloorScene(
       waypoints.push({ x: dest.x, y: dest.y });
 
       agent.el.classList.remove("working");
-      setRoomActive(fromRoom, false);
       flash(from.lightId);
       if (agent.el._popTimer) {
         clearTimeout(agent.el._popTimer);
@@ -1212,7 +1031,6 @@ export function mountFloorScene(
         } else {
           agent.el._currentRoom = toRoom;
           agent.el.classList.add("working");
-          setRoomActive(toRoom, true);
           flash(to.lightId);
           resolveMove();
         }
@@ -1819,13 +1637,8 @@ export function mountFloorScene(
     }
   }
 
-  // Place every agent in its home room, idle.
+  // Mark every agent as idle / working in its home room.
   agents.forEach((a) => {
-    const grp = $byId("room-" + a.el._currentRoom);
-    if (grp) {
-      grp.querySelector(".room-rect")?.classList.add("active");
-      grp.querySelector(".room-glow")?.classList.add("active");
-    }
     a.el.classList.add("working");
   });
 
@@ -1881,13 +1694,6 @@ export function mountFloorScene(
     }
     setTagIdle(el);
 
-    if (el._currentRoom) {
-      const grp = $byId("room-" + el._currentRoom);
-      if (grp) {
-        grp.querySelector(".room-rect")?.classList.remove("active");
-        grp.querySelector(".room-glow")?.classList.remove("active");
-      }
-    }
     el._dragging = true;
     el.classList.add("dragging");
     el.classList.remove("working");
@@ -1916,11 +1722,6 @@ export function mountFloorScene(
     if (room) {
       el._currentRoom = room;
       el.classList.add("working");
-      const grp = $byId("room-" + room);
-      if (grp) {
-        grp.querySelector(".room-rect")?.classList.add("active");
-        grp.querySelector(".room-glow")?.classList.add("active");
-      }
       const light = $byId(rooms[room].lightId);
       if (light) {
         light.classList.remove("flash");
