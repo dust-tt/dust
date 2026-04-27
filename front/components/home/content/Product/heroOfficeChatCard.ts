@@ -171,6 +171,17 @@ export interface ChatCardModule {
   ) => void;
 }
 
+// Shared easing — entrance and exit share the same curve so they feel
+// like one component. ease-out-quart is the recommended curve for elements
+// entering or exiting on screen. The reaction pill keeps a slight spring
+// (defined in CSS) for a touch of playfulness.
+const EASE_OUT_QUART = "cubic-bezier(0.165, 0.84, 0.44, 1)";
+
+const prefersReducedMotion = (): boolean =>
+  typeof window !== "undefined" &&
+  typeof window.matchMedia === "function" &&
+  window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
 export function createChatCard(deps: ChatCardDeps): ChatCardModule {
   const { trackedSetTimeout, trackedSetInterval, flyNodes, castByRef } = deps;
 
@@ -250,20 +261,23 @@ export function createChatCard(deps: ChatCardDeps): ChatCardModule {
 
       hostEl.appendChild(fo);
       card.style.transformOrigin = "50% 100%";
-      try {
-        card.animate(
-          [
-            { opacity: 0, transform: "scale(0.2)" },
-            { opacity: 1, transform: "scale(1)" },
-          ],
-          {
-            duration: 420,
-            easing: "cubic-bezier(.2,.9,.3,1)",
-            fill: "forwards",
-          } as KeyframeAnimationOptions
-        );
-      } catch (_e) {
-        /* noop */
+      const reduced = prefersReducedMotion();
+      if (!reduced) {
+        try {
+          card.animate(
+            [
+              { opacity: 0, transform: "scale(0.96)" },
+              { opacity: 1, transform: "scale(1)" },
+            ],
+            {
+              duration: 220,
+              easing: EASE_OUT_QUART,
+              fill: "forwards",
+            } as KeyframeAnimationOptions
+          );
+        } catch (_e) {
+          /* noop */
+        }
       }
 
       hostEl._chatCard = { card, reactions: rx, fo };
@@ -331,20 +345,22 @@ export function createChatCard(deps: ChatCardDeps): ChatCardModule {
             }
             trackedSetTimeout(() => {
               let fadeAnim: Animation | undefined;
-              try {
-                fadeAnim = card.animate(
-                  [
-                    { opacity: 1, transform: "scale(1)" },
-                    { opacity: 0, transform: "scale(0.2)" },
-                  ],
-                  {
-                    duration: 280,
-                    easing: "cubic-bezier(.4,0,.6,1)",
-                    fill: "forwards",
-                  } as KeyframeAnimationOptions
-                );
-              } catch (_e) {
-                /* noop */
+              if (!reduced) {
+                try {
+                  fadeAnim = card.animate(
+                    [
+                      { opacity: 1, transform: "scale(1)" },
+                      { opacity: 0, transform: "scale(0.96)" },
+                    ],
+                    {
+                      duration: 180,
+                      easing: EASE_OUT_QUART,
+                      fill: "forwards",
+                    } as KeyframeAnimationOptions
+                  );
+                } catch (_e) {
+                  /* noop */
+                }
               }
               const done = () => {
                 fo.remove();
@@ -354,7 +370,7 @@ export function createChatCard(deps: ChatCardDeps): ChatCardModule {
               if (fadeAnim) {
                 fadeAnim.onfinish = done;
               } else {
-                trackedSetTimeout(done, 260);
+                trackedSetTimeout(done, reduced ? 0 : 180);
               }
             }, opts.holdMs || 2200);
             return;
@@ -459,43 +475,52 @@ export function createChatCard(deps: ChatCardDeps): ChatCardModule {
     const fly = document.createElement("div");
     fly.className = "dust-floor-fly-emoji";
     fly.textContent = emoji;
+    // Anchor the static position; the animation drives motion via transform
+    // (kept on the GPU compositor).
     fly.style.left = fx + "px";
     fly.style.top = fy + "px";
     fly.style.opacity = "0";
     document.body.appendChild(fly);
     flyNodes.add(fly);
 
-    const peakX = (fx + to.x) / 2;
-    const peakY = Math.min(fy, to.y) - 60;
+    const reduced = prefersReducedMotion();
+    if (reduced) {
+      // Skip the arc — just register the pill. Honors prefers-reduced-motion.
+      flyNodes.delete(fly);
+      fly.remove();
+      addReactionPill(targetEl, emoji, isAgent);
+      return;
+    }
+
+    // Path encoded as transform deltas relative to the fly's static position.
+    // translate(-50%,-50%) keeps the emoji centered as it scales.
+    const peakDx = (to.x - fx) / 2;
+    const peakDy = Math.min(0, to.y - fy) - 60;
+    const endDx = to.x - fx;
+    const endDy = to.y - fy;
 
     const anim = fly.animate(
       [
         {
-          left: fx + "px",
-          top: fy + "px",
           opacity: 0,
-          transform: "translate(-50%,-50%) scale(0.3)",
+          transform: "translate(-50%,-50%) translate(0px,0px) scale(0.6)",
         },
         {
           opacity: 1,
-          transform: "translate(-50%,-50%) scale(1.25)",
+          transform: "translate(-50%,-50%) translate(0px,0px) scale(1.1)",
           offset: 0.2,
         },
         {
-          left: peakX + "px",
-          top: peakY + "px",
-          transform: "translate(-50%,-50%) scale(1.1)",
+          transform: `translate(-50%,-50%) translate(${peakDx}px,${peakDy}px) scale(1.05)`,
           offset: 0.55,
         },
         {
-          left: to.x + "px",
-          top: to.y + "px",
           opacity: 1,
-          transform: "translate(-50%,-50%) scale(0.75)",
+          transform: `translate(-50%,-50%) translate(${endDx}px,${endDy}px) scale(0.8)`,
         },
       ],
       {
-        duration: 850,
+        duration: 700,
         easing: "cubic-bezier(.4,0,.2,1)",
         fill: "forwards",
       } as KeyframeAnimationOptions

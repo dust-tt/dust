@@ -264,8 +264,9 @@ export const SCENE_CSS = `
   border-radius: 999px;
   font: 600 16px/1 var(--font-sans);
   color: #1A1D21; letter-spacing: -0.1px;
-  animation: dust-floor-pill-pop 360ms cubic-bezier(.2,1.4,.3,1);
+  animation: dust-floor-pill-pop 220ms cubic-bezier(0.34, 1.4, 0.64, 1);
   transform-origin: center;
+  will-change: transform;
 }
 .dust-floor-host .chat-card-reactions .react-pill .em { font-size: 18px; line-height: 1; }
 .dust-floor-host .chat-card-reactions .react-pill .count { color: #4A5058; font-weight: 600; }
@@ -286,22 +287,24 @@ export const SCENE_CSS = `
 .dust-floor-host .reaction-pill .em { font-size: 16px; }
 .dust-floor-host .reaction-pill {
   transform-box: fill-box; transform-origin: center;
-  animation: dust-floor-pill-pop 360ms cubic-bezier(.2,1.4,.3,1);
+  animation: dust-floor-pill-pop 220ms cubic-bezier(0.34, 1.4, 0.64, 1);
 }
 @keyframes dust-floor-pill-pop {
-  0%   { transform: scale(0.2); opacity: 0; }
-  60%  { transform: scale(1.15); opacity: 1; }
+  0%   { transform: scale(0.85); opacity: 0; }
+  60%  { transform: scale(1.04); opacity: 1; }
   100% { transform: scale(1); opacity: 1; }
 }
 
-/* Flying emoji — appended to document.body */
+/* Flying emoji — appended to document.body. Motion is driven by transform
+   only (left/top are static anchors set on creation) so the path stays on
+   the GPU compositor. */
 .dust-floor-fly-emoji {
   position: absolute;
   font-size: 26px; line-height: 1;
   pointer-events: none;
   transform: translate(-50%, -50%);
   filter: drop-shadow(0 2px 6px rgba(17,20,24,0.25));
-  will-change: transform, opacity, left, top;
+  will-change: transform, opacity;
 }
 
 .dust-floor-host .agent-tag .caret {
@@ -346,4 +349,31 @@ export const SCENE_CSS = `
 .dust-floor-host .wall-logo { fill: #ECEAE3; stroke: rgba(17,20,24,0.14); stroke-width: 1; }
 .dust-floor-host .roof-logo { stroke: rgba(17,20,24,0.22); stroke-width: 1.2; }
 .dust-floor-host .roof-colored { stroke: rgba(17,20,24,0.16); stroke-width: 1; }
+
+/* ===========================================================================
+   Reduced motion — disable every decorative animation in the scene for users
+   who request reduced motion. The chat-card entrance / exit and fly-reaction
+   are also gated in JS (heroOfficeChatCard.ts checks the same media query).
+   =========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  .dust-floor-host .human-body,
+  .dust-floor-host .human.sway .human-body,
+  .dust-floor-host .status-online-pulse,
+  .dust-floor-host .activity-emoji.pop,
+  .dust-floor-host .agent-body,
+  .dust-floor-host .agent-halo,
+  .dust-floor-host .agent.working .agent-halo,
+  .dust-floor-host .agent-spark,
+  .dust-floor-host .agent-trail,
+  .dust-floor-host .door-light.flash,
+  .dust-floor-host .door-light.active,
+  .dust-floor-host .chat-card-caret,
+  .dust-floor-host .chat-card-reactions .react-pill,
+  .dust-floor-host .reaction-pill,
+  .dust-floor-host .agent-tag .caret,
+  .dust-floor-fly-emoji {
+    animation: none !important;
+    transition: none !important;
+  }
+}
 `;
