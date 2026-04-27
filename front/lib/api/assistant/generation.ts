@@ -264,6 +264,8 @@ function constructSkillsSection({
     "Skills are modular capabilities that extend your abilities for specific tasks. " +
     "Each skill includes specialized instructions and may provide additional tools.\n\n" +
     "Skills can be in two states:\n" +
+    // We do not use the wording `equipped` with the model as `available` is more meaningful in context.
+    // `equipped` is the backend term.
     "- **Available**: Listed below but not active. Their instructions are not loaded yet. " +
     `You can enable them using the \`${SKILL_MANAGEMENT_SERVER_NAME}${TOOL_NAME_SEPARATOR}${ENABLE_SKILL_TOOL_NAME}\` ` +
     "tool when they become relevant to the conversation.\n" +
@@ -291,6 +293,7 @@ function constructSkillsSection({
     return skillsSection;
   }
 
+  // Enabled skills - inject their full instructions.
   if (allEnabledSkills.length > 0) {
     skillsSection += "\n### ENABLED SKILLS\n";
     skillsSection += "The following skills are currently enabled:\n";
@@ -302,6 +305,7 @@ function constructSkillsSection({
     ].join("\n");
   }
 
+  // Equipped but not yet enabled skills - show name and description only
   if (sortedEquippedSkills.length > 0) {
     skillsSection += "\n### AVAILABLE SKILLS\n";
     skillsSection +=
