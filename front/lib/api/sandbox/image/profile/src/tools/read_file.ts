@@ -5,7 +5,7 @@ import type { Profile } from "../profile";
 import { parseIntArg, wantsHelp } from "../shared/args";
 import { isBinary } from "../shared/binary";
 import { error, errorWithUsage } from "../shared/errors";
-import { countLines, streamLines } from "../shared/stream";
+import { readFileWindow } from "../shared/stream";
 
 const READ_FILE_USAGE_ANTHROPIC = "read_file <path> [offset] [limit]";
 const READ_FILE_USAGE_GEMINI = "read_file <path> [start] [end]";
@@ -75,8 +75,6 @@ export async function run(
     );
   }
 
-  const totalLines = countLines(filePath);
-
   let offset = 1;
   let limit = DEFAULT_READ_LIMIT;
 
@@ -105,11 +103,18 @@ export async function run(
         : DEFAULT_READ_LIMIT;
   }
 
+  const { lines, totalLines } = await readFileWindow({
+    filePath,
+    startLine: offset,
+    maxLines: limit,
+    byteBudget: MAX_OUTPUT_BYTES,
+  });
+
   const outputLines: string[] = [];
   let byteCount = 0;
   let lineNumber = offset;
 
-  for await (const line of streamLines(filePath, offset, limit)) {
+  for (const line of lines) {
     const formatted = `     ${lineNumber}\t${line}`;
     const lineBytes = Buffer.byteLength(`${formatted}\n`, "utf8");
 

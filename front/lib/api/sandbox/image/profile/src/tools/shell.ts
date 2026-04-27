@@ -132,7 +132,8 @@ export async function run(
     result.error && "code" in result.error ? result.error.code : undefined;
   const timedOut = errorCode === "ETIMEDOUT";
   if (timedOut) {
-    const separator = stderrRaw.length > 0 && !stderrRaw.endsWith("\n") ? "\n" : "";
+    const separator =
+      stderrRaw.length > 0 && !stderrRaw.endsWith("\n") ? "\n" : "";
     stderrRaw = `${stderrRaw}${separator}[Command timed out after ${timeoutSec}s]\n`;
   }
 

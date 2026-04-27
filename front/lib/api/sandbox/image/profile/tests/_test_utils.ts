@@ -47,15 +47,8 @@ export function runBashFunction(
   };
 }
 
-function collectWrite(
-  chunk: string | Uint8Array,
-  encoding?: BufferEncoding
-): string {
-  if (typeof chunk === "string") {
-    return chunk;
-  }
-
-  return Buffer.from(chunk).toString(encoding ?? "utf8");
+function collectWrite(chunk: string | Uint8Array): string {
+  return typeof chunk === "string" ? chunk : Buffer.from(chunk).toString("utf8");
 }
 
 export async function runTool(
@@ -72,33 +65,13 @@ export async function runTool(
   const originalStdoutWrite = process.stdout.write.bind(process.stdout);
   const originalStderrWrite = process.stderr.write.bind(process.stderr);
 
-  process.stdout.write = ((chunk, encoding, callback) => {
-    stdoutChunks.push(
-      collectWrite(chunk, typeof encoding === "string" ? encoding : undefined)
-    );
-
-    if (typeof encoding === "function") {
-      encoding();
-    }
-    if (typeof callback === "function") {
-      callback();
-    }
-
+  process.stdout.write = ((chunk: string | Uint8Array) => {
+    stdoutChunks.push(collectWrite(chunk));
     return true;
   }) as typeof process.stdout.write;
 
-  process.stderr.write = ((chunk, encoding, callback) => {
-    stderrChunks.push(
-      collectWrite(chunk, typeof encoding === "string" ? encoding : undefined)
-    );
-
-    if (typeof encoding === "function") {
-      encoding();
-    }
-    if (typeof callback === "function") {
-      callback();
-    }
-
+  process.stderr.write = ((chunk: string | Uint8Array) => {
+    stderrChunks.push(collectWrite(chunk));
     return true;
   }) as typeof process.stderr.write;
 

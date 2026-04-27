@@ -7,7 +7,7 @@ import {
   MAX_LIST_DIR_DEPTH,
 } from "../constants";
 import type { Profile } from "../profile";
-import { parseIntArg, parseNamedArgs, wantsHelp } from "../shared/args";
+import { parseIntArg, parseToolArgs, wantsHelp } from "../shared/args";
 import { error } from "../shared/errors";
 import { paginate, printPaginatedOutput } from "../shared/output";
 
@@ -58,23 +58,25 @@ export async function run(
     return;
   }
 
-  const { positional, named } = parseNamedArgs(args, [
-    "depth",
-    "offset",
-    "limit",
-  ]);
+  const { values, positionals } = parseToolArgs(args, {
+    depth: { type: "string" },
+    offset: { type: "string" },
+    limit: { type: "string" },
+  });
 
-  const dirPath = positional[0] ?? ".";
+  const dirPath = positionals[0] ?? ".";
   const depth = Math.min(
-    parseIntArg(named.depth ?? `${DEFAULT_LIST_DIR_DEPTH}`, "--depth", {
+    parseIntArg(values.depth ?? `${DEFAULT_LIST_DIR_DEPTH}`, "--depth", {
       minimum: 0,
     }),
     MAX_LIST_DIR_DEPTH
   );
-  const offset = parseIntArg(named.offset ?? "0", "--offset", { minimum: 0 });
-  const limit = parseIntArg(named.limit ?? `${DEFAULT_LIST_LIMIT}`, "--limit", {
-    minimum: 1,
-  });
+  const offset = parseIntArg(values.offset ?? "0", "--offset", { minimum: 0 });
+  const limit = parseIntArg(
+    values.limit ?? `${DEFAULT_LIST_LIMIT}`,
+    "--limit",
+    { minimum: 1 }
+  );
 
   if (!fs.existsSync(dirPath) || !fs.statSync(dirPath).isDirectory()) {
     error(`directory not found: ${dirPath}`);
@@ -83,5 +85,5 @@ export async function run(
   const entries = collectEntries(dirPath, depth);
   const { page, hasMore } = paginate(entries, offset, limit);
 
-  printPaginatedOutput(page, offset, hasMore, "entries");
+  printPaginatedOutput(page, offset, hasMore);
 }

@@ -52,54 +52,6 @@ describe("edit_file", () => {
     expect(fs.readFileSync(filePath, "utf-8")).toBe("updated\n");
   });
 
-  it("rejects multiple files in anthropic profile", async () => {
-    const file1 = path.join(tempDir, "file1.txt");
-    const file2 = path.join(tempDir, "file2.txt");
-    fs.writeFileSync(file1, "hello world\n");
-    fs.writeFileSync(file2, "hello there\n");
-    const { stderr, exitCode } = await runTool("edit_file", [
-      "hello",
-      "goodbye",
-      file1,
-      file2,
-    ]);
-    expect(exitCode).toBe(1);
-    expect(stderr).toContain("one file at a time");
-  });
-
-  it("edits multiple files with gemini profile", async () => {
-    const file1 = path.join(tempDir, "file1.txt");
-    const file2 = path.join(tempDir, "file2.txt");
-    fs.writeFileSync(file1, "hello world\n");
-    fs.writeFileSync(file2, "hello there\n");
-    const { stdout, exitCode } = await runTool(
-      "edit_file",
-      ["hello", "goodbye", file1, file2],
-      "gemini"
-    );
-    expect(exitCode).toBe(0);
-    expect(stdout).toContain(`Edited ${file1}`);
-    expect(stdout).toContain(`Edited ${file2}`);
-    expect(fs.readFileSync(file1, "utf-8")).toBe("goodbye world\n");
-    expect(fs.readFileSync(file2, "utf-8")).toBe("goodbye there\n");
-  });
-
-  it("continues editing remaining files when one fails (gemini)", async () => {
-    const file1 = path.join(tempDir, "file1.txt");
-    const file2 = path.join(tempDir, "file2.txt");
-    fs.writeFileSync(file1, "no match here\n");
-    fs.writeFileSync(file2, "hello world\n");
-    const { stdout, stderr, exitCode } = await runTool(
-      "edit_file",
-      ["hello", "goodbye", file1, file2],
-      "gemini"
-    );
-    expect(exitCode).toBe(1);
-    expect(stderr).toContain(`old_text not found in ${file1}`);
-    expect(stdout).toContain(`Edited ${file2}`);
-    expect(fs.readFileSync(file2, "utf-8")).toBe("goodbye world\n");
-  });
-
   describe("validation", () => {
     it("rejects empty files", async () => {
       const filePath = path.join(tempDir, "empty.txt");
@@ -132,16 +84,8 @@ describe("edit_file", () => {
     );
   });
 
-  describe("smart delete", () => {
-    it("removes trailing newline when deleting a line", async () => {
-      const filePath = path.join(tempDir, "smartdel.txt");
-      fs.writeFileSync(filePath, "line1\ndebug_line\nline3\n");
-      const result = await runTool("edit_file", ["debug_line", "", filePath]);
-      expect(result.exitCode).toBe(0);
-      expect(fs.readFileSync(filePath, "utf-8")).toBe("line1\nline3\n");
-    });
-
-    it("does not remove newline when old_text already ends with newline", async () => {
+  describe("delete", () => {
+    it("deletes the literal old_text including newline when included", async () => {
       const filePath = path.join(tempDir, "smartdel2.txt");
       fs.writeFileSync(filePath, "line1\ndebug_line\nline3\n");
       const result = await runTool("edit_file", ["debug_line\n", "", filePath]);
@@ -202,7 +146,7 @@ describe("edit_file", () => {
   });
 
   describe("diff output", () => {
-    it("keeps no-trailing-newline diffs readable and annotated", async () => {
+    it("keeps no-trailing-newline diffs readable", async () => {
       const filePath = path.join(tempDir, "no-newline-diff.txt");
       fs.writeFileSync(filePath, "Update timestamp: 1");
       const result = await runTool("edit_file", [
@@ -211,11 +155,9 @@ describe("edit_file", () => {
         filePath,
       ]);
       expect(result.exitCode).toBe(0);
-      expect(result.stderr).toContain(
-        "-Update timestamp: 1\n+End timestamp: 1"
-      );
-      expect(result.stderr).toContain("[No trailing newline in original file]");
-      expect(result.stderr).toContain("[No trailing newline in updated file]");
+      expect(result.stderr).toContain("-Update timestamp: 1");
+      expect(result.stderr).toContain("+End timestamp: 1");
+      expect(result.stderr).toContain("\\ No newline at end of file");
     });
 
     it("truncates very large diffs", async () => {

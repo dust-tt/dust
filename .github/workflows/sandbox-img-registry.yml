@@ -86,6 +86,8 @@ jobs:
           node-version: "22.22.0"
           build-sdks: "true"
 
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+
       - name: Write service account JSON
         run: |
           echo '${{ secrets.SBX_GCP_ARTIFACT_RO_SERVICE_ACCOUNT_JSON }}' > /tmp/service-account.json

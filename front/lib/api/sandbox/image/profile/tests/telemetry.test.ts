@@ -4,9 +4,18 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { logToolInvocation } from "../src/shared/telemetry";
 
-vi.mock("node:child_process", () => ({
-  spawnSync: vi.fn(),
+const { spawnSyncMock } = vi.hoisted(() => ({
+  spawnSyncMock: vi.fn(),
 }));
+
+vi.mock("node:child_process", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:child_process")>();
+  return {
+    ...actual,
+    default: { ...actual, spawnSync: spawnSyncMock },
+    spawnSync: spawnSyncMock,
+  };
+});
 
 describe("logToolInvocation", () => {
   beforeEach(() => {

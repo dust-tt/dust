@@ -72,12 +72,8 @@ function nextOffsetForPage(offset: number, shown: number): number {
   return offset + Math.max(shown, 1);
 }
 
-function formatPaginationFooter(
-  shown: number,
-  offset: number,
-  noun: string
-): string {
-  return `[${shown} ${noun} shown. More results available. Next offset: ${nextOffsetForPage(
+function formatPaginationFooter(shown: number, offset: number): string {
+  return `[${shown} entries shown. More results available. Next offset: ${nextOffsetForPage(
     offset,
     shown
   )}]`;
@@ -86,8 +82,7 @@ function formatPaginationFooter(
 export function printPaginatedOutput(
   page: readonly string[],
   offset: number,
-  hasMore: boolean,
-  noun: string
+  hasMore: boolean
 ): void {
   const outputText = page.join("\n");
   const { text, wasTruncated } = safeOutput(outputText);
@@ -102,6 +97,6 @@ export function printPaginatedOutput(
     if (text) {
       process.stdout.write("\n");
     }
-    process.stdout.write(`${formatPaginationFooter(shown, offset, noun)}\n`);
+    process.stdout.write(`${formatPaginationFooter(shown, offset)}\n`);
   }
 }

@@ -1,3 +1,5 @@
+import { type ParseArgsConfig, parseArgs } from "node:util";
+
 import { HELP_FLAGS } from "../constants";
 import { error } from "./errors";
 
@@ -33,46 +35,17 @@ export function parseIntArg(
   return value;
 }
 
-export function parseNamedArgs(
-  args: readonly string[],
-  flags: readonly string[]
-): {
-  positional: string[];
-  named: Record<string, string>;
-} {
-  const positional: string[] = [];
-  const named: Record<string, string> = {};
-  const flagSet = new Set(flags);
-
-  for (let index = 0; index < args.length; ) {
-    const arg = args[index] ?? "";
-
-    if (arg === "--") {
-      positional.push(...args.slice(index + 1));
-      break;
-    }
-
-    if (!arg.startsWith("--")) {
-      positional.push(arg);
-      index += 1;
-      continue;
-    }
-
-    const key = arg.slice(2);
-    if (!flagSet.has(key)) {
-      positional.push(arg);
-      index += 1;
-      continue;
-    }
-
-    const value = args[index + 1];
-    if (value === undefined) {
-      error(`--${key} requires a value`);
-    }
-
-    named[key] = value;
-    index += 2;
+export function parseToolArgs<
+  T extends NonNullable<ParseArgsConfig["options"]>,
+>(args: readonly string[], options: T) {
+  try {
+    return parseArgs({
+      args: [...args],
+      options,
+      allowPositionals: true,
+      strict: true,
+    });
+  } catch (err) {
+    error(err instanceof Error ? err.message : String(err));
   }
-
-  return { positional, named };
 }

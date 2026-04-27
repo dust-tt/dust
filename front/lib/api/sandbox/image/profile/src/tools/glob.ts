@@ -3,7 +3,7 @@ import * as path from "node:path";
 
 import { DEFAULT_LIST_LIMIT } from "../constants";
 import type { Profile } from "../profile";
-import { parseIntArg, parseNamedArgs, wantsHelp } from "../shared/args";
+import { parseIntArg, parseToolArgs, wantsHelp } from "../shared/args";
 import { errorWithUsage } from "../shared/errors";
 import { paginate, printPaginatedOutput } from "../shared/output";
 
@@ -55,7 +55,6 @@ function collectMatches(pattern: string, searchPath: string): string[] {
   return fs
     .globSync("**/*", {
       cwd: searchPath,
-      dot: true,
       withFileTypes: false,
     })
     .filter((relativePath) => {
@@ -79,25 +78,27 @@ export async function run(
     return;
   }
 
-  const { positional, named } = parseNamedArgs(args, [
-    "path",
-    "offset",
-    "limit",
-  ]);
+  const { values, positionals } = parseToolArgs(args, {
+    path: { type: "string" },
+    offset: { type: "string" },
+    limit: { type: "string" },
+  });
 
-  if (positional.length === 0) {
+  if (positionals.length === 0) {
     errorWithUsage("pattern is required", GLOB_USAGE);
   }
 
-  const pattern = positional[0] ?? "";
-  const searchPath = named.path ?? positional[1] ?? ".";
-  const offset = parseIntArg(named.offset ?? "0", "--offset", { minimum: 0 });
-  const limit = parseIntArg(named.limit ?? `${DEFAULT_LIST_LIMIT}`, "--limit", {
-    minimum: 1,
-  });
+  const pattern = positionals[0] ?? "";
+  const searchPath = values.path ?? positionals[1] ?? ".";
+  const offset = parseIntArg(values.offset ?? "0", "--offset", { minimum: 0 });
+  const limit = parseIntArg(
+    values.limit ?? `${DEFAULT_LIST_LIMIT}`,
+    "--limit",
+    { minimum: 1 }
+  );
 
   const matches = collectMatches(pattern, searchPath);
   const { page, hasMore } = paginate(matches, offset, limit);
 
-  printPaginatedOutput(page, offset, hasMore, "entries");
+  printPaginatedOutput(page, offset, hasMore);
 }

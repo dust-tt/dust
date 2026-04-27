@@ -43,28 +43,7 @@ function printGlobalUsage(stream: NodeJS.WriteStream): void {
   stream.write(`Available tools: ${Object.keys(TOOLS).sort().join(", ")}\n`);
 }
 
-let pipeHandlersInstalled = false;
-
-function installPipeHandlers(): void {
-  if (pipeHandlersInstalled) {
-    return;
-  }
-
-  const handlePipeError = (err: NodeJS.ErrnoException): void => {
-    if (err.code === "EPIPE") {
-      process.exit(0);
-    }
-    throw err;
-  };
-
-  process.stdout.on("error", handlePipeError);
-  process.stderr.on("error", handlePipeError);
-  pipeHandlersInstalled = true;
-}
-
 export async function runCli(argv: readonly string[]): Promise<number> {
-  installPipeHandlers();
-
   const startedAtMs = Date.now();
   let toolName = "unknown";
   let profileArg: string | undefined;
@@ -135,6 +114,11 @@ const entrypointPath = fileURLToPath(import.meta.url);
 const invokedPath = process.argv[1] ? path.resolve(process.argv[1]) : "";
 
 if (entrypointPath === invokedPath) {
+  process.stdout.on("error", (err: NodeJS.ErrnoException) => {
+    if (err.code === "EPIPE") {
+      process.exit(0);
+    }
+  });
   void runCli(process.argv.slice(2)).then((exitCode) => {
     process.exit(exitCode);
   });

@@ -118,15 +118,16 @@ describe("grep_files", () => {
     expect(stdout).not.toContain("hello world");
   });
 
-  it("treats a leading flag-like pattern literally", async () => {
+  it("treats a flag-like pattern literally after --", async () => {
     fs.writeFileSync(
       path.join(tempDir, "flags.txt"),
       "--help is literal here\n"
     );
     const { stdout, exitCode } = await runTool("grep_files", [
-      "--help",
       "--path",
       tempDir,
+      "--",
+      "--help",
     ]);
     expect(exitCode).toBe(0);
     expect(stdout).toContain("flags.txt");
