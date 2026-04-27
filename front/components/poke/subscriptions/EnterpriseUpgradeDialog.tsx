@@ -74,7 +74,7 @@ export default function EnterpriseUpgradeDialog({
       stripeSubscriptionId: !hasMetronomeBilling
         ? (subscription.stripeSubscriptionId ?? "")
         : undefined,
-      metronomeContractId: "",
+      metronomeContractId: hasMetronomeBilling ? "" : undefined,
       planCode: "",
       freeCreditsOverrideEnabled: freeCreditMicroUsd !== null,
       freeCreditsDollars:
