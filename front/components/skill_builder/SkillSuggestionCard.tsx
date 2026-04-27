@@ -139,26 +139,13 @@ function ConversationFooter({
     return null;
   }
 
-  const visibleCount = visibleSourceConversationIds.length;
   const shownIds = visibleSourceConversationIds.slice(
     0,
     MAX_VISIBLE_CONVERSATIONS
   );
   const remainingCount = sourceConversationsCount - shownIds.length;
 
-  const conversationLink = (conversationId: string) => (
-    <Hoverable
-      key={conversationId}
-      variant="primary"
-      href={`/w/${workspaceId}/conversation/${conversationId}`}
-      target="_blank"
-      onClick={(e) => e.stopPropagation()}
-    >
-      {conversationId}
-    </Hoverable>
-  );
-
-  if (visibleCount === 0) {
+  if (shownIds.length === 0) {
     return (
       <p className="text-xs text-muted-foreground dark:text-muted-foreground-night">
         Based on {sourceConversationsCount} conversation
@@ -167,22 +154,34 @@ function ConversationFooter({
     );
   }
 
-  const links = shownIds.map((id) => conversationLink(id));
+  const indexedLinks = shownIds.map((id, i) => (
+    <Hoverable
+      key={id}
+      variant="primary"
+      href={`/w/${workspaceId}/conversation/${id}`}
+      target="_blank"
+      onClick={(e) => e.stopPropagation()}
+    >
+      {i + 1}
+    </Hoverable>
+  ));
 
   return (
     <p className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-      Based on{" "}
-      {links.map((link, i) => (
+      Based on conversation{shownIds.length > 1 || remainingCount > 0 ? "s" : ""}{" "}
+      {indexedLinks.map((link, i) => (
         <span key={shownIds[i]}>
           {i > 0 &&
-            (remainingCount === 0 && i === links.length - 1 ? " and " : ", ")}
+            (remainingCount === 0 && i === indexedLinks.length - 1
+              ? " and "
+              : ", ")}
           {link}
         </span>
       ))}
       {remainingCount > 0 && (
         <>
           {" "}
-          and {remainingCount} other conversation
+          and {remainingCount} other
           {remainingCount > 1 ? "s" : ""}
         </>
       )}
