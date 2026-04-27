@@ -748,74 +748,76 @@ const BILLING_CYCLE_CONFIG = {
 // Package names and contract_name are auto-versioned at sync time (e.g., "Legacy Pro USD v3").
 // The version is derived from existing packages in Metronome: if the current package matches,
 // keep its version; if it needs recreation, increment by 1.
-const PACKAGES: PackageDef[] = [
-  {
-    name: "Legacy Pro USD",
-    aliases: [{ name: "legacy-pro-monthly" }],
-    rate_card_name: "Legacy Pro USD",
-    subscriptions: [LEGACY_SEAT_SUBSCRIPTION],
-    recurring_credits: [getFreeMonthlyRecurringCredits()],
-    ...BILLING_CYCLE_CONFIG,
-  },
-  {
-    name: "Legacy Business USD",
-    aliases: [{ name: "legacy-business" }],
-    rate_card_name: "Legacy Business USD",
-    subscriptions: [LEGACY_SEAT_SUBSCRIPTION],
-    recurring_credits: [getFreeMonthlyRecurringCredits()],
-    ...BILLING_CYCLE_CONFIG,
-  },
-  {
-    name: "Legacy Pro Annual USD",
-    aliases: [{ name: "legacy-pro-annual" }],
-    rate_card_name: "Legacy Pro Annual USD",
-    subscriptions: [LEGACY_SEAT_SUBSCRIPTION],
-    recurring_credits: [getFreeMonthlyRecurringCredits()],
-    ...BILLING_CYCLE_CONFIG,
-  },
-  // Enterprise: MAU-based billing, no seat subscriptions.
-  {
-    name: "Legacy Enterprise USD",
-    aliases: [{ name: "legacy-enterprise" }],
-    rate_card_name: "Legacy Enterprise MAU USD",
-    scheduled_charges_on_usage_invoices: "ALL",
-    recurring_credits: [getFreeMonthlyRecurringCredits()],
-    ...BILLING_CYCLE_CONFIG,
-  },
-  // EUR variants
-  {
-    name: "Legacy Pro EUR",
-    aliases: [{ name: "legacy-pro-monthly-eur" }],
-    rate_card_name: "Legacy Pro EUR",
-    subscriptions: [LEGACY_SEAT_SUBSCRIPTION],
-    recurring_credits: [getFreeMonthlyRecurringCredits()],
-    ...BILLING_CYCLE_CONFIG,
-  },
-  {
-    name: "Legacy Business EUR",
-    aliases: [{ name: "legacy-business-eur" }],
-    rate_card_name: "Legacy Business EUR",
-    subscriptions: [LEGACY_SEAT_SUBSCRIPTION],
-    recurring_credits: [getFreeMonthlyRecurringCredits()],
-    ...BILLING_CYCLE_CONFIG,
-  },
-  {
-    name: "Legacy Pro Annual EUR",
-    aliases: [{ name: "legacy-pro-annual-eur" }],
-    rate_card_name: "Legacy Pro Annual EUR",
-    subscriptions: [LEGACY_SEAT_SUBSCRIPTION],
-    recurring_credits: [getFreeMonthlyRecurringCredits()],
-    ...BILLING_CYCLE_CONFIG,
-  },
-  {
-    name: "Legacy Enterprise EUR",
-    aliases: [{ name: "legacy-enterprise-eur" }],
-    rate_card_name: "Legacy Enterprise MAU EUR",
-    scheduled_charges_on_usage_invoices: "ALL",
-    recurring_credits: [getFreeMonthlyRecurringCredits()],
-    ...BILLING_CYCLE_CONFIG,
-  },
-];
+function getPackages(): PackageDef[] {
+  return [
+    {
+      name: "Legacy Pro USD",
+      aliases: [{ name: "legacy-pro-monthly" }],
+      rate_card_name: "Legacy Pro USD",
+      subscriptions: [LEGACY_SEAT_SUBSCRIPTION],
+      recurring_credits: [getFreeMonthlyRecurringCredits()],
+      ...BILLING_CYCLE_CONFIG,
+    },
+    {
+      name: "Legacy Business USD",
+      aliases: [{ name: "legacy-business" }],
+      rate_card_name: "Legacy Business USD",
+      subscriptions: [LEGACY_SEAT_SUBSCRIPTION],
+      recurring_credits: [getFreeMonthlyRecurringCredits()],
+      ...BILLING_CYCLE_CONFIG,
+    },
+    {
+      name: "Legacy Pro Annual USD",
+      aliases: [{ name: "legacy-pro-annual" }],
+      rate_card_name: "Legacy Pro Annual USD",
+      subscriptions: [LEGACY_SEAT_SUBSCRIPTION],
+      recurring_credits: [getFreeMonthlyRecurringCredits()],
+      ...BILLING_CYCLE_CONFIG,
+    },
+    // Enterprise: MAU-based billing, no seat subscriptions.
+    {
+      name: "Legacy Enterprise USD",
+      aliases: [{ name: "legacy-enterprise" }],
+      rate_card_name: "Legacy Enterprise MAU USD",
+      scheduled_charges_on_usage_invoices: "ALL",
+      recurring_credits: [getFreeMonthlyRecurringCredits()],
+      ...BILLING_CYCLE_CONFIG,
+    },
+    // EUR variants
+    {
+      name: "Legacy Pro EUR",
+      aliases: [{ name: "legacy-pro-monthly-eur" }],
+      rate_card_name: "Legacy Pro EUR",
+      subscriptions: [LEGACY_SEAT_SUBSCRIPTION],
+      recurring_credits: [getFreeMonthlyRecurringCredits()],
+      ...BILLING_CYCLE_CONFIG,
+    },
+    {
+      name: "Legacy Business EUR",
+      aliases: [{ name: "legacy-business-eur" }],
+      rate_card_name: "Legacy Business EUR",
+      subscriptions: [LEGACY_SEAT_SUBSCRIPTION],
+      recurring_credits: [getFreeMonthlyRecurringCredits()],
+      ...BILLING_CYCLE_CONFIG,
+    },
+    {
+      name: "Legacy Pro Annual EUR",
+      aliases: [{ name: "legacy-pro-annual-eur" }],
+      rate_card_name: "Legacy Pro Annual EUR",
+      subscriptions: [LEGACY_SEAT_SUBSCRIPTION],
+      recurring_credits: [getFreeMonthlyRecurringCredits()],
+      ...BILLING_CYCLE_CONFIG,
+    },
+    {
+      name: "Legacy Enterprise EUR",
+      aliases: [{ name: "legacy-enterprise-eur" }],
+      rate_card_name: "Legacy Enterprise MAU EUR",
+      scheduled_charges_on_usage_invoices: "ALL",
+      recurring_credits: [getFreeMonthlyRecurringCredits()],
+      ...BILLING_CYCLE_CONFIG,
+    },
+  ];
+}
 
 // ---------------------------------------------------------------------------
 // State tracking
@@ -1533,7 +1535,7 @@ async function syncPackages(): Promise<void> {
 
   // Collect all desired aliases to identify stale packages.
   const desiredAliases = new Set(
-    PACKAGES.flatMap((p) => p.aliases.map((a) => a.name))
+    getPackages().flatMap((p) => p.aliases.map((a) => a.name))
   );
 
   // Archive packages whose aliases are not in the desired set (and not test objects).
@@ -1554,7 +1556,7 @@ async function syncPackages(): Promise<void> {
     }
   }
 
-  for (const desired of PACKAGES) {
+  for (const desired of getPackages()) {
     // Find existing package by alias (not name — name changes on version bumps).
     const primaryAlias = desired.aliases[0]?.name;
     const ex = primaryAlias ? byAlias.get(primaryAlias) : undefined;
