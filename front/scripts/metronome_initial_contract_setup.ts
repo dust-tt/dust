@@ -18,6 +18,7 @@ import { floorToHourISO, getMetronomeClient } from "@app/lib/metronome/client";
 import {
   getCreditTypeProgrammaticUsdId,
   getProductFreeMonthlyCreditId,
+  getProductProgrammaticUsageId,
 } from "@app/lib/metronome/constants";
 import type { Logger } from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -58,9 +59,13 @@ async function backfillRecurringCreditForWorkspace(
 
   const freeCreditProductId = getProductFreeMonthlyCreditId();
   const creditTypeId = getCreditTypeProgrammaticUsdId();
+  const programmaticUsageProductId = getProductProgrammaticUsageId();
 
   for (const contract of contracts) {
     const contractId = contract.id;
+    const startingAt = floorToHourISO(new Date(contract.starting_at));
+
+    // --- Check 1: recurring free credit ---
 
     const existingCreditProductIds = new Set(
       (contract.recurring_credits ?? []).map((c) => c.product.id)
@@ -71,58 +76,98 @@ async function backfillRecurringCreditForWorkspace(
         { workspaceId: workspace.sId, contractId },
         "[Backfill] Recurring credit already exists on contract, skipping"
       );
-      continue;
-    }
-
-    const startingAt = floorToHourISO(new Date(contract.starting_at));
-
-    const recurringCredit = {
-      product_id: freeCreditProductId,
-      name: "Monthly Free Credit",
-      starting_at: startingAt,
-      priority: 1, // Apply before prepaid commits.
-      access_amount: {
-        credit_type_id: creditTypeId,
-        unit_price: 0,
-        quantity: 1,
-      },
-      commit_duration: { value: 1, unit: "PERIODS" as const },
-      recurrence_frequency: "MONTHLY" as const,
-      applicable_product_tags: ["usage"],
-    };
-
-    if (!execute) {
-      logger.info(
-        {
-          workspaceId: workspace.sId,
-          contractId,
-          recurringCredit: recurringCredit,
+    } else {
+      const recurringCredit = {
+        product_id: freeCreditProductId,
+        name: "Free Monthly Credits",
+        starting_at: startingAt,
+        priority: 1, // Apply before prepaid commits.
+        access_amount: {
+          credit_type_id: creditTypeId,
+          unit_price: 0,
+          quantity: 1,
         },
-        "[Backfill] [DRY RUN] Would add recurring credit to contract"
-      );
-      continue;
+        commit_duration: { value: 1, unit: "PERIODS" as const },
+        recurrence_frequency: "MONTHLY" as const,
+        applicable_product_tags: ["usage"],
+      };
+
+      if (!execute) {
+        logger.info(
+          { workspaceId: workspace.sId, contractId, recurringCredit },
+          "[Backfill] [DRY RUN] Would add recurring credit to contract"
+        );
+      } else {
+        try {
+          await client.v2.contracts.edit({
+            customer_id: metronomeCustomerId,
+            contract_id: contractId,
+            add_recurring_credits: [recurringCredit],
+          });
+          logger.info(
+            { workspaceId: workspace.sId, contractId },
+            "[Backfill] Successfully added recurring credit to contract"
+          );
+        } catch (err) {
+          logger.error(
+            {
+              workspaceId: workspace.sId,
+              contractId,
+              error: normalizeError(err).message,
+            },
+            "[Backfill] Failed to add recurring credit to contract"
+          );
+        }
+      }
     }
 
-    try {
-      await client.v2.contracts.edit({
-        customer_id: metronomeCustomerId,
-        contract_id: contractId,
-        add_recurring_credits: [recurringCredit],
-      });
+    // --- Check 2: Programmatic Usage product rate ---
 
+    const isProgrammaticUsageEnabled = (contract.overrides ?? []).some(
+      (override) =>
+        override.entitled === true &&
+        (override.override_specifiers ?? []).some(
+          (spec) => spec.product_id === programmaticUsageProductId
+        )
+    );
+
+    if (isProgrammaticUsageEnabled) {
       logger.info(
         { workspaceId: workspace.sId, contractId },
-        "[Backfill] Successfully added recurring credit to contract"
+        "[Backfill] Programmatic Usage rate already enabled on contract, skipping"
       );
-    } catch (err) {
-      logger.error(
-        {
-          workspaceId: workspace.sId,
-          contractId,
-          error: normalizeError(err).message,
-        },
-        "[Backfill] Failed to add recurring credit to contract"
+    } else if (!execute) {
+      logger.info(
+        { workspaceId: workspace.sId, contractId },
+        "[Backfill] [DRY RUN] Would add override to enable Programmatic Usage rate"
       );
+    } else {
+      try {
+        await client.v2.contracts.edit({
+          customer_id: metronomeCustomerId,
+          contract_id: contractId,
+          add_overrides: [
+            {
+              starting_at: startingAt,
+              product_id: programmaticUsageProductId,
+              entitled: true,
+            },
+          ],
+        });
+        logger.info(
+          { workspaceId: workspace.sId, contractId },
+          "[Backfill] Successfully added override to enable Programmatic Usage rate"
+        );
+      } catch (err) {
+        logger.error(
+          {
+            workspaceId: workspace.sId,
+            contractId,
+            error: normalizeError(err).message,
+          },
+          "[Backfill] Failed to add override to enable Programmatic Usage rate"
+        );
+      }
     }
   }
 }
