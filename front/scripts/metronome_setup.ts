@@ -699,20 +699,22 @@ function getRateCards(): RateCardDef[] {
 // Recurring free credit definition shared by all packages.
 // Quantity starts at 0 — the credit.segment.start webhook updates it each period
 // to the actual user-based amount.
-const FREE_MONTHLY_RECURRING_CREDITS: RecurringCreditDef = {
-  product_name: "Free Monthly Credits",
-  access_amount: {
-    credit_type_id: getCreditTypeProgrammaticUsdId(),
-    unit_price: 0,
-    quantity: 1,
-  },
-  commit_duration: { value: 1, unit: "PERIODS" },
-  priority: 1,
-  starting_at_offset: { unit: "DAYS", value: 0 }, // starts immediately
-  applicable_product_tags: [USAGE_TAG],
-  recurrence_frequency: "MONTHLY",
-  name: "Free Monthly Credits",
-};
+function getFreeMonthlyRecurringCredits(): RecurringCreditDef {
+  return {
+    product_name: "Free Monthly Credits",
+    access_amount: {
+      credit_type_id: getCreditTypeProgrammaticUsdId(),
+      unit_price: 0,
+      quantity: 1,
+    },
+    commit_duration: { value: 1, unit: "PERIODS" },
+    priority: 1,
+    starting_at_offset: { unit: "DAYS", value: 0 }, // starts immediately
+    applicable_product_tags: [USAGE_TAG],
+    recurrence_frequency: "MONTHLY",
+    name: "Free Monthly Credits",
+  };
+}
 
 // Seat subscription definition shared by all legacy packages.
 const LEGACY_SEAT_SUBSCRIPTION: PackageSubscription = {
@@ -752,7 +754,7 @@ const PACKAGES: PackageDef[] = [
     aliases: [{ name: "legacy-pro-monthly" }],
     rate_card_name: "Legacy Pro USD",
     subscriptions: [LEGACY_SEAT_SUBSCRIPTION],
-    recurring_credits: [FREE_MONTHLY_RECURRING_CREDITS],
+    recurring_credits: [getFreeMonthlyRecurringCredits()],
     ...BILLING_CYCLE_CONFIG,
   },
   {
@@ -760,7 +762,7 @@ const PACKAGES: PackageDef[] = [
     aliases: [{ name: "legacy-business" }],
     rate_card_name: "Legacy Business USD",
     subscriptions: [LEGACY_SEAT_SUBSCRIPTION],
-    recurring_credits: [FREE_MONTHLY_RECURRING_CREDITS],
+    recurring_credits: [getFreeMonthlyRecurringCredits()],
     ...BILLING_CYCLE_CONFIG,
   },
   {
@@ -768,7 +770,7 @@ const PACKAGES: PackageDef[] = [
     aliases: [{ name: "legacy-pro-annual" }],
     rate_card_name: "Legacy Pro Annual USD",
     subscriptions: [LEGACY_SEAT_SUBSCRIPTION],
-    recurring_credits: [FREE_MONTHLY_RECURRING_CREDITS],
+    recurring_credits: [getFreeMonthlyRecurringCredits()],
     ...BILLING_CYCLE_CONFIG,
   },
   // Enterprise: MAU-based billing, no seat subscriptions.
@@ -777,7 +779,7 @@ const PACKAGES: PackageDef[] = [
     aliases: [{ name: "legacy-enterprise" }],
     rate_card_name: "Legacy Enterprise MAU USD",
     scheduled_charges_on_usage_invoices: "ALL",
-    recurring_credits: [FREE_MONTHLY_RECURRING_CREDITS],
+    recurring_credits: [getFreeMonthlyRecurringCredits()],
     ...BILLING_CYCLE_CONFIG,
   },
   // EUR variants
@@ -786,7 +788,7 @@ const PACKAGES: PackageDef[] = [
     aliases: [{ name: "legacy-pro-monthly-eur" }],
     rate_card_name: "Legacy Pro EUR",
     subscriptions: [LEGACY_SEAT_SUBSCRIPTION],
-    recurring_credits: [FREE_MONTHLY_RECURRING_CREDITS],
+    recurring_credits: [getFreeMonthlyRecurringCredits()],
     ...BILLING_CYCLE_CONFIG,
   },
   {
@@ -794,7 +796,7 @@ const PACKAGES: PackageDef[] = [
     aliases: [{ name: "legacy-business-eur" }],
     rate_card_name: "Legacy Business EUR",
     subscriptions: [LEGACY_SEAT_SUBSCRIPTION],
-    recurring_credits: [FREE_MONTHLY_RECURRING_CREDITS],
+    recurring_credits: [getFreeMonthlyRecurringCredits()],
     ...BILLING_CYCLE_CONFIG,
   },
   {
@@ -802,7 +804,7 @@ const PACKAGES: PackageDef[] = [
     aliases: [{ name: "legacy-pro-annual-eur" }],
     rate_card_name: "Legacy Pro Annual EUR",
     subscriptions: [LEGACY_SEAT_SUBSCRIPTION],
-    recurring_credits: [FREE_MONTHLY_RECURRING_CREDITS],
+    recurring_credits: [getFreeMonthlyRecurringCredits()],
     ...BILLING_CYCLE_CONFIG,
   },
   {
@@ -810,7 +812,7 @@ const PACKAGES: PackageDef[] = [
     aliases: [{ name: "legacy-enterprise-eur" }],
     rate_card_name: "Legacy Enterprise MAU EUR",
     scheduled_charges_on_usage_invoices: "ALL",
-    recurring_credits: [FREE_MONTHLY_RECURRING_CREDITS],
+    recurring_credits: [getFreeMonthlyRecurringCredits()],
     ...BILLING_CYCLE_CONFIG,
   },
 ];
