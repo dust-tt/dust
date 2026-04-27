@@ -48,7 +48,9 @@ export function runBashFunction(
 }
 
 function collectWrite(chunk: string | Uint8Array): string {
-  return typeof chunk === "string" ? chunk : Buffer.from(chunk).toString("utf8");
+  return typeof chunk === "string"
+    ? chunk
+    : Buffer.from(chunk).toString("utf8");
 }
 
 export async function runTool(
