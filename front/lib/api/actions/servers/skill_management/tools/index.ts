@@ -4,7 +4,6 @@ import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_de
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { SKILL_MANAGEMENT_TOOLS_METADATA } from "@app/lib/api/actions/servers/skill_management/metadata";
 import { makeEnableSkillInstructionsMarker } from "@app/lib/api/actions/servers/skill_management/rendering";
-import { SKILLS_AS_USER_MESSAGES_FEATURE_FLAG } from "@app/lib/api/assistant/skills_rendering";
 import { getFeatureFlags } from "@app/lib/auth";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -51,7 +50,7 @@ const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
 
     const featureFlags = await getFeatureFlags(auth);
     const renderSkillsAsUserMessages = featureFlags.includes(
-      SKILLS_AS_USER_MESSAGES_FEATURE_FLAG
+      "skills_as_user_messages"
     );
     const markerOutput = renderSkillsAsUserMessages
       ? [makeEnableSkillInstructionsMarker(augmentedSkill)]

@@ -6,12 +6,33 @@ import { SKILL_MANAGEMENT_SERVER_NAME } from "@app/lib/actions/mcp_internal_acti
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { UserMessageTypeModel } from "@app/types/assistant/generation";
 
+export type EnabledSkillType = SkillResource & {
+  extendedSkill: SkillResource | null;
+};
+
 function renderSystemSkillMessage(text: string): UserMessageTypeModel {
   return {
     role: "user",
     name: "system",
     content: [{ type: "text", text }],
   };
+}
+
+export function getEnabledSkillInstructions(skill: EnabledSkillType): string {
+  const { name, instructions, extendedSkill } = skill;
+
+  if (!extendedSkill) {
+    return `<${name}>\n${instructions}\n</${name}>`;
+  }
+
+  return [
+    `<${name}>`,
+    extendedSkill.instructions,
+    "<additional_guidelines>",
+    instructions,
+    "</additional_guidelines>",
+    `</${name}>`,
+  ].join("\n");
 }
 
 export function renderEquippedSkillsUserMessage(
@@ -32,5 +53,15 @@ export function renderEquippedSkillsUserMessage(
       `The following skills are available for use with the ${enableSkillToolName} tool:\n\n` +
       `${lines.join("\n")}\n` +
       `</dust_system>`
+  );
+}
+
+export function renderEnabledSkillUserMessageFromInstructions({
+  skillInstructions,
+}: {
+  skillInstructions: string;
+}): UserMessageTypeModel {
+  return renderSystemSkillMessage(
+    `<dust_system>${skillInstructions}</dust_system>`
   );
 }
