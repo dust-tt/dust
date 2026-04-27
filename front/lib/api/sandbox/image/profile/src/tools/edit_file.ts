@@ -1,5 +1,7 @@
 import * as fs from "node:fs";
 
+import { createTwoFilesPatch } from "diff";
+
 import {
   MAX_DIFF_BYTES,
   MAX_DIFF_LINES,
@@ -8,8 +10,7 @@ import {
 import type { Profile } from "../profile";
 import { wantsHelp } from "../shared/args";
 import { isBinary } from "../shared/binary";
-import { error, errorWithUsage, ToolError } from "../shared/errors";
-import { runCommandSync } from "../shared/exec";
+import { errorWithUsage, ToolError } from "../shared/errors";
 import { countOutputLines, safeOutput } from "../shared/output";
 
 const USAGE = "edit_file [--replace-all] <old_text> <new_text> <path>";
@@ -29,39 +30,55 @@ interface Outcome {
 
 const fail = (message: string): Outcome => ({ ok: false, message, diff: "" });
 
-function runRequired(
-  cmd: string,
-  args: readonly string[],
-  allow: readonly number[] = [0]
-): { stdout: string; status: number } {
-  const r = runCommandSync(cmd, args);
-  if (r.error?.code === "ENOENT") {
-    error(`${cmd} not installed`);
+function countOccurrences(content: string, search: string): number {
+  if (!search) {
+    return 0;
   }
-  const status = r.status ?? 1;
-  if (!allow.includes(status)) {
-    error(r.stderr.trim() || `${cmd} failed`);
+  let count = 0;
+  let from = 0;
+  while (true) {
+    const index = content.indexOf(search, from);
+    if (index === -1) {
+      return count;
+    }
+    count += 1;
+    from = index + search.length;
   }
-  return { stdout: r.stdout, status };
 }
 
-function sdArgs(
+function applyReplacement(
+  content: string,
+  search: string,
+  replacement: string,
+  replaceAll: boolean
+): string {
+  if (replaceAll) {
+    return content.split(search).join(replacement);
+  }
+  const index = content.indexOf(search);
+  if (index === -1) {
+    return content;
+  }
+  return (
+    content.slice(0, index) + replacement + content.slice(index + search.length)
+  );
+}
+
+function buildDiff(
   filePath: string,
-  oldText: string,
-  newText: string,
-  replaceAll: boolean,
-  preview: boolean
-): string[] {
-  return [
-    ...(preview ? ["--preview"] : []),
-    "-F",
-    "-A",
-    ...(replaceAll ? [] : ["-n", "1"]),
-    "--",
-    oldText,
-    newText,
+  original: string,
+  modified: string
+): string {
+  const rawDiff = createTwoFilesPatch(
     filePath,
-  ];
+    filePath,
+    original,
+    modified,
+    "",
+    "",
+    { context: 4 }
+  );
+  return rawDiff.replace(/^Index: .*\n=+\n/, "");
 }
 
 function truncateDiff(diff: string): string {
@@ -102,13 +119,8 @@ function editOne(
     ? rawNewText
     : rawNewText.replace(/[ \t]+$/gm, "");
 
-  const count = runRequired(
-    "rg",
-    ["--count-matches", "--fixed-strings", "-U", "-e", oldText, filePath],
-    [0, 1]
-  );
-  const occurrences =
-    count.status === 1 ? 0 : Number.parseInt(count.stdout.trim() || "0", 10);
+  const original = fs.readFileSync(filePath, "utf8");
+  const occurrences = countOccurrences(original, oldText);
   if (occurrences === 0) {
     return fail(`Error: old_text not found in ${filePath}`);
   }
@@ -118,30 +130,13 @@ function editOne(
     );
   }
 
-  const modified = runRequired(
-    "sd",
-    sdArgs(filePath, oldText, newText, replaceAll, true)
-  ).stdout;
-
-  const tmp = `${filePath}.dust-tools.${process.pid}.tmp`;
-  fs.writeFileSync(tmp, modified);
-  let rawDiff: string;
-  try {
-    rawDiff = runRequired(
-      "diff",
-      ["-u", "--label", filePath, "--label", filePath, filePath, tmp],
-      [0, 1]
-    ).stdout;
-  } finally {
-    fs.rmSync(tmp, { force: true });
-  }
-
-  if (!rawDiff) {
+  const modified = applyReplacement(original, oldText, newText, replaceAll);
+  if (modified === original) {
     return fail(`Error: edit produced no changes in ${filePath}`);
   }
-  const diff = truncateDiff(rawDiff);
 
-  runRequired("sd", sdArgs(filePath, oldText, newText, replaceAll, false));
+  const diff = truncateDiff(buildDiff(filePath, original, modified));
+  fs.writeFileSync(filePath, modified);
   return { ok: true, message: `Edited ${filePath}`, diff };
 }
 
@@ -157,8 +152,9 @@ export async function run(
   profile: Profile
 ): Promise<void> {
   if (profile === "openai") {
-    error(
-      "edit_file is not available for the openai profile; use apply_patch instead"
+    errorWithUsage(
+      "edit_file is not available for the openai profile; use apply_patch instead",
+      USAGE
     );
   }
   if (wantsHelp(args)) {
