@@ -204,8 +204,12 @@ export function mountFloorScene(
     skip.add(personEl);
     personEl.dataset.person = slot.ref;
     const teammate: TeamMember = personEl._person;
+    // First name only in the chat-card header — keeps the card narrow and
+    // avoids leaking last names. @mentions in beat copy already use the
+    // first name via resolveMsg().
+    const firstName = teammate.name.split(/\s+/)[0] || teammate.name;
     personEl._chatMeta = {
-      name: teammate.name,
+      name: firstName,
       role: slot.role,
       avatar: teammate.image,
     };
