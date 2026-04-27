@@ -227,7 +227,12 @@ export function NewFileExplorer({
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-      } catch {
+      } catch (err) {
+        logger.error(
+          { err: normalizeError(err) },
+          "Failed to download sandbox file"
+        );
+        sendNotification({
         sendNotification({
           type: "error",
           title: "Failed to download the file.",
