@@ -664,14 +664,22 @@ export async function startSkillConversationAnalysisBatchActivity({
   if (result.isErr()) {
     throw result.error;
   }
+  if (!result.value) {
+    return null;
+  }
 
   // Build the map of analysed conversation ID -> reinforcement conversation ID.
+  // Conversations skipped by sendBatchCallToLlm (e.g. context window exceeded)
+  // appear as null in conversationIds and are dropped from the map.
   const reinforcementConversationMap: Record<string, string> = {
     ...(existingReinforcementConversationMap ?? {}),
   };
   for (let i = 0; i < orderedAnalysedConversationIds.length; i++) {
-    reinforcementConversationMap[orderedAnalysedConversationIds[i]] =
-      result.value.conversationIds[i];
+    const conversationId = result.value.conversationIds[i];
+    if (conversationId !== null) {
+      reinforcementConversationMap[orderedAnalysedConversationIds[i]] =
+        conversationId;
+    }
   }
 
   logger.info(
@@ -896,6 +904,9 @@ export async function startSkillAggregationBatchActivity({
   if (sendResult.isErr()) {
     throw sendResult.error;
   }
+  if (!sendResult.value) {
+    return null;
+  }
   const { batchId, conversationIds } = sendResult.value;
 
   logger.info(
@@ -907,7 +918,13 @@ export async function startSkillAggregationBatchActivity({
     "ReinforcedSkills: started aggregation batch"
   );
 
-  return { batchId, reinforcementConversationIds: conversationIds };
+  // Drop null entries (conversations skipped by sendBatchCallToLlm).
+  return {
+    batchId,
+    reinforcementConversationIds: conversationIds.filter(
+      (id): id is string => id !== null
+    ),
+  };
 }
 
 /**
