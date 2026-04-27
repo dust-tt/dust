@@ -5,9 +5,7 @@ import {
 } from "@app/components/assistant/conversation/files_panel/utils";
 import { cn } from "@app/components/poke/shadcn/lib/utils";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
-import { getFileProcessedUrl } from "@app/lib/swr/files";
 import type { GCSMountFileEntry } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/files";
-import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
   DropdownMenu,
@@ -185,7 +183,6 @@ export function FileExplorerFolderCard({
 
 export interface FileExplorerFileCardProps {
   entry: GCSMountFileEntry;
-  owner: LightWorkspaceType;
   viewMode: ViewMode;
   onOpen: (entry: GCSMountFileEntry) => void;
   onDownload: (entry: GCSMountFileEntry) => void;
@@ -193,23 +190,17 @@ export interface FileExplorerFileCardProps {
 
 export function FileExplorerFileCard({
   entry,
-  owner,
   viewMode,
   onOpen,
   onDownload,
 }: FileExplorerFileCardProps) {
   const subtitle = getFileSubtitle(entry);
 
-  // TODO(2026-04-27 FILE SYSTEM): Move this thumbnail logic to files endpoint.
   if (getCategoryFromContentType(entry.contentType) === "image") {
-    const thumbnailSrc = entry.fileId
-      ? getFileProcessedUrl(owner, entry.fileId)
-      : null;
-
     return (
       <FileExplorerItem
         kind="thumbnail"
-        thumbnailSrc={thumbnailSrc}
+        thumbnailSrc={entry.thumbnailUrl}
         viewMode={viewMode}
         title={entry.fileName}
         subtitle={subtitle}
