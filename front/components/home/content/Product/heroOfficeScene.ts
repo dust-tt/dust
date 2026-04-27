@@ -1,9 +1,9 @@
 /* eslint-disable */
 // @ts-nocheck
 // biome-ignore-all: imperative DOM/SVG scene ported from the
-// landing-gather-remix design prototype. The animation, drag-and-drop, and
-// SVG foreignObject chat cards rely on per-frame DOM mutation — rewriting as
-// React idioms would lose visual fidelity. Keep this file self-contained.
+// landing-gather-remix design prototype. The animation and SVG foreignObject
+// chat cards rely on per-frame DOM mutation — rewriting as React idioms
+// would lose visual fidelity. Keep this file self-contained.
 
 import {
   ACTIVITY_EMOJIS,
@@ -11,7 +11,6 @@ import {
   buildHuman,
 } from "@app/components/home/content/Product/heroOfficeActors";
 import {
-  RAIL_Y,
   ROOM_POPULATIONS,
   ROOMS,
 } from "@app/components/home/content/Product/heroOfficeFloor";
@@ -30,14 +29,14 @@ import { SCENE_CSS } from "@app/components/home/content/Product/heroOfficeStyles
 import type { TeamMember } from "@app/components/home/content/shared/team";
 
 // =============================================================================
-// Mount the floor scene into the host element. Returns a cleanup function that
-// fully tears the scene down (cancels rAF, clears timers, removes window
-// listeners, and resets the host).
+// Mount the floor scene into the host element. Returns a cleanup function
+// that fully tears the scene down (cancels rAF, clears timers, removes
+// stray flying-emoji nodes, and resets the host).
 //
-// NB: This module is the literal port of the prototype IIFE. Anything that
-// looks unidiomatic for React (raw DOM manipulation, _planX-style ad-hoc
-// fields, document-level pointer listeners) is intentional — the prototype
-// uses these to drive per-frame visuals that React's render cycle can't.
+// NB: This module is descended from the prototype IIFE. Anything that looks
+// unidiomatic for React (raw DOM manipulation, _planX-style ad-hoc fields)
+// is intentional — the scene uses per-frame DOM mutation to drive visuals
+// that React's render cycle can't.
 // =============================================================================
 
 export interface MountFloorSceneOptions {
@@ -71,7 +70,6 @@ export function mountFloorScene(
   const rafs = new Set<number>();
   const intervals = new Set<number>();
   const timeouts = new Set<number>();
-  const winListeners: Array<[string, EventListener]> = [];
   const flyNodes = new Set<HTMLElement>();
   let disposed = false;
 
@@ -96,10 +94,6 @@ export function mountFloorScene(
     timeouts.add(id);
     return id;
   };
-  const trackedWindowOn = (type: string, fn: EventListener) => {
-    window.addEventListener(type, fn);
-    winListeners.push([type, fn]);
-  };
 
   // Scoped lookup — replaces the prototype's bare `document.getElementById`.
   const $byId = (id: string) =>
@@ -109,9 +103,9 @@ export function mountFloorScene(
 
   // ===========================================================================
   // Scene engine. Drives population, agent positioning, the chat-card UI,
-  // the scenario beat runner, and drag-to-move. Pure visuals (markup, CSS,
-  // iso math, actor builders) live in sibling modules. Pure data (rooms,
-  // populations, scenario) is data-only.
+  // and the scenario beat runner. Pure visuals (markup, CSS, iso math,
+  // actor builders) live in sibling modules. Pure data (rooms, populations,
+  // scenario) is data-only.
   // ===========================================================================
 
   const rooms = ROOMS;
@@ -181,167 +175,6 @@ export function mountFloorScene(
   for (const a of agents) {
     agentById[a.def.id] = a;
   }
-
-  function setTagIdle(el) {
-    const w = el._idleWidth;
-    el._tagBg.setAttribute("x", -w / 2);
-    el._tagBg.setAttribute("width", w);
-    el._tagBg.setAttribute("y", -20);
-    el._tagBg.setAttribute("height", 32);
-    while (el._tagTxt.firstChild) {
-      el._tagTxt.removeChild(el._tagTxt.firstChild);
-    }
-    el._tagTxt.removeAttribute("text-anchor");
-    el._tagTxt.setAttribute("text-anchor", "middle");
-    const ts = document.createElementNS(SVG_NS, "tspan");
-    ts.setAttribute("x", "0");
-    ts.setAttribute("dy", "3");
-    ts.textContent = el._idleLabel;
-    el._tagTxt.appendChild(ts);
-    el.classList.remove("talking");
-  }
-
-  let moveAgent: any = function moveAgentImpl(agent, targetRoom) {
-    return new Promise<void>((resolveMove) => {
-      const fromRoom = agent.el._currentRoom;
-      const keys = Object.keys(rooms).filter((k) => k !== fromRoom);
-      let explicitPoint: { x: number; y: number } | null = null;
-      let toRoomKey;
-      if (targetRoom && typeof targetRoom === "object") {
-        toRoomKey = targetRoom.room;
-        explicitPoint = { x: targetRoom.x, y: targetRoom.y };
-      } else {
-        toRoomKey =
-          targetRoom && targetRoom !== fromRoom
-            ? targetRoom
-            : keys[Math.floor(Math.random() * keys.length)];
-      }
-      const toRoom = toRoomKey;
-      const from = rooms[fromRoom];
-      const to = rooms[toRoom];
-      const fromDoor = from.door;
-      const toDoor = to.door;
-      const destRects = to.interior;
-      const destRect = destRects[Math.floor(Math.random() * destRects.length)];
-      const dest = explicitPoint || {
-        x: destRect.x + 40 + Math.random() * (destRect.w - 80),
-        y: destRect.y + 40 + Math.random() * (destRect.h - 80),
-      };
-      const flash = (id) => {
-        const l = $byId(id);
-        if (!l) {
-          return;
-        }
-        l.classList.remove("flash");
-        void (l as any).getBoundingClientRect?.();
-        l.classList.add("flash");
-      };
-      const jitter = (base, amt) => base + (Math.random() * 2 - 1) * amt;
-      const waypoints: { x: number; y: number }[] = [];
-      waypoints.push({ x: fromDoor.x, y: fromDoor.y });
-
-      const fromY = jitter(RAIL_Y, 6);
-      const toY = jitter(RAIL_Y, 6);
-      waypoints.push({ x: jitter(fromDoor.x, 6), y: fromY });
-
-      const midX = (fromDoor.x + toDoor.x) / 2;
-      waypoints.push({ x: jitter(midX, 30), y: jitter(RAIL_Y, 8) });
-      waypoints.push({ x: jitter(toDoor.x, 6), y: toY });
-      waypoints.push({ x: toDoor.x, y: toDoor.y });
-      waypoints.push({ x: dest.x, y: dest.y });
-
-      agent.el.classList.remove("working");
-      flash(from.lightId);
-      if (agent.el._popTimer) {
-        clearTimeout(agent.el._popTimer);
-      }
-      if (agent.el._bubbleTimer) {
-        clearTimeout(agent.el._bubbleTimer);
-      }
-      if (agent.el._typeTimer) {
-        clearInterval(agent.el._typeTimer);
-      }
-      setTagIdle(agent.el);
-
-      const pts = waypoints;
-      const segs: any[] = [];
-      for (let k = 0; k < pts.length - 1; k++) {
-        const p0 = pts[Math.max(0, k - 1)];
-        const p1 = pts[k];
-        const p2 = pts[k + 1];
-        const p3 = pts[Math.min(pts.length - 1, k + 2)];
-        const c1 = { x: p1.x + (p2.x - p0.x) / 6, y: p1.y + (p2.y - p0.y) / 6 };
-        const c2 = { x: p2.x - (p3.x - p1.x) / 6, y: p2.y - (p3.y - p1.y) / 6 };
-        const len = Math.hypot(p2.x - p1.x, p2.y - p1.y);
-        segs.push({ p1, c1, c2, p2, len });
-      }
-      const totalLen = segs.reduce((s, x) => s + x.len, 0);
-      const duration = Math.max(3200, Math.min(10000, (totalLen / 90) * 1000));
-
-      const cumLen: number[] = [0];
-      for (const s of segs) {
-        cumLen.push(cumLen[cumLen.length - 1] + s.len);
-      }
-      const triggers = pts.map((_, idx) => cumLen[idx] / totalLen);
-      let nextTrig = 1;
-
-      const bez = (t, s) => {
-        const mt = 1 - t;
-        const x =
-          mt * mt * mt * s.p1.x +
-          3 * mt * mt * t * s.c1.x +
-          3 * mt * t * t * s.c2.x +
-          t * t * t * s.p2.x;
-        const y =
-          mt * mt * mt * s.p1.y +
-          3 * mt * mt * t * s.c1.y +
-          3 * mt * t * t * s.c2.y +
-          t * t * t * s.p2.y;
-        return { x, y };
-      };
-      const easeInOut = (u) =>
-        u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2;
-
-      const start = performance.now();
-      const tick = (now) => {
-        if (disposed) {
-          return;
-        }
-        const u = Math.min(1, (now - start) / duration);
-        const eu = easeInOut(u);
-        const target = eu * totalLen;
-        let idx = 0,
-          acc = 0;
-        while (idx < segs.length - 1 && acc + segs[idx].len < target) {
-          acc += segs[idx].len;
-          idx++;
-        }
-        const local = segs[idx].len ? (target - acc) / segs[idx].len : 1;
-        const pt = bez(local, segs[idx]);
-        agent.el.style.setProperty("--x", pt.x + "px");
-        agent.el.style.setProperty("--y", pt.y + "px");
-        agent.el._planX = pt.x;
-        agent.el._planY = pt.y;
-
-        while (nextTrig < triggers.length && eu >= triggers[nextTrig]) {
-          nextTrig++;
-        }
-
-        if (u < 1) {
-          agent.el._raf = trackedRAF(tick);
-        } else {
-          agent.el._currentRoom = toRoom;
-          agent.el.classList.add("working");
-          flash(to.lightId);
-          resolveMove();
-        }
-      };
-      if (agent.el._raf) {
-        cancelAnimationFrame(agent.el._raf);
-      }
-      agent.el._raf = trackedRAF(tick);
-    });
-  };
 
   const sleep = (ms: number) =>
     new Promise<void>((r) => trackedSetTimeout(() => r(), ms));
@@ -954,126 +787,6 @@ export function mountFloorScene(
     }
   })();
 
-  // ----- Drag-to-move -----
-  const svg = $byId("plan") as SVGSVGElement;
-
-  function toSvgPoint(clientX, clientY) {
-    const pt = svg.createSVGPoint();
-    pt.x = clientX;
-    pt.y = clientY;
-    return pt.matrixTransform(svg.getScreenCTM()!.inverse());
-  }
-  function roomAt(x, y) {
-    for (const [key, r] of Object.entries(rooms) as [string, any][]) {
-      if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) {
-        return key;
-      }
-    }
-    return null;
-  }
-  function startDrag(agent, clientX, clientY) {
-    const el = agent.el;
-    const p = toSvgPoint(clientX, clientY);
-    const curX = parseFloat(el.style.getPropertyValue("--x")) || 0;
-    const curY = parseFloat(el.style.getPropertyValue("--y")) || 0;
-    el._dragOff = { dx: curX - p.x, dy: curY - p.y };
-
-    if (el._raf) {
-      cancelAnimationFrame(el._raf);
-    }
-    if (el._moveTimer) {
-      clearTimeout(el._moveTimer);
-    }
-    if (el._popTimer) {
-      clearTimeout(el._popTimer);
-    }
-    if (el._bubbleTimer) {
-      clearTimeout(el._bubbleTimer);
-    }
-    if (el._typeTimer) {
-      clearInterval(el._typeTimer);
-    }
-    setTagIdle(el);
-
-    el._dragging = true;
-    el.classList.add("dragging");
-    el.classList.remove("working");
-    el.parentNode.appendChild(el);
-  }
-  function onDragMove(agent, clientX, clientY) {
-    if (!agent.el._dragging) {
-      return;
-    }
-    const p = toSvgPoint(clientX, clientY);
-    const { dx, dy } = agent.el._dragOff;
-    agent.el.style.setProperty("--x", p.x + dx + "px");
-    agent.el.style.setProperty("--y", p.y + dy + "px");
-  }
-  function endDrag(agent) {
-    const el = agent.el;
-    if (!el._dragging) {
-      return;
-    }
-    el._dragging = false;
-    el.classList.remove("dragging");
-
-    const x = parseFloat(el.style.getPropertyValue("--x")) || 0;
-    const y = parseFloat(el.style.getPropertyValue("--y")) || 0;
-    const room = roomAt(x, y);
-    if (room) {
-      el._currentRoom = room;
-      el.classList.add("working");
-      const light = $byId(rooms[room].lightId);
-      if (light) {
-        light.classList.remove("flash");
-        void (light as any).getBoundingClientRect?.();
-        light.classList.add("flash");
-      }
-    } else {
-      el._currentRoom = el._currentRoom || Object.keys(rooms)[0];
-      el._moveTimer = trackedSetTimeout(
-        () => moveAgent(agent, agent.def.start),
-        1400
-      );
-    }
-  }
-
-  let activeDrag: any = null;
-  agents.forEach((agent) => {
-    const el = agent.el;
-    el.style.touchAction = "none";
-    el.addEventListener("pointerdown", (ev) => {
-      ev.preventDefault();
-      ev.stopPropagation();
-      activeDrag = { agent, pointerId: ev.pointerId };
-      startDrag(agent, ev.clientX, ev.clientY);
-    });
-  });
-  trackedWindowOn("pointermove", (ev: any) => {
-    if (!activeDrag) {
-      return;
-    }
-    onDragMove(activeDrag.agent, ev.clientX, ev.clientY);
-  });
-  const finishDrag = () => {
-    if (!activeDrag) {
-      return;
-    }
-    const { agent } = activeDrag;
-    activeDrag = null;
-    endDrag(agent);
-  };
-  trackedWindowOn("pointerup", finishDrag);
-  trackedWindowOn("pointercancel", finishDrag);
-
-  const _origMoveAgent = moveAgent;
-  moveAgent = function (agent, targetRoom) {
-    if (agent.el._dragging) {
-      return Promise.resolve();
-    }
-    return _origMoveAgent(agent, targetRoom);
-  };
-
   // ===========================================================================
   // Cleanup
   // ===========================================================================
@@ -1085,7 +798,6 @@ export function mountFloorScene(
     rafs.clear();
     intervals.clear();
     timeouts.clear();
-    winListeners.forEach(([type, fn]) => window.removeEventListener(type, fn));
     flyNodes.forEach((node) => node.remove());
     flyNodes.clear();
     host.innerHTML = "";

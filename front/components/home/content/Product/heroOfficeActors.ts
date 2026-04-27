@@ -194,14 +194,6 @@ export function buildAgent(id: string, label: string): SVGGElement {
 
   g.appendChild(body);
 
-  // Invisible 56px hit target — the visible body is only ~22px so this
-  // gives a forgiving grab area for drag-to-move.
-  const hit = document.createElementNS(SVG_NS, "circle");
-  hit.setAttribute("r", "56");
-  hit.setAttribute("fill", "transparent");
-  hit.setAttribute("class", "agent-hit");
-  g.appendChild(hit);
-
   // Floating chip above the agent. Holds the @name when idle and morphs
   // into the typed message during dialogue.
   const tag = document.createElementNS(SVG_NS, "g");

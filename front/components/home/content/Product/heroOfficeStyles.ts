@@ -97,12 +97,7 @@ export const SCENE_CSS = `
 /* AI agents */
 .dust-floor-host .agent {
   transform: translate(var(--x, 0px), var(--y, 0px));
-  cursor: grab;
 }
-.dust-floor-host .agent:active,
-.dust-floor-host .agent.dragging { cursor: grabbing; }
-.dust-floor-host .agent.dragging .agent-body { animation: none; transform: scale(1.25); }
-.dust-floor-host .agent.dragging .agent-halo { opacity: 0.6; transform: scale(2.2); animation: none; }
 .dust-floor-host .agent-body {
   transform-box: fill-box; transform-origin: 50% 50%;
   animation: dust-floor-agent-pulse 4.6s ease-in-out infinite;
