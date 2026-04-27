@@ -52,7 +52,7 @@ export type Step = {
   }[];
 };
 
-async function renderFollowUpMessagesForAction(
+async function renderEnabledSkillMessagesForAction(
   auth: Authenticator,
   action: AgentMCPActionWithOutputType,
   {
@@ -200,9 +200,13 @@ export async function getSteps(
         name: action.functionCallName,
         arguments: JSON.stringify(action.params),
       },
-      followUpMessages: await renderFollowUpMessagesForAction(auth, action, {
-        renderSkillsAsUserMessages,
-      }),
+      followUpMessages: await renderEnabledSkillMessagesForAction(
+        auth,
+        action,
+        {
+          renderSkillsAsUserMessages,
+        }
+      ),
       result: renderActionForMultiActionsModel(action),
     });
   }
