@@ -131,8 +131,14 @@ export const SCENE_CSS = `
   0%,100% { transform: scale(1); }
   50%     { transform: scale(1.03); }
 }
+/* Halo is hidden by default. Same .active rule as the @name chip: only
+   the agents in the running scenario radiate. */
 .dust-floor-host .agent-halo {
   transform-box: fill-box; transform-origin: 50% 50%;
+  opacity: 0;
+  transition: opacity 220ms ease;
+}
+.dust-floor-host .agent.active .agent-halo {
   animation: dust-floor-halo 4.6s ease-in-out infinite;
 }
 @keyframes dust-floor-halo {
@@ -146,7 +152,7 @@ export const SCENE_CSS = `
 @keyframes dust-floor-trail-dash {
   to { stroke-dashoffset: -12; }
 }
-.dust-floor-host .agent.working .agent-halo {
+.dust-floor-host .agent.active.working .agent-halo {
   animation: dust-floor-halo-working 3.4s ease-in-out infinite;
 }
 @keyframes dust-floor-halo-working {
