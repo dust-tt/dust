@@ -44,19 +44,18 @@ const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
     const renderSkillsAsUserMessages = featureFlags.includes(
       "skills_as_user_messages"
     );
-    const markerOutput = renderSkillsAsUserMessages
-      ? [makeEnableSkillInstructionsMarker(skill.sId)]
-      : [];
-
     if (enableResult.value.alreadyEnabled) {
       return new Ok([
         {
           type: "text" as const,
           text: `Skill "${skill.name}" was already enabled. No action taken.`,
         },
-        ...markerOutput,
       ]);
     }
+
+    const markerOutput = renderSkillsAsUserMessages
+      ? [makeEnableSkillInstructionsMarker(skill.sId)]
+      : [];
 
     const baseOutput = [
       {
