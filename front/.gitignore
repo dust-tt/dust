@@ -45,3 +45,8 @@ public/spa/
 
 # Build-time custom models config (downloaded by CI)
 custom-models.json
+
+# Playwright
+tests/e2e/.auth/
+test-results/
+playwright-report/
