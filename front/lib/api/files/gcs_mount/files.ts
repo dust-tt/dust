@@ -43,13 +43,19 @@ export async function listGCSMountFiles(
   const bucket = getPrivateUploadBucket();
   const gcsFiles = await bucket.getFiles({ prefix, maxResults: 200 });
 
-  // Filter out .processed.* files (internal processing artifacts).
-  const filteredFiles = gcsFiles.filter((f) => {
+  // GCS folder placeholders are zero-byte objects whose path ends with "/".
+  // Split them out early so we can represent them as inode/directory entries
+  // without fetching FileResources for them.
+  const folderPlaceholders = gcsFiles.filter((f) => f.name.endsWith("/"));
+  const regularFiles = gcsFiles.filter((f) => {
+    if (f.name.endsWith("/")) {
+      return false;
+    }
     const name = f.name.split("/").pop() ?? "";
     return !name.includes(".processed.");
   });
 
-  const mountPaths = filteredFiles.map((f) => f.name);
+  const mountPaths = regularFiles.map((f) => f.name);
   const fileResources = await FileResource.fetchByMountFilePaths(
     auth,
     mountPaths
@@ -61,7 +67,28 @@ export async function listGCSMountFiles(
     }
   }
 
-  return filteredFiles.map((gcsFile) => {
+  const folderEntries: GCSMountFileEntry[] = folderPlaceholders.flatMap((f) => {
+    const trimmed = f.name.replace(/\/$/, "");
+    const name = trimmed.split("/").pop() ?? "";
+    // Skip hidden folders (name starting with ".").
+    if (!name || name.startsWith(".")) {
+      return [];
+    }
+    return [
+      {
+        fileName: name,
+        path: trimmed,
+        sizeBytes: 0,
+        contentType: "inode/directory",
+        lastModifiedMs: isString(f.metadata.updated)
+          ? new Date(f.metadata.updated).getTime()
+          : 0,
+        fileId: null,
+      },
+    ];
+  });
+
+  const fileEntries: GCSMountFileEntry[] = regularFiles.map((gcsFile) => {
     const fileName = gcsFile.name.split("/").pop() ?? gcsFile.name;
     const metadata = gcsFile.metadata;
     const fileResource = fileResourceByMountPath.get(gcsFile.name) ?? null;
@@ -79,4 +106,6 @@ export async function listGCSMountFiles(
       fileId: fileResource?.sId ?? null,
     };
   });
+
+  return [...folderEntries, ...fileEntries];
 }
