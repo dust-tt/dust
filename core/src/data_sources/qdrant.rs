@@ -153,7 +153,7 @@ impl DustQdrantClient {
         )
     }
 
-    fn shard_key_id_from_internal_id(internal_id: &str) -> Result<u64> {
+    pub fn shard_key_id_from_internal_id(internal_id: &str) -> Result<u64> {
         // `internal_id` is the hexadecimal representation of a blake3 hash (massive number). We want
         // to get a u64 out of it so we take the first 16 characters which will turn into a fully
         // random u64. Taking the modulo SHARD_KEY_COUNT will give us a random shard key. 16=2^4 and
