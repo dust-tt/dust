@@ -20,12 +20,20 @@ import type { AgentDef } from "@app/components/home/content/Product/heroOfficeSc
 const AGENT_AVATAR_SVG =
   '<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="7" width="16" height="12" rx="3"/><circle cx="9" cy="13" r="1.2" fill="white" stroke="none"/><circle cx="15" cy="13" r="1.2" fill="white" stroke="none"/><path d="M12 4v3"/><circle cx="12" cy="3.4" r="1" fill="white" stroke="none"/></svg>';
 
-/** Build the chat card's user avatar (40px disc with the teammate photo). */
+/** Build the chat card's user avatar (round disc with the teammate photo).
+ *  Uses a real <img> with object-fit: cover so non-square photos center-
+ *  crop predictably across browsers (background-image + size:cover proved
+ *  unreliable in practice — some avatars rendered with a gray strip). */
 export function buildChatCardUserAvatar(photoUrl?: string): HTMLDivElement {
   const avatar = document.createElement("div");
   avatar.className = "chat-card-avatar";
   if (photoUrl) {
-    avatar.style.backgroundImage = `url("${photoUrl}")`;
+    const img = document.createElement("img");
+    img.src = photoUrl;
+    img.alt = "";
+    img.loading = "lazy";
+    img.decoding = "async";
+    avatar.appendChild(img);
   }
   return avatar;
 }

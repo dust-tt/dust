@@ -242,9 +242,17 @@ export const SCENE_CSS = `
 .dust-floor-host .chat-card-avatar {
   width: 32px; height: 32px;
   border-radius: 50%;
-  background: #E9ECEF center/cover no-repeat;
+  background-color: #E9ECEF;
   flex-shrink: 0;
   border: 1.5px solid rgba(17,20,24,0.06);
+  overflow: hidden;
+}
+.dust-floor-host .chat-card-avatar img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+  border-radius: 50%;
 }
 .dust-floor-host .chat-card-avatar.agent-avatar {
   background: #1C91FF;
