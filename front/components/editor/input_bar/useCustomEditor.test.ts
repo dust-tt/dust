@@ -220,8 +220,8 @@ describe("buildEditorExtensions", () => {
         .setMeta("uiEvent", "paste")
     );
 
-    expect(inputBarSlashSuggestionPluginKey.getState(editor.state)?.active).toBe(
-      false
-    );
+    expect(
+      inputBarSlashSuggestionPluginKey.getState(editor.state)?.active
+    ).toBe(false);
   });
 });
