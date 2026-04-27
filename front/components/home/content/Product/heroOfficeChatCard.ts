@@ -215,7 +215,8 @@ export function createChatCard(deps: ChatCardDeps): ChatCardModule {
         (m: number, l: string) => Math.max(m, l.replace(/\*\*/g, "").length),
         0
       );
-      const cardW = Math.max(360, Math.min(560, longest * 10 + 80));
+      // Sized for the smaller (13 px) body type — ~7 px per char + padding.
+      const cardW = Math.max(260, Math.min(380, longest * 7 + 60));
 
       // Build an absolute-positioned anchor div in the overlay, with the
       // card inside it. The anchor's transform is updated per rAF to follow
