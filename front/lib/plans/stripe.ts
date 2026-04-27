@@ -595,12 +595,6 @@ export async function createStripeBusinessSubscription({
   const defaultPaymentMethodId =
     getDefaultPaymentMethodId(existingSubscription);
 
-  if (!defaultPaymentMethodId) {
-    return new Err(
-      new Error("Existing subscription has no default payment method")
-    );
-  }
-
   const quantity = await MembershipResource.countActiveSeatsInWorkspace(
     owner.sId
   );
@@ -684,10 +678,10 @@ export function getCustomerId(subscription: Stripe.Subscription): string {
 
 export function getDefaultPaymentMethodId(
   subscription: Stripe.Subscription
-): string | null {
+): string | undefined {
   return isString(subscription.default_payment_method)
     ? subscription.default_payment_method
-    : (subscription.default_payment_method?.id ?? null);
+    : subscription.default_payment_method?.id;
 }
 
 /**
