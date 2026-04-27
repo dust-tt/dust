@@ -70,6 +70,7 @@ type TodoStub = {
   text: string;
   status: ProjectTodoStatus;
   doneAt: Date | null;
+  actorRationale: string | null;
   updateWithVersion: ReturnType<typeof vi.fn>;
 };
 
@@ -80,6 +81,7 @@ function makeTodoStub(overrides: Partial<TodoStub> = {}): TodoStub {
     text: "Write the report",
     status: "todo",
     doneAt: null,
+    actorRationale: null,
     updateWithVersion: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
@@ -90,12 +92,14 @@ function makeBlob(
     text: string;
     status: "todo" | "done";
     doneAt: Date | null;
+    reasoningDoneAt: string | null;
   }> = {}
 ) {
   return {
     text: "Write the report",
     status: "todo" as const,
     doneAt: null,
+    reasoningDoneAt: null,
     ...overrides,
   };
 }
@@ -179,6 +183,7 @@ describe("updateTodoIfChanged", () => {
       text: "New text",
       status: "todo",
       doneAt: null,
+      actorRationale: null,
     });
   });
 
@@ -198,6 +203,7 @@ describe("updateTodoIfChanged", () => {
       text: "Write the report",
       status: "done",
       doneAt,
+      actorRationale: null,
     });
   });
 
@@ -222,6 +228,7 @@ describe("updateTodoIfChanged", () => {
       text: "Write the report",
       status: "todo",
       doneAt: null,
+      actorRationale: null,
     });
   });
 });
