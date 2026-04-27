@@ -41,13 +41,21 @@ const WORKSPACE_CONCURRENCY = 20;
  *    `application/vnd.dust.section.json`. New writes are already stamped with
  *    `skipDataSourceIndexing: true` at `lib/actions/action_file_helpers.ts`, but pre-flag
  *    rows remain in Qdrant — this cleans up that backlog.
+ *    `browse_url_text`: tool-output `text/plain` files written by the web_search_&_browse
+ *    summarization path (`lib/api/actions/servers/web_search_browse/tools/index.ts` ,
+ *    where `fileName` is the page URL. When the agent browsed a binary URL (e.g. a  PG
+ *    the scraper's response body was the raw bytes — we wrote them as text/plain and
+ *    indexed them into Qdrant as garbage vectors. New writes are stamped with
+ *    `skipDataS urceIndexing: true` since #24637, but pre-flag rows persist. The 20250415
+ *    purge can'  see them: it iterates AgentMCPActionOutputItem rows, and for these files
+ *    no m tching output it m exists.
  *
- * All classes share the same end state: the file record stays around (users can still
- * download it / the model can still read it inline), but it's no longer indexed for
- * retrieval. Most are same-turn context that the agent reads once and never searches.
+ * All classes share the same end state: the file record stays around  us rs can still
+ * download it / the model can still read it inline), but it's no longer indexe  for
+ * retrieval. Most are same-turn context that the agent reads once and never searche .
  *
  * Implementation notes — we don't have indexes on `contentType` / `fileName` / `useCase`,
- * so filtering those fields in SQL would force a per-workspace scan per filter. Instead we
+ * so filte ing those fields in SQL would force a per-workspace scan per filter. Instead we
  * paginate the workspace's `FileModel` rows using the `(workspaceId, id)` composite index
  * and classify each row client-side. Single bulk scan per workspace, no repeated DB
  * hammering.
@@ -78,13 +86,17 @@ const SECTION_JSON_CONTENT_TYPE = "application/vnd.dust.section.json";
 // Chrome extension page-capture filenames (extension/ui/hooks/useFileUploaderService.ts).
 const CHROME_TEXT_PREFIX = "[text] ";
 
+// Browse-summarization files: fileName is the page URL or http(s) URL of a binary asset.
+const BROWSE_URL_RE = /^https?:\/\//i;
+
 type PurgeReason =
   | "webhook_body"
   | "pasted_text"
   | "slack_thread"
   | "chrome_text"
   | "voice_audio"
-  | "tool_output_section";
+  | "tool_output_section"
+  | "browse_url_text";
 
 type PurgeStats = {
   totalProcessed: number;
@@ -117,11 +129,13 @@ function classify(row: {
       return "voice_audio";
     }
   }
-  if (
-    row.useCase === "tool_output" &&
-    row.contentType === SECTION_JSON_CONTENT_TYPE
-  ) {
-    return "tool_output_section";
+  if (row.useCase === "tool_output") {
+    if (row.contentType === SECTION_JSON_CONTENT_TYPE) {
+      return "tool_output_section";
+    }
+    if (row.contentType === "text/plain" && BROWSE_URL_RE.test(row.fileName)) {
+      return "browse_url_text";
+    }
   }
   return null;
 }
