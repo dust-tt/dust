@@ -12,6 +12,7 @@ import {
 } from "@app/lib/project_todo/analyze_document/types";
 import { buildSpec } from "@app/lib/project_todo/analyze_document/utils";
 import type { TakeawaySourceDocument } from "@app/lib/resources/takeaways_resource";
+import logger from "@app/logger/logger";
 import { MODEL_ID } from "@app/tests/takeaway-evals/lib/config";
 import type {
   MockProjectMember,
@@ -155,9 +156,13 @@ export async function executeTakeawayExtraction(
   // set of valid user IDs.
   const validUserIds = new Set(testCase.members.map((m) => m.sId));
   const actionItems = buildActionItems(
-    extraction.action_items,
+    {
+      newItems: extraction.new_action_items,
+      updatedItems: extraction.updated_action_items,
+    },
     previousActionItems,
-    validUserIds
+    validUserIds,
+    logger
   );
 
   return { extraction, actionItems };

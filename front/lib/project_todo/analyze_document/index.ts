@@ -183,21 +183,26 @@ export async function extractDocumentTakeaways(
     return null;
   }
 
-  // Fetch all assignees from the action items.
-  const assignees = await UserResource.fetchByIds(
-    removeNulls([
-      ...new Set([
-        ...extraction.action_items.map((item) => item.assignee_user_id),
-      ]),
-    ])
-  );
+  // Fetch all assignees referenced by either new or updated items, so we can
+  // validate that each assignee_user_id maps to a real project member.
+  const assigneeUserIds = removeNulls([
+    ...extraction.new_action_items.map((item) => item.assignee_user_id),
+    ...extraction.updated_action_items.map((item) => item.assignee?.user_id),
+  ]);
+  const assignees = await UserResource.fetchByIds([
+    ...new Set(assigneeUserIds),
+  ]);
 
   const validAssigneesUserIds = new Set(assignees.map((u) => u.sId));
 
   const actionItems = buildActionItems(
-    extraction.action_items,
+    {
+      newItems: extraction.new_action_items,
+      updatedItems: extraction.updated_action_items,
+    },
     previousActionItems,
-    validAssigneesUserIds
+    validAssigneesUserIds,
+    localLogger
   );
 
   const stats: ExtractedTakeawayStats = {
