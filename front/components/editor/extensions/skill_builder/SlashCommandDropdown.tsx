@@ -1,4 +1,5 @@
 import {
+  cn,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -12,6 +13,7 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useRef,
   useState,
 } from "react";
 
@@ -21,6 +23,7 @@ interface SlashCommandTooltip {
 }
 
 const DEFAULT_EMPTY_MESSAGE = "No commands found";
+const DEFAULT_LIST_MAX_HEIGHT = "24rem";
 export interface SlashCommand {
   action: string;
   description?: string;
@@ -37,7 +40,9 @@ export interface SlashCommandDropdownProps
   > {
   emptyMessage?: string;
   header?: string;
+  listMaxHeight?: string;
   onClose?: () => void;
+  showScrollFade?: boolean;
   size?: "default" | "wide";
 }
 
@@ -56,12 +61,17 @@ export const SlashCommandDropdown = forwardRef<
       clientRect,
       emptyMessage = DEFAULT_EMPTY_MESSAGE,
       header,
+      listMaxHeight = DEFAULT_LIST_MAX_HEIGHT,
       onClose,
+      showScrollFade = false,
       size = "default",
     },
     ref
   ) => {
     const [selectedIndex, setSelectedIndex] = useState(0);
+    const [canScrollDown, setCanScrollDown] = useState(false);
+    const itemCount = items.length;
+    const listRef = useRef<HTMLDivElement>(null);
     const [virtualTriggerStyle, setVirtualTriggerStyle] =
       useState<React.CSSProperties>({});
 
@@ -112,11 +122,43 @@ export const SlashCommandDropdown = forwardRef<
       [selectItem, selectedIndex, items.length]
     );
 
+    const updateCanScrollDown = useCallback(() => {
+      const list = listRef.current;
+
+      if (!showScrollFade || !list) {
+        setCanScrollDown(false);
+        return;
+      }
+
+      setCanScrollDown(
+        list.scrollTop + list.clientHeight < list.scrollHeight - 1
+      );
+    }, [showScrollFade]);
+
     // Reset selected index when items change.
     // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
     useEffect(() => {
       setSelectedIndex(0);
     }, [items]);
+
+    useEffect(() => {
+      if (itemCount === 0) {
+        setCanScrollDown(false);
+        return;
+      }
+
+      updateCanScrollDown();
+
+      const list = listRef.current;
+      if (!list || typeof ResizeObserver === "undefined") {
+        return;
+      }
+
+      const resizeObserver = new ResizeObserver(updateCanScrollDown);
+      resizeObserver.observe(list);
+
+      return () => resizeObserver.disconnect();
+    }, [itemCount, updateCanScrollDown]);
 
     // Update virtual trigger position.
     const updateTriggerPosition = useCallback(() => {
@@ -176,43 +218,57 @@ export const SlashCommandDropdown = forwardRef<
               {emptyMessage}
             </div>
           ) : (
-            <div className="max-h-96 overflow-y-auto">
-              {items.map((item, index) => {
-                const menuItem = (
-                  <DropdownMenuItem
-                    key={item.id}
-                    icon={item.icon}
-                    itemId={item.id}
-                    label={item.label}
-                    description={item.description}
-                    truncateText
-                    onClick={() => selectItem(index)}
-                    onMouseEnter={() => setSelectedIndex(index)}
-                    className={
-                      index === selectedIndex
-                        ? "bg-muted-background dark:bg-muted-night [transition-duration:0ms]"
-                        : ""
-                    }
-                  />
-                );
-
-                // Wrap with DropdownTooltipTrigger if command has tooltip property.
-                if (item.tooltip) {
-                  return (
-                    <DropdownTooltipTrigger
+            <div className="relative">
+              <div
+                ref={listRef}
+                className="overflow-y-auto"
+                onScroll={updateCanScrollDown}
+                style={{ maxHeight: listMaxHeight }}
+              >
+                {items.map((item, index) => {
+                  const menuItem = (
+                    <DropdownMenuItem
                       key={item.id}
-                      description={item.tooltip.description}
-                      media={item.tooltip.media}
-                      side="right"
-                      sideOffset={8}
-                    >
-                      {menuItem}
-                    </DropdownTooltipTrigger>
+                      icon={item.icon}
+                      itemId={item.id}
+                      label={item.label}
+                      description={item.description}
+                      truncateText
+                      onClick={() => selectItem(index)}
+                      onMouseEnter={() => setSelectedIndex(index)}
+                      className={
+                        index === selectedIndex
+                          ? "bg-muted-background dark:bg-muted-night [transition-duration:0ms]"
+                          : ""
+                      }
+                    />
                   );
-                }
 
-                return menuItem;
-              })}
+                  // Wrap with DropdownTooltipTrigger if command has tooltip property.
+                  if (item.tooltip) {
+                    return (
+                      <DropdownTooltipTrigger
+                        key={item.id}
+                        description={item.tooltip.description}
+                        media={item.tooltip.media}
+                        side="right"
+                        sideOffset={8}
+                      >
+                        {menuItem}
+                      </DropdownTooltipTrigger>
+                    );
+                  }
+
+                  return menuItem;
+                })}
+              </div>
+              <div
+                className={cn(
+                  "pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-b from-transparent via-background/85 to-background opacity-0 transition-opacity duration-150 dark:via-muted-background-night/85 dark:to-muted-background-night",
+                  showScrollFade && canScrollDown && "opacity-100"
+                )}
+                aria-hidden
+              />
             </div>
           )}
         </DropdownMenuContent>
