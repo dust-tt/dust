@@ -1,26 +1,47 @@
+import {
+  InputBarSlashSuggestionExtension,
+  inputBarSlashSuggestionPluginKey,
+} from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionExtension";
 import { buildEditorExtensions } from "@app/components/editor/input_bar/useCustomEditor";
 import type { WorkspaceType } from "@app/types/user";
 import { Editor } from "@tiptap/react";
+import { StarterKit } from "@tiptap/starter-kit";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 describe("buildEditorExtensions", () => {
   let editor: Editor;
+  const owner = {
+    id: 0,
+    sId: "wId",
+    name: "MeMeMe AlwaysMe",
+    role: "user",
+    segmentation: null,
+    whiteListedProviders: null,
+    defaultEmbeddingProvider: null,
+    metadata: null,
+    metronomeCustomerId: null,
+    sharingPolicy: "all_scopes",
+  } satisfies WorkspaceType;
+
+  function createSlashSuggestionEditor() {
+    return new Editor({
+      extensions: [
+        StarterKit,
+        InputBarSlashSuggestionExtension.configure({
+          owner,
+          enabledRef: { current: true },
+          onSelectRef: { current: undefined },
+          selectedMCPServerViewIdsRef: { current: new Set<string>() },
+          selectedSkillIdsRef: { current: new Set<string>() },
+        }),
+      ],
+    });
+  }
 
   beforeEach(() => {
     editor = new Editor({
       extensions: buildEditorExtensions({
-        owner: {
-          id: 0,
-          sId: "wId",
-          name: "MeMeMe AlwaysMe",
-          role: "user",
-          segmentation: null,
-          whiteListedProviders: null,
-          defaultEmbeddingProvider: null,
-          metadata: null,
-          metronomeCustomerId: null,
-          sharingPolicy: "all_scopes",
-        } satisfies WorkspaceType,
+        owner,
         conversationId: "cId",
         onInlineText: () => {},
         onUrlDetected: () => {},
@@ -186,4 +207,22 @@ describe("buildEditorExtensions", () => {
 
 &nbsp;`);
   });
+
+  it("does not open slash suggestions for pasted slashes", () => {
+    editor.destroy();
+    editor = createSlashSuggestionEditor();
+    editor.storage.inputBarSlashSuggestion.hasBeenFocused = true;
+
+    editor.view.dispatch(
+      editor.state.tr
+        .insertText("/help", 1)
+        .setMeta("paste", true)
+        .setMeta("uiEvent", "paste")
+    );
+
+    expect(inputBarSlashSuggestionPluginKey.getState(editor.state)?.active).toBe(
+      false
+    );
+  });
+
 });
