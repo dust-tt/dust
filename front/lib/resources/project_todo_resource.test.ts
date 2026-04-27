@@ -278,6 +278,163 @@ describe("ProjectTodoResource", () => {
     });
   });
 
+  describe("upsertSource", () => {
+    it("should not create a new source when called twice with the same (workspaceId, sourceType, sourceId, userId)", async () => {
+      const todo = await ProjectTodoResource.makeNew(
+        auth,
+        makeTodoBlob(space.id, user.id)
+      );
+
+      await todo.upsertSource(auth, {
+        itemId: "item-1",
+        source: {
+          sourceType: "slack",
+          sourceId: "slack-msg-1",
+          sourceTitle: "First title",
+          sourceUrl: "https://slack/1",
+        },
+      });
+
+      await todo.upsertSource(auth, {
+        itemId: "item-1",
+        source: {
+          sourceType: "slack",
+          sourceId: "slack-msg-1",
+          sourceTitle: "Updated title",
+          sourceUrl: "https://slack/1-updated",
+        },
+      });
+
+      const byTodoId = await ProjectTodoResource.fetchSourcesForTodoIds(auth, {
+        sIds: [todo.sId],
+      });
+      const sources = byTodoId.get(todo.sId) ?? [];
+
+      expect(sources).toHaveLength(1);
+      expect(sources[0]).toMatchObject({
+        sourceType: "slack",
+        sourceId: "slack-msg-1",
+        sourceTitle: "Updated title",
+        sourceUrl: "https://slack/1-updated",
+      });
+    });
+
+    it("should create separate sources for different sourceIds", async () => {
+      const todo = await ProjectTodoResource.makeNew(
+        auth,
+        makeTodoBlob(space.id, user.id)
+      );
+
+      await todo.upsertSource(auth, {
+        itemId: "item-1",
+        source: {
+          sourceType: "slack",
+          sourceId: "slack-msg-1",
+          sourceTitle: null,
+          sourceUrl: null,
+        },
+      });
+
+      await todo.upsertSource(auth, {
+        itemId: "item-2",
+        source: {
+          sourceType: "slack",
+          sourceId: "slack-msg-2",
+          sourceTitle: null,
+          sourceUrl: null,
+        },
+      });
+
+      const byTodoId = await ProjectTodoResource.fetchSourcesForTodoIds(auth, {
+        sIds: [todo.sId],
+      });
+      const sources = byTodoId.get(todo.sId) ?? [];
+
+      expect(sources).toHaveLength(2);
+      expect(sources.map((s) => s.sourceId).sort()).toEqual([
+        "slack-msg-1",
+        "slack-msg-2",
+      ]);
+    });
+
+    it("should create separate sources for different sourceTypes with the same sourceId", async () => {
+      const todo = await ProjectTodoResource.makeNew(
+        auth,
+        makeTodoBlob(space.id, user.id)
+      );
+
+      await todo.upsertSource(auth, {
+        itemId: "item-1",
+        source: {
+          sourceType: "slack",
+          sourceId: "shared-id",
+          sourceTitle: null,
+          sourceUrl: null,
+        },
+      });
+
+      await todo.upsertSource(auth, {
+        itemId: "item-2",
+        source: {
+          sourceType: "notion",
+          sourceId: "shared-id",
+          sourceTitle: null,
+          sourceUrl: null,
+        },
+      });
+
+      const byTodoId = await ProjectTodoResource.fetchSourcesForTodoIds(auth, {
+        sIds: [todo.sId],
+      });
+      const sources = byTodoId.get(todo.sId) ?? [];
+
+      expect(sources).toHaveLength(2);
+      expect(sources.map((s) => s.sourceType).sort()).toEqual([
+        "notion",
+        "slack",
+      ]);
+    });
+
+    it("should create a separate source for a different user with the same (sourceType, sourceId)", async () => {
+      const otherSetup = await createResourceTest({ role: "user" });
+      const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        otherSetup.user.sId,
+        workspace.sId
+      );
+
+      const todo = await ProjectTodoResource.makeNew(
+        auth,
+        makeTodoBlob(space.id, user.id)
+      );
+      const otherTodo = await ProjectTodoResource.makeNew(
+        otherAuth,
+        makeTodoBlob(space.id, otherSetup.user.id)
+      );
+
+      const source = {
+        sourceType: "slack" as const,
+        sourceId: "slack-msg-shared",
+        sourceTitle: null,
+        sourceUrl: null,
+      };
+
+      await todo.upsertSource(auth, { itemId: "item-1", source });
+      await otherTodo.upsertSource(otherAuth, { itemId: "item-2", source });
+
+      const ownerSources = await ProjectTodoResource.fetchSourcesForTodoIds(
+        auth,
+        { sIds: [todo.sId] }
+      );
+      const otherSources = await ProjectTodoResource.fetchSourcesForTodoIds(
+        otherAuth,
+        { sIds: [otherTodo.sId] }
+      );
+
+      expect(ownerSources.get(todo.sId) ?? []).toHaveLength(1);
+      expect(otherSources.get(otherTodo.sId) ?? []).toHaveLength(1);
+    });
+  });
+
   describe("delete", () => {
     it("should delete the todo so fetchBySId returns null afterwards", async () => {
       const todo = await ProjectTodoResource.makeNew(

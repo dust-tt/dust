@@ -333,6 +333,7 @@ export async function batchDeduplicateCandidates(
   const results: DeduplicatedGroup[] = [];
 
   // Group candidates by userId → candidates.
+  // TODO: to move above, we are doing it for each batch this is wasteful
   const candidatesByUserId = new Map<ModelId, DeduplicateCandidate[]>();
   for (const candidate of candidates) {
     const bucket = candidatesByUserId.get(candidate.userId) ?? [];

@@ -168,7 +168,7 @@ export async function analyzeProjectTodosActivity({
     await metadata.updateLastTodoAnalysisAt(new Date());
   } else {
     // We should always have a metadata row for a project space, but just in case.
-    logger.warn({ spaceId }, "No project metadata found for space");
+    localLogger.warn({}, "No project metadata found for space");
   }
 
   const documents = removeNulls(

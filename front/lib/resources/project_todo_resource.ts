@@ -444,13 +444,13 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
     const workspaceId = auth.getNonNullableWorkspace().id;
     const identity = {
       workspaceId,
-      itemId,
+      sourceType: source.sourceType,
+      sourceId: source.sourceId,
       userId: this.userId,
     };
     const payload = {
       projectTodoId: this.id,
-      sourceType: source.sourceType,
-      sourceId: source.sourceId,
+      itemId,
       sourceTitle: source.sourceTitle,
       sourceUrl: source.sourceUrl,
     };
