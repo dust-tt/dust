@@ -454,6 +454,15 @@ export async function postSkillSuggestionStatusUpdate(
 
   const verb = state === "approved" ? "accepted" : "rejected";
   const marker = state === "approved" ? "✅" : "❌";
+  const actorName = user.fullName();
+  const messageContext = {
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC",
+    username: user.username,
+    fullName: actorName,
+    email: user.email,
+    profilePictureUrl: user.imageUrl,
+    origin: "reinforced_skill_notification" as const,
+  };
 
   for (const [conversationId, items] of byConversation) {
     const conversationRes = await getConversation(auth, conversationId);
@@ -470,7 +479,6 @@ export async function postSkillSuggestionStatusUpdate(
     const conversation = conversationRes.value;
 
     const titles = items.map((s) => s.title ?? s.sId);
-    const actorName = user.fullName();
     const content =
       items.length === 1
         ? `${marker} ${actorName} ${verb} "${titles[0]}"`
@@ -480,14 +488,7 @@ export async function postSkillSuggestionStatusUpdate(
       conversation,
       content,
       mentions: [{ configurationId: GLOBAL_AGENTS_SID.DUST }],
-      context: {
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC",
-        username: user.username,
-        fullName: actorName,
-        email: user.email,
-        profilePictureUrl: user.imageUrl,
-        origin: "reinforced_skill_notification",
-      },
+      context: messageContext,
       skipToolsValidation: true,
     });
 

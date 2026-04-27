@@ -342,7 +342,7 @@ function _getDustLikeGlobalAgent(
   let isPreferredModel = false;
 
   const modelConfiguration = (() => {
-    if (!!staticReply) {
+    if (staticReply) {
       return NOOP_MODEL_CONFIG;
     }
 
