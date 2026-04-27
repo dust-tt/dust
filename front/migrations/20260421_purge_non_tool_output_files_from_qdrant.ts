@@ -41,9 +41,9 @@ const WORKSPACE_CONCURRENCY = 20;
  *    `application/vnd.dust.section.json`. New writes are already stamped with
  *    `skipDataSourceIndexing: true` at `lib/actions/action_file_helpers.ts`, but pre-flag
  *    rows remain in Qdrant — this cleans up that backlog.
- *    `browse_url_text`: tool-output `text/plain` files written by the web_search_&_browse  
+ *    `browse_url_text`: tool-output `text/plain` files written by the web_search_&_browse
  *    summarization path (`lib/api/actions/servers/web_search_browse/tools/index.ts` ,
- *    where `fileName` is the page URL. When the agent browsed a binary URL (e.g. a  PG 
+ *    where `fileName` is the page URL. When the agent browsed a binary URL (e.g. a  PG
  *    the scraper's response body was the raw bytes — we wrote them as text/plain and
  *    indexed them into Qdrant as garbage vectors. New writes are stamped with
  *    `skipDataS urceIndexing: true` since #24637, but pre-flag rows persist. The 20250415
@@ -133,10 +133,7 @@ function classify(row: {
     if (row.contentType === SECTION_JSON_CONTENT_TYPE) {
       return "tool_output_section";
     }
-    if (
-      row.contentType === "text/plain" &&
-      BROWSE_URL_RE.test(row.fileName)
-    ) {
+    if (row.contentType === "text/plain" && BROWSE_URL_RE.test(row.fileName)) {
       return "browse_url_text";
     }
   }
