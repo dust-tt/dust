@@ -44,7 +44,7 @@ describe("renderAllMessages", () => {
           role: "user",
           name: m.context.username,
           content: [{ type: "text", text: m.content }],
-        }) as UserMessageTypeModel
+        }) satisfies UserMessageTypeModel
     );
 
     vi.mocked(getSteps).mockReturnValue([
@@ -337,12 +337,13 @@ describe("renderAllMessages", () => {
     ]);
     expect(renderUserMessage).toHaveBeenCalledTimes(1);
     expect(getSteps).toHaveBeenCalledTimes(1);
-    expect((result[0] as { content: string }).content).toContain(
-      "Latest summary"
-    );
-    expect((result[0] as { content: string }).content).not.toContain(
-      "Old summary"
-    );
+    const compactionMessage = result[0];
+    expect(compactionMessage?.role).toBe("compaction");
+    if (!compactionMessage || compactionMessage.role !== "compaction") {
+      throw new Error("Expected a compaction message.");
+    }
+    expect(compactionMessage.content).toContain("Latest summary");
+    expect(compactionMessage.content).not.toContain("Old summary");
   });
 
   describe("excludeActions", () => {
@@ -511,7 +512,12 @@ describe("renderAllMessages", () => {
     expect(vi.mocked(getSteps).mock.calls.at(-1)?.[1]).toMatchObject({
       renderSkillsAsUserMessages: true,
     });
-    expect((result[2] as UserMessageTypeModel).content[0]).toEqual({
+    const followUpMessage = result[2];
+    expect(followUpMessage?.role).toBe("user");
+    if (!followUpMessage || followUpMessage.role !== "user") {
+      throw new Error("Expected a follow-up user message.");
+    }
+    expect(followUpMessage.content[0]).toEqual({
       type: "text",
       text: "<dust_system>Enabled skill instructions</dust_system>",
     });
