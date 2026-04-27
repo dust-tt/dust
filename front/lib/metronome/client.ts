@@ -836,7 +836,7 @@ export async function updateMetronomeCreditSegmentAmount({
   creditId: string;
   segmentId: string;
   amount: number;
-}): Promise<Result<void, Error>> {
+}): Promise<Result<{ id: string }, Error>> {
   try {
     await getMetronomeClient().v2.contracts.edit({
       customer_id: metronomeCustomerId,
@@ -860,7 +860,7 @@ export async function updateMetronomeCreditSegmentAmount({
       { metronomeCustomerId, contractId, creditId, segmentId, amount },
       "[Metronome] Free credit segment amount updated"
     );
-    return new Ok(undefined);
+    return new Ok({ id: creditId });
   } catch (err) {
     const error = normalizeError(err);
     logger.error(
