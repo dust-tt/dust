@@ -171,16 +171,19 @@ export function mountFloorScene(
       }
     }
   }
-  // Spread agents that share a starting room so they don't stack at the
-  // same point. Offsets are applied around the room's center; agent radius
-  // is ~22 plan-units so 70 between centers leaves a clean gap.
+  // Spread agents that share a starting room so they don't stack. Halo
+  // radius is 44 px, so we want at least ~120 px screen gap. iso compresses
+  // X by cos30·1.05 ≈ 0.91 and Y by sin30·1.05 ≈ 0.525, so anti-symmetric
+  // (+a,-a) plan offsets translate to a pure horizontal screen shift, and
+  // symmetric (+a,+a) offsets shift purely down on screen. Mixing the two
+  // gives a clean grid.
   const AGENT_SPREAD: Array<[number, number]> = [
-    [0, 0],
-    [-70, -10],
-    [70, -10],
-    [0, 60],
-    [-70, 60],
-    [70, 60],
+    [0, 0], // center
+    [-120, 120], //   screen-left  (~218 px)
+    [120, -120], //   screen-right (~218 px)
+    [80, 80], //       screen-down  (~84 px)
+    [-40, 200], //    screen-down-left
+    [200, -40], //    screen-down-right
   ];
   const agentSlotInRoom: Record<string, number> = {};
   const agents = allAgentDefs.map((d: AgentDef) => {
