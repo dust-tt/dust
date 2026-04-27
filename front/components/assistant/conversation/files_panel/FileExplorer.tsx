@@ -16,9 +16,11 @@ import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useConversationSandboxStatus } from "@app/hooks/conversations/useConversationSandboxStatus";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { downloadSandboxFile } from "@app/lib/swr/files";
+import logger from "@app/logger/logger";
 import type { GCSMountFileEntry } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/files";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { isInteractiveContentType } from "@app/types/files";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   type BreadcrumbItem,
@@ -232,7 +234,7 @@ export function NewFileExplorer({
           { err: normalizeError(err) },
           "Failed to download sandbox file"
         );
-        sendNotification({
+
         sendNotification({
           type: "error",
           title: "Failed to download the file.",
