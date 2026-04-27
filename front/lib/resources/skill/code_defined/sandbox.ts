@@ -72,7 +72,7 @@ include a \`<network_proxy_logs>\` block listing the denied domain(s).
 Use that block to identify the missing domain and call
 \`add_egress_domain\` to unblock the next attempt. If a request mysteriously
 hangs or fails with TLS/DNS errors, check the \`<network_proxy_logs>\`
-block first; a denied egress is the most likely cause.`;
+block first; a denied egress is a possible cause.`;
 }
 
 async function buildSandboxInstructions(
