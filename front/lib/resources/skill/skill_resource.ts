@@ -2515,6 +2515,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       skill: SkillResource;
       conversationModelId: ModelId;
       agentConfigurationId: string | null;
+      createdAt: Date;
     }[]
   > {
     if (customSkills.length === 0) {
@@ -2526,7 +2527,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const skillsById = new Map(customSkills.map((s) => [s.id, s]));
 
     const records = await AgentMessageSkillModel.findAll({
-      attributes: ["conversationId", "customSkillId", "agentConfigurationId"],
+      attributes: [
+        "createdAt",
+        "conversationId",
+        "customSkillId",
+        "agentConfigurationId",
+      ],
       where: {
         workspaceId: workspace.id,
         customSkillId: { [Op.in]: [...skillsById.keys()] },
@@ -2546,6 +2552,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           skill,
           conversationModelId: r.conversationId,
           agentConfigurationId: r.agentConfigurationId,
+          createdAt: r.createdAt,
         };
       })
     );

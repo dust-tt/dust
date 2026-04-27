@@ -40,6 +40,29 @@ interface ScoredConversation {
   score: number;
 }
 
+interface AgentMessageSkillRecordForEligibility {
+  agentConfigurationId: string | null;
+  createdAt: Date;
+  skill: { updatedAt: Date };
+}
+
+function isEligibleCurrentSkillVersionRecord(
+  record: AgentMessageSkillRecordForEligibility
+): boolean {
+  // Discard records where the skill was invoked by a custom agent.
+  // A null agentConfigurationId means the skill was added to the conversation
+  // directly (not via an agent config), which is eligible.
+  const isEligibleSkillSource =
+    record.agentConfigurationId === null ||
+    isGlobalAgentId(record.agentConfigurationId);
+  if (!isEligibleSkillSource) {
+    return false;
+  }
+
+  // Only keep records that are newer than the skill version.
+  return record.createdAt >= record.skill.updatedAt;
+}
+
 /**
  * Stage 1: Determine which custom skills are eligible for reinforcement.
  *
@@ -125,12 +148,8 @@ async function discoverConversations(
     return { conversationSkillMap: new Map(), convModelIdToId: new Map() };
   }
 
-  // Post-filter: discard records where the skill was invoked by a custom agent.
-  // A null agentConfigurationId means the skill was added to the conversation
-  // directly (not via an agent config), which is eligible.
-  const filteredRecords = skillRecords.filter(
-    (r) =>
-      r.agentConfigurationId === null || isGlobalAgentId(r.agentConfigurationId)
+  const filteredRecords = skillRecords.filter((r) =>
+    isEligibleCurrentSkillVersionRecord(r)
   );
 
   if (filteredRecords.length === 0) {
