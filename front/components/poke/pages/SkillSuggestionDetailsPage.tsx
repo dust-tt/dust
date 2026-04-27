@@ -136,6 +136,7 @@ export function SkillSuggestionDetailsPage() {
             <SkillSuggestionCard
               suggestion={suggestion}
               getSkillInstructionsHtml={getSkillInstructionsHtml}
+              workspaceId={owner.sId}
             />
           </MCPServerViewsContext.Provider>
         </div>

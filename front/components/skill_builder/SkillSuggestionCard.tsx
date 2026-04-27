@@ -7,9 +7,11 @@ import type {
   SkillSuggestionType,
   SkillToolEditItemType,
 } from "@app/types/suggestions/skill_suggestion";
-import { Button, Card, Chip, DiffBlock } from "@dust-tt/sparkle";
+import { Button, Card, Chip, DiffBlock, Hoverable } from "@dust-tt/sparkle";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { useMemo } from "react";
+
+const MAX_VISIBLE_CONVERSATIONS = 3;
 
 function useToolDisplayNames(
   toolEdits: SkillToolEditItemType[]
@@ -122,6 +124,72 @@ function InstructionEditDiffBlock({
   return <DiffBlock>{editor && <EditorContent editor={editor} />}</DiffBlock>;
 }
 
+interface ConversationFooterProps {
+  visibleSourceConversationIds: string[];
+  sourceConversationsCount: number;
+  workspaceId: string;
+}
+
+function ConversationFooter({
+  visibleSourceConversationIds,
+  sourceConversationsCount,
+  workspaceId,
+}: ConversationFooterProps) {
+  if (sourceConversationsCount === 0) {
+    return null;
+  }
+
+  const visibleCount = visibleSourceConversationIds.length;
+  const shownIds = visibleSourceConversationIds.slice(
+    0,
+    MAX_VISIBLE_CONVERSATIONS
+  );
+  const remainingCount = sourceConversationsCount - shownIds.length;
+
+  const conversationLink = (conversationId: string) => (
+    <Hoverable
+      key={conversationId}
+      variant="primary"
+      href={`/w/${workspaceId}/conversation/${conversationId}`}
+      target="_blank"
+      onClick={(e) => e.stopPropagation()}
+    >
+      {conversationId}
+    </Hoverable>
+  );
+
+  if (visibleCount === 0) {
+    return (
+      <p className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+        Based on {sourceConversationsCount} conversation
+        {sourceConversationsCount > 1 ? "s" : ""}
+      </p>
+    );
+  }
+
+  const links = shownIds.map((id) => conversationLink(id));
+
+  return (
+    <p className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+      Based on{" "}
+      {links.map((link, i) => (
+        <span key={shownIds[i]}>
+          {i > 0 &&
+            (remainingCount === 0 && i === links.length - 1 ? " and " : ", ")}
+          {link}
+        </span>
+      ))}
+      {remainingCount > 0 && (
+        <>
+          {" "}
+          and {remainingCount} other conversation
+          {remainingCount > 1 ? "s" : ""}
+        </>
+      )}
+    </p>
+  );
+}
+
 interface SkillSuggestionCardProps {
   suggestion: SkillSuggestionType;
   onAccept?: (suggestion: SkillSuggestionType) => void;
@@ -129,6 +197,7 @@ interface SkillSuggestionCardProps {
   getSkillInstructionsHtml: () => string;
   isSelected?: boolean;
   onSelect?: () => void;
+  workspaceId: string;
 }
 
 export function SkillSuggestionCard({
@@ -138,6 +207,7 @@ export function SkillSuggestionCard({
   getSkillInstructionsHtml,
   isSelected = false,
   onSelect,
+  workspaceId,
 }: SkillSuggestionCardProps) {
   const { instructionEdits, toolEdits } = suggestion.suggestion;
   const isClickable = !!onSelect;
@@ -195,6 +265,12 @@ export function SkillSuggestionCard({
             ))}
           </div>
         )}
+
+        <ConversationFooter
+          visibleSourceConversationIds={suggestion.visibleSourceConversationIds}
+          sourceConversationsCount={suggestion.sourceConversationsCount}
+          workspaceId={workspaceId}
+        />
       </Card>
     </div>
   );

@@ -3,6 +3,7 @@ import {
   isAutoInternalMCPServerName,
   isInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionFactory } from "@app/tests/utils/SkillSuggestionFactory";
@@ -95,6 +96,14 @@ export async function seedSkillSuggestions(
         );
       }
 
+      let sourceConversationIds: number[] | null = null;
+      if (suggestionAsset.sourceConversationIds) {
+        sourceConversationIds = await resolveConversationIds(
+          ctx,
+          suggestionAsset.sourceConversationIds
+        );
+      }
+
       const created = await SkillSuggestionFactory.create(auth, skill, {
         kind: suggestionAsset.kind,
         suggestion: resolvedSuggestion,
@@ -102,6 +111,7 @@ export async function seedSkillSuggestions(
         title: suggestionAsset.title ?? null,
         state: suggestionAsset.state,
         source: suggestionAsset.source,
+        sourceConversationIds,
       });
       logger.info(
         { sId: created.sId, skillName: suggestionAsset.skillName },
@@ -109,4 +119,25 @@ export async function seedSkillSuggestions(
       );
     }
   }
+}
+
+async function resolveConversationIds(
+  ctx: SeedContext,
+  conversationSIds: string[]
+): Promise<number[]> {
+  const ids: number[] = [];
+  for (const sId of conversationSIds) {
+    const conversation = await ConversationResource.fetchById(ctx.auth, sId, {
+      dangerouslySkipPermissionFiltering: true,
+    });
+    if (conversation) {
+      ids.push(conversation.id);
+    } else {
+      ctx.logger.warn(
+        { conversationSId: sId },
+        "Conversation not found for skill suggestion source, skipping"
+      );
+    }
+  }
+  return ids;
 }
