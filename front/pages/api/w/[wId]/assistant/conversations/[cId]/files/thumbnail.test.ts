@@ -18,7 +18,8 @@ function makeReadStream() {
 function makeBucket(
   overrides: Partial<{ getFileContentType: any; createReadStream: any }> = {}
 ) {
-  const readStream = overrides.createReadStream ?? vi.fn().mockReturnValue(makeReadStream());
+  const readStream =
+    overrides.createReadStream ?? vi.fn().mockReturnValue(makeReadStream());
   return {
     getFileContentType:
       overrides.getFileContentType ??
@@ -62,12 +63,12 @@ describe("GET /api/w/[wId]/assistant/conversations/[cId]/files/thumbnail", () =>
     expect(res._getJSONData().error.type).toBe("invalid_request_error");
   });
 
-  it("returns 403 for path outside conversation scope", async () => {
+  it("returns 403 for path traversal attempt", async () => {
     const { req, res, workspace, conversation } = await setup();
     req.query = {
       wId: workspace.sId,
       cId: conversation.sId,
-      filePath: `w/${workspace.sId}/conversations/other_conv/files/image.png`,
+      filePath: "../../secret.txt",
     };
     await handler(req, res);
     expect(res._getStatusCode()).toBe(403);
@@ -84,9 +85,8 @@ describe("GET /api/w/[wId]/assistant/conversations/[cId]/files/thumbnail", () =>
       status: "ready",
       useCase: "conversation",
     });
-    const mountPath = `${basePath}generated.png`;
     await FileModel.update(
-      { mountFilePath: mountPath },
+      { mountFilePath: `${basePath}generated.png` },
       { where: { id: file.id, workspaceId: workspace.id } }
     );
 
@@ -94,7 +94,11 @@ describe("GET /api/w/[wId]/assistant/conversations/[cId]/files/thumbnail", () =>
       .spyOn(FileResource.prototype, "getContentReadStream")
       .mockReturnValue(makeReadStream() as any);
 
-    req.query = { wId: workspace.sId, cId: conversation.sId, filePath: mountPath };
+    req.query = {
+      wId: workspace.sId,
+      cId: conversation.sId,
+      filePath: "generated.png",
+    };
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(200);
@@ -109,14 +113,19 @@ describe("GET /api/w/[wId]/assistant/conversations/[cId]/files/thumbnail", () =>
     const bucket = makeBucket();
     vi.mocked(getPrivateUploadBucket).mockReturnValue(bucket as any);
 
-    const mountPath = `${basePath}sandbox_output.png`;
-    req.query = { wId: workspace.sId, cId: conversation.sId, filePath: mountPath };
+    req.query = {
+      wId: workspace.sId,
+      cId: conversation.sId,
+      filePath: "sandbox_output.png",
+    };
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(200);
     expect(res.getHeader("Content-Type")).toBe("image/png");
-    expect(bucket.getFileContentType).toHaveBeenCalledWith(mountPath);
-    expect(bucket.file).toHaveBeenCalledWith(mountPath);
+    expect(bucket.getFileContentType).toHaveBeenCalledWith(
+      `${basePath}sandbox_output.png`
+    );
+    expect(bucket.file).toHaveBeenCalledWith(`${basePath}sandbox_output.png`);
   });
 
   it("returns 400 for a FileResource-backed non-image file", async () => {
@@ -129,13 +138,16 @@ describe("GET /api/w/[wId]/assistant/conversations/[cId]/files/thumbnail", () =>
       status: "ready",
       useCase: "conversation",
     });
-    const mountPath = `${basePath}report.txt`;
     await FileModel.update(
-      { mountFilePath: mountPath },
+      { mountFilePath: `${basePath}report.txt` },
       { where: { id: file.id, workspaceId: workspace.id } }
     );
 
-    req.query = { wId: workspace.sId, cId: conversation.sId, filePath: mountPath };
+    req.query = {
+      wId: workspace.sId,
+      cId: conversation.sId,
+      filePath: "report.txt",
+    };
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(400);
@@ -143,15 +155,18 @@ describe("GET /api/w/[wId]/assistant/conversations/[cId]/files/thumbnail", () =>
   });
 
   it("returns 400 for a GCS non-image file", async () => {
-    const { req, res, workspace, conversation, basePath } = await setup();
+    const { req, res, workspace, conversation } = await setup();
 
     const bucket = makeBucket({
       getFileContentType: vi.fn().mockResolvedValue(new Ok("text/plain")),
     });
     vi.mocked(getPrivateUploadBucket).mockReturnValue(bucket as any);
 
-    const mountPath = `${basePath}report.txt`;
-    req.query = { wId: workspace.sId, cId: conversation.sId, filePath: mountPath };
+    req.query = {
+      wId: workspace.sId,
+      cId: conversation.sId,
+      filePath: "report.txt",
+    };
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(400);
@@ -159,7 +174,7 @@ describe("GET /api/w/[wId]/assistant/conversations/[cId]/files/thumbnail", () =>
   });
 
   it("returns 404 when no FileResource and GCS file not found", async () => {
-    const { req, res, workspace, conversation, basePath } = await setup();
+    const { req, res, workspace, conversation } = await setup();
 
     const bucket = makeBucket({
       getFileContentType: vi
@@ -168,8 +183,11 @@ describe("GET /api/w/[wId]/assistant/conversations/[cId]/files/thumbnail", () =>
     });
     vi.mocked(getPrivateUploadBucket).mockReturnValue(bucket as any);
 
-    const mountPath = `${basePath}missing.png`;
-    req.query = { wId: workspace.sId, cId: conversation.sId, filePath: mountPath };
+    req.query = {
+      wId: workspace.sId,
+      cId: conversation.sId,
+      filePath: "missing.png",
+    };
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(404);

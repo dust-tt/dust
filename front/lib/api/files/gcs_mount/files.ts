@@ -110,7 +110,7 @@ export async function listGCSMountFiles(
         : 0,
       fileId: fileResource?.sId ?? null,
       thumbnailUrl: isSupportedImageContentType(contentType)
-        ? `${config.getClientFacingUrl()}/api/w/${owner.sId}/assistant/conversations/${scope.conversationId}/files/thumbnail?filePath=${encodeURIComponent(gcsFile.name)}`
+        ? `${config.getClientFacingUrl()}/api/w/${owner.sId}/assistant/conversations/${scope.conversationId}/files/thumbnail?filePath=${encodeURIComponent(gcsFile.name.slice(prefix.length))}`
         : null,
     };
   });

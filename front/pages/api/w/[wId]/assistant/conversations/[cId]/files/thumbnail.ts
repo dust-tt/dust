@@ -52,12 +52,13 @@ async function handler(
   }
 
   const owner = auth.getNonNullableWorkspace();
-  const expectedPrefix = getConversationFilesBasePath({
-    workspaceId: owner.sId,
-    conversationId: cId,
-  });
-  const normalizedPath = path.posix.normalize(filePath);
-  if (!normalizedPath.startsWith(expectedPrefix)) {
+
+  // filePath is relative to the conversation's files base. Reject any traversal attempt.
+  const normalizedRelative = path.posix.normalize(filePath);
+  if (
+    normalizedRelative.startsWith("..") ||
+    normalizedRelative.startsWith("/")
+  ) {
     return apiError(req, res, {
       status_code: 403,
       api_error: {
@@ -66,6 +67,12 @@ async function handler(
       },
     });
   }
+
+  const basePath = getConversationFilesBasePath({
+    workspaceId: owner.sId,
+    conversationId: cId,
+  });
+  const normalizedPath = `${basePath}${normalizedRelative}`;
 
   const [fileResource] = await FileResource.fetchByMountFilePaths(auth, [
     normalizedPath,
