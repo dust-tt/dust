@@ -89,9 +89,7 @@ async fn invalidate_policy(
 
     info!(keys = ?body.keys, "invalidated policy cache entries");
 
-    Ok(Json(InvalidateResponse {
-        invalidated: count,
-    }))
+    Ok(Json(InvalidateResponse { invalidated: count }))
 }
 
 fn extract_bearer_token(headers: &HeaderMap) -> Option<&str> {

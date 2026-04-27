@@ -809,13 +809,8 @@ async fn invalidate_policy_rejects_empty_keys() -> Result<()> {
     let token = make_token(SECRET, 60);
     let body = json!({ "keys": [] }).to_string();
 
-    let status = http_post_status(
-        proxy.health_addr,
-        "/invalidate-policy",
-        &body,
-        Some(&token),
-    )
-    .await?;
+    let status =
+        http_post_status(proxy.health_addr, "/invalidate-policy", &body, Some(&token)).await?;
 
     assert_eq!(status, 400);
     Ok(())
