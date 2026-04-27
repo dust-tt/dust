@@ -98,7 +98,7 @@ export async function seedSkillSuggestions(
 
       let sourceConversationIds: number[] | null = null;
       if (suggestionAsset.sourceConversationIds) {
-        sourceConversationIds = await resolveConversationIds(
+        sourceConversationIds = await resolveConversationModelIds(
           ctx,
           suggestionAsset.sourceConversationIds
         );
@@ -121,17 +121,17 @@ export async function seedSkillSuggestions(
   }
 }
 
-async function resolveConversationIds(
+async function resolveConversationModelIds(
   ctx: SeedContext,
   conversationSIds: string[]
 ): Promise<number[]> {
-  const ids: number[] = [];
+  const modelIds: number[] = [];
   for (const sId of conversationSIds) {
     const conversation = await ConversationResource.fetchById(ctx.auth, sId, {
       dangerouslySkipPermissionFiltering: true,
     });
     if (conversation) {
-      ids.push(conversation.id);
+      modelIds.push(conversation.id);
     } else {
       ctx.logger.warn(
         { conversationSId: sId },
@@ -139,5 +139,5 @@ async function resolveConversationIds(
       );
     }
   }
-  return ids;
+  return modelIds;
 }
