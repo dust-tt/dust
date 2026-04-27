@@ -25,7 +25,7 @@ import { CheckIcon, ChevronRightIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
 import * as React from "react";
-import { useRef } from "react";
+import { useMemo, useRef } from "react";
 
 const ITEM_VARIANTS = ["default", "warning"] as const;
 
@@ -371,8 +371,8 @@ const DropdownMenuContent = React.forwardRef<
     },
     ref
   ) => {
-    const viewportRef = React.useRef<HTMLDivElement>(null);
-    const itemElementsRef = React.useRef(new Map<string, HTMLElement>());
+    const viewportRef = useRef<HTMLDivElement>(null);
+    const itemElementsRef = useRef(new Map<string, HTMLElement>());
 
     const handleKeyDownCapture = (e: React.KeyboardEvent<HTMLDivElement>) => {
       onKeyDownCapture?.(e);
@@ -444,7 +444,7 @@ const DropdownMenuContent = React.forwardRef<
       []
     );
 
-    const itemRegistryContextValue = React.useMemo(
+    const itemRegistryContextValue = useMemo(
       () => ({ registerItem }),
       [registerItem]
     );
