@@ -40,20 +40,12 @@ const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
       );
     }
 
-    const [augmentedSkill] =
-      await SkillResource.augmentSkillsWithExtendedSkills(auth, [skill]);
-    if (!augmentedSkill) {
-      return new Err(
-        new MCPError(`Failed to load enabled instructions for "${skill.name}"`)
-      );
-    }
-
     const featureFlags = await getFeatureFlags(auth);
     const renderSkillsAsUserMessages = featureFlags.includes(
       "skills_as_user_messages"
     );
     const markerOutput = renderSkillsAsUserMessages
-      ? [makeEnableSkillInstructionsMarker(augmentedSkill)]
+      ? [makeEnableSkillInstructionsMarker(skill.sId)]
       : [];
 
     if (enableResult.value.alreadyEnabled) {
