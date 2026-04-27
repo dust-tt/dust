@@ -19,8 +19,8 @@ import type { NextApiRequest, NextApiResponse } from "next";
 export type MetronomeInvoiceSummary = {
   currency: SupportedCurrency;
   billingPeriod: BillingPeriod;
-  currentPeriodStart: number; // ms epoch
-  currentPeriodEnd: number; // ms epoch
+  currentPeriodStartMs: number;
+  currentPeriodEndMs: number;
   estimatedAmountCents: number;
   mau: number | null;
   /** Pro: effective per-seat unit price from the seat line item. */
@@ -178,14 +178,14 @@ async function handler(
     }
   }
 
-  const currentPeriodStart = new Date(invoice.start_timestamp).getTime();
-  const currentPeriodEnd = new Date(invoice.end_timestamp).getTime();
+  const currentPeriodStartMs = new Date(invoice.start_timestamp).getTime();
+  const currentPeriodEndMs = new Date(invoice.end_timestamp).getTime();
 
   const summary: MetronomeInvoiceSummary = {
     currency,
-    billingPeriod: inferBillingPeriod(currentPeriodStart, currentPeriodEnd),
-    currentPeriodStart,
-    currentPeriodEnd,
+    billingPeriod: inferBillingPeriod(currentPeriodStartMs, currentPeriodEndMs),
+    currentPeriodStartMs,
+    currentPeriodEndMs,
     estimatedAmountCents: amountCents(invoice.total, currency),
     mau,
     seatUnitPriceCents,

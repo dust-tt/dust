@@ -121,7 +121,7 @@ describe("/api/w/[wId]/metronome/contract", () => {
         contract: {
           planFamily: "pro",
           mauTiers: null,
-          contractEndingAt: new Date("2025-05-01T00:00:00.000Z").getTime(),
+          contractEndingAtMs: new Date("2025-05-01T00:00:00.000Z").getTime(),
         },
       });
       expect(vi.mocked(getMetronomeContractById)).toHaveBeenCalledWith({

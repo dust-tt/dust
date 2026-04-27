@@ -36,8 +36,8 @@ import { useState } from "react";
 
 const CONTACT_SALES_URL = `${config.getStaticWebsiteUrl()}/home/contact`;
 
-function formatDate(ms: number): string {
-  return new Date(ms).toLocaleDateString("en-US", {
+function formatDate(msEpoch: number): string {
+  return new Date(msEpoch).toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",
     day: "numeric",
@@ -253,12 +253,14 @@ export function MetronomeSubscriptionPanel({
   const isCancellationScheduled =
     subscription.endDate !== null || subscription.requestCancelAt !== null;
 
-  const contractEndingLabel = contract?.contractEndingAt
-    ? formatDate(contract.contractEndingAt)
+  const contractEndingLabel = contract?.contractEndingAtMs
+    ? formatDate(contract.contractEndingAtMs)
     : null;
-  const periodEndLabel = invoice ? formatDate(invoice.currentPeriodEnd) : null;
+  const periodEndLabel = invoice
+    ? formatDate(invoice.currentPeriodEndMs)
+    : null;
   const periodStartLabel = invoice
-    ? formatDate(invoice.currentPeriodStart)
+    ? formatDate(invoice.currentPeriodStartMs)
     : null;
 
   return (

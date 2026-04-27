@@ -25,7 +25,7 @@ export type MetronomeContractSummary = {
    */
   mauTiers: Array<{ start: number; end: number | null }> | null;
   /** ms epoch — set when the contract is scheduled to end (cancellation or fixed term). */
-  contractEndingAt: number | null;
+  contractEndingAtMs: number | null;
 };
 
 export type GetMetronomeContractResponseBody = {
@@ -122,7 +122,7 @@ async function handleGet(
     ? parsed.map((t) => ({ start: t.start, end: t.end ?? null }))
     : null;
 
-  const contractEndingAt = contract.ending_before
+  const contractEndingAtMs = contract.ending_before
     ? new Date(contract.ending_before).getTime()
     : null;
 
@@ -130,7 +130,7 @@ async function handleGet(
     contract: {
       planFamily,
       mauTiers,
-      contractEndingAt,
+      contractEndingAtMs,
     },
   });
 }
