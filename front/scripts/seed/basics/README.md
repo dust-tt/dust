@@ -23,3 +23,9 @@ Run
 ```
 npx tsx scripts/seed/basics/seed.ts --execute
 ```
+
+To target a different workspace:
+
+```
+DEV_WORKSPACE_SID=MyWorkspace npx tsx scripts/seed/basics/seed.ts --execute
+```
