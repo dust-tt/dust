@@ -1,11 +1,17 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import {
+  archiveAgentConfiguration,
+  getAgentConfiguration,
+} from "@app/lib/api/assistant/configuration/agent";
 import { patchAgentConfigurationFromJSON } from "@app/lib/api/assistant/configuration/yaml_import";
 import { setAgentUserFavorite } from "@app/lib/api/assistant/user_relation";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { GetOrPatchAgentConfigurationResponseType } from "@dust-tt/client";
+import type {
+  DeleteAgentConfigurationResponseType,
+  GetOrPatchAgentConfigurationResponseType,
+} from "@dust-tt/client";
 import { PatchAgentConfigurationRequestSchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
@@ -183,11 +189,56 @@ import { fromError } from "zod-validation-error";
  *         description: Method not supported. Only GET or PATCH is expected.
  *       500:
  *         description: Internal Server Error.
+ *   delete:
+ *     summary: Archive agent configuration
+ *     description: Archive the agent configuration identified by {sId} in the workspace identified by {wId}. The agent is soft-archived and triggers/editor-group memberships associated with it are disabled.
+ *     tags:
+ *       - Agents
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: sId
+ *         required: true
+ *         description: ID of the agent configuration
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successfully archived agent configuration
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *       400:
+ *         description: Bad Request. Invalid or missing parameters.
+ *       401:
+ *         description: Unauthorized. Invalid or missing authentication token.
+ *       403:
+ *         description: Forbidden. The caller is not allowed to archive this agent.
+ *       404:
+ *         description: Agent configuration not found.
+ *       405:
+ *         description: Method not supported. Only GET, PATCH or DELETE is expected.
+ *       500:
+ *         description: Internal Server Error.
  */
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorResponse<GetOrPatchAgentConfigurationResponseType>
+    WithAPIErrorResponse<
+      | GetOrPatchAgentConfigurationResponseType
+      | DeleteAgentConfigurationResponseType
+    >
   >,
   auth: Authenticator
 ): Promise<void> {
@@ -286,13 +337,37 @@ async function handler(
         agentConfiguration,
       });
     }
+    case "DELETE": {
+      if (!agentConfiguration.canEdit && !auth.isAdmin()) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "app_auth_error",
+            message: "Only editors can archive workspace agents.",
+          },
+        });
+      }
+
+      const archived = await archiveAgentConfiguration(auth, sId);
+      if (!archived) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "agent_configuration_not_found",
+            message: "The agent configuration you requested was not found.",
+          },
+        });
+      }
+
+      return res.status(200).json({ success: true });
+    }
     default:
       return apiError(req, res, {
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
           message:
-            "The method passed is not supported, only GET or PATCH is expected.",
+            "The method passed is not supported, only GET, PATCH or DELETE is expected.",
         },
       });
   }
