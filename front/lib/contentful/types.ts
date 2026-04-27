@@ -276,7 +276,7 @@ export const DEFAULT_ACADEMY_LOCALE: AcademyLocale = "en-US";
 export const ACADEMY_LOCALE_COOKIE = "academy_locale";
 
 export function isAcademyLocale(value: string): value is AcademyLocale {
-  return ACADEMY_LOCALES.includes(value as AcademyLocale);
+  return (ACADEMY_LOCALES as string[]).includes(value);
 }
 
 export interface AcademyUser {

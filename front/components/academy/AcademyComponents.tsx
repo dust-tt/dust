@@ -326,7 +326,8 @@ export function LocaleToggle({ locale }: LocaleToggleProps) {
 
   const handleLocaleChange = useCallback(
     (newLocale: AcademyLocale) => {
-      document.cookie = `${ACADEMY_LOCALE_COOKIE}=${newLocale};path=/academy;max-age=${365 * 24 * 60 * 60}`;
+      const maxAgeSeconds = 365 * 24 * 60 * 60;
+      document.cookie = `${ACADEMY_LOCALE_COOKIE}=${newLocale};path=/academy;max-age=${maxAgeSeconds};SameSite=Lax`;
       router.reload();
     },
     [router]
