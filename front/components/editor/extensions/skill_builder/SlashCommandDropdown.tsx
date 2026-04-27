@@ -294,7 +294,7 @@ export const SlashCommandDropdown = forwardRef<
               </div>
               <div
                 className={cn(
-                  "pointer-events-none absolute inset-x-0 top-0 h-8 bg-gradient-to-t from-transparent via-background/85 to-background opacity-0 transition-opacity duration-150 dark:via-muted-background-night/85 dark:to-muted-background-night",
+                  "pointer-events-none absolute inset-x-0 top-0 h-12 bg-gradient-to-t from-transparent via-background/70 to-background opacity-0 transition-opacity duration-200 dark:via-muted-background-night/70 dark:to-muted-background-night",
                   showScrollFade &&
                     scrollFadeState.hasContentAbove &&
                     "opacity-100"
@@ -303,7 +303,7 @@ export const SlashCommandDropdown = forwardRef<
               />
               <div
                 className={cn(
-                  "pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-b from-transparent via-background/85 to-background opacity-0 transition-opacity duration-150 dark:via-muted-background-night/85 dark:to-muted-background-night",
+                  "pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-b from-transparent via-background/70 to-background opacity-0 transition-opacity duration-200 dark:via-muted-background-night/70 dark:to-muted-background-night",
                   showScrollFade &&
                     scrollFadeState.hasContentBelow &&
                     "opacity-100"
