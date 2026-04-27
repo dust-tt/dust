@@ -335,18 +335,14 @@ function _getDustLikeGlobalAgent(
 - Create content like documents, presentations, images, and dashboards`;
   const pictureUrl = DUST_AVATAR_URL;
 
-  // A reinforced-skill notification turn is any turn triggered by a hidden user
-  // message posted by the skill-notification flow — the initial TODO list or a
-  // later accept/reject status update. `staticText` is set for those and carries
-  // the pre-formatted reply Dust should echo without invoking the LLM.
-  const reinforcedStaticText =
-    globalAgentContext?.reinforcedSkillNotification?.staticText;
-  const isReinforcedNotificationTurn = !!reinforcedStaticText;
-
+  // When the triggering user message carries pre-formatted text (today: the
+  // skill-suggestion notification flow), Dust echoes it as a NOOP static reply
+  // instead of running the LLM.
+  const staticReply = globalAgentContext?.staticReply;
   let isPreferredModel = false;
 
   const modelConfiguration = (() => {
-    if (isReinforcedNotificationTurn) {
+    if (!!staticReply) {
       return NOOP_MODEL_CONFIG;
     }
 
@@ -366,10 +362,6 @@ function _getDustLikeGlobalAgent(
     return getLargeWhitelistedModel(auth, excludeProviders);
   })();
 
-  const reinforcedStaticResponse = isReinforcedNotificationTurn
-    ? reinforcedStaticText
-    : undefined;
-
   const model: AgentModelConfigurationType = modelConfiguration
     ? {
         providerId: modelConfiguration.providerId,
@@ -379,9 +371,9 @@ function _getDustLikeGlobalAgent(
           isPreferredModel && preferredReasoningEffort
             ? preferredReasoningEffort
             : modelConfiguration.defaultReasoningEffort,
-        ...(reinforcedStaticResponse && {
+        ...(staticReply && {
           metaData: {
-            staticResponse: reinforcedStaticResponse,
+            staticResponse: staticReply,
           },
         }),
       }
