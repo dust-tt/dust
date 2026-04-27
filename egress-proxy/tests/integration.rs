@@ -737,6 +737,90 @@ async fn sigterm_aborts_stuck_tunnel_after_drain_timeout() -> Result<()> {
     Ok(())
 }
 
+// --- Cache invalidation endpoint tests ---
+
+#[tokio::test]
+async fn invalidate_policy_evicts_cached_workspace_entry() -> Result<()> {
+    let (upstream_port, _upstream_handles) =
+        start_localhost_servers(UpstreamBehavior::EchoFixed { read_len: 4 }).await?;
+    let proxy = start_proxy_with_mock_gcs(
+        MockPolicies {
+            workspace: Some(policy_response(&["localhost"])),
+            sandbox: None,
+        },
+        None,
+        true,
+        "test",
+    )
+    .await?;
+
+    // First request populates the cache.
+    let token = make_token_with_workspace(SECRET, 60);
+    let response = send_handshake(&proxy, &token, "localhost", upstream_port).await?;
+    assert_eq!(response, Some(ALLOW_RESPONSE));
+
+    // Invalidate the workspace cache entry.
+    let admin_token = make_token_with_workspace(SECRET, 60);
+    let invalidate_body = json!({ "keys": [format!("w:{TEST_WORKSPACE_ID}")] }).to_string();
+    let status = http_post_status(
+        proxy.health_addr,
+        "/invalidate-policy",
+        &invalidate_body,
+        Some(&admin_token),
+    )
+    .await?;
+    assert_eq!(status, 200);
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn invalidate_policy_rejects_missing_auth() -> Result<()> {
+    let proxy = start_proxy(false, "production").await?;
+    let body = json!({ "keys": ["w:workspace-1"] }).to_string();
+
+    let status = http_post_status(proxy.health_addr, "/invalidate-policy", &body, None).await?;
+
+    assert_eq!(status, 401);
+    Ok(())
+}
+
+#[tokio::test]
+async fn invalidate_policy_rejects_invalid_jwt() -> Result<()> {
+    let proxy = start_proxy(false, "production").await?;
+    let bad_token = make_token("wrong-secret", 60);
+    let body = json!({ "keys": ["w:workspace-1"] }).to_string();
+
+    let status = http_post_status(
+        proxy.health_addr,
+        "/invalidate-policy",
+        &body,
+        Some(&bad_token),
+    )
+    .await?;
+
+    assert_eq!(status, 401);
+    Ok(())
+}
+
+#[tokio::test]
+async fn invalidate_policy_rejects_empty_keys() -> Result<()> {
+    let proxy = start_proxy(false, "production").await?;
+    let token = make_token(SECRET, 60);
+    let body = json!({ "keys": [] }).to_string();
+
+    let status = http_post_status(
+        proxy.health_addr,
+        "/invalidate-policy",
+        &body,
+        Some(&token),
+    )
+    .await?;
+
+    assert_eq!(status, 400);
+    Ok(())
+}
+
 async fn start_proxy(unsafe_skip_ssrf_check: bool, environment: &str) -> Result<ProxyProcess> {
     start_proxy_with_mock_gcs(
         MockPolicies::default(),
@@ -921,6 +1005,37 @@ async fn http_get(addr: SocketAddr, path: &str) -> Result<String> {
     let mut response = Vec::new();
     stream.read_to_end(&mut response).await?;
     Ok(String::from_utf8(response)?)
+}
+
+async fn http_post_status(
+    addr: SocketAddr,
+    path: &str,
+    body: &str,
+    bearer_token: Option<&str>,
+) -> Result<u16> {
+    let mut stream = TcpStream::connect(addr).await?;
+    let auth_header = match bearer_token {
+        Some(token) => format!("Authorization: Bearer {token}\r\n"),
+        None => String::new(),
+    };
+    let request = format!(
+        "POST {path} HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\nContent-Type: application/json\r\nContent-Length: {}\r\n{auth_header}\r\n{body}",
+        body.len()
+    );
+    stream.write_all(request.as_bytes()).await?;
+
+    let mut response = Vec::new();
+    stream.read_to_end(&mut response).await?;
+    let response_str = String::from_utf8(response)?;
+
+    // Parse status code from "HTTP/1.1 200 OK" line.
+    let status_code = response_str
+        .split_whitespace()
+        .nth(1)
+        .ok_or_else(|| anyhow!("malformed HTTP response: {response_str}"))?
+        .parse::<u16>()?;
+
+    Ok(status_code)
 }
 
 async fn send_handshake(
