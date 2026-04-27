@@ -64,6 +64,13 @@ export function mountFloorScene(
 
   host.innerHTML = STATIC_SVG_MARKUP;
 
+  // Sibling HTML overlay for chat cards. Cards render here as plain
+  // absolute-positioned HTML (real CSS px) instead of inside a foreignObject
+  // (where the SVG viewBox would scale them down ~0.5x).
+  const overlayEl = document.createElement("div");
+  overlayEl.className = "dust-floor-cards";
+  host.appendChild(overlayEl);
+
   // Cleanup tracking
   const rafs = new Set<number>();
   const intervals = new Set<number>();
@@ -224,8 +231,10 @@ export function mountFloorScene(
   const { showChatCard, showAgentCard, scheduleReactions } = createChatCard({
     trackedSetTimeout,
     trackedSetInterval,
+    trackedRAF,
     flyNodes,
     castByRef,
+    overlayEl,
   });
 
   // Smooth straight walk to a plan-space target. Used by walkTo / walkHome

@@ -8,7 +8,6 @@
 // fields through SVG/HTML elements (e.g. _chatCard, _planX). Typing them
 // would require a parallel WeakMap and gain little.
 
-import { SVG_NS } from "@app/components/home/content/Product/heroOfficeIso";
 import type { AgentDef } from "@app/components/home/content/Product/heroOfficeScenario";
 
 // ---------------------------------------------------------------------------
@@ -131,10 +130,16 @@ export interface ChatCardDeps {
   trackedSetTimeout: (cb: () => void, ms: number) => number;
   /** Tracked setInterval from the engine — calls get cleared on unmount. */
   trackedSetInterval: (cb: () => void, ms: number) => number;
+  /** Tracked rAF from the engine — calls get cancelled on unmount. */
+  trackedRAF: (cb: FrameRequestCallback) => number;
   /** Set the engine cleans up at unmount; flying-emoji nodes register here. */
   flyNodes: Set<HTMLElement>;
   /** Resolves a cast `ref` to its SVG <g> for reaction sourcing. */
   castByRef: Record<string, any>;
+  /** Absolute-positioned HTML overlay sibling to the SVG. Cards live here
+   *  (not inside a foreignObject) so font-size / spacing render at real CSS
+   *  px instead of the SVG viewBox's scaled-down user units. */
+  overlayEl: HTMLElement;
 }
 
 export interface ChatCardOptions {
@@ -183,7 +188,14 @@ const prefersReducedMotion = (): boolean =>
   window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 export function createChatCard(deps: ChatCardDeps): ChatCardModule {
-  const { trackedSetTimeout, trackedSetInterval, flyNodes, castByRef } = deps;
+  const {
+    trackedSetTimeout,
+    trackedSetInterval,
+    trackedRAF,
+    flyNodes,
+    castByRef,
+    overlayEl,
+  } = deps;
 
   function showChatCard(
     hostEl: any,
@@ -191,44 +203,30 @@ export function createChatCard(deps: ChatCardDeps): ChatCardModule {
     opts: ChatCardOptions = {}
   ): Promise<void> {
     return new Promise<void>((resolve) => {
-      const existing = hostEl.querySelector(".chat-card-fo");
-      if (existing) {
-        existing.remove();
+      // Remove any prior card still attached to this speaker.
+      if (hostEl._chatCard?.anchor) {
+        hostEl._chatCard.anchor.remove();
+        hostEl._chatCard = null;
       }
 
       const isAgent = !!opts.isAgent;
-      const maxChars = opts.maxChars || 38;
       const lines = msg.split("\n");
       const longest = lines.reduce(
         (m: number, l: string) => Math.max(m, l.replace(/\*\*/g, "").length),
         0
       );
       const cardW = Math.max(360, Math.min(560, longest * 10 + 80));
-      const bodyLines =
-        Math.max(1, Math.ceil(msg.length / (maxChars * 1.2))) +
-        (msg.match(/\n/g) || []).length;
-      const cardH = 120 + bodyLines * 28 + 60;
 
-      const fo = document.createElementNS(SVG_NS, "foreignObject");
-      fo.setAttribute("class", "chat-card-fo");
-      fo.setAttribute("x", String(-cardW / 2));
-      const foBottom = -24;
-      const foTop = foBottom - cardH;
-      fo.setAttribute("y", String(foTop));
-      fo.setAttribute("width", String(cardW));
-      fo.setAttribute("height", String(cardH));
-      fo.setAttribute("overflow", "visible");
-
-      const wrap = document.createElement("div");
-      wrap.setAttribute("xmlns", "http://www.w3.org/1999/xhtml");
-      wrap.style.cssText =
-        "width:100%;height:100%;pointer-events:none;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;";
-      fo.appendChild(wrap);
+      // Build an absolute-positioned anchor div in the overlay, with the
+      // card inside it. The anchor's transform is updated per rAF to follow
+      // the speaker's screen position; the inner card animates independently.
+      const anchor = document.createElement("div");
+      anchor.className = "dust-floor-card-anchor";
 
       const card = document.createElement("div");
       card.className = "chat-card" + (isAgent ? " agent-card" : "");
-      card.style.width = "100%";
-      wrap.appendChild(card);
+      card.style.width = cardW + "px";
+      anchor.appendChild(card);
 
       const header = document.createElement("div");
       header.className = "chat-card-header";
@@ -259,15 +257,34 @@ export function createChatCard(deps: ChatCardDeps): ChatCardModule {
       rx.className = "chat-card-reactions";
       card.appendChild(rx);
 
-      hostEl.appendChild(fo);
-      card.style.transformOrigin = "50% 100%";
+      overlayEl.appendChild(anchor);
+
+      // Per-frame tracker: position the anchor at the speaker's screen
+      // position. svgEl.getScreenCTM() composes any browser zoom / page
+      // scroll, and hostEl.getCTM() applies the speaker's local transform.
+      let trackerActive = true;
+      const updatePos = () => {
+        if (!trackerActive) {
+          return;
+        }
+        const ctm = (hostEl as SVGGraphicsElement).getScreenCTM?.();
+        const overlayRect = overlayEl.getBoundingClientRect();
+        if (ctm) {
+          const x = ctm.e - overlayRect.left;
+          const y = ctm.f - overlayRect.top;
+          anchor.style.transform = `translate(${x}px, ${y}px)`;
+        }
+        trackedRAF(updatePos);
+      };
+      updatePos();
+
       const reduced = prefersReducedMotion();
       if (!reduced) {
         try {
           card.animate(
             [
-              { opacity: 0, transform: "scale(0.96)" },
-              { opacity: 1, transform: "scale(1)" },
+              { transform: "translateX(-50%) scale(0.96)", opacity: 0 },
+              { transform: "translateX(-50%) scale(1)", opacity: 1 },
             ],
             {
               duration: 220,
@@ -280,7 +297,14 @@ export function createChatCard(deps: ChatCardDeps): ChatCardModule {
         }
       }
 
-      hostEl._chatCard = { card, reactions: rx, fo };
+      hostEl._chatCard = {
+        card,
+        reactions: rx,
+        anchor,
+        stopTracker: () => {
+          trackerActive = false;
+        },
+      };
 
       const tokens = parseRichMessage(msg);
       let tokIdx = 0;
@@ -355,7 +379,8 @@ export function createChatCard(deps: ChatCardDeps): ChatCardModule {
           caret.parentNode.removeChild(caret);
         }
         trackedSetTimeout(() => {
-          fo.remove();
+          hostEl._chatCard?.stopTracker?.();
+          anchor.remove();
           hostEl._chatCard = null;
           resolve();
         }, opts.holdMs || 2200);
@@ -375,8 +400,8 @@ export function createChatCard(deps: ChatCardDeps): ChatCardModule {
                 try {
                   fadeAnim = card.animate(
                     [
-                      { opacity: 1, transform: "scale(1)" },
-                      { opacity: 0, transform: "scale(0.96)" },
+                      { opacity: 1, transform: "translateX(-50%) scale(1)" },
+                      { opacity: 0, transform: "translateX(-50%) scale(0.96)" },
                     ],
                     {
                       duration: 180,
@@ -389,7 +414,8 @@ export function createChatCard(deps: ChatCardDeps): ChatCardModule {
                 }
               }
               const done = () => {
-                fo.remove();
+                hostEl._chatCard?.stopTracker?.();
+                anchor.remove();
                 hostEl._chatCard = null;
                 resolve();
               };

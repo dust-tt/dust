@@ -34,6 +34,31 @@ export const SCENE_CSS = `
   pointer-events: auto;
 }
 
+/* HTML overlay for chat cards. Anchored absolutely on top of the SVG so
+   cards render at real CSS px (no foreignObject viewBox scaling). */
+.dust-floor-host .dust-floor-cards {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+.dust-floor-host .dust-floor-card-anchor {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  /* transform is set per rAF by the engine to follow the speaker. */
+}
+.dust-floor-host .dust-floor-card-anchor .chat-card {
+  position: absolute;
+  left: 0;
+  bottom: 24px; /* sit 24px above the speaker's avatar center */
+  transform: translateX(-50%);
+  transform-origin: 50% 100%;
+}
+
 /* ---------------- Floor plan pieces ---------------- */
 .dust-floor-host .room-label {
   font: 600 12px/1 var(--font-sans); letter-spacing: -0.2px;
