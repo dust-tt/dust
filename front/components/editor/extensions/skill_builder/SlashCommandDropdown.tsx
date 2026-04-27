@@ -157,12 +157,14 @@ export const SlashCommandDropdown = forwardRef<
           align="start"
           avoidCollisions
           collisionPadding={12}
+          highlightedItemId={items[selectedIndex]?.id}
           side="bottom"
           sideOffset={4}
           onEscapeKeyDown={onClose}
           onInteractOutside={onClose}
           onCloseAutoFocus={(e) => e.preventDefault()}
           onOpenAutoFocus={(e) => e.preventDefault()}
+          scrollHighlightedItemIntoView
         >
           {header ? (
             <div className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground dark:text-muted-foreground-night">
@@ -180,6 +182,7 @@ export const SlashCommandDropdown = forwardRef<
                   <DropdownMenuItem
                     key={item.id}
                     icon={item.icon}
+                    itemId={item.id}
                     label={item.label}
                     description={item.description}
                     truncateText
