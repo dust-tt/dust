@@ -87,6 +87,31 @@ export function mintEgressJwt(providerId: string, workspaceId: string): string {
   );
 }
 
+const INVALIDATION_JWT_TTL_SECONDS = 60;
+
+export function mintEgressInvalidationJwt({
+  workspaceId,
+  sandboxId,
+}: {
+  workspaceId?: string;
+  sandboxId?: string;
+}): string {
+  return jwt.sign(
+    {
+      iss: "dust-front",
+      aud: "dust-egress-proxy",
+      action: "invalidate-policy",
+      ...(workspaceId ? { wId: workspaceId } : {}),
+      ...(sandboxId ? { sbId: sandboxId } : {}),
+    },
+    config.getEgressProxyJwtSecret(),
+    {
+      algorithm: "HS256",
+      expiresIn: INVALIDATION_JWT_TTL_SECONDS,
+    }
+  );
+}
+
 export async function checkEgressForwarderHealth(
   auth: Authenticator,
   sandbox: SandboxResource

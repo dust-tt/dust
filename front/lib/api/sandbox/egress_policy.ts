@@ -1,5 +1,5 @@
 import config from "@app/lib/api/config";
-import { mintEgressJwt } from "@app/lib/api/sandbox/egress";
+import { mintEgressInvalidationJwt } from "@app/lib/api/sandbox/egress";
 import type { Authenticator } from "@app/lib/auth";
 import { getBucketInstance } from "@app/lib/file_storage";
 import { isGCSNotFoundError } from "@app/lib/file_storage/types";
@@ -97,7 +97,7 @@ async function invalidateWorkspacePolicyCache(
     }
 
     const workspace = auth.getNonNullableWorkspace();
-    const token = mintEgressJwt("invalidate-cache", workspace.sId);
+    const token = mintEgressInvalidationJwt({ workspaceId: workspace.sId });
 
     const response = await fetch(`${baseUrl}/invalidate-policy`, {
       method: "POST",

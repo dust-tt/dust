@@ -73,10 +73,15 @@ async fn invalidate_policy(
         StatusCode::UNAUTHORIZED
     })?;
 
-    state.jwt_validator.validate(token).map_err(|error| {
+    let validated = state.jwt_validator.validate(token).map_err(|error| {
         warn!(error = %error, "invalidate-policy: jwt validation failed");
         StatusCode::UNAUTHORIZED
     })?;
+
+    if validated.action.as_deref() != Some("invalidate-policy") {
+        warn!("invalidate-policy: token missing required action claim");
+        return Err(StatusCode::FORBIDDEN);
+    }
 
     if body.keys.is_empty() {
         return Err(StatusCode::BAD_REQUEST);

@@ -68,10 +68,12 @@ const TEST_WORKSPACE_ID: &str = "workspace-456";
 
 #[derive(Debug, Serialize)]
 struct TestClaims {
-    #[serde(rename = "sbId")]
-    sb_id: String,
+    #[serde(rename = "sbId", skip_serializing_if = "Option::is_none")]
+    sb_id: Option<String>,
     #[serde(rename = "wId", skip_serializing_if = "Option::is_none")]
     w_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    action: Option<String>,
     iss: String,
     aud: String,
     exp: usize,
@@ -386,8 +388,9 @@ async fn invalid_issuer_returns_deny() -> Result<()> {
     let token = make_token_with_claims(
         SECRET,
         FullClaims {
-            sb_id: TEST_SANDBOX_ID,
+            sb_id: Some(TEST_SANDBOX_ID),
             w_id: None,
+            action: None,
             iss: "wrong-front",
             aud: "dust-egress-proxy",
             exp_offset_seconds: 60,
@@ -406,8 +409,9 @@ async fn invalid_audience_returns_deny() -> Result<()> {
     let token = make_token_with_claims(
         SECRET,
         FullClaims {
-            sb_id: TEST_SANDBOX_ID,
+            sb_id: Some(TEST_SANDBOX_ID),
             w_id: None,
+            action: None,
             iss: "dust-front",
             aud: "wrong-audience",
             exp_offset_seconds: 60,
@@ -426,8 +430,9 @@ async fn empty_sandbox_id_claim_returns_deny() -> Result<()> {
     let token = make_token_with_claims(
         SECRET,
         FullClaims {
-            sb_id: "   ",
+            sb_id: Some("   "),
             w_id: None,
+            action: None,
             iss: "dust-front",
             aud: "dust-egress-proxy",
             exp_offset_seconds: 60,
@@ -772,8 +777,8 @@ async fn invalidate_policy_evicts_cached_workspace_entry() -> Result<()> {
     }
 
     // Without invalidation, the cached policy would still allow "localhost".
-    // Invalidate the workspace cache entry.
-    let admin_token = make_token_with_workspace(SECRET, 60);
+    // Invalidate the workspace cache entry using an invalidation token.
+    let admin_token = make_invalidation_token(SECRET, 60);
     let invalidate_body = json!({ "keys": [format!("w:{TEST_WORKSPACE_ID}")] }).to_string();
     let status = http_post_status(
         proxy.health_addr,
@@ -825,13 +830,31 @@ async fn invalidate_policy_rejects_invalid_jwt() -> Result<()> {
 #[tokio::test]
 async fn invalidate_policy_rejects_empty_keys() -> Result<()> {
     let proxy = start_proxy(false, "production").await?;
-    let token = make_token(SECRET, 60);
+    let token = make_invalidation_token(SECRET, 60);
     let body = json!({ "keys": [] }).to_string();
 
     let status =
         http_post_status(proxy.health_addr, "/invalidate-policy", &body, Some(&token)).await?;
 
     assert_eq!(status, 400);
+    Ok(())
+}
+
+#[tokio::test]
+async fn invalidate_policy_rejects_sandbox_token_without_action() -> Result<()> {
+    let proxy = start_proxy(false, "production").await?;
+    let sandbox_token = make_token_with_workspace(SECRET, 60);
+    let body = json!({ "keys": ["w:workspace-1"] }).to_string();
+
+    let status = http_post_status(
+        proxy.health_addr,
+        "/invalidate-policy",
+        &body,
+        Some(&sandbox_token),
+    )
+    .await?;
+
+    assert_eq!(status, 403);
     Ok(())
 }
 
@@ -1141,8 +1164,9 @@ fn make_token(secret: &str, exp_offset_seconds: i64) -> String {
     make_token_with_claims(
         secret,
         FullClaims {
-            sb_id: TEST_SANDBOX_ID,
+            sb_id: Some(TEST_SANDBOX_ID),
             w_id: None,
+            action: None,
             iss: "dust-front",
             aud: "dust-egress-proxy",
             exp_offset_seconds,
@@ -1154,8 +1178,23 @@ fn make_token_with_workspace(secret: &str, exp_offset_seconds: i64) -> String {
     make_token_with_claims(
         secret,
         FullClaims {
-            sb_id: TEST_SANDBOX_ID,
+            sb_id: Some(TEST_SANDBOX_ID),
             w_id: Some(TEST_WORKSPACE_ID),
+            action: None,
+            iss: "dust-front",
+            aud: "dust-egress-proxy",
+            exp_offset_seconds,
+        },
+    )
+}
+
+fn make_invalidation_token(secret: &str, exp_offset_seconds: i64) -> String {
+    make_token_with_claims(
+        secret,
+        FullClaims {
+            sb_id: None,
+            w_id: Some(TEST_WORKSPACE_ID),
+            action: Some("invalidate-policy"),
             iss: "dust-front",
             aud: "dust-egress-proxy",
             exp_offset_seconds,
@@ -1174,8 +1213,9 @@ fn make_token_with_claims(secret: &str, claims: FullClaims<'_>) -> String {
         now_seconds + claims.exp_offset_seconds.unsigned_abs()
     };
     let claims = TestClaims {
-        sb_id: claims.sb_id.to_string(),
+        sb_id: claims.sb_id.map(|s| s.to_string()),
         w_id: claims.w_id.map(|s| s.to_string()),
+        action: claims.action.map(|s| s.to_string()),
         iss: claims.iss.to_string(),
         aud: claims.aud.to_string(),
         exp: usize::try_from(exp).expect("expiration timestamp should fit in usize"),
@@ -1196,8 +1236,9 @@ struct TestCerts {
 }
 
 struct FullClaims<'a> {
-    sb_id: &'a str,
+    sb_id: Option<&'a str>,
     w_id: Option<&'a str>,
+    action: Option<&'a str>,
     iss: &'a str,
     aud: &'a str,
     exp_offset_seconds: i64,
