@@ -559,6 +559,33 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     );
   });
 
+  it("should not show enabled skills in available skills on the legacy path", async () => {
+    const commitSkill = await SkillFactory.create(authenticator1, {
+      name: "commit",
+      agentFacingDescription: "Create a git commit with a descriptive message.",
+    });
+
+    const params = {
+      userMessage: userMessage1,
+      agentConfiguration: agentConfig1,
+      model: modelConfig,
+      hasAvailableActions: true,
+      agentsList: null,
+      systemSkills: [],
+      enabledSkills: [SkillFactory.withExtendedSkill(commitSkill)],
+      equippedSkills: [commitSkill],
+    };
+
+    const sections = constructPromptMultiActions(authenticator1, params);
+    const text = systemPromptToText(sections);
+
+    expect(text).toContain("### ENABLED SKILLS");
+    expect(text).not.toContain("### AVAILABLE SKILLS");
+    expect(text).not.toContain(
+      "- **commit**: Create a git commit with a descriptive message."
+    );
+  });
+
   it("should keep system skill instructions in the system prompt", async () => {
     const discoverSkills = await SkillResource.fetchById(
       authenticator1,

@@ -285,6 +285,14 @@ function constructSkillsSection({
   const sortedEnabledSkills = sortByName(enabledSkills);
   const sortedEquippedSkills = sortByName(equippedSkills);
 
+  const enabledSkillIds = new Set(
+    sortedEnabledSkills.map((skill) => skill.sId)
+  );
+  // This is a legacy behavior: enabled skills are removed from the list of equipped skills.
+  const sortedAvailableSkills = sortedEquippedSkills.filter(
+    (skill) => !enabledSkillIds.has(skill.sId)
+  );
+
   const allEnabledSkills = [...sortedSystemSkills, ...sortedEnabledSkills];
 
   if (!systemSkills.length && !enabledSkills.length && !equippedSkills.length) {
@@ -309,12 +317,12 @@ function constructSkillsSection({
   }
 
   // Equipped but not yet enabled skills - show name and description only
-  if (sortedEquippedSkills.length > 0) {
+  if (sortedAvailableSkills.length > 0) {
     skillsSection += "\n### AVAILABLE SKILLS\n";
     skillsSection +=
       `These skills can be enabled using the \`${ENABLE_SKILL_TOOL_NAME}\` tool. ` +
       "Review their descriptions and enable the appropriate skill when relevant:\n";
-    const skillList = sortedEquippedSkills
+    const skillList = sortedAvailableSkills
       .map(
         ({ name, agentFacingDescription }) =>
           `- **${name}**: ${agentFacingDescription}`
