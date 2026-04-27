@@ -2,8 +2,10 @@ import { Err, Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  mockAddSandboxPolicyDomain,
   mockCheckEgressForwarderHealth,
   mockReadNewDenyLogEntries,
+  mockEmitAuditLogEvent,
   mockGenerateExecId,
   mockGenerateSandboxExecToken,
   mockGetSandboxImage,
@@ -16,8 +18,10 @@ const {
   mockWrapCommand,
   mockEnsureActive,
 } = vi.hoisted(() => ({
+  mockAddSandboxPolicyDomain: vi.fn(),
   mockCheckEgressForwarderHealth: vi.fn(),
   mockReadNewDenyLogEntries: vi.fn(),
+  mockEmitAuditLogEvent: vi.fn(),
   mockGenerateExecId: vi.fn(),
   mockGenerateSandboxExecToken: vi.fn(),
   mockGetSandboxImage: vi.fn(),
@@ -42,6 +46,28 @@ vi.mock("@app/lib/api/sandbox/egress", () => ({
   checkEgressForwarderHealth: mockCheckEgressForwarderHealth,
   readNewDenyLogEntries: mockReadNewDenyLogEntries,
   setupEgressForwarder: mockSetupEgressForwarder,
+}));
+
+vi.mock("@app/lib/api/sandbox/egress_policy", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@app/lib/api/sandbox/egress_policy")>();
+
+  return {
+    ...actual,
+    addSandboxPolicyDomain: mockAddSandboxPolicyDomain,
+  };
+});
+
+vi.mock("@app/lib/api/audit/workos_audit", () => ({
+  buildAuditLogTarget: (
+    type: string,
+    resource: { name?: string; sId: string }
+  ) => ({
+    id: resource.sId,
+    name: resource.name ?? resource.sId,
+    type,
+  }),
+  emitAuditLogEvent: mockEmitAuditLogEvent,
 }));
 
 vi.mock("@app/lib/api/sandbox/access_tokens", () => ({
@@ -85,7 +111,7 @@ vi.mock("@app/logger/logger", () => ({
   },
 }));
 
-import { runSandboxBashTool } from "./index";
+import { addEgressDomainTool, runSandboxBashTool } from "./index";
 
 describe("runSandboxBashTool", () => {
   beforeEach(() => {
@@ -108,7 +134,10 @@ describe("runSandboxBashTool", () => {
   function makeExtra() {
     return {
       auth: {
-        getNonNullableWorkspace: () => ({ sId: "workspace-id" }),
+        getNonNullableWorkspace: () => ({
+          name: "Workspace",
+          sId: "workspace-id",
+        }),
       },
       agentLoopContext: {
         runContext: {
@@ -233,5 +262,211 @@ describe("runSandboxBashTool", () => {
       expect(result.error.message).toContain("setup failed");
     }
     expect(sandbox.exec).not.toHaveBeenCalled();
+  });
+});
+
+describe("addEgressDomainTool", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockAddSandboxPolicyDomain.mockResolvedValue(
+      new Ok({
+        addedDomain: "example.org",
+        policy: { allowedDomains: ["example.org"] },
+      })
+    );
+  });
+
+  function makeExtra() {
+    return {
+      auth: {
+        getNonNullableWorkspace: () => ({
+          name: "Workspace",
+          sId: "workspace-id",
+        }),
+      },
+      agentLoopContext: {
+        runContext: {
+          conversation: { sId: "conversation-id" },
+        },
+      },
+      signal: new AbortController().signal,
+    } as never;
+  }
+
+  it("adds the domain to the active sandbox policy and emits an audit event", async () => {
+    mockEnsureActive.mockResolvedValue(
+      new Ok({
+        freshlyCreated: false,
+        sandbox: {
+          providerId: "provider-id",
+          sId: "sandbox-id",
+        },
+        wokeFromSleep: false,
+      })
+    );
+
+    const result = await addEgressDomainTool(
+      {
+        domain: "Example.ORG",
+        reason: "Install package dependencies.",
+      },
+      makeExtra()
+    );
+
+    expect(result.isOk()).toBe(true);
+    expect(mockAddSandboxPolicyDomain).toHaveBeenCalledWith(expect.anything(), {
+      domain: "example.org",
+      sandboxProviderId: "provider-id",
+    });
+    expect(mockEmitAuditLogEvent).toHaveBeenCalledWith({
+      auth: expect.anything(),
+      action: "sandbox_egress_policy.sandbox_updated",
+      targets: [
+        { id: "workspace-id", name: "Workspace", type: "workspace" },
+        {
+          id: "provider-id",
+          name: "Sandbox egress policy sandbox-id",
+          type: "sandbox_egress_policy",
+        },
+      ],
+      metadata: {
+        added: "true",
+        domain: "example.org",
+        reason: "Install package dependencies.",
+        sandboxProviderId: "provider-id",
+      },
+    });
+    if (result.isOk()) {
+      expect(result.value[0].text).toContain("Allowed: example.org");
+    }
+  });
+
+  it("reports the domain as already allowed when nothing changed", async () => {
+    mockEnsureActive.mockResolvedValue(
+      new Ok({
+        freshlyCreated: false,
+        sandbox: {
+          providerId: "provider-id",
+          sId: "sandbox-id",
+        },
+        wokeFromSleep: false,
+      })
+    );
+    mockAddSandboxPolicyDomain.mockResolvedValue(
+      new Ok({
+        addedDomain: null,
+        policy: { allowedDomains: ["example.org"] },
+      })
+    );
+
+    const result = await addEgressDomainTool(
+      {
+        domain: "example.org",
+        reason: "Retry a blocked request.",
+      },
+      makeExtra()
+    );
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value[0].text).toContain("Already allowed: example.org");
+    }
+    expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          added: "false",
+          domain: "example.org",
+        }),
+      })
+    );
+  });
+
+  it("rejects wildcard domains before writing policy", async () => {
+    mockEnsureActive.mockResolvedValue(
+      new Ok({
+        freshlyCreated: false,
+        sandbox: {
+          providerId: "provider-id",
+          sId: "sandbox-id",
+        },
+        wokeFromSleep: false,
+      })
+    );
+
+    const result = await addEgressDomainTool(
+      {
+        domain: "*.example.org",
+        reason: "Too broad.",
+      },
+      makeExtra()
+    );
+
+    expect(result.isErr()).toBe(true);
+    expect(mockAddSandboxPolicyDomain).not.toHaveBeenCalled();
+    expect(mockEmitAuditLogEvent).not.toHaveBeenCalled();
+  });
+
+  it("returns an error without conversation context", async () => {
+    const result = await addEgressDomainTool(
+      {
+        domain: "example.org",
+        reason: "Retry a blocked request.",
+      },
+      {
+        auth: {
+          getNonNullableWorkspace: () => ({
+            name: "Workspace",
+            sId: "workspace-id",
+          }),
+        },
+        agentLoopContext: undefined,
+        signal: new AbortController().signal,
+      } as never
+    );
+
+    expect(result.isErr()).toBe(true);
+    expect(mockEnsureActive).not.toHaveBeenCalled();
+  });
+
+  it("returns an error when no active sandbox is available", async () => {
+    mockEnsureActive.mockResolvedValue(new Err(new Error("No active sandbox")));
+
+    const result = await addEgressDomainTool(
+      {
+        domain: "example.org",
+        reason: "Retry a blocked request.",
+      },
+      makeExtra()
+    );
+
+    expect(result.isErr()).toBe(true);
+    expect(mockAddSandboxPolicyDomain).not.toHaveBeenCalled();
+  });
+
+  it("surfaces sandbox policy helper errors", async () => {
+    mockEnsureActive.mockResolvedValue(
+      new Ok({
+        freshlyCreated: false,
+        sandbox: {
+          providerId: "provider-id",
+          sId: "sandbox-id",
+        },
+        wokeFromSleep: false,
+      })
+    );
+    mockAddSandboxPolicyDomain.mockResolvedValue(
+      new Err(new Error("Sandbox egress policy cannot exceed 100 domains."))
+    );
+
+    const result = await addEgressDomainTool(
+      {
+        domain: "overflow.example.org",
+        reason: "Retry a blocked request.",
+      },
+      makeExtra()
+    );
+
+    expect(result.isErr()).toBe(true);
+    expect(mockEmitAuditLogEvent).not.toHaveBeenCalled();
   });
 });
