@@ -1,3 +1,4 @@
+import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import {
   FileExplorerEmptyState,
   FileExplorerFileCard,
@@ -13,10 +14,13 @@ import {
 } from "@app/components/spaces/FilePreviewSheet";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useConversationSandboxStatus } from "@app/hooks/conversations/useConversationSandboxStatus";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { downloadSandboxFile } from "@app/lib/swr/files";
+import logger from "@app/logger/logger";
 import type { GCSMountFileEntry } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/files";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { isInteractiveContentType } from "@app/types/files";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   type BreadcrumbItem,
@@ -99,6 +103,8 @@ export function NewFileExplorer({
   onClose,
   owner,
 }: NewFileExplorerProps) {
+  const { openPanel } = useConversationSidePanelContext();
+  const sendNotification = useSendNotification();
   const [folderStack, setFolderStack] = useState<SandboxTreeNode[]>([]);
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [previewFile, setPreviewFile] = useState<MinimalFileForPreview | null>(
@@ -179,20 +185,24 @@ export function NewFileExplorer({
     setFolderStack((prev) => [...prev, node]);
   }, []);
 
-  const handleOpen = useCallback((entry: GCSMountFileEntry) => {
-    if (!entry.fileId) {
-      return;
-    }
-    if (isInteractiveContentType(entry.contentType)) {
-      return;
-    }
-    setPreviewFile({
-      sId: entry.fileId,
-      fileName: entry.fileName,
-      contentType: entry.contentType,
-    });
-    setShowPreviewSheet(true);
-  }, []);
+  const handleOpen = useCallback(
+    (entry: GCSMountFileEntry) => {
+      if (!entry.fileId) {
+        return;
+      }
+      if (isInteractiveContentType(entry.contentType)) {
+        openPanel({ type: "interactive_content", fileId: entry.fileId });
+      } else {
+        setPreviewFile({
+          sId: entry.fileId,
+          fileName: entry.fileName,
+          contentType: entry.contentType,
+        });
+        setShowPreviewSheet(true);
+      }
+    },
+    [openPanel]
+  );
 
   const handleDownload = useCallback(
     async (entry: GCSMountFileEntry) => {
@@ -219,11 +229,22 @@ export function NewFileExplorer({
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
+      } catch (err) {
+        logger.error(
+          { err: normalizeError(err) },
+          "Failed to download sandbox file"
+        );
+
+        sendNotification({
+          type: "error",
+          title: "Failed to download the file.",
+          description: "An error occurred while downloading. Please try again.",
+        });
       } finally {
         isDownloadingRef.current = false;
       }
     },
-    [owner, conversation.sId]
+    [owner, conversation.sId, sendNotification]
   );
 
   return (
@@ -313,7 +334,6 @@ export function NewFileExplorer({
         </div>
       </div>
 
-      {/* TODO(2026-04-27 FILE_SYSTEM) Implement new design in dialog */}
       <FilePreviewSheet
         owner={owner}
         file={previewFile}
