@@ -329,15 +329,29 @@ export function useProjectTodos({
 }) {
   const { fetcher } = useFetcher();
   const todosFetcher: Fetcher<GetProjectTodosResponseBody> = fetcher;
+  const todosUrl = useMemo(
+    () => `/api/w/${owner.sId}/spaces/${spaceId}/project_todos`,
+    [owner.sId, spaceId]
+  );
 
   const { data, error, mutate } = useSWRWithDefaults(
-    disabled ? null : `/api/w/${owner.sId}/spaces/${spaceId}/project_todos`,
-    todosFetcher
+    disabled ? null : todosUrl,
+    todosFetcher,
+    {
+      // Ensure project todos refresh when the user returns to this page,
+      // even if SWR already has cached data for the key.
+      revalidateOnMount: true,
+      revalidateIfStale: true,
+      revalidateOnFocus: true,
+      revalidateOnReconnect: true,
+    }
   );
 
   return {
     todos: data?.todos ?? [],
     lastReadAt: data?.lastReadAt ?? null,
+    viewerUserId: data?.viewerUserId ?? null,
+    users: data?.users ?? [],
     isTodosLoading: !disabled && !error && !data,
     isTodosError: !!error,
     mutateTodos: mutate,

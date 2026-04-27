@@ -6,6 +6,7 @@ import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import type { Authenticator } from "@app/lib/auth";
 import { ProjectTodoResource } from "@app/lib/resources/project_todo_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { APIErrorType } from "@app/types/error";
 import type { ProjectTodoType } from "@app/types/project_todo";
@@ -179,9 +180,12 @@ export async function startAgentForProjectTodo(
     });
   }
 
+  const [assigneeUser] = await UserResource.fetchByModelIds([todo.userId]);
+  const assigneeId = assigneeUser?.sId ?? "";
+
   return new Ok({
     todo: {
-      ...todo.toJSON(),
+      ...todo.toJSON({ assigneeId }),
       conversationId,
     },
     conversationId,
