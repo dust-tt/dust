@@ -184,16 +184,16 @@ export const SCENE_CSS = `
   letter-spacing: -0.2px;
 }
 
-/* Chat cards (foreignObject HTML) */
+/* Chat cards (HTML overlay, real CSS px) */
 .dust-floor-host .chat-card {
   box-sizing: border-box;
   background: #FDFCF7;
   border: 1px solid rgba(17,20,24,0.08);
-  border-radius: 22px;
-  padding: 20px 24px 18px;
+  border-radius: 18px;
+  padding: 14px 18px 12px;
   font-family: var(--font-sans);
   color: #1A1D21;
-  box-shadow: 0 16px 40px -10px rgba(17,20,24,0.22), 0 3px 8px rgba(17,20,24,0.08);
+  box-shadow: 0 12px 32px -10px rgba(17,20,24,0.22), 0 2px 6px rgba(17,20,24,0.08);
   opacity: 1;
   position: relative;
 }
@@ -219,11 +219,11 @@ export const SCENE_CSS = `
   border-color: rgba(28,145,255,0.22);
 }
 .dust-floor-host .chat-card-header {
-  display: flex; align-items: flex-start; gap: 12px;
-  margin-bottom: 12px;
+  display: flex; align-items: flex-start; gap: 10px;
+  margin-bottom: 10px;
 }
 .dust-floor-host .chat-card-avatar {
-  width: 42px; height: 42px;
+  width: 32px; height: 32px;
   border-radius: 50%;
   background: #E9ECEF center/cover no-repeat;
   flex-shrink: 0;
@@ -234,66 +234,66 @@ export const SCENE_CSS = `
   display: flex; align-items: center; justify-content: center;
   border-color: rgba(28,145,255,0.35);
 }
-.dust-floor-host .chat-card-avatar.agent-avatar svg { width: 22px; height: 22px; }
+.dust-floor-host .chat-card-avatar.agent-avatar svg { width: 18px; height: 18px; }
 .dust-floor-host .chat-card-meta {
   display: flex; flex-direction: column;
-  line-height: 1.15; gap: 3px; min-width: 0;
+  line-height: 1.15; gap: 2px; min-width: 0;
 }
 .dust-floor-host .chat-card-name {
-  font: 600 19px/1.2 var(--font-sans); letter-spacing: -0.3px; color: #1A1D21;
+  font: 600 14px/1.2 var(--font-sans); letter-spacing: -0.2px; color: #1A1D21;
 }
 .dust-floor-host .chat-card-role {
-  font: 400 14px/1.2 var(--font-sans); color: #6A7078; letter-spacing: -0.1px;
+  font: 400 11px/1.2 var(--font-sans); color: #6A7078; letter-spacing: -0.1px;
 }
-.dust-floor-host .chat-card-role .dot { margin: 0 6px; opacity: 0.5; }
+.dust-floor-host .chat-card-role .dot { margin: 0 5px; opacity: 0.5; }
 .dust-floor-host .chat-card-body {
-  font: 400 18px/1.5 var(--font-sans); letter-spacing: -0.2px; color: #1A1D21;
+  font: 400 13px/1.5 var(--font-sans); letter-spacing: -0.1px; color: #1A1D21;
   white-space: pre-wrap; word-break: break-word;
 }
 .dust-floor-host .chat-card-body strong { font-weight: 600; }
 .dust-floor-host .chat-card-body .mention {
   display: inline-block;
-  padding: 1px 7px; margin: 0 1px;
+  padding: 0 5px; margin: 0 1px;
   background: rgba(28,145,255,0.14); color: #0F5CB3;
-  border-radius: 7px; font-weight: 500;
+  border-radius: 5px; font-weight: 500;
 }
 .dust-floor-host .chat-card-body .mention.agent-mention {
   background: rgba(17,20,24,0.08); color: #1A1D21;
 }
 .dust-floor-host .chat-card-body ul {
-  list-style: none; padding: 4px 0 2px; margin: 8px 0 0;
+  list-style: none; padding: 2px 0; margin: 6px 0 0;
 }
 .dust-floor-host .chat-card-body ul li {
-  position: relative; padding-left: 16px; margin: 7px 0; line-height: 1.4;
+  position: relative; padding-left: 12px; margin: 5px 0; line-height: 1.4;
 }
 .dust-floor-host .chat-card-body ul li::before {
-  content: ""; position: absolute; left: 2px; top: 11px;
-  width: 5px; height: 5px; border-radius: 50%; background: #6A7078;
+  content: ""; position: absolute; left: 2px; top: 8px;
+  width: 4px; height: 4px; border-radius: 50%; background: #6A7078;
 }
-.dust-floor-host .chat-card-body .closer { margin-top: 12px; }
+.dust-floor-host .chat-card-body .closer { margin-top: 9px; }
 .dust-floor-host .chat-card-caret {
   display: inline-block;
-  width: 8px; height: 1em; background: #1A1D21;
+  width: 6px; height: 1em; background: #1A1D21;
   vertical-align: -2px; margin-left: 1px;
   animation: dust-floor-caret-blink 0.9s steps(2,start) infinite;
 }
 .dust-floor-host .chat-card-reactions {
-  display: flex; flex-wrap: wrap; gap: 7px; margin-top: 14px;
+  display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px;
 }
 .dust-floor-host .chat-card-reactions:empty { display: none; }
 .dust-floor-host .chat-card-reactions .react-pill {
-  display: inline-flex; align-items: center; gap: 7px;
-  padding: 5px 12px 5px 10px;
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 9px 3px 8px;
   background: #FFFFFF;
   border: 1px solid rgba(17,20,24,0.1);
   border-radius: 999px;
-  font: 600 16px/1 var(--font-sans);
+  font: 600 12px/1 var(--font-sans);
   color: #1A1D21; letter-spacing: -0.1px;
   animation: dust-floor-pill-pop 220ms cubic-bezier(0.34, 1.4, 0.64, 1);
   transform-origin: center;
   will-change: transform;
 }
-.dust-floor-host .chat-card-reactions .react-pill .em { font-size: 18px; line-height: 1; }
+.dust-floor-host .chat-card-reactions .react-pill .em { font-size: 14px; line-height: 1; }
 .dust-floor-host .chat-card-reactions .react-pill .count { color: #4A5058; font-weight: 600; }
 
 .dust-floor-host .reaction-pill rect {
