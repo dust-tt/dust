@@ -188,7 +188,7 @@ async function backfillCreditsOfType(
         result = await updateMetronomeCreditSegmentAmount({
           metronomeCustomerId,
           contractId: contract.id,
-          creditId: existingRecurringCredit.id,
+          creditId: currentRecurringCredit.id,
           segmentId,
           amount: initialAmount,
         });
