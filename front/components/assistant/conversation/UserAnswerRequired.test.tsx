@@ -237,6 +237,31 @@ describe("UserAnswerRequired", () => {
     expect(alphaOption).not.toHaveClass("bg-primary-100");
   });
 
+  it("hides the cursor during keyboard navigation and restores it on mouse movement", async () => {
+    const { container } = render(
+      <UserAnswerRequired
+        blockedAction={makeBlockedAction()}
+        triggeringUser={null}
+        owner={owner}
+        conversationId="conv_1"
+        messageId="msg_1"
+      />
+    );
+
+    const keyboardContainer = getKeyboardContainer(container);
+
+    await waitFor(() => expect(keyboardContainer).toHaveFocus());
+    expect(keyboardContainer).not.toHaveClass("cursor-none");
+
+    fireEvent.keyDown(keyboardContainer, { key: "ArrowDown" });
+
+    expect(keyboardContainer).toHaveClass("cursor-none");
+
+    fireEvent.mouseMove(keyboardContainer);
+
+    expect(keyboardContainer).not.toHaveClass("cursor-none");
+  });
+
   it("submits the active option with Enter in single-select mode", async () => {
     const { container } = render(
       <UserAnswerRequired
