@@ -23,7 +23,7 @@ interface SlashCommandTooltip {
 }
 
 const DEFAULT_EMPTY_MESSAGE = "No commands found";
-const DEFAULT_LIST_MAX_HEIGHT = "24rem";
+const DEFAULT_LIST_MAX_HEIGHT_CLASS_NAME = "max-h-96";
 
 interface ScrollFadeState {
   hasContentAbove: boolean;
@@ -46,7 +46,7 @@ export interface SlashCommandDropdownProps
   > {
   emptyMessage?: string;
   header?: string;
-  listMaxHeight?: string;
+  listMaxHeightClassName?: string;
   onClose?: () => void;
   showScrollFade?: boolean;
   size?: "default" | "wide";
@@ -67,7 +67,7 @@ export const SlashCommandDropdown = forwardRef<
       clientRect,
       emptyMessage = DEFAULT_EMPTY_MESSAGE,
       header,
-      listMaxHeight = DEFAULT_LIST_MAX_HEIGHT,
+      listMaxHeightClassName = DEFAULT_LIST_MAX_HEIGHT_CLASS_NAME,
       onClose,
       showScrollFade = false,
       size = "default",
@@ -251,9 +251,8 @@ export const SlashCommandDropdown = forwardRef<
             <div className="relative">
               <div
                 ref={listRef}
-                className="overflow-y-auto"
+                className={cn("overflow-y-auto", listMaxHeightClassName)}
                 onScroll={updateScrollFadeState}
-                style={{ maxHeight: listMaxHeight }}
               >
                 {items.map((item, index) => {
                   const menuItem = (
