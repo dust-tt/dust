@@ -1,6 +1,7 @@
 import {
   ArchiveIcon,
   ArrowDownOnSquareIcon,
+  ArrowUpIcon,
   ArrowUpOnSquareIcon,
   Avatar,
   BookOpenIcon,
@@ -39,6 +40,10 @@ import {
   LogoutIcon,
   MagicIcon,
   MoreIcon,
+  PlusIcon,
+  PopoverContent,
+  PopoverRoot,
+  PopoverTrigger,
   ReplySection,
   SearchInput,
   SearchInputWithPopover,
@@ -65,7 +70,14 @@ import {
 import { UniversalSearchItem } from "@dust-tt/sparkle/components/UniversalSearchItem";
 import { cn } from "@sparkle/lib/utils";
 import type { ColumnDef } from "@tanstack/react-table";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 
 import { getAgentById } from "../data/agents";
 import { getDataSourcesBySpaceId } from "../data/dataSources";
@@ -78,6 +90,7 @@ import type {
 } from "../data/types";
 import { getUserById } from "../data/users";
 import { InputBar } from "./InputBar";
+import { RichTextArea } from "./RichTextArea";
 import { WhatsNewDeltaList } from "./WhatsNewDeltaList";
 
 interface GroupConversationViewProps {
@@ -146,10 +159,17 @@ function getRandomParticipants(
     }
   });
 
-  // Shuffle and select 1-6 participants
-  const shuffled = [...allParticipants].sort(() => Math.random() - 0.5);
+  // Shuffle and select 1-6 participants (deterministic per conversation id)
+  const shuffled = [...allParticipants].sort((a, b) => {
+    const ha = seededRandom(`${conversation.id}-p-${a.data.id}`, 0);
+    const hb = seededRandom(`${conversation.id}-p-${b.data.id}`, 0);
+    return ha - hb;
+  });
   const count = Math.min(
-    Math.max(1, Math.floor(Math.random() * 6) + 1),
+    Math.max(
+      1,
+      Math.floor(seededRandom(`${conversation.id}-pcount`, 0) * 6) + 1
+    ),
     shuffled.length
   );
   return shuffled.slice(0, count);
@@ -163,11 +183,12 @@ function getRandomCreator(
   if (conversation.userParticipants.length === 0) {
     return null;
   }
-  const creatorId =
-    conversation.userParticipants[
-      Math.floor(Math.random() * conversation.userParticipants.length)
-    ];
-  return getUserById(creatorId) || null;
+  const creatorIndex = Math.floor(
+    seededRandom(`${conversation.id}-creator`, 0) *
+      conversation.userParticipants.length
+  );
+  const creatorId = conversation.userParticipants[creatorIndex];
+  return creatorId ? getUserById(creatorId) || null : null;
 }
 
 // Convert participants to Avatar props format for Avatar.Stack
@@ -361,6 +382,11 @@ type SummaryRelatedConversations = Record<string, string[]>;
 type SummaryItemDiffByKey = Record<string, SummaryItemDiffState>;
 type AutoCheckRationaleByKey = Record<string, string>;
 const SUMMARY_ITEM_TRANSITION_MS = 240;
+
+/** Playground only: set to true to replay the delayed “summary updating” demo. */
+const WHATS_NEW_PLAYGROUND_FAKE_UPDATE_ENABLED = false;
+
+const SUMMARY_COLLAPSED_MAX_HEIGHT_PX = 260;
 
 interface WhatsNewScenario {
   before: OngoingSummary;
@@ -899,6 +925,13 @@ export function GroupConversationView({
     new Set()
   );
   const [typingVersion, setTypingVersion] = useState(0);
+  const [
+    isOngoingSummaryOverflowingCollapsed,
+    setIsOngoingSummaryOverflowingCollapsed,
+  ] = useState(false);
+  const summaryWhatsNewContentRef = useRef<HTMLDivElement | null>(null);
+  const [isWhatsNewPopoverOpen, setIsWhatsNewPopoverOpen] = useState(false);
+  const [whatsNewPopoverDraft, setWhatsNewPopoverDraft] = useState("");
   const deltaTransitionTimeoutRef = useRef<number | null>(null);
   const deltaTransitionStartTimeoutRef = useRef<number | null>(null);
   const cleanTransitionTimeoutRef = useRef<number | null>(null);
@@ -1191,7 +1224,6 @@ export function GroupConversationView({
   }, [space.id, isNew, spaceMemberIds, users, avatarCount]);
 
   const hasHistory = expandedConversations.length > 0;
-  const SUMMARY_COLLAPSED_MAX_HEIGHT_PX = 260;
 
   const conversationTitleById = useMemo(() => {
     const titleMap = new Map<string, string>();
@@ -1328,6 +1360,30 @@ export function GroupConversationView({
     });
   };
 
+  const handleSendWhatsNewPopover = () => {
+    const trimmed = whatsNewPopoverDraft.trim();
+    if (!trimmed || !ongoingSummary) {
+      return;
+    }
+
+    const newId = `todo-playground-${Date.now()}`;
+    const nextSummary: OngoingSummary = {
+      ...ongoingSummary,
+      needAttention: [
+        ...ongoingSummary.needAttention,
+        { id: newId, text: trimmed },
+      ],
+      updatedAt: new Date(),
+    };
+
+    setOngoingSummary(nextSummary);
+    setSummaryRelatedConversations(
+      buildRandomSummaryRelatedConversations(nextSummary, expandedConversations)
+    );
+    setWhatsNewPopoverDraft("");
+    setIsWhatsNewPopoverOpen(false);
+  };
+
   useEffect(() => {
     return () => {
       if (showFocusTimeoutRef.current !== null) {
@@ -1431,6 +1487,42 @@ export function GroupConversationView({
 
       return nextChecked;
     };
+
+    if (!WHATS_NEW_PLAYGROUND_FAKE_UPDATE_ENABLED) {
+      const stableSummary = scenario.after;
+      const stableRelatedConversations = buildRandomSummaryRelatedConversations(
+        stableSummary,
+        expandedConversations
+      );
+
+      setOngoingSummary(stableSummary);
+      setIsSummaryUpdating(false);
+      setIsOngoingSummaryExpanded(false);
+      setSummaryRelatedConversations(stableRelatedConversations);
+      setCheckedSummaryItems(withScenarioAutoChecks({}, stableSummary));
+      setSummaryItemDiffByKey({});
+      setAutoCheckRationaleByKey(
+        getAutoCheckRationales(
+          stableSummary,
+          stableRelatedConversations,
+          scenario.autoCheckedItemIds
+        )
+      );
+      setTypingItemKeys(new Set());
+      setEnteringItemKeys(new Set());
+      setExitingItemKeys(new Set());
+
+      return () => {
+        if (deltaTransitionStartTimeoutRef.current !== null) {
+          window.clearTimeout(deltaTransitionStartTimeoutRef.current);
+          deltaTransitionStartTimeoutRef.current = null;
+        }
+        if (deltaTransitionTimeoutRef.current !== null) {
+          window.clearTimeout(deltaTransitionTimeoutRef.current);
+          deltaTransitionTimeoutRef.current = null;
+        }
+      };
+    }
 
     setOngoingSummary(initialSummary);
     setIsSummaryUpdating(true);
@@ -1560,6 +1652,29 @@ export function GroupConversationView({
       }
     };
   }, [expandedConversations, hasHistory, space.id, space.name]);
+
+  useLayoutEffect(() => {
+    if (!hasHistory || !ongoingSummary) {
+      setIsOngoingSummaryOverflowingCollapsed(false);
+      return;
+    }
+
+    const element = summaryWhatsNewContentRef.current;
+    if (!element) {
+      return;
+    }
+
+    const measureOverflow = () => {
+      setIsOngoingSummaryOverflowingCollapsed(
+        element.scrollHeight > SUMMARY_COLLAPSED_MAX_HEIGHT_PX + 2
+      );
+    };
+
+    measureOverflow();
+    const resizeObserver = new ResizeObserver(measureOverflow);
+    resizeObserver.observe(element);
+    return () => resizeObserver.disconnect();
+  }, [hasHistory, ongoingSummary]);
 
   // Reset data sources when space changes
   useEffect(() => {
@@ -2064,137 +2179,203 @@ export function GroupConversationView({
                       }
                     />
                     <div className="s-flex-1" />
-                    <Button
-                      size="xs"
-                      variant="outline"
-                      icon={WindIcon}
-                      tooltip="Remove checked items"
-                      label="Clean"
-                      onClick={() => {
-                        const checkedKeys = new Set(
-                          Object.entries(checkedSummaryItems)
-                            .filter(([, checked]) => checked)
-                            .map(([key]) => key)
-                        );
-
-                        if (checkedKeys.size === 0) {
-                          return;
-                        }
-
-                        const checkedKeysArray = Array.from(checkedKeys);
-                        const exitingChecklistKeys = checkedKeysArray.filter(
-                          (key) =>
-                            key.startsWith("needAttention::") ||
-                            key.startsWith("keyDecisions::")
-                        );
-
-                        setExitingItemKeys(
-                          (previousExiting) =>
-                            new Set([
-                              ...previousExiting,
-                              ...exitingChecklistKeys,
-                            ])
-                        );
-
-                        if (cleanTransitionTimeoutRef.current !== null) {
-                          window.clearTimeout(
-                            cleanTransitionTimeoutRef.current
+                    <div className="s-flex s-items-center s-gap-2">
+                      <PopoverRoot
+                        open={isWhatsNewPopoverOpen}
+                        onOpenChange={(open) => {
+                          setIsWhatsNewPopoverOpen(open);
+                          if (!open) {
+                            setWhatsNewPopoverDraft("");
+                          }
+                        }}
+                      >
+                        <PopoverTrigger asChild>
+                          <Button
+                            size="xs"
+                            variant="outline"
+                            icon={PlusIcon}
+                            label="New"
+                            tooltip="Add item"
+                          />
+                        </PopoverTrigger>
+                        <PopoverContent
+                          side="bottom"
+                          align="end"
+                          className="s-w-80 s-p-4"
+                        >
+                          <div className="s-flex s-flex-col s-gap-3">
+                            {isWhatsNewPopoverOpen ? (
+                              <RichTextArea
+                                mentionScope="users"
+                                variant="embedded"
+                                placeholder="Add an update… (type @ to mention)"
+                                onTextChange={setWhatsNewPopoverDraft}
+                                showFormattingMenu={false}
+                                showAskSidekickMenu={false}
+                                className={cn(
+                                  "s-min-h-24 s-max-h-48 s-overflow-y-auto",
+                                  "placeholder:s-text-muted-foreground dark:placeholder:s-text-muted-foreground-night",
+                                  "s-rounded-xl s-border s-border-border dark:s-border-border-night",
+                                  "s-bg-muted-background dark:s-bg-muted-background-night"
+                                )}
+                              />
+                            ) : null}
+                            <div className="s-flex s-justify-end">
+                              <Button
+                                variant="highlight"
+                                icon={ArrowUpIcon}
+                                size="xs"
+                                isRounded
+                                tooltip="Send message"
+                                disabled={!whatsNewPopoverDraft.trim()}
+                                onClick={handleSendWhatsNewPopover}
+                              />
+                            </div>
+                          </div>
+                        </PopoverContent>
+                      </PopoverRoot>
+                      <Button
+                        size="xs"
+                        variant="outline"
+                        icon={WindIcon}
+                        tooltip="Remove checked items"
+                        label="Clean"
+                        onClick={() => {
+                          const checkedKeys = new Set(
+                            Object.entries(checkedSummaryItems)
+                              .filter(([, checked]) => checked)
+                              .map(([key]) => key)
                           );
-                        }
 
-                        cleanTransitionTimeoutRef.current = window.setTimeout(
-                          () => {
-                            setOngoingSummary((previousSummary) => {
-                              if (!previousSummary) {
-                                return previousSummary;
-                              }
-                              const updatedSummary = {
-                                ...previousSummary,
-                                needAttention:
-                                  previousSummary.needAttention.filter(
-                                    (item) =>
-                                      !checkedKeys.has(
-                                        getSummaryItemKey("needAttention", item)
-                                      )
-                                  ),
-                                keyDecisions:
-                                  previousSummary.keyDecisions.filter(
-                                    (item) =>
-                                      !checkedKeys.has(
-                                        getSummaryItemKey("keyDecisions", item)
-                                      )
-                                  ),
-                                projectPulse:
-                                  previousSummary.projectPulse.filter(
-                                    (item) =>
-                                      !checkedKeys.has(
-                                        getSummaryItemKey("projectPulse", item)
-                                      )
-                                  ),
-                              };
-                              setSummaryRelatedConversations(
-                                (previousLinks) => {
-                                  const validKeys = new Set(
-                                    getSummaryItemKeys(updatedSummary)
-                                  );
-                                  return Object.fromEntries(
-                                    Object.entries(previousLinks).filter(
-                                      ([key]) => validKeys.has(key)
-                                    )
-                                  );
+                          if (checkedKeys.size === 0) {
+                            return;
+                          }
+
+                          const checkedKeysArray = Array.from(checkedKeys);
+                          const exitingChecklistKeys = checkedKeysArray.filter(
+                            (key) =>
+                              key.startsWith("needAttention::") ||
+                              key.startsWith("keyDecisions::")
+                          );
+
+                          setExitingItemKeys(
+                            (previousExiting) =>
+                              new Set([
+                                ...previousExiting,
+                                ...exitingChecklistKeys,
+                              ])
+                          );
+
+                          if (cleanTransitionTimeoutRef.current !== null) {
+                            window.clearTimeout(
+                              cleanTransitionTimeoutRef.current
+                            );
+                          }
+
+                          cleanTransitionTimeoutRef.current = window.setTimeout(
+                            () => {
+                              setOngoingSummary((previousSummary) => {
+                                if (!previousSummary) {
+                                  return previousSummary;
                                 }
-                              );
-                              return updatedSummary;
-                            });
+                                const updatedSummary = {
+                                  ...previousSummary,
+                                  needAttention:
+                                    previousSummary.needAttention.filter(
+                                      (item) =>
+                                        !checkedKeys.has(
+                                          getSummaryItemKey(
+                                            "needAttention",
+                                            item
+                                          )
+                                        )
+                                    ),
+                                  keyDecisions:
+                                    previousSummary.keyDecisions.filter(
+                                      (item) =>
+                                        !checkedKeys.has(
+                                          getSummaryItemKey(
+                                            "keyDecisions",
+                                            item
+                                          )
+                                        )
+                                    ),
+                                  projectPulse:
+                                    previousSummary.projectPulse.filter(
+                                      (item) =>
+                                        !checkedKeys.has(
+                                          getSummaryItemKey(
+                                            "projectPulse",
+                                            item
+                                          )
+                                        )
+                                    ),
+                                };
+                                setSummaryRelatedConversations(
+                                  (previousLinks) => {
+                                    const validKeys = new Set(
+                                      getSummaryItemKeys(updatedSummary)
+                                    );
+                                    return Object.fromEntries(
+                                      Object.entries(previousLinks).filter(
+                                        ([key]) => validKeys.has(key)
+                                      )
+                                    );
+                                  }
+                                );
+                                return updatedSummary;
+                              });
 
-                            setCheckedSummaryItems((previousChecked) =>
-                              Object.fromEntries(
-                                Object.entries(previousChecked).filter(
-                                  ([key]) => !checkedKeys.has(key)
-                                )
-                              )
-                            );
-                            setSummaryItemDiffByKey((previousDiffByKey) =>
-                              Object.fromEntries(
-                                Object.entries(previousDiffByKey).filter(
-                                  ([key]) => !checkedKeys.has(key)
-                                )
-                              )
-                            );
-                            setAutoCheckRationaleByKey(
-                              (previousAutoCheckRationaleByKey) =>
+                              setCheckedSummaryItems((previousChecked) =>
                                 Object.fromEntries(
-                                  Object.entries(
-                                    previousAutoCheckRationaleByKey
-                                  ).filter(([key]) => !checkedKeys.has(key))
+                                  Object.entries(previousChecked).filter(
+                                    ([key]) => !checkedKeys.has(key)
+                                  )
                                 )
-                            );
-                            setTypingItemKeys((previousTypingItemKeys) => {
-                              const nextTypingItemKeys = new Set(
-                                previousTypingItemKeys
                               );
-                              checkedKeysArray.forEach((key) =>
-                                nextTypingItemKeys.delete(key)
+                              setSummaryItemDiffByKey((previousDiffByKey) =>
+                                Object.fromEntries(
+                                  Object.entries(previousDiffByKey).filter(
+                                    ([key]) => !checkedKeys.has(key)
+                                  )
+                                )
                               );
-                              return nextTypingItemKeys;
-                            });
-                            setExitingItemKeys((previousExiting) => {
-                              const nextExiting = new Set(previousExiting);
-                              exitingChecklistKeys.forEach((key) =>
-                                nextExiting.delete(key)
+                              setAutoCheckRationaleByKey(
+                                (previousAutoCheckRationaleByKey) =>
+                                  Object.fromEntries(
+                                    Object.entries(
+                                      previousAutoCheckRationaleByKey
+                                    ).filter(([key]) => !checkedKeys.has(key))
+                                  )
                               );
-                              return nextExiting;
-                            });
-                            cleanTransitionTimeoutRef.current = null;
-                          },
-                          SUMMARY_ITEM_TRANSITION_MS
-                        );
-                      }}
-                    />
+                              setTypingItemKeys((previousTypingItemKeys) => {
+                                const nextTypingItemKeys = new Set(
+                                  previousTypingItemKeys
+                                );
+                                checkedKeysArray.forEach((key) =>
+                                  nextTypingItemKeys.delete(key)
+                                );
+                                return nextTypingItemKeys;
+                              });
+                              setExitingItemKeys((previousExiting) => {
+                                const nextExiting = new Set(previousExiting);
+                                exitingChecklistKeys.forEach((key) =>
+                                  nextExiting.delete(key)
+                                );
+                                return nextExiting;
+                              });
+                              cleanTransitionTimeoutRef.current = null;
+                            },
+                            SUMMARY_ITEM_TRANSITION_MS
+                          );
+                        }}
+                      />
+                    </div>
                   </div>
 
                   <div className="s-relative">
                     <div
+                      ref={summaryWhatsNewContentRef}
                       className="s-flex s-flex-col s-gap-4"
                       style={{
                         maxHeight: isOngoingSummaryExpanded
@@ -2396,6 +2577,7 @@ export function GroupConversationView({
                       )}
                     </div>
                     {!isOngoingSummaryExpanded &&
+                      isOngoingSummaryOverflowingCollapsed &&
                       ongoingSummary.needAttention.length +
                         ongoingSummary.keyDecisions.length +
                         ongoingSummary.projectPulse.length >
@@ -2403,24 +2585,25 @@ export function GroupConversationView({
                         <div className="s-pointer-events-none s-absolute s-bottom-0 s-left-0 s-right-0 s-h-10 s-bg-gradient-to-b s-from-transparent s-to-background dark:s-to-background-night" />
                       )}
                   </div>
-                  {ongoingSummary.needAttention.length +
-                    ongoingSummary.keyDecisions.length +
-                    ongoingSummary.projectPulse.length >
-                    0 && (
-                    <div>
-                      <Button
-                        size="xs"
-                        variant="outline"
-                        label={
-                          isOngoingSummaryExpanded ? "Show less" : "Show more"
-                        }
-                        onClick={() =>
-                          setIsOngoingSummaryExpanded((previous) => !previous)
-                        }
-                        aria-expanded={isOngoingSummaryExpanded}
-                      />
-                    </div>
-                  )}
+                  {isOngoingSummaryOverflowingCollapsed &&
+                    ongoingSummary.needAttention.length +
+                      ongoingSummary.keyDecisions.length +
+                      ongoingSummary.projectPulse.length >
+                      0 && (
+                      <div>
+                        <Button
+                          size="xs"
+                          variant="outline"
+                          label={
+                            isOngoingSummaryExpanded ? "Show less" : "Show more"
+                          }
+                          onClick={() =>
+                            setIsOngoingSummaryExpanded((previous) => !previous)
+                          }
+                          aria-expanded={isOngoingSummaryExpanded}
+                        />
+                      </div>
+                    )}
                 </div>
               )}
               {/* Conversations list */}
@@ -2466,15 +2649,18 @@ export function GroupConversationView({
                                   })
                                   .replace("24:", "00:");
 
-                                // Generate random counts respecting mentionCount <= unreadCount <= replyCount
+                                // Stable counts per row (avoid flicker on unrelated re-renders)
+                                const replyMetaSeed = `${conversation.id}-${bucketKey}-replymeta`;
                                 const replyCount = Math.floor(
-                                  Math.random() * 8 + 1
+                                  seededRandom(replyMetaSeed, 0) * 8 + 1
                                 );
                                 const messageCount = Math.floor(
-                                  Math.random() * replyCount + 1
+                                  seededRandom(replyMetaSeed, 1) * replyCount +
+                                    1
                                 );
                                 const mentionCount = Math.floor(
-                                  Math.random() * (messageCount + 1)
+                                  seededRandom(replyMetaSeed, 2) *
+                                    (messageCount + 1)
                                 );
 
                                 const baseConversationId =
