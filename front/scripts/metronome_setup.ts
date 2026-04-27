@@ -711,7 +711,7 @@ const FREE_MONTHLY_RECURRING_CREDITS: RecurringCreditDef = {
   starting_at_offset: { unit: "DAYS", value: 0 }, // starts immediately
   applicable_product_tags: [USAGE_TAG],
   recurrence_frequency: "MONTHLY",
-  name: "Free Monthly Credit",
+  name: "Free Monthly Credits",
 };
 
 // Seat subscription definition shared by all legacy packages.
