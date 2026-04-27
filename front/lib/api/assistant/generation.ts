@@ -295,10 +295,10 @@ function constructSkillsSection({
     skillsSection += "\n### ENABLED SKILLS\n";
     skillsSection += "The following skills are currently enabled:\n";
     skillsSection += [
-      ...systemSkills.map(
+      ...sortedSystemSkills.map(
         (skill) => `<${skill.name}>\n${skill.instructions}\n</${skill.name}>`
       ),
-      ...enabledSkills.map((skill) => getEnabledSkillInstructions(skill)),
+      ...sortedEnabledSkills.map((skill) => getEnabledSkillInstructions(skill)),
     ].join("\n");
   }
 
