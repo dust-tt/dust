@@ -171,15 +171,28 @@ export function mountFloorScene(
       }
     }
   }
+  // Spread agents that share a starting room so they don't stack at the
+  // same point. Offsets are applied around the room's center; agent radius
+  // is ~22 plan-units so 70 between centers leaves a clean gap.
+  const AGENT_SPREAD: Array<[number, number]> = [
+    [0, 0],
+    [-70, -10],
+    [70, -10],
+    [0, 60],
+    [-70, 60],
+    [70, 60],
+  ];
+  const agentSlotInRoom: Record<string, number> = {};
   const agents = allAgentDefs.map((d: AgentDef) => {
     const el = buildAgent(d.id, d.label);
     agentsLayer.appendChild(el);
     el._tagTxt.textContent = d.label;
-    // Position the agent in the center of its starting room's first
-    // interior rect, lifted to z=22 like the humans.
     const rect = rooms[d.startRoom].interior[0];
-    const planX = rect.x + rect.w / 2;
-    const planY = rect.y + rect.h / 2;
+    const slot = agentSlotInRoom[d.startRoom] ?? 0;
+    agentSlotInRoom[d.startRoom] = slot + 1;
+    const [dx, dy] = AGENT_SPREAD[slot % AGENT_SPREAD.length];
+    const planX = rect.x + rect.w / 2 + dx;
+    const planY = rect.y + rect.h / 2 + dy;
     const [sx, sy] = iso(planX, planY, 22);
     el.style.setProperty("--x", sx + "px");
     el.style.setProperty("--y", sy + "px");
