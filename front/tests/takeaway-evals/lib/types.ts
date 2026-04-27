@@ -1,10 +1,6 @@
 import type { ExtractionResult } from "@app/lib/project_todo/analyze_document/types";
 import type { ProjectTodoSourceType } from "@app/types/project_todo";
-import type {
-  TodoVersionedActionItem,
-  TodoVersionedKeyDecision,
-  TodoVersionedNotableFact,
-} from "@app/types/takeaways";
+import type { TodoVersionedActionItem } from "@app/types/takeaways";
 
 // ── Mock data types ─────────────────────────────────────────────────────────
 
@@ -24,8 +20,6 @@ export interface MockDocument {
 
 export interface MockPreviousVersion {
   actionItems: TodoVersionedActionItem[];
-  notableFacts: TodoVersionedNotableFact[];
-  keyDecisions: TodoVersionedKeyDecision[];
 }
 
 // ── Assertions ──────────────────────────────────────────────────────────────

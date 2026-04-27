@@ -18,7 +18,6 @@ import { startAgentForProjectTodo } from "@app/lib/project_todo/start_agent";
 import { ProjectTodoResource } from "@app/lib/resources/project_todo_resource";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
-import type { ProjectTodoCategory } from "@app/types/project_todo";
 import { Err, Ok } from "@app/types/shared/result";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -68,12 +67,7 @@ export function createProjectTodosTools(
 ): ToolDefinition[] {
   const owner = auth.getNonNullableWorkspace();
   const handlers: ToolHandlers<typeof PROJECT_TODOS_TOOLS_METADATA> = {
-    list_todos: async ({
-      status = "open",
-      daysAgo = 7,
-      category,
-      dustProject,
-    }) => {
+    list_todos: async ({ status = "open", daysAgo = 7, dustProject }) => {
       return withErrorHandling(async () => {
         const contextRes = await getProjectSpace(auth, {
           agentLoopContext,
@@ -105,10 +99,6 @@ export function createProjectTodosTools(
           );
         }
 
-        if (category) {
-          todos = todos.filter((t) => t.category === category);
-        }
-
         if (todos.length === 0) {
           return new Ok([{ type: "text" as const, text: "No TODOs found." }]);
         }
@@ -125,33 +115,21 @@ export function createProjectTodosTools(
           }
           return new Ok([{ type: "text" as const, text: lines.join("\n") }]);
         }
-
-        // "open" or "all": group by category.
-        const grouped = new Map<ProjectTodoCategory, ProjectTodoResource[]>();
-        for (const todo of todos) {
-          const list = grouped.get(todo.category) ?? [];
-          list.push(todo);
-          grouped.set(todo.category, list);
-        }
-
         const label =
           status === "open"
             ? `Found ${todos.length} open TODO(s):\n`
             : `Found ${todos.length} TODO(s):\n`;
+
         const lines: string[] = [label];
-        for (const [cat, items] of grouped) {
-          lines.push(`### ${cat}`);
-          for (const todo of items) {
-            lines.push(formatTodo(todo));
-          }
-          lines.push("");
+        for (const todo of todos) {
+          lines.push(formatTodo(todo));
         }
 
         return new Ok([{ type: "text" as const, text: lines.join("\n") }]);
       }, "Failed to list TODOs");
     },
 
-    create_todo: async ({ creatorType, text, category, dustProject }) => {
+    create_todo: async ({ creatorType, text, dustProject }) => {
       return withErrorHandling(async () => {
         const contextRes = await getProjectSpace(auth, {
           agentLoopContext,
@@ -173,7 +151,6 @@ export function createProjectTodosTools(
               ? (agentLoopContext?.runContext?.agentConfiguration?.sId ?? null)
               : null,
           createdByUserId: creatorType === "user" ? currentUser.id : null,
-          category: category ?? "to_do",
           text,
           status: "todo",
           doneAt: null,
@@ -213,7 +190,6 @@ export function createProjectTodosTools(
             createdByAgentConfigurationId:
               creatorType === "agent" ? agentConfigId : null,
             createdByUserId: creatorType === "user" ? currentUser.id : null,
-            category: item.category ?? "to_do",
             text: item.text,
             status: "todo",
             doneAt: null,

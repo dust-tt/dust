@@ -1,7 +1,6 @@
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { PROJECT_TODO_CATEGORIES } from "@app/types/project_todo";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
@@ -30,10 +29,6 @@ export const PROJECT_TODOS_TOOLS_METADATA = createToolsRecord({
         .describe(
           "When status is 'done' or 'all', limit completed TODOs to this many days back. Defaults to 7."
         ),
-      category: z
-        .enum(PROJECT_TODO_CATEGORIES)
-        .optional()
-        .describe("Filter by category."),
       dustProject: ConfigurableToolInputSchemas[
         INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
       ]
@@ -57,14 +52,6 @@ export const PROJECT_TODOS_TOOLS_METADATA = createToolsRecord({
           "Who has the initiative of creating the TODO ? Use 'user' when the user explicitely asked for it."
         ),
       text: z.string().min(1).describe("The TODO description."),
-      category: z
-        .enum(PROJECT_TODO_CATEGORIES)
-        .optional()
-        .describe(
-          "Category. Defaults to 'to_do'. " +
-            "to_do: action items and follow-ups; " +
-            "to_know: key decisions, notable updates, and things to remember."
-        ),
       dustProject: ConfigurableToolInputSchemas[
         INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
       ]
@@ -93,10 +80,6 @@ export const PROJECT_TODOS_TOOLS_METADATA = createToolsRecord({
         .array(
           z.object({
             text: z.string().min(1).describe("The TODO description."),
-            category: z
-              .enum(PROJECT_TODO_CATEGORIES)
-              .optional()
-              .describe("Category. Defaults to 'to_do'."),
           })
         )
         .min(1)

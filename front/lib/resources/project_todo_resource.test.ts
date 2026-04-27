@@ -88,7 +88,6 @@ describe("ProjectTodoResource", () => {
         markedAsDoneByType: null,
         markedAsDoneByUserId: null,
         markedAsDoneByAgentConfigurationId: null,
-        category: "to_do",
         text: "Agent-created todo",
         status: "todo",
         doneAt: null,

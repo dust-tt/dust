@@ -133,8 +133,6 @@ Score 3 if only Alice's action item is extracted, agent responses correctly igno
             detectedDoneRationale: null,
           },
         ],
-        notableFacts: [],
-        keyDecisions: [],
       },
       expectedAssertions: [
         shouldExtractActionItem("migration", { status: "done" }),

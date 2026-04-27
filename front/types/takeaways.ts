@@ -9,18 +9,3 @@ export type TodoVersionedActionItem = {
   detectedDoneAt: string | null;
   detectedDoneRationale: string | null;
 };
-
-export type TodoVersionedNotableFact = {
-  sId: string;
-  shortDescription: string;
-  relevantUserIds: string[];
-};
-
-export type TodoVersionedKeyDecisionStatus = "decided" | "open";
-
-export type TodoVersionedKeyDecision = {
-  sId: string;
-  shortDescription: string;
-  relevantUserIds: string[];
-  status: TodoVersionedKeyDecisionStatus;
-};

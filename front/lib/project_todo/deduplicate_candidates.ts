@@ -37,7 +37,6 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
-import type { ProjectTodoCategory } from "@app/types/project_todo";
 import type { ModelId } from "@app/types/shared/model_id";
 import { startActiveObservation } from "@langfuse/tracing";
 import { z } from "zod";
@@ -48,7 +47,6 @@ export type DeduplicateCandidate = {
   itemId: string;
   userId: ModelId;
   text: string;
-  category: ProjectTodoCategory;
 };
 
 // One todo that Phase 3 will touch. A group's candidates all share the same
@@ -68,11 +66,8 @@ export type DeduplicatedGroup =
     };
 
 // Nested map shape for existing todos passed in by the caller:
-// userId → category → todos.
-export type ExistingTodosByGroup = Map<
-  ModelId,
-  Map<ProjectTodoCategory, ProjectTodoResource[]>
->;
+// userId → todos.
+export type ExistingTodosByUser = Map<ModelId, ProjectTodoResource[]>;
 
 // ── LLM tool ─────────────────────────────────────────────────────────────────
 
@@ -112,12 +107,9 @@ function buildDeduplicationSpec(): AgentActionSpecification {
 // partitions groups back into (existing, candidates) by index in
 // resolveDeduplicationGroups.
 function buildDeduplicationPrompt(
-  category: ProjectTodoCategory,
   existingTodos: ProjectTodoResource[],
   candidates: DeduplicateCandidate[]
 ): string {
-  const categoryLabel = category.replace(/_/g, " ");
-
   const lines: string[] = [];
   let i = 0;
   for (const t of existingTodos) {
@@ -130,7 +122,7 @@ function buildDeduplicationPrompt(
   }
 
   return [
-    `Group TODO items for category "${categoryLabel}" that describe the same underlying task.`,
+    `Group TODO items that describe the same underlying task.`,
     "",
     "Two items are duplicates only if completing one would make the other",
     "redundant. If both could independently appear on a task list without",
@@ -172,8 +164,7 @@ export async function runDeduplicationLLMCall(
   }
 ): Promise<number[][]> {
   const owner = auth.getNonNullableWorkspace();
-  const category = candidates[0].category;
-  const prompt = buildDeduplicationPrompt(category, existingTodos, candidates);
+  const prompt = buildDeduplicationPrompt(existingTodos, candidates);
   const specification = buildDeduplicationSpec();
 
   const conv: ModelConversationTypeMultiActions = {
@@ -332,62 +323,53 @@ export async function batchDeduplicateCandidates(
   {
     model,
     candidates,
-    existingTodosByGroup,
+    existingTodosByUser,
   }: {
     model: ModelConfigurationType;
     candidates: DeduplicateCandidate[];
-    existingTodosByGroup: ExistingTodosByGroup;
+    existingTodosByUser: ExistingTodosByUser;
   }
 ): Promise<DeduplicatedGroup[]> {
   const results: DeduplicatedGroup[] = [];
 
-  // Group candidates by userId → category → candidates.
-  const candidatesByGroup = new Map<
-    ModelId,
-    Map<ProjectTodoCategory, DeduplicateCandidate[]>
-  >();
+  // Group candidates by userId → candidates.
+  const candidatesByUserId = new Map<ModelId, DeduplicateCandidate[]>();
   for (const candidate of candidates) {
-    const byCategory =
-      candidatesByGroup.get(candidate.userId) ??
-      new Map<ProjectTodoCategory, DeduplicateCandidate[]>();
-    const bucket = byCategory.get(candidate.category) ?? [];
+    const bucket = candidatesByUserId.get(candidate.userId) ?? [];
+
     bucket.push(candidate);
-    byCategory.set(candidate.category, bucket);
-    candidatesByGroup.set(candidate.userId, byCategory);
+    candidatesByUserId.set(candidate.userId, bucket);
   }
 
   // Flatten to a list of (candidates, existingTodos) jobs so the executor
   // can schedule them at a fixed parallelism.
   const jobs: Array<{
-    groupCandidates: DeduplicateCandidate[];
+    candidates: DeduplicateCandidate[];
     existingTodos: ProjectTodoResource[];
   }> = [];
-  for (const [userId, byCategory] of candidatesByGroup) {
-    const existingByCategory = existingTodosByGroup.get(userId);
-    for (const [category, groupCandidates] of byCategory) {
-      const existingTodos = existingByCategory?.get(category) ?? [];
-      jobs.push({ groupCandidates, existingTodos });
-    }
+  for (const [userId, candidates] of candidatesByUserId) {
+    const existingTodos = existingTodosByUser.get(userId) ?? [];
+    jobs.push({ candidates, existingTodos });
   }
 
   await concurrentExecutor(
     jobs,
-    async ({ groupCandidates, existingTodos }) => {
+    async ({ candidates, existingTodos }) => {
       // Fast path: one candidate, no existing. No LLM call needed; emit a
       // singleton "new" group directly.
-      if (existingTodos.length === 0 && groupCandidates.length <= 1) {
-        results.push({ kind: "new", candidates: groupCandidates });
+      if (existingTodos.length === 0 && candidates.length <= 1) {
+        results.push({ kind: "new", candidates });
         return;
       }
 
       const llmGroups = await runDeduplicationLLMCall(auth, {
         model,
-        candidates: groupCandidates,
+        candidates,
         existingTodos,
       });
 
       results.push(
-        ...resolveDeduplicationGroups(groupCandidates, existingTodos, llmGroups)
+        ...resolveDeduplicationGroups(candidates, existingTodos, llmGroups)
       );
     },
     { concurrency: 4 }
