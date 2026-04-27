@@ -5,8 +5,11 @@
 
 import { isTextContent } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { rewriteContentForModel } from "@app/lib/actions/mcp_utils";
-import { getEnableSkillInstructionsFromOutputBlock } from "@app/lib/api/actions/servers/skill_management/rendering";
-import { renderEnabledSkillUserMessageFromInstructions } from "@app/lib/api/assistant/skills_rendering";
+import { getEnableSkillIdFromOutputBlock } from "@app/lib/api/actions/servers/skill_management/rendering";
+import {
+  getEnabledSkillInstructions,
+  renderEnabledSkillUserMessageFromInstructions,
+} from "@app/lib/api/assistant/skills_rendering";
 import type { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import {
@@ -14,6 +17,7 @@ import {
   serializeMention,
 } from "@app/lib/mentions/format";
 import { renderLightContentFragmentForModel } from "@app/lib/resources/content_fragment_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import logger from "@app/logger/logger";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type {
@@ -48,28 +52,46 @@ export type Step = {
   }[];
 };
 
-function renderFollowUpMessagesForAction(
+async function renderFollowUpMessagesForAction(
+  auth: Authenticator,
   action: AgentMCPActionWithOutputType,
   {
     renderSkillsAsUserMessages,
   }: {
     renderSkillsAsUserMessages: boolean;
   }
-): UserMessageTypeModel[] {
+): Promise<UserMessageTypeModel[]> {
   if (!renderSkillsAsUserMessages) {
     return [];
   }
 
-  return removeNulls(
-    (action.output ?? []).map((outputBlock) => {
-      const marker = getEnableSkillInstructionsFromOutputBlock(outputBlock);
-      if (!marker) {
-        return null;
-      }
+  const followUpMessages: UserMessageTypeModel[] = [];
 
-      return renderEnabledSkillUserMessageFromInstructions(marker);
-    })
-  );
+  for (const outputBlock of action.output ?? []) {
+    const skillId = getEnableSkillIdFromOutputBlock(outputBlock);
+    if (!skillId) {
+      continue;
+    }
+
+    const skill = await SkillResource.fetchById(auth, skillId);
+    if (!skill) {
+      continue;
+    }
+
+    const [augmentedSkill] =
+      await SkillResource.augmentSkillsWithExtendedSkills(auth, [skill]);
+    if (!augmentedSkill) {
+      continue;
+    }
+
+    followUpMessages.push(
+      renderEnabledSkillUserMessageFromInstructions({
+        skillInstructions: getEnabledSkillInstructions(augmentedSkill),
+      })
+    );
+  }
+
+  return followUpMessages;
 }
 
 /**
@@ -135,7 +157,7 @@ export function renderActionForMultiActionsModel(
 /**
  * Processes agent message steps
  */
-export function getSteps(
+export async function getSteps(
   auth: Authenticator,
   {
     model,
@@ -152,7 +174,7 @@ export function getSteps(
     onMissingAction: "inject-placeholder" | "skip";
     renderSkillsAsUserMessages?: boolean;
   }
-): Step[] {
+): Promise<Step[]> {
   const supportedModel = getSupportedModelConfig(model);
   if (!supportedModel) {
     return [];
@@ -172,15 +194,13 @@ export function getSteps(
   for (const action of actions) {
     const stepIndex = action.step;
     stepByStepIndex[stepIndex] = stepByStepIndex[stepIndex] || emptyStep();
-    // All these calls are not async, so we're not doing a Promise.all for now but might need to
-    // be reconsidered in the future.
     stepByStepIndex[stepIndex].actions.push({
       call: {
         id: action.functionCallId,
         name: action.functionCallName,
         arguments: JSON.stringify(action.params),
       },
-      followUpMessages: renderFollowUpMessagesForAction(action, {
+      followUpMessages: await renderFollowUpMessagesForAction(auth, action, {
         renderSkillsAsUserMessages,
       }),
       result: renderActionForMultiActionsModel(action),
