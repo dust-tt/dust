@@ -63,7 +63,10 @@ export function parseRichMessage(msg: string): any[] {
       line = line.slice(2);
     }
     let lineStart = true;
-    const re = /(\*\*[^*]+\*\*|@[A-Za-z][A-Za-z0-9_]*)/g;
+    // Mentions accept Unicode letters/digits so accented first names
+    // (Clément, Adèle, Théo, …) and dashes (Lucien-Brun) stay inside the
+    // chip instead of breaking at the first non-ASCII character.
+    const re = /(\*\*[^*]+\*\*|@\p{L}[\p{L}\p{N}_-]*)/gu;
     let lastIdx = 0;
     let m: RegExpExecArray | null;
     while ((m = re.exec(line)) !== null) {
