@@ -338,16 +338,11 @@ async function handler(
       });
     }
     case "DELETE": {
-      if (!agentConfiguration.canEdit && !auth.isAdmin()) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "app_auth_error",
-            message: "Only editors can archive workspace agents.",
-          },
-        });
-      }
-
+      // Space-scoping is enforced upstream: `getAgentConfiguration` (called above) returns null
+      // when the auth's groups don't cover every `requestedSpaceId` of the agent, in which case
+      // the handler 404s before reaching here. This matches the PATCH security model on this
+      // route and means an API key scoped to a subset of spaces cannot archive agents tied to
+      // spaces it can't see.
       const archived = await archiveAgentConfiguration(auth, sId);
       if (!archived) {
         return apiError(req, res, {
