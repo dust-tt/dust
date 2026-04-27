@@ -126,85 +126,95 @@ async function backfillCreditsOfType(
 
     let result: Result<{ id: string } | null, Error>;
 
-    if (type === "committed") {
-      result = await createMetronomeCommit({
-        metronomeCustomerId,
-        productId: getProductPrepaidCommitId(),
-        creditTypeId: getCreditTypeProgrammaticUsdId(),
-        amount: initialAmount,
-        startingAt,
-        endingBefore,
-        name: `Prepaid commit backfill (${startingAt.toISOString().split("T")[0]})`,
-        idempotencyKey: `createCommit-${workspace.sId}-${startingAt.getTime()}-${endingBefore.getTime()}`,
-      });
-    } else {
-      if (!credit?.invoiceOrLineItemId) {
-        logger.warn(
-          {
-            workspaceId: workspace.sId,
-            creditId: credit.id,
-          },
-          `[Backfill] Credit missing invoiceOrLineItemId, cannot determine if "free-renewal-sub" or "free-poke", skipping`
-        );
-        continue;
-      }
-      if (credit.invoiceOrLineItemId.startsWith("free-renewal-sub")) {
-        const client = getMetronomeClient();
-        const contractsResponse = await client.v2.contracts.list({
-          customer_id: metronomeCustomerId,
-        });
-        const contract = contractsResponse.data[0];
-        const freeCreditProductId = getProductFreeMonthlyCreditId();
-        const existingRecurringCredit = contract.recurring_credits?.find(
-          (rc) => rc.product.id === freeCreditProductId
-        );
-
-        if (!existingRecurringCredit) {
-          logger.info(
-            { workspaceId: workspace.sId, contractId: contract.id },
-            "[Backfill] Recurring credit does not exist on contract, skipping"
-          );
-          continue;
-        }
-        const creditsResponse = await client.v1.customers.credits.list({
-          customer_id: metronomeCustomerId,
-          covering_date: new Date().toISOString(),
-          include_contract_credits: true,
-        });
-        const currentRecurringCredit = creditsResponse.data.find(
-          (c) => c.recurring_credit_id === existingRecurringCredit.id
-        );
-        const segmentId =
-          currentRecurringCredit?.access_schedule?.schedule_items[0]?.id;
-
-        if (!segmentId) {
-          logger.info(
-            { workspaceId: workspace.sId, contractId: contract.id },
-            "[Backfill] No active segment found for recurring credit, skipping"
-          );
-          continue;
-        }
-
-        result = await updateMetronomeCreditSegmentAmount({
+    switch (type) {
+      case "committed":
+        result = await createMetronomeCommit({
           metronomeCustomerId,
-          contractId: contract.id,
-          creditId: currentRecurringCredit.id,
-          segmentId,
-          amount: initialAmount,
-        });
-      } else {
-        // "free-poke" credits
-        result = await createMetronomeCredit({
-          metronomeCustomerId,
-          productId: getProductFreeMonthlyCreditId(),
+          productId: getProductPrepaidCommitId(),
           creditTypeId: getCreditTypeProgrammaticUsdId(),
           amount: initialAmount,
-          startingAt: startingAt.toISOString(),
-          endingBefore: endingBefore.toISOString(),
-          name: `Free poke credit backfill (${startingAt.toISOString().split("T")[0]})`,
-          idempotencyKey: `createCredit-${workspace.sId}-${startingAt.getTime()}-${endingBefore.getTime()}`,
+          startingAt,
+          endingBefore,
+          name: `Prepaid commit backfill (${startingAt.toISOString().split("T")[0]})`,
+          idempotencyKey: `createCommit-${workspace.sId}-${startingAt.getTime()}-${endingBefore.getTime()}`,
         });
+        break;
+      case "free": {
+        if (!credit?.invoiceOrLineItemId) {
+          logger.warn(
+            {
+              workspaceId: workspace.sId,
+              creditId: credit.id,
+            },
+            `[Backfill] Credit missing invoiceOrLineItemId, cannot determine if "free-renewal-sub" or "free-poke", skipping`
+          );
+          continue;
+        }
+        if (credit.invoiceOrLineItemId.startsWith("free-renewal-sub")) {
+          const client = getMetronomeClient();
+          const contractsResponse = await client.v2.contracts.list({
+            customer_id: metronomeCustomerId,
+          });
+          const contract = contractsResponse.data[0];
+          const freeCreditProductId = getProductFreeMonthlyCreditId();
+          const existingRecurringCredit = contract.recurring_credits?.find(
+            (rc) => rc.product.id === freeCreditProductId
+          );
+
+          if (!existingRecurringCredit) {
+            logger.info(
+              { workspaceId: workspace.sId, contractId: contract.id },
+              "[Backfill] Recurring credit does not exist on contract, skipping"
+            );
+            continue;
+          }
+          const creditsResponse = await client.v1.customers.credits.list({
+            customer_id: metronomeCustomerId,
+            covering_date: new Date().toISOString(),
+            include_contract_credits: true,
+          });
+          const currentRecurringCredit = creditsResponse.data.find(
+            (c) => c.recurring_credit_id === existingRecurringCredit.id
+          );
+          const segmentId =
+            currentRecurringCredit?.access_schedule?.schedule_items[0]?.id;
+
+          if (!segmentId) {
+            logger.info(
+              { workspaceId: workspace.sId, contractId: contract.id },
+              "[Backfill] No active segment found for recurring credit, skipping"
+            );
+            continue;
+          }
+
+          result = await updateMetronomeCreditSegmentAmount({
+            metronomeCustomerId,
+            contractId: contract.id,
+            creditId: currentRecurringCredit.id,
+            segmentId,
+            amount: initialAmount,
+          });
+        } else {
+          // "free-poke" credits
+          result = await createMetronomeCredit({
+            metronomeCustomerId,
+            productId: getProductFreeMonthlyCreditId(),
+            creditTypeId: getCreditTypeProgrammaticUsdId(),
+            amount: initialAmount,
+            startingAt: startingAt.toISOString(),
+            endingBefore: endingBefore.toISOString(),
+            name: `Free poke credit backfill (${startingAt.toISOString().split("T")[0]})`,
+            idempotencyKey: `createCredit-${workspace.sId}-${startingAt.getTime()}-${endingBefore.getTime()}`,
+          });
+        }
+        break;
       }
+      default:
+        logger.error(
+          { workspaceId: workspace.sId, creditId: credit.id, type },
+          `[Backfill] Unknown credit type "${type}", skipping`
+        );
+        continue;
     }
 
     if (result.isErr()) {
