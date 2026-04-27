@@ -297,12 +297,15 @@ function constructSkillsSection({
   if (allEnabledSkills.length > 0) {
     skillsSection += "\n### ENABLED SKILLS\n";
     skillsSection += "The following skills are currently enabled:\n";
-    skillsSection += [
+
+    const skillInstructions = [
       ...sortedSystemSkills.map(
         (skill) => `<${skill.name}>\n${skill.instructions}\n</${skill.name}>`
       ),
       ...sortedEnabledSkills.map((skill) => getEnabledSkillInstructions(skill)),
-    ].join("\n");
+    ];
+
+    skillsSection += skillInstructions.join("\n");
   }
 
   // Equipped but not yet enabled skills - show name and description only
@@ -311,13 +314,13 @@ function constructSkillsSection({
     skillsSection +=
       `These skills can be enabled using the \`${ENABLE_SKILL_TOOL_NAME}\` tool. ` +
       "Review their descriptions and enable the appropriate skill when relevant:\n";
-    skillsSection +=
-      sortedEquippedSkills
-        .map(
-          ({ name, agentFacingDescription }) =>
-            `- **${name}**: ${agentFacingDescription}`
-        )
-        .join("\n") + "\n\n";
+    const skillList = sortedEquippedSkills
+      .map(
+        ({ name, agentFacingDescription }) =>
+          `- **${name}**: ${agentFacingDescription}`
+      )
+      .join("\n");
+    skillsSection += skillList + "\n\n";
   }
 
   return skillsSection;
