@@ -1,5 +1,6 @@
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
+import { categorizeConversationRenderErrorMessage } from "@app/lib/api/assistant/errors";
 import type { LLM } from "@app/lib/api/llm/llm";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import { EventError } from "@app/lib/api/llm/types/events";
@@ -18,6 +19,7 @@ import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { withTransaction } from "@app/lib/utils/sql_utils";
+import logger from "@app/logger/logger";
 import type { AgentContentItemType } from "@app/types/assistant/agent_message_content";
 import {
   type AgentMessageStatus,
@@ -266,7 +268,11 @@ export async function storeLlmResult(
  * Create (or reuse) conversations, store the new user messages, reconstruct the
  * full conversation from DB, and submit a batch to the LLM.
  *
- * Returns the batch ID and the conversation sIds in the same order as the input array.
+ * Returns the batch ID and the conversation sIds in the same order as the input
+ * array. Conversations whose rendering fails because the context window is
+ * exceeded are skipped (returned as `null` in `conversationIds`) since
+ * retrying would not help. If every conversation is skipped, returns
+ * `Ok(null)` to signal that no batch was sent.
  */
 export async function sendBatchCallToLlm(
   auth: Authenticator,
@@ -276,12 +282,12 @@ export async function sendBatchCallToLlm(
   Result<
     {
       batchId: string;
-      conversationIds: string[];
-    },
+      conversationIds: (string | null)[];
+    } | null,
     Error
   >
 > {
-  const conversationIds: string[] = [];
+  const conversationIds: (string | null)[] = [];
   const batchMap = new Map<string, LLMStreamParameters>();
 
   const modelConfig = llm.getModelConfig();
@@ -293,7 +299,6 @@ export async function sendBatchCallToLlm(
       return writeBatchResult;
     }
     const conversationResource = writeBatchResult.value;
-    conversationIds.push(conversationResource.sId);
 
     // Reconstruct the full conversation from DB.
     const conversationRes = await getConversation(
@@ -323,13 +328,34 @@ export async function sendBatchCallToLlm(
     });
 
     if (modelConversationRes.isErr()) {
+      // Context window exceeded is non-recoverable for this conversation:
+      // skip it and continue with the rest of the batch instead of failing.
+      if (
+        categorizeConversationRenderErrorMessage(modelConversationRes.error)
+          ?.category === "context_window_exceeded"
+      ) {
+        logger.warn(
+          {
+            conversationId: conversationResource.sId,
+            error: modelConversationRes.error.message,
+          },
+          "sendBatchCallToLlm: skipping conversation, context window exceeded"
+        );
+        conversationIds.push(null);
+        continue;
+      }
       return modelConversationRes;
     }
 
+    conversationIds.push(conversationResource.sId);
     batchMap.set(conversationResource.sId, {
       conversation: modelConversationRes.value.modelConversation,
       ...input,
     });
+  }
+
+  if (batchMap.size === 0) {
+    return new Ok(null);
   }
 
   const batchId = await llm.sendBatchProcessing(batchMap);

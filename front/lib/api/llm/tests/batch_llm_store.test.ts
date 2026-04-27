@@ -132,11 +132,17 @@ describe.skipIf(process.env.RUN_LLM_TEST !== "true")(
         if (sendBatchResult.isErr()) {
           throw sendBatchResult.error;
         }
+        if (!sendBatchResult.value) {
+          throw new Error("Expected a batch to be sent");
+        }
         const { batchId, conversationIds } = sendBatchResult.value;
 
         expect(batchId).toBeTruthy();
         expect(conversationIds).toHaveLength(1);
         const conversationId = conversationIds[0];
+        if (!conversationId) {
+          throw new Error("Expected a conversation id");
+        }
 
         // Verify conversation was created.
         const conversation = await ConversationResource.fetchById(
@@ -175,7 +181,7 @@ describe.skipIf(process.env.RUN_LLM_TEST !== "true")(
           authenticator,
           llm,
           batchId,
-          conversationIds,
+          conversationIds.filter((id): id is string => id !== null),
           agentConfigurationId
         );
 
@@ -335,10 +341,16 @@ describe.skipIf(process.env.RUN_LLM_TEST !== "true")(
         if (sendBatchCallResult1.isErr()) {
           throw sendBatchCallResult1.error;
         }
+        if (!sendBatchCallResult1.value) {
+          throw new Error("Expected a batch to be sent");
+        }
         const { batchId: batchId1, conversationIds: conversationIds1 } =
           sendBatchCallResult1.value;
 
         const conversationId = conversationIds1[0];
+        if (!conversationId) {
+          throw new Error("Expected a conversation id");
+        }
 
         await awaitBatch(llm, batchId1);
 
@@ -347,7 +359,7 @@ describe.skipIf(process.env.RUN_LLM_TEST !== "true")(
           authenticator,
           llm,
           batchId1,
-          conversationIds1,
+          conversationIds1.filter((id): id is string => id !== null),
           agentConfigurationId
         );
 
@@ -365,6 +377,9 @@ describe.skipIf(process.env.RUN_LLM_TEST !== "true")(
         if (sendBatchCallResult2.isErr()) {
           throw sendBatchCallResult2.error;
         }
+        if (!sendBatchCallResult2.value) {
+          throw new Error("Expected a batch to be sent");
+        }
         const { batchId: batchId2, conversationIds: conversationIds2 } =
           sendBatchCallResult2.value;
 
@@ -378,7 +393,7 @@ describe.skipIf(process.env.RUN_LLM_TEST !== "true")(
           authenticator,
           llm,
           batchId2,
-          conversationIds2,
+          conversationIds2.filter((id): id is string => id !== null),
           agentConfigurationId
         );
 
