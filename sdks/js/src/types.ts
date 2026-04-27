@@ -756,6 +756,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "conversation_search_indexing"
   | "conversation_search_read"
   | "enable_wakeups"
+  | "new_file_explorer"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
