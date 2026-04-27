@@ -73,26 +73,19 @@ export async function importSkillsFromGitHub(
 
   const uniqueNames = [...new Set(selectedSkills.map((s) => s.name))];
   const existingSkills = await SkillResource.fetchByNames(auth, uniqueNames);
+  const existingSkillsToValidate = onConflict === "error" ? existingSkills : [];
 
-  if (onConflict === "error") {
-    const validationResult = validateSkillsForImport({
-      selectedSkills,
-      requestedNames: names,
-      existingSkills,
-      isConflicting: (existing: SkillResource) =>
-        !isSkillFromGitHubRepo(existing, { repoUrl }),
-    });
-    if (validationResult.isErr()) {
-      return new Err({
-        type: "validation_error",
-        message: validationResult.error.message,
-      });
-    }
-  }
-  if (selectedSkills.length === 0) {
+  const validationResult = validateSkillsForImport({
+    selectedSkills,
+    requestedNames: names,
+    existingSkills: existingSkillsToValidate,
+    isConflicting: (existing: SkillResource) =>
+      !isSkillFromGitHubRepo(existing, { repoUrl }),
+  });
+  if (validationResult.isErr()) {
     return new Err({
       type: "validation_error",
-      message: "No matching importable skills found.",
+      message: validationResult.error.message,
     });
   }
 

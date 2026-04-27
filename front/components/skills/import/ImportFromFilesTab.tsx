@@ -1,6 +1,9 @@
 import { DetectedSkillsList } from "@app/components/skills/import/DetectedSkillsList";
 import type { FilesImportFormValues } from "@app/components/skills/import/formSchema";
-import { isImportableSkillStatus } from "@app/lib/skill_detection";
+import {
+  getDuplicateDetectedSkillNames,
+  isImportableSkillStatus,
+} from "@app/lib/skill_detection";
 import { useDetectSkillsFromFiles } from "@app/lib/swr/skill_configurations";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -46,10 +49,12 @@ export function ImportFromFilesTab({
     if (!isActive) {
       return;
     }
+    const duplicateNames = getDuplicateDetectedSkillNames(detectedSkills);
     setValue(
       "selectedSkillNames",
       detectedSkills
         .filter((skill) => isImportableSkillStatus(skill.status))
+        .filter((skill) => !duplicateNames.has(skill.name))
         .map((skill) => skill.name)
     );
   }, [isActive, detectedSkills, setValue]);
