@@ -79,7 +79,7 @@ async function backfillRecurringCreditForWorkspace(
     } else {
       const recurringCredit = {
         product_id: freeCreditProductId,
-        name: "Monthly Free Credit",
+        name: "Free Monthly Credits",
         starting_at: startingAt,
         priority: 1, // Apply before prepaid commits.
         access_amount: {
