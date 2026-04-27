@@ -52,6 +52,7 @@ import {
   Tooltip,
   TrashIcon,
   TypingAnimation,
+  UserGroupIcon,
   UserIcon,
   WindIcon,
 } from "@dust-tt/sparkle";
@@ -656,7 +657,7 @@ function EditableProjectTodosPanel({
   owner: LightWorkspaceType;
   spaceId: string;
 }) {
-  const [assigneeScope, setAssigneeScope] = useState<TodoAssigneeScope>("all");
+  const [assigneeScope, setAssigneeScope] = useState<TodoAssigneeScope>("mine");
   const [selectedUserSIds, setSelectedUserSIds] = useState<Set<string>>(
     new Set()
   );
@@ -873,6 +874,27 @@ function EditableProjectTodosPanel({
     usersBySId,
     viewerUserId,
   });
+  const hideAssigneeMenu =
+    users.length === 0 ||
+    (users.length === 1 &&
+      viewerUserId !== null &&
+      users[0]?.sId === viewerUserId);
+  const assigneeLabel = hideAssigneeMenu ? "Your todos" : selectedAssigneeLabel;
+
+  useEffect(() => {
+    if (isTodosLoading) {
+      return;
+    }
+
+    if (!hideAssigneeMenu) {
+      setAssigneeScope("all");
+    } else {
+      setAssigneeScope("mine");
+      setSelectedUserSIds(new Set());
+      setIsAssigneeMenuOpen(false);
+    }
+  }, [isTodosLoading, hideAssigneeMenu]);
+
   const filteredTodos = useMemo(() => {
     switch (assigneeScope) {
       case "all":
@@ -917,8 +939,17 @@ function EditableProjectTodosPanel({
       }
     }
 
-    return [...groups.values()];
-  }, [filteredTodos, shouldGroupByAssignee]);
+    return [...groups.values()].sort((a, b) => {
+      const aIsViewer = viewerUserId !== null && a.user?.sId === viewerUserId;
+      const bIsViewer = viewerUserId !== null && b.user?.sId === viewerUserId;
+      if (aIsViewer !== bIsViewer) {
+        return aIsViewer ? -1 : 1;
+      }
+      const aName = a.user?.fullName ?? "";
+      const bName = b.user?.fullName ?? "";
+      return aName.localeCompare(bName, undefined, { sensitivity: "base" });
+    });
+  }, [filteredTodos, shouldGroupByAssignee, viewerUserId]);
 
   // Optimistically update a todo's status in the SWR cache and send the PATCH.
   // On failure the cache is revalidated from the server.
@@ -1080,113 +1111,119 @@ function EditableProjectTodosPanel({
     <div className="flex flex-col gap-3">
       {/* Header */}
       <div className="inline-flex items-center gap-2">
-        <DropdownMenu
-          modal={false}
-          open={isAssigneeMenuOpen}
-          onOpenChange={(open) => {
-            setIsAssigneeMenuOpen(open);
-            if (open) {
-              setAssigneeSearch("");
-            }
-          }}
-        >
-          <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              className="inline-flex items-center gap-1 rounded-md px-1 py-0.5 hover:bg-muted/40 dark:hover:bg-muted-night/40"
-            >
-              <h3 className="heading-xl text-foreground dark:text-foreground-night">
-                {selectedAssigneeLabel}
-              </h3>
-              <Icon
-                visual={ChevronDownIcon}
-                size="sm"
-                className="text-muted-foreground dark:text-muted-foreground-night"
-              />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            className="z-[1000] w-80 shadow-2xl ring-1 ring-border/60"
-            align="start"
+        {hideAssigneeMenu ? (
+          <h3 className="heading-xl text-foreground dark:text-foreground-night">
+            {assigneeLabel}
+          </h3>
+        ) : (
+          <DropdownMenu
+            modal={false}
+            open={isAssigneeMenuOpen}
+            onOpenChange={(open) => {
+              setIsAssigneeMenuOpen(open);
+              if (open) {
+                setAssigneeSearch("");
+              }
+            }}
           >
-            <DropdownMenuSearchbar
-              autoFocus
-              name="assignee-filter"
-              placeholder="Search members"
-              value={assigneeSearch}
-              onChange={setAssigneeSearch}
-            />
-            <DropdownMenuSeparator />
-            <DropdownMenuCheckboxItem
-              icon={UserIcon}
-              label="Your todos"
-              checked={assigneeScope === "mine"}
-              onClick={() => {
-                setAssigneeScope("mine");
-                setSelectedUserSIds(new Set());
-                setIsAssigneeMenuOpen(false);
-              }}
-              onSelect={(event) => {
-                event.preventDefault();
-              }}
-            />
-            <DropdownMenuCheckboxItem
-              icon={UserIcon}
-              label="Everyone's todos"
-              checked={assigneeScope === "all"}
-              onClick={() => {
-                setAssigneeScope("all");
-                setSelectedUserSIds(new Set());
-                setIsAssigneeMenuOpen(false);
-              }}
-              onSelect={(event) => {
-                event.preventDefault();
-              }}
-            />
-            <DropdownMenuSeparator />
-            <div className="max-h-64 overflow-auto">
-              {filteredUsers.length > 0 ? (
-                filteredUsers.map((user) => (
-                  <DropdownMenuCheckboxItem
-                    key={`todo-assignee-filter-${user.sId}`}
-                    icon={() => (
-                      <Avatar
-                        size="xxs"
-                        visual={
-                          user.image ?? "/static/humanavatar/anonymous.png"
-                        }
-                      />
-                    )}
-                    label={`${user.fullName}${viewerUserId === user.sId ? " (you)" : ""}`}
-                    checked={
-                      assigneeScope === "users" &&
-                      selectedUserSIds.has(user.sId)
-                    }
-                    onClick={() => {
-                      setSelectedUserSIds((previous) => {
-                        const next = new Set(previous);
-                        if (next.has(user.sId)) {
-                          next.delete(user.sId);
-                        } else {
-                          next.add(user.sId);
-                        }
-                        setAssigneeScope(next.size === 0 ? "all" : "users");
-                        return next;
-                      });
-                    }}
-                    onSelect={(event) => {
-                      event.preventDefault();
-                    }}
-                  />
-                ))
-              ) : (
-                <div className="px-3 py-2 text-sm text-muted-foreground">
-                  No members found
-                </div>
-              )}
-            </div>
-          </DropdownMenuContent>
-        </DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="inline-flex items-center gap-1 rounded-md px-1 py-0.5 hover:bg-muted/40 dark:hover:bg-muted-night/40"
+              >
+                <h3 className="heading-xl text-foreground dark:text-foreground-night">
+                  {assigneeLabel}
+                </h3>
+                <Icon
+                  visual={ChevronDownIcon}
+                  size="sm"
+                  className="text-muted-foreground dark:text-muted-foreground-night"
+                />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              className="z-[1000] w-80 shadow-2xl ring-1 ring-border/60"
+              align="start"
+            >
+              <DropdownMenuSearchbar
+                autoFocus
+                name="assignee-filter"
+                placeholder="Search members"
+                value={assigneeSearch}
+                onChange={setAssigneeSearch}
+              />
+              <DropdownMenuSeparator />
+              <DropdownMenuCheckboxItem
+                icon={UserIcon}
+                label="Your todos"
+                checked={assigneeScope === "mine"}
+                onClick={() => {
+                  setAssigneeScope("mine");
+                  setSelectedUserSIds(new Set());
+                  setIsAssigneeMenuOpen(false);
+                }}
+                onSelect={(event) => {
+                  event.preventDefault();
+                }}
+              />
+              <DropdownMenuCheckboxItem
+                icon={UserGroupIcon}
+                label="Everyone's todos"
+                checked={assigneeScope === "all"}
+                onClick={() => {
+                  setAssigneeScope("all");
+                  setSelectedUserSIds(new Set());
+                  setIsAssigneeMenuOpen(false);
+                }}
+                onSelect={(event) => {
+                  event.preventDefault();
+                }}
+              />
+              <DropdownMenuSeparator />
+              <div className="max-h-64 overflow-auto">
+                {filteredUsers.length > 0 ? (
+                  filteredUsers.map((user) => (
+                    <DropdownMenuCheckboxItem
+                      key={`todo-assignee-filter-${user.sId}`}
+                      icon={() => (
+                        <Avatar
+                          size="xxs"
+                          visual={
+                            user.image ?? "/static/humanavatar/anonymous.png"
+                          }
+                        />
+                      )}
+                      label={`${user.fullName}${viewerUserId === user.sId ? " (you)" : ""}`}
+                      checked={
+                        assigneeScope === "users" &&
+                        selectedUserSIds.has(user.sId)
+                      }
+                      onClick={() => {
+                        setSelectedUserSIds((previous) => {
+                          const next = new Set(previous);
+                          if (next.has(user.sId)) {
+                            next.delete(user.sId);
+                          } else {
+                            next.add(user.sId);
+                          }
+                          setAssigneeScope(next.size === 0 ? "all" : "users");
+                          return next;
+                        });
+                      }}
+                      onSelect={(event) => {
+                        event.preventDefault();
+                      }}
+                    />
+                  ))
+                ) : (
+                  <div className="px-3 py-2 text-sm text-muted-foreground">
+                    No members found
+                  </div>
+                )}
+              </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
         <div className="flex-1" />
         {hasDoneItems && (
           <Button
