@@ -408,5 +408,62 @@ describe.skipIf(process.env.RUN_LLM_TEST !== "true")(
       },
       TEST_TIMEOUT_MS
     );
+
+    it(
+      "sendBatchCallToLlm skips conversations that exceed the context window",
+      async () => {
+        const { authenticator, llm } = await setupTest();
+
+        // The mocked tokenizer counts 1 char as 1 token, and the test model
+        // has a 190k-token context window. A 250k-char message guarantees the
+        // render step returns "Context window exceeded".
+        const oversizedMessage = "x".repeat(250_000);
+
+        const result = await sendBatchCallToLlm(authenticator, llm, [
+          makeConversationOptions("What is 1+1? Reply with just the number.", {
+            title: "Skip Test - Normal",
+          }),
+          makeConversationOptions(oversizedMessage, {
+            title: "Skip Test - Oversized",
+          }),
+        ]);
+
+        if (result.isErr()) {
+          throw result.error;
+        }
+        expect(result.value).not.toBeNull();
+        if (!result.value) {
+          return;
+        }
+        const { batchId, conversationIds } = result.value;
+
+        expect(batchId).toBeTruthy();
+        expect(conversationIds).toHaveLength(2);
+        expect(typeof conversationIds[0]).toBe("string");
+        expect(conversationIds[1]).toBeNull();
+      },
+      TEST_TIMEOUT_MS
+    );
+
+    it(
+      "sendBatchCallToLlm returns null when every conversation exceeds the context window",
+      async () => {
+        const { authenticator, llm } = await setupTest();
+
+        const oversizedMessage = "x".repeat(250_000);
+
+        const result = await sendBatchCallToLlm(authenticator, llm, [
+          makeConversationOptions(oversizedMessage, {
+            title: "All-Skipped Test",
+          }),
+        ]);
+
+        if (result.isErr()) {
+          throw result.error;
+        }
+        expect(result.value).toBeNull();
+      },
+      TEST_TIMEOUT_MS
+    );
   }
 );
