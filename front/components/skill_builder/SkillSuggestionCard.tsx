@@ -168,7 +168,8 @@ function ConversationFooter({
 
   return (
     <p className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-      Based on conversation{shownIds.length > 1 || remainingCount > 0 ? "s" : ""}{" "}
+      Based on conversation
+      {shownIds.length > 1 || remainingCount > 0 ? "s" : ""}{" "}
       {indexedLinks.map((link, i) => (
         <span key={shownIds[i]}>
           {i > 0 &&

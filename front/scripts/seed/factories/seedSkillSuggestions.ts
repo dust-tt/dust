@@ -123,10 +123,10 @@ export async function seedSkillSuggestions(
 
 async function resolveConversationModelIds(
   ctx: SeedContext,
-  conversationSIds: string[]
+  conversationIds: string[]
 ): Promise<number[]> {
   const modelIds: number[] = [];
-  for (const sId of conversationSIds) {
+  for (const sId of conversationIds) {
     const conversation = await ConversationResource.fetchById(ctx.auth, sId, {
       dangerouslySkipPermissionFiltering: true,
     });
