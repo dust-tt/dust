@@ -1258,6 +1258,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     params:
       | AgentLoopExecutionData
       | Pick<AgentLoopExecutionData, "agentConfiguration" | "conversation">
+      | {
+          agentConfiguration: AgentConfigurationType;
+          conversation: ConversationWithoutContentType;
+        }
   ): Promise<{
     enabledSkills: (SkillResource & { extendedSkill: SkillResource | null })[];
     systemSkills: SkillResource[];
@@ -1315,18 +1319,16 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       enabledSkills
     );
 
-    // Compute the equipped skills: agent skills not already enabled +
-    // discoverable skills not already enabled or equipped.
-    const enabledSkillIds = new Set(enabledSkills.map((s) => s.sId));
-    const agentEquippedSkills = allAgentSkills.filter(
-      (s) => !s.isSystemSkill && !enabledSkillIds.has(s.sId)
-    );
+    // Compute the equipped skills: all non-system agent skills plus
+    // discoverable skills that are not already equipped. Keep this list stable
+    // even after a skill is enabled.
+    const agentEquippedSkills = allAgentSkills.filter((s) => !s.isSystemSkill);
 
     const agentEquippedSkillIds = new Set(
       agentEquippedSkills.map((s) => s.sId)
     );
     const discoveredSkills = discoverableSkills.filter(
-      (s) => !enabledSkillIds.has(s.sId) && !agentEquippedSkillIds.has(s.sId)
+      (s) => !agentEquippedSkillIds.has(s.sId)
     );
 
     const equippedSkills = removeNulls([

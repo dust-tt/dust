@@ -207,6 +207,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Sandbox MCP tool for executing code in isolated Linux containers",
     stage: "dust_only",
   },
+  skills_as_user_messages: {
+    description:
+      "Render skills in assistant conversations as synthetic user messages instead of in the system prompt",
+    stage: "dust_only",
+  },
   run_tools_from_prompt: {
     description: "Enable /run command to directly call tools without LLM",
     stage: "dust_only",

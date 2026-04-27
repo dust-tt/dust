@@ -9,7 +9,7 @@ import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 
 /**
- * Get the skill_management MCP server if the agent has configured skills.
+ * Get the skill_management MCP server if the agent has skills that can be enabled.
  */
 export async function getSkillManagementServer(
   auth: Authenticator,
@@ -17,12 +17,12 @@ export async function getSkillManagementServer(
   conversation: ConversationWithoutContentType,
   autoInternalViews: Map<AutoInternalMCPServerNameType, MCPServerViewResource>
 ): Promise<ServerSideMCPServerConfigurationType | null> {
-  const refs = await SkillResource.getSkillReferencesForAgent(
-    auth,
-    agentConfiguration
-  );
+  const { equippedSkills } = await SkillResource.listForAgentLoop(auth, {
+    agentConfiguration,
+    conversation,
+  });
 
-  if (refs.length === 0) {
+  if (equippedSkills.length === 0) {
     return null;
   }
 
