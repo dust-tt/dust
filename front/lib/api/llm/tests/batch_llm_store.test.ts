@@ -412,7 +412,7 @@ describe.skipIf(process.env.RUN_LLM_TEST !== "true")(
     it(
       "sendBatchCallToLlm skips conversations that exceed the context window",
       async () => {
-        const { authenticator, llm } = await setupTest();
+        const { authenticator, llm, agentConfigurationId } = await setupTest();
 
         // The mocked tokenizer counts 1 char as 1 token, and the test model
         // has a 190k-token context window. A 250k-char message guarantees the
@@ -441,6 +441,32 @@ describe.skipIf(process.env.RUN_LLM_TEST !== "true")(
         expect(conversationIds).toHaveLength(2);
         expect(typeof conversationIds[0]).toBe("string");
         expect(conversationIds[1]).toBeNull();
+
+        // Wait for the batch to finish and verify the surviving conversation
+        // produced a real result (proving the batch was submitted correctly
+        // even with one conversation skipped).
+        const survivingConversationId = conversationIds[0];
+        if (typeof survivingConversationId !== "string") {
+          throw new Error("Expected a surviving conversation id");
+        }
+        await awaitBatch(llm, batchId);
+
+        const results = await downloadBatchResultFromLlm(
+          authenticator,
+          llm,
+          batchId,
+          [survivingConversationId],
+          agentConfigurationId
+        );
+
+        expect(results.events.size).toBe(1);
+        const events = results.events.get(survivingConversationId);
+        expect(events).toBeDefined();
+        const textEvent = events?.find((e) => e.type === "text_generated");
+        expect(textEvent).toBeDefined();
+        if (textEvent?.type === "text_generated") {
+          expect(textEvent.content.text).toContain("2");
+        }
       },
       TEST_TIMEOUT_MS
     );
