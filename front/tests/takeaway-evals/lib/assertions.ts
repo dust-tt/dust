@@ -58,57 +58,11 @@ export function validateTakeawayAssertion(
       return { success: true };
     }
 
-    case "shouldExtractNotableFact": {
-      const match = result.notableFacts.find((f) =>
-        f.shortDescription
-          .toLowerCase()
-          .includes(assertion.descriptionContains.toLowerCase())
-      );
-      if (!match) {
-        return {
-          success: false,
-          error: `Expected a notable fact containing "${assertion.descriptionContains}", but none was found. Extracted: [${result.notableFacts.map((f) => f.shortDescription).join(", ")}]`,
-        };
-      }
-      return { success: true };
-    }
-
-    case "shouldExtractKeyDecision": {
-      const match = result.keyDecisions.find((d) =>
-        d.shortDescription
-          .toLowerCase()
-          .includes(assertion.descriptionContains.toLowerCase())
-      );
-      if (!match) {
-        return {
-          success: false,
-          error: `Expected a key decision containing "${assertion.descriptionContains}", but none was found. Extracted: [${result.keyDecisions.map((d) => d.shortDescription).join(", ")}]`,
-        };
-      }
-      if (assertion.status && match.status !== assertion.status) {
-        return {
-          success: false,
-          error: `Expected key decision "${assertion.descriptionContains}" to have status "${assertion.status}", but got "${match.status}"`,
-        };
-      }
-      return { success: true };
-    }
-
     case "minActionItems": {
       if (result.actionItems.length < assertion.count) {
         return {
           success: false,
           error: `Expected at least ${assertion.count} action items, but got ${result.actionItems.length}`,
-        };
-      }
-      return { success: true };
-    }
-
-    case "minNotableFacts": {
-      if (result.notableFacts.length < assertion.count) {
-        return {
-          success: false,
-          error: `Expected at least ${assertion.count} notable facts, but got ${result.notableFacts.length}`,
         };
       }
       return { success: true };
@@ -124,37 +78,11 @@ export function validateTakeawayAssertion(
       return { success: true };
     }
 
-    case "maxKeyDecisions": {
-      if (result.keyDecisions.length > assertion.count) {
-        return {
-          success: false,
-          error: `Expected at most ${assertion.count} key decisions, but got ${result.keyDecisions.length}`,
-        };
-      }
-      return { success: true };
-    }
-
-    case "maxNotableFacts": {
-      if (result.notableFacts.length > assertion.count) {
-        return {
-          success: false,
-          error: `Expected at most ${assertion.count} notable facts, but got ${result.notableFacts.length}`,
-        };
-      }
-      return { success: true };
-    }
-
     case "shouldPreserveSId": {
       let items: { sId: string }[];
       switch (assertion.category) {
         case "actionItem":
           items = result.actionItems;
-          break;
-        case "notableFact":
-          items = result.notableFacts;
-          break;
-        case "keyDecision":
-          items = result.keyDecisions;
           break;
       }
       const found = items.some((item) => item.sId === assertion.sId);

@@ -7,14 +7,6 @@ import {
   buildPromptActionItems,
 } from "@app/lib/project_todo/analyze_document/action_items";
 import {
-  buildKeyDecisions,
-  buildPromptKeyDecisions,
-} from "@app/lib/project_todo/analyze_document/key_decisions";
-import {
-  buildNotableFacts,
-  buildPromptNotableFacts,
-} from "@app/lib/project_todo/analyze_document/notable_facts";
-import {
   type ExtractionResult,
   ExtractTakeawaysInputSchema,
 } from "@app/lib/project_todo/analyze_document/types";
@@ -170,15 +162,11 @@ export async function extractDocumentTakeaways(
   }
 
   const previousActionItems = previousVersion?.actionItems ?? [];
-  const previousNotableFacts = previousVersion?.notableFacts ?? [];
-  const previousKeyDecisions = previousVersion?.keyDecisions ?? [];
 
   const prompt = [
     await buildPromptProjectMembers(auth, { spaceId }),
     buildPromptForSourceType(document.type),
     buildPromptActionItems(previousActionItems),
-    buildPromptNotableFacts(previousNotableFacts),
-    buildPromptKeyDecisions(previousKeyDecisions),
     "You MUST call the tool. Always call it, even if there are no action items, notable facts, or key decisions (use empty arrays).",
   ].join("\n\n");
   const specification = buildSpec();
@@ -200,10 +188,6 @@ export async function extractDocumentTakeaways(
     removeNulls([
       ...new Set([
         ...extraction.action_items.map((item) => item.assignee_user_id),
-        ...extraction.notable_facts
-          .map((fact) => fact.relevant_user_ids)
-          .flat(),
-        ...extraction.key_decisions.map((d) => d.relevant_user_ids).flat(),
       ]),
     ])
   );
@@ -215,27 +199,17 @@ export async function extractDocumentTakeaways(
     previousActionItems,
     validAssigneesUserIds
   );
-  const notableFacts = buildNotableFacts(
-    extraction.notable_facts,
-    previousNotableFacts,
-    validAssigneesUserIds
-  );
-  const keyDecisions = buildKeyDecisions(
-    extraction.key_decisions,
-    previousKeyDecisions,
-    validAssigneesUserIds
-  );
 
   const stats: ExtractedTakeawayStats = {
     actionItems: actionItems.length,
-    keyDecisions: keyDecisions.length,
-    notableFacts: notableFacts.length,
+    keyDecisions: 0,
+    notableFacts: 0,
   };
 
   if (
-    actionItems.length === 0 &&
-    notableFacts.length === 0 &&
-    keyDecisions.length === 0
+    stats.actionItems === 0 &&
+    stats.notableFacts === 0 &&
+    stats.keyDecisions === 0
   ) {
     localLogger.info("Document takeaway: no takeaways extracted");
     return stats;
@@ -245,15 +219,11 @@ export async function extractDocumentTakeaways(
     document,
     spaceId,
     actionItems,
-    notableFacts,
-    keyDecisions,
   });
 
   localLogger.info(
     {
-      actionItemCount: actionItems.length,
-      notableFactCount: notableFacts.length,
-      keyDecisionCount: keyDecisions.length,
+      ...stats,
     },
     "Document takeaway: analysis complete"
   );

@@ -5,14 +5,6 @@ import {
   buildActionItems,
   buildPromptActionItems,
 } from "@app/lib/project_todo/analyze_document/action_items";
-import {
-  buildKeyDecisions,
-  buildPromptKeyDecisions,
-} from "@app/lib/project_todo/analyze_document/key_decisions";
-import {
-  buildNotableFacts,
-  buildPromptNotableFacts,
-} from "@app/lib/project_todo/analyze_document/notable_facts";
 import { buildPromptForSourceType } from "@app/lib/project_todo/analyze_document/prompts";
 import {
   type ExtractionResult,
@@ -132,8 +124,6 @@ export async function executeTakeawayExtraction(
   }
 
   const previousActionItems = testCase.previousVersion?.actionItems ?? [];
-  const previousNotableFacts = testCase.previousVersion?.notableFacts ?? [];
-  const previousKeyDecisions = testCase.previousVersion?.keyDecisions ?? [];
 
   // Assemble prompt exactly as extractDocumentTakeaways does, but with mock
   // members instead of a DB call.
@@ -141,8 +131,6 @@ export async function executeTakeawayExtraction(
     buildMockMembersPrompt(testCase.members),
     buildPromptForSourceType(testCase.document.type),
     buildPromptActionItems(previousActionItems),
-    buildPromptNotableFacts(previousNotableFacts),
-    buildPromptKeyDecisions(previousKeyDecisions),
     "You MUST call the tool. Always call it, even if there are no action items, notable facts, or key decisions (use empty arrays).",
   ].join("\n\n");
 
@@ -160,8 +148,6 @@ export async function executeTakeawayExtraction(
     return {
       extraction: null,
       actionItems: [],
-      notableFacts: [],
-      keyDecisions: [],
     };
   }
 
@@ -173,16 +159,6 @@ export async function executeTakeawayExtraction(
     previousActionItems,
     validUserIds
   );
-  const notableFacts = buildNotableFacts(
-    extraction.notable_facts,
-    previousNotableFacts,
-    validUserIds
-  );
-  const keyDecisions = buildKeyDecisions(
-    extraction.key_decisions,
-    previousKeyDecisions,
-    validUserIds
-  );
 
-  return { extraction, actionItems, notableFacts, keyDecisions };
+  return { extraction, actionItems };
 }
