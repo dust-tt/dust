@@ -666,7 +666,7 @@ export class CompactionMessageModel extends WorkspaceAwareModel<CompactionMessag
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare runIds: string[] | null;
-  declare sourceConversationId: string | null;
+  declare sourceConversationId: ForeignKey<ConversationModel["id"]> | null;
 
   declare status: CompactionMessageStatus;
   declare content: string | null;
@@ -689,7 +689,7 @@ CompactionMessageModel.init(
       allowNull: true,
     },
     sourceConversationId: {
-      type: DataTypes.STRING,
+      type: DataTypes.BIGINT,
       allowNull: true,
     },
     status: {
@@ -708,6 +708,11 @@ CompactionMessageModel.init(
     indexes: [
       {
         fields: ["workspaceId"],
+        concurrently: true,
+      },
+      {
+        fields: ["sourceConversationId"],
+        name: "compaction_messages_source_conversation_id",
         concurrently: true,
       },
     ],

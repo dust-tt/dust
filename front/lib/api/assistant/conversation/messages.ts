@@ -648,11 +648,13 @@ export async function createCompactionMessage(
     conversation,
     rank,
     sourceConversationId,
+    sourceConversationModelId,
     transaction,
   }: {
     conversation: ConversationWithoutContentType;
     rank: number;
     sourceConversationId?: string;
+    sourceConversationModelId?: ModelId;
     transaction: Transaction;
   }
 ): Promise<CompactionMessageType> {
@@ -663,7 +665,7 @@ export async function createCompactionMessage(
       status: "created",
       content: null,
       runIds: null,
-      sourceConversationId: sourceConversationId ?? null,
+      sourceConversationId: sourceConversationModelId ?? null,
       workspaceId: workspace.id,
     },
     { transaction }

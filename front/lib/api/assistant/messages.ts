@@ -8,6 +8,7 @@ import {
   getCoTDelimitersConfiguration,
 } from "@app/lib/llms/agent_message_content_parser";
 import {
+  ConversationModel,
   MentionModel,
   MessageModel,
   UserMessageModel,
@@ -903,10 +904,26 @@ async function batchRenderContentFragment(
 }
 
 async function batchRenderCompactionMessages(
-  _auth: Authenticator,
+  auth: Authenticator,
   messages: MessageModel[]
 ): Promise<CompactionMessageType[]> {
   const compactionMessages = messages.filter((m) => !!m.compactionMessage);
+  const sourceConversationIds = removeNulls(
+    compactionMessages.map((m) => m.compactionMessage?.sourceConversationId)
+  );
+  const sourceConversations = await ConversationModel.findAll({
+    attributes: ["id", "sId"],
+    where: {
+      workspaceId: auth.getNonNullableWorkspace().id,
+      id: { [Op.in]: sourceConversationIds },
+    },
+  });
+  const sourceConversationIdMap = new Map(
+    sourceConversations.map((conversation) => [
+      conversation.id,
+      conversation.sId,
+    ])
+  );
 
   return compactionMessages.map((m) => {
     if (!m.compactionMessage) {
@@ -927,8 +944,13 @@ async function batchRenderCompactionMessages(
       branchId: m.getBranchId(),
       status: compactionMessage.status,
       content: compactionMessage.content,
-      ...(compactionMessage.sourceConversationId
-        ? { sourceConversationId: compactionMessage.sourceConversationId }
+      ...(compactionMessage.sourceConversationId &&
+      sourceConversationIdMap.has(compactionMessage.sourceConversationId)
+        ? {
+            sourceConversationId: sourceConversationIdMap.get(
+              compactionMessage.sourceConversationId
+            ),
+          }
         : {}),
     };
   });
