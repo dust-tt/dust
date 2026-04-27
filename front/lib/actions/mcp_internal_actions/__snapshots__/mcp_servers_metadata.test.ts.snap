@@ -534,6 +534,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "get_actions": "never_ask",
   },
   "sandbox": {
+    "add_egress_domain": "high",
     "bash": "never_ask",
     "describe_toolset": "never_ask",
   },

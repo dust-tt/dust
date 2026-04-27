@@ -58,6 +58,38 @@ export const SANDBOX_TOOLS_METADATA = createToolsRecord({
       done: "Describe sandbox toolset",
     },
   },
+  add_egress_domain: {
+    description:
+      "Request user approval to add a single domain to the current " +
+      "sandbox's network allowlist. Each call adds one exact domain " +
+      "(wildcards are not accepted) and requires an explicit user " +
+      "approval. Outbound HTTPS connections that fall outside the " +
+      "allowlist surface as denied entries in `<network_proxy_logs>` in " +
+      "the bash tool output. Allowlist entries added through this tool " +
+      "live for the lifetime of the current sandbox and are discarded " +
+      "when the sandbox is reaped.",
+    schema: {
+      domain: z
+        .string()
+        .min(1)
+        .describe(
+          'Exact domain to allow for this sandbox, e.g. "api.openai.com". ' +
+            "Wildcards are not supported."
+        ),
+      reason: z
+        .string()
+        .min(1)
+        .describe(
+          "Why this domain is needed, in one short sentence the user will " +
+            "see in the approval prompt."
+        ),
+    },
+    stake: "high",
+    displayLabels: {
+      running: "Requesting sandbox network access",
+      done: "Allow domain in sandbox",
+    },
+  },
 });
 
 export const SANDBOX_SERVER = {

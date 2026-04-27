@@ -1,6 +1,7 @@
 import config from "@app/lib/api/config";
 import { getSandboxProvider } from "@app/lib/api/sandbox";
 import { revokeAllExecTokensForSandbox } from "@app/lib/api/sandbox/access_tokens";
+import { deleteSandboxPolicy } from "@app/lib/api/sandbox/egress_policy";
 import { getSandboxImage } from "@app/lib/api/sandbox/image";
 import {
   recordLifecycleOperation,
@@ -47,6 +48,21 @@ export interface SandboxResource extends ReadonlyAttributesType<SandboxModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class SandboxResource extends BaseResource<SandboxModel> {
   static model: ModelStaticWorkspaceAware<SandboxModel> = SandboxModel;
+
+  private static deleteEgressPolicyAfterDestroy(
+    sandbox: SandboxResource
+  ): void {
+    void deleteSandboxPolicy(sandbox.providerId).catch((err) =>
+      logger.warn(
+        {
+          err,
+          sandboxId: sandbox.sId,
+          sandboxProviderId: sandbox.providerId,
+        },
+        "Failed to delete sandbox egress policy"
+      )
+    );
+  }
 
   constructor(
     _model: ModelStatic<SandboxModel>,
@@ -274,6 +290,8 @@ export class SandboxResource extends BaseResource<SandboxModel> {
             { sandbox: sandbox.toLogJSON(), error: result.error.message },
             "Failed to destroy sandbox at provider — proceeding with DB cleanup."
           );
+        } else {
+          SandboxResource.deleteEgressPolicyAfterDestroy(sandbox);
         }
       }
 
@@ -631,12 +649,14 @@ export class SandboxResource extends BaseResource<SandboxModel> {
             "Sandbox not found at provider during destroy — marking deleted."
           );
           await sandbox.updateStatus("deleted", { ctx });
+          SandboxResource.deleteEgressPolicyAfterDestroy(sandbox);
           return new Ok(undefined);
         }
         return result;
       }
 
       await sandbox.updateStatus("deleted", { ctx });
+      SandboxResource.deleteEgressPolicyAfterDestroy(sandbox);
       recordLifecycleOperation("destroy", ctx);
 
       void revokeAllExecTokensForSandbox(sandbox.sId).catch((err) =>

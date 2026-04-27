@@ -7,6 +7,10 @@ import type {
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { SANDBOX_TOOLS_METADATA } from "@app/lib/api/actions/servers/sandbox/metadata";
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+} from "@app/lib/api/audit/workos_audit";
 import config from "@app/lib/api/config";
 import {
   generateExecId,
@@ -18,6 +22,10 @@ import {
   readNewDenyLogEntries,
   setupEgressForwarder,
 } from "@app/lib/api/sandbox/egress";
+import {
+  addSandboxPolicyDomain,
+  parseExactEgressDomain,
+} from "@app/lib/api/sandbox/egress_policy";
 import {
   mountConversationFiles,
   refreshGcsToken,
@@ -97,6 +105,7 @@ export function createSandboxTools(
 
       return new Ok([{ type: "text" as const, text: output }]);
     },
+    add_egress_domain: addEgressDomainTool,
   };
 
   return buildTools(SANDBOX_TOOLS_METADATA, handlers);
@@ -264,4 +273,62 @@ export async function runSandboxBashTool(
   const output = formatExecOutput(execResult.value, { denyLogEntries });
 
   return new Ok([{ type: "text" as const, text: output }]);
+}
+
+export async function addEgressDomainTool(
+  { domain, reason }: { domain: string; reason: string },
+  { auth, agentLoopContext }: ToolHandlerExtra
+): Promise<Result<Array<{ type: "text"; text: string }>, MCPError>> {
+  const conversation = agentLoopContext?.runContext?.conversation;
+  if (!conversation) {
+    return new Err(new MCPError("No conversation context available."));
+  }
+
+  const ensureResult = await SandboxResource.ensureActive(auth, conversation);
+  if (ensureResult.isErr()) {
+    return new Err(new MCPError(ensureResult.error.message));
+  }
+  const { sandbox } = ensureResult.value;
+
+  const parsed = parseExactEgressDomain(domain);
+  if (parsed.isErr()) {
+    return new Err(new MCPError(parsed.error.message));
+  }
+
+  const result = await addSandboxPolicyDomain(auth, {
+    sandboxProviderId: sandbox.providerId,
+    domain: parsed.value,
+  });
+  if (result.isErr()) {
+    return new Err(new MCPError(result.error.message));
+  }
+
+  void emitAuditLogEvent({
+    auth,
+    action: "sandbox_egress_policy.sandbox_updated",
+    targets: [
+      buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+      {
+        type: "sandbox_egress_policy",
+        id: sandbox.providerId,
+        name: `Sandbox egress policy ${sandbox.sId}`,
+      },
+    ],
+    metadata: {
+      sandboxProviderId: sandbox.providerId,
+      domain: parsed.value,
+      added: String(result.value.addedDomain !== null),
+      reason,
+    },
+  });
+
+  const text =
+    result.value.addedDomain !== null
+      ? `Allowed: ${result.value.addedDomain}\n` +
+        "The change is in effect for the current sandbox only and applies to " +
+        "subsequent commands in this conversation."
+      : `Already allowed: ${parsed.value}\n` +
+        "No change made; this domain was already in the sandbox's allowlist.";
+
+  return new Ok([{ type: "text" as const, text }]);
 }
