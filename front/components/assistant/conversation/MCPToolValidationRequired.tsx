@@ -23,9 +23,10 @@ type ToolOverride = {
     agentName: string,
     inputs: Record<string, unknown>
   ) => string;
+  detailsExpanded?: boolean;
 };
 
-/** Overrides title and alwaysAllowLabel for specific MCP tools */
+/** Overrides title, alwaysAllowLabel, and details expansion for specific MCP tools */
 const MCP_TOOL_OVERRIDES: Partial<
   Record<string, Partial<Record<string, ToolOverride>>>
 > = {
@@ -42,6 +43,11 @@ const MCP_TOOL_OVERRIDES: Partial<
       title: (agentName, inputs) =>
         `Allow ${asDisplayName(agentName)} to ${inputs.humanReadableDescription}?`,
       alwaysAllowLabel: () => "Allow all the interactions with this tab",
+    },
+  },
+  sandbox: {
+    add_egress_domain: {
+      detailsExpanded: true,
     },
   },
 };
@@ -166,7 +172,11 @@ export function MCPToolValidationRequired({
     >
       {isTriggeredByCurrentUser ? (
         <>
-          <ToolValidationDetails blockedAction={blockedAction} user={user} />
+          <ToolValidationDetails
+            blockedAction={blockedAction}
+            user={user}
+            defaultExpanded={toolOverride?.detailsExpanded}
+          />
           {errorMessage && (
             <div className="mt-2 text-sm font-medium text-warning-800 dark:text-warning-800-night">
               {errorMessage}
