@@ -2226,9 +2226,15 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     {
       conversation,
       transaction,
+      lastReadAt,
     }: {
       conversation: ConversationWithoutContentType;
       transaction?: Transaction;
+      // Optional override; defaults to now. Callers can pass a timestamp in the
+      // future to keep the conversation marked as read through an imminent
+      // `markAsUpdated` bump (e.g. a static agent reply that the user just
+      // triggered and does not need to be re-notified about).
+      lastReadAt?: Date;
     }
   ) {
     if (!auth.user()) {
@@ -2239,7 +2245,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         conversationId: conversation.id,
         userId: auth.getNonNullableUser().id,
         workspaceId: auth.getNonNullableWorkspace().id,
-        lastReadAt: new Date(),
+        lastReadAt: lastReadAt ?? new Date(),
       },
       { transaction }
     );

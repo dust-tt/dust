@@ -1,6 +1,7 @@
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { postSkillSuggestionStatusUpdate } from "@app/lib/reinforcement/aggregate_suggestions";
 import { hasReinforcementEnabled } from "@app/lib/reinforcement/workspace_check";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
@@ -195,6 +196,10 @@ async function handler(
       }
 
       await SkillSuggestionResource.bulkUpdateState(auth, suggestions, state);
+
+      if (state === "approved" || state === "rejected") {
+        await postSkillSuggestionStatusUpdate(auth, suggestions, state);
+      }
 
       // Bulk update doesn't mutate the resources, so we need to refetch here.
       const updatedSuggestions = await SkillSuggestionResource.fetchByIds(

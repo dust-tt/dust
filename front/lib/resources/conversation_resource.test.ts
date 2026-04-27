@@ -5716,6 +5716,70 @@ describe("markAsActionRequired", () => {
   });
 });
 
+describe("markAsReadForAuthUser", () => {
+  let auth: Authenticator;
+  let conversation: ConversationWithoutContentType;
+
+  beforeEach(async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const user = await UserFactory.basic();
+    auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    const [agent] = await setupTestAgents(workspace, user);
+    conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agent.sId,
+      messagesCreatedAt: [],
+    });
+  });
+
+  it("defaults lastReadAt to now when no override is provided", async () => {
+    const before = new Date();
+    const result = await ConversationResource.markAsReadForAuthUser(auth, {
+      conversation,
+    });
+    expect(result.isOk()).toBe(true);
+    const after = new Date();
+
+    const { UserConversationReadsModel } = await import(
+      "@app/lib/models/agent/conversation"
+    );
+    const row = await UserConversationReadsModel.findOne({
+      where: {
+        conversationId: conversation.id,
+        userId: auth.getNonNullableUser().id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+    assert(row);
+    expect(row.lastReadAt.getTime()).toBeGreaterThanOrEqual(before.getTime());
+    expect(row.lastReadAt.getTime()).toBeLessThanOrEqual(after.getTime());
+  });
+
+  it("persists the lastReadAt override when one is provided", async () => {
+    const explicit = new Date(Date.now() + 60_000);
+    const result = await ConversationResource.markAsReadForAuthUser(auth, {
+      conversation,
+      lastReadAt: explicit,
+    });
+    expect(result.isOk()).toBe(true);
+
+    const { UserConversationReadsModel } = await import(
+      "@app/lib/models/agent/conversation"
+    );
+    const row = await UserConversationReadsModel.findOne({
+      where: {
+        conversationId: conversation.id,
+        userId: auth.getNonNullableUser().id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+    assert(row);
+    expect(row.lastReadAt.getTime()).toBe(explicit.getTime());
+  });
+});
+
 describe("ConversationResource.isConversationCreator", () => {
   let auth: Authenticator;
   let conversationId: string;

@@ -163,10 +163,11 @@ export type AgentFetchVariant = "light" | "full" | "extra_light";
 export type GlobalAgentContext = {
   userMessageRank: number;
   sidekickIsNewAgentFromScratch?: boolean;
-  reinforcedSkillNotification?: {
-    skillName: string;
-    skillId: string;
-  };
+  // Pre-formatted text that the Dust global agent should echo as its NOOP
+  // static reply for this turn. Set by `getStaticReplyForUserMessage` when the
+  // triggering user message is a system-posted bootstrap/status update that
+  // carries its own rendered content.
+  staticReply?: string;
 };
 
 export const LightAgentConfigurationSchema = z.object({

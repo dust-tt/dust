@@ -4,6 +4,7 @@ import {
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
 import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
+import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import { formatSkillContext } from "@app/lib/reinforcement/format_skill_context";
@@ -12,10 +13,11 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { getSkillBuilderRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
-import { escapeXml, pluralize } from "@app/types/shared/utils/string_utils";
+import { escapeXml } from "@app/types/shared/utils/string_utils";
 import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
 import type { UserType } from "@app/types/user";
 
@@ -245,6 +247,37 @@ export async function buildSkillAggregationBatchMap(
 }
 
 /**
+ * Random canned opener for the notification conversation, merged into a single
+ * message with the suggestion titles between the intro and outro lines.
+ */
+function buildReinforcedSkillInitialMessage(
+  workspaceId: string,
+  skillName: string,
+  skillId: string,
+  titles: string[]
+): string {
+  const builderUrl = getSkillBuilderRoute(workspaceId, skillId);
+  const variants: Array<{ intro: string; outro: string }> = [
+    {
+      intro: `Dust has analyzed conversations in your workspace that use the ${skillName} skill and found suggestions to improve it:`,
+      outro: `You can view and apply these suggestions by going to the [skill builder](${builderUrl}).`,
+    },
+    {
+      intro: `Based on recent conversations, Dust has identified ways to enhance the ${skillName} skill:`,
+      outro: `Head over to the [skill builder](${builderUrl}) to review and apply these improvements.`,
+    },
+    {
+      intro: `Dust has reviewed how the ${skillName} skill is being used and has new improvement suggestions:`,
+      outro: `Check them out in the [skill builder](${builderUrl}) and apply the ones you like.`,
+    },
+  ];
+  const { intro, outro } =
+    variants[Math.floor(Math.random() * variants.length)];
+  const list = titles.map((t) => `- ${t}`).join("\n");
+  return `${intro}\n${list}\n\n${outro}`;
+}
+
+/**
  * Create a conversation with the pending suggestions for the skill editors.
  * It's a single notification conversation that's sent to all editors of the skill.
  */
@@ -340,9 +373,16 @@ export async function createSkillSuggestionsConversation(
     return;
   }
 
+  const content = buildReinforcedSkillInitialMessage(
+    auth.getNonNullableWorkspace().sId,
+    skillType.name,
+    skillType.sId,
+    pendingSuggestions.map((s) => s.title ?? s.sId)
+  );
+
   const messageRes = await postUserMessage(auth, {
     conversation,
-    content: `Here are ${pendingSuggestions.length} pending improvement${pluralize(pendingSuggestions.length)} suggestions for the ${skillType.name} skill.`,
+    content,
     mentions: [{ configurationId: GLOBAL_AGENTS_SID.DUST }],
     context: {
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC",
@@ -377,4 +417,100 @@ export async function createSkillSuggestionsConversation(
       }),
     { concurrency: 8 }
   );
+}
+
+/**
+ * Posts a short status update to each notification conversation affected by an
+ * accept/reject action, so editors can see progress on the TODO list posted by
+ * `createSkillSuggestionsConversation`.
+ *
+ * Best-effort: errors are logged and never propagated, so the PATCH call does
+ * not fail if the conversation is gone or inaccessible.
+ */
+export async function postSkillSuggestionStatusUpdate(
+  auth: Authenticator,
+  suggestions: SkillSuggestionResource[],
+  state: "approved" | "rejected"
+): Promise<void> {
+  const user = auth.user();
+  if (!user) {
+    return;
+  }
+
+  // Group suggestions by their notification conversation sId.
+  const byConversation = new Map<string, SkillSuggestionResource[]>();
+  for (const s of suggestions) {
+    if (!s.notificationConversationId) {
+      continue;
+    }
+    const list = byConversation.get(s.notificationConversationId) ?? [];
+    list.push(s);
+    byConversation.set(s.notificationConversationId, list);
+  }
+
+  if (byConversation.size === 0) {
+    return;
+  }
+
+  const verb = state === "approved" ? "accepted" : "rejected";
+  const marker = state === "approved" ? "✅" : "❌";
+  const actorName = user.fullName();
+  const messageContext = {
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC",
+    username: user.username,
+    fullName: actorName,
+    email: user.email,
+    profilePictureUrl: user.imageUrl,
+    origin: "reinforced_skill_notification" as const,
+  };
+
+  for (const [conversationId, items] of byConversation) {
+    const conversationRes = await getConversation(auth, conversationId);
+    if (conversationRes.isErr()) {
+      logger.warn(
+        {
+          conversationId,
+          error: conversationRes.error.message,
+        },
+        "ReinforcedSkills: failed to fetch notification conversation for status update"
+      );
+      continue;
+    }
+    const conversation = conversationRes.value;
+
+    const titles = items.map((s) => s.title ?? s.sId);
+    const content =
+      items.length === 1
+        ? `${marker} ${actorName} ${verb} "${titles[0]}"`
+        : `${actorName} ${verb}:\n${titles.map((t) => `${marker} ${t}`).join("\n")}`;
+
+    const postRes = await postUserMessage(auth, {
+      conversation,
+      content,
+      mentions: [{ configurationId: GLOBAL_AGENTS_SID.DUST }],
+      context: messageContext,
+      skipToolsValidation: true,
+    });
+
+    if (postRes.isErr()) {
+      logger.warn(
+        {
+          conversationId,
+          error: postRes.error.api_error.message,
+        },
+        "ReinforcedSkills: failed to post status update to notification conversation"
+      );
+      continue;
+    }
+
+    // postUserMessage marks the conversation read at T1, but the Dust static
+    // reply will bump `updatedAt` to T2 and make the conversation re-appear
+    // as unread for the acting editor. Push `lastReadAt` a minute into the
+    // future so the ack holds through the imminent agent completion — the
+    // NOOP reply lands within milliseconds.
+    await ConversationResource.markAsReadForAuthUser(auth, {
+      conversation,
+      lastReadAt: new Date(Date.now() + 60_000),
+    });
+  }
 }
