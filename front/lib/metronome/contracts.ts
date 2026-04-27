@@ -2,8 +2,8 @@ import {
   ceilToHourISO,
   createMetronomeContract,
   createMetronomeCustomer,
-  epochSecondsToFloorHourISO,
   findMetronomeCustomerByAlias,
+  floorToHourISO,
   getMetronomeClient,
   getMetronomeContractById,
   scheduleMetronomeContractEnd,
@@ -57,9 +57,8 @@ export async function switchMetronomeContractPackage({
   workspace: LightWorkspaceType;
   packageAlias: string;
 }): Promise<Result<{ metronomeContractId: string }, Error>> {
-  // Pre-round to the next hour boundary so both functions (which apply ceil
-  // and floor respectively) resolve to the same timestamp, ensuring the new
-  // contract starts exactly when the old one ends.
+  // Round up to the next hour boundary (Metronome requires hour-aligned dates)
+  // so the new contract starts exactly when the old one ends.
   const switchAt = new Date(ceilToHourISO(new Date()));
 
   const endResult = await scheduleMetronomeContractEnd({
@@ -80,12 +79,12 @@ export async function switchMetronomeContractPackage({
     return new Err(contractResult.error);
   }
 
-  const { contractId: metronomeContractId, startingAt } = contractResult.value;
+  const { contractId: metronomeContractId } = contractResult.value;
   const syncResult = await syncContractQuantities(
     metronomeCustomerId,
     metronomeContractId,
     workspace,
-    startingAt
+    switchAt.toISOString()
   );
   if (syncResult.isErr()) {
     return new Err(syncResult.error);
@@ -104,11 +103,14 @@ export async function provisionMetronomeCustomerAndContract({
   stripeCustomerId,
   packageAlias,
   uniquenessKey,
+  startingAt,
 }: {
   workspace: LightWorkspaceType;
   stripeCustomerId: string;
   packageAlias: string;
   uniquenessKey: string;
+  // Must already be on an hour boundary (Metronome requirement).
+  startingAt: Date;
 }): Promise<
   Result<{ metronomeCustomerId: string; metronomeContractId: string }, Error>
 > {
@@ -136,17 +138,18 @@ export async function provisionMetronomeCustomerAndContract({
     metronomeCustomerId,
     packageAlias,
     uniquenessKey,
+    startingAt,
   });
   if (contractResult.isErr()) {
     return new Err(contractResult.error);
   }
 
-  const { contractId: metronomeContractId, startingAt } = contractResult.value;
+  const { contractId: metronomeContractId } = contractResult.value;
   const syncResult = await syncContractQuantities(
     metronomeCustomerId,
     metronomeContractId,
     workspace,
-    startingAt
+    startingAt.toISOString()
   );
   if (syncResult.isErr()) {
     return new Err(syncResult.error);
@@ -881,23 +884,26 @@ export async function provisionEnterpriseMetronomeContract({
       : "usd"
   );
 
+  // Anchor the Metronome contract to the Stripe billing period start so the
+  // recurring commit (which uses the same date) cannot start before the
+  // contract — Metronome rejects that as a 400.
+  const startDate = floorToHourISO(
+    new Date(stripeSubscription.current_period_start * 1000)
+  );
+
   // Provision Metronome customer and contract (also syncs seats + MAU).
   const provisionResult = await provisionMetronomeCustomerAndContract({
     workspace,
     stripeCustomerId,
     packageAlias,
     uniquenessKey: stripeSubscription.id,
+    startingAt: new Date(startDate),
   });
   if (provisionResult.isErr()) {
     return new Err(provisionResult.error);
   }
 
   const { metronomeCustomerId, metronomeContractId } = provisionResult.value;
-
-  // Use current billing period start, rounded to hour boundary.
-  const startDate = epochSecondsToFloorHourISO(
-    stripeSubscription.current_period_start
-  );
 
   // Count MAUs for initial subscription quantities on the first invoice.
   const initialMauCount = await countMauForWorkspace(

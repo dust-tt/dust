@@ -24,6 +24,7 @@ import {
 } from "@app/lib/credits/payg";
 import { handleMetronomeSetupCheckout } from "@app/lib/metronome/checkout";
 import {
+  floorToHourISO,
   reactivateMetronomeContract,
   scheduleMetronomeContractEnd,
 } from "@app/lib/metronome/client";
@@ -117,12 +118,14 @@ async function shadowProvisionMetronome({
   metronomePackageAlias,
   sessionId,
   subscriptionModelId,
+  periodStart,
 }: {
   workspace: WorkspaceResource;
   stripeCustomerId: string;
   metronomePackageAlias: string;
   sessionId: string;
   subscriptionModelId: ModelId;
+  periodStart: Date;
 }): Promise<void> {
   try {
     const result = await provisionMetronomeCustomerAndContract({
@@ -130,6 +133,7 @@ async function shadowProvisionMetronome({
       stripeCustomerId,
       packageAlias: metronomePackageAlias,
       uniquenessKey: sessionId,
+      startingAt: periodStart,
     });
 
     if (result.isErr()) {
@@ -443,6 +447,10 @@ async function handler(
               newSubscription &&
               isString(checkoutStripeSubscription.customer)
             ) {
+              const currentPeriodStart = new Date(
+                checkoutStripeSubscription.current_period_start * 1000
+              );
+
               // Resolve EUR variant based on Stripe subscription currency.
               const subscriptionCurrency =
                 checkoutStripeSubscription.currency === "eur" ? "eur" : "usd";
@@ -456,6 +464,7 @@ async function handler(
                 metronomePackageAlias: resolvedAlias,
                 sessionId: session.id,
                 subscriptionModelId: newSubscription.id,
+                periodStart: new Date(floorToHourISO(currentPeriodStart)),
               });
             }
 

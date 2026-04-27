@@ -1,6 +1,7 @@
 import { restoreWorkspaceAfterSubscription } from "@app/lib/api/subscription";
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
+import { floorToHourISO } from "@app/lib/metronome/client";
 import { provisionMetronomeCustomerAndContract } from "@app/lib/metronome/contracts";
 import { PlanModel } from "@app/lib/models/plan";
 import {
@@ -98,6 +99,7 @@ export async function handleMetronomeSetupCheckout({
     stripeCustomerId,
     packageAlias: resolvedPackageAlias,
     uniquenessKey: sessionId,
+    startingAt: new Date(floorToHourISO(now)),
   });
   if (provisionResult.isErr()) {
     return new Err(

@@ -110,6 +110,9 @@ const CONTRACT = {
 };
 
 beforeEach(() => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date(START_DATE));
+
   mockPrices.retrieve.mockReset();
 
   mockFindMetronomeCustomerByAlias.mockReset();
@@ -122,7 +125,7 @@ beforeEach(() => {
 
   mockCreateMetronomeContract.mockReset();
   mockCreateMetronomeContract.mockResolvedValue(
-    new Ok({ contractId: "m-contract", startingAt: START_DATE })
+    new Ok({ contractId: "m-contract" })
   );
 
   mockScheduleMetronomeContractEnd.mockReset();
@@ -676,6 +679,7 @@ describe("provisionMetronomeCustomerAndContract", () => {
       stripeCustomerId: "stripe-customer",
       packageAlias: "legacy-pro-monthly",
       uniquenessKey: "uniq_123",
+      startingAt: new Date(START_DATE),
     });
 
     expect(result.isOk()).toBe(true);
@@ -713,6 +717,7 @@ describe("provisionMetronomeCustomerAndContract", () => {
       stripeCustomerId: "stripe-customer",
       packageAlias: "legacy-enterprise",
       uniquenessKey: "uniq_123",
+      startingAt: new Date(START_DATE),
     });
 
     expect(result.isOk()).toBe(true);
@@ -728,6 +733,7 @@ describe("provisionMetronomeCustomerAndContract", () => {
       stripeCustomerId: "stripe-customer",
       packageAlias: "legacy-pro-monthly",
       uniquenessKey: "uniq_123",
+      startingAt: new Date(START_DATE),
     });
 
     expect(result.isOk()).toBe(true);
