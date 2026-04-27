@@ -2,7 +2,6 @@ import { createConversation } from "@app/lib/api/assistant/conversation";
 import { getConversationFilesBasePath } from "@app/lib/api/files/mount_path";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { FileResource } from "@app/lib/resources/file_resource";
-import { FileModel } from "@app/lib/resources/storage/models/files";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { Err, Ok } from "@app/types/shared/result";
@@ -76,7 +75,7 @@ describe("GET /api/w/[wId]/assistant/conversations/[cId]/files/thumbnail", () =>
   });
 
   it("streams from FileResource when one is associated with the path", async () => {
-    const { req, res, workspace, auth, conversation, basePath } = await setup();
+    const { req, res, workspace, auth, conversation } = await setup();
 
     const file = await FileFactory.create(auth, auth.getNonNullableUser(), {
       contentType: "image/png",
@@ -85,10 +84,7 @@ describe("GET /api/w/[wId]/assistant/conversations/[cId]/files/thumbnail", () =>
       status: "ready",
       useCase: "conversation",
     });
-    await FileModel.update(
-      { mountFilePath: `${basePath}generated.png` },
-      { where: { id: file.id, workspaceId: workspace.id } }
-    );
+    await file.setUseCaseMetadata(auth, { conversationId: conversation.sId });
 
     const spy = vi
       .spyOn(FileResource.prototype, "getContentReadStream")
@@ -111,7 +107,7 @@ describe("GET /api/w/[wId]/assistant/conversations/[cId]/files/thumbnail", () =>
     const { req, res, workspace, conversation, basePath } = await setup();
 
     const bucket = makeBucket();
-    vi.mocked(getPrivateUploadBucket).mockReturnValue(bucket as any);
+    vi.mocked(getPrivateUploadBucket).mockReturnValueOnce(bucket as any);
 
     req.query = {
       wId: workspace.sId,
@@ -129,7 +125,7 @@ describe("GET /api/w/[wId]/assistant/conversations/[cId]/files/thumbnail", () =>
   });
 
   it("returns 400 for a FileResource-backed non-image file", async () => {
-    const { req, res, workspace, auth, conversation, basePath } = await setup();
+    const { req, res, workspace, auth, conversation } = await setup();
 
     const file = await FileFactory.create(auth, auth.getNonNullableUser(), {
       contentType: "text/plain",
@@ -138,10 +134,7 @@ describe("GET /api/w/[wId]/assistant/conversations/[cId]/files/thumbnail", () =>
       status: "ready",
       useCase: "conversation",
     });
-    await FileModel.update(
-      { mountFilePath: `${basePath}report.txt` },
-      { where: { id: file.id, workspaceId: workspace.id } }
-    );
+    await file.setUseCaseMetadata(auth, { conversationId: conversation.sId });
 
     req.query = {
       wId: workspace.sId,
@@ -160,7 +153,7 @@ describe("GET /api/w/[wId]/assistant/conversations/[cId]/files/thumbnail", () =>
     const bucket = makeBucket({
       getFileContentType: vi.fn().mockResolvedValue(new Ok("text/plain")),
     });
-    vi.mocked(getPrivateUploadBucket).mockReturnValue(bucket as any);
+    vi.mocked(getPrivateUploadBucket).mockReturnValueOnce(bucket as any);
 
     req.query = {
       wId: workspace.sId,
@@ -181,7 +174,7 @@ describe("GET /api/w/[wId]/assistant/conversations/[cId]/files/thumbnail", () =>
         .fn()
         .mockResolvedValue(new Err(new Error("not found"))),
     });
-    vi.mocked(getPrivateUploadBucket).mockReturnValue(bucket as any);
+    vi.mocked(getPrivateUploadBucket).mockReturnValueOnce(bucket as any);
 
     req.query = {
       wId: workspace.sId,
