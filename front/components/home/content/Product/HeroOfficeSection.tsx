@@ -1,6 +1,6 @@
 // biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 
-import { qualBotScenario } from "@app/components/home/content/Product/heroOfficeScenario";
+import { homeScenarios } from "@app/components/home/content/Product/heroOfficeScenario";
 import { mountFloorScene } from "@app/components/home/content/Product/heroOfficeScene";
 import { PEOPLE } from "@app/components/home/content/shared/team";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
@@ -26,7 +26,7 @@ export function HeroOfficeSection() {
     }
     const cleanup = mountFloorScene(host, {
       avatarPool: TEAM_POOL,
-      scenario: qualBotScenario,
+      scenarios: homeScenarios,
     });
     return cleanup;
   }, []);

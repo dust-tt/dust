@@ -41,15 +41,17 @@ export interface MountFloorSceneOptions {
   /** Pool of teammates to populate the office with. The engine Fisher-Yates
    *  shuffles a copy and assigns one teammate per seat. */
   avatarPool: TeamMember[];
-  /** Scenario controlling agent definitions, cast slots, and beats. */
-  scenario: Scenario;
+  /** Ordered list of scenarios. The conductor picks a random starting
+   *  index on mount, then plays them sequentially in array order, looping
+   *  forever. Each scenario re-picks its own cast at the start of its run. */
+  scenarios: Scenario[];
 }
 
 export function mountFloorScene(
   host: HTMLElement,
   options: MountFloorSceneOptions
 ): () => void {
-  const { avatarPool, scenario } = options;
+  const { avatarPool, scenarios } = options;
   // Inject scene CSS once (scoped to host class).
   const styleId = "dust-floor-scene-style";
   let styleEl = document.getElementById(styleId) as HTMLStyleElement | null;
@@ -155,8 +157,21 @@ export function mountFloorScene(
     }
   }, 2600);
 
+  // Pre-build every unique agent referenced by any scenario, so each one
+  // already sits in its home room when its scenario starts. Idle agents
+  // from inactive scenarios stay parked silently in their rooms.
   const agentsLayer = $byId("agents");
-  const agents = scenario.agents.map((d: AgentDef) => {
+  const allAgentDefs: AgentDef[] = [];
+  const seenAgentIds = new Set<string>();
+  for (const s of scenarios) {
+    for (const a of s.agents) {
+      if (!seenAgentIds.has(a.id)) {
+        seenAgentIds.add(a.id);
+        allAgentDefs.push(a);
+      }
+    }
+  }
+  const agents = allAgentDefs.map((d: AgentDef) => {
     const el = buildAgent(d.id, d.label);
     agentsLayer.appendChild(el);
     el._tagTxt.textContent = d.label;
@@ -191,29 +206,34 @@ export function mountFloorScene(
     return (candidates[0] as any) || null;
   }
 
-  // Cast picking — bind each scenario CastSlot to a real teammate from the
-  // requested room. The chat-card name comes from the picked TeamMember;
-  // role stays as the scenario override.
-  const skip = new Set();
+  // Cast picking is per-scenario: each run resets castByRef and re-binds
+  // the slots against the current population. The chat-card module captures
+  // castByRef by reference, so it sees the latest mapping every run.
   const castByRef: Record<string, any> = {};
-  for (const slot of scenario.cast as CastSlot[]) {
-    const personEl = pickPersonIn(slot.startRoom, skip);
-    if (!personEl) {
-      continue;
+  function pickCastFor(scenario: Scenario): void {
+    for (const k of Object.keys(castByRef)) {
+      delete castByRef[k];
     }
-    skip.add(personEl);
-    personEl.dataset.person = slot.ref;
-    const teammate: TeamMember = personEl._person;
-    // First name only in the chat-card header — keeps the card narrow and
-    // avoids leaking last names. @mentions in beat copy already use the
-    // first name via resolveMsg().
-    const firstName = teammate.name.split(/\s+/)[0] || teammate.name;
-    personEl._chatMeta = {
-      name: firstName,
-      role: slot.role,
-      avatar: teammate.image,
-    };
-    castByRef[slot.ref] = personEl;
+    const skip = new Set();
+    for (const slot of scenario.cast as CastSlot[]) {
+      const personEl = pickPersonIn(slot.startRoom, skip);
+      if (!personEl) {
+        continue;
+      }
+      skip.add(personEl);
+      personEl.dataset.person = slot.ref;
+      const teammate: TeamMember = personEl._person;
+      // First name only in the chat-card header — keeps the card narrow
+      // and avoids leaking last names. @mentions in beat copy already use
+      // the first name via resolveMsg().
+      const firstName = teammate.name.split(/\s+/)[0] || teammate.name;
+      personEl._chatMeta = {
+        name: firstName,
+        role: slot.role,
+        avatar: teammate.image,
+      };
+      castByRef[slot.ref] = personEl;
+    }
   }
 
   // First name used to expand `{ref}` / `@{ref}` placeholders in beat copy.
@@ -374,12 +394,18 @@ export function mountFloorScene(
 
   (async function conductor() {
     await sleep(1200);
+    // Pick a random starting scenario, then play the rest sequentially.
+    const startIdx = Math.floor(Math.random() * scenarios.length);
+    let i = 0;
     while (!disposed) {
+      const scenario = scenarios[(startIdx + i) % scenarios.length];
+      pickCastFor(scenario);
       await runScenario(scenario);
       if (disposed) {
         break;
       }
       await sleep(scenario.loopGapMs ?? 2500);
+      i++;
     }
   })();
 
