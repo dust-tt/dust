@@ -50,37 +50,41 @@ export const ROOMS: Record<RoomKey, RoomConfig> = {
 
 /** Seat positions per room (plan-space). The engine builds one human per
  *  point, in this exact order — adding/removing entries changes the office
- *  population without touching the engine. */
+ *  population without touching the engine.
+ *
+ *  Each point projects (via heroOfficeIso `iso(px, py, 22)`) to a screen
+ *  position that sits at least ~35px inside the corresponding colored room
+ *  polygon — leaves ≥10px of room color visible past the human's r=23 disc. */
 export const ROOM_POPULATIONS: Record<RoomKey, [number, number][]> = {
   "office-d": [
-    [50, 40],
-    [50, 200],
-    [140, 60],
-    [140, 280],
-    [220, 120],
-    [280, 180],
+    [60, 50],
+    [50, 180],
+    [140, 70],
+    [110, 220],
+    [210, 110],
+    [230, 180],
   ],
   "office-c": [
-    [420, 60],
-    [580, 60],
+    [420, 80],
+    [570, 80],
     [500, 170],
-    [640, 160],
-    [580, 280],
+    [580, 150],
+    [510, 240],
   ],
   "office-bl": [
-    [40, 590],
-    [110, 680],
-    [180, 590],
-    [240, 620],
+    [60, 580],
+    [100, 620],
+    [150, 570],
+    [170, 600],
   ],
   "office-t": [
-    [150, 400],
+    [160, 400],
     [310, 400],
-    [470, 400],
-    [630, 400],
-    [400, 560],
-    [470, 680],
-    [440, 520],
+    [460, 400],
+    [580, 410],
+    [400, 540],
+    [420, 620],
+    [440, 510],
   ],
 };
 
