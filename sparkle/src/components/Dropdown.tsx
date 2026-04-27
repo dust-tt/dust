@@ -444,6 +444,11 @@ const DropdownMenuContent = React.forwardRef<
       []
     );
 
+    const itemRegistryContextValue = React.useMemo(
+      () => ({ registerItem }),
+      [registerItem]
+    );
+
     React.useEffect(() => {
       if (!scrollHighlightedItemIntoView || !highlightedItemId) {
         return;
@@ -485,7 +490,9 @@ const DropdownMenuContent = React.forwardRef<
           )}
           viewportRef={viewportRef}
         >
-          <DropdownItemRegistryContext.Provider value={{ registerItem }}>
+          <DropdownItemRegistryContext.Provider
+            value={itemRegistryContextValue}
+          >
             {children}
           </DropdownItemRegistryContext.Provider>
         </ScrollArea>
