@@ -40,7 +40,7 @@ import {
 import { resolvePackageAliasForCurrency } from "@app/lib/plans/billing_currency";
 import {
   isEntreprisePlanPrefix,
-  PRO_PLAN_SEAT_29_CODE,
+  isProPlanPrefix,
   PRO_PLAN_SEAT_39_CODE,
 } from "@app/lib/plans/plan_codes";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
@@ -208,8 +208,9 @@ async function getSubscriptionInfo(
   }
 
   // Determine alias from plan code + billing interval + currency.
-  const isPro = planCode === PRO_PLAN_SEAT_29_CODE;
   const isBusiness = planCode === PRO_PLAN_SEAT_39_CODE;
+  const isPro = !isBusiness && isProPlanPrefix(planCode);
+
   let baseAlias: string;
   if (isBusiness) {
     baseAlias = LEGACY_BUSINESS_PACKAGE_ALIAS;
