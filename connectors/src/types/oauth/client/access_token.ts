@@ -7,6 +7,8 @@ import { OAuthAPI } from "../../oauth/oauth_api";
 
 const OAUTH_ACCESS_TOKEN_CACHE_TTL = 1000 * 60 * 5;
 const CACHE_CLEAR_INTERVAL = 1000 * 60;
+// Mirror the OAuth server's refresh buffer so we never serve a token the server would already refresh.
+const ACCESS_TOKEN_EXPIRY_BUFFER_MS = 1000 * 60 * 10;
 
 const CACHE = new Map<
   string,
@@ -47,7 +49,7 @@ export async function getOAuthConnectionAccessToken({
   if (cached && cached.local_expiry > Date.now()) {
     const isValid =
       cached.access_token_expiry === null ||
-      cached.access_token_expiry > Date.now();
+      cached.access_token_expiry > Date.now() + ACCESS_TOKEN_EXPIRY_BUFFER_MS;
 
     if (isValid) {
       return new Ok(cached);
