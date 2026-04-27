@@ -349,7 +349,9 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
         let parentItemId = "root";
 
         for (const folder of folders) {
-          currentPath = currentPath ? `${currentPath}/${folder}` : folder;
+          currentPath = currentPath
+            ? `${currentPath}/${encodeURIComponent(folder)}`
+            : encodeURIComponent(folder);
 
           try {
             // Try to get the folder
