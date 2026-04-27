@@ -455,65 +455,61 @@ export async function postSkillSuggestionStatusUpdate(
   const verb = state === "approved" ? "accepted" : "rejected";
   const marker = state === "approved" ? "✅" : "❌";
 
-  await concurrentExecutor(
-    [...byConversation.entries()],
-    async ([conversationId, items]) => {
-      const conversationRes = await getConversation(auth, conversationId);
-      if (conversationRes.isErr()) {
-        logger.warn(
-          {
-            conversationId,
-            error: conversationRes.error.message,
-          },
-          "ReinforcedSkills: failed to fetch notification conversation for status update"
-        );
-        return;
-      }
-      const conversation = conversationRes.value;
-
-      const titles = items.map((s) => s.title ?? s.sId);
-      const actorName = user.fullName();
-      const content =
-        items.length === 1
-          ? `${marker} ${actorName} ${verb} "${titles[0]}"`
-          : `${actorName} ${verb}:\n${titles.map((t) => `${marker} ${t}`).join("\n")}`;
-
-      const postRes = await postUserMessage(auth, {
-        conversation,
-        content,
-        mentions: [{ configurationId: GLOBAL_AGENTS_SID.DUST }],
-        context: {
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC",
-          username: user.username,
-          fullName: actorName,
-          email: user.email,
-          profilePictureUrl: user.imageUrl,
-          origin: "reinforced_skill_notification",
+  for (const [conversationId, items] of byConversation) {
+    const conversationRes = await getConversation(auth, conversationId);
+    if (conversationRes.isErr()) {
+      logger.warn(
+        {
+          conversationId,
+          error: conversationRes.error.message,
         },
-        skipToolsValidation: true,
-      });
+        "ReinforcedSkills: failed to fetch notification conversation for status update"
+      );
+      continue;
+    }
+    const conversation = conversationRes.value;
 
-      if (postRes.isErr()) {
-        logger.warn(
-          {
-            conversationId,
-            error: postRes.error.api_error.message,
-          },
-          "ReinforcedSkills: failed to post status update to notification conversation"
-        );
-        return;
-      }
+    const titles = items.map((s) => s.title ?? s.sId);
+    const actorName = user.fullName();
+    const content =
+      items.length === 1
+        ? `${marker} ${actorName} ${verb} "${titles[0]}"`
+        : `${actorName} ${verb}:\n${titles.map((t) => `${marker} ${t}`).join("\n")}`;
 
-      // postUserMessage marks the conversation read at T1, but the Dust static
-      // reply will bump `updatedAt` to T2 and make the conversation re-appear
-      // as unread for the acting editor. Push `lastReadAt` a minute into the
-      // future so the ack holds through the imminent agent completion — the
-      // NOOP reply lands within milliseconds.
-      await ConversationResource.markAsReadForAuthUser(auth, {
-        conversation,
-        lastReadAt: new Date(Date.now() + 60_000),
-      });
-    },
-    { concurrency: 4 }
-  );
+    const postRes = await postUserMessage(auth, {
+      conversation,
+      content,
+      mentions: [{ configurationId: GLOBAL_AGENTS_SID.DUST }],
+      context: {
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC",
+        username: user.username,
+        fullName: actorName,
+        email: user.email,
+        profilePictureUrl: user.imageUrl,
+        origin: "reinforced_skill_notification",
+      },
+      skipToolsValidation: true,
+    });
+
+    if (postRes.isErr()) {
+      logger.warn(
+        {
+          conversationId,
+          error: postRes.error.api_error.message,
+        },
+        "ReinforcedSkills: failed to post status update to notification conversation"
+      );
+      continue;
+    }
+
+    // postUserMessage marks the conversation read at T1, but the Dust static
+    // reply will bump `updatedAt` to T2 and make the conversation re-appear
+    // as unread for the acting editor. Push `lastReadAt` a minute into the
+    // future so the ack holds through the imminent agent completion — the
+    // NOOP reply lands within milliseconds.
+    await ConversationResource.markAsReadForAuthUser(auth, {
+      conversation,
+      lastReadAt: new Date(Date.now() + 60_000),
+    });
+  }
 }
