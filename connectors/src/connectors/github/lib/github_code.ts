@@ -4,6 +4,7 @@ import {
   isTransientNetworkError,
   RepositoryNotFoundError,
 } from "@connectors/connectors/github/lib/errors";
+import { getOctokit } from "@connectors/connectors/github/lib/github_api";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -21,7 +22,7 @@ export type RepositoryInfo = Pick<
 >;
 
 export async function getRepoInfo(
-  octokit: Octokit,
+  connector: ConnectorResource,
   {
     repoLogin,
     repoName,
@@ -31,6 +32,8 @@ export async function getRepoInfo(
   }
 ): Promise<Result<RepositoryInfo, RepositoryNotFoundError>> {
   try {
+    const octokit = await getOctokit(connector);
+
     const response = await octokit.rest.repos.get({
       owner: repoLogin,
       repo: repoName,
