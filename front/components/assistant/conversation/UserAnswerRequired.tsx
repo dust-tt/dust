@@ -281,6 +281,7 @@ export function UserAnswerRequired({
               description={option.description}
               counterValue={index + 1}
               selected={selectedOptions.includes(index)}
+              disableHover={isKeyboardNavigating}
               onFocusCapture={() => {
                 setIsCustomResponseFocused(false);
                 setActiveOptionIndex(index);
@@ -308,7 +309,8 @@ export function UserAnswerRequired({
                 ? "bg-primary-100 dark:bg-primary-100-night"
                 : [
                     "bg-background dark:bg-background-night ",
-                    "hover:bg-primary-100 dark:hover:bg-primary-100-night",
+                    !isKeyboardNavigating &&
+                      "hover:bg-primary-100 dark:hover:bg-primary-100-night",
                   ]
             )}
           >

@@ -50,6 +50,7 @@ vi.mock("@dust-tt/sparkle", () => {
     label,
     description,
     selected,
+    disableHover,
     className,
     onClick,
     disabled,
@@ -59,6 +60,7 @@ vi.mock("@dust-tt/sparkle", () => {
     label: string;
     description?: string | null;
     selected?: boolean;
+    disableHover?: boolean;
     className?: string;
     onClick?: () => void;
     disabled?: boolean;
@@ -77,7 +79,7 @@ vi.mock("@dust-tt/sparkle", () => {
       }}
       onMouseEnter={onMouseEnter}
       disabled={disabled}
-      className={className}
+      className={cn(!disableHover && "hover-enabled", className)}
       data-selected={selected ? "true" : "false"}
     >
       <span>{label}</span>
@@ -249,17 +251,21 @@ describe("UserAnswerRequired", () => {
     );
 
     const keyboardContainer = getKeyboardContainer(container);
+    const alphaOption = screen.getByRole("button", { name: /Alpha/i });
 
     await waitFor(() => expect(keyboardContainer).toHaveFocus());
     expect(keyboardContainer).not.toHaveClass("cursor-none");
+    expect(alphaOption).toHaveClass("hover-enabled");
 
     fireEvent.keyDown(keyboardContainer, { key: "ArrowDown" });
 
     expect(keyboardContainer).toHaveClass("cursor-none");
+    expect(alphaOption).not.toHaveClass("hover-enabled");
 
     fireEvent.mouseMove(keyboardContainer);
 
     expect(keyboardContainer).not.toHaveClass("cursor-none");
+    expect(alphaOption).toHaveClass("hover-enabled");
   });
 
   it("submits the active option with Enter in single-select mode", async () => {
