@@ -183,9 +183,17 @@ export async function startAgentForProjectTodo(
   const [assigneeUser] = await UserResource.fetchByModelIds([todo.userId]);
   const assigneeId = assigneeUser?.sId ?? "";
 
+  const updatedTodo = await todo.updateWithVersion(auth, {
+    status: "in_progress",
+    doneAt: null,
+    markedAsDoneByType: null,
+    markedAsDoneByUserId: null,
+    markedAsDoneByAgentConfigurationId: null,
+  });
+
   return new Ok({
     todo: {
-      ...todo.toJSON({ assigneeId }),
+      ...updatedTodo.toJSON({ assigneeId }),
       conversationId,
     },
     conversationId,

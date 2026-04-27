@@ -114,7 +114,7 @@ function TodoMetadataTooltip({
     : null;
 
   const isAssistantWorkInProgress =
-    !!todo.conversationId && todo.status !== "done";
+    !!todo.conversationId && todo.status === "in_progress";
 
   const label = (
     <div className="flex flex-col gap-1">
@@ -462,8 +462,11 @@ function EditableTodoItem({
 }: EditableTodoItemProps) {
   const router = useAppRouter();
   const isDone = todo.status === "done";
+  const hasConversationLink =
+    (todo.status === "in_progress" || todo.status === "done") &&
+    !!todo.conversationId;
   const canEdit = viewerUserId !== null && todo.userId === viewerUserId;
-  const showInProgressTextAnimation = !!todo.conversationId && !isDone;
+  const showInProgressTextAnimation = todo.status === "in_progress";
   const [isFlashing, setIsFlashing] = useState(isNewlyDone);
 
   useEffect(() => {
@@ -529,24 +532,28 @@ function EditableTodoItem({
           </div>
         </button>
       </TodoMetadataTooltip>
-      {canEdit && (
-        <div className="mt-0.5 flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover/todo:opacity-100">
-          {todo.conversationId ? (
-            <IconButton
-              icon={ChatBubbleLeftRightIcon}
-              size="xs"
-              variant="ghost"
-              className="!text-muted-foreground hover:!text-foreground"
-              tooltip={"Open todo conversation"}
-              onClick={() => {
-                void router.push(
-                  getConversationRoute(owner.sId, todo.conversationId),
-                  undefined,
-                  { shallow: true }
-                );
-              }}
-            />
-          ) : (
+      <div className="mt-0.5 flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover/todo:opacity-100">
+        {hasConversationLink ? (
+          <IconButton
+            icon={ChatBubbleLeftRightIcon}
+            size="xs"
+            variant="ghost"
+            className="!text-muted-foreground hover:!text-foreground"
+            tooltip={"Open todo conversation"}
+            onClick={() => {
+              if (!todo.conversationId) {
+                return;
+              }
+              void router.push(
+                getConversationRoute(owner.sId, todo.conversationId),
+                undefined,
+                { shallow: true }
+              );
+            }}
+          />
+        ) : (
+          canEdit &&
+          !hasConversationLink && (
             <IconButton
               icon={PlayIcon}
               size="xs"
@@ -556,7 +563,9 @@ function EditableTodoItem({
               disabled={isStarting}
               onClick={() => onStartWorking(todo)}
             />
-          )}
+          )
+        )}
+        {canEdit && (
           <IconButton
             icon={TrashIcon}
             size="xs"
@@ -565,8 +574,8 @@ function EditableTodoItem({
             tooltip="Delete todo"
             onClick={() => onDelete(todo)}
           />
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
@@ -1033,7 +1042,16 @@ function EditableProjectTodosPanel({
             viewerUserId: prev?.viewerUserId ?? viewerUserId,
             users: prev?.users ?? [],
             todos: (prev?.todos ?? []).map((t) =>
-              t.sId === todo.sId ? { ...t, conversationId } : t
+              t.sId === todo.sId
+                ? {
+                    ...t,
+                    status: "in_progress",
+                    doneAt: null,
+                    markedAsDoneByType: null,
+                    markedAsDoneByAgentConfigurationId: null,
+                    conversationId,
+                  }
+                : t
             ),
           }),
           { revalidate: false }
