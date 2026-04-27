@@ -119,6 +119,13 @@ type MutuallyExclusiveProps<BaseProps, ExtraProps> = Simplify<
   EitherChildrenOrProps<BaseProps, ExtraProps>
 >;
 
+interface DropdownItemRegistryContextType {
+  registerItem: (itemId: string, element: HTMLElement | null) => void;
+}
+
+const DropdownItemRegistryContext =
+  React.createContext<DropdownItemRegistryContextType | null>(null);
+
 interface ItemWithLabelIconAndDescriptionProps {
   label?: string;
   icon?: React.ComponentType | React.ReactNode;
@@ -334,9 +341,11 @@ interface DropdownMenuContentProps
   mountPortal?: boolean;
   mountPortalContainer?: HTMLElement;
   dropdownHeaders?: React.ReactNode;
+  highlightedItemId?: string;
   preventAutoFocusOnClose?: boolean;
   onOpenAutoFocus?: (e: React.FocusEvent<HTMLDivElement>) => void;
   searchInputRef?: React.RefObject<HTMLInputElement | null>;
+  scrollHighlightedItemIntoView?: boolean;
 }
 
 const DropdownMenuContent = React.forwardRef<
@@ -350,16 +359,21 @@ const DropdownMenuContent = React.forwardRef<
       mountPortal = true,
       mountPortalContainer,
       dropdownHeaders,
+      highlightedItemId,
       preventAutoFocusOnClose = true,
       onCloseAutoFocus,
       onKeyDownCapture,
       onKeyDown,
       searchInputRef,
+      scrollHighlightedItemIntoView = false,
       children,
       ...props
     },
     ref
   ) => {
+    const viewportRef = React.useRef<HTMLDivElement>(null);
+    const itemElementsRef = React.useRef(new Map<string, HTMLElement>());
+
     const handleKeyDownCapture = (e: React.KeyboardEvent<HTMLDivElement>) => {
       onKeyDownCapture?.(e);
       if (e.defaultPrevented) {
@@ -419,6 +433,32 @@ const DropdownMenuContent = React.forwardRef<
       [preventAutoFocusOnClose, onCloseAutoFocus]
     );
 
+    const registerItem = React.useCallback(
+      (itemId: string, element: HTMLElement | null) => {
+        if (element) {
+          itemElementsRef.current.set(itemId, element);
+        } else {
+          itemElementsRef.current.delete(itemId);
+        }
+      },
+      []
+    );
+
+    React.useEffect(() => {
+      if (!scrollHighlightedItemIntoView || !highlightedItemId) {
+        return;
+      }
+
+      const viewport = viewportRef.current;
+      if (!viewport) {
+        return;
+      }
+
+      const highlightedItem = itemElementsRef.current.get(highlightedItemId);
+
+      highlightedItem?.scrollIntoView({ block: "nearest" });
+    }, [highlightedItemId, scrollHighlightedItemIntoView]);
+
     const content = (
       <DropdownMenuPrimitive.Content
         ref={ref}
@@ -443,8 +483,11 @@ const DropdownMenuContent = React.forwardRef<
             "s-flex-1",
             "s-max-h-[calc(var(--radix-dropdown-menu-content-available-height)-var(--header-height,20px))]"
           )}
+          viewportRef={viewportRef}
         >
-          {children}
+          <DropdownItemRegistryContext.Provider value={{ registerItem }}>
+            {children}
+          </DropdownItemRegistryContext.Provider>
         </ScrollArea>
       </DropdownMenuPrimitive.Content>
     );
@@ -465,6 +508,7 @@ DropdownMenuContent.displayName = DropdownMenuPrimitive.Content.displayName;
 export type DropdownMenuItemProps = MutuallyExclusiveProps<
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Item> & {
     inset?: boolean;
+    itemId?: string;
     variant?: ItemVariantType;
   } & Omit<LinkWrapperProps, "children" | "className">,
   LabelAndIconProps & {
@@ -486,6 +530,7 @@ const DropdownMenuItem = React.forwardRef<
       className,
       inset,
       icon,
+      itemId,
       truncateText,
       label,
       href,
@@ -500,6 +545,23 @@ const DropdownMenuItem = React.forwardRef<
     },
     ref
   ) => {
+    const dropdownItemRegistry = React.useContext(DropdownItemRegistryContext);
+
+    const handleItemRef = React.useCallback(
+      (element: React.ElementRef<typeof DropdownMenuPrimitive.Item> | null) => {
+        if (typeof ref === "function") {
+          ref(element);
+        } else if (ref) {
+          ref.current = element;
+        }
+
+        if (itemId) {
+          dropdownItemRegistry?.registerItem(itemId, element);
+        }
+      },
+      [dropdownItemRegistry, itemId, ref]
+    );
+
     return (
       <LinkWrapper
         href={href}
@@ -510,7 +572,7 @@ const DropdownMenuItem = React.forwardRef<
         prefetch={prefetch}
       >
         <DropdownMenuPrimitive.Item
-          ref={ref}
+          ref={handleItemRef}
           className={cn(
             menuStyleClasses.item({ variant }),
             inset ? menuStyleClasses.inset : "",

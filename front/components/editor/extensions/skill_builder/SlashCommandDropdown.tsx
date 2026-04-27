@@ -157,12 +157,14 @@ export const SlashCommandDropdown = forwardRef<
           align="start"
           avoidCollisions
           collisionPadding={12}
+          highlightedItemId={items[selectedIndex]?.id}
           side="bottom"
           sideOffset={4}
           onEscapeKeyDown={onClose}
           onInteractOutside={onClose}
           onCloseAutoFocus={(e) => e.preventDefault()}
           onOpenAutoFocus={(e) => e.preventDefault()}
+          scrollHighlightedItemIntoView
         >
           {header ? (
             <div className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground dark:text-muted-foreground-night">
@@ -174,43 +176,42 @@ export const SlashCommandDropdown = forwardRef<
               {emptyMessage}
             </div>
           ) : (
-            <div className="max-h-96 overflow-y-auto">
-              {items.map((item, index) => {
-                const menuItem = (
-                  <DropdownMenuItem
+            items.map((item, index) => {
+              const menuItem = (
+                <DropdownMenuItem
+                  key={item.id}
+                  icon={item.icon}
+                  itemId={item.id}
+                  label={item.label}
+                  description={item.description}
+                  truncateText
+                  onClick={() => selectItem(index)}
+                  onMouseEnter={() => setSelectedIndex(index)}
+                  className={
+                    index === selectedIndex
+                      ? "bg-muted-background dark:bg-muted-night [transition-duration:0ms]"
+                      : ""
+                  }
+                />
+              );
+
+              // Wrap with DropdownTooltipTrigger if command has tooltip property.
+              if (item.tooltip) {
+                return (
+                  <DropdownTooltipTrigger
                     key={item.id}
-                    icon={item.icon}
-                    label={item.label}
-                    description={item.description}
-                    truncateText
-                    onClick={() => selectItem(index)}
-                    onMouseEnter={() => setSelectedIndex(index)}
-                    className={
-                      index === selectedIndex
-                        ? "bg-muted-background dark:bg-muted-night [transition-duration:0ms]"
-                        : ""
-                    }
-                  />
+                    description={item.tooltip.description}
+                    media={item.tooltip.media}
+                    side="right"
+                    sideOffset={8}
+                  >
+                    {menuItem}
+                  </DropdownTooltipTrigger>
                 );
+              }
 
-                // Wrap with DropdownTooltipTrigger if command has tooltip property.
-                if (item.tooltip) {
-                  return (
-                    <DropdownTooltipTrigger
-                      key={item.id}
-                      description={item.tooltip.description}
-                      media={item.tooltip.media}
-                      side="right"
-                      sideOffset={8}
-                    >
-                      {menuItem}
-                    </DropdownTooltipTrigger>
-                  );
-                }
-
-                return menuItem;
-              })}
-            </div>
+              return menuItem;
+            })
           )}
         </DropdownMenuContent>
       </DropdownMenu>
