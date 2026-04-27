@@ -86,7 +86,11 @@ export const ThinkingStep = memo(function ThinkingStep({
   }
 
   const handleClick = needsTruncation
-    ? () => {
+    ? (e: React.MouseEvent) => {
+        // Prevent double clicks from being caught as a selection and not toggling on+off the expansion.
+        if (e.detail === 2) {
+          return;
+        }
         if (window.getSelection()?.toString()) {
           return;
         }
