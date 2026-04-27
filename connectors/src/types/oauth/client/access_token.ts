@@ -45,7 +45,15 @@ export async function getOAuthConnectionAccessToken({
   const cached = CACHE.get(connectionId);
 
   if (cached && cached.local_expiry > Date.now()) {
-    return new Ok(cached);
+    const isValid =
+      cached.access_token_expiry === null ||
+      cached.access_token_expiry > Date.now();
+
+    if (isValid) {
+      return new Ok(cached);
+    }
+
+    logger.warn({ connectionId, provider }, "Local cache has expired tokens");
   }
 
   const res = await new OAuthAPI(config, logger).getAccessToken({
