@@ -776,14 +776,13 @@ async fn invalidate_policy_evicts_cached_workspace_entry() -> Result<()> {
         );
     }
 
-    // Without invalidation, the cached policy would still allow "localhost".
-    // Invalidate the workspace cache entry using an invalidation token.
+    // Invalidate the workspace cache entry. The token carries wId which
+    // determines what cache key gets evicted (no request body needed).
     let admin_token = make_invalidation_token(SECRET, 60);
-    let invalidate_body = json!({ "keys": [format!("w:{TEST_WORKSPACE_ID}")] }).to_string();
     let status = http_post_status(
         proxy.health_addr,
         "/invalidate-policy",
-        &invalidate_body,
+        "",
         Some(&admin_token),
     )
     .await?;
@@ -801,9 +800,8 @@ async fn invalidate_policy_evicts_cached_workspace_entry() -> Result<()> {
 #[tokio::test]
 async fn invalidate_policy_rejects_missing_auth() -> Result<()> {
     let proxy = start_proxy(false, "production").await?;
-    let body = json!({ "keys": ["w:workspace-1"] }).to_string();
 
-    let status = http_post_status(proxy.health_addr, "/invalidate-policy", &body, None).await?;
+    let status = http_post_status(proxy.health_addr, "/invalidate-policy", "", None).await?;
 
     assert_eq!(status, 401);
     Ok(())
@@ -813,12 +811,11 @@ async fn invalidate_policy_rejects_missing_auth() -> Result<()> {
 async fn invalidate_policy_rejects_invalid_jwt() -> Result<()> {
     let proxy = start_proxy(false, "production").await?;
     let bad_token = make_token("wrong-secret", 60);
-    let body = json!({ "keys": ["w:workspace-1"] }).to_string();
 
     let status = http_post_status(
         proxy.health_addr,
         "/invalidate-policy",
-        &body,
+        "",
         Some(&bad_token),
     )
     .await?;
@@ -828,13 +825,23 @@ async fn invalidate_policy_rejects_invalid_jwt() -> Result<()> {
 }
 
 #[tokio::test]
-async fn invalidate_policy_rejects_empty_keys() -> Result<()> {
+async fn invalidate_policy_rejects_token_with_both_wid_and_sbid() -> Result<()> {
     let proxy = start_proxy(false, "production").await?;
-    let token = make_invalidation_token(SECRET, 60);
-    let body = json!({ "keys": [] }).to_string();
+    // Token has both wId AND sbId — ambiguous, should be rejected.
+    let token = make_token_with_claims(
+        SECRET,
+        FullClaims {
+            sb_id: Some(TEST_SANDBOX_ID),
+            w_id: Some(TEST_WORKSPACE_ID),
+            action: Some("invalidate-policy"),
+            iss: "dust-front",
+            aud: "dust-egress-proxy",
+            exp_offset_seconds: 60,
+        },
+    );
 
     let status =
-        http_post_status(proxy.health_addr, "/invalidate-policy", &body, Some(&token)).await?;
+        http_post_status(proxy.health_addr, "/invalidate-policy", "", Some(&token)).await?;
 
     assert_eq!(status, 400);
     Ok(())
@@ -844,17 +851,28 @@ async fn invalidate_policy_rejects_empty_keys() -> Result<()> {
 async fn invalidate_policy_rejects_sandbox_token_without_action() -> Result<()> {
     let proxy = start_proxy(false, "production").await?;
     let sandbox_token = make_token_with_workspace(SECRET, 60);
-    let body = json!({ "keys": ["w:workspace-1"] }).to_string();
 
     let status = http_post_status(
         proxy.health_addr,
         "/invalidate-policy",
-        &body,
+        "",
         Some(&sandbox_token),
     )
     .await?;
 
     assert_eq!(status, 403);
+    Ok(())
+}
+
+#[tokio::test]
+async fn forwarder_rejects_token_with_action_claim() -> Result<()> {
+    let proxy = start_proxy_with_sandbox_policy(&["localhost"], true, "test").await?;
+    // An invalidation token (has action claim) should be rejected by the forwarder.
+    let token = make_invalidation_token(SECRET, 60);
+
+    let response = send_handshake(&proxy, &token, "localhost", 443).await?;
+
+    assert_eq!(response, Some(DENY_RESPONSE));
     Ok(())
 }
 

@@ -98,14 +98,13 @@ async function invalidateWorkspacePolicyCache(
 
     const workspace = auth.getNonNullableWorkspace();
     const token = mintEgressInvalidationJwt({ workspaceId: workspace.sId });
+    const url = `${baseUrl.replace(/\/+$/, "")}/invalidate-policy`;
 
-    const response = await fetch(`${baseUrl}/invalidate-policy`, {
+    const response = await fetch(url, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ keys: [`w:${workspace.sId}`] }),
       signal: AbortSignal.timeout(INVALIDATION_TIMEOUT_MS),
     });
 

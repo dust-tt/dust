@@ -148,7 +148,7 @@ async fn handle_connection_inner(
     };
     drop(raw_token);
 
-    if token.sb_id.is_none() {
+    if token.sb_id.is_none() || token.action.is_some() {
         deny(
             stream,
             DenyReason::InvalidClaims,

@@ -5,7 +5,7 @@ use axum::extract::State;
 use axum::http::{HeaderMap, StatusCode};
 use axum::routing::{get, post};
 use axum::{Json, Router};
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use tokio::net::TcpListener;
 use tokio::sync::watch;
 use tracing::{info, warn};
@@ -18,14 +18,9 @@ struct HealthState {
     jwt_validator: JwtValidator,
 }
 
-#[derive(Deserialize)]
-struct InvalidateRequest {
-    keys: Vec<String>,
-}
-
 #[derive(Serialize)]
 struct InvalidateResponse {
-    invalidated: usize,
+    invalidated: String,
 }
 
 pub async fn serve(
@@ -66,7 +61,6 @@ async fn healthz() -> &'static str {
 async fn invalidate_policy(
     State(state): State<HealthState>,
     headers: HeaderMap,
-    Json(body): Json<InvalidateRequest>,
 ) -> Result<Json<InvalidateResponse>, StatusCode> {
     let token = extract_bearer_token(&headers).ok_or_else(|| {
         warn!("invalidate-policy: missing or malformed authorization header");
@@ -83,18 +77,23 @@ async fn invalidate_policy(
         return Err(StatusCode::FORBIDDEN);
     }
 
-    if body.keys.is_empty() {
-        return Err(StatusCode::BAD_REQUEST);
-    }
+    // Derive the cache key from claims: exactly one of wId or sbId must be set.
+    let cache_key = match (validated.w_id.as_deref(), validated.sb_id.as_deref()) {
+        (Some(w_id), None) => format!("w:{w_id}"),
+        (None, Some(sb_id)) => format!("s:{sb_id}"),
+        _ => {
+            warn!("invalidate-policy: token must have exactly one of wId or sbId");
+            return Err(StatusCode::BAD_REQUEST);
+        }
+    };
 
-    let count = body.keys.len();
-    for key in &body.keys {
-        state.policy_provider.invalidate(key).await;
-    }
+    state.policy_provider.invalidate(&cache_key).await;
 
-    info!(keys = ?body.keys, "invalidated policy cache entries");
+    info!(cache_key = %cache_key, "invalidated policy cache entry");
 
-    Ok(Json(InvalidateResponse { invalidated: count }))
+    Ok(Json(InvalidateResponse {
+        invalidated: cache_key,
+    }))
 }
 
 fn extract_bearer_token(headers: &HeaderMap) -> Option<&str> {
