@@ -243,6 +243,13 @@ function constructSkillsSection({
     "perspective on the currently available context.\n" +
     "Decisions taken prior to enabling a skill may need to be revisited after enabling it.\n";
 
+  // Sort all skill arrays by name for stable prompt caching.
+  const sortByName = <T extends { name: string }>(arr: T[]): T[] =>
+    [...arr].sort((a, b) => a.name.localeCompare(b.name));
+  const sortedSystemSkills = sortByName(systemSkills);
+  const sortedEnabledSkills = sortByName(enabledSkills);
+  const sortedEquippedSkills = sortByName(equippedSkills);
+
   if (!systemSkills.length && !enabledSkills.length && !equippedSkills.length) {
     skillsSection +=
       "\nNo skills are currently available or enabled for this agent.\n";
@@ -250,27 +257,27 @@ function constructSkillsSection({
   }
 
   // Enabled skills - inject their full instructions.
-  if (systemSkills.length > 0 || enabledSkills.length > 0) {
+  if (sortedSystemSkills.length > 0 || sortedEnabledSkills.length > 0) {
     skillsSection += "\n### ENABLED SKILLS\n";
     skillsSection += "The following skills are currently enabled:\n";
 
     const skillInstructions = [
-      ...systemSkills.map(
+      ...sortedSystemSkills.map(
         (skill) => `<${skill.name}>\n${skill.instructions}\n</${skill.name}>`
       ),
-      ...enabledSkills.map((skill) => getEnabledSkillInstructions(skill)),
+      ...sortedEnabledSkills.map((skill) => getEnabledSkillInstructions(skill)),
     ];
 
     skillsSection += skillInstructions.join("\n");
   }
 
   // Equipped but not yet enabled skills - show name and description only
-  if (equippedSkills && equippedSkills.length > 0) {
+  if (sortedEquippedSkills.length > 0) {
     skillsSection += "\n### AVAILABLE SKILLS\n";
     skillsSection +=
       `These skills can be enabled using the \`${ENABLE_SKILL_TOOL_NAME}\` tool. ` +
       "Review their descriptions and enable the appropriate skill when relevant:\n";
-    const skillList = equippedSkills
+    const skillList = sortedEquippedSkills
       .map(
         ({ name, agentFacingDescription }) =>
           `- **${name}**: ${agentFacingDescription}`
