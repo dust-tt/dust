@@ -5,8 +5,19 @@ import {
 } from "@app/lib/api/assistant/skills_rendering";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { z } from "zod";
 
-const ENABLE_SKILL_INSTRUCTIONS_MARKER = "enable_skill_instructions" as const;
+const ENABLE_SKILL_INSTRUCTIONS_MARKER = "enable_skill_instructions";
+
+const EnableSkillInstructionsMarkerResourceSchema = z.object({
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.TOOL_MARKER),
+  uri: z.literal(""),
+  text: z.literal(ENABLE_SKILL_INSTRUCTIONS_MARKER),
+  _meta: z.object({
+    skillName: z.string(),
+    skillInstructions: z.string(),
+  }),
+});
 
 export function makeEnableSkillInstructionsMarker(
   skill: EnabledSkillType
@@ -32,24 +43,13 @@ export function getEnableSkillInstructionsFromOutputBlock(
     return null;
   }
 
-  if (outputBlock.resource.text !== ENABLE_SKILL_INSTRUCTIONS_MARKER) {
+  const parsedResource = EnableSkillInstructionsMarkerResourceSchema.safeParse(
+    outputBlock.resource
+  );
+  if (!parsedResource.success) {
     return null;
   }
 
-  const resource = outputBlock.resource as typeof outputBlock.resource & {
-    _meta?: Record<string, unknown>;
-    skillName?: unknown;
-    skillInstructions?: unknown;
-  };
-  const metadata =
-    "skillName" in resource && "skillInstructions" in resource
-      ? resource
-      : resource._meta;
-  const skillName = metadata?.skillName;
-  const skillInstructions = metadata?.skillInstructions;
-  if (typeof skillName !== "string" || typeof skillInstructions !== "string") {
-    return null;
-  }
-
+  const { skillName, skillInstructions } = parsedResource.data._meta;
   return { skillName, skillInstructions };
 }
