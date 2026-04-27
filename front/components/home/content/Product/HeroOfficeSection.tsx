@@ -1,6 +1,8 @@
 // biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
+
+import { qualBotScenario } from "@app/components/home/content/Product/heroOfficeScenario";
 import { mountFloorScene } from "@app/components/home/content/Product/heroOfficeScene";
-import { TEAM_AVATAR_URLS } from "@app/components/home/content/shared/team";
+import { PEOPLE } from "@app/components/home/content/shared/team";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { Button } from "@dust-tt/sparkle";
 import Link from "next/link";
@@ -12,6 +14,8 @@ const LEAD_COPY =
   "Turn scattered knowledge into coordinated execution. AI agents your team builds, owns, and runs — alongside the humans who know the work.";
 const EYEBROW_COPY = "Run on Dust · live in 47 companies right now";
 
+const TEAM_POOL = Object.values(PEOPLE);
+
 export function HeroOfficeSection() {
   const sceneRef = useRef<HTMLDivElement>(null);
 
@@ -20,7 +24,10 @@ export function HeroOfficeSection() {
     if (!host) {
       return;
     }
-    const cleanup = mountFloorScene(host, TEAM_AVATAR_URLS);
+    const cleanup = mountFloorScene(host, {
+      avatarPool: TEAM_POOL,
+      scenario: qualBotScenario,
+    });
     return cleanup;
   }, []);
 

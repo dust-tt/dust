@@ -5,6 +5,14 @@
 // SVG foreignObject chat cards rely on per-frame DOM mutation — rewriting as
 // React idioms would lose visual fidelity. Keep this file self-contained.
 
+import type {
+  AgentDef,
+  Beat,
+  CastSlot,
+  Scenario,
+} from "@app/components/home/content/Product/heroOfficeScenario";
+import type { TeamMember } from "@app/components/home/content/shared/team";
+
 // =============================================================================
 // Static SVG markup — the isometric ground, four logo-shaped rooms, door
 // lights, hidden room labels, and empty <g id="humans"> / <g id="agents">
@@ -462,10 +470,19 @@ const SCENE_CSS = `
 // uses these to drive per-frame visuals that React's render cycle can't.
 // =============================================================================
 
+export interface MountFloorSceneOptions {
+  /** Pool of teammates to populate the office with. The engine Fisher-Yates
+   *  shuffles a copy and assigns one teammate per seat. */
+  avatarPool: TeamMember[];
+  /** Scenario controlling agent definitions, cast slots, and beats. */
+  scenario: Scenario;
+}
+
 export function mountFloorScene(
   host: HTMLElement,
-  avatarUrls: string[]
+  options: MountFloorSceneOptions
 ): () => void {
+  const { avatarPool, scenario } = options;
   // Inject scene CSS once (scoped to host class).
   const styleId = "dust-floor-scene-style";
   let styleEl = document.getElementById(styleId) as HTMLStyleElement | null;
@@ -622,37 +639,21 @@ export function mountFloorScene(
     "RN",
   ];
 
-  // Avatars come from the caller (e.g. the dust team list) and are
-  // Fisher-Yates shuffled here so each page load reseats the office.
-  const avatars = avatarUrls.length
-    ? avatarUrls.slice()
-    : [
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-      ];
-  for (let i = avatars.length - 1; i > 0; i--) {
+  // The teammate pool comes from the caller and is Fisher-Yates shuffled
+  // here so each page load reseats the office.
+  const PLACEHOLDER_PERSON: TeamMember = {
+    name: "",
+    title: "",
+    image: "",
+    linkedIn: null,
+    github: "",
+  };
+  const people: TeamMember[] = avatarPool.length
+    ? avatarPool.slice()
+    : Array.from({ length: 22 }, () => PLACEHOLDER_PERSON);
+  for (let i = people.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    [avatars[i], avatars[j]] = [avatars[j], avatars[i]];
+    [people[i], people[j]] = [people[j], people[i]];
   }
   const statuses = [
     "online",
@@ -666,7 +667,7 @@ export function mountFloorScene(
   ];
   const activityEmojis = ["☕️", "🍽️", "🌴", "🎧", "📞", "🥑", "🍵", "🍕"];
 
-  function buildHuman(cx, cy, seed = 0, roomKey = null) {
+  function buildHuman(cx, cy, seed = 0, roomKey = null, person: TeamMember) {
     const color = avatarColors[(seed * 7) % avatarColors.length];
     const _initial = initials[seed % initials.length];
     const status = statuses[seed % statuses.length];
@@ -679,6 +680,7 @@ export function mountFloorScene(
     g._planX = cx;
     g._planY = cy;
     g._roomKey = roomKey;
+    g._person = person;
     if (roomKey) {
       g.dataset.room = roomKey;
     }
@@ -701,7 +703,7 @@ export function mountFloorScene(
     disc.setAttribute("fill", color);
     body.appendChild(disc);
 
-    const url = avatars[seed % avatars.length];
+    const url = person.image;
     const photo = document.createElementNS(SVG_NS, "image");
     photo.setAttributeNS("http://www.w3.org/1999/xlink", "href", url);
     photo.setAttribute("href", url);
@@ -803,7 +805,8 @@ export function mountFloorScene(
   let seed = 0;
   for (const [room, pts] of Object.entries(roomPopulations)) {
     for (const [x, y] of pts as [number, number][]) {
-      humansLayer.appendChild(buildHuman(x, y, seed++, room));
+      const person = people[seed % people.length] ?? PLACEHOLDER_PERSON;
+      humansLayer.appendChild(buildHuman(x, y, seed++, room, person));
     }
   }
 
@@ -902,19 +905,27 @@ export function mountFloorScene(
     g._target = { x: planX, y: planY };
     g._planX = planX;
     g._planY = planY;
+    g._homePlanX = planX;
+    g._homePlanY = planY;
 
     return g;
   }
 
   const agentsLayer = $byId("agents");
-  const agentPhrases: Record<string, string[]> = { "@QualBot": [] };
-  const agentDefs = [{ id: "a1", start: "office-t", label: "@QualBot" }];
-  const agents = agentDefs.map((d) => {
-    const el = buildAgent(d.id, d.start, d.label);
+  const agentPhrases: Record<string, string[]> = {};
+  for (const a of scenario.agents) {
+    agentPhrases[a.label] = [];
+  }
+  const agents = scenario.agents.map((d: AgentDef) => {
+    const el = buildAgent(d.id, d.startRoom, d.label);
     agentsLayer.appendChild(el);
     el._tagTxt.textContent = d.label;
     return { el, def: d };
   });
+  const agentById: Record<string, (typeof agents)[number]> = {};
+  for (const a of agents) {
+    agentById[a.def.id] = a;
+  }
 
   function setTagIdle(el) {
     const w = el._idleWidth;
@@ -1519,59 +1530,40 @@ export function mountFloorScene(
     return (candidates[0] as any) || null;
   }
 
+  // Cast picking — bind each scenario CastSlot to a real teammate from the
+  // requested room. The chat-card name comes from the picked TeamMember;
+  // role stays as the scenario override.
   const skip = new Set();
-  const lisa = pickPersonIn("office-d", skip);
-  if (lisa) {
-    skip.add(lisa);
-  }
-  const marco = pickPersonIn("office-t", skip);
-  if (marco) {
-    skip.add(marco);
-  }
-  const yuki = pickPersonIn("office-c", skip);
-  if (yuki) {
-    skip.add(yuki);
-  }
-  if (lisa) {
-    lisa.dataset.person = "lisa";
-  }
-  if (marco) {
-    marco.dataset.person = "marco";
-  }
-  if (yuki) {
-    yuki.dataset.person = "yuki";
+  const castByRef: Record<string, any> = {};
+  for (const slot of scenario.cast as CastSlot[]) {
+    const personEl = pickPersonIn(slot.startRoom, skip);
+    if (!personEl) {
+      continue;
+    }
+    skip.add(personEl);
+    personEl.dataset.person = slot.ref;
+    const teammate: TeamMember = personEl._person;
+    personEl._chatMeta = {
+      name: teammate.name,
+      role: slot.role,
+      avatar: teammate.image,
+    };
+    castByRef[slot.ref] = personEl;
   }
 
-  function avatarUrlOf(personEl) {
-    const img = personEl.querySelector("image");
-    return img
-      ? img.getAttribute("href") ||
-          img.getAttributeNS("http://www.w3.org/1999/xlink", "href")
-      : null;
-  }
-  if (lisa) {
-    lisa._chatMeta = {
-      name: "Lisa Okafor",
-      role: "RevOps Lead",
-      avatar: avatarUrlOf(lisa),
-    };
-  }
-  if (marco) {
-    marco._chatMeta = {
-      name: "Marco Alves",
-      role: "AE · Sales",
-      avatar: avatarUrlOf(marco),
-    };
-  }
-  if (yuki) {
-    yuki._chatMeta = {
-      name: "Yuki Tanaka",
-      role: "AE · Sales",
-      avatar: avatarUrlOf(yuki),
-    };
-  }
-
-  const qualBot = agents[0];
+  // First name used to expand `{ref}` / `@{ref}` placeholders in beat copy.
+  const firstNameOf = (personEl: any): string => {
+    const full: string = personEl?._person?.name || "";
+    return full.split(/\s+/)[0] || "";
+  };
+  const resolveMsg = (msg: string): string =>
+    msg.replace(/(@?)\{([A-Za-z0-9_]+)\}/g, (whole, at, ref) => {
+      const ref_el = castByRef[ref];
+      if (!ref_el) {
+        return whole; // leave unknown placeholders untouched
+      }
+      return (at || "") + firstNameOf(ref_el);
+    });
 
   function chatCardFor(targetEl) {
     return targetEl._chatCard || null;
@@ -1678,7 +1670,7 @@ export function mountFloorScene(
     for (const r of reactions) {
       trackedSetTimeout(
         () => {
-          const reactor = ({ lisa, marco, yuki } as any)[r.from];
+          const reactor = castByRef[r.from];
           if (!reactor) {
             return;
           }
@@ -1690,248 +1682,141 @@ export function mountFloorScene(
   }
 
   function showAgentCard(agent, msg, opts: any = {}) {
+    const def: AgentDef = agent.def;
     return showChatCard(agent.el, msg, {
       holdMs: opts.holdMs,
       maxChars: opts.maxChars,
-      name: "QualBot",
-      role: "Agent · Sales",
+      // Strip leading "@" from the label for the card title
+      name: def.label.replace(/^@/, ""),
+      role: def.cardRole,
       isAgent: true,
     });
   }
 
-  async function runScenario1() {
-    if (!lisa || !marco || !yuki) {
-      return;
-    }
+  // Smooth straight walk to a plan-space target. Used by walkTo / walkHome
+  // beats so an agent can stand next to a caller in a single room without
+  // routing through the corridor.
+  function walkAgentTo(agent, tx, ty) {
+    return new Promise<void>((resolve) => {
+      const el = agent.el;
+      if (el._raf) {
+        cancelAnimationFrame(el._raf);
+      }
+      const sx = el._planX;
+      const sy = el._planY;
+      const dist = Math.hypot(tx - sx, ty - sy);
+      if (dist < 4) {
+        resolve();
+        return;
+      }
+      const duration = Math.max(900, Math.min(2800, (dist / 90) * 1000));
+      const easeInOut = (u) =>
+        u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2;
+      const start = performance.now();
+      el.classList.remove("working");
+      const tick = (now) => {
+        if (disposed) {
+          return;
+        }
+        const u = Math.min(1, (now - start) / duration);
+        const eu = easeInOut(u);
+        const x = sx + (tx - sx) * eu;
+        const y = sy + (ty - sy) * eu;
+        const [ix, iy] = iso(x, y, 22);
+        el.style.setProperty("--x", ix + "px");
+        el.style.setProperty("--y", iy + "px");
+        el._planX = x;
+        el._planY = y;
+        if (u < 1) {
+          el._raf = trackedRAF(tick);
+        } else {
+          el.classList.add("working");
+          resolve();
+        }
+      };
+      el._raf = trackedRAF(tick);
+    });
+  }
+
+  // Generic beat runner — dispatches each Beat in scenario.beats.
+  async function runScenario(s: Scenario) {
     if (disposed) {
       return;
     }
+    // Bail out gracefully if any cast slot couldn't be filled.
+    for (const slot of s.cast as CastSlot[]) {
+      if (!castByRef[slot.ref]) {
+        return;
+      }
+    }
 
-    const qb = qualBot.el;
-    const qbHome = { x: qb._planX, y: qb._planY };
-
-    function walkAgentTo(agent, tx, ty) {
-      return new Promise<void>((resolve) => {
-        const el = agent.el;
-        if (el._raf) {
-          cancelAnimationFrame(el._raf);
-        }
-        const sx = el._planX;
-        const sy = el._planY;
-        const dist = Math.hypot(tx - sx, ty - sy);
-        if (dist < 4) {
-          resolve();
-          return;
-        }
-        const duration = Math.max(900, Math.min(2800, (dist / 90) * 1000));
-        const easeInOut = (u) =>
-          u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2;
-        const start = performance.now();
-        el.classList.remove("working");
-        const tick = (now) => {
-          if (disposed) {
-            return;
+    for (const beat of s.beats as Beat[]) {
+      if (disposed) {
+        return;
+      }
+      switch (beat.type) {
+        case "person": {
+          const speaker = castByRef[beat.ref];
+          if (!speaker) {
+            break;
           }
-          const u = Math.min(1, (now - start) / duration);
-          const eu = easeInOut(u);
-          const x = sx + (tx - sx) * eu;
-          const y = sy + (ty - sy) * eu;
-          const [ix, iy] = iso(x, y, 22);
-          el.style.setProperty("--x", ix + "px");
-          el.style.setProperty("--y", iy + "px");
-          el._planX = x;
-          el._planY = y;
-          if (u < 1) {
-            el._raf = trackedRAF(tick);
-          } else {
-            el.classList.add("working");
-            resolve();
+          const p = showChatCard(speaker, resolveMsg(beat.msg), {
+            holdMs: beat.holdMs,
+            maxChars: beat.maxChars,
+            name: speaker._chatMeta.name,
+            role: speaker._chatMeta.role,
+            avatar: speaker._chatMeta.avatar,
+          });
+          if (beat.reactions?.length) {
+            scheduleReactions(speaker, beat.reactions);
           }
-        };
-        el._raf = trackedRAF(tick);
-      });
-    }
-
-    {
-      const p = showChatCard(
-        lisa,
-        "Just shipped v2 of @QualBot. It now pulls live usage data from Snowflake and cross-references with our ICP scoring in HubSpot. Let me know if anything feels off.",
-        {
-          holdMs: 5200,
-          name: lisa._chatMeta.name,
-          role: lisa._chatMeta.role,
-          avatar: lisa._chatMeta.avatar,
+          await p;
+          break;
         }
-      );
-      scheduleReactions(lisa, [
-        { from: "marco", emoji: "👍", at: 3600 },
-        { from: "yuki", emoji: "🚀", at: 4400 },
-        { from: "marco", emoji: "👀", at: 5100 },
-      ]);
-      await p;
-      await sleep(400);
-    }
-
-    {
-      const p = showChatCard(
-        marco,
-        "@Lisa nice! Does it handle multi-product accounts now? We kept getting weird scores for companies on both plans.",
-        {
-          holdMs: 4200,
-          name: marco._chatMeta.name,
-          role: marco._chatMeta.role,
-          avatar: marco._chatMeta.avatar,
+        case "agent": {
+          const agent = agentById[beat.agentId];
+          if (!agent) {
+            break;
+          }
+          const p = showAgentCard(agent, resolveMsg(beat.msg), {
+            holdMs: beat.holdMs,
+            maxChars: beat.maxChars,
+          });
+          if (beat.reactions?.length) {
+            scheduleReactions(agent.el, beat.reactions, 0, true);
+          }
+          await p;
+          break;
         }
-      );
-      await p;
-      await sleep(300);
-    }
-
-    {
-      const p = showChatCard(
-        lisa,
-        "Yep, fixed. It now scores **per product line** and rolls up into a composite. Try it on one of your accounts and tell me if the output makes sense.",
-        {
-          holdMs: 4600,
-          name: lisa._chatMeta.name,
-          role: lisa._chatMeta.role,
-          avatar: lisa._chatMeta.avatar,
+        case "walkTo": {
+          const agent = agentById[beat.agentId];
+          const target = castByRef[beat.ref];
+          if (!agent || !target) {
+            break;
+          }
+          await walkAgentTo(
+            agent,
+            target._planX + (beat.offsetX ?? 60),
+            target._planY + (beat.offsetY ?? -10)
+          );
+          break;
         }
-      );
-      scheduleReactions(lisa, [{ from: "marco", emoji: "✅", at: 3200 }]);
-      await p;
-      await sleep(400);
-    }
-
-    {
-      const p = showChatCard(
-        marco,
-        "@QualBot can you qualify Meridian Health? They just booked a demo for Thursday.",
-        {
-          holdMs: 3600,
-          name: marco._chatMeta.name,
-          role: marco._chatMeta.role,
-          avatar: marco._chatMeta.avatar,
+        case "walkHome": {
+          const agent = agentById[beat.agentId];
+          if (!agent) {
+            break;
+          }
+          // Don't await — the prototype lets the agent stroll home while the
+          // loop's tail sleep starts immediately.
+          walkAgentTo(agent, agent.el._homePlanX, agent.el._homePlanY);
+          break;
         }
-      );
-      await p;
-      await sleep(300);
-    }
-
-    {
-      const mx = marco._planX,
-        my = marco._planY;
-      const offX = 60,
-        offY = -10;
-      await walkAgentTo(qualBot, mx + offX, my + offY);
-    }
-
-    {
-      const msg = [
-        "Here's what I found on **Meridian Health**:",
-        "* **ICP score:** 87/100 — mid-market healthcare, 340 employees.",
-        "* **Intent:** pricing page 6× this month, downloaded security whitepaper.",
-        "* **Usage:** trial with 14 active users, 3 agents built. Top agent: compliance FAQ bot.",
-        "* **Champion:** likely Priya Nair (Head of IT Ops) — built 2 of the 3 agents.",
-        "* **Risk:** no executive sponsor identified yet.",
-        "> Strong fit. Suggest looping in Priya's VP before the demo. Draft a pre-meeting brief?",
-      ].join("\n");
-      const p = showAgentCard(qualBot, msg, { holdMs: 7200, maxChars: 46 });
-      scheduleReactions(
-        qualBot.el,
-        [
-          { from: "marco", emoji: "🔥", at: 5200 },
-          { from: "yuki", emoji: "🎯", at: 6000 },
-          { from: "lisa", emoji: "🔥", at: 6700 },
-        ],
-        0,
-        true
-      );
-      await p;
-      await sleep(400);
-    }
-
-    {
-      const p = showChatCard(
-        marco,
-        "Yes please. And flag this in #sales-pipeline.",
-        {
-          holdMs: 3000,
-          name: marco._chatMeta.name,
-          role: marco._chatMeta.role,
-          avatar: marco._chatMeta.avatar,
+        case "pause": {
+          await sleep(beat.ms);
+          break;
         }
-      );
-      await p;
-      await sleep(300);
+      }
     }
-
-    {
-      const p = showAgentCard(
-        qualBot,
-        "Done. Brief posted to the Meridian Health project. Flagged in #sales-pipeline with summary.",
-        { holdMs: 3800 }
-      );
-      await p;
-      await sleep(400);
-    }
-
-    {
-      const p = showChatCard(
-        yuki,
-        "@Marco I worked with Meridian's VP of Ops at my last company. Happy to make a warm intro if that helps.",
-        {
-          holdMs: 4400,
-          name: yuki._chatMeta.name,
-          role: yuki._chatMeta.role,
-          avatar: yuki._chatMeta.avatar,
-        }
-      );
-      scheduleReactions(yuki, [
-        { from: "marco", emoji: "❤️", at: 3000 },
-        { from: "lisa", emoji: "❤️", at: 3700 },
-      ]);
-      await p;
-      await sleep(400);
-    }
-
-    {
-      const p = showChatCard(
-        marco,
-        "@Yuki that would be incredible, yes please. I'll send you the brief @QualBot just put together so you have context.",
-        {
-          holdMs: 4400,
-          name: marco._chatMeta.name,
-          role: marco._chatMeta.role,
-          avatar: marco._chatMeta.avatar,
-        }
-      );
-      await p;
-      await sleep(300);
-    }
-
-    {
-      const p = showChatCard(
-        lisa,
-        "This is exactly the workflow I was hoping for. Agent does the research, humans do the relationships. 🤝",
-        {
-          holdMs: 5000,
-          name: lisa._chatMeta.name,
-          role: lisa._chatMeta.role,
-          avatar: lisa._chatMeta.avatar,
-        }
-      );
-      scheduleReactions(lisa, [
-        { from: "marco", emoji: "💯", at: 3000 },
-        { from: "yuki", emoji: "💯", at: 3700 },
-        { from: "marco", emoji: "🤝", at: 4400 },
-      ]);
-      await p;
-      await sleep(800);
-    }
-
-    walkAgentTo(qualBot, qbHome.x, qbHome.y);
-    await sleep(600);
   }
 
   // Place every agent in its home room, idle.
@@ -1947,11 +1832,11 @@ export function mountFloorScene(
   (async function conductor() {
     await sleep(1200);
     while (!disposed) {
-      await runScenario1();
+      await runScenario(scenario);
       if (disposed) {
         break;
       }
-      await sleep(2500);
+      await sleep(scenario.loopGapMs ?? 2500);
     }
   })();
 
