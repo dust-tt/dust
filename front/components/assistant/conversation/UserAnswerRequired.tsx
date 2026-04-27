@@ -172,6 +172,13 @@ export function UserAnswerRequired({
   }
 
   function handleContainerKeyDownCapture(e: KeyboardEvent<HTMLDivElement>) {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      e.stopPropagation();
+      handleSkip();
+      return;
+    }
+
     if (
       e.target instanceof HTMLInputElement ||
       e.target instanceof HTMLTextAreaElement ||

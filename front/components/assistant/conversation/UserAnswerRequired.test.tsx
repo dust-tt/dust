@@ -264,6 +264,33 @@ describe("UserAnswerRequired", () => {
     expect(removeCompletedActionMock).toHaveBeenCalledWith("action_1");
   });
 
+  it("skips when Escape is pressed while the component is focused", async () => {
+    const { container } = render(
+      <UserAnswerRequired
+        blockedAction={makeBlockedAction()}
+        triggeringUser={null}
+        owner={owner}
+        conversationId="conv_1"
+        messageId="msg_1"
+      />
+    );
+
+    const keyboardContainer = getKeyboardContainer(container);
+
+    await waitFor(() => expect(keyboardContainer).toHaveFocus());
+    fireEvent.keyDown(keyboardContainer, { key: "Escape" });
+
+    await waitFor(() => {
+      expect(answerQuestionMock).toHaveBeenCalledWith({
+        conversationId: "conv_1",
+        messageId: "msg_1",
+        actionId: "action_1",
+        answer: { selectedOptions: [] },
+      });
+    });
+    expect(removeCompletedActionMock).toHaveBeenCalledWith("action_1");
+  });
+
   it("toggles options with Space and Enter, then submits with Cmd+Enter in multi-select mode", async () => {
     const { container } = render(
       <UserAnswerRequired
