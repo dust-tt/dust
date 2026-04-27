@@ -46,9 +46,9 @@ const handlers: ToolHandlers<typeof FRONT_TOOLS_METADATA> = {
 
       const data = (await makeFrontAPIRequest({
         method: "GET",
-        endpoint: "conversations",
+        endpoint: `conversations/search/${encodeURIComponent(q)}`,
         apiToken,
-        params: { q, limit: Math.min(limit, 100) },
+        params: { limit: Math.min(limit, 100) },
       })) as FrontListResponse;
 
       const conversations = data._results ?? [];
@@ -172,22 +172,11 @@ const handlers: ToolHandlers<typeof FRONT_TOOLS_METADATA> = {
           apiToken,
         });
       } else if (email) {
-        const searchData = (await makeFrontAPIRequest({
+        data = await makeFrontAPIRequest({
           method: "GET",
-          endpoint: "contacts",
+          endpoint: `contacts/alt:email:${encodeURIComponent(email)}`,
           apiToken,
-          params: { q: email },
-        })) as FrontListResponse;
-        const contacts = searchData._results ?? [];
-        if (contacts.length === 0) {
-          return new Ok([
-            {
-              type: "text" as const,
-              text: `No contact found with email: ${email}`,
-            },
-          ]);
-        }
-        data = contacts[0];
+        });
       } else {
         throw new MCPError("Either email or contact_id must be provided");
       }
@@ -287,10 +276,9 @@ const handlers: ToolHandlers<typeof FRONT_TOOLS_METADATA> = {
 
       const data = (await makeFrontAPIRequest({
         method: "GET",
-        endpoint: "conversations",
+        endpoint: `conversations/search/${encodeURIComponent(`from:${customer_email}`)}`,
         apiToken,
         params: {
-          q: `from:${customer_email}`,
           limit: Math.min(limit, 100),
         },
       })) as FrontListResponse;
