@@ -90,15 +90,15 @@ export async function deleteWorkspacePolicy(
 async function invalidateWorkspacePolicyCache(
   auth: Authenticator
 ): Promise<void> {
-  const baseUrl = config.getEgressProxyInternalUrl();
-  if (!baseUrl) {
-    return;
-  }
-
-  const workspace = auth.getNonNullableWorkspace();
-  const token = mintEgressJwt("invalidate-cache", workspace.sId);
-
   try {
+    const baseUrl = config.getEgressProxyInternalUrl();
+    if (!baseUrl) {
+      return;
+    }
+
+    const workspace = auth.getNonNullableWorkspace();
+    const token = mintEgressJwt("invalidate-cache", workspace.sId);
+
     const response = await fetch(`${baseUrl}/invalidate-policy`, {
       method: "POST",
       headers: {
@@ -117,7 +117,7 @@ async function invalidateWorkspacePolicyCache(
     }
   } catch (error) {
     logger.warn(
-      { error: normalizeError(error), workspaceId: workspace.sId },
+      { error: normalizeError(error) },
       "Egress proxy cache invalidation error"
     );
   }

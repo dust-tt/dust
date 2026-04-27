@@ -30,10 +30,12 @@ const TEST_BUCKET: &str = "test-egress-policies";
 const TEST_SANDBOX_ID: &str = "sandbox-123";
 static INSTALL_RUSTLS_PROVIDER: Once = Once::new();
 
+type MockGcsObjects = Arc<std::sync::RwLock<HashMap<String, MockGcsResponse>>>;
+
 struct ProxyProcess {
     child: Child,
     _temp_dir: TempDir,
-    _mock_gcs: Option<MockGcsServer>,
+    mock_gcs: Option<MockGcsServer>,
     ca_cert_path: PathBuf,
     proxy_addr: SocketAddr,
     health_addr: SocketAddr,
@@ -42,11 +44,12 @@ struct ProxyProcess {
 struct MockGcsServer {
     addr: SocketAddr,
     handle: tokio::task::JoinHandle<()>,
+    objects: MockGcsObjects,
 }
 
 #[derive(Clone)]
 struct MockGcsState {
-    objects: Arc<HashMap<String, MockGcsResponse>>,
+    objects: MockGcsObjects,
 }
 
 #[derive(Clone)]
@@ -754,11 +757,21 @@ async fn invalidate_policy_evicts_cached_workspace_entry() -> Result<()> {
     )
     .await?;
 
-    // First request populates the cache.
+    // First request populates the cache with a policy allowing "localhost".
     let token = make_token_with_workspace(SECRET, 60);
     let response = send_handshake(&proxy, &token, "localhost", upstream_port).await?;
     assert_eq!(response, Some(ALLOW_RESPONSE));
 
+    // Change the backing GCS policy to deny "localhost".
+    {
+        let mut objects = proxy.mock_gcs.as_ref().unwrap().objects.write().unwrap();
+        objects.insert(
+            format!("workspaces/{TEST_WORKSPACE_ID}.json"),
+            policy_response(&["other.example.com"]),
+        );
+    }
+
+    // Without invalidation, the cached policy would still allow "localhost".
     // Invalidate the workspace cache entry.
     let admin_token = make_token_with_workspace(SECRET, 60);
     let invalidate_body = json!({ "keys": [format!("w:{TEST_WORKSPACE_ID}")] }).to_string();
@@ -770,6 +783,12 @@ async fn invalidate_policy_evicts_cached_workspace_entry() -> Result<()> {
     )
     .await?;
     assert_eq!(status, 200);
+
+    // After invalidation, the proxy re-fetches from GCS and gets the new policy
+    // which no longer allows "localhost" — connection should be denied.
+    let token = make_token_with_workspace(SECRET, 60);
+    let response = send_handshake(&proxy, &token, "localhost", upstream_port).await?;
+    assert_eq!(response, Some(DENY_RESPONSE));
 
     Ok(())
 }
@@ -883,7 +902,7 @@ async fn start_proxy_with_mock_gcs(
     let mut proxy = ProxyProcess {
         child: command.spawn()?,
         _temp_dir: temp_dir,
-        _mock_gcs: Some(mock_gcs),
+        mock_gcs: Some(mock_gcs),
         ca_cert_path: certs.ca_cert_path,
         proxy_addr,
         health_addr,
@@ -905,8 +924,9 @@ async fn start_mock_gcs_server(policies: MockPolicies) -> Result<MockGcsServer> 
 
     let listener = TcpListener::bind("127.0.0.1:0").await?;
     let addr = listener.local_addr()?;
+    let objects = Arc::new(std::sync::RwLock::new(objects));
     let state = MockGcsState {
-        objects: Arc::new(objects),
+        objects: objects.clone(),
     };
     let app = Router::new()
         .fallback(any(mock_gcs_handler))
@@ -915,7 +935,11 @@ async fn start_mock_gcs_server(policies: MockPolicies) -> Result<MockGcsServer> 
         let _ = axum::serve(listener, app).await;
     });
 
-    Ok(MockGcsServer { addr, handle })
+    Ok(MockGcsServer {
+        addr,
+        handle,
+        objects,
+    })
 }
 
 async fn mock_gcs_handler(State(state): State<MockGcsState>, uri: Uri) -> Response {
@@ -926,7 +950,8 @@ async fn mock_gcs_handler(State(state): State<MockGcsState>, uri: Uri) -> Respon
         return StatusCode::BAD_REQUEST.into_response();
     };
 
-    match state.objects.get(object_name.as_ref()) {
+    let objects = state.objects.read().unwrap();
+    match objects.get(object_name.as_ref()) {
         Some(MockGcsResponse::Policy(body)) => (
             StatusCode::OK,
             [(header::CONTENT_TYPE, "application/json")],
