@@ -1,7 +1,9 @@
 import config from "@app/lib/api/config";
+import { mintEgressInvalidationJwt } from "@app/lib/api/sandbox/egress";
 import type { Authenticator } from "@app/lib/auth";
 import { getBucketInstance } from "@app/lib/file_storage";
 import { isGCSNotFoundError } from "@app/lib/file_storage/types";
+import logger from "@app/logger/logger";
 import type { EgressPolicy } from "@app/types/sandbox/egress_policy";
 import {
   EMPTY_EGRESS_POLICY,
@@ -10,6 +12,8 @@ import {
 } from "@app/types/sandbox/egress_policy";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+
+const INVALIDATION_TIMEOUT_MS = 5_000;
 
 function getWorkspacePolicyPath(auth: Authenticator): string {
   return `workspaces/${auth.getNonNullableWorkspace().sId}.json`;
@@ -59,6 +63,8 @@ export async function writeWorkspacePolicy(
       filePath: getWorkspacePolicyPath(auth),
     });
 
+    void invalidateWorkspacePolicyCache(auth);
+
     return new Ok(normalizedPolicy.value);
   } catch (error) {
     return new Err(normalizeError(error));
@@ -73,8 +79,45 @@ export async function deleteWorkspacePolicy(
       ignoreNotFound: true,
     });
 
+    void invalidateWorkspacePolicyCache(auth);
+
     return new Ok(undefined);
   } catch (error) {
     return new Err(normalizeError(error));
+  }
+}
+
+async function invalidateWorkspacePolicyCache(
+  auth: Authenticator
+): Promise<void> {
+  try {
+    const baseUrl = config.getEgressProxyInternalUrl();
+    if (!baseUrl) {
+      return;
+    }
+
+    const workspace = auth.getNonNullableWorkspace();
+    const token = mintEgressInvalidationJwt({ workspaceId: workspace.sId });
+    const url = `${baseUrl.replace(/\/+$/, "")}/invalidate-policy`;
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      signal: AbortSignal.timeout(INVALIDATION_TIMEOUT_MS),
+    });
+
+    if (!response.ok) {
+      logger.warn(
+        { statusCode: response.status, workspaceId: workspace.sId },
+        "Egress proxy cache invalidation failed"
+      );
+    }
+  } catch (error) {
+    logger.warn(
+      { error: normalizeError(error) },
+      "Egress proxy cache invalidation error"
+    );
   }
 }
