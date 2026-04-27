@@ -215,7 +215,9 @@ const config = {
     return EnvironmentConfig.getEnvVariable("EGRESS_PROXY_POLICY_BUCKET");
   },
   getEgressProxyInternalUrl: (): string | undefined => {
-    return EnvironmentConfig.getOptionalEnvVariable("EGRESS_PROXY_INTERNAL_URL");
+    return EnvironmentConfig.getOptionalEnvVariable(
+      "EGRESS_PROXY_INTERNAL_URL"
+    );
   },
   getOAuthAPIConfig: (): { url: string; apiKey: string | null } => {
     return {
