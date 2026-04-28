@@ -2,9 +2,10 @@ import { AgentMessageMarkdown } from "@app/components/assistant/AgentMessageMark
 import { ThinkingStep } from "@app/components/assistant/conversation/actions/inline/ThinkingStep";
 import { TimelineRow } from "@app/components/assistant/conversation/actions/inline/TimelineRow";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import type {
-  AgentStateClassification,
-  PendingToolCall,
+import {
+  type AgentStateClassification,
+  getPendingToolCallKey,
+  type PendingToolCall,
 } from "@app/components/assistant/conversation/types";
 import { InternalActionIcons } from "@app/components/resources/resources_icons";
 import { getInternalMCPServerIconByName } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -30,7 +31,7 @@ import {
   ToolsIcon,
   XCircleIcon,
 } from "@dust-tt/sparkle";
-import { useState } from "react";
+import React, { useState } from "react";
 
 interface InlineActivityStepsProps {
   agentMessage: LightAgentMessageType | LightAgentMessageWithActionsType;
@@ -152,22 +153,23 @@ export function InlineActivitySteps({
   // Dedup in appendThinkingStep handles duplicate content at capture time.
   const showActiveThinking = !isDone && isThinking;
   const showActiveWriting = !isDone && isWriting;
-  const latestPendingToolCall = showPendingToolCalls
-    ? pendingToolCalls[pendingToolCalls.length - 1]
-    : null;
+  const activePendingToolCalls = showPendingToolCalls ? pendingToolCalls : [];
   const showTrailingLoader =
     (showActiveThinking && !chainOfThought) ||
     (showActiveWriting && !agentMessage.content);
-  const activeAction =
+  const completedActionIds = new Set(
+    completedSteps.filter((s) => s.type === "action").map((s) => s.id)
+  );
+  const activeActions =
     !isDone && isActing && isAgentMessageWithActions
-      ? actions[actions.length - 1]
-      : null;
+      ? actions.filter((a) => !completedActionIds.has(`action-${a.id}`))
+      : [];
 
   const hasContent =
     completedSteps.length > 0 ||
     showActiveThinking ||
     showActiveWriting ||
-    activeAction ||
+    activeActions.length > 0 ||
     showPendingToolCalls;
 
   if (!hasContent) {
@@ -241,7 +243,7 @@ export function InlineActivitySteps({
                 index === completedSteps.length - 1 &&
                 !showActiveThinking &&
                 !showActiveWriting &&
-                !activeAction &&
+                activeActions.length === 0 &&
                 !isDone;
 
               switch (step.type) {
@@ -311,8 +313,8 @@ export function InlineActivitySteps({
                 isStreaming
                 isMessageDone={false}
                 isLast={
-                  !activeAction &&
-                  !latestPendingToolCall &&
+                  activeActions.length === 0 &&
+                  activePendingToolCalls.length === 0 &&
                   !showTrailingLoader &&
                   !isDone
                 }
@@ -333,24 +335,30 @@ export function InlineActivitySteps({
               </div>
             ) : null}
 
-            {/* Active action (tool in progress) — skip blocked actions, handled by BlockedAction */}
-            {isActing &&
-              activeAction &&
-              !isToolExecutionStatusBlocked(activeAction.status) &&
-              renderRunningToolRow({
-                isLast: false,
-                label: getActionOneLineLabel(activeAction, "running"),
-                onClick: () => openBreakdownPanel(activeAction.sId),
-              })}
+            {/* Active actions (tools in progress) — skip blocked actions, handled by BlockedAction */}
+            {activeActions
+              .filter((a) => !isToolExecutionStatusBlocked(a.status))
+              .map((a) => (
+                <React.Fragment key={`active-action-${a.id}`}>
+                  {renderRunningToolRow({
+                    isLast: false,
+                    label: getActionOneLineLabel(a, "running"),
+                    onClick: () => openBreakdownPanel(a.sId),
+                  })}
+                </React.Fragment>
+              ))}
 
-            {latestPendingToolCall &&
-              renderRunningToolRow({
-                isLast: !isDone && !showTrailingLoader,
-                label: getToolCallDisplayLabel(
-                  latestPendingToolCall.toolName,
-                  "running"
-                ),
-              })}
+            {activePendingToolCalls.map((toolCall, index) => (
+              <React.Fragment key={getPendingToolCallKey(toolCall, index)}>
+                {renderRunningToolRow({
+                  isLast:
+                    index === activePendingToolCalls.length - 1 &&
+                    !isDone &&
+                    !showTrailingLoader,
+                  label: getToolCallDisplayLabel(toolCall.toolName, "running"),
+                })}
+              </React.Fragment>
+            ))}
 
             {showTrailingLoader && <TimelineRow spinner isLast={!isDone} />}
 
@@ -358,8 +366,10 @@ export function InlineActivitySteps({
             {!isDone &&
               !showActiveThinking &&
               !showActiveWriting &&
-              !activeAction &&
-              !latestPendingToolCall && <TimelineRow spinner isLast />}
+              activeActions.length === 0 &&
+              activePendingToolCalls.length === 0 && (
+                <TimelineRow spinner isLast />
+              )}
             {isDone &&
               completedSteps.length > 0 &&
               agentMessage.status !== "gracefully_stopped" && (
