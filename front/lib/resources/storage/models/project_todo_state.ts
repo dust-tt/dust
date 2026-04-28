@@ -13,6 +13,7 @@ export class ProjectTodoStateModel extends WorkspaceAwareModel<ProjectTodoStateM
   declare spaceId: ForeignKey<SpaceModel["id"]>;
   declare userId: ForeignKey<UserModel["id"]>;
   declare lastReadAt: Date;
+  declare lastCleanedAt: Date | null;
 
   declare space: NonAttribute<SpaceModel>;
   declare user: NonAttribute<UserModel>;
@@ -33,6 +34,11 @@ ProjectTodoStateModel.init(
     lastReadAt: {
       type: DataTypes.DATE,
       allowNull: false,
+    },
+    lastCleanedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: null,
     },
     spaceId: {
       type: DataTypes.BIGINT,

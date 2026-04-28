@@ -1,5 +1,6 @@
 import { Authenticator } from "@app/lib/auth";
 import { ProjectTodoResource } from "@app/lib/resources/project_todo_resource";
+import { ProjectTodoStateResource } from "@app/lib/resources/project_todo_state_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { ProjectTodoFactory } from "@app/tests/utils/ProjectTodoFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -107,7 +108,7 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/project_todos/bulk-actions", () => 
   });
 
   it("should clean done todos for the user in the space", async () => {
-    const { user } = await setup();
+    const { user, auth: viewerAuth } = await setup();
     const project = await SpaceFactory.project(workspace, user.id);
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
@@ -133,17 +134,20 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/project_todos/bulk-actions", () => 
     expect(res._getStatusCode()).toBe(200);
     expect(res._getJSONData()).toEqual({ success: true, cleanedCount: 1 });
 
-    // Done todo is hidden from normal queries; open todo stays visible.
-    const refreshedDone = await ProjectTodoResource.fetchBySId(
-      auth,
-      doneTodo.sId
-    );
-    const refreshedOpen = await ProjectTodoResource.fetchBySId(
-      auth,
-      openTodo.sId
-    );
-    expect(refreshedDone).toBeNull();
-    expect(refreshedOpen?.status).toBe("todo");
+    // Cleaning is implemented via a per-user cutoff timestamp (lastCleanedAt),
+    // so direct fetches still work, but list queries should hide older done todos.
+    const state = await ProjectTodoStateResource.fetchBySpace(viewerAuth, {
+      spaceId: project.id,
+    });
+    expect(state?.lastCleanedAt).not.toBeNull();
+
+    const visibleTodos = await ProjectTodoResource.fetchBySpace(viewerAuth, {
+      spaceId: project.id,
+      lastCleanedAt: state?.lastCleanedAt ?? null,
+    });
+    const visibleSIds = new Set(visibleTodos.map((t) => t.sId));
+    expect(visibleSIds.has(doneTodo.sId)).toBe(false);
+    expect(visibleSIds.has(openTodo.sId)).toBe(true);
   });
 
   it("should return 400 when the body is invalid", async () => {

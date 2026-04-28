@@ -52,16 +52,53 @@ export class ProjectTodoStateResource extends BaseResource<ProjectTodoStateModel
     transaction?: Transaction
   ): Promise<ProjectTodoStateResource> {
     const workspaceId = auth.getNonNullableWorkspace().id;
+    const userId = auth.getNonNullableUser().id;
 
-    const [row] = await ProjectTodoStateModel.upsert(
-      {
+    const [row, created] = await ProjectTodoStateModel.findOrCreate({
+      where: { workspaceId, spaceId, userId },
+      defaults: {
         workspaceId,
         spaceId,
-        userId: auth.getNonNullableUser().id,
+        userId,
         lastReadAt,
+        lastCleanedAt: null,
       },
-      { transaction, returning: true }
-    );
+      transaction,
+    });
+
+    if (!created) {
+      await row.update({ lastReadAt }, { transaction });
+    }
+
+    return new this(ProjectTodoStateModel, row.get());
+  }
+
+  // Creates or updates the last-cleaned timestamp for a (space, user) pair.
+  // Call this when the user clicks "clean done".
+  static async upsertLastCleanedAtBySpace(
+    auth: Authenticator,
+    { spaceId, lastCleanedAt }: { spaceId: ModelId; lastCleanedAt: Date },
+    transaction?: Transaction
+  ): Promise<ProjectTodoStateResource> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    const userId = auth.getNonNullableUser().id;
+
+    const [row, created] = await ProjectTodoStateModel.findOrCreate({
+      where: { workspaceId, spaceId, userId },
+      defaults: {
+        workspaceId,
+        spaceId,
+        userId,
+        // If we haven't tracked reads yet, initialize to "now" to satisfy NOT NULL.
+        lastReadAt: new Date(),
+        lastCleanedAt,
+      },
+      transaction,
+    });
+
+    if (!created) {
+      await row.update({ lastCleanedAt }, { transaction });
+    }
 
     return new this(ProjectTodoStateModel, row.get());
   }
