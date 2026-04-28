@@ -190,6 +190,15 @@ export function createProjectTodosTools(
             actorRationale: item.doneRationale ?? null,
           });
 
+          // Record the source conversation so the todo can be traced back to
+          // where it was created, and so the kickoff prompt can reference it.
+          const sourceConversation = agentLoopContext?.runContext?.conversation;
+          if (sourceConversation) {
+            await todo.addConversation(auth, {
+              conversationModelId: sourceConversation.id,
+            });
+          }
+
           created.push(formatTodo(todo));
         }
 
@@ -219,11 +228,17 @@ export function createProjectTodosTools(
         const marked: string[] = [];
         const alreadyDone: string[] = [];
         const notFound: string[] = [];
+        const forbidden: string[] = [];
 
         for (const todoId of todoIds) {
           const todo = await ProjectTodoResource.fetchBySId(auth, todoId);
           if (!todo) {
             notFound.push(todoId);
+            continue;
+          }
+
+          if (todo.userId !== currentUser.id) {
+            forbidden.push(todoId);
             continue;
           }
 
@@ -260,6 +275,11 @@ export function createProjectTodosTools(
         }
         if (notFound.length > 0) {
           lines.push(`Not found (${notFound.length}): ${notFound.join(", ")}`);
+        }
+        if (forbidden.length > 0) {
+          lines.push(
+            `Not owned by current user (${forbidden.length}): ${forbidden.join(", ")}`
+          );
         }
         if (lines.length === 0) {
           lines.push("No TODOs were updated.");

@@ -4,9 +4,11 @@ import {
 } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import type { Authenticator } from "@app/lib/auth";
+import config from "@app/lib/api/config";
 import { ProjectTodoResource } from "@app/lib/resources/project_todo_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { getConversationRoute } from "@app/lib/utils/router";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { APIErrorType } from "@app/types/error";
 import type { ProjectTodoType } from "@app/types/project_todo";
@@ -104,16 +106,28 @@ export async function startAgentForProjectTodo(
     });
   }
 
-  const sourcesByTodoId = await ProjectTodoResource.fetchSourcesForTodoIds(
-    auth,
-    {
+  const [sourcesByTodoId, conversationIdsByTodoId] = await Promise.all([
+    ProjectTodoResource.fetchSourcesForTodoIds(auth, { sIds: [todo.sId] }),
+    ProjectTodoResource.fetchConversationIdsForTodoIds(auth, {
       sIds: [todo.sId],
-    }
-  );
+    }),
+  ]);
+
   const sources = sourcesByTodoId.get(todo.sId) ?? [];
   const sourceUrls = sources
     .map((source) => source.sourceUrl)
     .filter((url): url is string => !!url);
+
+  // If the todo was created from a conversation, include that conversation's
+  // URL so the kickoff prompt can reference it as the source.
+  const sourceConversationSId = conversationIdsByTodoId.get(todo.sId);
+  if (sourceConversationSId) {
+    const workspaceId = auth.getNonNullableWorkspace().sId;
+    sourceUrls.push(
+      `${config.getAppUrl()}${getConversationRoute(workspaceId, sourceConversationSId)}`
+    );
+  }
+
   const prompt = buildTodoKickoffPrompt({
     todoId: todo.sId,
     todoText: todo.text,
