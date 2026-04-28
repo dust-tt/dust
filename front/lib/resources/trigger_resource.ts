@@ -88,7 +88,6 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       metadata: {
         triggerType: resource.kind,
         agentId: resource.agentConfigurationId,
-        triggerName: resource.name,
       },
     });
 
@@ -331,7 +330,6 @@ export class TriggerResource extends BaseResource<TriggerModel> {
         metadata: {
           triggerType: trigger.kind,
           agentId: trigger.agentConfigurationId,
-          triggerName: trigger.name,
         },
       });
     }
@@ -417,7 +415,6 @@ export class TriggerResource extends BaseResource<TriggerModel> {
         metadata: {
           triggerType: this.kind,
           agentId: this.agentConfigurationId,
-          triggerName: this.name,
         },
       });
 
@@ -690,7 +687,6 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       metadata: {
         triggerType: this.kind,
         agentId: this.agentConfigurationId,
-        triggerName: this.name,
       },
     });
 
@@ -755,7 +751,6 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       metadata: {
         triggerType: this.kind,
         agentId: this.agentConfigurationId,
-        triggerName: this.name,
       },
     });
 
