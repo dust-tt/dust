@@ -636,7 +636,25 @@ export const ConversationViewer = ({
               const exists = ref.current.data.find(predicate);
 
               if (exists) {
-                ref.current.data.map((m) => (predicate(m) ? agentMessage : m));
+                // On replay (e.g. after navigating away and coming back), the
+                // existing message may already reflect the final state from
+                // the SWR snapshot. The replayed event always carries the
+                // initial "created" payload — replacing would downgrade the
+                // status (re-activating shouldStream and the message-events
+                // stream) and wipe inlineActivitySteps. Skip the replace
+                // when the existing message is already in a terminal state.
+                const existsIsTerminal =
+                  isAgentMessageWithStreaming(exists) &&
+                  (exists.status === "succeeded" ||
+                    exists.status === "failed" ||
+                    exists.status === "cancelled" ||
+                    exists.status === "gracefully_stopped");
+
+                if (!existsIsTerminal) {
+                  ref.current.data.map((m) =>
+                    predicate(m) ? agentMessage : m
+                  );
+                }
               } else {
                 const currentData = ref.current.data.get();
                 const offset = getBranchedInsertIndex(
@@ -701,6 +719,37 @@ export const ConversationViewer = ({
             // status/activitySteps instead of the stale "created" snapshot,
             // which would otherwise re-open an SSE replay.
             void mutateMessages();
+
+            // Synchronously flip the message to a terminal state in Virtuoso.
+            // The agent_message_new replay (above) carries the initial
+            // "created" payload, so without this update an existing message
+            // could be downgraded (re-activating shouldStream and the
+            // message-events stream) before mutateMessages's async fetch
+            // returns. agent_message_done has no `event.message`, so we only
+            // flip status/agentState — inlineActivitySteps are preserved
+            // (either from the initial SWR snapshot via the smart-replace
+            // above, or from a still-streaming message-events replay).
+            if (ref.current) {
+              ref.current.data.map((m) => {
+                if (
+                  isAgentMessageWithStreaming(m) &&
+                  m.sId === event.messageId
+                ) {
+                  return {
+                    ...m,
+                    status:
+                      event.status === "error"
+                        ? ("failed" as const)
+                        : ("succeeded" as const),
+                    streaming: {
+                      ...m.streaming,
+                      agentState: "done" as const,
+                    },
+                  };
+                }
+                return m;
+              });
+            }
 
             // Update the conversation hasError state in the local cache without making a network request.
             void mutateConversations(
