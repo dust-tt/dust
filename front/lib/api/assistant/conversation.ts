@@ -2728,22 +2728,38 @@ export async function compactConversation(
     );
   const lastMessage = conversation.content.at(-1)?.at(-1);
 
-  if (
-    runningAgentMessage ||
-    runningCompaction ||
-    (lastMessage && isCompactionMessageType(lastMessage))
-  ) {
+  if (runningAgentMessage) {
+    return new Err({
+      status_code: 409,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Answer the pending agent message first.",
+      },
+    });
+  }
+
+  if (runningCompaction) {
+    return new Err({
+      status_code: 409,
+      api_error: {
+        type: "invalid_request_error",
+        message: "A compaction is already in progress. Please wait.",
+      },
+    });
+  }
+
+  if (lastMessage && isCompactionMessageType(lastMessage)) {
     return new Err({
       status_code: 409,
       api_error: {
         type: "invalid_request_error",
         message:
-          "Cannot compact while another compaction or an agent message is running, or when the last message is already a compaction message.",
+          "This conversation was just compacted. Send a new message before compacting again.",
       },
     });
   }
 
-  const { compactionMessage } = await withTransaction(async (t) => {
+  const { compactionMessage, conflict } = await withTransaction(async (t) => {
     await getConversationRankVersionLock(auth, conversation, t);
 
     // Re-check the existence of a compaction message or running agent message inside the critical
@@ -2782,8 +2798,11 @@ export async function compactConversation(
       }),
     ]);
 
-    if (runningCompactionMessage || runningAgentMessage) {
-      return { compactionMessage: null };
+    if (runningAgentMessage) {
+      return { compactionMessage: null, conflict: "agent" as const };
+    }
+    if (runningCompactionMessage) {
+      return { compactionMessage: null, conflict: "compaction" as const };
     }
 
     const nextMessageRank = await getNextConversationMessageRank(auth, {
@@ -2802,7 +2821,7 @@ export async function compactConversation(
       transaction: t,
     });
 
-    return { compactionMessage };
+    return { compactionMessage, conflict: null };
   });
 
   if (!compactionMessage) {
@@ -2811,7 +2830,9 @@ export async function compactConversation(
       api_error: {
         type: "invalid_request_error",
         message:
-          "Cannot compact while another compaction or an agent message is running.",
+          conflict === "agent"
+            ? "Answer the pending agent message first."
+            : "A compaction is already in progress. Please wait.",
       },
     });
   }
