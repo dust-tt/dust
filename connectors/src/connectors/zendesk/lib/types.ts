@@ -213,7 +213,7 @@ export const ZendeskArticleSchema = z
     vote_sum: z.number(),
     name: z.string(),
     label_names: z.array(z.string()).optional(),
-    draft: z.boolean(),
+    draft: z.boolean().optional(),
   })
   .passthrough();
 
