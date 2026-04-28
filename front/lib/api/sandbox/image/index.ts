@@ -1,4 +1,5 @@
 import config from "@app/lib/api/config";
+import { providerToProfile } from "@app/lib/api/sandbox/image/profile";
 import {
   getRegisteredImages,
   getSandboxImageFromRegistry,
@@ -7,33 +8,12 @@ import type { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
 import {
   DSBX_TOOL_NAME,
   type ToolEntry,
-  type ToolProfile,
 } from "@app/lib/api/sandbox/image/types";
 import type { Authenticator } from "@app/lib/auth";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 import { isDevelopment } from "@app/types/shared/env";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { assertNever } from "@app/types/shared/utils/assert_never";
-
-function providerToProfile(providerId: ModelProviderIdType): ToolProfile {
-  switch (providerId) {
-    case "openai":
-      return "openai";
-    case "google_ai_studio":
-      return "gemini";
-    case "anthropic":
-    case "mistral":
-    case "deepseek":
-    case "togetherai":
-    case "xai":
-    case "fireworks":
-    case "noop":
-      return "anthropic";
-    default:
-      assertNever(providerId);
-  }
-}
 
 export function getToolsForProvider(
   _auth: Authenticator,
@@ -52,9 +32,15 @@ export function getToolsForProvider(
   const allTools = imageResult.value.tools;
   const profile = providerToProfile(providerId);
 
-  const providerTools = allTools.filter(
-    (tool) => !tool.profile || tool.profile === profile
-  );
+  const providerTools = allTools.filter((tool) => {
+    if (!tool.profile) {
+      return true;
+    }
+    if (Array.isArray(tool.profile)) {
+      return tool.profile.includes(profile);
+    }
+    return tool.profile === profile;
+  });
 
   return new Ok(filterDsbxToolEntries(providerTools, { includeDsbxTools }));
 }

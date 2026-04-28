@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
-
 import {
   buildWaitAndCollectCommand,
   wrapCommand,
   wrapCommandWithCapture,
 } from "./profile";
+import { getSandboxImageFromRegistry } from "./registry";
 
 function expectedWrappedCommand(cmd: string, timeoutSec = 60): string {
   return [
-    `source /opt/dust/profile/common.sh && shell "$(cat <<'DUST_CMD_EOF'`,
+    `source /opt/dust/profile/anthropic.sh && shell "$(cat <<'DUST_CMD_EOF'`,
     cmd,
     "DUST_CMD_EOF",
     `)" ${timeoutSec}`,
@@ -81,5 +81,26 @@ describe("wrapCommand", () => {
   it("still works unchanged", () => {
     const result = wrapCommand("echo hi", "anthropic");
     expect(result).toBe(expectedWrappedCommand("echo hi"));
+  });
+
+  it("does not advertise edit_file for openai", () => {
+    const imageResult = getSandboxImageFromRegistry({ name: "dust-base" });
+    expect(imageResult.isOk()).toBe(true);
+
+    if (imageResult.isErr()) {
+      return;
+    }
+
+    const openaiTools = imageResult.value.tools.filter((tool) => {
+      if (!tool.profile) {
+        return true;
+      }
+
+      return Array.isArray(tool.profile)
+        ? tool.profile.includes("openai")
+        : tool.profile === "openai";
+    });
+
+    expect(openaiTools.map((tool) => tool.name)).not.toContain("edit_file");
   });
 });

@@ -1,4 +1,5 @@
 import { PROFILE_DIR } from "@app/lib/api/sandbox/image/profile";
+import { buildDustToolsBinary } from "@app/lib/api/sandbox/image/profile/build";
 import { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
 import {
   DSBX_TOOL_NAME,
@@ -12,7 +13,7 @@ import fs from "fs";
 import path from "path";
 
 const DUST_BEDROCK_IMAGE_VERSION = "1.7.0";
-const DUST_BASE_IMAGE_VERSION = "0.7.11";
+const DUST_BASE_IMAGE_VERSION = "0.8.1";
 const DSBX_CLI_VERSION = "0.1.4";
 const AGENT_PROXIED_UID = 1003;
 // Built from https://github.com/openai/codex at tag rust-v0.115.0 (Apache-2.0).
@@ -213,38 +214,29 @@ SHELLEOF`,
     profile: "openai",
   })
   .runCmd(`mkdir -p ${PROFILE_DIR}`, { user: "root" })
+  // Core: compiled dust-tools binary + shared shell infra
+  .copy(buildDustToolsBinary, `${PROFILE_DIR}/dust-tools`, { user: "root" })
+  .runCmd(`chmod +x ${PROFILE_DIR}/dust-tools`, { user: "root" })
   .copy(
     getLocalContent(PROFILE_LOCAL_DIR, "common.sh"),
     `${PROFILE_DIR}/common.sh`
   )
   .copy(
-    getLocalContent(PROFILE_LOCAL_DIR, "_truncate.sh"),
-    `${PROFILE_DIR}/_truncate.sh`
-  )
-  .copy(
-    getLocalContent(PROFILE_LOCAL_DIR, "read_file.sh"),
-    `${PROFILE_DIR}/read_file.sh`
-  )
-  .copy(
-    getLocalContent(PROFILE_LOCAL_DIR, "edit_file.sh"),
-    `${PROFILE_DIR}/edit_file.sh`
-  )
-  .copy(
-    getLocalContent(PROFILE_LOCAL_DIR, "write_file.sh"),
-    `${PROFILE_DIR}/write_file.sh`
-  )
-  .copy(
-    getLocalContent(PROFILE_LOCAL_DIR, "grep_files.sh"),
-    `${PROFILE_DIR}/grep_files.sh`
-  )
-  .copy(getLocalContent(PROFILE_LOCAL_DIR, "glob.sh"), `${PROFILE_DIR}/glob.sh`)
-  .copy(
-    getLocalContent(PROFILE_LOCAL_DIR, "list_dir.sh"),
-    `${PROFILE_DIR}/list_dir.sh`
-  )
-  .copy(
     getLocalContent(PROFILE_LOCAL_DIR, "shell.sh"),
     `${PROFILE_DIR}/shell.sh`
+  )
+  // Provider-specific profiles (sourced by common.sh based on DUST_PROFILE)
+  .copy(
+    getLocalContent(PROFILE_LOCAL_DIR, "anthropic.sh"),
+    `${PROFILE_DIR}/anthropic.sh`
+  )
+  .copy(
+    getLocalContent(PROFILE_LOCAL_DIR, "openai.sh"),
+    `${PROFILE_DIR}/openai.sh`
+  )
+  .copy(
+    getLocalContent(PROFILE_LOCAL_DIR, "gemini.sh"),
+    `${PROFILE_DIR}/gemini.sh`
   )
   // Telemetry configs for fluent-bit
   .copy(
@@ -284,53 +276,84 @@ SHELLEOF`,
     { user: "root" }
   )
   // Profile functions (no install needed, provided by profile scripts)
-  .registerTool([
-    {
-      name: "read_file",
-      description: "Read file with line numbers",
-      usage: "read_file <path> [start] [end]",
-      returns: "Numbered lines (format: '  N\\tcontent')",
-      runtime: "system",
-    },
-    {
-      name: "edit_file",
-      description:
-        "Replace exact text in files. Fails per-file if old_text not found or matches multiple times",
-      usage: "edit_file <old_text> <new_text> <path1> [path2]...",
-      returns: "'Edited <path>' per success",
-      runtime: "system",
-    },
-    {
-      name: "write_file",
-      description: "Write content to file (creates parent directories)",
-      usage: "write_file <path> <content>",
-      returns: "'Wrote <path>' on success",
-      runtime: "system",
-    },
-    {
-      name: "grep_files",
-      description:
-        "Search files for regex pattern. context_lines adds N lines before/after each match (default 0)",
-      usage: "grep_files <pattern> [glob] [path] [max_results] [context_lines]",
-      returns:
-        "file:line:content format, truncated to max_results (default 200)",
-      runtime: "system",
-    },
-    {
-      name: "glob",
-      description: "Find files by glob pattern",
-      usage: "glob <pattern> [path]",
-      returns: "File paths, one per line. Truncated to 200 results",
-      runtime: "system",
-    },
-    {
-      name: "list_dir",
-      description: "List directory contents. depth defaults to 2, max 5",
-      usage: "list_dir [path] [depth]",
-      returns: "File/dir paths, limited to 200 entries",
-      runtime: "system",
-    },
-  ])
+  // --- read_file: anthropic/openai use offset/limit, gemini uses start/end ---
+  .registerTool({
+    name: "read_file",
+    description:
+      "Read file with line numbers, binary detection, and pagination. Reports totalLines",
+    usage: "read_file <path> [offset] [limit]",
+    returns:
+      "Header with line range + numbered lines (format: '  N\\tcontent')",
+    runtime: "system",
+    profile: ["anthropic", "openai"],
+  })
+  .registerTool({
+    name: "read_file",
+    description:
+      "Read file with line numbers, binary detection, and pagination. Reports totalLines",
+    usage: "read_file <path> [start] [end]",
+    returns:
+      "Header with line range + numbered lines (format: '  N\\tcontent')",
+    runtime: "system",
+    profile: "gemini",
+  })
+  .registerTool({
+    name: "write_file",
+    description:
+      "Write content to file (atomic write, creates parent directories)",
+    usage: "write_file <path> <content>",
+    returns: "'Wrote <path> (<bytes> bytes)' on success",
+    runtime: "system",
+    profile: ["anthropic", "gemini"],
+  })
+  .registerTool({
+    name: "edit_file",
+    description:
+      "Replace exact text in a single file. Supports --replace-all and returns unified diff",
+    usage: "edit_file [--replace-all] <old_text> <new_text> <path>",
+    returns: "'Edited <path>' on success, unified diff on stderr",
+    runtime: "system",
+    profile: ["anthropic", "gemini"],
+  })
+  // --- grep_files: anthropic has extra flags ---
+  .registerTool({
+    name: "grep_files",
+    description:
+      "Recursively search files for regex pattern under --path (default: cwd). Sorted output. Supports output modes and case-insensitive search",
+    usage:
+      "grep_files <pattern> [--glob GLOB] [--path PATH] [--max-results N] [--max-per-file N] [--context N] [--offset N] [--output-mode content|files|count] [--case-insensitive] [--max-line-length N]",
+    returns: "file:line:content format with match count footer",
+    runtime: "system",
+    profile: "anthropic",
+  })
+  .registerTool({
+    name: "grep_files",
+    description:
+      "Recursively search files for regex pattern under --path (default: cwd). Sorted output",
+    usage:
+      "grep_files <pattern> [--glob GLOB] [--path PATH] [--max-results N] [--max-per-file N] [--context N] [--offset N]",
+    returns: "file:line:content format with match count footer",
+    runtime: "system",
+    profile: ["openai", "gemini"],
+  })
+  // --- glob: uniform with pagination ---
+  .registerTool({
+    name: "glob",
+    description: "Find files by glob pattern. Sorted, paginated output",
+    usage: "glob <pattern> [--path PATH] [--offset N] [--limit N]",
+    returns: "Sorted file paths with pagination hint",
+    runtime: "system",
+  })
+  // --- list_dir: uniform with type suffixes and pagination ---
+  .registerTool({
+    name: "list_dir",
+    description:
+      "List directory contents with type indicators (/ for dirs, @ for symlinks). Sorted, paginated",
+    usage: "list_dir [path] [--depth N] [--offset N] [--limit N]",
+    returns: "Sorted paths with type suffixes and pagination hint",
+    profile: ["openai", "gemini"],
+    runtime: "system",
+  })
   .withCapability("gcsfuse")
   .withResources({ vcpu: 2, memoryMb: 2048 })
   .withNetwork(PROXY_ONLY_NETWORK_POLICY)

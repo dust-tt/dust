@@ -175,6 +175,31 @@ describe("processToolResults", () => {
     }
   });
 
+  it("should keep large sandbox text content as-is", async () => {
+    const { auth, conversation, action, toolConfiguration } = await setupTest();
+
+    const largeText = "x".repeat(FILE_OFFLOAD_TEXT_SIZE_BYTES + 1);
+
+    const { outputItems } = await processToolResults(auth, {
+      action,
+      conversation,
+      localLogger: logger.child({ test: true }),
+      toolCallResultContent: [{ type: "text", text: largeText }],
+      toolConfiguration: {
+        ...toolConfiguration,
+        mcpServerName: "sandbox",
+      },
+    });
+
+    expect(outputItems).toHaveLength(1);
+    const stored = outputItems[0].content;
+
+    expect(stored.type).toBe("text");
+    if (stored.type === "text") {
+      expect(stored.text).toBe(largeText);
+    }
+  });
+
   it("should keep small resource text as-is", async () => {
     const { auth, conversation, action, toolConfiguration } = await setupTest();
 
