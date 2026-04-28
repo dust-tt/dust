@@ -541,8 +541,19 @@ export class Authenticator {
         SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id),
       ]);
 
+      if (!globalGroup) {
+        return new Err({
+          status_code: 500,
+          api_error: {
+            type: "invalid_sandbox_token_error",
+            message:
+              "Could not resolve workspace global group for userless sandbox token.",
+          },
+        });
+      }
+
       role = "user";
-      baseGroupModelIds = globalGroup ? [globalGroup.id] : [];
+      baseGroupModelIds = [globalGroup.id];
       subscription = activeSubscription;
     }
 
