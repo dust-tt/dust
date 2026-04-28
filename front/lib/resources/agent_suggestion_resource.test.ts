@@ -35,7 +35,6 @@ describe("AgentSuggestionResource", () => {
             type: "replace",
           },
           analysis: "Making the agent more helpful",
-          source: "reinforcement",
         }
       );
 
@@ -633,90 +632,6 @@ describe("AgentSuggestionResource", () => {
       expect(results[0].state).toBe("pending");
     });
 
-    it("should exclude synthetic suggestions by default", async () => {
-      await AgentSuggestionFactory.createInstructions(
-        authenticator,
-        agentConfiguration,
-        { source: "reinforcement" }
-      );
-      await AgentSuggestionFactory.createInstructions(
-        authenticator,
-        agentConfiguration,
-        { source: "sidekick" }
-      );
-      await AgentSuggestionFactory.createInstructions(
-        authenticator,
-        agentConfiguration,
-        { source: "synthetic" }
-      );
-
-      const suggestions =
-        await AgentSuggestionResource.listByAgentConfigurationId(
-          authenticator,
-          agentConfiguration.sId
-        );
-
-      expect(suggestions).toHaveLength(2);
-      expect(suggestions.map((s) => s.source).sort()).toEqual([
-        "reinforcement",
-        "sidekick",
-      ]);
-    });
-
-    it("should return only synthetic suggestions when filtering by source", async () => {
-      await AgentSuggestionFactory.createInstructions(
-        authenticator,
-        agentConfiguration,
-        { source: "reinforcement" }
-      );
-      await AgentSuggestionFactory.createInstructions(
-        authenticator,
-        agentConfiguration,
-        { source: "synthetic" }
-      );
-
-      const suggestions =
-        await AgentSuggestionResource.listByAgentConfigurationId(
-          authenticator,
-          agentConfiguration.sId,
-          { sources: ["synthetic"] }
-        );
-
-      expect(suggestions).toHaveLength(1);
-      expect(suggestions[0].source).toBe("synthetic");
-    });
-
-    it("should support filtering by multiple sources", async () => {
-      await AgentSuggestionFactory.createInstructions(
-        authenticator,
-        agentConfiguration,
-        { source: "reinforcement" }
-      );
-      await AgentSuggestionFactory.createInstructions(
-        authenticator,
-        agentConfiguration,
-        { source: "sidekick" }
-      );
-      await AgentSuggestionFactory.createInstructions(
-        authenticator,
-        agentConfiguration,
-        { source: "synthetic" }
-      );
-
-      const suggestions =
-        await AgentSuggestionResource.listByAgentConfigurationId(
-          authenticator,
-          agentConfiguration.sId,
-          { sources: ["synthetic", "reinforcement"] }
-        );
-
-      expect(suggestions).toHaveLength(2);
-      expect(suggestions.map((s) => s.source).sort()).toEqual([
-        "reinforcement",
-        "synthetic",
-      ]);
-    });
-
     it("should return empty array for non-existent agent", async () => {
       const suggestions =
         await AgentSuggestionResource.listByAgentConfigurationId(
@@ -938,35 +853,6 @@ describe("AgentSuggestionResource", () => {
 
       expect(suggestions.map((s) => s.sId)).toContain(recent.sId);
       expect(suggestions.map((s) => s.sId)).not.toContain(old.sId);
-    });
-
-    it("includes synthetic suggestions by default unlike listByAgentConfigurationId", async () => {
-      await AgentSuggestionFactory.createInstructions(
-        authenticator,
-        agentConfiguration,
-        { source: "synthetic" }
-      );
-      await AgentSuggestionFactory.createInstructions(
-        authenticator,
-        agentConfiguration,
-        { source: "sidekick" }
-      );
-
-      const bulk = await AgentSuggestionResource.listByAgentConfigurationIds(
-        authenticator,
-        [agentConfiguration.sId],
-        { states: ["pending"] }
-      );
-      expect(bulk).toHaveLength(2);
-
-      const singleAgent =
-        await AgentSuggestionResource.listByAgentConfigurationId(
-          authenticator,
-          agentConfiguration.sId,
-          { states: ["pending"] }
-        );
-      expect(singleAgent).toHaveLength(1);
-      expect(singleAgent[0].source).toBe("sidekick");
     });
   });
 
