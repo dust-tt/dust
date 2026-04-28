@@ -1,7 +1,7 @@
 import { ServerVisualizationWrapperClient } from "@viz/app/content/ServerVisualizationWrapperClient";
 import type { PreFetchedFile } from "@viz/app/lib/data-apis/cache-data-api";
 import logger from "@viz/app/lib/logger";
-import { extractFileIds } from "@viz/app/lib/parseFileIds";
+import { extractFileRefs } from "@viz/app/lib/parseFileRefs";
 
 interface ServerSideVisualizationWrapperProps {
   accessToken: string;
@@ -16,7 +16,7 @@ interface ServerSideVisualizationWrapperProps {
  *
  * This component runs on the server and:
  * 1. Pre-fetches visualization code using the JWT access token
- * 2. Extracts file IDs from the code and pre-fetches all referenced files
+ * 2. Extracts file refs from the code and pre-fetches all referenced files
  * 3. Passes the pre-fetched plain data to the client wrapper
  *
  * This approach avoids the React Server Component serialization boundary issue
@@ -55,16 +55,21 @@ export async function ServerSideVisualizationWrapper({
         return;
       }
 
-      // SERVER-SIDE: Extract string literal fileIds from code.
-      const fileIds = extractFileIds(prefetchedCode);
+      // SERVER-SIDE: Extract file refs from code (both fil_xxx IDs and scoped paths).
+      const fileRefs = extractFileRefs(prefetchedCode);
 
-      if (fileIds.length > 0) {
-        // SERVER-SIDE: Fetch all files.
+      if (fileRefs.length > 0) {
+        // SERVER-SIDE: Fetch all referenced files.
         const fetchedFiles = await Promise.all(
-          fileIds.map(async (fileId) => {
-            try {
-              const fileEndpoint = `${process.env.DUST_FRONT_API}/api/v1/viz/files/${fileId}`;
+          fileRefs.map(async (ref) => {
+            const key =
+              ref.type === "fileId" ? ref.fileId : ref.scopedPath;
+            const fileEndpoint =
+              ref.type === "fileId"
+                ? `${process.env.DUST_FRONT_API}/api/v1/viz/files/${ref.fileId}`
+                : `${process.env.DUST_FRONT_API}/api/v1/viz/files/${ref.scopedPath}`;
 
+            try {
               const fileResponse = await fetch(fileEndpoint, {
                 headers,
                 cache: "no-store",
@@ -72,8 +77,8 @@ export async function ServerSideVisualizationWrapper({
 
               if (!fileResponse.ok) {
                 logger.warn(
-                  { fileId, status: fileResponse.status },
-                  "Failed to fetch file"
+                  { key, status: fileResponse.status },
+                  "Failed to fetch file ref"
                 );
                 return null;
               }
@@ -85,11 +90,11 @@ export async function ServerSideVisualizationWrapper({
 
               return {
                 data: Buffer.from(arrayBuffer).toString("base64"),
-                fileId,
+                fileId: key,
                 mimeType,
               };
             } catch (_err) {
-              logger.error({ fileId }, "Failed to fetch file");
+              logger.error({ key }, "Failed to fetch file ref");
               return null;
             }
           })

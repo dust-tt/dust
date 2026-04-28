@@ -3,6 +3,7 @@
 import type { FileResource } from "@app/lib/resources/file_resource";
 import type { AllSupportedFileContentType } from "@app/types/files";
 import { extensionsForContentType } from "@app/types/files";
+import { z } from "zod";
 
 export function getBaseMountPathForWorkspace({
   workspaceId,
@@ -76,6 +77,36 @@ export function makeProcessedMountFileName({
     : fileName.substring(lastDot);
 
   return `${dirPart}${basename}.processed${ext}`;
+}
+
+export const scopedFilePathPrefixSchema = z.enum([
+  "conversation",
+  // TODO(20260428 FILE SYSTEM) Add support for project.
+  // "project"
+]);
+export type ScopedFilePathPrefix = z.infer<typeof scopedFilePathPrefixSchema>;
+
+export type ScopedFilePath = {
+  prefix: ScopedFilePathPrefix;
+  rel: string;
+};
+
+/**
+ * Parse a scoped file path like "conversation/chart.png" or "project/report.pdf".
+ * Returns null if the path is missing a valid scope prefix.
+ */
+export function parseScopedFilePath(filePath: string): ScopedFilePath | null {
+  const slashIdx = filePath.indexOf("/");
+  if (slashIdx <= 0) {
+    return null;
+  }
+  const prefixResult = scopedFilePathPrefixSchema.safeParse(
+    filePath.slice(0, slashIdx)
+  );
+  if (!prefixResult.success) {
+    return null;
+  }
+  return { prefix: prefixResult.data, rel: filePath.slice(slashIdx + 1) };
 }
 
 /**

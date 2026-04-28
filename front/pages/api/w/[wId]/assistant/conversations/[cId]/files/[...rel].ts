@@ -4,11 +4,9 @@ import { getConversationFilesBasePath } from "@app/lib/api/files/mount_path";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { isSupportedImageContentType } from "@app/types/files";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 import path from "path";
@@ -28,14 +26,13 @@ async function handler(
     });
   }
 
-  const { cId, filePath } = req.query;
-  if (!isString(cId) || !isString(filePath)) {
+  const { cId, rel } = req.query;
+  if (!isString(cId) || !Array.isArray(rel) || rel.length === 0) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message:
-          "Invalid query parameters, `cId` and `filePath` (strings) are required.",
+        message: "Missing conversation id or file path.",
       },
     });
   }
@@ -54,7 +51,7 @@ async function handler(
   const owner = auth.getNonNullableWorkspace();
 
   // filePath is relative to the conversation's files base. Reject any traversal attempt.
-  const normalizedRelative = path.posix.normalize(filePath);
+  const normalizedRelative = path.posix.normalize(rel.join("/"));
   if (
     normalizedRelative.startsWith("..") ||
     normalizedRelative.startsWith("/")
@@ -72,42 +69,10 @@ async function handler(
     workspaceId: owner.sId,
     conversationId: cId,
   });
-  const normalizedPath = `${basePath}${normalizedRelative}`;
+  const gcsPath = `${basePath}${normalizedRelative}`;
 
-  const [fileResource] = await FileResource.fetchByMountFilePaths(auth, [
-    normalizedPath,
-  ]);
-
-  // If a FileResource exists, stream its best available version (processed if available).
-  if (fileResource) {
-    if (!isSupportedImageContentType(fileResource.contentType)) {
-      return apiError(req, res, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Thumbnail is only supported for image files.",
-        },
-      });
-    }
-    res.setHeader("Content-Type", fileResource.contentType);
-    // It's safe to cache as file resources can't be updated (except for frame files).
-    res.setHeader("Cache-Control", "private, max-age=3600");
-    const readStream = fileResource.getContentReadStream(auth);
-    readStream.on("error", (err) => {
-      logger.error(
-        { err, filePath: normalizedPath },
-        "Error streaming thumbnail (FileResource)"
-      );
-      readStream.destroy();
-      res.end();
-    });
-    readStream.pipe(res);
-    return;
-  }
-
-  // No FileResource, stream directly from GCS (sandbox-generated file).
   const bucket = getPrivateUploadBucket();
-  const contentTypeResult = await bucket.getFileContentType(normalizedPath);
+  const contentTypeResult = await bucket.getFileContentType(gcsPath);
   if (contentTypeResult.isErr()) {
     return apiError(req, res, {
       status_code: 404,
@@ -119,24 +84,10 @@ async function handler(
   }
 
   const contentType = contentTypeResult.value ?? "application/octet-stream";
-  if (!isSupportedImageContentType(contentType)) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Thumbnail is only supported for image files.",
-      },
-    });
-  }
-
   res.setHeader("Content-Type", contentType);
-  res.setHeader("Cache-Control", "private, max-age=3600");
-  const readStream = bucket.file(normalizedPath).createReadStream();
+  const readStream = bucket.file(gcsPath).createReadStream();
   readStream.on("error", (err) => {
-    logger.error(
-      { err, filePath: normalizedPath },
-      "Error streaming thumbnail (GCS)"
-    );
+    logger.error({ err, gcsPath }, "Error streaming conversation file (GCS)");
     readStream.destroy();
     res.end();
   });

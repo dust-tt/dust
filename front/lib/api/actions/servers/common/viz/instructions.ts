@@ -55,6 +55,7 @@ export const VIZ_STYLING_GUIDELINES = `
   - If you need to generate a legend for a chart, ensure it uses relative positioning or follows the natural flow of the layout, avoiding \`position: absolute\`, to maintain responsiveness and adaptability.
 `;
 
+// TODO(20260428 FILE_SYSTEM): Use other set of instructions once GCS files are exposed to models if new file system FF is on.
 export const VIZ_FILE_HANDLING_GUIDELINES = `
 - Using any file from the \`conversation_files__list_files\` action when available:
   - Files from the conversation as returned by \`conversation_files__list_files\` can be accessed using the \`useFile()\` React hook (all files can be accessed by the hook irrespective of their status).
@@ -122,6 +123,7 @@ export const VIZ_MISCELLANEOUS_GUIDELINES = `
   - If needed, the application must contain buttons or other navigation elements to allow the user to scroll/cycle through the content.
 `;
 
+// TODO(20260428 FILE_SYSTEM): Use other examples once GCS files are exposed to models if new file system FF is on.
 export const VIZ_USE_FILE_EXAMPLES = `
 Example using the \`useFile\` hook:
 
