@@ -757,7 +757,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "sensitivity_labels"
   | "conversation_search_indexing"
   | "conversation_search_read"
-  | "enable_wakeups"
   | "new_file_explorer"
 >();
 

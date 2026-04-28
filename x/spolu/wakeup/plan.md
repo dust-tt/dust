@@ -74,10 +74,10 @@ Done:
 
 ### [x] PR 6 — `wakeups` internal MCP server
 
-Adds the `wakeups` internal MCP server (id 1031, `availability: "auto"`, preview, gated
-behind the new `enable_wakeups` feature flag) exposing `schedule_wakeup`, `list_wakeups`,
-and `cancel_wakeup` to agents. `when` is parsed deterministically (relative duration, ISO
-8601, 5-field cron); cron timezone falls back to the last user message's timezone.
+Adds the `wakeups` internal MCP server (id 1031, `availability: "auto"`, preview) exposing
+`schedule_wakeup`, `list_wakeups`, and `cancel_wakeup` to agents. `when` is parsed
+deterministically (relative duration, ISO 8601, 5-field cron); cron timezone falls back to the
+last user message's timezone.
 Guardrails enforced at tool-call time: max 1 active wake-up per conversation, max 256 per
 workspace, max 31-day one-shot delay. Also updates `runWakeUpActivity` to post the
 wake-up message with `username: "dust_system"` / `fullName: "Dust System"` instead of

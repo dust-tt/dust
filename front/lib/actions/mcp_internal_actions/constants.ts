@@ -1107,8 +1107,7 @@ export const INTERNAL_MCP_SERVERS = {
     availability: "auto",
     allowMultipleInstances: false,
     isPreview: false,
-    isRestricted: ({ featureFlags }) =>
-      !featureFlags.includes("enable_wakeups"),
+    isRestricted: undefined,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
