@@ -174,11 +174,6 @@ export function UserAnswerRequired({
     customResponseInputRef.current?.focus();
   }
 
-  // Updates custom response text and makes it the active draft answer.
-  function handleCustomResponseChange(value: string) {
-    answerDraft.updateCustomResponse(value);
-  }
-
   // Handles custom-input shortcuts that move back to options or submit the answer.
   function handleCustomResponseKeyDown(e: KeyboardEvent<HTMLInputElement>) {
     if (
@@ -358,7 +353,7 @@ export function UserAnswerRequired({
                 answerDraft.selectCustomResponse();
               }}
               onBlur={() => setIsCustomResponseFocused(false)}
-              onChange={(e) => handleCustomResponseChange(e.target.value)}
+              onChange={(e) => answerDraft.updateCustomResponse(e.target.value)}
               onKeyDown={handleCustomResponseKeyDown}
               name="custom-response"
               disabled={isSubmitting}
