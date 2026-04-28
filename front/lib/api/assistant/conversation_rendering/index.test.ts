@@ -144,6 +144,7 @@ describe("renderConversationForModel", () => {
 
     const res = await renderConversationForModel(auth, {
       conversation: createConversation(),
+      enabledSkills: [],
       model,
       prompt: "PROMPT",
       tools: "TOOLS",
@@ -181,6 +182,7 @@ describe("renderConversationForModel", () => {
 
     const res = await renderConversationForModel(auth, {
       conversation: createConversation(),
+      enabledSkills: [],
       model,
       prompt: "PROMPT",
       tools: "TOOLS",
@@ -228,6 +230,7 @@ describe("renderConversationForModel", () => {
 
     const res = await renderConversationForModel(auth, {
       conversation: createConversation(),
+      enabledSkills: [],
       model,
       prompt: "PROMPT",
       tools: "TOOLS",
@@ -276,6 +279,7 @@ describe("renderConversationForModel", () => {
 
     const res = await renderConversationForModel(auth, {
       conversation: createConversation(),
+      enabledSkills: [],
       model,
       prompt: "PROMPT",
       tools: "TOOLS",
@@ -317,6 +321,7 @@ describe("renderConversationForModel", () => {
 
     const res = await renderConversationForModel(auth, {
       conversation: createConversation(),
+      enabledSkills: [],
       model,
       prompt: "PROMPT",
       tools: "TOOLS",
@@ -346,6 +351,7 @@ describe("renderConversationForModel", () => {
 
     const res = await renderConversationForModel(auth, {
       conversation: createConversation(),
+      enabledSkills: [],
       model,
       prompt: "PROMPT",
       tools: "TOOLS",
@@ -374,6 +380,7 @@ describe("renderConversationForModel", () => {
 
     const res = await renderConversationForModel(auth, {
       conversation: createConversation(),
+      enabledSkills: [],
       model,
       prompt: "PROMPT",
       tools: "TOOLS",
@@ -452,6 +459,7 @@ describe("renderConversationForModel", () => {
     // interaction budget = 189 => 2 * 90 = 180 fits, 3 * 90 = 270 does not.
     const res = await renderConversationForModel(auth, {
       conversation: createConversation(),
+      enabledSkills: [],
       model,
       prompt: "PROMPT",
       tools: "TOOLS",
@@ -496,6 +504,7 @@ describe("renderConversationForModel", () => {
 
     const res = await renderConversationForModel(auth, {
       conversation: createConversation(),
+      enabledSkills: [],
       model,
       prompt: "PROMPT",
       tools: "TOOLS",
