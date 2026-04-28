@@ -45,23 +45,23 @@ function localTimestamp(hour: number, minute: number): number {
 
 describe("formatWakeUpTimeOfDay", () => {
   it("renders single-digit hours without a leading zero", () => {
-    expect(formatWakeUpTimeOfDay(localTimestamp(9, 5))).toBe("9:05");
+    expect(formatWakeUpTimeOfDay(localTimestamp(9, 5))).toBe("9:05 AM");
   });
 
   it("pads minutes to two digits", () => {
-    expect(formatWakeUpTimeOfDay(localTimestamp(14, 0))).toBe("2:00");
+    expect(formatWakeUpTimeOfDay(localTimestamp(14, 0))).toBe("2:00 PM");
   });
 
-  it("renders midnight as 12:00 (12-hour, no AM/PM)", () => {
-    expect(formatWakeUpTimeOfDay(localTimestamp(0, 0))).toBe("12:00");
+  it("renders midnight as 12:00 AM", () => {
+    expect(formatWakeUpTimeOfDay(localTimestamp(0, 0))).toBe("12:00 AM");
   });
 
-  it("renders noon as 12:00", () => {
-    expect(formatWakeUpTimeOfDay(localTimestamp(12, 0))).toBe("12:00");
+  it("renders noon as 12:00 PM", () => {
+    expect(formatWakeUpTimeOfDay(localTimestamp(12, 0))).toBe("12:00 PM");
   });
 
-  it("renders 1 PM as 1:00 (no AM/PM suffix)", () => {
-    expect(formatWakeUpTimeOfDay(localTimestamp(13, 0))).toBe("1:00");
+  it("renders 1 PM as 1:00 PM", () => {
+    expect(formatWakeUpTimeOfDay(localTimestamp(13, 0))).toBe("1:00 PM");
   });
 });
 
@@ -71,7 +71,7 @@ describe("describeWakeUpSchedule (one_shot)", () => {
       type: "one_shot",
       fireAt: localTimestamp(9, 30),
     });
-    expect(describeWakeUpSchedule(wakeUp)).toBe("at 9:30");
+    expect(describeWakeUpSchedule(wakeUp)).toBe("at 9:30 AM");
   });
 });
 
@@ -159,12 +159,12 @@ describe("formatWakeUpSidebarLabel", () => {
 
   it("renders the time of day when the wake-up is within 24h", () => {
     const oneHourLaterMs = NOW_MS + 60 * 60 * 1000;
-    expect(formatWakeUpSidebarLabel(oneHourLaterMs)).toBe("1:00");
+    expect(formatWakeUpSidebarLabel(oneHourLaterMs)).toBe("1:00 PM");
   });
 
   it("renders the time of day for a wake-up exactly 24h away", () => {
     const exactlyOneDayMs = NOW_MS + 24 * 60 * 60 * 1000;
-    expect(formatWakeUpSidebarLabel(exactlyOneDayMs)).toBe("12:00");
+    expect(formatWakeUpSidebarLabel(exactlyOneDayMs)).toBe("12:00 PM");
   });
 
   it("renders the abbreviated weekday when the wake-up is more than 24h away", () => {
@@ -180,7 +180,7 @@ describe("formatWakeUpSidebarLabel", () => {
 
   it("renders the time of day for past timestamps", () => {
     const oneHourAgoMs = NOW_MS - 60 * 60 * 1000;
-    expect(formatWakeUpSidebarLabel(oneHourAgoMs)).toBe("11:00");
+    expect(formatWakeUpSidebarLabel(oneHourAgoMs)).toBe("11:00 AM");
   });
 });
 

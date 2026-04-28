@@ -3,13 +3,13 @@ import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { CronExpressionParser } from "cron-parser";
 import cronstrue from "cronstrue";
 
-// Render an instant as "h:mm" (12-hour, no AM/PM) in the viewer's local
-// timezone.
+// Render an instant as "h:mm AM/PM" (12-hour) in the viewer's local timezone.
 export function formatWakeUpTimeOfDay(timestamp: number): string {
   const date = new Date(timestamp);
   const hours = date.getHours() % 12 || 12;
   const minutes = String(date.getMinutes()).padStart(2, "0");
-  return `${hours}:${minutes}`;
+  const meridiem = date.getHours() < 12 ? "AM" : "PM";
+  return `${hours}:${minutes} ${meridiem}`;
 }
 
 // Compute the millisecond timestamp of the next time a wake-up fires. For
@@ -49,7 +49,7 @@ export function formatWakeUpSidebarLabel(timestamp: number): string {
 
 // Human-friendly schedule phrase used in the wake-up banner and the
 // "scheduled …" message in the input bar. Examples:
-//   one_shot         -> "at 9:00"
+//   one_shot         -> "at 9:00 AM"
 //   "0 9 * * 1"      -> "at 09:00 AM, only on Monday"
 //   "0 * * * *"      -> "every hour"
 //   "*/15 * * * *"   -> "every 15 minutes"
