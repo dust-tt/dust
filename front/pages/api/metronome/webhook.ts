@@ -209,6 +209,16 @@ async function handler(
             segment_id: segmentId,
           } = event;
 
+          // Customer-level credits with no parent contract can't be the
+          // managed free monthly credit (which is provisioned on a contract).
+          if (!contractId) {
+            logger.info(
+              { customerId, creditId, workspaceId: workspace.sId },
+              "[Metronome Webhook] credit.segment.start: no contract_id on credit, ignoring"
+            );
+            break;
+          }
+
           // The webhook payload does not include the credit's product or
           // credit type, so fetch the contract to identify whether this
           // segment belongs to the free monthly credit we manage.

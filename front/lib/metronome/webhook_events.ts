@@ -11,7 +11,7 @@
 // Reference: https://docs.metronome.com/api/webhooks
 import { z } from "zod";
 
-const customFieldsSchema = z.record(z.string(), z.string()).optional();
+const customFieldsSchema = z.record(z.string(), z.string()).nullish();
 
 // ============================================================================
 // Threshold notifications (alerts.*) — payload uses a `properties` wrapper.
@@ -123,9 +123,10 @@ const baseCommitEventSchema = z.object({
   environment_type: z.string().optional(),
   commit_id: z.string(),
   commit_custom_fields: customFieldsSchema,
-  contract_id: z.string(),
+  // Absent on customer-level commits not tied to a contract.
+  contract_id: z.string().nullish(),
   contract_custom_fields: customFieldsSchema,
-  parent_recurring_commit_id: z.string().optional(),
+  parent_recurring_commit_id: z.string().nullish(),
   customer_id: z.string(),
   customer_custom_fields: customFieldsSchema,
 });
@@ -163,9 +164,10 @@ const baseCreditEventSchema = z.object({
   environment_type: z.string().optional(),
   credit_id: z.string(),
   credit_custom_fields: customFieldsSchema,
-  contract_id: z.string(),
+  // Absent on customer-level credits not tied to a contract.
+  contract_id: z.string().nullish(),
   contract_custom_fields: customFieldsSchema,
-  parent_recurring_credit_id: z.string().optional(),
+  parent_recurring_credit_id: z.string().nullish(),
   customer_id: z.string(),
   customer_custom_fields: customFieldsSchema,
 });
