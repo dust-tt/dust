@@ -328,7 +328,7 @@ export const INTERNAL_MCP_SERVERS = {
     availability: "manual",
     allowMultipleInstances: true,
     isRestricted: ({ featureFlags }) =>
-      featureFlags.includes("official_notion_mcp"),
+      !featureFlags.includes("allow_old_notion_mcp"),
     isPreview: false,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,

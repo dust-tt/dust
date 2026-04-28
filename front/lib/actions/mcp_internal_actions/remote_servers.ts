@@ -1192,7 +1192,6 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
     documentationUrl:
       "https://developers.notion.com/guides/mcp/get-started-with-mcp",
     authMethod: "oauth-dynamic",
-    featureFlag: "official_notion_mcp",
     toolStakes: {
       "notion-search": "never_ask",
       "notion-fetch": "never_ask",
