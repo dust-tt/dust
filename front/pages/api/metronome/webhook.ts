@@ -14,6 +14,10 @@ import {
   getProductFreeMonthlyCreditId,
 } from "@app/lib/metronome/constants";
 import { invalidateContractCache } from "@app/lib/metronome/plan_type";
+import {
+  getCustomerIdFromEvent,
+  MetronomeWebhookEventSchema,
+} from "@app/lib/metronome/webhook_events";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
@@ -31,20 +35,6 @@ type ResponseBody = {
   success: boolean;
   message?: string;
 };
-
-const ContractEndEventSchema = z.object({
-  type: z.literal("contract.end"),
-  contract_id: z.string(),
-  customer_id: z.string(),
-});
-
-const CreditSegmentStartEventSchema = z.object({
-  type: z.literal("credit.segment.start"),
-  customer_id: z.string(),
-  contract_id: z.string(),
-  credit_id: z.string(),
-  segment_id: z.string(),
-});
 
 // Disable Next.js body parsing so we can read the raw body for signature verification.
 export const config = {
@@ -89,14 +79,14 @@ async function handler(
         });
       }
 
-      let event: { type: string; [key: string]: unknown };
+      let rawEvent: unknown;
       try {
         const client = getMetronomeClient();
-        event = client.webhooks.unwrap(
+        rawEvent = client.webhooks.unwrap(
           bodyString,
           req.headers,
           webhookSecret
-        ) as { type: string; [key: string]: unknown };
+        );
       } catch (err) {
         logger.error(
           { error: normalizeError(err) },
@@ -109,6 +99,40 @@ async function handler(
             message: "Invalid webhook signature.",
           },
         });
+      }
+
+      const parsedEvent = MetronomeWebhookEventSchema.safeParse(rawEvent);
+      if (!parsedEvent.success) {
+        // Metronome may add new event types or backward-compatible fields
+        // without notice. Log and ack so we don't retry-storm.
+        const rawType = z.object({ type: z.string() }).safeParse(rawEvent);
+        logger.warn(
+          {
+            eventType: rawType.success ? rawType.data.type : "unknown",
+            error: parsedEvent.error.message,
+          },
+          "[Metronome Webhook] Unknown or malformed event"
+        );
+        return res.status(200).json({ success: true });
+      }
+
+      const event = parsedEvent.data;
+
+      // Resolve the workspace once for any event that carries a customer_id
+      // (every type except `integration.issue`). If the customer can't be
+      // mapped to a workspace, ack and stop — Metronome would otherwise
+      // retry-storm a payload we have nothing to do with.
+      const customerId = getCustomerIdFromEvent(event);
+      const workspace = customerId
+        ? await WorkspaceResource.fetchByMetronomeCustomerId(customerId)
+        : null;
+
+      if (!workspace) {
+        logger.info(
+          { customerId, eventType: event.type },
+          "[Metronome Webhook] Workspace not found for customer, skipping"
+        );
+        return res.status(200).json({ success: true });
       }
 
       switch (event.type) {
@@ -127,6 +151,33 @@ async function handler(
           logger.info({ event }, "[Metronome Webhook] Approaching spend limit");
           break;
 
+        case "alerts.invoice_total_reached":
+          logger.info({ event }, "[Metronome Webhook] Invoice total reached");
+          break;
+
+        case "alerts.low_remaining_commit_balance_reached":
+          logger.info(
+            { event },
+            "[Metronome Webhook] Commit balance exhausted alert"
+          );
+          break;
+
+        case "alerts.usage_threshold_reached":
+          logger.info({ event }, "[Metronome Webhook] Usage threshold reached");
+          break;
+
+        case "commit.archive":
+          logger.info({ event }, "[Metronome Webhook] Commit archived");
+          break;
+
+        case "commit.create":
+          logger.info({ event }, "[Metronome Webhook] Commit created");
+          break;
+
+        case "commit.edit":
+          logger.info({ event }, "[Metronome Webhook] Commit edited");
+          break;
+
         case "commit.segment.start":
           logger.info(
             { event },
@@ -134,22 +185,29 @@ async function handler(
           );
           break;
 
-        case "credit.segment.start": {
-          const parsed = CreditSegmentStartEventSchema.safeParse(event);
-          if (!parsed.success) {
-            logger.error(
-              { event, error: parsed.error.message },
-              "[Metronome Webhook] Invalid credit.segment.start event"
-            );
-            break;
-          }
+        case "commit.segment.end":
+          logger.info({ event }, "[Metronome Webhook] Commit segment ended");
+          break;
 
+        case "credit.archive":
+          logger.info({ event }, "[Metronome Webhook] Credit archived");
+          break;
+
+        case "credit.create":
+          logger.info({ event }, "[Metronome Webhook] Credit created");
+          break;
+
+        case "credit.edit":
+          logger.info({ event }, "[Metronome Webhook] Credit edited");
+          break;
+
+        case "credit.segment.start": {
           const {
             customer_id: customerId,
             contract_id: contractId,
             credit_id: creditId,
             segment_id: segmentId,
-          } = parsed.data;
+          } = event;
 
           // The webhook payload does not include the credit's product or
           // credit type, so fetch the contract to identify whether this
@@ -201,16 +259,6 @@ async function handler(
                 creditTypeId: credit.access_schedule?.credit_type?.id,
               },
               "[Metronome Webhook] credit.segment.start: ignoring non-free-credit segment"
-            );
-            break;
-          }
-
-          const workspace =
-            await WorkspaceResource.fetchByMetronomeCustomerId(customerId);
-          if (!workspace) {
-            logger.warn(
-              { customerId },
-              "[Metronome Webhook] credit.segment.start: workspace not found"
             );
             break;
           }
@@ -274,6 +322,10 @@ async function handler(
           );
           break;
 
+        case "contract.create":
+          logger.info({ event }, "[Metronome Webhook] Contract created");
+          break;
+
         case "contract.start":
           logger.info({ event }, "[Metronome Webhook] Contract started");
           break;
@@ -283,25 +335,11 @@ async function handler(
           break;
 
         case "contract.end": {
-          const parsed = ContractEndEventSchema.safeParse(event);
-          if (!parsed.success) {
-            logger.error(
-              { event, error: parsed.error.message },
-              "[Metronome Webhook] Invalid contract.end event"
-            );
-            break;
-          }
+          const { contract_id: contractId, customer_id: customerId } = event;
 
-          const { contract_id: contractId, customer_id: customerId } =
-            parsed.data;
-
-          const workspace =
-            await WorkspaceResource.fetchByMetronomeCustomerId(customerId);
+          // Workspace is guaranteed by the pre-switch check (customerId is
+          // present for contract.* events).
           if (!workspace) {
-            logger.warn(
-              { contractId, customerId },
-              "[Metronome Webhook] contract.end: workspace not found"
-            );
             break;
           }
 
@@ -377,6 +415,10 @@ async function handler(
           }
           break;
         }
+
+        case "contract.archive":
+          logger.info({ event }, "[Metronome Webhook] Contract archived");
+          break;
 
         case "invoice.finalized":
           logger.info({ event }, "[Metronome Webhook] Invoice finalized");
