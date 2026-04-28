@@ -65,7 +65,7 @@ export function ContextUsageIndicator({
   owner,
   conversationId,
 }: ContextUsageIndicatorProps) {
-  const { contextUsage } = useConversationContextUsage({
+  const { contextUsage, isContextUsageLoading } = useConversationContextUsage({
     conversationId,
     workspaceId: owner.sId,
   });
@@ -74,6 +74,10 @@ export function ContextUsageIndicator({
     owner,
     conversationId,
   });
+
+  if (isContextUsageLoading) {
+    return null;
+  }
 
   const percentage =
     contextUsage && contextUsage.contextSize > 0
