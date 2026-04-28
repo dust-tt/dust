@@ -19,13 +19,15 @@ describe("edit_file", () => {
 
   it("replaces unique match", async () => {
     const filePath = path.join(tempDir, "edit.txt");
-    const { stdout, exitCode } = await runTool("edit_file", [
+    const { stdout, stderr, exitCode } = await runTool("edit_file", [
       "hello",
       "goodbye",
       filePath,
     ]);
     expect(exitCode).toBe(0);
-    expect(stdout).toContain("Edited");
+    expect(stdout).toBe("");
+    expect(stderr).toContain("-hello world");
+    expect(stderr).toContain("+goodbye world");
     expect(fs.readFileSync(filePath, "utf-8")).toBe("goodbye world\nfoo bar\n");
   });
 

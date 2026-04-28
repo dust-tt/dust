@@ -23,11 +23,15 @@ Options:
 
 interface Outcome {
   readonly ok: boolean;
-  readonly message: string;
+  readonly errorMessage: string;
   readonly diff: string;
 }
 
-const fail = (message: string): Outcome => ({ ok: false, message, diff: "" });
+const fail = (message: string): Outcome => ({
+  ok: false,
+  errorMessage: message,
+  diff: "",
+});
 
 function countOccurrences(content: string, search: string): number {
   if (!search) {
@@ -132,7 +136,7 @@ function editOne(
 
   const diff = truncateDiff(buildDiff(filePath, original, modified));
   fs.writeFileSync(filePath, modified);
-  return { ok: true, message: `Edited ${filePath}`, diff };
+  return { ok: true, errorMessage: "", diff };
 }
 
 function writeLine(stream: NodeJS.WriteStream, text: string): void {
@@ -183,9 +187,12 @@ export async function run(
   const [oldText = "", newText = "", filePath = ""] = remaining;
 
   const outcome = editOne(filePath, oldText, newText, replaceAll);
-  writeLine(outcome.ok ? process.stdout : process.stderr, outcome.message);
+  if (!outcome.ok) {
+    writeLine(process.stderr, outcome.errorMessage);
+    return 1;
+  }
   if (outcome.diff) {
     writeLine(process.stderr, outcome.diff);
   }
-  return outcome.ok ? 0 : 1;
+  return 0;
 }

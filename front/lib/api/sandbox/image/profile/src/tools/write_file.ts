@@ -51,7 +51,7 @@ export async function run(
   }
 
   fs.rmSync(tempDir, { recursive: true, force: true });
-  process.stdout.write(
+  process.stderr.write(
     `Wrote ${filePath} (${Buffer.byteLength(content, "utf8")} bytes)\n`
   );
   return 0;

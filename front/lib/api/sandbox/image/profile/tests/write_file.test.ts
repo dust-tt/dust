@@ -23,4 +23,15 @@ describe("write_file", () => {
     expect(fs.existsSync(filePath)).toBe(true);
     expect(fs.readFileSync(filePath, "utf-8")).toBe("content");
   });
+
+  it("emits the confirmation on stderr only", async () => {
+    const filePath = path.join(tempDir, "out.txt");
+    const { stdout, stderr, exitCode } = await runTool("write_file", [
+      filePath,
+      "content",
+    ]);
+    expect(exitCode).toBe(0);
+    expect(stdout).toBe("");
+    expect(stderr).toContain(`Wrote ${filePath}`);
+  });
 });
