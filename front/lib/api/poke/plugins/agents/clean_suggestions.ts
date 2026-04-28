@@ -2,21 +2,14 @@ import { createPlugin } from "@app/lib/api/poke/types";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { mapToEnumValues } from "@app/types/poke/plugins";
 import { Err, Ok } from "@app/types/shared/result";
-import type {
-  AgentSuggestionSource,
-  AgentSuggestionState,
-} from "@app/types/suggestions/agent_suggestion";
-import {
-  AGENT_SUGGESTION_SOURCES,
-  AGENT_SUGGESTION_STATES,
-} from "@app/types/suggestions/agent_suggestion";
+import type { AgentSuggestionState } from "@app/types/suggestions/agent_suggestion";
+import { AGENT_SUGGESTION_STATES } from "@app/types/suggestions/agent_suggestion";
 
 export const cleanSuggestionsPlugin = createPlugin({
   manifest: {
     id: "clean-suggestions",
     name: "Clean Suggestions",
-    description:
-      "Delete suggestions matching selected states and sources. Selections are ANDed: a suggestion must match one of the selected states AND one of the selected sources to be deleted.",
+    description: "Delete suggestions matching selected states.",
     resourceTypes: ["agents"],
     args: {
       states: {
@@ -24,16 +17,6 @@ export const cleanSuggestionsPlugin = createPlugin({
         label: "States",
         description: "Select which suggestion states to delete",
         values: mapToEnumValues(AGENT_SUGGESTION_STATES, (s) => ({
-          label: s,
-          value: s,
-        })),
-        multiple: true,
-      },
-      sources: {
-        type: "enum",
-        label: "Sources",
-        description: "Select which suggestion sources to delete",
-        values: mapToEnumValues(AGENT_SUGGESTION_SOURCES, (s) => ({
           label: s,
           value: s,
         })),
@@ -47,12 +30,9 @@ export const cleanSuggestionsPlugin = createPlugin({
     }
 
     const selectedStates = (args.states || []) as AgentSuggestionState[];
-    const selectedSources = (args.sources || []) as AgentSuggestionSource[];
 
-    if (selectedStates.length === 0 || selectedSources.length === 0) {
-      return new Err(
-        new Error("You must select at least one state and one source.")
-      );
+    if (selectedStates.length === 0) {
+      return new Err(new Error("You must select at least one state."));
     }
 
     const suggestions =
@@ -61,7 +41,7 @@ export const cleanSuggestionsPlugin = createPlugin({
         resource.sId,
         {
           states: selectedStates,
-          sources: selectedSources,
+          sources: ["sidekick"],
         }
       );
 
@@ -83,7 +63,7 @@ export const cleanSuggestionsPlugin = createPlugin({
 
     return new Ok({
       display: "text",
-      value: `Deleted ${deleteResult.value} suggestion(s) matching states=[${selectedStates.join(", ")}] and sources=[${selectedSources.join(", ")}].`,
+      value: `Deleted ${deleteResult.value} suggestion(s) matching states=[${selectedStates.join(", ")}].`,
     });
   },
   isApplicableTo: (_auth, resource) => {

@@ -6,7 +6,7 @@ import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_res
 import type { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import type { SeedContext } from "@app/scripts/seed/factories";
-import { seedReinforcement } from "@app/scripts/seed/reinforced-agents/seedReinforcedAgents";
+import { seedReinforcement } from "@app/scripts/seed/reinforcement/seedReinforcement";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type { LightWorkspaceType } from "@app/types/user";
 import { beforeEach, describe, expect, it } from "vitest";
