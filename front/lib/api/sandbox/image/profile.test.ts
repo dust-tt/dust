@@ -6,6 +6,15 @@ import {
   wrapCommandWithCapture,
 } from "./profile";
 
+function expectedWrappedCommand(cmd: string, timeoutSec = 60): string {
+  return [
+    `source /opt/dust/profile/common.sh && shell "$(cat <<'DUST_CMD_EOF'`,
+    cmd,
+    "DUST_CMD_EOF",
+    `)" ${timeoutSec}`,
+  ].join("\n");
+}
+
 describe("wrapCommandWithCapture", () => {
   it("includes tee redirect to output file", () => {
     const result = wrapCommandWithCapture("ls -la", "abc123", "anthropic");
@@ -19,18 +28,16 @@ describe("wrapCommandWithCapture", () => {
 
   it("sources the profile and wraps the command", () => {
     const result = wrapCommandWithCapture("echo hello", "abc123", "anthropic");
-    expect(result).toContain(
-      'source /opt/dust/profile/common.sh && shell "echo hello" 60'
-    );
+    expect(result).toContain(expectedWrappedCommand("echo hello"));
   });
 
-  it("escapes double quotes and backslashes", () => {
+  it("preserves double quotes and backslashes", () => {
     const result = wrapCommandWithCapture(
       'echo "hello \\ world"',
       "abc123",
-      "anthropic"
+      "anthropic",
     );
-    expect(result).toContain('shell "echo \\"hello \\\\ world\\"" 60');
+    expect(result).toContain(expectedWrappedCommand('echo "hello \\ world"'));
   });
 
   it("respects custom timeout", () => {
@@ -55,7 +62,7 @@ describe("buildWaitAndCollectCommand", () => {
   it("waits for exit sentinel", () => {
     const result = buildWaitAndCollectCommand("abc123");
     expect(result).toContain(
-      "while [ ! -f /tmp/dust_exec_abc123.exit ]; do sleep 0.5; done"
+      "while [ ! -f /tmp/dust_exec_abc123.exit ]; do sleep 0.5; done",
     );
   });
 
@@ -73,8 +80,6 @@ describe("buildWaitAndCollectCommand", () => {
 describe("wrapCommand", () => {
   it("still works unchanged", () => {
     const result = wrapCommand("echo hi", "anthropic");
-    expect(result).toBe(
-      'source /opt/dust/profile/common.sh && shell "echo hi" 60'
-    );
+    expect(result).toBe(expectedWrappedCommand("echo hi"));
   });
 });
