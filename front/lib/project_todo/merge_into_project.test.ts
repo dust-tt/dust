@@ -167,7 +167,7 @@ describe("updateTodoIfChanged", () => {
     expect(todo.updateWithVersion).not.toHaveBeenCalled();
   });
 
-  it("updates an agent-created todo when the text changed", async () => {
+  it("ignores text changes on an agent-created todo (first version wins)", async () => {
     const todo = makeTodoStub({ text: "Old text" });
     const blob = makeBlob({ text: "New text" });
 
@@ -177,12 +177,30 @@ describe("updateTodoIfChanged", () => {
       blob
     );
 
-    expect(updated).toBe(true);
-    expect(todo.updateWithVersion).toHaveBeenCalledTimes(1);
-    expect(todo.updateWithVersion).toHaveBeenCalledWith(fakeAuth, {
+    expect(updated).toBe(false);
+    expect(todo.updateWithVersion).not.toHaveBeenCalled();
+  });
+
+  it("preserves the original text when status changes on an agent-created todo", async () => {
+    const doneAt = new Date("2026-04-21T12:00:00.000Z");
+    const todo = makeTodoStub({ text: "Old text", status: "todo" });
+    const blob = makeBlob({
       text: "New text",
-      status: "todo",
-      doneAt: null,
+      status: "done",
+      doneAt,
+    });
+
+    const updated = await updateTodoIfChanged(
+      todo as unknown as ProjectTodoResource,
+      fakeAuth,
+      blob
+    );
+
+    expect(updated).toBe(true);
+    expect(todo.updateWithVersion).toHaveBeenCalledWith(fakeAuth, {
+      text: "Old text",
+      status: "done",
+      doneAt,
       actorRationale: null,
     });
   });
