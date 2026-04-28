@@ -8,8 +8,10 @@ import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
-import { isProjectConversation } from "@app/types/assistant/conversation";
+import {
+  type ConversationWithoutContentType,
+  isProjectConversation,
+} from "@app/types/assistant/conversation";
 
 export const projectsSkill = {
   sId: "projects",
@@ -18,26 +20,7 @@ export const projectsSkill = {
     "Allow agents to create conversations & messages in projects, leverage projects knowledge.",
   agentFacingDescription:
     "Use project context instructions and tools for project knowledge retrieval and search. Allow agents to create conversations and messages in projects.",
-  fetchInstructions: async (
-    auth: Authenticator,
-    {
-      agentLoopData,
-    }: { spaceIds: string[]; agentLoopData?: AgentLoopExecutionData }
-  ) => {
-    const conversation = agentLoopData?.conversation;
-
-    let instructions = "";
-
-    // Add important note for project conversations to strongly emphasize the importance of using project tools first.
-    if (conversation && isProjectConversation(conversation)) {
-      const space = await SpaceResource.fetchById(auth, conversation.spaceId);
-      instructions += `
-IMPORTANT: This conversation (id: ${conversation.sId}) is part of the project "${space?.name}" (id: ${space?.sId}).
-Therefore, ALWAYS start by using the project tools to search for information before using company-wide tools.
-`;
-    }
-
-    instructions += `
+  instructions: `
 The project provides:
 - Persistent knowledge storage shared accross this project
 - Project metadata (description, URLs, members, etc.) for organizational context
@@ -64,10 +47,8 @@ When you need to find information, uses this order (skip steps if the relevant t
 2. **This conversation's attachments** (only when \`${CONVERSATION_FILES_SERVER_NAME}\` is available): \`${CONVERSATION_SEARCH_FILES_ACTION_NAME}\` on \`${CONVERSATION_FILES_SERVER_NAME}\` — search files attached to the current conversation.
 3. **Project-wide search**: \`${PROJECT_MANAGER_SERVER_NAME}\` \`semantic_search\` — search project knowledge and/or conversations in the project; usually the best source for project-specific questions.
 4. **Company-wide**: If still insufficient, use \`company_data_*\` tools and \`${SEARCH_SERVER_NAME}\` for broader company data sources.
-`;
+`,
 
-    return instructions;
-  },
   mcpServers: [{ name: "project_manager" }, { name: "project_todos" }],
   version: 1,
   icon: "ActionFolderIcon",
@@ -78,3 +59,25 @@ When you need to find information, uses this order (skip steps if the relevant t
   },
   // Note: we auto enabled in listForAgentLoop for project conversations.
 } as const satisfies GlobalSkillDefinition;
+
+export async function constructProjectContext(
+  auth: Authenticator,
+  {
+    conversation,
+  }: {
+    conversation?: ConversationWithoutContentType;
+  }
+): Promise<string> {
+  let instructions = "";
+
+  // Add important note for project conversations to strongly emphasize the importance of using project tools first.
+  if (conversation && isProjectConversation(conversation)) {
+    const space = await SpaceResource.fetchById(auth, conversation.spaceId);
+    instructions += `
+IMPORTANT: This conversation (id: ${conversation.sId}) is part of the project "${space?.name}" (id: ${space?.sId}).
+Therefore, ALWAYS start by using the project tools to search for information before using company-wide tools.
+`;
+  }
+
+  return instructions;
+}

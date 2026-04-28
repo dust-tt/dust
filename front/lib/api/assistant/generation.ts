@@ -466,6 +466,7 @@ export function constructPromptMultiActions(
     toolsetsContext,
     userContext,
     workspaceContext,
+    projectContext,
   }: {
     userMessage: UserMessageType;
     agentConfiguration: AgentConfigurationType;
@@ -484,6 +485,7 @@ export function constructPromptMultiActions(
     toolsetsContext?: string;
     userContext?: string;
     workspaceContext?: string;
+    projectContext?: string;
   }
 ): SystemPromptSections {
   const owner = auth.workspace();
@@ -512,6 +514,7 @@ export function constructPromptMultiActions(
     userMessage,
   });
   const branchContextSection = constructBranchContextSection({ conversation });
+
   const toolsSection = constructToolsSection({
     hasAvailableActions,
     model,
@@ -563,6 +566,7 @@ export function constructPromptMultiActions(
       { role: "context" as const, content: branchContextSection },
       { role: "context" as const, content: memoriesContext ?? "" },
       { role: "context" as const, content: userContext ?? "" },
+      { role: "context" as const, content: projectContext ?? "" },
     ].filter((s) => s.content.trim() !== "");
 
     const structured: StructuredSystemPrompt = {
@@ -588,6 +592,7 @@ export function constructPromptMultiActions(
     { role: "context" as const, content: memoriesContext ?? "" },
     { role: "context" as const, content: userContext ?? "" },
     { role: "context" as const, content: workspaceContext ?? "" },
+    { role: "context" as const, content: projectContext ?? "" },
   ].filter((s) => s.content.trim() !== "");
 
   return allSections;
