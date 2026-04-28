@@ -25,6 +25,8 @@ import type {
   CustomerStorySummary,
   Lesson,
   LessonSkeleton,
+  QuizSettings,
+  QuizSettingsSkeleton,
   SearchableItem,
 } from "@app/lib/contentful/types";
 import {
@@ -32,6 +34,7 @@ import {
   type AcademyLocale,
   DEFAULT_ACADEMY_LOCALE,
   DEFAULT_ACADEMY_SETTINGS,
+  DEFAULT_QUIZ_SETTINGS,
   isAcademyLocale,
 } from "@app/lib/contentful/types";
 import logger from "@app/logger/logger";
@@ -138,11 +141,37 @@ export async function getAcademySettings(
     if (!entry) {
       return DEFAULT_ACADEMY_SETTINGS;
     }
+    const f = entry.fields;
+    const d = DEFAULT_ACADEMY_SETTINGS;
     return {
-      academyTitle: entry.fields.academyTitle,
-      academySubtitle: entry.fields.academySubtitle,
-      searchPlaceholder: entry.fields.searchPlaceholder,
-      continueLearning: entry.fields.continueLearning,
+      academyTitle: f.academyTitle ?? d.academyTitle,
+      academySubtitle: f.academySubtitle ?? d.academySubtitle,
+      searchPlaceholder: f.searchPlaceholder ?? d.searchPlaceholder,
+      continueLearning: f.continueLearning ?? d.continueLearning,
+      backToAcademy: f.backToAcademy ?? d.backToAcademy,
+      continueButton: f.continueButton ?? d.continueButton,
+      startLearning: f.startLearning ?? d.startLearning,
+      featuredCourse: f.featuredCourse ?? d.featuredCourse,
+      chapterRead: f.chapterRead ?? d.chapterRead,
+      quizPassed: f.quizPassed ?? d.quizPassed,
+      courseObjectives: f.courseObjectives ?? d.courseObjectives,
+      prerequisites: f.prerequisites ?? d.prerequisites,
+      chapters: f.chapters ?? d.chapters,
+      copyAsMarkdown: f.copyAsMarkdown ?? d.copyAsMarkdown,
+      copied: f.copied ?? d.copied,
+      previousCourse: f.previousCourse ?? d.previousCourse,
+      nextCourse: f.nextCourse ?? d.nextCourse,
+      previousChapter: f.previousChapter ?? d.previousChapter,
+      nextChapter: f.nextChapter ?? d.nextChapter,
+      lessonObjectives: f.lessonObjectives ?? d.lessonObjectives,
+      previousContent: f.previousContent ?? d.previousContent,
+      nextContent: f.nextContent ?? d.nextContent,
+      course: f.course ?? d.course,
+      lesson: f.lesson ?? d.lesson,
+      noCourses: f.noCourses ?? d.noCourses,
+      mobileMenuTitle: f.mobileMenuTitle ?? d.mobileMenuTitle,
+      completed: f.completed ?? d.completed,
+      backTo: f.backTo ?? d.backTo,
     };
   } catch (err) {
     logger.error(
@@ -150,6 +179,55 @@ export async function getAcademySettings(
       "Error fetching academy settings"
     );
     return DEFAULT_ACADEMY_SETTINGS;
+  }
+}
+
+export async function getQuizSettings(
+  resolvedUrl: string = "",
+  locale?: AcademyLocale
+): Promise<QuizSettings> {
+  try {
+    const contentfulClient = getContentfulClient(resolvedUrl);
+    const response = await contentfulClient.getEntries<QuizSettingsSkeleton>({
+      content_type: "quizzSettings",
+      limit: 1,
+      ...(locale ? { locale } : {}),
+    });
+    const entry = response.items[0];
+    if (!entry) {
+      return DEFAULT_QUIZ_SETTINGS;
+    }
+    const f = entry.fields;
+    const d = DEFAULT_QUIZ_SETTINGS;
+    return {
+      quizTitle: f.quizTitle ?? d.quizTitle,
+      quizSubtitle: f.quizSubtitle ?? d.quizSubtitle,
+      quizGreetingUser: f.quizGreetingUser ?? d.quizGreetingUser,
+      quizGreetingGeneric: f.quizGreetingGeneric ?? d.quizGreetingGeneric,
+      quizCompleted: f.quizCompleted ?? d.quizCompleted,
+      quizBestScore: f.quizBestScore ?? d.quizBestScore,
+      quizAttempts: f.quizAttempts ?? d.quizAttempts,
+      quizStartButton: f.quizStartButton ?? d.quizStartButton,
+      quizRetakeButton: f.quizRetakeButton ?? d.quizRetakeButton,
+      quizStarting: f.quizStarting ?? d.quizStarting,
+      quizReset: f.quizReset ?? d.quizReset,
+      quizThinking: f.quizThinking ?? d.quizThinking,
+      quizAnswerPlaceholder: f.quizAnswerPlaceholder ?? d.quizAnswerPlaceholder,
+      quizSubmit: f.quizSubmit ?? d.quizSubmit,
+      quizGreatScoreAgain: f.quizGreatScoreAgain ?? d.quizGreatScoreAgain,
+      quizChapterCompleted: f.quizChapterCompleted ?? d.quizChapterCompleted,
+      quizPerfectScore: f.quizPerfectScore ?? d.quizPerfectScore,
+      quizPassedMessage: f.quizPassedMessage ?? d.quizPassedMessage,
+      quizComplete: f.quizComplete ?? d.quizComplete,
+      quizFailMessage: f.quizFailMessage ?? d.quizFailMessage,
+      quizTryAgain: f.quizTryAgain ?? d.quizTryAgain,
+      quizYou: f.quizYou ?? d.quizYou,
+      quizCorrect: f.quizCorrect ?? d.quizCorrect,
+      quizQuestion: f.quizQuestion ?? d.quizQuestion,
+    };
+  } catch (err) {
+    logger.error({ err: normalizeError(err) }, "Error fetching quiz settings");
+    return DEFAULT_QUIZ_SETTINGS;
   }
 }
 

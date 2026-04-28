@@ -28,6 +28,11 @@ interface ChapterSidebarProps {
   tocItems?: TocItem[];
   completedChapterSlugs?: string[];
   attemptedChapterSlugs?: string[];
+  backToAcademy?: string;
+  searchPlaceholder?: string;
+  chapterReadLabel?: string;
+  quizPassedLabel?: string;
+  mobileMenuTitle?: string;
 }
 
 function ChapterSidebarContent({
@@ -39,6 +44,10 @@ function ChapterSidebarContent({
   tocItems,
   completedChapterSlugs,
   attemptedChapterSlugs,
+  backToAcademy = "Back to Academy",
+  searchPlaceholder,
+  chapterReadLabel,
+  quizPassedLabel,
   onNavigate,
 }: ChapterSidebarProps & { onNavigate?: () => void }) {
   const completedSet = new Set(completedChapterSlugs ?? []);
@@ -52,11 +61,14 @@ function ChapterSidebarContent({
           className="flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
         >
           <ArrowLeftIcon className="h-4 w-4" />
-          Back to Academy
+          {backToAcademy}
         </LinkWrapper>
       </div>
       <div className="flex-shrink-0 px-3 py-3">
-        <AcademySearch searchableItems={searchableItems} />
+        <AcademySearch
+          searchableItems={searchableItems}
+          placeholder={searchPlaceholder}
+        />
       </div>
 
       <div className="flex-shrink-0 border-b border-gray-200 px-3 pb-3">
@@ -95,6 +107,8 @@ function ChapterSidebarContent({
                   <ChapterStatusIcons
                     isRead={isRead}
                     isQuizPassed={isCompleted}
+                    chapterReadLabel={chapterReadLabel}
+                    quizPassedLabel={quizPassedLabel}
                   />
                 </LinkWrapper>
 
@@ -124,7 +138,10 @@ export function ChapterSidebar(props: ChapterSidebarProps) {
   );
 }
 
-export function ChapterMobileMenuButton(props: ChapterSidebarProps) {
+export function ChapterMobileMenuButton({
+  mobileMenuTitle = "Academy",
+  ...props
+}: ChapterSidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -142,7 +159,7 @@ export function ChapterMobileMenuButton(props: ChapterSidebarProps) {
           <div className="flex h-full flex-col bg-white">
             <div className="flex items-center justify-between border-b border-gray-200 px-3 py-3">
               <SheetTitle className="text-base font-semibold">
-                Academy
+                {mobileMenuTitle}
               </SheetTitle>
             </div>
             <ChapterSidebarContent

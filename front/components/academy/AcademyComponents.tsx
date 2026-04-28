@@ -24,12 +24,16 @@ interface ChapterStatusIconsProps {
   isRead: boolean;
   isQuizPassed: boolean;
   size?: "sm" | "md";
+  chapterReadLabel?: string;
+  quizPassedLabel?: string;
 }
 
 export function ChapterStatusIcons({
   isRead,
   isQuizPassed,
   size = "sm",
+  chapterReadLabel = "Chapter read",
+  quizPassedLabel = "Quiz passed",
 }: ChapterStatusIconsProps) {
   if (!isRead && !isQuizPassed) {
     return null;
@@ -41,7 +45,7 @@ export function ChapterStatusIcons({
     <div className="flex items-center gap-1">
       {isRead && !isQuizPassed && (
         <Tooltip
-          label="Chapter read"
+          label={chapterReadLabel}
           side="top"
           trigger={
             <span className="inline-flex text-highlight">
@@ -52,7 +56,7 @@ export function ChapterStatusIcons({
       )}
       {isQuizPassed && (
         <Tooltip
-          label="Quiz passed"
+          label={quizPassedLabel}
           side="top"
           trigger={
             <span className="inline-flex text-green-600">
@@ -379,9 +383,14 @@ interface CourseProgressInfo {
 interface CourseCardProps {
   course: CourseSummary;
   progress?: CourseProgressInfo;
+  completedLabel?: string;
 }
 
-export function CourseCard({ course, progress }: CourseCardProps) {
+export function CourseCard({
+  course,
+  progress,
+  completedLabel = "Completed",
+}: CourseCardProps) {
   const isComplete =
     progress &&
     progress.totalChapters > 0 &&
@@ -415,7 +424,7 @@ export function CourseCard({ course, progress }: CourseCardProps) {
                 clipRule="evenodd"
               />
             </svg>
-            Completed
+            {completedLabel}
           </div>
         )}
         {course.estimatedDurationMinutes && (
@@ -469,12 +478,14 @@ interface CourseGridProps {
   courses: CourseSummary[];
   emptyMessage?: string;
   courseProgress?: Record<string, { completedChapterSlugs: string[] }> | null;
+  completedLabel?: string;
 }
 
 export function CourseGrid({
   courses,
   emptyMessage,
   courseProgress,
+  completedLabel,
 }: CourseGridProps) {
   return (
     <div
@@ -496,6 +507,7 @@ export function CourseGrid({
               key={course.id}
               course={course}
               progress={courseProgressInfo}
+              completedLabel={completedLabel}
             />
           );
         })
@@ -521,12 +533,18 @@ interface ContinueLearningCardProps {
     }
   >;
   continueLearningLabel: string;
+  continueButtonLabel: string;
+  chapterReadLabel: string;
+  quizPassedLabel: string;
 }
 
 export function ContinueLearningCard({
   courses,
   courseProgress,
   continueLearningLabel,
+  continueButtonLabel,
+  chapterReadLabel,
+  quizPassedLabel,
 }: ContinueLearningCardProps) {
   // Find the most recently attempted in-progress course.
   const inProgressCourses = courses
@@ -603,7 +621,7 @@ export function ContinueLearningCard({
             </h3>
           </div>
           <Button
-            label="Continue"
+            label={continueButtonLabel}
             href={continueHref}
             size="sm"
             variant="primary"
@@ -634,6 +652,8 @@ export function ContinueLearningCard({
                 <ChapterStatusIcons
                   isRead={isRead}
                   isQuizPassed={isQuizPassed}
+                  chapterReadLabel={chapterReadLabel}
+                  quizPassedLabel={quizPassedLabel}
                 />
               </div>
             );
@@ -646,9 +666,15 @@ export function ContinueLearningCard({
 
 interface FeaturedCourseProps {
   course: CourseSummary;
+  featuredCourseLabel: string;
+  startLearningLabel: string;
 }
 
-export function FeaturedCourse({ course }: FeaturedCourseProps) {
+export function FeaturedCourse({
+  course,
+  featuredCourseLabel,
+  startLearningLabel,
+}: FeaturedCourseProps) {
   return (
     <div className="col-span-12 pt-8">
       <LinkWrapper
@@ -670,7 +696,7 @@ export function FeaturedCourse({ course }: FeaturedCourseProps) {
         <div className="flex w-full flex-col justify-center gap-6 p-10 lg:w-1/2">
           <div className="inline-block">
             <span className="rounded-full bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary">
-              Featured Course
+              {featuredCourseLabel}
             </span>
           </div>
           <h2 className="text-3xl font-semibold text-gray-900 transition-colors group-hover:text-primary md:text-4xl">
@@ -683,7 +709,7 @@ export function FeaturedCourse({ course }: FeaturedCourseProps) {
           )}
           <div>
             <Button
-              label="Start learning"
+              label={startLearningLabel}
               href={`/academy/${course.slug}`}
               size="md"
               variant="primary"

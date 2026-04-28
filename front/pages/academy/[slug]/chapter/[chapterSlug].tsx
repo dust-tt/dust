@@ -11,9 +11,11 @@ import { getAcademyUser } from "@app/lib/api/academy";
 import {
   buildPreviewQueryString,
   getAcademyLocaleFromCookies,
+  getAcademySettings,
   getChapterBySlug,
   getChaptersByCourseSlug,
   getCourseBySlug,
+  getQuizSettings,
   getSearchableItems,
 } from "@app/lib/contentful/client";
 import { contentfulImageLoader } from "@app/lib/contentful/imageLoader";
@@ -60,13 +62,21 @@ export const getServerSideProps: GetServerSideProps<ChapterPageProps> = async (
   const resolvedUrl = buildPreviewQueryString(context.preview ?? false);
   const locale = getAcademyLocaleFromCookies(context.req.headers.cookie);
 
-  const [courseResult, chapterResult, chaptersResult, searchableResult] =
-    await Promise.all([
-      getCourseBySlug(slug, resolvedUrl, locale),
-      getChapterBySlug(chapterSlug, resolvedUrl, locale),
-      getChaptersByCourseSlug(slug, resolvedUrl, locale),
-      getSearchableItems(resolvedUrl, locale),
-    ]);
+  const [
+    courseResult,
+    chapterResult,
+    chaptersResult,
+    searchableResult,
+    academySettings,
+    quizSettings,
+  ] = await Promise.all([
+    getCourseBySlug(slug, resolvedUrl, locale),
+    getChapterBySlug(chapterSlug, resolvedUrl, locale),
+    getChaptersByCourseSlug(slug, resolvedUrl, locale),
+    getSearchableItems(resolvedUrl, locale),
+    getAcademySettings(resolvedUrl, locale),
+    getQuizSettings(resolvedUrl, locale),
+  ]);
 
   if (courseResult.isErr() || !courseResult.value) {
     logger.error(
@@ -121,6 +131,8 @@ export const getServerSideProps: GetServerSideProps<ChapterPageProps> = async (
       fullWidth: true,
       preview: context.preview ?? false,
       locale,
+      academySettings,
+      quizSettings,
     },
   };
 };
@@ -139,6 +151,8 @@ export default function ChapterPage({
   academyUser,
   preview,
   locale,
+  academySettings,
+  quizSettings,
 }: ChapterPageProps) {
   const [isCopied, copyToClipboard] = useCopyToClipboard();
   const ogImageUrl = courseImage?.url ?? "https://dust.tt/static/og_image.png";
@@ -231,6 +245,11 @@ export default function ChapterPage({
           tocItems={tocItems}
           completedChapterSlugs={completedChapterSlugs}
           attemptedChapterSlugs={attemptedChapterSlugs}
+          backToAcademy={academySettings.backToAcademy}
+          searchPlaceholder={academySettings.searchPlaceholder}
+          chapterReadLabel={academySettings.chapterRead}
+          quizPassedLabel={academySettings.quizPassed}
+          mobileMenuTitle={academySettings.mobileMenuTitle}
         />
         <article className="min-w-0 flex-1">
           {/* Mobile menu button */}
@@ -289,7 +308,11 @@ export default function ChapterPage({
                         variant="outline"
                         size="xs"
                         icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
-                        label={isCopied ? "Copied!" : "Copy as Markdown"}
+                        label={
+                          isCopied
+                            ? academySettings.copied
+                            : academySettings.copyAsMarkdown
+                        }
                         onClick={handleCopyAsMarkdown}
                       />
                     </div>
@@ -352,6 +375,7 @@ export default function ChapterPage({
                 contentSlug={chapter.slug}
                 courseSlug={courseSlug}
                 browserId={anonBrowserId}
+                quizSettings={quizSettings}
               />
             </div>
 
@@ -369,7 +393,7 @@ export default function ChapterPage({
                       className="group flex flex-col"
                     >
                       <P size="sm" className="text-muted-foreground">
-                        Previous Chapter
+                        {academySettings.previousChapter}
                       </P>
                       <span className="mt-1 text-base font-medium text-foreground transition-colors group-hover:text-highlight">
                         &larr; {previousChapter.title}
@@ -382,7 +406,7 @@ export default function ChapterPage({
                       className="group flex flex-col items-end sm:items-start"
                     >
                       <P size="sm" className="text-muted-foreground">
-                        Next Chapter
+                        {academySettings.nextChapter}
                       </P>
                       <span className="mt-1 text-base font-medium text-foreground transition-colors group-hover:text-highlight">
                         {nextChapter.title} &rarr;

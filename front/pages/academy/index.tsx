@@ -153,13 +153,17 @@ export default function AcademyListing({
             courses={courses}
             courseProgress={courseProgress}
             continueLearningLabel={academySettings.continueLearning}
+            continueButtonLabel={academySettings.continueButton}
+            chapterReadLabel={academySettings.chapterRead}
+            quizPassedLabel={academySettings.quizPassed}
           />
         )}
 
         <CourseGrid
           courses={paginatedCourses}
-          emptyMessage="No courses available yet. Check back soon!"
+          emptyMessage={academySettings.noCourses}
           courseProgress={courseProgress}
+          completedLabel={academySettings.completed}
         />
 
         {courses.length > ACADEMY_PAGE_SIZE && (
