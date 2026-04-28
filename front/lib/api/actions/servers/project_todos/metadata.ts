@@ -11,12 +11,19 @@ export const PROJECT_TODOS_SERVER_NAME = "project_todos" as const;
 export const PROJECT_TODOS_TOOLS_METADATA = createToolsRecord({
   list_todos: {
     description:
-      "List the current user's TODOs in the project. " +
-      "Defaults to open (todo + in_progress) items. " +
-      "Use status='done' to see completed items, or status='all' for everything.",
+      "List TODOs in the project. " +
+      "Defaults to the current user's TODOs (assigneeFilter='mine') and open (statusFilter='open') items. ",
     schema: {
-      status: z
+      assigneeFilter: z
+        .enum(["mine", "all"])
+        .default("mine")
+        .optional()
+        .describe(
+          "Which TODOs to return. 'mine' = only the current user's TODOs (default); 'all' = all TODOs."
+        ),
+      statusFilter: z
         .enum(["open", "done", "all"])
+        .default("open")
         .optional()
         .describe(
           "Which TODOs to return. 'open' = todo + in_progress (default); 'done' = completed; 'all' = everything."
@@ -43,33 +50,8 @@ export const PROJECT_TODOS_TOOLS_METADATA = createToolsRecord({
       done: "List TODOs",
     },
   },
-  create_todo: {
-    description: "Create a new TODO for the current user in the project.",
-    schema: {
-      creatorType: z
-        .enum(["user", "agent"])
-        .describe(
-          "Who has the initiative of creating the TODO ? Use 'user' when the user explicitely asked for it."
-        ),
-      text: z.string().min(1).describe("The TODO description."),
-      dustProject: ConfigurableToolInputSchemas[
-        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
-      ]
-        .optional()
-        .describe(
-          "Optional project to create the TODO in, will fallback to the conversation's project."
-        ),
-    },
-    stake: "low",
-    displayLabels: {
-      running: "Creating TODO",
-      done: "Create TODO",
-    },
-  },
-  create_todos_batch: {
-    description:
-      "Create multiple TODOs at once for the current user in the project. " +
-      "Useful for extracting action items from meeting notes or conversation summaries.",
+  create_todos: {
+    description: "Create one or more new TODOs at once in the project.",
     schema: {
       creatorType: z
         .enum(["user", "agent"])
@@ -80,6 +62,18 @@ export const PROJECT_TODOS_TOOLS_METADATA = createToolsRecord({
         .array(
           z.object({
             text: z.string().min(1).describe("The TODO description."),
+            userId: z
+              .string()
+              .optional()
+              .describe(
+                "The sId of the user to assign the TODO to, must be a member of the Project. Default to the current user."
+              ),
+            doneRationale: z
+              .string()
+              .optional()
+              .describe(
+                "The rationale for marking the TODO as done. Left empty if the TODO should not be marked as done."
+              ),
           })
         )
         .min(1)
@@ -126,11 +120,28 @@ export const PROJECT_TODOS_TOOLS_METADATA = createToolsRecord({
       done: "Mark TODOs as done",
     },
   },
-  reopen_todo: {
-    description:
-      "Reopen one of the current user's completed TODOs, moving it back to open status.",
+  update_todo: {
+    description: "Update a TODO.",
     schema: {
-      todoId: z.string().describe("The sId of the TODO to reopen."),
+      todoId: z.string().describe("The sId of the TODO."),
+      text: z.string().optional().describe("The new TODO description."),
+      userId: z
+        .string()
+        .optional()
+        .describe(
+          "The sId of the user to assign the TODO to, must be a member of the Project. Default to the current user."
+        ),
+      doneRationale: z
+        .string()
+        .optional()
+        .describe(
+          "The rationale for marking the TODO as done. Left empty if the TODO should not be marked as done."
+        ),
+      status: z
+        .enum(["todo", "in_progress", "done"])
+        .optional()
+        .describe("The new TODO status. Default to the current status."),
+
       dustProject: ConfigurableToolInputSchemas[
         INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
       ]

@@ -101,6 +101,7 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
       Pick<
         CreationAttributes<ProjectTodoModel>,
         | "category"
+        | "userId"
         | "text"
         | "status"
         | "doneAt"

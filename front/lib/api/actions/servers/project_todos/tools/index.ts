@@ -13,11 +13,12 @@ import { PROJECT_TODOS_TOOLS_METADATA } from "@app/lib/api/actions/servers/proje
 import { searchAgentConfigurationsByName } from "@app/lib/api/assistant/configuration/agent";
 import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
 import config from "@app/lib/api/config";
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { startAgentForProjectTodo } from "@app/lib/project_todo/start_agent";
 import { ProjectTodoResource } from "@app/lib/resources/project_todo_resource";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import type { ModelId } from "@app/types/shared/model_id";
 import { Err, Ok } from "@app/types/shared/result";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -52,7 +53,7 @@ async function resolveAgentConfigurationIdByName(
 
 function formatTodo(todo: ProjectTodoResource): string {
   const lines = [
-    `- [${todo.sId}] (${todo.category}) ${todo.text}`,
+    `- [${todo.sId}] ${todo.text}`,
     `  Status: ${todo.status} | Created: ${todo.createdAt.toISOString().slice(0, 10)}`,
   ];
   if (todo.doneAt) {
@@ -67,7 +68,12 @@ export function createProjectTodosTools(
 ): ToolDefinition[] {
   const owner = auth.getNonNullableWorkspace();
   const handlers: ToolHandlers<typeof PROJECT_TODOS_TOOLS_METADATA> = {
-    list_todos: async ({ status = "open", daysAgo = 7, dustProject }) => {
+    list_todos: async ({
+      assigneeFilter,
+      statusFilter,
+      daysAgo = 7,
+      dustProject,
+    }) => {
       return withErrorHandling(async () => {
         const contextRes = await getProjectSpace(auth, {
           agentLoopContext,
@@ -78,15 +84,23 @@ export function createProjectTodosTools(
         }
         const { space } = contextRes.value;
 
-        let todos = await ProjectTodoResource.fetchLatestBySpace(auth, {
-          spaceId: space.id,
-        });
+        let todos: ProjectTodoResource[] = [];
+
+        if (assigneeFilter === "mine") {
+          todos = await ProjectTodoResource.fetchLatestBySpace(auth, {
+            spaceId: space.id,
+          });
+        } else if (assigneeFilter === "all") {
+          todos = await ProjectTodoResource.fetchBySpace(auth, {
+            spaceId: space.id,
+          });
+        }
 
         const cutoff = new Date(Date.now() - daysAgo * MS_PER_DAY);
 
-        if (status === "open") {
+        if (statusFilter === "open") {
           todos = todos.filter((t) => t.status !== "done");
-        } else if (status === "done") {
+        } else if (statusFilter === "done") {
           todos = todos.filter(
             (t) =>
               t.status === "done" && t.doneAt !== null && t.doneAt >= cutoff
@@ -103,7 +117,7 @@ export function createProjectTodosTools(
           return new Ok([{ type: "text" as const, text: "No TODOs found." }]);
         }
 
-        if (status === "done") {
+        if (statusFilter === "done") {
           todos.sort(
             (a, b) => (b.doneAt?.getTime() ?? 0) - (a.doneAt?.getTime() ?? 0)
           );
@@ -115,10 +129,11 @@ export function createProjectTodosTools(
           }
           return new Ok([{ type: "text" as const, text: lines.join("\n") }]);
         }
+        const assigneeLabel = assigneeFilter === "mine" ? "you" : "everyone";
         const label =
-          status === "open"
-            ? `Found ${todos.length} open TODO(s):\n`
-            : `Found ${todos.length} TODO(s):\n`;
+          statusFilter === "open"
+            ? `Found ${todos.length} open TODO(s) for ${assigneeLabel}:\n`
+            : `Found ${todos.length} TODO(s) for ${assigneeLabel}:\n`;
 
         const lines: string[] = [label];
         for (const todo of todos) {
@@ -129,44 +144,7 @@ export function createProjectTodosTools(
       }, "Failed to list TODOs");
     },
 
-    create_todo: async ({ creatorType, text, dustProject }) => {
-      return withErrorHandling(async () => {
-        const contextRes = await getProjectSpace(auth, {
-          agentLoopContext,
-          dustProject,
-        });
-        if (contextRes.isErr()) {
-          return contextRes;
-        }
-        const { space } = contextRes.value;
-
-        const currentUser = auth.getNonNullableUser();
-
-        const todo = await ProjectTodoResource.makeNew(auth, {
-          spaceId: space.id,
-          userId: currentUser.id,
-          createdByType: creatorType,
-          createdByAgentConfigurationId:
-            creatorType === "agent"
-              ? (agentLoopContext?.runContext?.agentConfiguration?.sId ?? null)
-              : null,
-          createdByUserId: creatorType === "user" ? currentUser.id : null,
-          text,
-          status: "todo",
-          doneAt: null,
-          actorRationale: null,
-        });
-
-        return new Ok([
-          {
-            type: "text" as const,
-            text: `TODO created (${todo.sId}): "${text}" [${todo.category}]`,
-          },
-        ]);
-      }, "Failed to create TODO");
-    },
-
-    create_todos_batch: async ({ creatorType, todos, dustProject }) => {
+    create_todos: async ({ creatorType, todos, dustProject }) => {
       return withErrorHandling(async () => {
         const contextRes = await getProjectSpace(auth, {
           agentLoopContext,
@@ -182,27 +160,46 @@ export function createProjectTodosTools(
           agentLoopContext?.runContext?.agentConfiguration?.sId ?? null;
 
         const created: string[] = [];
+        const errors: string[] = [];
         for (const item of todos) {
+          let newUserId: ModelId | undefined = currentUser.id;
+          if (item.userId) {
+            const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+              item.userId,
+              owner.sId
+            );
+            if (!contextRes.value.space.isMember(userAuth)) {
+              errors.push(
+                `Could not create todo ${item.text} for user ${item.userId} because they are not a member of the project.`
+              );
+              continue;
+            }
+            newUserId = userAuth.getNonNullableUser().id;
+          }
+
           const todo = await ProjectTodoResource.makeNew(auth, {
             spaceId: space.id,
-            userId: currentUser.id,
+            userId: newUserId,
             createdByType: creatorType,
             createdByAgentConfigurationId:
               creatorType === "agent" ? agentConfigId : null,
             createdByUserId: creatorType === "user" ? currentUser.id : null,
             text: item.text,
-            status: "todo",
-            doneAt: null,
-            actorRationale: null,
+            status: item.doneRationale ? "done" : "todo",
+            doneAt: item.doneRationale ? new Date() : null,
+            actorRationale: item.doneRationale ?? null,
           });
 
-          created.push(`- [${todo.sId}] (${todo.category}) "${item.text}"`);
+          created.push(formatTodo(todo));
         }
 
         return new Ok([
           {
             type: "text" as const,
-            text: `Created ${created.length} TODO(s):\n${created.join("\n")}`,
+            text: [
+              `Created ${created.length} TODO(s):\n${created.join("\n")}`,
+              ...errors.map((error) => `- ${error}`),
+            ].join("\n"),
           },
         ]);
       }, "Failed to create TODOs");
@@ -288,7 +285,14 @@ export function createProjectTodosTools(
       }, "Failed to mark TODO as done");
     },
 
-    reopen_todo: async ({ todoId, dustProject }) => {
+    update_todo: async ({
+      todoId,
+      text,
+      userId,
+      doneRationale,
+      status,
+      dustProject,
+    }) => {
       return withErrorHandling(async () => {
         const contextRes = await getProjectSpace(auth, {
           agentLoopContext,
@@ -298,7 +302,6 @@ export function createProjectTodosTools(
           return contextRes;
         }
 
-        const currentUser = auth.getNonNullableUser();
         const todo = await ProjectTodoResource.fetchBySId(auth, todoId);
 
         if (!todo) {
@@ -307,29 +310,28 @@ export function createProjectTodosTools(
           );
         }
 
-        if (todo.userId !== currentUser.id) {
-          return new Err(
-            new MCPError("You can only reopen your own TODOs.", {
-              tracked: false,
-            })
+        let newUserModelId: ModelId | undefined;
+        if (userId) {
+          const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+            userId,
+            owner.sId
           );
-        }
-
-        if (todo.status !== "done") {
-          return new Ok([
-            {
-              type: "text" as const,
-              text: `TODO ${todoId} is not done (current status: ${todo.status}).`,
-            },
-          ]);
+          if (!contextRes.value.space.isMember(userAuth)) {
+            return new Err(
+              new MCPError(`User is not a member of the project.`, {
+                tracked: false,
+              })
+            );
+          }
+          newUserModelId = userAuth.getNonNullableUser().id;
         }
 
         await todo.updateWithVersion(auth, {
-          status: "todo",
-          doneAt: null,
-          markedAsDoneByType: null,
-          markedAsDoneByUserId: null,
-          markedAsDoneByAgentConfigurationId: null,
+          text: text,
+          userId: newUserModelId ?? todo.userId,
+          status: doneRationale ? "done" : (status ?? todo.status),
+          doneAt: doneRationale ? new Date() : null,
+          actorRationale: doneRationale ?? todo.actorRationale,
         });
 
         return new Ok([
