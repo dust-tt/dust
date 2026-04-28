@@ -4,10 +4,7 @@ import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization"
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
-import {
-  getMetronomeContractPackageAliases,
-  scheduleMetronomeContractEnd,
-} from "@app/lib/metronome/client";
+import { scheduleMetronomeContractEnd } from "@app/lib/metronome/client";
 import {
   provisionEnterpriseMetronomeContract,
   switchMetronomeContractPackage,
@@ -18,7 +15,6 @@ import {
   LEGACY_BUSINESS_PACKAGE_ALIAS,
   LEGACY_PRO_ANNUAL_PACKAGE_ALIAS,
   LEGACY_PRO_MONTHLY_PACKAGE_ALIAS,
-  PRO_OR_BUSINESS_PACKAGE_ALIASES,
 } from "@app/lib/metronome/types";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { ConversationModel } from "@app/lib/models/agent/conversation";
@@ -29,6 +25,7 @@ import {
   FREE_TEST_PLAN_CODE,
   isEntreprisePlanPrefix,
   isFreePlan,
+  isProOrBusinessPlanCode,
   isProPlanPrefix,
   isUpgraded,
   isWhitelistedBusinessPlan,
@@ -1503,19 +1500,10 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       );
     }
 
-    // Check Metronome-billed subscription.
-    if (this.metronomeContractId && owner.metronomeCustomerId) {
-      const aliasesResult = await getMetronomeContractPackageAliases({
-        metronomeCustomerId: owner.metronomeCustomerId,
-        metronomeContractId: this.metronomeContractId,
-      });
-      if (aliasesResult.isErr()) {
-        throw aliasesResult.error;
-      }
-
-      return aliasesResult.value.some((alias) =>
-        PRO_OR_BUSINESS_PACKAGE_ALIASES.has(alias)
-      );
+    // Metronome-billed subscription: trust the DB plan code, which we own and
+    // keep in sync with Metronome contract changes.
+    if (this.metronomeContractId) {
+      return isProOrBusinessPlanCode(this.plan);
     }
 
     return false;

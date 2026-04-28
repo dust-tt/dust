@@ -471,17 +471,14 @@ export async function getMetronomeContractPackageAliases({
   metronomeContractId: string;
 }): Promise<Result<string[], Error>> {
   try {
-    const contractResult = await getMetronomeContractById({
-      metronomeCustomerId,
-      metronomeContractId,
+    // Use v1.contracts.retrieve: only v1 exposes package_id on the response
+    // (Shared.Contract.package_id). v2.contracts.retrieve omits it.
+    const contractResponse = await getMetronomeClient().v1.contracts.retrieve({
+      customer_id: metronomeCustomerId,
+      contract_id: metronomeContractId,
     });
-    if (contractResult.isErr()) {
-      return new Err(contractResult.error);
-    }
 
-    const packageId = (
-      contractResult.value as ContractV2 & { package_id: string } // package_id is missing in ContractV2 but is actually returned
-    ).package_id;
+    const packageId = contractResponse.data.package_id;
     if (!packageId) {
       return new Ok([]);
     }
