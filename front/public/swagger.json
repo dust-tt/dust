@@ -779,6 +779,73 @@
             "description": "Internal Server Error."
           }
         }
+      },
+      "delete": {
+        "summary": "Archive agent configuration",
+        "description": "Archive the agent configuration identified by {sId} in the workspace identified by {wId}. The agent is soft-archived and triggers/editor-group memberships associated with it are disabled.",
+        "tags": [
+          "Agents"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "sId",
+            "required": true,
+            "description": "ID of the agent configuration",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully archived agent configuration",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request. Invalid or missing parameters."
+          },
+          "401": {
+            "description": "Unauthorized. Invalid or missing authentication token."
+          },
+          "403": {
+            "description": "Forbidden. The caller is not allowed to archive this agent."
+          },
+          "404": {
+            "description": "Agent configuration not found."
+          },
+          "405": {
+            "description": "Method not supported. Only GET, PATCH or DELETE is expected."
+          },
+          "500": {
+            "description": "Internal Server Error."
+          }
+        }
       }
     },
     "/api/v1/w/{wId}/assistant/agent_configurations/import": {

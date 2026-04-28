@@ -30,10 +30,12 @@ const TEST_BUCKET: &str = "test-egress-policies";
 const TEST_SANDBOX_ID: &str = "sandbox-123";
 static INSTALL_RUSTLS_PROVIDER: Once = Once::new();
 
+type MockGcsObjects = Arc<std::sync::RwLock<HashMap<String, MockGcsResponse>>>;
+
 struct ProxyProcess {
     child: Child,
     _temp_dir: TempDir,
-    _mock_gcs: Option<MockGcsServer>,
+    mock_gcs: Option<MockGcsServer>,
     ca_cert_path: PathBuf,
     proxy_addr: SocketAddr,
     health_addr: SocketAddr,
@@ -42,11 +44,12 @@ struct ProxyProcess {
 struct MockGcsServer {
     addr: SocketAddr,
     handle: tokio::task::JoinHandle<()>,
+    objects: MockGcsObjects,
 }
 
 #[derive(Clone)]
 struct MockGcsState {
-    objects: Arc<HashMap<String, MockGcsResponse>>,
+    objects: MockGcsObjects,
 }
 
 #[derive(Clone)]
@@ -65,10 +68,12 @@ const TEST_WORKSPACE_ID: &str = "workspace-456";
 
 #[derive(Debug, Serialize)]
 struct TestClaims {
-    #[serde(rename = "sbId")]
-    sb_id: String,
+    #[serde(rename = "sbId", skip_serializing_if = "Option::is_none")]
+    sb_id: Option<String>,
     #[serde(rename = "wId", skip_serializing_if = "Option::is_none")]
     w_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    action: Option<String>,
     iss: String,
     aud: String,
     exp: usize,
@@ -383,8 +388,9 @@ async fn invalid_issuer_returns_deny() -> Result<()> {
     let token = make_token_with_claims(
         SECRET,
         FullClaims {
-            sb_id: TEST_SANDBOX_ID,
+            sb_id: Some(TEST_SANDBOX_ID),
             w_id: None,
+            action: None,
             iss: "wrong-front",
             aud: "dust-egress-proxy",
             exp_offset_seconds: 60,
@@ -403,8 +409,9 @@ async fn invalid_audience_returns_deny() -> Result<()> {
     let token = make_token_with_claims(
         SECRET,
         FullClaims {
-            sb_id: TEST_SANDBOX_ID,
+            sb_id: Some(TEST_SANDBOX_ID),
             w_id: None,
+            action: None,
             iss: "dust-front",
             aud: "wrong-audience",
             exp_offset_seconds: 60,
@@ -423,8 +430,9 @@ async fn empty_sandbox_id_claim_returns_deny() -> Result<()> {
     let token = make_token_with_claims(
         SECRET,
         FullClaims {
-            sb_id: "   ",
+            sb_id: Some("   "),
             w_id: None,
+            action: None,
             iss: "dust-front",
             aud: "dust-egress-proxy",
             exp_offset_seconds: 60,
@@ -737,6 +745,137 @@ async fn sigterm_aborts_stuck_tunnel_after_drain_timeout() -> Result<()> {
     Ok(())
 }
 
+// --- Cache invalidation endpoint tests ---
+
+#[tokio::test]
+async fn invalidate_policy_evicts_cached_workspace_entry() -> Result<()> {
+    let (upstream_port, _upstream_handles) =
+        start_localhost_servers(UpstreamBehavior::EchoFixed { read_len: 4 }).await?;
+    let proxy = start_proxy_with_mock_gcs(
+        MockPolicies {
+            workspace: Some(policy_response(&["localhost"])),
+            sandbox: None,
+        },
+        None,
+        true,
+        "test",
+    )
+    .await?;
+
+    // First request populates the cache with a policy allowing "localhost".
+    let token = make_token_with_workspace(SECRET, 60);
+    let response = send_handshake(&proxy, &token, "localhost", upstream_port).await?;
+    assert_eq!(response, Some(ALLOW_RESPONSE));
+
+    // Change the backing GCS policy to deny "localhost".
+    {
+        let mut objects = proxy.mock_gcs.as_ref().unwrap().objects.write().unwrap();
+        objects.insert(
+            format!("workspaces/{TEST_WORKSPACE_ID}.json"),
+            policy_response(&["other.example.com"]),
+        );
+    }
+
+    // Invalidate the workspace cache entry. The token carries wId which
+    // determines what cache key gets evicted (no request body needed).
+    let admin_token = make_invalidation_token(SECRET, 60);
+    let status = http_post_status(
+        proxy.health_addr,
+        "/invalidate-policy",
+        "",
+        Some(&admin_token),
+    )
+    .await?;
+    assert_eq!(status, 200);
+
+    // After invalidation, the proxy re-fetches from GCS and gets the new policy
+    // which no longer allows "localhost" — connection should be denied.
+    let token = make_token_with_workspace(SECRET, 60);
+    let response = send_handshake(&proxy, &token, "localhost", upstream_port).await?;
+    assert_eq!(response, Some(DENY_RESPONSE));
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn invalidate_policy_rejects_missing_auth() -> Result<()> {
+    let proxy = start_proxy(false, "production").await?;
+
+    let status = http_post_status(proxy.health_addr, "/invalidate-policy", "", None).await?;
+
+    assert_eq!(status, 401);
+    Ok(())
+}
+
+#[tokio::test]
+async fn invalidate_policy_rejects_invalid_jwt() -> Result<()> {
+    let proxy = start_proxy(false, "production").await?;
+    let bad_token = make_token("wrong-secret", 60);
+
+    let status = http_post_status(
+        proxy.health_addr,
+        "/invalidate-policy",
+        "",
+        Some(&bad_token),
+    )
+    .await?;
+
+    assert_eq!(status, 401);
+    Ok(())
+}
+
+#[tokio::test]
+async fn invalidate_policy_rejects_token_with_both_wid_and_sbid() -> Result<()> {
+    let proxy = start_proxy(false, "production").await?;
+    // Token has both wId AND sbId — ambiguous, should be rejected.
+    let token = make_token_with_claims(
+        SECRET,
+        FullClaims {
+            sb_id: Some(TEST_SANDBOX_ID),
+            w_id: Some(TEST_WORKSPACE_ID),
+            action: Some("invalidate-policy"),
+            iss: "dust-front",
+            aud: "dust-egress-proxy",
+            exp_offset_seconds: 60,
+        },
+    );
+
+    let status =
+        http_post_status(proxy.health_addr, "/invalidate-policy", "", Some(&token)).await?;
+
+    assert_eq!(status, 400);
+    Ok(())
+}
+
+#[tokio::test]
+async fn invalidate_policy_rejects_sandbox_token_without_action() -> Result<()> {
+    let proxy = start_proxy(false, "production").await?;
+    let sandbox_token = make_token_with_workspace(SECRET, 60);
+
+    let status = http_post_status(
+        proxy.health_addr,
+        "/invalidate-policy",
+        "",
+        Some(&sandbox_token),
+    )
+    .await?;
+
+    assert_eq!(status, 403);
+    Ok(())
+}
+
+#[tokio::test]
+async fn forwarder_rejects_token_with_action_claim() -> Result<()> {
+    let proxy = start_proxy_with_sandbox_policy(&["localhost"], true, "test").await?;
+    // An invalidation token (has action claim) should be rejected by the forwarder.
+    let token = make_invalidation_token(SECRET, 60);
+
+    let response = send_handshake(&proxy, &token, "localhost", 443).await?;
+
+    assert_eq!(response, Some(DENY_RESPONSE));
+    Ok(())
+}
+
 async fn start_proxy(unsafe_skip_ssrf_check: bool, environment: &str) -> Result<ProxyProcess> {
     start_proxy_with_mock_gcs(
         MockPolicies::default(),
@@ -804,7 +943,7 @@ async fn start_proxy_with_mock_gcs(
     let mut proxy = ProxyProcess {
         child: command.spawn()?,
         _temp_dir: temp_dir,
-        _mock_gcs: Some(mock_gcs),
+        mock_gcs: Some(mock_gcs),
         ca_cert_path: certs.ca_cert_path,
         proxy_addr,
         health_addr,
@@ -826,8 +965,9 @@ async fn start_mock_gcs_server(policies: MockPolicies) -> Result<MockGcsServer> 
 
     let listener = TcpListener::bind("127.0.0.1:0").await?;
     let addr = listener.local_addr()?;
+    let objects = Arc::new(std::sync::RwLock::new(objects));
     let state = MockGcsState {
-        objects: Arc::new(objects),
+        objects: objects.clone(),
     };
     let app = Router::new()
         .fallback(any(mock_gcs_handler))
@@ -836,7 +976,11 @@ async fn start_mock_gcs_server(policies: MockPolicies) -> Result<MockGcsServer> 
         let _ = axum::serve(listener, app).await;
     });
 
-    Ok(MockGcsServer { addr, handle })
+    Ok(MockGcsServer {
+        addr,
+        handle,
+        objects,
+    })
 }
 
 async fn mock_gcs_handler(State(state): State<MockGcsState>, uri: Uri) -> Response {
@@ -847,7 +991,8 @@ async fn mock_gcs_handler(State(state): State<MockGcsState>, uri: Uri) -> Respon
         return StatusCode::BAD_REQUEST.into_response();
     };
 
-    match state.objects.get(object_name.as_ref()) {
+    let objects = state.objects.read().unwrap();
+    match objects.get(object_name.as_ref()) {
         Some(MockGcsResponse::Policy(body)) => (
             StatusCode::OK,
             [(header::CONTENT_TYPE, "application/json")],
@@ -921,6 +1066,37 @@ async fn http_get(addr: SocketAddr, path: &str) -> Result<String> {
     let mut response = Vec::new();
     stream.read_to_end(&mut response).await?;
     Ok(String::from_utf8(response)?)
+}
+
+async fn http_post_status(
+    addr: SocketAddr,
+    path: &str,
+    body: &str,
+    bearer_token: Option<&str>,
+) -> Result<u16> {
+    let mut stream = TcpStream::connect(addr).await?;
+    let auth_header = match bearer_token {
+        Some(token) => format!("Authorization: Bearer {token}\r\n"),
+        None => String::new(),
+    };
+    let request = format!(
+        "POST {path} HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\nContent-Type: application/json\r\nContent-Length: {}\r\n{auth_header}\r\n{body}",
+        body.len()
+    );
+    stream.write_all(request.as_bytes()).await?;
+
+    let mut response = Vec::new();
+    stream.read_to_end(&mut response).await?;
+    let response_str = String::from_utf8(response)?;
+
+    // Parse status code from "HTTP/1.1 200 OK" line.
+    let status_code = response_str
+        .split_whitespace()
+        .nth(1)
+        .ok_or_else(|| anyhow!("malformed HTTP response: {response_str}"))?
+        .parse::<u16>()?;
+
+    Ok(status_code)
 }
 
 async fn send_handshake(
@@ -1006,8 +1182,9 @@ fn make_token(secret: &str, exp_offset_seconds: i64) -> String {
     make_token_with_claims(
         secret,
         FullClaims {
-            sb_id: TEST_SANDBOX_ID,
+            sb_id: Some(TEST_SANDBOX_ID),
             w_id: None,
+            action: None,
             iss: "dust-front",
             aud: "dust-egress-proxy",
             exp_offset_seconds,
@@ -1019,8 +1196,23 @@ fn make_token_with_workspace(secret: &str, exp_offset_seconds: i64) -> String {
     make_token_with_claims(
         secret,
         FullClaims {
-            sb_id: TEST_SANDBOX_ID,
+            sb_id: Some(TEST_SANDBOX_ID),
             w_id: Some(TEST_WORKSPACE_ID),
+            action: None,
+            iss: "dust-front",
+            aud: "dust-egress-proxy",
+            exp_offset_seconds,
+        },
+    )
+}
+
+fn make_invalidation_token(secret: &str, exp_offset_seconds: i64) -> String {
+    make_token_with_claims(
+        secret,
+        FullClaims {
+            sb_id: None,
+            w_id: Some(TEST_WORKSPACE_ID),
+            action: Some("invalidate-policy"),
             iss: "dust-front",
             aud: "dust-egress-proxy",
             exp_offset_seconds,
@@ -1039,8 +1231,9 @@ fn make_token_with_claims(secret: &str, claims: FullClaims<'_>) -> String {
         now_seconds + claims.exp_offset_seconds.unsigned_abs()
     };
     let claims = TestClaims {
-        sb_id: claims.sb_id.to_string(),
+        sb_id: claims.sb_id.map(|s| s.to_string()),
         w_id: claims.w_id.map(|s| s.to_string()),
+        action: claims.action.map(|s| s.to_string()),
         iss: claims.iss.to_string(),
         aud: claims.aud.to_string(),
         exp: usize::try_from(exp).expect("expiration timestamp should fit in usize"),
@@ -1061,8 +1254,9 @@ struct TestCerts {
 }
 
 struct FullClaims<'a> {
-    sb_id: &'a str,
+    sb_id: Option<&'a str>,
     w_id: Option<&'a str>,
+    action: Option<&'a str>,
     iss: &'a str,
     aud: &'a str,
     exp_offset_seconds: i64,

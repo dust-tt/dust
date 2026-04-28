@@ -27,6 +27,11 @@ export const MAX_DISCOUNT_PERCENT = Math.ceil(
 // This record contains all static model IDs. Custom models use default pricing.
 const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
   // https://openai.com/api/pricing
+  "gpt-5.5": {
+    input: 5.0,
+    output: 30.0,
+    cache_read_input_tokens: 0.5,
+  },
   "gpt-5.4": {
     input: 2.5,
     output: 15.0,

@@ -32,13 +32,13 @@
 //   keyDecisions (decided) → "to_know", status: "todo"
 //   notableFacts           → "to_know", status: "todo"
 
-import { getFastestWhitelistedModel } from "@app/lib/assistant";
+import { getSmallWhitelistedModel } from "@app/lib/assistant";
 import { Authenticator } from "@app/lib/auth";
 import {
   batchDeduplicateCandidates,
   type DeduplicateCandidate,
   type DeduplicatedGroup,
-  type ExistingTodosByGroup,
+  type ExistingTodosByUser,
 } from "@app/lib/project_todo/deduplicate_candidates";
 import { ProjectTodoResource } from "@app/lib/resources/project_todo_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
@@ -48,16 +48,9 @@ import {
 } from "@app/lib/resources/takeaways_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import type {
-  ProjectTodoCategory,
-  ProjectTodoSourceInfo,
-} from "@app/types/project_todo";
+import type { ProjectTodoSourceInfo } from "@app/types/project_todo";
 import type { ModelId } from "@app/types/shared/model_id";
-import type {
-  TodoVersionedActionItem,
-  TodoVersionedKeyDecision,
-  TodoVersionedNotableFact,
-} from "@app/types/takeaways";
+import type { TodoVersionedActionItem } from "@app/types/takeaways";
 import type { Logger } from "pino";
 
 // Stable identifier used when recording the creating actor for butler-created
@@ -68,10 +61,10 @@ const BUTLER_AGENT_SID = "butler";
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type TodoBlob = {
-  category: "to_do" | "to_know";
   text: string;
   status: "todo" | "done";
   doneAt: Date | null;
+  reasoningDoneAt: string | null;
 };
 
 // A candidate todo that has no existing source link yet and therefore needs to
@@ -125,14 +118,12 @@ export async function mergeTakeawaysIntoProject({
   const adminAuth = await Authenticator.internalAdminForWorkspace(workspaceId);
 
   // Fetch all latest takeaways for the space directly.
-  const takeawaysWithSource = await TakeawaysResource.fetchLatestBySpaceId(
-    adminAuth,
-    { spaceModelId }
-  );
+  const latestTakeawaysWithSource =
+    await TakeawaysResource.fetchLatestBySpaceId(adminAuth, { spaceModelId });
 
-  stats.takeawaysProcessed = takeawaysWithSource.length;
+  stats.takeawaysProcessed = latestTakeawaysWithSource.length;
 
-  if (takeawaysWithSource.length === 0) {
+  if (latestTakeawaysWithSource.length === 0) {
     localLogger.info("Project todo merge: no takeaways found, skipping");
     return stats;
   }
@@ -140,20 +131,10 @@ export async function mergeTakeawaysIntoProject({
   // Collect all user sIds referenced across all takeaways so we can batch-fetch
   // the corresponding UserResources in a single query.
   const allUserIds = new Set<string>();
-  for (const { takeaway } of takeawaysWithSource) {
+  for (const { takeaway } of latestTakeawaysWithSource) {
     for (const item of takeaway.actionItems) {
       if (item.assigneeUserId) {
         allUserIds.add(item.assigneeUserId);
-      }
-    }
-    for (const item of takeaway.keyDecisions) {
-      for (const userId of item.relevantUserIds) {
-        allUserIds.add(userId);
-      }
-    }
-    for (const item of takeaway.notableFacts) {
-      for (const userId of item.relevantUserIds) {
-        allUserIds.add(userId);
       }
     }
   }
@@ -166,7 +147,7 @@ export async function mergeTakeawaysIntoProject({
 
   const { candidates: newCandidates, existingUpdated } =
     await collectNewCandidates(adminAuth, {
-      takeawaysWithSource,
+      latestTakeawaysWithSource,
       usersById,
     });
 
@@ -209,10 +190,10 @@ export async function mergeTakeawaysIntoProject({
 async function collectNewCandidates(
   auth: Authenticator,
   {
-    takeawaysWithSource,
+    latestTakeawaysWithSource,
     usersById,
   }: {
-    takeawaysWithSource: TakeawaysWithSource[];
+    latestTakeawaysWithSource: TakeawaysWithSource[];
     usersById: Map<string, UserResource>;
   }
 ): Promise<{ candidates: PendingCandidate[]; existingUpdated: number }> {
@@ -220,7 +201,7 @@ async function collectNewCandidates(
   let existingUpdated = 0;
 
   await concurrentExecutor(
-    takeawaysWithSource,
+    latestTakeawaysWithSource,
     async (takeawayWithSource) => {
       const result = await collectDocumentCandidates(auth, {
         takeawayWithSource,
@@ -236,7 +217,7 @@ async function collectNewCandidates(
 }
 
 // Processes one document's takeaway: updates todos whose source link already
-// exists, and returns items that need to go through dedup + creation.
+// exists and returns items that need to go through dedup + creation.
 async function collectDocumentCandidates(
   auth: Authenticator,
   {
@@ -255,46 +236,38 @@ async function collectDocumentCandidates(
 
   // Build all (itemId, targetUserIds, blob) triples up-front so we can
   // batch-fetch source links in a single pass below.
-  const itemTriples: Array<{
+  const actionItems: Array<{
     itemId: string;
     targetUserIds: ModelId[];
     blob: TodoBlob;
-  }> = [
-    ...takeawayWithSource.takeaway.actionItems.map((item) => ({
-      itemId: item.sId,
-      targetUserIds: resolveTargetUserIds(
-        item.assigneeUserId ? [item.assigneeUserId] : []
-      ),
-      blob: actionItemBlob(item),
-    })),
-    ...takeawayWithSource.takeaway.keyDecisions.map((item) => ({
-      itemId: item.sId,
-      targetUserIds: resolveTargetUserIds(item.relevantUserIds),
-      blob: keyDecisionBlob(item),
-    })),
-    ...takeawayWithSource.takeaway.notableFacts.map((item) => ({
-      itemId: item.sId,
-      targetUserIds: resolveTargetUserIds(item.relevantUserIds),
-      blob: notableFactBlob(item),
-    })),
-  ];
+  }> = takeawayWithSource.takeaway.actionItems.map((item) => ({
+    itemId: item.sId,
+    targetUserIds: resolveTargetUserIds(
+      item.assigneeUserId ? [item.assigneeUserId] : []
+    ),
+    blob: actionItemBlob(item),
+  }));
 
   // Batch-fetch existing todos by itemId. The result map is keyed by
   // `${itemId}:${userId}`, matching the lookup below so a hit means
   // "this (item, user) pair is already linked to a todo — skip dedup".
-  const allItemIds = itemTriples.map((t) => t.itemId);
+  const allActionItemIds = actionItems.map((t) => t.itemId);
   const existingByKey = await ProjectTodoResource.fetchByItemIds(auth, {
-    itemIds: allItemIds,
+    itemIds: allActionItemIds,
   });
 
   const candidates: PendingCandidate[] = [];
   let existingUpdated = 0;
-  for (const { itemId, targetUserIds, blob } of itemTriples) {
+  for (const { itemId, targetUserIds, blob: actionItemBlob } of actionItems) {
     for (const userId of targetUserIds) {
       const existing = existingByKey.get(itemId)?.get(userId) ?? null;
       if (existing !== null) {
         // Source link exists — update content if it has changed.
-        const updated = await updateTodoIfChanged(existing, auth, blob);
+        const updated = await updateTodoIfChanged(
+          existing,
+          auth,
+          actionItemBlob
+        );
         if (updated) {
           existingUpdated++;
         }
@@ -302,7 +275,7 @@ async function collectDocumentCandidates(
         candidates.push({
           itemId,
           userId,
-          blob,
+          blob: actionItemBlob,
           source: takeawayWithSource.source,
         });
       }
@@ -334,11 +307,10 @@ async function buildDeduplicationGroups(
       itemId: c.itemId,
       userId: c.userId,
       text: c.blob.text,
-      category: c.blob.category,
     })
   );
 
-  const model = getFastestWhitelistedModel(auth);
+  const model = getSmallWhitelistedModel(auth);
   if (!model) {
     localLogger.warn(
       "Project todo merge: no whitelisted model, skipping deduplication"
@@ -350,7 +322,7 @@ async function buildDeduplicationGroups(
   // then nest them under userId → category → todos for lookup by the LLM
   // calls.
   const uniqueUserIds = [...new Set(newCandidates.map((c) => c.userId))];
-  const existingTodosByGroup: ExistingTodosByGroup = new Map();
+  const existingTodosByUser: ExistingTodosByUser = new Map();
 
   await concurrentExecutor(
     uniqueUserIds,
@@ -359,15 +331,11 @@ async function buildDeduplicationGroups(
         spaceId: spaceModelId,
         userId,
       });
-      const byCategory =
-        existingTodosByGroup.get(userId) ??
-        new Map<ProjectTodoCategory, ProjectTodoResource[]>();
       for (const todo of todos) {
-        const bucket = byCategory.get(todo.category) ?? [];
+        const bucket = existingTodosByUser.get(todo.userId) ?? [];
         bucket.push(todo);
-        byCategory.set(todo.category, bucket);
+        existingTodosByUser.set(todo.userId, bucket);
       }
-      existingTodosByGroup.set(userId, byCategory);
     },
     { concurrency: 4 }
   );
@@ -375,7 +343,7 @@ async function buildDeduplicationGroups(
   return batchDeduplicateCandidates(auth, {
     model,
     candidates: deduplicateCandidates,
-    existingTodosByGroup,
+    existingTodosByUser,
   });
 }
 
@@ -464,7 +432,6 @@ async function createOrLinkTodos(
           createdByType: "agent",
           createdByUserId: null,
           createdByAgentConfigurationId: BUTLER_AGENT_SID,
-          category: primary.blob.category,
           text: primary.blob.text,
           status: primary.blob.status,
           doneAt: primary.blob.doneAt,
@@ -539,12 +506,19 @@ export async function updateTodoIfChanged(
   const statusChanged = todo.status !== blob.status;
   const doneAtChanged =
     todo.doneAt?.toISOString() !== blob.doneAt?.toISOString();
+  const actorRationaleAtChanged = todo.actorRationale !== blob.reasoningDoneAt;
 
-  if (textChanged || statusChanged || doneAtChanged) {
+  if (
+    textChanged ||
+    statusChanged ||
+    doneAtChanged ||
+    actorRationaleAtChanged
+  ) {
     await todo.updateWithVersion(auth, {
       text: blob.text,
       status: blob.status,
       doneAt: blob.doneAt,
+      actorRationale: blob.reasoningDoneAt,
     });
     return true;
   }
@@ -556,28 +530,11 @@ export async function updateTodoIfChanged(
 export function actionItemBlob(item: TodoVersionedActionItem): TodoBlob {
   const isDone = item.status === "done";
   return {
-    category: "to_do",
     text: item.shortDescription,
     status: isDone ? "done" : "todo",
     doneAt:
       isDone && item.detectedDoneAt ? new Date(item.detectedDoneAt) : null,
-  };
-}
-
-export function keyDecisionBlob(item: TodoVersionedKeyDecision): TodoBlob {
-  return {
-    category: "to_know",
-    text: item.shortDescription,
-    status: "todo",
-    doneAt: null,
-  };
-}
-
-export function notableFactBlob(item: TodoVersionedNotableFact): TodoBlob {
-  return {
-    category: "to_know",
-    text: item.shortDescription,
-    status: "todo",
-    doneAt: null,
+    reasoningDoneAt:
+      isDone && item.detectedDoneRationale ? item.detectedDoneRationale : null,
   };
 }

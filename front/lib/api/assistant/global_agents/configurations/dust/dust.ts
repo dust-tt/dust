@@ -38,7 +38,6 @@ import {
 import type { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import { getSkillBuilderRoute } from "@app/lib/utils/router";
 import type {
   AgentConfigurationType,
   AgentModelConfigurationType,
@@ -62,7 +61,7 @@ import {
   GEMINI_3_PRO_MODEL_CONFIG,
 } from "@app/types/assistant/models/google_ai_studio";
 import { NOOP_MODEL_CONFIG } from "@app/types/assistant/models/noop";
-import { GPT_5_4_MODEL_CONFIG } from "@app/types/assistant/models/openai";
+import { GPT_5_5_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import type {
   ModelConfigurationType,
   ModelProviderIdType,
@@ -301,29 +300,6 @@ function buildInstructions({
   return parts.join("\n\n");
 }
 
-function buildReinforcedSkillStaticResponse(
-  workspaceId: string,
-  skillName: string,
-  skillId: string
-): string {
-  const builderUrl = getSkillBuilderRoute(workspaceId, skillId);
-  const messages = [
-    [
-      `Dust has analyzed conversations in your workspace that use the ${skillName} skill and found suggestions to improve it.`,
-      `You can view and apply these suggestions by going to the [skill builder](${builderUrl}).`,
-    ],
-    [
-      `Based on recent conversations, Dust has identified ways to enhance the ${skillName} skill.`,
-      `Head over to the [skill builder](${builderUrl}) to review and apply these improvements.`,
-    ],
-    [
-      `Dust has reviewed how the ${skillName} skill is being used and has new improvement suggestions.`,
-      `Check them out in the [skill builder](${builderUrl}) and apply the ones you like.`,
-    ],
-  ];
-  return messages[Math.floor(Math.random() * messages.length)].join("\n");
-}
-
 function _getDustLikeGlobalAgent(
   auth: Authenticator,
   {
@@ -352,7 +328,6 @@ function _getDustLikeGlobalAgent(
     agent_memory: agentMemoryMCPServerView,
     ask_user_question: askUserQuestionMCPServerView,
   } = mcpServerViews;
-  const owner = auth.getNonNullableWorkspace();
 
   const description = `Dust is your general purpose agent. It has access to all of your company data and tools available in the Company space. Dust can help you:
 - Find and analyze data across your company knowledge
@@ -360,21 +335,14 @@ function _getDustLikeGlobalAgent(
 - Create content like documents, presentations, images, and dashboards`;
   const pictureUrl = DUST_AVATAR_URL;
 
-  // Content fragments are posted before the user message and each gets its own
-  // rank, so the first user message may have rank > 0 (e.g. rank 1 when a file
-  // is attached). Use <= 1 to account for this.
-  const isFirstUserMessage =
-    globalAgentContext?.userMessageRank !== undefined &&
-    globalAgentContext.userMessageRank <= 1;
-  const isReinforcedSkillNotificationFirstTurn =
-    isFirstUserMessage && globalAgentContext?.reinforcedSkillNotification;
-  const isReinforcedNotificationFirstTurn =
-    isReinforcedSkillNotificationFirstTurn;
-
+  // When the triggering user message carries pre-formatted text (today: the
+  // skill-suggestion notification flow), Dust echoes it as a NOOP static reply
+  // instead of running the LLM.
+  const staticReply = globalAgentContext?.staticReply;
   let isPreferredModel = false;
 
   const modelConfiguration = (() => {
-    if (isReinforcedNotificationFirstTurn) {
+    if (staticReply) {
       return NOOP_MODEL_CONFIG;
     }
 
@@ -394,20 +362,6 @@ function _getDustLikeGlobalAgent(
     return getLargeWhitelistedModel(auth, excludeProviders);
   })();
 
-  const reinforcedStaticResponse = (() => {
-    if (
-      isReinforcedSkillNotificationFirstTurn &&
-      globalAgentContext?.reinforcedSkillNotification
-    ) {
-      return buildReinforcedSkillStaticResponse(
-        owner.sId,
-        globalAgentContext.reinforcedSkillNotification.skillName,
-        globalAgentContext.reinforcedSkillNotification.skillId
-      );
-    }
-    return undefined;
-  })();
-
   const model: AgentModelConfigurationType = modelConfiguration
     ? {
         providerId: modelConfiguration.providerId,
@@ -417,9 +371,9 @@ function _getDustLikeGlobalAgent(
           isPreferredModel && preferredReasoningEffort
             ? preferredReasoningEffort
             : modelConfiguration.defaultReasoningEffort,
-        ...(reinforcedStaticResponse && {
+        ...(staticReply && {
           metaData: {
-            staticResponse: reinforcedStaticResponse,
+            staticResponse: staticReply,
           },
         }),
       }
@@ -864,7 +818,7 @@ export function _getDustOaiGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_OAI,
     name: "dust-oai",
-    preferredModelConfiguration: GPT_5_4_MODEL_CONFIG,
+    preferredModelConfiguration: GPT_5_5_MODEL_CONFIG,
     preferredReasoningEffort: "light",
   });
 }
@@ -876,7 +830,7 @@ export function _getDustOaiMediumGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_OAI_MEDIUM,
     name: "dust-oai-medium",
-    preferredModelConfiguration: GPT_5_4_MODEL_CONFIG,
+    preferredModelConfiguration: GPT_5_5_MODEL_CONFIG,
     preferredReasoningEffort: "medium",
   });
 }
@@ -888,7 +842,7 @@ export function _getDustOaiHighGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_OAI_HIGH,
     name: "dust-oai-high",
-    preferredModelConfiguration: GPT_5_4_MODEL_CONFIG,
+    preferredModelConfiguration: GPT_5_5_MODEL_CONFIG,
     preferredReasoningEffort: "high",
   });
 }

@@ -157,6 +157,25 @@ describe("getJITServers", () => {
       expect(skillManagementServer).toBeUndefined();
     });
 
+    it("should not include skill_management server when agent only has system skills", async () => {
+      await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
+      await SkillFactory.linkGlobalSkillToAgent(auth, {
+        globalSkillId: "discover_tools",
+        agentConfigurationId: agentConfig.id,
+      });
+      const { servers: jitServers } = await getJITServers(auth, {
+        agentConfiguration: agentConfig,
+        conversation,
+        attachments: [],
+      });
+
+      const skillManagementServer = jitServers.find(
+        (server) => server.name === "skill_management"
+      );
+
+      expect(skillManagementServer).toBeUndefined();
+    });
+
     it("should return system skills separately from equipped skills", async () => {
       await SkillFactory.linkGlobalSkillToAgent(auth, {
         globalSkillId: "discover_tools",

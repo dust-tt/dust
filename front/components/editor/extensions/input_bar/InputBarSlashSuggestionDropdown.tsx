@@ -14,6 +14,7 @@ import { getSkillAvatarIcon } from "@app/lib/skill";
 import { useMCPServerViewsFromSpaces } from "@app/lib/swr/mcp_servers";
 import { useSkills } from "@app/lib/swr/skill_configurations";
 import { useSpaces } from "@app/lib/swr/spaces";
+import { compareForFuzzySort, subFilter } from "@app/lib/utils";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -28,14 +29,10 @@ import {
 
 import type { InputBarSlashSuggestionCapability } from "./InputBarSlashSuggestionTypes";
 
-const MAX_SLASH_SUGGESTIONS = 10;
-
 function matchesCapabilityQuery({
-  description,
   label,
   query,
 }: {
-  description?: string;
   label: string;
   query: string;
 }) {
@@ -43,10 +40,7 @@ function matchesCapabilityQuery({
     return true;
   }
 
-  return (
-    label.toLowerCase().includes(query) ||
-    description?.toLowerCase().includes(query) === true
-  );
+  return subFilter(query, label.toLowerCase());
 }
 
 export function filterInputBarSlashSuggestions({
@@ -72,7 +66,6 @@ export function filterInputBarSlashSuggestions({
       .filter((skill) =>
         matchesCapabilityQuery({
           label: skill.name,
-          description: skill.userFacingDescription,
           query: normalizedQuery,
         })
       )
@@ -87,7 +80,6 @@ export function filterInputBarSlashSuggestions({
       .filter((serverView) =>
         matchesCapabilityQuery({
           label: getMcpServerViewDisplayName(serverView),
-          description: getMcpServerViewDescription(serverView),
           query: normalizedQuery,
         })
       )
@@ -99,9 +91,17 @@ export function filterInputBarSlashSuggestions({
   ];
 
   return capabilities
-    .toSorted((a, b) => a.sortName.localeCompare(b.sortName))
-    .map(({ sortName: _sortName, ...capability }) => capability)
-    .slice(0, MAX_SLASH_SUGGESTIONS);
+    .toSorted((a, b) => {
+      if (normalizedQuery.length > 0) {
+        return (
+          compareForFuzzySort(normalizedQuery, a.sortName, b.sortName) ||
+          a.sortName.localeCompare(b.sortName)
+        );
+      }
+
+      return a.sortName.localeCompare(b.sortName);
+    })
+    .map(({ sortName: _sortName, ...capability }) => capability);
 }
 
 export const InputBarSlashSuggestionDropdown = forwardRef<
@@ -234,6 +234,7 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
 
     return (
       <SlashCommandDropdown
+        key={isCapabilitiesLoading ? "loading" : "loaded"}
         ref={dropdownRef}
         items={capabilityItems}
         command={(item) => {

@@ -36,7 +36,6 @@ export function createToolManifest(tools: readonly ToolEntry[]): ToolManifest {
 
   return {
     version: "1.0",
-    generatedAt: new Date().toISOString(),
     tools: filteredTools,
   };
 }

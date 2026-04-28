@@ -1,9 +1,5 @@
 import type { ModelId } from "@app/types/shared/model_id";
 
-export const PROJECT_TODO_CATEGORIES = ["to_do", "to_know"] as const;
-
-export type ProjectTodoCategory = (typeof PROJECT_TODO_CATEGORIES)[number];
-
 export const PROJECT_TODO_STATUSES = ["todo", "in_progress", "done"] as const;
 
 export type ProjectTodoStatus = (typeof PROJECT_TODO_STATUSES)[number];
@@ -37,7 +33,6 @@ export type ProjectTodoType = {
   id: ModelId;
   sId: string;
   conversationId: string | null;
-  category: ProjectTodoCategory;
   text: string;
   status: ProjectTodoStatus;
   doneAt: Date | null;

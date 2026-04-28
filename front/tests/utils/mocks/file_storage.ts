@@ -68,6 +68,9 @@ class FileStorageMock {
     return {
       file: vi.fn((path: string) => this.createMockGCSFile(path)),
       name: "mock-bucket",
+      getFileContentType: vi
+        .fn()
+        .mockResolvedValue({ isOk: () => false, isErr: () => true }),
       getSignedUrl: vi.fn().mockResolvedValue("https://signed-url.test"),
       uploadFileToBucket: vi.fn().mockResolvedValue(undefined),
       uploadRawContentToBucket: vi.fn().mockResolvedValue(undefined),

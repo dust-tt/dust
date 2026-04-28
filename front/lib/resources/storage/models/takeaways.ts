@@ -2,11 +2,7 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { ProjectTodoSourceType } from "@app/types/project_todo";
-import type {
-  TodoVersionedActionItem,
-  TodoVersionedKeyDecision,
-  TodoVersionedNotableFact,
-} from "@app/types/takeaways";
+import type { TodoVersionedActionItem } from "@app/types/takeaways";
 import type { CreationOptional, ForeignKey } from "sequelize";
 import { DataTypes } from "sequelize";
 
@@ -66,8 +62,8 @@ export class TakeawaysModel extends WorkspaceAwareModel<TakeawaysModel> {
 
   // Rolling state — full replacement on each butler run.
   declare actionItems: TodoVersionedActionItem[];
-  declare notableFacts: TodoVersionedNotableFact[];
-  declare keyDecisions: TodoVersionedKeyDecision[];
+  declare notableFacts: [];
+  declare keyDecisions: [];
 }
 
 TakeawaysModel.init(

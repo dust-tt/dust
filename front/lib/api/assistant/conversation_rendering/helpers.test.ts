@@ -1,6 +1,8 @@
+import { renderEquippedSkillsUserMessage } from "@app/lib/api/assistant/skills_rendering";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import type { TextContent } from "@app/types/assistant/generation";
 import { describe, expect, it } from "vitest";
 
@@ -181,5 +183,42 @@ Hello!`);
 </dust_system>
 
 Just text`);
+  });
+});
+
+describe("skill rendering helpers", () => {
+  it("renders equipped skills as a synthetic user message", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+
+    const commitSkill = await SkillFactory.create(authenticator, {
+      name: "commit",
+      agentFacingDescription: "Create a git commit with a descriptive message.",
+    });
+    const reviewPrSkill = await SkillFactory.create(authenticator, {
+      name: "review-pr",
+      agentFacingDescription:
+        "Review a pull request for code quality and correctness.",
+    });
+
+    const message = renderEquippedSkillsUserMessage([
+      commitSkill,
+      reviewPrSkill,
+    ]);
+
+    expect(message).toEqual({
+      role: "user",
+      name: "system",
+      content: [
+        {
+          type: "text",
+          text: `<dust_system>
+The following skills are available for use with the skill_management__enable_skill tool:
+
+- **commit**: Create a git commit with a descriptive message.
+- **review-pr**: Review a pull request for code quality and correctness.
+</dust_system>`,
+        },
+      ],
+    });
   });
 });

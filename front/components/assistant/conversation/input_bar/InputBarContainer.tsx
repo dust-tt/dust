@@ -250,7 +250,6 @@ const InputBarContainer = ({
   // Create a ref to hold the editor instance
   const editorRef = useRef<Editor | null>(null);
   const pastedAttachmentIdsRef = useRef<Set<string>>(new Set());
-
   const selectedSkillIds = useMemo(
     () => new Set(selectedSkills.map((skill) => skill.sId)),
     [selectedSkills]
@@ -265,7 +264,6 @@ const InputBarContainer = ({
   const onSelectRef = useRef<
     ((capability: InputBarSlashSuggestionCapability) => void) | undefined
   >(undefined);
-
   selectedMCPServerViewIdsRef.current = selectedMCPServerViewIds;
   selectedSkillIdsRef.current = selectedSkillIds;
   shouldEnableSlashSuggestionRef.current = shouldEnableSlashSuggestion;

@@ -16,11 +16,7 @@ import type {
 } from "@app/types/project_todo";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Ok, type Result } from "@app/types/shared/result";
-import type {
-  TodoVersionedActionItem,
-  TodoVersionedKeyDecision,
-  TodoVersionedNotableFact,
-} from "@app/types/takeaways";
+import type { TodoVersionedActionItem } from "@app/types/takeaways";
 import type {
   Attributes,
   CreationAttributes,
@@ -87,7 +83,10 @@ export class TakeawaysResource extends BaseResource<TakeawaysModel> {
 
   static async makeNew(
     auth: Authenticator,
-    blob: Omit<CreationAttributes<TakeawaysModel>, "workspaceId">,
+    blob: Omit<
+      CreationAttributes<TakeawaysModel>,
+      "workspaceId" | "notableFacts" | "keyDecisions"
+    >,
     transaction?: Transaction
   ): Promise<TakeawaysResource> {
     return withTransaction(async (t) => {
@@ -95,6 +94,8 @@ export class TakeawaysResource extends BaseResource<TakeawaysModel> {
         {
           ...blob,
           workspaceId: auth.getNonNullableWorkspace().id,
+          notableFacts: [],
+          keyDecisions: [],
         },
         { transaction: t }
       );
@@ -107,10 +108,7 @@ export class TakeawaysResource extends BaseResource<TakeawaysModel> {
   // in place. The version number is determined by the existing snapshot count + 1.
   async updateWithVersion(
     auth: Authenticator,
-    updates: Pick<
-      CreationAttributes<TakeawaysModel>,
-      "actionItems" | "notableFacts" | "keyDecisions"
-    >,
+    updates: Pick<CreationAttributes<TakeawaysModel>, "actionItems">,
     transaction?: Transaction
   ): Promise<TakeawaysResource> {
     if (this.workspaceId !== auth.getNonNullableWorkspace().id) {
@@ -388,8 +386,6 @@ export class TakeawaysResource extends BaseResource<TakeawaysModel> {
       spaceId,
       document,
       actionItems,
-      notableFacts,
-      keyDecisions,
     }: {
       spaceId: string;
       document: {
@@ -399,8 +395,6 @@ export class TakeawaysResource extends BaseResource<TakeawaysModel> {
         uri: string | null;
       };
       actionItems: TodoVersionedActionItem[];
-      notableFacts: TodoVersionedNotableFact[];
-      keyDecisions: TodoVersionedKeyDecision[];
     },
     transaction?: Transaction
   ): Promise<TakeawaysResource> {
@@ -431,16 +425,12 @@ export class TakeawaysResource extends BaseResource<TakeawaysModel> {
             `TakeawaysModel row missing for takeawaysId ${source.takeawaysId}`
           );
         }
-        return existing.updateWithVersion(
-          auth,
-          { actionItems, notableFacts, keyDecisions },
-          t
-        );
+        return existing.updateWithVersion(auth, { actionItems }, t);
       }
 
       const takeaway = await TakeawaysResource.makeNew(
         auth,
-        { spaceId: spaceModelId, actionItems, notableFacts, keyDecisions },
+        { spaceId: spaceModelId, actionItems },
         t
       );
 
@@ -470,14 +460,10 @@ export class TakeawaysResource extends BaseResource<TakeawaysModel> {
       conversationId,
       spaceId,
       actionItems,
-      notableFacts,
-      keyDecisions,
     }: {
       conversationId: string;
       spaceId: string;
       actionItems: TodoVersionedActionItem[];
-      notableFacts: TodoVersionedNotableFact[];
-      keyDecisions: TodoVersionedKeyDecision[];
     },
     transaction?: Transaction
   ): Promise<TakeawaysResource> {
@@ -492,8 +478,6 @@ export class TakeawaysResource extends BaseResource<TakeawaysModel> {
           uri: null,
         },
         actionItems,
-        notableFacts,
-        keyDecisions,
       },
       transaction
     );

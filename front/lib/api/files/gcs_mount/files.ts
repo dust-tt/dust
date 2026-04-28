@@ -1,7 +1,9 @@
+import config from "@app/lib/api/config";
 import { getConversationFilesBasePath } from "@app/lib/api/files/mount_path";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { isSupportedImageContentType } from "@app/types/files";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
 
@@ -12,6 +14,7 @@ export type GCSMountFileEntry = {
   contentType: string;
   lastModifiedMs: number;
   fileId: string | null;
+  thumbnailUrl: string | null;
 };
 
 type GCSMountPoint = {
@@ -43,13 +46,19 @@ export async function listGCSMountFiles(
   const bucket = getPrivateUploadBucket();
   const gcsFiles = await bucket.getFiles({ prefix, maxResults: 200 });
 
-  // Filter out .processed.* files (internal processing artifacts).
-  const filteredFiles = gcsFiles.filter((f) => {
+  // GCS folder placeholders are zero-byte objects whose path ends with "/".
+  // Split them out early so we can represent them as inode/directory entries
+  // without fetching FileResources for them.
+  const folderPlaceholders = gcsFiles.filter((f) => f.name.endsWith("/"));
+  const regularFiles = gcsFiles.filter((f) => {
+    if (f.name.endsWith("/")) {
+      return false;
+    }
     const name = f.name.split("/").pop() ?? "";
     return !name.includes(".processed.");
   });
 
-  const mountPaths = filteredFiles.map((f) => f.name);
+  const mountPaths = regularFiles.map((f) => f.name);
   const fileResources = await FileResource.fetchByMountFilePaths(
     auth,
     mountPaths
@@ -61,22 +70,50 @@ export async function listGCSMountFiles(
     }
   }
 
-  return filteredFiles.map((gcsFile) => {
+  const folderEntries: GCSMountFileEntry[] = folderPlaceholders.flatMap((f) => {
+    const trimmed = f.name.replace(/\/$/, "");
+    const name = trimmed.split("/").pop() ?? "";
+    // Skip hidden folders (name starting with ".").
+    if (!name || name.startsWith(".")) {
+      return [];
+    }
+    return [
+      {
+        fileName: name,
+        path: trimmed,
+        sizeBytes: 0,
+        contentType: "inode/directory",
+        lastModifiedMs: isString(f.metadata.updated)
+          ? new Date(f.metadata.updated).getTime()
+          : 0,
+        fileId: null,
+        thumbnailUrl: null,
+      },
+    ];
+  });
+
+  const fileEntries: GCSMountFileEntry[] = regularFiles.map((gcsFile) => {
     const fileName = gcsFile.name.split("/").pop() ?? gcsFile.name;
     const metadata = gcsFile.metadata;
+    const contentType = isString(metadata.contentType)
+      ? metadata.contentType
+      : "application/octet-stream";
     const fileResource = fileResourceByMountPath.get(gcsFile.name) ?? null;
 
     return {
       fileName,
       path: gcsFile.name,
       sizeBytes: Number(metadata.size ?? 0),
-      contentType: isString(metadata.contentType)
-        ? metadata.contentType
-        : "application/octet-stream",
+      contentType,
       lastModifiedMs: isString(metadata.updated)
         ? new Date(metadata.updated).getTime()
         : 0,
       fileId: fileResource?.sId ?? null,
+      thumbnailUrl: isSupportedImageContentType(contentType)
+        ? `${config.getClientFacingUrl()}/api/w/${owner.sId}/assistant/conversations/${scope.conversationId}/files/thumbnail?filePath=${encodeURIComponent(gcsFile.name.slice(prefix.length))}`
+        : null,
     };
   });
+
+  return [...folderEntries, ...fileEntries];
 }

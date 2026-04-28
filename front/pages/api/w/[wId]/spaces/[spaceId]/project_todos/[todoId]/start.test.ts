@@ -34,7 +34,6 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/project_todos/[todoId]/start", () =
     const project = await SpaceFactory.project(workspace, user.id);
     const todo = await ProjectTodoFactory.create(workspace, project, {
       userId: user.id,
-      category: "to_do",
       text: "Prepare launch checklist",
     });
 
@@ -49,29 +48,11 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/project_todos/[todoId]/start", () =
     expect(data.todo.conversationId).toBeTruthy();
   });
 
-  it("returns 400 when starting a non to_do todo", async () => {
-    const { user } = await setup();
-    const project = await SpaceFactory.project(workspace, user.id);
-    const todo = await ProjectTodoFactory.create(workspace, project, {
-      userId: user.id,
-      category: "to_know",
-    });
-
-    req.query.spaceId = project.sId;
-    req.query.todoId = todo.sId;
-
-    await handler(req, res);
-
-    expect(res._getStatusCode()).toBe(400);
-    expect(res._getJSONData().error.type).toBe("invalid_request_error");
-  });
-
   it("returns 405 for unsupported methods", async () => {
     const { user } = await setup("GET");
     const project = await SpaceFactory.project(workspace, user.id);
     const todo = await ProjectTodoFactory.create(workspace, project, {
       userId: user.id,
-      category: "to_do",
     });
 
     req.query.spaceId = project.sId;

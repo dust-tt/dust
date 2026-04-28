@@ -22,7 +22,6 @@ function makeCandidate(
   return {
     userId: 1 as ModelId,
     text: "Write the report",
-    category: "to_do",
     ...overrides,
   };
 }

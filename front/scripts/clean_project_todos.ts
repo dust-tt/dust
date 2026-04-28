@@ -1,4 +1,5 @@
 import { Authenticator } from "@app/lib/auth";
+import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import {
@@ -118,6 +119,11 @@ makeScript(
     });
 
     await frontSequelize.transaction(async (transaction) => {
+      const metadata = await ProjectMetadataResource.fetchBySpace(auth, space);
+      if (metadata) {
+        await metadata.updateLastTodoAnalysisAt(null, transaction);
+      }
+
       if (todoIds.length > 0) {
         const todoChildWhere = { workspaceId, projectTodoId: todoIds };
 

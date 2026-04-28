@@ -15,7 +15,7 @@ export const OutlookCalendarSchema = z.object({
       name: z.string().optional(),
       address: z.string().optional(),
     })
-    .optional(),
+    .nullish(),
 });
 
 export const OutlookEventSchema = z.object({

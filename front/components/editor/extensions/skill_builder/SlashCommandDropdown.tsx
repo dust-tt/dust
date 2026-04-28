@@ -12,7 +12,6 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
-  useRef,
   useState,
 } from "react";
 
@@ -22,7 +21,6 @@ interface SlashCommandTooltip {
 }
 
 const DEFAULT_EMPTY_MESSAGE = "No commands found";
-
 export interface SlashCommand {
   action: string;
   description?: string;
@@ -64,8 +62,6 @@ export const SlashCommandDropdown = forwardRef<
     ref
   ) => {
     const [selectedIndex, setSelectedIndex] = useState(0);
-    const containerRef = useRef<HTMLDivElement>(null);
-    const triggerRef = useRef<HTMLDivElement>(null);
     const [virtualTriggerStyle, setVirtualTriggerStyle] =
       useState<React.CSSProperties>({});
 
@@ -89,13 +85,18 @@ export const SlashCommandDropdown = forwardRef<
 
           if (event.key === "ArrowDown") {
             event.preventDefault();
-            setSelectedIndex((selectedIndex + 1) % items.length);
+            setSelectedIndex(
+              (prevSelectedIndex) => (prevSelectedIndex + 1) % items.length
+            );
             return true;
           }
 
           if (event.key === "ArrowUp") {
             event.preventDefault();
-            setSelectedIndex((selectedIndex + items.length - 1) % items.length);
+            setSelectedIndex(
+              (prevSelectedIndex) =>
+                (prevSelectedIndex + items.length - 1) % items.length
+            );
             return true;
           }
 
@@ -115,12 +116,12 @@ export const SlashCommandDropdown = forwardRef<
     // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
     useEffect(() => {
       setSelectedIndex(0);
-    }, [items.length]);
+    }, [items]);
 
     // Update virtual trigger position.
     const updateTriggerPosition = useCallback(() => {
       const triggerRect = clientRect?.();
-      if (triggerRect && triggerRef.current) {
+      if (triggerRect) {
         setVirtualTriggerStyle({
           position: "fixed",
           left: triggerRect.left,
@@ -149,20 +150,21 @@ export const SlashCommandDropdown = forwardRef<
     return (
       <DropdownMenu open={true}>
         <DropdownMenuTrigger asChild>
-          <div ref={triggerRef} style={virtualTriggerStyle} />
+          <div style={virtualTriggerStyle} />
         </DropdownMenuTrigger>
         <DropdownMenuContent
-          ref={containerRef}
           className={size === "wide" ? "w-80" : "w-64"}
           align="start"
           avoidCollisions
           collisionPadding={12}
+          highlightedItemId={items[selectedIndex]?.id}
           side="bottom"
           sideOffset={4}
           onEscapeKeyDown={onClose}
           onInteractOutside={onClose}
           onCloseAutoFocus={(e) => e.preventDefault()}
           onOpenAutoFocus={(e) => e.preventDefault()}
+          scrollHighlightedItemIntoView
         >
           {header ? (
             <div className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground dark:text-muted-foreground-night">
@@ -180,6 +182,7 @@ export const SlashCommandDropdown = forwardRef<
                   <DropdownMenuItem
                     key={item.id}
                     icon={item.icon}
+                    itemId={item.id}
                     label={item.label}
                     description={item.description}
                     truncateText
@@ -187,7 +190,7 @@ export const SlashCommandDropdown = forwardRef<
                     onMouseEnter={() => setSelectedIndex(index)}
                     className={
                       index === selectedIndex
-                        ? "bg-gray-100 dark:bg-gray-800"
+                        ? "bg-muted-background dark:bg-muted-night [transition-duration:0ms]"
                         : ""
                     }
                   />

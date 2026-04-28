@@ -43,6 +43,7 @@ export const TOKENS_MARGIN = 1024;
 export async function renderConversationForModel(
   auth: Authenticator,
   {
+    leadingMessages = [],
     conversation,
     model,
     prompt,
@@ -53,6 +54,7 @@ export async function renderConversationForModel(
     onMissingAction = "inject-placeholder",
     agentConfiguration,
   }: {
+    leadingMessages?: ModelMessageTypeMultiActionsWithoutContentFragment[];
     conversation: ConversationType;
     model: ModelConfigurationType;
     prompt: string;
@@ -77,7 +79,7 @@ export async function renderConversationForModel(
   const now = Date.now();
   let stepStart = now;
 
-  const messages = await renderAllMessages(auth, {
+  const renderedMessages = await renderAllMessages(auth, {
     conversation,
     model,
     excludeActions,
@@ -85,6 +87,7 @@ export async function renderConversationForModel(
     onMissingAction,
     agentConfiguration,
   });
+  const messages = [...leadingMessages, ...renderedMessages];
   const renderAllMessagesMs = Date.now() - stepStart;
   stepStart = Date.now();
 

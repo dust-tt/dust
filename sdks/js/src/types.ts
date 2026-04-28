@@ -37,6 +37,7 @@ type KnownModelLLMId =
   | "gpt-5.1"
   | "gpt-5.2"
   | "gpt-5.4"
+  | "gpt-5.5"
   | "gpt-5-nano"
   | "gpt-5-mini"
   | "gpt-5"
@@ -742,6 +743,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "slack_message_splitting"
   | "slideshow"
   | "snowflake_tool"
+  | "skills_as_user_messages"
   | "run_tools_from_prompt"
   | "usage_data_api"
   | "xai_feature"
@@ -755,6 +757,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "conversation_search_indexing"
   | "conversation_search_read"
   | "enable_wakeups"
+  | "new_file_explorer"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -2061,6 +2064,14 @@ export const PatchAgentConfigurationRequestSchema = z.object({
 
 export type PatchAgentConfigurationRequestType = z.infer<
   typeof PatchAgentConfigurationRequestSchema
+>;
+
+export const DeleteAgentConfigurationResponseSchema = z.object({
+  success: z.boolean(),
+});
+
+export type DeleteAgentConfigurationResponseType = z.infer<
+  typeof DeleteAgentConfigurationResponseSchema
 >;
 
 export const GetAgentConfigurationYAMLExportResponseSchema = z.string();

@@ -1,4 +1,5 @@
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import { NewFileExplorer } from "@app/components/assistant/conversation/files_panel/FileExplorer";
 import { FilesTab } from "@app/components/assistant/conversation/files_panel/FilesTab";
 import { SandboxStatusChip } from "@app/components/assistant/conversation/files_panel/SandboxStatusChip";
 import { SandboxTab } from "@app/components/assistant/conversation/files_panel/SandboxTab";
@@ -10,9 +11,11 @@ import {
 } from "@app/components/spaces/FilePreviewSheet";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useConversationAttachments } from "@app/hooks/conversations/useConversationAttachments";
+import { useConversationSandboxFiles } from "@app/hooks/conversations/useConversationSandboxFiles";
 import { useConversationSandboxStatus } from "@app/hooks/conversations/useConversationSandboxStatus";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { isFileAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { downloadSandboxFile } from "@app/lib/swr/files";
 import type { GCSMountFileEntry } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/files";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
@@ -37,6 +40,9 @@ export function ConversationFilesPanel({
   conversation,
   owner,
 }: ConversationFilesPanelProps) {
+  const { hasFeature } = useFeatureFlags();
+  const isNewFileExplorer = hasFeature("new_file_explorer");
+
   const [activeTab, setActiveTab] = useState("files");
   const [previewFile, setPreviewFile] = useState<MinimalFileForPreview | null>(
     null
@@ -51,11 +57,19 @@ export function ConversationFilesPanel({
     useConversationAttachments({
       conversationId: conversation.sId,
       owner,
+      options: { disabled: isNewFileExplorer },
     });
 
   const { sandboxStatus } = useConversationSandboxStatus({
     conversationId: conversation.sId,
     owner,
+    options: { disabled: isNewFileExplorer },
+  });
+
+  const { sandboxFiles, isSandboxFilesLoading } = useConversationSandboxFiles({
+    conversationId: conversation.sId,
+    owner,
+    options: { disabled: !isNewFileExplorer },
   });
 
   const openFile = useCallback(
@@ -143,6 +157,18 @@ export function ConversationFilesPanel({
         .map((a) => conversationAttachmentToRow(a, handleAttachmentClick)),
     [attachments, handleAttachmentClick]
   );
+
+  if (isNewFileExplorer) {
+    return (
+      <NewFileExplorer
+        conversation={conversation}
+        files={sandboxFiles}
+        isLoading={isSandboxFilesLoading}
+        onClose={closePanel}
+        owner={owner}
+      />
+    );
+  }
 
   const hasSandbox = sandboxStatus !== null;
 

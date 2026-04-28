@@ -16,7 +16,7 @@ import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import {
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_1_MODEL_CONFIG,
-  GPT_5_4_MODEL_CONFIG,
+  GPT_5_5_MODEL_CONFIG,
   GPT_5_MINI_MODEL_CONFIG,
   GPT_5_NANO_MODEL_CONFIG,
   O1_MINI_MODEL_CONFIG,
@@ -175,12 +175,10 @@ export function _getGPT5GlobalAgent({
     scope: "global",
     userFavorite: false,
     model: {
-      providerId: GPT_5_4_MODEL_CONFIG.providerId,
-      modelId: GPT_5_4_MODEL_CONFIG.modelId,
+      providerId: GPT_5_5_MODEL_CONFIG.providerId,
+      modelId: GPT_5_5_MODEL_CONFIG.modelId,
       temperature: 0.7,
-      /**
-       * WARNING: Because the default in ChatGPT is no reasoning, we do the same
-       */
+      // Keep this variant as the fast non-thinking GPT 5.5 agent.
       reasoningEffort: "none",
     },
     actions: [
@@ -201,8 +199,7 @@ export function _getGPT5GlobalAgent({
 }
 
 /**
- * GPT5 thinking, is gpt5 with reasoning enabled
- * In chatGPT the default is no reasoning, so we do the same!
+ * GPT5.5 thinking is GPT5.5 with reasoning enabled.
  */
 export function _getGPT5ThinkingGlobalAgent({
   auth,
@@ -243,10 +240,10 @@ export function _getGPT5ThinkingGlobalAgent({
     scope: "global",
     userFavorite: false,
     model: {
-      providerId: GPT_5_4_MODEL_CONFIG.providerId,
-      modelId: GPT_5_4_MODEL_CONFIG.modelId,
+      providerId: GPT_5_5_MODEL_CONFIG.providerId,
+      modelId: GPT_5_5_MODEL_CONFIG.modelId,
       temperature: 0.7,
-      reasoningEffort: GPT_5_4_MODEL_CONFIG.defaultReasoningEffort,
+      reasoningEffort: GPT_5_5_MODEL_CONFIG.defaultReasoningEffort,
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({

@@ -508,17 +508,6 @@ export async function getOutputFromLLMStream(
     }
   }
 
-  if (contents.length === 0 && actions.length === 0) {
-    return new Err({
-      type: "shouldRetryMessage",
-      content: {
-        type: "unknown_error",
-        message: "Agent execution didn't complete.",
-        isRetryable: true,
-      },
-    });
-  }
-
   return new Ok({
     output: {
       actions,

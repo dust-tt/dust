@@ -94,6 +94,9 @@ export const InputBarSlashSuggestionExtension =
             (editor.isFocused || isActive) &&
             extensionStorage.dismissedTriggerStart !== range.from &&
             isAllowedSlashQuery(state, range),
+          shouldShow: ({ transaction }) =>
+            !transaction.getMeta("paste") &&
+            transaction.getMeta("uiEvent") !== "paste",
           command: ({ editor, range, props }) => {
             extensionStorage.dismissedTriggerStart = null;
             editor.chain().focus().deleteRange(range).run();

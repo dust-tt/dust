@@ -1,11 +1,42 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mockDistribution = vi.fn();
+const {
+  mockDeleteSandboxPolicy,
+  mockDistribution,
+  mockExecuteWithLock,
+  mockGetSandboxProvider,
+  mockProviderDestroy,
+  mockRevokeAllExecTokensForSandbox,
+} = vi.hoisted(() => ({
+  mockDeleteSandboxPolicy: vi.fn(),
+  mockDistribution: vi.fn(),
+  mockExecuteWithLock: vi.fn(),
+  mockGetSandboxProvider: vi.fn(),
+  mockProviderDestroy: vi.fn(),
+  mockRevokeAllExecTokensForSandbox: vi.fn(),
+}));
+
 vi.mock("@app/lib/utils/statsd", () => ({
   getStatsDClient: () => ({
     increment: vi.fn(),
     distribution: mockDistribution,
   }),
+}));
+
+vi.mock("@app/lib/api/sandbox", () => ({
+  getSandboxProvider: mockGetSandboxProvider,
+}));
+
+vi.mock("@app/lib/api/sandbox/access_tokens", () => ({
+  revokeAllExecTokensForSandbox: mockRevokeAllExecTokensForSandbox,
+}));
+
+vi.mock("@app/lib/api/sandbox/egress_policy", () => ({
+  deleteSandboxPolicy: mockDeleteSandboxPolicy,
+}));
+
+vi.mock("@app/lib/lock", () => ({
+  executeWithLock: mockExecuteWithLock,
 }));
 
 import type { Authenticator } from "@app/lib/auth";
@@ -15,13 +46,23 @@ import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SandboxFactory } from "@app/tests/utils/SandboxFactory";
 import type { ConversationType } from "@app/types/assistant/conversation";
+import { Ok } from "@app/types/shared/result";
 
 describe("SandboxResource.updateStatus", () => {
   let authenticator: Authenticator;
   let conversation: ConversationType;
 
   beforeEach(async () => {
-    mockDistribution.mockClear();
+    vi.clearAllMocks();
+    mockExecuteWithLock.mockImplementation(
+      async (_key: string, fn: () => Promise<unknown>) => fn()
+    );
+    mockGetSandboxProvider.mockReturnValue({
+      destroy: mockProviderDestroy,
+    });
+    mockProviderDestroy.mockResolvedValue(new Ok(undefined));
+    mockDeleteSandboxPolicy.mockResolvedValue(new Ok(undefined));
+    mockRevokeAllExecTokensForSandbox.mockResolvedValue(undefined);
 
     const testSetup = await createResourceTest({ role: "admin" });
     authenticator = testSetup.authenticator;
@@ -113,5 +154,56 @@ describe("SandboxResource.updateStatus", () => {
     expect(reloaded?.statusChangedAt?.getTime()).toBeLessThanOrEqual(
       afterTransition
     );
+  });
+});
+
+describe("SandboxResource.dangerouslyDestroyIfSleeping", () => {
+  let authenticator: Authenticator;
+  let conversation: ConversationType;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    mockExecuteWithLock.mockImplementation(
+      async (_key: string, fn: () => Promise<unknown>) => fn()
+    );
+    mockGetSandboxProvider.mockReturnValue({
+      destroy: mockProviderDestroy,
+    });
+    mockProviderDestroy.mockResolvedValue(new Ok(undefined));
+    mockDeleteSandboxPolicy.mockResolvedValue(new Ok(undefined));
+    mockRevokeAllExecTokensForSandbox.mockResolvedValue(undefined);
+
+    const testSetup = await createResourceTest({ role: "admin" });
+    authenticator = testSetup.authenticator;
+
+    const agentConfig =
+      await AgentConfigurationFactory.createTestAgent(authenticator);
+    conversation = await ConversationFactory.create(authenticator, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [new Date()],
+    });
+  });
+
+  it("deletes the sandbox egress policy after provider destroy succeeds", async () => {
+    const sandbox = await SandboxFactory.create(authenticator, conversation, {
+      status: "sleeping",
+    });
+
+    const result = await SandboxResource.dangerouslyDestroyIfSleeping(
+      authenticator,
+      conversation.sId
+    );
+
+    expect(result.isOk()).toBe(true);
+    expect(mockProviderDestroy).toHaveBeenCalledWith(sandbox.providerId, {
+      workspaceId: authenticator.getNonNullableWorkspace().sId,
+    });
+    expect(mockDeleteSandboxPolicy).toHaveBeenCalledWith(sandbox.providerId);
+
+    const reloaded = await SandboxResource.fetchByConversationId(
+      authenticator,
+      conversation.sId
+    );
+    expect(reloaded?.status).toBe("deleted");
   });
 });

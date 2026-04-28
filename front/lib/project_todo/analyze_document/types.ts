@@ -3,101 +3,70 @@ import { z } from "zod";
 export const EXTRACT_DOCUMENT_TAKEAWAYS_FUNCTION_NAME =
   "extract_document_takeaways";
 
-const ActionItemSchema = z.object({
-  // Present when the item matches a previously known action item. The LLM
-  // should copy the sId verbatim from the list provided in the prompt.
-  sId: z
-    .string()
-    .optional()
-    .describe(
-      "Stable identifier for this action item. Copy verbatim from the known action items list if this task was previously tracked. Omit for brand-new tasks."
-    ),
+// New items require an assignee_user_id matching a known project member. Items
+// whose assignee cannot be resolved to a project member are intentionally
+// dropped — we'd rather miss an item than track one we can't route to a real
+// user, since the assignee drives downstream notifications and ownership.
+const NewActionItemSchema = z.object({
   short_description: z
     .string()
-    .optional()
     .describe("Short description of the action item."),
-  assignee_name: z.string().optional(),
+  assignee_name: z
+    .string()
+    .describe("Name of the assignee, as it appears in the document."),
   assignee_user_id: z
     .string()
-    .optional()
     .describe(
-      "The participant id of the assigned person. Must be one of the participant ids listed in the prompt. Only set when an assignee is clearly identified."
-    ),
-  status: z
-    .enum(["open", "done"])
-    .optional()
-    .describe(
-      "'done' if the item was explicitly resolved in the document, 'open' otherwise."
-    ),
-  detected_done_rationale: z
-    .string()
-    .optional()
-    .describe(
-      "Brief explanation of why the item is considered done, if status is 'done'."
+      "The participant id of the assigned person. Must be one of the participant ids listed in the prompt."
     ),
 });
 
-const NotableFactSchema = z.object({
-  // Present when the fact matches a previously known notable fact. The LLM
-  // should copy the sId verbatim from the list provided in the prompt.
+export type NewActionItem = z.infer<typeof NewActionItemSchema>;
+
+const UpdatedActionItemSchema = z.object({
   sId: z
     .string()
-    .optional()
     .describe(
-      "Stable identifier for this notable fact. Copy verbatim from the known notable facts list if this fact was previously tracked. Omit for brand-new facts."
+      "Stable identifier of a previously tracked action item. Copy verbatim from the known action items list."
     ),
   short_description: z
     .string()
     .optional()
-    .describe("Short description of the notable fact."),
-  relevant_user_ids: z
-    .array(z.string())
+    .describe(
+      "Updated description. Only set when the document materially changes the description; omit otherwise."
+    ),
+  assignee: z
+    .object({
+      user_id: z
+        .string()
+        .describe(
+          "Participant id of the new assignee. Must be one of the participant ids listed in the prompt."
+        ),
+      name: z
+        .string()
+        .describe("Name of the new assignee, as it appears in the document."),
+    })
     .optional()
     .describe(
-      "Participant ids of people this fact is relevant to or was stated by. Must be ids from the participant list in the prompt."
+      "Set together when the assignee changes. Both fields are required when present; omit otherwise."
+    ),
+  done: z
+    .object({
+      detected_done_rationale: z
+        .string()
+        .describe("Brief explanation of why the item is considered done."),
+    })
+    .optional()
+    .describe(
+      "Set only when the item was explicitly resolved in the document. Items can only transition to done; never back to open."
     ),
 });
 
-const KeyDecisionSchema = z.object({
-  // Present when the decision matches a previously known key decision. The LLM
-  // should copy the sId verbatim from the list provided in the prompt.
-  sId: z
-    .string()
-    .optional()
-    .describe(
-      "Stable identifier for this key decision. Copy verbatim from the known key decisions list if this decision was previously tracked. Omit for brand-new decisions."
-    ),
-  short_description: z
-    .string()
-    .optional()
-    .describe("Short description of the key decision."),
-  relevant_user_ids: z
-    .array(z.string())
-    .optional()
-    .describe(
-      "Participant ids of people involved in making this decision. Must be ids from the participant list in the prompt."
-    ),
-  status: z
-    .enum(["decided", "open"])
-    .optional()
-    .describe(
-      "'decided' if the decision is finalized, 'open' if still being deliberated."
-    ),
-});
-
-export type ActionItem = z.infer<typeof ActionItemSchema>;
-export type NotableFact = z.infer<typeof NotableFactSchema>;
-export type KeyDecision = z.infer<typeof KeyDecisionSchema>;
+export type UpdatedActionItem = z.infer<typeof UpdatedActionItemSchema>;
 
 export const ExtractTakeawaysInputSchema = z.object({
-  topic: z
-    .string()
-    .describe(
-      "One-line summary of the document topic, e.g. 'Debugging the embed timeout issue'."
-    ),
-  action_items: z.array(ActionItemSchema),
-  notable_facts: z.array(NotableFactSchema),
-  key_decisions: z.array(KeyDecisionSchema),
+  new_action_items: z.array(NewActionItemSchema),
+  updated_action_items: z.array(UpdatedActionItemSchema),
 });
 
 export type ExtractionResult = z.infer<typeof ExtractTakeawaysInputSchema>;

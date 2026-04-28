@@ -37,7 +37,7 @@ import {
   CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
   CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
 } from "@app/types/assistant/models/anthropic";
-import { GPT_5_4_MODEL_CONFIG } from "@app/types/assistant/models/openai";
+import { GPT_5_5_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import type {
   ModelConfigurationType,
   ModelProviderIdType,
@@ -349,7 +349,7 @@ function getModelConfig(
 } | null {
   const candidates = [
     CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
-    GPT_5_4_MODEL_CONFIG,
+    GPT_5_5_MODEL_CONFIG,
   ];
 
   for (const model of candidates) {
@@ -387,7 +387,7 @@ function getMaxReasoningModelConfig(
     isProviderWhitelisted(auth, "openai")
   ) {
     return {
-      modelConfiguration: GPT_5_4_MODEL_CONFIG,
+      modelConfiguration: GPT_5_5_MODEL_CONFIG,
       reasoningEffort: "high",
     };
   }

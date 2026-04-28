@@ -33,7 +33,7 @@ import type { ConversationResource } from "@app/lib/resources/conversation_resou
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import logger from "@app/logger/logger";
-import { GPT_5_4_MODEL_CONFIG } from "@app/types/assistant/models/openai";
+import { GPT_5_5_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
@@ -320,7 +320,7 @@ export async function getReinforcedSkillsLLM(
     isProviderWhitelisted(auth, "openai");
 
   const model = useOpenAi
-    ? GPT_5_4_MODEL_CONFIG
+    ? GPT_5_5_MODEL_CONFIG
     : getLargeWhitelistedModel(auth);
   if (!model) {
     return null;

@@ -4,6 +4,7 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { PREVIOUS_INTERACTIONS_TO_PRESERVE } from "@app/lib/api/assistant/conversation_rendering";
+import { getStaticReplyForUserMessage } from "@app/lib/api/assistant/static_reply";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -21,7 +22,6 @@ import type {
 } from "@app/types/assistant/conversation";
 import {
   isAgentMessageType,
-  isReinforcedSkillNotificationMetadata,
   isUserMessageType,
 } from "@app/types/assistant/conversation";
 import type { Result } from "../shared/result";
@@ -309,20 +309,12 @@ export async function getAgentLoopDataWithAuth(
 
   const agentId = agentMessage.configuration.sId;
 
-  const reinforcedSkillMeta =
-    conversation.metadata?.reinforcedSkillNotification;
-  const reinforcedSkillNotification = isReinforcedSkillNotificationMetadata(
-    reinforcedSkillMeta
-  )
-    ? reinforcedSkillMeta
-    : undefined;
-
   const globalAgentContext: GlobalAgentContext = {
     userMessageRank: userMessage.rank,
     sidekickIsNewAgentFromScratch:
       conversation.metadata?.sidekickIsNewAgentFromScratch === true ||
       undefined,
-    reinforcedSkillNotification,
+    staticReply: getStaticReplyForUserMessage({ conversation, userMessage }),
   };
 
   // As the agent configuration is never supposed to change during a loop, we can cache it for a long time.

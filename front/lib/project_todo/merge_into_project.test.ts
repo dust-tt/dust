@@ -1,21 +1,14 @@
 import type { Authenticator } from "@app/lib/auth";
 import {
   actionItemBlob,
-  keyDecisionBlob,
-  notableFactBlob,
   updateTodoIfChanged,
 } from "@app/lib/project_todo/merge_into_project";
 import type { ProjectTodoResource } from "@app/lib/resources/project_todo_resource";
 import type {
   ProjectTodoActorType,
-  ProjectTodoCategory,
   ProjectTodoStatus,
 } from "@app/types/project_todo";
-import type {
-  TodoVersionedActionItem,
-  TodoVersionedKeyDecision,
-  TodoVersionedNotableFact,
-} from "@app/types/takeaways";
+import type { TodoVersionedActionItem } from "@app/types/takeaways";
 import { describe, expect, it, vi } from "vitest";
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -35,37 +28,9 @@ function makeActionItem(
   };
 }
 
-function makeKeyDecision(
-  overrides: Partial<TodoVersionedKeyDecision> = {}
-): TodoVersionedKeyDecision {
-  return {
-    sId: "decision-1",
-    shortDescription: "Use PostgreSQL",
-    relevantUserIds: [],
-    status: "decided",
-    ...overrides,
-  };
-}
-
-function makeNotableFact(
-  overrides: Partial<TodoVersionedNotableFact> = {}
-): TodoVersionedNotableFact {
-  return {
-    sId: "fact-1",
-    shortDescription: "Budget capped at €50k",
-    relevantUserIds: [],
-    ...overrides,
-  };
-}
-
 // ── actionItemBlob ────────────────────────────────────────────────────────────
 
 describe("actionItemBlob", () => {
-  it("maps to to_do category", () => {
-    const blob = actionItemBlob(makeActionItem());
-    expect(blob.category).toBe("to_do");
-  });
-
   it("maps open status to todo", () => {
     const blob = actionItemBlob(makeActionItem({ status: "open" }));
     expect(blob.status).toBe("todo");
@@ -97,63 +62,6 @@ describe("actionItemBlob", () => {
   });
 });
 
-// ── keyDecisionBlob ───────────────────────────────────────────────────────────
-
-describe("keyDecisionBlob", () => {
-  it("maps to to_know category", () => {
-    const blob = keyDecisionBlob(makeKeyDecision());
-    expect(blob.category).toBe("to_know");
-  });
-
-  it("maps decided status to done", () => {
-    const blob = keyDecisionBlob(makeKeyDecision({ status: "decided" }));
-    expect(blob.status).toBe("todo");
-  });
-
-  it("maps open status to todo", () => {
-    const blob = keyDecisionBlob(makeKeyDecision({ status: "open" }));
-    expect(blob.status).toBe("todo");
-  });
-
-  it("always sets doneAt to null", () => {
-    const blob = keyDecisionBlob(makeKeyDecision({ status: "decided" }));
-    expect(blob.doneAt).toBeNull();
-  });
-
-  it("preserves text", () => {
-    const blob = keyDecisionBlob(
-      makeKeyDecision({ shortDescription: "Go monorepo" })
-    );
-    expect(blob.text).toBe("Go monorepo");
-  });
-});
-
-// ── notableFactBlob ───────────────────────────────────────────────────────────
-
-describe("notableFactBlob", () => {
-  it("maps to to_know category", () => {
-    const blob = notableFactBlob(makeNotableFact());
-    expect(blob.category).toBe("to_know");
-  });
-
-  it("always sets status to todo", () => {
-    const blob = notableFactBlob(makeNotableFact());
-    expect(blob.status).toBe("todo");
-  });
-
-  it("always sets doneAt to null", () => {
-    const blob = notableFactBlob(makeNotableFact());
-    expect(blob.doneAt).toBeNull();
-  });
-
-  it("preserves shortDescription", () => {
-    const blob = notableFactBlob(
-      makeNotableFact({ shortDescription: "Team is 12 people" })
-    );
-    expect(blob.text).toBe("Team is 12 people");
-  });
-});
-
 // ── updateTodoIfChanged ───────────────────────────────────────────────────────
 
 type TodoStub = {
@@ -162,6 +70,7 @@ type TodoStub = {
   text: string;
   status: ProjectTodoStatus;
   doneAt: Date | null;
+  actorRationale: string | null;
   updateWithVersion: ReturnType<typeof vi.fn>;
 };
 
@@ -172,6 +81,7 @@ function makeTodoStub(overrides: Partial<TodoStub> = {}): TodoStub {
     text: "Write the report",
     status: "todo",
     doneAt: null,
+    actorRationale: null,
     updateWithVersion: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
@@ -179,17 +89,17 @@ function makeTodoStub(overrides: Partial<TodoStub> = {}): TodoStub {
 
 function makeBlob(
   overrides: Partial<{
-    category: ProjectTodoCategory;
     text: string;
     status: "todo" | "done";
     doneAt: Date | null;
+    reasoningDoneAt: string | null;
   }> = {}
 ) {
   return {
-    category: "to_do" as ProjectTodoCategory,
     text: "Write the report",
     status: "todo" as const,
     doneAt: null,
+    reasoningDoneAt: null,
     ...overrides,
   };
 }
@@ -273,6 +183,7 @@ describe("updateTodoIfChanged", () => {
       text: "New text",
       status: "todo",
       doneAt: null,
+      actorRationale: null,
     });
   });
 
@@ -292,6 +203,7 @@ describe("updateTodoIfChanged", () => {
       text: "Write the report",
       status: "done",
       doneAt,
+      actorRationale: null,
     });
   });
 
@@ -316,6 +228,7 @@ describe("updateTodoIfChanged", () => {
       text: "Write the report",
       status: "todo",
       doneAt: null,
+      actorRationale: null,
     });
   });
 });
