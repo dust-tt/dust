@@ -8,7 +8,7 @@ import { OAuthAPI } from "../../oauth/oauth_api";
 const OAUTH_ACCESS_TOKEN_CACHE_TTL = 1000 * 60 * 5;
 const CACHE_CLEAR_INTERVAL = 1000 * 60;
 // Mirror the OAuth server's refresh buffer so we never serve a token the server would already refresh.
-const ACCESS_TOKEN_EXPIRY_BUFFER_MS = 1000 * 60 * 8;
+const ACCESS_TOKEN_EXPIRY_BUFFER_MS = 1000 * 60 * 5;
 
 const CACHE = new Map<
   string,
@@ -55,7 +55,14 @@ export async function getOAuthConnectionAccessToken({
       return new Ok(cached);
     }
 
-    logger.warn({ connectionId, provider }, "Local cache has expired tokens");
+    logger.warn(
+      {
+        access_token_expiry: cached.access_token_expiry,
+        connectionId,
+        provider,
+      },
+      "Local cache has expired tokens"
+    );
   }
 
   const res = await new OAuthAPI(config, logger).getAccessToken({
