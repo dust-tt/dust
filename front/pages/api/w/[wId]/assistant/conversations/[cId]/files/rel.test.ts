@@ -38,10 +38,7 @@ vi.mock("@app/lib/file_storage", () => ({
 const WORKSPACE_SID = "ws_test123";
 const CONVERSATION_SID = "conv_abc";
 
-async function setupTest(
-  rel: string[],
-  method: RequestMethod = "GET"
-) {
+async function setupTest(rel: string[], method: RequestMethod = "GET") {
   const { req, res } = await createPublicApiMockRequest({ method });
 
   req.query = { wId: WORKSPACE_SID, cId: CONVERSATION_SID, rel };

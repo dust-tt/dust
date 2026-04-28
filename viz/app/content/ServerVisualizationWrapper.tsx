@@ -62,8 +62,7 @@ export async function ServerSideVisualizationWrapper({
         // SERVER-SIDE: Fetch all referenced files.
         const fetchedFiles = await Promise.all(
           fileRefs.map(async (ref) => {
-            const key =
-              ref.type === "fileId" ? ref.fileId : ref.scopedPath;
+            const key = ref.type === "fileId" ? ref.fileId : ref.scopedPath;
             const fileEndpoint =
               ref.type === "fileId"
                 ? `${process.env.DUST_FRONT_API}/api/v1/viz/files/${ref.fileId}`
