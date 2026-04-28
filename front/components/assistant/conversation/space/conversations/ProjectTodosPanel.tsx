@@ -540,7 +540,7 @@ function EditableTodoItem({
             size="xs"
             variant="ghost"
             className="!text-muted-foreground hover:!text-foreground"
-            tooltip={"Open todo conversation"}
+            tooltip={"Open to-do conversation"}
             onClick={() => {
               if (!todo.conversationId) {
                 return;
@@ -1023,9 +1023,7 @@ function EditableProjectTodosPanel({
 
     // Optimistically hide done items to trigger exit animations.
     const doneSIds = new Set(
-      filteredTodos
-        .filter((t) => t.status === "done" && t.userId === viewerUserId)
-        .map((t) => t.sId)
+      todos.filter((t) => t.status === "done").map((t) => t.sId)
     );
     setPendingRemovalIds(doneSIds);
 
@@ -1046,7 +1044,7 @@ function EditableProjectTodosPanel({
       setPendingRemovalIds(new Set());
       setIsCleaning(false);
     }
-  }, [doCleanDone, filteredTodos, mutateTodos, viewerUserId]);
+  }, [doCleanDone, todos, mutateTodos]);
 
   const handleDelete = useCallback(
     async (todo: ProjectTodoType) => {
@@ -1231,7 +1229,7 @@ function EditableProjectTodosPanel({
             variant="outline"
             icon={WindIcon}
             label="Clean"
-            tooltip="Remove your checked items"
+            tooltip="Hide all done items"
             onClick={handleClean}
             disabled={isCleaning}
           />

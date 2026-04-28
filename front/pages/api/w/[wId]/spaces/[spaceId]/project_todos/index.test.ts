@@ -1,4 +1,5 @@
 import { Authenticator } from "@app/lib/auth";
+import { ProjectTodoStateResource } from "@app/lib/resources/project_todo_state_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { ProjectTodoFactory } from "@app/tests/utils/ProjectTodoFactory";
@@ -87,6 +88,76 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/project_todos", () => {
     expect(data.viewerUserId).toBe(user.sId);
     expect(data.todos[0].user).not.toBeNull();
     expect(data.todos[1].user).not.toBeNull();
+  });
+
+  it("should hide cleaned done todos for all users", async () => {
+    const { user, auth } = await setup();
+    const project = await SpaceFactory.project(workspace, user.id);
+    const secondUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, secondUser, { role: "user" });
+
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+
+    // Viewer has two done todos: one "old" (should be hidden) and one "new" (should remain).
+    const oldDone = await ProjectTodoFactory.create(workspace, project, {
+      userId: user.id,
+      text: "Old done",
+    });
+    const newDone = await ProjectTodoFactory.create(workspace, project, {
+      userId: user.id,
+      text: "New done",
+    });
+
+    // Another user's done todo should also be hidden by the viewer's cleaning.
+    const otherDone = await ProjectTodoFactory.create(workspace, project, {
+      userId: secondUser.id,
+      text: "Other user's done",
+    });
+
+    const cutoff = new Date();
+    const beforeCutoff = new Date(cutoff.getTime() - 60_000);
+    const afterCutoff = new Date(cutoff.getTime() + 60_000);
+
+    await oldDone.updateWithVersion(adminAuth, {
+      status: "done",
+      doneAt: beforeCutoff,
+      markedAsDoneByType: "user",
+      markedAsDoneByUserId: user.id,
+      markedAsDoneByAgentConfigurationId: null,
+    });
+    await newDone.updateWithVersion(adminAuth, {
+      status: "done",
+      doneAt: afterCutoff,
+      markedAsDoneByType: "user",
+      markedAsDoneByUserId: user.id,
+      markedAsDoneByAgentConfigurationId: null,
+    });
+    await otherDone.updateWithVersion(adminAuth, {
+      status: "done",
+      doneAt: beforeCutoff,
+      markedAsDoneByType: "user",
+      markedAsDoneByUserId: secondUser.id,
+      markedAsDoneByAgentConfigurationId: null,
+    });
+
+    await ProjectTodoStateResource.upsertLastCleanedAtBySpace(auth, {
+      spaceId: project.id,
+      lastCleanedAt: cutoff,
+    });
+
+    req.query.spaceId = project.sId;
+    req.query.assignee = "all";
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const data = res._getJSONData();
+    const texts = data.todos.map((t: any) => t.text);
+
+    expect(texts).not.toContain("Old done");
+    expect(texts).toContain("New done");
+    expect(texts).not.toContain("Other user's done");
   });
 
   it("should return 400 for non-project spaces", async () => {

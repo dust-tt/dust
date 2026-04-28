@@ -94,13 +94,6 @@ const PROJECT_TODO_MODEL_ATTRIBUTES = {
     allowNull: true,
     defaultValue: null,
   },
-  cleanedAt: {
-    type: DataTypes.DATE,
-    allowNull: true,
-    defaultValue: null,
-    comment:
-      "Set when the user cleans done items from the UI. Hidden but not deleted.",
-  },
 } as const;
 
 // ── Main model ──────────────────────────────────────────────────────────────
@@ -132,7 +125,6 @@ export class ProjectTodoModel extends WorkspaceAwareModel<ProjectTodoModel> {
   declare doneAt: Date | null;
   declare actorRationale: string | null;
   declare deletedAt: CreationOptional<Date | null>;
-  declare cleanedAt: CreationOptional<Date | null>;
 
   declare space: NonAttribute<SpaceModel>;
   declare user: NonAttribute<UserModel>;

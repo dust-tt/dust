@@ -1,6 +1,7 @@
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { ProjectTodoStateResource } from "@app/lib/resources/project_todo_state_resource";
 import {
   ProjectTodoConversationModel,
   ProjectTodoModel,
@@ -110,7 +111,6 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
         | "markedAsDoneByUserId"
         | "markedAsDoneByAgentConfigurationId"
         | "deletedAt"
-        | "cleanedAt"
       >
     >,
     transaction?: Transaction
@@ -159,7 +159,6 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
       markedAsDoneByAgentConfigurationId:
         this.markedAsDoneByAgentConfigurationId ?? null,
       deletedAt: this.deletedAt ?? null,
-      cleanedAt: this.cleanedAt ?? null,
     };
     await ProjectTodoVersionModel.create(versionData, { transaction });
   }
@@ -178,7 +177,6 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
         ...where,
         workspaceId: auth.getNonNullableWorkspace().id,
         deletedAt: null,
-        cleanedAt: null,
       },
       ...otherOptions,
       transaction,
@@ -208,12 +206,34 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
 
   static async fetchBySpace(
     auth: Authenticator,
-    { spaceId }: { spaceId: ModelId }
+    {
+      spaceId,
+      lastCleanedAt,
+    }: {
+      spaceId: ModelId;
+      lastCleanedAt?: Date | null;
+    }
   ): Promise<ProjectTodoResource[]> {
-    return this.baseFetch(auth, {
-      where: { spaceId },
-      order: [["createdAt", "DESC"]],
-    });
+    let where: WhereOptions<ProjectTodoModel> = { spaceId };
+
+    // Apply per-viewer "clean done" cutoff: hide done todos completed before
+    // lastCleanedAt, regardless of assignee.
+    if (lastCleanedAt) {
+      where = {
+        [Op.and]: [
+          { spaceId },
+          {
+            [Op.or]: [
+              { status: { [Op.ne]: "done" } },
+              { doneAt: null },
+              { doneAt: { [Op.gte]: lastCleanedAt } },
+            ],
+          },
+        ],
+      };
+    }
+
+    return this.baseFetch(auth, { where, order: [["createdAt", "DESC"]] });
   }
 
   // Returns all todos for the authenticated user in the given space. Each row
@@ -519,28 +539,33 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
 
   // ── Lifecycle ──────────────────────────────────────────────────────────────
 
-  // Hides all done todos for the authenticated user in the given space by
-  // setting `cleanedAt`. Items are hidden from normal queries but preserved in
-  // the database for potential future "show completed" views.
+  // Marks all done todos as "cleaned" for the authenticated user in the given
+  // space by updating the per-user cutoff timestamp stored in project_todo_state.
   static async cleanDoneBySpace(
     auth: Authenticator,
     { spaceId }: { spaceId: ModelId }
   ): Promise<Result<{ cleanedCount: number }, Error>> {
-    const doneTodos = await this.baseFetch(auth, {
-      where: { spaceId, userId: auth.getNonNullableUser().id, status: "done" },
+    const cleanedAt = new Date();
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    const userId = auth.getNonNullableUser().id;
+
+    const cleanedCount = await ProjectTodoModel.count({
+      where: {
+        workspaceId,
+        spaceId,
+        userId,
+        deletedAt: null,
+        status: "done",
+        doneAt: { [Op.lte]: cleanedAt },
+      },
     });
 
-    if (doneTodos.length === 0) {
-      return new Ok({ cleanedCount: 0 });
-    }
-
-    await withTransaction(async (t) => {
-      for (const todo of doneTodos) {
-        await todo.updateWithVersion(auth, { cleanedAt: new Date() }, t);
-      }
+    await ProjectTodoStateResource.upsertLastCleanedAtBySpace(auth, {
+      spaceId,
+      lastCleanedAt: cleanedAt,
     });
 
-    return new Ok({ cleanedCount: doneTodos.length });
+    return new Ok({ cleanedCount });
   }
 
   // Applies the same updates to a batch of todos in a single transaction.

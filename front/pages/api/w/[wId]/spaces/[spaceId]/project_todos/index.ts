@@ -41,8 +41,13 @@ async function handler(
   switch (req.method) {
     case "GET": {
       const currentUser = auth.getNonNullableUser();
+      const state = await ProjectTodoStateResource.fetchBySpace(auth, {
+        spaceId: space.id,
+      });
+
       const todos = await ProjectTodoResource.fetchBySpace(auth, {
         spaceId: space.id,
+        lastCleanedAt: state?.lastCleanedAt ?? null,
       });
       const assigneeIds = [...new Set(todos.map((todo) => todo.userId))];
       const assignees = await UserResource.fetchByModelIds(assigneeIds);
@@ -56,10 +61,6 @@ async function handler(
           },
         ])
       );
-
-      const state = await ProjectTodoStateResource.fetchBySpace(auth, {
-        spaceId: space.id,
-      });
 
       const todoIds = todos.map((t) => t.sId);
 
