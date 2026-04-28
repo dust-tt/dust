@@ -3,8 +3,6 @@ import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/deta
 import { isTextContent } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
-  ActionDocumentTextIcon,
-  Button,
   CodeBlock,
   Collapsible,
   CollapsibleContent,
@@ -13,7 +11,7 @@ import {
   cn,
   Markdown,
 } from "@dust-tt/sparkle";
-import { useCallback, useMemo, useState } from "react";
+import { useMemo } from "react";
 
 type SandboxSectionType =
   | "stdout"
@@ -68,54 +66,6 @@ function sectionLabel(type: SandboxSectionType): string {
   }
 }
 
-const STORAGE_KEY = "dust:sandbox:rawMode";
-
-function getStoredRawMode(): boolean {
-  if (typeof window === "undefined") {
-    return false;
-  }
-  return localStorage.getItem(STORAGE_KEY) === "true";
-}
-
-function setStoredRawMode(value: boolean): void {
-  if (typeof window !== "undefined") {
-    localStorage.setItem(STORAGE_KEY, String(value));
-  }
-}
-
-/**
- * Extract a clean, short command name from a potentially complex command string.
- * Strips heredocs, pipes, semicolons, and env vars to find the core binary/script.
- */
-function extractCommandName(command: string): string {
-  const firstLine = command.trim().split("\n")[0];
-
-  // Strip heredoc markers (e.g. `python3 << 'EOF'` → `python3`)
-  const beforeHeredoc = firstLine.split("<<")[0].trim();
-
-  // Strip pipes and take the first command
-  const firstCmd = beforeHeredoc.split("|")[0].trim();
-
-  // Strip leading env vars (e.g. `FOO=bar python3` → `python3`)
-  const tokens = firstCmd.split(/\s+/);
-  const cmdToken = tokens.find((t) => !t.includes("=")) ?? tokens[0];
-
-  // Strip path (e.g. `/usr/bin/python3` → `python3`)
-  const basename = cmdToken.split("/").pop() ?? cmdToken;
-
-  return basename;
-}
-
-function deriveSummary(command: string, exitCode: number | null): string {
-  const name = extractCommandName(command);
-
-  if (exitCode !== null && exitCode !== 0) {
-    return `\`${name}\` failed with exit code ${exitCode}.`;
-  }
-
-  return `Ran \`${name}\` successfully.`;
-}
-
 function parseExitCode(sections: SandboxSection[]): number | null {
   const section = sections.find((s) => s.type === "exit_code");
   if (!section) {
@@ -130,8 +80,6 @@ export function MCPSandboxActionDetails({
   toolParams,
   toolOutput,
 }: ToolExecutionDetailsProps) {
-  const [isRawMode, setIsRawMode] = useState(getStoredRawMode);
-
   const command =
     typeof toolParams.command === "string" ? toolParams.command : null;
 
@@ -154,31 +102,13 @@ export function MCPSandboxActionDetails({
 
   const isRunning = toolOutput === null;
 
-  const summary = useMemo(() => {
-    if (!command) {
-      return "Executed command in sandbox";
-    }
-    return deriveSummary(command, exitCode);
-  }, [command, exitCode]);
-
-  const toggleRawMode = useCallback(() => {
-    setIsRawMode((prev) => {
-      const next = !prev;
-      setStoredRawMode(next);
-      return next;
-    });
-  }, []);
-
   const actionName = isRunning
     ? "Executing command in sandbox"
     : "Executed command in sandbox";
 
   const viewProps: SandboxViewProps = {
     command,
-    summary,
-    rawOutputText,
     parsedSections,
-    isRawMode,
     isRunning,
     exitCode,
   };
@@ -188,11 +118,6 @@ export function MCPSandboxActionDetails({
       displayContext={displayContext}
       actionName={actionName}
       visual={CommandLineIcon}
-      headerAction={
-        !isRunning ? (
-          <ToggleButton isRawMode={isRawMode} onToggle={toggleRawMode} />
-        ) : undefined
-      }
     >
       {displayContext === "conversation" ? (
         <ConversationView {...viewProps} />
@@ -205,41 +130,9 @@ export function MCPSandboxActionDetails({
 
 interface SandboxViewProps {
   command: string | null;
-  summary: string;
-  rawOutputText: string | null;
   parsedSections: SandboxSection[];
-  isRawMode: boolean;
   isRunning: boolean;
   exitCode: number | null;
-}
-
-interface ToggleButtonProps {
-  isRawMode: boolean;
-  onToggle: () => void;
-}
-
-function ToggleButton({ isRawMode, onToggle }: ToggleButtonProps) {
-  return (
-    <Button
-      size="xs"
-      variant="ghost"
-      label={isRawMode ? "Show summary" : "Show code"}
-      icon={isRawMode ? ActionDocumentTextIcon : CommandLineIcon}
-      onClick={onToggle}
-    />
-  );
-}
-
-interface CommandPreviewProps {
-  command: string;
-}
-
-function CommandPreview({ command }: CommandPreviewProps) {
-  return (
-    <code className="rounded bg-muted px-1 py-0.5 text-xs dark:bg-muted-night">
-      {extractCommandName(command)}
-    </code>
-  );
 }
 
 interface ExitCodeBadgeProps {
@@ -353,35 +246,19 @@ function SandboxOutput({
 
 function ConversationView({
   command,
-  summary,
   parsedSections,
-  isRawMode,
   isRunning,
   exitCode,
 }: SandboxViewProps) {
   return (
-    <div className="flex flex-col gap-2 pl-6">
-      {isRunning && command && (
-        <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-          Running <CommandPreview command={command} />
-        </p>
-      )}
-
-      {!isRunning && !isRawMode && (
-        <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-          {summary}
-        </p>
-      )}
-
-      {!isRunning && isRawMode && (
-        <div className="flex flex-col gap-3">
-          {command && <Markdown content={`\`\`\`bash\n${command}\n\`\`\``} />}
-          <SandboxOutput
-            sections={parsedSections}
-            exitCode={exitCode}
-            isRunning={isRunning}
-          />
-        </div>
+    <div className="flex flex-col gap-3 pl-6">
+      {command && <Markdown content={`\`\`\`bash\n${command}\n\`\`\``} />}
+      {!isRunning && (
+        <SandboxOutput
+          sections={parsedSections}
+          exitCode={exitCode}
+          isRunning={isRunning}
+        />
       )}
     </div>
   );
@@ -389,51 +266,35 @@ function ConversationView({
 
 function SidebarView({
   command,
-  summary,
   parsedSections,
-  isRawMode,
   isRunning,
   exitCode,
 }: SandboxViewProps) {
   return (
     <div className="flex flex-col gap-4 py-4 pl-6">
-      {!isRawMode && (
-        <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-          {isRunning && command
-            ? `Running \`${command}\``
-            : isRunning
-              ? "Running command…"
-              : summary}
-        </p>
-      )}
-
-      {isRawMode && (
-        <>
-          {command && (
-            <div>
-              <span className="font-medium text-foreground dark:text-foreground-night">
-                Command
-              </span>
-              <div className="py-2">
-                <Markdown content={`\`\`\`bash\n${command}\n\`\`\``} />
-              </div>
-            </div>
-          )}
-
-          <div>
-            <span className="font-medium text-foreground dark:text-foreground-night">
-              Output
-            </span>
-            <div className="py-2">
-              <SandboxOutput
-                sections={parsedSections}
-                exitCode={exitCode}
-                isRunning={isRunning}
-              />
-            </div>
+      {command && (
+        <div>
+          <span className="font-medium text-foreground dark:text-foreground-night">
+            Command
+          </span>
+          <div className="py-2">
+            <Markdown content={`\`\`\`bash\n${command}\n\`\`\``} />
           </div>
-        </>
+        </div>
       )}
+
+      <div>
+        <span className="font-medium text-foreground dark:text-foreground-night">
+          Output
+        </span>
+        <div className="py-2">
+          <SandboxOutput
+            sections={parsedSections}
+            exitCode={exitCode}
+            isRunning={isRunning}
+          />
+        </div>
+      </div>
     </div>
   );
 }
