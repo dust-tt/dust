@@ -130,15 +130,6 @@ export function makeColumnsForSuggestions(
       },
     },
     {
-      accessorKey: "source",
-      header: ({ column }) => (
-        <PokeColumnSortableHeader column={column} label="Source" />
-      ),
-      filterFn: (row, id, value) => {
-        return value.includes(row.getValue(id));
-      },
-    },
-    {
       accessorKey: "conversationId",
       header: ({ column }) => (
         <PokeColumnSortableHeader column={column} label="Conversation" />

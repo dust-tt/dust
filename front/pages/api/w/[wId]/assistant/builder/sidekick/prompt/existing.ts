@@ -26,7 +26,7 @@ function buildFirstMessage({
 }: {
   feedbackMarkdown: string | null;
   insightsMarkdown: string | null;
-  pendingSuggestions: Array<{ sId: string; kind: string; source: string }>;
+  pendingSuggestions: Array<{ sId: string; kind: string }>;
 }): string {
   const dataSections = [feedbackMarkdown, insightsMarkdown]
     .filter(Boolean)
@@ -227,7 +227,6 @@ async function handler(
             agentConfigurationId,
             {
               states: ["pending"],
-              sources: ["sidekick"],
               limit: MAX_PENDING_SUGGESTIONS_IN_FIRST_MESSAGE,
             }
           ),
@@ -240,7 +239,6 @@ async function handler(
           pendingSuggestions: pendingSuggestions.map((s) => ({
             sId: s.sId,
             kind: s.kind,
-            source: s.source,
           })),
         })
       );

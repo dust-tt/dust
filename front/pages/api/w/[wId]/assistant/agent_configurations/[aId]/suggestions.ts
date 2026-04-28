@@ -127,7 +127,6 @@ async function handler(
           agentConfigurationId,
           {
             states,
-            sources: ["sidekick"],
             kind,
             limit: parsedLimit,
           }
