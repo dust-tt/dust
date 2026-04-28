@@ -8,7 +8,6 @@ import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
-  emitAuditLogEventDirect,
 } from "@app/lib/api/audit/workos_audit";
 import { Authenticator } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
