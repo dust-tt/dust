@@ -26,11 +26,8 @@ export const AGENT_SUGGESTION_STATES = [
 
 export type AgentSuggestionState = (typeof AGENT_SUGGESTION_STATES)[number];
 
-export const AGENT_SUGGESTION_SOURCES = [
-  "reinforcement",
-  "sidekick",
-  "synthetic", // Synthetic suggestions are generated in the first phase of Reinforced Agent and are not directly shown to users. They are used internally to generate more suggestions in the second phase of Reinforced Agent.
-] as const;
+// TODO(fabien) drop this column
+export const AGENT_SUGGESTION_SOURCES = ["sidekick"] as const;
 
 export type AgentSuggestionSource = (typeof AGENT_SUGGESTION_SOURCES)[number];
 

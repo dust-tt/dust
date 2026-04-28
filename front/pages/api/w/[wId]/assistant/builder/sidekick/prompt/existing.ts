@@ -6,7 +6,6 @@ import { fetchAgentOverview } from "@app/lib/api/assistant/observability/overvie
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { hasReinforcementEnabled } from "@app/lib/reinforcement/workspace_check";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
@@ -33,26 +32,9 @@ function buildFirstMessage({
     .filter(Boolean)
     .join("\n\n");
 
-  const hasReinforcementSuggestions = pendingSuggestions.some(
-    (s) => s.source === "reinforcement"
-  );
-  const reinforcementGuidance = hasReinforcementSuggestions
-    ? `\n- Start by telling the user: "A background analysis has identified some possible improvements for your agent."`
-    : "";
-
-  const reinforcementSuggestions = pendingSuggestions.filter(
-    (s) => s.source === "reinforcement"
-  );
-  const sidekickSuggestions = pendingSuggestions.filter(
-    (s) => s.source === "sidekick"
-  );
-  const suggestionsToShow =
-    reinforcementSuggestions.length > 0
-      ? reinforcementSuggestions
-      : sidekickSuggestions;
   const suggestionDirectives =
-    suggestionsToShow.length > 0 &&
-    suggestionsToShow
+    pendingSuggestions.length > 0 &&
+    pendingSuggestions
       .map((s) => `:agent_suggestion[]{sId=${s.sId} kind=${s.kind}}`)
       .join("\n");
 
@@ -68,7 +50,7 @@ ${suggestionDirectives}
 This is an existing agent.
 
 ## Opening message
-Do NOT call \`get_agent_config\` in this first message. Based only on the information provided in <existing_agent_data_section>: ${reinforcementGuidance}
+Do NOT call \`get_agent_config\` in this first message. Based only on the information provided in <existing_agent_data_section>:
 - If pending suggestions exist (see <pending_suggestions> below), output their directives to render them as cards.
 - If negative feedback patterns exist in the current agent version, mention it as the top issue. Feedback from previous versions are provided for reference, but should not be mentioned in the opening message.
 
@@ -240,16 +222,14 @@ async function handler(
         await Promise.all([
           fetchFeedbackMarkdown(auth, agentConfigurationId),
           fetchInsightsMarkdown(auth, agentConfigurationId),
-          hasReinforcementEnabled(auth).then((enabled) =>
-            AgentSuggestionResource.listByAgentConfigurationId(
-              auth,
-              agentConfigurationId,
-              {
-                states: ["pending"],
-                sources: enabled ? undefined : ["sidekick"],
-                limit: MAX_PENDING_SUGGESTIONS_IN_FIRST_MESSAGE,
-              }
-            )
+          AgentSuggestionResource.listByAgentConfigurationId(
+            auth,
+            agentConfigurationId,
+            {
+              states: ["pending"],
+              sources: ["sidekick"],
+              limit: MAX_PENDING_SUGGESTIONS_IN_FIRST_MESSAGE,
+            }
           ),
         ]);
 
