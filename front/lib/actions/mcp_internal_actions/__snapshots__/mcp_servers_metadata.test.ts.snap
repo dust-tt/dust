@@ -187,6 +187,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "search_advanced": "never_ask",
   },
   "gmail": {
+    "archive_message": "medium",
     "create_draft": "medium",
     "create_reply_draft": "medium",
     "delete_draft": "high",
