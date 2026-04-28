@@ -1,6 +1,6 @@
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
-import { useUserAnswerDraft } from "@app/components/assistant/conversation/useUserAnswerDraft";
 import { useAnswerUserQuestion } from "@app/hooks/useAnswerUserQuestion";
+import { useUserAnswerDraft } from "@app/hooks/useUserAnswerDraft";
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import type { UserQuestionAnswer } from "@app/lib/actions/types";
 import { useAuth } from "@app/lib/auth/AuthContext";
