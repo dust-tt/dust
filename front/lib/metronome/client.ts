@@ -282,22 +282,21 @@ export async function createMetronomeContract({
   metronomeCustomerId,
   packageAlias,
   uniquenessKey,
-  startingAt: startingAtOverride,
+  startingAt,
 }: {
   metronomeCustomerId: string;
   packageAlias: string;
   uniquenessKey?: string;
-  startingAt?: Date;
-}): Promise<Result<{ contractId: string; startingAt: string }, Error>> {
-  // Metronome requires starting_at on an hour boundary — round down to current hour.
-  // Callers may pass an explicit startingAt (e.g. to align with a contract end time).
-  const startingAt = floorToHourISO(startingAtOverride ?? new Date());
+  // Must already be on an hour boundary (Metronome requirement).
+  startingAt: Date;
+}): Promise<Result<{ contractId: string }, Error>> {
+  const startingAtISO = startingAt.toISOString();
 
   try {
     const response = await getMetronomeClient().v1.contracts.create({
       customer_id: metronomeCustomerId,
       package_alias: packageAlias,
-      starting_at: startingAt,
+      starting_at: startingAtISO,
       ...(uniquenessKey ? { uniqueness_key: uniquenessKey } : {}),
     });
 
@@ -309,16 +308,13 @@ export async function createMetronomeContract({
       },
       "[Metronome] Contract created"
     );
-    return new Ok({ contractId: response.data.id, startingAt });
+    return new Ok({ contractId: response.data.id });
   } catch (err) {
     if (err instanceof ConflictError) {
       const existingContract =
         await getMetronomeActiveContract(metronomeCustomerId);
       if (existingContract.isOk() && existingContract.value) {
-        return new Ok({
-          contractId: existingContract.value.contractId,
-          startingAt,
-        });
+        return new Ok({ contractId: existingContract.value.contractId });
       }
     }
 
