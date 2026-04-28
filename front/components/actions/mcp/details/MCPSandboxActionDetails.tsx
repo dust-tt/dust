@@ -212,11 +212,7 @@ interface SandboxOutputProps {
   isRunning: boolean;
 }
 
-function SandboxOutput({
-  sections,
-  exitCode,
-  isRunning,
-}: SandboxOutputProps) {
+function SandboxOutput({ sections, exitCode, isRunning }: SandboxOutputProps) {
   const renderable = sections.filter((s) => s.type !== "exit_code");
 
   if (renderable.length === 0) {
