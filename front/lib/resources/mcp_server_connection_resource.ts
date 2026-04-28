@@ -22,6 +22,7 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { formatUserFullName } from "@app/types/user";
@@ -33,6 +34,11 @@ import type {
   WhereOptions,
 } from "sequelize";
 import { Op } from "sequelize";
+
+type MCPServerConnectionResourceFindOptions =
+  ResourceFindOptions<MCPServerConnectionModel> & {
+    includeUser?: boolean;
+  };
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -107,21 +113,32 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
 
   private static async baseFetch(
     auth: Authenticator,
-    { where, limit, order }: ResourceFindOptions<MCPServerConnectionModel> = {}
+    {
+      attributes,
+      where,
+      limit,
+      order,
+      includeUser = true,
+    }: MCPServerConnectionResourceFindOptions = {}
   ) {
     const connections = await this.model.findAll({
+      attributes,
       where: {
         ...where,
         workspaceId: auth.getNonNullableWorkspace().id,
       } as WhereOptions<MCPServerConnectionModel>,
       limit,
       order,
-      include: [
-        {
-          model: UserModel,
-          as: "user",
-        },
-      ],
+      ...(includeUser
+        ? {
+            include: [
+              {
+                model: UserModel,
+                as: "user",
+              },
+            ],
+          }
+        : {}),
     });
     return connections.map(
       (b) =>
@@ -304,6 +321,64 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
     return Array.from(latestConnectionsMap.values());
   }
 
+  static async listWorkspaceConnectionsByMCPServerIds(
+    auth: Authenticator,
+    { mcpServerIds }: { mcpServerIds: string[] }
+  ): Promise<MCPServerConnectionResource[]> {
+    const uniqueMCPServerIds = [...new Set(mcpServerIds)];
+    const internalMCPServerIds: string[] = [];
+    const remoteMCPServerModelIds: ModelId[] = [];
+
+    for (const mcpServerId of uniqueMCPServerIds) {
+      const { serverType, id } = getServerTypeAndIdFromSId(mcpServerId);
+
+      if (serverType === "internal") {
+        internalMCPServerIds.push(mcpServerId);
+      } else {
+        remoteMCPServerModelIds.push(id);
+      }
+    }
+
+    const serverFilters: WhereOptions<MCPServerConnectionModel>[] = [];
+
+    if (internalMCPServerIds.length > 0) {
+      serverFilters.push({
+        serverType: "internal",
+        internalMCPServerId: {
+          [Op.in]: internalMCPServerIds,
+        },
+      });
+    }
+
+    if (remoteMCPServerModelIds.length > 0) {
+      serverFilters.push({
+        serverType: "remote",
+        remoteMCPServerId: {
+          [Op.in]: remoteMCPServerModelIds,
+        },
+      });
+    }
+
+    if (serverFilters.length === 0) {
+      return [];
+    }
+
+    return this.baseFetch(auth, {
+      attributes: [
+        "id",
+        "workspaceId",
+        "serverType",
+        "internalMCPServerId",
+        "remoteMCPServerId",
+      ],
+      where: {
+        connectionType: "workspace",
+        [Op.or]: serverFilters,
+      },
+      includeUser: false,
+    });
+  }
+
   // Deletion.
 
   static async deleteAllForWorkspace(auth: Authenticator) {
@@ -432,6 +507,34 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
       id: this.id,
       workspaceId: this.workspaceId,
     });
+  }
+
+  get mcpServerId(): string {
+    switch (this.serverType) {
+      case "internal": {
+        if (!this.internalMCPServerId) {
+          throw new Error(
+            "This MCP server connection is missing an internal MCP server ID"
+          );
+        }
+
+        return this.internalMCPServerId;
+      }
+      case "remote": {
+        if (!this.remoteMCPServerId) {
+          throw new Error(
+            "This MCP server connection is missing a remote MCP server ID"
+          );
+        }
+
+        return remoteMCPServerNameToSId({
+          remoteMCPServerId: this.remoteMCPServerId,
+          workspaceId: this.workspaceId,
+        });
+      }
+      default:
+        return assertNever(this.serverType);
+    }
   }
 
   static modelIdToSId({
