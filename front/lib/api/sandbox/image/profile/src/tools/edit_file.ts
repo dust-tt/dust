@@ -8,9 +8,8 @@ import {
   MAX_EDIT_FILE_BYTES,
 } from "../constants";
 import type { Profile } from "../profile";
-import { wantsHelp } from "../shared/args";
+import { usageError, wantsHelp } from "../shared/args";
 import { isBinary } from "../shared/binary";
-import { errorWithUsage, ToolError } from "../shared/errors";
 import { countOutputLines, safeOutput } from "../shared/output";
 
 const USAGE = "edit_file [--replace-all] <old_text> <new_text> <path>";
@@ -96,7 +95,7 @@ function truncateDiff(diff: string): string {
 function editOne(
   filePath: string,
   oldText: string,
-  rawNewText: string,
+  newText: string,
   replaceAll: boolean
 ): Outcome {
   if (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) {
@@ -114,10 +113,6 @@ function editOne(
       `Error: binary file detected: ${filePath} (use write_file for binary files)`
     );
   }
-
-  const newText = /\.(md|mdx)$/i.test(filePath)
-    ? rawNewText
-    : rawNewText.replace(/[ \t]+$/gm, "");
 
   const original = fs.readFileSync(filePath, "utf8");
   const occurrences = countOccurrences(original, oldText);
@@ -150,19 +145,19 @@ function writeLine(stream: NodeJS.WriteStream, text: string): void {
 export async function run(
   args: readonly string[],
   profile: Profile
-): Promise<void> {
+): Promise<number> {
   if (profile === "openai") {
-    errorWithUsage(
+    usageError(
       "edit_file is not available for the openai profile; use apply_patch instead",
       USAGE
     );
   }
   if (wantsHelp(args)) {
     process.stdout.write(`${help}\n`);
-    return;
+    return 0;
   }
   if (args.length === 0) {
-    errorWithUsage("arguments required", USAGE);
+    usageError("arguments required", USAGE);
   }
 
   let replaceAll = false;
@@ -183,7 +178,7 @@ export async function run(
 
   const remaining = args.slice(index);
   if (remaining.length !== 3) {
-    errorWithUsage("expected old_text, new_text, and path", USAGE);
+    usageError("expected old_text, new_text, and path", USAGE);
   }
   const [oldText = "", newText = "", filePath = ""] = remaining;
 
@@ -192,7 +187,5 @@ export async function run(
   if (outcome.diff) {
     writeLine(process.stderr, outcome.diff);
   }
-  if (!outcome.ok) {
-    throw new ToolError([]);
-  }
+  return outcome.ok ? 0 : 1;
 }

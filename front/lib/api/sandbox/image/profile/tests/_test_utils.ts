@@ -36,6 +36,10 @@ export function runBashFunction(
       env: {
         ...process.env,
         DUST_TOOLS_CMD: dustToolsCommand,
+        TSX_TSCONFIG_PATH: path.resolve(
+          PROFILE_LOCAL_DIR,
+          "../../../../../tsconfig.json"
+        ),
       },
       timeout: 10000,
     }

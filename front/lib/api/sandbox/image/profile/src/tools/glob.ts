@@ -3,8 +3,12 @@ import * as path from "node:path";
 
 import { DEFAULT_LIST_LIMIT } from "../constants";
 import type { Profile } from "../profile";
-import { parseIntArg, parseToolArgs, wantsHelp } from "../shared/args";
-import { errorWithUsage } from "../shared/errors";
+import {
+  parseIntArg,
+  parseToolArgs,
+  usageError,
+  wantsHelp,
+} from "../shared/args";
 import { paginate, printPaginatedOutput } from "../shared/output";
 
 const GLOB_USAGE = "glob <pattern> [--path PATH] [--offset N] [--limit N]";
@@ -72,10 +76,10 @@ function collectMatches(pattern: string, searchPath: string): string[] {
 export async function run(
   args: readonly string[],
   _profile: Profile
-): Promise<void> {
+): Promise<number> {
   if (wantsHelp(args)) {
     process.stdout.write(`${help}\n`);
-    return;
+    return 0;
   }
 
   const { values, positionals } = parseToolArgs(args, {
@@ -85,7 +89,7 @@ export async function run(
   });
 
   if (positionals.length === 0) {
-    errorWithUsage("pattern is required", GLOB_USAGE);
+    usageError("pattern is required", GLOB_USAGE);
   }
 
   const pattern = positionals[0] ?? "";
@@ -101,4 +105,5 @@ export async function run(
   const { page, hasMore } = paginate(matches, offset, limit);
 
   printPaginatedOutput(page, offset, hasMore);
+  return 0;
 }

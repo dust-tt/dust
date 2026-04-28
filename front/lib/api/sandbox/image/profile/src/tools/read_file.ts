@@ -2,9 +2,8 @@ import * as fs from "node:fs";
 
 import { DEFAULT_READ_LIMIT, MAX_OUTPUT_BYTES } from "../constants";
 import type { Profile } from "../profile";
-import { parseIntArg, wantsHelp } from "../shared/args";
+import { parseIntArg, usageError, wantsHelp } from "../shared/args";
 import { isBinary } from "../shared/binary";
-import { error, errorWithUsage } from "../shared/errors";
 import { readFileWindow } from "../shared/stream";
 
 const READ_FILE_USAGE_ANTHROPIC = "read_file <path> [offset] [limit]";
@@ -53,24 +52,24 @@ function getHelp(profile: Profile): string {
 export async function run(
   args: readonly string[],
   profile: Profile
-): Promise<void> {
+): Promise<number> {
   if (wantsHelp(args)) {
     process.stdout.write(`${getHelp(profile)}\n`);
-    return;
+    return 0;
   }
 
   if (args.length === 0) {
-    errorWithUsage("path is required", getUsage(profile));
+    usageError("path is required", getUsage(profile));
   }
 
   const filePath = args[0] ?? "";
 
   if (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) {
-    error(`file not found: ${filePath}`);
+    throw new Error(`file not found: ${filePath}`);
   }
 
   if (isBinary(filePath)) {
-    error(
+    throw new Error(
       `binary file detected: ${filePath} (use shell to inspect binary files)`
     );
   }
@@ -87,7 +86,7 @@ export async function run(
         : start + DEFAULT_READ_LIMIT - 1;
 
     if (end < start) {
-      error(`end (${end}) must be >= start (${start})`);
+      throw new Error(`end (${end}) must be >= start (${start})`);
     }
 
     offset = start;
@@ -135,4 +134,6 @@ export async function run(
   if (outputLines.length > 0) {
     process.stdout.write(`${outputLines.join("\n")}\n`);
   }
+
+  return 0;
 }

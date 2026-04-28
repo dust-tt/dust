@@ -9,8 +9,9 @@
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+
 import { getProfile } from "./profile";
-import { isToolError, printToolError } from "./shared/errors";
 import { logToolInvocation } from "./shared/telemetry";
 import * as editFile from "./tools/edit_file";
 import * as glob from "./tools/glob";
@@ -25,7 +26,7 @@ type ToolModule = {
   run(
     args: readonly string[],
     profile: ReturnType<typeof getProfile>
-  ): Promise<void>;
+  ): Promise<number>;
 };
 
 const TOOLS: Record<string, ToolModule> = {
@@ -84,19 +85,10 @@ export async function runCli(argv: readonly string[]): Promise<number> {
     }
 
     try {
-      await tool.run(toolArgs, getProfile(profileArg));
-      exitCode = 0;
+      exitCode = await tool.run(toolArgs, getProfile(profileArg));
       return exitCode;
     } catch (err: unknown) {
-      if (isToolError(err)) {
-        printToolError(err);
-        exitCode = err.exitCode;
-        return exitCode;
-      }
-
-      process.stderr.write(
-        `Error: ${err instanceof Error ? err.message : String(err)}\n`
-      );
+      process.stderr.write(`Error: ${normalizeError(err).message}\n`);
       exitCode = 1;
       return exitCode;
     }

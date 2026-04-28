@@ -1,10 +1,17 @@
 import { type ParseArgsConfig, parseArgs } from "node:util";
 
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+
 import { HELP_FLAGS } from "../constants";
-import { error } from "./errors";
 
 export function wantsHelp(args: readonly string[]): boolean {
   return args.length === 1 && HELP_FLAGS.has(args[0] ?? "");
+}
+
+export function usageError(message: string, usage: string): never {
+  throw new Error(
+    `${message}\nUsage: ${usage}\nRun with --help for more information.`
+  );
 }
 
 export function parseIntArg(
@@ -15,19 +22,19 @@ export function parseIntArg(
   const value = Number.parseInt(rawValue, 10);
 
   if (Number.isNaN(value)) {
-    error(
+    throw new Error(
       `invalid value for ${label}: ${JSON.stringify(rawValue)} (expected integer)`
     );
   }
 
   if (options?.minimum !== undefined && value < options.minimum) {
-    error(
+    throw new Error(
       `invalid value for ${label}: ${value} (must be >= ${options.minimum})`
     );
   }
 
   if (options?.maximum !== undefined && value > options.maximum) {
-    error(
+    throw new Error(
       `invalid value for ${label}: ${value} (must be <= ${options.maximum})`
     );
   }
@@ -46,6 +53,6 @@ export function parseToolArgs<
       strict: true,
     });
   } catch (err) {
-    error(err instanceof Error ? err.message : String(err));
+    throw normalizeError(err);
   }
 }

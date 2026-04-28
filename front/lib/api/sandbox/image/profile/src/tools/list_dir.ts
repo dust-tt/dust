@@ -8,7 +8,6 @@ import {
 } from "../constants";
 import type { Profile } from "../profile";
 import { parseIntArg, parseToolArgs, wantsHelp } from "../shared/args";
-import { error } from "../shared/errors";
 import { paginate, printPaginatedOutput } from "../shared/output";
 
 const LIST_DIR_USAGE = "list_dir [path] [--depth N] [--offset N] [--limit N]";
@@ -52,10 +51,10 @@ function collectEntries(dirPath: string, maxDepth: number): string[] {
 export async function run(
   args: readonly string[],
   _profile: Profile
-): Promise<void> {
+): Promise<number> {
   if (wantsHelp(args)) {
     process.stdout.write(`${help}\n`);
-    return;
+    return 0;
   }
 
   const { values, positionals } = parseToolArgs(args, {
@@ -79,11 +78,12 @@ export async function run(
   );
 
   if (!fs.existsSync(dirPath) || !fs.statSync(dirPath).isDirectory()) {
-    error(`directory not found: ${dirPath}`);
+    throw new Error(`directory not found: ${dirPath}`);
   }
 
   const entries = collectEntries(dirPath, depth);
   const { page, hasMore } = paginate(entries, offset, limit);
 
   printPaginatedOutput(page, offset, hasMore);
+  return 0;
 }

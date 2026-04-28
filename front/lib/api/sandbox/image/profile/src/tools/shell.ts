@@ -3,8 +3,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 
 import type { Profile } from "../profile";
-import { parseIntArg, wantsHelp } from "../shared/args";
-import { errorWithUsage, ToolError } from "../shared/errors";
+import { parseIntArg, usageError, wantsHelp } from "../shared/args";
 
 const SHELL_USAGE = "shell <command> [timeout_sec]";
 
@@ -12,6 +11,7 @@ const DEFAULT_TIMEOUT_SECONDS = 60;
 const OUTPUT_BUDGET_CHARS = 50_000;
 const STDERR_MIN_CHARS = 1_000;
 const TIMEOUT_EXIT_CODE = 124;
+const MAX_BUFFER_BYTES = 500 * 1024 * 1024;
 
 export const help = `shell - Execute shell command with strategic output truncation
 
@@ -101,14 +101,14 @@ function emit(
 export async function run(
   args: readonly string[],
   _profile: Profile
-): Promise<void> {
+): Promise<number> {
   if (wantsHelp(args)) {
     process.stdout.write(`${help}\n`);
-    return;
+    return 0;
   }
 
   if (args.length === 0) {
-    errorWithUsage("command is required", SHELL_USAGE);
+    usageError("command is required", SHELL_USAGE);
   }
 
   const cmd = args[0] ?? "";
@@ -122,7 +122,7 @@ export async function run(
     encoding: "utf8",
     timeout: timeoutMs,
     killSignal: "SIGTERM",
-    maxBuffer: Infinity,
+    maxBuffer: MAX_BUFFER_BYTES,
   });
 
   const stdoutRaw = result.stdout ?? "";
@@ -131,10 +131,15 @@ export async function run(
   const errorCode =
     result.error && "code" in result.error ? result.error.code : undefined;
   const timedOut = errorCode === "ETIMEDOUT";
+  const bufferOverflowed = errorCode === "ENOBUFS";
   if (timedOut) {
     const separator =
       stderrRaw.length > 0 && !stderrRaw.endsWith("\n") ? "\n" : "";
     stderrRaw = `${stderrRaw}${separator}[Command timed out after ${timeoutSec}s]\n`;
+  } else if (bufferOverflowed) {
+    const separator =
+      stderrRaw.length > 0 && !stderrRaw.endsWith("\n") ? "\n" : "";
+    stderrRaw = `${stderrRaw}${separator}[Command output exceeded ${MAX_BUFFER_BYTES} bytes per stream and was terminated]\n`;
   }
 
   const allocated = allocate(stdoutRaw, stderrRaw);
@@ -144,13 +149,13 @@ export async function run(
   let exitCode: number;
   if (timedOut) {
     exitCode = TIMEOUT_EXIT_CODE;
+  } else if (bufferOverflowed) {
+    exitCode = 1;
   } else if (typeof result.status === "number") {
     exitCode = result.status;
   } else {
     exitCode = 1;
   }
 
-  if (exitCode !== 0) {
-    throw new ToolError([], exitCode);
-  }
+  return exitCode;
 }

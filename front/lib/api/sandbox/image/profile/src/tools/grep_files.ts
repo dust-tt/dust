@@ -1,7 +1,11 @@
 import { DEFAULT_GREP_MAX_RESULTS } from "../constants";
 import type { Profile } from "../profile";
-import { parseIntArg, parseToolArgs, wantsHelp } from "../shared/args";
-import { error, errorWithUsage } from "../shared/errors";
+import {
+  parseIntArg,
+  parseToolArgs,
+  usageError,
+  wantsHelp,
+} from "../shared/args";
 import { runCommandSync } from "../shared/exec";
 import { paginate, printPaginatedOutput } from "../shared/output";
 
@@ -34,10 +38,10 @@ const isOutputMode = (v: string): v is OutputMode =>
 export async function run(
   args: readonly string[],
   profile: Profile
-): Promise<void> {
+): Promise<number> {
   if (wantsHelp(args)) {
     process.stdout.write(`${help}\n`);
-    return;
+    return 0;
   }
 
   const { values, positionals } = parseToolArgs(args, {
@@ -55,13 +59,13 @@ export async function run(
   });
 
   if (positionals.length === 0) {
-    errorWithUsage("pattern is required", USAGE);
+    usageError("pattern is required", USAGE);
   }
   const pattern = positionals[0] ?? "";
 
   const outputMode = values["output-mode"] ?? "content";
   if (typeof outputMode !== "string" || !isOutputMode(outputMode)) {
-    error(
+    throw new Error(
       `invalid value for --output-mode: ${JSON.stringify(outputMode)} (expected content, files, or count)`
     );
   }
@@ -112,10 +116,10 @@ export async function run(
 
   const result = runCommandSync("rg", rgArgs);
   if (result.error?.code === "ENOENT") {
-    error("rg not installed");
+    throw new Error("rg not installed");
   }
   if (result.status === 2) {
-    error(result.stderr.trim() || "grep failed");
+    throw new Error(result.stderr.trim() || "grep failed");
   }
 
   const lines = result.stdout.replace(/\r\n/g, "\n").split("\n");
@@ -129,4 +133,6 @@ export async function run(
   } else if (result.status === 1) {
     process.stdout.write("No matches found.\n");
   }
+
+  return 0;
 }

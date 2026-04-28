@@ -1,9 +1,10 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+
 import type { Profile } from "../profile";
-import { wantsHelp } from "../shared/args";
-import { error, errorWithUsage } from "../shared/errors";
+import { usageError, wantsHelp } from "../shared/args";
 
 const WRITE_FILE_USAGE = "write_file <path> <content>";
 
@@ -20,14 +21,14 @@ Output: "Wrote <path> (<bytes> bytes)" on success`;
 export async function run(
   args: readonly string[],
   _profile: Profile
-): Promise<void> {
+): Promise<number> {
   if (wantsHelp(args)) {
     process.stdout.write(`${help}\n`);
-    return;
+    return 0;
   }
 
   if (args.length === 0) {
-    errorWithUsage("path is required", WRITE_FILE_USAGE);
+    usageError("path is required", WRITE_FILE_USAGE);
   }
 
   const filePath = args[0] ?? "";
@@ -44,8 +45,8 @@ export async function run(
     fs.renameSync(tempPath, filePath);
   } catch (err) {
     fs.rmSync(tempDir, { recursive: true, force: true });
-    error(
-      `failed to write ${filePath}: ${err instanceof Error ? err.message : String(err)}`
+    throw new Error(
+      `failed to write ${filePath}: ${normalizeError(err).message}`
     );
   }
 
@@ -53,4 +54,5 @@ export async function run(
   process.stdout.write(
     `Wrote ${filePath} (${Buffer.byteLength(content, "utf8")} bytes)\n`
   );
+  return 0;
 }

@@ -95,7 +95,7 @@ describe("edit_file", () => {
   });
 
   describe("trailing whitespace", () => {
-    it("strips trailing whitespace from new_text", async () => {
+    it("preserves trailing whitespace in new_text", async () => {
       const filePath = path.join(tempDir, "ws.txt");
       fs.writeFileSync(filePath, "hello world\n");
       const result = await runTool("edit_file", [
@@ -104,7 +104,7 @@ describe("edit_file", () => {
         filePath,
       ]);
       expect(result.exitCode).toBe(0);
-      expect(fs.readFileSync(filePath, "utf-8")).toBe("goodbye world\n");
+      expect(fs.readFileSync(filePath, "utf-8")).toBe("goodbye    world\n");
     });
 
     it("preserves trailing whitespace in markdown files", async () => {
