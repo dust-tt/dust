@@ -153,6 +153,7 @@ export function renderActionForMultiActionsModel(
  * Processes agent message steps
  */
 export function getSteps({
+  auth,
   enabledSkillById,
   model,
   message,
@@ -161,6 +162,7 @@ export function getSteps({
   onMissingAction,
   renderSkillsAsUserMessages = false,
 }: {
+  auth: Authenticator;
   enabledSkillById: ReadonlyMap<string, EnabledSkillType>;
   model: ModelConfigurationType;
   message: AgentMessageType;
@@ -169,6 +171,7 @@ export function getSteps({
   onMissingAction: "inject-placeholder" | "skip";
   renderSkillsAsUserMessages?: boolean;
 }): Step[] {
+  void auth;
   const supportedModel = getSupportedModelConfig(model);
   if (!supportedModel) {
     return [];
