@@ -4,7 +4,12 @@ import config from "@app/lib/api/config";
 import { getPriceAsString } from "@app/lib/client/subscription";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
-import { isEntreprisePlanPrefix, isUpgraded } from "@app/lib/plans/plan_codes";
+import {
+  isEntreprisePlanPrefix,
+  isProPlan,
+  isUpgraded,
+  isWhitelistedBusinessPlan,
+} from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
 import {
   useMetronomeContract,
@@ -13,6 +18,7 @@ import {
 } from "@app/lib/swr/workspaces";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import type { PatchMetronomeContractRequestBody } from "@app/pages/api/w/[wId]/metronome/contract";
+import type { PatchSubscriptionRequestBody } from "@app/pages/api/w/[wId]/subscriptions";
 import type { BillingPeriod, SubscriptionType } from "@app/types/plan";
 import { isSubscriptionMetronomeBilled } from "@app/types/plan";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -102,6 +108,62 @@ function CancelMetronomeSubscriptionDialog({
   );
 }
 
+interface UpgradeToBusinessDialogProps {
+  show: boolean;
+  onClose: () => void;
+  onValidate: () => Promise<void>;
+  isSaving: boolean;
+}
+
+function UpgradeToBusinessDialog({
+  show,
+  onClose,
+  onValidate,
+  isSaving,
+}: UpgradeToBusinessDialogProps) {
+  return (
+    <Dialog
+      open={show}
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose();
+        }
+      }}
+    >
+      <DialogContent size="md">
+        <DialogHeader>
+          <DialogTitle>Upgrade to Enterprise seat-based plan</DialogTitle>
+          <DialogDescription>
+            Your current contract will end now and a new contract on the
+            Enterprise seat-based plan will start immediately. Future invoices
+            will reflect the new pricing.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogContainer>
+          {isSaving ? (
+            <div className="flex justify-center py-8">
+              <Spinner variant="dark" size="md" />
+            </div>
+          ) : (
+            <div className="font-bold">Are you sure you want to proceed?</div>
+          )}
+        </DialogContainer>
+        <DialogFooter
+          leftButtonProps={{
+            label: "Cancel",
+            variant: "outline",
+          }}
+          rightButtonProps={{
+            label: "Upgrade",
+            variant: "primary",
+            onClick: onValidate,
+          }}
+        />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 interface MetronomeSubscriptionPanelProps {
   owner: LightWorkspaceType;
   subscription: SubscriptionType;
@@ -119,6 +181,7 @@ export function MetronomeSubscriptionPanel({
 
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("monthly");
   const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
 
   const { seatsCount, isSeatsCountLoading } = useWorkspaceSeatsCount({
     workspaceId: owner.sId,
@@ -215,6 +278,41 @@ export function MetronomeSubscriptionPanel({
       router.reload();
     });
 
+  const {
+    submit: handleUpgradeToBusiness,
+    isSubmitting: isUpgradingToBusiness,
+  } = useSubmitFunction(async () => {
+    try {
+      const res = await clientFetch(`/api/w/${owner.sId}/subscriptions`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "upgrade_to_business",
+        } satisfies t.TypeOf<typeof PatchSubscriptionRequestBody>),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        sendNotification({
+          type: "error",
+          title: "Upgrade failed",
+          description:
+            body?.error?.message ??
+            "Failed to upgrade to Enterprise seat-based plan.",
+        });
+        return;
+      }
+      sendNotification({
+        type: "success",
+        title: "Upgrade successful",
+        description:
+          "Your workspace has been upgraded to Enterprise seat-based plan.",
+      });
+      router.reload();
+    } finally {
+      setShowUpgradeDialog(false);
+    }
+  });
+
   if (!isMetronomeBilled) {
     return (
       <div className="pt-2">
@@ -252,6 +350,8 @@ export function MetronomeSubscriptionPanel({
   const chipColor = !isUpgraded(plan) ? "green" : "blue";
   const isCancellationScheduled =
     subscription.endDate !== null || subscription.requestCancelAt !== null;
+  const canUpsellToBusinessPlan =
+    isProPlan(plan) && isWhitelistedBusinessPlan(owner);
 
   const contractEndingLabel = contract?.contractEndingAtMs
     ? formatDate(contract.contractEndingAtMs)
@@ -271,6 +371,12 @@ export function MetronomeSubscriptionPanel({
         onValidate={cancelSubscription}
         isSaving={isCancelling}
         periodEndLabel={periodEndLabel}
+      />
+      <UpgradeToBusinessDialog
+        show={showUpgradeDialog}
+        onClose={() => setShowUpgradeDialog(false)}
+        onValidate={handleUpgradeToBusiness}
+        isSaving={isUpgradingToBusiness}
       />
 
       <Page.Vertical align="stretch" gap="md">
@@ -354,6 +460,30 @@ export function MetronomeSubscriptionPanel({
               ))}
           </div>
         </Page.Vertical>
+
+        {canUpsellToBusinessPlan && (
+          <Page.Vertical gap="sm">
+            <Page.H variant="h5">Upgrade your plan</Page.H>
+            <Page.P>
+              You are eligible to upgrade to the Enterprise seat-based plan with
+              additional features.
+            </Page.P>
+            <div>
+              <Button
+                label="Upgrade to Enterprise seat-based plan"
+                variant="primary"
+                disabled={isUpgradingToBusiness}
+                onClick={withTracking(
+                  TRACKING_AREAS.AUTH,
+                  "subscription_upgrade_to_business",
+                  () => {
+                    setShowUpgradeDialog(true);
+                  }
+                )}
+              />
+            </div>
+          </Page.Vertical>
+        )}
 
         {isEnterprise && (
           <Page.Vertical gap="sm">
