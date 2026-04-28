@@ -267,10 +267,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Enable Metronome usage event emission (llm_usage, tool_use) for this workspace.",
     stage: "dust_only",
   },
-  gong_tool: {
-    description: "Gong MCP tool for sales conversation analytics",
-    stage: "dust_only",
-  },
   clari_copilot_mcp: {
     description:
       "Enable the Clari Copilot MCP server for call transcript and summary access.",

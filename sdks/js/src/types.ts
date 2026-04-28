@@ -705,7 +705,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "fireworks_new_model_feature"
   | "gemini_3_1_pro_feature"
   | "clari_copilot_mcp"
-  | "gong_tool"
   | "google_sheets_tool"
   | "gpt_image_2_feature"
   | "hootl_subscriptions"
