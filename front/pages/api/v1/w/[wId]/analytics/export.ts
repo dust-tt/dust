@@ -104,7 +104,10 @@ async function handler(
       },
     });
   }
-  if (!auth.isAdmin()) {
+  // TODO(api-key-scopes): tighten to admin-only once existing builder-scoped
+  // integrations have been migrated to admin keys. Builder is temporarily
+  // accepted to avoid breaking current callers.
+  if (!auth.isBuilder()) {
     return apiError(req, res, {
       status_code: 403,
       api_error: {

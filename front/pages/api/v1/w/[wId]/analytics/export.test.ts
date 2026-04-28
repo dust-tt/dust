@@ -112,14 +112,16 @@ async function setupTest({
   endDate = "2024-06-30",
   timezone,
   format,
+  role = "admin",
 }: {
   table?: string;
   startDate?: string;
   endDate?: string;
   timezone?: string;
   format?: string;
+  role?: "user" | "builder" | "admin";
 } = {}) {
-  const result = await createPublicApiMockRequest();
+  const result = await createPublicApiMockRequest({ role });
 
   const query: Record<string, string> = {
     wId: result.workspace.sId,
@@ -139,7 +141,7 @@ async function setupTest({
 }
 
 describe("GET /api/v1/w/[wId]/analytics/export", () => {
-  it("returns 200 for regular (builder) API key", async () => {
+  it("returns 200 for admin API key", async () => {
     const { req, res } = await setupTest();
 
     await handler(req, res);
@@ -147,8 +149,35 @@ describe("GET /api/v1/w/[wId]/analytics/export", () => {
     expect(res._getStatusCode()).toBe(200);
   });
 
+  // TODO(api-key-scopes): once builder keys are migrated to admin scope and the
+  // temporary fallback in export.ts is removed, change this to expect 403.
+  it("returns 200 for builder API key (temporary backward-compat)", async () => {
+    const { req, res } = await setupTest({ role: "builder" });
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+  });
+
+  it("returns 403 for read-only API key (insufficient scope)", async () => {
+    const { req, res } = await setupTest({ role: "user" });
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(403);
+    expect(res._getJSONData()).toEqual({
+      error: {
+        type: "insufficient_key_scope",
+        message:
+          "Workspace analytics export requires an API key with admin scope.",
+      },
+    });
+  });
+
   it("returns 400 for missing required query params", async () => {
-    const { req, res, workspace } = await createPublicApiMockRequest();
+    const { req, res, workspace } = await createPublicApiMockRequest({
+      role: "admin",
+    });
     req.query = { wId: workspace.sId };
 
     await handler(req, res);
@@ -187,6 +216,7 @@ describe("GET /api/v1/w/[wId]/analytics/export", () => {
     for (const method of ["POST", "PUT", "DELETE", "PATCH"] as const) {
       const result = await createPublicApiMockRequest({
         method,
+        role: "admin",
       });
       result.req.query = {
         wId: result.workspace.sId,
