@@ -64,7 +64,7 @@ export const FIREWORKS_DEEPSEEK_V4_PRO_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "fireworks",
   modelId: FIREWORKS_DEEPSEEK_V4_PRO_MODEL_ID,
   displayName: "DeepSeek V4 Pro (Fireworks)",
-  contextSize: 1_048_600,
+  contextSize: 1_000_000,
   recommendedTopK: 32,
   recommendedExhaustiveTopK: 64,
   largeModel: true,
@@ -73,16 +73,13 @@ export const FIREWORKS_DEEPSEEK_V4_PRO_MODEL_CONFIG: ModelConfigurationType = {
   shortDescription: "DeepSeek's V4 Pro model.",
   isLegacy: false,
   isLatest: true,
-  generationTokensCount: 2048,
+  generationTokensCount: 64_000,
   supportsVision: false,
   minimumReasoningEffort: "none",
   maximumReasoningEffort: "none",
   defaultReasoningEffort: "none",
   supportsResponseFormat: true,
   tokenizer: { type: "tiktoken", base: "o200k_base" },
-  availableIfOneOf: {
-    featureFlag: "fireworks_new_model_feature",
-  },
 };
 export const FIREWORKS_KIMI_K2_INSTRUCT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "fireworks",
