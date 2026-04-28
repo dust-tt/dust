@@ -1,6 +1,7 @@
 import { PROFILE_DIR } from "@app/lib/api/sandbox/image/profile";
 import { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
 import {
+  DSBX_TOOL_NAME,
   PROXY_ONLY_NETWORK_POLICY,
   type ToolEntry,
 } from "@app/lib/api/sandbox/image/types";
@@ -187,7 +188,11 @@ SHELLEOF`,
       "mv /tmp/dsbx /opt/bin/dsbx",
     { user: "root" }
   )
-  .registerTool({ name: "dsbx", description: "Dust CLI", runtime: "system" })
+  .registerTool({
+    name: DSBX_TOOL_NAME,
+    description: "Dust CLI",
+    runtime: "system",
+  })
   .runCmd("mkdir -p /skills && chmod 755 /skills", { user: "root" })
   .runCmd(
     `curl -fsSL https://github.com/dust-tt/dust/releases/download/apply-patch-v${APPLY_PATCH_VERSION}/apply_patch-linux-x86_64 -o /tmp/apply_patch && ` +

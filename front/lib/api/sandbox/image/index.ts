@@ -4,7 +4,11 @@ import {
   getSandboxImageFromRegistry,
 } from "@app/lib/api/sandbox/image/registry";
 import type { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
-import type { ToolEntry, ToolProfile } from "@app/lib/api/sandbox/image/types";
+import {
+  DSBX_TOOL_NAME,
+  type ToolEntry,
+  type ToolProfile,
+} from "@app/lib/api/sandbox/image/types";
 import type { Authenticator } from "@app/lib/auth";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 import { isDevelopment } from "@app/types/shared/env";
@@ -33,7 +37,12 @@ function providerToProfile(providerId: ModelProviderIdType): ToolProfile {
 
 export function getToolsForProvider(
   _auth: Authenticator,
-  providerId: ModelProviderIdType
+  providerId: ModelProviderIdType,
+  {
+    includeDsbxTools = true,
+  }: {
+    includeDsbxTools?: boolean;
+  } = {}
 ): Result<readonly ToolEntry[], Error> {
   const imageResult = getSandboxImageFromRegistry({ name: "dust-base" });
   if (imageResult.isErr()) {
@@ -43,9 +52,26 @@ export function getToolsForProvider(
   const allTools = imageResult.value.tools;
   const profile = providerToProfile(providerId);
 
-  return new Ok(
-    allTools.filter((tool) => !tool.profile || tool.profile === profile)
+  const providerTools = allTools.filter(
+    (tool) => !tool.profile || tool.profile === profile
   );
+
+  return new Ok(filterDsbxToolEntries(providerTools, { includeDsbxTools }));
+}
+
+// TODO(dsbx-tools): Hacky temporary filtering — we strip the `dsbx` tool
+// entry from the manifest by name when the `sandbox_dsbx_tools` flag is
+// off so it is not advertised to the model. Remove once `dsbx tools` ships
+// to all sandbox-enabled workspaces and the flag goes away.
+export function filterDsbxToolEntries(
+  tools: readonly ToolEntry[],
+  { includeDsbxTools }: { includeDsbxTools: boolean }
+): readonly ToolEntry[] {
+  if (includeDsbxTools) {
+    return tools;
+  }
+
+  return tools.filter((tool) => tool.name !== DSBX_TOOL_NAME);
 }
 
 export function getSandboxImage(

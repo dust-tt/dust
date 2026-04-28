@@ -173,12 +173,12 @@ async function handler(
   { space }: { space: SpaceResource }
 ): Promise<void> {
   const featureFlags = await getFeatureFlags(auth);
-  if (!featureFlags.includes("sandbox_tools")) {
+  if (!featureFlags.includes("sandbox_dsbx_tools")) {
     return apiError(req, res, {
-      status_code: 400,
+      status_code: 403,
       api_error: {
         type: "invalid_request_error",
-        message: "MCP is not enabled for this workspace.",
+        message: "Sandbox dsbx tools are not enabled for this workspace.",
       },
     });
   }

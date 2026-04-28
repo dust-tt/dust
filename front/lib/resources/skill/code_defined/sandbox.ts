@@ -1,6 +1,7 @@
 import { readWorkspacePolicy } from "@app/lib/api/sandbox/egress_policy";
 import {
   createToolManifest,
+  filterDsbxToolEntries,
   getSandboxImage,
   getToolsForProvider,
   toolManifestToYAML,
@@ -13,16 +14,33 @@ import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 import { Ok } from "@app/types/shared/result";
 
-const SANDBOX_INSTRUCTIONS =
-  "The sandbox provides an isolated Linux environment for running code, scripts, and shell commands. " +
-  "Use `bash` to run commands and scripts. " +
-  "The sandbox persists for the conversation duration. " +
-  "Conversation files are mounted at /files/conversation. " +
-  "/files/conversation may be empty, there is a sentinel dotfile /files/conversation/.mount-pending in that case, it is fine to wait 1 second and retry your command should you find the dotfile. " +
-  "This includes files uploaded by the user and files created by the agent. " +
-  "You can use the `dsbx` command line tool to list and run tools programmatically in the sandbox. " +
-  "Use it with `dsbx tools [SERVER_NAME] [TOOL_NAME] [ARGS]...`. Run `dsbx tools --help` for more information. " +
-  "Write output files (scripts, results, exports) to /files/conversation to make them available to the user.";
+function buildSandboxInstructionProse({
+  hasDsbxTools,
+}: {
+  hasDsbxTools: boolean;
+}): string {
+  const instructions = [
+    "The sandbox provides an isolated Linux environment for running code, scripts, and shell commands.",
+    "Use `bash` to run commands and scripts.",
+    "The sandbox persists for the conversation duration.",
+    "Conversation files are mounted at /files/conversation.",
+    "/files/conversation may be empty, there is a sentinel dotfile /files/conversation/.mount-pending in that case, it is fine to wait 1 second and retry your command should you find the dotfile.",
+    "This includes files uploaded by the user and files created by the agent.",
+  ];
+
+  if (hasDsbxTools) {
+    instructions.push(
+      "You can use the `dsbx` command line tool to list and run tools programmatically in the sandbox.",
+      "Use it with `dsbx tools [SERVER_NAME] [TOOL_NAME] [ARGS]...`. Run `dsbx tools --help` for more information."
+    );
+  }
+
+  instructions.push(
+    "Write output files (scripts, results, exports) to /files/conversation to make them available to the user."
+  );
+
+  return instructions.join(" ");
+}
 
 function formatWorkspaceAllowlist(domains: string[]): string {
   if (domains.length === 0) {
@@ -77,30 +95,38 @@ block first; a denied egress is a possible cause.`;
 
 async function buildSandboxInstructions(
   auth: Authenticator,
-  providerId?: ModelProviderIdType
+  providerId: ModelProviderIdType | undefined,
+  hasDsbxTools: boolean
 ): Promise<string> {
   const networkAccessSection = await buildNetworkAccessSection(auth);
+  const sandboxInstructions = buildSandboxInstructionProse({ hasDsbxTools });
 
   let toolsResult;
 
   if (providerId) {
-    toolsResult = getToolsForProvider(auth, providerId);
+    toolsResult = getToolsForProvider(auth, providerId, {
+      includeDsbxTools: hasDsbxTools,
+    });
   } else {
     const imageResult = getSandboxImage(auth);
     if (imageResult.isErr()) {
-      return `${SANDBOX_INSTRUCTIONS}\n\n${networkAccessSection}`;
+      return `${sandboxInstructions}\n\n${networkAccessSection}`;
     }
-    toolsResult = new Ok(imageResult.value.tools);
+    toolsResult = new Ok(
+      filterDsbxToolEntries(imageResult.value.tools, {
+        includeDsbxTools: hasDsbxTools,
+      })
+    );
   }
 
   if (toolsResult.isErr()) {
-    return `${SANDBOX_INSTRUCTIONS}\n\n${networkAccessSection}`;
+    return `${sandboxInstructions}\n\n${networkAccessSection}`;
   }
 
   const manifest = createToolManifest(toolsResult.value);
   const manifestYaml = toolManifestToYAML(manifest);
 
-  return `${SANDBOX_INSTRUCTIONS}
+  return `${sandboxInstructions}
 
 ${networkAccessSection}
 
@@ -132,7 +158,10 @@ export const sandboxSkill = {
     }: { spaceIds: string[]; agentLoopData?: AgentLoopExecutionData }
   ) => {
     const providerId = agentLoopData?.agentConfiguration?.model.providerId;
-    return buildSandboxInstructions(auth, providerId);
+    const flags = await getFeatureFlags(auth);
+    const hasDsbxTools = flags.includes("sandbox_dsbx_tools");
+
+    return buildSandboxInstructions(auth, providerId, hasDsbxTools);
   },
   mcpServers: [{ name: "sandbox" }],
   version: 1,

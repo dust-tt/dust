@@ -1,3 +1,5 @@
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { Err, Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -81,13 +83,25 @@ vi.mock("@app/lib/api/sandbox/gcs/mount", () => ({
   refreshGcsToken: mockRefreshGcsToken,
 }));
 
-vi.mock("@app/lib/api/sandbox/image", () => ({
-  getSandboxImage: mockGetSandboxImage,
-}));
+vi.mock("@app/lib/api/sandbox/image", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@app/lib/api/sandbox/image")>();
 
-vi.mock("@app/lib/api/sandbox/image/profile", () => ({
-  wrapCommand: mockWrapCommand,
-}));
+  return {
+    ...actual,
+    getSandboxImage: mockGetSandboxImage,
+  };
+});
+
+vi.mock("@app/lib/api/sandbox/image/profile", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@app/lib/api/sandbox/image/profile")>();
+
+  return {
+    ...actual,
+    wrapCommand: mockWrapCommand,
+  };
+});
 
 vi.mock("@app/lib/api/sandbox/instrumentation", () => ({
   recordToolDuration: mockRecordToolDuration,
@@ -111,7 +125,47 @@ vi.mock("@app/logger/logger", () => ({
   },
 }));
 
-import { addEgressDomainTool, runSandboxBashTool } from "./index";
+import {
+  addEgressDomainTool,
+  buildDescribeToolsetOutput,
+  runSandboxBashTool,
+} from "./index";
+
+describe("buildDescribeToolsetOutput", () => {
+  it("mirrors dsbx manifest filtering", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+
+    await FeatureFlagFactory.basic(auth, "sandbox_tools");
+
+    const hiddenResult = await buildDescribeToolsetOutput(
+      auth,
+      "openai",
+      "yaml"
+    );
+    expect(hiddenResult.isOk()).toBe(true);
+
+    if (hiddenResult.isErr()) {
+      throw hiddenResult.error;
+    }
+
+    expect(hiddenResult.value[0].text).not.toContain("name: dsbx");
+
+    await FeatureFlagFactory.basic(auth, "sandbox_dsbx_tools");
+
+    const visibleResult = await buildDescribeToolsetOutput(
+      auth,
+      "openai",
+      "yaml"
+    );
+    expect(visibleResult.isOk()).toBe(true);
+
+    if (visibleResult.isErr()) {
+      throw visibleResult.error;
+    }
+
+    expect(visibleResult.value[0].text).toContain("name: dsbx");
+  });
+});
 
 describe("runSandboxBashTool", () => {
   beforeEach(() => {
