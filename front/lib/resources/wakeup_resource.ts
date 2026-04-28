@@ -244,13 +244,17 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
       action: "wake_up.created",
       targets: [
         buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
-        buildAuditLogTarget("wake_up", { sId: wakeUp.sId, name: wakeUp.reason }),
+        buildAuditLogTarget("wake_up", {
+          sId: wakeUp.sId,
+          name: wakeUp.reason,
+        }),
       ],
       context: getAuditLogContext(auth),
       metadata: {
         scheduleType: wakeUp.scheduleType,
         agentConfigurationId: wakeUp.agentConfigurationId,
         conversationId: conversation.sId,
+        userId: auth.user()?.sId ?? "",
       },
     });
 
@@ -487,19 +491,6 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
 
     await this.markCancelled(auth, { transaction });
 
-    void emitAuditLogEvent({
-      auth,
-      action: "wake_up.cancelled",
-      targets: [
-        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
-        buildAuditLogTarget("wake_up", { sId: this.sId, name: this.reason }),
-      ],
-      context: getAuditLogContext(auth),
-      metadata: {
-        agentConfigurationId: this.agentConfigurationId,
-      },
-    });
-
     return new Ok(undefined);
   }
 
@@ -519,6 +510,21 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
     );
 
     await this.triggerConversationESIndexing(auth);
+
+    void emitAuditLogEvent({
+      auth,
+      action: "wake_up.cancelled",
+      targets: [
+        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+        buildAuditLogTarget("wake_up", { sId: this.sId, name: this.reason }),
+      ],
+      context: getAuditLogContext(auth),
+      metadata: {
+        scheduleType: this.scheduleType,
+        agentConfigurationId: this.agentConfigurationId,
+        userId: auth.user()?.sId ?? "",
+      },
+    });
   }
 
   async markExpired(
@@ -537,6 +543,24 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
     );
 
     await this.triggerConversationESIndexing(auth);
+
+    void emitAuditLogEvent({
+      auth,
+      action: "wake_up.expired",
+      targets: [
+        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+        buildAuditLogTarget("wake_up", {
+          sId: this.sId,
+          name: this.reason,
+        }),
+      ],
+      context: getAuditLogContext(auth),
+      metadata: {
+        scheduleType: this.scheduleType,
+        agentConfigurationId: this.agentConfigurationId,
+        userId: auth.user()?.sId ?? "",
+      },
+    });
   }
 
   maxFires(): number {
@@ -599,6 +623,24 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
     );
 
     await this.triggerConversationESIndexing(auth);
+
+    void emitAuditLogEvent({
+      auth,
+      action: "wake_up.fired",
+      targets: [
+        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+        buildAuditLogTarget("wake_up", {
+          sId: this.sId,
+          name: this.reason,
+        }),
+      ],
+      context: getAuditLogContext(auth),
+      metadata: {
+        scheduleType: this.scheduleType,
+        agentConfigurationId: this.agentConfigurationId,
+        userId: auth.user()?.sId ?? "",
+      },
+    });
   }
 
   async cleanupTemporalIfCronExpired(
