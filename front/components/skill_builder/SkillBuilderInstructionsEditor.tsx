@@ -272,6 +272,16 @@ export function SkillBuilderInstructionsEditor({
     // may be null if no suggestion is selected
     editor.commands.setHighlightedSuggestion(selectedSuggestionId);
 
+    // Scroll the editor to the first edit of the selected suggestion.
+    if (selectedSuggestionId) {
+      requestAnimationFrame(() => {
+        const firstEdit = editor.view.dom.querySelector(
+          `[data-suggestion-id^="${selectedSuggestionId}:"]`
+        );
+        firstEdit?.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+    }
+
     // Make the editor read-only while suggestion diffs are displayed.
     if (!isDiffMode) {
       editor.setEditable(!hasSuggestions);
