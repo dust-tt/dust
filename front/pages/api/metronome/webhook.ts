@@ -6,6 +6,7 @@ import {
 } from "@app/lib/credits/free";
 import {
   getMetronomeClient,
+  getMetronomeContractById,
   updateMetronomeCreditSegmentAmount,
 } from "@app/lib/metronome/client";
 import {
@@ -43,7 +44,6 @@ const CreditSegmentStartEventSchema = z.object({
   contract_id: z.string(),
   credit_id: z.string(),
   segment_id: z.string(),
-  product: z.object({ id: z.string() }),
 });
 
 // Disable Next.js body parsing so we can read the raw body for signature verification.
@@ -149,15 +149,57 @@ async function handler(
             contract_id: contractId,
             credit_id: creditId,
             segment_id: segmentId,
-            product,
           } = parsed.data;
 
+          // The webhook payload does not include the credit's product or
+          // credit type, so fetch the contract to identify whether this
+          // segment belongs to the free monthly credit we manage.
+          const contractResult = await getMetronomeContractById({
+            metronomeCustomerId: customerId,
+            metronomeContractId: contractId,
+          });
+          if (contractResult.isErr()) {
+            logger.error(
+              {
+                customerId,
+                contractId,
+                creditId,
+                error: contractResult.error,
+              },
+              "[Metronome Webhook] credit.segment.start: failed to fetch contract"
+            );
+            return apiError(req, res, {
+              status_code: 500,
+              api_error: {
+                type: "internal_server_error",
+                message: `Error fetching contract: ${contractResult.error.message}`,
+              },
+            });
+          }
+
+          const credit = contractResult.value.credits?.find(
+            (c) => c.id === creditId
+          );
+          if (!credit) {
+            logger.info(
+              { customerId, contractId, creditId },
+              "[Metronome Webhook] credit.segment.start: credit not found on contract, ignoring"
+            );
+            break;
+          }
+
           if (
-            product.id !== getProductFreeMonthlyCreditId() ||
-            creditId !== getCreditTypeProgrammaticUsdId()
+            credit.product.id !== getProductFreeMonthlyCreditId() ||
+            credit.access_schedule?.credit_type?.id !==
+              getCreditTypeProgrammaticUsdId()
           ) {
             logger.info(
-              { customerId, creditId, productId: product.id },
+              {
+                customerId,
+                creditId,
+                productId: credit.product.id,
+                creditTypeId: credit.access_schedule?.credit_type?.id,
+              },
               "[Metronome Webhook] credit.segment.start: ignoring non-free-credit segment"
             );
             break;
@@ -221,6 +263,10 @@ async function handler(
           break;
         }
 
+        case "credit.segment.end":
+          logger.info({ event }, "[Metronome Webhook] Credit segment ended");
+          break;
+
         case "credit.create":
           logger.info(
             { event },
@@ -230,6 +276,10 @@ async function handler(
 
         case "contract.start":
           logger.info({ event }, "[Metronome Webhook] Contract started");
+          break;
+
+        case "contract.edit":
+          logger.info({ event }, "[Metronome Webhook] Contract edited");
           break;
 
         case "contract.end": {
