@@ -26,11 +26,6 @@ export const AGENT_SUGGESTION_STATES = [
 
 export type AgentSuggestionState = (typeof AGENT_SUGGESTION_STATES)[number];
 
-// TODO(fabien) drop this column
-export const AGENT_SUGGESTION_SOURCES = ["sidekick"] as const;
-
-export type AgentSuggestionSource = (typeof AGENT_SUGGESTION_SOURCES)[number];
-
 export const INSTRUCTIONS_ROOT_TARGET_BLOCK_ID = "instructions-root";
 
 const ToolsSuggestionSchema = z.object({
@@ -159,7 +154,6 @@ const BaseAgentSuggestionSchema = z.object({
   agentConfigurationId: z.number(),
   analysis: z.string().nullable(),
   state: z.enum(AGENT_SUGGESTION_STATES),
-  source: z.enum(AGENT_SUGGESTION_SOURCES),
   conversationId: z.string().nullable(),
 });
 

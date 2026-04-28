@@ -41,7 +41,6 @@ export const cleanSuggestionsPlugin = createPlugin({
         resource.sId,
         {
           states: selectedStates,
-          sources: ["sidekick"],
         }
       );
 

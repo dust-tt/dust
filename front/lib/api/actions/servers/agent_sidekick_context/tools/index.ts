@@ -64,7 +64,6 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
 import type {
-  AgentSuggestionSource,
   AgentSuggestionState,
   KnowledgeSuggestionType,
   SubAgentSuggestionType,
@@ -196,13 +195,11 @@ export async function createInstructionSuggestions({
   auth,
   agentConfigurationId,
   suggestions,
-  source,
   conversation,
 }: {
   auth: Authenticator;
   agentConfigurationId: string;
   suggestions: InstructionSuggestionInput[];
-  source: AgentSuggestionSource;
   conversation?: ConversationResource;
 }): Promise<
   Result<{ sId: string; kind: string; targetBlockId: string }[], string>
@@ -274,7 +271,6 @@ export async function createInstructionSuggestions({
         suggestion: suggestionData,
         analysis: analysis ?? null,
         state: "pending",
-        source,
         conversationId: conversation?.id ?? null,
       }
     );
@@ -307,13 +303,11 @@ export async function createToolsSuggestions({
   auth,
   agentConfigurationId,
   suggestions,
-  source,
   conversation,
 }: {
   auth: Authenticator;
   agentConfigurationId: string;
   suggestions: ToolsSuggestionInput[];
-  source: AgentSuggestionSource;
   conversation?: ConversationResource;
 }): Promise<Result<{ sId: string; kind: string }[], string>> {
   // Reject batches where multiple suggestions target the same tool.
@@ -403,7 +397,6 @@ export async function createToolsSuggestions({
         suggestion,
         analysis: analysis ?? null,
         state: "pending",
-        source,
         conversationId: conversation?.id ?? null,
       }
     );
@@ -426,13 +419,11 @@ export async function createSkillsSuggestions({
   auth,
   agentConfigurationId,
   suggestions,
-  source,
   conversation,
 }: {
   auth: Authenticator;
   agentConfigurationId: string;
   suggestions: SkillsSuggestionInput[];
-  source: AgentSuggestionSource;
   conversation?: ConversationResource;
 }): Promise<Result<{ sId: string; kind: string }[], string>> {
   // Reject batches where multiple suggestions target the same skill.
@@ -509,7 +500,6 @@ export async function createSkillsSuggestions({
         suggestion: { action, skillId },
         analysis: analysis ?? null,
         state: "pending",
-        source,
         conversationId: conversation?.id ?? null,
       }
     );
@@ -888,7 +878,6 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
         auth,
         agentConfigurationId,
         suggestions: params.suggestions,
-        source: "sidekick",
       });
 
       if (result.isErr()) {
@@ -933,7 +922,6 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
         auth,
         agentConfigurationId,
         suggestions: params.suggestions,
-        source: "sidekick",
       });
 
       if (result.isErr()) {
@@ -1062,7 +1050,6 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
             suggestion,
             analysis: params.analysis ?? null,
             state: "pending",
-            source: "sidekick",
           }
         );
 
@@ -1100,7 +1087,6 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
         auth,
         agentConfigurationId,
         suggestions: params.suggestions,
-        source: "sidekick",
       });
 
       if (result.isErr()) {
@@ -1176,7 +1162,6 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
           suggestion: params.suggestion,
           analysis: params.analysis ?? null,
           state: "pending",
-          source: "sidekick",
         }
       );
 
@@ -1404,7 +1389,6 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
             suggestion,
             analysis: params.analysis ?? null,
             state: "pending",
-            source: "sidekick",
           }
         );
 

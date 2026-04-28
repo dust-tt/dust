@@ -3,7 +3,6 @@ import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_res
 import { frontSequelize } from "@app/lib/resources/storage";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
-  AgentSuggestionSource,
   AgentSuggestionState,
   InstructionsSuggestionSchemaType,
   ModelSuggestionType,
@@ -20,7 +19,6 @@ export class AgentSuggestionFactory {
       suggestion: InstructionsSuggestionSchemaType;
       analysis: string | null;
       state: AgentSuggestionState;
-      source: AgentSuggestionSource;
     }> = {}
   ): Promise<AgentSuggestionResource> {
     return AgentSuggestionResource.createSuggestionForAgent(
@@ -36,7 +34,6 @@ export class AgentSuggestionFactory {
         analysis:
           overrides.analysis ?? "Improved instructions for better coding help",
         state: overrides.state ?? "pending",
-        source: overrides.source ?? "sidekick",
       }
     );
   }
@@ -48,7 +45,6 @@ export class AgentSuggestionFactory {
       suggestion: ToolsSuggestionType;
       analysis: string | null;
       state: AgentSuggestionState;
-      source: AgentSuggestionSource;
     }> = {}
   ): Promise<AgentSuggestionResource> {
     return AgentSuggestionResource.createSuggestionForAgent(
@@ -62,7 +58,6 @@ export class AgentSuggestionFactory {
         },
         analysis: overrides.analysis ?? "Added useful integration",
         state: overrides.state ?? "pending",
-        source: overrides.source ?? "sidekick",
       }
     );
   }
@@ -74,7 +69,6 @@ export class AgentSuggestionFactory {
       suggestion: SubAgentSuggestionType;
       analysis: string | null;
       state: AgentSuggestionState;
-      source: AgentSuggestionSource;
     }> = {}
   ): Promise<AgentSuggestionResource> {
     return AgentSuggestionResource.createSuggestionForAgent(
@@ -89,7 +83,6 @@ export class AgentSuggestionFactory {
         },
         analysis: overrides.analysis ?? "Added sub-agent delegation",
         state: overrides.state ?? "pending",
-        source: overrides.source ?? "sidekick",
       }
     );
   }
@@ -101,7 +94,6 @@ export class AgentSuggestionFactory {
       suggestion: SkillsSuggestionType;
       analysis: string | null;
       state: AgentSuggestionState;
-      source: AgentSuggestionSource;
     }> = {}
   ): Promise<AgentSuggestionResource> {
     return AgentSuggestionResource.createSuggestionForAgent(
@@ -115,7 +107,6 @@ export class AgentSuggestionFactory {
         },
         analysis: overrides.analysis ?? "Added skill for better assistance",
         state: overrides.state ?? "pending",
-        source: overrides.source ?? "sidekick",
       }
     );
   }
@@ -127,7 +118,6 @@ export class AgentSuggestionFactory {
       suggestion: ModelSuggestionType;
       analysis: string | null;
       state: AgentSuggestionState;
-      source: AgentSuggestionSource;
     }> = {}
   ): Promise<AgentSuggestionResource> {
     return AgentSuggestionResource.createSuggestionForAgent(
@@ -141,7 +131,6 @@ export class AgentSuggestionFactory {
         },
         analysis: overrides.analysis ?? "Suggested a more capable model",
         state: overrides.state ?? "pending",
-        source: overrides.source ?? "sidekick",
       }
     );
   }

@@ -15,7 +15,6 @@ import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type {
   AgentSuggestionKind,
-  AgentSuggestionSource,
   AgentSuggestionState,
   AgentSuggestionType,
 } from "@app/types/suggestions/agent_suggestion";
@@ -264,7 +263,6 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
     agentId: string,
     filters?: {
       states?: AgentSuggestionState[];
-      sources?: AgentSuggestionSource[];
       kind?: AgentSuggestionKind;
       limit?: number;
     }
@@ -286,19 +284,10 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
 
     const agentConfigIds = agentConfigs.map((ac) => ac.id);
 
-    // Build the where clause with optional filters.
-    // By default, exclude synthetic suggestions (internal to the reinforcement
-    // pipeline) unless an explicit sources filter is provided.
-    const sourceFilter =
-      filters?.sources && filters.sources.length > 0
-        ? { source: filters.sources }
-        : { source: { [Op.ne]: "synthetic" } };
-
     const whereClause: WhereOptions<AgentSuggestionModel> = {
       agentConfigurationId: agentConfigIds,
       ...(filters?.states &&
         filters.states.length > 0 && { state: filters.states }),
-      ...sourceFilter,
       ...(filters?.kind && { kind: filters.kind }),
     };
 
@@ -440,37 +429,9 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
       agentConfigurationId: this.agentConfigurationId,
       analysis: this.analysis,
       state: this.state,
-      source: this.source,
       conversationId: this._conversationId,
       ...suggestionData,
     };
-  }
-
-  /**
-   * Deletes all synthetic suggestions older than the given cutoff date.
-   * Requires admin permissions. Returns the number of deleted rows.
-   */
-  static async deleteExpiredSynthetic(
-    auth: Authenticator,
-    cutoffDate: Date,
-    { limit }: { limit?: number } = {}
-  ): Promise<number> {
-    if (!auth.isAdmin()) {
-      throw new Error(
-        "Only workspace admins can delete expired synthetic suggestions"
-      );
-    }
-
-    const owner = auth.getNonNullableWorkspace();
-
-    return AgentSuggestionModel.destroy({
-      where: {
-        workspaceId: owner.id,
-        source: "synthetic",
-        createdAt: { [Op.lt]: cutoffDate },
-      },
-      limit,
-    });
   }
 
   /**
@@ -490,7 +451,6 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
     agentIds: string[],
     filters?: {
       states?: AgentSuggestionState[];
-      sources?: AgentSuggestionSource[];
       kind?: AgentSuggestionKind;
       limit?: number;
       createdAfter?: Date;
@@ -521,8 +481,6 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
       agentConfigurationId: agentConfigIds,
       ...(filters?.states &&
         filters.states.length > 0 && { state: filters.states }),
-      ...(filters?.sources &&
-        filters.sources.length > 0 && { source: filters.sources }),
       ...(filters?.kind && { kind: filters.kind }),
       ...(filters?.createdAfter && {
         createdAt: { [Op.gte]: filters.createdAfter },
