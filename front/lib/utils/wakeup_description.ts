@@ -1,5 +1,6 @@
 import type { WakeUpType } from "@app/types/assistant/wakeups";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { CronExpressionParser } from "cron-parser";
 import cronstrue from "cronstrue";
 
 // Render an instant as "h:mm" (12-hour, no AM/PM) in the viewer's local
@@ -9,6 +10,24 @@ export function formatWakeUpTimeOfDay(timestamp: number): string {
   const hours = date.getHours() % 12 || 12;
   const minutes = String(date.getMinutes()).padStart(2, "0");
   return `${hours}:${minutes}`;
+}
+
+// Compute the millisecond timestamp of the next time a wake-up fires. For
+// one-shot schedules this is the stored `fireAt`; for cron schedules we
+// resolve the next firing in the schedule's stored timezone.
+export function getNextWakeUpFireAt(wakeUp: WakeUpType): number {
+  const config = wakeUp.scheduleConfig;
+  switch (config.type) {
+    case "one_shot":
+      return config.fireAt;
+    case "cron":
+      return CronExpressionParser.parse(config.cron, { tz: config.timezone })
+        .next()
+        .toDate()
+        .getTime();
+    default:
+      return assertNever(config);
+  }
 }
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
