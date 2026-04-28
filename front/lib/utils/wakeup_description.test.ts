@@ -44,24 +44,24 @@ function localTimestamp(hour: number, minute: number): number {
 }
 
 describe("formatWakeUpTimeOfDay", () => {
-  it("renders single-digit hours without a leading zero", () => {
-    expect(formatWakeUpTimeOfDay(localTimestamp(9, 5))).toBe("9:05 AM");
+  it("zero-pads single-digit hours", () => {
+    expect(formatWakeUpTimeOfDay(localTimestamp(9, 5))).toBe("09:05");
   });
 
-  it("pads minutes to two digits", () => {
-    expect(formatWakeUpTimeOfDay(localTimestamp(14, 0))).toBe("2:00 PM");
+  it("renders afternoon hours in 24-hour form", () => {
+    expect(formatWakeUpTimeOfDay(localTimestamp(14, 0))).toBe("14:00");
   });
 
-  it("renders midnight as 12:00 AM", () => {
-    expect(formatWakeUpTimeOfDay(localTimestamp(0, 0))).toBe("12:00 AM");
+  it("renders midnight as 00:00", () => {
+    expect(formatWakeUpTimeOfDay(localTimestamp(0, 0))).toBe("00:00");
   });
 
-  it("renders noon as 12:00 PM", () => {
-    expect(formatWakeUpTimeOfDay(localTimestamp(12, 0))).toBe("12:00 PM");
+  it("renders noon as 12:00", () => {
+    expect(formatWakeUpTimeOfDay(localTimestamp(12, 0))).toBe("12:00");
   });
 
-  it("renders 1 PM as 1:00 PM", () => {
-    expect(formatWakeUpTimeOfDay(localTimestamp(13, 0))).toBe("1:00 PM");
+  it("renders 1 PM as 13:00", () => {
+    expect(formatWakeUpTimeOfDay(localTimestamp(13, 0))).toBe("13:00");
   });
 });
 
@@ -71,7 +71,7 @@ describe("describeWakeUpSchedule (one_shot)", () => {
       type: "one_shot",
       fireAt: localTimestamp(9, 30),
     });
-    expect(describeWakeUpSchedule(wakeUp)).toBe("at 9:30 AM");
+    expect(describeWakeUpSchedule(wakeUp)).toBe("at 09:30");
   });
 });
 
@@ -82,7 +82,7 @@ describe("describeWakeUpSchedule (cron)", () => {
       cron: "0 9 * * 1",
       timezone: "America/New_York",
     });
-    expect(describeWakeUpSchedule(wakeUp)).toBe("at 09:00 AM, only on Monday");
+    expect(describeWakeUpSchedule(wakeUp)).toBe("at 09:00, only on Monday");
   });
 
   it("describes a weekday range", () => {
@@ -92,7 +92,7 @@ describe("describeWakeUpSchedule (cron)", () => {
       timezone: "America/New_York",
     });
     expect(describeWakeUpSchedule(wakeUp)).toBe(
-      "at 08:30 AM, Monday through Friday"
+      "at 08:30, Monday through Friday"
     );
   });
 
@@ -114,13 +114,13 @@ describe("describeWakeUpSchedule (cron)", () => {
     expect(describeWakeUpSchedule(wakeUp)).toBe("every hour");
   });
 
-  it("preserves AM/PM on multi-time crons so morning/afternoon stay distinct", () => {
+  it("renders multi-time crons in 24-hour form", () => {
     const wakeUp = makeWakeUp({
       type: "cron",
       cron: "0 9,17 * * *",
       timezone: "America/New_York",
     });
-    expect(describeWakeUpSchedule(wakeUp)).toBe("at 09:00 AM and 05:00 PM");
+    expect(describeWakeUpSchedule(wakeUp)).toBe("at 09:00 and 17:00");
   });
 
   it("rewords every-other-day DOM steps", () => {
@@ -129,7 +129,7 @@ describe("describeWakeUpSchedule (cron)", () => {
       cron: "0 9 */2 * *",
       timezone: "America/New_York",
     });
-    expect(describeWakeUpSchedule(wakeUp)).toBe("at 09:00 AM, every other day");
+    expect(describeWakeUpSchedule(wakeUp)).toBe("at 09:00, every other day");
   });
 
   it("rewords larger DOM steps", () => {
@@ -138,7 +138,7 @@ describe("describeWakeUpSchedule (cron)", () => {
       cron: "0 9 */3 * *",
       timezone: "America/New_York",
     });
-    expect(describeWakeUpSchedule(wakeUp)).toBe("at 09:00 AM, every 3 days");
+    expect(describeWakeUpSchedule(wakeUp)).toBe("at 09:00, every 3 days");
   });
 });
 
@@ -159,12 +159,12 @@ describe("formatWakeUpSidebarLabel", () => {
 
   it("renders the time of day when the wake-up is within 24h", () => {
     const oneHourLaterMs = NOW_MS + 60 * 60 * 1000;
-    expect(formatWakeUpSidebarLabel(oneHourLaterMs)).toBe("1:00 PM");
+    expect(formatWakeUpSidebarLabel(oneHourLaterMs)).toBe("13:00");
   });
 
   it("renders the time of day for a wake-up exactly 24h away", () => {
     const exactlyOneDayMs = NOW_MS + 24 * 60 * 60 * 1000;
-    expect(formatWakeUpSidebarLabel(exactlyOneDayMs)).toBe("12:00 PM");
+    expect(formatWakeUpSidebarLabel(exactlyOneDayMs)).toBe("12:00");
   });
 
   it("renders the abbreviated weekday when the wake-up is more than 24h away", () => {
@@ -180,7 +180,7 @@ describe("formatWakeUpSidebarLabel", () => {
 
   it("renders the time of day for past timestamps", () => {
     const oneHourAgoMs = NOW_MS - 60 * 60 * 1000;
-    expect(formatWakeUpSidebarLabel(oneHourAgoMs)).toBe("11:00 AM");
+    expect(formatWakeUpSidebarLabel(oneHourAgoMs)).toBe("11:00");
   });
 });
 
