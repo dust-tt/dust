@@ -15,8 +15,11 @@ import {
   type SandboxExecTokenPayload,
   verifySandboxExecToken,
 } from "@app/lib/api/sandbox/access_tokens";
-import { hasDsbxToolsEnabled } from "@app/lib/api/sandbox/feature_flags";
-import { type Authenticator, isSandboxTokenPrefix } from "@app/lib/auth";
+import {
+  type Authenticator,
+  getFeatureFlags,
+  isSandboxTokenPrefix,
+} from "@app/lib/auth";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
@@ -169,7 +172,8 @@ async function handler(
   auth: Authenticator,
   { space }: { space: SpaceResource }
 ): Promise<void> {
-  if (!(await hasDsbxToolsEnabled(auth))) {
+  const featureFlags = await getFeatureFlags(auth);
+  if (!featureFlags.includes("sandbox_dsbx_tools")) {
     return apiError(req, res, {
       status_code: 403,
       api_error: {

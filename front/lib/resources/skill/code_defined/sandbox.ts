@@ -1,5 +1,4 @@
 import { readWorkspacePolicy } from "@app/lib/api/sandbox/egress_policy";
-import { hasDsbxToolsEnabled } from "@app/lib/api/sandbox/feature_flags";
 import {
   createToolManifest,
   filterDsbxToolEntries,
@@ -159,7 +158,8 @@ export const sandboxSkill = {
     }: { spaceIds: string[]; agentLoopData?: AgentLoopExecutionData }
   ) => {
     const providerId = agentLoopData?.agentConfiguration?.model.providerId;
-    const hasDsbxTools = await hasDsbxToolsEnabled(auth);
+    const flags = await getFeatureFlags(auth);
+    const hasDsbxTools = flags.includes("sandbox_dsbx_tools");
 
     return buildSandboxInstructions(auth, providerId, hasDsbxTools);
   },

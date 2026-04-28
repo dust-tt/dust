@@ -11,8 +11,8 @@ import {
   type SandboxExecTokenPayload,
   verifySandboxExecToken,
 } from "@app/lib/api/sandbox/access_tokens";
-import { hasDsbxToolsEnabled } from "@app/lib/api/sandbox/feature_flags";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
@@ -59,7 +59,8 @@ async function handler(
         });
       }
 
-      if (!(await hasDsbxToolsEnabled(auth))) {
+      const featureFlags = await getFeatureFlags(auth);
+      if (!featureFlags.includes("sandbox_dsbx_tools")) {
         return apiError(req, res, {
           status_code: 403,
           api_error: {

@@ -48,18 +48,15 @@ different layers:
   endpoints reject, and the model isn't told the capability exists).
 
 In practice `sandbox_tools` only is reachable; `sandbox_dsbx_tools` only is
-dead state (no sandbox to call from). Endpoints should still defensively
-require **both** via a single helper so the rule lives in one place:
+dead state (no sandbox to call from). The API-surface gates only need to
+check `sandbox_dsbx_tools` — `sandbox_tools` is already enforced one layer
+up at the skill / sandbox lifecycle. Each call site uses the same idiom
+the rest of the codebase uses:
 
 ```ts
-// front/lib/api/sandbox/feature_flags.ts (new)
-export async function hasDsbxToolsEnabled(auth: Authenticator): Promise<boolean> {
-  const flags = await getFeatureFlags(auth);
-  return flags.includes("sandbox_tools") && flags.includes("sandbox_dsbx_tools");
-}
+const flags = await getFeatureFlags(auth);
+if (!flags.includes("sandbox_dsbx_tools")) { /* … */ }
 ```
-
-Use this helper in both endpoints and in the prompt/manifest filtering.
 
 ## What moves from `sandbox_tools` → `sandbox_dsbx_tools`
 
@@ -80,8 +77,9 @@ Today the `SANDBOX_INSTRUCTIONS` constant unconditionally tells the model:
 itself stays gated on `sandbox_tools` only — we still want the bash tool
 available without `dsbx tools`.
 
-Plumbing: `fetchInstructions` already reads the auth; thread `hasDsbxToolsEnabled(auth)`
-into `buildSandboxInstructions`.
+Plumbing: `fetchInstructions` reads the flags via `getFeatureFlags(auth)`
+and threads `flags.includes("sandbox_dsbx_tools")` into
+`buildSandboxInstructions`.
 
 ### 2. Sandbox tool manifest (prompt) — `dsbx` entry
 
@@ -125,8 +123,8 @@ Otherwise, add the same filter here. Tests must cover both call sites.
 **File:** `front/pages/api/v1/w/[wId]/spaces/[spaceId]/mcp_server_views/[svId]/call_tool.ts:175-184`
 
 Currently rejects with **400** when `sandbox_tools` is absent. **Change to
-require `sandbox_dsbx_tools`** (via `hasDsbxToolsEnabled`) and return **403**
-to match the semantically-correct response and stay aligned with the new
+check `flags.includes("sandbox_dsbx_tools")`** and return **403** to match
+the semantically-correct response and stay aligned with the new
 `/sandbox/tools` gate. Note: this is a small response-shape change for an
 existing endpoint, but `dsbx` only surfaces the error message to the model
 so blast radius is contained.
@@ -136,10 +134,10 @@ so blast radius is contained.
 **File:** `front/pages/api/v1/w/[wId]/sandbox/tools.ts`
 
 Currently **not** gated at all (only the `sbt-` token is required). This was
-flagged as a gap during the earlier audit. **Change:** add
-`hasDsbxToolsEnabled(auth)` and return **403** if false. Closes the gap where
-a leaked `sbt-` could enumerate the catalog after a workspace has the feature
-disabled.
+flagged as a gap during the earlier audit. **Change:** check
+`flags.includes("sandbox_dsbx_tools")` and return **403** if false. Closes
+the gap where a leaked `sbt-` could enumerate the catalog after a workspace
+has the feature disabled.
 
 ### 6. (Optional) `dust-deep` sub-agent guidelines
 
@@ -215,15 +213,11 @@ So with the new flag off but `sandbox_tools` on:
 
 1. **Add the flag definition** in `front/types/shared/feature_flags.ts`
    (one entry, `dust_only`).
-2. **Add the helper** `hasDsbxToolsEnabled(auth)` in
-   `front/lib/api/sandbox/feature_flags.ts` (new file). Returns true iff
-   both `sandbox_tools` and `sandbox_dsbx_tools` are present. Use it
-   everywhere instead of inlining flag checks.
-3. **Refactor `sandbox.ts`:** turn `SANDBOX_INSTRUCTIONS` into a function
+2. **Refactor `sandbox.ts`:** turn `SANDBOX_INSTRUCTIONS` into a function
    that conditionally appends the two `dsbx tools` lines based on
-   `hasDsbxToolsEnabled(auth)`. Update `buildSandboxInstructions` to
-   thread the boolean through.
-4. **Filter `dsbx` from the tool manifest** when the flag is off.
+   `flags.includes("sandbox_dsbx_tools")`. Update `buildSandboxInstructions`
+   to thread the boolean through.
+3. **Filter `dsbx` from the tool manifest** when the flag is off.
    Preferred: keep `createToolManifest` pure and filter the `ToolEntry[]`
    before calling it, likely through a small helper or an option on
    `getToolsForProvider`. Remember both the provider-specific path and the
@@ -231,11 +225,12 @@ So with the new flag off but `sandbox_tools` on:
    `describe_toolset`
    (`front/lib/api/actions/servers/sandbox/tools/index.ts:90-107`)
    gets the same filtering with no duplication. Keep the binary on disk.
-5. **Switch the `call_tool` endpoint** gate to `hasDsbxToolsEnabled` and
-   change the disabled response from **400 to 403** for semantic alignment.
-6. **Add a flag gate on `GET /sandbox/tools`** using the same helper, also
-   returning **403** when off.
-7. **Tests:**
+4. **Switch the `call_tool` endpoint** gate from `sandbox_tools` to an
+   inline `flags.includes("sandbox_dsbx_tools")` check and change the
+   disabled response from **400 to 403** for semantic alignment.
+5. **Add a flag gate on `GET /sandbox/tools`** with the same inline check,
+   also returning **403** when off.
+6. **Tests:**
    - `front/lib/actions/mcp_execution.test.ts` — keep on `sandbox_tools`.
    - **Instruction filtering test:** assert `buildSandboxInstructions`
      contains the two `dsbx tools` lines iff `sandbox_dsbx_tools` is on.
@@ -245,23 +240,21 @@ So with the new flag off but `sandbox_tools` on:
    - **`describe_toolset` test:** assert the MCP tool's text output
      mirrors the manifest filtering.
    - **Endpoint tests:** positive + negative on each of `/sandbox/tools`
-     and `call_tool`, with `sandbox_tools` on and the new flag toggled.
-     Assert 403 in the negative case.
-   - **Helper edge-case test:** assert `sandbox_dsbx_tools` alone is not
-     enough; both flags are required.
+     and `call_tool`, with the new flag toggled. Assert 403 in the
+     negative case.
    - Egress-policy tests should not change.
-8. **Sweep all `dsbx tools` / "dsbx " mentions in prompt or instruction
+7. **Sweep all `dsbx tools` / "dsbx " mentions in prompt or instruction
    strings** to confirm the only ones in `front/` come from `sandbox.ts`
    (the prose) and `image/registry.ts:190` (the manifest entry). The
    other `dsbx` references in `egress.ts` and `image/registry.ts:183-187`
    are runtime/install plumbing, not prompts.
-9. **Document** the two-flag matrix in the PR description:
+8. **Document** the two-flag matrix in the PR description:
    - `sandbox_tools` only → bash, egress, file attachments. No `dsbx tools`.
    - `sandbox_tools` + `sandbox_dsbx_tools` → full feature, today's behavior.
    - `sandbox_dsbx_tools` only → no effect (no sandbox to call from).
-10. **Audit logging** (follow-up, not a blocker): add an audit event for
-    `call_tool` so the admin surface for the new flag has visibility.
-11. **Type-check & format:** `nvm use && cd front && NODE_OPTIONS="--max-old-space-size=8192" npx tsgo --noEmit`,
+9. **Audit logging** (follow-up, not a blocker): add an audit event for
+   `call_tool` so the admin surface for the new flag has visibility.
+10. **Type-check & format:** `nvm use && cd front && NODE_OPTIONS="--max-old-space-size=8192" npx tsgo --noEmit`,
     then `npm run format:changed`.
 
 ## Rollout sequence

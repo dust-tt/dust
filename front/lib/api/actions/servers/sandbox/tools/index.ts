@@ -26,7 +26,6 @@ import {
   addSandboxPolicyDomain,
   parseExactEgressDomain,
 } from "@app/lib/api/sandbox/egress_policy";
-import { hasDsbxToolsEnabled } from "@app/lib/api/sandbox/feature_flags";
 import {
   mountConversationFiles,
   refreshGcsToken,
@@ -43,6 +42,7 @@ import { recordToolDuration } from "@app/lib/api/sandbox/instrumentation";
 import type { ExecResult } from "@app/lib/api/sandbox/provider";
 import { startTelemetry } from "@app/lib/api/sandbox/telemetry";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import logger from "@app/logger/logger";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
@@ -109,9 +109,9 @@ export async function buildDescribeToolsetOutput(
   providerId: ModelProviderIdType,
   format: "json" | "yaml"
 ): Promise<Result<Array<{ type: "text"; text: string }>, MCPError>> {
-  const hasDsbxTools = await hasDsbxToolsEnabled(auth);
+  const flags = await getFeatureFlags(auth);
   const toolsResult = getToolsForProvider(auth, providerId, {
-    includeDsbxTools: hasDsbxTools,
+    includeDsbxTools: flags.includes("sandbox_dsbx_tools"),
   });
   if (toolsResult.isErr()) {
     return new Err(new MCPError(toolsResult.error.message));
