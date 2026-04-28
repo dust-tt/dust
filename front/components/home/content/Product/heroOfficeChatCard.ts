@@ -47,11 +47,35 @@ export function buildChatCardAgentAvatar(): HTMLDivElement {
 }
 
 // ---------------------------------------------------------------------------
+// Tool brand-mark map. Add an entry here when a new logo SVG is dropped into
+// /static/landing/home/tools — the chat-card parser swaps the textual chip
+// for the image automatically. Tools without a mapping fall back to a text
+// chip with the brand name.
+// ---------------------------------------------------------------------------
+
+const TOOL_LOGOS: Record<string, string> = {
+  slack: "/static/landing/home/tools/slack.svg",
+  snowflake: "/static/landing/home/tools/snowflake.svg",
+  hubspot: "/static/landing/home/tools/hubspot.svg",
+  notion: "/static/landing/home/tools/notion.svg",
+  zendesk: "/static/landing/home/tools/zendesk.svg",
+  salesforce: "/static/landing/home/tools/salesforce.svg",
+  github: "/static/landing/home/tools/github.svg",
+  datadog: "/static/landing/home/tools/datadog.svg",
+  statuspage: "/static/landing/home/tools/statuspage.svg",
+  figma: "/static/landing/home/tools/figma.svg",
+  gmail: "/static/landing/home/tools/gmail.svg",
+  "google docs": "/static/landing/home/tools/google-docs.svg",
+  linkedin: "/static/landing/home/tools/linkedin.svg",
+};
+
+// ---------------------------------------------------------------------------
 // Tokenizer for chat-card body copy.
 // Recognized inline syntax:
 //   **bold**          -> bold span
 //   @mention          -> .mention chip (.agent-mention if it references an
 //                        agent, e.g. "@QualBot")
+//   {Tool}            -> .tool-chip (e.g. {Slack}, {HubSpot}, {Salesforce})
 //   * bullet at line start -> bullet item
 //   > closer at line start -> closer block
 // ---------------------------------------------------------------------------
@@ -73,7 +97,8 @@ export function parseRichMessage(msg: string): any[] {
     // Mentions accept Unicode letters/digits so accented first names
     // (Clément, Adèle, Théo, …) and dashes (Lucien-Brun) stay inside the
     // chip instead of breaking at the first non-ASCII character.
-    const re = /(\*\*[^*]+\*\*|@\p{L}[\p{L}\p{N}_-]*)/gu;
+    // Tool chips wrap brand names in braces: {Slack}, {Google Workspace}.
+    const re = /(\*\*[^*]+\*\*|@\p{L}[\p{L}\p{N}_-]*|\{[^}]+\})/gu;
     let lastIdx = 0;
     let m: RegExpExecArray | null;
     while ((m = re.exec(line)) !== null) {
@@ -91,6 +116,13 @@ export function parseRichMessage(msg: string): any[] {
         tokens.push({
           kind: "bold",
           text: tk.slice(2, -2),
+          isBullet: lineStart && isBullet,
+          isCloser: lineStart && isCloser,
+        });
+      } else if (tk.startsWith("{") && tk.endsWith("}")) {
+        tokens.push({
+          kind: "tool",
+          text: tk.slice(1, -1),
           isBullet: lineStart && isBullet,
           isCloser: lineStart && isCloser,
         });
@@ -357,6 +389,21 @@ export function createChatCard(deps: ChatCardDeps): ChatCardModule {
               : "");
         } else if (token.kind === "bold") {
           el = document.createElement("strong");
+        } else if (token.kind === "tool") {
+          el = document.createElement("span");
+          el.className = "tool-chip";
+          const logo = TOOL_LOGOS[token.text.toLowerCase().trim()];
+          if (logo) {
+            // When we have a brand mark, swap the chip body for the logo and
+            // render the brand name as alt-text only — keeps the chat card
+            // dense without losing accessibility.
+            el.classList.add("tool-chip-logo");
+            const img = document.createElement("img");
+            img.src = logo;
+            img.alt = token.text;
+            img.draggable = false;
+            el.appendChild(img);
+          }
         } else {
           el = document.createElement("span");
         }
@@ -457,6 +504,20 @@ export function createChatCard(deps: ChatCardDeps): ChatCardModule {
               caret.parentNode.removeChild(caret);
             }
             curLine.appendChild(caret);
+          }
+          // Tool chips are branded entities — render whole, not by character.
+          if (tok.kind === "tool") {
+            if (curTextNode) {
+              curTextNode.data = tok.text;
+            }
+            tokIdx++;
+            charIdx = 0;
+            curTextNode = null;
+            if (caret.parentNode) {
+              caret.parentNode.removeChild(caret);
+            }
+            curLine.appendChild(caret);
+            return;
           }
           if (charIdx < tok.text.length) {
             charIdx++;

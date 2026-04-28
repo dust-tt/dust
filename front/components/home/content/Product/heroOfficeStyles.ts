@@ -285,6 +285,24 @@ export const SCENE_CSS = `
 .dust-floor-host .chat-card-body .mention.agent-mention {
   background: rgba(17,20,24,0.08); color: #1A1D21;
 }
+.dust-floor-host .chat-card-body .tool-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 0 6px; margin: 0 1px;
+  background: #F1F4F8; color: #1A1D21;
+  border: 1px solid rgba(17,20,24,0.06);
+  border-radius: 5px; font-weight: 500;
+  white-space: nowrap;
+  vertical-align: -2px;
+}
+.dust-floor-host .chat-card-body .tool-chip.tool-chip-logo {
+  padding: 0 2px; gap: 5px;
+  background: transparent; border: none;
+}
+.dust-floor-host .chat-card-body .tool-chip.tool-chip-logo img {
+  display: block;
+  width: 1.05em; height: 1.05em;
+  object-fit: contain;
+}
 .dust-floor-host .chat-card-body ul {
   list-style: none; padding: 2px 0; margin: 6px 0 0;
 }
