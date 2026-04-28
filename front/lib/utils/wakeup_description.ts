@@ -1,5 +1,5 @@
 import type { WakeUpType } from "@app/types/assistant/wakeups";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { CronExpressionParser } from "cron-parser";
 import cronstrue from "cronstrue";
 
@@ -26,7 +26,10 @@ export function getNextWakeUpFireAt(wakeUp: WakeUpType): number {
         .toDate()
         .getTime();
     default:
-      return assertNever(config);
+      assertNeverAndIgnore(config);
+      // Unknown schedule type from a newer server: treat as "fires now" so
+      // the optimistic-clear timer clears the indicator on the next tick.
+      return Date.now();
   }
 }
 
@@ -72,6 +75,7 @@ export function describeWakeUpSchedule(wakeUp: WakeUpType): string {
       return description.charAt(0).toLowerCase() + description.slice(1);
     }
     default:
-      return assertNever(config);
+      assertNeverAndIgnore(config);
+      return "";
   }
 }
