@@ -6,7 +6,9 @@ import {
   processAttachment,
 } from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
 import { sanitizeFilename } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
+import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { OUTLOOK_TOOLS_METADATA } from "@app/lib/api/actions/servers/outlook/mail_metadata";
+import { WorkspaceSensitivityLabelConfigResource } from "@app/lib/resources/workspace_sensitivity_label_config_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { Err, Ok } from "@app/types/shared/result";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
@@ -134,7 +136,7 @@ interface OutlookFolder {
 const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
   get_messages: async (
     { search, folderName, top = 10, skip = 0, select, sharedMailboxAddress },
-    { authInfo }
+    { authInfo, auth, agentLoopContext }
   ) => {
     const accessToken = authInfo?.token;
     if (!accessToken) {
@@ -142,6 +144,8 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
     }
 
     const basePath = getMailboxBasePath(sharedMailboxAddress);
+
+    console.log("GET MESSAGES CALLED WITH PARAMS");
 
     // If folderName is provided, search for the folder and get its ID
     let folderId: string | undefined;
@@ -182,6 +186,188 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
       folderId = folder.id;
     }
 
+    // Check if the workspace has sensitivity label filtering configured.
+    const toolConfig = agentLoopContext?.runContext?.toolConfiguration;
+    const internalMCPServerId =
+      toolConfig && isLightServerSideMCPToolConfiguration(toolConfig)
+        ? toolConfig.internalMCPServerId
+        : null;
+
+    let allowedLabels: string[] = [];
+    if (internalMCPServerId) {
+      const labelConfig =
+        await WorkspaceSensitivityLabelConfigResource.fetchBySource(auth, {
+          sourceType: "mcp_connection",
+          sourceId: internalMCPServerId,
+        });
+      allowedLabels = (labelConfig?.allowedLabels ?? []) as string[];
+    }
+
+    if (allowedLabels.length > 0) {
+      // Two parallel requests:
+      // 1. /search/query with KQL to get messages that have an allowed label.
+      // 2. Regular messages endpoint expanded with the MIP MAPI property
+      //    (msip_labels). Messages where singleValueExtendedProperties is absent
+      //    have no sensitivity label and are safe to include.
+      // Results are merged and deduplicated by id.
+      const MIP_EXTENDED_PROP =
+        "String {00020386-0000-0000-C000-000000000046} Name msip_labels";
+
+      const labelQueryParts = allowedLabels.map(
+        (label) => `InformationProtectionLabelId:${label}`
+      );
+      const labelKql = labelQueryParts.join(" OR ");
+      const labeledQueryString = search
+        ? `(${search}) AND (${labelKql})`
+        : labelKql;
+
+      const defaultSearchFields = [
+        "id",
+        "conversationId",
+        "subject",
+        "bodyPreview",
+        "importance",
+        "receivedDateTime",
+        "sentDateTime",
+        "hasAttachments",
+        "isDraft",
+        "isRead",
+        "from",
+        "toRecipients",
+        "ccRecipients",
+        "bccRecipients",
+        "replyTo",
+        "parentFolderId",
+      ];
+
+      const searchRequest: Record<string, unknown> = {
+        entityTypes: ["message"],
+        query: { queryString: labeledQueryString },
+        from: skip,
+        size: Math.min(top, 100),
+        fields: select && select.length > 0 ? select : defaultSearchFields,
+      };
+      if (sharedMailboxAddress) {
+        searchRequest.contentSources = [
+          `/users/${encodeURIComponent(sharedMailboxAddress)}/messages`,
+        ];
+      }
+
+      // Build the unlabeled messages request using the regular messages endpoint.
+      const unlabeledParams = new URLSearchParams();
+      // Over-fetch to compensate for labeled messages that will be filtered out client-side.
+      unlabeledParams.append("$top", Math.min(top * 2, 100).toString());
+      unlabeledParams.append("$skip", skip.toString());
+      unlabeledParams.append(
+        "$expand",
+        `singleValueExtendedProperties($filter=id eq '${MIP_EXTENDED_PROP}')`
+      );
+      if (search) {
+        unlabeledParams.append("$search", `"${search}"`);
+      }
+      if (select && select.length > 0) {
+        unlabeledParams.append("$select", select.join(","));
+      } else {
+        unlabeledParams.append(
+          "$select",
+          "id,conversationId,subject,bodyPreview,importance,receivedDateTime,sentDateTime,hasAttachments,isDraft,isRead,from,toRecipients,ccRecipients,bccRecipients,replyTo,parentFolderId"
+        );
+      }
+      const unlabeledEndpoint = folderId
+        ? `${basePath}/mailFolders/${folderId}/messages?${unlabeledParams.toString()}`
+        : `${basePath}/messages?${unlabeledParams.toString()}`;
+
+      const [labeledResponse, unlabeledResponse] = await Promise.all([
+        fetchFromOutlook("/search/query", accessToken, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ requests: [searchRequest] }),
+        }),
+        fetchFromOutlook(unlabeledEndpoint, accessToken, { method: "GET" }),
+      ]);
+
+      if (!labeledResponse.ok) {
+        const errorText = await getErrorText(labeledResponse);
+        return new Err(
+          new MCPError(
+            `Failed to get messages: ${labeledResponse.status} ${labeledResponse.statusText} - ${errorText}`
+          )
+        );
+      }
+      if (!unlabeledResponse.ok) {
+        const errorText = await getErrorText(unlabeledResponse);
+        return new Err(
+          new MCPError(
+            `Failed to get messages: ${unlabeledResponse.status} ${unlabeledResponse.statusText} - ${errorText}`
+          )
+        );
+      }
+
+      const [labeledResult, unlabeledResult] = await Promise.all([
+        labeledResponse.json(),
+        unlabeledResponse.json(),
+      ]);
+
+      const labeledHits: Array<{ hitId: string; resource: OutlookMessage }> =
+        labeledResult?.value?.[0]?.hitsContainers?.[0]?.hits ?? [];
+      const allUnlabeled: Array<
+        OutlookMessage & {
+          singleValueExtendedProperties?: unknown[];
+        }
+      > = unlabeledResult?.value ?? [];
+      const unlabeledMessages = allUnlabeled.filter(
+        (m) =>
+          !m.singleValueExtendedProperties ||
+          m.singleValueExtendedProperties.length === 0
+      );
+
+      const messages: OutlookMessage[] = [
+        ...labeledHits.map((hit) => ({ ...hit.resource, id: hit.hitId })),
+        ...unlabeledMessages,
+      ]
+        .sort((a, b) => {
+          const aTime = a.sentDateTime ? new Date(a.sentDateTime).getTime() : 0;
+          const bTime = b.sentDateTime ? new Date(b.sentDateTime).getTime() : 0;
+          return bTime - aTime;
+        })
+        .slice(0, top);
+      console.log("===LABELED MESSAGES===", labeledHits.length);
+
+      console.log(
+        "===UNLABELED MESSAGES===",
+        JSON.stringify(unlabeledMessages, null, 2)
+      );
+
+      console.log(
+        "===TOTAL MESSAGES AFTER MERGE===",
+        JSON.stringify(messages, null, 2)
+      );
+
+      const labeledContainer =
+        labeledResult?.value?.[0]?.hitsContainers?.[0] ?? {};
+
+      return new Ok([
+        { type: "text" as const, text: "Messages fetched successfully" },
+        {
+          type: "text" as const,
+          text: JSON.stringify(
+            {
+              messages,
+              totalCount:
+                (labeledContainer.total ?? 0) +
+                (unlabeledResult?.["@odata.count"] ?? 0),
+              moreResultsAvailable:
+                labeledContainer.moreResultsAvailable ||
+                !!unlabeledResult?.["@odata.nextLink"],
+            },
+            null,
+            2
+          ),
+        },
+      ]);
+    }
+
+    // Standard path: no sensitivity label filter configured.
     const params = new URLSearchParams();
     params.append("$top", Math.min(top, 100).toString());
 
