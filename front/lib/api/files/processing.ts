@@ -31,12 +31,28 @@ import ConvertAPI from "convertapi";
 import fs from "fs";
 import type { IncomingMessage } from "http";
 import imageSize from "image-size";
-import { Readable } from "stream";
+import DOMPurify from "isomorphic-dompurify";
+import { Readable, Writable } from "stream";
 import { pipeline } from "stream/promises";
 import { fileSync } from "tmp";
 
 const UPLOAD_DELAY_AFTER_CREATION_MS = 1000 * 60 * 1; // 1 minute.
 const PROCESSING_TIMEOUT_MS = 1000 * 60 * 5; // 5 minutes.
+
+async function sanitizeSVGStream(source: Readable): Promise<Readable> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of source) {
+    chunks.push(Buffer.from(chunk));
+  }
+  const rawSvg = Buffer.concat(chunks).toString("utf-8");
+
+  const cleanSvg = DOMPurify.sanitize(rawSvg, {
+    USE_PROFILES: { svg: true, svgFilters: true },
+  });
+
+  return Readable.from(cleanSvg);
+}
+
 const CONVERSATION_IMG_MAX_SIZE_PIXELS = "1538";
 const AVATAR_IMG_MAX_SIZE_PIXELS = "256";
 
@@ -645,25 +661,57 @@ export async function processAndStoreFile(
   }
 
   try {
+    const isSvg = file.contentType === "image/svg+xml";
+
     if (content.type === "string") {
+      const source = isSvg
+        ? await sanitizeSVGStream(Readable.from(content.value))
+        : Readable.from(content.value);
       await pipeline(
-        Readable.from(content.value),
+        source,
         file.getWriteStream({ auth, version: "original" })
       );
     } else if (content.type === "readable") {
+      const source = isSvg
+        ? await sanitizeSVGStream(content.value)
+        : content.value;
       await pipeline(
-        content.value,
+        source,
         file.getWriteStream({ auth, version: "original" })
       );
     } else {
-      const r = await parseUploadRequest(
-        file,
-        content.value,
-        file.getWriteStream({ auth, version: "original" })
-      );
-      if (r.isErr()) {
-        await file.markAsFailed();
-        return r;
+      if (isSvg) {
+        // For incoming messages with SVG, buffer through parseUploadRequest
+        // to a temporary stream, sanitize, then write to storage.
+        const chunks: Buffer[] = [];
+        const bufferStream = new Writable({
+          write(chunk, _encoding, callback) {
+            chunks.push(Buffer.from(chunk));
+            callback();
+          },
+        });
+        const r = await parseUploadRequest(file, content.value, bufferStream);
+        if (r.isErr()) {
+          await file.markAsFailed();
+          return r;
+        }
+        const sanitized = await sanitizeSVGStream(
+          Readable.from(Buffer.concat(chunks))
+        );
+        await pipeline(
+          sanitized,
+          file.getWriteStream({ auth, version: "original" })
+        );
+      } else {
+        const r = await parseUploadRequest(
+          file,
+          content.value,
+          file.getWriteStream({ auth, version: "original" })
+        );
+        if (r.isErr()) {
+          await file.markAsFailed();
+          return r;
+        }
       }
     }
   } catch (err) {

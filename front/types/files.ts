@@ -209,7 +209,7 @@ export const FILE_FORMATS = {
   "image/png": { cat: "image", exts: [".png"], isSafeToDisplay: true },
   "image/gif": { cat: "image", exts: [".gif"], isSafeToDisplay: true },
   "image/webp": { cat: "image", exts: [".webp"], isSafeToDisplay: true },
-  "image/svg+xml": { cat: "image", exts: [".svg"], isSafeToDisplay: true },
+  "image/svg+xml": { cat: "image", exts: [".svg"], isSafeToDisplay: false },
   "image/bmp": { cat: "image", exts: [".bmp"], isSafeToDisplay: true },
 
   // Structured.
