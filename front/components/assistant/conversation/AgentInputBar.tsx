@@ -18,7 +18,7 @@ import { useCancelMessage, useConversation } from "@app/hooks/conversations";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { useConversationWakeUps } from "@app/lib/swr/wakeups";
-import { formatWakeUpTime } from "@app/lib/utils/wakeup_description";
+import { describeWakeUpSchedule } from "@app/lib/utils/wakeup_description";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import {
   isRichAgentMention,
@@ -115,7 +115,7 @@ export const AgentInputBar = ({
   const isActiveWakeUpOwner = activeWakeUp?.user.sId === context.user.sId;
   const wakeUpBlockMessage =
     activeWakeUp && !isActiveWakeUpOwner
-      ? `Conversation paused - a wake-up is scheduled for ${formatWakeUpTime(activeWakeUp)}`
+      ? `Conversation paused - a wake-up is scheduled ${describeWakeUpSchedule(activeWakeUp)}`
       : null;
 
   const autoMentions = useMemo(() => {

@@ -39,10 +39,12 @@ export const WakeUpBanner = ({
           in text-muted-foreground by default; override the reason to the
           normal foreground color, let the schedule text inherit the muted
           color. */}
-      <span className="text-foreground dark:text-foreground-night">
-        {wakeUp.reason}
-      </span>
-      <span className="ml-2">{scheduleDescription}</span>
+      <div className="flex min-w-0 items-center gap-2">
+        <span className="min-w-0 truncate text-foreground dark:text-foreground-night">
+          {wakeUp.reason}
+        </span>
+        <span className="shrink-0">{scheduleDescription}</span>
+      </div>
       {isOwner && (
         <ContentMessageAction
           icon={ActionTrashIcon}

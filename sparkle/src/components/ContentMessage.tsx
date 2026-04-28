@@ -218,7 +218,7 @@ function ContentMessageInline({
       {icon && (
         <Icon size="sm" visual={icon} className={iconVariants({ variant })} />
       )}
-      <div className={cn("s-flex-1", textVariants({ variant }))}>
+      <div className={cn("s-flex-1 s-min-w-0", textVariants({ variant }))}>
         {title && <span className={titleVariants({ variant })}>{title}</span>}
         {title && contentChildren.length > 0 && ": "}
         {contentChildren}

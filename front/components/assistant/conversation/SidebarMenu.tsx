@@ -47,6 +47,7 @@ import {
   getProjectRoute,
   getSkillBuilderRoute,
 } from "@app/lib/utils/router";
+import { formatWakeUpSidebarLabel } from "@app/lib/utils/wakeup_description";
 import {
   type ConversationListItemType,
   type ConversationWithoutContentType,
@@ -1207,15 +1208,10 @@ interface WakeUpSuffixProps {
 }
 
 function WakeUpSuffix({ nextWakeupAt }: WakeUpSuffixProps) {
-  const date = new Date(nextWakeupAt);
-  const hours = date.getHours() % 12 || 12;
-  const minutes = String(date.getMinutes()).padStart(2, "0");
-  const timeStr = `${hours}:${minutes}`;
-
   return (
     <span className="copy-xs flex items-center gap-1 text-muted-foreground dark:text-muted-foreground-night">
       <Icon visual={ActionTimeIcon} size="xs" />
-      {timeStr}
+      {formatWakeUpSidebarLabel(nextWakeupAt)}
     </span>
   );
 }
