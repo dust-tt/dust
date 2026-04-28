@@ -1,6 +1,7 @@
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 
 export const PROFILE_DIR = "/opt/dust/profile";
+const COMMAND_HEREDOC_DELIMITER = "DUST_CMD_EOF";
 
 export interface WrapCommandOptions {
   timeoutSec?: number;
@@ -19,9 +20,19 @@ export function wrapCommand(
 ): string {
   const profile = getProfileName(providerId);
   const timeoutSec = opts?.timeoutSec ?? 60;
-  // Escape double quotes and backslashes in command for safe embedding
-  const escapedCmd = cmd.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-  return `source ${PROFILE_DIR}/${profile} && shell "${escapedCmd}" ${timeoutSec}`;
+
+  if (cmd.split("\n").includes(COMMAND_HEREDOC_DELIMITER)) {
+    throw new Error(
+      `Command contains the reserved heredoc delimiter '${COMMAND_HEREDOC_DELIMITER}'.`
+    );
+  }
+
+  return [
+    `source ${PROFILE_DIR}/${profile} && shell "$(cat <<'${COMMAND_HEREDOC_DELIMITER}'`,
+    cmd,
+    COMMAND_HEREDOC_DELIMITER,
+    `)" ${timeoutSec}`,
+  ].join("\n");
 }
 
 export function wrapCommandWithCapture(
