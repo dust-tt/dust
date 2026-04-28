@@ -2714,7 +2714,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
    */
   async findAgenticParent(
     auth: Authenticator,
-    { agentMessageSId }: { agentMessageSId: string }
+    { agentMessageId }: { agentMessageId: string }
   ): Promise<{
     conversation: ConversationResource;
     agentMessageId: string;
@@ -2725,7 +2725,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       where: {
         workspaceId: owner.id,
         conversationId: this.id,
-        sId: agentMessageSId,
+        sId: agentMessageId,
       },
       attributes: ["parentId"],
     });

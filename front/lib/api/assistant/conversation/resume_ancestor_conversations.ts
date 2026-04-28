@@ -26,7 +26,7 @@ export async function resumeAncestorConversations(
 
   for (let depth = 0; depth < MAX_CONVERSATION_DEPTH; depth++) {
     const parent = await cursor.conversation.findAgenticParent(auth, {
-      agentMessageSId: cursor.agentMessageId,
+      agentMessageId: cursor.agentMessageId,
     });
     if (!parent) {
       break;
