@@ -23,6 +23,7 @@ interface SlashCommandTooltip {
 }
 
 const DEFAULT_EMPTY_MESSAGE = "No commands found";
+
 const DEFAULT_LIST_MAX_HEIGHT_CLASS_NAME = "max-h-96";
 
 interface ScrollFadeState {

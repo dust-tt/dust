@@ -200,9 +200,6 @@ const InputBarContainer = ({
   const isMobile = useIsMobile();
   const { hasFeature } = useFeatureFlags();
   const isCompactionEnabled = hasFeature("enable_compaction");
-  const isInputBarSlashSuggestionsEnabled = hasFeature(
-    "input_bar_slash_suggestions"
-  );
   const { selectedSingleAgent, setSelectedSingleAgent } =
     useContext(InputBarContext);
 
@@ -241,8 +238,7 @@ const InputBarContainer = ({
   const [showKnowledgePicker, setShowKnowledgePicker] = useState(false);
   const plusButtonRef = useRef<HTMLDivElement>(null);
   const clientType = useClientType();
-  const shouldEnableSlashSuggestion =
-    actions.includes("capabilities") && isInputBarSlashSuggestionsEnabled;
+  const shouldEnableSlashSuggestion = actions.includes("capabilities");
 
   const [selectedNode, setSelectedNode] =
     useState<DataSourceViewContentNode | null>(null);
