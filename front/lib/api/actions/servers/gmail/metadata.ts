@@ -167,6 +167,17 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
       done: "Create Gmail reply draft",
     },
   },
+  archive_message: {
+    description: "Archive a Gmail message by removing it from the inbox. The message is not deleted and can be found via search or in All Mail.",
+    schema: {
+      messageId: z.string().describe("The ID of the message to archive"),
+    },
+    stake: "medium",
+    displayLabels: {
+      running: "Archiving Gmail message",
+      done: "Archive Gmail message",
+    },
+  },
   send_mail: {
     description: `Send an email directly via Gmail.
 - The email will be sent immediately without creating a draft.
@@ -212,7 +223,7 @@ export const GMAIL_SERVER = {
       provider: "google_drive",
       supported_use_cases: ["personal_actions", "platform_actions"],
       scope:
-        "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.compose",
+        "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.compose https://www.googleapis.com/auth/gmail.modify",
     },
     icon: "GmailLogo",
     documentationUrl: "https://docs.dust.tt/docs/gmail",

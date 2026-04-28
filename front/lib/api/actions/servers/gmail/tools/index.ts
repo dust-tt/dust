@@ -246,6 +246,35 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
     ]);
   },
 
+  archive_message: async ({ messageId }, { authInfo }) => {
+    const accessToken = authInfo?.token;
+    if (!accessToken) {
+      return new Err(new MCPError("Authentication required"));
+    }
+
+    const encodedMessageId = encodeURIComponent(messageId);
+    const response = await fetchFromGmail(
+      `/gmail/v1/users/me/messages/${encodedMessageId}/modify`,
+      accessToken,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ removeLabelIds: ["INBOX"] }),
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await getErrorText(response);
+      return new Err(
+        new MCPError(`Failed to archive message: ${errorText}`)
+      );
+    }
+
+    return new Ok([
+      { type: "text" as const, text: "Message archived successfully" },
+    ]);
+  },
+
   get_messages: async (
     { q, maxResults = 10, pageToken, includeAttachments },
     { authInfo }
