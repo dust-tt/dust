@@ -1,7 +1,7 @@
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { makeScript } from "@app/scripts/helpers";
 import { createSeedContext } from "@app/scripts/seed/factories";
-import { seedReinforcement } from "@app/scripts/seed/reinforcement/seedReinforcedAgents";
+import { seedReinforcement } from "@app/scripts/seed/reinforcement/seedReinforcement";
 
 makeScript({}, async ({ execute }, logger) => {
   const ctx = await createSeedContext({ execute, logger });
