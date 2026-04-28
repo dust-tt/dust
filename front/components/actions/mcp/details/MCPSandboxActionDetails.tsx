@@ -13,11 +13,18 @@ import {
 } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
-type SandboxSectionType =
-  | "stdout"
-  | "stderr"
-  | "exit_code"
-  | "network_proxy_logs";
+const SANDBOX_SECTION_TYPES = [
+  "stdout",
+  "stderr",
+  "exit_code",
+  "network_proxy_logs",
+] as const;
+
+type SandboxSectionType = (typeof SANDBOX_SECTION_TYPES)[number];
+
+function isSandboxSectionType(value: string): value is SandboxSectionType {
+  return (SANDBOX_SECTION_TYPES as readonly string[]).includes(value);
+}
 
 interface SandboxSection {
   type: SandboxSectionType;
@@ -34,8 +41,11 @@ function parseSandboxOutput(rawText: string): SandboxSection[] {
   const sections: SandboxSection[] = [];
   for (const match of rawText.matchAll(SECTION_REGEX)) {
     const [, type, content] = match;
+    if (!isSandboxSectionType(type)) {
+      continue;
+    }
     sections.push({
-      type: type as SandboxSectionType,
+      type,
       content: content.replace(/^\n|\n$/g, ""),
     });
   }
