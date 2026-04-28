@@ -234,7 +234,7 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
 
     return (
       <SlashCommandDropdown
-        key={(isSkillsLoading && isServerViewsLoading) ? "loading" : "loaded"}
+        key={isSkillsLoading && isServerViewsLoading ? "loading" : "loaded"}
         ref={dropdownRef}
         items={capabilityItems}
         command={(item) => {
