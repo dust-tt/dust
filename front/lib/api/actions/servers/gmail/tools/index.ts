@@ -265,9 +265,7 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
 
     if (!response.ok) {
       const errorText = await getErrorText(response);
-      return new Err(
-        new MCPError(`Failed to archive message: ${errorText}`)
-      );
+      return new Err(new MCPError(`Failed to archive message: ${errorText}`));
     }
 
     return new Ok([

@@ -168,7 +168,8 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
     },
   },
   archive_message: {
-    description: "Archive a Gmail message by removing it from the inbox. The message is not deleted and can be found via search or in All Mail.",
+    description:
+      "Archive a Gmail message by removing it from the inbox. The message is not deleted and can be found via search or in All Mail.",
     schema: {
       messageId: z.string().describe("The ID of the message to archive"),
     },
