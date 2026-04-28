@@ -1,5 +1,6 @@
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { useAnswerUserQuestion } from "@app/hooks/useAnswerUserQuestion";
+import { useUserAnswerDraft } from "@app/hooks/useUserAnswerDraft";
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import type { UserQuestionAnswer } from "@app/lib/actions/types";
 import { useAuth } from "@app/lib/auth/AuthContext";
@@ -33,6 +34,14 @@ function isPrintableKey(e: KeyboardEvent<HTMLDivElement>) {
   );
 }
 
+function isEditableTarget(target: EventTarget) {
+  return (
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    (target instanceof HTMLElement && target.isContentEditable)
+  );
+}
+
 export function UserAnswerRequired({
   blockedAction,
   triggeringUser,
@@ -46,8 +55,9 @@ export function UserAnswerRequired({
     owner,
   });
 
-  const [selectedOptions, setSelectedOptions] = useState<number[]>([]);
-  const [customResponse, setCustomResponse] = useState("");
+  const answerDraft = useUserAnswerDraft({
+    multiSelect: blockedAction.question.multiSelect,
+  });
   const [isSkipPending, setIsSkipPending] = useState(false);
   const [activeOptionIndex, setActiveOptionIndex] = useState(0);
   const [isCustomResponseFocused, setIsCustomResponseFocused] = useState(false);
@@ -58,13 +68,9 @@ export function UserAnswerRequired({
   const { question } = blockedAction;
   const isTriggeredByCurrentUser = blockedAction.userId === user?.sId;
 
-  const trimmedCustomResponse = customResponse.trim();
-  const isCustomResponseSelected =
-    trimmedCustomResponse.length > 0 && selectedOptions.length === 0;
   const isCustomResponseActive =
-    isCustomResponseFocused || isCustomResponseSelected;
-  const canSubmit =
-    trimmedCustomResponse.length > 0 || selectedOptions.length > 0;
+    isCustomResponseFocused ||
+    answerDraft.answerToSubmit?.customResponse !== undefined;
 
   const isAnswerSubmitting = isSubmitting && !isSkipPending;
   const isSkipSubmitting = isSubmitting && isSkipPending;
@@ -97,25 +103,23 @@ export function UserAnswerRequired({
     setIsSkipPending(false);
   }
 
+  function activateOption(index: number) {
+    setIsCustomResponseFocused(false);
+    setActiveOptionIndex(index);
+  }
+
   function handleOptionClick(index: number) {
     if (isSubmitting) {
       return;
     }
 
-    setIsCustomResponseFocused(false);
-    setActiveOptionIndex(index);
+    activateOption(index);
 
-    if (question.multiSelect) {
-      setSelectedOptions((prev) =>
-        prev.includes(index)
-          ? prev.filter((i) => i !== index)
-          : [...prev, index]
-      );
-      return;
+    const answer = answerDraft.selectOption(index);
+
+    if (answer !== null) {
+      void submitAnswer(answer);
     }
-
-    setSelectedOptions([index]);
-    void submitAnswer({ selectedOptions: [index] });
   }
 
   function moveActiveOption(direction: 1 | -1) {
@@ -130,19 +134,11 @@ export function UserAnswerRequired({
   }
 
   function handleSubmit() {
-    if (isSubmitting) {
+    if (isSubmitting || answerDraft.answerToSubmit === null) {
       return;
     }
 
-    if (!canSubmit) {
-      return;
-    }
-
-    void submitAnswer(
-      selectedOptions.length > 0
-        ? { selectedOptions }
-        : { selectedOptions, customResponse: trimmedCustomResponse }
-    );
+    void submitAnswer(answerDraft.answerToSubmit);
   }
 
   function handleSkip() {
@@ -163,14 +159,32 @@ export function UserAnswerRequired({
 
   function handleStartCustomResponse(character: string) {
     setIsCustomResponseFocused(true);
-    setSelectedOptions([]);
-    setCustomResponse((prev) => `${prev}${character}`);
+    answerDraft.appendCustomResponse(character);
     customResponseInputRef.current?.focus();
   }
 
-  function handleCustomResponseChange(value: string) {
-    setSelectedOptions([]);
-    setCustomResponse(value);
+  function handleCustomResponseKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+    if (
+      e.key === "Backspace" &&
+      answerDraft.customResponse.length === 0 &&
+      question.options.length > 0
+    ) {
+      e.preventDefault();
+      setIsKeyboardNavigating(true);
+      setIsCustomResponseFocused(false);
+      setActiveOptionIndex(question.options.length - 1);
+      containerRef.current?.focus();
+      return;
+    }
+
+    if (
+      e.key === "Enter" &&
+      (!question.multiSelect || e.metaKey || e.ctrlKey)
+    ) {
+      e.preventDefault();
+      setIsKeyboardNavigating(true);
+      handleSubmit();
+    }
   }
 
   function handleContainerKeyDownCapture(e: KeyboardEvent<HTMLDivElement>) {
@@ -182,11 +196,7 @@ export function UserAnswerRequired({
       return;
     }
 
-    if (
-      e.target instanceof HTMLInputElement ||
-      e.target instanceof HTMLTextAreaElement ||
-      (e.target instanceof HTMLElement && e.target.isContentEditable)
-    ) {
+    if (isEditableTarget(e.target)) {
       return;
     }
 
@@ -199,11 +209,7 @@ export function UserAnswerRequired({
   }
 
   function handleContainerKeyDown(e: KeyboardEvent<HTMLDivElement>) {
-    if (
-      e.target instanceof HTMLInputElement ||
-      e.target instanceof HTMLTextAreaElement ||
-      (e.target instanceof HTMLElement && e.target.isContentEditable)
-    ) {
+    if (isEditableTarget(e.target)) {
       return;
     }
 
@@ -280,20 +286,14 @@ export function UserAnswerRequired({
               label={option.label}
               description={option.description}
               counterValue={index + 1}
-              selected={selectedOptions.includes(index)}
+              selected={answerDraft.selectedOptions.includes(index)}
               disableHover={isKeyboardNavigating}
-              onFocusCapture={() => {
-                setIsCustomResponseFocused(false);
-                setActiveOptionIndex(index);
-              }}
-              onMouseEnter={() => {
-                setIsCustomResponseFocused(false);
-                setActiveOptionIndex(index);
-              }}
+              onFocusCapture={() => activateOption(index)}
+              onMouseEnter={() => activateOption(index)}
               className={cn(
                 activeOptionIndex === index &&
                   !isCustomResponseActive &&
-                  !selectedOptions.includes(index) &&
+                  !answerDraft.selectedOptions.includes(index) &&
                   "bg-primary-100 dark:bg-primary-100-night",
                 isKeyboardNavigating && "cursor-none"
               )}
@@ -333,36 +333,14 @@ export function UserAnswerRequired({
                 isKeyboardNavigating && "cursor-none"
               )}
               placeholder="Type something else"
-              value={customResponse}
+              value={answerDraft.customResponse}
               onFocus={() => {
                 setIsCustomResponseFocused(true);
-                setSelectedOptions([]);
+                answerDraft.selectCustomResponse();
               }}
               onBlur={() => setIsCustomResponseFocused(false)}
-              onChange={(e) => handleCustomResponseChange(e.target.value)}
-              onKeyDown={(e) => {
-                if (
-                  e.key === "Backspace" &&
-                  customResponse.length === 0 &&
-                  question.options.length > 0
-                ) {
-                  e.preventDefault();
-                  setIsKeyboardNavigating(true);
-                  setIsCustomResponseFocused(false);
-                  setActiveOptionIndex(question.options.length - 1);
-                  containerRef.current?.focus();
-                  return;
-                }
-
-                if (
-                  e.key === "Enter" &&
-                  (!question.multiSelect || e.metaKey || e.ctrlKey)
-                ) {
-                  e.preventDefault();
-                  setIsKeyboardNavigating(true);
-                  handleSubmit();
-                }
-              }}
+              onChange={(e) => answerDraft.updateCustomResponse(e.target.value)}
+              onKeyDown={handleCustomResponseKeyDown}
               name="custom-response"
               disabled={isSubmitting}
             />
@@ -387,7 +365,7 @@ export function UserAnswerRequired({
           variant="highlight"
           size="sm"
           isLoading={isAnswerSubmitting}
-          disabled={!canSubmit}
+          disabled={answerDraft.answerToSubmit === null}
           onClick={handleSubmit}
           aria-label="Send answer"
         />
