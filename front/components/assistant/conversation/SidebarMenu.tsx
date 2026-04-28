@@ -1245,6 +1245,32 @@ const ConversationListItem = memo(
       handleMenuOpenChange,
     } = useConversationMenu();
 
+    const { mutateConversations } = useConversations({
+      workspaceId: owner.sId,
+      options: { disabled: true },
+    });
+
+    // Clear the wake-up indicator optimistically once its scheduled fire time
+    // passes. The server reindexes ES after firing, but the sidebar has no
+    // event channel to learn about fires in background conversations.
+    useEffect(() => {
+      const { nextWakeupAt, sId } = conversation;
+      if (!nextWakeupAt) {
+        return;
+      }
+      const delay = Math.max(nextWakeupAt - Date.now(), 0);
+      const timer = setTimeout(() => {
+        void mutateConversations(
+          (currentData: ConversationListItemType[] | undefined) =>
+            currentData?.map((c) =>
+              c.sId === sId ? { ...c, nextWakeupAt: null } : c
+            ),
+          { revalidate: false }
+        );
+      }, delay);
+      return () => clearTimeout(timer);
+    }, [conversation, mutateConversations]);
+
     const conversationLabel = getConversationDisplayTitle(conversation);
 
     const handleDragStart = useCallback(
