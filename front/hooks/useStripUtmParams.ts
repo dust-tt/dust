@@ -15,10 +15,11 @@ import { useCookies } from "react-cookie";
 const DUST_COOKIES_ACCEPTED_NAME = "dust-cookies-accepted";
 
 /**
- * Captures UTM parameters from the URL, stores them in sessionStorage,
- * then strips them from the URL bar via a shallow router replace.
- * Also ensures the `_dust_aid` anonymous device ID cookie exists once
- * cookies have been accepted (consent banner or non-GDPR auto-accept).
+ * Post-consent only: captures UTM params, click IDs, landing context, and
+ * the `dust_aid` URL param into first-party cookies/sessionStorage, then
+ * strips tracking params from the URL. Also ensures the `_dust_aid` cookie
+ * exists. Pre-consent, nothing is written and the URL is left untouched so
+ * UTMs can still be captured if consent arrives later in the same page.
  */
 export function useStripUtmParams() {
   const router = useAppRouter();
@@ -28,15 +29,12 @@ export function useStripUtmParams() {
   );
 
   useEffect(() => {
-    if (!router.isReady) {
+    if (!router.isReady || !cookiesAccepted) {
       return;
     }
 
     try {
-      // Re-establish anonymous device ID from email CTA links (?dust_aid=...).
       persistDustAidFromURL();
-
-      // Capture first-touch landing context (referrer, host, url, pathname).
       persistLandingContext();
 
       const params = Object.fromEntries(
@@ -49,7 +47,6 @@ export function useStripUtmParams() {
         persistUTMCookies(utmData);
       }
 
-      // Strip tracking params (UTMs, click IDs, dust_aid) from the URL bar.
       const url = new URL(window.location.href);
       let hasTrackingParam = false;
       for (const key of MARKETING_PARAMS) {
@@ -68,9 +65,8 @@ export function useStripUtmParams() {
     } catch {
       // Ignore errors (e.g. sessionStorage unavailable).
     }
-  }, [router.isReady]);
+  }, [router.isReady, cookiesAccepted]);
 
-  // Create the anonymous device ID cookie once consent is given.
   useEffect(() => {
     if (cookiesAccepted) {
       getOrCreateAnonymousId();

@@ -9,9 +9,9 @@ import { useAppRouter } from "@app/lib/platform";
 import { useUser } from "@app/lib/swr/user";
 import { useWorkspaceActiveSubscription } from "@app/lib/swr/workspaces";
 import {
-  DUST_ANONYMOUS_ID_COOKIE,
   getOrCreateAnonymousId,
   getPostHogCookieDomain,
+  readAnonymousIdFromDocumentCookie,
 } from "@app/lib/utils/anonymous_id";
 import {
   getStoredLandingContext,
@@ -157,12 +157,10 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
 
     const cookieDomain = getPostHogCookieDomain();
 
-    // Use the persistent _dust_aid cookie as the initial distinct_id so that
-    // anonymous events share a stable identity across page loads. Without this,
-    // memory persistence generates a new throwaway distinct_id on every page
-    // load, and only the last one gets stitched when identify() fires — all
-    // prior anonymous browsing events are orphaned.
-    const anonymousId = getOrCreateAnonymousId();
+    // Bootstrap from existing _dust_aid (set post-consent) so returning
+    // consented visitors keep a stable id. Absent -> PostHog generates an
+    // ephemeral memory-only distinct_id; pre-consent events stay orphaned.
+    const anonymousId = readAnonymousIdFromDocumentCookie();
 
     posthog.init(POSTHOG_KEY, {
       api_host: `${config.getApiBaseUrl()}/subtle1`,
@@ -250,14 +248,8 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
           };
         }
 
-        // Inject the persistent anonymous device ID from the _dust_aid cookie
-        // so pre-signup events can be stitched to identified users later.
-        const aidCookie = document.cookie
-          .split("; ")
-          .find((c) => c.startsWith(`${DUST_ANONYMOUS_ID_COOKIE}=`));
-        if (aidCookie) {
-          event.properties["dust_anonymous_id"] = aidCookie.split("=")[1];
-        }
+        // Post-consent, dust_anonymous_id is set as a super property via
+        // posthog.register() in Phase 2, so every event carries it.
 
         // Inject referrer and user-agent as non-PII event properties.
         if (document.referrer) {
