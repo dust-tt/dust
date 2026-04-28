@@ -5,6 +5,7 @@ import {
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
+  LinkWrapper,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
@@ -110,14 +111,14 @@ export function ContextUsageIndicator({
                   isLoading={isCompacting}
                 />
               )}
-              <a
+              <LinkWrapper
                 href={COMPACTION_GUIDE_URL}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-sm text-highlight underline hover:text-highlight-light dark:text-highlight-night dark:hover:text-highlight-light-night"
               >
                 Learn more
-              </a>
+              </LinkWrapper>
             </div>
           </div>
         </PopoverContent>
