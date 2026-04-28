@@ -303,6 +303,12 @@ export function useAgentMessageStream({
     []
   );
 
+  // Track event ids already processed by this hook instance so that if the
+  // SSE stream replays history (e.g. on remount with a stale `lastEventId`)
+  // we don't re-append inline activity steps for events we've already seen.
+  // Mirrors the dedup pattern used for conversation events in ConversationViewer.
+  const seenEventIds = useRef<Set<string>>(new Set());
+
   useEffect(() => {
     return () => {
       updateMessageThrottled.cancel();
@@ -353,6 +359,12 @@ export function useAgentMessageStream({
         eventId: string;
         data: AgentMessageStateWithControlEvent;
       } = JSON.parse(eventStr);
+      if (eventPayload.eventId) {
+        if (seenEventIds.current.has(eventPayload.eventId)) {
+          return;
+        }
+        seenEventIds.current.add(eventPayload.eventId);
+      }
       const eventType = eventPayload.data.type;
       switch (eventType) {
         case "end-of-stream":

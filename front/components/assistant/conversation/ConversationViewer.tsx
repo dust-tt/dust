@@ -309,6 +309,7 @@ export const ConversationViewer = ({
     isMessagesError,
     isValidating,
     messages,
+    mutateMessages,
     setSize,
     size,
   } = useConversationMessages({
@@ -695,6 +696,12 @@ export const ConversationViewer = ({
             // Re-fetch context usage after the agent finishes so the indicator is up-to-date.
             void mutateContextUsage();
 
+            // Refresh the messages SWR cache so a future remount of this
+            // conversation (e.g. navigating away and back) sees the final
+            // status/activitySteps instead of the stale "created" snapshot,
+            // which would otherwise re-open an SSE replay.
+            void mutateMessages();
+
             // Update the conversation hasError state in the local cache without making a network request.
             void mutateConversations(
               (currentData: ConversationListItemType[] | undefined) =>
@@ -764,6 +771,7 @@ export const ConversationViewer = ({
       mutateConversationAttachments,
       mutateConversationParticipants,
       mutateConversations,
+      mutateMessages,
       user.sId,
     ]
   );
