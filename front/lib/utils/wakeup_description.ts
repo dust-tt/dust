@@ -3,12 +3,26 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import cronstrue from "cronstrue";
 
 // Render an instant as "h:mm" (12-hour, no AM/PM) in the viewer's local
-// timezone. Used by the sidebar conversation-list wake-up indicator.
+// timezone.
 export function formatWakeUpTimeOfDay(timestamp: number): string {
   const date = new Date(timestamp);
   const hours = date.getHours() % 12 || 12;
   const minutes = String(date.getMinutes()).padStart(2, "0");
   return `${hours}:${minutes}`;
+}
+
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+// Compact label for the sidebar conversation-list wake-up indicator. When
+// the next firing is more than a day away the time of day on its own gives
+// the viewer no sense of when — show the abbreviated weekday instead.
+export function formatWakeUpSidebarLabel(timestamp: number): string {
+  if (timestamp - Date.now() > ONE_DAY_MS) {
+    return new Date(timestamp).toLocaleDateString("en-US", {
+      weekday: "short",
+    });
+  }
+  return formatWakeUpTimeOfDay(timestamp);
 }
 
 // Human-friendly schedule phrase used in the wake-up banner and the

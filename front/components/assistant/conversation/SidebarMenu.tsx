@@ -47,7 +47,7 @@ import {
   getProjectRoute,
   getSkillBuilderRoute,
 } from "@app/lib/utils/router";
-import { formatWakeUpTimeOfDay } from "@app/lib/utils/wakeup_description";
+import { formatWakeUpSidebarLabel } from "@app/lib/utils/wakeup_description";
 import {
   type ConversationListItemType,
   type ConversationWithoutContentType,
@@ -1211,7 +1211,7 @@ function WakeUpSuffix({ nextWakeupAt }: WakeUpSuffixProps) {
   return (
     <span className="copy-xs flex items-center gap-1 text-muted-foreground dark:text-muted-foreground-night">
       <Icon visual={ActionTimeIcon} size="xs" />
-      {formatWakeUpTimeOfDay(nextWakeupAt)}
+      {formatWakeUpSidebarLabel(nextWakeupAt)}
     </span>
   );
 }

@@ -1,9 +1,10 @@
 import {
   describeWakeUpSchedule,
+  formatWakeUpSidebarLabel,
   formatWakeUpTimeOfDay,
 } from "@app/lib/utils/wakeup_description";
 import type { WakeUpType } from "@app/types/assistant/wakeups";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Builds a WakeUpType with placeholder fields so tests can focus on
 // scheduleConfig, the only field describeWakeUpSchedule reads.
@@ -137,5 +138,47 @@ describe("describeWakeUpSchedule (cron)", () => {
       timezone: "America/New_York",
     });
     expect(describeWakeUpSchedule(wakeUp)).toBe("at 09:00 AM, every 3 days");
+  });
+});
+
+describe("formatWakeUpSidebarLabel", () => {
+  // Anchor "now" at a known instant so the >24h cutoff is deterministic.
+  // 2026-04-27 is a Monday in local time (the date we use elsewhere in
+  // the file).
+  const NOW = new Date(2026, 3, 27, 12, 0).getTime();
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(NOW));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("renders the time of day when the wake-up is within 24h", () => {
+    const oneHourLater = NOW + 60 * 60 * 1000;
+    expect(formatWakeUpSidebarLabel(oneHourLater)).toBe("1:00");
+  });
+
+  it("renders the time of day for a wake-up exactly 24h away", () => {
+    const exactlyOneDay = NOW + 24 * 60 * 60 * 1000;
+    expect(formatWakeUpSidebarLabel(exactlyOneDay)).toBe("12:00");
+  });
+
+  it("renders the abbreviated weekday when the wake-up is more than 24h away", () => {
+    // 25h after Monday noon -> Tuesday afternoon.
+    const justOverADay = NOW + 25 * 60 * 60 * 1000;
+    expect(formatWakeUpSidebarLabel(justOverADay)).toBe("Tue");
+  });
+
+  it("renders the abbreviated weekday for far-future wake-ups", () => {
+    const fiveDays = NOW + 5 * 24 * 60 * 60 * 1000;
+    expect(formatWakeUpSidebarLabel(fiveDays)).toBe("Sat");
+  });
+
+  it("renders the time of day for past timestamps", () => {
+    const oneHourAgo = NOW - 60 * 60 * 1000;
+    expect(formatWakeUpSidebarLabel(oneHourAgo)).toBe("11:00");
   });
 });
