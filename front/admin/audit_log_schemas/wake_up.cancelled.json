@@ -5,6 +5,8 @@
     { "type": "wake_up" }
   ],
   "metadata": {
-    "agentConfigurationId": "string"
+    "scheduleType": "string",
+    "agentConfigurationId": "string",
+    "userId": "string"
   }
 }

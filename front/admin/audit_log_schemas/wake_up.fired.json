@@ -7,7 +7,6 @@
   "metadata": {
     "scheduleType": "string",
     "agentConfigurationId": "string",
-    "userId": "string",
-    "userEmail": "string"
+    "userId": "string"
   }
 }
