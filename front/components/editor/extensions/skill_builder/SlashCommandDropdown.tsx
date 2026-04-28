@@ -30,6 +30,11 @@ interface ScrollFadeState {
   hasContentBelow: boolean;
 }
 
+const EMPTY_SCROLL_FADE_STATE: ScrollFadeState = {
+  hasContentAbove: false,
+  hasContentBelow: false,
+};
+
 export interface SlashCommand {
   action: string;
   description?: string;
@@ -75,10 +80,9 @@ export const SlashCommandDropdown = forwardRef<
     ref
   ) => {
     const [selectedIndex, setSelectedIndex] = useState(0);
-    const [scrollFadeState, setScrollFadeState] = useState<ScrollFadeState>({
-      hasContentAbove: false,
-      hasContentBelow: false,
-    });
+    const [scrollFadeState, setScrollFadeState] = useState<ScrollFadeState>(
+      EMPTY_SCROLL_FADE_STATE
+    );
     const itemCount = items.length;
     const listRef = useRef<HTMLDivElement>(null);
     const [virtualTriggerStyle, setVirtualTriggerStyle] =
@@ -134,11 +138,8 @@ export const SlashCommandDropdown = forwardRef<
     const updateScrollFadeState = useCallback(() => {
       const list = listRef.current;
 
-      if (!showScrollFade || !list) {
-        setScrollFadeState({
-          hasContentAbove: false,
-          hasContentBelow: false,
-        });
+      if (!list) {
+        setScrollFadeState(EMPTY_SCROLL_FADE_STATE);
         return;
       }
 
@@ -154,7 +155,7 @@ export const SlashCommandDropdown = forwardRef<
           ? previousState
           : nextState
       );
-    }, [showScrollFade]);
+    }, []);
 
     // Reset selected index when items change.
     // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
@@ -163,11 +164,12 @@ export const SlashCommandDropdown = forwardRef<
     }, [items]);
 
     useEffect(() => {
-      if (itemCount === 0) {
-        setScrollFadeState({
-          hasContentAbove: false,
-          hasContentBelow: false,
-        });
+      if (!showScrollFade || itemCount === 0) {
+        setScrollFadeState((previousState) =>
+          previousState.hasContentAbove || previousState.hasContentBelow
+            ? EMPTY_SCROLL_FADE_STATE
+            : previousState
+        );
         return;
       }
 
@@ -188,7 +190,7 @@ export const SlashCommandDropdown = forwardRef<
         window.cancelAnimationFrame(animationFrame);
         resizeObserver.disconnect();
       };
-    }, [itemCount, updateScrollFadeState]);
+    }, [itemCount, showScrollFade, updateScrollFadeState]);
 
     // Update virtual trigger position.
     const updateTriggerPosition = useCallback(() => {
@@ -252,7 +254,7 @@ export const SlashCommandDropdown = forwardRef<
               <div
                 ref={listRef}
                 className={cn("overflow-y-auto", listMaxHeightClassName)}
-                onScroll={updateScrollFadeState}
+                onScroll={showScrollFade ? updateScrollFadeState : undefined}
               >
                 {items.map((item, index) => {
                   const menuItem = (
