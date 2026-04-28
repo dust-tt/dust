@@ -56,16 +56,12 @@ interface MCPToolValidationRequiredProps {
   triggeringUser: UserType | null;
   owner: LightWorkspaceType;
   blockedAction: BlockedToolExecution;
-  conversationId: string;
-  messageId: string;
 }
 
 export function MCPToolValidationRequired({
   triggeringUser,
   owner,
   blockedAction,
-  conversationId,
-  messageId,
 }: MCPToolValidationRequiredProps) {
   const { user } = useAuth();
   const [neverAskAgain, setNeverAskAgain] = useState(false);
@@ -75,7 +71,6 @@ export function MCPToolValidationRequired({
     useBlockedActionsContext();
   const { validateAction, isValidating } = useValidateAction({
     owner,
-    conversationId,
     onError: setErrorMessage,
   });
 
@@ -98,7 +93,6 @@ export function MCPToolValidationRequired({
 
     const result = await validateAction({
       validationRequest: blockedAction,
-      messageId,
       approved:
         approved === "approved" && neverAskAgain ? "always_approved" : approved,
     });
