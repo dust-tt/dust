@@ -117,7 +117,7 @@ describe("GET/PUT /api/w/[wId]/sandbox/agent-egress-requests", () => {
     });
   });
 
-  it("rejects non-admin users", async () => {
+  it("rejects non-admin users on GET", async () => {
     const { req, res, auth } = await createPrivateApiMockRequest({
       method: "GET",
       role: "user",
@@ -132,5 +132,29 @@ describe("GET/PUT /api/w/[wId]/sandbox/agent-egress-requests", () => {
         type: "workspace_auth_error",
       },
     });
+  });
+
+  it("rejects non-admin users on PUT and does not persist or audit", async () => {
+    const { req, res, workspace, auth } = await createPrivateApiMockRequest({
+      method: "PUT",
+      role: "user",
+    });
+    await FeatureFlagFactory.basic(auth, "sandbox_tools");
+    req.body = {
+      enabled: true,
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(403);
+    expect(JSON.parse(res._getData())).toMatchObject({
+      error: {
+        type: "workspace_auth_error",
+      },
+    });
+
+    const updated = await WorkspaceResource.fetchById(workspace.sId);
+    expect(updated?.sandboxAllowAgentEgressRequests).toBe(false);
+    expect(mockEmitAuditLogEvent).not.toHaveBeenCalled();
   });
 });
