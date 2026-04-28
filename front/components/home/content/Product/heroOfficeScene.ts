@@ -20,10 +20,7 @@ import type {
   Scenario,
 } from "@app/components/home/content/Product/heroOfficeScenario";
 import { SCENE_CSS } from "@app/components/home/content/Product/heroOfficeStyles";
-import {
-  ACTIVITY_EMOJIS,
-  buildHuman,
-} from "@app/components/home/content/Product/heroOfficeUserAvatar";
+import { buildHuman } from "@app/components/home/content/Product/heroOfficeUserAvatar";
 import type { TeamMember } from "@app/components/home/content/shared/team";
 
 // =============================================================================
@@ -133,29 +130,6 @@ export function mountFloorScene(
       humansLayer.appendChild(buildHuman(x, y, seed++, room, person));
     }
   }
-
-  trackedSetInterval(() => {
-    const all = humansLayer.querySelectorAll(".activity-emoji");
-    if (!all.length) {
-      return;
-    }
-    const howMany = 1 + (Math.random() < 0.35 ? 1 : 0);
-    for (let i = 0; i < howMany; i++) {
-      const el = all[Math.floor(Math.random() * all.length)];
-      let next =
-        ACTIVITY_EMOJIS[Math.floor(Math.random() * ACTIVITY_EMOJIS.length)];
-      if (next === el.textContent) {
-        next =
-          ACTIVITY_EMOJIS[
-            (ACTIVITY_EMOJIS.indexOf(next) + 1) % ACTIVITY_EMOJIS.length
-          ];
-      }
-      el.textContent = next;
-      el.classList.remove("pop");
-      void el.getBBox();
-      el.classList.add("pop");
-    }
-  }, 2600);
 
   // Pre-build every unique agent referenced by any scenario, so each one
   // already sits in its home room when its scenario starts. Idle agents

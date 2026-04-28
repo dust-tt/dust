@@ -97,7 +97,7 @@ export const SCENE_CSS = `
 }
 .dust-floor-host .human.sway .human-body { animation-duration: 4.8s; animation-name: dust-floor-human-bob; }
 
-.dust-floor-host .status-dot { stroke: #FFFFFF; stroke-width: 1.5; }
+.dust-floor-host .status-dot { stroke: #E9ECEF; stroke-width: 3; }
 .dust-floor-host .status-online { fill: #3BA55D; }
 .dust-floor-host .status-idle   { fill: #FAA81A; }
 .dust-floor-host .status-busy   { fill: #ED4245; }

@@ -303,7 +303,17 @@ export function createChatCard(deps: ChatCardDeps): ChatCardModule {
       // Per-frame tracker: position the anchor at the speaker's screen
       // position. svgEl.getScreenCTM() composes any browser zoom / page
       // scroll, and hostEl.getCTM() applies the speaker's local transform.
+      //
+      // Only write the transform when the screen position actually changed.
+      // Speakers stand still during dialogue, so the writes collapse to one
+      // per scenario beat instead of one per rAF — which avoids forcing a
+      // layout invalidation on the SVG subtree every frame. At high browser
+      // zoom that per-frame invalidation made the avatars rasterize at a
+      // budget the browser couldn't meet, so some `.human` groups got
+      // dropped each frame and the whole floor flickered independently.
       let trackerActive = true;
+      let lastX = Number.NaN;
+      let lastY = Number.NaN;
       const updatePos = () => {
         if (!trackerActive) {
           return;
@@ -313,7 +323,11 @@ export function createChatCard(deps: ChatCardDeps): ChatCardModule {
         if (ctm) {
           const x = ctm.e - overlayRect.left;
           const y = ctm.f - overlayRect.top;
-          anchor.style.transform = `translate(${x}px, ${y}px)`;
+          if (x !== lastX || y !== lastY) {
+            lastX = x;
+            lastY = y;
+            anchor.style.transform = `translate(${x}px, ${y}px)`;
+          }
         }
         trackedRAF(updatePos);
       };

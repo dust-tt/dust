@@ -36,48 +36,50 @@ export function HeroOfficeSection() {
       avatarPool: TEAM_POOL,
       scenarios: homeScenarios,
     });
-    // Pause the scene's CSS animations + chat-card typewriter when the hero
-    // scrolls out of view OR the tab loses focus. Keeps the GPU/CPU idle
-    // while the user is reading the rest of the page. The conductor itself
-    // (setTimeout-driven beat scheduler) keeps ticking — that's a few µs per
-    // beat — but every active CSS keyframe is gated by `[data-paused="true"]`.
+    // Pause the scene's CSS animations when the hero scrolls out of view OR
+    // the tab loses focus. The CSS rule
+    //   .dust-floor-host[data-paused="true"] * { animation-play-state: paused; }
+    // freezes every running keyframe. We only toggle the attribute when the
+    // resolved state actually changed (idempotent) and we ignore transient
+    // off-screen flips with a 500ms debounce so browser-zoom reflow chatter
+    // doesn't reach the DOM. WAAPI animations (chat card enter/exit) are
+    // intentionally NOT paused — pausing them mid-fade snaps the playhead
+    // and produces a visible flicker.
+    let currentPaused = false;
     const setPaused = (paused: boolean) => {
+      if (paused === currentPaused) {
+        return;
+      }
+      currentPaused = paused;
       if (paused) {
         host.setAttribute("data-paused", "true");
       } else {
         host.removeAttribute("data-paused");
       }
-      // CSS `animation-play-state` only catches pure CSS keyframes. The chat
-      // card uses Web Animations API (`element.animate(...)`) for its enter/
-      // exit, and the floor scene's character bobs are also WAAPI in places —
-      // pause those explicitly via `Element.getAnimations({ subtree: true })`.
-      // This catches every running animation in the host's tree, regardless
-      // of whether it was started via CSS or JS.
-      const hostWithAnims = host as HTMLDivElement & {
-        getAnimations?: (opts?: { subtree?: boolean }) => Animation[];
-      };
-      if (typeof hostWithAnims.getAnimations === "function") {
-        const anims = hostWithAnims.getAnimations({ subtree: true });
-        for (const anim of anims) {
-          if (paused) {
-            anim.pause();
-          } else {
-            anim.play();
-          }
-        }
-      }
     };
     let viewportInView = true;
     let tabVisible =
       typeof document === "undefined" || document.visibilityState === "visible";
-    const sync = () => setPaused(!(viewportInView && tabVisible));
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        viewportInView = entry.isIntersecting;
-        sync();
-      },
-      { threshold: 0.05 }
-    );
+    let pendingPause: number | null = null;
+    const sync = () => {
+      if (pendingPause !== null) {
+        clearTimeout(pendingPause);
+        pendingPause = null;
+      }
+      const shouldPause = !(viewportInView && tabVisible);
+      if (!shouldPause) {
+        setPaused(false);
+      } else {
+        pendingPause = window.setTimeout(() => {
+          pendingPause = null;
+          setPaused(true);
+        }, 500);
+      }
+    };
+    const observer = new IntersectionObserver(([entry]) => {
+      viewportInView = entry.isIntersecting;
+      sync();
+    });
     observer.observe(host);
     const onVisibility = () => {
       tabVisible = document.visibilityState === "visible";
@@ -87,6 +89,9 @@ export function HeroOfficeSection() {
     return () => {
       observer.disconnect();
       document.removeEventListener("visibilitychange", onVisibility);
+      if (pendingPause !== null) {
+        clearTimeout(pendingPause);
+      }
       cleanup?.();
     };
   }, []);
