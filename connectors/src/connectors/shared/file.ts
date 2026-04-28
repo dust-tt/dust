@@ -59,7 +59,7 @@ export function handleTextFile(
   if (data.byteLength > 4 * maxDocumentLen) {
     return new Err(new Error("file_too_big"));
   }
-  const content = Buffer.from(data).toString("utf-8").trim();
+  const content = decodeBuffer(data).trim();
   const digitCount = (content.match(/[\d\n\r]/g) || []).length;
   if (digitCount / content.length > MAX_NUMBER_CHAR_RATIO) {
     return new Err(new Error("too_many_digits"));
