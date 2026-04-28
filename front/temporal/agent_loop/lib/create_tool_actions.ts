@@ -1,6 +1,9 @@
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { getAugmentedInputs } from "@app/lib/actions/mcp_execution";
-import { getInternalMCPServerNameFromSId } from "@app/lib/actions/mcp_internal_actions/constants";
+import {
+  getInternalMCPServerDisplayedAs,
+  getInternalMCPServerNameFromSId,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import { validateToolInputs } from "@app/lib/actions/mcp_utils";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
@@ -261,6 +264,9 @@ async function createActionForTool(
               mcpServerName: actionConfiguration.mcpServerName,
               agentName: agentConfiguration.name,
               icon: actionConfiguration.icon,
+              displayedAs: getInternalMCPServerDisplayedAs(
+                actionConfiguration.toolServerId
+              ),
             },
             argumentsRequiringApproval,
             approvalArgsLabel: await getApprovalArgsLabel({

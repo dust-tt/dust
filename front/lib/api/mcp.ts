@@ -143,6 +143,11 @@ type InternalMCPServerType = MCPServerType & {
   icon: InternalAllowedIconType;
   // Instructions that are appended to the overall prompt.
   instructions: string | null;
+  // Whether the server's actions are framed as the agent acting (e.g. "Allow
+  // @agent to schedule a wake-up?") or as the server acting (default, e.g.
+  // "Allow Linear to create an issue?"). Use "agent" for self-contained agent
+  // capabilities; leave undefined for third-party integrations.
+  displayedAs?: "agent" | "server";
 };
 
 export type InternalMCPServerDefinitionType = Omit<

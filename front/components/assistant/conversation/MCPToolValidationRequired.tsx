@@ -26,14 +26,6 @@ type ToolOverride = {
   detailsExpanded?: boolean;
 };
 
-type ServerOverride = {
-  title?: (
-    agentName: string,
-    toolName: string,
-    inputs: Record<string, unknown>
-  ) => string;
-};
-
 /** Overrides title, alwaysAllowLabel, and details expansion for specific MCP tools */
 const MCP_TOOL_OVERRIDES: Partial<
   Record<string, Partial<Record<string, ToolOverride>>>
@@ -57,14 +49,6 @@ const MCP_TOOL_OVERRIDES: Partial<
     add_egress_domain: {
       detailsExpanded: true,
     },
-  },
-};
-
-/** Overrides applied to all tools of a given MCP server unless a tool-level override exists. */
-const MCP_SERVER_OVERRIDES: Partial<Record<string, ServerOverride>> = {
-  wakeups: {
-    title: (agentName, toolName) =>
-      `Allow ${asDisplayName(agentName)} to ${asDisplayName(toolName)}?`,
   },
 };
 
@@ -142,16 +126,11 @@ export function MCPToolValidationRequired({
         blockedAction.inputs
       );
     }
-    const serverOverride =
-      MCP_SERVER_OVERRIDES[blockedAction.metadata.mcpServerName];
-    if (serverOverride?.title) {
-      return serverOverride.title(
-        blockedAction.metadata.agentName,
-        blockedAction.metadata.toolName,
-        blockedAction.inputs
-      );
-    }
-    return `Allow ${asDisplayName(blockedAction.metadata.mcpServerName)} to ${asDisplayName(blockedAction.metadata.toolName)}?`;
+    const subject =
+      blockedAction.metadata.displayedAs === "agent"
+        ? blockedAction.metadata.agentName
+        : blockedAction.metadata.mcpServerName;
+    return `Allow ${asDisplayName(subject)} to ${asDisplayName(blockedAction.metadata.toolName)}?`;
   }
 
   function getAlwaysAllowLabel() {

@@ -85,6 +85,7 @@ export const WAKEUPS_SERVER = {
     icon: "ActionTimeIcon",
     documentationUrl: null,
     instructions: null,
+    displayedAs: "agent",
   },
   tools: Object.values(WAKEUPS_TOOLS_METADATA).map((t) => ({
     name: t.name,
