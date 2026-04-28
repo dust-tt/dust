@@ -913,9 +913,7 @@ function EditableProjectTodosPanel({
         );
     }
   }, [assigneeScope, selectedUserSIds, todos, viewerUserId]);
-  const hasDoneItems = filteredTodos.some(
-    (todo) => todo.status === "done" && todo.userId === viewerUserId
-  );
+  const hasDoneItems = filteredTodos.some((todo) => todo.status === "done");
   const shouldGroupByAssignee =
     assigneeScope === "all" ||
     (assigneeScope === "users" && selectedUserSIds.size > 1);
