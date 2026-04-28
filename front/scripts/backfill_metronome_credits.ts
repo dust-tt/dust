@@ -154,9 +154,11 @@ async function backfillCreditsOfType(
           const client = getMetronomeClient();
           const contractsResponse = await client.v2.contracts.list({
             customer_id: metronomeCustomerId,
+            covering_date: new Date().toISOString(),
           });
           const contract = contractsResponse.data[0];
           const freeCreditProductId = getProductFreeMonthlyCreditId();
+
           const existingRecurringCredit = contract.recurring_credits?.find(
             (rc) => rc.product.id === freeCreditProductId
           );
