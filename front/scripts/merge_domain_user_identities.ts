@@ -24,8 +24,13 @@ makeScript(
       type: "string" as const,
       demandOption: true,
     },
+    userId: {
+      describe:
+        "Optional sId of a single old-domain (secondary) user to process",
+      type: "string" as const,
+    },
   },
-  async ({ workspaceId, oldDomain, newDomain, execute }, logger) => {
+  async ({ workspaceId, oldDomain, newDomain, userId, execute }, logger) => {
     if (oldDomain === newDomain) {
       logger.error({ oldDomain, newDomain }, "Old and new domains must differ");
       return;
@@ -59,7 +64,7 @@ makeScript(
     );
 
     // Secondary users have an email on the old domain.
-    const oldDomainMembers = members.filter((m) => {
+    let oldDomainMembers = members.filter((m) => {
       const [, domain] = m.email.split("@");
       return domain === oldDomain;
     });
@@ -68,6 +73,18 @@ makeScript(
       { oldDomainMemberCount: oldDomainMembers.length },
       "Found old-domain members"
     );
+
+    if (userId) {
+      oldDomainMembers = oldDomainMembers.filter((m) => m.sId === userId);
+      if (oldDomainMembers.length === 0) {
+        logger.error(
+          { userId, oldDomain },
+          "No old-domain member found with the provided userId"
+        );
+        return;
+      }
+      logger.info({ userId }, "Filtered to single user");
+    }
 
     const results = {
       successful: [] as Array<{ primary: string; secondary: string }>,
