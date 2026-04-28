@@ -1,6 +1,7 @@
 import type { Authenticator } from "@app/lib/auth";
 import {
   actionItemBlob,
+  dedupeUpdateIntentsByTodoId,
   updateTodoIfChanged,
 } from "@app/lib/project_todo/merge_into_project";
 import type { ProjectTodoResource } from "@app/lib/resources/project_todo_resource";
@@ -8,6 +9,7 @@ import type {
   ProjectTodoActorType,
   ProjectTodoStatus,
 } from "@app/types/project_todo";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { TodoVersionedActionItem } from "@app/types/takeaways";
 import { describe, expect, it, vi } from "vitest";
 
@@ -230,5 +232,79 @@ describe("updateTodoIfChanged", () => {
       doneAt: null,
       actorRationale: null,
     });
+  });
+});
+
+// ── dedupeUpdateIntentsByTodoId ───────────────────────────────────────────────
+
+// Structural stub for intents — the helper only reads `todo.id` and `itemId`.
+type IntentStub = {
+  todo: { id: ModelId };
+  itemId: string;
+  tag: string;
+};
+
+function makeIntent(todoId: number, itemId: string, tag: string): IntentStub {
+  return { todo: { id: todoId as ModelId }, itemId, tag };
+}
+
+describe("dedupeUpdateIntentsByTodoId", () => {
+  it("returns an empty array when there are no intents", () => {
+    expect(dedupeUpdateIntentsByTodoId([])).toEqual([]);
+  });
+
+  it("keeps a single intent for a single todo as-is", () => {
+    const intent = makeIntent(1, "item-a", "only");
+    expect(dedupeUpdateIntentsByTodoId([intent])).toEqual([intent]);
+  });
+
+  it("collapses multiple intents on the same todo to the smallest itemId", () => {
+    // Reproduces the version-churn bug: same todo linked to 3 sources whose
+    // action items have different content. Only the smallest-itemId intent
+    // should survive so the picked content is stable across merge runs.
+    const intents = [
+      makeIntent(42, "item-c", "third"),
+      makeIntent(42, "item-a", "first"),
+      makeIntent(42, "item-b", "second"),
+    ];
+
+    const result = dedupeUpdateIntentsByTodoId(intents);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].itemId).toBe("item-a");
+    expect(result[0].tag).toBe("first");
+  });
+
+  it("emits one survivor per distinct todo", () => {
+    // Two todos, three intents on the first one and one on the second.
+    const intents = [
+      makeIntent(1, "item-z", "todo1-z"),
+      makeIntent(2, "item-q", "todo2-q"),
+      makeIntent(1, "item-a", "todo1-a"),
+      makeIntent(1, "item-m", "todo1-m"),
+    ];
+
+    const result = dedupeUpdateIntentsByTodoId(intents);
+    const byTodoId = new Map(result.map((i) => [i.todo.id, i]));
+
+    expect(result).toHaveLength(2);
+    expect(byTodoId.get(1 as ModelId)?.itemId).toBe("item-a");
+    expect(byTodoId.get(2 as ModelId)?.itemId).toBe("item-q");
+  });
+
+  it("is order-independent (same input set → same survivor regardless of input order)", () => {
+    // Stability property: the result must not depend on the order intents
+    // were collected in (e.g. across parallel takeaway processing).
+    const a = makeIntent(7, "item-a", "a");
+    const b = makeIntent(7, "item-b", "b");
+    const c = makeIntent(7, "item-c", "c");
+
+    const r1 = dedupeUpdateIntentsByTodoId([a, b, c]);
+    const r2 = dedupeUpdateIntentsByTodoId([c, b, a]);
+    const r3 = dedupeUpdateIntentsByTodoId([b, c, a]);
+
+    expect(r1).toEqual(r2);
+    expect(r2).toEqual(r3);
+    expect(r1[0].itemId).toBe("item-a");
   });
 });

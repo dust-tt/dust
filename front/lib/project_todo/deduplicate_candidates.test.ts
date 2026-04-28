@@ -1,5 +1,6 @@
 import {
   type DeduplicateCandidate,
+  pickPrimaryByItemId,
   resolveDeduplicationGroups,
 } from "@app/lib/project_todo/deduplicate_candidates";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -7,13 +8,13 @@ import { describe, expect, it } from "vitest";
 
 // ── Test fixtures ─────────────────────────────────────────────────────────────
 
-// The resolver passes the todo reference through without reading any of its
-// fields, so tests work against a minimal structural stub — no cast to
-// ProjectTodoResource is needed thanks to the resolver's generic parameter.
-type TodoStub = { sId: string };
+// The resolver only reads `id` on existing todos (to pick the oldest as the
+// cluster primary), so tests work against a minimal structural stub — no cast
+// to ProjectTodoResource is needed thanks to the resolver's generic parameter.
+type TodoStub = { sId: string; id: ModelId };
 
-function makeTodo(sId: string): TodoStub {
-  return { sId };
+function makeTodo(sId: string, id: number): TodoStub {
+  return { sId, id: id as ModelId };
 }
 
 function makeCandidate(
@@ -57,7 +58,7 @@ describe("resolveDeduplicationGroups", () => {
 
   it("maps a cluster with a single existing todo into an 'existing' group", () => {
     // Cluster = [existing#0, candidate#0] → one "existing" group.
-    const existing = [makeTodo("todo-1")];
+    const existing = [makeTodo("todo-1", 1)];
     const candidates = [makeCandidate({ itemId: "a" })];
     const result = resolveDeduplicationGroups(candidates, existing, [[0, 1]]);
 
@@ -66,23 +67,23 @@ describe("resolveDeduplicationGroups", () => {
     ]);
   });
 
-  it("picks the first existing when a cluster contains multiple existing todos", () => {
-    // Two existing + one candidate. First existing wins; second existing is
-    // ignored (we don't merge existing todos here).
-    const existing = [makeTodo("todo-1"), makeTodo("todo-2")];
+  it("picks the oldest existing (smallest id) when a cluster contains multiple existing todos", () => {
+    // Two existing + one candidate. The oldest (smallest id) wins regardless
+    // of LLM listing order; the other existing is ignored.
+    const existing = [makeTodo("todo-newer", 42), makeTodo("todo-older", 7)];
     const candidates = [makeCandidate({ itemId: "a" })];
-    // Indexes: 0,1 are existing; 2 is the candidate.
+    // LLM lists the newer one first; the resolver must still pick the oldest.
     const result = resolveDeduplicationGroups(candidates, existing, [
       [0, 1, 2],
     ]);
 
     expect(result).toEqual([
-      { kind: "existing", todo: existing[0], candidates: [candidates[0]] },
+      { kind: "existing", todo: existing[1], candidates: [candidates[0]] },
     ]);
   });
 
-  it("links every candidate in a cluster to the first existing when one exists", () => {
-    const existing = [makeTodo("todo-1")];
+  it("links every candidate in a cluster to the existing todo when one exists", () => {
+    const existing = [makeTodo("todo-1", 1)];
     const candidates = [
       makeCandidate({ itemId: "a" }),
       makeCandidate({ itemId: "b" }),
@@ -125,7 +126,7 @@ describe("resolveDeduplicationGroups", () => {
   it("honors an index only in the first cluster it appears in", () => {
     // If the LLM lists the same candidate in two clusters, the second
     // occurrence is dropped so a candidate can't be silently reassigned.
-    const existing = [makeTodo("todo-1")];
+    const existing = [makeTodo("todo-1", 1)];
     const candidates = [
       makeCandidate({ itemId: "a" }),
       makeCandidate({ itemId: "b" }),
@@ -146,7 +147,7 @@ describe("resolveDeduplicationGroups", () => {
   it("ignores clusters that contain no candidate", () => {
     // A cluster of two existing todos and no candidate → dropped. The lone
     // candidate in its own cluster survives as a "new" group.
-    const existing = [makeTodo("todo-1"), makeTodo("todo-2")];
+    const existing = [makeTodo("todo-1", 1), makeTodo("todo-2", 2)];
     const candidates = [makeCandidate({ itemId: "a" })];
     const result = resolveDeduplicationGroups(candidates, existing, [
       [0, 1],
@@ -160,7 +161,7 @@ describe("resolveDeduplicationGroups", () => {
     // The LLM grouped candidate a with the existing todo but forgot about
     // candidate b — b must still end up in its own group so its source is
     // not dropped.
-    const existing = [makeTodo("todo-1")];
+    const existing = [makeTodo("todo-1", 1)];
     const candidates = [
       makeCandidate({ itemId: "a" }),
       makeCandidate({ itemId: "b" }),
@@ -171,5 +172,35 @@ describe("resolveDeduplicationGroups", () => {
       { kind: "existing", todo: existing[0], candidates: [candidates[0]] },
       { kind: "new", candidates: [candidates[1]] },
     ]);
+  });
+});
+
+// ── pickPrimaryByItemId ───────────────────────────────────────────────────────
+
+describe("pickPrimaryByItemId", () => {
+  it("returns the only candidate when there is one", () => {
+    const c = makeCandidate({ itemId: "only" });
+    expect(pickPrimaryByItemId([c])).toBe(c);
+  });
+
+  it("picks the candidate with the smallest itemId", () => {
+    const a = makeCandidate({ itemId: "item-a", text: "phrasing A" });
+    const b = makeCandidate({ itemId: "item-b", text: "phrasing B" });
+    const c = makeCandidate({ itemId: "item-c", text: "phrasing C" });
+
+    expect(pickPrimaryByItemId([b, c, a])).toBe(a);
+    expect(pickPrimaryByItemId([c, a, b])).toBe(a);
+  });
+
+  it("is stable: same set returns the same primary regardless of input order", () => {
+    // Phase 3 used to pick candidates[0], whose order depends on the LLM's
+    // listing — that produced one new todo version per merge when the picked
+    // text disagreed with previous runs. Smallest-itemId selection removes
+    // that dependency.
+    const a = makeCandidate({ itemId: "item-a", text: "first wording" });
+    const b = makeCandidate({ itemId: "item-b", text: "second wording" });
+
+    expect(pickPrimaryByItemId([a, b]).text).toBe("first wording");
+    expect(pickPrimaryByItemId([b, a]).text).toBe("first wording");
   });
 });

@@ -39,6 +39,7 @@ import {
   type DeduplicateCandidate,
   type DeduplicatedGroup,
   type ExistingTodosByUser,
+  pickPrimaryByItemId,
 } from "@app/lib/project_todo/deduplicate_candidates";
 import { ProjectTodoResource } from "@app/lib/resources/project_todo_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
@@ -75,6 +76,38 @@ type PendingCandidate = {
   blob: TodoBlob;
   source: ProjectTodoSourceInfo;
 };
+
+// One pending content update for an already-linked (todo, user) pair. Several
+// intents can target the same todo when it is linked to multiple sources whose
+// action items disagree on text/status/rationale (typical when the same task
+// is extracted from N different takeaways with slightly different wording).
+// Phase 1 deduplicates intents per todo before applying so sources do not
+// take turns overwriting each other and producing one new version per source
+// per merge run.
+export type ExistingUpdateIntent = {
+  todo: ProjectTodoResource;
+  userId: ModelId;
+  itemId: string;
+  blob: TodoBlob;
+};
+
+// Picks at most one intent per todo, keeping the one with the smallest itemId.
+// Stability across runs is what fixes the version-churn bug: once the picked
+// blob lands on the todo, the next merge sees no diff and does not cut a new
+// version. Generic so unit tests can pass a structural stub instead of a real
+// ProjectTodoResource.
+export function dedupeUpdateIntentsByTodoId<
+  TIntent extends { todo: { id: ModelId }; itemId: string },
+>(intents: TIntent[]): TIntent[] {
+  const byTodoId = new Map<ModelId, TIntent>();
+  for (const intent of intents) {
+    const current = byTodoId.get(intent.todo.id);
+    if (current === undefined || intent.itemId < current.itemId) {
+      byTodoId.set(intent.todo.id, intent);
+    }
+  }
+  return [...byTodoId.values()];
+}
 
 // ── Stats ─────────────────────────────────────────────────────────────────────
 
@@ -185,8 +218,13 @@ export async function mergeTakeawaysIntoProject({
 // ── Phase 1 ───────────────────────────────────────────────────────────────────
 
 // For each (takeaway, item, targetUser) triple: if a source link already exists,
-// update the todo's content if it has changed. Otherwise, push the item to the
+// record an intent to update the todo's content. Otherwise, push the item to the
 // returned candidates list for semantic dedup in phase 2.
+//
+// All intents are collected first and then deduplicated per todo before being
+// applied: a todo linked to N sources whose action items have slightly
+// different text would otherwise see N updates per merge, with each source
+// overwriting the previous, producing N new versions every run.
 async function collectNewCandidates(
   auth: Authenticator,
   {
@@ -198,7 +236,7 @@ async function collectNewCandidates(
   }
 ): Promise<{ candidates: PendingCandidate[]; existingUpdated: number }> {
   const newCandidates: PendingCandidate[] = [];
-  let existingUpdated = 0;
+  const allIntents: ExistingUpdateIntent[] = [];
 
   await concurrentExecutor(
     latestTakeawaysWithSource,
@@ -208,7 +246,21 @@ async function collectNewCandidates(
         usersById,
       });
       newCandidates.push(...result.candidates);
-      existingUpdated += result.existingUpdated;
+      allIntents.push(...result.existingUpdateIntents);
+    },
+    { concurrency: 4 }
+  );
+
+  const dedupedIntents = dedupeUpdateIntentsByTodoId(allIntents);
+
+  let existingUpdated = 0;
+  await concurrentExecutor(
+    dedupedIntents,
+    async (intent) => {
+      const updated = await updateTodoIfChanged(intent.todo, auth, intent.blob);
+      if (updated) {
+        existingUpdated++;
+      }
     },
     { concurrency: 4 }
   );
@@ -216,8 +268,11 @@ async function collectNewCandidates(
   return { candidates: newCandidates, existingUpdated };
 }
 
-// Processes one document's takeaway: updates todos whose source link already
-// exists and returns items that need to go through dedup + creation.
+// Processes one document's takeaway: returns intents to update todos whose
+// source link already exists, and items that need to go through dedup +
+// creation. Updates are not applied here — the caller deduplicates intents
+// across all takeaways before applying so a todo linked to multiple sources
+// is only updated once per merge.
 async function collectDocumentCandidates(
   auth: Authenticator,
   {
@@ -227,7 +282,10 @@ async function collectDocumentCandidates(
     takeawayWithSource: TakeawaysWithSource;
     usersById: Map<string, UserResource>;
   }
-): Promise<{ candidates: PendingCandidate[]; existingUpdated: number }> {
+): Promise<{
+  candidates: PendingCandidate[];
+  existingUpdateIntents: ExistingUpdateIntent[];
+}> {
   function resolveTargetUserIds(userSIds: string[]): ModelId[] {
     return userSIds
       .map((sId) => usersById.get(sId)?.id)
@@ -257,32 +315,24 @@ async function collectDocumentCandidates(
   });
 
   const candidates: PendingCandidate[] = [];
-  let existingUpdated = 0;
-  for (const { itemId, targetUserIds, blob: actionItemBlob } of actionItems) {
+  const existingUpdateIntents: ExistingUpdateIntent[] = [];
+  for (const { itemId, targetUserIds, blob } of actionItems) {
     for (const userId of targetUserIds) {
       const existing = existingByKey.get(itemId)?.get(userId) ?? null;
       if (existing !== null) {
-        // Source link exists — update content if it has changed.
-        const updated = await updateTodoIfChanged(
-          existing,
-          auth,
-          actionItemBlob
-        );
-        if (updated) {
-          existingUpdated++;
-        }
+        existingUpdateIntents.push({ todo: existing, userId, itemId, blob });
       } else {
         candidates.push({
           itemId,
           userId,
-          blob: actionItemBlob,
+          blob,
           source: takeawayWithSource.source,
         });
       }
     }
   }
 
-  return { candidates, existingUpdated };
+  return { candidates, existingUpdateIntents };
 }
 
 // ── Phase 2 ───────────────────────────────────────────────────────────────────
@@ -388,8 +438,11 @@ async function createOrLinkTodos(
       if (group.kind === "existing") {
         // Attach every candidate's source to the existing todo. The update
         // guard lives in updateTodoIfChanged — no-op when the target todo was
-        // created by a user or already marked done by one.
-        const primary = lookupPending(group.candidates[0]);
+        // created by a user or already marked done by one. Pick the primary
+        // by smallest itemId so the blob driving the update is stable across
+        // runs and we do not re-version on every merge when candidates'
+        // texts disagree.
+        const primary = lookupPending(pickPrimaryByItemId(group.candidates));
         if (primary) {
           await updateTodoIfChanged(group.todo, auth, primary.blob);
         }
@@ -418,9 +471,12 @@ async function createOrLinkTodos(
         return;
       }
 
-      // kind === "new": create one todo from the first candidate, attach every
-      // other candidate's source to it.
-      const primary = lookupPending(group.candidates[0]);
+      // kind === "new": create one todo using the candidate with the smallest
+      // itemId as the content source, then attach every other candidate's
+      // source to it. Smallest-itemId selection keeps the chosen primary
+      // stable across runs.
+      const primaryCandidate = pickPrimaryByItemId(group.candidates);
+      const primary = lookupPending(primaryCandidate);
       if (!primary) {
         return;
       }
@@ -451,8 +507,11 @@ async function createOrLinkTodos(
         "Project todo merge: created new todo"
       );
 
-      for (let i = 1; i < group.candidates.length; i++) {
-        const pending = lookupPending(group.candidates[i]);
+      for (const candidate of group.candidates) {
+        if (candidate.itemId === primaryCandidate.itemId) {
+          continue;
+        }
+        const pending = lookupPending(candidate);
         if (!pending) {
           continue;
         }

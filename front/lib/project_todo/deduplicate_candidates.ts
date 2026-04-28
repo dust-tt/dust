@@ -60,10 +60,25 @@ export type DeduplicatedGroup =
     }
   | {
       kind: "new";
-      // Non-empty. candidates[0] drives the new todo's content; later entries
-      // attach their sources to that todo.
+      // Non-empty. The caller picks one candidate (typically by smallest
+      // itemId for stability) to drive the new todo's content, and attaches
+      // every other candidate's source to that todo.
       candidates: DeduplicateCandidate[];
     };
+
+// Picks the candidate with the smallest itemId. Used by Phase 3 to choose a
+// stable "primary" within a dedup group: the chosen candidate's blob drives
+// the existing todo update or the new todo creation, while every other
+// candidate's source is attached. Stability matters because the alternative
+// (depending on LLM listing order) makes the chosen content jitter across
+// merges and produces a new todo version every run.
+//
+// Precondition: candidates is non-empty.
+export function pickPrimaryByItemId(
+  candidates: DeduplicateCandidate[]
+): DeduplicateCandidate {
+  return candidates.reduce((min, c) => (c.itemId < min.itemId ? c : min));
+}
 
 // Nested map shape for existing todos passed in by the caller:
 // userId → todos.
@@ -237,8 +252,12 @@ export async function runDeduplicationLLMCall(
 // ── Group resolution ─────────────────────────────────────────────────────────
 
 // Generic over the todo type so unit tests can pass a minimal structural stub
-// instead of a full ProjectTodoResource.
-type ResolvedGroupOf<TTodo> =
+// instead of a full ProjectTodoResource. Requires an `id` field so the resolver
+// can pick the oldest existing todo (smallest id) as the cluster primary,
+// independent of the order the LLM listed them.
+type TodoWithId = { id: ModelId };
+
+type ResolvedGroupOf<TTodo extends TodoWithId> =
   | { kind: "existing"; todo: TTodo; candidates: DeduplicateCandidate[] }
   | { kind: "new"; candidates: DeduplicateCandidate[] };
 
@@ -254,13 +273,13 @@ type ResolvedGroupOf<TTodo> =
 //
 // Per-cluster resolution:
 //   - No candidate → cluster dropped.
-//   - ≥1 existing  → "existing" group pointing at the first existing (extras
-//                    ignored).
+//   - ≥1 existing  → "existing" group pointing at the oldest existing todo
+//                    (smallest id); extras ignored.
 //   - No existing  → "new" group (first candidate drives content).
 //
 // Any candidate the LLM forgot to place in a cluster is emitted as its own
 // singleton "new" group so no source ever disappears.
-export function resolveDeduplicationGroups<TTodo>(
+export function resolveDeduplicationGroups<TTodo extends TodoWithId>(
   candidates: DeduplicateCandidate[],
   existingTodos: TTodo[],
   groups: number[][]
@@ -291,9 +310,14 @@ export function resolveDeduplicationGroups<TTodo>(
     }
 
     if (existingInGroup.length >= 1) {
+      // Pick the oldest existing todo (smallest id) so the chosen primary is
+      // stable regardless of the order the LLM listed them in the cluster.
+      const primary = existingInGroup.reduce((min, t) =>
+        t.id < min.id ? t : min
+      );
       result.push({
         kind: "existing",
-        todo: existingInGroup[0],
+        todo: primary,
         candidates: candidatesInGroup,
       });
     } else {
