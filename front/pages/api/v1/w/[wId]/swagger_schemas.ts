@@ -585,10 +585,6 @@
  *     Skill:
  *       type: object
  *       properties:
- *         id:
- *           type: integer
- *           description: Numeric identifier for the skill
- *           example: 12345
  *         sId:
  *           type: string
  *           description: Unique string identifier for the skill
