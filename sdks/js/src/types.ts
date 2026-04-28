@@ -719,7 +719,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "netsuite_mcp"
   | "noop_model_feature"
   | "notion_private_integration"
-  | "official_notion_mcp"
+  | "allow_old_notion_mcp"
   | "openai_o1_custom_assistants_feature"
   | "openai_o1_feature"
   | "openai_o1_high_reasoning_feature"
