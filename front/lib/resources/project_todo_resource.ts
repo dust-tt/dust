@@ -447,8 +447,8 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
   // ── Source links (* => todo) ─────────────────────────────────────────────
 
   // Links the given takeaway item + source document to this todo. Idempotent
-  // by (workspaceId, itemId, userId): if a row already exists for this
-  // (item, user) pair, its fields are updated to point at this todo and
+  // by (workspaceId, sourceType, sourceId, userId, projectTodoId): if a row already exists for this,\
+  // its fields are updated to point at this todo and
   // source — so a Temporal activity retry after a partial success converges
   // to the same state instead of creating a duplicate.
   async upsertSource(
@@ -463,17 +463,18 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
     transaction?: Transaction
   ): Promise<void> {
     const workspaceId = auth.getNonNullableWorkspace().id;
+    // we want one link between one given TODO (that belongs to a user) for a given source
     const identity = {
       workspaceId,
       sourceType: source.sourceType,
       sourceId: source.sourceId,
       userId: this.userId,
+      projectTodoId: this.id,
     };
     const payload = {
-      projectTodoId: this.id,
-      itemId,
-      sourceTitle: source.sourceTitle,
-      sourceUrl: source.sourceUrl,
+      itemId, // we can have multiple items from the same source
+      sourceTitle: source.sourceTitle, // we update to the latest title
+      sourceUrl: source.sourceUrl, // same here
     };
 
     const [sourceInstance, created] = await ProjectTodoSourceModel.findOrCreate(
