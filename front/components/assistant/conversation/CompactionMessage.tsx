@@ -73,7 +73,7 @@ export function CompactionMessage({
         <div className="flex items-center justify-center gap-1.5">
           <Spinner size="xs" />
           <AnimatedText variant="muted" className="text-sm">
-            Compacting context…
+            Compacting context, this may take a moment…
           </AnimatedText>
         </div>
       );
