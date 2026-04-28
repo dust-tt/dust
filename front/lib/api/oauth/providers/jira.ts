@@ -9,7 +9,7 @@ import type {
   OAuthConnectionType,
   OAuthUseCase,
 } from "@app/types/oauth/lib";
-import { isValidJiraCloudUrlOrEmpty } from "@app/types/oauth/lib";
+import { isValidAtlassianCloudUrlOrEmpty } from "@app/types/oauth/lib";
 import type { ParsedUrlQuery } from "querystring";
 
 export class JiraOAuthProvider implements BaseOAuthStrategyProvider {
@@ -67,6 +67,6 @@ export class JiraOAuthProvider implements BaseOAuthStrategyProvider {
       }
     }
     // cloud_url is optional — absent or empty means fall back to dynamic resolution.
-    return isValidJiraCloudUrlOrEmpty(extraConfig.jira_cloud_url);
+    return isValidAtlassianCloudUrlOrEmpty(extraConfig.jira_cloud_url);
   }
 }

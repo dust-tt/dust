@@ -26,7 +26,7 @@ export function createConfluenceTools(): ToolDefinition[] {
   const handlers: ToolHandlers<typeof CONFLUENCE_TOOLS_METADATA> = {
     get_current_user: async (_params, { authInfo }: ToolHandlerExtra) => {
       const authResult = await withAuth(
-        authInfo?.token,
+        authInfo,
         async (baseUrl, accessToken) => {
           const result = await getCurrentUser(baseUrl, accessToken);
           if (result.isErr()) {
@@ -54,7 +54,7 @@ export function createConfluenceTools(): ToolDefinition[] {
 
     get_spaces: async (_params, { authInfo }: ToolHandlerExtra) => {
       const authResult = await withAuth(
-        authInfo?.token,
+        authInfo,
         async (baseUrl, accessToken) => {
           const result = await listSpaces(baseUrl, accessToken);
           if (result.isErr()) {
@@ -84,7 +84,7 @@ export function createConfluenceTools(): ToolDefinition[] {
 
     get_pages: async (params, { authInfo }: ToolHandlerExtra) => {
       const authResult = await withAuth(
-        authInfo?.token,
+        authInfo,
         async (baseUrl, accessToken) => {
           const result = await listPages(baseUrl, accessToken, params);
           if (result.isErr()) {
@@ -114,7 +114,7 @@ export function createConfluenceTools(): ToolDefinition[] {
 
     get_page: async (params, { authInfo }: ToolHandlerExtra) => {
       const authResult = await withAuth(
-        authInfo?.token,
+        authInfo,
         async (baseUrl, accessToken) => {
           const result = await getPage(
             baseUrl,
@@ -155,7 +155,7 @@ export function createConfluenceTools(): ToolDefinition[] {
 
     create_page: async (params, { authInfo }: ToolHandlerExtra) => {
       const authResult = await withAuth(
-        authInfo?.token,
+        authInfo,
         async (baseUrl, accessToken) => {
           const result = await createPage(baseUrl, accessToken, params);
           if (result.isErr()) {
@@ -180,7 +180,7 @@ export function createConfluenceTools(): ToolDefinition[] {
 
     update_page: async (params, { authInfo }: ToolHandlerExtra) => {
       const authResult = await withAuth(
-        authInfo?.token,
+        authInfo,
         async (baseUrl, accessToken) => {
           const result = await updatePage(baseUrl, accessToken, params);
           if (result.isErr()) {

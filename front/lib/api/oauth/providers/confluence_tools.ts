@@ -9,6 +9,7 @@ import type {
   OAuthConnectionType,
   OAuthUseCase,
 } from "@app/types/oauth/lib";
+import { isValidAtlassianCloudUrlOrEmpty } from "@app/types/oauth/lib";
 import type { ParsedUrlQuery } from "querystring";
 
 export class ConfluenceToolsOAuthProvider implements BaseOAuthStrategyProvider {
@@ -55,6 +56,7 @@ export class ConfluenceToolsOAuthProvider implements BaseOAuthStrategyProvider {
         return true;
       }
     }
-    return Object.keys(extraConfig).length === 0;
+    // confluence_cloud_url is optional — absent or empty means fall back to dynamic resolution.
+    return isValidAtlassianCloudUrlOrEmpty(extraConfig.confluence_cloud_url);
   }
 }
