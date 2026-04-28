@@ -86,20 +86,6 @@ async function backfillCreditsOfType(
     }
     const initialMicroUsd = credit.initialAmountMicroUsd;
     const consumedMicroUsd = credit.consumedAmountMicroUsd;
-    const remainingMicroUsd = initialMicroUsd - consumedMicroUsd;
-
-    if (remainingMicroUsd < 0) {
-      logger.warn(
-        {
-          workspaceId: workspace.sId,
-          creditId: credit.id,
-          initialUsd: initialMicroUsd / 1_000_000,
-          consumedUsd: consumedMicroUsd / 1_000_000,
-        },
-        `[Backfill] Negative remaining balance for ${metronomeItem}, skipping`
-      );
-      continue;
-    }
 
     const startingAt = credit.startDate!;
     const endingBefore = credit.expirationDate!;
