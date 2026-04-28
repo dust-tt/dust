@@ -571,6 +571,126 @@
  *         spaceId:
  *           type: string
  *           description: ID of the space containing the data source view
+ *     SkillSourceMetadata:
+ *       type: object
+ *       properties:
+ *         repoUrl:
+ *           type: string
+ *           description: URL of the source repository, when applicable
+ *           example: "https://github.com/dust-tt/skills"
+ *         filePath:
+ *           type: string
+ *           description: Path to the source skill file
+ *           example: "support/SKILL.md"
+ *     SkillSummary:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: integer
+ *           description: Numeric identifier for the skill
+ *           example: 12345
+ *         sId:
+ *           type: string
+ *           description: Unique string identifier for the skill
+ *           example: "skill_abc123"
+ *         createdAt:
+ *           type: number
+ *           nullable: true
+ *           description: Timestamp of when the skill was created
+ *         updatedAt:
+ *           type: number
+ *           nullable: true
+ *           description: Timestamp of when the skill was last updated
+ *         editedBy:
+ *           type: integer
+ *           nullable: true
+ *           description: Numeric identifier of the last editor
+ *         status:
+ *           type: string
+ *           enum: [active, archived, suggested]
+ *           description: Current status of the skill
+ *           example: "active"
+ *         name:
+ *           type: string
+ *           description: Name of the skill
+ *           example: "Customer Support"
+ *         agentFacingDescription:
+ *           type: string
+ *           description: Description shown to agents when selecting or using the skill
+ *           example: "Use this skill to answer customer support questions."
+ *         userFacingDescription:
+ *           type: string
+ *           description: Description shown to workspace users
+ *           example: "Answers support questions with the right workspace context."
+ *         icon:
+ *           type: string
+ *           nullable: true
+ *           description: Icon identifier for the skill
+ *           example: "ActionRobotIcon"
+ *         source:
+ *           type: string
+ *           nullable: true
+ *           enum: [web_app, github, api, local_file]
+ *           description: Source used to create or import the skill
+ *         sourceMetadata:
+ *           type: object
+ *           nullable: true
+ *           allOf:
+ *             - $ref: '#/components/schemas/SkillSourceMetadata'
+ *         reinforcement:
+ *           type: string
+ *           enum: [auto, "on", "off"]
+ *           description: Reinforcement setting for the skill
+ *         lastReinforcementAnalysisAt:
+ *           type: string
+ *           nullable: true
+ *           description: Timestamp of the last reinforcement analysis, when available
+ *         requestedSpaceIds:
+ *           type: array
+ *           items:
+ *             type: string
+ *           description: Space identifiers the skill needs access to
+ *         fileAttachments:
+ *           type: array
+ *           items:
+ *             type: object
+ *             properties:
+ *               fileId:
+ *                 type: string
+ *                 description: Unique string identifier for the attached file
+ *               fileName:
+ *                 type: string
+ *                 description: Name of the attached file
+ *         canWrite:
+ *           type: boolean
+ *           description: Whether the authenticated actor can edit the skill
+ *         isExtendable:
+ *           type: boolean
+ *           description: Whether this skill can be extended by another skill
+ *         isDefault:
+ *           type: boolean
+ *           description: Whether this skill is enabled by default
+ *         extendedSkillId:
+ *           type: string
+ *           nullable: true
+ *           description: Identifier of the extended skill, when applicable
+ *     Skill:
+ *       allOf:
+ *         - $ref: '#/components/schemas/SkillSummary'
+ *         - type: object
+ *           properties:
+ *             instructions:
+ *               type: string
+ *               nullable: true
+ *               description: Instructions used by the agent when running the skill
+ *             instructionsHtml:
+ *               type: string
+ *               nullable: true
+ *               description: HTML representation of the skill instructions
+ *             tools:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/MCPServerView'
  *     Run:
  *       type: object
  *       properties:

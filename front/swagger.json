@@ -34,6 +34,7 @@
       { "name": "Search", "description": "Search" },
       { "name": "Tools", "description": "Tools" },
       { "name": "Triggers", "description": "Triggers" },
+      { "name": "Skills", "description": "Skills" },
       { "name": "Spaces", "description": "Spaces" },
       { "name": "Workspace", "description": "Workspace" },
       { "name": "Private User", "description": "Private API - User" },
