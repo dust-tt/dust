@@ -320,11 +320,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Enable ES-backed conversation listing in the sidebar (read path)",
     stage: "dust_only",
   },
-  enable_wakeups: {
-    description:
-      "Enable the wakeups MCP server, letting agents schedule wake-ups in a conversation.",
-    stage: "dust_only",
-  },
   new_file_explorer: {
     description:
       "Unified GCS-backed file explorer with folder hierarchy, replacing the two-tab files panel.",
