@@ -69,7 +69,8 @@ export function UserAnswerRequired({
   const isTriggeredByCurrentUser = blockedAction.userId === user?.sId;
 
   const isCustomResponseActive =
-    isCustomResponseFocused || answerDraft.answer?.customResponse !== undefined;
+    isCustomResponseFocused ||
+    answerDraft.answerToSubmit?.customResponse !== undefined;
 
   const isAnswerSubmitting = isSubmitting && !isSkipPending;
   const isSkipSubmitting = isSubmitting && isSkipPending;
@@ -138,11 +139,11 @@ export function UserAnswerRequired({
 
   // Submits the current draft answer when one is available.
   function handleSubmit() {
-    if (isSubmitting || answerDraft.answer === null) {
+    if (isSubmitting || answerDraft.answerToSubmit === null) {
       return;
     }
 
-    void submitAnswer(answerDraft.answer);
+    void submitAnswer(answerDraft.answerToSubmit);
   }
 
   // Submits an empty answer to skip the question.
@@ -375,7 +376,7 @@ export function UserAnswerRequired({
           variant="highlight"
           size="sm"
           isLoading={isAnswerSubmitting}
-          disabled={answerDraft.answer === null}
+          disabled={answerDraft.answerToSubmit === null}
           onClick={handleSubmit}
           aria-label="Send answer"
         />

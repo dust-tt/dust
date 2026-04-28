@@ -29,7 +29,7 @@ export function useUserAnswerDraft({ multiSelect }: { multiSelect: boolean }) {
     customResponse: "",
   });
 
-  const answer = buildAnswer(draft);
+  const answerToSubmit = buildAnswer(draft);
 
   // Selects or toggles an option while preserving typed custom text for later.
   // Single-select questions return an answer so the caller can submit immediately.
@@ -84,7 +84,7 @@ export function useUserAnswerDraft({ multiSelect }: { multiSelect: boolean }) {
   }
 
   return {
-    answer,
+    answerToSubmit,
     appendCustomResponse,
     customResponse: draft.customResponse,
     selectedOptions: draft.selectedOptions,
