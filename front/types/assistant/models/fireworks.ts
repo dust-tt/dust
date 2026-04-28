@@ -45,8 +45,8 @@ export const FIREWORKS_DEEPSEEK_V3P2_MODEL_CONFIG: ModelConfigurationType = {
   description:
     "DeepSeek's V3.2 model with high computational efficiency and superior reasoning (163.8k context, served via Fireworks).",
   shortDescription: "DeepSeek's V3.2 model.",
-  isLegacy: false,
-  isLatest: true,
+  isLegacy: true,
+  isLatest: false,
   generationTokensCount: 2048,
   supportsVision: false,
   // TODO(2025-12-03 pierre) Deepseek V3.2 reasoning support requires a bit more work
