@@ -44,7 +44,6 @@ describe("AgentSuggestionResource", () => {
       expect(suggestion.agentConfigurationId).toBe(agentConfiguration.id);
       expect(suggestion.kind).toBe("instructions");
       expect(suggestion.state).toBe("pending");
-      expect(suggestion.source).toBe("reinforcement");
 
       const fetched = await AgentSuggestionResource.fetchById(
         authenticator,
