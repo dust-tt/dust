@@ -102,6 +102,7 @@ const API_ERROR_TYPES = [
   "dust_app_secret_not_found",
   // Key:
   "key_not_found",
+  "insufficient_key_scope",
   // Labs:
   "transcripts_configuration_not_found",
   "transcripts_configuration_default_not_allowed",
