@@ -26,6 +26,7 @@ import {
   addSandboxPolicyDomain,
   parseExactEgressDomain,
 } from "@app/lib/api/sandbox/egress_policy";
+import { hasDsbxToolsEnabled } from "@app/lib/api/sandbox/feature_flags";
 import {
   mountConversationFiles,
   refreshGcsToken,
@@ -44,6 +45,7 @@ import { startTelemetry } from "@app/lib/api/sandbox/telemetry";
 import type { Authenticator } from "@app/lib/auth";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import logger from "@app/logger/logger";
+import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 import { isDevelopment } from "@app/types/shared/env";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 
@@ -93,22 +95,34 @@ export function createSandboxTools(
       if (!providerId) {
         return new Err(new MCPError("Missing model provider ID"));
       }
-      const toolsResult = getToolsForProvider(auth, providerId);
-      if (toolsResult.isErr()) {
-        return new Err(new MCPError(toolsResult.error.message));
-      }
-      const manifest = createToolManifest(toolsResult.value);
-      const output =
-        format === "json"
-          ? toolManifestToJSON(manifest)
-          : toolManifestToYAML(manifest);
 
-      return new Ok([{ type: "text" as const, text: output }]);
+      return buildDescribeToolsetOutput(auth, providerId, format ?? "yaml");
     },
     add_egress_domain: addEgressDomainTool,
   };
 
   return buildTools(SANDBOX_TOOLS_METADATA, handlers);
+}
+
+export async function buildDescribeToolsetOutput(
+  auth: Authenticator,
+  providerId: ModelProviderIdType,
+  format: "json" | "yaml"
+): Promise<Result<Array<{ type: "text"; text: string }>, MCPError>> {
+  const hasDsbxTools = await hasDsbxToolsEnabled(auth);
+  const toolsResult = getToolsForProvider(auth, providerId, {
+    includeDsbxTools: hasDsbxTools,
+  });
+  if (toolsResult.isErr()) {
+    return new Err(new MCPError(toolsResult.error.message));
+  }
+  const manifest = createToolManifest(toolsResult.value);
+  const output =
+    format === "json"
+      ? toolManifestToJSON(manifest)
+      : toolManifestToYAML(manifest);
+
+  return new Ok([{ type: "text" as const, text: output }]);
 }
 
 export async function runSandboxBashTool(

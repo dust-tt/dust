@@ -33,7 +33,12 @@ function providerToProfile(providerId: ModelProviderIdType): ToolProfile {
 
 export function getToolsForProvider(
   _auth: Authenticator,
-  providerId: ModelProviderIdType
+  providerId: ModelProviderIdType,
+  {
+    includeDsbxTools = true,
+  }: {
+    includeDsbxTools?: boolean;
+  } = {}
 ): Result<readonly ToolEntry[], Error> {
   const imageResult = getSandboxImageFromRegistry({ name: "dust-base" });
   if (imageResult.isErr()) {
@@ -43,9 +48,22 @@ export function getToolsForProvider(
   const allTools = imageResult.value.tools;
   const profile = providerToProfile(providerId);
 
-  return new Ok(
-    allTools.filter((tool) => !tool.profile || tool.profile === profile)
+  const providerTools = allTools.filter(
+    (tool) => !tool.profile || tool.profile === profile
   );
+
+  return new Ok(filterDsbxToolEntries(providerTools, { includeDsbxTools }));
+}
+
+export function filterDsbxToolEntries(
+  tools: readonly ToolEntry[],
+  { includeDsbxTools }: { includeDsbxTools: boolean }
+): readonly ToolEntry[] {
+  if (includeDsbxTools) {
+    return tools;
+  }
+
+  return tools.filter((tool) => tool.name !== "dsbx");
 }
 
 export function getSandboxImage(

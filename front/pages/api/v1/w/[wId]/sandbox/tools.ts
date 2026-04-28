@@ -11,6 +11,7 @@ import {
   type SandboxExecTokenPayload,
   verifySandboxExecToken,
 } from "@app/lib/api/sandbox/access_tokens";
+import { hasDsbxToolsEnabled } from "@app/lib/api/sandbox/feature_flags";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { apiError } from "@app/logger/withlogging";
@@ -54,6 +55,16 @@ async function handler(
           api_error: {
             type: "invalid_sandbox_token_error",
             message: "The sandbox token is invalid or expired.",
+          },
+        });
+      }
+
+      if (!(await hasDsbxToolsEnabled(auth))) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Sandbox dsbx tools are not enabled for this workspace.",
           },
         });
       }
