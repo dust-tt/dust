@@ -77,10 +77,6 @@ async function handler(
 
       const query = r.data;
 
-      if (auth.isAdmin()) {
-        await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
-      }
-
       const views = await MCPServerViewResource.listBySpaceIds(
         auth,
         query.spaceIds
