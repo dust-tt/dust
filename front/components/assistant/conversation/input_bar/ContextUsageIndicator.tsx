@@ -2,14 +2,18 @@ import {
   useCompactConversation,
   useConversationContextUsage,
 } from "@app/hooks/conversations";
+import {
+  COMPACTION_STARTED_EVENT,
+  CompactionStartedEvent,
+} from "@app/lib/notifications/events";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
-  TooltipContent,
-  TooltipProvider,
-  TooltipRoot,
-  TooltipTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
+import { useEffect, useState } from "react";
 
 interface ContextUsageIndicatorProps {
   buttonSize: "xs" | "sm";
@@ -64,6 +68,7 @@ export function ContextUsageIndicator({
   owner,
   conversationId,
 }: ContextUsageIndicatorProps) {
+  const [isOpen, setIsOpen] = useState(false);
   const { contextUsage } = useConversationContextUsage({
     conversationId,
     workspaceId: owner.sId,
@@ -79,40 +84,62 @@ export function ContextUsageIndicator({
       ? Math.round((contextUsage.contextUsage / contextUsage.contextSize) * 100)
       : 0;
 
+  useEffect(() => {
+    const handleCompactionStarted = (event: Event) => {
+      if (
+        event instanceof CompactionStartedEvent &&
+        event.detail.conversationId === conversationId
+      ) {
+        setIsOpen(false);
+      }
+    };
+
+    window.addEventListener(COMPACTION_STARTED_EVENT, handleCompactionStarted);
+    return () => {
+      window.removeEventListener(
+        COMPACTION_STARTED_EVENT,
+        handleCompactionStarted
+      );
+    };
+  }, [conversationId]);
+
   return (
     <div className="hidden md:block">
-      <TooltipProvider>
-        <TooltipRoot>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost-secondary"
-              size={buttonSize}
-              icon={() => <CircleProgress percentage={percentage} size={16} />}
-            />
-          </TooltipTrigger>
-          <TooltipContent side="top" className="p-3">
-            <div className="flex flex-col items-start gap-3">
+      <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost-secondary"
+            size={buttonSize}
+            icon={() => <CircleProgress percentage={percentage} size={16} />}
+          />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent side="top" align="end" className="w-64">
+          <div className="flex flex-col items-start gap-3 p-3">
+            <div className="flex flex-col gap-1">
+              <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+                Context
+              </span>
               <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                 The current context usage is at {percentage}%
               </span>
-              {percentage > CONTEXT_USAGE_PERCENT_THRESHOLD && (
-                <Button
-                  variant="outline"
-                  size="xs"
-                  label={isCompacting ? "Compacting" : "Compact now"}
-                  onClick={() => {
-                    if (contextUsage?.model) {
-                      void compact(contextUsage.model);
-                    }
-                  }}
-                  disabled={isCompacting || !contextUsage?.model}
-                  isLoading={isCompacting}
-                />
-              )}
             </div>
-          </TooltipContent>
-        </TooltipRoot>
-      </TooltipProvider>
+            {percentage > CONTEXT_USAGE_PERCENT_THRESHOLD && (
+              <Button
+                variant="outline"
+                size="xs"
+                label={isCompacting ? "Compacting" : "Compact now"}
+                onClick={() => {
+                  if (contextUsage?.model) {
+                    void compact(contextUsage.model);
+                  }
+                }}
+                disabled={isCompacting || !contextUsage?.model}
+                isLoading={isCompacting}
+              />
+            )}
+          </div>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }
