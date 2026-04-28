@@ -238,7 +238,11 @@ export const InputBar = React.memo(function InputBar({
         return;
       }
 
-      setSelectedMCPServerViews((prev) => [...prev, serverView]);
+      setSelectedMCPServerViews((prev) =>
+        prev.some((sv) => sv.sId === serverView.sId)
+          ? prev
+          : [...prev, serverView]
+      );
       void addTool(serverView.sId);
     },
     [addTool, selectedMCPServerViewIds]
@@ -264,7 +268,9 @@ export const InputBar = React.memo(function InputBar({
         return;
       }
 
-      setSelectedSkills((prev) => [...prev, skill]);
+      setSelectedSkills((prev) =>
+        prev.some((s) => s.sId === skill.sId) ? prev : [...prev, skill]
+      );
       void addSkill(skill.sId);
     },
     [addSkill, selectedSkillIds]
