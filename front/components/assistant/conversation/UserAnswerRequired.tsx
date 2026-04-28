@@ -138,11 +138,7 @@ export function UserAnswerRequired({
 
   // Submits the current draft answer when one is available.
   function handleSubmit() {
-    if (isSubmitting) {
-      return;
-    }
-
-    if (answerDraft.answer === null) {
+    if (isSubmitting || answerDraft.answer === null) {
       return;
     }
 
