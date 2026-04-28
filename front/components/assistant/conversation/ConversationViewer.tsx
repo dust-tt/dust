@@ -721,10 +721,25 @@ export const ConversationViewer = ({
                   currentData,
                   compactionMessage
                 );
+                // Scroll to the bottom when the user compacts so the
+                // compaction message is in view.
+                const scrollToCompaction = () =>
+                  ({
+                    index: "LAST",
+                    align: "end",
+                    behavior: "smooth",
+                  }) as const;
                 if (offset < currentData.length) {
-                  ref.current.data.insert([compactionMessage], offset);
+                  ref.current.data.insert(
+                    [compactionMessage],
+                    offset,
+                    scrollToCompaction
+                  );
                 } else {
-                  ref.current.data.append([compactionMessage]);
+                  ref.current.data.append(
+                    [compactionMessage],
+                    scrollToCompaction
+                  );
                 }
               }
             }
