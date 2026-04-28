@@ -1,4 +1,5 @@
 import {
+  cn,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -12,6 +13,7 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useRef,
   useState,
 } from "react";
 
@@ -21,6 +23,18 @@ interface SlashCommandTooltip {
 }
 
 const DEFAULT_EMPTY_MESSAGE = "No commands found";
+const DEFAULT_LIST_MAX_HEIGHT_CLASS_NAME = "max-h-96";
+
+interface ScrollFadeState {
+  hasContentAbove: boolean;
+  hasContentBelow: boolean;
+}
+
+const EMPTY_SCROLL_FADE_STATE: ScrollFadeState = {
+  hasContentAbove: false,
+  hasContentBelow: false,
+};
+
 export interface SlashCommand {
   action: string;
   description?: string;
@@ -37,7 +51,9 @@ export interface SlashCommandDropdownProps
   > {
   emptyMessage?: string;
   header?: string;
+  listMaxHeightClassName?: string;
   onClose?: () => void;
+  showScrollFade?: boolean;
   size?: "default" | "wide";
 }
 
@@ -56,12 +72,19 @@ export const SlashCommandDropdown = forwardRef<
       clientRect,
       emptyMessage = DEFAULT_EMPTY_MESSAGE,
       header,
+      listMaxHeightClassName = DEFAULT_LIST_MAX_HEIGHT_CLASS_NAME,
       onClose,
+      showScrollFade = false,
       size = "default",
     },
     ref
   ) => {
     const [selectedIndex, setSelectedIndex] = useState(0);
+    const [scrollFadeState, setScrollFadeState] = useState<ScrollFadeState>(
+      EMPTY_SCROLL_FADE_STATE
+    );
+    const itemCount = items.length;
+    const listRef = useRef<HTMLDivElement>(null);
     const [virtualTriggerStyle, setVirtualTriggerStyle] =
       useState<React.CSSProperties>({});
 
@@ -112,11 +135,62 @@ export const SlashCommandDropdown = forwardRef<
       [selectItem, selectedIndex, items.length]
     );
 
+    const updateScrollFadeState = useCallback(() => {
+      const list = listRef.current;
+
+      if (!list) {
+        setScrollFadeState(EMPTY_SCROLL_FADE_STATE);
+        return;
+      }
+
+      const nextState = {
+        hasContentAbove: list.scrollTop > 1,
+        hasContentBelow:
+          list.scrollTop + list.clientHeight < list.scrollHeight - 1,
+      };
+
+      setScrollFadeState((previousState) =>
+        previousState.hasContentAbove === nextState.hasContentAbove &&
+        previousState.hasContentBelow === nextState.hasContentBelow
+          ? previousState
+          : nextState
+      );
+    }, []);
+
     // Reset selected index when items change.
     // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
     useEffect(() => {
       setSelectedIndex(0);
     }, [items]);
+
+    useEffect(() => {
+      if (!showScrollFade || itemCount === 0) {
+        setScrollFadeState((previousState) =>
+          previousState.hasContentAbove || previousState.hasContentBelow
+            ? EMPTY_SCROLL_FADE_STATE
+            : previousState
+        );
+        return;
+      }
+
+      updateScrollFadeState();
+      const animationFrame = window.requestAnimationFrame(
+        updateScrollFadeState
+      );
+
+      const list = listRef.current;
+      if (!list || typeof ResizeObserver === "undefined") {
+        return () => window.cancelAnimationFrame(animationFrame);
+      }
+
+      const resizeObserver = new ResizeObserver(updateScrollFadeState);
+      resizeObserver.observe(list);
+
+      return () => {
+        window.cancelAnimationFrame(animationFrame);
+        resizeObserver.disconnect();
+      };
+    }, [itemCount, showScrollFade, updateScrollFadeState]);
 
     // Update virtual trigger position.
     const updateTriggerPosition = useCallback(() => {
@@ -176,43 +250,71 @@ export const SlashCommandDropdown = forwardRef<
               {emptyMessage}
             </div>
           ) : (
-            <div className="max-h-96 overflow-y-auto">
-              {items.map((item, index) => {
-                const menuItem = (
-                  <DropdownMenuItem
-                    key={item.id}
-                    icon={item.icon}
-                    itemId={item.id}
-                    label={item.label}
-                    description={item.description}
-                    truncateText
-                    onClick={() => selectItem(index)}
-                    onMouseEnter={() => setSelectedIndex(index)}
-                    className={
-                      index === selectedIndex
-                        ? "bg-muted-background dark:bg-muted-night [transition-duration:0ms]"
-                        : ""
-                    }
-                  />
-                );
-
-                // Wrap with DropdownTooltipTrigger if command has tooltip property.
-                if (item.tooltip) {
-                  return (
-                    <DropdownTooltipTrigger
+            <div className="relative">
+              <div
+                ref={listRef}
+                className={cn("overflow-y-auto", listMaxHeightClassName)}
+                onScroll={showScrollFade ? updateScrollFadeState : undefined}
+              >
+                {items.map((item, index) => {
+                  const menuItem = (
+                    <DropdownMenuItem
                       key={item.id}
-                      description={item.tooltip.description}
-                      media={item.tooltip.media}
-                      side="right"
-                      sideOffset={8}
-                    >
-                      {menuItem}
-                    </DropdownTooltipTrigger>
+                      icon={item.icon}
+                      itemId={item.id}
+                      label={item.label}
+                      description={item.description}
+                      truncateText
+                      onClick={() => selectItem(index)}
+                      onMouseEnter={() => setSelectedIndex(index)}
+                      className={
+                        index === selectedIndex
+                          ? "bg-muted-background dark:bg-muted-night [transition-duration:0ms]"
+                          : ""
+                      }
+                    />
                   );
-                }
 
-                return menuItem;
-              })}
+                  // Wrap with DropdownTooltipTrigger if command has tooltip property.
+                  if (item.tooltip) {
+                    return (
+                      <DropdownTooltipTrigger
+                        key={item.id}
+                        description={item.tooltip.description}
+                        media={item.tooltip.media}
+                        side="right"
+                        sideOffset={8}
+                      >
+                        {menuItem}
+                      </DropdownTooltipTrigger>
+                    );
+                  }
+
+                  return menuItem;
+                })}
+              </div>
+              <div
+                className={cn(
+                  "pointer-events-none absolute inset-x-0 top-0 h-10 bg-gradient-to-t",
+                  "from-transparent via-background/65 to-background opacity-0 transition-opacity duration-200",
+                  "dark:via-muted-background-night/65 dark:to-muted-background-night",
+                  showScrollFade &&
+                    scrollFadeState.hasContentAbove &&
+                    "opacity-100"
+                )}
+                aria-hidden
+              />
+              <div
+                className={cn(
+                  "pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-b",
+                  "from-transparent via-background/65 to-background opacity-0 transition-opacity duration-200",
+                  "dark:via-muted-background-night/65 dark:to-muted-background-night",
+                  showScrollFade &&
+                    scrollFadeState.hasContentBelow &&
+                    "opacity-100"
+                )}
+                aria-hidden
+              />
             </div>
           )}
         </DropdownMenuContent>

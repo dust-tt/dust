@@ -29,6 +29,9 @@ import {
 
 import type { InputBarSlashSuggestionCapability } from "./InputBarSlashSuggestionTypes";
 
+// Capability rows are 3.25rem tall, and we want to show 7 of them.
+const LIST_MAX_HEIGHT_CLASS_NAME = "max-h-[22.75rem]";
+
 function matchesCapabilityQuery({
   label,
   query,
@@ -255,7 +258,9 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
             : "No capabilities found"
         }
         header="Capabilities"
+        listMaxHeightClassName={LIST_MAX_HEIGHT_CLASS_NAME}
         onClose={onClose}
+        showScrollFade
         size="wide"
       />
     );
