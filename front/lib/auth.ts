@@ -485,7 +485,7 @@ export class Authenticator {
 
     const [workspace, user] = await Promise.all([
       WorkspaceResource.fetchById(wId),
-      UserResource.fetchById(claims.uId),
+      claims.uId ? UserResource.fetchById(claims.uId) : Promise.resolve(null),
     ]);
 
     if (!workspace) {
@@ -498,7 +498,7 @@ export class Authenticator {
       });
     }
 
-    if (!user) {
+    if (claims.uId && !user) {
       return new Err({
         status_code: 401,
         api_error: {
@@ -508,42 +508,65 @@ export class Authenticator {
       });
     }
 
-    const authData = await this.fetchRoleGroupsAndSubscription({
-      user,
-      workspace,
-    });
+    let role: RoleType;
+    let baseGroupModelIds: ModelId[];
+    let subscription: SubscriptionResource | null;
 
-    if (authData.role === "none") {
-      return new Err({
-        status_code: 401,
-        api_error: {
-          type: "invalid_sandbox_token_error",
-          message: "The user is not a member of this workspace.",
-        },
+    if (user) {
+      const authData = await this.fetchRoleGroupsAndSubscription({
+        user,
+        workspace,
       });
+
+      if (authData.role === "none") {
+        return new Err({
+          status_code: 401,
+          api_error: {
+            type: "invalid_sandbox_token_error",
+            message: "The user is not a member of this workspace.",
+          },
+        });
+      }
+
+      role = authData.role;
+      baseGroupModelIds = authData.groupModelIds;
+      subscription = authData.subscription;
+    } else {
+      // Userless sandbox token: conversation was driven by a non-human actor
+      // (e.g. Slack bot user). Grant the lowest authenticated workspace role
+      // and start from the workspace global group; conversation-space
+      // restriction below still applies.
+      const [globalGroup, activeSubscription] = await Promise.all([
+        GroupResource.internalFetchWorkspaceGlobalGroup(workspace.id),
+        SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id),
+      ]);
+
+      role = "user";
+      baseGroupModelIds = globalGroup ? [globalGroup.id] : [];
+      subscription = activeSubscription;
     }
 
     // Restrict groups to the conversation's spaces so the sandbox auth can only
     // access resources visible to the conversation, not everything the user can.
     const groupModelIds = await this.restrictGroupsToConversationSpaces(
-      authData.groupModelIds,
+      baseGroupModelIds,
       claims.cId,
       workspace.id
     );
 
     const providersHealth = await this.fetchByokProvidersHealth(
       workspace,
-      authData.subscription
+      subscription
     );
 
     return new Ok(
       new Authenticator({
         authMethod: "sandbox_token",
         workspace,
-        user,
-        role: authData.role,
+        user: user ?? undefined,
+        role,
         groupModelIds,
-        subscription: authData.subscription,
+        subscription,
         providersHealth,
       })
     );
