@@ -4,18 +4,27 @@ import {
   useWorkspace,
 } from "@app/lib/auth/AuthContext";
 import {
+  useUpdateWorkspaceSandboxAgentEgressRequests,
   useUpdateWorkspaceEgressPolicy,
+  useWorkspaceSandboxAgentEgressRequests,
   useWorkspaceEgressPolicy,
 } from "@app/lib/swr/sandbox";
 import { normalizeEgressPolicyDomain } from "@app/types/sandbox/egress_policy";
 import {
   Button,
   ContentMessage,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   GlobeAltIcon,
   InformationCircleIcon,
   Input,
   Page,
   PlusIcon,
+  SliderToggle,
   Spinner,
   TrashIcon,
 } from "@dust-tt/sparkle";
@@ -27,6 +36,8 @@ export function EgressPolicyPage() {
   const { featureFlags } = useFeatureFlags();
   const hasSandboxTools = featureFlags.includes("sandbox_tools");
   const [domainInput, setDomainInput] = useState("");
+  const [isEnableAgentRequestsDialogOpen, setIsEnableAgentRequestsDialogOpen] =
+    useState(false);
 
   const {
     policy,
@@ -38,6 +49,18 @@ export function EgressPolicyPage() {
   });
   const { updateWorkspaceEgressPolicy, isUpdatingWorkspaceEgressPolicy } =
     useUpdateWorkspaceEgressPolicy({ owner });
+  const {
+    allowAgentEgressRequests,
+    isWorkspaceSandboxAgentEgressRequestsLoading,
+    isWorkspaceSandboxAgentEgressRequestsError,
+  } = useWorkspaceSandboxAgentEgressRequests({
+    owner,
+    disabled: !hasSandboxTools || !isAdmin,
+  });
+  const {
+    updateWorkspaceSandboxAgentEgressRequests,
+    isUpdatingWorkspaceSandboxAgentEgressRequests,
+  } = useUpdateWorkspaceSandboxAgentEgressRequests({ owner });
 
   const hasDomainInput = domainInput.trim().length > 0;
   const domainInputResult = hasDomainInput
@@ -85,6 +108,22 @@ export function EgressPolicyPage() {
     await saveDomains(policy.allowedDomains.filter((d) => d !== domain));
   };
 
+  const handleToggleAgentEgressRequests = async () => {
+    if (allowAgentEgressRequests) {
+      await updateWorkspaceSandboxAgentEgressRequests(false);
+      return;
+    }
+
+    setIsEnableAgentRequestsDialogOpen(true);
+  };
+
+  const handleConfirmEnableAgentEgressRequests = async () => {
+    const success = await updateWorkspaceSandboxAgentEgressRequests(true);
+    if (success) {
+      setIsEnableAgentRequestsDialogOpen(false);
+    }
+  };
+
   const renderBody = () => {
     if (!isAdmin) {
       return (
@@ -100,10 +139,16 @@ export function EgressPolicyPage() {
         </ContentMessage>
       );
     }
-    if (isWorkspaceEgressPolicyLoading) {
+    if (
+      isWorkspaceEgressPolicyLoading ||
+      isWorkspaceSandboxAgentEgressRequestsLoading
+    ) {
       return <Spinner />;
     }
-    if (isWorkspaceEgressPolicyError) {
+    if (
+      isWorkspaceEgressPolicyError ||
+      isWorkspaceSandboxAgentEgressRequestsError
+    ) {
       return (
         <ContentMessage
           variant="warning"
@@ -111,13 +156,35 @@ export function EgressPolicyPage() {
           size="lg"
           title="Failed to load"
         >
-          The sandbox network policy could not be loaded.
+          The sandbox network settings could not be loaded.
         </ContentMessage>
       );
     }
 
     return (
       <Page.Vertical align="stretch" gap="lg">
+        <div className="flex items-center justify-between gap-4 border-y border-border py-4 dark:border-border-night">
+          <div className="flex min-w-0 flex-col">
+            <div className="heading-sm text-foreground dark:text-foreground-night">
+              Agent-requested domains
+            </div>
+            <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+              Allow agents using the sandbox to ask for additional domains, one
+              approval per domain, during the conversation. When disabled,
+              agents cannot request new domains and should only rely on the
+              domains listed below.
+            </div>
+          </div>
+          <SliderToggle
+            size="xs"
+            selected={allowAgentEgressRequests}
+            onClick={() => {
+              void handleToggleAgentEgressRequests();
+            }}
+            disabled={isUpdatingWorkspaceSandboxAgentEgressRequests}
+          />
+        </div>
+
         <Page.SectionHeader
           title="Allowed domains"
           description="These domains apply to all sandboxes in this workspace. Changes are picked up by egress proxy cache refreshes, typically within 60 seconds."
@@ -186,13 +253,53 @@ export function EgressPolicyPage() {
   };
 
   return (
-    <Page.Vertical gap="xl" align="stretch">
-      <Page.Header
-        title="Network"
-        icon={GlobeAltIcon}
-        description="Configure workspace-level domains that sandboxes are allowed to access through the egress proxy."
-      />
-      {renderBody()}
-    </Page.Vertical>
+    <>
+      <Dialog
+        open={isEnableAgentRequestsDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setIsEnableAgentRequestsDialogOpen(false);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              Allow agents to request additional domains?
+            </DialogTitle>
+          </DialogHeader>
+          <DialogContainer>
+            When enabled, any agent running in the sandbox can ask the user to
+            allow additional domains during the conversation. Each request is
+            approval-gated, but a non-admin user in this workspace can grant
+            network access to a domain you have not pre-approved. Domains added
+            this way last only for the current sandbox.
+          </DialogContainer>
+          <DialogFooter
+            leftButtonProps={{
+              label: "Cancel",
+              variant: "outline",
+              onClick: () => setIsEnableAgentRequestsDialogOpen(false),
+            }}
+            rightButtonProps={{
+              label: "Enable",
+              onClick: () => {
+                void handleConfirmEnableAgentEgressRequests();
+              },
+              isLoading: isUpdatingWorkspaceSandboxAgentEgressRequests,
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+
+      <Page.Vertical gap="xl" align="stretch">
+        <Page.Header
+          title="Network"
+          icon={GlobeAltIcon}
+          description="Configure workspace-level domains that sandboxes are allowed to access through the egress proxy."
+        />
+        {renderBody()}
+      </Page.Vertical>
+    </>
   );
 }

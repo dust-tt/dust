@@ -63,6 +63,7 @@ type CachedWorkspaceData = {
   description: string | null;
   segmentation: WorkspaceSegmentationType | null;
   ssoEnforced: boolean;
+  sandboxAllowAgentEgressRequests: boolean;
   workOSOrganizationId: string | null;
   whiteListedProviders: ModelProviderIdType[] | null;
   defaultEmbeddingProvider: EmbeddingProviderIdType | null;
@@ -77,8 +78,7 @@ type CachedWorkspaceData = {
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface WorkspaceResource
-  extends ReadonlyAttributesType<WorkspaceModel> {}
+export interface WorkspaceResource extends ReadonlyAttributesType<WorkspaceModel> {}
 
 export const WORKSPACE_CONVERSATION_KILL_SWITCH_OPERATIONS = [
   "block",
@@ -108,7 +108,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
 
   constructor(
     model: ModelStatic<WorkspaceModel>,
-    blob: Attributes<WorkspaceModel>
+    blob: Attributes<WorkspaceModel>,
   ) {
     super(WorkspaceModel, blob);
     this.blob = blob;
@@ -118,7 +118,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     `workspace:sid:${wId}`;
 
   static isWorkspaceConversationKillSwitchValue(
-    killSwitched: unknown
+    killSwitched: unknown,
   ): killSwitched is WorkspaceConversationKillSwitchValue {
     if (typeof killSwitched !== "object" || killSwitched === null) {
       return false;
@@ -137,7 +137,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
 
   static isWorkspaceConversationKillSwitched(
     killSwitched: unknown,
-    conversationId: string
+    conversationId: string,
   ): boolean {
     if (
       !WorkspaceResource.isWorkspaceConversationKillSwitchValue(killSwitched)
@@ -149,29 +149,29 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
   }
 
   public static async getWhiteListedProvidersFilteredByKillSwitches(
-    whiteListedProviders: ModelProviderIdType[] | null
+    whiteListedProviders: ModelProviderIdType[] | null,
   ): Promise<ModelProviderIdType[] | null> {
     const enabledKillSwitches =
       await KillSwitchResource.listEnabledKillSwitches();
 
     const isAnthropicBlacklisted = enabledKillSwitches.includes(
-      "global_blacklist_anthropic"
+      "global_blacklist_anthropic",
     );
     const isOpenaiBlacklisted = enabledKillSwitches.includes(
-      "global_blacklist_openai"
+      "global_blacklist_openai",
     );
     if (isAnthropicBlacklisted || isOpenaiBlacklisted) {
       return (whiteListedProviders ?? MODEL_PROVIDER_IDS).filter(
         (p) =>
           (isAnthropicBlacklisted ? p !== "anthropic" : true) &&
-          (isOpenaiBlacklisted ? p !== "openai" : true)
+          (isOpenaiBlacklisted ? p !== "openai" : true),
       );
     }
     return whiteListedProviders;
   }
 
   private static async _fetchByIdUncached(
-    wId: string
+    wId: string,
   ): Promise<CachedWorkspaceData | null> {
     const workspace = await WorkspaceModel.findOne({
       where: { sId: wId },
@@ -182,7 +182,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
 
     const whiteListedProviders =
       await WorkspaceResource.getWhiteListedProvidersFilteredByKillSwitches(
-        workspace.whiteListedProviders
+        workspace.whiteListedProviders,
       );
 
     return {
@@ -192,6 +192,8 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
       description: workspace.description,
       segmentation: workspace.segmentation,
       ssoEnforced: workspace.ssoEnforced ?? false,
+      sandboxAllowAgentEgressRequests:
+        workspace.sandboxAllowAgentEgressRequests,
       workOSOrganizationId: workspace.workOSOrganizationId,
       whiteListedProviders: whiteListedProviders,
       defaultEmbeddingProvider: workspace.defaultEmbeddingProvider,
@@ -208,12 +210,12 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
   private static fetchByIdCached = cacheWithRedis(
     WorkspaceResource._fetchByIdUncached,
     WorkspaceResource.workspaceCacheKeyResolver,
-    { cacheNullValues: false }
+    { cacheNullValues: false },
   );
 
   private static invalidateWorkspaceCache = invalidateCacheWithRedis(
     WorkspaceResource._fetchByIdUncached,
-    WorkspaceResource.workspaceCacheKeyResolver
+    WorkspaceResource.workspaceCacheKeyResolver,
   );
 
   /**
@@ -232,6 +234,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
       description: data.description,
       segmentation: data.segmentation,
       ssoEnforced: data.ssoEnforced,
+      sandboxAllowAgentEgressRequests: data.sandboxAllowAgentEgressRequests,
       workOSOrganizationId: data.workOSOrganizationId,
       whiteListedProviders: data.whiteListedProviders,
       defaultEmbeddingProvider: data.defaultEmbeddingProvider,
@@ -247,7 +250,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
 
   protected override async update(
     blob: Partial<Attributes<WorkspaceModel>>,
-    transaction?: Transaction
+    transaction?: Transaction,
   ): Promise<[affectedCount: number]> {
     // Dual write: keep sharingPolicy in sync when metadata.allowContentCreationFileSharing changes.
     // TODO(2026-03-19: Frame sharing) Remove dual write once reads switch to sharingPolicy.
@@ -264,13 +267,13 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     const result = await super.update(blob, transaction);
     const sId = this.sId;
     invalidateCacheAfterCommit(transaction, () =>
-      WorkspaceResource.invalidateWorkspaceCache(sId)
+      WorkspaceResource.invalidateWorkspaceCache(sId),
     );
     return result;
   }
 
   static async makeNew(
-    blob: CreationAttributes<WorkspaceModel>
+    blob: CreationAttributes<WorkspaceModel>,
   ): Promise<WorkspaceResource> {
     const workspace = await this.model.create(blob);
     const workspaceResource = new this(this.model, workspace.get());
@@ -282,7 +285,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
 
   static async fetchById(
     wId: string,
-    transaction?: Transaction
+    transaction?: Transaction,
   ): Promise<WorkspaceResource | null> {
     if (transaction) {
       const workspace = await this.model.findOne({
@@ -299,7 +302,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
 
     const whiteListedProviders =
       await WorkspaceResource.getWhiteListedProvidersFilteredByKillSwitches(
-        cached.whiteListedProviders
+        cached.whiteListedProviders,
       );
 
     return this.fromCachedData({
@@ -382,7 +385,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
   }
 
   static async fetchByDomain(
-    domain: string
+    domain: string,
   ): Promise<WorkspaceResource | null> {
     const result = await this.fetchWorkspaceAndDomainInfo(domain);
     return result?.workspace ?? null;
@@ -401,7 +404,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
   }
 
   static async fetchByMetronomeCustomerId(
-    metronomeCustomerId: string
+    metronomeCustomerId: string,
   ): Promise<WorkspaceResource | null> {
     const workspace = await this.model.findOne({
       where: { metronomeCustomerId },
@@ -410,7 +413,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
   }
 
   static async fetchByWorkOSOrganizationId(
-    workOSOrganizationId: string
+    workOSOrganizationId: string,
   ): Promise<WorkspaceResource | null> {
     const workspace = await this.model.findOne({
       where: { workOSOrganizationId },
@@ -461,7 +464,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
         | "metadata"
         | "sharingPolicy"
       >
-    >
+    >,
   ) {
     return this.update(updateableAttributes);
   }
@@ -480,12 +483,12 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
           workspaceId: this.id,
           ...(domain ? { domain } : {}),
         },
-      }
+      },
     );
 
     if (affectedCount === 0) {
       return new Err(
-        new Error("The workspace does not have any verified domain.")
+        new Error("The workspace does not have any verified domain."),
       );
     }
 
@@ -518,12 +521,12 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
           domain,
           workspaceId: this.id,
         },
-      }
+      },
     );
 
     if (!existingDomain) {
       return new Err(
-        new Error(`Domain ${domain} not found for workspace ${this.sId}`)
+        new Error(`Domain ${domain} not found for workspace ${this.sId}`),
       );
     }
 
@@ -564,7 +567,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
             domain,
             workspaceId: existingDomainInRegion.workspaceId,
           },
-          "Dropping existing domain"
+          "Dropping existing domain",
         );
 
         const [domainWorkspace] = await WorkspaceResource.fetchByModelIds([
@@ -574,8 +577,8 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
         if (!domainWorkspace) {
           return new Err(
             new Error(
-              `Failed to fetch workspace ${existingDomainInRegion.workspaceId} while dropping domain ${domain}`
-            )
+              `Failed to fetch workspace ${existingDomainInRegion.workspaceId} while dropping domain ${domain}`,
+            ),
           );
         }
 
@@ -587,13 +590,13 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
           renderLightWorkspaceType({ workspace: domainWorkspace }),
           {
             domain,
-          }
+          },
         );
       } else {
         return new Err(
           new Error(
-            `Domain ${domain} already exists in workspace ${existingDomainInRegion.workspaceId}`
-          )
+            `Domain ${domain} already exists in workspace ${existingDomainInRegion.workspaceId}`,
+          ),
         );
       }
     }
@@ -604,7 +607,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
 
     if (organizationsWithDomain.length > 0) {
       const otherOrganizationsWithDomain = organizationsWithDomain.filter(
-        (o) => o.id !== this.workOSOrganizationId
+        (o) => o.id !== this.workOSOrganizationId,
       );
 
       const [otherOrganizationWithDomain] = otherOrganizationsWithDomain;
@@ -615,7 +618,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
               domain,
               organizationId: otherOrganizationWithDomain.id,
             },
-            "Dropping existing domain"
+            "Dropping existing domain",
           );
 
           // Delete the domain from WorkOS.
@@ -623,14 +626,14 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
             otherOrganizationWithDomain,
             {
               domain,
-            }
+            },
           );
         } else {
           return new Err(
             new Error(
               `Domain ${domain} already associated with organization ` +
-                `${otherOrganizationWithDomain.id} - ${otherOrganizationWithDomain.metadata.region}`
-            )
+                `${otherOrganizationWithDomain.id} - ${otherOrganizationWithDomain.metadata.region}`,
+            ),
           );
         }
       }
@@ -650,14 +653,14 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
 
   static async updateName(
     id: ModelId,
-    newName: string
+    newName: string,
   ): Promise<Result<void, Error>> {
     return this.updateByModelIdAndCheckExistence(id, { name: newName });
   }
 
   static async updateConversationsRetention(
     id: ModelId,
-    nbDays: number
+    nbDays: number,
   ): Promise<Result<void, Error>> {
     return this.updateByModelIdAndCheckExistence(id, {
       conversationsRetentionDays: nbDays === -1 ? null : nbDays,
@@ -666,14 +669,34 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
 
   static async updateMetadata(
     id: ModelId,
-    metadata: Record<string, string | number | boolean | object> | null
+    metadata: Record<string, string | number | boolean | object> | null,
   ): Promise<Result<void, Error>> {
     return this.updateByModelIdAndCheckExistence(id, { metadata });
   }
 
+  static async fetchSandboxAllowAgentEgressRequests(
+    workspaceId: string,
+  ): Promise<Result<boolean, Error>> {
+    const workspace = await this.fetchById(workspaceId);
+    if (!workspace) {
+      return new Err(new Error("Workspace not found."));
+    }
+
+    return new Ok(workspace.sandboxAllowAgentEgressRequests);
+  }
+
+  static async updateSandboxAllowAgentEgressRequests(
+    id: ModelId,
+    sandboxAllowAgentEgressRequests: boolean,
+  ): Promise<Result<void, Error>> {
+    return this.updateByModelIdAndCheckExistence(id, {
+      sandboxAllowAgentEgressRequests,
+    });
+  }
+
   static async updateMetronomeCustomerId(
     id: ModelId,
-    metronomeCustomerId: string
+    metronomeCustomerId: string,
   ): Promise<Result<void, Error>> {
     return this.updateByModelIdAndCheckExistence(id, {
       metronomeCustomerId,
@@ -697,13 +720,13 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     if (
       currentKillSwitch !== undefined &&
       !WorkspaceResource.isWorkspaceConversationKillSwitchValue(
-        currentKillSwitch
+        currentKillSwitch,
       )
     ) {
       return new Err(
         new Error(
-          `${INVALID_WORKSPACE_KILL_SWITCH_METADATA_ERROR_PREFIX} ${JSON.stringify(currentKillSwitch)}`
-        )
+          `${INVALID_WORKSPACE_KILL_SWITCH_METADATA_ERROR_PREFIX} ${JSON.stringify(currentKillSwitch)}`,
+        ),
       );
     }
 
@@ -726,7 +749,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
         };
         const updateResult = await WorkspaceResource.updateMetadata(
           this.id,
-          metadata
+          metadata,
         );
         if (updateResult.isErr()) {
           return new Err(updateResult.error);
@@ -745,7 +768,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
         }
 
         const updatedConversationIds = conversationIds.filter(
-          (cId) => cId !== conversationId
+          (cId) => cId !== conversationId,
         );
         const metadata: Record<string, string | number | boolean | object> = {
           ...(this.metadata ?? {}),
@@ -759,7 +782,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
         }
         const updateResult = await WorkspaceResource.updateMetadata(
           this.id,
-          metadata
+          metadata,
         );
         if (updateResult.isErr()) {
           return new Err(updateResult.error);
@@ -811,7 +834,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
 
     const updateResult = await WorkspaceResource.updateMetadata(
       this.id,
-      metadata
+      metadata,
     );
     if (updateResult.isErr()) {
       return new Err(updateResult.error);
@@ -824,13 +847,13 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
 
   static async updateWorkOSOrganizationId(
     id: ModelId,
-    workOSOrganizationId: string | null
+    workOSOrganizationId: string | null,
   ): Promise<Result<void, Error>> {
     return this.updateByModelIdAndCheckExistence(id, { workOSOrganizationId });
   }
 
   static async disableSSOEnforcement(
-    id: ModelId
+    id: ModelId,
   ): Promise<Result<void, Error>> {
     const workspace = await this.model.findOne({
       where: { id, ssoEnforced: true },
@@ -856,7 +879,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
 
   async delete(
     auth: Authenticator,
-    { transaction }: { transaction?: Transaction }
+    { transaction }: { transaction?: Transaction },
   ): Promise<Result<number | undefined, Error>> {
     try {
       const deletedCount = await this.model.destroy({
@@ -865,7 +888,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
       });
       const sId = this.sId;
       invalidateCacheAfterCommit(transaction, () =>
-        WorkspaceResource.invalidateWorkspaceCache(sId)
+        WorkspaceResource.invalidateWorkspaceCache(sId),
       );
       return new Ok(deletedCount);
     } catch (error) {
@@ -881,7 +904,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
 
   static async updateByModelIdAndCheckExistence(
     id: ModelId,
-    updateValues: Partial<Attributes<WorkspaceModel>>
+    updateValues: Partial<Attributes<WorkspaceModel>>,
   ): Promise<Result<void, Error>> {
     if (updateValues.conversationsRetentionDays !== undefined) {
       const retentionDays = updateValues.conversationsRetentionDays;
@@ -892,8 +915,8 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
       ) {
         return new Err(
           new Error(
-            `Conversation retention must be -1 or >= ${CONVERSATIONS_RETENTION_MIN_DAYS} days.`
-          )
+            `Conversation retention must be -1 or >= ${CONVERSATIONS_RETENTION_MIN_DAYS} days.`,
+          ),
         );
       }
     }

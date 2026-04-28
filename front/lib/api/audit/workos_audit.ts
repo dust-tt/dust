@@ -57,6 +57,7 @@ type AuditAction =
   | "project.joined"
   | "project.left"
   // Sandbox.
+  | "sandbox_egress_policy.agent_requests_setting_updated"
   | "sandbox_egress_policy.sandbox_updated"
   | "sandbox_egress_policy.updated"
   // SCIM / Directory Sync.
@@ -113,7 +114,7 @@ export type EmitAuditLogEventParams = {
  * schema definitions, which declare every metadata value as `"string"`.
  */
 function serializeMetadata(
-  metadata: Record<string, string | number | boolean> | undefined
+  metadata: Record<string, string | number | boolean> | undefined,
 ): Record<string, string> | undefined {
   if (!metadata) {
     return undefined;
@@ -130,7 +131,7 @@ function serializeMetadata(
  * either via feature flag or plan setting.
  */
 export async function isAuditLogsEnabled(
-  auth: Authenticator
+  auth: Authenticator,
 ): Promise<boolean> {
   if (await hasFeatureFlag(auth, "audit_logs")) {
     return true;
@@ -184,7 +185,7 @@ export async function emitAuditLogEvent({
         ...normalizeError(error),
         auditEvent: { action, targets, metadata },
       },
-      "Failed to emit audit log event"
+      "Failed to emit audit log event",
     );
   }
 }
@@ -251,7 +252,7 @@ export async function emitAuditLogEventDirect({
         ...normalizeError(error),
         auditEvent: { action, targets, metadata },
       },
-      "Failed to emit audit log event"
+      "Failed to emit audit log event",
     );
   }
 }
@@ -319,7 +320,7 @@ type AuditTargetResourceMap = {
  */
 export function buildAuditLogTarget<T extends AuditTargetType>(
   type: T,
-  resource: AuditTargetResourceMap[T]
+  resource: AuditTargetResourceMap[T],
 ): AuditLogTarget {
   return { type, id: resource.sId, name: resource.name };
 }
@@ -334,7 +335,7 @@ export function getAuditLogContext(
   req?: {
     headers: Record<string, string | string[] | undefined>;
     socket?: { remoteAddress?: string };
-  }
+  },
 ): AuditLogContext {
   if (req) {
     return { location: getClientIp(req) };

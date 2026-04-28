@@ -6,13 +6,13 @@ import { createSandboxTools } from "@app/lib/api/actions/servers/sandbox/tools";
 import type { Authenticator } from "@app/lib/auth";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
-function createServer(
+async function createServer(
   auth: Authenticator,
-  agentLoopContext?: AgentLoopContextType
-): McpServer {
+  agentLoopContext?: AgentLoopContextType,
+): Promise<McpServer> {
   const server = makeInternalMCPServer("sandbox");
 
-  const tools = createSandboxTools(auth, agentLoopContext);
+  const tools = await createSandboxTools(auth, agentLoopContext);
   for (const tool of tools) {
     registerTool(auth, agentLoopContext, server, tool, {
       monitoringName: SANDBOX_TOOL_NAME,

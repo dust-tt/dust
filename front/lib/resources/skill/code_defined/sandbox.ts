@@ -8,6 +8,7 @@ import {
 } from "@app/lib/api/sandbox/image";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type { SystemSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 import logger from "@app/logger/logger";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
@@ -30,12 +31,12 @@ function buildSandboxInstructionProse({
   if (hasDsbxTools) {
     instructions.push(
       "You can use the `dsbx` command line tool to list and run tools programmatically in the sandbox.",
-      "Use it with `dsbx tools [SERVER_NAME] [TOOL_NAME] [ARGS]...`. Run `dsbx tools --help` for more information."
+      "Use it with `dsbx tools [SERVER_NAME] [TOOL_NAME] [ARGS]...`. Run `dsbx tools --help` for more information.",
     );
   }
 
   instructions.push(
-    "Write output files (scripts, results, exports) to /files/conversation to make them available to the user."
+    "Write output files (scripts, results, exports) to /files/conversation to make them available to the user.",
   );
 
   return instructions.join(" ");
@@ -48,16 +49,55 @@ function formatWorkspaceAllowlist(domains: string[]): string {
   return domains.map((d) => `- \`${d}\``).join("\n");
 }
 
+async function fetchSandboxAllowAgentEgressRequests(
+  auth: Authenticator,
+): Promise<boolean> {
+  const workspace = auth.getNonNullableWorkspace();
+  const result = await WorkspaceResource.fetchSandboxAllowAgentEgressRequests(
+    workspace.sId,
+  );
+  if (result.isErr()) {
+    logger.warn(
+      { err: result.error, workspaceId: workspace.sId },
+      "Failed to read sandbox agent egress request setting for skill instructions",
+    );
+    return false;
+  }
+
+  return result.value;
+}
+
 async function buildNetworkAccessSection(auth: Authenticator): Promise<string> {
+  const allowAgentRequests = await fetchSandboxAllowAgentEgressRequests(auth);
   const policyResult = await readWorkspacePolicy(auth);
   let workspaceDomains: string[] = [];
   if (policyResult.isErr()) {
     logger.warn(
       { err: policyResult.error },
-      "Failed to read workspace egress policy for sandbox skill instructions"
+      "Failed to read workspace egress policy for sandbox skill instructions",
     );
   } else {
     workspaceDomains = policyResult.value.allowedDomains;
+  }
+
+  if (!allowAgentRequests) {
+    return `#### Sandbox Network Access
+
+All outbound network traffic from the sandbox is routed through an egress
+proxy that **denies every request by default**. Only domains on the
+workspace allowlist below should be relied on. There is **no** way to add
+additional domains during the conversation. If a required domain is not
+listed, use only preapproved domains or local data, or explain the blocker and
+ask the user to contact their workspace admin.
+
+Workspace allowlist:
+
+${formatWorkspaceAllowlist(workspaceDomains)}
+
+If a request is blocked, the bash tool output will include a
+\`<network_proxy_logs>\` block listing the denied domain(s). Surface that
+information to the user so they can decide whether to ask their admin to
+allowlist it; do not retry without changes.`;
   }
 
   return `#### Sandbox Network Access
@@ -95,7 +135,7 @@ block first; a denied egress is a possible cause.`;
 async function buildSandboxInstructions(
   auth: Authenticator,
   providerId: ModelProviderIdType | undefined,
-  hasDsbxTools: boolean
+  hasDsbxTools: boolean,
 ): Promise<string> {
   const networkAccessSection = await buildNetworkAccessSection(auth);
   const sandboxInstructions = buildSandboxInstructionProse({ hasDsbxTools });
@@ -114,7 +154,7 @@ async function buildSandboxInstructions(
     toolsResult = new Ok(
       filterDsbxToolEntries(imageResult.value.tools, {
         includeDsbxTools: hasDsbxTools,
-      })
+      }),
     );
   }
 
@@ -154,7 +194,7 @@ export const sandboxSkill = {
     auth: Authenticator,
     {
       agentLoopData,
-    }: { spaceIds: string[]; agentLoopData?: AgentLoopExecutionData }
+    }: { spaceIds: string[]; agentLoopData?: AgentLoopExecutionData },
   ) => {
     const providerId = agentLoopData?.agentConfiguration?.model.providerId;
     const flags = await getFeatureFlags(auth);
