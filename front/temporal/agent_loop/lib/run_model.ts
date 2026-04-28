@@ -438,6 +438,7 @@ export async function runModel(
           tools,
           allowedTokenCount: model.contextSize - model.generationTokensCount,
           agentConfiguration,
+          enabledSkills,
           leadingMessages,
           renderSkillsAsUserMessages,
         })

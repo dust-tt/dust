@@ -124,6 +124,7 @@ async function runReinforcedSkillsStep({
 
   const renderResult = await renderConversationForModel(auth, {
     conversation: conversationRes.value,
+    enabledSkills: [],
     model: modelConfig,
     prompt: systemPrompt,
     tools: toolsJson,
