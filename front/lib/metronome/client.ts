@@ -633,10 +633,27 @@ export async function createMetronomeCommit({
     return new Ok(response.data);
   } catch (err) {
     if (err instanceof ConflictError) {
-      // Idempotency key conflict — commit already created, safe to ignore.
+      // Idempotency key conflict — commit already created, look it up by
+      // uniqueness_key so the caller can persist the existing id.
+      const existing = await findMetronomeCommitByUniquenessKey({
+        metronomeCustomerId,
+        uniquenessKey: idempotencyKey,
+        coveringDate: roundedStartingAt,
+      });
+      if (existing.isOk() && existing.value) {
+        logger.info(
+          {
+            metronomeCustomerId,
+            idempotencyKey,
+            metronomeCommitId: existing.value.id,
+          },
+          "[Metronome] Commit already exists (idempotent), reusing id"
+        );
+        return new Ok({ id: existing.value.id });
+      }
       logger.info(
         { metronomeCustomerId, idempotencyKey },
-        "[Metronome] Commit already exists (idempotent)"
+        "[Metronome] Commit already exists (idempotent) but lookup did not find it"
       );
       return new Ok(null);
     }
@@ -655,6 +672,31 @@ export async function createMetronomeCommit({
     );
     return new Err(error);
   }
+}
+
+/**
+ * Find a customer-level commit by its uniqueness_key.
+ * Used to recover the id after a 409 conflict on creation.
+ * Scoped via covering_date so we don't paginate through expired commits.
+ */
+export async function findMetronomeCommitByUniquenessKey({
+  metronomeCustomerId,
+  uniquenessKey,
+  coveringDate,
+}: {
+  metronomeCustomerId: string;
+  uniquenessKey: string;
+  coveringDate: string;
+}): Promise<Result<{ id: string } | null, Error>> {
+  const result = await listMetronomeCustomerCommits({
+    metronomeCustomerId,
+    coveringDate,
+  });
+  if (result.isErr()) {
+    return result;
+  }
+  const match = result.value.find((c) => c.uniqueness_key === uniquenessKey);
+  return new Ok(match ? { id: match.id } : null);
 }
 
 // ---------------------------------------------------------------------------
@@ -917,10 +959,27 @@ export async function createMetronomeCredit({
     return new Ok(response.data);
   } catch (err) {
     if (err instanceof ConflictError) {
-      // Idempotency key conflict — credit already granted, safe to ignore.
+      // Idempotency key conflict — credit already granted, look it up by
+      // uniqueness_key so the caller can persist the existing id.
+      const existing = await findMetronomeCreditByUniquenessKey({
+        metronomeCustomerId,
+        uniquenessKey: idempotencyKey,
+        coveringDate: roundedStartingAt,
+      });
+      if (existing.isOk() && existing.value) {
+        logger.info(
+          {
+            metronomeCustomerId,
+            idempotencyKey,
+            metronomeCreditId: existing.value.id,
+          },
+          "[Metronome] Credit grant already exists (idempotent), reusing id"
+        );
+        return new Ok({ id: existing.value.id });
+      }
       logger.info(
         { metronomeCustomerId, idempotencyKey },
-        "[Metronome] Credit grant already exists (idempotent)"
+        "[Metronome] Credit grant already exists (idempotent) but lookup did not find it"
       );
       return new Ok(null);
     }
@@ -935,6 +994,31 @@ export async function createMetronomeCredit({
 }
 
 /**
+ * Find a customer-level credit by its uniqueness_key.
+ * Used to recover the id after a 409 conflict on creation.
+ * Scoped via covering_date so we don't paginate through expired credits.
+ */
+export async function findMetronomeCreditByUniquenessKey({
+  metronomeCustomerId,
+  uniquenessKey,
+  coveringDate,
+}: {
+  metronomeCustomerId: string;
+  uniquenessKey: string;
+  coveringDate: string;
+}): Promise<Result<{ id: string } | null, Error>> {
+  const result = await listMetronomeCustomerCredits({
+    metronomeCustomerId,
+    coveringDate,
+  });
+  if (result.isErr()) {
+    return result;
+  }
+  const match = result.value.find((c) => c.uniqueness_key === uniquenessKey);
+  return new Ok(match ? { id: match.id } : null);
+}
+
+/**
  * List customer-level credits for a Metronome customer.
  * Optionally filter by a specific credit id.
  */
@@ -943,23 +1027,23 @@ export async function listMetronomeCustomerCredits({
   creditId,
   includeContractCredits = false,
   includeBalance = false,
+  coveringDate,
 }: {
   metronomeCustomerId: string;
   creditId?: string;
   includeContractCredits?: boolean;
   includeBalance?: boolean;
+  coveringDate?: string;
 }): Promise<Result<Credit[], Error>> {
   try {
-    const credits: Credit[] = [];
-    for await (const entry of getMetronomeClient().v1.customers.credits.list({
+    const page = await getMetronomeClient().v1.customers.credits.list({
       customer_id: metronomeCustomerId,
       ...(creditId ? { credit_id: creditId } : {}),
+      ...(coveringDate ? { covering_date: coveringDate } : {}),
       include_contract_credits: includeContractCredits,
       include_balance: includeBalance,
-    })) {
-      credits.push(entry);
-    }
-    return new Ok(credits);
+    });
+    return new Ok(page.data);
   } catch (err) {
     const error = normalizeError(err);
     logger.error(
@@ -979,23 +1063,23 @@ export async function listMetronomeCustomerCommits({
   commitId,
   includeContractCommits = false,
   includeBalance = false,
+  coveringDate,
 }: {
   metronomeCustomerId: string;
   commitId?: string;
   includeContractCommits?: boolean;
   includeBalance?: boolean;
+  coveringDate?: string;
 }): Promise<Result<Commit[], Error>> {
   try {
-    const commits: Commit[] = [];
-    for await (const entry of getMetronomeClient().v1.customers.commits.list({
+    const page = await getMetronomeClient().v1.customers.commits.list({
       customer_id: metronomeCustomerId,
       ...(commitId ? { commit_id: commitId } : {}),
+      ...(coveringDate ? { covering_date: coveringDate } : {}),
       include_contract_commits: includeContractCommits,
       include_balance: includeBalance,
-    })) {
-      commits.push(entry);
-    }
-    return new Ok(commits);
+    });
+    return new Ok(page.data);
   } catch (err) {
     const error = normalizeError(err);
     logger.error(
