@@ -5,10 +5,10 @@ import {
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
-  TooltipContent,
-  TooltipProvider,
-  TooltipRoot,
-  TooltipTrigger,
+  LinkWrapper,
+  PopoverContent,
+  PopoverRoot,
+  PopoverTrigger,
 } from "@dust-tt/sparkle";
 
 interface ContextUsageIndicatorProps {
@@ -23,6 +23,8 @@ interface CircleProgressProps {
 }
 
 const CONTEXT_USAGE_PERCENT_THRESHOLD = 33;
+const COMPACTION_GUIDE_URL =
+  "https://docs.dust.tt/update/docs/context-compaction";
 
 function CircleProgress({ percentage, size = 16 }: CircleProgressProps) {
   const strokeWidth = size * 0.14;
@@ -80,21 +82,22 @@ export function ContextUsageIndicator({
       : 0;
 
   return (
-    <div className="hidden md:block">
-      <TooltipProvider>
-        <TooltipRoot>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost-secondary"
-              size={buttonSize}
-              icon={() => <CircleProgress percentage={percentage} size={16} />}
-            />
-          </TooltipTrigger>
-          <TooltipContent side="top" className="p-3">
-            <div className="flex flex-col items-start gap-3">
-              <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                The current context usage is at {percentage}%
-              </span>
+    <div className="hidden md:block" onClick={(e) => e.stopPropagation()}>
+      <PopoverRoot>
+        <PopoverTrigger asChild>
+          <Button
+            variant="ghost-secondary"
+            size={buttonSize}
+            icon={() => <CircleProgress percentage={percentage} size={16} />}
+            tooltip={`${percentage}% of context used.`}
+          />
+        </PopoverTrigger>
+        <PopoverContent side="top" align="end" className="w-auto p-3">
+          <div className="flex flex-col items-start gap-3">
+            <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+              {percentage}% of context used.
+            </span>
+            <div className="flex items-center gap-3">
               {percentage > CONTEXT_USAGE_PERCENT_THRESHOLD && (
                 <Button
                   variant="outline"
@@ -109,10 +112,18 @@ export function ContextUsageIndicator({
                   isLoading={isCompacting}
                 />
               )}
+              <LinkWrapper
+                href={COMPACTION_GUIDE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-highlight underline hover:text-highlight-light dark:text-highlight-night dark:hover:text-highlight-light-night"
+              >
+                Learn more
+              </LinkWrapper>
             </div>
-          </TooltipContent>
-        </TooltipRoot>
-      </TooltipProvider>
+          </div>
+        </PopoverContent>
+      </PopoverRoot>
     </div>
   );
 }
