@@ -394,25 +394,21 @@ export async function handleMembershipInvitations(
         }
       }
 
-      await MembershipInvitationResource.bulkRevokeByModelIds(
-        auth,
-        toRevokeModelIds,
-        t
-      );
+      await MembershipInvitationResource.bulkRevokeByModelIds(auth, {
+        modelIds: toRevokeModelIds,
+        transaction: t,
+      });
 
       for (const [role, modelIds] of toUpdateRoleByRole) {
         await MembershipInvitationResource.bulkUpdateInitialRoleByModelIds(
           auth,
-          modelIds,
-          role,
-          t
+          { modelIds, role, transaction: t }
         );
       }
 
       const created = await MembershipInvitationResource.bulkMakeNewPending(
         auth,
-        toCreate,
-        t
+        { blobs: toCreate, transaction: t }
       );
       for (const invitation of created) {
         invitationBySanitizedEmail.set(

@@ -1,3 +1,4 @@
+import type { HandleMembershipInvitationResult } from "@app/lib/api/invitation";
 import { Authenticator } from "@app/lib/auth";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
@@ -189,11 +190,7 @@ describe("POST /api/w/[wId]/invitations", () => {
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(200);
-    const data = res._getJSONData() as {
-      success: boolean;
-      email: string;
-      error_message?: string;
-    }[];
+    const data: HandleMembershipInvitationResult[] = res._getJSONData();
     expect(data).toHaveLength(2);
 
     const byEmail = new Map(data.map((r) => [r.email, r]));

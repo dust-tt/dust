@@ -235,8 +235,13 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
 
   static async bulkMakeNewPending(
     auth: Authenticator,
-    blobs: { inviteEmail: string; initialRole: ActiveRoleType }[],
-    transaction?: Transaction
+    {
+      blobs,
+      transaction,
+    }: {
+      blobs: { inviteEmail: string; initialRole: ActiveRoleType }[];
+      transaction?: Transaction;
+    }
   ): Promise<MembershipInvitationResource[]> {
     if (blobs.length === 0) {
       return [];
@@ -261,9 +266,15 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
 
   private static async bulkUpdateByModelIds(
     auth: Authenticator,
-    modelIds: ModelId[],
-    values: Partial<Attributes<MembershipInvitationModel>>,
-    transaction?: Transaction
+    {
+      modelIds,
+      values,
+      transaction,
+    }: {
+      modelIds: ModelId[];
+      values: Partial<Attributes<MembershipInvitationModel>>;
+      transaction?: Transaction;
+    }
   ): Promise<void> {
     if (modelIds.length === 0) {
       return;
@@ -280,29 +291,38 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
 
   static async bulkRevokeByModelIds(
     auth: Authenticator,
-    modelIds: ModelId[],
-    transaction?: Transaction
-  ): Promise<void> {
-    await this.bulkUpdateByModelIds(
-      auth,
+    {
       modelIds,
-      { status: "revoked" },
-      transaction
-    );
+      transaction,
+    }: {
+      modelIds: ModelId[];
+      transaction?: Transaction;
+    }
+  ): Promise<void> {
+    await this.bulkUpdateByModelIds(auth, {
+      modelIds,
+      values: { status: "revoked" },
+      transaction,
+    });
   }
 
   static async bulkUpdateInitialRoleByModelIds(
     auth: Authenticator,
-    modelIds: ModelId[],
-    role: ActiveRoleType,
-    transaction?: Transaction
-  ): Promise<void> {
-    await this.bulkUpdateByModelIds(
-      auth,
+    {
       modelIds,
-      { initialRole: role },
-      transaction
-    );
+      role,
+      transaction,
+    }: {
+      modelIds: ModelId[];
+      role: ActiveRoleType;
+      transaction?: Transaction;
+    }
+  ): Promise<void> {
+    await this.bulkUpdateByModelIds(auth, {
+      modelIds,
+      values: { initialRole: role },
+      transaction,
+    });
   }
 
   static async getPendingInvitations(
