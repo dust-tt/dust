@@ -73,7 +73,7 @@
  *       400:
  *         description: Invalid request query parameters
  *       403:
- *         description: Requires an API key with at least builder role
+ *         description: Requires an API key with admin scope
  *       405:
  *         description: Method not supported
  */
@@ -95,13 +95,22 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<string | ExportTableData["rows"]>>,
   auth: Authenticator
 ): Promise<void> {
-  if (!auth.isKey() || !auth.isBuilder()) {
+  if (!auth.isKey()) {
     return apiError(req, res, {
       status_code: 403,
       api_error: {
         type: "workspace_auth_error",
+        message: "Workspace analytics export requires API key authentication.",
+      },
+    });
+  }
+  if (!auth.isAdmin()) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "insufficient_key_scope",
         message:
-          "Requires an API key with at least builder role to access workspace analytics.",
+          "Workspace analytics export requires an API key with admin scope.",
       },
     });
   }

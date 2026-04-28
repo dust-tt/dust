@@ -454,18 +454,34 @@ export function withPublicAPIAuthentication<T>(
 
       const owner = workspaceAuth.workspace()!;
 
-      // Authenticator created from a key has the builder role if the key is associated with
-      // the workspace. System keys can bypass this when allowSystemKeyBypassBuilderCheck is set.
+      // Authenticator created from a key carries the role assigned at key creation
+      // (`user`, `builder`, or `admin`). Read methods require at least `user`; mutating
+      // methods require `builder` or `admin`. System keys can bypass when
+      // allowSystemKeyBypassBuilderCheck is set.
       const isSystemKeyAllowed =
         allowSystemKeyBypassBuilderCheck &&
         workspaceAuth.isSystemKey() &&
         keyRes.value.workspaceId === owner.id;
-      if (!workspaceAuth.isBuilder() && !isSystemKeyAllowed) {
+      const method = req.method ?? "GET";
+      const isReadMethod =
+        method === "GET" || method === "HEAD" || method === "OPTIONS";
+
+      if (!workspaceAuth.isUser() && !isSystemKeyAllowed) {
         return apiError(req, res, {
           status_code: 401,
           api_error: {
             type: "workspace_auth_error",
             message: "Only users of the workspace can access this content.",
+          },
+        });
+      }
+      if (!isReadMethod && !workspaceAuth.isBuilder() && !isSystemKeyAllowed) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "insufficient_key_scope",
+            message:
+              "This API key has read-only scope; this operation requires write scope.",
           },
         });
       }

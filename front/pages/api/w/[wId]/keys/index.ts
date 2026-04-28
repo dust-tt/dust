@@ -32,6 +32,12 @@ const CreateKeyPostBodySchema = t.type({
   group_id: t.union([t.string, t.undefined]),
   group_ids: t.union([t.array(t.string), t.undefined]),
   monthly_cap_micro_usd: t.union([t.number, t.null, t.undefined]),
+  role: t.union([
+    t.literal("user"),
+    t.literal("builder"),
+    t.literal("admin"),
+    t.undefined,
+  ]),
 });
 
 async function handler(
@@ -77,9 +83,10 @@ async function handler(
         });
       }
 
-      const { name, group_id, group_ids, monthly_cap_micro_usd } =
+      const { name, group_id, group_ids, monthly_cap_micro_usd, role } =
         bodyValidation.right;
       const trimmedName = name.trim();
+      const keyRole = role ?? "builder";
 
       if (trimmedName.length === 0) {
         return apiError(req, res, {
@@ -186,7 +193,7 @@ async function handler(
           userId: user.id,
           workspaceId: owner.id,
           isSystem: false,
-          role: "builder",
+          role: keyRole,
           monthlyCapMicroUsd: monthly_cap_micro_usd ?? null,
         },
         resolvedGroups
@@ -205,6 +212,7 @@ async function handler(
         context: getAuditLogContext(auth, req),
         metadata: {
           groupIds: resolvedGroups.map((g) => g.sId).join(","),
+          role: keyRole,
         },
       });
 

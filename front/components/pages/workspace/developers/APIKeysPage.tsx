@@ -1,6 +1,7 @@
 import { APIKeyCreationSheet } from "@app/components/workspace/api-keys/APIKeyCreationSheet";
 import { APIKeysList } from "@app/components/workspace/api-keys/APIKeysList";
 import { EditKeyCapDialog } from "@app/components/workspace/api-keys/EditKeyCapDialog";
+import type { KeyRole } from "@app/components/workspace/api-keys/NewAPIKeyDialog";
 import { NewAPIKeyDialog } from "@app/components/workspace/api-keys/NewAPIKeyDialog";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
@@ -50,10 +51,12 @@ export function APIKeys({ owner }: APIKeysProps) {
         name,
         groups: selectedGroups,
         monthlyCapMicroUsd,
+        role,
       }: {
         name: string;
         groups: GroupType[];
         monthlyCapMicroUsd: number | null;
+        role: KeyRole;
       }) => {
         const response = await clientFetch(`/api/w/${owner.sId}/keys`, {
           method: "POST",
@@ -64,6 +67,7 @@ export function APIKeys({ owner }: APIKeysProps) {
             name,
             group_ids: selectedGroups.map((g) => g.sId),
             monthly_cap_micro_usd: monthlyCapMicroUsd,
+            role,
           }),
         });
         await mutate(`/api/w/${owner.sId}/keys`);
