@@ -15,6 +15,7 @@ export default defineConfig(() => {
       env: {
         // Skip tests by default, unless explicitly enabled
         RUN_LLM_TEST: process.env.RUN_LLM_TEST ?? "false",
+        RUN_LLM_BATCH_TEST: process.env.RUN_LLM_BATCH_TEST ?? "false",
         // Map API keys from non-VITE env vars to VITE prefixed ones for browser compatibility
         DUST_MANAGED_GOOGLE_AI_STUDIO_API_KEY:
           process.env.DUST_MANAGED_GOOGLE_AI_STUDIO_API_KEY ?? "",

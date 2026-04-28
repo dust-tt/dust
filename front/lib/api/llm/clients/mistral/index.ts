@@ -148,6 +148,21 @@ export class MistralLLM extends LLM<MistralChatStreamRequest> {
     return job.id;
   }
 
+  override async deleteBatch(batchId: string): Promise<boolean> {
+    const job = await this.client.batch.jobs.get({ jobId: batchId });
+
+    const fileIds = [job.inputFiles, job.outputFile]
+      .flat()
+      .filter((id): id is string => !!id);
+
+    // At most 2 elements (input + output files).
+    const results = await Promise.all(
+      fileIds.map((fileId) => this.client.files.delete({ fileId }))
+    );
+
+    return results.every((result) => result.deleted);
+  }
+
   override async getBatchStatus(batchId: string): Promise<BatchStatus> {
     const job = await this.client.batch.jobs.get({ jobId: batchId });
 
