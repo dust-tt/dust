@@ -252,12 +252,7 @@ export async function runDeduplicationLLMCall(
 // ── Group resolution ─────────────────────────────────────────────────────────
 
 // Generic over the todo type so unit tests can pass a minimal structural stub
-// instead of a full ProjectTodoResource. Requires an `id` field so the resolver
-// can pick the oldest existing todo (smallest id) as the cluster primary,
-// independent of the order the LLM listed them.
-type TodoWithId = { id: ModelId };
-
-type ResolvedGroupOf<TTodo extends TodoWithId> =
+type ResolvedGroupOf<TTodo extends { id: ModelId }> =
   | { kind: "existing"; todo: TTodo; candidates: DeduplicateCandidate[] }
   | { kind: "new"; candidates: DeduplicateCandidate[] };
 
@@ -279,7 +274,7 @@ type ResolvedGroupOf<TTodo extends TodoWithId> =
 //
 // Any candidate the LLM forgot to place in a cluster is emitted as its own
 // singleton "new" group so no source ever disappears.
-export function resolveDeduplicationGroups<TTodo extends TodoWithId>(
+export function resolveDeduplicationGroups<TTodo extends { id: ModelId }>(
   candidates: DeduplicateCandidate[],
   existingTodos: TTodo[],
   groups: number[][]

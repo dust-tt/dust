@@ -91,22 +91,66 @@ export type ExistingUpdateIntent = {
   blob: TodoBlob;
 };
 
-// Picks at most one intent per todo, keeping the one with the smallest itemId.
-// Stability across runs is what fixes the version-churn bug: once the picked
-// blob lands on the todo, the next merge sees no diff and does not cut a new
-// version. Generic so unit tests can pass a structural stub instead of a real
-// ProjectTodoResource.
-export function dedupeUpdateIntentsByTodoId<
-  TIntent extends { todo: { id: ModelId }; itemId: string },
->(intents: TIntent[]): TIntent[] {
-  const byTodoId = new Map<ModelId, TIntent>();
+// Merges the intents targeting each todo down to a single update so a todo
+// linked to N sources with disagreeing action items only produces at most one
+// new version per merge run. Two stability rules drive the merge:
+//
+//   - text comes from the smallest-itemId source ("text primary"), so the
+//     applied text does not jitter across runs when several sources report
+//     slightly different wording for the same task;
+//   - status / doneAt / reasoningDoneAt come from the smallest-itemId source
+//     reporting status="done" if any does, otherwise from the text primary.
+//     A "done" signal carried by any source therefore wins — even when that
+//     source is not the text primary — and the choice stays deterministic.
+//
+// As a consequence the merged text and reasoning may come from different
+// sources. That is preferred over silently dropping a "done" signal carried
+// by a non-winner source, which is what a strict "smallest-itemId wins
+// everything" policy would do.
+//
+// Generic so unit tests can pass a minimal structural stub instead of a real
+// ProjectTodoResource / TodoBlob.
+export function mergeUpdateIntentsByTodoId<
+  TTodo extends { id: ModelId },
+  TBlob extends {
+    status: "todo" | "done";
+    doneAt: Date | null;
+    reasoningDoneAt: string | null;
+  },
+>(
+  intents: Array<{ todo: TTodo; itemId: string; blob: TBlob }>
+): Array<{ todo: TTodo; blob: TBlob }> {
+  type Intent = { todo: TTodo; itemId: string; blob: TBlob };
+  const groups = new Map<ModelId, Intent[]>();
   for (const intent of intents) {
-    const current = byTodoId.get(intent.todo.id);
-    if (current === undefined || intent.itemId < current.itemId) {
-      byTodoId.set(intent.todo.id, intent);
-    }
+    const bucket = groups.get(intent.todo.id) ?? [];
+    bucket.push(intent);
+    groups.set(intent.todo.id, bucket);
   }
-  return [...byTodoId.values()];
+
+  const result: Array<{ todo: TTodo; blob: TBlob }> = [];
+  for (const bucket of groups.values()) {
+    const textPrimary = bucket.reduce((min, i) =>
+      i.itemId < min.itemId ? i : min
+    );
+
+    const doneIntents = bucket.filter((i) => i.blob.status === "done");
+    const statusPrimary =
+      doneIntents.length > 0
+        ? doneIntents.reduce((min, i) => (i.itemId < min.itemId ? i : min))
+        : textPrimary;
+
+    result.push({
+      todo: textPrimary.todo,
+      blob: {
+        ...textPrimary.blob,
+        status: statusPrimary.blob.status,
+        doneAt: statusPrimary.blob.doneAt,
+        reasoningDoneAt: statusPrimary.blob.reasoningDoneAt,
+      },
+    });
+  }
+  return result;
 }
 
 // ── Stats ─────────────────────────────────────────────────────────────────────
@@ -251,13 +295,13 @@ async function collectNewCandidates(
     { concurrency: 4 }
   );
 
-  const dedupedIntents = dedupeUpdateIntentsByTodoId(allIntents);
+  const mergedUpdates = mergeUpdateIntentsByTodoId(allIntents);
 
   let existingUpdated = 0;
   await concurrentExecutor(
-    dedupedIntents,
-    async (intent) => {
-      const updated = await updateTodoIfChanged(intent.todo, auth, intent.blob);
+    mergedUpdates,
+    async ({ todo, blob }) => {
+      const updated = await updateTodoIfChanged(todo, auth, blob);
       if (updated) {
         existingUpdated++;
       }

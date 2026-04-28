@@ -1,7 +1,7 @@
 import type { Authenticator } from "@app/lib/auth";
 import {
   actionItemBlob,
-  dedupeUpdateIntentsByTodoId,
+  mergeUpdateIntentsByTodoId,
   updateTodoIfChanged,
 } from "@app/lib/project_todo/merge_into_project";
 import type { ProjectTodoResource } from "@app/lib/resources/project_todo_resource";
@@ -235,76 +235,168 @@ describe("updateTodoIfChanged", () => {
   });
 });
 
-// ── dedupeUpdateIntentsByTodoId ───────────────────────────────────────────────
+// ── mergeUpdateIntentsByTodoId ────────────────────────────────────────────────
 
-// Structural stub for intents — the helper only reads `todo.id` and `itemId`.
+type StubBlob = {
+  text: string;
+  status: "todo" | "done";
+  doneAt: Date | null;
+  reasoningDoneAt: string | null;
+};
+
 type IntentStub = {
   todo: { id: ModelId };
   itemId: string;
-  tag: string;
+  blob: StubBlob;
 };
 
-function makeIntent(todoId: number, itemId: string, tag: string): IntentStub {
-  return { todo: { id: todoId as ModelId }, itemId, tag };
+function makeStubBlob(overrides: Partial<StubBlob> = {}): StubBlob {
+  return {
+    text: "default text",
+    status: "todo",
+    doneAt: null,
+    reasoningDoneAt: null,
+    ...overrides,
+  };
 }
 
-describe("dedupeUpdateIntentsByTodoId", () => {
+function makeIntent(
+  todoId: number,
+  itemId: string,
+  blobOverrides: Partial<StubBlob> = {}
+): IntentStub {
+  return {
+    todo: { id: todoId as ModelId },
+    itemId,
+    blob: makeStubBlob(blobOverrides),
+  };
+}
+
+describe("mergeUpdateIntentsByTodoId", () => {
   it("returns an empty array when there are no intents", () => {
-    expect(dedupeUpdateIntentsByTodoId([])).toEqual([]);
+    expect(mergeUpdateIntentsByTodoId([])).toEqual([]);
   });
 
-  it("keeps a single intent for a single todo as-is", () => {
-    const intent = makeIntent(1, "item-a", "only");
-    expect(dedupeUpdateIntentsByTodoId([intent])).toEqual([intent]);
+  it("keeps a single intent's blob as-is for a single todo", () => {
+    const intent = makeIntent(1, "item-a", { text: "only" });
+    const result = mergeUpdateIntentsByTodoId([intent]);
+    expect(result).toEqual([{ todo: intent.todo, blob: intent.blob }]);
   });
 
-  it("collapses multiple intents on the same todo to the smallest itemId", () => {
-    // Reproduces the version-churn bug: same todo linked to 3 sources whose
-    // action items have different content. Only the smallest-itemId intent
-    // should survive so the picked content is stable across merge runs.
+  it("emits one merged update per distinct todo, with text from the smallest itemId", () => {
+    // Reproduces the version-churn case: 3 sources on the same todo with
+    // different wording. The merged text must come from the smallest-itemId
+    // source so it stays stable across runs.
     const intents = [
-      makeIntent(42, "item-c", "third"),
-      makeIntent(42, "item-a", "first"),
-      makeIntent(42, "item-b", "second"),
+      makeIntent(42, "item-c", { text: "third phrasing" }),
+      makeIntent(42, "item-a", { text: "first phrasing" }),
+      makeIntent(42, "item-b", { text: "second phrasing" }),
     ];
 
-    const result = dedupeUpdateIntentsByTodoId(intents);
+    const result = mergeUpdateIntentsByTodoId(intents);
 
     expect(result).toHaveLength(1);
-    expect(result[0].itemId).toBe("item-a");
-    expect(result[0].tag).toBe("first");
+    expect(result[0].blob.text).toBe("first phrasing");
   });
 
-  it("emits one survivor per distinct todo", () => {
-    // Two todos, three intents on the first one and one on the second.
+  it("emits one merged update per distinct todo", () => {
     const intents = [
-      makeIntent(1, "item-z", "todo1-z"),
-      makeIntent(2, "item-q", "todo2-q"),
-      makeIntent(1, "item-a", "todo1-a"),
-      makeIntent(1, "item-m", "todo1-m"),
+      makeIntent(1, "item-z", { text: "todo1-z" }),
+      makeIntent(2, "item-q", { text: "todo2-q" }),
+      makeIntent(1, "item-a", { text: "todo1-a" }),
+      makeIntent(1, "item-m", { text: "todo1-m" }),
     ];
 
-    const result = dedupeUpdateIntentsByTodoId(intents);
-    const byTodoId = new Map(result.map((i) => [i.todo.id, i]));
+    const result = mergeUpdateIntentsByTodoId(intents);
+    const byTodoId = new Map(result.map((r) => [r.todo.id, r]));
 
     expect(result).toHaveLength(2);
-    expect(byTodoId.get(1 as ModelId)?.itemId).toBe("item-a");
-    expect(byTodoId.get(2 as ModelId)?.itemId).toBe("item-q");
+    expect(byTodoId.get(1 as ModelId)?.blob.text).toBe("todo1-a");
+    expect(byTodoId.get(2 as ModelId)?.blob.text).toBe("todo2-q");
   });
 
-  it("is order-independent (same input set → same survivor regardless of input order)", () => {
-    // Stability property: the result must not depend on the order intents
-    // were collected in (e.g. across parallel takeaway processing).
-    const a = makeIntent(7, "item-a", "a");
-    const b = makeIntent(7, "item-b", "b");
-    const c = makeIntent(7, "item-c", "c");
+  it("keeps status='todo' when no source reports done", () => {
+    const intents = [
+      makeIntent(1, "item-a", { status: "todo", text: "stable" }),
+      makeIntent(1, "item-b", { status: "todo", text: "other" }),
+    ];
 
-    const r1 = dedupeUpdateIntentsByTodoId([a, b, c]);
-    const r2 = dedupeUpdateIntentsByTodoId([c, b, a]);
-    const r3 = dedupeUpdateIntentsByTodoId([b, c, a]);
+    const [r] = mergeUpdateIntentsByTodoId(intents);
+
+    expect(r.blob.status).toBe("todo");
+    expect(r.blob.doneAt).toBeNull();
+    expect(r.blob.reasoningDoneAt).toBeNull();
+    expect(r.blob.text).toBe("stable");
+  });
+
+  it("flips to 'done' when any source reports done, even if it is not the text primary", () => {
+    // Concrete scenario behind this rule: the smallest-itemId source still
+    // reports the task as open, but a later takeaway extracted the same task
+    // and detected it as done. The "done" signal must propagate.
+    const doneAt = new Date("2026-04-22T00:00:00.000Z");
+    const intents = [
+      makeIntent(1, "item-a", { status: "todo", text: "stable text" }),
+      makeIntent(1, "item-b", {
+        status: "done",
+        doneAt,
+        reasoningDoneAt: "completed in PR #123",
+        text: "alternate phrasing",
+      }),
+    ];
+
+    const [r] = mergeUpdateIntentsByTodoId(intents);
+
+    expect(r.blob.status).toBe("done");
+    expect(r.blob.doneAt).toEqual(doneAt);
+    expect(r.blob.reasoningDoneAt).toBe("completed in PR #123");
+    // Text stays from the smallest-itemId source for stability.
+    expect(r.blob.text).toBe("stable text");
+  });
+
+  it("uses the smallest-itemId done source for status fields when multiple sources report done", () => {
+    const earlier = new Date("2026-04-20T00:00:00.000Z");
+    const later = new Date("2026-04-22T00:00:00.000Z");
+    const intents = [
+      makeIntent(1, "item-a", { status: "todo", text: "stable text" }),
+      makeIntent(1, "item-c", {
+        status: "done",
+        doneAt: later,
+        reasoningDoneAt: "reason-c",
+      }),
+      makeIntent(1, "item-b", {
+        status: "done",
+        doneAt: earlier,
+        reasoningDoneAt: "reason-b",
+      }),
+    ];
+
+    const [r] = mergeUpdateIntentsByTodoId(intents);
+
+    expect(r.blob.status).toBe("done");
+    expect(r.blob.doneAt).toEqual(earlier);
+    expect(r.blob.reasoningDoneAt).toBe("reason-b");
+    expect(r.blob.text).toBe("stable text");
+  });
+
+  it("is order-independent (same input set → same merged result regardless of input order)", () => {
+    const a = makeIntent(7, "item-a", { text: "A", status: "todo" });
+    const b = makeIntent(7, "item-b", {
+      text: "B",
+      status: "done",
+      doneAt: new Date("2026-04-22T00:00:00.000Z"),
+      reasoningDoneAt: "rb",
+    });
+    const c = makeIntent(7, "item-c", { text: "C", status: "todo" });
+
+    const r1 = mergeUpdateIntentsByTodoId([a, b, c]);
+    const r2 = mergeUpdateIntentsByTodoId([c, b, a]);
+    const r3 = mergeUpdateIntentsByTodoId([b, c, a]);
 
     expect(r1).toEqual(r2);
     expect(r2).toEqual(r3);
-    expect(r1[0].itemId).toBe("item-a");
+    // Sanity: text from a (smallest itemId), status fields from b (only done).
+    expect(r1[0].blob.text).toBe("A");
+    expect(r1[0].blob.status).toBe("done");
+    expect(r1[0].blob.reasoningDoneAt).toBe("rb");
   });
 });
