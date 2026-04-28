@@ -1,7 +1,6 @@
 -- Migration created on Apr 28, 2026
-DELETE FROM agent_suggestions
-WHERE
-    source != 'sidekick';
+ALTER TABLE "public"."project_todos"
+DROP COLUMN "cleanedAt";
 
-ALTER TABLE agent_suggestions
-DROP COLUMN IF EXISTS source;
+ALTER TABLE "public"."project_todo_versions"
+DROP COLUMN "cleanedAt";
