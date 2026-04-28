@@ -25,7 +25,15 @@ export function describeWakeUpSchedule(wakeUp: WakeUpType): string {
     case "one_shot":
       return `at ${formatWakeUpTimeOfDay(config.fireAt)}`;
     case "cron": {
-      const description = cronstrue.toString(config.cron, { verbose: false });
+      let description = cronstrue.toString(config.cron, { verbose: false });
+      // cronstrue renders DOM steps as ", every N days in a month", which
+      // reads awkwardly. Reword to natural English; "every 2" becomes
+      // "every other".
+      description = description.replace(
+        /, every (\d+) days in a month/,
+        (_, n: string) =>
+          n === "2" ? ", every other day" : `, every ${n} days`
+      );
       // Lowercase the first character so the phrase reads naturally after
       // the wake-up reason ("{reason} at 09:00 AM, only on Monday").
       return description.charAt(0).toLowerCase() + description.slice(1);

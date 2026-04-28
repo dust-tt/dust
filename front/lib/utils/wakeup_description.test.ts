@@ -120,4 +120,22 @@ describe("describeWakeUpSchedule (cron)", () => {
     });
     expect(describeWakeUpSchedule(wakeUp)).toBe("at 09:00 AM and 05:00 PM");
   });
+
+  it("rewords every-other-day DOM steps", () => {
+    const wakeUp = makeWakeUp({
+      type: "cron",
+      cron: "0 9 */2 * *",
+      timezone: "America/New_York",
+    });
+    expect(describeWakeUpSchedule(wakeUp)).toBe("at 09:00 AM, every other day");
+  });
+
+  it("rewords larger DOM steps", () => {
+    const wakeUp = makeWakeUp({
+      type: "cron",
+      cron: "0 9 */3 * *",
+      timezone: "America/New_York",
+    });
+    expect(describeWakeUpSchedule(wakeUp)).toBe("at 09:00 AM, every 3 days");
+  });
 });
