@@ -9,9 +9,7 @@ const EnableSkillInstructionsMarkerResourceSchema = z.object({
   mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.TOOL_MARKER),
   uri: z.literal(""),
   text: z.literal(ENABLE_SKILL_INSTRUCTIONS_MARKER),
-  _meta: z.object({
-    skillId: z.string(),
-  }),
+  skillId: z.string(),
 });
 
 export function makeEnableSkillInstructionsMarker(
@@ -44,5 +42,5 @@ export function getEnableSkillIdFromOutputBlock(
     return null;
   }
 
-  return parsedResource.data._meta.skillId;
+  return parsedResource.data.skillId;
 }
