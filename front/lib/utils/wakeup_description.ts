@@ -1,23 +1,36 @@
 import type { WakeUpType } from "@app/types/assistant/wakeups";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import cronstrue from "cronstrue";
 
-// Short time label for the next firing of a wake-up. V1 only handles the
-// two supported scheduleConfig shapes; PR 7 will replace this with richer
-// formatting when we support non-daily cron patterns.
-export function formatWakeUpTime(wakeUp: WakeUpType): string {
-  if (wakeUp.scheduleConfig.type === "one_shot") {
-    return new Date(wakeUp.scheduleConfig.fireAt).toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  }
-  const [minute, hour] = wakeUp.scheduleConfig.cron.split(/\s+/);
-  return `${hour.padStart(2, "0")}:${minute.padStart(2, "0")}`;
+// Render an instant as "h:mm" (12-hour, no AM/PM) in the viewer's local
+// timezone. Used by the sidebar conversation-list wake-up indicator.
+export function formatWakeUpTimeOfDay(timestamp: number): string {
+  const date = new Date(timestamp);
+  const hours = date.getHours() % 12 || 12;
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  return `${hours}:${minutes}`;
 }
 
-// Human-friendly schedule phrase for the banner.
+// Human-friendly schedule phrase used in the wake-up banner and the
+// "scheduled …" message in the input bar. Examples:
+//   one_shot         -> "at 9:00"
+//   "0 9 * * 1"      -> "at 09:00 AM, only on Monday"
+//   "0 * * * *"      -> "every hour"
+//   "*/15 * * * *"   -> "every 15 minutes"
+// Cron times are shown verbatim from the schedule's stored timezone — no
+// shift to the viewer's zone, no zone suffix.
 export function describeWakeUpSchedule(wakeUp: WakeUpType): string {
-  const time = formatWakeUpTime(wakeUp);
-  return wakeUp.scheduleConfig.type === "one_shot"
-    ? `at ${time}`
-    : `Run everyday at ${time}`;
+  const config = wakeUp.scheduleConfig;
+  switch (config.type) {
+    case "one_shot":
+      return `at ${formatWakeUpTimeOfDay(config.fireAt)}`;
+    case "cron": {
+      const description = cronstrue.toString(config.cron, { verbose: false });
+      // Lowercase the first character so the phrase reads naturally after
+      // the wake-up reason ("{reason} at 09:00 AM, only on Monday").
+      return description.charAt(0).toLowerCase() + description.slice(1);
+    }
+    default:
+      return assertNever(config);
+  }
 }
