@@ -1,7 +1,9 @@
 import { Authenticator } from "@app/lib/auth";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { ProjectTodoFactory } from "@app/tests/utils/ProjectTodoFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { WorkspaceType } from "@app/types/user";
 import type { NextApiRequest, NextApiResponse } from "next";
 import type { MockRequest, MockResponse } from "node-mocks-http";
@@ -57,6 +59,34 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/project_todos", () => {
     expect(todos[0].text).toBe("Updated todo");
     expect(todos[0].sId).toBe(todo.sId);
     expect(lastReadAt).toBeNull();
+  });
+
+  it("should return all assignees todos with user metadata when assignee=all", async () => {
+    const { user } = await setup();
+    const project = await SpaceFactory.project(workspace, user.id);
+    const secondUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, secondUser, { role: "user" });
+
+    await ProjectTodoFactory.create(workspace, project, {
+      userId: user.id,
+      text: "My todo",
+    });
+    await ProjectTodoFactory.create(workspace, project, {
+      userId: secondUser.id,
+      text: "Other user todo",
+    });
+
+    req.query.spaceId = project.sId;
+    req.query.assignee = "all";
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const data = res._getJSONData();
+    expect(data.todos).toHaveLength(2);
+    expect(data.users).toHaveLength(2);
+    expect(data.viewerUserId).toBe(user.sId);
+    expect(data.todos[0].user).not.toBeNull();
+    expect(data.todos[1].user).not.toBeNull();
   });
 
   it("should return 400 for non-project spaces", async () => {

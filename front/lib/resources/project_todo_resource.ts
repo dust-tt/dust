@@ -495,10 +495,11 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
 
   // ── Serialization ──────────────────────────────────────────────────────────
 
-  toJSON(): ProjectTodoType {
+  toJSON({ assigneeId }: { assigneeId: string }): ProjectTodoType {
     return {
-      id: this.id,
       sId: this.sId,
+      userId: assigneeId,
+      user: null,
       conversationId: null,
       text: this.text,
       status: this.status,

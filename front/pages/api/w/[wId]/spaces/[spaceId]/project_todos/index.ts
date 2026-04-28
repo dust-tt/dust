@@ -5,14 +5,21 @@ import type { Authenticator } from "@app/lib/auth";
 import { ProjectTodoResource } from "@app/lib/resources/project_todo_resource";
 import { ProjectTodoStateResource } from "@app/lib/resources/project_todo_state_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { ProjectTodoType } from "@app/types/project_todo";
+import type {
+  ProjectTodoAssigneeType,
+  ProjectTodoType,
+} from "@app/types/project_todo";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 export interface GetProjectTodosResponseBody {
   todos: ProjectTodoType[];
   lastReadAt: string | null;
+  viewerUserId: string | null;
+  users: ProjectTodoAssigneeType[];
 }
 
 async function handler(
@@ -33,10 +40,26 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const [todos, state] = await Promise.all([
-        ProjectTodoResource.fetchLatestBySpace(auth, { spaceId: space.id }),
-        ProjectTodoStateResource.fetchBySpace(auth, { spaceId: space.id }),
-      ]);
+      const currentUser = auth.getNonNullableUser();
+      const todos = await ProjectTodoResource.fetchBySpace(auth, {
+        spaceId: space.id,
+      });
+      const assigneeIds = [...new Set(todos.map((todo) => todo.userId))];
+      const assignees = await UserResource.fetchByModelIds(assigneeIds);
+      const assigneeByModelId = new Map<ModelId, ProjectTodoAssigneeType>(
+        assignees.map((user) => [
+          user.id,
+          {
+            sId: user.sId,
+            fullName: user.fullName(),
+            image: user.imageUrl,
+          },
+        ])
+      );
+
+      const state = await ProjectTodoStateResource.fetchBySpace(auth, {
+        spaceId: space.id,
+      });
 
       const todoIds = todos.map((t) => t.sId);
 
@@ -53,8 +76,10 @@ async function handler(
       // TODO: enrich todos with creator/done-by user info when supporting multiple users.
       const todosWithSources: ProjectTodoType[] = todos.map((t) => {
         const sources = sourcesByTodoId.get(t.sId) ?? [];
+        const assignee = assigneeByModelId.get(t.userId);
         return {
-          ...t.toJSON(),
+          ...t.toJSON({ assigneeId: assignee?.sId ?? "" }),
+          user: assignee ?? null,
           conversationId: conversationIdByTodoId.get(t.sId) ?? null,
           sources: sources.map((s) => ({
             sourceType: s.sourceType,
@@ -68,6 +93,8 @@ async function handler(
       return res.status(200).json({
         todos: todosWithSources,
         lastReadAt: state ? state.lastReadAt.toISOString() : null,
+        viewerUserId: currentUser.sId,
+        users: [...assigneeByModelId.values()],
       });
     }
 

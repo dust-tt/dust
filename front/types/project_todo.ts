@@ -1,5 +1,3 @@
-import type { ModelId } from "@app/types/shared/model_id";
-
 export const PROJECT_TODO_STATUSES = ["todo", "in_progress", "done"] as const;
 
 export type ProjectTodoStatus = (typeof PROJECT_TODO_STATUSES)[number];
@@ -28,10 +26,16 @@ export type ProjectTodoSourceInfo = {
   sourceUrl: string | null;
 };
 
-// Safe public representation of a ProjectTodo — no internal ModelIds exposed.
-export type ProjectTodoType = {
-  id: ModelId;
+export type ProjectTodoAssigneeType = {
   sId: string;
+  fullName: string;
+  image: string | null;
+};
+
+export type ProjectTodoType = {
+  sId: string;
+  userId: string;
+  user: ProjectTodoAssigneeType | null;
   conversationId: string | null;
   text: string;
   status: ProjectTodoStatus;
