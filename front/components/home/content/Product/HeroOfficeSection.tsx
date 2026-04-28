@@ -24,6 +24,14 @@ export function HeroOfficeSection() {
     if (!host) {
       return;
     }
+    if (
+      typeof window !== "undefined" &&
+      !window.matchMedia("(min-width: 1024px)").matches
+    ) {
+      // The animated floor scene is desktop-only — skip mounting on smaller
+      // viewports where it overwhelms the layout and burns mobile cycles.
+      return;
+    }
     const cleanup = mountFloorScene(host, {
       avatarPool: TEAM_POOL,
       scenarios: homeScenarios,
@@ -43,7 +51,7 @@ export function HeroOfficeSection() {
             <span>{EYEBROW_COPY}</span>
           </span>
           <h1
-            className="m-0 text-balance text-[clamp(40px,4.8vw,76px)] font-medium leading-[1.02] tracking-[-0.04em] text-foreground"
+            className="m-0 text-balance text-[clamp(40px,4.8vw,76px)] font-semibold leading-[90%] tracking-[-0.04em] text-foreground"
             style={{ fontFamily: "var(--font-sans, inherit)" }}
           >
             {HEADLINE_LINE_1}
@@ -56,27 +64,27 @@ export function HeroOfficeSection() {
           <div className="flex flex-row flex-wrap justify-start gap-3">
             <Link href="/home/contact">
               <Button
-                variant="primary"
+                variant="highlight"
                 size="md"
-                label="Book a demo"
+                label="Try for free"
                 onClick={withTracking(TRACKING_AREAS.HOME, "hero_book_demo")}
               />
             </Link>
             <Link href="/sign-up">
               <Button
-                variant="outline"
+                variant="ghost-secondary"
                 size="md"
-                label="Start free →"
+                label="See how it works →"
                 onClick={withTracking(TRACKING_AREAS.HOME, "hero_start_free")}
               />
             </Link>
           </div>
         </div>
 
-        <div className="relative w-full lg:w-[58%]">
+        <div className="relative hidden w-full lg:block lg:w-[58%]">
           <div
             ref={sceneRef}
-            className="dust-floor-host h-[clamp(360px,80vw,520px)] w-full sm:h-[clamp(420px,60vw,720px)] lg:h-[min(86vh,900px)]"
+            className="dust-floor-host w-full lg:h-[min(86vh,900px)]"
             aria-hidden="true"
           />
         </div>
