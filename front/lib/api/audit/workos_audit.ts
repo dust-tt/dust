@@ -71,6 +71,10 @@ type AuditAction =
   | "agent.executed"
   | "tool.executed"
   // Triggers.
+  | "trigger.created"
+  | "trigger.deleted"
+  | "trigger.enabled"
+  | "trigger.disabled"
   | "trigger.fired"
   | "trigger.email_received"
   // Agent lifecycle.

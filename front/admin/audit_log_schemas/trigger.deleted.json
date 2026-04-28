@@ -1,0 +1,16 @@
+{
+  "action": "trigger.deleted",
+  "targets": [
+    {
+      "type": "workspace"
+    },
+    {
+      "type": "trigger"
+    }
+  ],
+  "metadata": {
+    "triggerType": "string",
+    "agentId": "string",
+    "actor_type": "string"
+  }
+}

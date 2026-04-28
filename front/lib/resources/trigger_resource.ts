@@ -1,3 +1,7 @@
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+} from "@app/lib/api/audit/workos_audit";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { TriggerModel } from "@app/lib/models/agent/triggers/triggers";
@@ -70,6 +74,22 @@ export class TriggerResource extends BaseResource<TriggerModel> {
         return r;
       }
     }
+
+    void emitAuditLogEvent({
+      auth,
+      action: "trigger.created",
+      targets: [
+        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+        buildAuditLogTarget("trigger", {
+          sId: resource.sId,
+          name: resource.name,
+        }),
+      ],
+      metadata: {
+        triggerType: resource.kind,
+        agentId: resource.agentConfigurationId,
+      },
+    });
 
     return new Ok(resource);
   }
@@ -295,6 +315,23 @@ export class TriggerResource extends BaseResource<TriggerModel> {
         },
         `Trigger status changed: ${blob.status}`
       );
+
+      void emitAuditLogEvent({
+        auth,
+        action:
+          blob.status === "enabled" ? "trigger.enabled" : "trigger.disabled",
+        targets: [
+          buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+          buildAuditLogTarget("trigger", {
+            sId: trigger.sId,
+            name: trigger.name,
+          }),
+        ],
+        metadata: {
+          triggerType: trigger.kind,
+          agentId: trigger.agentConfigurationId,
+        },
+      });
     }
 
     let r = null;
@@ -364,6 +401,23 @@ export class TriggerResource extends BaseResource<TriggerModel> {
         },
         transaction,
       });
+
+      void emitAuditLogEvent({
+        auth,
+        action: "trigger.deleted",
+        targets: [
+          buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+          buildAuditLogTarget("trigger", {
+            sId: this.sId,
+            name: this.name,
+          }),
+        ],
+        metadata: {
+          triggerType: this.kind,
+          agentId: this.agentConfigurationId,
+        },
+      });
+
       return new Ok(undefined);
     } catch (error) {
       return new Err(normalizeError(error));
@@ -620,6 +674,22 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       "Trigger status changed: enabled"
     );
 
+    void emitAuditLogEvent({
+      auth,
+      action: "trigger.enabled",
+      targets: [
+        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+        buildAuditLogTarget("trigger", {
+          sId: this.sId,
+          name: this.name,
+        }),
+      ],
+      metadata: {
+        triggerType: this.kind,
+        agentId: this.agentConfigurationId,
+      },
+    });
+
     const editor = await UserResource.fetchByModelId(this.editor);
     if (!editor) {
       return new Err(new Error("Trigger editor user not found"));
@@ -667,6 +737,22 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       },
       `Trigger status changed: ${targetStatus}`
     );
+
+    void emitAuditLogEvent({
+      auth,
+      action: "trigger.disabled",
+      targets: [
+        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+        buildAuditLogTarget("trigger", {
+          sId: this.sId,
+          name: this.name,
+        }),
+      ],
+      metadata: {
+        triggerType: this.kind,
+        agentId: this.agentConfigurationId,
+      },
+    });
 
     // Remove the temporal workflow
     const r = await this.removeTemporalWorkflow(auth);
