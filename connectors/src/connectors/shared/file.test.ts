@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { decodeBuffer } from "./file";
+import { decodeBuffer, handleTextFile } from "./file";
+
+function stringToArrayBuffer(content: string): ArrayBuffer {
+  const buf = Buffer.from(content, "utf-8");
+  const ab = new ArrayBuffer(buf.byteLength);
+  new Uint8Array(ab).set(buf);
+  return ab;
+}
 
 // Helper to properly convert Buffer to ArrayBuffer
 function bufferToArrayBuffer(buffer: Buffer): ArrayBufferLike {
@@ -181,5 +188,56 @@ François,25,Zürich
     expect(result).toContain("line1");
     expect(result).toContain("line2");
     expect(result).toContain("line3");
+  });
+});
+
+describe("handleTextFile", () => {
+  const maxDocumentLen = 1_000_000;
+
+  it("accepts plain prose", () => {
+    const data = stringToArrayBuffer(
+      "The quick brown fox jumps over the lazy dog. Hello world!"
+    );
+
+    const result = handleTextFile(data, maxDocumentLen);
+
+    expect(result.isOk()).toBe(true);
+  });
+
+  it("rejects content with too few letters (numeric dump)", () => {
+    const data = stringToArrayBuffer(
+      "1.234, 5.678, 9.012, 3.456, 7.890, 2.345, 6.789, 0.123, 4.567, 8.901"
+    );
+
+    const result = handleTextFile(data, maxDocumentLen);
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toBe("text_ratio_too_low");
+    }
+  });
+
+  it("rejects content with high separator density (TSV)", () => {
+    const data = stringToArrayBuffer(
+      "alpha\tbeta\tgamma\tdelta\nepsilon\tzeta\teta\ttheta"
+    );
+
+    const result = handleTextFile(data, maxDocumentLen);
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toBe("too_many_separators");
+    }
+  });
+
+  it("rejects empty content", () => {
+    const data = stringToArrayBuffer("   \n\t  ");
+
+    const result = handleTextFile(data, maxDocumentLen);
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toBe("empty_content");
+    }
   });
 });

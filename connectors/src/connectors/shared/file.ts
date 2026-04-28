@@ -68,11 +68,11 @@ export function handleTextFile(
   }
   const letterCount = (content.match(/\p{L}/gu) || []).length;
   if (letterCount / content.length < MIN_LETTER_RATIO) {
-    return new Err(new Error("not_text"));
+    return new Err(new Error("text_ratio_too_low"));
   }
   const separatorCount = (content.match(/[\t;|]/g) || []).length;
   if (separatorCount / content.length > MAX_SEPARATOR_RATIO) {
-    return new Err(new Error("not_text"));
+    return new Err(new Error("too_many_separators"));
   }
   return new Ok({ prefix: null, content, sections: [] });
 }
