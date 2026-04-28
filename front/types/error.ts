@@ -121,6 +121,8 @@ const API_ERROR_TYPES = [
   "project_todo_not_found",
   // Groups:
   "group_not_found",
+  // Coupons:
+  "coupon_not_found",
   // Plugins:
   "plugin_not_found",
   "plugin_execution_failed",

@@ -1,7 +1,11 @@
+import { useSendNotification } from "@app/hooks/useNotification";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
+import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import { isRegionRedirect } from "@app/lib/swr/workspaces";
 import type { GetPokeNoWorkspaceAuthContextResponseType } from "@app/pages/api/poke/auth-context";
+import type { GetPokeCouponRedemptionsResponseBody } from "@app/pages/api/poke/coupons/[couponId]/redemptions";
+import type { GetPokeCouponsResponseBody } from "@app/pages/api/poke/coupons/index";
 import type { GetPokePlansResponseBody } from "@app/pages/api/poke/plans";
 import type { GetRegionResponseType } from "@app/pages/api/poke/region";
 import type { GetPokeWorkspaceAuthContextResponseType } from "@app/pages/api/poke/workspaces/[wId]/auth-context";
@@ -17,6 +21,7 @@ import {
 import type { LightWorkspaceType } from "@app/types/user";
 import { useEffect } from "react";
 import type { Fetcher } from "swr";
+import { useSWRConfig } from "swr";
 
 export function usePokeRegion() {
   const { fetcher } = useFetcher();
@@ -78,6 +83,68 @@ export function usePokePlans() {
     plans: data?.plans ?? emptyArray(),
     isPlansLoading: !error && !data,
     isPlansError: error,
+  };
+}
+
+export function usePokeCoupons() {
+  const { fetcher } = useFetcher();
+  const couponsFetcher: Fetcher<GetPokeCouponsResponseBody> = fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    "/api/poke/coupons",
+    couponsFetcher
+  );
+
+  return {
+    coupons: data?.coupons ?? emptyArray(),
+    isCouponsLoading: !error && !data,
+    isCouponsError: error,
+    mutate,
+  };
+}
+
+export function usePokeCouponRedemptions({
+  couponId,
+  disabled,
+}: {
+  couponId: string;
+  disabled: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const redemptionsFetcher: Fetcher<GetPokeCouponRedemptionsResponseBody> =
+    fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    `/api/poke/coupons/${couponId}/redemptions`,
+    redemptionsFetcher,
+    { disabled }
+  );
+
+  return {
+    redemptions: data?.redemptions ?? emptyArray(),
+    isRedemptionsLoading: !error && !data && !disabled,
+    isRedemptionsError: error,
+  };
+}
+
+export function usePokeArchiveCoupon() {
+  const { mutate } = useSWRConfig();
+  const sendNotification = useSendNotification();
+
+  return async (couponId: string) => {
+    const r = await clientFetch(`/api/poke/coupons/${couponId}/archive`, {
+      method: "POST",
+    });
+    if (!r.ok) {
+      sendNotification({
+        title: "Error archiving coupon",
+        type: "error",
+        description: `Something went wrong: ${r.status} ${await r.text()}`,
+      });
+      return;
+    }
+    await mutate("/api/poke/coupons");
+    sendNotification({ title: "Coupon archived", type: "success" });
   };
 }
 

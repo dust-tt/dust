@@ -4,6 +4,7 @@ import { AssistantInstructionsPage } from "@dust-tt/front/components/poke/pages/
 import { CacheLookupPage } from "@dust-tt/front/components/poke/pages/CacheLookupPage";
 import { ConnectorRedirectPage } from "@dust-tt/front/components/poke/pages/ConnectorRedirectPage";
 import { ConversationPage } from "@dust-tt/front/components/poke/pages/ConversationPage";
+import { CouponsPage } from "@dust-tt/front/components/poke/pages/CouponsPage";
 import { DashboardPage } from "@dust-tt/front/components/poke/pages/DashboardPage";
 import { DataSourcePage } from "@dust-tt/front/components/poke/pages/DataSourcePage";
 import { DataSourceQueryPage } from "@dust-tt/front/components/poke/pages/DataSourceQueryPage";
@@ -71,6 +72,7 @@ export const routes: RouteObject[] = [
           { index: true, element: <DashboardPage /> },
           { path: "kill", element: <KillPage /> },
           { path: "plans", element: <PlansPage /> },
+          { path: "coupons", element: <CouponsPage /> },
           { path: "pokefy", element: <PokefyPage /> },
           { path: "production-checks", element: <ProductionChecksPage /> },
           { path: "email-templates", element: <EmailTemplatesPage /> },
