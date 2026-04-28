@@ -68,7 +68,7 @@ export function useWorkspaceSandboxAgentEgressRequests({
 
   return {
     allowAgentEgressRequests: data?.allowAgentEgressRequests ?? false,
-    isWorkspaceSandboxAgentEgressRequestsLoading: isLoading,
+    isWorkspaceSandboxAgentEgressRequestsLoading: !disabled && isLoading,
     isWorkspaceSandboxAgentEgressRequestsError: !!error,
     mutateWorkspaceSandboxAgentEgressRequests: mutate,
   };
