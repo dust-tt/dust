@@ -23,8 +23,7 @@ interface CircleProgressProps {
 }
 
 const CONTEXT_USAGE_PERCENT_THRESHOLD = 33;
-const COMPACTION_GUIDE_URL =
-  "https://docs.dust.tt/update/docs/context-compaction";
+const COMPACTION_GUIDE_URL = "https://docs.dust.tt/docs/context-compaction";
 
 function CircleProgress({ percentage, size = 16 }: CircleProgressProps) {
   const strokeWidth = size * 0.14;
