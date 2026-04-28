@@ -71,6 +71,7 @@ makeScript(
     await renderConversationForModel(auth, {
       allowedTokenCount: model.contextSize - model.generationTokensCount,
       conversation: conversationRes.value,
+      enabledSkills: [],
       model,
       // Ignore tool and prompt contributions for this profiling.
       prompt: "",

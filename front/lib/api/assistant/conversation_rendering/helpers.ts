@@ -7,6 +7,7 @@ import { isTextContent } from "@app/lib/actions/mcp_internal_actions/output_sche
 import { rewriteContentForModel } from "@app/lib/actions/mcp_utils";
 import { getEnableSkillIdFromOutputBlock } from "@app/lib/api/actions/servers/skill_management/rendering";
 import {
+  type EnabledSkillType,
   getEnabledSkillInstructions,
   renderEnabledSkillUserMessageFromInstructions,
 } from "@app/lib/api/assistant/skills_rendering";
@@ -17,7 +18,6 @@ import {
   serializeMention,
 } from "@app/lib/mentions/format";
 import { renderLightContentFragmentForModel } from "@app/lib/resources/content_fragment_resource";
-import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import logger from "@app/logger/logger";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type {
@@ -52,15 +52,16 @@ export type Step = {
   }[];
 };
 
-async function renderEnabledSkillMessagesForAction(
-  auth: Authenticator,
+function renderEnabledSkillMessagesForAction(
   action: AgentMCPActionWithOutputType,
   {
+    enabledSkillById,
     renderSkillsAsUserMessages,
   }: {
+    enabledSkillById: ReadonlyMap<string, EnabledSkillType>;
     renderSkillsAsUserMessages: boolean;
   }
-): Promise<UserMessageTypeModel[]> {
+): UserMessageTypeModel[] {
   if (!renderSkillsAsUserMessages) {
     return [];
   }
@@ -73,13 +74,7 @@ async function renderEnabledSkillMessagesForAction(
       continue;
     }
 
-    const skill = await SkillResource.fetchById(auth, skillId);
-    if (!skill) {
-      continue;
-    }
-
-    const [augmentedSkill] =
-      await SkillResource.augmentSkillsWithExtendedSkills(auth, [skill]);
+    const augmentedSkill = enabledSkillById.get(skillId);
     if (!augmentedSkill) {
       continue;
     }
@@ -157,24 +152,23 @@ export function renderActionForMultiActionsModel(
 /**
  * Processes agent message steps
  */
-export async function getSteps(
-  auth: Authenticator,
-  {
-    model,
-    message,
-    workspaceId,
-    conversationId,
-    onMissingAction,
-    renderSkillsAsUserMessages = false,
-  }: {
-    model: ModelConfigurationType;
-    message: AgentMessageType;
-    workspaceId: string;
-    conversationId: string;
-    onMissingAction: "inject-placeholder" | "skip";
-    renderSkillsAsUserMessages?: boolean;
-  }
-): Promise<Step[]> {
+export function getSteps({
+  enabledSkillById,
+  model,
+  message,
+  workspaceId,
+  conversationId,
+  onMissingAction,
+  renderSkillsAsUserMessages = false,
+}: {
+  enabledSkillById: ReadonlyMap<string, EnabledSkillType>;
+  model: ModelConfigurationType;
+  message: AgentMessageType;
+  workspaceId: string;
+  conversationId: string;
+  onMissingAction: "inject-placeholder" | "skip";
+  renderSkillsAsUserMessages?: boolean;
+}): Step[] {
   const supportedModel = getSupportedModelConfig(model);
   if (!supportedModel) {
     return [];
@@ -200,13 +194,10 @@ export async function getSteps(
         name: action.functionCallName,
         arguments: JSON.stringify(action.params),
       },
-      followUpMessages: await renderEnabledSkillMessagesForAction(
-        auth,
-        action,
-        {
-          renderSkillsAsUserMessages,
-        }
-      ),
+      followUpMessages: renderEnabledSkillMessagesForAction(action, {
+        enabledSkillById,
+        renderSkillsAsUserMessages,
+      }),
       result: renderActionForMultiActionsModel(action),
     });
   }

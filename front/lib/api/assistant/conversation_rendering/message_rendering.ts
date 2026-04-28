@@ -10,6 +10,7 @@ import {
   renderOtherAgentMessageAsUserMessage,
   renderUserMessage,
 } from "@app/lib/api/assistant/conversation_rendering/helpers";
+import type { EnabledSkillType } from "@app/lib/api/assistant/skills_rendering";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
@@ -138,6 +139,7 @@ export async function renderAllMessages(
   {
     conversation,
     model,
+    enabledSkills,
     excludeActions,
     excludeImages,
     onMissingAction,
@@ -150,10 +152,14 @@ export async function renderAllMessages(
     excludeImages?: boolean;
     onMissingAction: "inject-placeholder" | "skip";
     agentConfiguration?: AgentConfigurationType;
+    enabledSkills: EnabledSkillType[];
     renderSkillsAsUserMessages?: boolean;
   }
 ): Promise<ModelMessageTypeMultiActions[]> {
   const messages: ModelMessageTypeMultiActions[] = [];
+  const enabledSkillById = new Map(
+    enabledSkills.map((skill) => [skill.sId, skill])
+  );
 
   // Find the last succeeded compaction to use as a history boundary. Messages before it are
   // already summarized in the compaction content, so we skip them to avoid redundancy and
@@ -180,7 +186,8 @@ export async function renderAllMessages(
 
         if (isCurrentAgentMessage) {
           // Render the current agent's messages normally with full agentic loop.
-          const steps = await getSteps(auth, {
+          const steps = getSteps({
+            enabledSkillById,
             model,
             message: m,
             workspaceId: conversation.owner.sId,

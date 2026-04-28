@@ -312,6 +312,7 @@ async function handler(
         prompt,
         tools,
         allowedTokenCount,
+        enabledSkills,
         excludeActions,
         excludeImages,
         onMissingAction,
