@@ -8,7 +8,8 @@
 //   Phase 1 — Collect new candidates.
 //     For every (takeaway, item, targetUser) triple:
 //       - fetchBySourceId(itemId, userId):
-//           found     → update text/status/doneAt if changed (no new row)
+//           found     → update status/doneAt if changed (no new row, text
+//                       always preserved from the first version)
 //           not found → push to newCandidates[]
 //
 //   Phase 2 — Semantic deduplication.
@@ -22,7 +23,8 @@
 //     For each candidate in newCandidates:
 //       - Key in dedupMap → addSource on existing todo.
 //           If existing todo is user-created: preserve text/status (user wins).
-//           If existing todo is agent-created: also update if content changed.
+//           If existing todo is agent-created: update status/doneAt if
+//           changed (text is always preserved from the first version).
 //       - Not in dedupMap → makeNew + addSource (current behaviour).
 //
 // Category mapping:
@@ -481,9 +483,10 @@ async function createOrLinkTodos(
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-// Creates a new version of a todo only when text, status, or doneAt has
-// changed, AND the todo's state is not user-owned. Returns true if an update
-// was performed.
+// Creates a new version of a todo only when status or doneAt has changed, AND
+// the todo's state is not user-owned. Returns true if an update was performed.
+// Text is intentionally never updated: the first version's wording is
+// preserved across re-extractions.
 //
 // The agent path must never overwrite user-owned state:
 //   - If the todo was created by a user, the user's phrasing and status win.
@@ -502,20 +505,14 @@ export async function updateTodoIfChanged(
     return false;
   }
 
-  const textChanged = todo.text !== blob.text;
   const statusChanged = todo.status !== blob.status;
   const doneAtChanged =
     todo.doneAt?.toISOString() !== blob.doneAt?.toISOString();
   const actorRationaleAtChanged = todo.actorRationale !== blob.reasoningDoneAt;
 
-  if (
-    textChanged ||
-    statusChanged ||
-    doneAtChanged ||
-    actorRationaleAtChanged
-  ) {
+  if (statusChanged || doneAtChanged || actorRationaleAtChanged) {
     await todo.updateWithVersion(auth, {
-      text: blob.text,
+      text: todo.text,
       status: blob.status,
       doneAt: blob.doneAt,
       actorRationale: blob.reasoningDoneAt,
