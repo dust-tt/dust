@@ -235,6 +235,7 @@ export function CodeDrawer({
 interface VisualizationActionIframeProps {
   agentConfigurationId: string | null;
   conversationId: string | null;
+  spaceId?: string | null;
   isInDrawer?: boolean;
   visualization: Visualization;
   vizUrl: string;
@@ -281,9 +282,23 @@ export const VisualizationActionIframe = forwardRef<
 
   const getFileBlob = useCallback(
     async (fileId: string) => {
-      const response = await clientFetch(
-        `/api/w/${workspaceId}/files/${fileId}?action=view`
-      );
+      let url: string;
+
+      if (fileId.startsWith("conversation/")) {
+        const slashIdx = fileId.indexOf("/");
+        const rel = fileId.slice(slashIdx + 1);
+
+        if (!conversationId) {
+          return null;
+        }
+
+        url = `/api/w/${workspaceId}/assistant/conversations/${conversationId}/files/${rel}`;
+        // TODO(20260428 FILE_SYSTEM): implement space files content endpoint when project-scoped files are added.
+      } else {
+        url = `/api/w/${workspaceId}/files/${fileId}?action=view`;
+      }
+
+      const response = await clientFetch(url);
       if (!response.ok) {
         return null;
       }
@@ -294,7 +309,7 @@ export const VisualizationActionIframe = forwardRef<
         type: response.headers.get("Content-Type") ?? undefined,
       });
     },
-    [workspaceId]
+    [workspaceId, conversationId]
   );
 
   useVisualizationDataHandler({
