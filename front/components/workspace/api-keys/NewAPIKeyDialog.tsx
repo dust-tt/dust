@@ -1,6 +1,9 @@
 import { BaseFormFieldSection } from "@app/components/shared/BaseFormFieldSection";
 import {
   dollarsToMicroUsd,
+  isKeyRole,
+  KEY_ROLES,
+  type KeyRole,
   monthlyCapDollarsSchema,
   prettifyGroupName,
 } from "@app/components/workspace/api-keys/utils";
@@ -33,12 +36,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import React, { useMemo, useState } from "react";
 import { FormProvider, useController, useForm } from "react-hook-form";
 import { z } from "zod";
-
-export const KEY_ROLES = ["user", "builder", "admin"] as const;
-export type KeyRole = (typeof KEY_ROLES)[number];
-
-const isKeyRole = (value: string): value is KeyRole =>
-  (KEY_ROLES as readonly string[]).includes(value);
 
 const formSchema = z.object({
   name: z.string().min(1, "API key name is required"),

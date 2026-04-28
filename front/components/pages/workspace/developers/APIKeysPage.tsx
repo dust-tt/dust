@@ -1,8 +1,8 @@
 import { APIKeyCreationSheet } from "@app/components/workspace/api-keys/APIKeyCreationSheet";
 import { APIKeysList } from "@app/components/workspace/api-keys/APIKeysList";
 import { EditKeyCapDialog } from "@app/components/workspace/api-keys/EditKeyCapDialog";
-import type { KeyRole } from "@app/components/workspace/api-keys/NewAPIKeyDialog";
 import { NewAPIKeyDialog } from "@app/components/workspace/api-keys/NewAPIKeyDialog";
+import type { KeyRole } from "@app/components/workspace/api-keys/utils";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
