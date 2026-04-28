@@ -34,6 +34,14 @@ function isPrintableKey(e: KeyboardEvent<HTMLDivElement>) {
   );
 }
 
+function isEditableTarget(target: EventTarget) {
+  return (
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    (target instanceof HTMLElement && target.isContentEditable)
+  );
+}
+
 export function UserAnswerRequired({
   blockedAction,
   triggeringUser,
@@ -94,13 +102,17 @@ export function UserAnswerRequired({
     setIsSkipPending(false);
   }
 
+  function activateOption(index: number) {
+    setIsCustomResponseFocused(false);
+    setActiveOptionIndex(index);
+  }
+
   function handleOptionClick(index: number) {
     if (isSubmitting) {
       return;
     }
 
-    setIsCustomResponseFocused(false);
-    setActiveOptionIndex(index);
+    activateOption(index);
 
     const answer = answerDraft.selectOption(index);
 
@@ -158,6 +170,30 @@ export function UserAnswerRequired({
     answerDraft.updateCustomResponse(value);
   }
 
+  function handleCustomResponseKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+    if (
+      e.key === "Backspace" &&
+      answerDraft.customResponse.length === 0 &&
+      question.options.length > 0
+    ) {
+      e.preventDefault();
+      setIsKeyboardNavigating(true);
+      setIsCustomResponseFocused(false);
+      setActiveOptionIndex(question.options.length - 1);
+      containerRef.current?.focus();
+      return;
+    }
+
+    if (
+      e.key === "Enter" &&
+      (!question.multiSelect || e.metaKey || e.ctrlKey)
+    ) {
+      e.preventDefault();
+      setIsKeyboardNavigating(true);
+      handleSubmit();
+    }
+  }
+
   function handleContainerKeyDownCapture(e: KeyboardEvent<HTMLDivElement>) {
     if (e.key === "Escape") {
       e.preventDefault();
@@ -167,11 +203,7 @@ export function UserAnswerRequired({
       return;
     }
 
-    if (
-      e.target instanceof HTMLInputElement ||
-      e.target instanceof HTMLTextAreaElement ||
-      (e.target instanceof HTMLElement && e.target.isContentEditable)
-    ) {
+    if (isEditableTarget(e.target)) {
       return;
     }
 
@@ -184,11 +216,7 @@ export function UserAnswerRequired({
   }
 
   function handleContainerKeyDown(e: KeyboardEvent<HTMLDivElement>) {
-    if (
-      e.target instanceof HTMLInputElement ||
-      e.target instanceof HTMLTextAreaElement ||
-      (e.target instanceof HTMLElement && e.target.isContentEditable)
-    ) {
+    if (isEditableTarget(e.target)) {
       return;
     }
 
@@ -267,14 +295,8 @@ export function UserAnswerRequired({
               counterValue={index + 1}
               selected={answerDraft.selectedOptions.includes(index)}
               disableHover={isKeyboardNavigating}
-              onFocusCapture={() => {
-                setIsCustomResponseFocused(false);
-                setActiveOptionIndex(index);
-              }}
-              onMouseEnter={() => {
-                setIsCustomResponseFocused(false);
-                setActiveOptionIndex(index);
-              }}
+              onFocusCapture={() => activateOption(index)}
+              onMouseEnter={() => activateOption(index)}
               className={cn(
                 activeOptionIndex === index &&
                   !isCustomResponseActive &&
@@ -325,29 +347,7 @@ export function UserAnswerRequired({
               }}
               onBlur={() => setIsCustomResponseFocused(false)}
               onChange={(e) => handleCustomResponseChange(e.target.value)}
-              onKeyDown={(e) => {
-                if (
-                  e.key === "Backspace" &&
-                  answerDraft.customResponse.length === 0 &&
-                  question.options.length > 0
-                ) {
-                  e.preventDefault();
-                  setIsKeyboardNavigating(true);
-                  setIsCustomResponseFocused(false);
-                  setActiveOptionIndex(question.options.length - 1);
-                  containerRef.current?.focus();
-                  return;
-                }
-
-                if (
-                  e.key === "Enter" &&
-                  (!question.multiSelect || e.metaKey || e.ctrlKey)
-                ) {
-                  e.preventDefault();
-                  setIsKeyboardNavigating(true);
-                  handleSubmit();
-                }
-              }}
+              onKeyDown={handleCustomResponseKeyDown}
               name="custom-response"
               disabled={isSubmitting}
             />
