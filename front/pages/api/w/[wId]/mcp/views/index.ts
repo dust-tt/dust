@@ -2,11 +2,11 @@
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import {
-  listWorkspaceConnectedMCPServerIds,
   oauthProviderRequiresWorkspaceConnectionForPersonalAuth,
   withWorkspaceConnectionRequirement,
 } from "@app/lib/api/mcp_oauth_prerequisites";
 import type { Authenticator } from "@app/lib/auth";
+import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
@@ -93,24 +93,38 @@ async function handler(
       // Some OAuth providers require a workspace-level connection before users
       // can set up personal connections. We enrich the authorization info so the
       // client can block the OAuth popup and show an inline error instead.
-      // The DB query is only made when at least one server in the list needs it.
-      const needsWorkspaceConnectionEnrichment = flattenedServerViews.some(
-        (v) =>
-          v.server.authorization !== null &&
-          oauthProviderRequiresWorkspaceConnectionForPersonalAuth(
-            v.server.authorization.provider
-          )
-      );
+      // The DB query is only made for servers in the list that need it.
+      const mcpServerIdsRequiringWorkspaceConnection = [
+        ...new Set(
+          flattenedServerViews
+            .filter(
+              (v) =>
+                v.server.authorization !== null &&
+                oauthProviderRequiresWorkspaceConnectionForPersonalAuth(
+                  v.server.authorization.provider
+                )
+            )
+            .map((v) => v.server.sId)
+        ),
+      ];
 
-      if (!needsWorkspaceConnectionEnrichment) {
+      if (mcpServerIdsRequiringWorkspaceConnection.length === 0) {
         return res.status(200).json({
           success: true,
           serverViews: flattenedServerViews,
         });
       }
 
-      const workspaceConnectedMCPServerIds =
-        await listWorkspaceConnectedMCPServerIds(auth);
+      const workspaceConnections =
+        await MCPServerConnectionResource.listWorkspaceConnectionsByMCPServerIds(
+          auth,
+          {
+            mcpServerIds: mcpServerIdsRequiringWorkspaceConnection,
+          }
+        );
+      const workspaceConnectedMCPServerIds = new Set(
+        workspaceConnections.map((connection) => connection.mcpServerId)
+      );
 
       return res.status(200).json({
         success: true,
