@@ -126,7 +126,11 @@ export function MCPToolValidationRequired({
         blockedAction.inputs
       );
     }
-    return `Allow ${asDisplayName(blockedAction.metadata.mcpServerName)} to ${asDisplayName(blockedAction.metadata.toolName)}?`;
+    const subject =
+      blockedAction.metadata.displayedAs === "agent"
+        ? blockedAction.metadata.agentName
+        : blockedAction.metadata.mcpServerName;
+    return `Allow ${asDisplayName(subject)} to ${asDisplayName(blockedAction.metadata.toolName)}?`;
   }
 
   function getAlwaysAllowLabel() {

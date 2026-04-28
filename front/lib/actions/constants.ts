@@ -63,4 +63,5 @@ export type MCPValidationMetadataType = {
   agentName: string;
   pubsubMessageId?: string;
   icon?: InternalAllowedIconType | CustomResourceIconType;
+  displayedAs?: "agent" | "server";
 };

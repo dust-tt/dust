@@ -1331,6 +1331,17 @@ export function getInternalMCPServerIconByName(
   return server.metadata.serverInfo.icon;
 }
 
+export function getInternalMCPServerDisplayedAs(
+  toolServerId: string
+): "agent" | "server" | undefined {
+  const name = getInternalMCPServerNameFromSId(toolServerId);
+  if (!name) {
+    return undefined;
+  }
+  const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
+  return server.metadata.serverInfo.displayedAs;
+}
+
 export function getInternalMCPServerToolStakes(
   name: InternalMCPServerNameType
 ): Record<string, MCPToolStakeLevelType> {
