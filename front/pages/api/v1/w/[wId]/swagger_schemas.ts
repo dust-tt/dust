@@ -582,7 +582,7 @@
  *           type: string
  *           description: Path to the source skill file
  *           example: "support/SKILL.md"
- *     SkillSummary:
+ *     Skill:
  *       type: object
  *       properties:
  *         id:
@@ -674,23 +674,18 @@
  *           type: string
  *           nullable: true
  *           description: Identifier of the extended skill, when applicable
- *     Skill:
- *       allOf:
- *         - $ref: '#/components/schemas/SkillSummary'
- *         - type: object
- *           properties:
- *             instructions:
- *               type: string
- *               nullable: true
- *               description: Instructions used by the agent when running the skill
- *             instructionsHtml:
- *               type: string
- *               nullable: true
- *               description: HTML representation of the skill instructions
- *             tools:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/MCPServerView'
+ *         instructions:
+ *           type: string
+ *           nullable: true
+ *           description: Instructions used by the agent when running the skill
+ *         instructionsHtml:
+ *           type: string
+ *           nullable: true
+ *           description: HTML representation of the skill instructions
+ *         tools:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/MCPServerView'
  *     Run:
  *       type: object
  *       properties:
