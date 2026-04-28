@@ -236,7 +236,7 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
       <SlashCommandDropdown
         key={isCapabilitiesLoading ? "loading" : "loaded"}
         ref={dropdownRef}
-        items={isCapabilitiesLoading ? [] : capabilityItems}
+        items={capabilityItems}
         command={(item) => {
           const capability = filteredCapabilities.find((capability) =>
             capability.kind === "skill"
