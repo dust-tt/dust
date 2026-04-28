@@ -13,6 +13,7 @@ import { Pagination } from "@app/components/shared/Pagination";
 import { getAcademyUser } from "@app/lib/api/academy";
 import {
   getAcademyLocaleFromCookies,
+  getAcademySettings,
   getAllCourses,
   getSearchableItems,
 } from "@app/lib/contentful/client";
@@ -33,12 +34,14 @@ import { useMemo } from "react";
 export const getServerSideProps: GetServerSideProps<
   CourseListingPageProps
 > = async (context) => {
+  context.res.setHeader("Cache-Control", "no-store");
   const user = await getAcademyUser(context.req, context.res);
   const locale = getAcademyLocaleFromCookies(context.req.headers.cookie);
 
-  const [coursesResult, searchableResult] = await Promise.all([
+  const [coursesResult, searchableResult, academySettings] = await Promise.all([
     getAllCourses("", locale),
     getSearchableItems("", locale),
+    getAcademySettings("", locale),
   ]);
 
   if (coursesResult.isErr()) {
@@ -53,6 +56,7 @@ export const getServerSideProps: GetServerSideProps<
         gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
         academyUser: user ? { firstName: user.firstName, sId: user.sId } : null,
         locale,
+        academySettings,
       },
     };
   }
@@ -64,6 +68,7 @@ export const getServerSideProps: GetServerSideProps<
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
       academyUser: user ? { firstName: user.firstName, sId: user.sId } : null,
       locale,
+      academySettings,
     },
   };
 };
@@ -74,6 +79,7 @@ export default function AcademyListing({
   searchableItems,
   academyUser,
   locale,
+  academySettings,
 }: CourseListingPageProps) {
   const router = useRouter();
   const browserId = useAcademyBrowserId();
@@ -128,11 +134,17 @@ export default function AcademyListing({
       <AcademyLayout>
         <div className="col-span-12 flex flex-col gap-4 pt-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex flex-col gap-3">
-            <AcademyHeader />
+            <AcademyHeader
+              title={academySettings.academyTitle}
+              subtitle={academySettings.academySubtitle}
+            />
           </div>
           <div className="mb-4 flex w-full items-center gap-2 sm:mb-0 sm:w-auto">
             <LocaleToggle locale={locale} />
-            <AcademySearch searchableItems={searchableItems} />
+            <AcademySearch
+              searchableItems={searchableItems}
+              placeholder={academySettings.searchPlaceholder}
+            />
           </div>
         </div>
 
@@ -140,6 +152,7 @@ export default function AcademyListing({
           <ContinueLearningCard
             courses={courses}
             courseProgress={courseProgress}
+            continueLearningLabel={academySettings.continueLearning}
           />
         )}
 

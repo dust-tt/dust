@@ -1,3 +1,4 @@
+import { LocaleToggle } from "@app/components/academy/AcademyComponents";
 import { AcademyQuiz } from "@app/components/academy/AcademyQuiz";
 import {
   ChapterMobileMenuButton,
@@ -55,6 +56,7 @@ export const getServerSideProps: GetServerSideProps<ChapterPageProps> = async (
     return { notFound: true };
   }
 
+  context.res.setHeader("Cache-Control", "no-store");
   const resolvedUrl = buildPreviewQueryString(context.preview ?? false);
   const locale = getAcademyLocaleFromCookies(context.req.headers.cookie);
 
@@ -136,6 +138,7 @@ export default function ChapterPage({
   searchableItems,
   academyUser,
   preview,
+  locale,
 }: ChapterPageProps) {
   const [isCopied, copyToClipboard] = useCopyToClipboard();
   const ogImageUrl = courseImage?.url ?? "https://dust.tt/static/og_image.png";
@@ -292,6 +295,7 @@ export default function ChapterPage({
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-2">
+                    <LocaleToggle locale={locale} />
                     {chapter.estimatedDurationMinutes && (
                       <div className="flex items-center gap-1 rounded-full bg-white/80 px-3 py-1.5 text-xs font-medium text-gray-700 backdrop-blur-sm">
                         <svg

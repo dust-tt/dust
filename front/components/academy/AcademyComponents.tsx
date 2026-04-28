@@ -77,6 +77,7 @@ export function ChapterStatusIcons({
 
 interface AcademySearchProps {
   searchableItems: SearchableItem[];
+  placeholder?: string;
   className?: string;
 }
 
@@ -135,6 +136,7 @@ function extractSnippet(
 
 export function AcademySearch({
   searchableItems,
+  placeholder = "Search...",
   className,
 }: AcademySearchProps) {
   const router = useAppRouter();
@@ -238,7 +240,7 @@ export function AcademySearch({
       <div ref={containerRef} className={cn("relative", className ?? "")}>
         <SearchInput
           name="academy-search"
-          placeholder="Search..."
+          placeholder={placeholder}
           value={query}
           onChange={(value) => setQuery(value)}
           onKeyDown={handleKeyDown}
@@ -323,44 +325,48 @@ interface LocaleToggleProps {
 
 export function LocaleToggle({ locale }: LocaleToggleProps) {
   const router = useAppRouter();
-
-  const handleLocaleChange = useCallback(
-    (newLocale: AcademyLocale) => {
-      const maxAgeSeconds = 365 * 24 * 60 * 60;
-      document.cookie = `${ACADEMY_LOCALE_COOKIE}=${newLocale};path=/academy;max-age=${maxAgeSeconds};SameSite=Lax`;
-      router.reload();
-    },
-    [router]
+  const [pendingLocale, setPendingLocale] = useState<AcademyLocale | null>(
+    null
   );
 
+  const handleLocaleChange = (newLocale: AcademyLocale) => {
+    if (newLocale === locale || pendingLocale) {
+      return;
+    }
+    const maxAgeSeconds = 365 * 24 * 60 * 60;
+    const secure = window.location.protocol === "https:" ? ";Secure" : "";
+    document.cookie = `${ACADEMY_LOCALE_COOKIE}=${newLocale};path=/;max-age=${maxAgeSeconds};SameSite=Lax${secure}`;
+    setPendingLocale(newLocale);
+    router.reload();
+  };
+
   return (
-    <div className="flex items-center gap-0.5 rounded-lg border border-gray-200 bg-white p-0.5">
+    <div className="flex items-center gap-1">
       {ACADEMY_LOCALES.map((l) => (
-        <button
+        <Button
           key={l}
+          size="xs"
+          variant={l === locale ? "primary" : "ghost"}
+          label={ACADEMY_LOCALE_LABELS[l]}
+          isLoading={pendingLocale === l}
+          disabled={pendingLocale !== null}
           onClick={() => handleLocaleChange(l)}
-          className={cn(
-            "rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
-            l === locale
-              ? "bg-primary text-white"
-              : "text-gray-500 hover:text-gray-700"
-          )}
-        >
-          {ACADEMY_LOCALE_LABELS[l]}
-        </button>
+        />
       ))}
     </div>
   );
 }
 
-export function AcademyHeader() {
+interface AcademyHeaderProps {
+  title: string;
+  subtitle: string;
+}
+
+export function AcademyHeader({ title, subtitle }: AcademyHeaderProps) {
   return (
     <>
-      <H2>Dust Academy</H2>
-      <P>
-        Check out our courses, tutorials, and videos to learn everything about
-        Dust
-      </P>
+      <H2>{title}</H2>
+      <P>{subtitle}</P>
     </>
   );
 }
@@ -514,11 +520,13 @@ interface ContinueLearningCardProps {
       lastAttemptAt: string;
     }
   >;
+  continueLearningLabel: string;
 }
 
 export function ContinueLearningCard({
   courses,
   courseProgress,
+  continueLearningLabel,
 }: ContinueLearningCardProps) {
   // Find the most recently attempted in-progress course.
   const inProgressCourses = courses
@@ -588,7 +596,7 @@ export function ContinueLearningCard({
         <div className="relative flex items-center gap-6">
           <div className="min-w-0 flex-1">
             <p className="text-xs font-medium uppercase tracking-wide text-highlight">
-              Continue Learning
+              {continueLearningLabel}
             </p>
             <h3 className="mt-1 truncate text-base font-semibold text-foreground">
               {course.title}

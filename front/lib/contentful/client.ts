@@ -4,6 +4,8 @@ import {
   extractTableOfContents,
 } from "@app/lib/contentful/tableOfContents";
 import type {
+  AcademySettings,
+  AcademySettingsSkeleton,
   AuthorSkeleton,
   BlogAuthor,
   BlogImage,
@@ -29,6 +31,7 @@ import {
   ACADEMY_LOCALE_COOKIE,
   type AcademyLocale,
   DEFAULT_ACADEMY_LOCALE,
+  DEFAULT_ACADEMY_SETTINGS,
   isAcademyLocale,
 } from "@app/lib/contentful/types";
 import logger from "@app/logger/logger";
@@ -116,6 +119,38 @@ export function getAcademyLocaleFromCookies(
   }
   const value = match.split("=")[1];
   return isAcademyLocale(value) ? value : DEFAULT_ACADEMY_LOCALE;
+}
+
+export async function getAcademySettings(
+  resolvedUrl: string = "",
+  locale?: AcademyLocale
+): Promise<AcademySettings> {
+  try {
+    const contentfulClient = getContentfulClient(resolvedUrl);
+    const response = await contentfulClient.getEntries<AcademySettingsSkeleton>(
+      {
+        content_type: "academySettings",
+        limit: 1,
+        ...(locale ? { locale } : {}),
+      }
+    );
+    const entry = response.items[0];
+    if (!entry) {
+      return DEFAULT_ACADEMY_SETTINGS;
+    }
+    return {
+      academyTitle: entry.fields.academyTitle,
+      academySubtitle: entry.fields.academySubtitle,
+      searchPlaceholder: entry.fields.searchPlaceholder,
+      continueLearning: entry.fields.continueLearning,
+    };
+  } catch (err) {
+    logger.error(
+      { err: normalizeError(err) },
+      "Error fetching academy settings"
+    );
+    return DEFAULT_ACADEMY_SETTINGS;
+  }
 }
 
 export function isPreviewMode(resolvedUrl: string): boolean {
@@ -1095,7 +1130,7 @@ function contentfulEntryToCourse(entry: Entry<CourseSkeleton>): Course | null {
 
 export async function getAllCourses(
   resolvedUrl: string = "",
-  locale?: string
+  locale?: AcademyLocale
 ): Promise<Result<CourseSummary[], Error>> {
   try {
     const contentfulClient = getContentfulClient(resolvedUrl);
@@ -1139,7 +1174,7 @@ export async function getAllCourses(
 export async function getCourseBySlug(
   slug: string,
   resolvedUrl: string,
-  locale?: string
+  locale?: AcademyLocale
 ): Promise<Result<Course | null, Error>> {
   try {
     const contentfulClient = getContentfulClient(resolvedUrl);
@@ -1248,7 +1283,7 @@ function contentfulEntryToChapter(
 export async function getChaptersByCourseSlug(
   courseSlug: string,
   resolvedUrl: string = "",
-  locale?: string
+  locale?: AcademyLocale
 ): Promise<Result<ChapterSummary[], Error>> {
   try {
     const contentfulClient = getContentfulClient(resolvedUrl);
@@ -1299,7 +1334,7 @@ export async function getChaptersByCourseSlug(
 export async function getChapterBySlug(
   slug: string,
   resolvedUrl: string,
-  locale?: string
+  locale?: AcademyLocale
 ): Promise<Result<Chapter | null, Error>> {
   try {
     const contentfulClient = getContentfulClient(resolvedUrl);
@@ -1329,7 +1364,7 @@ export async function getChapterBySlug(
 
 export async function getSearchableItems(
   resolvedUrl: string = "",
-  locale?: string
+  locale?: AcademyLocale
 ): Promise<Result<SearchableItem[], Error>> {
   try {
     const contentfulClient = getContentfulClient(resolvedUrl);
@@ -1647,7 +1682,7 @@ function contentfulEntryToLesson(entry: Entry<LessonSkeleton>): Lesson | null {
 export async function getLessonBySlug(
   slug: string,
   resolvedUrl: string,
-  locale?: string
+  locale?: AcademyLocale
 ): Promise<Result<Lesson | null, Error>> {
   try {
     const contentfulClient = getContentfulClient(resolvedUrl);

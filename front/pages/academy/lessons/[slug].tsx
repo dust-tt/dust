@@ -1,3 +1,4 @@
+import { LocaleToggle } from "@app/components/academy/AcademyComponents";
 import { AcademyQuiz } from "@app/components/academy/AcademyQuiz";
 import {
   AcademySidebar,
@@ -43,6 +44,7 @@ export const getServerSideProps: GetServerSideProps<LessonPageProps> = async (
     return { notFound: true };
   }
 
+  context.res.setHeader("Cache-Control", "no-store");
   const resolvedUrl = buildPreviewQueryString(context.preview ?? false);
   const locale = getAcademyLocaleFromCookies(context.req.headers.cookie);
 
@@ -98,6 +100,7 @@ export default function LessonPage({
   searchableItems,
   academyUser,
   preview,
+  locale,
 }: LessonPageProps) {
   const browserId = useAcademyBrowserId();
   const anonBrowserId = academyUser ? undefined : browserId;
@@ -189,6 +192,7 @@ export default function LessonPage({
                   )}
                 </div>
                 <div className="flex flex-col items-end gap-2">
+                  <LocaleToggle locale={locale} />
                   {lesson.estimatedDurationMinutes && (
                     <div className="flex items-center gap-1 rounded-full bg-highlight/10 px-3 py-1.5 text-xs font-medium text-gray-700">
                       <svg

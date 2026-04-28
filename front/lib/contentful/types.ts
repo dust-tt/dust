@@ -279,6 +279,33 @@ export function isAcademyLocale(value: string): value is AcademyLocale {
   return (ACADEMY_LOCALES as string[]).includes(value);
 }
 
+export interface AcademySettingsFields {
+  academyTitle: string;
+  academySubtitle: string;
+  searchPlaceholder: string;
+  continueLearning: string;
+}
+
+export type AcademySettingsSkeleton = EntrySkeletonType<
+  AcademySettingsFields,
+  "academySettings"
+>;
+
+export interface AcademySettings {
+  academyTitle: string;
+  academySubtitle: string;
+  searchPlaceholder: string;
+  continueLearning: string;
+}
+
+export const DEFAULT_ACADEMY_SETTINGS: AcademySettings = {
+  academyTitle: "Dust Academy",
+  academySubtitle:
+    "Check out our courses, tutorials, and videos to learn everything about Dust",
+  searchPlaceholder: "Search...",
+  continueLearning: "Continue Learning",
+};
+
 export interface AcademyUser {
   firstName: string;
   sId: string;
@@ -290,6 +317,7 @@ export interface CourseListingPageProps {
   gtmTrackingId: string | null;
   academyUser?: AcademyUser | null;
   locale: AcademyLocale;
+  academySettings: AcademySettings;
 }
 
 export interface CoursePageProps {
