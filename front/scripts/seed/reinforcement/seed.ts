@@ -6,8 +6,8 @@ import { seedReinforcement } from "@app/scripts/seed/reinforcement/seedReinforce
 makeScript({}, async ({ execute }, logger) => {
   const ctx = await createSeedContext({ execute, logger });
 
-  // Enable the reinforced_agents feature flag
-  logger.info("Enabling reinforced_agents feature flag...");
+  // Enable the reinforcement feature flags
+  logger.info("Enabling reinforcement feature flags...");
   if (execute) {
     await FeatureFlagResource.enableMany(ctx.workspace, [
       "reinforced_agents",

@@ -1,15 +1,15 @@
-# Reinforced Agents Seed
+# Reinforcement Seed
 
-Creates agents with conversations, feedbacks, Dust conversations with JIT skills for testing reinforcement. Enables the `reinforced_agents` and `reinforcement_ui` feature flags.
+Creates skills with conversations, feedbacks, Dust conversations with JIT skills for testing reinforcement. Enables the `reinforced_agents` and `reinforcement_ui` feature flags.
 
 ## Usage
 
 ```bash
-npx tsx scripts/seed/reinforced-agents/seed.ts --execute
+npx tsx scripts/seed/reinforcement/seed.ts --execute
 ```
 
 To target a different workspace:
 
 ```bash
-DEV_WORKSPACE_SID=MyWorkspace npx tsx scripts/seed/reinforced-agents/seed.ts --execute
+DEV_WORKSPACE_SID=MyWorkspace npx tsx scripts/seed/reinforcement/seed.ts --execute
 ```
