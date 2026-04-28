@@ -94,7 +94,7 @@ export const PROJECT_TODOS_TOOLS_METADATA = createToolsRecord({
     },
   },
   mark_todo_done: {
-    description: "Mark one or more of the current user's TODOs as done.",
+    description: "Mark one or more TODOs as done.",
     schema: {
       actorType: z
         .enum(["user", "agent"])
@@ -190,7 +190,7 @@ export const PROJECT_TODOS_SERVER = {
     name: PROJECT_TODOS_SERVER_NAME,
     version: "1.0.0",
     description:
-      "Manage the current user's project TODOs: list, create, and complete personal action items.",
+      "Manage project TODOs: list, create, and complete action items.",
     icon: "ActionListCheckIcon",
     authorization: null,
     documentationUrl: null,
