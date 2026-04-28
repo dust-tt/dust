@@ -31,6 +31,8 @@ export function useUserAnswerDraft({ multiSelect }: { multiSelect: boolean }) {
 
   const answer = buildAnswer(draft);
 
+  // Selects or toggles an option while preserving typed custom text for later.
+  // Single-select questions return an answer so the caller can submit immediately.
   function selectOption(index: number): UserQuestionAnswer | null {
     if (!multiSelect) {
       const answer = { selectedOptions: [index] };
@@ -57,6 +59,7 @@ export function useUserAnswerDraft({ multiSelect }: { multiSelect: boolean }) {
     return null;
   }
 
+  // Switches the draft back to custom response mode and clears option choices.
   function selectCustomResponse() {
     setDraft((currentDraft) => ({
       ...currentDraft,
@@ -64,6 +67,7 @@ export function useUserAnswerDraft({ multiSelect }: { multiSelect: boolean }) {
     }));
   }
 
+  // Replaces the custom response from the input field and clears option choices.
   function updateCustomResponse(customResponse: string) {
     setDraft({
       selectedOptions: [],
@@ -71,6 +75,7 @@ export function useUserAnswerDraft({ multiSelect }: { multiSelect: boolean }) {
     });
   }
 
+  // Appends the first printable keyboard character using the latest draft value.
   function appendCustomResponse(character: string) {
     setDraft((currentDraft) => ({
       selectedOptions: [],

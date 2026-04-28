@@ -83,6 +83,7 @@ export function UserAnswerRequired({
     containerRef.current?.focus({ preventScroll: true });
   }, [blockedAction.actionId]);
 
+  // Sends either an answer or skip response, then clears the completed blocked action.
   async function submitAnswer(
     answer: UserQuestionAnswer,
     { isSkip = false }: { isSkip?: boolean } = {}
@@ -102,11 +103,13 @@ export function UserAnswerRequired({
     setIsSkipPending(false);
   }
 
+  // Moves the visual cursor to an option and leaves custom response focus.
   function activateOption(index: number) {
     setIsCustomResponseFocused(false);
     setActiveOptionIndex(index);
   }
 
+  // Handles pointer/focus option selection; single-select answers submit immediately.
   function handleOptionClick(index: number) {
     if (isSubmitting) {
       return;
@@ -121,6 +124,7 @@ export function UserAnswerRequired({
     }
   }
 
+  // Cycles the active option for keyboard navigation.
   function moveActiveOption(direction: 1 | -1) {
     if (question.options.length === 0) {
       return;
@@ -132,6 +136,7 @@ export function UserAnswerRequired({
     );
   }
 
+  // Submits the current draft answer when one is available.
   function handleSubmit() {
     if (isSubmitting) {
       return;
@@ -144,6 +149,7 @@ export function UserAnswerRequired({
     void submitAnswer(answerDraft.answer);
   }
 
+  // Submits an empty answer to skip the question.
   function handleSkip() {
     if (isSubmitting) {
       return;
@@ -152,6 +158,7 @@ export function UserAnswerRequired({
     void submitAnswer({ selectedOptions: [] }, { isSkip: true });
   }
 
+  // Applies the keyboard cursor selection to the active option.
   function handleActiveOptionSelection() {
     if (question.options.length === 0) {
       return;
@@ -160,16 +167,19 @@ export function UserAnswerRequired({
     handleOptionClick(activeOptionIndex);
   }
 
+  // Starts or continues a custom response from printable container key presses.
   function handleStartCustomResponse(character: string) {
     setIsCustomResponseFocused(true);
     answerDraft.appendCustomResponse(character);
     customResponseInputRef.current?.focus();
   }
 
+  // Updates custom response text and makes it the active draft answer.
   function handleCustomResponseChange(value: string) {
     answerDraft.updateCustomResponse(value);
   }
 
+  // Handles custom-input shortcuts that move back to options or submit the answer.
   function handleCustomResponseKeyDown(e: KeyboardEvent<HTMLInputElement>) {
     if (
       e.key === "Backspace" &&
@@ -194,6 +204,7 @@ export function UserAnswerRequired({
     }
   }
 
+  // Captures global shortcuts before focused option buttons can handle them.
   function handleContainerKeyDownCapture(e: KeyboardEvent<HTMLDivElement>) {
     if (e.key === "Escape") {
       e.preventDefault();
@@ -215,6 +226,7 @@ export function UserAnswerRequired({
     }
   }
 
+  // Handles keyboard navigation when focus is on the answer card container.
   function handleContainerKeyDown(e: KeyboardEvent<HTMLDivElement>) {
     if (isEditableTarget(e.target)) {
       return;
