@@ -8,7 +8,6 @@ import type { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
 import {
   DSBX_TOOL_NAME,
   type ToolEntry,
-  type ToolProfile,
 } from "@app/lib/api/sandbox/image/types";
 import type { Authenticator } from "@app/lib/auth";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
