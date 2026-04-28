@@ -39,7 +39,7 @@ export function useWorkspaceEgressPolicy({
   const { data, error, mutate, isLoading } = useSWRWithDefaults(
     workspaceEgressPolicyUrl(owner.sId),
     policyFetcher,
-    { disabled },
+    { disabled }
   );
 
   return {
@@ -63,7 +63,7 @@ export function useWorkspaceSandboxAgentEgressRequests({
   const { data, error, mutate, isLoading } = useSWRWithDefaults(
     workspaceSandboxAgentEgressRequestsUrl(owner.sId),
     agentEgressRequestsFetcher,
-    { disabled },
+    { disabled }
   );
 
   return {
@@ -88,7 +88,7 @@ export function useUpdateWorkspaceSandboxAgentEgressRequests({
     });
 
   const updateWorkspaceSandboxAgentEgressRequests = async (
-    enabled: boolean,
+    enabled: boolean
   ): Promise<boolean> => {
     setIsUpdating(true);
     try {
@@ -100,7 +100,7 @@ export function useUpdateWorkspaceSandboxAgentEgressRequests({
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ enabled }),
-        },
+        }
       );
 
       if (!response.ok) {
@@ -117,7 +117,7 @@ export function useUpdateWorkspaceSandboxAgentEgressRequests({
         await response.json();
       await mutateWorkspaceSandboxAgentEgressRequests(
         { allowAgentEgressRequests: data.allowAgentEgressRequests },
-        false,
+        false
       );
       sendNotification({
         type: "success",
@@ -157,7 +157,7 @@ export function useUpdateWorkspaceEgressPolicy({
   });
 
   const updateWorkspaceEgressPolicy = async (
-    policy: EgressPolicy,
+    policy: EgressPolicy
   ): Promise<boolean> => {
     setIsUpdating(true);
     try {

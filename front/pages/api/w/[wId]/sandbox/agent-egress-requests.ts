@@ -35,7 +35,7 @@ async function handler(
       | PutWorkspaceSandboxAgentEgressRequestsResponseBody
     >
   >,
-  auth: Authenticator,
+  auth: Authenticator
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
 
@@ -80,7 +80,7 @@ async function handler(
 
     case "PUT": {
       const parsedBody = UpdateSandboxAgentEgressRequestsBodySchema.safeParse(
-        req.body,
+        req.body
       );
       if (!parsedBody.success) {
         return apiError(req, res, {
@@ -96,7 +96,7 @@ async function handler(
       const result =
         await WorkspaceResource.updateSandboxAllowAgentEgressRequests(
           owner.id,
-          parsedBody.data.enabled,
+          parsedBody.data.enabled
         );
       if (result.isErr()) {
         return apiError(req, res, {

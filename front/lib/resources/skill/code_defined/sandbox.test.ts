@@ -12,7 +12,7 @@ describe("sandboxSkill", () => {
 
     const instructionsWithoutDsbxTools = await sandboxSkill.fetchInstructions(
       auth,
-      { spaceIds: [] },
+      { spaceIds: [] }
     );
 
     expect(instructionsWithoutDsbxTools).not.toContain("dsbx tools");
@@ -22,7 +22,7 @@ describe("sandboxSkill", () => {
 
     const instructionsWithDsbxTools = await sandboxSkill.fetchInstructions(
       auth,
-      { spaceIds: [] },
+      { spaceIds: [] }
     );
 
     expect(instructionsWithDsbxTools).toContain("dsbx tools");
@@ -43,7 +43,7 @@ describe("sandboxSkill", () => {
 
     await WorkspaceResource.updateSandboxAllowAgentEgressRequests(
       workspace.id,
-      true,
+      true
     );
 
     const permissiveInstructions = await sandboxSkill.fetchInstructions(auth, {

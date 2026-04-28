@@ -8,7 +8,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 async function createServer(
   auth: Authenticator,
-  agentLoopContext?: AgentLoopContextType,
+  agentLoopContext?: AgentLoopContextType
 ): Promise<McpServer> {
   const server = makeInternalMCPServer("sandbox");
 

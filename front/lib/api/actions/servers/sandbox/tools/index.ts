@@ -59,7 +59,7 @@ interface FormatExecOutputOpts {
 
 function formatExecOutput(
   result: ExecResult,
-  opts?: FormatExecOutputOpts,
+  opts?: FormatExecOutputOpts
 ): string {
   const sections: string[] = [];
 
@@ -77,7 +77,7 @@ function formatExecOutput(
 
   if (opts?.denyLogEntries && opts.denyLogEntries.length > 0) {
     sections.push(
-      `<network_proxy_logs>\n${opts.denyLogEntries.join("\n")}\n</network_proxy_logs>`,
+      `<network_proxy_logs>\n${opts.denyLogEntries.join("\n")}\n</network_proxy_logs>`
     );
   }
 
@@ -85,16 +85,16 @@ function formatExecOutput(
 }
 
 async function fetchSandboxAllowAgentEgressRequests(
-  auth: Authenticator,
+  auth: Authenticator
 ): Promise<boolean> {
   const workspace = auth.getNonNullableWorkspace();
   const result = await WorkspaceResource.fetchSandboxAllowAgentEgressRequests(
-    workspace.sId,
+    workspace.sId
   );
   if (result.isErr()) {
     logger.warn(
       { err: result.error, workspaceId: workspace.sId },
-      "Failed to read sandbox agent egress request setting",
+      "Failed to read sandbox agent egress request setting"
     );
     return false;
   }
@@ -104,7 +104,7 @@ async function fetchSandboxAllowAgentEgressRequests(
 
 export async function createSandboxTools(
   auth: Authenticator,
-  _agentLoopContext?: AgentLoopContextType,
+  _agentLoopContext?: AgentLoopContextType
 ): Promise<ToolDefinition[]> {
   const handlers: ToolHandlers<typeof SANDBOX_TOOLS_METADATA> = {
     bash: runSandboxBashTool,
@@ -131,7 +131,7 @@ export async function createSandboxTools(
 export async function buildDescribeToolsetOutput(
   auth: Authenticator,
   providerId: ModelProviderIdType,
-  format: "json" | "yaml",
+  format: "json" | "yaml"
 ): Promise<Result<Array<{ type: "text"; text: string }>, MCPError>> {
   const flags = await getFeatureFlags(auth);
   const toolsResult = getToolsForProvider(auth, providerId, {
@@ -160,7 +160,7 @@ export async function runSandboxBashTool(
     timeoutMs?: number;
     workingDirectory?: string;
   },
-  { auth, agentLoopContext }: ToolHandlerExtra,
+  { auth, agentLoopContext }: ToolHandlerExtra
 ): Promise<Result<Array<{ type: "text"; text: string }>, MCPError>> {
   const conversation = agentLoopContext?.runContext?.conversation;
   const agentConfiguration = agentLoopContext?.runContext?.agentConfiguration;
@@ -181,7 +181,7 @@ export async function runSandboxBashTool(
     const image = imageResult.value;
 
     void startTelemetry(auth, sandbox, conversation).catch((err) =>
-      logger.error({ err }, "Telemetry start failed (fire-and-forget)"),
+      logger.error({ err }, "Telemetry start failed (fire-and-forget)")
     );
 
     if (freshlyCreated || wokeFromSleep) {
@@ -189,7 +189,7 @@ export async function runSandboxBashTool(
         auth,
         sandbox,
         conversation,
-        image,
+        image
       );
       if (mountResult.isErr()) {
         return new Err(new MCPError(mountResult.error.message));
@@ -199,7 +199,7 @@ export async function runSandboxBashTool(
         auth,
         sandbox,
         conversation,
-        image,
+        image
       );
       if (refreshResult.isErr()) {
         return new Err(new MCPError(refreshResult.error.message));
@@ -208,7 +208,7 @@ export async function runSandboxBashTool(
   } else {
     logger.error(
       { err: imageResult.error },
-      "Failed to get sandbox image for GCS mount",
+      "Failed to get sandbox image for GCS mount"
     );
   }
 
@@ -231,7 +231,7 @@ export async function runSandboxBashTool(
         providerId: sandbox.providerId,
         sandboxId: sandbox.sId,
       },
-      "Sandbox egress forwarder health check failed, restarting",
+      "Sandbox egress forwarder health check failed, restarting"
     );
     const setupResult = await setupEgressForwarder(auth, sandbox);
     if (setupResult.isErr()) {
@@ -244,7 +244,7 @@ export async function runSandboxBashTool(
         providerId: sandbox.providerId,
         sandboxId: sandbox.sId,
       },
-      "Sandbox egress forwarder health check succeeded",
+      "Sandbox egress forwarder health check succeeded"
     );
   }
 
@@ -286,11 +286,11 @@ export async function runSandboxBashTool(
     "bash",
     durationMs,
     metricsCtx,
-    execResult.isOk() ? "success" : "error",
+    execResult.isOk() ? "success" : "error"
   );
 
   void revokeExecToken({ sbId: sandbox.sId, execId }).catch((err) =>
-    logger.error({ error: err }, "Failed to revoke exec token"),
+    logger.error({ error: err }, "Failed to revoke exec token")
   );
 
   if (execResult.isErr()) {
@@ -302,7 +302,7 @@ export async function runSandboxBashTool(
   if (denyResult.isErr()) {
     logger.warn(
       { err: denyResult.error, providerId: sandbox.providerId },
-      "Failed to read egress deny log",
+      "Failed to read egress deny log"
     );
   } else if (denyResult.value.length > 0) {
     denyLogEntries = denyResult.value;
@@ -315,15 +315,15 @@ export async function runSandboxBashTool(
 
 export async function addEgressDomainTool(
   { domain, reason }: { domain: string; reason: string },
-  { auth, agentLoopContext }: ToolHandlerExtra,
+  { auth, agentLoopContext }: ToolHandlerExtra
 ): Promise<Result<Array<{ type: "text"; text: string }>, MCPError>> {
   const allowAgentEgressRequests =
     await fetchSandboxAllowAgentEgressRequests(auth);
   if (!allowAgentEgressRequests) {
     return new Err(
       new MCPError(
-        "Agent-driven egress requests are disabled for this workspace.",
-      ),
+        "Agent-driven egress requests are disabled for this workspace."
+      )
     );
   }
 

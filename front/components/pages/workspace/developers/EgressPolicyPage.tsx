@@ -4,10 +4,10 @@ import {
   useWorkspace,
 } from "@app/lib/auth/AuthContext";
 import {
-  useUpdateWorkspaceSandboxAgentEgressRequests,
   useUpdateWorkspaceEgressPolicy,
-  useWorkspaceSandboxAgentEgressRequests,
+  useUpdateWorkspaceSandboxAgentEgressRequests,
   useWorkspaceEgressPolicy,
+  useWorkspaceSandboxAgentEgressRequests,
 } from "@app/lib/swr/sandbox";
 import { normalizeEgressPolicyDomain } from "@app/types/sandbox/egress_policy";
 import {

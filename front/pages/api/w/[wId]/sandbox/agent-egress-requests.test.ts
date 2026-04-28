@@ -81,7 +81,7 @@ describe("GET/PUT /api/w/[wId]/sandbox/agent-egress-requests", () => {
             name: "Sandbox egress policy",
           },
         ],
-      }),
+      })
     );
   });
 

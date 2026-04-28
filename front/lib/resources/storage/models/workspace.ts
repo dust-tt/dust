@@ -122,5 +122,5 @@ WorkspaceModel.init(
       { unique: true, fields: ["sId"] },
       { unique: true, fields: ["workOSOrganizationId"] },
     ],
-  },
+  }
 );

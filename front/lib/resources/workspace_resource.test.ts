@@ -10,7 +10,7 @@ vi.mock("@app/lib/utils/cache", () => ({
     .mockImplementation(
       <T, Args extends unknown[]>(
         fn: CacheableFunction<JsonSerializable<T>, Args>,
-        resolver: (...args: Args) => string,
+        resolver: (...args: Args) => string
       ) => {
         return async (...args: Args): Promise<JsonSerializable<T>> => {
           const key = `cacheWithRedis-${fn.name}-${resolver(...args)}`;
@@ -22,14 +22,14 @@ vi.mock("@app/lib/utils/cache", () => ({
           inMemoryCache.set(key, JSON.stringify(result));
           return result;
         };
-      },
+      }
     ),
   invalidateCacheWithRedis: vi
     .fn()
     .mockImplementation(
       <T, Args extends unknown[]>(
         fn: CacheableFunction<JsonSerializable<T>, Args>,
-        resolver: (...args: Args) => string,
+        resolver: (...args: Args) => string
       ) => {
         return (...args: Args): Promise<void> => {
           const key = `cacheWithRedis-${fn.name}-${resolver(...args)}`;
@@ -37,14 +37,14 @@ vi.mock("@app/lib/utils/cache", () => ({
           deletedKeys.push(key);
           return Promise.resolve();
         };
-      },
+      }
     ),
   batchInvalidateCacheWithRedis: vi
     .fn()
     .mockImplementation(
       <T, Args extends unknown[]>(
         fn: CacheableFunction<JsonSerializable<T>, Args>,
-        resolver: (...args: Args) => string,
+        resolver: (...args: Args) => string
       ) => {
         return async (argsList: Args[]): Promise<void> => {
           for (const args of argsList) {
@@ -53,20 +53,20 @@ vi.mock("@app/lib/utils/cache", () => ({
             deletedKeys.push(key);
           }
         };
-      },
+      }
     ),
   invalidateCacheAfterCommit: vi
     .fn()
     .mockImplementation(
       (_transaction: unknown, invalidateFn: () => Promise<void>): void => {
         void invalidateFn();
-      },
+      }
     ),
 }));
 
 vi.mock("@app/lib/api/workos/organization_primitives", async () => {
   const actual = await vi.importActual(
-    "@app/lib/api/workos/organization_primitives",
+    "@app/lib/api/workos/organization_primitives"
   );
   return {
     ...actual,
@@ -181,7 +181,7 @@ describe("WorkspaceResource", () => {
 
         await WorkspaceResource.updateSandboxAllowAgentEgressRequests(
           workspace.id,
-          true,
+          true
         );
 
         expect(deletedKeys).toContain(cacheKey);
@@ -199,7 +199,7 @@ describe("WorkspaceResource", () => {
       const result =
         await WorkspaceResource.updateSandboxAllowAgentEgressRequests(
           workspace.id,
-          true,
+          true
         );
 
       expect(result.isOk()).toBe(true);
@@ -211,12 +211,12 @@ describe("WorkspaceResource", () => {
     it("reads the setting by workspace id", async () => {
       await WorkspaceResource.updateSandboxAllowAgentEgressRequests(
         workspace.id,
-        true,
+        true
       );
 
       const result =
         await WorkspaceResource.fetchSandboxAllowAgentEgressRequests(
-          workspace.sId,
+          workspace.sId
         );
 
       expect(result.isOk()).toBe(true);
@@ -230,7 +230,7 @@ describe("WorkspaceResource", () => {
     it("should reject values below the minimum retention", async () => {
       const result = await WorkspaceResource.updateConversationsRetention(
         workspace.id,
-        59,
+        59
       );
 
       expect(result.isErr()).toBe(true);
@@ -242,7 +242,7 @@ describe("WorkspaceResource", () => {
     it("should set retention days value", async () => {
       const result = await WorkspaceResource.updateConversationsRetention(
         workspace.id,
-        60,
+        60
       );
 
       expect(result.isOk()).toBe(true);
@@ -258,7 +258,7 @@ describe("WorkspaceResource", () => {
       // Then set -1 which should convert to null
       const result = await WorkspaceResource.updateConversationsRetention(
         workspace.id,
-        -1,
+        -1
       );
 
       expect(result.isOk()).toBe(true);
@@ -272,7 +272,7 @@ describe("WorkspaceResource", () => {
         workspace.id,
         {
           conversationsRetentionDays: 59,
-        },
+        }
       );
 
       expect(result.isErr()).toBe(true);
@@ -290,7 +290,7 @@ describe("WorkspaceResource", () => {
       });
 
       const result = await WorkspaceResource.disableSSOEnforcement(
-        workspace.id,
+        workspace.id
       );
 
       expect(result.isOk()).toBe(true);
@@ -302,13 +302,13 @@ describe("WorkspaceResource", () => {
     it("should return error when SSO already disabled", async () => {
       // SSO is disabled by default, try to disable again
       const result = await WorkspaceResource.disableSSOEnforcement(
-        workspace.id,
+        workspace.id
       );
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
         expect(result.error.message).toBe(
-          "SSO enforcement is already disabled.",
+          "SSO enforcement is already disabled."
         );
       }
     });
@@ -415,7 +415,7 @@ describe("WorkspaceResource", () => {
 
         const otherWorkspace = await WorkspaceFactory.basic();
         const otherResource = await WorkspaceResource.fetchById(
-          otherWorkspace.sId,
+          otherWorkspace.sId
         );
 
         const result = await otherResource?.upsertWorkspaceDomain({
@@ -498,7 +498,7 @@ describe("WorkspaceResource", () => {
         expect(result?.isErr()).toBe(true);
         if (result?.isErr()) {
           expect(result.error.message).toBe(
-            "The workspace does not have any verified domain.",
+            "The workspace does not have any verified domain."
           );
         }
       });
@@ -542,7 +542,7 @@ describe("WorkspaceResource", () => {
     it("returns null when whiteListedProviders is null and no kill switches", async () => {
       const result =
         await WorkspaceResource.getWhiteListedProvidersFilteredByKillSwitches(
-          null,
+          null
         );
 
       expect(result).toBeNull();
@@ -595,7 +595,7 @@ describe("WorkspaceResource", () => {
 
       const result =
         await WorkspaceResource.getWhiteListedProvidersFilteredByKillSwitches(
-          null,
+          null
         );
 
       expect(result).not.toBeNull();
@@ -609,7 +609,7 @@ describe("WorkspaceResource", () => {
 
       const result =
         await WorkspaceResource.getWhiteListedProvidersFilteredByKillSwitches(
-          null,
+          null
         );
 
       expect(result).not.toBeNull();
