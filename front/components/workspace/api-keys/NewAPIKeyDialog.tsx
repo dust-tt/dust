@@ -268,19 +268,19 @@ export const NewAPIKeyDialog = ({
                     id="api-key-scope-user"
                     value="user"
                     className="gap-2"
-                    label="Read-only — can read agents, conversations, and data sources"
+                    label="Read-only: can read agents, conversations, and data sources"
                   />
                   <RadioGroupItem
                     id="api-key-scope-builder"
                     value="builder"
                     className="gap-2"
-                    label="Read & write — can also create and modify resources"
+                    label="Read & write: can also create and modify resources"
                   />
                   <RadioGroupItem
                     id="api-key-scope-admin"
                     value="admin"
                     className="gap-2"
-                    label="Admin — read & write plus workspace administration (members, analytics export)"
+                    label="Admin: read & write plus workspace administration (members, analytics export)"
                   />
                 </RadioGroup>
               </div>
