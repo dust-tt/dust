@@ -5,25 +5,37 @@ import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { Button } from "@dust-tt/sparkle";
 import Link from "next/link";
 
+type CTAStatAccent = "blue" | "golden" | "green";
+
 interface CTAStat {
   label: string;
   display: React.ReactNode;
+  accent: CTAStatAccent;
 }
 
 const STATS: CTAStat[] = [
   {
     label: "Agents deployed",
     display: <HomeCountUp to={300000} suffix="+" durationMs={1400} />,
+    accent: "blue",
   },
   {
     label: "Teams running on Dust",
     display: <HomeCountUp to={5000} suffix="+" durationMs={1400} />,
+    accent: "golden",
   },
   {
-    label: "All-time, every day",
-    display: "Live now",
+    label: "Active right now",
+    display: "Live",
+    accent: "green",
   },
 ];
+
+const STAT_THEME: Record<CTAStatAccent, { number: string }> = {
+  blue: { number: "text-blue-400" },
+  golden: { number: "text-golden-400" },
+  green: { number: "text-green-400" },
+};
 
 export function HomeAIOperatorsCTASection() {
   return (
@@ -109,21 +121,26 @@ export function HomeAIOperatorsCTASection() {
             <span aria-hidden="true">→</span>
           </Link>
         </HomeReveal>
-        <div className="mt-12 grid w-full max-w-[820px] grid-cols-1 gap-px overflow-hidden rounded-2xl border border-white/10 bg-white/10 sm:grid-cols-3">
-          {STATS.map((stat, index) => (
-            <HomeReveal
-              key={stat.label}
-              delay={400 + index * 80}
-              className="flex flex-col items-center gap-1 bg-slate-950 px-6 py-6"
-            >
-              <div className="text-2xl font-semibold tracking-[-0.02em] text-white md:text-3xl">
-                {stat.display}
-              </div>
-              <div className="font-mono text-[11px] uppercase tracking-[0.12em] text-white/60">
-                {stat.label}
-              </div>
-            </HomeReveal>
-          ))}
+        <div className="mt-12 grid w-full max-w-[760px] grid-cols-1 gap-8 sm:grid-cols-3 sm:gap-0 sm:divide-x sm:divide-white/10">
+          {STATS.map((stat, index) => {
+            const theme = STAT_THEME[stat.accent];
+            return (
+              <HomeReveal
+                key={stat.label}
+                delay={400 + index * 80}
+                className="flex flex-col items-center gap-3 px-6"
+              >
+                <div
+                  className={`text-3xl font-semibold leading-none tracking-[-0.03em] md:text-4xl ${theme.number}`}
+                >
+                  {stat.display}
+                </div>
+                <div className="text-xs leading-[1.4] text-white/65">
+                  {stat.label}
+                </div>
+              </HomeReveal>
+            );
+          })}
         </div>
       </div>
     </section>

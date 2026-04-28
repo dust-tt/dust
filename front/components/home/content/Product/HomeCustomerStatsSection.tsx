@@ -89,7 +89,7 @@ const CARDS: BentoCard[] = [
     accent: "blue",
     metric: "100%",
     description: "of the customer experience team uses Dust daily",
-    logoSrc: "/static/landing/logos/gray/malt.svg",
+    logoSrc: "/static/landing/logos/color/malt.png",
     logoLabel: "Malt",
     metricSize: "hero",
   },
@@ -114,7 +114,7 @@ const CARDS: BentoCard[] = [
     accent: "golden",
     metric: "50%",
     description: "Faster legal task completion",
-    logoSrc: "/static/landing/logos/gray/payfit.svg",
+    logoSrc: "/static/landing/logos/color/payfit.png",
     logoLabel: "Payfit",
   },
   {
@@ -123,7 +123,7 @@ const CARDS: BentoCard[] = [
     accent: "ink",
     quote:
       "Dust is the most impactful software we've adopted since building Clay.",
-    logoSrc: "/static/landing/logos/gray/clay.svg",
+    logoSrc: "/static/landing/logos/color/clay_white.png",
     logoLabel: "Clay",
   },
   {
@@ -132,7 +132,7 @@ const CARDS: BentoCard[] = [
     accent: "green",
     metric: "+50k",
     description: "Hours saved annually",
-    logoSrc: "/static/landing/logos/gray/qonto.svg",
+    logoSrc: "/static/landing/logos/color/qonto.png",
     logoLabel: "Qonto",
   },
   {
@@ -148,7 +148,7 @@ const CARDS: BentoCard[] = [
     accent: "rose",
     metric: "70%",
     description: "Translation bottleneck reduction",
-    logoSrc: "/static/landing/logos/gray/fleet.svg",
+    logoSrc: "/static/landing/logos/color/fleet.png",
     logoLabel: "Fleet",
   },
   {
@@ -203,17 +203,13 @@ function Attribution({
   return (
     <div className="flex h-9 items-center gap-2.5">
       {logoSrc ? (
-        <span
-          className={`inline-flex h-9 items-center ${
-            isInk ? "[&_img]:invert [&_img]:brightness-200" : ""
-          }`}
-        >
+        <span className="inline-flex h-9 items-center">
           <Image
             src={logoSrc}
             alt={logoLabel ?? ""}
             width={120}
             height={36}
-            className="h-9 w-auto opacity-80"
+            className="h-9 w-auto opacity-95"
           />
         </span>
       ) : null}
@@ -267,18 +263,11 @@ function QuoteCard({ card, delay }: { card: BentoQuoteCard; delay: number }) {
   const theme = ACCENT_THEME[card.accent];
   const isInk = card.accent === "ink";
   const quoteClass = isInk ? "text-white" : "text-foreground";
-  const decorationClass = isInk ? "text-white/10" : "text-blue-500/15";
   return (
     <HomeReveal
       delay={delay}
       className={`group relative flex flex-col justify-between gap-6 overflow-hidden rounded-2xl p-7 transition-[transform,box-shadow] duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_40px_-24px_rgba(15,23,42,0.22)] ${theme.bg} ${theme.ring} ${card.span}`}
     >
-      <span
-        aria-hidden="true"
-        className={`pointer-events-none absolute -left-3 -top-12 select-none text-[180px] font-semibold leading-none ${decorationClass}`}
-      >
-        &ldquo;
-      </span>
       <blockquote
         className={`relative m-0 max-w-[40ch] text-balance text-xl font-medium leading-[1.35] tracking-[-0.01em] md:text-2xl ${quoteClass}`}
       >

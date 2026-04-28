@@ -285,6 +285,12 @@ export const SCENE_CSS = `
 .dust-floor-host .chat-card-body .mention.agent-mention {
   background: rgba(17,20,24,0.08); color: #1A1D21;
 }
+.dust-floor-host[data-paused="true"],
+.dust-floor-host[data-paused="true"] *,
+.dust-floor-host[data-paused="true"] *::before,
+.dust-floor-host[data-paused="true"] *::after {
+  animation-play-state: paused !important;
+}
 .dust-floor-host .chat-card-body .tool-chip {
   display: inline-flex; align-items: center; gap: 4px;
   padding: 0 6px; margin: 0 1px;

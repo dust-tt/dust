@@ -14,19 +14,6 @@ import {
 } from "@app/components/home/content/Product/heroOfficeIso";
 import type { TeamMember } from "@app/components/home/content/shared/team";
 
-const AVATAR_COLORS = [
-  "#5865F2",
-  "#418B5C",
-  "#1C91FF",
-  "#FFAA0D",
-  "#E14322",
-  "#9B59B6",
-  "#EB459E",
-  "#00B8A3",
-  "#F47B2A",
-  "#596170",
-];
-
 const STATUSES = [
   "online",
   "online",
@@ -52,7 +39,6 @@ export function buildHuman(
   roomKey: string | null,
   person: TeamMember
 ): SVGGElement {
-  const color = AVATAR_COLORS[(seed * 7) % AVATAR_COLORS.length];
   const status = STATUSES[seed % STATUSES.length];
 
   const g = document.createElementNS(SVG_NS, "g") as SVGGElement;
@@ -80,15 +66,52 @@ export function buildHuman(
   const body = document.createElementNS(SVG_NS, "g");
   body.setAttribute("class", "human-body");
 
-  // colored disc (visible as a thin ring around the photo)
+  // Status badge sits at this position. Pulled inward from (20,20) so the
+  // chip reads as nestled into the bottom-right corner instead of half-
+  // dangling off the avatar.
+  const sx = 16;
+  const sy = 16;
+  const useEmoji = (seed * 13) % 4 === 0;
+  const badgeRadius = useEmoji ? 9 : 7;
+
+  // Real cutout via SVG mask: white square minus a black hole at the badge
+  // position. Applying this mask to the disc + photo group leaves a true
+  // empty region — the badge then sits directly in that hole, no border.
+  const maskId = `dust-avatar-mask-${seed}-${Math.floor(Math.random() * 1e9).toString(36)}`;
+  const defs = document.createElementNS(SVG_NS, "defs");
+  const mask = document.createElementNS(SVG_NS, "mask");
+  mask.setAttribute("id", maskId);
+  mask.setAttribute("maskUnits", "userSpaceOnUse");
+  const maskFill = document.createElementNS(SVG_NS, "rect");
+  maskFill.setAttribute("x", "-25");
+  maskFill.setAttribute("y", "-25");
+  maskFill.setAttribute("width", "50");
+  maskFill.setAttribute("height", "50");
+  maskFill.setAttribute("fill", "white");
+  mask.appendChild(maskFill);
+  const maskHole = document.createElementNS(SVG_NS, "circle");
+  maskHole.setAttribute("cx", String(sx));
+  maskHole.setAttribute("cy", String(sy));
+  // Hole slightly larger than the badge so there's a faint ring of breathing
+  // room around it (~1px) — keeps the badge from kissing the avatar edge.
+  maskHole.setAttribute("r", String(badgeRadius + 1));
+  maskHole.setAttribute("fill", "black");
+  mask.appendChild(maskHole);
+  defs.appendChild(mask);
+  body.appendChild(defs);
+
+  // Disc + photo go in a sub-group so the mask only carves them, not the
+  // badge that we render on top.
+  const photoGroup = document.createElementNS(SVG_NS, "g");
+  photoGroup.setAttribute("mask", `url(#${maskId})`);
+
   const disc = document.createElementNS(SVG_NS, "circle");
   disc.setAttribute("cx", "0");
   disc.setAttribute("cy", "0");
   disc.setAttribute("r", "23");
-  disc.setAttribute("fill", color);
-  body.appendChild(disc);
+  disc.setAttribute("fill", "#E9ECEF");
+  photoGroup.appendChild(disc);
 
-  // teammate photo
   const photo = document.createElementNS(SVG_NS, "image");
   photo.setAttributeNS("http://www.w3.org/1999/xlink", "href", person.image);
   photo.setAttribute("href", person.image);
@@ -98,57 +121,35 @@ export function buildHuman(
   photo.setAttribute("height", "40");
   photo.setAttribute("preserveAspectRatio", "xMidYMid slice");
   photo.style.clipPath = "circle(20px at 20px 20px)";
-  body.appendChild(photo);
+  photoGroup.appendChild(photo);
 
-  // crisp white edge
-  const ring = document.createElementNS(SVG_NS, "circle");
-  ring.setAttribute("cx", "0");
-  ring.setAttribute("cy", "0");
-  ring.setAttribute("r", "20");
-  ring.setAttribute("fill", "none");
-  ring.setAttribute("stroke", "#FFFFFF");
-  ring.setAttribute("stroke-width", "0.75");
-  body.appendChild(ring);
+  body.appendChild(photoGroup);
 
-  // status corner — emoji for ~25% of seats, otherwise a colored dot
-  const sx = 20;
-  const sy = 20;
-  const useEmoji = (seed * 13) % 4 === 0;
+  // Badge rendered on top of the cutout, no border needed.
   if (useEmoji) {
     const bg = document.createElementNS(SVG_NS, "circle");
     bg.setAttribute("cx", String(sx));
     bg.setAttribute("cy", String(sy));
-    bg.setAttribute("r", "10.4");
+    bg.setAttribute("r", String(badgeRadius));
     bg.setAttribute("fill", "#FFFFFF");
-    bg.setAttribute("stroke", "rgba(17,20,24,0.08)");
-    bg.setAttribute("stroke-width", "1.6");
     body.appendChild(bg);
     const emoji = document.createElementNS(SVG_NS, "text");
     emoji.setAttribute("text-anchor", "middle");
     emoji.setAttribute("x", String(sx));
-    emoji.setAttribute("y", String(sy + 5.2));
+    emoji.setAttribute("y", String(sy + 4.2));
     emoji.setAttribute(
       "style",
-      "font: 14px/1 'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji', sans-serif;"
+      "font: 12px/1 'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji', sans-serif;"
     );
     emoji.setAttribute("class", "activity-emoji");
     emoji.textContent = ACTIVITY_EMOJIS[seed % ACTIVITY_EMOJIS.length];
     body.appendChild(emoji);
   } else {
-    if (status === "online") {
-      const pulse = document.createElementNS(SVG_NS, "circle");
-      pulse.setAttribute("class", "status-online-pulse");
-      pulse.setAttribute("cx", String(sx));
-      pulse.setAttribute("cy", String(sy));
-      pulse.setAttribute("r", "6");
-      pulse.setAttribute("fill", "#3BA55D");
-      body.appendChild(pulse);
-    }
     const dot = document.createElementNS(SVG_NS, "circle");
     dot.setAttribute("class", `status-dot status-${status}`);
     dot.setAttribute("cx", String(sx));
     dot.setAttribute("cy", String(sy));
-    dot.setAttribute("r", "8");
+    dot.setAttribute("r", String(badgeRadius));
     body.appendChild(dot);
   }
 
