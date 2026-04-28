@@ -2,6 +2,7 @@ import { useDebounce } from "@app/hooks/useDebounce";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import {
+  emptyArray,
   getErrorFromResponse,
   useFetcher,
   useSWRWithDefaults,
@@ -17,6 +18,7 @@ import type { GetProjectTodosResponseBody } from "@app/pages/api/w/[wId]/spaces/
 import type { CheckNameResponseBody } from "@app/pages/api/w/[wId]/spaces/check-name";
 import type { ContentFragmentInputWithContentNode } from "@app/types/api/internal/assistant";
 import type {
+  ProjectTodoAssigneeType,
   ProjectTodoStatus,
   ProjectTodoType,
 } from "@app/types/project_todo";
@@ -339,11 +341,27 @@ export function useProjectTodos({
     todosFetcher
   );
 
+  const sortedUsers = useMemo(() => {
+    const users = data?.users ?? emptyArray<ProjectTodoAssigneeType>();
+    const viewerUserId = data?.viewerUserId ?? null;
+
+    return [...users].sort((a, b) => {
+      const aIsViewer = viewerUserId !== null && a.sId === viewerUserId;
+      const bIsViewer = viewerUserId !== null && b.sId === viewerUserId;
+      if (aIsViewer !== bIsViewer) {
+        return aIsViewer ? -1 : 1;
+      }
+      return a.fullName.localeCompare(b.fullName, undefined, {
+        sensitivity: "base",
+      });
+    });
+  }, [data?.users, data?.viewerUserId]);
+
   return {
     todos: data?.todos ?? [],
     lastReadAt: data?.lastReadAt ?? null,
     viewerUserId: data?.viewerUserId ?? null,
-    users: data?.users ?? [],
+    users: sortedUsers,
     isTodosLoading: !disabled && !error && !data,
     isTodosError: !!error,
     mutateTodos: mutate,
