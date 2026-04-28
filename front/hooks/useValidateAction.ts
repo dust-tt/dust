@@ -7,32 +7,26 @@ import { useCallback, useState } from "react";
 
 interface UseValidateActionParams {
   owner: LightWorkspaceType;
-  conversationId: string | null;
   onError: (errorMessage: string) => void;
 }
 
-export function useValidateAction({
-  owner,
-  conversationId,
-  onError,
-}: UseValidateActionParams) {
+export function useValidateAction({ owner, onError }: UseValidateActionParams) {
   const { fetcher } = useFetcher();
   const [isValidating, setIsValidating] = useState(false);
 
   const validateAction = useCallback(
     async ({
       validationRequest,
-      messageId,
       approved,
     }: {
       validationRequest: MCPActionValidationRequest;
-      messageId: string;
       approved: MCPValidationOutputType;
     }) => {
       setIsValidating(true);
 
       try {
-        // Validate the action.
+        // Validate the action. The backend resumes both the conversation that
+        // contains the action and any blocked ancestor conversations.
         await fetcher(
           `/api/w/${owner.sId}/assistant/conversations/${validationRequest.conversationId}/messages/${validationRequest.messageId}/validate-action`,
           {
@@ -43,31 +37,10 @@ export function useValidateAction({
             body: JSON.stringify({
               actionId: validationRequest.actionId,
               approved,
+              resumeAncestorConversations: true,
             }),
           }
         );
-
-        // Retry on blocked tools on the main conversation if there is one that is != from the event's.
-        if (
-          conversationId &&
-          messageId &&
-          conversationId !== validationRequest.conversationId
-        ) {
-          try {
-            await fetcher(
-              `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${messageId}/retry?blocked_only=true`,
-              {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-              }
-            );
-          } catch {
-            onError("Failed to resume conversation. Please try again.");
-            return { success: false };
-          }
-        }
 
         return { success: true };
       } catch (e) {
@@ -82,7 +55,7 @@ export function useValidateAction({
         setIsValidating(false);
       }
     },
-    [owner.sId, conversationId, onError, fetcher]
+    [owner.sId, onError, fetcher]
   );
 
   return { validateAction, isValidating };
