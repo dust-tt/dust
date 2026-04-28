@@ -131,9 +131,9 @@ describe.each([
 describe("reserved heredoc delimiter", () => {
   it("throws when wrapCommand receives the delimiter on its own line", () => {
     expect(() =>
-      wrapCommand("echo before\nDUST_CMD_EOF\necho after", "anthropic"),
+      wrapCommand("echo before\nDUST_CMD_EOF\necho after", "anthropic")
     ).toThrow(
-      "Command contains the reserved heredoc delimiter 'DUST_CMD_EOF'.",
+      "Command contains the reserved heredoc delimiter 'DUST_CMD_EOF'."
     );
   });
 
@@ -142,10 +142,10 @@ describe("reserved heredoc delimiter", () => {
       wrapCommandWithCapture(
         "echo before\nDUST_CMD_EOF\necho after",
         "exec-id",
-        "anthropic",
-      ),
+        "anthropic"
+      )
     ).toThrow(
-      "Command contains the reserved heredoc delimiter 'DUST_CMD_EOF'.",
+      "Command contains the reserved heredoc delimiter 'DUST_CMD_EOF'."
     );
   });
 });

@@ -16,14 +16,14 @@ function getProfileName(_providerId: ModelProviderIdType): string {
 export function wrapCommand(
   cmd: string,
   providerId: ModelProviderIdType,
-  opts?: WrapCommandOptions,
+  opts?: WrapCommandOptions
 ): string {
   const profile = getProfileName(providerId);
   const timeoutSec = opts?.timeoutSec ?? 60;
 
   if (cmd.split("\n").includes(COMMAND_HEREDOC_DELIMITER)) {
     throw new Error(
-      `Command contains the reserved heredoc delimiter '${COMMAND_HEREDOC_DELIMITER}'.`,
+      `Command contains the reserved heredoc delimiter '${COMMAND_HEREDOC_DELIMITER}'.`
     );
   }
 
@@ -39,7 +39,7 @@ export function wrapCommandWithCapture(
   cmd: string,
   execId: string,
   providerId: ModelProviderIdType,
-  opts?: WrapCommandOptions,
+  opts?: WrapCommandOptions
 ): string {
   const baseCommand = wrapCommand(cmd, providerId, opts);
   const outFile = `/tmp/dust_exec_${execId}.out`;

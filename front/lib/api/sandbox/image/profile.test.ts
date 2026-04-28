@@ -35,7 +35,7 @@ describe("wrapCommandWithCapture", () => {
     const result = wrapCommandWithCapture(
       'echo "hello \\ world"',
       "abc123",
-      "anthropic",
+      "anthropic"
     );
     expect(result).toContain(expectedWrappedCommand('echo "hello \\ world"'));
   });
@@ -62,7 +62,7 @@ describe("buildWaitAndCollectCommand", () => {
   it("waits for exit sentinel", () => {
     const result = buildWaitAndCollectCommand("abc123");
     expect(result).toContain(
-      "while [ ! -f /tmp/dust_exec_abc123.exit ]; do sleep 0.5; done",
+      "while [ ! -f /tmp/dust_exec_abc123.exit ]; do sleep 0.5; done"
     );
   });
 

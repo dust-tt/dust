@@ -44,9 +44,9 @@ describe("wrapCommand", () => {
 
   it("throws when the command contains the reserved heredoc delimiter", () => {
     expect(() =>
-      wrapCommand("echo before\nDUST_CMD_EOF\necho after", "anthropic"),
+      wrapCommand("echo before\nDUST_CMD_EOF\necho after", "anthropic")
     ).toThrow(
-      "Command contains the reserved heredoc delimiter 'DUST_CMD_EOF'.",
+      "Command contains the reserved heredoc delimiter 'DUST_CMD_EOF'."
     );
   });
 });
