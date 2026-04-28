@@ -47,7 +47,7 @@ describe("renderAllMessages", () => {
         }) satisfies UserMessageTypeModel
     );
 
-    vi.mocked(getSteps).mockResolvedValue([
+    vi.mocked(getSteps).mockReturnValue([
       {
         contents: [{ type: "text_content", value: "Agent response" }],
         actions: [],
@@ -190,6 +190,7 @@ describe("renderAllMessages", () => {
 
     const result = await renderAllMessages(auth, {
       conversation,
+      enabledSkills: [],
       model,
       onMissingAction: "skip",
     });
@@ -207,6 +208,7 @@ describe("renderAllMessages", () => {
 
     const result = await renderAllMessages(auth, {
       conversation,
+      enabledSkills: [],
       model,
       onMissingAction: "skip",
     });
@@ -222,6 +224,7 @@ describe("renderAllMessages", () => {
 
     const result = await renderAllMessages(auth, {
       conversation,
+      enabledSkills: [],
       model,
       onMissingAction: "skip",
     });
@@ -239,6 +242,7 @@ describe("renderAllMessages", () => {
 
     const result = await renderAllMessages(auth, {
       conversation,
+      enabledSkills: [],
       model,
       onMissingAction: "skip",
     });
@@ -257,6 +261,7 @@ describe("renderAllMessages", () => {
 
     const result = await renderAllMessages(auth, {
       conversation,
+      enabledSkills: [],
       model,
       onMissingAction: "skip",
     });
@@ -274,6 +279,7 @@ describe("renderAllMessages", () => {
 
     const result = await renderAllMessages(auth, {
       conversation,
+      enabledSkills: [],
       model,
       onMissingAction: "skip",
     });
@@ -288,6 +294,7 @@ describe("renderAllMessages", () => {
 
     const result = await renderAllMessages(auth, {
       conversation,
+      enabledSkills: [],
       model,
       onMissingAction: "skip",
     });
@@ -325,6 +332,7 @@ describe("renderAllMessages", () => {
 
     const result = await renderAllMessages(auth, {
       conversation,
+      enabledSkills: [],
       model,
       onMissingAction: "skip",
     });
@@ -353,7 +361,7 @@ describe("renderAllMessages", () => {
       ]);
 
       // Mock getSteps to return a step with both text_content and function_call
-      vi.mocked(getSteps).mockResolvedValue([
+      vi.mocked(getSteps).mockReturnValue([
         {
           contents: [
             { type: "text_content", value: "Agent response" },
@@ -383,6 +391,7 @@ describe("renderAllMessages", () => {
 
       const result = await renderAllMessages(auth, {
         conversation,
+        enabledSkills: [],
         model,
         excludeActions: true,
         onMissingAction: "skip",
@@ -406,7 +415,7 @@ describe("renderAllMessages", () => {
       ]);
 
       // Mock getSteps to return a step with both text_content and function_call
-      vi.mocked(getSteps).mockResolvedValue([
+      vi.mocked(getSteps).mockReturnValue([
         {
           contents: [
             { type: "text_content", value: "Agent response" },
@@ -436,6 +445,7 @@ describe("renderAllMessages", () => {
 
       const result = await renderAllMessages(auth, {
         conversation,
+        enabledSkills: [],
         model,
         excludeActions: false,
         onMissingAction: "skip",
@@ -455,7 +465,7 @@ describe("renderAllMessages", () => {
       { type: "agent", visibility: "visible" },
     ]);
 
-    vi.mocked(getSteps).mockResolvedValue([
+    vi.mocked(getSteps).mockReturnValue([
       {
         contents: [
           {
@@ -499,6 +509,7 @@ describe("renderAllMessages", () => {
 
     const result = await renderAllMessages(auth, {
       conversation,
+      enabledSkills: [],
       model,
       onMissingAction: "skip",
       renderSkillsAsUserMessages: true,
@@ -509,7 +520,7 @@ describe("renderAllMessages", () => {
       "function",
       "user",
     ]);
-    expect(vi.mocked(getSteps).mock.calls.at(-1)?.[1]).toMatchObject({
+    expect(vi.mocked(getSteps).mock.calls.at(-1)?.[0]).toMatchObject({
       renderSkillsAsUserMessages: true,
     });
     const followUpMessage = result[2];
@@ -528,7 +539,7 @@ describe("renderAllMessages", () => {
       { type: "agent", visibility: "visible" },
     ]);
 
-    vi.mocked(getSteps).mockResolvedValue([
+    vi.mocked(getSteps).mockReturnValue([
       {
         contents: [
           {
@@ -561,12 +572,13 @@ describe("renderAllMessages", () => {
 
     const result = await renderAllMessages(auth, {
       conversation,
+      enabledSkills: [],
       model,
       onMissingAction: "skip",
     });
 
     expect(result.map((m) => m.role)).toEqual(["assistant", "function"]);
-    expect(vi.mocked(getSteps).mock.calls.at(-1)?.[1]).toMatchObject({
+    expect(vi.mocked(getSteps).mock.calls.at(-1)?.[0]).toMatchObject({
       renderSkillsAsUserMessages: false,
     });
   });
