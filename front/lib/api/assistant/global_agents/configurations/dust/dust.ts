@@ -52,6 +52,7 @@ import {
 } from "@app/types/assistant/models/anthropic";
 import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
 import {
+  FIREWORKS_DEEPSEEK_V4_PRO_MODEL_CONFIG,
   FIREWORKS_GLM_5_MODEL_CONFIG,
   FIREWORKS_KIMI_K2P5_MODEL_CONFIG,
   FIREWORKS_MINIMAX_M2P5_MODEL_CONFIG,
@@ -772,6 +773,18 @@ export function _getDustMinimaxHighGlobalAgent(
     name: "dust-minimax-high",
     preferredModelConfiguration: FIREWORKS_MINIMAX_M2P5_MODEL_CONFIG,
     preferredReasoningEffort: "high",
+  });
+}
+
+export function _getDustDeepseekGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_DEEPSEEK,
+    name: "dust-deepseek",
+    preferredModelConfiguration: FIREWORKS_DEEPSEEK_V4_PRO_MODEL_CONFIG,
+    preferredReasoningEffort: "none",
   });
 }
 

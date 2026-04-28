@@ -434,6 +434,13 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         description: "Same as dust-minimax but with high reasoning effort.",
         pictureUrl: DUST_AVATAR_URL,
       };
+    case GLOBAL_AGENTS_SID.DUST_DEEPSEEK:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_DEEPSEEK,
+        name: "dust-deepseek",
+        description: "Same as dust but running DeepSeek V4 Pro.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
     case GLOBAL_AGENTS_SID.DUST_QUICK_MEDIUM:
       return {
         sId: GLOBAL_AGENTS_SID.DUST_QUICK_MEDIUM,
