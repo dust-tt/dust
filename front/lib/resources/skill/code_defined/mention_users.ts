@@ -1,3 +1,8 @@
+import {
+  GET_MENTION_MARKDOWN_TOOL_NAME,
+  SEARCH_AVAILABLE_USERS_TOOL_NAME,
+  USER_MENTIONS_SERVER_NAME,
+} from "@app/lib/api/actions/servers/user_mentions/metadata";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 
 export const mentionUsersSkill = {
@@ -13,8 +18,8 @@ export const mentionUsersSkill = {
   instructions: `The "user_mentions" tools allow you to search for users in the workspace and mention them in your responses.
 
 Important notes:
-- Before mentioning a user, search for users first using search_available_users tool
-- Use the get_mention_markdown tool if you need to get the correct Markdown format for mentions
+- Before mentioning a user if you lack the user's id or name, search for users first using ${USER_MENTIONS_SERVER_NAME}__${SEARCH_AVAILABLE_USERS_TOOL_NAME} tool
+- Use the ${USER_MENTIONS_SERVER_NAME}__${GET_MENTION_MARKDOWN_TOOL_NAME} tool if you need to get the correct Markdown format for mentions
 - Only mention users when it is relevant and appropriate
 - Do not over-mention users, only when explicitly requested or clearly necessary
 
@@ -33,7 +38,7 @@ When NOT to mention users:
 - When the user mentions someone conversationally without intent to notify: "similar to what Sarah did"
 - Ask a question about a user: "What is John's role?"
 `,
-  mcpServers: [{ name: "user_mentions" }],
+  mcpServers: [{ name: USER_MENTIONS_SERVER_NAME }],
   version: 2,
   icon: "ActionMegaphoneIcon",
   isDisabledForAgentLoop: ({ userMessage }) => {

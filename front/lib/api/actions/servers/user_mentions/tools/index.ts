@@ -62,15 +62,19 @@ const handlers: ToolHandlers<typeof USER_MENTIONS_TOOLS_METADATA> = {
     ]);
   },
 
-  [GET_MENTION_MARKDOWN_TOOL_NAME]: async ({ mention }, _extra) => {
+  [GET_MENTION_MARKDOWN_TOOL_NAME]: async ({ mentions }, _extra) => {
     return new Ok([
       {
         type: "text",
-        text: serializeMention({
-          id: mention.id,
-          label: mention.label,
-          type: "user",
-        }),
+        text: mentions
+          .map((mention) =>
+            serializeMention({
+              id: mention.id,
+              label: mention.label,
+              type: "user",
+            })
+          )
+          .join("\n"),
       },
     ]);
   },

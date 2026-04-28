@@ -5,6 +5,7 @@ import {
   IncludeInputSchema,
   SearchWithNodesInputSchema,
 } from "@app/lib/actions/mcp_internal_actions/types";
+import { DATA_SOURCE_NODE_ID } from "@app/types/core/content_node";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
@@ -49,6 +50,31 @@ export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
     displayLabels: {
       running: "Adding file to project",
       done: "Add file to project",
+    },
+  },
+  add_content_node: {
+    description:
+      "Add a content node reference from Company Data to the project context. The node will be available to all conversations in this project.",
+    schema: {
+      title: z.string().describe("Display title for the content node"),
+      dataSourceNodeId: z
+        .string()
+        .startsWith(DATA_SOURCE_NODE_ID)
+        .describe("Internal data source node ID to attach"),
+      nodeId: z.string().describe("Internal node ID to attach"),
+      url: z.string().nullable().optional().describe("Optional source URL"),
+      dustProject: ConfigurableToolInputSchemas[
+        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+      ]
+        .optional()
+        .describe(
+          "Optional project to add the content node to, will fallback to the conversation's project."
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Adding content node to project",
+      done: "Add content node to project",
     },
   },
   update_file: {
@@ -145,6 +171,39 @@ export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
       done: "Get project information",
     },
   },
+  list_members: {
+    description:
+      "List members of the project. Each entry includes user ID, name, email and status within the project.",
+    schema: {
+      limit: z
+        .number()
+        .min(1)
+        .max(100)
+        .optional()
+        .default(20)
+        .describe(
+          "Maximum number of members to return per call (default: 20, max: 100)"
+        ),
+      pageCursor: z
+        .string()
+        .optional()
+        .describe(
+          "Opaque cursor from nextPageCursor of a prior list_members call. Only for pagination."
+        ),
+      dustProject: ConfigurableToolInputSchemas[
+        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+      ]
+        .optional()
+        .describe(
+          "Optional project to list members of, will fallback to the conversation's project."
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Listing project members",
+      done: "List project members",
+    },
+  },
   list_projects: {
     description:
       "List non-archived projects where you are a space member (same scope as the workspace project sidebar source). Each entry includes spaceId, name, and dustProject (uri + mimeType) to pass as the dustProject argument to other project_manager tools.",
@@ -153,6 +212,35 @@ export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
     displayLabels: {
       running: "Listing projects",
       done: "List projects",
+    },
+  },
+  create_project: {
+    description:
+      "Create a new project. By default the project is private. You can optionally set visibility to open and add members by user sId.",
+    schema: {
+      title: z.string().describe("Project title"),
+      description: z
+        .string()
+        .optional()
+        .describe("Optional project description (plain text recommended)"),
+      visibility: z
+        .enum(["private", "open"])
+        .optional()
+        .default("private")
+        .describe(
+          "Project visibility. Defaults to private. Open projects are subject to workspace policy."
+        ),
+      memberIds: z
+        .array(z.string())
+        .optional()
+        .describe(
+          "Optional list of user ids to add as project members after project creation."
+        ),
+    },
+    stake: "low",
+    displayLabels: {
+      running: "Creating project",
+      done: "Create project",
     },
   },
   retrieve_recent_documents: {
