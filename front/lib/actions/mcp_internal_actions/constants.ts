@@ -832,9 +832,7 @@ export const INTERNAL_MCP_SERVERS = {
     id: 52,
     availability: "manual",
     allowMultipleInstances: true,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("gong_tool");
-    },
+    isRestricted: undefined,
     isPreview: false,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
