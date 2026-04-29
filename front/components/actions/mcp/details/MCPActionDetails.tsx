@@ -1,4 +1,7 @@
-import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
+import {
+  ActionDetailsWrapper,
+  ActionExecutionProvider,
+} from "@app/components/actions/ActionDetailsWrapper";
 import {
   makeQueryTextForDataSourceSearch,
   makeQueryTextForFind,
@@ -140,7 +143,17 @@ function getActionLabel({
   );
 }
 
-export function MCPActionDetails({
+export function MCPActionDetails(props: MCPActionDetailsProps) {
+  return (
+    <ActionExecutionProvider
+      executionDurationMs={props.action.executionDurationMs}
+    >
+      <MCPActionDetailsInner {...props} />
+    </ActionExecutionProvider>
+  );
+}
+
+function MCPActionDetailsInner({
   action,
   displayContext,
   owner,
@@ -181,7 +194,6 @@ export function MCPActionDetails({
     toolOutput: output,
     toolParams: params,
     displayContext,
-    executionDurationMs: action.executionDurationMs,
   };
 
   if (

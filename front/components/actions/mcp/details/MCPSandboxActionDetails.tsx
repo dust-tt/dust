@@ -85,24 +85,10 @@ function parseExitCode(sections: SandboxSection[]): number | null {
   return Number.isNaN(parsed) ? null : parsed;
 }
 
-function formatDurationMs(durationMs: number): string {
-  if (durationMs < 1000) {
-    return `${Math.round(durationMs)}ms`;
-  }
-  const seconds = durationMs / 1000;
-  if (seconds < 60) {
-    return `${seconds.toFixed(1)}s`;
-  }
-  const minutes = Math.floor(seconds / 60);
-  const remainder = Math.round(seconds - minutes * 60);
-  return `${minutes}m ${remainder}s`;
-}
-
 export function MCPSandboxActionDetails({
   displayContext,
   toolParams,
   toolOutput,
-  executionDurationMs,
 }: ToolExecutionDetailsProps) {
   const command =
     typeof toolParams.command === "string" ? toolParams.command : null;
@@ -135,7 +121,6 @@ export function MCPSandboxActionDetails({
     parsedSections,
     isRunning,
     exitCode,
-    executionDurationMs,
   };
 
   return (
@@ -158,46 +143,28 @@ interface SandboxViewProps {
   parsedSections: SandboxSection[];
   isRunning: boolean;
   exitCode: number | null;
-  executionDurationMs: number | null;
 }
 
-interface StatusLineProps {
+interface ExitCodeBadgeProps {
   exitCode: number | null;
-  executionDurationMs: number | null;
 }
 
-function StatusLine({ exitCode, executionDurationMs }: StatusLineProps) {
-  const hasExitCode = exitCode !== null;
-  const hasDuration = executionDurationMs !== null;
-
-  if (!hasExitCode && !hasDuration) {
+function ExitCodeBadge({ exitCode }: ExitCodeBadgeProps) {
+  if (exitCode === null) {
     return null;
   }
 
   return (
-    <div className="flex items-center gap-2 text-xs font-medium">
-      {hasExitCode && (
-        <span
-          className={cn(
-            exitCode === 0
-              ? "text-success dark:text-success-night"
-              : "text-warning dark:text-warning-night"
-          )}
-        >
-          exit code: {exitCode}
-        </span>
+    <span
+      className={cn(
+        "text-xs font-medium",
+        exitCode === 0
+          ? "text-success dark:text-success-night"
+          : "text-warning dark:text-warning-night"
       )}
-      {hasExitCode && hasDuration && (
-        <span className="text-muted-foreground dark:text-muted-foreground-night">
-          ·
-        </span>
-      )}
-      {hasDuration && (
-        <span className="text-muted-foreground dark:text-muted-foreground-night">
-          {formatDurationMs(executionDurationMs)}
-        </span>
-      )}
-    </div>
+    >
+      exit code: {exitCode}
+    </span>
   );
 }
 
@@ -253,15 +220,9 @@ interface SandboxOutputProps {
   sections: SandboxSection[];
   exitCode: number | null;
   isRunning: boolean;
-  executionDurationMs: number | null;
 }
 
-function SandboxOutput({
-  sections,
-  exitCode,
-  isRunning,
-  executionDurationMs,
-}: SandboxOutputProps) {
+function SandboxOutput({ sections, exitCode, isRunning }: SandboxOutputProps) {
   const renderable = sections.filter((s) => s.type !== "exit_code");
 
   if (renderable.length === 0) {
@@ -284,10 +245,7 @@ function SandboxOutput({
           defaultOpen={!(failed && section.type === "stdout")}
         />
       ))}
-      <StatusLine
-        exitCode={exitCode}
-        executionDurationMs={executionDurationMs}
-      />
+      <ExitCodeBadge exitCode={exitCode} />
     </div>
   );
 }
@@ -297,7 +255,6 @@ function ConversationView({
   parsedSections,
   isRunning,
   exitCode,
-  executionDurationMs,
 }: SandboxViewProps) {
   return (
     <div className="flex flex-col gap-3 pl-6">
@@ -307,7 +264,6 @@ function ConversationView({
           sections={parsedSections}
           exitCode={exitCode}
           isRunning={isRunning}
-          executionDurationMs={executionDurationMs}
         />
       )}
     </div>
@@ -319,7 +275,6 @@ function SidebarView({
   parsedSections,
   isRunning,
   exitCode,
-  executionDurationMs,
 }: SandboxViewProps) {
   return (
     <div className="flex flex-col gap-4 py-4 pl-6">
@@ -335,22 +290,14 @@ function SidebarView({
       )}
 
       <div>
-        <div className="flex items-baseline justify-between gap-2">
-          <span className="font-medium text-foreground dark:text-foreground-night">
-            Output
-          </span>
-          {!isRunning && executionDurationMs !== null && (
-            <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-              {formatDurationMs(executionDurationMs)}
-            </span>
-          )}
-        </div>
+        <span className="font-medium text-foreground dark:text-foreground-night">
+          Output
+        </span>
         <div className="py-2">
           <SandboxOutput
             sections={parsedSections}
             exitCode={exitCode}
             isRunning={isRunning}
-            executionDurationMs={executionDurationMs}
           />
         </div>
       </div>
