@@ -1,4 +1,3 @@
-/// <reference types="chrome" />
 import { ConfirmContext } from "@app/components/Confirm";
 import { useUser } from "@app/lib/swr/user";
 import { isChromeExtension } from "@app/lib/utils/extension";
