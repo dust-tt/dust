@@ -50,11 +50,11 @@ export async function renderConversationForModel(
     prompt,
     tools,
     allowedTokenCount,
-    enabledSkills,
     excludeActions,
     excludeImages,
     onMissingAction = "inject-placeholder",
     agentConfiguration,
+    enabledSkills,
     renderSkillsAsUserMessages = false,
   }: {
     leadingMessages?: ModelMessageTypeMultiActionsWithoutContentFragment[];
@@ -63,12 +63,12 @@ export async function renderConversationForModel(
     prompt: string;
     tools: string;
     allowedTokenCount: number;
-    enabledSkills: EnabledSkillType[];
     excludeActions?: boolean;
     excludeImages?: boolean;
     onMissingAction?: "inject-placeholder" | "skip";
     enablePreviousInteractionsPruning?: boolean;
     agentConfiguration?: AgentConfigurationType;
+    enabledSkills: EnabledSkillType[];
     renderSkillsAsUserMessages?: boolean;
   }
 ): Promise<
@@ -87,11 +87,11 @@ export async function renderConversationForModel(
   const renderedMessages = await renderAllMessages(auth, {
     conversation,
     model,
-    enabledSkills,
     excludeActions,
     excludeImages,
     onMissingAction,
     agentConfiguration,
+    enabledSkills,
     renderSkillsAsUserMessages,
   });
   const messages = [...leadingMessages, ...renderedMessages];

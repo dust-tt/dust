@@ -139,11 +139,11 @@ export async function renderAllMessages(
   {
     conversation,
     model,
-    enabledSkills,
     excludeActions,
     excludeImages,
     onMissingAction,
     agentConfiguration,
+    enabledSkills,
     renderSkillsAsUserMessages = false,
   }: {
     conversation: ConversationType;
@@ -187,12 +187,12 @@ export async function renderAllMessages(
         if (isCurrentAgentMessage) {
           // Render the current agent's messages normally with full agentic loop.
           const steps = getSteps(auth, {
-            enabledSkillById,
             model,
             message: m,
             workspaceId: conversation.owner.sId,
             conversationId: conversation.sId,
             onMissingAction,
+            enabledSkillById,
             renderSkillsAsUserMessages,
           });
 
