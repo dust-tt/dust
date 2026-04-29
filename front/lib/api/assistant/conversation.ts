@@ -2728,17 +2728,33 @@ export async function compactConversation(
     );
   const lastMessage = conversation.content.at(-1)?.at(-1);
 
-  if (
-    runningAgentMessage ||
-    runningCompaction ||
-    (lastMessage && isCompactionMessageType(lastMessage))
-  ) {
+  if (runningAgentMessage) {
+    return new Err({
+      status_code: 409,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Answer the pending agent message first.",
+      },
+    });
+  }
+
+  if (runningCompaction) {
+    return new Err({
+      status_code: 409,
+      api_error: {
+        type: "invalid_request_error",
+        message: "A compaction is already in progress. Please wait.",
+      },
+    });
+  }
+
+  if (lastMessage && isCompactionMessageType(lastMessage)) {
     return new Err({
       status_code: 409,
       api_error: {
         type: "invalid_request_error",
         message:
-          "Cannot compact while another compaction or an agent message is running, or when the last message is already a compaction message.",
+          "This conversation was just compacted. Send a new message before compacting again.",
       },
     });
   }
