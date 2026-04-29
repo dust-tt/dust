@@ -438,6 +438,7 @@ export interface WorkspaceMetadata {
   autoCreateSpaceForProvisionedGroups?: boolean;
   disableManualInvitations?: boolean;
   phoneCountry?: string;
+  sandboxAllowAgentEgressRequests?: boolean;
 }
 
 export async function updateWorkspaceMetadata(

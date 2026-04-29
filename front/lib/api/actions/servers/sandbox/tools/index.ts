@@ -51,6 +51,7 @@ import { Err, Ok, type Result } from "@app/types/shared/result";
 
 const DEFAULT_WORKING_DIRECTORY = "/home/agent";
 const DEFAULT_EXEC_TIMEOUT_MS = 60_000;
+const ADD_EGRESS_DOMAIN_TOOL_NAME = "add_egress_domain" as const;
 
 interface FormatExecOutputOpts {
   denyLogEntries?: string[];
@@ -83,10 +84,17 @@ function formatExecOutput(
   return sections.join("\n") || "(no output)";
 }
 
-export function createSandboxTools(
-  _auth: Authenticator,
+function isSandboxAgentEgressRequestsAllowed(auth: Authenticator): boolean {
+  return (
+    auth.getNonNullableWorkspace().metadata?.sandboxAllowAgentEgressRequests ===
+    true
+  );
+}
+
+export async function createSandboxTools(
+  auth: Authenticator,
   _agentLoopContext?: AgentLoopContextType
-): ToolDefinition[] {
+): Promise<ToolDefinition[]> {
   const handlers: ToolHandlers<typeof SANDBOX_TOOLS_METADATA> = {
     bash: runSandboxBashTool,
     describe_toolset: async ({ format }, { auth, agentLoopContext }) => {
@@ -98,10 +106,15 @@ export function createSandboxTools(
 
       return buildDescribeToolsetOutput(auth, providerId, format ?? "yaml");
     },
-    add_egress_domain: addEgressDomainTool,
+    [ADD_EGRESS_DOMAIN_TOOL_NAME]: addEgressDomainTool,
   };
 
-  return buildTools(SANDBOX_TOOLS_METADATA, handlers);
+  const tools = buildTools(SANDBOX_TOOLS_METADATA, handlers);
+  if (isSandboxAgentEgressRequestsAllowed(auth)) {
+    return tools;
+  }
+
+  return tools.filter((tool) => tool.name !== ADD_EGRESS_DOMAIN_TOOL_NAME);
 }
 
 export async function buildDescribeToolsetOutput(
@@ -293,6 +306,14 @@ export async function addEgressDomainTool(
   { domain, reason }: { domain: string; reason: string },
   { auth, agentLoopContext }: ToolHandlerExtra
 ): Promise<Result<Array<{ type: "text"; text: string }>, MCPError>> {
+  if (!isSandboxAgentEgressRequestsAllowed(auth)) {
+    return new Err(
+      new MCPError(
+        "Agent-driven egress requests are disabled for this workspace."
+      )
+    );
+  }
+
   const conversation = agentLoopContext?.runContext?.conversation;
   if (!conversation) {
     return new Err(new MCPError("No conversation context available."));

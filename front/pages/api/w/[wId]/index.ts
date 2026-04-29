@@ -1,4 +1,9 @@
 /** @ignoreswagger */
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { updateWorkOSOrganizationName } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
@@ -99,6 +104,10 @@ const WorkspaceManualProjectKnowledgeManagementUpdateBodySchema = t.type({
   allowManualProjectKnowledgeManagement: t.boolean,
 });
 
+const WorkspaceSandboxAgentEgressRequestsUpdateBodySchema = t.type({
+  sandboxAllowAgentEgressRequests: t.boolean,
+});
+
 const PostWorkspaceRequestBodySchema = t.union([
   WorkspaceAllowedDomainUpdateBodySchema,
   WorkspaceBatchDomainUpdateBodySchema,
@@ -116,6 +125,7 @@ const PostWorkspaceRequestBodySchema = t.union([
   WorkspaceExtensionMcpToolsUpdateBodySchema,
   WorkspaceOpenProjectsUpdateBodySchema,
   WorkspaceManualProjectKnowledgeManagementUpdateBodySchema,
+  WorkspaceSandboxAgentEgressRequestsUpdateBodySchema,
 ]);
 
 async function handler(
@@ -297,6 +307,31 @@ async function handler(
         };
         await workspace.updateWorkspaceSettings({ metadata: newMetadata });
         owner.metadata = newMetadata;
+      } else if ("sandboxAllowAgentEgressRequests" in body) {
+        const previousMetadata = owner.metadata ?? {};
+        const newMetadata = {
+          ...previousMetadata,
+          sandboxAllowAgentEgressRequests: body.sandboxAllowAgentEgressRequests,
+        };
+        await workspace.updateWorkspaceSettings({ metadata: newMetadata });
+        owner.metadata = newMetadata;
+
+        void emitAuditLogEvent({
+          auth,
+          action: "sandbox_egress_policy.agent_requests_setting_updated",
+          targets: [
+            buildAuditLogTarget("workspace", owner),
+            {
+              type: "sandbox_egress_policy",
+              id: owner.sId,
+              name: "Sandbox egress policy",
+            },
+          ],
+          context: getAuditLogContext(auth, req),
+          metadata: {
+            enabled: String(body.sandboxAllowAgentEgressRequests),
+          },
+        });
       } else if ("domainUpdates" in body) {
         for (const update of body.domainUpdates) {
           const updateResult = await workspace.updateDomainAutoJoinEnabled({

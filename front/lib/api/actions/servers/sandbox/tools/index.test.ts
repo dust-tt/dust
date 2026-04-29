@@ -1,7 +1,9 @@
+import { Authenticator } from "@app/lib/auth";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { Err, Ok } from "@app/types/shared/result";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   mockAddSandboxPolicyDomain,
@@ -128,8 +130,34 @@ vi.mock("@app/logger/logger", () => ({
 import {
   addEgressDomainTool,
   buildDescribeToolsetOutput,
+  createSandboxTools,
   runSandboxBashTool,
 } from "./index";
+
+describe("createSandboxTools", () => {
+  it("omits add_egress_domain by default", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+
+    const tools = await createSandboxTools(auth);
+
+    expect(tools.map((tool) => tool.name)).not.toContain("add_egress_domain");
+  });
+
+  it("includes add_egress_domain when agent egress requests are enabled", async () => {
+    const { workspace, user } = await createResourceTest({});
+    await WorkspaceResource.updateMetadata(workspace.id, {
+      sandboxAllowAgentEgressRequests: true,
+    });
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+
+    const tools = await createSandboxTools(auth);
+
+    expect(tools.map((tool) => tool.name)).toContain("add_egress_domain");
+  });
+});
 
 describe("buildDescribeToolsetOutput", () => {
   it("mirrors dsbx manifest filtering", async () => {
@@ -320,6 +348,10 @@ describe("runSandboxBashTool", () => {
 });
 
 describe("addEgressDomainTool", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     mockAddSandboxPolicyDomain.mockResolvedValue(
@@ -330,12 +362,19 @@ describe("addEgressDomainTool", () => {
     );
   });
 
-  function makeExtra() {
+  function makeExtra({
+    allowAgentEgressRequests = true,
+  }: {
+    allowAgentEgressRequests?: boolean;
+  } = {}) {
     return {
       auth: {
         getNonNullableWorkspace: () => ({
           name: "Workspace",
           sId: "workspace-id",
+          metadata: {
+            sandboxAllowAgentEgressRequests: allowAgentEgressRequests,
+          },
         }),
       },
       agentLoopContext: {
@@ -346,6 +385,25 @@ describe("addEgressDomainTool", () => {
       signal: new AbortController().signal,
     } as never;
   }
+
+  it("refuses to run when agent egress requests are disabled", async () => {
+    const result = await addEgressDomainTool(
+      {
+        domain: "example.org",
+        reason: "Retry a blocked request.",
+      },
+      makeExtra({ allowAgentEgressRequests: false })
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain(
+        "Agent-driven egress requests are disabled"
+      );
+    }
+    expect(mockEnsureActive).not.toHaveBeenCalled();
+    expect(mockAddSandboxPolicyDomain).not.toHaveBeenCalled();
+  });
 
   it("adds the domain to the active sandbox policy and emits an audit event", async () => {
     mockEnsureActive.mockResolvedValue(

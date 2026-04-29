@@ -49,6 +49,9 @@ function formatWorkspaceAllowlist(domains: string[]): string {
 }
 
 async function buildNetworkAccessSection(auth: Authenticator): Promise<string> {
+  const allowAgentRequests =
+    auth.getNonNullableWorkspace().metadata?.sandboxAllowAgentEgressRequests ===
+    true;
   const policyResult = await readWorkspacePolicy(auth);
   let workspaceDomains: string[] = [];
   if (policyResult.isErr()) {
@@ -58,6 +61,26 @@ async function buildNetworkAccessSection(auth: Authenticator): Promise<string> {
     );
   } else {
     workspaceDomains = policyResult.value.allowedDomains;
+  }
+
+  if (!allowAgentRequests) {
+    return `#### Sandbox Network Access
+
+All outbound network traffic from the sandbox is routed through an egress
+proxy that **denies every request by default**. Only domains on the
+workspace allowlist below should be relied on. There is **no** way to add
+additional domains during the conversation. If a required domain is not
+listed, use only preapproved domains or local data, or explain the blocker and
+ask the user to contact their workspace admin.
+
+Workspace allowlist:
+
+${formatWorkspaceAllowlist(workspaceDomains)}
+
+If a request is blocked, the bash tool output will include a
+\`<network_proxy_logs>\` block listing the denied domain(s). Surface that
+information to the user so they can decide whether to ask their admin to
+allowlist it; do not retry without changes.`;
   }
 
   return `#### Sandbox Network Access

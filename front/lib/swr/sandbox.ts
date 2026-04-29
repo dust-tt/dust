@@ -11,6 +11,7 @@ import type {
 } from "@app/pages/api/w/[wId]/sandbox/egress-policy";
 import type { EgressPolicy } from "@app/types/sandbox/egress_policy";
 import { EMPTY_EGRESS_POLICY } from "@app/types/sandbox/egress_policy";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useState } from "react";
 import type { Fetcher } from "swr";
@@ -39,6 +40,59 @@ export function useWorkspaceEgressPolicy({
     isWorkspaceEgressPolicyLoading: isLoading,
     isWorkspaceEgressPolicyError: !!error,
     mutateWorkspaceEgressPolicy: mutate,
+  };
+}
+
+export function useUpdateWorkspaceSandboxAgentEgressRequests({
+  owner,
+}: {
+  owner: LightWorkspaceType;
+}) {
+  const sendNotification = useSendNotification();
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [isEnabled, setIsEnabled] = useState(
+    owner.metadata?.sandboxAllowAgentEgressRequests === true
+  );
+
+  const updateWorkspaceSandboxAgentEgressRequests = async (
+    enabled: boolean
+  ): Promise<boolean> => {
+    setIsUpdating(true);
+    try {
+      const response = await clientFetch(`/api/w/${owner.sId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sandboxAllowAgentEgressRequests: enabled }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update sandbox network setting");
+      }
+
+      setIsEnabled(enabled);
+      sendNotification({
+        type: "success",
+        title: "Sandbox network setting updated",
+        description:
+          "Agent-requested sandbox domains setting has been updated.",
+      });
+      return true;
+    } catch (error) {
+      sendNotification({
+        type: "error",
+        title: "Failed to update sandbox network setting",
+        description: normalizeError(error).message,
+      });
+      return false;
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  return {
+    allowAgentEgressRequests: isEnabled,
+    updateWorkspaceSandboxAgentEgressRequests,
+    isUpdatingWorkspaceSandboxAgentEgressRequests: isUpdating,
   };
 }
 

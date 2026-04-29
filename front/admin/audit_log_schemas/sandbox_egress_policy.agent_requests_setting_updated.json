@@ -1,0 +1,14 @@
+{
+  "action": "sandbox_egress_policy.agent_requests_setting_updated",
+  "targets": [
+    {
+      "type": "workspace"
+    },
+    {
+      "type": "sandbox_egress_policy"
+    }
+  ],
+  "metadata": {
+    "enabled": "string"
+  }
+}
