@@ -62,8 +62,8 @@ function getValueMessage(value: string): {
 } {
   if (value.length === 0) {
     return {
-      message: "Values cannot be empty. Delete a variable to remove it.",
-      isError: true,
+      message: `0 / ${MAX_VALUE_BYTES} bytes. Multiline values are allowed.`,
+      isError: false,
     };
   }
 
@@ -114,12 +114,14 @@ export function EnvironmentSection() {
   const isReplacing = envVars.some((envVar) => envVar.name === envVarForm.name);
   const nameMessage = getNameMessage(envVarForm.name, isReplacing);
   const isNameInvalid =
-    envVarForm.name.length === 0 ||
-    !ENV_VAR_NAME_REGEX.test(envVarForm.name) ||
-    isReservedEnvVarName(envVarForm.name);
+    envVarForm.name.length > 0 &&
+    (!ENV_VAR_NAME_REGEX.test(envVarForm.name) ||
+      isReservedEnvVarName(envVarForm.name));
   const valueMessage = getValueMessage(envVarForm.value);
   const canSave =
+    envVarForm.name.length > 0 &&
     !isNameInvalid &&
+    envVarForm.value.length > 0 &&
     !valueMessage.isError &&
     !isUpsertingWorkspaceSandboxEnvVar;
 
