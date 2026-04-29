@@ -341,7 +341,7 @@ export class UserResource extends BaseResource<UserModel> {
         },
       ],
       where: {
-        email: emails,
+        email: emails.map((e) => e.toLowerCase()),
       },
     });
 
