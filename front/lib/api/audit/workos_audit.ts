@@ -78,6 +78,11 @@ type AuditAction =
   | "trigger.disabled"
   | "trigger.fired"
   | "trigger.email_received"
+  // Wake-ups.
+  | "wake_up.cancelled"
+  | "wake_up.created"
+  | "wake_up.expired"
+  | "wake_up.fired"
   // Agent lifecycle.
   | "agent.created"
   | "agent.updated"
@@ -298,6 +303,7 @@ type AuditTargetType =
   | "data_source"
   | "tool"
   | "trigger"
+  | "wake_up"
   | "api_key"
   | "invitation"
   | "group"

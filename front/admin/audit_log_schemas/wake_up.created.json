@@ -1,0 +1,18 @@
+{
+  "action": "wake_up.created",
+  "targets": [
+    {
+      "type": "workspace"
+    },
+    {
+      "type": "wake_up"
+    }
+  ],
+  "metadata": {
+    "scheduleType": "string",
+    "agentId": "string",
+    "conversationId": "string",
+    "initiating_user_id": "string",
+    "initiating_user_name": "string"
+  }
+}
