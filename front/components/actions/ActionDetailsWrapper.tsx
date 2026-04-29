@@ -5,32 +5,32 @@ import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
 interface ActionExecutionContextValue {
   executionDurationMs: number | null;
-  isFinal: boolean;
+  isExecuting: boolean;
   startedAtMs: number | null;
 }
 
 const ActionExecutionContext = createContext<ActionExecutionContextValue>({
   executionDurationMs: null,
-  isFinal: false,
+  isExecuting: false,
   startedAtMs: null,
 });
 
 interface ActionExecutionProviderProps {
   executionDurationMs: number | null;
-  isFinal: boolean;
+  isExecuting: boolean;
   startedAtMs: number | null;
   children: React.ReactNode;
 }
 
 export function ActionExecutionProvider({
   executionDurationMs,
-  isFinal,
+  isExecuting,
   startedAtMs,
   children,
 }: ActionExecutionProviderProps) {
   const value = useMemo(
-    () => ({ executionDurationMs, isFinal, startedAtMs }),
-    [executionDurationMs, isFinal, startedAtMs]
+    () => ({ executionDurationMs, isExecuting, startedAtMs }),
+    [executionDurationMs, isExecuting, startedAtMs]
   );
   return (
     <ActionExecutionContext.Provider value={value}>
@@ -70,15 +70,17 @@ function formatDurationMs(
   if (!wholeSeconds && durationMs < 1000) {
     return `${Math.round(durationMs)}ms`;
   }
-  const totalSeconds = wholeSeconds
-    ? Math.floor(durationMs / 1000)
-    : durationMs / 1000;
-  if (totalSeconds < 60) {
-    return wholeSeconds ? `${totalSeconds}s` : `${totalSeconds.toFixed(1)}s`;
+  if (durationMs < 60_000) {
+    return wholeSeconds
+      ? `${Math.floor(durationMs / 1000)}s`
+      : `${(durationMs / 1000).toFixed(1)}s`;
   }
+  // Round to whole seconds first, then split, so we never produce 60s as a
+  // remainder (e.g. 119.6s → "2m 0s", not "1m 60s").
+  const totalSeconds = Math.round(durationMs / 1000);
   const minutes = Math.floor(totalSeconds / 60);
-  const remainder = Math.round(totalSeconds - minutes * 60);
-  return `${minutes}m ${remainder}s`;
+  const remainderSeconds = totalSeconds - minutes * 60;
+  return `${minutes}m ${remainderSeconds}s`;
 }
 
 interface DurationLabelProps {
@@ -111,14 +113,17 @@ export function ActionDetailsWrapper({
 }: ActionDetailsWrapperProps) {
   const {
     executionDurationMs: executionDurationMsContext,
-    isFinal,
+    isExecuting,
     startedAtMs,
   } = useContext(ActionExecutionContext);
   const executionDurationMs =
     executionDurationMsProp !== undefined
       ? executionDurationMsProp
       : executionDurationMsContext;
-  const isRunning = !isFinal && executionDurationMs === null;
+  // Only tick when the tool is actually executing — not while it sits in
+  // ready/blocked states (auth, validation, user input...) where elapsed
+  // wall time has nothing to do with execution duration.
+  const isRunning = isExecuting && executionDurationMs === null;
   const liveElapsedMs = useLiveElapsedMs(startedAtMs, isRunning);
   const displayedDurationMs = isRunning ? liveElapsedMs : executionDurationMs;
   const hasDuration = displayedDurationMs !== null;

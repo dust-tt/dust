@@ -428,7 +428,7 @@ function AgentSingleActionPanel({
       ? (virtuosoMsg.streaming.actionProgress.get(action.id)?.progress ?? null)
       : null;
 
-  if (isActionLoading) {
+  if (isActionLoading && !action) {
     return (
       <AgentActionsPanelHeader
         title="Tool detail"

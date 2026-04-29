@@ -73,7 +73,6 @@ import {
   isSearchInputTypeWithTags,
   isWebsearchInputType,
 } from "@app/lib/actions/mcp_internal_actions/types";
-import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import { MCP_SPECIFICATION } from "@app/lib/actions/utils_ui";
 import {
   AGENT_MEMORY_COMPACT_TOOL_NAME,
@@ -148,7 +147,7 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
   return (
     <ActionExecutionProvider
       executionDurationMs={props.action.executionDurationMs}
-      isFinal={isToolExecutionStatusFinal(props.action.status)}
+      isExecuting={props.action.status === "running"}
       startedAtMs={props.action.createdAt}
     >
       <MCPActionDetailsInner {...props} />
