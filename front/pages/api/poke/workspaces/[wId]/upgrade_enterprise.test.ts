@@ -11,7 +11,6 @@ import { PlanModel } from "@app/lib/models/plan";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { Ok } from "@app/types/shared/result";
 import type { WorkspaceType } from "@app/types/user";
@@ -158,13 +157,12 @@ beforeEach(() => {
 describe("POST /api/poke/workspaces/[wId]/upgrade_enterprise — Metronome path", () => {
   it("rejects when the current subscription is not Metronome-only billed", async () => {
     await ensureEnterprisePlan();
-    const { req, res, workspace, auth } = await createPrivateApiMockRequest({
+    const { req, res, workspace } = await createPrivateApiMockRequest({
       method: "POST",
       isSuperUser: true,
     });
     // Don't make the subscription Metronome-billed — leave the WorkspaceFactory
     // default (Pro plan, no metronomeContractId).
-    await FeatureFlagFactory.basic(auth, "metronome_billing");
 
     req.body = defaultBody();
     req.query.wId = workspace.sId;
@@ -180,12 +178,11 @@ describe("POST /api/poke/workspaces/[wId]/upgrade_enterprise — Metronome path"
 
   it("rejects when startingAt is in the past", async () => {
     await ensureEnterprisePlan();
-    const { req, res, workspace, auth } = await createPrivateApiMockRequest({
+    const { req, res, workspace } = await createPrivateApiMockRequest({
       method: "POST",
       isSuperUser: true,
     });
     await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
-    await FeatureFlagFactory.basic(auth, "metronome_billing");
 
     req.body = defaultBody({ startingAt: futureIso(-1) });
     req.query.wId = workspace.sId;
@@ -201,12 +198,11 @@ describe("POST /api/poke/workspaces/[wId]/upgrade_enterprise — Metronome path"
 
   it("rejects when planCode is not an enterprise plan", async () => {
     await ensureEnterprisePlan();
-    const { req, res, workspace, auth } = await createPrivateApiMockRequest({
+    const { req, res, workspace } = await createPrivateApiMockRequest({
       method: "POST",
       isSuperUser: true,
     });
     await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
-    await FeatureFlagFactory.basic(auth, "metronome_billing");
 
     req.body = defaultBody({ planCode: "PRO_PLAN_SEAT_29" });
     req.query.wId = workspace.sId;
@@ -222,12 +218,11 @@ describe("POST /api/poke/workspaces/[wId]/upgrade_enterprise — Metronome path"
 
   it("rejects when packageId is unknown", async () => {
     await ensureEnterprisePlan();
-    const { req, res, workspace, auth } = await createPrivateApiMockRequest({
+    const { req, res, workspace } = await createPrivateApiMockRequest({
       method: "POST",
       isSuperUser: true,
     });
     await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
-    await FeatureFlagFactory.basic(auth, "metronome_billing");
 
     req.body = defaultBody({ metronomePackageId: "pkg_does_not_exist" });
     req.query.wId = workspace.sId;
@@ -243,12 +238,11 @@ describe("POST /api/poke/workspaces/[wId]/upgrade_enterprise — Metronome path"
 
   it("creates a new contract, stamps PLAN_CODE, sunsets the overlapping contract, and leaves the subscription untouched", async () => {
     await ensureEnterprisePlan();
-    const { req, res, workspace, auth } = await createPrivateApiMockRequest({
+    const { req, res, workspace } = await createPrivateApiMockRequest({
       method: "POST",
       isSuperUser: true,
     });
     await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
-    await FeatureFlagFactory.basic(auth, "metronome_billing");
 
     req.body = defaultBody();
     req.query.wId = workspace.sId;

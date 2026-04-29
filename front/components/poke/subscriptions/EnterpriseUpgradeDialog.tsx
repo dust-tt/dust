@@ -11,7 +11,10 @@ import type {
   EnterpriseUpgradeFormType,
   SubscriptionType,
 } from "@app/types/plan";
-import { EnterpriseUpgradeFormSchema } from "@app/types/plan";
+import {
+  EnterpriseUpgradeFormSchema,
+  isSubscriptionMetronomeBilled,
+} from "@app/types/plan";
 import type { ProgrammaticUsageConfigurationType } from "@app/types/programmatic_usage";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { WorkspaceType } from "@app/types/user";
@@ -38,14 +41,12 @@ const MICRO_USD_PER_DOLLAR = 1_000_000;
 
 interface EnterpriseUpgradeDialogProps {
   owner: WorkspaceType;
-  hasMetronomeBilling: boolean;
   subscription: SubscriptionType;
   programmaticUsageConfig: ProgrammaticUsageConfigurationType | null;
 }
 
 export default function EnterpriseUpgradeDialog({
   owner,
-  hasMetronomeBilling,
   subscription,
   programmaticUsageConfig,
 }: EnterpriseUpgradeDialogProps) {
@@ -62,13 +63,14 @@ export default function EnterpriseUpgradeDialog({
     }
   }, []);
 
+  const isMetronomeBilled = isSubscriptionMetronomeBilled(subscription);
   const { plans } = usePokePlans();
   const {
     packages: metronomePackages,
     isPackagesLoading,
     packagesError,
   } = usePokeMetronomePackages({
-    disabled: !hasMetronomeBilling || !open,
+    disabled: !isMetronomeBilled || !open,
   });
   const router = useAppRouter();
 
@@ -96,7 +98,7 @@ export default function EnterpriseUpgradeDialog({
     [metronomePackages]
   );
   const isEnterprisePackageSelectionDisabled =
-    hasMetronomeBilling &&
+    isMetronomeBilled &&
     (isPackagesLoading ||
       !!packagesError ||
       enterprisePackageOptions.length === 0);
@@ -108,11 +110,11 @@ export default function EnterpriseUpgradeDialog({
   const form = useForm<EnterpriseUpgradeFormType>({
     resolver: ioTsResolver(EnterpriseUpgradeFormSchema),
     defaultValues: {
-      stripeSubscriptionId: !hasMetronomeBilling
+      stripeSubscriptionId: !isMetronomeBilled
         ? (subscription.stripeSubscriptionId ?? "")
         : undefined,
-      metronomePackageId: hasMetronomeBilling ? "" : undefined,
-      startingAt: hasMetronomeBilling ? minStartingAtLocal : undefined,
+      metronomePackageId: isMetronomeBilled ? "" : undefined,
+      startingAt: isMetronomeBilled ? minStartingAtLocal : undefined,
       planCode: "",
       freeCreditsOverrideEnabled: freeCreditMicroUsd !== null,
       freeCreditsDollars:
@@ -220,7 +222,7 @@ export default function EnterpriseUpgradeDialog({
           <DialogTitle>Upgrade {owner.name} to Enterprise.</DialogTitle>
           <DialogDescription>
             Select the enterprise plan and provide the{" "}
-            {hasMetronomeBilling
+            {isMetronomeBilled
               ? "Metronome package and contract start time"
               : "Stripe subscription Id"}{" "}
             of the customer.
@@ -254,7 +256,7 @@ export default function EnterpriseUpgradeDialog({
                         }))}
                     />
                   </div>
-                  {hasMetronomeBilling ? (
+                  {isMetronomeBilled ? (
                     <>
                       {isPackagesLoading && (
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -308,7 +310,7 @@ export default function EnterpriseUpgradeDialog({
                     </div>
                   )}
 
-                  {!hasMetronomeBilling && (
+                  {!isMetronomeBilled && (
                     <div className="border-t pt-4">
                       <h4 className="mb-4 font-medium">
                         Programmatic Usage Configuration

@@ -6,7 +6,7 @@ import {
   upsertProgrammaticUsageConfiguration,
 } from "@app/lib/api/poke/plugins/workspaces/manage_programmatic_usage_configuration";
 import { restoreWorkspaceAfterSubscription } from "@app/lib/api/subscription";
-import { Authenticator, hasFeatureFlag } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { startOrResumeEnterprisePAYG } from "@app/lib/credits/payg";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import {
@@ -87,11 +87,6 @@ async function handler(
         }
       );
 
-      const useMetronomeBilling = await hasFeatureFlag(
-        auth,
-        "metronome_billing"
-      );
-
       const bodyValidation = EnterpriseUpgradeFormSchema.decode(req.body);
       if (isLeft(bodyValidation)) {
         const pathError = reporter.formatValidationErrors(bodyValidation.left);
@@ -141,17 +136,22 @@ async function handler(
           ? Math.round(paygCapDollars * 1_000_000)
           : null;
 
+      const currentSubscription = auth.subscriptionResource();
+      const isCurrentSubscriptionMetronomeBilled =
+        currentSubscription?.isMetronomeOnlyBilled ?? false;
+      const requestedMetronomeUpgrade =
+        body.metronomePackageId !== undefined || body.startingAt !== undefined;
+
       // Metronome path: schedule the upgrade in Metronome. The subscription
       // DB record is updated later by the contract.start webhook.
-
-      if (useMetronomeBilling) {
+      if (requestedMetronomeUpgrade || isCurrentSubscriptionMetronomeBilled) {
         if (!body.metronomePackageId || !body.startingAt) {
           return apiError(req, res, {
             status_code: 400,
             api_error: {
               type: "invalid_request_error",
               message:
-                "metronomePackageId and startingAt are required when metronome_billing is enabled.",
+                "metronomePackageId and startingAt are required for Metronome-billed subscriptions.",
             },
           });
         }
@@ -169,13 +169,7 @@ async function handler(
         // is Metronome-only billed. Running it on a free or Stripe-billed
         // subscription would leave the workspace in a shadow-billed or
         // orphaned state when the contract.start webhook swaps the subscription.
-        // TODO(remy): Use isSubscriptionMetronomeBilled that has to be merged from another PR
-        const currentSubscription = auth.subscriptionResource();
-        const currentIsMetronomeOnlyBilled =
-          currentSubscription !== null &&
-          currentSubscription.metronomeContractId !== null &&
-          !currentSubscription.isMetronomeShadowBilled;
-        if (!currentIsMetronomeOnlyBilled) {
+        if (!isCurrentSubscriptionMetronomeBilled) {
           const errorMessage =
             "Workspace's current subscription is not Metronome-only billed. " +
             "Migrate the workspace to Metronome billing before scheduling an Enterprise upgrade.";
@@ -376,14 +370,14 @@ async function handler(
       }
 
       let stripeSubscription = null;
-      if (!useMetronomeBilling) {
+      if (!requestedMetronomeUpgrade) {
         if (!body.stripeSubscriptionId) {
           return apiError(req, res, {
             status_code: 400,
             api_error: {
               type: "invalid_request_error",
               message:
-                "stripeSubscriptionId is required when metronome billing is not enabled.",
+                "stripeSubscriptionId is required for Stripe-billed subscriptions.",
             },
           });
         }
@@ -477,7 +471,7 @@ async function handler(
 
         // If PAYG is enabled, create the PAYG credit for the current billing period
         if (
-          !useMetronomeBilling &&
+          !requestedMetronomeUpgrade &&
           stripeSubscription &&
           paygEnabled &&
           paygCapMicroUsd !== null

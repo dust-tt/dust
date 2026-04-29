@@ -150,6 +150,12 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     );
   }
 
+  get isMetronomeOnlyBilled(): boolean {
+    return (
+      this.metronomeContractId !== null && this.stripeSubscriptionId === null
+    );
+  }
+
   static async makeNew(
     blob: CreationAttributes<SubscriptionModel>,
     plan: PlanType,
