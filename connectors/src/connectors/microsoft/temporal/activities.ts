@@ -15,9 +15,10 @@ import {
   getSites,
   itemToMicrosoftNode,
 } from "@connectors/connectors/microsoft/lib/graph_api";
-import type {
-  DriveItem,
-  MicrosoftNode,
+import {
+  type DriveItem,
+  MICROSOFT_SKIP_REASON_SENSITIVITY_LABEL_NOT_ALLOWED,
+  type MicrosoftNode,
 } from "@connectors/connectors/microsoft/lib/types";
 import {
   getDriveInternalIdFromItemId,
@@ -38,6 +39,8 @@ import {
   getParents,
   isAlreadySeenItem,
   recursiveNodeDeletion,
+  removeFileBasedOnSensitivityLabel,
+  shouldSyncFileBasedOnSensitivityLabels,
   syncOneFile,
   updateDescendantsParentsInCore,
   // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
@@ -639,7 +642,6 @@ export async function syncFiles({
   const client = await getMicrosoftClient(connector.connectionId);
 
   try {
-    // TODO(pr): handle pagination
     const childrenResult = await getFilesAndFolders(
       logger,
       client,
@@ -799,6 +801,128 @@ export async function syncFiles({
 
     throw e;
   }
+}
+
+export async function reconcileSensitivityLabelsForParent({
+  connectorId,
+  parentInternalId,
+  startSyncTs,
+  nextPageLink,
+}: {
+  connectorId: ModelId;
+  parentInternalId: string;
+  startSyncTs: number;
+  nextPageLink?: string;
+}): Promise<{
+  childNodes: string[];
+  nextLink?: string;
+}> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+
+  const logger = getActivityLogger(connector);
+
+  const providerConfig =
+    await MicrosoftConfigurationResource.fetchByConnectorId(connectorId);
+  if (!providerConfig) {
+    throw new Error(`Configuration for connector ${connectorId} not found`);
+  }
+
+  const allowedLabels = providerConfig.allowedSensitivityLabels ?? [];
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const client = await getMicrosoftClient(connector.connectionId);
+  const childrenResult = await getFilesAndFolders(
+    logger,
+    client,
+    parentInternalId,
+    nextPageLink
+  );
+
+  const mimeTypesToSync = await getMimeTypesToSync({
+    pdfEnabled: providerConfig.pdfEnabled || false,
+    csvEnabled: providerConfig.csvEnabled || false,
+  });
+
+  let removedCount = 0;
+  let addedCount = 0;
+
+  for (const child of childrenResult.results) {
+    await heartbeat();
+
+    if (!child.file) {
+      continue;
+    }
+
+    if (!child.parentReference) {
+      throw new Error(`Unexpected: parent reference missing: ${child}`);
+    }
+
+    const mimeType = child.file.mimeType;
+    if (!mimeType || !mimeTypesToSync.includes(mimeType)) {
+      continue;
+    }
+
+    const internalId = getDriveItemInternalId(child);
+    const fileResource = await MicrosoftNodeResource.fetchByInternalId(
+      connectorId,
+      internalId
+    );
+
+    const shouldSync = shouldSyncFileBasedOnSensitivityLabels({
+      fields: child.listItem?.fields,
+      allowedLabels,
+    });
+
+    const isHiddenBySensitivityLabel =
+      fileResource?.skipReason ===
+      MICROSOFT_SKIP_REASON_SENSITIVITY_LABEL_NOT_ALLOWED;
+
+    if (!shouldSync) {
+      await removeFileBasedOnSensitivityLabel({
+        connectorId,
+        dataSourceConfig,
+        file: child,
+        fileResource,
+        parentInternalId,
+        logger,
+      });
+      removedCount++;
+    } else if (!fileResource || isHiddenBySensitivityLabel) {
+      const didSync = await syncOneFile({
+        connectorId,
+        dataSourceConfig,
+        providerConfig,
+        file: child,
+        parentInternalId: getParentReferenceInternalId(child.parentReference),
+        startSyncTs,
+        heartbeat,
+      });
+      if (didSync) {
+        addedCount++;
+      }
+    }
+  }
+
+  logger.info(
+    {
+      connectorId,
+      parentInternalId,
+      removedCount,
+      addedCount,
+    },
+    "[ReconcileSensitivityLabels] Parent page reconciled"
+  );
+
+  const childNodes = childrenResult.results
+    .filter((item) => item.folder)
+    .map((item) => getDriveInternalIdFromItem(item));
+
+  return {
+    childNodes,
+    nextLink: childrenResult.nextLink,
+  };
 }
 
 // Legacy activity, only for compatibilty.

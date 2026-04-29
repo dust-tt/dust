@@ -10,7 +10,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { SensitivityLabelSource } from "./types";
 
 interface MicrosoftLabelsSelectorProps {
@@ -18,7 +18,7 @@ interface MicrosoftLabelsSelectorProps {
   source: SensitivityLabelSource;
   labels: MicrosoftSensitivityLabel[];
   savedAllowedLabels: MicrosoftAllowedLabel[];
-  onSaved: () => void;
+  onSaved: () => Promise<unknown> | unknown;
   readOnly: boolean;
   hasError: boolean;
 }
@@ -40,40 +40,53 @@ export function MicrosoftLabelsSelector({
 
   const isAdminUser = isAdmin(owner);
 
-  const toggle = (id: string) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  };
+  useEffect(() => {
+    if (!isSaving) {
+      setSelected(new Set(savedAllowedLabels));
+    }
+  }, [savedAllowedLabels, isSaving]);
 
-  const handleSave = async () => {
+  const toggleAndSave = async (id: string) => {
+    const previousSelection = selected;
+    const nextSelection = new Set(selected);
+    if (nextSelection.has(id)) {
+      nextSelection.delete(id);
+    } else {
+      nextSelection.add(id);
+    }
+    const allowedLabels = Array.from(nextSelection);
+
+    setSelected(nextSelection);
     setIsSaving(true);
     try {
       const result = await saveDataClassificationLabels({
         owner,
         source,
-        allowedLabels: Array.from(selected),
+        allowedLabels,
       });
       if (result.success) {
+        await onSaved();
         sendNotification({
           type: "success",
-          title: "Microsoft Purview labels saved.",
-          description: "Label filtering configuration updated.",
+          title: "Labels setting updated successfully",
+          description: "Sensitivity label filtering has been updated.",
         });
-        onSaved();
       } else {
+        setSelected(previousSelection);
         sendNotification({
           type: "error",
-          title: "Failed to save Microsoft Purview labels.",
+          title: "Failed to update labels setting",
           description: result.error,
         });
       }
+    } catch (error) {
+      setSelected(previousSelection);
+      sendNotification({
+        type: "error",
+        title: "Failed to update sensitivity labels setting",
+        description:
+          error instanceof Error ? error.message : "An unknown error occurred.",
+      });
     } finally {
       setIsSaving(false);
     }
@@ -106,7 +119,7 @@ export function MicrosoftLabelsSelector({
               size="sm"
               isSelect
               className="flex-1 justify-between"
-              disabled={readOnly || !isAdminUser}
+              disabled={readOnly || !isAdminUser || isSaving}
             />
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-80" align="start">
@@ -118,22 +131,13 @@ export function MicrosoftLabelsSelector({
                       key={label.id}
                       label={label.name}
                       checked={selected.has(label.id)}
-                      onCheckedChange={() => toggle(label.id)}
+                      onCheckedChange={() => void toggleAndSave(label.id)}
                       onSelect={(e) => e.preventDefault()}
                     />
                   ))}
             </div>
           </DropdownMenuContent>
         </DropdownMenu>
-        {labels.length > 0 && (
-          <Button
-            label="Save"
-            size="sm"
-            variant="primary"
-            disabled={readOnly || !isAdminUser || isSaving}
-            onClick={() => void handleSave()}
-          />
-        )}
       </div>
     </div>
   );
