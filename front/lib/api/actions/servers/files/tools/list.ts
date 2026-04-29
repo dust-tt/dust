@@ -28,11 +28,20 @@ export async function listHandler(
     return new Ok([{ type: "text", text: "No files available." }]);
   }
 
+  // Build the set of all ancestor dir paths that contain at least one file.
+  // O(m × depth) — depth is bounded in practice (< 10 levels).
+  const nonEmptyDirPaths = new Set<string>();
+  for (const file of files) {
+    const parts = file.path.split("/");
+    for (let i = 1; i < parts.length - 1; i++) {
+      nonEmptyDirPaths.add(parts.slice(0, i + 1).join("/"));
+    }
+  }
+
   const lines: string[] = [];
 
   for (const dir of dirs) {
-    const hasChildren = files.some((f) => f.path.startsWith(`${dir.path}/`));
-    if (!hasChildren) {
+    if (!nonEmptyDirPaths.has(dir.path)) {
       lines.push(`${dir.path}/ [empty directory]`);
     }
   }

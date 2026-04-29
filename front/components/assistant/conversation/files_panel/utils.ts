@@ -166,9 +166,7 @@ export function conversationAttachmentToRow(
  * use-case prefix (first segment) is stripped so tree paths start at the
  * sandbox working directory root.
  */
-export function buildSandboxTree(
-  entries: GCSMountEntry[]
-): SandboxTreeNode[] {
+export function buildSandboxTree(entries: GCSMountEntry[]): SandboxTreeNode[] {
   const root: SandboxTreeNode[] = [];
   const nodeMap = new Map<string, SandboxTreeNode>();
 
