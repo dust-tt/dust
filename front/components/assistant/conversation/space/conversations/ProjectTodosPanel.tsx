@@ -43,7 +43,6 @@ import {
   DropdownMenuTrigger,
   GithubLogo,
   Icon,
-  IconButton,
   MicrosoftLogo,
   NotionLogo,
   PlayIcon,
@@ -213,7 +212,7 @@ function TodoSources({
           : "text-muted-foreground dark:text-muted-foreground-night"
       )}
     >
-      In{" "}
+      From{" "}
       {sources.map((source, index) => (
         <span key={`${source.sourceType}-${source.sourceId}`}>
           {index > 0 && ", "}
@@ -466,6 +465,7 @@ function EditableTodoItem({
   const hasConversationLink =
     (todo.status === "in_progress" || todo.status === "done") &&
     !!todo.conversationId;
+  const isDoneWithoutConversation = isDone && !hasConversationLink;
   const canEdit = viewerUserId !== null;
   const showInProgressTextAnimation = todo.status === "in_progress";
   const [isFlashing, setIsFlashing] = useState(isNewlyDone);
@@ -485,8 +485,8 @@ function EditableTodoItem({
   return (
     <div
       className={cn(
-        "group/todo flex items-start gap-3",
-        "transition-all duration-200",
+        "group/todo flex items-start gap-3 rounded-md px-1 py-1",
+        "transition-all duration-200 hover:bg-muted-background dark:hover:bg-muted-background-night",
         isExiting
           ? "max-h-0 overflow-hidden opacity-0"
           : isAdded && !isEntering
@@ -507,12 +507,10 @@ function EditableTodoItem({
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
           <button
             type="button"
-            className={cn(
-              "text-left",
-              canEdit ? "cursor-pointer" : "cursor-default"
-            )}
-            onClick={handleToggle}
-            disabled={!canEdit}
+            className="cursor-default text-left"
+            onClick={(event) => {
+              event.preventDefault();
+            }}
           >
             <span
               className={cn(
@@ -538,48 +536,64 @@ function EditableTodoItem({
           </div>
         </div>
       </TodoMetadataTooltip>
-      <div className="mt-0.5 flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover/todo:opacity-100">
+      <div className="mt-0.5 flex shrink-0 items-center gap-1 opacity-100">
         {hasConversationLink ? (
-          <IconButton
-            icon={ChatBubbleLeftRightIcon}
-            size="xs"
-            variant="ghost"
-            className="!text-muted-foreground hover:!text-foreground"
-            tooltip={"Open to-do conversation"}
-            onClick={() => {
-              if (!todo.conversationId) {
-                return;
-              }
-              void router.push(
-                getConversationRoute(owner.sId, todo.conversationId),
-                undefined,
-                { shallow: true }
-              );
-            }}
+          <Tooltip
+            label="Open to-do conversation"
+            trigger={
+              <Button
+                icon={ChatBubbleLeftRightIcon}
+                size="xs"
+                variant="outline"
+                onClick={() => {
+                  if (!todo.conversationId) {
+                    return;
+                  }
+                  void router.push(
+                    getConversationRoute(owner.sId, todo.conversationId),
+                    undefined,
+                    { shallow: true }
+                  );
+                }}
+              />
+            }
           />
         ) : (
           canEdit &&
           !hasConversationLink && (
-            <IconButton
-              icon={PlayIcon}
-              size="xs"
-              variant="ghost"
-              className="!text-muted-foreground hover:!text-foreground"
-              tooltip="Start working on todo"
-              disabled={isStarting}
-              onClick={() => onStartWorking(todo)}
+            <Tooltip
+              label={
+                isDoneWithoutConversation
+                  ? "Reopen this to-do before starting work."
+                  : "Start working on to-do"
+              }
+              trigger={
+                <Button
+                  icon={PlayIcon}
+                  size="xs"
+                  variant="outline"
+                  isLoading={isStarting}
+                  disabled={isStarting || isDoneWithoutConversation}
+                  onClick={() => onStartWorking(todo)}
+                />
+              }
             />
           )
         )}
         {canEdit && (
-          <IconButton
-            icon={TrashIcon}
-            size="xs"
-            variant="ghost"
-            className="!text-muted-foreground hover:!text-foreground"
-            tooltip="Delete todo"
-            onClick={() => onDelete(todo)}
-          />
+          <div className="opacity-0 transition-opacity group-hover/todo:opacity-100">
+            <Tooltip
+              label="Delete to-do"
+              trigger={
+                <Button
+                  icon={TrashIcon}
+                  size="xs"
+                  variant="ghost"
+                  onClick={() => onDelete(todo)}
+                />
+              }
+            />
+          </div>
         )}
       </div>
     </div>
@@ -600,31 +614,31 @@ function formatTodoScopeLabel({
   viewerUserId: string | null;
 }) {
   if (scope === "mine") {
-    return "Your todos";
+    return "Your to-dos";
   }
   if (scope === "all") {
-    return "Everyone's todos";
+    return "Everyone's to-dos";
   }
 
   if (selectedUserSIds.size === 0) {
-    return "Todos";
+    return "To-dos";
   }
 
   if (selectedUserSIds.size === 1) {
     const [selectedUserSId] = selectedUserSIds;
     const user = usersBySId.get(selectedUserSId);
     if (!user) {
-      return "Todos";
+      return "To-dos";
     }
 
     if (viewerUserId !== null && user.sId === viewerUserId) {
-      return "Your todos";
+      return "Your to-dos";
     }
 
-    return `${user.fullName}'s todos`;
+    return `${user.fullName}'s to-dos`;
   }
 
-  return `Selected todos (${selectedUserSIds.size})`;
+  return `Selected to-dos (${selectedUserSIds.size})`;
 }
 
 function TodoAssigneeHeader({
@@ -1148,7 +1162,7 @@ function EditableProjectTodosPanel({
             <DropdownMenuSeparator />
             <DropdownMenuCheckboxItem
               icon={UserIcon}
-              label="Your todos"
+              label="Your to-dos"
               checked={assigneeScope === "mine"}
               onClick={() => {
                 setAssigneeScope("mine");
@@ -1161,7 +1175,7 @@ function EditableProjectTodosPanel({
             />
             <DropdownMenuCheckboxItem
               icon={UserGroupIcon}
-              label="Everyone's todos"
+              label="Everyone's to-dos"
               checked={assigneeScope === "all"}
               onClick={() => {
                 setAssigneeScope("all");
@@ -1223,7 +1237,7 @@ function EditableProjectTodosPanel({
             variant="outline"
             icon={WindIcon}
             label="Clean"
-            tooltip="Hide all done items"
+            tooltip="Hide all done to-dos"
             onClick={handleClean}
             disabled={isCleaning}
           />
@@ -1238,7 +1252,7 @@ function EditableProjectTodosPanel({
       ) : (
         <CollapsibleTodoList>
           {/* Todo items */}
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col">
             {groupedTodosForAll.map((group) => (
               <div
                 key={group.user?.sId ?? `unknown-${group.todos[0]?.userId}`}
@@ -1248,7 +1262,7 @@ function EditableProjectTodosPanel({
                   user={group.user}
                   viewerUserId={viewerUserId}
                 />
-                <div className="ml-4 flex flex-col gap-2">
+                <div className="ml-4 flex flex-col">
                   {group.todos.map((todo) => (
                     <EditableTodoItem
                       key={todo.sId}
