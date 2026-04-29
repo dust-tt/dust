@@ -46,8 +46,8 @@ export type Step = {
   contents: Exclude<AgentContentItemType, AgentErrorContentType>[];
   actions: {
     call: FunctionCallType;
-    enabledSkillMessages: UserMessageTypeModel[];
     result: FunctionMessageTypeModel;
+    enabledSkillMessages: UserMessageTypeModel[];
   }[];
 };
 
@@ -154,20 +154,20 @@ export function renderActionForMultiActionsModel(
 export function getSteps(
   _: Authenticator,
   {
-    enabledSkillById,
     model,
     message,
     workspaceId,
     conversationId,
     onMissingAction,
+    enabledSkillById,
     renderSkillsAsUserMessages = false,
   }: {
-    enabledSkillById: ReadonlyMap<string, EnabledSkillType>;
     model: ModelConfigurationType;
     message: AgentMessageType;
     workspaceId: string;
     conversationId: string;
     onMissingAction: "inject-placeholder" | "skip";
+    enabledSkillById: ReadonlyMap<string, EnabledSkillType>;
     renderSkillsAsUserMessages?: boolean;
   }
 ): Step[] {
@@ -198,11 +198,11 @@ export function getSteps(
         name: action.functionCallName,
         arguments: JSON.stringify(action.params),
       },
+      result: renderActionForMultiActionsModel(action),
       enabledSkillMessages: renderEnabledSkillMessagesForAction(action, {
         enabledSkillById,
         renderSkillsAsUserMessages,
       }),
-      result: renderActionForMultiActionsModel(action),
     });
   }
 
@@ -267,13 +267,13 @@ export function getSteps(
               );
               actions.push({
                 call: functionCall,
-                enabledSkillMessages: [],
                 result: {
                   role: "function",
                   name: functionCall.name,
                   function_call_id: functionCall.id,
                   content: "Error: tool execution failed",
                 },
+                enabledSkillMessages: [],
               });
             }
           }

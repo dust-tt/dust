@@ -377,13 +377,13 @@ describe("renderAllMessages", () => {
           actions: [
             {
               call: { id: "toolu_123", name: "some_tool", arguments: "{}" },
-              enabledSkillMessages: [],
               result: {
                 role: "function" as const,
                 name: "some_tool",
                 function_call_id: "toolu_123",
                 content: "result",
               },
+              enabledSkillMessages: [],
             },
           ],
         },
@@ -431,13 +431,13 @@ describe("renderAllMessages", () => {
           actions: [
             {
               call: { id: "toolu_123", name: "some_tool", arguments: "{}" },
-              enabledSkillMessages: [],
               result: {
                 role: "function" as const,
                 name: "some_tool",
                 function_call_id: "toolu_123",
                 content: "result",
               },
+              enabledSkillMessages: [],
             },
           ],
         },

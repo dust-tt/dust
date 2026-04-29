@@ -320,8 +320,8 @@ export async function sendBatchCallToLlm(
 
     const modelConversationRes = await renderConversationForModel(auth, {
       conversation: conversationRes.value,
-      enabledSkills: [],
       model: modelConfig,
+      enabledSkills: [],
       prompt: promptText,
       tools,
       allowedTokenCount:

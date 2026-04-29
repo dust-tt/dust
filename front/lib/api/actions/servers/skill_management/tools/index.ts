@@ -40,10 +40,6 @@ const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
       );
     }
 
-    const featureFlags = await getFeatureFlags(auth);
-    const renderSkillsAsUserMessages = featureFlags.includes(
-      "skills_as_user_messages"
-    );
     if (enableResult.value.alreadyEnabled) {
       return new Ok([
         {
@@ -53,22 +49,24 @@ const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
       ]);
     }
 
-    const markerOutput = renderSkillsAsUserMessages
+    const featureFlags = await getFeatureFlags(auth);
+
+    const markerOutput = featureFlags.includes("skills_as_user_messages")
       ? [makeEnableSkillInstructionsMarker(skill.sId)]
       : [];
 
-    const baseOutput = [
-      {
-        type: "text" as const,
-        text: `Skill "${skill.name}" has been enabled.`,
-      },
-    ];
-
+    // Load skill file attachments to the sandbox (behind feature flag).
     if (
       !featureFlags.includes("sandbox_tools") ||
       skill.getFileAttachments().length === 0
     ) {
-      return new Ok([...baseOutput, ...markerOutput]);
+      return new Ok([
+        {
+          type: "text" as const,
+          text: `Skill "${skill.name}" has been enabled.`,
+        },
+        ...markerOutput,
+      ]);
     }
 
     const ensureResult = await SandboxResource.ensureActive(auth, conversation);
