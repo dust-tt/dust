@@ -6,6 +6,7 @@ import type {
 import { listGCSMountFiles } from "@app/lib/api/files/gcs_mount/files";
 import { stripMimeParameters } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
+import partition from "lodash/partition";
 
 export async function listHandler(
   _params: Record<string, never>,
@@ -21,16 +22,26 @@ export async function listHandler(
     conversationId: conversation.sId,
   });
 
-  const files = entries.filter((f) => !f.isDirectory);
-  if (files.length === 0) {
+  const [dirs, files] = partition(entries, (e) => e.isDirectory);
+
+  if (dirs.length === 0 && files.length === 0) {
     return new Ok([{ type: "text", text: "No files available." }]);
   }
 
-  const lines = files.map((f) => {
-    const mimeType = stripMimeParameters(f.contentType);
-    const kb = Math.ceil(f.sizeBytes / 1024);
-    return `${f.path} (${mimeType}, ${kb} KB)`;
-  });
+  const lines: string[] = [];
+
+  for (const dir of dirs) {
+    const hasChildren = files.some((f) => f.path.startsWith(`${dir.path}/`));
+    if (!hasChildren) {
+      lines.push(`${dir.path}/ [empty directory]`);
+    }
+  }
+
+  for (const file of files) {
+    const mimeType = stripMimeParameters(file.contentType);
+    const kb = Math.ceil(file.sizeBytes / 1024);
+    lines.push(`${file.path} (${mimeType}, ${kb} KB)`);
+  }
 
   return new Ok([{ type: "text", text: lines.join("\n") }]);
 }
