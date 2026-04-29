@@ -2,6 +2,7 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agen
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { categorizeConversationRenderErrorMessage } from "@app/lib/api/assistant/errors";
+import type { EnabledSkillType } from "@app/lib/api/assistant/skills_rendering";
 import type { LLM } from "@app/lib/api/llm/llm";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import { EventError } from "@app/lib/api/llm/types/events";
@@ -333,14 +334,15 @@ export async function sendBatchCallToLlm(
           variant: "full",
         })
       : null;
-    const enabledSkills = latestAgentConfiguration
-      ? (
-          await SkillResource.listForAgentLoop(auth, {
-            agentConfiguration: latestAgentConfiguration,
-            conversation: conversationRes.value,
-          })
-        ).enabledSkills
-      : [];
+
+    let enabledSkills: EnabledSkillType[] = []
+    if (latestAgentConfiguration) {
+      const skills = await SkillResource.listForAgentLoop(auth, {
+        agentConfiguration: latestAgentConfiguration,
+        conversation: conversationRes.value,
+      });
+      enabledSkills = skills.enabledSkills;
+    }
 
     const promptText = systemPromptToText(input.prompt);
     const tools = JSON.stringify(
