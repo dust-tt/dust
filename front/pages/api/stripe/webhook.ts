@@ -31,6 +31,7 @@ import {
 import { provisionMetronomeCustomerAndContract } from "@app/lib/metronome/contracts";
 import { PlanModel } from "@app/lib/models/plan";
 import { resolvePackageAliasForCurrency } from "@app/lib/plans/billing_currency";
+import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import {
   assertStripeSubscriptionIsValid,
@@ -704,6 +705,24 @@ async function handler(
                 "invoice.payment_failed",
                 "Couldn't get owner or subscription from `auth`."
               );
+            }
+
+            // Enterprise workspaces are paid by wire on 30-day invoice terms,
+            // so a Stripe payment_failed event does not reflect an actual
+            // billing problem. We also use the workspace's current active
+            // plan (not the plan attached to the failing invoice) so that a
+            // legacy non-enterprise subscription still tied to the same
+            // Stripe customer cannot trigger the past-due flow.
+            if (isEntreprisePlanPrefix(subscriptionType.plan.code)) {
+              logger.info(
+                {
+                  workspaceId: owner.sId,
+                  stripeSubscriptionId: invoice.subscription,
+                  planCode: subscriptionType.plan.code,
+                },
+                "[Stripe Webhook] Skipping payment_failed handling for enterprise workspace."
+              );
+              return res.status(200).json({ success: true });
             }
 
             if (subscription.paymentFailingSince === null) {
