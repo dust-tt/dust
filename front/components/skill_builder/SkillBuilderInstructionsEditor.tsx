@@ -10,6 +10,7 @@ import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuild
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { useSkillVersionComparisonContext } from "@app/components/skill_builder/SkillBuilderVersionContext";
 import { useSkillSuggestions } from "@app/hooks/useSkillSuggestions";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import {
   postProcessMarkdown,
   preprocessMarkdownForEditor,
@@ -148,11 +149,14 @@ export function SkillBuilderInstructionsEditor({
 
   const { owner, skillId, selectedSuggestionId, setAcceptInstructionEdits } =
     useSkillBuilderContext();
+  const { hasFeature } = useFeatureFlags();
+  const hasReinforcementFeature =
+    hasFeature("reinforced_agents") && hasFeature("reinforcement_ui");
   const { suggestions, isSuggestionsLoading } = useSkillSuggestions({
     skillId,
     states: ["pending"],
     workspaceId: owner.sId,
-    disabled: !skillId,
+    disabled: !skillId || !hasReinforcementFeature,
   });
 
   const hasSuggestions = suggestions.length > 0;
