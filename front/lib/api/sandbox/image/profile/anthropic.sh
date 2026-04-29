@@ -1,6 +1,5 @@
 #!/bin/bash
-source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
-
+# Sourced by common.sh when DUST_PROFILE=anthropic.
 # Dev override: DUST_TOOLS_CMD="bun run $SCRIPT_DIR/src/index.ts"
 
 read_file()   { run_dust_tool --profile anthropic read_file "$@"; }
