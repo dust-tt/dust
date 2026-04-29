@@ -162,8 +162,9 @@ export function conversationAttachmentToRow(
 
 /**
  * Build a tree from flat GCS file entries by inferring directories from paths.
- * The GCS prefix (e.g. "w/{wId}/conversations/{cId}/files/") is stripped so
- * tree paths start at the sandbox working directory root.
+ * entry.path is a scoped path (e.g. "conversation/subdir/file.png"); the
+ * use-case prefix (first segment) is stripped so tree paths start at the
+ * sandbox working directory root.
  */
 export function buildSandboxTree(
   entries: GCSMountFileEntry[]
@@ -171,19 +172,10 @@ export function buildSandboxTree(
   const root: SandboxTreeNode[] = [];
   const nodeMap = new Map<string, SandboxTreeNode>();
 
-  // Find the common prefix to strip (everything up to and including "files/").
-  const commonPrefix =
-    entries.length > 0
-      ? entries[0].path.substring(
-          0,
-          entries[0].path.indexOf("/files/") + "/files/".length
-        )
-      : "";
-
   for (const entry of entries) {
-    const relativePath = entry.path.startsWith(commonPrefix)
-      ? entry.path.slice(commonPrefix.length)
-      : entry.path;
+    const slashIdx = entry.path.indexOf("/");
+    const relativePath =
+      slashIdx >= 0 ? entry.path.slice(slashIdx + 1) : entry.path;
 
     if (!relativePath) {
       continue;

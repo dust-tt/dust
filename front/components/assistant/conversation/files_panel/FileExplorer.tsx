@@ -122,19 +122,13 @@ export function NewFileExplorer({
   const tree = useMemo(() => buildSandboxTree(files), [files]);
 
   // Map from tree-relative path → original GCSMountFileEntry (for metadata).
+  // Tree-relative path = entry.path with the use-case prefix (first segment) stripped.
   const entryByRelativePath = useMemo(() => {
-    if (files.length === 0) {
-      return new Map<string, GCSMountFileEntry>();
-    }
-    const commonPrefix = files[0].path.substring(
-      0,
-      files[0].path.indexOf("/files/") + "/files/".length
-    );
     const map = new Map<string, GCSMountFileEntry>();
     for (const f of files) {
-      const relativePath = f.path.startsWith(commonPrefix)
-        ? f.path.slice(commonPrefix.length)
-        : f.path;
+      const slashIdx = f.path.indexOf("/");
+      const relativePath =
+        slashIdx >= 0 ? f.path.slice(slashIdx + 1) : f.path;
       map.set(relativePath, f);
     }
     return map;

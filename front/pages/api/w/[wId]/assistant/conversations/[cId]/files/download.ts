@@ -1,6 +1,9 @@
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { getConversationFilesBasePath } from "@app/lib/api/files/mount_path";
+import {
+  getConversationFilesBasePath,
+  parseScopedFilePath,
+} from "@app/lib/api/files/mount_path";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -48,6 +51,17 @@ async function handler(
     });
   }
 
+  const scopedPath = parseScopedFilePath(filePath);
+  if (!scopedPath || scopedPath.prefix !== "conversation") {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid filePath: must be a scoped path (e.g. conversation/file.png).",
+      },
+    });
+  }
+
   // Validate the conversation exists and user has access.
   const conversation = await ConversationResource.fetchById(auth, cId);
   if (!conversation) {
@@ -60,14 +74,13 @@ async function handler(
     });
   }
 
-  // Validate the requested path is within this conversation's files directory.
-  // Normalize first to collapse any ".." or "." segments, then verify the prefix.
+  // Resolve the scoped path to a full GCS path and guard against path traversal.
   const owner = auth.getNonNullableWorkspace();
   const expectedPrefix = getConversationFilesBasePath({
     workspaceId: owner.sId,
     conversationId: cId,
   });
-  const normalizedPath = path.posix.normalize(filePath);
+  const normalizedPath = path.posix.normalize(expectedPrefix + scopedPath.rel);
   if (!normalizedPath.startsWith(expectedPrefix)) {
     return apiError(req, res, {
       status_code: 403,
