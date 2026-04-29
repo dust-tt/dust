@@ -216,7 +216,7 @@ export function EnvironmentSection() {
         </div>
 
         {envVars.length === 0 ? (
-          <ContentMessage variant="info" size="lg">
+          <ContentMessage variant="primary" size="lg">
             No environment variables yet.
           </ContentMessage>
         ) : (
