@@ -128,8 +128,9 @@ async function handler(
   // The file's creator should always be able to access their own frame, regardless of share scope
   // or grant list. Without this bypass, an owner viewing their own `emails_only` frame would be
   // sent through the OTP flow even though they are logged in as the file's creator.
-  const authUserId = auth?.user()?.id ?? null;
-  const isFileOwner = authUserId !== null && file.userId === authUserId;
+  const authUserModelId = auth?.user()?.id ?? null;
+  const isFileOwner =
+    authUserModelId !== null && file.userId === authUserModelId;
 
   // If workspace policy restricts to members only, block all non-member access.
   if (workspace.sharingPolicy === "workspace_only" && !auth) {
