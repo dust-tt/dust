@@ -100,25 +100,23 @@ export function MCPToolValidationRequired({
 
     setErrorMessage(null);
 
-    const isAlwaysApproved = approved === "approved" && neverAskAgain;
-
     const result = await validateAction({
       validationRequest: blockedAction,
       messageId,
-      approved: isAlwaysApproved ? "always_approved" : approved,
+      approved:
+        approved === "approved" && neverAskAgain ? "always_approved" : approved,
     });
 
     if (!result.success) {
       setErrorMessage("Failed to assess action approval. Please try again.");
       return;
     }
-
     removeCompletedAction(blockedAction.actionId);
     setNeverAskAgain(false);
 
     // When the user grants always-allow, cascade to other queued
     // confirmations of the same tool so they don't have to click each one.
-    if (isAlwaysApproved && user) {
+    if (approved === "approved" && neverAskAgain && user) {
       const cascadable = getBlockedActions(user.sId).filter(
         (c) =>
           c.actionId !== blockedAction.actionId &&
