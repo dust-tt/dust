@@ -7,6 +7,7 @@ const documentationAckLabel = "documentation-ack";
 const rawSqlAckLabel = "raw-sql-ack";
 const sparkleVersionAckLabel = "sparkle-version-ack";
 const sseAckLabel = "sse-ack";
+const autoApproveAckLabel = "auto-approve-ack";
 
 const REMOVE_INDEX_WARNING =
   "\n\nBefore deleting an index, make sure it is actually not used by running:" +
@@ -182,6 +183,36 @@ function warnDocumentationAck(documentationAckLabel: string) {
       "` label. \n" +
       "Don't forget to run `npm run docs` and use the `Deploy OpenAPI Docs` Github action to update https://docs.dust.tt/reference."
   );
+}
+
+function failAutoApproveAck() {
+  fail(
+    "`front/lib/actions/auto_approve_registry.ts` has been modified. " +
+      "This file decides which `stake: \"high\"` tool calls bypass the user " +
+      "approval modal. Changes can silently weaken our high-stakes-tool " +
+      "guarantee.\n\n" +
+      `Please add the \`${autoApproveAckLabel}\` label to acknowledge that ` +
+      "the change has been reviewed for security implications (the predicate " +
+      "is fail-closed, only allows what is already in scope, and cannot be " +
+      "tricked by malformed agent input)."
+  );
+}
+
+function warnAutoApproveAck() {
+  warn(
+    "`front/lib/actions/auto_approve_registry.ts` has been modified and the " +
+      `PR has the \`${autoApproveAckLabel}\` label. ` +
+      "Make sure the change is fail-closed (any error returns false) and " +
+      "only auto-approves cases the user has already opted into."
+  );
+}
+
+function checkAutoApproveLabel() {
+  if (!hasLabel(autoApproveAckLabel)) {
+    failAutoApproveAck();
+  } else {
+    warnAutoApproveAck();
+  }
 }
 
 function checkAppsRegistry() {
@@ -374,6 +405,16 @@ async function checkDiffFiles() {
 
   if (modifiedAppsRegistry.length > 0) {
     checkAppsRegistry();
+  }
+
+  // Auto-approve registry: changes here can weaken the user-approval gate
+  // for high-stake tool calls. Require explicit ack.
+  const modifiedAutoApproveRegistry = diffFiles.filter((path) => {
+    return path === "front/lib/actions/auto_approve_registry.ts";
+  });
+
+  if (modifiedAutoApproveRegistry.length > 0) {
+    checkAutoApproveLabel();
   }
 
   const modifiedFrontFiles = diffFiles.filter((path) => {
