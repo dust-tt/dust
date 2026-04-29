@@ -195,10 +195,14 @@ export function createProjectTodosTools(
           const sourceConversation = agentLoopContext?.runContext?.conversation;
           if (sourceConversation) {
             await todo.upsertSource(auth, {
-              sourceType: "conversation",
-              sourceId: sourceConversation.sId,
-              sourceTitle: sourceConversation.title ?? "Source conversation",
-              sourceUrl: `${config.getAppUrl()}${getConversationRoute(owner.sId, sourceConversation.sId)}`,
+              itemId: sourceConversation.sId,
+              source: {
+                sourceType: "conversation",
+                sourceId: sourceConversation.sId,
+                sourceTitle:
+                  sourceConversation.title ?? "Source conversation",
+                sourceUrl: `${config.getAppUrl()}${getConversationRoute(owner.sId, sourceConversation.sId)}`,
+              },
             });
           }
 
