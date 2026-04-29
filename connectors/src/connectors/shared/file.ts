@@ -18,8 +18,11 @@ import type { ConnectorProvider, Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import * as iconv from "iconv-lite";
 
-// We observed cases where tabular data was stored in ASCII in .txt files.
-const MAX_NUMBER_CHAR_RATIO = 0.66;
+// Heuristics to detect .txt files that are actually tabular/numeric dumps with no
+// semantic content (e.g. TSV exports). Such files explode the chunker's token count
+// and produce no useful retrieval signal.
+const MIN_LETTER_RATIO = 0.4;
+const MAX_SEPARATOR_RATIO = 0.05;
 
 /**
  * Detects the encoding of a buffer and decodes it to a string.
@@ -60,9 +63,16 @@ export function handleTextFile(
     return new Err(new Error("file_too_big"));
   }
   const content = decodeBuffer(data).trim();
-  const digitCount = (content.match(/[\d\n\r]/g) || []).length;
-  if (digitCount / content.length > MAX_NUMBER_CHAR_RATIO) {
-    return new Err(new Error("too_many_digits"));
+  if (content.length === 0) {
+    return new Err(new Error("empty_content"));
+  }
+  const letterCount = (content.match(/\p{L}/gu) || []).length;
+  if (letterCount / content.length < MIN_LETTER_RATIO) {
+    return new Err(new Error("text_ratio_too_low"));
+  }
+  const separatorCount = (content.match(/[\t;|]/g) || []).length;
+  if (separatorCount / content.length > MAX_SEPARATOR_RATIO) {
+    return new Err(new Error("too_many_separators"));
   }
   return new Ok({ prefix: null, content, sections: [] });
 }
