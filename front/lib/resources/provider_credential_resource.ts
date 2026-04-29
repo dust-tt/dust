@@ -20,6 +20,7 @@ import {
   ApiKeyCredentialContentSchema,
   type ApiKeyCredentialsType,
   type ProviderCredentialType,
+  type ProvidersHealth,
 } from "@app/types/provider_credential";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -35,7 +36,7 @@ import type { Attributes, ModelStatic, Transaction } from "sequelize";
 const API_KEY_REVEAL_WINDOW_MINUTES = 2;
 const PROVIDER_CREDENTIALS_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
-type CachedProviderCredential = {
+type ProviderCredential = {
   id: ModelId;
   workspaceId: ModelId;
   providerId: ByokModelProviderIdType;
@@ -47,8 +48,6 @@ type CachedProviderCredential = {
   updatedAt: number;
   credentials: ApiKeyCredentialsType;
 };
-
-type CachedProvidersHealth = Partial<Record<ByokModelProviderIdType, boolean>>;
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -125,7 +124,7 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
   private static async _baseFetchUncached(
     workspaceModelId: ModelId,
     transaction?: Transaction
-  ): Promise<CachedProviderCredential[]> {
+  ): Promise<ProviderCredential[]> {
     const models = await ProviderCredentialResource.model.findAll({
       where: { workspaceId: workspaceModelId },
       transaction,
@@ -154,7 +153,7 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
   private static async _fetchProvidersHealthUncached(
     workspaceModelId: ModelId,
     transaction?: Transaction
-  ): Promise<CachedProvidersHealth> {
+  ): Promise<ProvidersHealth> {
     const models = await ProviderCredentialResource.model.findAll({
       attributes: ["providerId", "isHealthy"],
       where: { workspaceId: workspaceModelId },
@@ -197,7 +196,7 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
   }
 
   private static fromCachedData(
-    data: CachedProviderCredential
+    data: ProviderCredential
   ): ProviderCredentialResource {
     const blob: Attributes<ProviderCredentialModel> = {
       id: data.id,
