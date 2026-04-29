@@ -252,9 +252,10 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
       context: getAuditLogContext(auth),
       metadata: {
         scheduleType: wakeUp.scheduleType,
-        agentConfigurationId: wakeUp.agentConfigurationId,
+        agentId: wakeUp.agentConfigurationId,
         conversationId: conversation.sId,
-        userId: auth.user()?.sId ?? "",
+        initiating_user_id: auth.user()?.sId ?? "",
+        initiating_user_name: auth.user()?.name ?? "",
       },
     });
 
@@ -521,8 +522,9 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
       context: getAuditLogContext(auth),
       metadata: {
         scheduleType: this.scheduleType,
-        agentConfigurationId: this.agentConfigurationId,
-        userId: auth.user()?.sId ?? "",
+        agentId: this.agentConfigurationId,
+        initiating_user_id: auth.user()?.sId ?? "",
+        initiating_user_name: auth.user()?.name ?? "",
       },
     });
   }
@@ -557,8 +559,9 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
       context: getAuditLogContext(auth),
       metadata: {
         scheduleType: this.scheduleType,
-        agentConfigurationId: this.agentConfigurationId,
-        userId: auth.user()?.sId ?? "",
+        agentId: this.agentConfigurationId,
+        initiating_user_id: auth.user()?.sId ?? "",
+        initiating_user_name: auth.user()?.name ?? "",
       },
     });
   }
@@ -637,8 +640,9 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
       context: getAuditLogContext(auth),
       metadata: {
         scheduleType: this.scheduleType,
-        agentConfigurationId: this.agentConfigurationId,
-        userId: auth.user()?.sId ?? "",
+        agentId: this.agentConfigurationId,
+        initiating_user_id: auth.user()?.sId ?? "",
+        initiating_user_name: auth.user()?.name ?? "",
       },
     });
   }
