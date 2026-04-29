@@ -3,6 +3,8 @@ import { timeAgoFrom } from "@app/lib/utils";
 import type { GroupType } from "@app/types/groups";
 import type { KeyType } from "@app/types/key";
 import type { ModelId } from "@app/types/shared/model_id";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import type { RoleType } from "@app/types/user";
 import { Button, cn } from "@dust-tt/sparkle";
 // biome-ignore lint/plugin/noBulkLodash: existing usage
 import _ from "lodash";
@@ -28,6 +30,22 @@ const getKeySpaces = (
     .map((gId) => groupsById[gId])
     .filter((g): g is GroupType => g !== undefined)
     .map((g) => prettifyGroupName(g));
+};
+
+const formatKeyScope = (role: RoleType): string => {
+  switch (role) {
+    case "user":
+      return "Read-only";
+    case "builder":
+      return "Read & write";
+    case "admin":
+      return "Admin";
+    case "none":
+      return "No access";
+    default:
+      assertNeverAndIgnore(role);
+      return "Unknown";
+  }
 };
 
 export const APIKeysList = ({
@@ -82,10 +100,18 @@ export const APIKeysList = ({
                           "text-muted-foreground dark:text-muted-foreground-night"
                         )}
                       >
-                        Scope:{" "}
+                        Spaces:{" "}
                         <strong>
                           {getKeySpaces(key, groupsById).join(", ")}
                         </strong>
+                      </p>
+                      <p
+                        className={cn(
+                          "truncate font-mono text-sm",
+                          "text-muted-foreground dark:text-muted-foreground-night"
+                        )}
+                      >
+                        Scope: <strong>{formatKeyScope(key.role)}</strong>
                       </p>
                       <p
                         className={cn(

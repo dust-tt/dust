@@ -454,13 +454,16 @@ export function withPublicAPIAuthentication<T>(
 
       const owner = workspaceAuth.workspace()!;
 
-      // Authenticator created from a key has the builder role if the key is associated with
-      // the workspace. System keys can bypass this when allowSystemKeyBypassBuilderCheck is set.
+      // Authenticator created from a key carries the role assigned at key creation
+      // (`user`, `builder`, or `admin`). The wrapper only enforces that the key is
+      // associated with the workspace; per-scope enforcement (write vs. admin
+      // operations) is the responsibility of each endpoint handler. System keys can
+      // bypass this check when allowSystemKeyBypassBuilderCheck is set.
       const isSystemKeyAllowed =
         allowSystemKeyBypassBuilderCheck &&
         workspaceAuth.isSystemKey() &&
         keyRes.value.workspaceId === owner.id;
-      if (!workspaceAuth.isBuilder() && !isSystemKeyAllowed) {
+      if (!workspaceAuth.isUser() && !isSystemKeyAllowed) {
         return apiError(req, res, {
           status_code: 401,
           api_error: {
