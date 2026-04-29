@@ -59,7 +59,7 @@ pub fn provider_timeout_seconds(provider: ConnectionProvider) -> u64 {
 // refresh it.
 // NOTE: connectors/src/types/oauth/client/access_token.ts mirrors this value as
 // ACCESS_TOKEN_EXPIRY_BUFFER_MS. If you change this constant, update that file too.
-pub static ACCESS_TOKEN_REFRESH_BUFFER_MILLIS: u64 = 10 * 60 * 1000;
+pub static ACCESS_TOKEN_REFRESH_BUFFER_MILLIS: u64 = 5 * 60 * 1000;
 
 pub static CONNECTION_ID_PREFIX: &str = "con";
 
