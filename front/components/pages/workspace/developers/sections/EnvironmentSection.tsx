@@ -349,7 +349,7 @@ export function EnvironmentSection() {
                 <div
                   className={
                     valueMessage.isError
-                      ? "text-xs text-warning-600 dark:text-warning-600-night"
+                      ? "text-xs text-foreground-warning dark:text-foreground-warning-night"
                       : "text-xs text-muted-foreground dark:text-muted-foreground-night"
                   }
                 >
