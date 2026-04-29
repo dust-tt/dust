@@ -1,4 +1,4 @@
-import { makeEnableSkillInstructionsMarker } from "@app/lib/api/actions/servers/skill_management/rendering";
+import { makeEnableSkillResultOutput } from "@app/lib/api/actions/servers/skill_management/rendering";
 import { renderEquippedSkillsUserMessage } from "@app/lib/api/assistant/skills_rendering";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -7,7 +7,6 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import type { AgentMessageType } from "@app/types/assistant/conversation";
 import type { TextContent } from "@app/types/assistant/generation";
-import { isString } from "@app/types/shared/utils/general";
 import { describe, expect, it } from "vitest";
 
 import { getSteps, renderUserMessage } from "./helpers";
@@ -245,16 +244,10 @@ The following skills are available for use with the skill_management__enable_ski
     if (!model) {
       throw new Error("Expected a supported model configuration.");
     }
-    const marker = makeEnableSkillInstructionsMarker(commitSkill.sId);
-    if (marker.type !== "resource") {
-      throw new Error("Expected a marker resource.");
-    }
-    const skillId = marker.resource._meta?.["skillId"];
-    if (!isString(skillId)) {
-      throw new Error("Expected a normalized skill marker id.");
-    }
-    Object.assign(marker.resource, { skillId });
-    delete marker.resource._meta;
+    const outputBlock = makeEnableSkillResultOutput({
+      skillId: commitSkill.sId,
+      text: `Skill "${commitSkill.name}" has been enabled.`,
+    });
 
     const message = {
       id: 1,
@@ -294,7 +287,7 @@ The following skills are available for use with the skill_management__enable_ski
           executionDurationMs: null,
           displayLabels: null,
           generatedFiles: [],
-          output: [marker],
+          output: [outputBlock],
           citations: null,
         },
       ],

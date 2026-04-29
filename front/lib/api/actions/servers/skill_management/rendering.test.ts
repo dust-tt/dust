@@ -1,39 +1,33 @@
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { describe, expect, it } from "vitest";
 
 import {
   getEnableSkillIdFromOutputBlock,
-  makeEnableSkillInstructionsMarker,
+  makeEnableSkillResultOutput,
 } from "./rendering";
 
-describe("enable skill instructions marker", () => {
-  it("stores the skill id under _meta before MCP normalization", () => {
-    const marker = makeEnableSkillInstructionsMarker("skill_123");
+describe("enable skill result output", () => {
+  it("stores the rendered text and skill id in a single structured block", () => {
+    const output = makeEnableSkillResultOutput({
+      skillId: "skill_123",
+      text: 'Skill "commit" has been enabled.',
+    });
 
-    expect(marker).toEqual({
+    expect(output).toEqual({
       type: "resource",
       resource: {
-        mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.TOOL_MARKER,
-        uri: "",
-        text: "enable_skill_instructions",
-        _meta: {
-          skillId: "skill_123",
-        },
+        mimeType: "application/vnd.dust.tool-output.enable-skill-result",
+        uri: "dust://enable-skill-result/skill_123",
+        text: 'Skill "commit" has been enabled.',
       },
     });
   });
 
-  it("reads the normalized stored format after MCP tool processing", () => {
-    const marker = {
-      type: "resource" as const,
-      resource: {
-        mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.TOOL_MARKER,
-        uri: "",
-        text: "enable_skill_instructions",
-        skillId: "skill_123",
-      },
-    };
+  it("reads the skill id from the structured block", () => {
+    const output = makeEnableSkillResultOutput({
+      skillId: "skill_123",
+      text: 'Skill "commit" has been enabled.',
+    });
 
-    expect(getEnableSkillIdFromOutputBlock(marker)).toBe("skill_123");
+    expect(getEnableSkillIdFromOutputBlock(output)).toBe("skill_123");
   });
 });
