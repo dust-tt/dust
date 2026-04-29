@@ -4,7 +4,9 @@ import { getIcon } from "@app/components/resources/resources_icons";
 import { useValidateAction } from "@app/hooks/useValidateAction";
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
+import { extractArgRequiringApprovalValues } from "@app/lib/actions/tool_status";
 import { useAuth } from "@app/lib/auth/AuthContext";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
@@ -52,6 +54,68 @@ const MCP_TOOL_OVERRIDES: Partial<
   },
 };
 
+// Returns the queued blocked actions that should be auto-approved alongside
+// `current` when the user grants always-allow. Low-stake persistence covers
+// the tool across agents and arg values; medium-stake persistence is keyed
+// on (agent, approval-relevant args), so the cascade is restricted to
+// candidates that share both.
+function findCascadableBlockedActions({
+  current,
+  candidates,
+}: {
+  current: BlockedToolExecution;
+  candidates: BlockedToolExecution[];
+}): BlockedToolExecution[] {
+  return candidates.filter((candidate) => {
+    if (candidate.actionId === current.actionId) {
+      return false;
+    }
+    if (candidate.status !== "blocked_validation_required") {
+      return false;
+    }
+    if (candidate.userId !== current.userId) {
+      return false;
+    }
+    if (candidate.metadata.mcpServerName !== current.metadata.mcpServerName) {
+      return false;
+    }
+    if (candidate.metadata.toolName !== current.metadata.toolName) {
+      return false;
+    }
+
+    if (current.stake === "medium") {
+      if (candidate.metadata.agentName !== current.metadata.agentName) {
+        return false;
+      }
+      const currentArgs = extractArgRequiringApprovalValues(
+        current.argumentsRequiringApproval ?? [],
+        current.inputs
+      );
+      const candidateArgs = extractArgRequiringApprovalValues(
+        candidate.argumentsRequiringApproval ?? [],
+        candidate.inputs
+      );
+      if (!areArgRecordsEqual(currentArgs, candidateArgs)) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+}
+
+function areArgRecordsEqual(
+  a: Record<string, string>,
+  b: Record<string, string>
+): boolean {
+  const aKeys = Object.keys(a);
+  const bKeys = Object.keys(b);
+  if (aKeys.length !== bKeys.length) {
+    return false;
+  }
+  return aKeys.every((key) => a[key] === b[key]);
+}
+
 interface MCPToolValidationRequiredProps {
   triggeringUser: UserType | null;
   owner: LightWorkspaceType;
@@ -71,8 +135,12 @@ export function MCPToolValidationRequired({
   const [neverAskAgain, setNeverAskAgain] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const { removeCompletedAction, isActionPulsing, stopPulsingAction } =
-    useBlockedActionsContext();
+  const {
+    getBlockedActions,
+    removeCompletedAction,
+    isActionPulsing,
+    stopPulsingAction,
+  } = useBlockedActionsContext();
   const { validateAction, isValidating } = useValidateAction({
     owner,
     conversationId,
@@ -96,19 +164,61 @@ export function MCPToolValidationRequired({
 
     setErrorMessage(null);
 
+    const isAlwaysApproved = approved === "approved" && neverAskAgain;
+    const finalApproval: MCPValidationOutputType = isAlwaysApproved
+      ? "always_approved"
+      : approved;
+
+    console.log("======= Validating action with approval:", {
+      actionId: blockedAction.actionId,
+      finalApproval,
+      isAlwaysApproved, });
+
     const result = await validateAction({
       validationRequest: blockedAction,
       messageId,
-      approved:
-        approved === "approved" && neverAskAgain ? "always_approved" : approved,
+      approved: finalApproval,
     });
 
     if (!result.success) {
       setErrorMessage("Failed to assess action approval. Please try again.");
       return;
     }
+
+    // When the user grants always-allow, cascade to other queued
+    // confirmations that the newly persisted preference would cover, so the
+    // user does not have to click through every pending call of the same
+    // tool individually. Capture matches before removing self from the
+    // queue so the candidate list is stable.
+    const cascadableActions =
+      isAlwaysApproved && user
+        ? findCascadableBlockedActions({
+            current: blockedAction,
+            candidates: getBlockedActions(user.sId),
+          })
+        : [];
+
+    console.log("======= Cascadable actions:", cascadableActions.map((a) => a.actionId));
+
     removeCompletedAction(blockedAction.actionId);
     setNeverAskAgain(false);
+
+    if (cascadableActions.length > 0) {
+      await concurrentExecutor(
+        cascadableActions,
+        async (matchingAction) => {
+          const cascadeResult = await validateAction({
+            validationRequest: matchingAction,
+            messageId,
+            approved: "approved",
+          });
+          if (cascadeResult.success) {
+            removeCompletedAction(matchingAction.actionId);
+          }
+        },
+        { concurrency: 4 }
+      );
+    }
   };
 
   const toolOverride =
