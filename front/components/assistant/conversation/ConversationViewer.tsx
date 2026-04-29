@@ -58,6 +58,7 @@ import logger from "@app/logger/logger";
 import {
   type ConversationForkedChildType,
   type ConversationListItemType,
+  isLightAgentMessageType,
   isTerminalAgentMessageStatus,
   isUserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";
@@ -733,11 +734,32 @@ export const ConversationViewer = ({
             // Re-fetch context usage after the agent finishes so the indicator is up-to-date.
             void mutateContextUsage();
 
-            // Refresh the messages SWR cache so a future remount of this
-            // conversation (e.g. navigating away and back) sees the final
-            // status/activitySteps instead of the stale "created" snapshot,
-            // which would otherwise re-open an SSE replay.
-            void mutateMessages();
+            // Update the messages SWR cache in place so a future remount
+            // of this conversation (e.g. navigating away and back) sees the
+            // message as terminal instead of the stale "created" snapshot
+            // (which would otherwise re-open an SSE replay). We only flip
+            // status here to avoid a network refetch on every termination,
+            // which on prod was slow enough to delay retry feedback. The
+            // richer final state (activitySteps, content, gracefully_stopped
+            // vs cancelled) is restored by the next real fetch when needed.
+            void mutateMessages(
+              (pages) =>
+                pages?.map((page) => ({
+                  ...page,
+                  messages: page.messages.map((m) =>
+                    isLightAgentMessageType(m) && m.sId === event.messageId
+                      ? {
+                          ...m,
+                          status:
+                            event.status === "error"
+                              ? ("failed" as const)
+                              : ("succeeded" as const),
+                        }
+                      : m
+                  ),
+                })),
+              { revalidate: false }
+            );
 
             // Update the conversation hasError state in the local cache without making a network request.
             void mutateConversations(
