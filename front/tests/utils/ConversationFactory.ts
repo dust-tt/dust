@@ -29,27 +29,6 @@ import type { WorkspaceType } from "@app/types/user";
 import type { Transaction } from "sequelize";
 
 export class ConversationFactory {
-  // Lightweight factory for tests that need a conversation reference but no messages or
-  // participants. Avoids the AgentConfiguration setup required by `create`.
-  static async createEmpty(
-    auth: Authenticator,
-    {
-      title = "Test Conversation",
-      visibility = "unlisted",
-      spaceId,
-    }: {
-      title?: string;
-      visibility?: ConversationVisibility;
-      spaceId?: ModelId;
-    } = {}
-  ): Promise<ConversationType> {
-    return createConversation(auth, {
-      title,
-      visibility,
-      spaceId: spaceId ?? null,
-    });
-  }
-
   static async create(
     auth: Authenticator,
     {

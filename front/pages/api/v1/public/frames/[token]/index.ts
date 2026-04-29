@@ -197,23 +197,15 @@ async function handler(
   const user = auth && auth.user();
   const conversation =
     conversationId && auth
-      ? await ConversationResource.fetchById(auth, conversationId, {
-          // The file's creator may not be a participant of the conversation (for example,
-          // conversations created via "run_agent" deliberately skip participation registration),
-          // but they should still be able to navigate to it.
-          dangerouslySkipPermissionFiltering: isFileOwner,
-        })
+      ? await ConversationResource.fetchById(auth, conversationId)
       : null;
 
-  // The file's creator is treated as a conversation participant for the purposes of returning
-  // the conversation URL on the share page.
   const isParticipant =
     user && conversation && auth
-      ? isFileOwner ||
-        (await ConversationResource.isConversationParticipant(auth, {
+      ? await ConversationResource.isConversationParticipant(auth, {
           conversation: conversation.toJSON(),
           user: user.toJSON(),
-        }))
+        })
       : false;
 
   const spaceId = file.useCaseMetadata?.spaceId;
@@ -233,8 +225,7 @@ async function handler(
   res.status(200).json({
     accessToken,
     file: file.toJSON(),
-    // Only return the conversation URL if the user is a conversation participant or the
-    // file's creator.
+    // Only return the conversation URL if the user is a participant of the conversation.
     conversationUrl: isParticipant
       ? getConversationRoute(
           workspace.sId,

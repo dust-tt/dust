@@ -8,7 +8,6 @@ import {
 } from "@app/lib/resources/storage/models/files";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import type { UserResource } from "@app/lib/resources/user_resource";
-import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -519,74 +518,6 @@ describe("GET /api/v1/public/frames/[token]", () => {
       await handler(req, res);
 
       expect(res._getStatusCode()).toBe(200);
-    });
-  });
-
-  describe("conversation URL", () => {
-    const createFrameLinkedToConversation = async (scope: FileShareScope) => {
-      const conversation = await ConversationFactory.createEmpty(auth);
-
-      const file = await FileFactory.create(auth, user, {
-        contentType: frameContentType,
-        fileName: "test-frame.html",
-        fileSize: 100,
-        status: "ready",
-        useCase: "conversation",
-        useCaseMetadata: { conversationId: conversation.sId },
-      });
-      await file.setShareScope(auth, scope);
-
-      const shareInfo = await file.getShareInfo();
-      expect(shareInfo).not.toBeNull();
-      const token = shareInfo!.shareUrl.split("/").at(-1)!;
-
-      return { file, token };
-    };
-
-    it("returns conversationUrl for the file owner even when not a participant", async () => {
-      // Owner is `user`. No participant row is created for `user` on this conversation.
-      const { token } = await createFrameLinkedToConversation(
-        "workspace_and_emails"
-      );
-      vi.mocked(getAuthForSharedEndpointWorkspaceMembersOnly).mockResolvedValue(
-        auth
-      );
-
-      const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
-        method: "GET",
-        query: { token },
-      });
-
-      await handler(req, res);
-
-      expect(res._getStatusCode()).toBe(200);
-      expect(res._getJSONData().conversationUrl).toEqual(expect.any(String));
-    });
-
-    it("returns null conversationUrl for a non-owner workspace member who isn't a participant", async () => {
-      const { token } = await createFrameLinkedToConversation(
-        "workspace_and_emails"
-      );
-
-      const otherUser = await UserFactory.basic();
-      await MembershipFactory.associate(workspace, otherUser, { role: "user" });
-      const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
-        otherUser.sId,
-        workspace.sId
-      );
-      vi.mocked(getAuthForSharedEndpointWorkspaceMembersOnly).mockResolvedValue(
-        otherAuth
-      );
-
-      const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
-        method: "GET",
-        query: { token },
-      });
-
-      await handler(req, res);
-
-      expect(res._getStatusCode()).toBe(200);
-      expect(res._getJSONData().conversationUrl).toBeNull();
     });
   });
 });
