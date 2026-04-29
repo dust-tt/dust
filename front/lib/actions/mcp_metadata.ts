@@ -10,6 +10,7 @@ import {
   getConnectionForMCPServer,
   getMCPServerAdminAuthenticationReason,
   MCPServerPersonalAuthenticationRequiredError,
+  MCPServerRateLimitedError,
   MCPServerRequiresAdminAuthenticationError,
 } from "@app/lib/actions/mcp_authentication";
 import {
@@ -616,6 +617,21 @@ export async function connectToMCPServer(
                   "reconnect"
                 )
               );
+            }
+
+            const isRateLimited =
+              e instanceof Error &&
+              "code" in e &&
+              (e as Error & { code: unknown }).code === 429;
+            if (isRateLimited) {
+              logger.warn(
+                {
+                  mcpServerId: params.mcpServerId,
+                  workspaceId: auth.getNonNullableWorkspace().sId,
+                },
+                "Remote MCP server rate limited"
+              );
+              return new Err(new MCPServerRateLimitedError(params.mcpServerId));
             }
 
             logger.error(

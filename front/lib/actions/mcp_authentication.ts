@@ -154,6 +154,26 @@ export class MCPServerRequiresAdminAuthenticationError extends Error {
   }
 }
 
+const MCPServerRateLimitedErrorName = "MCPServerRateLimitedError";
+
+export class MCPServerRateLimitedError extends Error {
+  mcpServerId: string;
+
+  constructor(mcpServerId: string) {
+    super(`MCP server ${mcpServerId} is rate limited.`);
+    this.name = MCPServerRateLimitedErrorName;
+    this.mcpServerId = mcpServerId;
+  }
+
+  static is(error: unknown): error is MCPServerRateLimitedError {
+    return (
+      error instanceof Error &&
+      error.name === MCPServerRateLimitedErrorName &&
+      "mcpServerId" in error
+    );
+  }
+}
+
 export function getMCPServerAdminAuthenticationReason(
   error: DustError<"mcp_access_token_error" | "connection_not_found">
 ): MCPServerAdminAuthenticationReason {
