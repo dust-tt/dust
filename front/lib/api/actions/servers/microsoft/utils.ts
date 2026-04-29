@@ -384,19 +384,29 @@ export async function searchMicrosoftDriveItems({
   client,
   query,
   pageSize = 25,
+  allowedLabels = [],
 }: {
   client: Client;
   query: string;
   pageSize?: number;
+  allowedLabels?: string[];
 }): Promise<any> {
   const endpoint = `/search/query`;
+
+  let queryString = query;
+  if (allowedLabels.length > 0) {
+    const labelKql = allowedLabels
+      .map((label) => `InformationProtectionLabelId:${label}`)
+      .join(" OR ");
+    queryString = query ? `(${query}) AND (${labelKql})` : labelKql;
+  }
 
   const requestBody = {
     requests: [
       {
         entityTypes: ["driveItem"],
         query: {
-          queryString: query,
+          queryString,
         },
         size: pageSize,
       },
