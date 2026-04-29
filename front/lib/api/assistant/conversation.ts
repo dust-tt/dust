@@ -2759,7 +2759,7 @@ export async function compactConversation(
     });
   }
 
-  const { compactionMessage, conflict } = await withTransaction(async (t) => {
+  const { compactionMessage } = await withTransaction(async (t) => {
     await getConversationRankVersionLock(auth, conversation, t);
 
     // Re-check the existence of a compaction message or running agent message inside the critical
@@ -2798,11 +2798,8 @@ export async function compactConversation(
       }),
     ]);
 
-    if (runningAgentMessage) {
-      return { compactionMessage: null, conflict: "agent" as const };
-    }
-    if (runningCompactionMessage) {
-      return { compactionMessage: null, conflict: "compaction" as const };
+    if (runningCompactionMessage || runningAgentMessage) {
+      return { compactionMessage: null };
     }
 
     const nextMessageRank = await getNextConversationMessageRank(auth, {
@@ -2821,7 +2818,7 @@ export async function compactConversation(
       transaction: t,
     });
 
-    return { compactionMessage, conflict: null };
+    return { compactionMessage };
   });
 
   if (!compactionMessage) {
@@ -2830,9 +2827,7 @@ export async function compactConversation(
       api_error: {
         type: "invalid_request_error",
         message:
-          conflict === "agent"
-            ? "Answer the pending agent message first."
-            : "A compaction is already in progress. Please wait.",
+          "Cannot compact while another compaction or an agent message is running.",
       },
     });
   }
