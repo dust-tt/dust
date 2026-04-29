@@ -1,6 +1,7 @@
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
 import { isTextContent } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { GlobeAltIcon } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
@@ -90,6 +91,9 @@ function statusLabel(status: EgressStatus, isRunning: boolean): string {
     case "already_allowed":
       return "Already allowed";
     case "unknown":
+      return "Not added";
+    default:
+      assertNeverAndIgnore(status);
       return "Not added";
   }
 }
