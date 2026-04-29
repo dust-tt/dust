@@ -8,7 +8,6 @@ export class CouponModel extends BaseModel<CouponModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare sId: string;
   declare code: string;
   declare description: string | null;
   declare discountType: "fixed" | "usage_credit";
@@ -35,11 +34,6 @@ CouponModel.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
-    },
-    sId: {
-      type: DataTypes.STRING(64),
-      allowNull: false,
-      unique: true,
     },
     code: {
       type: DataTypes.STRING(64),

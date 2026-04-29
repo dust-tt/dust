@@ -9,7 +9,6 @@ export class CouponRedemptionModel extends WorkspaceAwareModel<CouponRedemptionM
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare sId: string;
   declare couponId: ForeignKey<CouponModel["id"]>;
   declare redeemedByUserId: ForeignKey<UserModel["id"]> | null;
   declare redeemedAt: CreationOptional<Date>;
@@ -29,11 +28,6 @@ CouponRedemptionModel.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
-    },
-    sId: {
-      type: DataTypes.STRING(64),
-      allowNull: false,
-      unique: true,
     },
     redeemedAt: {
       type: DataTypes.DATE,
