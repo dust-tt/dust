@@ -30,12 +30,12 @@ function buildSandboxInstructionProse({
   if (hasDsbxTools) {
     instructions.push(
       "You can use the `dsbx` command line tool to list and run tools programmatically in the sandbox.",
-      "Use it with `dsbx tools [SERVER_NAME] [TOOL_NAME] [ARGS]...`. Run `dsbx tools --help` for more information.",
+      "Use it with `dsbx tools [SERVER_NAME] [TOOL_NAME] [ARGS]...`. Run `dsbx tools --help` for more information."
     );
   }
 
   instructions.push(
-    "Write output files (scripts, results, exports) to /files/conversation to make them available to the user.",
+    "Write output files (scripts, results, exports) to /files/conversation to make them available to the user."
   );
 
   return instructions.join(" ");
@@ -57,7 +57,7 @@ async function buildNetworkAccessSection(auth: Authenticator): Promise<string> {
   if (policyResult.isErr()) {
     logger.warn(
       { err: policyResult.error },
-      "Failed to read workspace egress policy for sandbox skill instructions",
+      "Failed to read workspace egress policy for sandbox skill instructions"
     );
   } else {
     workspaceDomains = policyResult.value.allowedDomains;
@@ -121,7 +121,7 @@ block first; a denied egress is a possible cause.`;
 async function buildSandboxInstructions(
   auth: Authenticator,
   providerId: ModelProviderIdType | undefined,
-  hasDsbxTools: boolean,
+  hasDsbxTools: boolean
 ): Promise<string> {
   const networkAccessSection = await buildNetworkAccessSection(auth);
   const sandboxInstructions = buildSandboxInstructionProse({ hasDsbxTools });
@@ -140,7 +140,7 @@ async function buildSandboxInstructions(
     toolsResult = new Ok(
       filterDsbxToolEntries(imageResult.value.tools, {
         includeDsbxTools: hasDsbxTools,
-      }),
+      })
     );
   }
 
@@ -180,7 +180,7 @@ export const sandboxSkill = {
     auth: Authenticator,
     {
       agentLoopData,
-    }: { spaceIds: string[]; agentLoopData?: AgentLoopExecutionData },
+    }: { spaceIds: string[]; agentLoopData?: AgentLoopExecutionData }
   ) => {
     const providerId = agentLoopData?.agentConfiguration?.model.providerId;
     const flags = await getFeatureFlags(auth);

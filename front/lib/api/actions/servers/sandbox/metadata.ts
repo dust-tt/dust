@@ -18,12 +18,12 @@ export const SANDBOX_TOOLS_METADATA = createToolsRecord({
         .string()
         .describe(
           "The reason this command is being run and what it achieves, in a few words. Use infinitive verbs (e.g. " +
-            '"Set up environment", "Generate the chart").',
+            '"Set up environment", "Generate the chart").'
         ),
       command: z
         .string()
         .describe(
-          "The shell command to execute. Can be a single command or a script.",
+          "The shell command to execute. Can be a single command or a script."
         ),
       workingDirectory: z
         .string()
@@ -34,7 +34,7 @@ export const SANDBOX_TOOLS_METADATA = createToolsRecord({
         .max(120000)
         .optional()
         .describe(
-          "Timeout in milliseconds for command execution. Defaults to 60000, max 120000.",
+          "Timeout in milliseconds for command execution. Defaults to 60000, max 120000."
         ),
     },
     stake: "never_ask",
@@ -78,14 +78,14 @@ export const SANDBOX_TOOLS_METADATA = createToolsRecord({
         .min(1)
         .describe(
           'Exact domain to allow for this sandbox, e.g. "api.openai.com". ' +
-            "Wildcards are not supported.",
+            "Wildcards are not supported."
         ),
       reason: z
         .string()
         .min(1)
         .describe(
           "Why this domain is needed, in one short sentence the user will " +
-            "see in the approval prompt.",
+            "see in the approval prompt."
         ),
     },
     stake: "high",
@@ -116,6 +116,6 @@ export const SANDBOX_SERVER = {
     displayLabels: t.displayLabels,
   })),
   tools_stakes: Object.fromEntries(
-    Object.values(SANDBOX_TOOLS_METADATA).map((t) => [t.name, t.stake]),
+    Object.values(SANDBOX_TOOLS_METADATA).map((t) => [t.name, t.stake])
   ),
 } as const satisfies ServerMetadata;
