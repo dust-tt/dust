@@ -138,39 +138,9 @@ export function useConversationDrafts({
     );
   }, [getDraftsFromStorage, saveDraftsToStorage]);
 
-  // Save draft for current conversation (debounced).
-  const saveDraft = useCallback(
-    (text: string, agentMention?: RichAgentMention | null) => {
-      if (!shouldUseDraft || !userId) {
-        return;
-      }
-
-      debouncedSaveRef.current?.({
-        workspaceId,
-        userId,
-        draftKey,
-        text,
-        timestamp: Date.now(),
-        agentMention,
-      });
-    },
-    [workspaceId, userId, shouldUseDraft, draftKey]
-  );
-
-  // Get draft for current conversation.
-  const getDraft = useCallback((): ConversationDraft | null => {
-    const drafts = getDraftsFromStorage();
-
-    if (!userId) {
-      return null;
-    }
-
-    return drafts[getKeyId(workspaceId, userId, draftKey)] ?? null;
-  }, [getDraftsFromStorage, workspaceId, userId, draftKey]);
-
   // Clear draft for the current conversation.
   const clearDraft = useCallback(() => {
-    if (!userId) {
+    if (!shouldUseDraft || !userId) {
       return;
     }
 
@@ -187,10 +157,50 @@ export function useConversationDrafts({
     workspaceId,
     userId,
     draftKey,
+    shouldUseDraft,
     saveDraftsToStorage,
   ]);
 
+  // Save draft for current conversation (debounced).
+  const saveDraft = useCallback(
+    (text: string, agentMention?: RichAgentMention | null) => {
+      if (!shouldUseDraft || !userId) {
+        return;
+      }
+
+      if (text.trim().length === 0) {
+        clearDraft();
+        return;
+      }
+
+      debouncedSaveRef.current?.({
+        workspaceId,
+        userId,
+        draftKey,
+        text,
+        timestamp: Date.now(),
+        agentMention,
+      });
+    },
+    [workspaceId, userId, shouldUseDraft, draftKey, clearDraft]
+  );
+
+  // Get draft for current conversation.
+  const getDraft = useCallback((): ConversationDraft | null => {
+    const drafts = getDraftsFromStorage();
+
+    if (!userId) {
+      return null;
+    }
+
+    return drafts[getKeyId(workspaceId, userId, draftKey)] ?? null;
+  }, [getDraftsFromStorage, workspaceId, userId, draftKey]);
+
   const clearAllDraftsFromUser = useCallback(() => {
+    if (!shouldUseDraft || !userId) {
+      return;
+    }
+
     const drafts = getDraftsFromStorage();
     Object.keys(drafts).forEach((key) => {
       if (key.startsWith(`${userId}::`)) {
@@ -198,7 +208,7 @@ export function useConversationDrafts({
       }
     });
     saveDraftsToStorage(drafts);
-  }, [getDraftsFromStorage, userId, saveDraftsToStorage]);
+  }, [getDraftsFromStorage, userId, shouldUseDraft, saveDraftsToStorage]);
 
   return { saveDraft, getDraft, clearDraft, clearAllDraftsFromUser };
 }
