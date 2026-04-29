@@ -33,11 +33,21 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { ioTsResolver } from "@hookform/resolvers/io-ts";
-import { NonEmptyString } from "io-ts-types/lib/NonEmptyString";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 
 const MICRO_USD_PER_DOLLAR = 1_000_000;
+
+function snapDatetimeLocalToHour(value: string): string {
+  if (
+    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(value) &&
+    value.slice(14, 16) !== "00"
+  ) {
+    return value.slice(0, 14) + "00";
+  }
+
+  return value;
+}
 
 interface EnterpriseUpgradeDialogProps {
   owner: WorkspaceType;
@@ -133,22 +143,6 @@ export default function EnterpriseUpgradeDialog({
 
   const freeCreditsOverrideEnabled = form.watch("freeCreditsOverrideEnabled");
   const paygEnabled = form.watch("paygEnabled");
-
-  // Snap startingAt minutes to :00. The native datetime-local picker shows a
-  // minute spinner regardless of `step`, so we enforce hour alignment here.
-  const startingAt = form.watch("startingAt");
-  useEffect(() => {
-    if (
-      typeof startingAt === "string" &&
-      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(startingAt) &&
-      startingAt.slice(14, 16) !== "00"
-    ) {
-      const snapped = startingAt.slice(0, 14) + "00";
-      if (NonEmptyString.is(snapped)) {
-        form.setValue("startingAt", snapped, { shouldValidate: false });
-      }
-    }
-  }, [startingAt, form]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const onSubmit = useCallback(
@@ -296,6 +290,7 @@ export default function EnterpriseUpgradeDialog({
                           type="datetime-local"
                           min={minStartingAtLocal}
                           step={3600}
+                          transformValue={snapDatetimeLocalToHour}
                         />
                       </div>
                     </>

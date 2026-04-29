@@ -81,6 +81,7 @@ export function InputField<T extends FieldValues>({
   placeholder,
   min,
   step,
+  transformValue,
 }: {
   control: Control<T>;
   name: Path<T>;
@@ -91,6 +92,8 @@ export function InputField<T extends FieldValues>({
   min?: string;
   /** Native `step` attribute, useful for `number` and `datetime-local`. */
   step?: number | string;
+  /** Optional transform applied to the raw string value before updating the form. */
+  transformValue?: (value: string) => string | number;
 }) {
   return (
     <PokeFormField
@@ -107,16 +110,22 @@ export function InputField<T extends FieldValues>({
               step={step}
               {...field}
               value={field.value}
-              onChange={
-                type === "number"
-                  ? (e) => {
-                      const parsed = Number(e.target.value);
-                      if (isFinite(parsed)) {
-                        field.onChange(parsed);
-                      }
-                    }
-                  : field.onChange
-              }
+              onChange={(e) => {
+                if (transformValue) {
+                  field.onChange(transformValue(e.target.value));
+                  return;
+                }
+
+                if (type === "number") {
+                  const parsed = Number(e.target.value);
+                  if (isFinite(parsed)) {
+                    field.onChange(parsed);
+                  }
+                  return;
+                }
+
+                field.onChange(e.target.value);
+              }}
             />
           </PokeFormControl>
           <PokeFormMessage />
