@@ -67,7 +67,7 @@ describe("GET /api/w/[wId]/assistant/conversations/[cId]/files/thumbnail", () =>
     req.query = {
       wId: workspace.sId,
       cId: conversation.sId,
-      filePath: "../../secret.txt",
+      filePath: "conversation/../../secret.txt",
     };
     await handler(req, res);
     expect(res._getStatusCode()).toBe(403);
@@ -93,7 +93,7 @@ describe("GET /api/w/[wId]/assistant/conversations/[cId]/files/thumbnail", () =>
     req.query = {
       wId: workspace.sId,
       cId: conversation.sId,
-      filePath: "generated.png",
+      filePath: "conversation/generated.png",
     };
     await handler(req, res);
 
@@ -112,7 +112,7 @@ describe("GET /api/w/[wId]/assistant/conversations/[cId]/files/thumbnail", () =>
     req.query = {
       wId: workspace.sId,
       cId: conversation.sId,
-      filePath: "sandbox_output.png",
+      filePath: "conversation/sandbox_output.png",
     };
     await handler(req, res);
 
@@ -139,7 +139,7 @@ describe("GET /api/w/[wId]/assistant/conversations/[cId]/files/thumbnail", () =>
     req.query = {
       wId: workspace.sId,
       cId: conversation.sId,
-      filePath: "report.txt",
+      filePath: "conversation/report.txt",
     };
     await handler(req, res);
 
@@ -158,7 +158,7 @@ describe("GET /api/w/[wId]/assistant/conversations/[cId]/files/thumbnail", () =>
     req.query = {
       wId: workspace.sId,
       cId: conversation.sId,
-      filePath: "report.txt",
+      filePath: "conversation/report.txt",
     };
     await handler(req, res);
 
@@ -179,7 +179,7 @@ describe("GET /api/w/[wId]/assistant/conversations/[cId]/files/thumbnail", () =>
     req.query = {
       wId: workspace.sId,
       cId: conversation.sId,
-      filePath: "missing.png",
+      filePath: "conversation/missing.png",
     };
     await handler(req, res);
 
