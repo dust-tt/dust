@@ -110,6 +110,8 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "get_supported_source_formats_for_output_format": "never_ask",
   },
   "files": {
+    "cat": "never_ask",
+    "grep": "never_ask",
     "list": "never_ask",
   },
   "freshservice": {
