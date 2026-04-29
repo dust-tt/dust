@@ -46,7 +46,7 @@ export type Step = {
   contents: Exclude<AgentContentItemType, AgentErrorContentType>[];
   actions: {
     call: FunctionCallType;
-    followUpMessages: UserMessageTypeModel[];
+    enabledSkillMessages: UserMessageTypeModel[];
     result: FunctionMessageTypeModel;
   }[];
 };
@@ -65,7 +65,7 @@ function renderEnabledSkillMessagesForAction(
     return [];
   }
 
-  const followUpMessages: UserMessageTypeModel[] = [];
+  const enabledSkillMessages: UserMessageTypeModel[] = [];
 
   for (const outputBlock of action.output ?? []) {
     const skillId = getEnableSkillIdFromOutputBlock(outputBlock);
@@ -78,14 +78,14 @@ function renderEnabledSkillMessagesForAction(
       continue;
     }
 
-    followUpMessages.push(
+    enabledSkillMessages.push(
       renderEnabledSkillUserMessageFromInstructions({
         skill,
       })
     );
   }
 
-  return followUpMessages;
+  return enabledSkillMessages;
 }
 
 /**
@@ -198,7 +198,7 @@ export function getSteps(
         name: action.functionCallName,
         arguments: JSON.stringify(action.params),
       },
-      followUpMessages: renderEnabledSkillMessagesForAction(action, {
+      enabledSkillMessages: renderEnabledSkillMessagesForAction(action, {
         enabledSkillById,
         renderSkillsAsUserMessages,
       }),
@@ -267,7 +267,7 @@ export function getSteps(
               );
               actions.push({
                 call: functionCall,
-                followUpMessages: [],
+                enabledSkillMessages: [],
                 result: {
                   role: "function",
                   name: functionCall.name,

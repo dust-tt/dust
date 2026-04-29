@@ -377,7 +377,7 @@ describe("renderAllMessages", () => {
           actions: [
             {
               call: { id: "toolu_123", name: "some_tool", arguments: "{}" },
-              followUpMessages: [],
+              enabledSkillMessages: [],
               result: {
                 role: "function" as const,
                 name: "some_tool",
@@ -431,7 +431,7 @@ describe("renderAllMessages", () => {
           actions: [
             {
               call: { id: "toolu_123", name: "some_tool", arguments: "{}" },
-              followUpMessages: [],
+              enabledSkillMessages: [],
               result: {
                 role: "function" as const,
                 name: "some_tool",
@@ -460,7 +460,7 @@ describe("renderAllMessages", () => {
     });
   });
 
-  it("renders follow-up user messages after tool results", async () => {
+  it("renders enabled skill messages after tool results", async () => {
     const conversation = createConversation([
       { type: "agent", visibility: "visible" },
     ]);
@@ -484,7 +484,7 @@ describe("renderAllMessages", () => {
               name: "skill_management__enable_skill",
               arguments: '{"skillName":"commit"}',
             },
-            followUpMessages: [
+            enabledSkillMessages: [
               {
                 role: "user",
                 name: "system",
@@ -523,18 +523,18 @@ describe("renderAllMessages", () => {
     expect(vi.mocked(getSteps).mock.calls.at(-1)?.[1]).toMatchObject({
       renderSkillsAsUserMessages: true,
     });
-    const followUpMessage = result[2];
-    expect(followUpMessage?.role).toBe("user");
-    if (!followUpMessage || followUpMessage.role !== "user") {
+    const enabledSkillMessage = result[2];
+    expect(enabledSkillMessage?.role).toBe("user");
+    if (!enabledSkillMessage || enabledSkillMessage.role !== "user") {
       throw new Error("Expected a follow-up user message.");
     }
-    expect(followUpMessage.content[0]).toEqual({
+    expect(enabledSkillMessage.content[0]).toEqual({
       type: "text",
       text: "<dust_system>Enabled skill instructions</dust_system>",
     });
   });
 
-  it("does not render follow-up user messages when skill user messages are disabled", async () => {
+  it("does not render enabled skill messages when skill user messages are disabled", async () => {
     const conversation = createConversation([
       { type: "agent", visibility: "visible" },
     ]);
@@ -558,7 +558,7 @@ describe("renderAllMessages", () => {
               name: "skill_management__enable_skill",
               arguments: '{"skillName":"commit"}',
             },
-            followUpMessages: [],
+            enabledSkillMessages: [],
             result: {
               role: "function",
               name: "skill_management__enable_skill",

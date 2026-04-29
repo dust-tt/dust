@@ -118,9 +118,9 @@ export function renderAgentSteps(
         } satisfies AssistantContentMessageTypeModel);
       }
 
-      for (const { result, followUpMessages } of step.actions) {
+      for (const { result, enabledSkillMessages } of step.actions) {
         messages.push(result);
-        messages.push(...followUpMessages);
+        messages.push(...enabledSkillMessages);
       }
     }
   }
