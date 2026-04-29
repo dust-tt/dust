@@ -36,7 +36,6 @@ export function useConversationDrafts({
   draftKey: string;
   shouldUseDraft?: boolean;
 }) {
-  // Get all drafts from localStorage.
   const getDraftsFromStorage = useCallback((): DraftStorage => {
     try {
       if (!shouldUseDraft) {
@@ -71,7 +70,6 @@ export function useConversationDrafts({
     }
   }, [shouldUseDraft]);
 
-  // Save drafts to localStorage.
   const saveDraftsToStorage = useCallback((drafts: DraftStorage) => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(drafts));
@@ -83,7 +81,6 @@ export function useConversationDrafts({
     }
   }, []);
 
-  // Create a ref to hold the debounced save function
   const debouncedSaveRef =
     useRef<
       ReturnType<
@@ -100,12 +97,9 @@ export function useConversationDrafts({
       >
     >();
 
-  // Update the debounced function when dependencies change
   useEffect(() => {
-    // Cancel any pending debounced calls from the old function
     debouncedSaveRef.current?.cancel();
 
-    // Create new debounced function with current closures
     debouncedSaveRef.current = debounce(
       ({
         workspaceId,
@@ -138,7 +132,6 @@ export function useConversationDrafts({
     );
   }, [getDraftsFromStorage, saveDraftsToStorage]);
 
-  // Clear draft for the current conversation.
   const clearDraft = useCallback(() => {
     if (!shouldUseDraft || !userId) {
       return;
@@ -148,9 +141,7 @@ export function useConversationDrafts({
 
     delete drafts[getKeyId(workspaceId, userId, draftKey)];
 
-    // Also, cancel any pending debounced save.
     debouncedSaveRef.current?.cancel();
-
     saveDraftsToStorage(drafts);
   }, [
     getDraftsFromStorage,
@@ -161,7 +152,6 @@ export function useConversationDrafts({
     saveDraftsToStorage,
   ]);
 
-  // Save draft for current conversation (debounced).
   const saveDraft = useCallback(
     (text: string, agentMention?: RichAgentMention | null) => {
       if (!shouldUseDraft || !userId) {
@@ -185,7 +175,6 @@ export function useConversationDrafts({
     [workspaceId, userId, shouldUseDraft, draftKey, clearDraft]
   );
 
-  // Get draft for current conversation.
   const getDraft = useCallback((): ConversationDraft | null => {
     const drafts = getDraftsFromStorage();
 
