@@ -463,6 +463,15 @@ export function isWebsite(
   return ds.connectorProvider === "webcrawler";
 }
 
+// Brandbook data sources are folders whose name starts with the "[brandbook]" prefix.
+// This convention allows identifying brandbook knowledge bases without a schema migration.
+// A follow-up PR will introduce a proper `category` column on the `data_sources` table.
+export const BRANDBOOK_NAME_PREFIX = "[brandbook]" as const;
+
+export function isBrandbook(ds: DataSourceType): boolean {
+  return isFolder(ds) && ds.name.startsWith(BRANDBOOK_NAME_PREFIX);
+}
+
 const CoreAPIDocumentChunkSchema = z.object({
   text: z.string(),
   hash: z.string(),

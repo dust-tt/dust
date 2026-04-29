@@ -36,6 +36,7 @@ export const DATA_SOURCE_VIEW_CATEGORIES = [
   "managed",
   "folder",
   "website",
+  "brandbook",
   "apps",
   "actions",
   "triggers",
@@ -59,6 +60,7 @@ export const DATA_SOURCE_VIEW_CATEGORIES_DISPLAY_NAMES: Record<
   managed: "Connections",
   folder: "Folders",
   website: "Websites",
+  brandbook: "Brand Guidelines",
   apps: "Apps",
   actions: "Tools",
   triggers: "Triggers",
@@ -82,8 +84,12 @@ export function isDataSourceViewCategoryWithoutApps(
 
 export function isWebsiteOrFolderCategory(
   category: unknown
-): category is Extract<DataSourceViewCategory, "website" | "folder"> {
-  return category === "website" || category === "folder";
+): category is Extract<DataSourceViewCategory, "website" | "folder" | "brandbook"> {
+  return (
+    category === "website" ||
+    category === "folder" ||
+    category === "brandbook"
+  );
 }
 
 export function isSpreadsheetFolderContentNode(
