@@ -12,10 +12,6 @@ const EnableSkillResultResourceSchema = z.object({
 type EnableSkillResultResourceType = z.infer<
   typeof EnableSkillResultResourceSchema
 >;
-type EnableSkillResultOutputType = {
-  type: "resource";
-  resource: EnableSkillResultResourceType;
-};
 
 export function makeEnableSkillResultOutput({
   skillId,
@@ -23,7 +19,10 @@ export function makeEnableSkillResultOutput({
 }: {
   skillId: string;
   text: string;
-}): EnableSkillResultOutputType {
+}): {
+  type: "resource";
+  resource: EnableSkillResultResourceType;
+} {
   return {
     type: "resource",
     resource: {
@@ -37,7 +36,10 @@ export function makeEnableSkillResultOutput({
 
 export function isEnableSkillResultOutput(
   outputBlock: CallToolResult["content"][number]
-): outputBlock is EnableSkillResultOutputType {
+): outputBlock is {
+  type: "resource";
+  resource: EnableSkillResultResourceType;
+} {
   return (
     outputBlock.type === "resource" &&
     EnableSkillResultResourceSchema.safeParse(outputBlock.resource).success
