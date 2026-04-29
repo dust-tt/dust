@@ -4,17 +4,21 @@ import { z } from "zod";
 
 const ENABLE_SKILL_RESULT_MIME_TYPE =
   INTERNAL_MIME_TYPES.TOOL_OUTPUT.ENABLE_SKILL_RESULT;
-const ENABLE_SKILL_RESULT_URI_PREFIX = "dust://enable-skill-result/";
 
 const EnableSkillResultResourceSchema = z.object({
   mimeType: z.literal(ENABLE_SKILL_RESULT_MIME_TYPE),
-  uri: z.string().startsWith(ENABLE_SKILL_RESULT_URI_PREFIX),
+  uri: z.literal(""),
   text: z.string(),
+  skillId: z.string(),
 });
 
 type EnableSkillResultResourceType = z.infer<
   typeof EnableSkillResultResourceSchema
 >;
+type EnableSkillResultOutputType = {
+  type: "resource";
+  resource: EnableSkillResultResourceType;
+};
 
 export function makeEnableSkillResultOutput({
   skillId,
@@ -22,23 +26,21 @@ export function makeEnableSkillResultOutput({
 }: {
   skillId: string;
   text: string;
-}): CallToolResult["content"][number] {
+}): EnableSkillResultOutputType {
   return {
     type: "resource",
     resource: {
       mimeType: ENABLE_SKILL_RESULT_MIME_TYPE,
-      uri: `${ENABLE_SKILL_RESULT_URI_PREFIX}${skillId}`,
+      uri: "",
       text,
+      skillId,
     },
   };
 }
 
 export function isEnableSkillResultOutput(
   outputBlock: CallToolResult["content"][number]
-): outputBlock is {
-  type: "resource";
-  resource: EnableSkillResultResourceType;
-} {
+): outputBlock is EnableSkillResultOutputType {
   return (
     outputBlock.type === "resource" &&
     EnableSkillResultResourceSchema.safeParse(outputBlock.resource).success
@@ -52,5 +54,5 @@ export function getEnableSkillIdFromOutputBlock(
     return null;
   }
 
-  return outputBlock.resource.uri.slice(ENABLE_SKILL_RESULT_URI_PREFIX.length);
+  return outputBlock.resource.skillId;
 }
