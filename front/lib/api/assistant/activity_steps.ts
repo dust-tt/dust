@@ -23,7 +23,7 @@ export function getActionOneLineLabel(
 ): string {
   if (
     action.internalMCPServerName === "sandbox" &&
-    action.functionCallName === "add_egress_domain" &&
+    action.toolName === "add_egress_domain" &&
     typeof action.params?.domain === "string"
   ) {
     return context === "running"
@@ -118,6 +118,7 @@ export async function contentsToActivitySteps(
           id: `action-${matchingAction.id}`,
           actionId: matchingAction.sId,
           internalMCPServerName: matchingAction.internalMCPServerName,
+          toolName: matchingAction.toolName ?? null,
         });
       }
     }

@@ -246,6 +246,7 @@ describe("appendThinkingStep", () => {
         id: "action-1",
         actionId: "act_1",
         internalMCPServerName: null,
+        toolName: null,
       },
     ];
 
