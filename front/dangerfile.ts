@@ -103,6 +103,31 @@ function checkSSESharedFilesLabel() {
   }
 }
 
+function failSSESharedModelsAck() {
+  fail(
+    "Models queried by SSE endpoints have been modified. These models are " +
+      "loaded by code that runs on `front-sse` pods as well.\n\n" +
+      `Please add the \`${sseAckLabel}\` label to acknowledge ` +
+      "that a `front-sse` deploy is required alongside the `front` deploy."
+  );
+}
+
+function warnSSESharedModelsAck(sseAckLabel: string) {
+  warn(
+    "Models queried by SSE endpoints have been modified and the PR has the `" +
+      sseAckLabel +
+      "` label. Don't forget to deploy `front-sse` alongside `front`."
+  );
+}
+
+function checkSSESharedModelsLabel() {
+  if (!hasLabel(sseAckLabel)) {
+    failSSESharedModelsAck();
+  } else {
+    warnSSESharedModelsAck(sseAckLabel);
+  }
+}
+
 function failSDKAck() {
   fail(
     "Files in `**/sdks/js/` have been modified. " +
@@ -381,6 +406,8 @@ async function checkDiffFiles() {
     "front/pages/api/w/[wId]/assistant/conversations/[cId]/messages/[mId]/events.ts",
     "front/pages/api/v1/w/[wId]/assistant/conversations/[cId]/events.ts",
     "front/pages/api/v1/w/[wId]/assistant/conversations/[cId]/messages/[mId]/events.ts",
+    "front/pages/api/w/[wId]/mcp/requests.ts",
+    "front/pages/api/v1/w/[wId]/mcp/requests.ts",
   ];
   const modifiedSseFiles = diffFiles.filter((path) =>
     sseEndpointFiles.includes(path)
@@ -396,6 +423,29 @@ async function checkDiffFiles() {
   );
   if (modifiedSseSharedFiles.length > 0) {
     checkSSESharedFilesLabel();
+  }
+
+  const sseSharedModels = [
+    "front/lib/models/agent/conversation_branch.ts",
+    "front/lib/models/agent/conversation_fork.ts",
+    "front/lib/models/agent/conversation.ts",
+    "front/lib/models/plan.ts",
+    "front/lib/models/provider_credential.ts",
+    "front/lib/resources/storage/models/group_memberships.ts",
+    "front/lib/resources/storage/models/group_spaces.ts",
+    "front/lib/resources/storage/models/groups.ts",
+    "front/lib/resources/storage/models/keys.ts",
+    "front/lib/resources/storage/models/kill_switches.ts",
+    "front/lib/resources/storage/models/membership.ts",
+    "front/lib/resources/storage/models/spaces.ts",
+    "front/lib/resources/storage/models/user.ts",
+    "front/lib/resources/storage/models/workspace.ts",
+  ];
+  const modifiedSseSharedModels = diffFiles.filter((path) =>
+    sseSharedModels.includes(path)
+  );
+  if (modifiedSseSharedModels.length > 0) {
+    checkSSESharedModelsLabel();
   }
 }
 
