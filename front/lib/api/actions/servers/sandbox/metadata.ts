@@ -63,7 +63,11 @@ export const SANDBOX_TOOLS_METADATA = createToolsRecord({
       "Request user approval to add a single domain to the current " +
       "sandbox's network allowlist. Each call adds one exact domain " +
       "(wildcards are not accepted) and requires an explicit user " +
-      "approval. Outbound HTTPS connections that fall outside the " +
+      "approval. Only call this if the target domain is not already " +
+      "covered by the workspace or sandbox allowlist. The workspace " +
+      "allowlist is provided in the sandbox skill instructions; if the " +
+      "domain or a wildcard parent is listed there, use the domain " +
+      "directly. Outbound HTTPS connections that fall outside the " +
       "allowlist surface as denied entries in `<network_proxy_logs>` in " +
       "the bash tool output. Allowlist entries added through this tool " +
       "live for the lifetime of the current sandbox and are discarded " +

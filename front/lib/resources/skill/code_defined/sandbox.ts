@@ -100,11 +100,14 @@ ${formatWorkspaceAllowlist(workspaceDomains)}
    \`add_egress_domain\` tool. These live for the lifetime of the current
    sandbox only and are discarded when the sandbox is reaped.
 
-When you plan to hit a domain that is not on the workspace allowlist, you
-should call \`add_egress_domain\` **before** running the command, with the
-**exact** domain (wildcards are not accepted) and a one-sentence reason
-the user will see in the approval prompt. This is preferable to running
-the command first and reacting to a denial.
+If the target domain — or a wildcard parent of it (for example,
+\`*.github.com\` matches \`api.github.com\` and \`a.b.github.com\`, but not
+\`github.com\` itself) — is already in the workspace allowlist shown above,
+do NOT call \`add_egress_domain\`; just use the domain. Only call
+\`add_egress_domain\` for domains that are not yet covered, and do so
+**before** running the command, with the **exact** domain (wildcards are not
+accepted) and a one-sentence reason the user will see in the approval prompt.
+This is preferable to running the command first and reacting to a denial.
 
 If a request does get blocked — for example because you missed a domain or
 a redirect chain hits an unexpected host — the bash tool output will
