@@ -229,17 +229,22 @@ export function EnvironmentSection() {
                 envVar.lastUpdatedByName ?? envVar.createdByName ?? "Unknown";
 
               return (
-                <div key={envVar.name} className="flex items-center gap-3 py-3">
-                  <pre
-                    title={envVar.name}
-                    className="min-w-0 overflow-x-auto whitespace-nowrap rounded bg-muted-background p-2 text-sm text-foreground dark:bg-muted-background-night dark:text-foreground-night"
-                  >
-                    {envVar.name}
-                  </pre>
-                  <div className="ml-auto hidden shrink-0 text-right text-sm text-muted-foreground dark:text-muted-foreground-night sm:block">
-                    Updated{" "}
-                    {timeAgoFrom(envVar.updatedAt, { useLongFormat: true })} ago
-                    by {updatedBy}
+                <div
+                  key={envVar.name}
+                  className="flex items-center justify-between gap-3 py-3"
+                >
+                  <div className="flex min-w-0 items-center gap-3">
+                    <pre
+                      title={envVar.name}
+                      className="min-w-0 overflow-x-auto whitespace-nowrap rounded bg-muted-background p-2 text-sm text-foreground dark:bg-muted-background-night dark:text-foreground-night"
+                    >
+                      {envVar.name}
+                    </pre>
+                    <div className="hidden shrink-0 text-sm text-muted-foreground dark:text-muted-foreground-night sm:block">
+                      Updated{" "}
+                      {timeAgoFrom(envVar.updatedAt, { useLongFormat: true })}{" "}
+                      ago by {updatedBy}
+                    </div>
                   </div>
                   <Button
                     variant="warning"
