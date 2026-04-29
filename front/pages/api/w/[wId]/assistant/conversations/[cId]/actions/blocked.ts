@@ -4,7 +4,6 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { SandboxMCPActionResource } from "@app/lib/resources/sandbox_mcp_action_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
@@ -52,16 +51,11 @@ async function handler(
       },
     });
   }
-  const [regularBlocked, sandboxBlocked] = await Promise.all([
-    AgentMCPActionResource.listBlockedActionsForConversation(
+  const blockedActions =
+    await AgentMCPActionResource.listBlockedActionsForConversation(
       auth,
       conversation
-    ),
-    SandboxMCPActionResource.listBlockedForConversation(auth, conversation),
-  ]);
-  const blockedActions = [...regularBlocked, ...sandboxBlocked].sort(
-    (a, b) => a.created - b.created
-  );
+    );
 
   res.status(200).json({ blockedActions });
 }

@@ -36,7 +36,6 @@ import {
 } from "@app/lib/auth";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { SandboxMCPActionResource } from "@app/lib/resources/sandbox_mcp_action_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
@@ -276,7 +275,7 @@ async function createBlockedSandboxAction(
     parentAction: AgentMCPActionResource | null;
   }
 ): Promise<string> {
-  const action = await SandboxMCPActionResource.makeNew(auth, {
+  const action = await AgentMCPActionResource.makeNewSandboxAction(auth, {
     agentMessageId: agentMessage.agentMessageId,
     step,
     status: "blocked_validation_required",
@@ -444,7 +443,10 @@ async function handler(
         });
       }
 
-      const action = await SandboxMCPActionResource.fetchById(auth, actionId);
+      const action = await AgentMCPActionResource.fetchSandboxActionById(
+        auth,
+        actionId
+      );
       if (!action) {
         return apiError(req, res, {
           status_code: 404,
@@ -511,7 +513,10 @@ async function handleReExecuteApprovedToolCall(
     arguments?: Record<string, unknown>;
   }
 ): Promise<void> {
-  const action = await SandboxMCPActionResource.fetchById(auth, actionId);
+  const action = await AgentMCPActionResource.fetchSandboxActionById(
+    auth,
+    actionId
+  );
   if (!action) {
     return apiError(req, res, {
       status_code: 404,

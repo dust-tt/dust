@@ -4,7 +4,7 @@ export const SANDBOX_MCP_SERVER_NAME = "sandbox";
 // It is informational only — concurrent sandbox tool calls in one bash command
 // will overwrite each other's `childActionId`. The source of truth for the set
 // of blocked children is a scan over `sandbox_mcp_actions` for the parent
-// agent message (see `SandboxMCPActionResource.listBlockedForAgentMessage`).
+// agent message (see `AgentMCPActionResource.listBlockedSandboxForAgentMessage`).
 //
 // `execId` is set by the bash tool handler when it pauses the sandbox after
 // the grace period expires (slow path); read on resume to wait-and-collect

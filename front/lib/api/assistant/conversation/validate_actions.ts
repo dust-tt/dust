@@ -19,7 +19,6 @@ import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { SandboxMCPActionResource } from "@app/lib/resources/sandbox_mcp_action_resource";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { RESOURCES_PREFIX } from "@app/lib/resources/string_ids";
 import type { UserResource } from "@app/lib/resources/user_resource";
@@ -322,7 +321,7 @@ async function validateSandboxAction(
   const owner = auth.getNonNullableWorkspace();
   const user = auth.user();
 
-  const sandboxAction = await SandboxMCPActionResource.fetchById(
+  const sandboxAction = await AgentMCPActionResource.fetchSandboxActionById(
     auth,
     actionId
   );
@@ -341,7 +340,7 @@ async function validateSandboxAction(
     );
   }
 
-  const [updatedCount] = await sandboxAction.updateStatus(
+  const { updatedCount } = await sandboxAction.updateStatus(
     getMCPApprovalStateFromUserApprovalState(approvalState)
   );
 
@@ -402,10 +401,9 @@ async function validateSandboxAction(
   // Slow path: sandbox is paused. Relaunch only if all sandbox children for
   // this agent message are resolved (parallel scripts can have several).
   const [remainingBlockedChildren, parentAction] = await Promise.all([
-    SandboxMCPActionResource.listBlockedForAgentMessage(auth, {
+    AgentMCPActionResource.listBlockedSandboxForAgentMessage(auth, {
       agentMessageId: sandboxAction.agentMessageId,
-      conversationSId: conversationId,
-      conversationModelId: conversation.id,
+      conversation,
     }),
     AgentMCPActionResource.findSandboxActionForAgentMessage(auth, {
       agentMessageId: sandboxAction.agentMessageId,

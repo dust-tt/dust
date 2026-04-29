@@ -1,4 +1,7 @@
-import type { BlockedToolExecution } from "@app/lib/actions/mcp";
+import type {
+  BlockedToolExecution,
+  LightMCPToolConfigurationType,
+} from "@app/lib/actions/mcp";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import {
   getInternalMCPServerNameFromSId,
@@ -33,6 +36,7 @@ import {
   AgentMCPActionModel,
   AgentMCPActionOutputItemModel,
 } from "@app/lib/models/agent/actions/mcp";
+import { SandboxMCPActionModel } from "@app/lib/models/agent/actions/sandbox_mcp_action";
 import {
   AgentMessageModel,
   MessageModel,
@@ -48,7 +52,6 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { SandboxMCPActionResource } from "@app/lib/resources/sandbox_mcp_action_resource";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -530,10 +533,9 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         // childActionId (a parallel/sequential script can produce multiple).
         if (isSandboxResumeState(resumeState)) {
           const childBlockedActionsList =
-            await SandboxMCPActionResource.listBlockedForAgentMessage(auth, {
+            await this.listBlockedSandboxForAgentMessage(auth, {
               agentMessageId: action.agentMessageId,
-              conversationSId: conversation.sId,
-              conversationModelId: conversation.id,
+              conversation,
             });
 
           blockedActionsList.push({
@@ -594,7 +596,18 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       }
     }
 
-    return blockedActionsList;
+    // Merge sandbox-origin blocked actions for the same latest agent messages.
+    // They are stored in a separate table to dodge the agent_step_contents
+    // unique-index race, but conceptually they are part of the same
+    // approval-flow stream surfaced to the FE.
+    const sandboxBlocked = await this.listBlockedSandboxByAgentMessageIds(
+      auth,
+      { agentMessageIds: latestAgentMessageIds, conversation }
+    );
+
+    return [...blockedActionsList, ...sandboxBlocked].sort(
+      (a, b) => a.created - b.created
+    );
   }
 
   static async fetchByStepContents(
@@ -1238,5 +1251,312 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
   get functionCallName(): string {
     return this.stepContent.value.value.name;
+  }
+
+  // -- Sandbox-origin MCP actions --
+  //
+  // Sandbox actions are stored in `sandbox_mcp_actions` (separate table to
+  // dodge the `agent_step_contents` unique-index race) but are part of the
+  // same approval-flow concept this Resource owns.
+
+  static sandboxActionModelIdToSId({
+    id,
+    workspaceId,
+  }: {
+    id: ModelId;
+    workspaceId: ModelId;
+  }): string {
+    return makeSId("sandbox_mcp_action", { id, workspaceId });
+  }
+
+  static async makeNewSandboxAction(
+    auth: Authenticator,
+    blob: Omit<CreationAttributes<SandboxMCPActionModel>, "workspaceId">
+  ): Promise<SandboxMCPAction> {
+    const workspace = auth.getNonNullableWorkspace();
+    const model = await SandboxMCPActionModel.create({
+      ...blob,
+      workspaceId: workspace.id,
+    });
+    return new SandboxMCPAction(model);
+  }
+
+  static async fetchSandboxActionById(
+    auth: Authenticator,
+    sId: string
+  ): Promise<SandboxMCPAction | null> {
+    const modelId = getResourceIdFromSId(sId);
+    if (!modelId) {
+      return null;
+    }
+    const model = await SandboxMCPActionModel.findOne({
+      where: {
+        id: modelId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+    return model ? new SandboxMCPAction(model) : null;
+  }
+
+  static async listBlockedSandboxForAgentMessage(
+    auth: Authenticator,
+    {
+      agentMessageId,
+      conversation,
+    }: {
+      agentMessageId: ModelId;
+      conversation: ConversationResource;
+    }
+  ): Promise<BlockedToolExecution[]> {
+    return this.listBlockedSandboxByAgentMessageIds(auth, {
+      agentMessageIds: [agentMessageId],
+      conversation,
+    });
+  }
+
+  /**
+   * Sandbox actions only ever produce `blocked_validation_required`. The
+   * formatter is intentionally narrower than the regular blocked-action
+   * formatter: no OAuth, no file authorization, no child actions, no user
+   * questions.
+   */
+  private static async listBlockedSandboxByAgentMessageIds(
+    auth: Authenticator,
+    {
+      agentMessageIds,
+      conversation,
+    }: {
+      agentMessageIds: ModelId[];
+      conversation: ConversationResource;
+    }
+  ): Promise<BlockedToolExecution[]> {
+    if (agentMessageIds.length === 0) {
+      return [];
+    }
+
+    const owner = auth.getNonNullableWorkspace();
+
+    const blockedActions = await SandboxMCPActionModel.findAll({
+      include: [
+        {
+          model: AgentMessageModel,
+          as: "agentMessage",
+          required: true,
+          attributes: [
+            "id",
+            "agentConfigurationId",
+            "agentConfigurationVersion",
+          ],
+          include: [
+            {
+              model: MessageModel,
+              as: "message",
+              required: true,
+              attributes: ["id", "sId", "parentId"],
+            },
+          ],
+        },
+      ],
+      where: {
+        workspaceId: owner.id,
+        agentMessageId: { [Op.in]: agentMessageIds },
+        status: { [Op.in]: TOOL_EXECUTION_BLOCKED_STATUSES },
+      },
+      order: [["createdAt", "ASC"]],
+    });
+
+    if (blockedActions.length === 0) {
+      return [];
+    }
+
+    const parentUserMessageIds = removeNulls(
+      blockedActions.map((a) => a.agentMessage!.message!.parentId)
+    );
+
+    const parentUserMessages = await MessageModel.findAll({
+      where: {
+        workspaceId: owner.id,
+        conversationId: conversation.id,
+        id: { [Op.in]: parentUserMessageIds },
+      },
+      attributes: ["id"],
+      include: [
+        {
+          model: UserMessageModel,
+          as: "userMessage",
+          required: true,
+          attributes: ["id"],
+          include: [
+            {
+              model: UserModel,
+              as: "user",
+              attributes: ["sId"],
+            },
+          ],
+        },
+      ],
+    });
+
+    const parentUserMessageById = _.keyBy(parentUserMessages, "id");
+
+    const agentConfigVersionPairs = removeNulls(
+      blockedActions.map((a) => {
+        const agentMessage = a.agentMessage;
+        if (!agentMessage) {
+          return null;
+        }
+        return {
+          agentId: agentMessage.agentConfigurationId,
+          agentVersion: agentMessage.agentConfigurationVersion,
+        };
+      })
+    );
+
+    const agentConfigurations = await getAgentConfigurationsWithVersion(
+      auth,
+      agentConfigVersionPairs,
+      { variant: "extra_light" }
+    );
+
+    const agentConfigurationMap = new Map(
+      agentConfigurations.map((a) => [`${a.sId}:${a.version}`, a])
+    );
+
+    const result: BlockedToolExecution[] = [];
+
+    for (const action of blockedActions) {
+      const agentMessage = action.agentMessage;
+      assert(agentMessage?.message, "No message for agent message.");
+
+      const agentConfiguration = agentConfigurationMap.get(
+        `${agentMessage.agentConfigurationId}:${agentMessage.agentConfigurationVersion}`
+      );
+      if (!agentConfiguration) {
+        logger.warn(
+          { actionId: action.id, workspaceId: owner.id },
+          "Agent configuration not found for sandbox blocked action"
+        );
+        continue;
+      }
+
+      // Sandbox actions only produce "blocked_validation_required".
+      if (action.status !== "blocked_validation_required") {
+        continue;
+      }
+
+      const parentUserMessage =
+        parentUserMessageById[agentMessage.message.parentId!];
+      assert(parentUserMessage?.userMessage, "Parent user message not found.");
+
+      result.push({
+        messageId: agentMessage.message.sId,
+        userId: parentUserMessage.userMessage?.user?.sId,
+        conversationId: conversation.sId,
+        actionId: this.sandboxActionModelIdToSId({
+          id: action.id,
+          workspaceId: owner.id,
+        }),
+        configurationId: isLightServerSideMCPToolConfiguration(
+          action.toolConfiguration
+        )
+          ? action.toolConfiguration.sId
+          : agentConfiguration.sId,
+        created: action.createdAt.getTime(),
+        inputs: action.augmentedInputs,
+        stake: action.toolConfiguration.permission,
+        metadata: {
+          toolName: action.toolConfiguration.originalName,
+          mcpServerName: action.toolConfiguration.mcpServerName,
+          agentName: agentConfiguration.name,
+          icon: action.toolConfiguration.icon,
+        },
+        argumentsRequiringApproval:
+          action.toolConfiguration.argumentsRequiringApproval,
+        approvalArgsLabel: await getApprovalArgsLabel({
+          auth,
+          internalMCPServerName: action.toolConfiguration.toolServerId
+            ? getInternalMCPServerNameFromSId(
+                action.toolConfiguration.toolServerId
+              )
+            : null,
+          toolName: action.toolConfiguration.originalName,
+          agentName: agentConfiguration.name,
+          inputs: action.augmentedInputs,
+          argumentsRequiringApproval:
+            action.toolConfiguration.argumentsRequiringApproval ?? [],
+        }),
+        status: "blocked_validation_required",
+        authorizationInfo: null,
+      });
+    }
+
+    return result;
+  }
+}
+
+/**
+ * Thin domain object for the sandbox flavor of an MCP action. Lives in the
+ * separate `sandbox_mcp_actions` table; same approval-flow concept as
+ * `AgentMCPActionResource`, just without `stepContent`/`stepContext` because
+ * sandbox tool calls aren't agent reasoning steps.
+ */
+export class SandboxMCPAction {
+  readonly internalMCPServerName: InternalMCPServerNameType | null;
+
+  constructor(private readonly model: SandboxMCPActionModel) {
+    this.internalMCPServerName = model.toolConfiguration.toolServerId
+      ? getInternalMCPServerNameFromSId(model.toolConfiguration.toolServerId)
+      : null;
+  }
+
+  get id(): ModelId {
+    return this.model.id;
+  }
+
+  get workspaceId(): ModelId {
+    return this.model.workspaceId;
+  }
+
+  get sId(): string {
+    return AgentMCPActionResource.sandboxActionModelIdToSId({
+      id: this.model.id,
+      workspaceId: this.model.workspaceId,
+    });
+  }
+
+  get status(): ToolExecutionStatus {
+    return this.model.status;
+  }
+
+  get agentMessageId(): ModelId {
+    return this.model.agentMessageId;
+  }
+
+  get toolConfiguration(): LightMCPToolConfigurationType {
+    return this.model.toolConfiguration;
+  }
+
+  get augmentedInputs(): Record<string, unknown> {
+    return this.model.augmentedInputs;
+  }
+
+  /** Original tool name as stored in the configuration. */
+  get functionCallName(): string {
+    return this.model.toolConfiguration.originalName;
+  }
+
+  async updateStatus(
+    status: ToolExecutionStatus
+  ): Promise<{ updatedCount: number }> {
+    const [updatedCount] = await SandboxMCPActionModel.update(
+      { status },
+      {
+        where: {
+          id: this.model.id,
+          workspaceId: this.model.workspaceId,
+        },
+      }
+    );
+    return { updatedCount };
   }
 }
