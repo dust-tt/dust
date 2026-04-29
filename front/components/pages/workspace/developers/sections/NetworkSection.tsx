@@ -18,7 +18,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  GlobeAltIcon,
   InformationCircleIcon,
   Input,
   Page,
@@ -29,7 +28,7 @@ import {
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
-export function EgressPolicyPage() {
+export function NetworkSection() {
   const owner = useWorkspace();
   const { isAdmin } = useAuth();
   const { featureFlags } = useFeatureFlags();
@@ -278,14 +277,7 @@ export function EgressPolicyPage() {
         </DialogContent>
       </Dialog>
 
-      <Page.Vertical gap="xl" align="stretch">
-        <Page.Header
-          title="Network"
-          icon={GlobeAltIcon}
-          description="Configure workspace-level domains that sandboxes are allowed to access through the egress proxy."
-        />
-        {renderBody()}
-      </Page.Vertical>
+      {renderBody()}
     </>
   );
 }

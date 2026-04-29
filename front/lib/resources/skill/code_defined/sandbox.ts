@@ -118,12 +118,30 @@ hangs or fails with TLS/DNS errors, check the \`<network_proxy_logs>\`
 block first; a denied egress is a possible cause.`;
 }
 
+function buildEnvironmentVariablesSection(): string {
+  return `#### Sandbox Environment Variables
+
+The sandbox may have workspace-configured environment variables available to
+your code via standard environment APIs such as \`process.env\` or
+\`os.environ\`. You may use them to authenticate with APIs or pass them into
+code paths that consume them, but you must never print, echo, \`cat\`, or
+otherwise disclose an environment variable value. Do not include a value in
+output, logs, error messages, or final answers. Do not re-encode, transform, or
+split a value to bypass this rule. Do not list available environment variable
+names just to enumerate what is configured.
+
+If a user asks for a secret value, refuse and say it is not viewable. If you
+need to confirm a variable is set, check a boolean condition such as
+\`"FOO" in os.environ\` and do not read or print the value.`;
+}
+
 async function buildSandboxInstructions(
   auth: Authenticator,
   providerId: ModelProviderIdType | undefined,
   hasDsbxTools: boolean
 ): Promise<string> {
   const networkAccessSection = await buildNetworkAccessSection(auth);
+  const environmentVariablesSection = buildEnvironmentVariablesSection();
   const sandboxInstructions = buildSandboxInstructionProse({ hasDsbxTools });
 
   let toolsResult;
@@ -135,7 +153,7 @@ async function buildSandboxInstructions(
   } else {
     const imageResult = getSandboxImage(auth);
     if (imageResult.isErr()) {
-      return `${sandboxInstructions}\n\n${networkAccessSection}`;
+      return `${sandboxInstructions}\n\n${networkAccessSection}\n\n${environmentVariablesSection}`;
     }
     toolsResult = new Ok(
       filterDsbxToolEntries(imageResult.value.tools, {
@@ -145,7 +163,7 @@ async function buildSandboxInstructions(
   }
 
   if (toolsResult.isErr()) {
-    return `${sandboxInstructions}\n\n${networkAccessSection}`;
+    return `${sandboxInstructions}\n\n${networkAccessSection}\n\n${environmentVariablesSection}`;
   }
 
   const manifest = createToolManifest(toolsResult.value);
@@ -154,6 +172,8 @@ async function buildSandboxInstructions(
   return `${sandboxInstructions}
 
 ${networkAccessSection}
+
+${environmentVariablesSection}
 
 #### Sandbox Available Tools and Libraries
 

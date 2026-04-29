@@ -25,6 +25,7 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import { WorkspaceSandboxEnvVarResource } from "@app/lib/resources/workspace_sandbox_env_var_resource";
 import logger from "@app/logger/logger";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -324,6 +325,27 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     );
   }
 
+  private static async buildSandboxEnvVars(
+    auth: Authenticator,
+    conversation: ConversationType,
+    imageEnvVars: Record<string, string> | undefined
+  ): Promise<Result<Record<string, string>, Error>> {
+    const workspaceEnvResult =
+      await WorkspaceSandboxEnvVarResource.loadEnvForSandboxProvisioning(auth);
+    if (workspaceEnvResult.isErr()) {
+      return workspaceEnvResult;
+    }
+
+    return new Ok({
+      ...workspaceEnvResult.value,
+      ...imageEnvVars,
+      DD_API_KEY: config.getDatadogApiKey() ?? "",
+      DD_HOST: "http-intake.logs.datadoghq.eu",
+      CONVERSATION_ID: conversation.sId,
+      WORKSPACE_ID: auth.getNonNullableWorkspace().sId,
+    });
+  }
+
   /**
    * Ensure a running sandbox exists for the given conversation.
    *
@@ -353,17 +375,19 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         }
 
         const createConfig = imageResult.value.toCreateConfig();
+        const envVarsResult = await this.buildSandboxEnvVars(
+          auth,
+          conversation,
+          createConfig.envVars
+        );
+        if (envVarsResult.isErr()) {
+          return new Err(envVarsResult.error);
+        }
 
         const createResult = await provider.create(
           {
             ...createConfig,
-            envVars: {
-              ...createConfig.envVars,
-              DD_API_KEY: config.getDatadogApiKey() ?? "",
-              DD_HOST: "http-intake.logs.datadoghq.eu",
-              CONVERSATION_ID: conversation.sId,
-              WORKSPACE_ID: auth.getNonNullableWorkspace().sId,
-            },
+            envVars: envVarsResult.value,
           },
           tracingOpts
         );
@@ -456,17 +480,19 @@ export class SandboxResource extends BaseResource<SandboxModel> {
           }
 
           const createConfig = imageResult.value.toCreateConfig();
+          const envVarsResult = await this.buildSandboxEnvVars(
+            auth,
+            conversation,
+            createConfig.envVars
+          );
+          if (envVarsResult.isErr()) {
+            return new Err(envVarsResult.error);
+          }
 
           const createResult = await provider.create(
             {
               ...createConfig,
-              envVars: {
-                ...createConfig.envVars,
-                DD_API_KEY: config.getDatadogApiKey() ?? "",
-                DD_HOST: "http-intake.logs.datadoghq.eu",
-                CONVERSATION_ID: conversation.sId,
-                WORKSPACE_ID: auth.getNonNullableWorkspace().sId,
-              },
+              envVars: envVarsResult.value,
             },
             tracingOpts
           );
