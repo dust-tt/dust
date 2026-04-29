@@ -1,46 +1,57 @@
-import { isToolMarkerResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
-const ENABLE_SKILL_INSTRUCTIONS_MARKER = "enable_skill_instructions";
+const ENABLE_SKILL_RESULT_MIME_TYPE =
+  "application/vnd.dust.tool-output.enable-skill-result" as const;
+const ENABLE_SKILL_RESULT_URI_PREFIX = "dust://enable-skill-result/";
 
-const EnableSkillInstructionsMarkerResourceSchema = z.object({
-  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.TOOL_MARKER),
-  uri: z.literal(""),
-  text: z.literal(ENABLE_SKILL_INSTRUCTIONS_MARKER),
-  skillId: z.string(),
+const EnableSkillResultResourceSchema = z.object({
+  mimeType: z.literal(ENABLE_SKILL_RESULT_MIME_TYPE),
+  uri: z.string().startsWith(ENABLE_SKILL_RESULT_URI_PREFIX),
+  text: z.string(),
 });
 
-export function makeEnableSkillInstructionsMarker(
-  skillId: string
-): CallToolResult["content"][number] {
+type EnableSkillResultResourceType = z.infer<
+  typeof EnableSkillResultResourceSchema
+>;
+
+export function makeEnableSkillResultOutput({
+  skillId,
+  text,
+}: {
+  skillId: string;
+  text: string;
+}): CallToolResult["content"][number] {
   return {
     type: "resource",
     resource: {
-      mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.TOOL_MARKER,
-      uri: "",
-      text: ENABLE_SKILL_INSTRUCTIONS_MARKER,
-      _meta: {
-        skillId,
-      },
+      mimeType: ENABLE_SKILL_RESULT_MIME_TYPE,
+      uri: `${ENABLE_SKILL_RESULT_URI_PREFIX}${encodeURIComponent(skillId)}`,
+      text,
     },
   };
+}
+
+export function isEnableSkillResultOutput(
+  outputBlock: CallToolResult["content"][number]
+): outputBlock is {
+  type: "resource";
+  resource: EnableSkillResultResourceType;
+} {
+  return (
+    outputBlock.type === "resource" &&
+    EnableSkillResultResourceSchema.safeParse(outputBlock.resource).success
+  );
 }
 
 export function getEnableSkillIdFromOutputBlock(
   outputBlock: CallToolResult["content"][number]
 ): string | null {
-  if (!isToolMarkerResourceType(outputBlock)) {
+  if (!isEnableSkillResultOutput(outputBlock)) {
     return null;
   }
 
-  const parsedResource = EnableSkillInstructionsMarkerResourceSchema.safeParse(
-    outputBlock.resource
+  return decodeURIComponent(
+    outputBlock.resource.uri.slice(ENABLE_SKILL_RESULT_URI_PREFIX.length)
   );
-  if (!parsedResource.success) {
-    return null;
-  }
-
-  return parsedResource.data.skillId;
 }
