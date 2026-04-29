@@ -15,6 +15,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { tracer } from "@app/logger/tracer";
 import type {
@@ -169,84 +170,87 @@ async function renderDataSourcesConfigurations(
     };
   });
 
-  const dataSourceConfigurationsArray = await Promise.all(
-    selectedResources.map(async (sr) => {
-      const dataSourceView = dataSourceViews.find(
-        (dsv) => dsv.sId === sr.dataSourceViewId
-      );
-      if (!dataSourceView) {
-        throw new Error(
-          `Could not find DataSourceView with id ${sr.dataSourceViewId}`
+  const dataSourceConfigurationsArray: DataSourceViewSelectionConfiguration[] =
+    await concurrentExecutor(
+      selectedResources,
+      async (sr) => {
+        const dataSourceView = dataSourceViews.find(
+          (dsv) => dsv.sId === sr.dataSourceViewId
         );
-      }
+        if (!dataSourceView) {
+          throw new Error(
+            `Could not find DataSourceView with id ${sr.dataSourceViewId}`
+          );
+        }
 
-      const serializedDataSourceView = dataSourceView.toJSON();
+        const serializedDataSourceView = dataSourceView.toJSON();
 
-      let selectedResources: DataSourceViewContentNode[] = [];
-      if (sr.resources && sr.resources.length > 0) {
-        const contentNodesRes = await getContentNodesForDataSourceView(
-          dataSourceView,
-          {
-            internalIds: sr.resources,
-            viewType: "document",
-          }
-        );
-
-        if (contentNodesRes.isErr()) {
-          localLogger.error(
+        let selectedResources: DataSourceViewContentNode[] = [];
+        if (sr.resources && sr.resources.length > 0) {
+          const contentNodesRes = await getContentNodesForDataSourceView(
+            dataSourceView,
             {
-              dataSourceView: dataSourceView.toTraceJSON(),
-              error: contentNodesRes.error,
               internalIds: sr.resources,
-              workspace: {
-                id: dataSourceView.workspaceId,
-              },
-            },
-            "Agent Builder: Error fetching content nodes for documents."
+              viewType: "document",
+            }
           );
-          return {
-            dataSourceView: serializedDataSourceView,
-            selectedResources: [],
-            excludedResources: [],
-            isSelectAll: sr.isSelectAll,
-            tagsFilter: sr.tagsFilter,
-          };
-        }
-        selectedResources = contentNodesRes.value.nodes;
-      }
 
-      let excludedResources: DataSourceViewContentNode[] = [];
-      if (sr.excludedResources && sr.excludedResources.length > 0) {
-        const excludedContentNodes = await getContentNodesForDataSourceView(
-          dataSourceView,
-          { internalIds: sr.excludedResources, viewType: "all" }
-        );
-        if (excludedContentNodes.isErr()) {
-          localLogger.error(
-            {
-              dataSourceView: dataSourceView.toTraceJSON(),
-              error: excludedContentNodes.error,
-              internalIds: sr.excludedResources,
-              workspace: {
-                id: dataSourceView.workspaceId,
+          if (contentNodesRes.isErr()) {
+            localLogger.error(
+              {
+                dataSourceView: dataSourceView.toTraceJSON(),
+                error: contentNodesRes.error,
+                internalIds: sr.resources,
+                workspace: {
+                  id: dataSourceView.workspaceId,
+                },
               },
-            },
-            "Agent Builder: Error fetching excluded content nodes for documents."
-          );
-        } else {
-          excludedResources = excludedContentNodes.value.nodes;
+              "Agent Builder: Error fetching content nodes for documents."
+            );
+            return {
+              dataSourceView: serializedDataSourceView,
+              selectedResources: [],
+              excludedResources: [],
+              isSelectAll: sr.isSelectAll,
+              tagsFilter: sr.tagsFilter,
+            };
+          }
+          selectedResources = contentNodesRes.value.nodes;
         }
-      }
 
-      return {
-        dataSourceView: serializedDataSourceView,
-        selectedResources,
-        excludedResources,
-        isSelectAll: sr.isSelectAll,
-        tagsFilter: sr.tagsFilter,
-      };
-    })
-  );
+        let excludedResources: DataSourceViewContentNode[] = [];
+        if (sr.excludedResources && sr.excludedResources.length > 0) {
+          const excludedContentNodes = await getContentNodesForDataSourceView(
+            dataSourceView,
+            { internalIds: sr.excludedResources, viewType: "all" }
+          );
+          if (excludedContentNodes.isErr()) {
+            localLogger.error(
+              {
+                dataSourceView: dataSourceView.toTraceJSON(),
+                error: excludedContentNodes.error,
+                internalIds: sr.excludedResources,
+                workspace: {
+                  id: dataSourceView.workspaceId,
+                },
+              },
+              "Agent Builder: Error fetching excluded content nodes for documents."
+            );
+          } else {
+            excludedResources = excludedContentNodes.value.nodes;
+          }
+        }
+
+        return {
+          dataSourceView: serializedDataSourceView,
+          selectedResources,
+          excludedResources,
+          isSelectAll: sr.isSelectAll,
+          tagsFilter: sr.tagsFilter,
+        };
+      },
+      { concurrency: 4 }
+    );
 
   return dataSourceConfigurationsArray.reduce(
     (acc, curr) => ({
@@ -272,8 +276,9 @@ async function renderTableDataSourcesConfigurations(
   }));
 
   const dataSourceConfigurationsArray: DataSourceViewSelectionConfiguration[] =
-    await Promise.all(
-      selectedResources.map(async (sr) => {
+    await concurrentExecutor(
+      selectedResources,
+      async (sr) => {
         const dataSourceView = dataSourceViews.find(
           (dsv) => dsv.sId === sr.dataSourceViewId
         );
@@ -326,7 +331,8 @@ async function renderTableDataSourcesConfigurations(
           isSelectAll: sr.isSelectAll,
           tagsFilter: sr.tagsFilter,
         };
-      })
+      },
+      { concurrency: 4 }
     );
 
   // Return a map of dataSourceView.sId to selected resources.
