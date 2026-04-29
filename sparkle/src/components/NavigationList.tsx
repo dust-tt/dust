@@ -1,6 +1,5 @@
 import type * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area";
 import { Button } from "@sparkle/components/Button";
-import { Chip } from "@sparkle/components/Chip";
 import {
   Collapsible,
   CollapsibleContent,
