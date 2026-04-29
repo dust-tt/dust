@@ -29,6 +29,7 @@ import {
   Label,
   LockIcon,
   Page,
+  PencilSquareIcon,
   PlusIcon,
   Spinner,
   TextArea,
@@ -96,6 +97,7 @@ export function EnvironmentSection() {
   const hasSandboxTools = featureFlags.includes("sandbox_tools");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [envVarForm, setEnvVarForm] = useState({ name: "", value: "" });
+  const [isNameLocked, setIsNameLocked] = useState(false);
   const [envVarToDelete, setEnvVarToDelete] =
     useState<WorkspaceSandboxEnvVarType | null>(null);
 
@@ -129,6 +131,13 @@ export function EnvironmentSection() {
   const closeDialog = () => {
     setIsDialogOpen(false);
     setEnvVarForm({ name: "", value: "" });
+    setIsNameLocked(false);
+  };
+
+  const openReplaceDialog = (envVar: WorkspaceSandboxEnvVarType) => {
+    setEnvVarForm({ name: envVar.name, value: "" });
+    setIsNameLocked(true);
+    setIsDialogOpen(true);
   };
 
   const handleSave = async () => {
@@ -233,31 +242,43 @@ export function EnvironmentSection() {
                   key={envVar.name}
                   className="flex items-center justify-between gap-3 py-3"
                 >
-                  <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex min-w-0 flex-col gap-1">
                     <pre
                       title={envVar.name}
-                      className="min-w-0 overflow-x-auto whitespace-nowrap rounded bg-muted-background p-2 text-sm text-foreground dark:bg-muted-background-night dark:text-foreground-night"
+                      className="min-w-0 self-start overflow-x-auto whitespace-nowrap rounded bg-muted-background p-2 text-sm text-foreground dark:bg-muted-background-night dark:text-foreground-night"
                     >
                       {envVar.name}
                     </pre>
-                    <div className="hidden shrink-0 text-sm text-muted-foreground dark:text-muted-foreground-night sm:block">
+                    <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
                       Updated{" "}
                       {timeAgoFrom(envVar.updatedAt, { useLongFormat: true })}{" "}
                       ago by {updatedBy}
                     </div>
                   </div>
-                  <Button
-                    variant="warning"
-                    size="mini"
-                    icon={TrashIcon}
-                    tooltip={`Delete ${envVar.name}`}
-                    disabled={
-                      isDeletingWorkspaceSandboxEnvVar ||
-                      isUpsertingWorkspaceSandboxEnvVar
-                    }
-                    onClick={() => setEnvVarToDelete(envVar)}
-                    className="shrink-0"
-                  />
+                  <div className="flex shrink-0 items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="mini"
+                      icon={PencilSquareIcon}
+                      tooltip={`Replace value of ${envVar.name}`}
+                      disabled={
+                        isUpsertingWorkspaceSandboxEnvVar ||
+                        isDeletingWorkspaceSandboxEnvVar
+                      }
+                      onClick={() => openReplaceDialog(envVar)}
+                    />
+                    <Button
+                      variant="warning"
+                      size="mini"
+                      icon={TrashIcon}
+                      tooltip={`Delete ${envVar.name}`}
+                      disabled={
+                        isDeletingWorkspaceSandboxEnvVar ||
+                        isUpsertingWorkspaceSandboxEnvVar
+                      }
+                      onClick={() => setEnvVarToDelete(envVar)}
+                    />
+                  </div>
                 </div>
               );
             })}
@@ -298,7 +319,7 @@ export function EnvironmentSection() {
                     name: event.target.value.toUpperCase(),
                   })
                 }
-                disabled={isUpsertingWorkspaceSandboxEnvVar}
+                disabled={isUpsertingWorkspaceSandboxEnvVar || isNameLocked}
               />
               <div className="flex flex-col gap-1">
                 <Label htmlFor="sandbox-env-var-value">Value</Label>
