@@ -156,7 +156,6 @@ async function handler(
         case "contract.start":
         case "credit.archive":
         case "credit.create":
-        case "credit.create":
         case "credit.edit":
         case "credit.segment.end":
         case "invoice.billing_provider_error":
