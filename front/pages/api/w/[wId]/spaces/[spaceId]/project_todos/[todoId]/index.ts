@@ -73,15 +73,6 @@ async function handler(
   }
 
   const user = auth.getNonNullableUser();
-  if (todo.userId !== user.id) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "invalid_request_error",
-        message: "You can only modify your own todos.",
-      },
-    });
-  }
 
   switch (req.method) {
     case "PATCH": {

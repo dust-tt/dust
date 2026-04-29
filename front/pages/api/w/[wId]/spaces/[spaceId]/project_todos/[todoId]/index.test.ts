@@ -1,7 +1,9 @@
 import { Authenticator } from "@app/lib/auth";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { ProjectTodoFactory } from "@app/tests/utils/ProjectTodoFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { WorkspaceType } from "@app/types/user";
 import type { NextApiRequest, NextApiResponse } from "next";
 import type { MockRequest, MockResponse } from "node-mocks-http";
@@ -120,6 +122,29 @@ describe("PATCH /api/w/[wId]/spaces/[spaceId]/project_todos/[todoId]", () => {
 
     expect(res._getStatusCode()).toBe(404);
     expect(res._getJSONData().error.type).toBe("project_todo_not_found");
+  });
+
+  it("should allow updating a todo assigned to another project member", async () => {
+    const { user } = await setup();
+    const project = await SpaceFactory.project(workspace, user.id);
+    const otherUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, otherUser, { role: "user" });
+    const otherTodo = await ProjectTodoFactory.create(workspace, project, {
+      userId: otherUser.id,
+      text: "Other member todo",
+    });
+
+    req.query.spaceId = project.sId;
+    req.query.todoId = otherTodo.sId;
+    req.body = { text: "Edited by project member", status: "done" };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const { todo: updated } = res._getJSONData();
+    expect(updated.text).toBe("Edited by project member");
+    expect(updated.status).toBe("done");
+    expect(updated.userId).toBe(otherUser.sId);
   });
 
   it("should return 400 when no update fields are provided", async () => {

@@ -2,8 +2,10 @@ import { Authenticator } from "@app/lib/auth";
 import { ProjectTodoResource } from "@app/lib/resources/project_todo_resource";
 import { ProjectTodoStateResource } from "@app/lib/resources/project_todo_state_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { ProjectTodoFactory } from "@app/tests/utils/ProjectTodoFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { WorkspaceType } from "@app/types/user";
 import type { NextApiRequest, NextApiResponse } from "next";
 import type { MockRequest, MockResponse } from "node-mocks-http";
@@ -105,6 +107,44 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/project_todos/bulk-actions", () => 
 
     expect(res._getStatusCode()).toBe(400);
     expect(res._getJSONData().error.type).toBe("invalid_request_error");
+  });
+
+  it("should allow bulk status updates for todos assigned to other project members", async () => {
+    const { user } = await setup();
+    const project = await SpaceFactory.project(workspace, user.id);
+    const otherUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, otherUser, { role: "user" });
+
+    const myTodo = await ProjectTodoFactory.create(workspace, project, {
+      userId: user.id,
+    });
+    const otherTodo = await ProjectTodoFactory.create(workspace, project, {
+      userId: otherUser.id,
+    });
+
+    req.query.spaceId = project.sId;
+    req.body = {
+      action: "set_status",
+      todoIds: [myTodo.sId, otherTodo.sId],
+      status: "done",
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(res._getJSONData()).toEqual({ success: true });
+
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    const refreshedMyTodo = await ProjectTodoResource.fetchBySId(
+      auth,
+      myTodo.sId
+    );
+    const refreshedOtherTodo = await ProjectTodoResource.fetchBySId(
+      auth,
+      otherTodo.sId
+    );
+    expect(refreshedMyTodo?.status).toBe("done");
+    expect(refreshedOtherTodo?.status).toBe("done");
   });
 
   it("should clean done todos for the user in the space", async () => {

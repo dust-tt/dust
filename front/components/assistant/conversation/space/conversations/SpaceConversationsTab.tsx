@@ -180,7 +180,7 @@ export function SpaceConversationsTab({
             <ProjectTodosPanel
               owner={owner}
               spaceId={spaceInfo.sId}
-              isArchived={!!spaceInfo.archivedAt}
+              isReadOnly={!!spaceInfo.archivedAt || !spaceInfo.isMember}
             />
           )}
 

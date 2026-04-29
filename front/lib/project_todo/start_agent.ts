@@ -88,13 +88,6 @@ export async function startAgentForProjectTodo(
   }
 
   const user = auth.getNonNullableUser();
-  if (todo.userId !== user.id) {
-    return new Err({
-      statusCode: 403,
-      type: "invalid_request_error",
-      message: "You can only modify your own todos.",
-    });
-  }
 
   if (todo.category !== "to_do") {
     return new Err({
