@@ -71,8 +71,12 @@ export function MCPToolValidationRequired({
   const [neverAskAgain, setNeverAskAgain] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const { removeCompletedAction, isActionPulsing, stopPulsingAction } =
-    useBlockedActionsContext();
+  const {
+    getBlockedActions,
+    removeCompletedAction,
+    isActionPulsing,
+    stopPulsingAction,
+  } = useBlockedActionsContext();
   const { validateAction, isValidating } = useValidateAction({
     owner,
     conversationId,
@@ -109,6 +113,29 @@ export function MCPToolValidationRequired({
     }
     removeCompletedAction(blockedAction.actionId);
     setNeverAskAgain(false);
+
+    // When the user grants always-allow, cascade to other queued
+    // confirmations of the same tool so they don't have to click each one.
+    if (approved === "approved" && neverAskAgain && user) {
+      const cascadable = getBlockedActions(user.sId).filter(
+        (c) =>
+          c.actionId !== blockedAction.actionId &&
+          c.status === "blocked_validation_required" &&
+          c.metadata.mcpServerName === blockedAction.metadata.mcpServerName &&
+          c.metadata.toolName === blockedAction.metadata.toolName
+      );
+
+      for (const cascadeAction of cascadable) {
+        const cascadeResult = await validateAction({
+          validationRequest: cascadeAction,
+          messageId,
+          approved: "approved",
+        });
+        if (cascadeResult.success) {
+          removeCompletedAction(cascadeAction.actionId);
+        }
+      }
+    }
   };
 
   const toolOverride =
