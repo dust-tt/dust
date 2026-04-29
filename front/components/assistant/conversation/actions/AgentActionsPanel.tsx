@@ -401,13 +401,16 @@ function AgentSingleActionPanel({
   closeIcon = XMarkIcon,
   onClose,
 }: AgentSingleActionPanelProps) {
-  const { action: fetchedAction, messageStatus, isActionLoading } =
-    useConversationMessageAction({
-      conversationId: conversation.sId,
-      workspaceId: owner.sId,
-      messageId,
-      actionId,
-    });
+  const {
+    action: fetchedAction,
+    messageStatus,
+    isActionLoading,
+  } = useConversationMessageAction({
+    conversationId: conversation.sId,
+    workspaceId: owner.sId,
+    messageId,
+    actionId,
+  });
 
   // While the agent is streaming, the SWR-fetched action snapshot can lag the
   // live state held in the Virtuoso message (e.g. status / executionDurationMs
@@ -415,7 +418,7 @@ function AgentSingleActionPanel({
   // the panel reflects completion as soon as it happens.
   const liveAction =
     virtuosoMsg?.sId === messageId
-      ? virtuosoMsg.actions.find((a) => a.sId === actionId) ?? null
+      ? (virtuosoMsg.actions.find((a) => a.sId === actionId) ?? null)
       : null;
   const action = liveAction ?? fetchedAction;
 

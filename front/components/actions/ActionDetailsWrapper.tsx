@@ -74,9 +74,7 @@ function formatDurationMs(
     ? Math.floor(durationMs / 1000)
     : durationMs / 1000;
   if (totalSeconds < 60) {
-    return wholeSeconds
-      ? `${totalSeconds}s`
-      : `${totalSeconds.toFixed(1)}s`;
+    return wholeSeconds ? `${totalSeconds}s` : `${totalSeconds.toFixed(1)}s`;
   }
   const minutes = Math.floor(totalSeconds / 60);
   const remainder = Math.round(totalSeconds - minutes * 60);
