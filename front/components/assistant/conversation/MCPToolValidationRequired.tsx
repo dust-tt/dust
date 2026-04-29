@@ -169,11 +169,6 @@ export function MCPToolValidationRequired({
       ? "always_approved"
       : approved;
 
-    console.log("======= Validating action with approval:", {
-      actionId: blockedAction.actionId,
-      finalApproval,
-      isAlwaysApproved, });
-
     const result = await validateAction({
       validationRequest: blockedAction,
       messageId,
@@ -197,8 +192,6 @@ export function MCPToolValidationRequired({
             candidates: getBlockedActions(user.sId),
           })
         : [];
-
-    console.log("======= Cascadable actions:", cascadableActions.map((a) => a.actionId));
 
     removeCompletedAction(blockedAction.actionId);
     setNeverAskAgain(false);
