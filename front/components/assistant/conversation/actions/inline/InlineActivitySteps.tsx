@@ -154,9 +154,6 @@ export function InlineActivitySteps({
   const showActiveThinking = !isDone && isThinking;
   const showActiveWriting = !isDone && isWriting;
   const activePendingToolCalls = showPendingToolCalls ? pendingToolCalls : [];
-  const showTrailingLoader =
-    (showActiveThinking && !chainOfThought) ||
-    (showActiveWriting && !agentMessage.content);
   const completedActionIds = new Set(
     completedSteps.filter((s) => s.type === "action").map((s) => s.id)
   );
@@ -164,6 +161,13 @@ export function InlineActivitySteps({
     !isDone && isActing && isAgentMessageWithActions
       ? actions.filter((a) => !completedActionIds.has(`action-${a.id}`))
       : [];
+  const isStreamingWithoutContent =
+    (showActiveThinking && !chainOfThought) ||
+    (showActiveWriting && !agentMessage.content);
+  const hasActiveSpinnerRow =
+    activeActions.length > 0 || activePendingToolCalls.length > 0;
+  // Only show the trailing loader when nothing else already renders one.
+  const showTrailingLoader = isStreamingWithoutContent && !hasActiveSpinnerRow;
 
   const hasContent =
     completedSteps.length > 0 ||
