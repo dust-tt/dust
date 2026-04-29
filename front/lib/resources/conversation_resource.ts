@@ -3175,17 +3175,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
   async updateSpaceId(
     auth: Authenticator,
-    space: SpaceResource,
+    space: SpaceResource | null,
     transaction?: Transaction
   ) {
-    await this.update({ spaceId: space.id }, transaction);
-
-    await ConversationResource.triggerEsIndexing(auth, this.sId);
-  }
-
-  async clearSpaceId(auth: Authenticator) {
-    await this.update({ spaceId: null });
-    this._space = null;
+    await this.update({ spaceId: space?.id ?? null }, transaction);
+    this._space = space;
 
     await ConversationResource.triggerEsIndexing(auth, this.sId);
   }
