@@ -43,12 +43,12 @@ describe("lookupAutoApprovePredicate", () => {
   it("auto-approves add_egress_domain when the workspace policy covers the domain", async () => {
     const { authenticator: auth } = await createResourceTest({});
     mockReadWorkspacePolicy.mockResolvedValue(
-      new Ok({ allowedDomains: ["*.github.com"] }),
+      new Ok({ allowedDomains: ["*.github.com"] })
     );
 
     const predicate = lookupAutoApprovePredicate(
       "sandbox",
-      "add_egress_domain",
+      "add_egress_domain"
     );
     if (!predicate) {
       throw new Error("Expected sandbox add_egress_domain predicate");
@@ -74,12 +74,12 @@ describe("lookupAutoApprovePredicate", () => {
       providerId: "provider-id",
     });
     mockReadSandboxPolicy.mockResolvedValue(
-      new Ok({ allowedDomains: ["api.github.com"] }),
+      new Ok({ allowedDomains: ["api.github.com"] })
     );
 
     const predicate = lookupAutoApprovePredicate(
       "sandbox",
-      "add_egress_domain",
+      "add_egress_domain"
     );
     if (!predicate) {
       throw new Error("Expected sandbox add_egress_domain predicate");
@@ -97,7 +97,7 @@ describe("lookupAutoApprovePredicate", () => {
     expect(result).toBe(true);
     expect(mockFetchByConversationId).toHaveBeenCalledWith(
       auth,
-      "conversation",
+      "conversation"
     );
     expect(mockReadSandboxPolicy).toHaveBeenCalledWith("provider-id");
   });
@@ -106,7 +106,7 @@ describe("lookupAutoApprovePredicate", () => {
     const { authenticator: auth } = await createResourceTest({});
     const predicate = lookupAutoApprovePredicate(
       "sandbox",
-      "add_egress_domain",
+      "add_egress_domain"
     );
     if (!predicate) {
       throw new Error("Expected sandbox add_egress_domain predicate");

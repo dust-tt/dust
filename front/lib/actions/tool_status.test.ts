@@ -64,7 +64,7 @@ describe("extractArgRequiringApprovalValues", () => {
         retries: 3,
         dryRun: false,
         email: ["adrien@dust.tt"],
-      },
+      }
     );
 
     expect(values).toEqual({
@@ -157,13 +157,13 @@ describe("getExecutionStatusFromConfig", () => {
         conversationId: "conversation",
         rawInputs,
         toolInputs: rawInputs,
-      },
+      }
     );
 
     expect(result.status).toBe("ready_allowed_implicitly");
     expect(mockLookupAutoApprovePredicate).toHaveBeenCalledWith(
       "sandbox",
-      "add_egress_domain",
+      "add_egress_domain"
     );
     expect(predicate).toHaveBeenCalledWith({
       auth: expect.anything(),
@@ -186,7 +186,7 @@ describe("getExecutionStatusFromConfig", () => {
         agentId: "agent",
         conversationId: "conversation",
         toolInputs: {},
-      },
+      }
     );
 
     expect(result.status).toBe("blocked_validation_required");

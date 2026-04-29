@@ -71,7 +71,7 @@ vi.mock("@app/lib/api/sandbox/egress_policy", async (importOriginal) => {
 vi.mock("@app/lib/api/audit/workos_audit", () => ({
   buildAuditLogTarget: (
     type: string,
-    resource: { name?: string; sId: string },
+    resource: { name?: string; sId: string }
   ) => ({
     id: resource.sId,
     name: resource.name ?? resource.sId,
@@ -156,7 +156,7 @@ describe("createSandboxTools", () => {
     });
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
-      workspace.sId,
+      workspace.sId
     );
 
     const tools = await createSandboxTools(auth);
@@ -174,7 +174,7 @@ describe("buildDescribeToolsetOutput", () => {
     const hiddenResult = await buildDescribeToolsetOutput(
       auth,
       "openai",
-      "yaml",
+      "yaml"
     );
     expect(hiddenResult.isOk()).toBe(true);
 
@@ -189,7 +189,7 @@ describe("buildDescribeToolsetOutput", () => {
     const visibleResult = await buildDescribeToolsetOutput(
       auth,
       "openai",
-      "yaml",
+      "yaml"
     );
     expect(visibleResult.isOk()).toBe(true);
 
@@ -215,7 +215,7 @@ describe("runSandboxBashTool", () => {
     mockSetupEgressForwarder.mockResolvedValue(new Ok(undefined));
     mockStartTelemetry.mockResolvedValue(undefined);
     mockWrapCommand.mockImplementation(
-      (command: string) => `wrapped:${command}`,
+      (command: string) => `wrapped:${command}`
     );
   });
 
@@ -248,7 +248,7 @@ describe("runSandboxBashTool", () => {
       exec: vi
         .fn()
         .mockResolvedValue(
-          new Ok({ exitCode: 0, stdout: "hello", stderr: "" }),
+          new Ok({ exitCode: 0, stdout: "hello", stderr: "" })
         ),
     };
 
@@ -257,14 +257,14 @@ describe("runSandboxBashTool", () => {
         freshlyCreated: false,
         sandbox,
         wokeFromSleep: false,
-      }),
+      })
     );
 
     mockCheckEgressForwarderHealth.mockResolvedValue(new Ok(true));
 
     const result = await runSandboxBashTool(
       { command: "echo hello", description: "Run command" },
-      makeExtra(),
+      makeExtra()
     );
 
     expect(result.isOk()).toBe(true);
@@ -274,7 +274,7 @@ describe("runSandboxBashTool", () => {
       "wrapped:echo hello",
       expect.objectContaining({
         user: "agent-proxied",
-      }),
+      })
     );
   });
 
@@ -285,7 +285,7 @@ describe("runSandboxBashTool", () => {
       exec: vi
         .fn()
         .mockResolvedValue(
-          new Ok({ exitCode: 0, stdout: "hello", stderr: "" }),
+          new Ok({ exitCode: 0, stdout: "hello", stderr: "" })
         ),
     };
 
@@ -294,14 +294,14 @@ describe("runSandboxBashTool", () => {
         freshlyCreated: false,
         sandbox,
         wokeFromSleep: true,
-      }),
+      })
     );
 
     mockCheckEgressForwarderHealth.mockResolvedValue(new Ok(false));
 
     const result = await runSandboxBashTool(
       { command: "echo hello", description: "Run command" },
-      makeExtra(),
+      makeExtra()
     );
 
     expect(result.isOk()).toBe(true);
@@ -311,13 +311,13 @@ describe("runSandboxBashTool", () => {
       "wrapped:echo hello",
       expect.objectContaining({
         user: "agent-proxied",
-      }),
+      })
     );
     expect(mockRecordToolDuration).toHaveBeenCalledWith(
       "bash",
       expect.any(Number),
       { workspaceId: "workspace-id" },
-      "success",
+      "success"
     );
   });
 
@@ -333,16 +333,16 @@ describe("runSandboxBashTool", () => {
         freshlyCreated: true,
         sandbox,
         wokeFromSleep: false,
-      }),
+      })
     );
 
     mockSetupEgressForwarder.mockResolvedValue(
-      new Err(new Error("setup failed")),
+      new Err(new Error("setup failed"))
     );
 
     const result = await runSandboxBashTool(
       { command: "echo hello", description: "Run command" },
-      makeExtra(),
+      makeExtra()
     );
 
     expect(result.isErr()).toBe(true);
@@ -364,7 +364,7 @@ describe("addEgressDomainTool", () => {
       new Ok({
         addedDomain: "example.org",
         policy: { allowedDomains: ["example.org"] },
-      }),
+      })
     );
     mockReadSandboxPolicy.mockResolvedValue(new Ok({ allowedDomains: [] }));
     mockReadWorkspacePolicy.mockResolvedValue(new Ok({ allowedDomains: [] }));
@@ -400,13 +400,13 @@ describe("addEgressDomainTool", () => {
         domain: "example.org",
         reason: "Retry a blocked request.",
       },
-      makeExtra({ allowAgentEgressRequests: false }),
+      makeExtra({ allowAgentEgressRequests: false })
     );
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
       expect(result.error.message).toContain(
-        "Agent-driven egress requests are disabled",
+        "Agent-driven egress requests are disabled"
       );
     }
     expect(mockEnsureActive).not.toHaveBeenCalled();
@@ -422,7 +422,7 @@ describe("addEgressDomainTool", () => {
           sId: "sandbox-id",
         },
         wokeFromSleep: false,
-      }),
+      })
     );
 
     const result = await addEgressDomainTool(
@@ -430,7 +430,7 @@ describe("addEgressDomainTool", () => {
         domain: "Example.ORG",
         reason: "Install package dependencies.",
       },
-      makeExtra(),
+      makeExtra()
     );
 
     expect(result.isOk()).toBe(true);
@@ -470,10 +470,10 @@ describe("addEgressDomainTool", () => {
           sId: "sandbox-id",
         },
         wokeFromSleep: false,
-      }),
+      })
     );
     mockReadWorkspacePolicy.mockResolvedValue(
-      new Ok({ allowedDomains: ["*.example.org"] }),
+      new Ok({ allowedDomains: ["*.example.org"] })
     );
 
     const result = await addEgressDomainTool(
@@ -481,7 +481,7 @@ describe("addEgressDomainTool", () => {
         domain: "api.example.org",
         reason: "Retry a blocked request.",
       },
-      makeExtra(),
+      makeExtra()
     );
 
     expect(result.isOk()).toBe(true);
@@ -495,11 +495,11 @@ describe("addEgressDomainTool", () => {
           auto_approved_source: "workspace",
           domain: "api.example.org",
         }),
-      }),
+      })
     );
     if (result.isOk()) {
       expect(result.value[0].text).toBe(
-        "Domain already allowed via workspace allowlist — no action needed.",
+        "Domain already allowed via workspace allowlist — no action needed."
       );
     }
   });
@@ -513,10 +513,10 @@ describe("addEgressDomainTool", () => {
           sId: "sandbox-id",
         },
         wokeFromSleep: false,
-      }),
+      })
     );
     mockReadSandboxPolicy.mockResolvedValue(
-      new Ok({ allowedDomains: ["example.org"] }),
+      new Ok({ allowedDomains: ["example.org"] })
     );
 
     const result = await addEgressDomainTool(
@@ -524,7 +524,7 @@ describe("addEgressDomainTool", () => {
         domain: "example.org",
         reason: "Retry a blocked request.",
       },
-      makeExtra(),
+      makeExtra()
     );
 
     expect(result.isOk()).toBe(true);
@@ -537,11 +537,11 @@ describe("addEgressDomainTool", () => {
           auto_approved_source: "sandbox",
           domain: "example.org",
         }),
-      }),
+      })
     );
     if (result.isOk()) {
       expect(result.value[0].text).toBe(
-        "Domain already in this sandbox's allowlist — no action needed.",
+        "Domain already in this sandbox's allowlist — no action needed."
       );
     }
   });
@@ -555,13 +555,13 @@ describe("addEgressDomainTool", () => {
           sId: "sandbox-id",
         },
         wokeFromSleep: false,
-      }),
+      })
     );
     mockAddSandboxPolicyDomain.mockResolvedValue(
       new Ok({
         addedDomain: null,
         policy: { allowedDomains: ["example.org"] },
-      }),
+      })
     );
 
     const result = await addEgressDomainTool(
@@ -569,7 +569,7 @@ describe("addEgressDomainTool", () => {
         domain: "example.org",
         reason: "Retry a blocked request.",
       },
-      makeExtra(),
+      makeExtra()
     );
 
     expect(result.isOk()).toBe(true);
@@ -582,7 +582,7 @@ describe("addEgressDomainTool", () => {
           added: "false",
           domain: "example.org",
         }),
-      }),
+      })
     );
   });
 
@@ -595,7 +595,7 @@ describe("addEgressDomainTool", () => {
           sId: "sandbox-id",
         },
         wokeFromSleep: false,
-      }),
+      })
     );
 
     const result = await addEgressDomainTool(
@@ -603,7 +603,7 @@ describe("addEgressDomainTool", () => {
         domain: "*.example.org",
         reason: "Too broad.",
       },
-      makeExtra(),
+      makeExtra()
     );
 
     expect(result.isErr()).toBe(true);
@@ -626,7 +626,7 @@ describe("addEgressDomainTool", () => {
         },
         agentLoopContext: undefined,
         signal: new AbortController().signal,
-      } as never,
+      } as never
     );
 
     expect(result.isErr()).toBe(true);
@@ -641,7 +641,7 @@ describe("addEgressDomainTool", () => {
         domain: "example.org",
         reason: "Retry a blocked request.",
       },
-      makeExtra(),
+      makeExtra()
     );
 
     expect(result.isErr()).toBe(true);
@@ -657,10 +657,10 @@ describe("addEgressDomainTool", () => {
           sId: "sandbox-id",
         },
         wokeFromSleep: false,
-      }),
+      })
     );
     mockAddSandboxPolicyDomain.mockResolvedValue(
-      new Err(new Error("Sandbox egress policy cannot exceed 100 domains.")),
+      new Err(new Error("Sandbox egress policy cannot exceed 100 domains."))
     );
 
     const result = await addEgressDomainTool(
@@ -668,7 +668,7 @@ describe("addEgressDomainTool", () => {
         domain: "overflow.example.org",
         reason: "Retry a blocked request.",
       },
-      makeExtra(),
+      makeExtra()
     );
 
     expect(result.isErr()).toBe(true);

@@ -1,10 +1,10 @@
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import { SANDBOX_TOOLS_METADATA } from "@app/lib/api/actions/servers/sandbox/metadata";
 import {
   parseExactEgressDomain,
   readSandboxPolicy,
   readWorkspacePolicy,
 } from "@app/lib/api/sandbox/egress_policy";
-import { SANDBOX_TOOLS_METADATA } from "@app/lib/api/actions/servers/sandbox/metadata";
 import type { Authenticator } from "@app/lib/auth";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { domainMatchesAllowlist } from "@app/types/sandbox/egress_policy";
@@ -17,7 +17,7 @@ type AutoApprovePredicate = (params: {
 }) => Promise<boolean>;
 
 const AddEgressDomainInputSchema = z.object(
-  SANDBOX_TOOLS_METADATA.add_egress_domain.schema,
+  SANDBOX_TOOLS_METADATA.add_egress_domain.schema
 );
 
 async function shouldAutoApproveAddEgressDomain({
@@ -52,7 +52,7 @@ async function shouldAutoApproveAddEgressDomain({
 
   const sandbox = await SandboxResource.fetchByConversationId(
     auth,
-    conversationId,
+    conversationId
   );
   if (!sandbox) {
     return false;
@@ -65,13 +65,13 @@ async function shouldAutoApproveAddEgressDomain({
 
   return domainMatchesAllowlist(
     domain.value,
-    sandboxPolicy.value.allowedDomains,
+    sandboxPolicy.value.allowedDomains
   );
 }
 
 export function lookupAutoApprovePredicate(
   server: InternalMCPServerNameType,
-  toolName: string,
+  toolName: string
 ): AutoApprovePredicate | null {
   if (
     server === "sandbox" &&
