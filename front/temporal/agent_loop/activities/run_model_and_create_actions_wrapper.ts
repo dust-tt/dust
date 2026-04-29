@@ -100,6 +100,7 @@ async function _runModelAndCreateActionsActivity({
   step: number;
 }): Promise<RunModelAndCreateActionsResult | null> {
   const activityTimeoutDeadlineMs = getActivityTimeoutDeadlineMs();
+  const durationRecorder = DurationRecorder.create([]);
 
   const runAgentDataRes = await startActiveObservation(
     "get-agent-loop-data",
@@ -121,7 +122,6 @@ async function _runModelAndCreateActionsActivity({
 
   const { auth, ...runAgentData } = runAgentDataRes.value;
   const isRootAgentMessage = !runAgentData.userMessage.agenticMessageData;
-  const durationRecorder = DurationRecorder.create([]);
 
   // Intentionally check at step start (not step end) to early exit if dollar amount too high.
   // This can miss thresholds crossed on the final step.
