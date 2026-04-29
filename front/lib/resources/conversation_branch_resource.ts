@@ -116,6 +116,24 @@ export class ConversationBranchResource extends BaseResource<ConversationBranchM
     });
   }
 
+  async getPreviousUserMessageOrigin(
+    auth: Authenticator
+  ): Promise<string | null> {
+    const owner = auth.getNonNullableWorkspace();
+
+    const previous = await MessageModel.findOne({
+      where: {
+        id: this.previousMessageId,
+        workspaceId: owner.id,
+      },
+      include: [
+        { model: UserMessageModel, as: "userMessage", required: false },
+      ],
+    });
+
+    return previous?.userMessage?.userContextOrigin ?? null;
+  }
+
   /**
    * Lists all branches for a given conversation within the authenticated workspace.
    */
