@@ -1,6 +1,9 @@
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { getConversationFilesBasePath } from "@app/lib/api/files/mount_path";
+import {
+  getConversationFilesBasePath,
+  parseScopedFilePath,
+} from "@app/lib/api/files/mount_path";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -51,14 +54,25 @@ async function handler(
     });
   }
 
-  const owner = auth.getNonNullableWorkspace();
+  const scopedPath = parseScopedFilePath(filePath);
+  if (!scopedPath || scopedPath.prefix !== "conversation") {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message:
+          "Invalid filePath: must be a scoped path (e.g. conversation/file.png).",
+      },
+    });
+  }
 
-  // filePath is relative to the conversation's files base. Reject any traversal attempt.
-  const normalizedRelative = path.posix.normalize(filePath);
-  if (
-    normalizedRelative.startsWith("..") ||
-    normalizedRelative.startsWith("/")
-  ) {
+  const owner = auth.getNonNullableWorkspace();
+  const basePath = getConversationFilesBasePath({
+    workspaceId: owner.sId,
+    conversationId: cId,
+  });
+  const normalizedPath = path.posix.normalize(`${basePath}${scopedPath.rel}`);
+  if (!normalizedPath.startsWith(basePath)) {
     return apiError(req, res, {
       status_code: 403,
       api_error: {
@@ -67,12 +81,6 @@ async function handler(
       },
     });
   }
-
-  const basePath = getConversationFilesBasePath({
-    workspaceId: owner.sId,
-    conversationId: cId,
-  });
-  const normalizedPath = `${basePath}${normalizedRelative}`;
 
   const [fileResource] = await FileResource.fetchByMountFilePaths(auth, [
     normalizedPath,

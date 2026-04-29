@@ -22,6 +22,38 @@ type GCSMountPoint = {
   conversationId: string;
 };
 
+function makeFileEntry(
+  {
+    fileName,
+    relativeFilePath,
+    sizeBytes,
+    contentType,
+    lastModifiedMs,
+    fileId,
+  }: {
+    fileName: string;
+    relativeFilePath: string;
+    sizeBytes: number;
+    contentType: string;
+    lastModifiedMs: number;
+    fileId: string | null;
+  },
+  scope: GCSMountPoint,
+  workspaceId: string
+): GCSMountFileEntry {
+  return {
+    fileName,
+    path: `${scope.useCase}/${relativeFilePath}`,
+    sizeBytes,
+    contentType,
+    lastModifiedMs,
+    fileId,
+    thumbnailUrl: isSupportedImageContentType(contentType)
+      ? `${config.getClientFacingUrl()}/api/w/${workspaceId}/assistant/conversations/${scope.conversationId}/files/thumbnail?filePath=${encodeURIComponent(`${scope.useCase}/${relativeFilePath}`)}`
+      : null,
+  };
+}
+
 /**
  * List files from a GCS mount point (mounted bucket as source of truth).
  */
@@ -78,42 +110,94 @@ export async function listGCSMountFiles(
       return [];
     }
     return [
-      {
-        fileName: name,
-        path: trimmed,
-        sizeBytes: 0,
-        contentType: "inode/directory",
-        lastModifiedMs: isString(f.metadata.updated)
-          ? new Date(f.metadata.updated).getTime()
-          : 0,
-        fileId: null,
-        thumbnailUrl: null,
-      },
+      makeFileEntry(
+        {
+          fileName: name,
+          relativeFilePath: trimmed.slice(prefix.length),
+          sizeBytes: 0,
+          contentType: "inode/directory",
+          lastModifiedMs: isString(f.metadata.updated)
+            ? new Date(f.metadata.updated).getTime()
+            : 0,
+          fileId: null,
+        },
+        scope,
+        owner.sId
+      ),
     ];
   });
 
   const fileEntries: GCSMountFileEntry[] = regularFiles.map((gcsFile) => {
-    const fileName = gcsFile.name.split("/").pop() ?? gcsFile.name;
     const metadata = gcsFile.metadata;
     const contentType = isString(metadata.contentType)
       ? metadata.contentType
       : "application/octet-stream";
     const fileResource = fileResourceByMountPath.get(gcsFile.name) ?? null;
 
-    return {
-      fileName,
-      path: gcsFile.name,
-      sizeBytes: Number(metadata.size ?? 0),
-      contentType,
-      lastModifiedMs: isString(metadata.updated)
-        ? new Date(metadata.updated).getTime()
-        : 0,
-      fileId: fileResource?.sId ?? null,
-      thumbnailUrl: isSupportedImageContentType(contentType)
-        ? `${config.getClientFacingUrl()}/api/w/${owner.sId}/assistant/conversations/${scope.conversationId}/files/thumbnail?filePath=${encodeURIComponent(gcsFile.name.slice(prefix.length))}`
-        : null,
-    };
+    return makeFileEntry(
+      {
+        fileName: gcsFile.name.split("/").pop() ?? gcsFile.name,
+        relativeFilePath: gcsFile.name.slice(prefix.length),
+        sizeBytes: Number(metadata.size ?? 0),
+        contentType,
+        lastModifiedMs: isString(metadata.updated)
+          ? new Date(metadata.updated).getTime()
+          : 0,
+        fileId: fileResource?.sId ?? null,
+      },
+      scope,
+      owner.sId
+    );
   });
 
   return [...folderEntries, ...fileEntries];
+}
+
+/**
+ * Write a file into a GCS mount point.
+ * Returns the entry as it would appear in listGCSMountFiles.
+ */
+export async function createGCSMountFile(
+  auth: Authenticator,
+  scope: GCSMountPoint,
+  {
+    fileName,
+    content,
+    contentType,
+  }: {
+    fileName: string;
+    content: Buffer;
+    contentType: string;
+  }
+): Promise<GCSMountFileEntry> {
+  const owner = auth.getNonNullableWorkspace();
+
+  let prefix: string;
+  switch (scope.useCase) {
+    case "conversation":
+      prefix = getConversationFilesBasePath({
+        workspaceId: owner.sId,
+        conversationId: scope.conversationId,
+      });
+      break;
+    default:
+      assertNever(scope.useCase);
+  }
+
+  const gcsPath = `${prefix}${fileName}`;
+  const bucket = getPrivateUploadBucket();
+  await bucket.file(gcsPath).save(content, { contentType });
+
+  return makeFileEntry(
+    {
+      fileName,
+      relativeFilePath: fileName,
+      sizeBytes: content.length,
+      contentType,
+      lastModifiedMs: Date.now(),
+      fileId: null,
+    },
+    scope,
+    owner.sId
+  );
 }
