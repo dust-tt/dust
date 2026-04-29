@@ -468,6 +468,7 @@ describe("useAgentMessageStream", () => {
         id: `action-${action.id}`,
         actionId: action.sId,
         internalMCPServerName: action.internalMCPServerName,
+        toolName: action.toolName ?? null,
       },
     ]);
     expect(currentMessage.chainOfThought).toBe("");
