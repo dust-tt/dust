@@ -666,15 +666,14 @@ const InputBarContainer = ({
   // Update the editor ref when the editor is created and listen for updates to the editor.
   useEffect(() => {
     const handleUpdate = () => {
-      setIsEmpty(editorService.isEmpty());
+      const editorIsEmpty = editorService.isEmpty();
+      setIsEmpty(editorIsEmpty);
 
       // Auto-save draft when content changes and track user mentions.
       // Include the selected single agent so the debounced save doesn't
       // overwrite the agent mention saved by the single-agent effect.
       const { markdown, mentions } = editorService.getMarkdownAndMentions();
-      if (!editorService.isEmpty()) {
-        saveDraft(markdown, selectedSingleAgentRef.current);
-      }
+      saveDraft(editorIsEmpty ? "" : markdown, selectedSingleAgentRef.current);
       const userMentioned = mentions.some((m) => m.type === "user");
       setHasUserMention(userMentioned);
       onEditorMentionsChangedRef.current(userMentioned);
