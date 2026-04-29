@@ -1,4 +1,7 @@
-import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
+import {
+  ActionDetailsWrapper,
+  ActionExecutionProvider,
+} from "@app/components/actions/ActionDetailsWrapper";
 import {
   makeQueryTextForDataSourceSearch,
   makeQueryTextForFind,
@@ -140,7 +143,19 @@ function getActionLabel({
   );
 }
 
-export function MCPActionDetails({
+export function MCPActionDetails(props: MCPActionDetailsProps) {
+  return (
+    <ActionExecutionProvider
+      executionDurationMs={props.action.executionDurationMs}
+      isExecuting={props.action.status === "running"}
+      startedAtMs={props.action.createdAt}
+    >
+      <MCPActionDetailsInner {...props} />
+    </ActionExecutionProvider>
+  );
+}
+
+function MCPActionDetailsInner({
   action,
   displayContext,
   owner,
