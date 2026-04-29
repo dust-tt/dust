@@ -91,7 +91,7 @@ function isAdvancedSearchMode(agentLoopContext?: AgentLoopContextType) {
   return (
     (agentLoopContext?.runContext &&
       isLightServerSideMCPToolConfiguration(
-        agentLoopContext.runContext.toolConfiguration,
+        agentLoopContext.runContext.toolConfiguration
       ) &&
       agentLoopContext.runContext.toolConfiguration.additionalConfiguration[
         ADVANCED_SEARCH_SWITCH
@@ -99,7 +99,7 @@ function isAdvancedSearchMode(agentLoopContext?: AgentLoopContextType) {
       ] === true) ||
     (agentLoopContext?.listToolsContext &&
       isServerSideMCPServerConfiguration(
-        agentLoopContext.listToolsContext.agentActionConfiguration,
+        agentLoopContext.listToolsContext.agentActionConfiguration
       ) &&
       agentLoopContext.listToolsContext.agentActionConfiguration
         .additionalConfiguration[ADVANCED_SEARCH_SWITCH] === true)
@@ -115,7 +115,7 @@ export async function getInternalMCPServer(
     internalMCPServerName: InternalMCPServerNameType;
     mcpServerId: string;
   },
-  agentLoopContext?: AgentLoopContextType,
+  agentLoopContext?: AgentLoopContextType
 ): Promise<McpServer> {
   switch (internalMCPServerName) {
     case "github":

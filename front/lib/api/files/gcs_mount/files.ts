@@ -7,20 +7,53 @@ import { isSupportedImageContentType } from "@app/types/files";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
 
-export type GCSMountFileEntry = {
+type GCSMountEntryBase = {
   fileName: string;
   path: string;
   sizeBytes: number;
-  contentType: string;
   lastModifiedMs: number;
+};
+
+export type GCSMountDirectoryEntry = GCSMountEntryBase & {
+  isDirectory: true;
+};
+
+export type GCSMountFileEntry = GCSMountEntryBase & {
+  isDirectory: false;
+  contentType: string;
   fileId: string | null;
   thumbnailUrl: string | null;
 };
+
+export type GCSMountEntry = GCSMountDirectoryEntry | GCSMountFileEntry;
 
 type GCSMountPoint = {
   useCase: "conversation";
   conversationId: string;
 };
+
+function makeDirectoryEntry(
+  {
+    fileName,
+    relativeFilePath,
+    sizeBytes,
+    lastModifiedMs,
+  }: {
+    fileName: string;
+    relativeFilePath: string;
+    sizeBytes: number;
+    lastModifiedMs: number;
+  },
+  scope: GCSMountPoint
+): GCSMountDirectoryEntry {
+  return {
+    isDirectory: true,
+    fileName,
+    path: `${scope.useCase}/${relativeFilePath}`,
+    sizeBytes,
+    lastModifiedMs,
+  };
+}
 
 function makeFileEntry(
   {
@@ -42,6 +75,7 @@ function makeFileEntry(
   workspaceId: string
 ): GCSMountFileEntry {
   return {
+    isDirectory: false,
     fileName,
     path: `${scope.useCase}/${relativeFilePath}`,
     sizeBytes,
@@ -60,7 +94,7 @@ function makeFileEntry(
 export async function listGCSMountFiles(
   auth: Authenticator,
   scope: GCSMountPoint
-): Promise<GCSMountFileEntry[]> {
+): Promise<GCSMountEntry[]> {
   const owner = auth.getNonNullableWorkspace();
 
   let prefix: string;
@@ -79,8 +113,6 @@ export async function listGCSMountFiles(
   const gcsFiles = await bucket.getFiles({ prefix, maxResults: 200 });
 
   // GCS folder placeholders are zero-byte objects whose path ends with "/".
-  // Split them out early so we can represent them as inode/directory entries
-  // without fetching FileResources for them.
   const folderPlaceholders = gcsFiles.filter((f) => f.name.endsWith("/"));
   const regularFiles = gcsFiles.filter((f) => {
     if (f.name.endsWith("/")) {
@@ -102,30 +134,30 @@ export async function listGCSMountFiles(
     }
   }
 
-  const folderEntries: GCSMountFileEntry[] = folderPlaceholders.flatMap((f) => {
-    const trimmed = f.name.replace(/\/$/, "");
-    const name = trimmed.split("/").pop() ?? "";
-    // Skip hidden folders (name starting with ".").
-    if (!name || name.startsWith(".")) {
-      return [];
+  const folderEntries: GCSMountDirectoryEntry[] = folderPlaceholders.flatMap(
+    (f) => {
+      const trimmed = f.name.replace(/\/$/, "");
+      const name = trimmed.split("/").pop() ?? "";
+      // Skip hidden folders (name starting with ".").
+      if (!name || name.startsWith(".")) {
+        return [];
+      }
+
+      return [
+        makeDirectoryEntry(
+          {
+            fileName: name,
+            relativeFilePath: trimmed.slice(prefix.length),
+            sizeBytes: 0,
+            lastModifiedMs: isString(f.metadata.updated)
+              ? new Date(f.metadata.updated).getTime()
+              : 0,
+          },
+          scope
+        ),
+      ];
     }
-    return [
-      makeFileEntry(
-        {
-          fileName: name,
-          relativeFilePath: trimmed.slice(prefix.length),
-          sizeBytes: 0,
-          contentType: "inode/directory",
-          lastModifiedMs: isString(f.metadata.updated)
-            ? new Date(f.metadata.updated).getTime()
-            : 0,
-          fileId: null,
-        },
-        scope,
-        owner.sId
-      ),
-    ];
-  });
+  );
 
   const fileEntries: GCSMountFileEntry[] = regularFiles.map((gcsFile) => {
     const metadata = gcsFile.metadata;

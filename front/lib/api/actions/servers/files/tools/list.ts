@@ -20,7 +20,8 @@ export async function listHandler(
     useCase: "conversation",
     conversationId: conversation.sId,
   });
-  const files = entries.filter((f) => f.contentType !== "inode/directory");
+
+  const files = entries.filter((f) => !f.isDirectory);
   if (files.length === 0) {
     return new Ok([{ type: "text", text: "No files available." }]);
   }

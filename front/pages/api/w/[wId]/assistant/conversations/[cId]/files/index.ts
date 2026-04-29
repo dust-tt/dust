@@ -1,6 +1,7 @@
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import {
+  type GCSMountEntry,
   type GCSMountFileEntry,
   listGCSMountFiles,
 } from "@app/lib/api/files/gcs_mount/files";
@@ -11,10 +12,10 @@ import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-export type { GCSMountFileEntry };
+export type { GCSMountEntry, GCSMountFileEntry };
 
 export type GetConversationFilesResponseBody = {
-  files: GCSMountFileEntry[];
+  files: GCSMountEntry[];
 };
 
 async function handler(
