@@ -127,8 +127,7 @@ export function NewFileExplorer({
     const map = new Map<string, GCSMountFileEntry>();
     for (const f of files) {
       const slashIdx = f.path.indexOf("/");
-      const relativePath =
-        slashIdx >= 0 ? f.path.slice(slashIdx + 1) : f.path;
+      const relativePath = slashIdx >= 0 ? f.path.slice(slashIdx + 1) : f.path;
       map.set(relativePath, f);
     }
     return map;

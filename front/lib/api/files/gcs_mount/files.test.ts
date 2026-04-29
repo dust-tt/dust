@@ -56,7 +56,9 @@ describe("createGCSMountFile", () => {
       { fileName: "report.txt", content, contentType: "text/plain" }
     );
 
-    expect(saveMock).toHaveBeenCalledWith(content, { contentType: "text/plain" });
+    expect(saveMock).toHaveBeenCalledWith(content, {
+      contentType: "text/plain",
+    });
     const bucket = vi.mocked(getPrivateUploadBucket)();
     expect(bucket.file).toHaveBeenCalledWith(
       `w/${workspaceId}/conversations/${conversationId}/files/report.txt`
@@ -87,7 +89,11 @@ describe("createGCSMountFile", () => {
     const entry = await createGCSMountFile(
       auth,
       { useCase: "conversation", conversationId },
-      { fileName: "photo.png", content: Buffer.from("png data"), contentType: "image/png" }
+      {
+        fileName: "photo.png",
+        content: Buffer.from("png data"),
+        contentType: "image/png",
+      }
     );
 
     expect(entry.thumbnailUrl).toBe(
@@ -99,7 +105,11 @@ describe("createGCSMountFile", () => {
     const entry = await createGCSMountFile(
       auth,
       { useCase: "conversation", conversationId },
-      { fileName: "data.csv", content: Buffer.from("a,b"), contentType: "text/csv" }
+      {
+        fileName: "data.csv",
+        content: Buffer.from("a,b"),
+        contentType: "text/csv",
+      }
     );
 
     expect(entry.thumbnailUrl).toBeNull();

@@ -57,7 +57,8 @@ async function handler(
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Invalid filePath: must be a scoped path (e.g. conversation/file.png).",
+        message:
+          "Invalid filePath: must be a scoped path (e.g. conversation/file.png).",
       },
     });
   }
