@@ -152,25 +152,26 @@ export function renderActionForMultiActionsModel(
 /**
  * Processes agent message steps
  */
-export function getSteps({
-  auth,
-  enabledSkillById,
-  model,
-  message,
-  workspaceId,
-  conversationId,
-  onMissingAction,
-  renderSkillsAsUserMessages = false,
-}: {
-  auth: Authenticator;
-  enabledSkillById: ReadonlyMap<string, EnabledSkillType>;
-  model: ModelConfigurationType;
-  message: AgentMessageType;
-  workspaceId: string;
-  conversationId: string;
-  onMissingAction: "inject-placeholder" | "skip";
-  renderSkillsAsUserMessages?: boolean;
-}): Step[] {
+export function getSteps(
+  auth: Authenticator,
+  {
+    enabledSkillById,
+    model,
+    message,
+    workspaceId,
+    conversationId,
+    onMissingAction,
+    renderSkillsAsUserMessages = false,
+  }: {
+    enabledSkillById: ReadonlyMap<string, EnabledSkillType>;
+    model: ModelConfigurationType;
+    message: AgentMessageType;
+    workspaceId: string;
+    conversationId: string;
+    onMissingAction: "inject-placeholder" | "skip";
+    renderSkillsAsUserMessages?: boolean;
+  }
+): Step[] {
   void auth;
   const supportedModel = getSupportedModelConfig(model);
   if (!supportedModel) {

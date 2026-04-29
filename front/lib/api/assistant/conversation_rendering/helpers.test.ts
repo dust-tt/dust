@@ -316,8 +316,7 @@ The following skills are available for use with the skill_management__enable_ski
       reactions: [],
     } satisfies AgentMessageType;
 
-    const steps = getSteps({
-      auth: authenticator,
+    const steps = getSteps(authenticator, {
       enabledSkillById: new Map([[enabledSkill.sId, enabledSkill]]),
       model,
       message,
