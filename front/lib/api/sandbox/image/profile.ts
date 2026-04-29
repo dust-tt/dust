@@ -45,7 +45,7 @@ export function wrapCommand(
   }
 
   return [
-    `source ${PROFILE_DIR}/${profile}.sh && shell "$(cat <<'${COMMAND_HEREDOC_DELIMITER}'`,
+    `DUST_PROFILE=${profile} source ${PROFILE_DIR}/common.sh && shell "$(cat <<'${COMMAND_HEREDOC_DELIMITER}'`,
     cmd,
     COMMAND_HEREDOC_DELIMITER,
     `)" ${timeoutSec}`,

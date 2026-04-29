@@ -21,7 +21,7 @@ export function runBashFunction(
   stderr: string;
   exitCode: number;
 } {
-  const profilePath = path.join(PROFILE_LOCAL_DIR, `${profile}.sh`);
+  const commonPath = path.join(PROFILE_LOCAL_DIR, "common.sh");
   const dustToolsCommand = `${process.execPath} ${tsxCliPath} ${path.join(
     PROFILE_LOCAL_DIR,
     "src",
@@ -29,12 +29,13 @@ export function runBashFunction(
   )}`;
   const result = spawnSync(
     "bash",
-    ["--norc", "-c", `source "${profilePath}" && ${funcCall}`],
+    ["--norc", "-c", `source "${commonPath}" && ${funcCall}`],
     {
       cwd,
       encoding: "utf-8",
       env: {
         ...process.env,
+        DUST_PROFILE: profile,
         DUST_TOOLS_CMD: dustToolsCommand,
         TSX_TSCONFIG_PATH: path.resolve(
           PROFILE_LOCAL_DIR,

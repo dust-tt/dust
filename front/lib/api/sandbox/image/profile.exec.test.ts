@@ -21,7 +21,7 @@ function nextExecId(): string {
 }
 
 function stripProfileSource(wrapped: string): string {
-  const stripped = wrapped.replace(/^source \S+ && /m, "");
+  const stripped = wrapped.replace(/^DUST_PROFILE=\S+ source \S+ && /m, "");
 
   if (stripped === wrapped) {
     throw new Error("Expected wrapped command to contain a source prefix.");

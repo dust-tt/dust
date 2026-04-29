@@ -8,7 +8,7 @@ function expectedWrappedCommand(
   timeoutSec = 60
 ): string {
   return [
-    `source ${PROFILE_DIR}/${profile}.sh && shell "$(cat <<'DUST_CMD_EOF'`,
+    `DUST_PROFILE=${profile} source ${PROFILE_DIR}/common.sh && shell "$(cat <<'DUST_CMD_EOF'`,
     cmd,
     "DUST_CMD_EOF",
     `)" ${timeoutSec}`,
