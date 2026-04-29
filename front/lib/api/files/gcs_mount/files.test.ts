@@ -97,7 +97,7 @@ describe("createGCSMountFile", () => {
     );
 
     expect(entry.thumbnailUrl).toBe(
-      `https://dust.tt/api/w/${workspaceId}/assistant/conversations/${conversationId}/files/thumbnail?filePath=${encodeURIComponent("photo.png")}`
+      `https://dust.tt/api/w/${workspaceId}/assistant/conversations/${conversationId}/files/thumbnail?filePath=${encodeURIComponent("conversation/photo.png")}`
     );
   });
 
