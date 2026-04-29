@@ -190,6 +190,21 @@ export function createProjectTodosTools(
             actorRationale: item.doneRationale ?? null,
           });
 
+          // Record the conversation where the todo was created as a source so
+          // it surfaces in the kickoff prompt when the todo is started.
+          const sourceConversation = agentLoopContext?.runContext?.conversation;
+          if (sourceConversation) {
+            await todo.upsertSource(auth, {
+              itemId: sourceConversation.sId,
+              source: {
+                sourceType: "project_conversation",
+                sourceId: sourceConversation.sId,
+                sourceTitle: sourceConversation.title ?? "Source conversation",
+                sourceUrl: `${config.getAppUrl()}${getConversationRoute(owner.sId, sourceConversation.sId)}`,
+              },
+            });
+          }
+
           created.push(formatTodo(todo));
         }
 
@@ -215,7 +230,6 @@ export function createProjectTodosTools(
           return contextRes;
         }
 
-        const currentUser = auth.getNonNullableUser();
         const marked: string[] = [];
         const alreadyDone: string[] = [];
         const notFound: string[] = [];
@@ -236,7 +250,7 @@ export function createProjectTodosTools(
             status: "done",
             doneAt: new Date(),
             markedAsDoneByType: actorType,
-            markedAsDoneByUserId: actorType === "user" ? currentUser.id : null,
+            markedAsDoneByUserId: actorType === "user" ? todo.userId : null,
             markedAsDoneByAgentConfigurationId:
               actorType === "agent"
                 ? (agentLoopContext?.runContext?.agentConfiguration?.sId ??
