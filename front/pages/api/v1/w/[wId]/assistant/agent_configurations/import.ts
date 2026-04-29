@@ -152,6 +152,17 @@ async function handler(
     });
   }
 
+  if (!auth.isBuilder()) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "insufficient_key_scope",
+        message:
+          "Importing an agent configuration requires an API key with write scope.",
+      },
+    });
+  }
+
   const result = await importAgentConfigurationFromJSON(auth, req.body);
 
   if (result.isErr()) {

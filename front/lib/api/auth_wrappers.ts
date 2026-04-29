@@ -455,33 +455,20 @@ export function withPublicAPIAuthentication<T>(
       const owner = workspaceAuth.workspace()!;
 
       // Authenticator created from a key carries the role assigned at key creation
-      // (`user`, `builder`, or `admin`). Read methods require at least `user`; mutating
-      // methods require `builder` or `admin`. System keys can bypass when
-      // allowSystemKeyBypassBuilderCheck is set.
+      // (`user`, `builder`, or `admin`). The wrapper only enforces that the key is
+      // associated with the workspace; per-scope enforcement (write vs. admin
+      // operations) is the responsibility of each endpoint handler. System keys can
+      // bypass this check when allowSystemKeyBypassBuilderCheck is set.
       const isSystemKeyAllowed =
         allowSystemKeyBypassBuilderCheck &&
         workspaceAuth.isSystemKey() &&
         keyRes.value.workspaceId === owner.id;
-      const method = req.method ?? "GET";
-      const isReadMethod =
-        method === "GET" || method === "HEAD" || method === "OPTIONS";
-
       if (!workspaceAuth.isUser() && !isSystemKeyAllowed) {
         return apiError(req, res, {
           status_code: 401,
           api_error: {
             type: "workspace_auth_error",
             message: "Only users of the workspace can access this content.",
-          },
-        });
-      }
-      if (!isReadMethod && !workspaceAuth.isBuilder() && !isSystemKeyAllowed) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "insufficient_key_scope",
-            message:
-              "This API key has read-only scope; this operation requires write scope.",
           },
         });
       }

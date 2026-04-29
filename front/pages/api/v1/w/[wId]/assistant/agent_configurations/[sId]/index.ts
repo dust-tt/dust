@@ -282,6 +282,16 @@ async function handler(
       });
     }
     case "PATCH": {
+      if (!auth.isBuilder()) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "insufficient_key_scope",
+            message:
+              "Updating an agent configuration requires an API key with write scope.",
+          },
+        });
+      }
       const r = PatchAgentConfigurationRequestSchema.safeParse(req.body);
       if (r.error) {
         return apiError(req, res, {
@@ -338,6 +348,16 @@ async function handler(
       });
     }
     case "DELETE": {
+      if (!auth.isBuilder()) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "insufficient_key_scope",
+            message:
+              "Archiving an agent configuration requires an API key with write scope.",
+          },
+        });
+      }
       // Space-scoping is enforced upstream: `getAgentConfiguration` (called above) returns null
       // when the auth's groups don't cover every `requestedSpaceId` of the agent, in which case
       // the handler 404s before reaching here. This matches the PATCH security model on this
