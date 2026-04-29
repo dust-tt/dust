@@ -25,6 +25,7 @@ import type {
 } from "@app/lib/actions/mcp";
 import {
   MCPServerPersonalAuthenticationRequiredError,
+  MCPServerRateLimitedError,
   MCPServerRequiresAdminAuthenticationError,
 } from "@app/lib/actions/mcp_authentication";
 import {
@@ -1412,37 +1413,44 @@ async function listMCPServerToolsAndServerInstructions(
       agentLoopContext: { listToolsContext: agentLoopListToolsContext },
     });
     if (r.isErr()) {
-      // When the workspace connection is broken (admin token revoked/expired),
+      // When the workspace connection is broken (admin token revoked/expired) or hit the rate limit,
       // fall back to cached tools so users are not blocked.
       if (
-        MCPServerRequiresAdminAuthenticationError.is(r.error) &&
         isConnectViaMCPServerId(connectionParams) &&
         isServerSideMCPServerConfiguration(config)
       ) {
-        const remoteMCPServer = await RemoteMCPServerResource.fetchById(
-          auth,
-          connectionParams.mcpServerId
+        const isRateLimited = MCPServerRateLimitedError.is(r.error);
+        const isAuthError = MCPServerRequiresAdminAuthenticationError.is(
+          r.error
         );
-        if (remoteMCPServer?.cachedTools?.length) {
-          logger.warn(
-            {
-              workspaceId: owner.sId,
-              mcpServerId: connectionParams.mcpServerId,
-              cachedToolCount: remoteMCPServer.cachedTools.length,
-            },
-            "Workspace connection broken for remote MCP server, falling back to cached tools"
-          );
-          const cachedToolsRes = await buildToolConfigurationsFromRawTools(
+        if (isRateLimited || isAuthError) {
+          const remoteMCPServer = await RemoteMCPServerResource.fetchById(
             auth,
-            connectionParams.mcpServerId,
-            config,
-            remoteMCPServer.cachedTools
+            connectionParams.mcpServerId
           );
-          if (cachedToolsRes.isOk()) {
-            return new Ok({
-              instructions: undefined,
-              tools: cachedToolsRes.value,
-            });
+          if (remoteMCPServer?.cachedTools?.length) {
+            logger.warn(
+              {
+                workspaceId: owner.sId,
+                mcpServerId: connectionParams.mcpServerId,
+                cachedToolCount: remoteMCPServer.cachedTools.length,
+              },
+              isRateLimited
+                ? "Remote MCP server rate limited, falling back to cached tools"
+                : "Workspace connection broken for remote MCP server, falling back to cached tools"
+            );
+            const cachedToolsRes = await buildToolConfigurationsFromRawTools(
+              auth,
+              connectionParams.mcpServerId,
+              config,
+              remoteMCPServer.cachedTools
+            );
+            if (cachedToolsRes.isOk()) {
+              return new Ok({
+                instructions: undefined,
+                tools: cachedToolsRes.value,
+              });
+            }
           }
         }
       }
