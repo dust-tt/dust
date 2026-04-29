@@ -59,16 +59,23 @@ interface ActionDetailsWrapperProps {
   visual: ComponentType<{ className?: string }>;
 }
 
-function formatDurationMs(durationMs: number): string {
-  if (durationMs < 1000) {
+function formatDurationMs(
+  durationMs: number,
+  { wholeSeconds = false }: { wholeSeconds?: boolean } = {}
+): string {
+  if (!wholeSeconds && durationMs < 1000) {
     return `${Math.round(durationMs)}ms`;
   }
-  const seconds = durationMs / 1000;
-  if (seconds < 60) {
-    return `${seconds.toFixed(1)}s`;
+  const totalSeconds = wholeSeconds
+    ? Math.floor(durationMs / 1000)
+    : durationMs / 1000;
+  if (totalSeconds < 60) {
+    return wholeSeconds
+      ? `${totalSeconds}s`
+      : `${totalSeconds.toFixed(1)}s`;
   }
-  const minutes = Math.floor(seconds / 60);
-  const remainder = Math.round(seconds - minutes * 60);
+  const minutes = Math.floor(totalSeconds / 60);
+  const remainder = Math.round(totalSeconds - minutes * 60);
   return `${minutes}m ${remainder}s`;
 }
 
@@ -87,7 +94,7 @@ function DurationLabel({ durationMs, isRunning, size }: DurationLabelProps) {
       )}
     >
       {isRunning ? "running for " : "executed in "}
-      {formatDurationMs(durationMs)}
+      {formatDurationMs(durationMs, { wholeSeconds: isRunning })}
     </span>
   );
 }
