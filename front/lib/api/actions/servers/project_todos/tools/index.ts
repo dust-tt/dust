@@ -224,21 +224,14 @@ export function createProjectTodosTools(
           return contextRes;
         }
 
-        const currentUser = auth.getNonNullableUser();
         const marked: string[] = [];
         const alreadyDone: string[] = [];
         const notFound: string[] = [];
-        const forbidden: string[] = [];
 
         for (const todoId of todoIds) {
           const todo = await ProjectTodoResource.fetchBySId(auth, todoId);
           if (!todo) {
             notFound.push(todoId);
-            continue;
-          }
-
-          if (todo.userId !== currentUser.id) {
-            forbidden.push(todoId);
             continue;
           }
 
@@ -251,7 +244,7 @@ export function createProjectTodosTools(
             status: "done",
             doneAt: new Date(),
             markedAsDoneByType: actorType,
-            markedAsDoneByUserId: actorType === "user" ? currentUser.id : null,
+            markedAsDoneByUserId: actorType === "user" ? todo.userId : null,
             markedAsDoneByAgentConfigurationId:
               actorType === "agent"
                 ? (agentLoopContext?.runContext?.agentConfiguration?.sId ??
@@ -275,11 +268,6 @@ export function createProjectTodosTools(
         }
         if (notFound.length > 0) {
           lines.push(`Not found (${notFound.length}): ${notFound.join(", ")}`);
-        }
-        if (forbidden.length > 0) {
-          lines.push(
-            `Not owned by current user (${forbidden.length}): ${forbidden.join(", ")}`
-          );
         }
         if (lines.length === 0) {
           lines.push("No TODOs were updated.");
