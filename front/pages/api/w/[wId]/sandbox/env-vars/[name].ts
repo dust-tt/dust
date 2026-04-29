@@ -48,7 +48,9 @@ async function handler(
     });
   }
 
-  if (!isString(req.query.name)) {
+  const { name } = req.query;
+
+  if (!isString(name)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -58,7 +60,6 @@ async function handler(
     });
   }
 
-  const { name } = req.query;
   const nameValidation = validateEnvVarName(name);
   if (nameValidation.isErr()) {
     return apiError(req, res, {

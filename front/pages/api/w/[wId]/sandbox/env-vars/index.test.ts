@@ -1,14 +1,10 @@
-import { WorkspaceSandboxEnvVarModel } from "@app/lib/resources/storage/models/workspace_sandbox_env_var";
 import { WorkspaceSandboxEnvVarResource } from "@app/lib/resources/workspace_sandbox_env_var_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
-import { encrypt } from "@app/types/shared/utils/encryption";
 import type { WorkspaceType } from "@app/types/user";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createMocks } from "node-mocks-http";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
-process.env.DUST_DEVELOPERS_SECRETS_SECRET ??= "test-developer-secret";
 
 const { mockEmitAuditLogEvent } = vi.hoisted(() => ({
   mockEmitAuditLogEvent: vi.fn(),
@@ -109,19 +105,14 @@ describe("GET/POST /api/w/[wId]/sandbox/env-vars", () => {
       body: { name: "NEW_TOKEN", value: "super-secret-token" },
     });
 
-    await WorkspaceSandboxEnvVarModel.bulkCreate(
-      Array.from({ length: 50 }, (_unused, index) => ({
-        workspaceId: workspace.id,
-        name: `VAR_${index}`,
-        encryptedValue: encrypt({
-          text: `value-${index}`,
-          key: workspace.sId,
-          useCase: "developer_secret",
-        }),
-        createdByUserId: user.id,
-        lastUpdatedByUserId: user.id,
-      }))
-    );
+    for (let i = 0; i < 50; i++) {
+      const seedResult = await WorkspaceSandboxEnvVarResource.upsert(auth, {
+        name: `VAR_${i}`,
+        value: `value-${i}`,
+        user,
+      });
+      expect(seedResult.isOk()).toBe(true);
+    }
 
     await handler(req, res);
     expect(res._getStatusCode()).toBe(400);
@@ -143,8 +134,7 @@ describe("GET/POST /api/w/[wId]/sandbox/env-vars", () => {
       created: false,
     });
 
-    const envResult =
-      await WorkspaceSandboxEnvVarResource.loadEnv(auth);
+    const envResult = await WorkspaceSandboxEnvVarResource.loadEnv(auth);
     expect(envResult.isOk()).toBe(true);
     if (envResult.isErr()) {
       throw envResult.error;
@@ -176,10 +166,7 @@ describe("GET/POST /api/w/[wId]/sandbox/env-vars", () => {
     expect(second.res._getStatusCode()).toBe(200);
     expect(JSON.parse(second.res._getData())).toEqual({ created: false });
 
-    const envResult =
-      await WorkspaceSandboxEnvVarResource.loadEnv(
-        first.auth
-      );
+    const envResult = await WorkspaceSandboxEnvVarResource.loadEnv(first.auth);
     expect(envResult.isOk()).toBe(true);
     if (envResult.isErr()) {
       throw envResult.error;
