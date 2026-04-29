@@ -7,28 +7,29 @@ import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { describe, expect, it } from "vitest";
 
+async function makeWorkspaceWithUserAuth() {
+  const ws = await WorkspaceFactory.basic();
+  const user = await UserFactory.basic();
+  await MembershipFactory.associate(ws, user, { role: "user" });
+  const auth = await Authenticator.fromUserIdAndWorkspaceId(user.sId, ws.sId);
+  return { workspace: ws, user, auth };
+}
+
 describe("CouponRedemptionResource.makeNew", () => {
   it("returns a resource with correct sIds", async () => {
-    const workspace = await WorkspaceFactory.basic();
-    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    const { workspace, user, auth } = await makeWorkspaceWithUserAuth();
     const coupon = await CouponFactory.create();
 
     const redemption = await CouponRedemptionResource.makeNew(auth, { coupon });
 
     expect(redemption.workspaceSId).toBe(workspace.sId);
     expect(redemption.couponSId).toBe(coupon.sId);
-    expect(redemption.redeemedByUserSId).toBeNull();
+    expect(redemption.redeemedByUserSId).toBe(user.sId);
     expect(redemption.sId).toBeDefined();
   });
 
   it("records the redeeming user's sId", async () => {
-    const workspace = await WorkspaceFactory.basic();
-    const user = await UserFactory.basic();
-    await MembershipFactory.associate(workspace, user, { role: "user" });
-    const auth = await Authenticator.fromUserIdAndWorkspaceId(
-      user.sId,
-      workspace.sId
-    );
+    const { user, auth } = await makeWorkspaceWithUserAuth();
     const coupon = await CouponFactory.create();
 
     const redemption = await CouponRedemptionResource.makeNew(auth, { coupon });
@@ -37,8 +38,7 @@ describe("CouponRedemptionResource.makeNew", () => {
   });
 
   it("increments the coupon redemptionCount", async () => {
-    const workspace = await WorkspaceFactory.basic();
-    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    const { auth } = await makeWorkspaceWithUserAuth();
     const coupon = await CouponFactory.create({ maxRedemptions: 10 });
 
     await CouponRedemptionResource.makeNew(auth, { coupon });
@@ -48,8 +48,7 @@ describe("CouponRedemptionResource.makeNew", () => {
   });
 
   it("enforces one redemption per workspace per coupon", async () => {
-    const workspace = await WorkspaceFactory.basic();
-    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    const { auth } = await makeWorkspaceWithUserAuth();
     const coupon = await CouponFactory.create();
 
     await CouponRedemptionResource.makeNew(auth, { coupon });
@@ -67,14 +66,11 @@ describe("CouponRedemptionResource.listAllByCoupon", () => {
   });
 
   it("returns all redemptions across workspaces and increments count per redemption", async () => {
-    const [ws1, ws2] = await Promise.all([
-      WorkspaceFactory.basic(),
-      WorkspaceFactory.basic(),
-    ]);
-    const [auth1, auth2] = await Promise.all([
-      Authenticator.internalAdminForWorkspace(ws1.sId),
-      Authenticator.internalAdminForWorkspace(ws2.sId),
-    ]);
+    const [{ workspace: ws1, auth: auth1 }, { workspace: ws2, auth: auth2 }] =
+      await Promise.all([
+        makeWorkspaceWithUserAuth(),
+        makeWorkspaceWithUserAuth(),
+      ]);
     const coupon = await CouponFactory.create();
 
     await CouponRedemptionResource.makeNew(auth1, { coupon });
@@ -91,13 +87,7 @@ describe("CouponRedemptionResource.listAllByCoupon", () => {
   });
 
   it("resolves redeemedByUserSId when a user redeemed", async () => {
-    const workspace = await WorkspaceFactory.basic();
-    const user = await UserFactory.basic();
-    await MembershipFactory.associate(workspace, user, { role: "user" });
-    const auth = await Authenticator.fromUserIdAndWorkspaceId(
-      user.sId,
-      workspace.sId
-    );
+    const { user, auth } = await makeWorkspaceWithUserAuth();
     const coupon = await CouponFactory.create();
 
     await CouponRedemptionResource.makeNew(auth, { coupon });
@@ -109,8 +99,7 @@ describe("CouponRedemptionResource.listAllByCoupon", () => {
 
 describe("CouponRedemptionResource.delete", () => {
   it("removes the redemption", async () => {
-    const workspace = await WorkspaceFactory.basic();
-    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    const { auth } = await makeWorkspaceWithUserAuth();
     const coupon = await CouponFactory.create();
 
     const redemption = await CouponRedemptionResource.makeNew(auth, { coupon });
