@@ -36,7 +36,7 @@ import {
 import { useState } from "react";
 
 const NAME_HELPER_TEXT =
-  "Must match ^[A-Z][A-Z0-9_]{0,63}$. Reserved: PATH, HOME, USER, SHELL, PWD, TERM, LANG, LC_ALL, HOSTNAME, TMPDIR, leading underscore, and prefixes LD_, DUST_, SANDBOX_, E2B_, DD_, CONVERSATION_, WORKSPACE_.";
+  "Uppercase letters, digits and underscores. Up to 64 characters.";
 
 function getNameMessage(name: string, isReplacing: boolean): string {
   if (name.length === 0) {
