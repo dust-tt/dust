@@ -2,11 +2,8 @@ import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
-const ENABLE_SKILL_RESULT_MIME_TYPE =
-  INTERNAL_MIME_TYPES.TOOL_OUTPUT.ENABLE_SKILL_RESULT;
-
 const EnableSkillResultResourceSchema = z.object({
-  mimeType: z.literal(ENABLE_SKILL_RESULT_MIME_TYPE),
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.ENABLE_SKILL_RESULT),
   uri: z.literal(""),
   text: z.string(),
   skillId: z.string(),
@@ -30,7 +27,7 @@ export function makeEnableSkillResultOutput({
   return {
     type: "resource",
     resource: {
-      mimeType: ENABLE_SKILL_RESULT_MIME_TYPE,
+      mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.ENABLE_SKILL_RESULT,
       uri: "",
       text,
       skillId,
