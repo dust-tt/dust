@@ -56,9 +56,9 @@ export async function grepHandler(
   let lineNumber = 0;
   let capped = false;
 
-  try {
-    const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
+  const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
 
+  try {
     for await (const line of rl) {
       lineNumber++;
 

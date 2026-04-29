@@ -26,10 +26,10 @@ async function catText(
   let byteCapped = false;
   let totalLines = 0;
 
-  try {
-    const stream = file.createReadStream();
-    const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
+  const stream = file.createReadStream();
+  const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
 
+  try {
     for await (const line of rl) {
       lineNumber++;
 
@@ -54,8 +54,6 @@ async function catText(
         break;
       }
     }
-
-    rl.close();
   } catch (err) {
     return new Err(
       new MCPError(
@@ -63,6 +61,8 @@ async function catText(
       )
     );
   }
+
+  rl.close();
 
   if (lines.length === 0) {
     if (startLine > 1) {
