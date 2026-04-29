@@ -25,6 +25,7 @@ import type { Result } from "@app/types/shared/result";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import {
   Button,
+  Chip,
   cn,
   EmptyCTA,
   ListGroup,
@@ -141,15 +142,20 @@ export function SpaceConversationsTab({
           )}
         >
           <div className="flex w-full flex-col gap-3">
-            <h2
-              className={cn(
-                "heading-2xl text-foreground dark:text-foreground-night items-center",
-                spaceInfo.archivedAt &&
-                  "text-muted-foreground dark:text-muted-foreground-night"
+            <div className="flex items-center gap-2">
+              <h2
+                className={cn(
+                  "heading-2xl text-foreground dark:text-foreground-night",
+                  spaceInfo.archivedAt &&
+                    "text-muted-foreground dark:text-muted-foreground-night"
+                )}
+              >
+                {spaceInfo.name}
+              </h2>
+              {spaceInfo.archivedAt && (
+                <Chip size="xs" color="rose" label="Archived" />
               )}
-            >
-              {`${spaceInfo.name}${spaceInfo.archivedAt ? " (Archived)" : ""}`}
-            </h2>
+            </div>
             {isEmpty && (
               <h3 className="heading-lg text-foreground dark:text-foreground-night">
                 Start a first conversation!
