@@ -18,11 +18,16 @@ import { useState } from "react";
 interface AcademySidebarProps {
   searchableItems: SearchableItem[];
   tocItems?: TocItem[];
+  backToAcademy: string;
+  searchPlaceholder: string;
+  mobileMenuTitle: string;
 }
 
 function SidebarContent({
   searchableItems,
   tocItems,
+  backToAcademy,
+  searchPlaceholder,
   onNavigate,
 }: AcademySidebarProps & { onNavigate?: () => void }) {
   return (
@@ -34,11 +39,14 @@ function SidebarContent({
           className="flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
         >
           <ArrowLeftIcon className="h-4 w-4" />
-          Back to Academy
+          {backToAcademy}
         </LinkWrapper>
       </div>
       <div className="flex-shrink-0 px-3 py-3">
-        <AcademySearch searchableItems={searchableItems} />
+        <AcademySearch
+          searchableItems={searchableItems}
+          placeholder={searchPlaceholder}
+        />
       </div>
 
       {tocItems && tocItems.length > 0 && (
@@ -55,12 +63,12 @@ function SidebarContent({
 }
 
 export function AcademySidebar({
-  searchableItems,
   tocItems = [],
+  ...props
 }: AcademySidebarProps) {
   return (
     <div className="sticky top-16 z-40 hidden h-[calc(100vh-4rem)] w-64 flex-col border-r border-gray-200 bg-white lg:flex">
-      <SidebarContent searchableItems={searchableItems} tocItems={tocItems} />
+      <SidebarContent {...props} tocItems={tocItems} />
     </div>
   );
 }
@@ -68,6 +76,9 @@ export function AcademySidebar({
 export function MobileMenuButton({
   searchableItems,
   tocItems = [],
+  backToAcademy,
+  searchPlaceholder,
+  mobileMenuTitle,
 }: AcademySidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -86,12 +97,15 @@ export function MobileMenuButton({
           <div className="flex h-full flex-col bg-white">
             <div className="flex items-center justify-between border-b border-gray-200 px-3 py-3">
               <SheetTitle className="text-base font-semibold">
-                Academy
+                {mobileMenuTitle}
               </SheetTitle>
             </div>
             <SidebarContent
               searchableItems={searchableItems}
               tocItems={tocItems}
+              backToAcademy={backToAcademy}
+              searchPlaceholder={searchPlaceholder}
+              mobileMenuTitle={mobileMenuTitle}
               onNavigate={() => setIsOpen(false)}
             />
           </div>

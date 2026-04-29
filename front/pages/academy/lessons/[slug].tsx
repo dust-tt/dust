@@ -1,3 +1,4 @@
+import { LocaleToggle } from "@app/components/academy/AcademyComponents";
 import { AcademyQuiz } from "@app/components/academy/AcademyQuiz";
 import {
   AcademySidebar,
@@ -9,7 +10,10 @@ import LandingLayout from "@app/components/home/LandingLayout";
 import { getAcademyUser } from "@app/lib/api/academy";
 import {
   buildPreviewQueryString,
+  getAcademyLocaleFromCookies,
+  getAcademySettings,
   getLessonBySlug,
+  getQuizSettings,
   getSearchableItems,
 } from "@app/lib/contentful/client";
 import {
@@ -42,9 +46,11 @@ export const getServerSideProps: GetServerSideProps<LessonPageProps> = async (
     return { notFound: true };
   }
 
+  context.res.setHeader("Cache-Control", "no-store");
   const resolvedUrl = buildPreviewQueryString(context.preview ?? false);
+  const locale = getAcademyLocaleFromCookies(context.req.cookies);
 
-  const lessonResult = await getLessonBySlug(slug, resolvedUrl);
+  const lessonResult = await getLessonBySlug(slug, resolvedUrl, locale);
 
   if (lessonResult.isErr()) {
     logger.error(
@@ -60,7 +66,11 @@ export const getServerSideProps: GetServerSideProps<LessonPageProps> = async (
     return { notFound: true };
   }
 
-  const searchableResult = await getSearchableItems(resolvedUrl);
+  const [searchableResult, academySettings, quizSettings] = await Promise.all([
+    getSearchableItems(resolvedUrl, locale),
+    getAcademySettings(resolvedUrl, locale),
+    getQuizSettings(resolvedUrl, locale),
+  ]);
 
   return {
     props: {
@@ -69,6 +79,9 @@ export const getServerSideProps: GetServerSideProps<LessonPageProps> = async (
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
       academyUser: user ? { firstName: user.firstName, sId: user.sId } : null,
       preview: context.preview ?? false,
+      locale,
+      academySettings,
+      quizSettings,
     },
   };
 };
@@ -82,11 +95,15 @@ function getContentUrl(content: ContentSummary): string {
   return `/academy/lessons/${content.slug}`;
 }
 
-function getContentTypeLabel(content: ContentSummary): string {
+function getContentTypeLabel(
+  content: ContentSummary,
+  courseLabel: string,
+  lessonLabel: string
+): string {
   if (isCourseSummary(content)) {
-    return "Course";
+    return courseLabel;
   }
-  return "Lesson";
+  return lessonLabel;
 }
 
 // biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
@@ -95,6 +112,9 @@ export default function LessonPage({
   searchableItems,
   academyUser,
   preview,
+  locale,
+  academySettings,
+  quizSettings,
 }: LessonPageProps) {
   const browserId = useAcademyBrowserId();
   const anonBrowserId = academyUser ? undefined : browserId;
@@ -132,13 +152,22 @@ export default function LessonPage({
       </Head>
 
       <div className="flex min-h-screen">
-        <AcademySidebar searchableItems={searchableItems} tocItems={tocItems} />
+        <AcademySidebar
+          searchableItems={searchableItems}
+          tocItems={tocItems}
+          backToAcademy={academySettings.backToAcademy}
+          searchPlaceholder={academySettings.searchPlaceholder}
+          mobileMenuTitle={academySettings.mobileMenuTitle}
+        />
         <article className="min-w-0 flex-1">
           {/* Mobile menu button - full width on mobile */}
           <div className="-mx-6 sticky top-16 z-40 flex items-center border-b border-gray-200 bg-white/95 px-6 py-2 backdrop-blur-sm lg:hidden">
             <MobileMenuButton
               searchableItems={searchableItems}
               tocItems={tocItems}
+              backToAcademy={academySettings.backToAcademy}
+              searchPlaceholder={academySettings.searchPlaceholder}
+              mobileMenuTitle={academySettings.mobileMenuTitle}
             />
             <span className="ml-2 truncate text-sm font-medium text-muted-foreground">
               {lesson.title}
@@ -151,14 +180,18 @@ export default function LessonPage({
                   href={`/academy/${lesson.parentCourse.slug}`}
                   className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
                 >
-                  <span>&larr;</span> Back to {lesson.parentCourse.title}
+                  <span>&larr;</span>{" "}
+                  {academySettings.backTo.replace(
+                    "{title}",
+                    lesson.parentCourse.title
+                  )}
                 </Link>
               ) : (
                 <Link
                   href="/academy"
                   className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
                 >
-                  <span>&larr;</span> Back to Academy
+                  <span>&larr;</span> {academySettings.backToAcademy}
                 </Link>
               )}
             </div>
@@ -186,6 +219,7 @@ export default function LessonPage({
                   )}
                 </div>
                 <div className="flex flex-col items-end gap-2">
+                  <LocaleToggle locale={locale} />
                   {lesson.estimatedDurationMinutes && (
                     <div className="flex items-center gap-1 rounded-full bg-highlight/10 px-3 py-1.5 text-xs font-medium text-gray-700">
                       <svg
@@ -214,7 +248,7 @@ export default function LessonPage({
               <div className={cn(WIDE_CLASSES, "mt-4")}>
                 <div className="rounded-2xl border border-highlight/20 bg-highlight/5 p-4 backdrop-blur-sm">
                   <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-highlight">
-                    Lesson Objectives
+                    {academySettings.lessonObjectives}
                   </h3>
                   <Markdown content={lesson.lessonObjectives} />
                 </div>
@@ -225,7 +259,7 @@ export default function LessonPage({
               <div className={cn(WIDE_CLASSES, "mt-3")}>
                 <div className="rounded-2xl border border-amber-200/50 bg-amber-50/80 p-4 backdrop-blur-sm">
                   <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-amber-700">
-                    Prerequisites
+                    {academySettings.prerequisites}
                   </h3>
                   <div className="prose-amber">
                     {renderRichTextFromContentful(lesson.preRequisites)}
@@ -246,6 +280,7 @@ export default function LessonPage({
                 userName={academyUser?.firstName}
                 contentSlug={lesson.slug}
                 browserId={anonBrowserId}
+                quizSettings={quizSettings}
               />
             </div>
 
@@ -263,7 +298,12 @@ export default function LessonPage({
                       className="group flex flex-col"
                     >
                       <P size="sm" className="text-muted-foreground">
-                        Previous {getContentTypeLabel(lesson.previousContent)}
+                        {academySettings.previousContent}{" "}
+                        {getContentTypeLabel(
+                          lesson.previousContent,
+                          academySettings.course,
+                          academySettings.lesson
+                        )}
                       </P>
                       <span className="mt-1 text-base font-medium text-foreground transition-colors group-hover:text-highlight">
                         &larr; {lesson.previousContent.title}
@@ -276,7 +316,12 @@ export default function LessonPage({
                       className="group flex flex-col items-end sm:items-start"
                     >
                       <P size="sm" className="text-muted-foreground">
-                        Next {getContentTypeLabel(lesson.nextContent)}
+                        {academySettings.nextContent}{" "}
+                        {getContentTypeLabel(
+                          lesson.nextContent,
+                          academySettings.course,
+                          academySettings.lesson
+                        )}
                       </P>
                       <span className="mt-1 text-base font-medium text-foreground transition-colors group-hover:text-highlight">
                         {lesson.nextContent.title} &rarr;

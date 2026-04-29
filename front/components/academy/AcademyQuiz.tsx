@@ -1,6 +1,8 @@
 "use client";
 
 import { useAcademyQuiz } from "@app/hooks/useAcademyQuiz";
+import type { QuizSettings } from "@app/lib/contentful/types";
+import { DEFAULT_QUIZ_SETTINGS } from "@app/lib/contentful/types";
 import {
   useAcademyContentProgress,
   useRecordQuizAttempt,
@@ -25,6 +27,7 @@ interface AcademyQuizProps {
   contentSlug?: string;
   courseSlug?: string;
   browserId?: string | null;
+  quizSettings?: QuizSettings;
 }
 
 const TOTAL_QUESTIONS = 5;
@@ -39,6 +42,7 @@ export function AcademyQuiz({
   contentSlug,
   courseSlug,
   browserId,
+  quizSettings = DEFAULT_QUIZ_SETTINGS,
 }: AcademyQuizProps) {
   const { recordAttempt } = useRecordQuizAttempt({ browserId });
 
@@ -192,8 +196,8 @@ export function AcademyQuiz({
   );
 
   const greeting = userName
-    ? `Ready to test your understanding, ${userName}?`
-    : `Ready to test your understanding of this ${contentType}?`;
+    ? quizSettings.quizGreetingUser.replace("{name}", userName)
+    : quizSettings.quizGreetingGeneric;
 
   return (
     <div className="mt-12 rounded-xl border border-highlight/20 bg-highlight/5">
@@ -202,7 +206,7 @@ export function AcademyQuiz({
           <div>
             <div className="flex items-center gap-2">
               <h3 className="text-lg font-semibold text-highlight">
-                Test Your Knowledge
+                {quizSettings.quizTitle}
               </h3>
               {alreadyCompleted && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
@@ -217,23 +221,23 @@ export function AcademyQuiz({
                       clipRule="evenodd"
                     />
                   </svg>
-                  Completed
+                  {quizSettings.quizCompleted}
                 </span>
               )}
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
-              Answer {TOTAL_QUESTIONS} questions — score {PASSING_SCORE} or more
-              to pass
+              {quizSettings.quizSubtitle}
             </p>
           </div>
           {hasStarted && (
             <div className="flex items-center gap-3">
               <div className="text-sm font-medium text-foreground">
-                Question {Math.min(totalQuestions + 1, TOTAL_QUESTIONS)}/
+                {quizSettings.quizQuestion}{" "}
+                {Math.min(totalQuestions + 1, TOTAL_QUESTIONS)}/
                 {TOTAL_QUESTIONS}
                 {totalQuestions > 0 && (
                   <span className="ml-2 text-muted-foreground">
-                    ({correctAnswers} correct)
+                    ({correctAnswers} {quizSettings.quizCorrect})
                   </span>
                 )}
               </div>
@@ -241,7 +245,7 @@ export function AcademyQuiz({
                 <Button
                   variant="outline"
                   size="xs"
-                  label="Reset"
+                  label={quizSettings.quizReset}
                   onClick={() => handleReset(false)}
                 />
               )}
@@ -263,21 +267,26 @@ export function AcademyQuiz({
             <p className="mb-4 text-muted-foreground">{greeting}</p>
             {progress && (
               <p className="mb-4 text-sm text-muted-foreground">
-                Best score: {progress.bestScore}/{TOTAL_QUESTIONS}
+                {quizSettings.quizBestScore}: {progress.bestScore}/
+                {TOTAL_QUESTIONS}
                 {progress.attemptCount > 1 &&
-                  ` (${progress.attemptCount} attempts)`}
+                  ` (${progress.attemptCount} ${quizSettings.quizAttempts})`}
               </p>
             )}
             <Button
               variant="primary"
-              label={alreadyCompleted ? "Take Quiz Again" : "Start Quiz"}
+              label={
+                alreadyCompleted
+                  ? quizSettings.quizRetakeButton
+                  : quizSettings.quizStartButton
+              }
               onClick={handleStart}
             />
           </div>
         ) : !hasStarted && isLoading ? (
           <div className="flex items-center justify-center gap-2 py-4 text-sm text-muted-foreground">
             <Spinner size="sm" />
-            Starting quiz...
+            {quizSettings.quizStarting}
           </div>
         ) : (
           <>
@@ -326,11 +335,14 @@ export function AcademyQuiz({
                     type="user"
                     className="ml-auto max-w-3xl"
                   >
-                    <ConversationMessageAvatar name="You" type="user" />
+                    <ConversationMessageAvatar
+                      name={quizSettings.quizYou}
+                      type="user"
+                    />
                     <div className="flex min-w-0 flex-col gap-1">
                       <ConversationMessageTitle
-                        name="You"
-                        renderName={() => <span>You</span>}
+                        name={quizSettings.quizYou}
+                        renderName={() => <span>{quizSettings.quizYou}</span>}
                       />
                       <ConversationMessageContent type="user">
                         <div className="whitespace-pre-wrap text-sm">
@@ -356,7 +368,7 @@ export function AcademyQuiz({
                     <ConversationMessageContent type="agent">
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Spinner size="xs" />
-                        Thinking...
+                        {quizSettings.quizThinking}
                       </div>
                     </ConversationMessageContent>
                   </div>
@@ -372,7 +384,7 @@ export function AcademyQuiz({
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="Type your answer..."
+                  placeholder={quizSettings.quizAnswerPlaceholder}
                   className="flex-1 resize-none rounded-lg border border-gray-200 px-4 py-2 text-sm focus:border-highlight focus:outline-none focus:ring-1 focus:ring-highlight"
                   rows={2}
                   disabled={isLoading}
@@ -380,7 +392,7 @@ export function AcademyQuiz({
                 <Button
                   type="submit"
                   variant="primary"
-                  label="Submit"
+                  label={quizSettings.quizSubmit}
                   disabled={isLoading || !inputValue.trim()}
                 />
               </form>
@@ -397,36 +409,41 @@ export function AcademyQuiz({
                       </div>
                       <h4 className="mb-2 text-xl font-semibold text-highlight">
                         {alreadyCompleted
-                          ? "Great Score Again!"
-                          : "Chapter Completed!"}
+                          ? quizSettings.quizGreatScoreAgain
+                          : quizSettings.quizChapterCompleted}
                       </h4>
                       <div className="mb-2 text-3xl font-bold text-highlight">
                         {correctAnswers}/{TOTAL_QUESTIONS}
                       </div>
                       <p className="mb-4 text-sm text-muted-foreground">
                         {isPerfectScore
-                          ? "Excellent work! You've mastered this content."
-                          : "Well done! You passed the quiz."}
+                          ? quizSettings.quizPerfectScore
+                          : quizSettings.quizPassedMessage}
                       </p>
                     </>
                   ) : (
                     <>
                       <div className="mb-3 text-4xl">📚</div>
                       <h4 className="mb-2 text-xl font-semibold text-foreground">
-                        Quiz Complete
+                        {quizSettings.quizComplete}
                       </h4>
                       <div className="mb-2 text-3xl font-bold text-foreground">
                         {correctAnswers}/{TOTAL_QUESTIONS}
                       </div>
                       <p className="mb-4 text-sm text-muted-foreground">
-                        You need at least {PASSING_SCORE}/{TOTAL_QUESTIONS} to
-                        pass. Review the content and try again!
+                        {quizSettings.quizFailMessage
+                          .replace("{passing}", String(PASSING_SCORE))
+                          .replace("{total}", String(TOTAL_QUESTIONS))}
                       </p>
                     </>
                   )}
                   <Button
                     variant={hasPassed ? "outline" : "primary"}
-                    label={hasPassed ? "Take Quiz Again" : "Try Again"}
+                    label={
+                      hasPassed
+                        ? quizSettings.quizRetakeButton
+                        : quizSettings.quizTryAgain
+                    }
                     onClick={() => handleReset(true)}
                   />
                 </div>
