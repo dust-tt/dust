@@ -199,8 +199,7 @@ export function createProjectTodosTools(
               source: {
                 sourceType: "project_conversation",
                 sourceId: sourceConversation.sId,
-                sourceTitle:
-                  sourceConversation.title ?? "Source conversation",
+                sourceTitle: sourceConversation.title ?? "Source conversation",
                 sourceUrl: `${config.getAppUrl()}${getConversationRoute(owner.sId, sourceConversation.sId)}`,
               },
             });
