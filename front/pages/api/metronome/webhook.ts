@@ -109,7 +109,7 @@ async function handler(
         logger.warn(
           {
             eventType: rawType.success ? rawType.data.type : "unknown",
-            event: rawEvent,
+            rawEvent,
             error: parsedEvent.error.message,
           },
           "[Metronome Webhook] Unknown or malformed event"
@@ -118,6 +118,8 @@ async function handler(
       }
 
       const event = parsedEvent.data;
+
+      logger.info({ event, rawEvent }, "[Metronome Webhook] Event received");
 
       // Resolve the workspace once for any event that carries a customer_id
       // (every type except `integration.issue`). If the customer can't be
@@ -137,69 +139,27 @@ async function handler(
       }
 
       switch (event.type) {
-        case "alerts.low_remaining_credit_balance_reached":
-          logger.info({ event }, "[Metronome Webhook] Credits exhausted alert");
-          break;
-
-        case "alerts.low_remaining_seat_balance_reached":
-          logger.info(
-            { event },
-            "[Metronome Webhook] Per-seat credits exhausted alert"
-          );
-          break;
-
-        case "alerts.spend_threshold_reached":
-          logger.info({ event }, "[Metronome Webhook] Approaching spend limit");
-          break;
-
         case "alerts.invoice_total_reached":
-          logger.info({ event }, "[Metronome Webhook] Invoice total reached");
-          break;
-
         case "alerts.low_remaining_commit_balance_reached":
-          logger.info(
-            { event },
-            "[Metronome Webhook] Commit balance exhausted alert"
-          );
-          break;
-
+        case "alerts.low_remaining_credit_balance_reached":
+        case "alerts.low_remaining_seat_balance_reached":
+        case "alerts.spend_threshold_reached":
         case "alerts.usage_threshold_reached":
-          logger.info({ event }, "[Metronome Webhook] Usage threshold reached");
-          break;
-
         case "commit.archive":
-          logger.info({ event }, "[Metronome Webhook] Commit archived");
-          break;
-
         case "commit.create":
-          logger.info({ event }, "[Metronome Webhook] Commit created");
-          break;
-
         case "commit.edit":
-          logger.info({ event }, "[Metronome Webhook] Commit edited");
-          break;
-
-        case "commit.segment.start":
-          logger.info(
-            { event },
-            "[Metronome Webhook] New commit segment started (credits available)"
-          );
-          break;
-
         case "commit.segment.end":
-          logger.info({ event }, "[Metronome Webhook] Commit segment ended");
-          break;
-
+        case "commit.segment.start":
+        case "contract.archive":
+        case "contract.create":
+        case "contract.edit":
+        case "contract.start":
         case "credit.archive":
-          logger.info({ event }, "[Metronome Webhook] Credit archived");
-          break;
-
         case "credit.create":
-          logger.info({ event }, "[Metronome Webhook] Credit created");
-          break;
-
         case "credit.edit":
-          logger.info({ event }, "[Metronome Webhook] Credit edited");
+        case "credit.segment.end":
+        case "invoice.billing_provider_error":
+        case "invoice.finalized":
           break;
 
         case "credit.segment.start": {
@@ -322,29 +282,6 @@ async function handler(
           break;
         }
 
-        case "credit.segment.end":
-          logger.info({ event }, "[Metronome Webhook] Credit segment ended");
-          break;
-
-        case "credit.create":
-          logger.info(
-            { event },
-            "[Metronome Webhook] Credit created (credits available)"
-          );
-          break;
-
-        case "contract.create":
-          logger.info({ event }, "[Metronome Webhook] Contract created");
-          break;
-
-        case "contract.start":
-          logger.info({ event }, "[Metronome Webhook] Contract started");
-          break;
-
-        case "contract.edit":
-          logger.info({ event }, "[Metronome Webhook] Contract edited");
-          break;
-
         case "contract.end": {
           const { contract_id: contractId, customer_id: customerId } = event;
 
@@ -426,21 +363,6 @@ async function handler(
           }
           break;
         }
-
-        case "contract.archive":
-          logger.info({ event }, "[Metronome Webhook] Contract archived");
-          break;
-
-        case "invoice.finalized":
-          logger.info({ event }, "[Metronome Webhook] Invoice finalized");
-          break;
-
-        case "invoice.billing_provider_error":
-          logger.error(
-            { event },
-            "[Metronome Webhook] Billing provider error on invoice"
-          );
-          break;
 
         default:
           logger.info(

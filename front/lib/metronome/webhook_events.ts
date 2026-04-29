@@ -43,6 +43,16 @@ const SpendThresholdReachedSchema = z.object({
   type: z.literal("alerts.spend_threshold_reached"),
   properties: baseAlertPropertiesSchema.extend({
     current_spend: z.number().nullish(),
+    credit_type_id: z.string().nullish(),
+    invoice_type: z.string().nullish(),
+    group_values: z
+      .array(
+        z.object({
+          key: z.string(),
+          value: z.string().nullish(),
+        })
+      )
+      .nullish(),
   }),
 });
 
