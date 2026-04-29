@@ -25,6 +25,8 @@ import {
 import {
   addSandboxPolicyDomain,
   parseExactEgressDomain,
+  readSandboxPolicy,
+  readWorkspacePolicy,
 } from "@app/lib/api/sandbox/egress_policy";
 import {
   mountConversationFiles,
@@ -46,6 +48,7 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import logger from "@app/logger/logger";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
+import { domainMatchesAllowlist } from "@app/types/sandbox/egress_policy";
 import { isDevelopment } from "@app/types/shared/env";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 
@@ -89,6 +92,81 @@ function isSandboxAgentEgressRequestsAllowed(auth: Authenticator): boolean {
     auth.getNonNullableWorkspace().metadata?.sandboxAllowAgentEgressRequests ===
     true
   );
+}
+
+async function getExistingEgressDomainSource(
+  auth: Authenticator,
+  {
+    domain,
+    sandboxProviderId,
+  }: {
+    domain: string;
+    sandboxProviderId: string;
+  }
+): Promise<Result<"workspace" | "sandbox" | null, Error>> {
+  const workspacePolicy = await readWorkspacePolicy(auth);
+  if (workspacePolicy.isErr()) {
+    logger.warn(
+      { err: workspacePolicy.error },
+      "Failed to read workspace egress policy before sandbox domain add"
+    );
+  } else if (
+    domainMatchesAllowlist(domain, workspacePolicy.value.allowedDomains)
+  ) {
+    return new Ok("workspace");
+  }
+
+  const sandboxPolicy = await readSandboxPolicy(sandboxProviderId);
+  if (sandboxPolicy.isErr()) {
+    return new Err(sandboxPolicy.error);
+  }
+
+  if (domainMatchesAllowlist(domain, sandboxPolicy.value.allowedDomains)) {
+    return new Ok("sandbox");
+  }
+
+  return new Ok(null);
+}
+
+function emitSandboxEgressPolicyAuditEvent({
+  auth,
+  sandbox,
+  domain,
+  reason,
+  added,
+  autoApprovedSource,
+}: {
+  auth: Authenticator;
+  sandbox: SandboxResource;
+  domain: string;
+  reason: string;
+  added: boolean;
+  autoApprovedSource?: "workspace" | "sandbox";
+}): void {
+  void emitAuditLogEvent({
+    auth,
+    action: "sandbox_egress_policy.sandbox_updated",
+    targets: [
+      buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+      {
+        type: "sandbox_egress_policy",
+        id: sandbox.providerId,
+        name: `Sandbox egress policy ${sandbox.sId}`,
+      },
+    ],
+    metadata: {
+      sandboxProviderId: sandbox.providerId,
+      domain,
+      added: String(added),
+      reason,
+      ...(autoApprovedSource
+        ? {
+            auto_approved: "true",
+            auto_approved_source: autoApprovedSource,
+          }
+        : {}),
+    },
+  });
 }
 
 export async function createSandboxTools(
@@ -330,6 +408,32 @@ export async function addEgressDomainTool(
     return new Err(new MCPError(parsed.error.message));
   }
 
+  const existingSource = await getExistingEgressDomainSource(auth, {
+    domain: parsed.value,
+    sandboxProviderId: sandbox.providerId,
+  });
+  if (existingSource.isErr()) {
+    return new Err(new MCPError(existingSource.error.message));
+  }
+
+  if (existingSource.value !== null) {
+    emitSandboxEgressPolicyAuditEvent({
+      auth,
+      sandbox,
+      domain: parsed.value,
+      reason,
+      added: false,
+      autoApprovedSource: existingSource.value,
+    });
+
+    const text =
+      existingSource.value === "workspace"
+        ? "Domain already allowed via workspace allowlist — no action needed."
+        : "Domain already in this sandbox's allowlist — no action needed.";
+
+    return new Ok([{ type: "text" as const, text }]);
+  }
+
   const result = await addSandboxPolicyDomain(auth, {
     sandboxProviderId: sandbox.providerId,
     domain: parsed.value,
@@ -338,23 +442,12 @@ export async function addEgressDomainTool(
     return new Err(new MCPError(result.error.message));
   }
 
-  void emitAuditLogEvent({
+  emitSandboxEgressPolicyAuditEvent({
     auth,
-    action: "sandbox_egress_policy.sandbox_updated",
-    targets: [
-      buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
-      {
-        type: "sandbox_egress_policy",
-        id: sandbox.providerId,
-        name: `Sandbox egress policy ${sandbox.sId}`,
-      },
-    ],
-    metadata: {
-      sandboxProviderId: sandbox.providerId,
-      domain: parsed.value,
-      added: String(result.value.addedDomain !== null),
-      reason,
-    },
+    sandbox,
+    domain: parsed.value,
+    reason,
+    added: result.value.addedDomain !== null,
   });
 
   const text =

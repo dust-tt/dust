@@ -9,6 +9,8 @@ const {
   mockAddSandboxPolicyDomain,
   mockCheckEgressForwarderHealth,
   mockReadNewDenyLogEntries,
+  mockReadSandboxPolicy,
+  mockReadWorkspacePolicy,
   mockEmitAuditLogEvent,
   mockGenerateExecId,
   mockGenerateSandboxExecToken,
@@ -25,6 +27,8 @@ const {
   mockAddSandboxPolicyDomain: vi.fn(),
   mockCheckEgressForwarderHealth: vi.fn(),
   mockReadNewDenyLogEntries: vi.fn(),
+  mockReadSandboxPolicy: vi.fn(),
+  mockReadWorkspacePolicy: vi.fn(),
   mockEmitAuditLogEvent: vi.fn(),
   mockGenerateExecId: vi.fn(),
   mockGenerateSandboxExecToken: vi.fn(),
@@ -59,6 +63,8 @@ vi.mock("@app/lib/api/sandbox/egress_policy", async (importOriginal) => {
   return {
     ...actual,
     addSandboxPolicyDomain: mockAddSandboxPolicyDomain,
+    readSandboxPolicy: mockReadSandboxPolicy,
+    readWorkspacePolicy: mockReadWorkspacePolicy,
   };
 });
 
@@ -360,6 +366,8 @@ describe("addEgressDomainTool", () => {
         policy: { allowedDomains: ["example.org"] },
       })
     );
+    mockReadSandboxPolicy.mockResolvedValue(new Ok({ allowedDomains: [] }));
+    mockReadWorkspacePolicy.mockResolvedValue(new Ok({ allowedDomains: [] }));
   });
 
   function makeExtra({
@@ -450,6 +458,91 @@ describe("addEgressDomainTool", () => {
     });
     if (result.isOk()) {
       expect(result.value[0].text).toContain("Allowed: example.org");
+    }
+  });
+
+  it("short-circuits when the workspace allowlist already covers the domain", async () => {
+    mockEnsureActive.mockResolvedValue(
+      new Ok({
+        freshlyCreated: false,
+        sandbox: {
+          providerId: "provider-id",
+          sId: "sandbox-id",
+        },
+        wokeFromSleep: false,
+      })
+    );
+    mockReadWorkspacePolicy.mockResolvedValue(
+      new Ok({ allowedDomains: ["*.example.org"] })
+    );
+
+    const result = await addEgressDomainTool(
+      {
+        domain: "api.example.org",
+        reason: "Retry a blocked request.",
+      },
+      makeExtra()
+    );
+
+    expect(result.isOk()).toBe(true);
+    expect(mockAddSandboxPolicyDomain).not.toHaveBeenCalled();
+    expect(mockReadSandboxPolicy).not.toHaveBeenCalled();
+    expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          added: "false",
+          auto_approved: "true",
+          auto_approved_source: "workspace",
+          domain: "api.example.org",
+        }),
+      })
+    );
+    if (result.isOk()) {
+      expect(result.value[0].text).toBe(
+        "Domain already allowed via workspace allowlist — no action needed."
+      );
+    }
+  });
+
+  it("short-circuits when the sandbox allowlist already covers the domain", async () => {
+    mockEnsureActive.mockResolvedValue(
+      new Ok({
+        freshlyCreated: false,
+        sandbox: {
+          providerId: "provider-id",
+          sId: "sandbox-id",
+        },
+        wokeFromSleep: false,
+      })
+    );
+    mockReadSandboxPolicy.mockResolvedValue(
+      new Ok({ allowedDomains: ["example.org"] })
+    );
+
+    const result = await addEgressDomainTool(
+      {
+        domain: "example.org",
+        reason: "Retry a blocked request.",
+      },
+      makeExtra()
+    );
+
+    expect(result.isOk()).toBe(true);
+    expect(mockAddSandboxPolicyDomain).not.toHaveBeenCalled();
+    expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          added: "false",
+          auto_approved: "true",
+          auto_approved_source: "sandbox",
+          domain: "example.org",
+        }),
+      })
+    );
+    if (result.isOk()) {
+      expect(result.value[0].text).toBe(
+        "Domain already in this sandbox's allowlist — no action needed."
+      );
     }
   });
 

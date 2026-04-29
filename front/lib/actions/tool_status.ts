@@ -1,5 +1,7 @@
+import { lookupAutoApprovePredicate } from "@app/lib/actions/auto_approve_registry";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
+import { getInternalMCPServerNameFromSId } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMessageType } from "@app/types/assistant/conversation";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -8,12 +10,14 @@ import { isNumberOrBoolean, isString } from "@app/types/shared/utils/general";
 export interface ToolInputContext {
   agentId: string;
   toolInputs: Record<string, unknown>;
+  rawInputs?: unknown;
+  conversationId?: string;
 }
 
 export async function getExecutionStatusFromConfig(
   auth: Authenticator,
   actionConfiguration: MCPToolConfigurationType,
-  agentMessage: AgentMessageType,
+  agentMessage: Pick<AgentMessageType, "skipToolsValidation">,
   context?: ToolInputContext
 ): Promise<{
   stake?: MCPToolStakeLevelType;
@@ -78,8 +82,31 @@ export async function getExecutionStatusFromConfig(
       }
       return { status: "blocked_validation_required" };
     }
-    case "high":
+    case "high": {
+      const serverName = getInternalMCPServerNameFromSId(
+        actionConfiguration.toolServerId
+      );
+      const predicate =
+        serverName !== null
+          ? lookupAutoApprovePredicate(
+              serverName,
+              actionConfiguration.originalName
+            )
+          : null;
+
+      if (predicate && context?.conversationId) {
+        const shouldAutoApprove = await predicate({
+          auth,
+          rawInputs: context.rawInputs ?? context.toolInputs,
+          conversationId: context.conversationId,
+        });
+        if (shouldAutoApprove) {
+          return { status: "ready_allowed_implicitly" };
+        }
+      }
+
       return { status: "blocked_validation_required" };
+    }
     default:
       assertNever(actionConfiguration.permission);
   }

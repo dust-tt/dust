@@ -162,6 +162,8 @@ async function createActionForTool(
   // Build context for medium stake per-argument approval checks
   const mediumStakeContext: ToolInputContext = {
     agentId: agentConfiguration.sId,
+    conversationId: conversation.sId,
+    rawInputs,
     toolInputs: rawInputs,
   };
 
