@@ -8,7 +8,6 @@ import { rewriteContentForModel } from "@app/lib/actions/mcp_utils";
 import { getEnableSkillIdFromOutputBlock } from "@app/lib/api/actions/servers/skill_management/rendering";
 import {
   type EnabledSkillType,
-  getEnabledSkillInstructions,
   renderEnabledSkillUserMessageFromInstructions,
 } from "@app/lib/api/assistant/skills_rendering";
 import type { Authenticator } from "@app/lib/auth";
@@ -74,14 +73,14 @@ function renderEnabledSkillMessagesForAction(
       continue;
     }
 
-    const augmentedSkill = enabledSkillById.get(skillId);
-    if (!augmentedSkill) {
+    const skill = enabledSkillById.get(skillId);
+    if (!skill) {
       continue;
     }
 
     followUpMessages.push(
       renderEnabledSkillUserMessageFromInstructions({
-        skillInstructions: getEnabledSkillInstructions(augmentedSkill),
+        skill,
       })
     );
   }

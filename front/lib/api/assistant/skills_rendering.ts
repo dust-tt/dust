@@ -45,7 +45,7 @@ export function renderEquippedSkillsUserMessage(
   const enableSkillToolName = `${SKILL_MANAGEMENT_SERVER_NAME}${TOOL_NAME_SEPARATOR}${ENABLE_SKILL_TOOL_NAME}`;
   const lines = equippedSkills.map(
     ({ name, agentFacingDescription }) =>
-      `- **${name}**: ${agentFacingDescription}`
+      `- **${name}**: ${agentFacingDescription.replace("\n", "\n  ")}`
   );
 
   return renderSystemSkillMessage(
@@ -57,11 +57,13 @@ export function renderEquippedSkillsUserMessage(
 }
 
 export function renderEnabledSkillUserMessageFromInstructions({
-  skillInstructions,
+  skill,
 }: {
-  skillInstructions: string;
+  skill: EnabledSkillType;
 }): UserMessageTypeModel {
+  const skillInstructions = getEnabledSkillInstructions(skill);
+
   return renderSystemSkillMessage(
-    `<dust_system>${skillInstructions}</dust_system>`
+    `<dust_system>\n${skillInstructions}\n</dust_system>`
   );
 }
