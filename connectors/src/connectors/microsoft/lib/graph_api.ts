@@ -246,8 +246,9 @@ export async function getFullDeltaResults({
   heartbeatFunction: () => void;
 }): Promise<{ results: DriveItem[]; deltaLink: string }> {
   let nextLink: string | undefined = initialDeltaLink;
-  let allItems: DriveItem[] = [];
+  const itemMap = new Map<string, DriveItem>();
   let deltaLink: string | undefined = undefined;
+  let pageCount = 0;
 
   do {
     const {
@@ -255,7 +256,16 @@ export async function getFullDeltaResults({
       nextLink: newNextLink,
       deltaLink: finalDeltaLink,
     } = await getDeltaResults({ logger, client, parentInternalId, nextLink });
-    allItems = allItems.concat(results);
+    for (const item of results) {
+      if (item.id) {
+        itemMap.set(item.id, item); // last write wins = correct dedup
+      }
+    }
+    pageCount++;
+    logger.info(
+      { pageCount, pageItems: results.length, totalItems: itemMap.size },
+      "Delta pagination progress"
+    );
     nextLink = newNextLink;
     deltaLink = finalDeltaLink;
     heartbeatFunction();
@@ -265,7 +275,7 @@ export async function getFullDeltaResults({
     throw new Error("Delta link not found");
   }
 
-  return { results: allItems, deltaLink };
+  return { results: Array.from(itemMap.values()), deltaLink };
 }
 
 export async function getWorksheets(
