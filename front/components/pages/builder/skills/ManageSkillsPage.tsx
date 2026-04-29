@@ -162,7 +162,7 @@ export function ManageSkillsPage() {
           )
         ),
     };
-  }, [activeSkills, archivedSkills, skillSearch]);
+  }, [activeSkills, archivedSkills, skillSearch, user]);
 
   const isLoading = isActiveLoading || isArchivedLoading || isSuggestedLoading;
 
