@@ -72,7 +72,6 @@ function makeStreamAction(
     generatedFiles: overrides.generatedFiles ?? [],
     output: overrides.output ?? null,
     citations: overrides.citations ?? null,
-    sandboxOrigin: overrides.sandboxOrigin,
   };
 }
 

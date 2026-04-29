@@ -14,6 +14,8 @@ import {
   isLightServerSideMCPToolConfiguration,
   isServerSideMCPServerConfiguration,
 } from "@app/lib/actions/types/guards";
+import type { SandboxResumeState } from "@app/lib/api/actions/servers/sandbox/types";
+import { SANDBOX_MCP_SERVER_NAME } from "@app/lib/api/actions/servers/sandbox/types";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
@@ -124,7 +126,14 @@ async function buildSandboxAgentLoopContext(
     toolName: string;
     view: MCPServerViewResource;
   }
-): Promise<{ context: AgentLoopContextType; step: number } | undefined> {
+): Promise<
+  | {
+      context: AgentLoopContextType;
+      step: number;
+      parentAction: AgentMCPActionResource | null;
+    }
+  | undefined
+> {
   const mcpServerViewId = view.sId;
   const mcpServerId = view.mcpServerId;
 
@@ -213,14 +222,11 @@ async function buildSandboxAgentLoopContext(
   } = fullToolConfiguration;
 
   // Find the parent sandbox bash action to get step context and step number.
-  const existingActions = await AgentMCPActionResource.listByAgentMessageIds(
-    auth,
-    [agentMessage.agentMessageId]
-  );
-  const parentAction = existingActions.find(
-    (a) =>
-      a.status === "running" && a.toolConfiguration.mcpServerName === "sandbox"
-  );
+  const parentAction =
+    await AgentMCPActionResource.findSandboxActionForAgentMessage(auth, {
+      agentMessageId: agentMessage.agentMessageId,
+      status: "running",
+    });
   const stepContext = parentAction?.stepContext ?? DEFAULT_SANDBOX_STEP_CONTEXT;
   const step = parentAction?.stepContent.step ?? 0;
 
@@ -235,12 +241,20 @@ async function buildSandboxAgentLoopContext(
       },
     },
     step,
+    parentAction: parentAction ?? null,
   };
 }
 
 /**
  * Creates a blocked sandbox action and publishes approval events.
  * Returns the action's sId so the client can poll for approval status.
+ *
+ * Bubbles up the blocked state to the parent bash AgentMCPAction by flipping
+ * its status to `blocked_child_action_input_required` and writing a sandbox
+ * `resumeState` carrying the child action id. This mirrors how `run_agent`
+ * surfaces sub-agent blocks: the FE sees a single bubbled parent action and
+ * resolves the child via `childBlockedActionsList`. The agent loop's "any
+ * blocked actions on this message?" check naturally picks up the parent.
  */
 async function createBlockedSandboxAction(
   auth: Authenticator,
@@ -251,6 +265,7 @@ async function createBlockedSandboxAction(
     toolConfiguration,
     toolArgs,
     step,
+    parentAction,
   }: {
     agentConfiguration: AgentConfigurationType;
     agentMessage: AgentMessageType;
@@ -258,6 +273,7 @@ async function createBlockedSandboxAction(
     toolConfiguration: LightServerSideMCPToolConfigurationType;
     toolArgs: Record<string, unknown>;
     step: number;
+    parentAction: AgentMCPActionResource | null;
   }
 ): Promise<string> {
   const action = await SandboxMCPActionResource.makeNew(auth, {
@@ -268,6 +284,17 @@ async function createBlockedSandboxAction(
     toolConfiguration,
     augmentedInputs: toolArgs,
   });
+
+  // Bubble up to the parent bash action. Without a parent we still publish
+  // the approval event below, but the agent loop won't see anything blocked.
+  // In practice the parent is always present when a sandbox tool call fires.
+  if (parentAction) {
+    const resumeState: SandboxResumeState = {
+      type: SANDBOX_MCP_SERVER_NAME,
+      childActionId: action.sId,
+    };
+    await parentAction.markBlockedAwaitingChild(resumeState);
+  }
 
   // Publish approval event to the frontend.
   const approvalEvent: MCPApproveExecutionEvent = {
@@ -602,6 +629,7 @@ async function handleInitialToolCall(
     toolConfiguration: runContext.toolConfiguration,
     toolArgs,
     step: sandboxResult.step,
+    parentAction: sandboxResult.parentAction,
   });
 
   res.status(202).json({

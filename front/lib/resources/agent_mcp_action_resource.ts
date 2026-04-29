@@ -21,6 +21,10 @@ import {
   isUserQuestionResumeState,
 } from "@app/lib/actions/types";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
+import {
+  isSandboxResumeState,
+  SANDBOX_MCP_SERVER_NAME,
+} from "@app/lib/api/actions/servers/sandbox/types";
 import { getCitationsFromToolOutput } from "@app/lib/api/assistant/citations";
 import { getAgentConfigurationsWithVersion } from "@app/lib/api/assistant/configuration/agent";
 import type { ToolDisplayLabels } from "@app/lib/api/mcp";
@@ -44,6 +48,7 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { SandboxMCPActionResource } from "@app/lib/resources/sandbox_mcp_action_resource";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -517,7 +522,34 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
           authorizationInfo: null,
         });
       } else if (action.status === "blocked_child_action_input_required") {
-        const conversationId = action.stepContext.resumeState?.conversationId;
+        const { resumeState } = action.stepContext;
+
+        // Sandbox-origin bubble-up: the parent bash action is blocked because
+        // a child sandbox tool call inside it requires approval. Resolve the
+        // children scoped to the parent's agent message, not by stored
+        // childActionId (a parallel/sequential script can produce multiple).
+        if (isSandboxResumeState(resumeState)) {
+          const childBlockedActionsList =
+            await SandboxMCPActionResource.listBlockedForAgentMessage(auth, {
+              agentMessageId: action.agentMessageId,
+              conversationSId: conversation.sId,
+              conversationModelId: conversation.id,
+            });
+
+          blockedActionsList.push({
+            ...baseActionParams,
+            status: action.status,
+            resumeState,
+            childBlockedActionsList,
+            metadata: {
+              ...baseActionParams.metadata,
+            },
+            authorizationInfo: null,
+          });
+          continue;
+        }
+
+        const conversationId = resumeState?.conversationId;
 
         // conversation was not created so we can skip it
         if (!conversationId || !isString(conversationId)) {
@@ -543,7 +575,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         blockedActionsList.push({
           ...baseActionParams,
           status: action.status,
-          resumeState: action.stepContext.resumeState,
+          resumeState,
           childBlockedActionsList,
           metadata: {
             ...baseActionParams.metadata,
@@ -632,6 +664,34 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     return this.baseFetch(auth, {
       where: { agentMessageId: { [Op.in]: agentMessageIds } },
     });
+  }
+
+  /**
+   * Finds the sandbox bash AgentMCPAction on a given agent message, filtered
+   * by status. Used by:
+   *   - `call_tool` to find the running parent when bubbling up a child block
+   *   - `validateSandboxAction` to find the bubbled parent on slow-path resume
+   * Returns at most one — there is at most one sandbox bash action per
+   * agent message.
+   */
+  static async findSandboxActionForAgentMessage(
+    auth: Authenticator,
+    {
+      agentMessageId,
+      status,
+    }: {
+      agentMessageId: ModelId;
+      status: ToolExecutionStatus;
+    }
+  ): Promise<AgentMCPActionResource | null> {
+    const actions = await this.baseFetch(auth, {
+      where: { agentMessageId, status },
+    });
+    return (
+      actions.find(
+        (a) => a.toolConfiguration.mcpServerName === SANDBOX_MCP_SERVER_NAME
+      ) ?? null
+    );
   }
 
   static async listBlockedActionsForAgentMessage(
@@ -1095,6 +1155,24 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
   ): Promise<[affectedCount: number]> {
     return this.update({
       stepContext,
+    });
+  }
+
+  /**
+   * Single UPDATE that sets status to `blocked_child_action_input_required`
+   * and merges `resumeState` into the existing stepContext. Shared between
+   * the run_agent flow (`getExitOrPauseEvents`) and the sandbox bubble-up
+   * flow (`createBlockedSandboxAction`).
+   */
+  async markBlockedAwaitingChild(
+    resumeState: StepContext["resumeState"]
+  ): Promise<[affectedCount: number]> {
+    return this.update({
+      status: "blocked_child_action_input_required",
+      stepContext: {
+        ...this.stepContext,
+        resumeState,
+      },
     });
   }
 

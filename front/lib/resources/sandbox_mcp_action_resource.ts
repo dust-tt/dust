@@ -140,15 +140,58 @@ export class SandboxMCPActionResource extends BaseResource<SandboxMCPActionModel
     auth: Authenticator,
     conversation: ConversationResource
   ): Promise<BlockedToolExecution[]> {
-    const owner = auth.getNonNullableWorkspace();
-
     const latestAgentMessages =
       await conversation.getLatestAgentMessageIdByRank(auth);
     const latestAgentMessageIds = latestAgentMessages.map(
       (m) => m.agentMessageId
     );
 
-    if (latestAgentMessageIds.length === 0) {
+    return this.listBlockedFormatted(auth, {
+      agentMessageIds: latestAgentMessageIds,
+      conversationSId: conversation.sId,
+      conversationModelId: conversation.id,
+    });
+  }
+
+  /**
+   * Returns blocked sandbox actions for a single agent message. Used to
+   * resolve children of a bubbled-up parent bash action whose status is
+   * `blocked_child_action_input_required`.
+   */
+  static async listBlockedForAgentMessage(
+    auth: Authenticator,
+    {
+      agentMessageId,
+      conversationSId,
+      conversationModelId,
+    }: {
+      agentMessageId: ModelId;
+      conversationSId: string;
+      conversationModelId: ModelId;
+    }
+  ): Promise<BlockedToolExecution[]> {
+    return this.listBlockedFormatted(auth, {
+      agentMessageIds: [agentMessageId],
+      conversationSId,
+      conversationModelId,
+    });
+  }
+
+  private static async listBlockedFormatted(
+    auth: Authenticator,
+    {
+      agentMessageIds,
+      conversationSId,
+      conversationModelId,
+    }: {
+      agentMessageIds: ModelId[];
+      conversationSId: string;
+      conversationModelId: ModelId;
+    }
+  ): Promise<BlockedToolExecution[]> {
+    const owner = auth.getNonNullableWorkspace();
+
+    if (agentMessageIds.length === 0) {
       return [];
     }
 
@@ -175,7 +218,7 @@ export class SandboxMCPActionResource extends BaseResource<SandboxMCPActionModel
       ],
       where: {
         workspaceId: owner.id,
-        agentMessageId: { [Op.in]: latestAgentMessageIds },
+        agentMessageId: { [Op.in]: agentMessageIds },
         status: { [Op.in]: TOOL_EXECUTION_BLOCKED_STATUSES },
       },
       order: [["createdAt", "ASC"]],
@@ -193,7 +236,7 @@ export class SandboxMCPActionResource extends BaseResource<SandboxMCPActionModel
     const parentUserMessages = await MessageModel.findAll({
       where: {
         workspaceId: owner.id,
-        conversationId: conversation.id,
+        conversationId: conversationModelId,
         id: { [Op.in]: parentUserMessageIds },
       },
       attributes: ["id"],
@@ -216,7 +259,6 @@ export class SandboxMCPActionResource extends BaseResource<SandboxMCPActionModel
 
     const parentUserMessageById = _.keyBy(parentUserMessages, "id");
 
-    // Fetch agent configurations.
     const agentConfigVersionPairs = removeNulls(
       blockedActions.map((a) => {
         const agentMessage = a.agentMessage;
@@ -258,8 +300,6 @@ export class SandboxMCPActionResource extends BaseResource<SandboxMCPActionModel
       }
 
       // Sandbox actions only produce "blocked_validation_required".
-      // The query filters to TOOL_EXECUTION_BLOCKED_STATUSES, but skip
-      // any other blocked status (defensive — shouldn't happen in practice).
       if (action.status !== "blocked_validation_required") {
         continue;
       }
@@ -271,7 +311,7 @@ export class SandboxMCPActionResource extends BaseResource<SandboxMCPActionModel
       result.push({
         messageId: agentMessage.message.sId,
         userId: parentUserMessage.userMessage?.user?.sId,
-        conversationId: conversation.sId,
+        conversationId: conversationSId,
         actionId: this.modelIdToSId({
           id: action.id,
           workspaceId: owner.id,

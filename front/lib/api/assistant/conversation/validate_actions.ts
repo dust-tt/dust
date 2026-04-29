@@ -20,9 +20,11 @@ import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_reso
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SandboxMCPActionResource } from "@app/lib/resources/sandbox_mcp_action_resource";
+import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
+import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -137,11 +139,18 @@ export async function validateAction(
   const action = await AgentMCPActionResource.fetchById(auth, actionId);
 
   if (!action) {
-    return validateSandboxAction(auth, {
+    return validateSandboxAction(auth, conversation, {
       actionId,
       approvalState,
       messageId,
       conversationId,
+      conversationTitle,
+      agentMessageId,
+      agentMessageVersion,
+      userMessageId,
+      userMessageVersion,
+      userMessageOrigin,
+      branchId,
     });
   }
 
@@ -267,22 +276,38 @@ export async function validateAction(
 }
 
 /**
- * Validates a sandbox-originated action. Sandbox actions don't trigger an agent
- * loop re-launch — the agent loop is already running (the sandbox bash tool is
- * executing), and the sandbox client polls for the status change.
+ * Updates a child sandbox action's status. Relaunches the parent agent loop
+ * workflow only if the sandbox is `pending_approval` (slow path — bash
+ * activity exited). On the happy path the bash tool's open HTTP connection
+ * carries the result back; the Rust client poll detects the status flip.
  */
 async function validateSandboxAction(
   auth: Authenticator,
+  conversation: ConversationResource,
   {
     actionId,
     approvalState,
     messageId,
     conversationId,
+    conversationTitle,
+    agentMessageId,
+    agentMessageVersion,
+    userMessageId,
+    userMessageVersion,
+    userMessageOrigin,
+    branchId,
   }: {
     actionId: string;
     approvalState: ActionApprovalStateType;
     messageId: string;
     conversationId: string;
+    conversationTitle: string | null;
+    agentMessageId: string;
+    agentMessageVersion: number;
+    userMessageId: string;
+    userMessageVersion: number;
+    userMessageOrigin: UserMessageOrigin | null;
+    branchId: string | null;
   }
 ): Promise<Result<void, DustError>> {
   const owner = auth.getNonNullableWorkspace();
@@ -342,18 +367,79 @@ async function validateSandboxAction(
       : false;
   }, getMessageChannelId(messageId));
 
-  // Do NOT launch the agent loop — the sandbox bash tool is still running.
-  // The sandbox client polls for the status change and re-executes the tool.
-
-  logger.info(
-    {
-      workspaceId: owner.id,
-      conversationId,
-      messageId,
-      actionId,
-    },
-    `Sandbox action ${approvalState === "approved" ? "approved" : "rejected"} by user`
+  const sandbox = await SandboxResource.fetchByConversationId(
+    auth,
+    conversationId
   );
 
+  const baseLog = {
+    workspaceId: owner.id,
+    conversationId,
+    messageId,
+    actionId,
+    sandboxStatus: sandbox?.status,
+  };
+  const verb = approvalState === "approved" ? "approved" : "rejected";
+
+  // No sandbox or still running — Rust client poll handles it; the bash
+  // tool will return naturally and run_tool's markAsSucceeded flips the
+  // parent action. Other sandbox states (sleeping/deleted) shouldn't be
+  // reachable while a child action is blocked, but treat them as no-op.
+  if (!sandbox || sandbox.status !== "pending_approval") {
+    logger.info(baseLog, `Sandbox action ${verb} (no relaunch)`);
+    return new Ok(undefined);
+  }
+
+  // Slow path: sandbox is paused. Relaunch only if all sandbox children for
+  // this agent message are resolved (parallel scripts can have several).
+  const [remainingBlockedChildren, parentAction] = await Promise.all([
+    SandboxMCPActionResource.listBlockedForAgentMessage(auth, {
+      agentMessageId: sandboxAction.agentMessageId,
+      conversationSId: conversationId,
+      conversationModelId: conversation.id,
+    }),
+    AgentMCPActionResource.findSandboxActionForAgentMessage(auth, {
+      agentMessageId: sandboxAction.agentMessageId,
+      status: "blocked_child_action_input_required",
+    }),
+  ]);
+
+  if (remainingBlockedChildren.length > 0) {
+    logger.info(
+      { ...baseLog, remaining: remainingBlockedChildren.length },
+      "Sandbox action validated but other children still blocked — not relaunching"
+    );
+    return new Ok(undefined);
+  }
+
+  if (!parentAction) {
+    logger.warn(
+      baseLog,
+      "Sandbox action validated but parent bash action not found — cannot relaunch"
+    );
+    return new Ok(undefined);
+  }
+
+  // Flip parent back to running; the bash handler will see
+  // resumeState.type === "sandbox" on re-entry and enter resume mode.
+  await parentAction.updateStatus("running");
+
+  await launchAgentLoopWorkflow({
+    auth,
+    agentLoopArgs: {
+      agentMessageId,
+      agentMessageVersion,
+      conversationId,
+      conversationTitle,
+      conversationBranchId: branchId,
+      userMessageId,
+      userMessageVersion,
+      userMessageOrigin,
+    },
+    startStep: parentAction.stepContent.step,
+    waitForCompletion: true,
+  });
+
+  logger.info(baseLog, `Sandbox action ${verb} (relaunched parent loop)`);
   return new Ok(undefined);
 }
