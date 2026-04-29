@@ -6,7 +6,7 @@ import {
   isContentNodeAttachmentType,
   isFileAttachmentType,
 } from "@app/lib/api/assistant/conversation/attachments";
-import type { GCSMountFileEntry } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/files";
+import type { GCSMountEntry } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/files";
 import {
   frameSlideshowContentType,
   isInteractiveContentType,
@@ -166,13 +166,11 @@ export function conversationAttachmentToRow(
  * use-case prefix (first segment) is stripped so tree paths start at the
  * sandbox working directory root.
  */
-export function buildSandboxTree(
-  entries: GCSMountFileEntry[]
-): SandboxTreeNode[] {
+export function buildSandboxTree(entries: GCSMountEntry[]): SandboxTreeNode[] {
   const root: SandboxTreeNode[] = [];
   const nodeMap = new Map<string, SandboxTreeNode>();
 
-  for (const entry of entries) {
+  for (const entry of entries.filter((e) => !e.isDirectory)) {
     const slashIdx = entry.path.indexOf("/");
     const relativePath =
       slashIdx >= 0 ? entry.path.slice(slashIdx + 1) : entry.path;
@@ -191,7 +189,8 @@ export function buildSandboxTree(
         const dirNode: SandboxTreeNode = {
           name: parts[i],
           path: currentPath,
-          contentType: "inode/directory",
+          isDirectory: true,
+          contentType: null,
           fileId: null,
           children: [],
         };
@@ -214,6 +213,7 @@ export function buildSandboxTree(
     const fileNode: SandboxTreeNode = {
       name: parts[parts.length - 1],
       path: relativePath,
+      isDirectory: false,
       contentType: entry.contentType,
       fileId: entry.fileId,
       children: [],

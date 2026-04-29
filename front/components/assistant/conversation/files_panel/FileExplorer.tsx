@@ -17,7 +17,10 @@ import { useConversationSandboxStatus } from "@app/hooks/conversations/useConver
 import { useSendNotification } from "@app/hooks/useNotification";
 import { downloadSandboxFile } from "@app/lib/swr/files";
 import logger from "@app/logger/logger";
-import type { GCSMountFileEntry } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/files";
+import type {
+  GCSMountEntry,
+  GCSMountFileEntry,
+} from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/files";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { isInteractiveContentType } from "@app/types/files";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -90,7 +93,7 @@ function FileExplorerViewToggle({
 
 interface NewFileExplorerProps {
   conversation: ConversationWithoutContentType;
-  files: GCSMountFileEntry[];
+  files: GCSMountEntry[];
   isLoading: boolean;
   onClose: () => void;
   owner: LightWorkspaceType;
@@ -123,9 +126,13 @@ export function NewFileExplorer({
 
   // Map from tree-relative path → original GCSMountFileEntry (for metadata).
   // Tree-relative path = entry.path with the use-case prefix (first segment) stripped.
+  // Only file entries are indexed; directory entries are inferred from paths by buildSandboxTree.
   const entryByRelativePath = useMemo(() => {
     const map = new Map<string, GCSMountFileEntry>();
     for (const f of files) {
+      if (f.isDirectory) {
+        continue;
+      }
       const slashIdx = f.path.indexOf("/");
       const relativePath = slashIdx >= 0 ? f.path.slice(slashIdx + 1) : f.path;
       map.set(relativePath, f);
@@ -148,7 +155,7 @@ export function NewFileExplorer({
       if (node.name.startsWith(".")) {
         continue;
       }
-      if (node.contentType === "inode/directory") {
+      if (node.isDirectory) {
         folders.push(node);
       } else {
         const entry = entryByRelativePath.get(node.path);

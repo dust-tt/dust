@@ -22,6 +22,7 @@ import { default as databricksServer } from "@app/lib/api/actions/servers/databr
 import { default as extractDataServer } from "@app/lib/api/actions/servers/extract_data";
 import { default as fathomServer } from "@app/lib/api/actions/servers/fathom";
 import { default as fileGenerationServer } from "@app/lib/api/actions/servers/file_generation";
+import { default as filesServer } from "@app/lib/api/actions/servers/files";
 import { default as freshserviceServer } from "@app/lib/api/actions/servers/freshservice";
 import { default as frontServer } from "@app/lib/api/actions/servers/front";
 import { default as githubServer } from "@app/lib/api/actions/servers/github";
@@ -191,6 +192,8 @@ export async function getInternalMCPServer(
       return dataSourcesFileSystemServer(auth, agentLoopContext);
     case "conversation_files":
       return conversationFilesServer(auth, agentLoopContext);
+    case "files":
+      return filesServer(auth, agentLoopContext);
     case "databricks":
       return databricksServer(auth, agentLoopContext);
     case "jira":

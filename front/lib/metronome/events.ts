@@ -63,6 +63,7 @@ const TOOL_CATEGORY_MAP: Record<InternalMCPServerNameType, ToolCategory> = {
   data_sources_file_system: "retrieval",
   include_data: "retrieval",
   conversation_files: "retrieval",
+  files: "retrieval",
 
   // Deep research — web search, browsing, HTTP.
   "web_search_&_browse": "deep_research",

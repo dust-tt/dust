@@ -109,6 +109,9 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "generate_file": "never_ask",
     "get_supported_source_formats_for_output_format": "never_ask",
   },
+  "files": {
+    "list": "never_ask",
+  },
   "freshservice": {
     "add_ticket_note": "low",
     "add_ticket_reply": "low",
