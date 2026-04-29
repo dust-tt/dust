@@ -335,7 +335,7 @@ export async function sendBatchCallToLlm(
         })
       : null;
 
-    let enabledSkills: EnabledSkillType[] = []
+    let enabledSkills: EnabledSkillType[] = [];
     if (latestAgentConfiguration) {
       const skills = await SkillResource.listForAgentLoop(auth, {
         agentConfiguration: latestAgentConfiguration,
