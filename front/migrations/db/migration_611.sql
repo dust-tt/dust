@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS "coupons" (
     SET NULL ON UPDATE CASCADE,
         PRIMARY KEY ("id")
 );
-CREATE INDEX "coupons_created_by_user_idx" ON "coupons" ("createdByUserId");
+CREATE INDEX CONCURRENTLY "coupons_created_by_user_idx" ON "coupons" ("createdByUserId");
 CREATE TABLE IF NOT EXISTS "coupon_redemptions" (
     "createdAt" TIMESTAMP WITH TIME ZONE NOT NULL,
     "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL,
@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS "coupon_redemptions" (
     SET NULL ON UPDATE CASCADE,
         PRIMARY KEY ("id")
 );
-CREATE INDEX "coupon_redemptions_workspace_idx" ON "coupon_redemptions" ("workspaceId");
-CREATE INDEX "coupon_redemptions_coupon_idx" ON "coupon_redemptions" ("couponId");
-CREATE INDEX "coupon_redemptions_redeemed_by_user_idx" ON "coupon_redemptions" ("redeemedByUserId");
-CREATE UNIQUE INDEX "coupon_redemptions_coupon_workspace_idx" ON "coupon_redemptions" ("couponId", "workspaceId");
+CREATE INDEX CONCURRENTLY "coupon_redemptions_workspace_idx" ON "coupon_redemptions" ("workspaceId");
+CREATE INDEX CONCURRENTLY "coupon_redemptions_coupon_idx" ON "coupon_redemptions" ("couponId");
+CREATE INDEX CONCURRENTLY "coupon_redemptions_redeemed_by_user_idx" ON "coupon_redemptions" ("redeemedByUserId");
+CREATE UNIQUE INDEX CONCURRENTLY "coupon_redemptions_coupon_workspace_idx" ON "coupon_redemptions" ("couponId", "workspaceId");
