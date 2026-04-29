@@ -37,6 +37,8 @@ export const RESOURCES_PREFIX = {
   onboarding_task: "obt",
   programmatic_usage_configuration: "puc",
   credit: "crd",
+  coupon: "cpn",
+  coupon_redemption: "cpr",
 
   // Resource relative to triggers.
   trigger: "trg",

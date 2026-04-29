@@ -75,6 +75,8 @@ import {
   ProviderModel,
 } from "@app/lib/resources/storage/models/apps";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
+import { CouponRedemptionModel } from "@app/lib/resources/storage/models/coupon_redemptions";
+import { CouponModel } from "@app/lib/resources/storage/models/coupons";
 import { CreditModel } from "@app/lib/resources/storage/models/credits";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
@@ -179,6 +181,8 @@ export function loadAllModels() {
     ProviderCredentialModel,
     TemplateModel,
     CreditModel,
+    CouponModel,
+    CouponRedemptionModel,
     ProgrammaticUsageConfigurationModel,
     AgentConfigurationModel,
     AgentUserRelationModel,
