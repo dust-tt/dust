@@ -1,0 +1,8 @@
+{
+  "action": "sandbox_env_var.deleted",
+  "targets": [{ "type": "workspace" }, { "type": "sandbox_env_var" }],
+  "metadata": {
+    "name": "string",
+    "actor_type": "string"
+  }
+}
