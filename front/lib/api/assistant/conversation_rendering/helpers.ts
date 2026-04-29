@@ -153,7 +153,7 @@ export function renderActionForMultiActionsModel(
  * Processes agent message steps
  */
 export function getSteps(
-  auth: Authenticator,
+  _: Authenticator,
   {
     enabledSkillById,
     model,
@@ -172,7 +172,6 @@ export function getSteps(
     renderSkillsAsUserMessages?: boolean;
   }
 ): Step[] {
-  void auth;
   const supportedModel = getSupportedModelConfig(model);
   if (!supportedModel) {
     return [];
@@ -192,6 +191,8 @@ export function getSteps(
   for (const action of actions) {
     const stepIndex = action.step;
     stepByStepIndex[stepIndex] = stepByStepIndex[stepIndex] || emptyStep();
+    // All these calls are not async, so we're not doing a Promise.all for now but might need to
+    // be reconsidered in the future.
     stepByStepIndex[stepIndex].actions.push({
       call: {
         id: action.functionCallId,

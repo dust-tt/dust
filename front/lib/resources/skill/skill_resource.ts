@@ -1343,7 +1343,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     };
   }
 
-  static async augmentSkillsWithExtendedSkills(
+  private static async augmentSkillsWithExtendedSkills(
     auth: Authenticator,
     skills: SkillResource[]
   ): Promise<(SkillResource & { extendedSkill: SkillResource | null })[]> {
