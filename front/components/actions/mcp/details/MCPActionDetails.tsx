@@ -181,6 +181,7 @@ export function MCPActionDetails({
     toolOutput: output,
     toolParams: params,
     displayContext,
+    executionDurationMs: action.executionDurationMs,
   };
 
   if (

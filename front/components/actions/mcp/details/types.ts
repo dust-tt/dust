@@ -19,4 +19,5 @@ export interface ToolExecutionDetailsProps {
   toolOutput: CallToolResult["content"] | null;
   toolParams: Record<string, unknown>;
   displayContext: ActionDetailsDisplayContext;
+  executionDurationMs: number | null;
 }
