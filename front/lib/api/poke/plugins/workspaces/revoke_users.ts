@@ -50,6 +50,7 @@ export const revokeUsersPlugin = createPlugin({
         const res = await revokeAndTrackMembership(auth, user);
         return {
           userId: user.sId,
+          email: user.email,
           result: res,
         };
       },
@@ -65,9 +66,7 @@ export const revokeUsersPlugin = createPlugin({
           buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
         ],
         metadata: {
-          revoked_user_ids: successfulRevocations
-            .map((r) => r.userId)
-            .join(","),
+          revoked_emails: successfulRevocations.map((r) => r.email).join(","),
           count: String(successfulRevocations.length),
           source: "poke",
         },
