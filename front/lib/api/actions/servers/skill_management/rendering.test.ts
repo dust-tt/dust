@@ -16,8 +16,9 @@ describe("enable skill result output", () => {
       type: "resource",
       resource: {
         mimeType: "application/vnd.dust.tool-output.enable-skill-result",
-        uri: "dust://enable-skill-result/skill_123",
+        uri: "",
         text: 'Skill "commit" has been enabled.',
+        skillId: "skill_123",
       },
     });
   });
