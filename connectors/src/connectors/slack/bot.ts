@@ -1181,6 +1181,13 @@ async function answerMessage(
 
   const origin = slackBotId ? "slack_workflow" : "slack";
 
+  // Mention-only messages (e.g. Zapier sending `<@bot> +AgentName`) end up empty after stripping
+  // the bot mention and extracting the agent mention. The public API rejects empty content via
+  // Zod (`z.string().min(1)`), so substitute a minimal placeholder.
+  if (message.trim() === "") {
+    message = " ";
+  }
+
   const messageReqBody: PublicPostMessagesRequestBody = {
     content: message,
     mentions: [{ configurationId: mention.agentId }],
