@@ -34,12 +34,10 @@ const SecretsPage = withSuspense(
     import("@dust-tt/front/components/pages/workspace/developers/SecretsPage"),
   "SecretsPage"
 );
-const EgressPolicyPage = withSuspense(
+const SandboxPage = withSuspense(
   () =>
-    import(
-      "@dust-tt/front/components/pages/workspace/developers/EgressPolicyPage"
-    ),
-  "EgressPolicyPage"
+    import("@dust-tt/front/components/pages/workspace/developers/SandboxPage"),
+  "SandboxPage"
 );
 const MembersPage = withSuspense(
   () => import("@dust-tt/front/components/pages/workspace/MembersPage"),
@@ -111,8 +109,8 @@ export const adminRoutes: RouteObject[] = [
         element: <SecretsPage />,
       },
       {
-        path: "developers/egress-policy",
-        element: <EgressPolicyPage />,
+        path: "developers/sandbox",
+        element: <SandboxPage />,
       },
     ],
   },
