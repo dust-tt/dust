@@ -48,6 +48,8 @@ type CachedProviderCredential = {
   credentials: ApiKeyCredentialsType;
 };
 
+type CachedProvidersHealth = Partial<Record<ByokModelProviderIdType, boolean>>;
+
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 export interface ProviderCredentialResource
@@ -116,6 +118,10 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
     workspaceModelId: ModelId
   ) => `provider_credentials:workspaceId:${workspaceModelId}`;
 
+  private static readonly providerCredentialHealthCacheKeyResolver = (
+    workspaceModelId: ModelId
+  ) => `provider_credentials_health:workspaceId:${workspaceModelId}`;
+
   private static async _baseFetchUncached(
     workspaceModelId: ModelId,
     transaction?: Transaction
@@ -145,6 +151,19 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
     }));
   }
 
+  private static async _fetchProvidersHealthUncached(
+    workspaceModelId: ModelId,
+    transaction?: Transaction
+  ): Promise<CachedProvidersHealth> {
+    const models = await ProviderCredentialResource.model.findAll({
+      attributes: ["providerId", "isHealthy"],
+      where: { workspaceId: workspaceModelId },
+      transaction,
+    });
+
+    return Object.fromEntries(models.map((m) => [m.providerId, m.isHealthy]));
+  }
+
   // Cache eviction is handled by Redis's allkeys-lfu eviction policy.
   private static baseFetchCached = cacheWithRedis(
     ProviderCredentialResource._baseFetchUncached,
@@ -152,10 +171,30 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
     { cacheNullValues: false, ttlMs: PROVIDER_CREDENTIALS_CACHE_TTL_MS }
   );
 
+  private static fetchProvidersHealthCached = cacheWithRedis(
+    ProviderCredentialResource._fetchProvidersHealthUncached,
+    ProviderCredentialResource.providerCredentialHealthCacheKeyResolver,
+    { cacheNullValues: false, ttlMs: PROVIDER_CREDENTIALS_CACHE_TTL_MS }
+  );
+
   private static invalidateProviderCredentialCache = invalidateCacheWithRedis(
     ProviderCredentialResource._baseFetchUncached,
     ProviderCredentialResource.providerCredentialCacheKeyResolver
   );
+
+  private static invalidateProvidersHealthCache = invalidateCacheWithRedis(
+    ProviderCredentialResource._fetchProvidersHealthUncached,
+    ProviderCredentialResource.providerCredentialHealthCacheKeyResolver
+  );
+
+  private static async invalidateProviderCredentialCaches(
+    workspaceId: ModelId
+  ): Promise<void> {
+    await Promise.all([
+      this.invalidateProviderCredentialCache(workspaceId),
+      this.invalidateProvidersHealthCache(workspaceId),
+    ]);
+  }
 
   private static fromCachedData(
     data: CachedProviderCredential
@@ -278,7 +317,7 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
       editedByUserId: user.id,
     });
 
-    await this.invalidateProviderCredentialCache(workspace.id);
+    await this.invalidateProviderCredentialCaches(workspace.id);
 
     notifyProviderCredentialsHealthUpdated(auth);
 
@@ -356,7 +395,7 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
       credentialsId: oldCredentialId,
     });
 
-    await ProviderCredentialResource.invalidateProviderCredentialCache(
+    await ProviderCredentialResource.invalidateProviderCredentialCaches(
       workspace.id
     );
 
@@ -379,11 +418,9 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
     workspaceId: ModelId,
     transaction?: Transaction
   ): Promise<Partial<Record<ByokModelProviderIdType, boolean>>> {
-    const cached = transaction
-      ? await this._baseFetchUncached(workspaceId, transaction)
-      : await this.baseFetchCached(workspaceId);
-
-    return Object.fromEntries(cached.map((c) => [c.providerId, c.isHealthy]));
+    return transaction
+      ? this._fetchProvidersHealthUncached(workspaceId, transaction)
+      : this.fetchProvidersHealthCached(workspaceId);
   }
 
   static async deleteAllForWorkspace(auth: Authenticator): Promise<void> {
@@ -393,7 +430,7 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
       where: { workspaceId: workspace.id },
     });
 
-    await this.invalidateProviderCredentialCache(workspace.id);
+    await this.invalidateProviderCredentialCaches(workspace.id);
   }
 
   // Returns the invalidated credential so the caller can emit credentials.invalidated, or null if no change was made.
@@ -430,7 +467,7 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
       return null;
     }
 
-    await this.invalidateProviderCredentialCache(workspace.id);
+    await this.invalidateProviderCredentialCaches(workspace.id);
     notifyProviderCredentialsHealthUpdated(auth);
 
     return credential;
@@ -460,7 +497,7 @@ export class ProviderCredentialResource extends BaseResource<ProviderCredentialM
           credentialsId: this.credentialId,
         });
 
-        await ProviderCredentialResource.invalidateProviderCredentialCache(
+        await ProviderCredentialResource.invalidateProviderCredentialCaches(
           workspace.id
         );
 

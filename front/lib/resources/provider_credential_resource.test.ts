@@ -78,6 +78,13 @@ function getCacheKey(workspaceId: number): string {
   return `cacheWithRedis-_baseFetchUncached-provider_credentials:workspaceId:${workspaceId}`;
 }
 
+function getHealthCacheKey(workspaceId: number): string {
+  return (
+    "cacheWithRedis-_fetchProvidersHealthUncached-" +
+    `provider_credentials_health:workspaceId:${workspaceId}`
+  );
+}
+
 describe("ProviderCredentialResource", () => {
   beforeEach(() => {
     mockGetCredentials.mockClear();
@@ -114,8 +121,6 @@ describe("ProviderCredentialResource", () => {
         isByok: true,
       });
       const workspace = authenticator.getNonNullableWorkspace();
-      // Authenticator init populates the cache (empty) via fetchByokProvidersHealth; clear it so
-      // credentials created below are visible on first listByWorkspace call.
       inMemoryCache.clear();
 
       await ProviderCredentialFactory.basic(workspace, "openai");
@@ -129,6 +134,38 @@ describe("ProviderCredentialResource", () => {
         "anthropic",
         "openai",
       ]);
+    });
+  });
+
+  describe("fetchProvidersHealthByWorkspaceId", () => {
+    it("returns persisted provider health without fetching credentials from OAuth", async () => {
+      const { authenticator } = await createResourceTest({
+        role: "admin",
+        isByok: true,
+      });
+      const workspace = authenticator.getNonNullableWorkspace();
+      inMemoryCache.clear();
+
+      await ProviderCredentialFactory.basic(workspace, "openai", {
+        isHealthy: true,
+      });
+      await ProviderCredentialFactory.basic(workspace, "anthropic", {
+        isHealthy: false,
+      });
+      mockGetCredentials.mockRejectedValue(
+        new Error("OAuth should not be called when fetching provider health.")
+      );
+
+      const result =
+        await ProviderCredentialResource.fetchProvidersHealthByWorkspaceId(
+          workspace.id
+        );
+
+      expect(result).toEqual({
+        anthropic: false,
+        openai: true,
+      });
+      expect(mockGetCredentials).not.toHaveBeenCalled();
     });
   });
 
@@ -268,15 +305,21 @@ describe("ProviderCredentialResource", () => {
       });
       const workspace = authenticator.getNonNullableWorkspace();
       const cacheKey = getCacheKey(workspace.id);
+      const healthCacheKey = getHealthCacheKey(workspace.id);
 
       await ProviderCredentialFactory.basic(workspace, "openai");
 
       await ProviderCredentialResource.listByWorkspace(authenticator);
+      await ProviderCredentialResource.fetchProvidersHealthByWorkspaceId(
+        workspace.id
+      );
       expect(inMemoryCache.has(cacheKey)).toBe(true);
+      expect(inMemoryCache.has(healthCacheKey)).toBe(true);
 
       await ProviderCredentialResource.deleteAllForWorkspace(authenticator);
 
       expect(inMemoryCache.has(cacheKey)).toBe(false);
+      expect(inMemoryCache.has(healthCacheKey)).toBe(false);
     });
 
     it("returns fresh data after cache invalidation", async () => {
