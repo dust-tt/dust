@@ -1,3 +1,4 @@
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { categorizeConversationRenderErrorMessage } from "@app/lib/api/assistant/errors";
@@ -17,6 +18,7 @@ import {
 } from "@app/lib/models/agent/conversation";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
@@ -25,7 +27,9 @@ import {
   type AgentMessageStatus,
   ConversationError,
   type ConversationMetadata,
+  type ConversationType,
   type ConversationVisibility,
+  isAgentMessageType,
   type UserMessageOrigin,
 } from "@app/types/assistant/conversation";
 import type { ModelMessageTypeMultiActionsWithoutContentFragment } from "@app/types/assistant/generation";
@@ -34,6 +38,18 @@ import type { ModelId } from "@app/types/shared/model_id";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { Transaction } from "sequelize";
+
+function getLatestAgentConfigurationId(conversation: ConversationType) {
+  for (let i = conversation.content.length - 1; i >= 0; i--) {
+    const latestVersion =
+      conversation.content[i][conversation.content[i].length - 1];
+    if (isAgentMessageType(latestVersion)) {
+      return latestVersion.configuration.sId;
+    }
+  }
+
+  return null;
+}
 
 export interface LlmConversationOptions
   extends LLMParametersWithoutConversation {
@@ -308,6 +324,23 @@ export async function sendBatchCallToLlm(
     if (conversationRes.isErr()) {
       return conversationRes;
     }
+    const latestAgentConfigurationId = getLatestAgentConfigurationId(
+      conversationRes.value
+    );
+    const latestAgentConfiguration = latestAgentConfigurationId
+      ? await getAgentConfiguration(auth, {
+          agentId: latestAgentConfigurationId,
+          variant: "full",
+        })
+      : null;
+    const enabledSkills = latestAgentConfiguration
+      ? (
+          await SkillResource.listForAgentLoop(auth, {
+            agentConfiguration: latestAgentConfiguration,
+            conversation: conversationRes.value,
+          })
+        ).enabledSkills
+      : [];
 
     const promptText = systemPromptToText(input.prompt);
     const tools = JSON.stringify(
@@ -321,7 +354,7 @@ export async function sendBatchCallToLlm(
     const modelConversationRes = await renderConversationForModel(auth, {
       conversation: conversationRes.value,
       model: modelConfig,
-      enabledSkills: [],
+      enabledSkills,
       prompt: promptText,
       tools,
       allowedTokenCount:
