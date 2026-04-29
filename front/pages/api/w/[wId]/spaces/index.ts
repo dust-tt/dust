@@ -298,9 +298,9 @@ async function handler(
         ],
         context: getAuditLogContext(auth, req),
         metadata: {
-          spaceName: space.name,
-          spaceKind: space.kind,
-          isRestricted: String(requestBody.isRestricted),
+          space_name: space.name,
+          space_kind: space.kind,
+          is_restricted: String(requestBody.isRestricted),
         },
       });
 

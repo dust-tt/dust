@@ -9,10 +9,10 @@
     }
   ],
   "metadata": {
-    "spaceName": "string",
-    "spaceKind": "string",
-    "isRestricted": "string",
-    "accessMethod": "string",
+    "space_name": "string",
+    "space_kind": "string",
+    "is_restricted": "string",
+    "access_method": "string",
     "actor_type": "string"
   }
 }

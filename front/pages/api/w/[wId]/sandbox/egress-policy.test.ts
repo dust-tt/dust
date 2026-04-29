@@ -94,8 +94,8 @@ describe("GET/PUT /api/w/[wId]/sandbox/egress-policy", () => {
           location: expect.any(String),
         }),
         metadata: {
-          allowedDomainCount: "2",
-          allowedDomains: "api.github.com,*.github.com",
+          allowed_domain_count: "2",
+          allowed_domains: "api.github.com,*.github.com",
         },
         targets: [
           expect.objectContaining({

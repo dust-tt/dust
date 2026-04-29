@@ -7,7 +7,7 @@
   ],
   "metadata": {
     "provider": "string",
-    "connectionId": "string",
+    "connection_id": "string",
     "actor_type": "string"
   }
 }

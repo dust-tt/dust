@@ -100,7 +100,7 @@ async function handler(
           ],
           context: getAuditLogContext(auth, req),
           metadata: {
-            invitedEmail: invitation.inviteEmail,
+            invited_email: invitation.inviteEmail,
           },
         });
       }
@@ -118,9 +118,9 @@ async function handler(
           ],
           context: getAuditLogContext(auth, req),
           metadata: {
-            invitedEmail: invitation.inviteEmail,
-            previousRole: String(previousRole),
-            newRole: String(body.initialRole),
+            invited_email: invitation.inviteEmail,
+            previous_role: String(previousRole),
+            new_role: String(body.initialRole),
           },
         });
       }

@@ -667,7 +667,7 @@ export async function runModel(
               ],
               context: { location: "internal" },
               metadata: {
-                providerId: model.providerId,
+                provider_id: model.providerId,
                 reason: "authentication_failed",
               },
             });

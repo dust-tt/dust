@@ -9,7 +9,7 @@
     }
   ],
   "metadata": {
-    "sandboxProviderId": "string",
+    "sandbox_provider_id": "string",
     "domain": "string",
     "added": "string",
     "reason": "string",

@@ -228,10 +228,10 @@ function withSpaceFromRoute<T, A extends SessionOrKeyAuthType>(
           ],
           context: getAuditLogContext(auth, req),
           metadata: {
-            spaceName: space.name,
-            spaceKind: spaceJSON.kind,
-            isRestricted: "true",
-            accessMethod: deriveAccessMethod(auth),
+            space_name: space.name,
+            space_kind: spaceJSON.kind,
+            is_restricted: "true",
+            access_method: deriveAccessMethod(auth),
           },
         });
       }

@@ -9,8 +9,8 @@
     }
   ],
   "metadata": {
-    "previousSpendingCap": "string",
-    "newSpendingCap": "string",
+    "previous_spending_cap": "string",
+    "new_spending_cap": "string",
     "actor_type": "string"
   }
 }

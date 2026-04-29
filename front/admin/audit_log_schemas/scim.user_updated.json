@@ -9,8 +9,8 @@
     }
   ],
   "metadata": {
-    "directoryId": "string",
-    "updatedAttributes": "string",
+    "directory_id": "string",
+    "updated_attributes": "string",
     "actor_type": "string"
   }
 }

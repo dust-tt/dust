@@ -97,7 +97,7 @@ async function handler(
         ],
         context: getAuditLogContext(auth, req),
         metadata: {
-          dataSourceName: dataSource.name,
+          data_source_name: dataSource.name,
           field: Object.keys(bodyValidation.right).join(","),
         },
       });
@@ -161,9 +161,9 @@ async function handler(
         ],
         context: getAuditLogContext(auth, req),
         metadata: {
-          dataSourceName: dataSource.name,
+          data_source_name: dataSource.name,
           provider: dataSource.connectorProvider ?? "folder",
-          spaceId: space.sId,
+          space_id: space.sId,
         },
       });
 

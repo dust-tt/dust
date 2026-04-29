@@ -9,8 +9,8 @@
     }
   ],
   "metadata": {
-    "previousOrigin": "string",
-    "newOrigin": "string",
+    "previous_origin": "string",
+    "new_origin": "string",
     "actor_type": "string"
   }
 }

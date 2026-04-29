@@ -224,17 +224,17 @@ export async function handler(
         ],
         context: getAuditLogContext(auth, req),
         metadata: {
-          spaceName: space.name,
-          managementMode: body.managementMode,
-          isRestricted: String(body.isRestricted),
+          space_name: space.name,
+          management_mode: body.managementMode,
+          is_restricted: String(body.isRestricted),
           ...(body.managementMode === "manual"
             ? {
-                memberIds: body.memberIds.join(","),
-                editorIds: body.editorIds.join(","),
+                member_ids: body.memberIds.join(","),
+                editor_ids: body.editorIds.join(","),
               }
             : {
-                groupIds: body.groupIds.join(","),
-                editorGroupIds: body.editorGroupIds.join(","),
+                group_ids: body.groupIds.join(","),
+                editor_group_ids: body.editorGroupIds.join(","),
               }),
         },
       });

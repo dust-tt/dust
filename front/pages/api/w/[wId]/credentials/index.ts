@@ -116,8 +116,8 @@ async function handler(
         context: getAuditLogContext(auth, req),
         metadata: {
           provider: String(bodyValidation.right.provider),
-          credentialType: "oauth",
-          credentialId: response.value.credential.credential_id,
+          credential_type: "oauth",
+          credential_id: response.value.credential.credential_id,
         },
       });
 

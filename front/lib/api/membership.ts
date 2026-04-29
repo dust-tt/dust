@@ -195,7 +195,7 @@ export async function revokeAndTrackMembership(
       ],
       context: getAuditLogContext(auth),
       metadata: {
-        previousRole: revokeResult.value.role,
+        previous_role: revokeResult.value.role,
       },
     });
 

@@ -313,6 +313,15 @@ The Type interface is not to be used in the backend.
 - Verb is past tense or descriptive: `created`, `revoked`, `role_updated`, `login_failed`
 - Consistency matters: check existing `AuditAction` values before inventing new names
 
+### [AUDIT9] Audit log schema metadata keys must be snake_case
+
+- Keys in the `metadata` object of `front/admin/audit_log_schemas/<action>.json` must be
+  snake_case (e.g. `agent_name`, not `agentName`)
+- The same applies to keys passed to the `metadata` field of `emitAuditLogEvent` /
+  `emitAuditLogEventDirect` call sites — they must match the schema declaration
+- Enforced by `npm -w front run lint:audit-log-schemas` (runs in CI and as a lefthook
+  pre-commit hook scoped to `front/admin/audit_log_schemas/**/*.json`)
+
 ## MCP
 
 ### [MCP1] Single file internal servers

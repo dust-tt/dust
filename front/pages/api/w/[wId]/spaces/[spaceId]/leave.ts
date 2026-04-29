@@ -95,7 +95,7 @@ async function handler(
         ],
         context: getAuditLogContext(auth, req),
         metadata: {
-          spaceName: space.name,
+          space_name: space.name,
         },
       });
 

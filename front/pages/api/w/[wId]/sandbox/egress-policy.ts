@@ -111,8 +111,8 @@ async function handler(
         ],
         context: getAuditLogContext(auth, req),
         metadata: {
-          allowedDomainCount: String(result.value.allowedDomains.length),
-          allowedDomains: result.value.allowedDomains.join(","),
+          allowed_domain_count: String(result.value.allowedDomains.length),
+          allowed_domains: result.value.allowedDomains.join(","),
         },
       });
 

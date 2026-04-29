@@ -100,9 +100,9 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
         }),
       ],
       metadata: {
-        connectionType: blob.connectionType ?? "unknown",
-        serverType: resource.internalMCPServerId ? "internal" : "remote",
-        authType: blob.connectionId ? "oauth" : "keypair",
+        connection_type: blob.connectionType ?? "unknown",
+        server_type: resource.internalMCPServerId ? "internal" : "remote",
+        auth_type: blob.connectionId ? "oauth" : "keypair",
       },
     });
 
@@ -469,9 +469,9 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
           }),
         ],
         metadata: {
-          connectionType: auditMetadata.connectionType,
-          serverType: auditMetadata.serverType,
-          authType: auditMetadata.authType,
+          connection_type: auditMetadata.connectionType,
+          server_type: auditMetadata.serverType,
+          auth_type: auditMetadata.authType,
         },
       });
 
@@ -490,8 +490,8 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
           ],
           metadata: {
             provider: auditMetadata.name,
-            connectionId: auditMetadata.connectionId,
-            connectionType: auditMetadata.connectionType,
+            connection_id: auditMetadata.connectionId,
+            connection_type: auditMetadata.connectionType,
           },
         });
       }

@@ -477,7 +477,7 @@ export async function handleMembershipInvitations(
       ),
       context: getAuditLogContext(auth),
       metadata: {
-        invitedCount: String(successfulInvites.length),
+        invited_count: String(successfulInvites.length),
         emails: successfulInvites.map((r) => r.email).join(","),
       },
     });

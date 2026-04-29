@@ -93,8 +93,8 @@ export const relocateUserPlugin = createPlugin({
           buildAuditLogTarget("user", { sId: userId, name: user.email }),
         ],
         metadata: {
-          fromRegion: multiRegionsConfig.getCurrentRegion(),
-          toRegion: String(newRegion[0]),
+          from_region: multiRegionsConfig.getCurrentRegion(),
+          to_region: String(newRegion[0]),
         },
       });
 

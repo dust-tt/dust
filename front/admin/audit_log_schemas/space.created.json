@@ -9,9 +9,9 @@
     }
   ],
   "metadata": {
-    "spaceName": "string",
-    "spaceKind": "string",
-    "isRestricted": "string",
+    "space_name": "string",
+    "space_kind": "string",
+    "is_restricted": "string",
     "actor_type": "string"
   }
 }

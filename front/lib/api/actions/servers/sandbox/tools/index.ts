@@ -350,7 +350,7 @@ export async function addEgressDomainTool(
       },
     ],
     metadata: {
-      sandboxProviderId: sandbox.providerId,
+      sandbox_provider_id: sandbox.providerId,
       domain: parsed.value,
       added: String(result.value.addedDomain !== null),
       reason,

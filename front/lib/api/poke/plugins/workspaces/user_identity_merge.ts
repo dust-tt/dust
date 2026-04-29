@@ -78,8 +78,8 @@ export const userIdentityMergePlugin = createPlugin({
         }),
       ],
       metadata: {
-        primaryUserId: mergeResult.value.primaryUser.sId,
-        mergedUserId: mergeResult.value.secondaryUser.sId,
+        primary_user_id: mergeResult.value.primaryUser.sId,
+        merged_user_id: mergeResult.value.secondaryUser.sId,
       },
     });
 

@@ -42,12 +42,12 @@ function extractDataSourceIds(
   const ds = inputs.dataSources;
   const tables = inputs.tables;
   if (Array.isArray(ds) && ds.length > 0) {
-    result.accessedDataSourceIds = ds
+    result.accessed_data_source_ids = ds
       .map((d: { uri: string }) => d.uri.split("/").pop() ?? "")
       .join(",");
   }
   if (Array.isArray(tables) && tables.length > 0) {
-    result.accessedTableIds = tables
+    result.accessed_table_ids = tables
       .map((t: { uri: string }) => t.uri.split("/").pop() ?? "")
       .join(",");
   }
@@ -364,16 +364,16 @@ async function executeToolStreaming(
           ],
           context: { location: auth.clientIp() ?? "internal" },
           metadata: {
-            toolName: action.toolConfiguration.originalName,
-            toolType: isLightClientSideMCPToolConfiguration(
+            tool_name: action.toolConfiguration.originalName,
+            tool_type: isLightClientSideMCPToolConfiguration(
               action.toolConfiguration
             )
               ? "remote"
               : "internal",
-            mcpServerName: action.toolConfiguration.mcpServerName,
-            conversationId: conversation.sId,
+            mcp_server_name: action.toolConfiguration.mcpServerName,
+            conversation_id: conversation.sId,
             ...(conversation.triggerId
-              ? { triggerId: conversation.triggerId }
+              ? { trigger_id: conversation.triggerId }
               : {}),
             initiating_user_id: auth.user()?.sId ?? "unknown",
             initiating_user_email: auth.user()?.email ?? "unknown",

@@ -9,7 +9,7 @@
     }
   ],
   "metadata": {
-    "invitedEmail": "string",
+    "invited_email": "string",
     "actor_type": "string"
   }
 }
