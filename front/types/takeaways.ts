@@ -8,4 +8,5 @@ export type TodoVersionedActionItem = {
   status: TodoVersionedActionItemStatus;
   detectedDoneAt: string | null;
   detectedDoneRationale: string | null;
+  detectedCreationRationale: string | null;
 };

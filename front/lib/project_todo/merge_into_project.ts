@@ -67,6 +67,7 @@ type TodoBlob = {
   status: "todo" | "done";
   doneAt: Date | null;
   reasoningDoneAt: string | null;
+  reasoningCreatedAt: string | null;
 };
 
 // A candidate todo that has no existing source link yet and therefore needs to
@@ -437,6 +438,7 @@ async function createOrLinkTodos(
           text: primary.blob.text,
           status: primary.blob.status,
           doneAt: primary.blob.doneAt,
+          actorRationale: primary.blob.reasoningCreatedAt,
         },
         itemId: primary.itemId,
         source: primary.source,
@@ -533,5 +535,6 @@ export function actionItemBlob(item: TodoVersionedActionItem): TodoBlob {
       isDone && item.detectedDoneAt ? new Date(item.detectedDoneAt) : null,
     reasoningDoneAt:
       isDone && item.detectedDoneRationale ? item.detectedDoneRationale : null,
+    reasoningCreatedAt: item.detectedCreationRationale,
   };
 }

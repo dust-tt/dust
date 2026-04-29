@@ -19,6 +19,11 @@ const NewActionItemSchema = z.object({
     .describe(
       "The participant id of the assigned person. Must be one of the participant ids listed in the prompt."
     ),
+  detected_creation_rationale: z
+    .string()
+    .describe(
+      "Brief explanation of why this item qualifies as a TODO — what commitment or request makes it worth tracking."
+    ),
 });
 
 export type NewActionItem = z.infer<typeof NewActionItemSchema>;

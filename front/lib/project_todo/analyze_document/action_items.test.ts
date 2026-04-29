@@ -17,6 +17,7 @@ function makePrev(
     status: "open",
     detectedDoneAt: null,
     detectedDoneRationale: null,
+    detectedCreationRationale: null,
     ...overrides,
   };
 }
@@ -30,6 +31,7 @@ describe("buildActionItems — new items", () => {
             short_description: "Review PR",
             assignee_name: "Alice",
             assignee_user_id: "user-abc",
+            detected_creation_rationale: "Alice committed to reviewing the PR",
           },
         ],
         updatedItems: [],
@@ -47,6 +49,9 @@ describe("buildActionItems — new items", () => {
     expect(result[0].status).toBe("open");
     expect(result[0].detectedDoneAt).toBeNull();
     expect(result[0].detectedDoneRationale).toBeNull();
+    expect(result[0].detectedCreationRationale).toBe(
+      "Alice committed to reviewing the PR"
+    );
   });
 
   it("drops new items whose assignee is not a project member", () => {
@@ -57,6 +62,7 @@ describe("buildActionItems — new items", () => {
             short_description: "Call client",
             assignee_name: "Stranger",
             assignee_user_id: "unknown-id",
+            detected_creation_rationale: "Stranger said they would call",
           },
         ],
         updatedItems: [],
@@ -241,6 +247,7 @@ describe("buildPromptActionItems", () => {
         status: "open",
         detectedDoneAt: null,
         detectedDoneRationale: null,
+        detectedCreationRationale: null,
       },
       {
         sId: "def",
@@ -250,6 +257,7 @@ describe("buildPromptActionItems", () => {
         status: "done",
         detectedDoneAt: "2024-01-01T00:00:00.000Z",
         detectedDoneRationale: null,
+        detectedCreationRationale: null,
       },
     ];
     const prompt = buildPromptActionItems(items);
