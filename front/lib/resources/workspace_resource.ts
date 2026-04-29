@@ -80,6 +80,22 @@ type CachedWorkspaceData = {
 export interface WorkspaceResource
   extends ReadonlyAttributesType<WorkspaceModel> {}
 
+type WorkspaceKillSwitchValue = "full" | WorkspaceConversationKillSwitchValue;
+
+export interface WorkspaceMetadata {
+  maintenance?: "relocation" | "relocation-done";
+  killSwitched?: WorkspaceKillSwitchValue;
+  allowContentCreationFileSharing?: boolean;
+  allowVoiceTranscription?: boolean;
+  allowOpenProjects?: boolean;
+  allowManualProjectKnowledgeManagement?: boolean;
+  privateConversationUrlsByDefault?: boolean;
+  autoCreateSpaceForProvisionedGroups?: boolean;
+  disableManualInvitations?: boolean;
+  phoneCountry?: string;
+  sandboxAllowAgentEgressRequests?: boolean;
+}
+
 export const WORKSPACE_CONVERSATION_KILL_SWITCH_OPERATIONS = [
   "block",
   "unblock",
@@ -103,8 +119,6 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     WorkspaceHasDomainModel;
   static readonly KILL_SWITCH_METADATA_KEY = "killSwitched";
   static readonly FULL_WORKSPACE_KILL_SWITCH_VALUE = "full";
-  static readonly SANDBOX_ALLOW_AGENT_EGRESS_REQUESTS_METADATA_KEY =
-    "sandboxAllowAgentEgressRequests";
 
   readonly blob: Attributes<WorkspaceModel>;
 
@@ -668,9 +682,17 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
 
   static async updateMetadata(
     id: ModelId,
-    metadata: Record<string, string | number | boolean | object> | null
+    metadata:
+      | WorkspaceMetadata
+      | Record<string, string | number | boolean | object>
+      | null
   ): Promise<Result<void, Error>> {
-    return this.updateByModelIdAndCheckExistence(id, { metadata });
+    return this.updateByModelIdAndCheckExistence(id, {
+      metadata: metadata as Record<
+        string,
+        string | number | boolean | object
+      > | null,
+    });
   }
 
   static async fetchSandboxAllowAgentEgressRequests(
@@ -681,24 +703,21 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
       return new Err(new Error("Workspace not found."));
     }
 
-    return new Ok(workspace.getSandboxAllowAgentEgressRequests());
+    return new Ok(workspace.isSandboxAgentEgressRequestsAllowed());
   }
 
-  getSandboxAllowAgentEgressRequests(): boolean {
-    return (
-      this.metadata?.[
-        WorkspaceResource.SANDBOX_ALLOW_AGENT_EGRESS_REQUESTS_METADATA_KEY
-      ] === true
-    );
+  isSandboxAgentEgressRequestsAllowed(): boolean {
+    const metadata = this.metadata as WorkspaceMetadata | null;
+    return metadata?.sandboxAllowAgentEgressRequests === true;
   }
 
   async updateSandboxAllowAgentEgressRequests(
     sandboxAllowAgentEgressRequests: boolean
   ): Promise<Result<void, Error>> {
-    const metadata: Record<string, string | number | boolean | object> = {
-      ...(this.metadata ?? {}),
-      [WorkspaceResource.SANDBOX_ALLOW_AGENT_EGRESS_REQUESTS_METADATA_KEY]:
-        sandboxAllowAgentEgressRequests,
+    const previousMetadata = (this.metadata as WorkspaceMetadata | null) ?? {};
+    const metadata: WorkspaceMetadata = {
+      ...previousMetadata,
+      sandboxAllowAgentEgressRequests,
     };
     return WorkspaceResource.updateMetadata(this.id, metadata);
   }

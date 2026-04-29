@@ -52,6 +52,7 @@ import { Err, Ok, type Result } from "@app/types/shared/result";
 
 const DEFAULT_WORKING_DIRECTORY = "/home/agent";
 const DEFAULT_EXEC_TIMEOUT_MS = 60_000;
+const ADD_EGRESS_DOMAIN_TOOL_NAME = "add_egress_domain" as const;
 
 interface FormatExecOutputOpts {
   denyLogEntries?: string[];
@@ -117,7 +118,7 @@ export async function createSandboxTools(
 
       return buildDescribeToolsetOutput(auth, providerId, format ?? "yaml");
     },
-    add_egress_domain: addEgressDomainTool,
+    [ADD_EGRESS_DOMAIN_TOOL_NAME]: addEgressDomainTool,
   };
 
   const tools = buildTools(SANDBOX_TOOLS_METADATA, handlers);
@@ -125,7 +126,7 @@ export async function createSandboxTools(
     return tools;
   }
 
-  return tools.filter((tool) => tool.name !== "add_egress_domain");
+  return tools.filter((tool) => tool.name !== ADD_EGRESS_DOMAIN_TOOL_NAME);
 }
 
 export async function buildDescribeToolsetOutput(

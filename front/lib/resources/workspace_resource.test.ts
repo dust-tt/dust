@@ -191,14 +191,14 @@ describe("WorkspaceResource", () => {
     it("defaults to false and can be updated", async () => {
       const initial = await WorkspaceResource.fetchById(workspace.sId);
 
-      expect(initial?.getSandboxAllowAgentEgressRequests()).toBe(false);
+      expect(initial?.isSandboxAgentEgressRequestsAllowed()).toBe(false);
 
       const result = await initial!.updateSandboxAllowAgentEgressRequests(true);
 
       expect(result.isOk()).toBe(true);
 
       const updated = await WorkspaceResource.fetchById(workspace.sId);
-      expect(updated?.getSandboxAllowAgentEgressRequests()).toBe(true);
+      expect(updated?.isSandboxAgentEgressRequestsAllowed()).toBe(true);
     });
 
     it("reads the setting by workspace id", async () => {
@@ -225,7 +225,7 @@ describe("WorkspaceResource", () => {
       await ws!.updateSandboxAllowAgentEgressRequests(true);
 
       const updated = await WorkspaceResource.fetchById(workspace.sId);
-      expect(updated?.getSandboxAllowAgentEgressRequests()).toBe(true);
+      expect(updated?.isSandboxAgentEgressRequestsAllowed()).toBe(true);
       expect(updated?.metadata?.someOtherKey).toBe("preserve-me");
     });
   });
