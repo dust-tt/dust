@@ -48,7 +48,10 @@ async function importAgentConfiguration(
   }
 
   const editorEmails = yamlConfig.editors;
-  const fetchedEditors = await UserResource.fetchByEmails(editorEmails);
+  const fetchedEditors = await UserResource.listUserWithExactEmails(
+    auth.getNonNullableWorkspace(),
+    editorEmails
+  );
 
   const uploadingUser = auth.user();
   const editorUsers =
