@@ -188,7 +188,7 @@ function warnDocumentationAck(documentationAckLabel: string) {
 function failAutoApproveAck() {
   fail(
     "`front/lib/actions/auto_approve_registry.ts` has been modified. " +
-      "This file decides which `stake: \"high\"` tool calls bypass the user " +
+      'This file decides which `stake: "high"` tool calls bypass the user ' +
       "approval modal. Changes can silently weaken our high-stakes-tool " +
       "guarantee.\n\n" +
       `Please add the \`${autoApproveAckLabel}\` label to acknowledge that ` +
