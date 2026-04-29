@@ -2,6 +2,7 @@ import {
   ActionDetailsWrapper,
   ActionExecutionProvider,
 } from "@app/components/actions/ActionDetailsWrapper";
+import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import {
   makeQueryTextForDataSourceSearch,
   makeQueryTextForFind,
@@ -147,6 +148,7 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
   return (
     <ActionExecutionProvider
       executionDurationMs={props.action.executionDurationMs}
+      isFinal={isToolExecutionStatusFinal(props.action.status)}
       startedAtMs={props.action.createdAt}
     >
       <MCPActionDetailsInner {...props} />

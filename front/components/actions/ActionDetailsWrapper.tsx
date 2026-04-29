@@ -5,28 +5,32 @@ import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
 interface ActionExecutionContextValue {
   executionDurationMs: number | null;
+  isFinal: boolean;
   startedAtMs: number | null;
 }
 
 const ActionExecutionContext = createContext<ActionExecutionContextValue>({
   executionDurationMs: null,
+  isFinal: false,
   startedAtMs: null,
 });
 
 interface ActionExecutionProviderProps {
   executionDurationMs: number | null;
+  isFinal: boolean;
   startedAtMs: number | null;
   children: React.ReactNode;
 }
 
 export function ActionExecutionProvider({
   executionDurationMs,
+  isFinal,
   startedAtMs,
   children,
 }: ActionExecutionProviderProps) {
   const value = useMemo(
-    () => ({ executionDurationMs, startedAtMs }),
-    [executionDurationMs, startedAtMs]
+    () => ({ executionDurationMs, isFinal, startedAtMs }),
+    [executionDurationMs, isFinal, startedAtMs]
   );
   return (
     <ActionExecutionContext.Provider value={value}>
@@ -109,13 +113,14 @@ export function ActionDetailsWrapper({
 }: ActionDetailsWrapperProps) {
   const {
     executionDurationMs: executionDurationMsContext,
+    isFinal,
     startedAtMs,
   } = useContext(ActionExecutionContext);
   const executionDurationMs =
     executionDurationMsProp !== undefined
       ? executionDurationMsProp
       : executionDurationMsContext;
-  const isRunning = executionDurationMs === null;
+  const isRunning = !isFinal && executionDurationMs === null;
   const liveElapsedMs = useLiveElapsedMs(startedAtMs, isRunning);
   const displayedDurationMs = isRunning ? liveElapsedMs : executionDurationMs;
   const hasDuration = displayedDurationMs !== null;
