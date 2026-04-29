@@ -115,8 +115,8 @@ export function buildPromptActionItems(
     "transition to done; never back to open.\n" +
     "- Be concise: one action item per distinct task.\n" +
     "- Make descriptions self-sufficient: include both the action AND its subject so the item is understandable without opening the source document. Prefer specific over vague — not 'Fix the bug' but 'Fix crash in batchRenderMessages when agent config is unavailable'; not 'Review PR' but 'Review PR #24679 — improves takeaway extraction prompts'.\n" +
-    "- In the description, mention users and agents by their name, NOT via their id or via a generic term like User, Agent or Bot.\n" +
-    "- In the description, refer to the assignee by Your pronouns (e.g., 'You', 'Your', 'Yours'), not by their name.\n\n";
+    "- In the description, mention other users and agents by their name, NOT via their id or via a generic term like User, Agent or Bot.\n" +
+    "- Never include the assignee's name in the description — the assignee is tracked separately via assignee_user_id. Refer to the assignee with 'you'/'your' pronouns when needed.\n\n";
   if (previousActionItems.length > 0) {
     prompt +=
       "Previously tracked action items (reference their sId in `updated_action_items` " +
