@@ -336,9 +336,9 @@ The following skills are available for use with the skill_management__enable_ski
           {
             type: "text",
             text:
-              "<dust_system><commit>\n" +
+              "<dust_system>\n<commit>\n" +
               "Create a git commit with a descriptive message.\n" +
-              "</commit></dust_system>",
+              "</commit>\n</dust_system>",
           },
         ],
       },
