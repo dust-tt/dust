@@ -29,7 +29,7 @@ export async function listHandler(
   }
 
   // Build the set of all ancestor dir paths that contain at least one file.
-  // O(m × depth) — depth is bounded in practice (< 10 levels).
+  // O(m × depth). Deph is typically small.
   const nonEmptyDirPaths = new Set<string>();
   for (const file of files) {
     const parts = file.path.split("/");
