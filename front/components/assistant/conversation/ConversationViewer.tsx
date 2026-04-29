@@ -37,6 +37,7 @@ import {
   useConversations,
 } from "@app/hooks/conversations";
 import { useConversationAttachments } from "@app/hooks/conversations/useConversationAttachments";
+import { planFileKey } from "@app/hooks/conversations/usePlanFile";
 import { useConversationEvents } from "@app/hooks/useConversationEvents";
 import { useEnableBrowserNotification } from "@app/hooks/useEnableBrowserNotification";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -88,6 +89,7 @@ import React, {
 } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
+import { mutate } from "swr";
 import { findFirstUnreadMessageIndex } from "./utils";
 
 const DEFAULT_PAGE_LIMIT = 50;
@@ -419,8 +421,10 @@ export const ConversationViewer = ({
 
   // Sync the virtuoso ref with the side panel context.
   const {
+    closePanel,
     data: panelData,
     currentPanel,
+    openPanel,
     setVirtuosoMsg,
   } = useConversationSidePanelContext();
 
@@ -545,6 +549,20 @@ export const ConversationViewer = ({
   );
 
   const eventIds = useRef<string[]>([]);
+
+  // Last-seen plan.md version for this conversation. Used to auto-open the plan panel on the
+  // skeleton-to-first-edit transition (v1 -> v2+). If the user lands on an already-populated
+  // plan, no auto-open. ConversationViewer is keyed on conversationId by its parent, so the
+  // ref is naturally reset on conversation switch via remount.
+  const lastPlanVersionRef = useRef<number | undefined>(undefined);
+
+  // `onEventCallback` is bound by `useConversationEvents` once at mount and does not re-subscribe
+  // on identity changes (see useEventSource intentional behavior). Any state read from the
+  // closure would go stale, so we mirror `currentPanel` into a ref.
+  const currentPanelRef = useRef(currentPanel);
+  useEffect(() => {
+    currentPanelRef.current = currentPanel;
+  }, [currentPanel]);
 
   // Only conversation related events are handled here.
   const onEventCallback = useCallback(
@@ -760,10 +778,22 @@ export const ConversationViewer = ({
             void mutateContextUsage();
             window.dispatchEvent(new CompactionCompletedEvent());
             break;
-          case "plan_updated":
-            // Handled by a dedicated plan-mode UI hook (to be added in the UI PR); the
-            // conversation viewer itself doesn't need to react.
+          case "plan_updated": {
+            const prevVersion = lastPlanVersionRef.current;
+            lastPlanVersionRef.current = event.version;
+            if (event.isClosed && currentPanelRef.current === "plan") {
+              closePanel();
+            } else if (prevVersion === 1 && event.version >= 2) {
+              openPanel({ type: "plan" });
+            }
+            void mutate(
+              planFileKey({
+                workspaceId: owner.sId,
+                conversationId: event.conversationId,
+              })
+            );
             break;
+          }
           default:
             ((t: never) => {
               logger.error({ event: t }, "Unknown event type");
@@ -772,6 +802,7 @@ export const ConversationViewer = ({
       }
     },
     [
+      closePanel,
       conversationId,
       debouncedMarkAsRead,
       mutateContextUsage,
@@ -779,6 +810,8 @@ export const ConversationViewer = ({
       mutateConversationAttachments,
       mutateConversationParticipants,
       mutateConversations,
+      openPanel,
+      owner.sId,
       user.sId,
     ]
   );

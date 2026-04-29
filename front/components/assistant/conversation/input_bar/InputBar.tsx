@@ -8,6 +8,7 @@ import InputBarContainer, {
 } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useConversationDrafts } from "@app/components/assistant/conversation/input_bar/useConversationDrafts";
+import { PlanCard } from "@app/components/assistant/conversation/plan_mode/PlanCard";
 import {
   useAddDeleteConversationSkill,
   useAddDeleteConversationTool,
@@ -450,6 +451,10 @@ export const InputBar = React.memo(function InputBar({
 
   return (
     <div className="flex w-full flex-col">
+      <PlanCard
+        conversationId={conversation?.sId ?? null}
+        workspaceId={owner.sId}
+      />
       <div
         onAnimationEnd={() => setIsShaking(false)}
         className={classNames(
