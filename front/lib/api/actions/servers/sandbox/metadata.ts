@@ -18,12 +18,12 @@ export const SANDBOX_TOOLS_METADATA = createToolsRecord({
         .string()
         .describe(
           "The reason this command is being run and what it achieves, in a few words. Use infinitive verbs (e.g. " +
-            '"Set up environment", "Generate the chart").',
+            '"Set up environment", "Generate the chart").'
         ),
       command: z
         .string()
         .describe(
-          "The shell command to execute. Can be a single command or a script.",
+          "The shell command to execute. Can be a single command or a script."
         ),
       workingDirectory: z
         .string()
@@ -34,7 +34,7 @@ export const SANDBOX_TOOLS_METADATA = createToolsRecord({
         .max(120000)
         .optional()
         .describe(
-          "Timeout in milliseconds for command execution. Defaults to 60000, max 120000.",
+          "Timeout in milliseconds for command execution. Defaults to 60000, max 120000."
         ),
     },
     stake: "never_ask",
@@ -63,11 +63,7 @@ export const SANDBOX_TOOLS_METADATA = createToolsRecord({
       "Request user approval to add a single domain to the current " +
       "sandbox's network allowlist. Each call adds one exact domain " +
       "(wildcards are not accepted) and requires an explicit user " +
-      "approval. Only call this if the target domain is not already " +
-      "covered by the workspace or sandbox allowlist. The workspace " +
-      "allowlist is provided in the sandbox skill instructions; if the " +
-      "domain or a wildcard parent is listed there, use the domain " +
-      "directly. Outbound HTTPS connections that fall outside the " +
+      "approval. Outbound HTTPS connections that fall outside the " +
       "allowlist surface as denied entries in `<network_proxy_logs>` in " +
       "the bash tool output. Allowlist entries added through this tool " +
       "live for the lifetime of the current sandbox and are discarded " +
@@ -78,14 +74,14 @@ export const SANDBOX_TOOLS_METADATA = createToolsRecord({
         .min(1)
         .describe(
           'Exact domain to allow for this sandbox, e.g. "api.openai.com". ' +
-            "Wildcards are not supported.",
+            "Wildcards are not supported."
         ),
       reason: z
         .string()
         .min(1)
         .describe(
           "Why this domain is needed, in one short sentence the user will " +
-            "see in the approval prompt.",
+            "see in the approval prompt."
         ),
     },
     stake: "high",
@@ -116,6 +112,6 @@ export const SANDBOX_SERVER = {
     displayLabels: t.displayLabels,
   })),
   tools_stakes: Object.fromEntries(
-    Object.values(SANDBOX_TOOLS_METADATA).map((t) => [t.name, t.stake]),
+    Object.values(SANDBOX_TOOLS_METADATA).map((t) => [t.name, t.stake])
   ),
 } as const satisfies ServerMetadata;

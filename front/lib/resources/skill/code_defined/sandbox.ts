@@ -30,12 +30,12 @@ function buildSandboxInstructionProse({
   if (hasDsbxTools) {
     instructions.push(
       "You can use the `dsbx` command line tool to list and run tools programmatically in the sandbox.",
-      "Use it with `dsbx tools [SERVER_NAME] [TOOL_NAME] [ARGS]...`. Run `dsbx tools --help` for more information.",
+      "Use it with `dsbx tools [SERVER_NAME] [TOOL_NAME] [ARGS]...`. Run `dsbx tools --help` for more information."
     );
   }
 
   instructions.push(
-    "Write output files (scripts, results, exports) to /files/conversation to make them available to the user.",
+    "Write output files (scripts, results, exports) to /files/conversation to make them available to the user."
   );
 
   return instructions.join(" ");
@@ -57,7 +57,7 @@ async function buildNetworkAccessSection(auth: Authenticator): Promise<string> {
   if (policyResult.isErr()) {
     logger.warn(
       { err: policyResult.error },
-      "Failed to read workspace egress policy for sandbox skill instructions",
+      "Failed to read workspace egress policy for sandbox skill instructions"
     );
   } else {
     workspaceDomains = policyResult.value.allowedDomains;
@@ -100,14 +100,11 @@ ${formatWorkspaceAllowlist(workspaceDomains)}
    \`add_egress_domain\` tool. These live for the lifetime of the current
    sandbox only and are discarded when the sandbox is reaped.
 
-If the target domain — or a wildcard parent of it (for example,
-\`*.github.com\` matches \`api.github.com\` and \`a.b.github.com\`, but not
-\`github.com\` itself) — is already in the workspace allowlist shown above,
-do NOT call \`add_egress_domain\`; just use the domain. Only call
-\`add_egress_domain\` for domains that are not yet covered, and do so
-**before** running the command, with the **exact** domain (wildcards are not
-accepted) and a one-sentence reason the user will see in the approval prompt.
-This is preferable to running the command first and reacting to a denial.
+When you plan to hit a domain that is not on the workspace allowlist, you
+should call \`add_egress_domain\` **before** running the command, with the
+**exact** domain (wildcards are not accepted) and a one-sentence reason
+the user will see in the approval prompt. This is preferable to running
+the command first and reacting to a denial.
 
 If a request does get blocked — for example because you missed a domain or
 a redirect chain hits an unexpected host — the bash tool output will
@@ -121,7 +118,7 @@ block first; a denied egress is a possible cause.`;
 async function buildSandboxInstructions(
   auth: Authenticator,
   providerId: ModelProviderIdType | undefined,
-  hasDsbxTools: boolean,
+  hasDsbxTools: boolean
 ): Promise<string> {
   const networkAccessSection = await buildNetworkAccessSection(auth);
   const sandboxInstructions = buildSandboxInstructionProse({ hasDsbxTools });
@@ -140,7 +137,7 @@ async function buildSandboxInstructions(
     toolsResult = new Ok(
       filterDsbxToolEntries(imageResult.value.tools, {
         includeDsbxTools: hasDsbxTools,
-      }),
+      })
     );
   }
 
@@ -180,7 +177,7 @@ export const sandboxSkill = {
     auth: Authenticator,
     {
       agentLoopData,
-    }: { spaceIds: string[]; agentLoopData?: AgentLoopExecutionData },
+    }: { spaceIds: string[]; agentLoopData?: AgentLoopExecutionData }
   ) => {
     const providerId = agentLoopData?.agentConfiguration?.model.providerId;
     const flags = await getFeatureFlags(auth);
