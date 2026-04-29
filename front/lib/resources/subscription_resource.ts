@@ -1208,6 +1208,45 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     await invalidateContractCache(subscription.workspace.sId);
   }
 
+  /**
+   * End the current subscription as `ended_backend_only` and create a new
+   * active subscription on a different Metronome contract and plan code.
+   * Used by the contract.start webhook when an admin-scheduled Enterprise
+   * upgrade activates — preserves the plan-change history rather than
+   * mutating the existing subscription in place. The `ended_backend_only`
+   * status ensures the contract.end webhook for the old contract finds the
+   * old subscription in that state and does not scrub the workspace.
+   */
+  async swapMetronomeContract({
+    metronomeContractId,
+    planCode,
+  }: {
+    metronomeContractId: string;
+    planCode: string;
+  }): Promise<void> {
+    const newPlan = await SubscriptionResource.findPlanOrThrow(planCode);
+
+    await withTransaction(async (t) => {
+      await this.markAsEnded("ended_backend_only", t);
+
+      await SubscriptionResource.makeNew(
+        {
+          sId: generateRandomModelSId(),
+          workspaceId: this.workspaceId,
+          planId: newPlan.id,
+          status: "active",
+          trialing: false,
+          startDate: new Date(),
+          endDate: null,
+          stripeSubscriptionId: this.stripeSubscriptionId,
+          metronomeContractId,
+        },
+        renderPlanFromModel({ plan: newPlan }),
+        t
+      );
+    });
+  }
+
   async getPerSeatPricing(): Promise<SubscriptionPerSeatPricing | null> {
     if (!this.stripeSubscriptionId) {
       return null;

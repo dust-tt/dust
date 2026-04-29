@@ -359,6 +359,79 @@ export async function addStripeMetronomeBillingConfig({
 }
 
 // ---------------------------------------------------------------------------
+// Package management
+// ---------------------------------------------------------------------------
+
+/**
+ * Compact summary of a Metronome package, used by Poke to let an operator
+ * pick which package to put a customer on.
+ */
+export interface MetronomePackageSummary {
+  id: string;
+  name: string;
+  aliases: string[];
+}
+
+// Cache the package list for a few minutes as the catalog rarely changes and
+// the dialog may open many times.
+const PACKAGE_LIST_CACHE_TTL_MS = 5 * 60 * 1000;
+let packageListCache: {
+  expiresAtMs: number;
+  packages: MetronomePackageSummary[];
+} | null = null;
+
+/**
+ * List all Metronome packages on the account. Cached for 5 minutes.
+ */
+export async function listMetronomePackages(): Promise<
+  Result<MetronomePackageSummary[], Error>
+> {
+  if (packageListCache && packageListCache.expiresAtMs > Date.now()) {
+    return new Ok(packageListCache.packages);
+  }
+
+  try {
+    const packages: MetronomePackageSummary[] = [];
+    for await (const pkg of getMetronomeClient().v1.packages.list()) {
+      packages.push({
+        id: pkg.id,
+        name: pkg.name ?? "",
+        aliases: pkg.aliases?.map((a) => a.name) ?? [],
+      });
+    }
+    packageListCache = {
+      expiresAtMs: Date.now() + PACKAGE_LIST_CACHE_TTL_MS,
+      packages,
+    };
+    return new Ok(packages);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error({ error }, "[Metronome] Failed to list packages");
+    return new Err(error);
+  }
+}
+
+/** Set custom field values on a Metronome contract. */
+export async function setMetronomeContractCustomFields({
+  contractId,
+  customFields,
+}: {
+  contractId: string;
+  customFields: Record<string, string>;
+}): Promise<Result<void, Error>> {
+  try {
+    await getMetronomeClient().v1.customFields.setValues({
+      entity: "contract",
+      entity_id: contractId,
+      custom_fields: customFields,
+    });
+    return new Ok(undefined);
+  } catch (err) {
+    return new Err(normalizeError(err));
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Contract management
 // ---------------------------------------------------------------------------
 
@@ -371,23 +444,36 @@ export async function addStripeMetronomeBillingConfig({
 export async function createMetronomeContract({
   metronomeCustomerId,
   packageAlias,
+  packageId,
   uniquenessKey,
   startingAt,
   enableStripeBilling,
 }: {
   metronomeCustomerId: string;
-  packageAlias: string;
+  /** Mutually exclusive with `packageId`. */
+  packageAlias?: string;
+  /** Mutually exclusive with `packageAlias` */
+  packageId?: string;
   uniquenessKey?: string;
   // Must already be on an hour boundary (Metronome requirement).
   startingAt: Date;
   enableStripeBilling: boolean;
 }): Promise<Result<{ contractId: string }, Error>> {
+  if (!packageAlias === !packageId) {
+    return new Err(
+      new Error(
+        "createMetronomeContract requires exactly one of packageAlias or packageId."
+      )
+    );
+  }
   const startingAtISO = startingAt.toISOString();
+  const packageLabel = packageAlias ?? packageId!;
 
   try {
     const response = await getMetronomeClient().v1.contracts.create({
       customer_id: metronomeCustomerId,
-      package_alias: packageAlias,
+      ...(packageAlias ? { package_alias: packageAlias } : {}),
+      ...(packageId ? { package_id: packageId } : {}),
       starting_at: startingAtISO,
       ...(uniquenessKey ? { uniqueness_key: uniquenessKey } : {}),
     });
@@ -402,14 +488,16 @@ export async function createMetronomeContract({
     logger.info(
       {
         metronomeCustomerId,
-        packageAlias,
+        package: packageLabel,
         metronomeContractId: response.data.id,
       },
       "[Metronome] Contract created"
     );
     return new Ok({ contractId: response.data.id });
   } catch (err) {
-    if (err instanceof ConflictError) {
+    // Conflict-by-uniqueness-key recovery only applies when creating by alias.
+    // When creating by package_id we surface the error.
+    if (err instanceof ConflictError && packageAlias) {
       const existingContract =
         await getMetronomeActiveContract(metronomeCustomerId);
       if (existingContract.isOk() && existingContract.value) {
@@ -419,7 +507,7 @@ export async function createMetronomeContract({
 
     const error = normalizeError(err);
     logger.error(
-      { error, metronomeCustomerId, packageAlias },
+      { error, metronomeCustomerId, package: packageLabel },
       "[Metronome] Failed to create contract"
     );
     return new Err(error);
@@ -480,6 +568,29 @@ export async function getMetronomeRateCardById({
     return new Ok(response.data);
   } catch (err) {
     return new Err(normalizeError(err));
+  }
+}
+
+/**
+ * List all contracts for a Metronome customer (active, future-scheduled,
+ * archived). Used when we need to reason about overlaps rather than just
+ * "the most recent" contract.
+ */
+export async function listMetronomeContracts(
+  metronomeCustomerId: string
+): Promise<Result<ContractV2[], Error>> {
+  try {
+    const response = await getMetronomeClient().v2.contracts.list({
+      customer_id: metronomeCustomerId,
+    });
+    return new Ok(response.data);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId },
+      "[Metronome] Failed to list contracts"
+    );
+    return new Err(error);
   }
 }
 

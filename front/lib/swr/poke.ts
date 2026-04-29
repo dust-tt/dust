@@ -6,6 +6,7 @@ import { isRegionRedirect } from "@app/lib/swr/workspaces";
 import type { GetPokeNoWorkspaceAuthContextResponseType } from "@app/pages/api/poke/auth-context";
 import type { GetPokeCouponRedemptionsResponseBody } from "@app/pages/api/poke/coupons/[couponId]/redemptions";
 import type { GetPokeCouponsResponseBody } from "@app/pages/api/poke/coupons/index";
+import type { GetPokeMetronomePackagesResponseBody } from "@app/pages/api/poke/metronome/packages";
 import type { GetPokePlansResponseBody } from "@app/pages/api/poke/plans";
 import type { GetRegionResponseType } from "@app/pages/api/poke/region";
 import type { GetPokeWorkspaceAuthContextResponseType } from "@app/pages/api/poke/workspaces/[wId]/auth-context";
@@ -145,6 +146,29 @@ export function usePokeArchiveCoupon() {
     }
     await mutate("/api/poke/coupons");
     sendNotification({ title: "Coupon archived", type: "success" });
+  };
+}
+
+export function usePokeMetronomePackages({
+  disabled,
+}: {
+  disabled?: boolean;
+} = {}) {
+  const { fetcher } = useFetcher();
+  const packagesFetcher: Fetcher<GetPokeMetronomePackagesResponseBody> =
+    fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    "/api/poke/metronome/packages",
+    packagesFetcher,
+    { disabled }
+  );
+
+  return {
+    packages: data?.packages ?? emptyArray(),
+    isPackagesLoading: !error && !data && !disabled,
+    isPackagesError: error,
+    packagesError: isAPIErrorResponse(error) ? error.error : null,
   };
 }
 

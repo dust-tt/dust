@@ -79,12 +79,18 @@ export function InputField<T extends FieldValues>({
   title,
   type,
   placeholder,
+  min,
+  step,
 }: {
   control: Control<T>;
   name: Path<T>;
   title?: string;
-  type?: "text" | "number";
+  type?: "text" | "number" | "datetime-local";
   placeholder?: string;
+  /** Native `min` attribute, useful for `number` and `datetime-local`. */
+  min?: string;
+  /** Native `step` attribute, useful for `number` and `datetime-local`. */
+  step?: number | string;
 }) {
   return (
     <PokeFormField
@@ -97,6 +103,8 @@ export function InputField<T extends FieldValues>({
             <Input
               placeholder={placeholder ?? name}
               type={type}
+              min={min}
+              step={step}
               {...field}
               value={field.value}
               onChange={

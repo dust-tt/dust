@@ -6,7 +6,7 @@ import {
 import { clientFetch } from "@app/lib/egress/client";
 import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
-import { usePokePlans } from "@app/lib/swr/poke";
+import { usePokeMetronomePackages, usePokePlans } from "@app/lib/swr/poke";
 import type {
   EnterpriseUpgradeFormType,
   SubscriptionType,
@@ -30,7 +30,8 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { ioTsResolver } from "@hookform/resolvers/io-ts";
-import { useCallback, useEffect, useState } from "react";
+import { NonEmptyString } from "io-ts-types/lib/NonEmptyString";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 
 const MICRO_USD_PER_DOLLAR = 1_000_000;
@@ -62,7 +63,43 @@ export default function EnterpriseUpgradeDialog({
   }, []);
 
   const { plans } = usePokePlans();
+  const {
+    packages: metronomePackages,
+    isPackagesLoading,
+    packagesError,
+  } = usePokeMetronomePackages({
+    disabled: !hasMetronomeBilling || !open,
+  });
   const router = useAppRouter();
+
+  // Min datetime for the startingAt picker — at least one hour in the future
+  // and rounded up to the next local hour boundary, since Metronome contracts
+  // must start on the hour and the picker is restricted to whole hours.
+  const minStartingAtLocal = useMemo(() => {
+    const d = new Date(Date.now() + 60 * 60 * 1000);
+    if (d.getMinutes() > 0 || d.getSeconds() > 0 || d.getMilliseconds() > 0) {
+      d.setHours(d.getHours() + 1);
+    }
+    d.setMinutes(0, 0, 0);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return (
+      `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` +
+      `T${pad(d.getHours())}:00`
+    );
+  }, []);
+
+  const enterprisePackageOptions = useMemo(
+    () =>
+      metronomePackages
+        .filter((p) => p.name.toLowerCase().includes("enterprise"))
+        .map((p) => ({ value: p.id, display: p.name })),
+    [metronomePackages]
+  );
+  const isEnterprisePackageSelectionDisabled =
+    hasMetronomeBilling &&
+    (isPackagesLoading ||
+      !!packagesError ||
+      enterprisePackageOptions.length === 0);
 
   const freeCreditMicroUsd =
     programmaticUsageConfig?.freeCreditMicroUsd ?? null;
@@ -74,7 +111,8 @@ export default function EnterpriseUpgradeDialog({
       stripeSubscriptionId: !hasMetronomeBilling
         ? (subscription.stripeSubscriptionId ?? "")
         : undefined,
-      metronomeContractId: hasMetronomeBilling ? "" : undefined,
+      metronomePackageId: hasMetronomeBilling ? "" : undefined,
+      startingAt: hasMetronomeBilling ? minStartingAtLocal : undefined,
       planCode: "",
       freeCreditsOverrideEnabled: freeCreditMicroUsd !== null,
       freeCreditsDollars:
@@ -94,6 +132,22 @@ export default function EnterpriseUpgradeDialog({
   const freeCreditsOverrideEnabled = form.watch("freeCreditsOverrideEnabled");
   const paygEnabled = form.watch("paygEnabled");
 
+  // Snap startingAt minutes to :00. The native datetime-local picker shows a
+  // minute spinner regardless of `step`, so we enforce hour alignment here.
+  const startingAt = form.watch("startingAt");
+  useEffect(() => {
+    if (
+      typeof startingAt === "string" &&
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(startingAt) &&
+      startingAt.slice(14, 16) !== "00"
+    ) {
+      const snapped = startingAt.slice(0, 14) + "00";
+      if (NonEmptyString.is(snapped)) {
+        form.setValue("startingAt", snapped, { shouldValidate: false });
+      }
+    }
+  }, [startingAt, form]);
+
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const onSubmit = useCallback(
     (values: EnterpriseUpgradeFormType) => {
@@ -111,6 +165,14 @@ export default function EnterpriseUpgradeDialog({
           })
         )
       );
+
+      // datetime-local inputs return a local-time string with no timezone.
+      // Convert to ISO so the server's Date.parse is unambiguous.
+      if (typeof cleanedValues.startingAt === "string") {
+        cleanedValues.startingAt = new Date(
+          cleanedValues.startingAt
+        ).toISOString();
+      }
 
       const submit = async () => {
         setIsSubmitting(true);
@@ -159,7 +221,7 @@ export default function EnterpriseUpgradeDialog({
           <DialogDescription>
             Select the enterprise plan and provide the{" "}
             {hasMetronomeBilling
-              ? "Metronome contract ID"
+              ? "Metronome package and contract start time"
               : "Stripe subscription Id"}{" "}
             of the customer.
           </DialogDescription>
@@ -192,87 +254,132 @@ export default function EnterpriseUpgradeDialog({
                         }))}
                     />
                   </div>
-                  <div className="grid-cols grid items-center gap-4">
-                    {hasMetronomeBilling ? (
-                      <InputField
-                        control={form.control}
-                        name="metronomeContractId"
-                        title="Metronome Contract ID"
-                        placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-                      />
-                    ) : (
+                  {hasMetronomeBilling ? (
+                    <>
+                      {isPackagesLoading && (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Spinner size="sm" />
+                          <span>Loading Metronome packages...</span>
+                        </div>
+                      )}
+                      {!isPackagesLoading && packagesError && (
+                        <div className="text-warning text-sm">
+                          Failed to load Metronome packages:{" "}
+                          {packagesError.message}
+                        </div>
+                      )}
+                      {!isPackagesLoading &&
+                        !packagesError &&
+                        enterprisePackageOptions.length === 0 && (
+                          <div className="text-warning text-sm">
+                            No enterprise Metronome package is available.
+                          </div>
+                        )}
+                      {!isPackagesLoading && !packagesError && (
+                        <div className="grid-cols grid items-center gap-4">
+                          <SelectField
+                            control={form.control}
+                            name="metronomePackageId"
+                            title="Metronome Enterprise Package"
+                            mountPortalContainer={portalContainer}
+                            options={enterprisePackageOptions}
+                          />
+                        </div>
+                      )}
+                      <div className="grid-cols grid items-center gap-4">
+                        <InputField
+                          control={form.control}
+                          name="startingAt"
+                          title="Starts At (local time, ≥ 1h from now, on the hour)"
+                          type="datetime-local"
+                          min={minStartingAtLocal}
+                          step={3600}
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <div className="grid-cols grid items-center gap-4">
                       <InputField
                         control={form.control}
                         name="stripeSubscriptionId"
                         title="Stripe Subscription id"
                         placeholder="sub_1234567890"
                       />
-                    )}
-                  </div>
-
-                  <div className="border-t pt-4">
-                    <h4 className="mb-4 font-medium">
-                      Programmatic Usage Configuration
-                    </h4>
-
-                    <div className="mb-4 flex items-center gap-2">
-                      <SliderToggle
-                        selected={freeCreditsOverrideEnabled}
-                        onClick={() =>
-                          form.setValue(
-                            "freeCreditsOverrideEnabled",
-                            !freeCreditsOverrideEnabled
-                          )
-                        }
-                      />
-                      <Label className="text-sm">Negotiated Free Credits</Label>
                     </div>
-                    {freeCreditsOverrideEnabled && (
-                      <div className="mb-4 ml-6">
+                  )}
+
+                  {!hasMetronomeBilling && (
+                    <div className="border-t pt-4">
+                      <h4 className="mb-4 font-medium">
+                        Programmatic Usage Configuration
+                      </h4>
+
+                      <div className="mb-4 flex items-center gap-2">
+                        <SliderToggle
+                          selected={freeCreditsOverrideEnabled}
+                          onClick={() =>
+                            form.setValue(
+                              "freeCreditsOverrideEnabled",
+                              !freeCreditsOverrideEnabled
+                            )
+                          }
+                        />
+                        <Label className="text-sm">
+                          Negotiated Free Credits
+                        </Label>
+                      </div>
+                      {freeCreditsOverrideEnabled && (
+                        <div className="mb-4 ml-6">
+                          <InputField
+                            control={form.control}
+                            name="freeCreditsDollars"
+                            title="Free Credits (USD)"
+                            type="number"
+                            placeholder="e.g., 100"
+                          />
+                        </div>
+                      )}
+
+                      <div className="mb-4">
                         <InputField
                           control={form.control}
-                          name="freeCreditsDollars"
-                          title="Free Credits (USD)"
+                          name="defaultDiscountPercent"
+                          title="Default Discount (%)"
                           type="number"
-                          placeholder="e.g., 100"
+                          placeholder="0"
                         />
                       </div>
-                    )}
 
-                    <div className="mb-4">
-                      <InputField
-                        control={form.control}
-                        name="defaultDiscountPercent"
-                        title="Default Discount (%)"
-                        type="number"
-                        placeholder="0"
-                      />
-                    </div>
-
-                    <div className="mb-4 flex items-center gap-2">
-                      <SliderToggle
-                        selected={paygEnabled}
-                        onClick={() =>
-                          form.setValue("paygEnabled", !paygEnabled)
-                        }
-                      />
-                      <Label className="text-sm">Pay-as-you-go</Label>
-                    </div>
-                    {paygEnabled && (
-                      <div className="ml-6">
-                        <InputField
-                          control={form.control}
-                          name="paygCapDollars"
-                          title="PAYG Spending Cap (USD)"
-                          type="number"
-                          placeholder="e.g., 1000"
+                      <div className="mb-4 flex items-center gap-2">
+                        <SliderToggle
+                          selected={paygEnabled}
+                          onClick={() =>
+                            form.setValue("paygEnabled", !paygEnabled)
+                          }
                         />
+                        <Label className="text-sm">Pay-as-you-go</Label>
                       </div>
-                    )}
-                  </div>
+                      {paygEnabled && (
+                        <div className="ml-6">
+                          <InputField
+                            control={form.control}
+                            name="paygCapDollars"
+                            title="PAYG Spending Cap (USD)"
+                            type="number"
+                            placeholder="e.g., 1000"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <DialogFooter>
-                  <Button type="submit" variant="warning" label="Upgrade" />
+                  <Button
+                    type="submit"
+                    variant="warning"
+                    label="Upgrade"
+                    disabled={isEnterprisePackageSelectionDisabled}
+                  />
                 </DialogFooter>
               </form>
             </PokeForm>
