@@ -1,6 +1,6 @@
-import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
