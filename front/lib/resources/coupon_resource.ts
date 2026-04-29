@@ -47,10 +47,11 @@ export class CouponResource extends BaseResource<CouponModel> {
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<CouponResource, Error>> {
     try {
+      const user = auth.getNonNullableUser();
       const coupon = await CouponModel.create(
         {
           ...body,
-          createdByUserId: auth.user()?.id ?? null,
+          createdByUserId: user.id,
         },
         { transaction }
       );

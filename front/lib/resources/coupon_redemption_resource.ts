@@ -4,10 +4,10 @@ import type { CouponResource } from "@app/lib/resources/coupon_resource";
 import { CouponRedemptionModel } from "@app/lib/resources/storage/models/coupon_redemptions";
 import { CouponModel } from "@app/lib/resources/storage/models/coupons";
 import { UserModel } from "@app/lib/resources/storage/models/user";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { makeSId } from "@app/lib/resources/string_ids";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type { CouponRedemptionType } from "@app/types/coupon";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -20,7 +20,8 @@ export interface CouponRedemptionResource
   extends ReadonlyAttributesType<CouponRedemptionModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class CouponRedemptionResource extends BaseResource<CouponRedemptionModel> {
-  static model: ModelStatic<CouponRedemptionModel> = CouponRedemptionModel;
+  static model: ModelStaticWorkspaceAware<CouponRedemptionModel> =
+    CouponRedemptionModel;
 
   readonly workspaceSId: string;
   readonly couponSId: string;
@@ -68,12 +69,13 @@ export class CouponRedemptionResource extends BaseResource<CouponRedemptionModel
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<CouponRedemptionResource> {
     const workspace = auth.getNonNullableWorkspace();
+    const user = auth.getNonNullableUser();
     const [redemption] = await Promise.all([
       CouponRedemptionModel.create(
         {
           couponId: coupon.id,
           workspaceId: workspace.id,
-          redeemedByUserId: auth.user()?.id ?? null,
+          redeemedByUserId: user.id,
           redeemedAt: new Date(),
         },
         { transaction }
@@ -87,7 +89,7 @@ export class CouponRedemptionResource extends BaseResource<CouponRedemptionModel
     return new this(this.model, redemption.get(), {
       workspaceSId: workspace.sId,
       couponSId: coupon.sId,
-      redeemedByUserSId: auth.user()?.sId ?? null,
+      redeemedByUserSId: user.sId,
     });
   }
 
@@ -96,9 +98,7 @@ export class CouponRedemptionResource extends BaseResource<CouponRedemptionModel
   ): Promise<CouponRedemptionResource[]> {
     // WORKSPACE_ISOLATION_BYPASS: Poke global view — listing all redemptions
     // across workspaces for a single coupon for admin visibility.
-    const rows = await (
-      CouponRedemptionModel as ModelStaticWorkspaceAware<CouponRedemptionModel>
-    ).findAll({
+    const rows = await this.model.findAll({
       // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
       where: { couponId: coupon.id },
@@ -111,23 +111,18 @@ export class CouponRedemptionResource extends BaseResource<CouponRedemptionModel
     }
 
     const uniqueWorkspaceIds = [...new Set(rows.map((r) => r.workspaceId))];
-    const workspaces = await WorkspaceModel.findAll({
-      where: { id: uniqueWorkspaceIds },
-    });
+    const workspaces =
+      await WorkspaceResource.fetchByModelIds(uniqueWorkspaceIds);
     const workspaceSIdById = new Map(workspaces.map((w) => [w.id, w.sId]));
 
-    return rows.map((r) => {
-      const plain = r.get({
-        plain: true,
-      }) as Attributes<CouponRedemptionModel> & {
-        redeemedByUser: Attributes<UserModel> | null;
-      };
-      return new this(this.model, r.get(), {
-        workspaceSId: workspaceSIdById.get(r.workspaceId) ?? "",
-        couponSId: coupon.sId,
-        redeemedByUserSId: plain.redeemedByUser?.sId ?? null,
-      });
-    });
+    return rows.map(
+      (r) =>
+        new this(this.model, r.get(), {
+          workspaceSId: workspaceSIdById.get(r.workspaceId) ?? "",
+          couponSId: coupon.sId,
+          redeemedByUserSId: r.redeemedByUser?.sId ?? null,
+        })
+    );
   }
 
   toJSON(): CouponRedemptionType {
