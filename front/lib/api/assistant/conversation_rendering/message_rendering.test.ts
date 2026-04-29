@@ -520,7 +520,7 @@ describe("renderAllMessages", () => {
       "function",
       "user",
     ]);
-    expect(vi.mocked(getSteps).mock.calls.at(-1)?.[0]).toMatchObject({
+    expect(vi.mocked(getSteps).mock.calls.at(-1)?.[1]).toMatchObject({
       renderSkillsAsUserMessages: true,
     });
     const followUpMessage = result[2];
@@ -578,7 +578,7 @@ describe("renderAllMessages", () => {
     });
 
     expect(result.map((m) => m.role)).toEqual(["assistant", "function"]);
-    expect(vi.mocked(getSteps).mock.calls.at(-1)?.[0]).toMatchObject({
+    expect(vi.mocked(getSteps).mock.calls.at(-1)?.[1]).toMatchObject({
       renderSkillsAsUserMessages: false,
     });
   });

@@ -186,8 +186,7 @@ export async function renderAllMessages(
 
         if (isCurrentAgentMessage) {
           // Render the current agent's messages normally with full agentic loop.
-          const steps = getSteps({
-            auth,
+          const steps = getSteps(auth, {
             enabledSkillById,
             model,
             message: m,
