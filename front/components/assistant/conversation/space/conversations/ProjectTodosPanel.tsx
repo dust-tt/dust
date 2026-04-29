@@ -466,7 +466,7 @@ function EditableTodoItem({
   const hasConversationLink =
     (todo.status === "in_progress" || todo.status === "done") &&
     !!todo.conversationId;
-  const canEdit = viewerUserId !== null && todo.userId === viewerUserId;
+  const canEdit = viewerUserId !== null;
   const showInProgressTextAnimation = todo.status === "in_progress";
   const [isFlashing, setIsFlashing] = useState(isNewlyDone);
 
@@ -884,13 +884,16 @@ function EditableProjectTodosPanel({
     (users.length === 1 &&
       viewerUserId !== null &&
       users[0]?.sId === viewerUserId);
-  const assigneeLabel = hideAssigneeMenu ? "Your todos" : selectedAssigneeLabel;
+  const assigneeLabel = selectedAssigneeLabel;
 
   useEffect(() => {
     if (isTodosLoading) {
       return;
     }
 
+    // Preserve the previous UX default:
+    // - if only "you" exists, default to "Your todos"
+    // - otherwise default to "Everyone's todos"
     if (!hideAssigneeMenu) {
       setAssigneeScope("all");
     } else {
@@ -898,7 +901,7 @@ function EditableProjectTodosPanel({
       setSelectedUserSIds(new Set());
       setIsAssigneeMenuOpen(false);
     }
-  }, [isTodosLoading, hideAssigneeMenu]);
+  }, [hideAssigneeMenu, isTodosLoading]);
 
   const filteredTodos = useMemo(() => {
     switch (assigneeScope) {
@@ -919,26 +922,20 @@ function EditableProjectTodosPanel({
     }
   }, [assigneeScope, selectedUserSIds, todos, viewerUserId]);
   const hasDoneItems = filteredTodos.some((todo) => todo.status === "done");
-  const shouldGroupByAssignee =
-    assigneeScope === "all" ||
-    (assigneeScope === "users" && selectedUserSIds.size > 1);
   const groupedTodosForAll = useMemo(() => {
-    if (!shouldGroupByAssignee) {
-      return [];
-    }
-
     const groups = new Map<
       string,
       { user: ProjectTodoAssigneeType | null; todos: ProjectTodoType[] }
     >();
 
     for (const todo of filteredTodos) {
-      const key = todo.user?.sId ?? `unknown-${todo.userId}`;
+      const user = todo.user ?? usersBySId.get(todo.userId) ?? null;
+      const key = user?.sId ?? `unknown-${todo.userId}`;
       const existing = groups.get(key);
       if (existing) {
         existing.todos.push(todo);
       } else {
-        groups.set(key, { user: todo.user, todos: [todo] });
+        groups.set(key, { user, todos: [todo] });
       }
     }
 
@@ -952,7 +949,7 @@ function EditableProjectTodosPanel({
       const bName = b.user?.fullName ?? "";
       return aName.localeCompare(bName, undefined, { sensitivity: "base" });
     });
-  }, [filteredTodos, shouldGroupByAssignee, viewerUserId]);
+  }, [filteredTodos, usersBySId, viewerUserId]);
 
   // Optimistically update a todo's status in the SWR cache and send the PATCH.
   // On failure the cache is revalidated from the server.
@@ -1112,119 +1109,113 @@ function EditableProjectTodosPanel({
     <div className="flex flex-col gap-3">
       {/* Header */}
       <div className="inline-flex items-center gap-2">
-        {hideAssigneeMenu ? (
-          <h3 className="heading-xl text-foreground dark:text-foreground-night">
-            {assigneeLabel}
-          </h3>
-        ) : (
-          <DropdownMenu
-            modal={false}
-            open={isAssigneeMenuOpen}
-            onOpenChange={(open) => {
-              setIsAssigneeMenuOpen(open);
-              if (open) {
-                setAssigneeSearch("");
-              }
-            }}
-          >
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                className="inline-flex items-center gap-1 rounded-md px-1 py-0.5 hover:bg-muted/40 dark:hover:bg-muted-night/40"
-              >
-                <h3 className="heading-xl text-foreground dark:text-foreground-night">
-                  {assigneeLabel}
-                </h3>
-                <Icon
-                  visual={ChevronDownIcon}
-                  size="sm"
-                  className="text-muted-foreground dark:text-muted-foreground-night"
-                />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              className="z-[1000] w-80 shadow-2xl ring-1 ring-border/60"
-              align="start"
+        <DropdownMenu
+          modal={false}
+          open={isAssigneeMenuOpen}
+          onOpenChange={(open) => {
+            setIsAssigneeMenuOpen(open);
+            if (open) {
+              setAssigneeSearch("");
+            }
+          }}
+        >
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className="inline-flex items-center gap-1 rounded-md px-1 py-0.5 hover:bg-muted/40 dark:hover:bg-muted-night/40"
             >
-              <DropdownMenuSearchbar
-                autoFocus
-                name="assignee-filter"
-                placeholder="Search members"
-                value={assigneeSearch}
-                onChange={setAssigneeSearch}
+              <h3 className="heading-xl text-foreground dark:text-foreground-night">
+                {assigneeLabel}
+              </h3>
+              <Icon
+                visual={ChevronDownIcon}
+                size="sm"
+                className="text-muted-foreground dark:text-muted-foreground-night"
               />
-              <DropdownMenuSeparator />
-              <DropdownMenuCheckboxItem
-                icon={UserIcon}
-                label="Your todos"
-                checked={assigneeScope === "mine"}
-                onClick={() => {
-                  setAssigneeScope("mine");
-                  setSelectedUserSIds(new Set());
-                  setIsAssigneeMenuOpen(false);
-                }}
-                onSelect={(event) => {
-                  event.preventDefault();
-                }}
-              />
-              <DropdownMenuCheckboxItem
-                icon={UserGroupIcon}
-                label="Everyone's todos"
-                checked={assigneeScope === "all"}
-                onClick={() => {
-                  setAssigneeScope("all");
-                  setSelectedUserSIds(new Set());
-                  setIsAssigneeMenuOpen(false);
-                }}
-                onSelect={(event) => {
-                  event.preventDefault();
-                }}
-              />
-              <DropdownMenuSeparator />
-              <div className="max-h-64 overflow-auto">
-                {filteredUsers.length > 0 ? (
-                  filteredUsers.map((user) => (
-                    <DropdownMenuCheckboxItem
-                      key={`todo-assignee-filter-${user.sId}`}
-                      icon={() => (
-                        <Avatar
-                          size="xxs"
-                          visual={
-                            user.image ?? "/static/humanavatar/anonymous.png"
-                          }
-                        />
-                      )}
-                      label={`${user.fullName}${viewerUserId === user.sId ? " (you)" : ""}`}
-                      checked={
-                        assigneeScope === "users" &&
-                        selectedUserSIds.has(user.sId)
-                      }
-                      onClick={() => {
-                        setSelectedUserSIds((previous) => {
-                          const next = new Set(previous);
-                          if (next.has(user.sId)) {
-                            next.delete(user.sId);
-                          } else {
-                            next.add(user.sId);
-                          }
-                          setAssigneeScope(next.size === 0 ? "all" : "users");
-                          return next;
-                        });
-                      }}
-                      onSelect={(event) => {
-                        event.preventDefault();
-                      }}
-                    />
-                  ))
-                ) : (
-                  <div className="px-3 py-2 text-sm text-muted-foreground">
-                    No members found
-                  </div>
-                )}
-              </div>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            className="z-[1000] w-80 shadow-2xl ring-1 ring-border/60"
+            align="start"
+          >
+            <DropdownMenuSearchbar
+              autoFocus
+              name="assignee-filter"
+              placeholder="Search members"
+              value={assigneeSearch}
+              onChange={setAssigneeSearch}
+            />
+            <DropdownMenuSeparator />
+            <DropdownMenuCheckboxItem
+              icon={UserIcon}
+              label="Your todos"
+              checked={assigneeScope === "mine"}
+              onClick={() => {
+                setAssigneeScope("mine");
+                setSelectedUserSIds(new Set());
+                setIsAssigneeMenuOpen(false);
+              }}
+              onSelect={(event) => {
+                event.preventDefault();
+              }}
+            />
+            <DropdownMenuCheckboxItem
+              icon={UserGroupIcon}
+              label="Everyone's todos"
+              checked={assigneeScope === "all"}
+              onClick={() => {
+                setAssigneeScope("all");
+                setSelectedUserSIds(new Set());
+                setIsAssigneeMenuOpen(false);
+              }}
+              onSelect={(event) => {
+                event.preventDefault();
+              }}
+            />
+            <DropdownMenuSeparator />
+            <div className="max-h-64 overflow-auto">
+              {filteredUsers.length > 0 ? (
+                filteredUsers.map((user) => (
+                  <DropdownMenuCheckboxItem
+                    key={`todo-assignee-filter-${user.sId}`}
+                    icon={() => (
+                      <Avatar
+                        size="xxs"
+                        visual={
+                          user.image ?? "/static/humanavatar/anonymous.png"
+                        }
+                      />
+                    )}
+                    label={`${user.fullName}${viewerUserId === user.sId ? " (you)" : ""}`}
+                    checked={
+                      assigneeScope === "users" &&
+                      selectedUserSIds.has(user.sId)
+                    }
+                    onClick={() => {
+                      setSelectedUserSIds((previous) => {
+                        const next = new Set(previous);
+                        if (next.has(user.sId)) {
+                          next.delete(user.sId);
+                        } else {
+                          next.add(user.sId);
+                        }
+                        setAssigneeScope(next.size === 0 ? "all" : "users");
+                        return next;
+                      });
+                    }}
+                    onSelect={(event) => {
+                      event.preventDefault();
+                    }}
+                  />
+                ))
+              ) : (
+                <div className="px-3 py-2 text-sm text-muted-foreground">
+                  No members found
+                </div>
+              )}
+            </div>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <div className="flex-1" />
         {hasDoneItems && (
           <Button
@@ -1248,61 +1239,40 @@ function EditableProjectTodosPanel({
         <CollapsibleTodoList>
           {/* Todo items */}
           <div className="flex flex-col gap-2">
-            {shouldGroupByAssignee
-              ? groupedTodosForAll.map((group) => (
-                  <div
-                    key={group.user?.sId ?? `unknown-${group.todos[0]?.userId}`}
-                    className="mb-4 last:mb-0"
-                  >
-                    <TodoAssigneeHeader
-                      user={group.user}
+            {groupedTodosForAll.map((group) => (
+              <div
+                key={group.user?.sId ?? `unknown-${group.todos[0]?.userId}`}
+                className="mb-4 last:mb-0"
+              >
+                <TodoAssigneeHeader
+                  user={group.user}
+                  viewerUserId={viewerUserId}
+                />
+                <div className="ml-4 flex flex-col gap-2">
+                  {group.todos.map((todo) => (
+                    <EditableTodoItem
+                      key={todo.sId}
+                      todo={todo}
                       viewerUserId={viewerUserId}
+                      onToggleDone={handleToggleDone}
+                      onDelete={handleDelete}
+                      onStartWorking={handleStartWorking}
+                      owner={owner}
+                      agentNameById={agentNameById}
+                      isExiting={pendingRemovalIds.has(todo.sId)}
+                      isAdded={
+                        diffKeys.added.has(todo.sId) &&
+                        !enteredKeys.has(todo.sId)
+                      }
+                      isEntering={enteringKeys.has(todo.sId)}
+                      isTyping={typingKeys.has(todo.sId)}
+                      isNewlyDone={doneFlashKeys.has(todo.sId)}
+                      isStarting={startingTodoIds.has(todo.sId)}
                     />
-                    <div className="ml-4 flex flex-col gap-2">
-                      {group.todos.map((todo) => (
-                        <EditableTodoItem
-                          key={todo.sId}
-                          todo={todo}
-                          viewerUserId={viewerUserId}
-                          onToggleDone={handleToggleDone}
-                          onDelete={handleDelete}
-                          onStartWorking={handleStartWorking}
-                          owner={owner}
-                          agentNameById={agentNameById}
-                          isExiting={pendingRemovalIds.has(todo.sId)}
-                          isAdded={
-                            diffKeys.added.has(todo.sId) &&
-                            !enteredKeys.has(todo.sId)
-                          }
-                          isEntering={enteringKeys.has(todo.sId)}
-                          isTyping={typingKeys.has(todo.sId)}
-                          isNewlyDone={doneFlashKeys.has(todo.sId)}
-                          isStarting={startingTodoIds.has(todo.sId)}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                ))
-              : filteredTodos.map((todo) => (
-                  <EditableTodoItem
-                    key={todo.sId}
-                    todo={todo}
-                    viewerUserId={viewerUserId}
-                    onToggleDone={handleToggleDone}
-                    onDelete={handleDelete}
-                    onStartWorking={handleStartWorking}
-                    owner={owner}
-                    agentNameById={agentNameById}
-                    isExiting={pendingRemovalIds.has(todo.sId)}
-                    isAdded={
-                      diffKeys.added.has(todo.sId) && !enteredKeys.has(todo.sId)
-                    }
-                    isEntering={enteringKeys.has(todo.sId)}
-                    isTyping={typingKeys.has(todo.sId)}
-                    isNewlyDone={doneFlashKeys.has(todo.sId)}
-                    isStarting={startingTodoIds.has(todo.sId)}
-                  />
-                ))}
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
 
           {/* Empty state */}
@@ -1322,15 +1292,15 @@ function EditableProjectTodosPanel({
 interface ProjectTodosPanelProps {
   owner: LightWorkspaceType;
   spaceId: string;
-  isArchived: boolean;
+  isReadOnly: boolean;
 }
 
 export function ProjectTodosPanel({
   owner,
   spaceId,
-  isArchived,
+  isReadOnly,
 }: ProjectTodosPanelProps) {
-  if (isArchived) {
+  if (isReadOnly) {
     return <ReadOnlyProjectTodosPanel owner={owner} spaceId={spaceId} />;
   }
 

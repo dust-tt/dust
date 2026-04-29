@@ -570,8 +570,8 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
   }
 
   // Applies the same updates to a batch of todos in a single transaction.
-  // Scoped to the authenticated user + given space so unrelated or cross-user
-  // todos cannot be touched via this path.
+  // Scoped to the given space so unrelated or cross-space todos cannot be
+  // touched via this path.
   static async bulkUpdateWithVersionBySIds(
     auth: Authenticator,
     {
@@ -601,7 +601,6 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
       where: {
         id: { [Op.in]: ids },
         spaceId,
-        userId: auth.getNonNullableUser().id,
       },
     });
 
