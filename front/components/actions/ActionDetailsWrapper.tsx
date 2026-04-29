@@ -40,25 +40,38 @@ export function ActionExecutionProvider({
 }
 
 function useLiveElapsedMs(startedAtMs: number | null, enabled: boolean) {
+  // Snapshot the wall-clock moment we observe `enabled` going true so that any
+  // time the action spent in ready/blocked states (auth, validation, user
+  // input...) doesn't get counted toward the live elapsed display. If the
+  // panel mounts already in the executing state, we have no transition to
+  // observe — fall back to the action's startedAtMs so the first reading
+  // isn't stuck at zero.
+  const [executionStartMs, setExecutionStartMs] = useState<number | null>(() =>
+    enabled ? (startedAtMs ?? Date.now()) : null
+  );
   const [nowMs, setNowMs] = useState(() => Date.now());
   useEffect(() => {
-    if (!enabled || startedAtMs === null) {
+    if (!enabled) {
+      setExecutionStartMs(null);
       return;
     }
+    setExecutionStartMs((prev) => prev ?? Date.now());
+    // Refresh now once on the rising edge so the first render after enabling
+    // doesn't show an elapsed computed from a stale mount-time `nowMs`.
+    setNowMs(Date.now());
     const id = window.setInterval(() => setNowMs(Date.now()), 1000);
     return () => window.clearInterval(id);
-  }, [enabled, startedAtMs]);
-  if (startedAtMs === null) {
+  }, [enabled]);
+  if (executionStartMs === null) {
     return null;
   }
-  return Math.max(0, nowMs - startedAtMs);
+  return Math.max(0, nowMs - executionStartMs);
 }
 
 interface ActionDetailsWrapperProps {
   actionName: string;
   children?: React.ReactNode;
   displayContext: ActionDetailsDisplayContext;
-  executionDurationMs?: number | null;
   headerAction?: React.ReactNode;
   visual: ComponentType<{ className?: string }>;
 }
@@ -107,19 +120,12 @@ export function ActionDetailsWrapper({
   actionName,
   children,
   displayContext,
-  executionDurationMs: executionDurationMsProp,
   headerAction,
   visual,
 }: ActionDetailsWrapperProps) {
-  const {
-    executionDurationMs: executionDurationMsContext,
-    isExecuting,
-    startedAtMs,
-  } = useContext(ActionExecutionContext);
-  const executionDurationMs =
-    executionDurationMsProp !== undefined
-      ? executionDurationMsProp
-      : executionDurationMsContext;
+  const { executionDurationMs, isExecuting, startedAtMs } = useContext(
+    ActionExecutionContext
+  );
   // Only tick when the tool is actually executing — not while it sits in
   // ready/blocked states (auth, validation, user input...) where elapsed
   // wall time has nothing to do with execution duration.
