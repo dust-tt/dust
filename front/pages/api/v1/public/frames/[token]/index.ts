@@ -125,13 +125,6 @@ async function handler(
     workspace.sId
   );
 
-  // The file's creator should always be able to access their own frame, regardless of share scope
-  // or grant list. Without this bypass, an owner viewing their own `emails_only` frame would be
-  // sent through the OTP flow even though they are logged in as the file's creator.
-  const authUserModelId = auth?.user()?.id ?? null;
-  const isFileOwner =
-    authUserModelId !== null && file.userId === authUserModelId;
-
   // If workspace policy restricts to members only, block all non-member access.
   if (workspace.sharingPolicy === "workspace_only" && !auth) {
     return apiError(req, res, {
@@ -149,14 +142,19 @@ async function handler(
     shareScope === "workspace_and_emails" ||
     shareScope === "workspace"
   ) {
-    // For workspace_and_emails (and legacy "workspace"): workspace members are authorized directly.
-    // The file's creator is always authorized regardless of scope.
-    const isWorkspaceMemberWithAccess =
-      isFileOwner ||
-      ((shareScope === "workspace_and_emails" || shareScope === "workspace") &&
-        auth);
+    // The file's creator always has access to their own frame, regardless of share scope or grant
+    // list. Without this bypass, an owner viewing their own `emails_only` frame would be sent
+    // through the OTP flow even though they are logged in as the file's creator.
+    const authUserModelId = auth?.user()?.id ?? null;
+    const isFileOwner =
+      authUserModelId !== null && file.userId === authUserModelId;
 
-    if (!isWorkspaceMemberWithAccess) {
+    // For workspace_and_emails (and legacy "workspace"): workspace members are authorized directly.
+    const isWorkspaceMemberWithAccess =
+      (shareScope === "workspace_and_emails" || shareScope === "workspace") &&
+      auth;
+
+    if (!isFileOwner && !isWorkspaceMemberWithAccess) {
       // Resolve the verified email: prefer Dust session, fall back to external viewer cookie.
       let verifiedEmail: string | null = auth?.user()?.email ?? null;
       if (!verifiedEmail) {
