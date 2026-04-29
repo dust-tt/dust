@@ -50,6 +50,8 @@ const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
     }
 
     const featureFlags = await getFeatureFlags(auth);
+    // TODO(2026-04-29 aubin): drop this and start always rendering like this a few weeks prior to the release so that
+    //  we don't have to handle the backfill.
     const renderSkillsAsUserMessages = featureFlags.includes(
       "skills_as_user_messages"
     );
