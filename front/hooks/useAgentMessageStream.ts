@@ -476,6 +476,7 @@ export function useAgentMessageStream({
                     id: `action-${action.id}`,
                     actionId: action.sId,
                     internalMCPServerName: action.internalMCPServerName,
+                    toolName: action.toolName ?? null,
                   },
                 ];
             return {

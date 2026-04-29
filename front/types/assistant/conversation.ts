@@ -265,6 +265,7 @@ export type InlineActivityStep =
       id: string;
       actionId: string;
       internalMCPServerName: InternalMCPServerNameType | null;
+      toolName: string | null;
     };
 
 export type ParsedContentItem =

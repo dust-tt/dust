@@ -30,6 +30,7 @@ import { MCPImageGenerationActionDetails } from "@app/components/actions/mcp/det
 import { MCPListToolsActionDetails } from "@app/components/actions/mcp/details/MCPListToolsActionDetails";
 import { MCPRunAgentActionDetails } from "@app/components/actions/mcp/details/MCPRunAgentActionDetails";
 import { MCPSandboxActionDetails } from "@app/components/actions/mcp/details/MCPSandboxActionDetails";
+import { MCPSandboxAddEgressDomainDetails } from "@app/components/actions/mcp/details/MCPSandboxAddEgressDomainDetails";
 import { MCPSkillEnableActionDetails } from "@app/components/actions/mcp/details/MCPSkillEnableActionDetails";
 import { MCPTablesQueryActionDetails } from "@app/components/actions/mcp/details/MCPTablesQueryActionDetails";
 import {
@@ -397,6 +398,9 @@ function MCPActionDetailsInner({
   }
 
   if (internalMCPServerName === "sandbox") {
+    if (toolName === "add_egress_domain") {
+      return <MCPSandboxAddEgressDomainDetails {...toolOutputDetailsProps} />;
+    }
     return <MCPSandboxActionDetails {...toolOutputDetailsProps} />;
   }
 

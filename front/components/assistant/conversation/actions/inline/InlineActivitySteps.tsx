@@ -27,6 +27,7 @@ import {
   CheckIcon,
   ChevronRightIcon,
   cn,
+  GlobeAltIcon,
   Icon,
   ToolsIcon,
   XCircleIcon,
@@ -278,13 +279,17 @@ export function InlineActivitySteps({
                     </div>
                   );
                 case "action": {
-                  const actionIcon = step.internalMCPServerName
-                    ? InternalActionIcons[
-                        getInternalMCPServerIconByName(
-                          step.internalMCPServerName
-                        )
-                      ]
-                    : ToolsIcon;
+                  const actionIcon =
+                    step.internalMCPServerName === "sandbox" &&
+                    step.toolName === "add_egress_domain"
+                      ? GlobeAltIcon
+                      : step.internalMCPServerName
+                        ? InternalActionIcons[
+                            getInternalMCPServerIconByName(
+                              step.internalMCPServerName
+                            )
+                          ]
+                        : ToolsIcon;
 
                   return (
                     <div

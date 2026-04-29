@@ -21,6 +21,16 @@ export function getActionOneLineLabel(
   action: AgentMCPActionWithOutputType,
   context: "running" | "done" = "done"
 ): string {
+  if (
+    action.internalMCPServerName === "sandbox" &&
+    action.toolName === "add_egress_domain" &&
+    typeof action.params?.domain === "string"
+  ) {
+    return context === "running"
+      ? `Requesting access to ${action.params.domain}`
+      : `Request access to ${action.params.domain}`;
+  }
+
   return (
     action.displayLabels?.[context] ??
     (action.functionCallName ? asDisplayName(action.functionCallName) : "Tool")
@@ -108,6 +118,7 @@ export async function contentsToActivitySteps(
           id: `action-${matchingAction.id}`,
           actionId: matchingAction.sId,
           internalMCPServerName: matchingAction.internalMCPServerName,
+          toolName: matchingAction.toolName ?? null,
         });
       }
     }
