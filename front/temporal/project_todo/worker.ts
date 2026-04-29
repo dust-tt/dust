@@ -1,3 +1,4 @@
+import { initializeOpenTelemetryInstrumentation } from "@app/lib/api/instrumentation/init";
 import {
   getTemporalWorkerConnection,
   TEMPORAL_MAXED_CACHED_WORKFLOWS,
@@ -13,6 +14,10 @@ import { QUEUE_NAME } from "./config";
 
 export async function runProjectTodoWorker() {
   const { connection, namespace } = await getTemporalWorkerConnection();
+
+  initializeOpenTelemetryInstrumentation({
+    serviceName: "dust-project-todo",
+  });
 
   const worker = await Worker.create({
     ...getWorkflowConfig({
