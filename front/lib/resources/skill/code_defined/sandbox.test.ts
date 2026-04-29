@@ -1,3 +1,4 @@
+import { Authenticator } from "@app/lib/auth";
 import { sandboxSkill } from "@app/lib/resources/skill/code_defined/sandbox";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
@@ -30,7 +31,11 @@ describe("sandboxSkill", () => {
   });
 
   it("hides agent egress request instructions until enabled", async () => {
-    const { authenticator: auth, workspace } = await createResourceTest({});
+    const {
+      authenticator: auth,
+      workspace,
+      user,
+    } = await createResourceTest({});
 
     await FeatureFlagFactory.basic(auth, "sandbox_tools");
 
@@ -41,12 +46,18 @@ describe("sandboxSkill", () => {
     expect(restrictedInstructions).toContain("There is **no** way to add");
     expect(restrictedInstructions).not.toContain("add_egress_domain");
 
-    const ws = await WorkspaceResource.fetchById(workspace.sId);
-    await ws!.updateSandboxAllowAgentEgressRequests(true);
-
-    const permissiveInstructions = await sandboxSkill.fetchInstructions(auth, {
-      spaceIds: [],
+    await WorkspaceResource.updateMetadata(workspace.id, {
+      sandboxAllowAgentEgressRequests: true,
     });
+    const refreshedAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+
+    const permissiveInstructions = await sandboxSkill.fetchInstructions(
+      refreshedAuth,
+      { spaceIds: [] }
+    );
 
     expect(permissiveInstructions).toContain("add_egress_domain");
     expect(permissiveInstructions).toContain("Sandbox allowlist");

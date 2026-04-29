@@ -1,3 +1,4 @@
+import { Authenticator } from "@app/lib/auth";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -143,28 +144,18 @@ describe("createSandboxTools", () => {
   });
 
   it("includes add_egress_domain when agent egress requests are enabled", async () => {
-    const { authenticator: auth, workspace } = await createResourceTest({});
-    const ws = await WorkspaceResource.fetchById(workspace.sId);
-    await ws!.updateSandboxAllowAgentEgressRequests(true);
+    const { workspace, user } = await createResourceTest({});
+    await WorkspaceResource.updateMetadata(workspace.id, {
+      sandboxAllowAgentEgressRequests: true,
+    });
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
 
     const tools = await createSandboxTools(auth);
 
     expect(tools.map((tool) => tool.name)).toContain("add_egress_domain");
-  });
-
-  it("fails closed when the setting cannot be read", async () => {
-    const { authenticator: auth } = await createResourceTest({});
-    const settingSpy = vi
-      .spyOn(WorkspaceResource, "fetchSandboxAllowAgentEgressRequests")
-      .mockResolvedValueOnce(new Err(new Error("lookup failed")));
-
-    try {
-      const tools = await createSandboxTools(auth);
-
-      expect(tools.map((tool) => tool.name)).not.toContain("add_egress_domain");
-    } finally {
-      settingSpy.mockRestore();
-    }
   });
 });
 
@@ -363,10 +354,6 @@ describe("addEgressDomainTool", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.spyOn(
-      WorkspaceResource,
-      "fetchSandboxAllowAgentEgressRequests"
-    ).mockResolvedValue(new Ok(true));
     mockAddSandboxPolicyDomain.mockResolvedValue(
       new Ok({
         addedDomain: "example.org",
@@ -375,12 +362,19 @@ describe("addEgressDomainTool", () => {
     );
   });
 
-  function makeExtra() {
+  function makeExtra({
+    allowAgentEgressRequests = true,
+  }: {
+    allowAgentEgressRequests?: boolean;
+  } = {}) {
     return {
       auth: {
         getNonNullableWorkspace: () => ({
           name: "Workspace",
           sId: "workspace-id",
+          metadata: {
+            sandboxAllowAgentEgressRequests: allowAgentEgressRequests,
+          },
         }),
       },
       agentLoopContext: {
@@ -393,17 +387,12 @@ describe("addEgressDomainTool", () => {
   }
 
   it("refuses to run when agent egress requests are disabled", async () => {
-    vi.spyOn(
-      WorkspaceResource,
-      "fetchSandboxAllowAgentEgressRequests"
-    ).mockResolvedValueOnce(new Ok(false));
-
     const result = await addEgressDomainTool(
       {
         domain: "example.org",
         reason: "Retry a blocked request.",
       },
-      makeExtra()
+      makeExtra({ allowAgentEgressRequests: false })
     );
 
     expect(result.isErr()).toBe(true);

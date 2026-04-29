@@ -44,7 +44,6 @@ import { startTelemetry } from "@app/lib/api/sandbox/telemetry";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
-import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 import { isDevelopment } from "@app/types/shared/env";
@@ -85,22 +84,11 @@ function formatExecOutput(
   return sections.join("\n") || "(no output)";
 }
 
-async function fetchSandboxAllowAgentEgressRequests(
-  auth: Authenticator
-): Promise<boolean> {
-  const workspace = auth.getNonNullableWorkspace();
-  const result = await WorkspaceResource.fetchSandboxAllowAgentEgressRequests(
-    workspace.sId
+function isSandboxAgentEgressRequestsAllowed(auth: Authenticator): boolean {
+  return (
+    auth.getNonNullableWorkspace().metadata?.sandboxAllowAgentEgressRequests ===
+    true
   );
-  if (result.isErr()) {
-    logger.warn(
-      { err: result.error, workspaceId: workspace.sId },
-      "Failed to read sandbox agent egress request setting"
-    );
-    return false;
-  }
-
-  return result.value;
 }
 
 export async function createSandboxTools(
@@ -122,7 +110,7 @@ export async function createSandboxTools(
   };
 
   const tools = buildTools(SANDBOX_TOOLS_METADATA, handlers);
-  if (await fetchSandboxAllowAgentEgressRequests(auth)) {
+  if (isSandboxAgentEgressRequestsAllowed(auth)) {
     return tools;
   }
 
@@ -318,9 +306,7 @@ export async function addEgressDomainTool(
   { domain, reason }: { domain: string; reason: string },
   { auth, agentLoopContext }: ToolHandlerExtra
 ): Promise<Result<Array<{ type: "text"; text: string }>, MCPError>> {
-  const allowAgentEgressRequests =
-    await fetchSandboxAllowAgentEgressRequests(auth);
-  if (!allowAgentEgressRequests) {
+  if (!isSandboxAgentEgressRequestsAllowed(auth)) {
     return new Err(
       new MCPError(
         "Agent-driven egress requests are disabled for this workspace."

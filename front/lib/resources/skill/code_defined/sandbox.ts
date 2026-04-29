@@ -9,7 +9,6 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import type { SystemSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
-import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
@@ -49,26 +48,10 @@ function formatWorkspaceAllowlist(domains: string[]): string {
   return domains.map((d) => `- \`${d}\``).join("\n");
 }
 
-async function fetchSandboxAllowAgentEgressRequests(
-  auth: Authenticator
-): Promise<boolean> {
-  const workspace = auth.getNonNullableWorkspace();
-  const result = await WorkspaceResource.fetchSandboxAllowAgentEgressRequests(
-    workspace.sId
-  );
-  if (result.isErr()) {
-    logger.warn(
-      { err: result.error, workspaceId: workspace.sId },
-      "Failed to read sandbox agent egress request setting for skill instructions"
-    );
-    return false;
-  }
-
-  return result.value;
-}
-
 async function buildNetworkAccessSection(auth: Authenticator): Promise<string> {
-  const allowAgentRequests = await fetchSandboxAllowAgentEgressRequests(auth);
+  const allowAgentRequests =
+    auth.getNonNullableWorkspace().metadata?.sandboxAllowAgentEgressRequests ===
+    true;
   const policyResult = await readWorkspacePolicy(auth);
   let workspaceDomains: string[] = [];
   if (policyResult.isErr()) {

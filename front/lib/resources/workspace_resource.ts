@@ -80,22 +80,6 @@ type CachedWorkspaceData = {
 export interface WorkspaceResource
   extends ReadonlyAttributesType<WorkspaceModel> {}
 
-type WorkspaceKillSwitchValue = "full" | WorkspaceConversationKillSwitchValue;
-
-export interface WorkspaceMetadata {
-  maintenance?: "relocation" | "relocation-done";
-  killSwitched?: WorkspaceKillSwitchValue;
-  allowContentCreationFileSharing?: boolean;
-  allowVoiceTranscription?: boolean;
-  allowOpenProjects?: boolean;
-  allowManualProjectKnowledgeManagement?: boolean;
-  privateConversationUrlsByDefault?: boolean;
-  autoCreateSpaceForProvisionedGroups?: boolean;
-  disableManualInvitations?: boolean;
-  phoneCountry?: string;
-  sandboxAllowAgentEgressRequests?: boolean;
-}
-
 export const WORKSPACE_CONVERSATION_KILL_SWITCH_OPERATIONS = [
   "block",
   "unblock",
@@ -682,44 +666,9 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
 
   static async updateMetadata(
     id: ModelId,
-    metadata:
-      | WorkspaceMetadata
-      | Record<string, string | number | boolean | object>
-      | null
+    metadata: Record<string, string | number | boolean | object> | null
   ): Promise<Result<void, Error>> {
-    return this.updateByModelIdAndCheckExistence(id, {
-      metadata: metadata as Record<
-        string,
-        string | number | boolean | object
-      > | null,
-    });
-  }
-
-  static async fetchSandboxAllowAgentEgressRequests(
-    workspaceId: string
-  ): Promise<Result<boolean, Error>> {
-    const workspace = await this.fetchById(workspaceId);
-    if (!workspace) {
-      return new Err(new Error("Workspace not found."));
-    }
-
-    return new Ok(workspace.isSandboxAgentEgressRequestsAllowed());
-  }
-
-  isSandboxAgentEgressRequestsAllowed(): boolean {
-    const metadata = this.metadata as WorkspaceMetadata | null;
-    return metadata?.sandboxAllowAgentEgressRequests === true;
-  }
-
-  async updateSandboxAllowAgentEgressRequests(
-    sandboxAllowAgentEgressRequests: boolean
-  ): Promise<Result<void, Error>> {
-    const previousMetadata = (this.metadata as WorkspaceMetadata | null) ?? {};
-    const metadata: WorkspaceMetadata = {
-      ...previousMetadata,
-      sandboxAllowAgentEgressRequests,
-    };
-    return WorkspaceResource.updateMetadata(this.id, metadata);
+    return this.updateByModelIdAndCheckExistence(id, { metadata });
   }
 
   static async updateMetronomeCustomerId(

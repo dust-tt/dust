@@ -13,7 +13,7 @@ import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/works
 import type { SearchMembersPaginationParams } from "@app/lib/resources/user_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import {
-  type WorkspaceMetadata,
+  type WorkspaceConversationKillSwitchValue,
   WorkspaceResource,
 } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -423,7 +423,23 @@ export async function deleteWorkspace(
   return new Ok(undefined);
 }
 
-export type { WorkspaceMetadata };
+type WorkspaceKillSwitchValue =
+  | typeof WorkspaceResource.FULL_WORKSPACE_KILL_SWITCH_VALUE
+  | WorkspaceConversationKillSwitchValue;
+
+export interface WorkspaceMetadata {
+  maintenance?: "relocation" | "relocation-done";
+  killSwitched?: WorkspaceKillSwitchValue;
+  allowContentCreationFileSharing?: boolean;
+  allowVoiceTranscription?: boolean;
+  allowOpenProjects?: boolean;
+  allowManualProjectKnowledgeManagement?: boolean;
+  privateConversationUrlsByDefault?: boolean;
+  autoCreateSpaceForProvisionedGroups?: boolean;
+  disableManualInvitations?: boolean;
+  phoneCountry?: string;
+  sandboxAllowAgentEgressRequests?: boolean;
+}
 
 export async function updateWorkspaceMetadata(
   owner: LightWorkspaceType,

@@ -170,64 +170,6 @@ describe("WorkspaceResource", () => {
         expect(inMemoryCache.has(cacheKey)).toBe(false);
       });
     });
-
-    describe("updateSandboxAllowAgentEgressRequests", () => {
-      it("invalidates cache when the sandbox agent request setting is updated", async () => {
-        const workspaceId = workspace.sId;
-        const cacheKey = getCacheKeyForWorkspace(workspaceId);
-
-        const ws = await WorkspaceResource.fetchById(workspaceId);
-        expect(inMemoryCache.has(cacheKey)).toBe(true);
-
-        await ws!.updateSandboxAllowAgentEgressRequests(true);
-
-        expect(deletedKeys).toContain(cacheKey);
-        expect(inMemoryCache.has(cacheKey)).toBe(false);
-      });
-    });
-  });
-
-  describe("sandboxAllowAgentEgressRequests", () => {
-    it("defaults to false and can be updated", async () => {
-      const initial = await WorkspaceResource.fetchById(workspace.sId);
-
-      expect(initial?.isSandboxAgentEgressRequestsAllowed()).toBe(false);
-
-      const result = await initial!.updateSandboxAllowAgentEgressRequests(true);
-
-      expect(result.isOk()).toBe(true);
-
-      const updated = await WorkspaceResource.fetchById(workspace.sId);
-      expect(updated?.isSandboxAgentEgressRequestsAllowed()).toBe(true);
-    });
-
-    it("reads the setting by workspace id", async () => {
-      const ws = await WorkspaceResource.fetchById(workspace.sId);
-      await ws!.updateSandboxAllowAgentEgressRequests(true);
-
-      const result =
-        await WorkspaceResource.fetchSandboxAllowAgentEgressRequests(
-          workspace.sId
-        );
-
-      expect(result.isOk()).toBe(true);
-      if (result.isOk()) {
-        expect(result.value).toBe(true);
-      }
-    });
-
-    it("does not clobber other metadata keys", async () => {
-      await WorkspaceResource.updateMetadata(workspace.id, {
-        someOtherKey: "preserve-me",
-      });
-
-      const ws = await WorkspaceResource.fetchById(workspace.sId);
-      await ws!.updateSandboxAllowAgentEgressRequests(true);
-
-      const updated = await WorkspaceResource.fetchById(workspace.sId);
-      expect(updated?.isSandboxAgentEgressRequestsAllowed()).toBe(true);
-      expect(updated?.metadata?.someOtherKey).toBe("preserve-me");
-    });
   });
 
   describe("updateConversationsRetention", () => {
