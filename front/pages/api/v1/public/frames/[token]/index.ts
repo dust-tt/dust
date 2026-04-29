@@ -125,6 +125,12 @@ async function handler(
     workspace.sId
   );
 
+  // The file's creator should always be able to access their own frame, regardless of share scope
+  // or grant list. Without this bypass, an owner viewing their own `emails_only` frame would be
+  // sent through the OTP flow even though they are logged in as the file's creator.
+  const authUserId = auth?.user()?.id ?? null;
+  const isFileOwner = authUserId !== null && file.userId === authUserId;
+
   // If workspace policy restricts to members only, block all non-member access.
   if (workspace.sharingPolicy === "workspace_only" && !auth) {
     return apiError(req, res, {
@@ -143,9 +149,11 @@ async function handler(
     shareScope === "workspace"
   ) {
     // For workspace_and_emails (and legacy "workspace"): workspace members are authorized directly.
+    // The file's creator is always authorized regardless of scope.
     const isWorkspaceMemberWithAccess =
-      (shareScope === "workspace_and_emails" || shareScope === "workspace") &&
-      auth;
+      isFileOwner ||
+      ((shareScope === "workspace_and_emails" || shareScope === "workspace") &&
+        auth);
 
     if (!isWorkspaceMemberWithAccess) {
       // Resolve the verified email: prefer Dust session, fall back to external viewer cookie.
@@ -188,15 +196,23 @@ async function handler(
   const user = auth && auth.user();
   const conversation =
     conversationId && auth
-      ? await ConversationResource.fetchById(auth, conversationId)
+      ? await ConversationResource.fetchById(auth, conversationId, {
+          // The file's creator may not be a participant of the conversation (for example,
+          // conversations created via "run_agent" deliberately skip participation registration),
+          // but they should still be able to navigate to it.
+          dangerouslySkipPermissionFiltering: isFileOwner,
+        })
       : null;
 
+  // The file's creator is treated as a conversation participant for the purposes of returning
+  // the conversation URL on the share page.
   const isParticipant =
     user && conversation && auth
-      ? await ConversationResource.isConversationParticipant(auth, {
+      ? isFileOwner ||
+        (await ConversationResource.isConversationParticipant(auth, {
           conversation: conversation.toJSON(),
           user: user.toJSON(),
-        })
+        }))
       : false;
 
   const spaceId = file.useCaseMetadata?.spaceId;
@@ -216,7 +232,8 @@ async function handler(
   res.status(200).json({
     accessToken,
     file: file.toJSON(),
-    // Only return the conversation URL if the user is a participant of the conversation.
+    // Only return the conversation URL if the user is a conversation participant or the
+    // file's creator.
     conversationUrl: isParticipant
       ? getConversationRoute(
           workspace.sId,
