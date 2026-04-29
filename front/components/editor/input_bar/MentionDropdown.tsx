@@ -46,16 +46,27 @@ export const MentionDropdown = forwardRef<
     // This avoids caching stale coordinates that may be invalid (0,0) when typing @ quickly after refresh.
     const triggerRect = clientRect?.();
 
+    const noSuggestionsAllowed = !select.agents && !select.users;
+
     // Fetch suggestions from server using the query.
     // Backend handles all prioritization logic (participants, preferred agent, etc.)
-    const { suggestions, isLoading } = useMentionSuggestions({
+    const { suggestions: rawSuggestions, isLoading } = useMentionSuggestions({
       workspaceId: owner.sId,
       conversationId,
       spaceId,
       query,
       select,
       includeCurrentUser,
+      disabled: noSuggestionsAllowed,
     });
+
+    // Defensive filter: the server falls back to returning both agents and users when
+    // no `select` query param is sent, so enforce the caller's `select` on the client.
+    const suggestions = rawSuggestions.filter(
+      (s) =>
+        (s.type === "agent" && select.agents) ||
+        (s.type === "user" && select.users)
+    );
 
     const selectedItemRef = useRef<HTMLDivElement>(null);
 
@@ -115,6 +126,10 @@ export const MentionDropdown = forwardRef<
 
     // Only render the dropdown if we have a valid trigger.
     if (!triggerRect) {
+      return null;
+    }
+
+    if (noSuggestionsAllowed) {
       return null;
     }
 

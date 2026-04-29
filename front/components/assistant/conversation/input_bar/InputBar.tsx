@@ -21,6 +21,7 @@ import type { DustError } from "@app/lib/error";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { TRACKING_AREAS, trackEvent } from "@app/lib/tracking";
 import { classNames } from "@app/lib/utils";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import {
   compareAgentsForSort,
   isGlobalAgentId,
@@ -63,6 +64,8 @@ interface InputBarProps {
   actions?: InputBarContainerProps["actions"];
   disableAutoFocus: boolean;
   disableUserMentions?: boolean;
+  disableAgentMentions?: boolean;
+  restrictedAgents?: LightAgentConfigurationType[];
   isFloating?: boolean;
   isFloatingWithoutMargin?: boolean;
   isSubmitting?: boolean;
@@ -81,6 +84,8 @@ export const InputBar = React.memo(function InputBar({
   actions = DEFAULT_INPUT_BAR_ACTIONS,
   disableAutoFocus = false,
   disableUserMentions,
+  disableAgentMentions,
+  restrictedAgents,
   isAgentBuilder = false,
   isFloating = true,
   isSubmitting = false,
@@ -493,6 +498,8 @@ export const InputBar = React.memo(function InputBar({
             actions={actions}
             disableAutoFocus={disableAutoFocus}
             disableUserMentions={disableUserMentions}
+            disableAgentMentions={disableAgentMentions}
+            restrictedAgents={restrictedAgents}
             allAgents={activeAgents}
             owner={owner}
             conversation={conversation}

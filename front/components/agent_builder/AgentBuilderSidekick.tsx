@@ -13,7 +13,9 @@ import {
 } from "@app/components/markdown/suggestion/SidekickSuggestionDirective";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { isFreeTrialPhonePlan } from "@app/lib/plans/plan_codes";
+import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { useWorkspaceActiveSubscription } from "@app/lib/swr/workspaces";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { ConversationSidePanelType } from "@app/types/conversation_side_panel";
 import type { UserType, WorkspaceType } from "@app/types/user";
@@ -77,6 +79,14 @@ function SidekickContent({
   clientSideMCPServerIds,
 }: SidekickContentProps) {
   const { subscription } = useAuth();
+  const { agentConfiguration: sidekickAgent } = useAgentConfiguration({
+    workspaceId: owner.sId,
+    agentConfigurationId: GLOBAL_AGENTS_SID.SIDEKICK,
+  });
+  const restrictedAgents = useMemo(
+    () => (sidekickAgent ? [sidekickAgent] : []),
+    [sidekickAgent]
+  );
   const agentBuilderContext = useMemo(
     () => ({
       isSubmitting: false,
@@ -88,8 +98,15 @@ function SidekickContent({
       ] satisfies InputBarAction[],
       clientSideMCPServerIds,
       skipToolsValidation: true,
+      disableAgentMentions: true,
+      restrictedAgents,
     }),
-    [resetConversation, clientSideMCPServerIds, subscription.plan.isByok]
+    [
+      resetConversation,
+      clientSideMCPServerIds,
+      subscription.plan.isByok,
+      restrictedAgents,
+    ]
   );
 
   const additionalMarkdownComponents: Components = useMemo(

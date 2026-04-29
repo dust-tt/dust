@@ -457,6 +457,8 @@ export const AgentInputBar = ({
         draftKey={context.draftKey}
         disableAutoFocus={isMobile || hasUserAnswerRequired}
         disableUserMentions={!!agentBuilderContext}
+        disableAgentMentions={!!agentBuilderContext?.disableAgentMentions}
+        restrictedAgents={agentBuilderContext?.restrictedAgents}
         actions={agentBuilderContext?.actionsToShow}
         isSubmitting={agentBuilderContext?.isSubmitting === true}
         isAgentBuilder={!!agentBuilderContext}
