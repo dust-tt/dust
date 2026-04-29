@@ -18,6 +18,7 @@ import { CLARI_COPILOT_SERVER } from "@app/lib/api/actions/servers/clari_copilot
 import { COMMON_UTILITIES_SERVER } from "@app/lib/api/actions/servers/common_utilities/metadata";
 import { CONFLUENCE_SERVER } from "@app/lib/api/actions/servers/confluence/metadata";
 import { CONVERSATION_FILES_SERVER } from "@app/lib/api/actions/servers/conversation_files/metadata";
+import { FILES_SERVER } from "@app/lib/api/actions/servers/files/metadata";
 import { DATA_SOURCES_FILE_SYSTEM_SERVER } from "@app/lib/api/actions/servers/data_sources_file_system/metadata";
 import { DATA_WAREHOUSES_SERVER } from "@app/lib/api/actions/servers/data_warehouses/metadata";
 import { DATABRICKS_SERVER } from "@app/lib/api/actions/servers/databricks/metadata";
@@ -149,6 +150,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "clari_copilot",
   "confluence",
   "conversation_files",
+  "files",
   "databricks",
   "data_sources_file_system",
   DATA_WAREHOUSE_SERVER_NAME,
@@ -1134,6 +1136,18 @@ export const INTERNAL_MCP_SERVERS = {
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: PLAN_MODE_SERVER,
+  },
+  files: {
+    id: 1033,
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isRestricted: ({ featureFlags }) =>
+      !featureFlags.includes("new_file_explorer"),
+    isPreview: false,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: FILES_SERVER,
   },
   // Using satisfies here instead of: type to avoid TypeScript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
 } satisfies {

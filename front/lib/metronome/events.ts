@@ -63,6 +63,7 @@ const TOOL_CATEGORY_MAP: Record<InternalMCPServerNameType, ToolCategory> = {
   data_sources_file_system: "retrieval",
   include_data: "retrieval",
   conversation_files: "retrieval",
+  files: "retrieval",
 
   // Deep research — web search, browsing, HTTP.
   "web_search_&_browse": "deep_research",
@@ -143,7 +144,7 @@ const TOOL_CATEGORY_MAP: Record<InternalMCPServerNameType, ToolCategory> = {
 };
 
 export function getToolCategory(
-  internalMCPServerName: string | null
+  internalMCPServerName: string | null,
 ): ToolCategory {
   if (
     !internalMCPServerName ||
@@ -340,7 +341,7 @@ export function buildToolUseEvents({
 
   return [...groups.values()].map(({ action, count, totalDurationMs }) => ({
     transaction_id: truncateTransactionId(
-      `tool3-${workspaceId}-${conversationId}-${agentMessageId}-${runKey}-${action.toolName}-${action.mcpServerId ?? ""}-${action.status}`
+      `tool3-${workspaceId}-${conversationId}-${agentMessageId}-${runKey}-${action.toolName}-${action.mcpServerId ?? ""}-${action.status}`,
     ),
     customer_id: workspaceId,
     event_type: "tool_use_v3",
@@ -357,7 +358,7 @@ export function buildToolUseEvents({
       tool_name: truncatePropertyValue(action.toolName),
       mcp_server_id: truncatePropertyValue(action.mcpServerId ?? ""),
       internal_mcp_server_name: truncatePropertyValue(
-        action.internalMCPServerName ?? ""
+        action.internalMCPServerName ?? "",
       ),
       tool_category: getToolCategory(action.internalMCPServerName),
       // Constant grouping key — used as presentation_group_key in Metronome to

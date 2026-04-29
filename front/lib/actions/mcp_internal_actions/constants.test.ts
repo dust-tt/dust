@@ -71,6 +71,7 @@ describe("INTERNAL_MCP_SERVERS", () => {
       { name: "ask_user_question", id: 1028 },
       { name: "wakeups", id: 1031 },
       { name: "plan_mode", id: 1032 },
+      { name: "files", id: 1033 },
     ];
     expect(
       autoInternalTools,
