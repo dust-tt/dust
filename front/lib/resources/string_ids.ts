@@ -75,6 +75,7 @@ export const RESOURCES_PREFIX = {
 
   // Sandboxes.
   sandbox: "sbx",
+  sandbox_mcp_action: "sma",
 
   // Project todos.
   project_todo_state: "pts",

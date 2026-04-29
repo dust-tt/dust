@@ -81,8 +81,6 @@ export type StepContext = {
   fileAuthorizationInfo?: FileAuthorizationInfo;
   resumeState: Record<string, unknown> | null;
   retrievalTopK: number;
-  sandboxOrigin?: boolean;
-  sandboxPaused?: boolean;
   websearchResultCount: number;
 };
 

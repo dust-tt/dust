@@ -33,10 +33,9 @@ import {
   isSandboxTokenPrefix,
 } from "@app/lib/auth";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
-import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { SandboxMCPActionResource } from "@app/lib/resources/sandbox_mcp_action_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { apiError } from "@app/logger/withlogging";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
@@ -48,7 +47,6 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
 import type { CallMCPToolResponseType } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { UniqueConstraintError } from "sequelize";
 import { z } from "zod";
 
 type CallToolPendingResponseType = {
@@ -68,6 +66,19 @@ type CallToolEndpointResponseType =
 type EndpointResponse = NextApiResponse<
   WithAPIErrorResponse<CallToolEndpointResponseType>
 >;
+
+// Re-execute: actionId required, toolName optional (falls back to action record).
+const ReExecuteSchema = z.object({
+  actionId: z.string(),
+  toolName: z.string().optional(),
+  arguments: z.record(z.unknown()).optional(),
+});
+
+// Initial call: toolName required, no actionId.
+const InitialCallSchema = z.object({
+  toolName: z.string(),
+  arguments: z.record(z.unknown()).optional(),
+});
 
 const DEFAULT_SANDBOX_STEP_CONTEXT = {
   citationsCount: 0,
@@ -113,10 +124,7 @@ async function buildSandboxAgentLoopContext(
     toolName: string;
     view: MCPServerViewResource;
   }
-): Promise<
-  | { context: AgentLoopContextType; existingActions: AgentMCPActionResource[] }
-  | undefined
-> {
+): Promise<{ context: AgentLoopContextType; step: number } | undefined> {
   const mcpServerViewId = view.sId;
   const mcpServerId = view.mcpServerId;
 
@@ -147,7 +155,7 @@ async function buildSandboxAgentLoopContext(
 
   // Find the matching server-side action config for this server view.
   // Search agent-configured actions first, then fall back to JIT servers
-  // (tools added via the conversation input bar).
+  // (tools added via the conversation input bar), then skill servers.
   let serverSideConfig = agentConfiguration.actions
     .filter(isServerSideMCPServerConfiguration)
     .find((a) => a.mcpServerViewId === mcpServerViewId);
@@ -204,9 +212,7 @@ async function buildSandboxAgentLoopContext(
     ...toolConfiguration
   } = fullToolConfiguration;
 
-  // Fetch all actions for this message — used for stepContext lookup and
-  // returned to the caller to avoid a duplicate query when checking for
-  // already-approved actions.
+  // Find the parent sandbox bash action to get step context and step number.
   const existingActions = await AgentMCPActionResource.listByAgentMessageIds(
     auth,
     [agentMessage.agentMessageId]
@@ -216,6 +222,7 @@ async function buildSandboxAgentLoopContext(
       a.status === "running" && a.toolConfiguration.mcpServerName === "sandbox"
   );
   const stepContext = parentAction?.stepContext ?? DEFAULT_SANDBOX_STEP_CONTEXT;
+  const step = parentAction?.stepContent.step ?? 0;
 
   return {
     context: {
@@ -227,12 +234,12 @@ async function buildSandboxAgentLoopContext(
         toolConfiguration,
       },
     },
-    existingActions,
+    step,
   };
 }
 
 /**
- * Creates a blocked action for a sandbox tool call that needs user approval.
+ * Creates a blocked sandbox action and publishes approval events.
  * Returns the action's sId so the client can poll for approval status.
  */
 async function createBlockedSandboxAction(
@@ -243,83 +250,23 @@ async function createBlockedSandboxAction(
     conversation,
     toolConfiguration,
     toolArgs,
-    existingActions,
+    step,
   }: {
     agentConfiguration: AgentConfigurationType;
     agentMessage: AgentMessageType;
     conversation: ConversationWithoutContentType;
     toolConfiguration: LightServerSideMCPToolConfigurationType;
     toolArgs: Record<string, unknown>;
-    existingActions: AgentMCPActionResource[];
+    step: number;
   }
 ): Promise<string> {
-  // Get the stepContext from the running action on this step (the sandbox bash tool).
-  const parentAction = existingActions.find((a) => a.status === "running");
-  const parentStepContext = parentAction?.stepContext ?? {
-    ...DEFAULT_SANDBOX_STEP_CONTEXT,
-  };
-
-  // Create step content with retry: concurrent sandbox tool calls race to
-  // insert at the same (step, index) pair, causing UniqueConstraintError.
-  // On conflict we re-fetch steps to get a fresh index and retry.
-  const MAX_RETRIES = 3;
-  let stepContent: Awaited<
-    ReturnType<typeof AgentStepContentResource.createNewVersion>
-  >;
-  let currentStep: number;
-
-  for (let attempt = 0; ; attempt++) {
-    const existingSteps = await AgentStepContentResource.fetchByAgentMessages(
-      auth,
-      {
-        agentMessageIds: [agentMessage.agentMessageId],
-      }
-    );
-
-    currentStep =
-      existingSteps.length > 0
-        ? Math.max(...existingSteps.map((s) => s.step))
-        : 0;
-
-    try {
-      stepContent = await AgentStepContentResource.createNewVersion({
-        workspaceId: auth.getNonNullableWorkspace().id,
-        agentMessageId: agentMessage.agentMessageId,
-        step: currentStep,
-        index: existingSteps.filter((s) => s.step === currentStep).length,
-        type: "function_call",
-        value: {
-          type: "function_call",
-          value: {
-            name: toolConfiguration.name,
-            arguments: JSON.stringify(toolArgs),
-            id: generateRandomModelSId(),
-          },
-        },
-      });
-      break;
-    } catch (error) {
-      if (error instanceof UniqueConstraintError && attempt < MAX_RETRIES) {
-        continue;
-      }
-      throw error;
-    }
-  }
-
-  // Create blocked action in DB.
-  const action = await AgentMCPActionResource.makeNew(auth, {
+  const action = await SandboxMCPActionResource.makeNew(auth, {
     agentMessageId: agentMessage.agentMessageId,
-    augmentedInputs: toolArgs,
-    citationsAllocated: 0,
-    mcpServerConfigurationId: toolConfiguration.id.toString(),
+    step,
     status: "blocked_validation_required",
-    stepContentId: stepContent.id,
-    stepContext: {
-      ...parentStepContext,
-      sandboxOrigin: true,
-    },
+    mcpServerConfigurationId: toolConfiguration.id.toString(),
     toolConfiguration,
-    version: 0,
+    augmentedInputs: toolArgs,
   });
 
   // Publish approval event to the frontend.
@@ -346,10 +293,10 @@ async function createBlockedSandboxAction(
   await publishConversationRelatedEvent({
     event: approvalEvent,
     conversationId: conversation.sId,
-    step: currentStep,
+    step,
   });
 
-  // Publish to sandbox-specific channel for the bash handler (ticket 5).
+  // Publish to sandbox-specific channel for the bash handler.
   await getRedisHybridManager().publish(
     `sandbox:blocked:${agentMessage.sId}`,
     JSON.stringify({ actionId: action.sId }),
@@ -413,25 +360,25 @@ async function handler(
     });
   }
 
+  // All routes require a valid sandbox token — verify once.
+  const sandboxClaims = await extractSandboxClaims(req);
+  if (!sandboxClaims) {
+    return apiError(req, res, {
+      status_code: 401,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Valid sandbox token required.",
+      },
+    });
+  }
+
   const { method } = req;
 
   switch (method) {
     case "POST": {
-      // Re-execute: actionId required, toolName optional (falls back to action record).
-      // Initial call: toolName required, no actionId.
-      const ReExecuteSchema = z.object({
-        actionId: z.string(),
-        toolName: z.string().optional(),
-        arguments: z.record(z.unknown()).optional(),
-      });
-      const InitialCallSchema = z.object({
-        toolName: z.string(),
-        arguments: z.record(z.unknown()).optional(),
-      });
-
       const reExecRes = ReExecuteSchema.safeParse(req.body);
       if (reExecRes.success) {
-        return handleReExecuteApprovedToolCall(req, res, auth, {
+        return handleReExecuteApprovedToolCall(req, res, auth, sandboxClaims, {
           view,
           actionId: reExecRes.data.actionId,
           toolName: reExecRes.data.toolName,
@@ -441,7 +388,7 @@ async function handler(
 
       const initialRes = InitialCallSchema.safeParse(req.body);
       if (initialRes.success) {
-        return handleInitialToolCall(req, res, auth, {
+        return handleInitialToolCall(req, res, auth, sandboxClaims, {
           view,
           toolName: initialRes.data.toolName,
           toolArgs: initialRes.data.arguments ?? {},
@@ -459,18 +406,6 @@ async function handler(
     }
 
     case "GET": {
-      // Poll approval status for a pending sandbox tool call.
-      const sandboxClaims = await extractSandboxClaims(req);
-      if (!sandboxClaims) {
-        return apiError(req, res, {
-          status_code: 401,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Valid sandbox token required.",
-          },
-        });
-      }
-
       const { actionId } = req.query;
       if (!isString(actionId)) {
         return apiError(req, res, {
@@ -482,10 +417,8 @@ async function handler(
         });
       }
 
-      // Verify the action exists, is workspace-scoped (enforced by fetchById),
-      // and was created through the sandbox approval flow.
-      const action = await AgentMCPActionResource.fetchById(auth, actionId);
-      if (!action || !action.stepContext.sandboxOrigin) {
+      const action = await SandboxMCPActionResource.fetchById(auth, actionId);
+      if (!action) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {
@@ -538,6 +471,7 @@ async function handleReExecuteApprovedToolCall(
   req: NextApiRequest,
   res: EndpointResponse,
   auth: Authenticator,
+  sandboxClaims: SandboxExecTokenPayload,
   {
     view,
     actionId,
@@ -550,18 +484,7 @@ async function handleReExecuteApprovedToolCall(
     arguments?: Record<string, unknown>;
   }
 ): Promise<void> {
-  const sandboxClaims = await extractSandboxClaims(req);
-  if (!sandboxClaims) {
-    return apiError(req, res, {
-      status_code: 401,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Valid sandbox token required.",
-      },
-    });
-  }
-
-  const action = await AgentMCPActionResource.fetchById(auth, actionId);
+  const action = await SandboxMCPActionResource.fetchById(auth, actionId);
   if (!action) {
     return apiError(req, res, {
       status_code: 404,
@@ -611,7 +534,8 @@ async function handleReExecuteApprovedToolCall(
       status_code: 401,
       api_error: {
         type: "invalid_request_error",
-        message: "Valid sandbox token required.",
+        message:
+          "Could not build agent loop context from sandbox token claims.",
       },
     });
   }
@@ -623,6 +547,7 @@ async function handleInitialToolCall(
   req: NextApiRequest,
   res: EndpointResponse,
   auth: Authenticator,
+  sandboxClaims: SandboxExecTokenPayload,
   {
     view,
     toolName,
@@ -633,17 +558,6 @@ async function handleInitialToolCall(
     toolArgs: Record<string, unknown>;
   }
 ): Promise<void> {
-  const sandboxClaims = await extractSandboxClaims(req);
-  if (!sandboxClaims) {
-    return apiError(req, res, {
-      status_code: 401,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Valid sandbox token required.",
-      },
-    });
-  }
-
   const sandboxResult = await buildSandboxAgentLoopContext(
     auth,
     sandboxClaims,
@@ -659,7 +573,8 @@ async function handleInitialToolCall(
       status_code: 401,
       api_error: {
         type: "invalid_request_error",
-        message: "Valid sandbox token required.",
+        message:
+          "Could not build agent loop context from sandbox token claims.",
       },
     });
   }
@@ -686,7 +601,7 @@ async function handleInitialToolCall(
     conversation: runContext.conversation,
     toolConfiguration: runContext.toolConfiguration,
     toolArgs,
-    existingActions: sandboxResult.existingActions,
+    step: sandboxResult.step,
   });
 
   res.status(202).json({
