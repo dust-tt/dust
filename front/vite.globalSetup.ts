@@ -37,6 +37,7 @@ export default async function setup() {
     VIZ_JWT_SECRET: "viz-secret-for-tests",
     VIZ_PUBLIC_URL: "http://fake-viz-url",
     DUST_SANDBOX_JWT_SECRET: "sandbox-secret-for-tests",
+    DUST_DEVELOPERS_SECRETS_SECRET: "test-developer-secret",
     REGION: "us-central1",
     DUST_MCP_SERVER_CREDENTIALS_SECRET: "test-secret",
     OAUTH_API: process.env.OAUTH_API ?? "http://fake-oauth-api",
