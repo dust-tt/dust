@@ -184,7 +184,7 @@ export function extractArgRequiringApprovalValues(
   return result;
 }
 
-export function stableStringify(value: unknown): string | null {
+function stableStringify(value: unknown): string | null {
   const normalizedValue = normalizeForStableStringify(value);
   if (normalizedValue === undefined) {
     return null;

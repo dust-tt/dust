@@ -1,4 +1,7 @@
-import type { ActionApprovalStateType } from "@app/lib/actions/mcp";
+import type {
+  ActionApprovalStateType,
+  LightMCPToolConfigurationType,
+} from "@app/lib/actions/mcp";
 import {
   getMCPApprovalStateFromUserApprovalState,
   isMCPApproveExecutionEvent,
@@ -16,10 +19,69 @@ import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { SandboxMCPActionResource } from "@app/lib/resources/sandbox_mcp_action_resource";
+import type { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+
+/**
+ * Persists "always approved" rules for a tool when the user selects that option.
+ * Shared between regular and sandbox action validation flows.
+ */
+async function handleAlwaysApproved(
+  auth: Authenticator,
+  user: UserResource,
+  {
+    toolConfiguration,
+    functionCallName,
+    augmentedInputs,
+    agentMessageId,
+  }: {
+    toolConfiguration: LightMCPToolConfigurationType;
+    functionCallName: string;
+    augmentedInputs: Record<string, unknown>;
+    agentMessageId: ModelId;
+  }
+): Promise<void> {
+  const owner = auth.getNonNullableWorkspace();
+  switch (toolConfiguration.permission) {
+    case "low":
+      await setUserAlwaysApprovedTool(auth, {
+        mcpServerId: toolConfiguration.toolServerId,
+        functionCallName,
+      });
+      break;
+    case "medium": {
+      const agentMessage = await AgentMessageModel.findOne({
+        where: {
+          workspaceId: owner.id,
+          id: agentMessageId,
+        },
+      });
+      if (agentMessage) {
+        const argumentsRequiringApproval =
+          toolConfiguration.argumentsRequiringApproval ?? [];
+        const argsAndValues = extractArgRequiringApprovalValues(
+          argumentsRequiringApproval,
+          augmentedInputs
+        );
+
+        await user.createToolApproval(auth, {
+          mcpServerId: toolConfiguration.toolServerId,
+          toolName: functionCallName,
+          agentId: agentMessage.agentConfigurationId,
+          argsAndValues,
+        });
+      }
+      break;
+    }
+    default:
+      break;
+  }
+}
 
 export async function validateAction(
   auth: Authenticator,
@@ -71,12 +133,19 @@ export async function validateAction(
     );
   }
 
+  // Try regular MCP action first, then sandbox action.
   const action = await AgentMCPActionResource.fetchById(auth, actionId);
+
   if (!action) {
-    return new Err(
-      new DustError("action_not_found", `Action not found: ${actionId}`)
-    );
+    return validateSandboxAction(auth, {
+      actionId,
+      approvalState,
+      messageId,
+      conversationId,
+    });
   }
+
+  // --- Regular MCP action validation flow ---
 
   const agentStepContent =
     await AgentStepContentResource.fetchByModelIdWithAuth(
@@ -106,39 +175,12 @@ export async function validateAction(
   );
 
   if (approvalState === "always_approved" && user) {
-    switch (action.toolConfiguration.permission) {
-      case "low":
-        await setUserAlwaysApprovedTool(auth, {
-          mcpServerId: action.toolConfiguration.toolServerId,
-          functionCallName: action.functionCallName,
-        });
-        break;
-      case "medium":
-        const agentMessage = await AgentMessageModel.findOne({
-          where: {
-            workspaceId: owner.id,
-            id: action.agentMessageId,
-          },
-        });
-        if (agentMessage) {
-          const argumentsRequiringApproval =
-            action.toolConfiguration.argumentsRequiringApproval ?? [];
-          const argsAndValues = extractArgRequiringApprovalValues(
-            argumentsRequiringApproval,
-            action.augmentedInputs
-          );
-
-          await user.createToolApproval(auth, {
-            mcpServerId: action.toolConfiguration.toolServerId,
-            toolName: action.functionCallName,
-            agentId: agentMessage.agentConfigurationId,
-            argsAndValues,
-          });
-        }
-        break;
-      default:
-        break;
-    }
+    await handleAlwaysApproved(auth, user, {
+      toolConfiguration: action.toolConfiguration,
+      functionCallName: action.functionCallName,
+      augmentedInputs: action.augmentedInputs,
+      agentMessageId: action.agentMessageId,
+    });
   }
 
   if (updatedCount === 0) {
@@ -165,6 +207,8 @@ export async function validateAction(
   }, getMessageChannelId(messageId));
 
   // We only launch the agent loop if there are no remaining blocked actions.
+  // Sandbox blocked actions are NOT included — they are handled independently
+  // by the sandbox client polling for status.
   const blockedActions =
     await AgentMCPActionResource.listBlockedActionsForConversation(
       auth,
@@ -217,6 +261,98 @@ export async function validateAction(
       actionId,
     },
     `Action ${approvalState === "approved" ? "approved" : "rejected"} by user`
+  );
+
+  return new Ok(undefined);
+}
+
+/**
+ * Validates a sandbox-originated action. Sandbox actions don't trigger an agent
+ * loop re-launch — the agent loop is already running (the sandbox bash tool is
+ * executing), and the sandbox client polls for the status change.
+ */
+async function validateSandboxAction(
+  auth: Authenticator,
+  {
+    actionId,
+    approvalState,
+    messageId,
+    conversationId,
+  }: {
+    actionId: string;
+    approvalState: ActionApprovalStateType;
+    messageId: string;
+    conversationId: string;
+  }
+): Promise<Result<void, DustError>> {
+  const owner = auth.getNonNullableWorkspace();
+  const user = auth.user();
+
+  const sandboxAction = await SandboxMCPActionResource.fetchById(
+    auth,
+    actionId
+  );
+  if (!sandboxAction) {
+    return new Err(
+      new DustError("action_not_found", `Action not found: ${actionId}`)
+    );
+  }
+
+  if (sandboxAction.status !== "blocked_validation_required") {
+    return new Err(
+      new DustError(
+        "action_not_blocked",
+        `Action is not blocked: ${sandboxAction.status}`
+      )
+    );
+  }
+
+  const [updatedCount] = await sandboxAction.updateStatus(
+    getMCPApprovalStateFromUserApprovalState(approvalState)
+  );
+
+  if (approvalState === "always_approved" && user) {
+    await handleAlwaysApproved(auth, user, {
+      toolConfiguration: sandboxAction.toolConfiguration,
+      functionCallName: sandboxAction.functionCallName,
+      augmentedInputs: sandboxAction.augmentedInputs,
+      agentMessageId: sandboxAction.agentMessageId,
+    });
+  }
+
+  if (updatedCount === 0) {
+    logger.info(
+      {
+        actionId,
+        messageId,
+        approvalState,
+        workspaceId: owner.sId,
+        userId: user?.sId,
+      },
+      "Sandbox action already approved or rejected"
+    );
+    return new Ok(undefined);
+  }
+
+  // Remove the tool approval request event from the message channel.
+  await getRedisHybridManager().removeEvent((event) => {
+    const payload = JSON.parse(event.message["payload"]);
+    return isMCPApproveExecutionEvent(payload)
+      ? payload.actionId === actionId
+      : false;
+  }, getMessageChannelId(messageId));
+
+  // Do NOT launch the agent loop — the sandbox bash tool is still running.
+  // The sandbox client polls for the status change and re-executes the tool.
+
+  logger.info(
+    {
+      workspaceId: owner.id,
+      conversationId,
+      messageId,
+      actionId,
+    },
+    `Sandbox action ${approvalState === "approved" ? "approved" : "rejected"} by user`
   );
 
   return new Ok(undefined);
