@@ -152,8 +152,8 @@ export const PROJECT_TODOS_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Reopening TODO",
-      done: "Reopen TODO",
+      running: "Updating TODO",
+      done: "Update TODO",
     },
   },
   start_todo_agent: {

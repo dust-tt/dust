@@ -29,22 +29,30 @@ import {
 } from "@app/lib/api/assistant/conversation/fetch";
 import config from "@app/lib/api/config";
 import {
+  addContentNodeToProject,
   addFileToProject,
   fetchLatestProjectContextFileContentFragment,
   listProjectContextAttachments,
 } from "@app/lib/api/projects/context";
 import { listNonArchivedMemberSpacesWithMetadata } from "@app/lib/api/projects/list";
+import { createSpaceAndGroup } from "@app/lib/api/spaces";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getConversationRoute, getProjectRoute } from "@app/lib/utils/router";
+import { areOpenProjectsAllowed } from "@app/lib/workspace_policies";
 import logger from "@app/logger/logger";
 import {
   isUserMessageType,
   type UserMessageOrigin,
 } from "@app/types/assistant/conversation";
+import { extractDataSourceIdFromNodeId } from "@app/types/core/content_node";
 import {
   contentTypeFromFileName,
   isAllSupportedFileContentType,
@@ -244,6 +252,95 @@ export function createProjectManagerTools(
           },
         ]);
       }, "Failed to add file");
+    },
+    add_content_node: async (params) => {
+      return withErrorHandling(async () => {
+        const contextRes = await getWritableProjectContext(auth, {
+          agentLoopContext,
+          dustProject: params.dustProject,
+        });
+        if (contextRes.isErr()) {
+          return contextRes;
+        }
+
+        const { space } = contextRes.value;
+
+        const dataSourceId = extractDataSourceIdFromNodeId(
+          params.dataSourceNodeId
+        );
+        if (!dataSourceId) {
+          return new Err(
+            new MCPError("Invalid node ID, unable to extract data source ID", {
+              tracked: false,
+            })
+          );
+        }
+
+        const dataSource = await DataSourceResource.fetchByDustAPIDataSourceId(
+          auth,
+          dataSourceId
+        );
+
+        if (!dataSource) {
+          return new Err(
+            new MCPError(`Data source not found: ${dataSourceId}`, {
+              tracked: false,
+            })
+          );
+        }
+
+        // We assume the node is coming from company data, as it's the only allowed source for projects.
+        const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+        const [dataSourceView] =
+          await DataSourceViewResource.listForDataSourcesInSpace(
+            auth,
+            [dataSource],
+            globalSpace
+          );
+
+        if (!dataSourceView) {
+          return new Err(
+            new MCPError(
+              `Data source view not found for Company Data node: ${params.dataSourceNodeId}`,
+              {
+                tracked: false,
+              }
+            )
+          );
+        }
+
+        const upsertRes = await addContentNodeToProject(auth, {
+          space,
+          contentFragment: {
+            title: params.title,
+            url: params.url,
+            nodeId: params.nodeId,
+            nodeDataSourceViewId: dataSourceView.sId,
+          },
+        });
+
+        if (upsertRes.isErr()) {
+          return new Err(
+            new MCPError(
+              `Failed to add content node to project: ${upsertRes.error.message}`,
+              { tracked: false }
+            )
+          );
+        }
+
+        return new Ok(
+          makeSuccessResponse({
+            success: true,
+            contentNode: {
+              title: params.title,
+              nodeId: params.nodeId,
+              nodeDataSourceViewId: dataSourceView.sId,
+              url: params.url ?? null,
+            },
+            message: `Content node "${params.title}" added to project context successfully.`,
+          })
+        );
+      }, "Failed to add content node");
     },
 
     update_file: async (params) => {
@@ -497,7 +594,138 @@ export function createProjectManagerTools(
         );
       }, "Failed to get project information");
     },
+    list_members: async (params) => {
+      return withErrorHandling(async () => {
+        const contextRes = await getProjectSpace(auth, {
+          agentLoopContext,
+          dustProject: params.dustProject,
+        });
+        if (contextRes.isErr()) {
+          return contextRes;
+        }
 
+        const { space } = contextRes.value;
+        const { limit = 20, pageCursor } = params;
+
+        const decodedPageOffset = pageCursor
+          ? Number.parseInt(pageCursor, 10)
+          : 0;
+        const pageOffset =
+          Number.isInteger(decodedPageOffset) && decodedPageOffset >= 0
+            ? decodedPageOffset
+            : null;
+
+        if (pageOffset === null) {
+          return new Err(
+            new MCPError(
+              "Invalid pageCursor. Expected an offset cursor from a previous list_members response.",
+              { tracked: false }
+            )
+          );
+        }
+
+        const { groupsToProcess, allGroupMemberships } =
+          await space.fetchManualGroupsMemberships(auth, {
+            shouldIncludeAllMembers: true,
+          });
+
+        const groupById = new Map(
+          groupsToProcess.map((group) => [group.id, group] as const)
+        );
+        const membershipByUserId = new Map<
+          number,
+          {
+            isEditor: boolean;
+            isActive: boolean;
+            joinedAtMs: number;
+          }
+        >();
+
+        for (const membership of allGroupMemberships) {
+          const group = groupById.get(membership.groupId);
+          if (!group) {
+            continue;
+          }
+
+          const previous = membershipByUserId.get(membership.userId);
+          membershipByUserId.set(membership.userId, {
+            isEditor:
+              Boolean(previous?.isEditor) || group.kind === "space_editors",
+            isActive:
+              Boolean(previous?.isActive) || membership.status === "active",
+            joinedAtMs: Math.min(
+              previous?.joinedAtMs ?? Number.POSITIVE_INFINITY,
+              membership.startAt.getTime()
+            ),
+          });
+        }
+
+        const users = await UserResource.fetchByModelIds([
+          ...membershipByUserId.keys(),
+        ]);
+        const userByModelId = new Map(
+          users.map((user) => [user.id, user] as const)
+        );
+
+        const members = [...membershipByUserId.entries()]
+          .map(([userModelId, membershipInfo]) => {
+            const user = userByModelId.get(userModelId);
+            if (!user) {
+              return null;
+            }
+
+            return {
+              id: user.sId,
+              name: user.fullName(),
+              email: user.email,
+              role: membershipInfo.isEditor ? "editor" : "member",
+              status: membershipInfo.isActive ? "active" : "suspended",
+              joinedAt: new Date(membershipInfo.joinedAtMs).toISOString(),
+            };
+          })
+          .filter(
+            (member): member is NonNullable<typeof member> => member !== null
+          )
+          .sort((a, b) => {
+            if (a.name !== b.name) {
+              return a.name.localeCompare(b.name, undefined, {
+                sensitivity: "base",
+              });
+            }
+            return a.id.localeCompare(b.id);
+          });
+
+        if (members.length === 0) {
+          return new Ok(
+            makeSuccessResponse({
+              success: true,
+              count: 0,
+              hasMore: false,
+              nextPageCursor: null,
+              members: [],
+              message: `No members found in project "${space.name}".`,
+            })
+          );
+        }
+
+        const pageMembers = members.slice(pageOffset, pageOffset + limit);
+        const nextOffset = pageOffset + pageMembers.length;
+        const hasMore = nextOffset < members.length;
+        const nextPageCursor = hasMore ? String(nextOffset) : null;
+
+        return new Ok(
+          makeSuccessResponse({
+            success: true,
+            count: pageMembers.length,
+            total: members.length,
+            hasMore,
+            nextPageCursor,
+            members: pageMembers,
+            message: `Found ${pageMembers.length} member(s) in project "${space.name}" (page)${hasMore ? ". Pass nextPageCursor to fetch more members." : ""}.`,
+          })
+        );
+      }, "Failed to list project members");
+    },
     list_projects: async () => {
       return withErrorHandling(async () => {
         const owner = auth.getNonNullableWorkspace();
@@ -531,6 +759,119 @@ export function createProjectManagerTools(
           })
         );
       }, "Failed to list projects");
+    },
+    create_project: async (params) => {
+      return withErrorHandling(async () => {
+        const owner = auth.getNonNullableWorkspace();
+
+        if (params.visibility === "open" && !areOpenProjectsAllowed(owner)) {
+          return new Err(
+            new MCPError(
+              "Open projects are disabled by your workspace admin. Create a private project instead.",
+              { tracked: false }
+            )
+          );
+        }
+
+        const createSpaceRes = await createSpaceAndGroup(auth, {
+          name: params.title,
+          isRestricted: params.visibility !== "open",
+          spaceKind: "project",
+          managementMode: "manual",
+          memberIds: [],
+        });
+
+        if (createSpaceRes.isErr()) {
+          const error = createSpaceRes.error;
+          switch (error.code) {
+            case "limit_reached":
+              return new Err(
+                new MCPError(
+                  "Project creation limit reached for this workspace plan.",
+                  { tracked: false }
+                )
+              );
+            case "space_already_exists":
+              return new Err(
+                new MCPError("A project with this title already exists.", {
+                  tracked: false,
+                })
+              );
+            case "unauthorized":
+              return new Err(
+                new MCPError(
+                  "You do not have permission to create a project.",
+                  { tracked: false }
+                )
+              );
+            case "internal_error":
+              return new Err(
+                new MCPError(error.message, {
+                  tracked: false,
+                })
+              );
+            default:
+              return new Err(
+                new MCPError(error.message, {
+                  tracked: false,
+                })
+              );
+          }
+        }
+
+        const projectSpace = createSpaceRes.value;
+
+        if (params.description) {
+          const metadata = await ProjectMetadataResource.fetchBySpace(
+            auth,
+            projectSpace
+          );
+          if (metadata) {
+            await metadata.updateDescription(params.description);
+          } else {
+            await ProjectMetadataResource.makeNew(auth, projectSpace, {
+              description: params.description,
+            });
+          }
+        }
+
+        if (params.memberIds && params.memberIds.length > 0) {
+          const uniqueMemberIds = [...new Set(params.memberIds)];
+          const addMembersRes = await projectSpace.addMembers(auth, {
+            userIds: uniqueMemberIds,
+          });
+          if (addMembersRes.isErr()) {
+            return new Err(
+              new MCPError(
+                `Project created but failed to add some members: ${addMembersRes.error.message}`,
+                { tracked: false }
+              )
+            );
+          }
+        }
+
+        const projectUrl = `${config.getAppUrl()}${getProjectRoute(
+          owner.sId,
+          projectSpace.sId
+        )}`;
+
+        return new Ok(
+          makeSuccessResponse({
+            success: true,
+            project: {
+              spaceId: projectSpace.sId,
+              title: projectSpace.name,
+              visibility: projectSpace.isOpen() ? "open" : "private",
+              dustProject: {
+                uri: makeProjectConfigurationURI(owner.sId, projectSpace.sId),
+                mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT,
+              },
+              url: projectUrl,
+            },
+            message: `Project "${projectSpace.name}" created successfully.`,
+          })
+        );
+      }, "Failed to create project");
     },
 
     retrieve_recent_documents: async (params) => {
