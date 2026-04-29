@@ -40,6 +40,7 @@ import type { DropdownMenuItemProps } from "@dust-tt/sparkle";
 import {
   Button,
   Chip,
+  cn,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -51,11 +52,21 @@ import {
   ToolsIcon,
 } from "@dust-tt/sparkle";
 import type React from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 // Search bar is 3rem tall. Seven 3.25rem capability rows gives a 25.75rem
 // dropdown body, matching the slash suggestion row count.
 const CAPABILITIES_PICKER_LIST_MAX_HEIGHT_CLASS_NAME = "max-h-[22.75rem]";
+
+interface ScrollFadeState {
+  hasContentAbove: boolean;
+  hasContentBelow: boolean;
+}
+
+const EMPTY_SCROLL_FADE_STATE: ScrollFadeState = {
+  hasContentAbove: false,
+  hasContentBelow: false,
+};
 
 interface CapabilityPickerItemBase {
   description?: string;
@@ -119,6 +130,61 @@ function CapabilitiesPickerItemsList({
   items,
   onItemSelect,
 }: CapabilitiesPickerItemsListProps) {
+  const [scrollFadeState, setScrollFadeState] = useState<ScrollFadeState>(
+    EMPTY_SCROLL_FADE_STATE
+  );
+  const listRef = useRef<HTMLDivElement>(null);
+  const itemCount = items.length;
+
+  const updateScrollFadeState = useCallback(() => {
+    const list = listRef.current;
+
+    if (!list) {
+      setScrollFadeState(EMPTY_SCROLL_FADE_STATE);
+      return;
+    }
+
+    const nextState = {
+      hasContentAbove: list.scrollTop > 1,
+      hasContentBelow:
+        list.scrollTop + list.clientHeight < list.scrollHeight - 1,
+    };
+
+    setScrollFadeState((previousState) =>
+      previousState.hasContentAbove === nextState.hasContentAbove &&
+      previousState.hasContentBelow === nextState.hasContentBelow
+        ? previousState
+        : nextState
+    );
+  }, []);
+
+  useEffect(() => {
+    if (itemCount === 0) {
+      setScrollFadeState((previousState) =>
+        previousState.hasContentAbove || previousState.hasContentBelow
+          ? EMPTY_SCROLL_FADE_STATE
+          : previousState
+      );
+      return;
+    }
+
+    updateScrollFadeState();
+    const animationFrame = window.requestAnimationFrame(updateScrollFadeState);
+
+    const list = listRef.current;
+    if (!list || typeof ResizeObserver === "undefined") {
+      return () => window.cancelAnimationFrame(animationFrame);
+    }
+
+    const resizeObserver = new ResizeObserver(updateScrollFadeState);
+    resizeObserver.observe(list);
+
+    return () => {
+      window.cancelAnimationFrame(animationFrame);
+      resizeObserver.disconnect();
+    };
+  }, [itemCount, updateScrollFadeState]);
+
   if (items.length === 0) {
     return (
       <div className="px-2 py-4 text-center text-sm text-muted-foreground dark:text-muted-foreground-night">
@@ -128,40 +194,62 @@ function CapabilitiesPickerItemsList({
   }
 
   return (
-    <div
-      className={`overflow-y-auto ${CAPABILITIES_PICKER_LIST_MAX_HEIGHT_CLASS_NAME}`}
-    >
-      {items.map((item) => {
-        const menuItem = (
-          <DropdownMenuItem
-            key={item.id}
-            icon={item.icon}
-            itemId={item.id}
-            label={item.label}
-            description={item.description}
-            truncateText
-            endComponent={item.endComponent}
-            className="group"
-            onClick={() => onItemSelect(item)}
-          />
-        );
-
-        if (item.tooltip) {
-          return (
-            <DropdownTooltipTrigger
+    <div className="relative">
+      <div
+        ref={listRef}
+        className={`overflow-y-auto ${CAPABILITIES_PICKER_LIST_MAX_HEIGHT_CLASS_NAME}`}
+        onScroll={updateScrollFadeState}
+      >
+        {items.map((item) => {
+          const menuItem = (
+            <DropdownMenuItem
               key={item.id}
-              description={item.tooltip.description}
-              media={item.tooltip.media}
-              side="right"
-              sideOffset={8}
-            >
-              {menuItem}
-            </DropdownTooltipTrigger>
+              icon={item.icon}
+              itemId={item.id}
+              label={item.label}
+              description={item.description}
+              truncateText
+              endComponent={item.endComponent}
+              className="group"
+              onClick={() => onItemSelect(item)}
+            />
           );
-        }
 
-        return menuItem;
-      })}
+          if (item.tooltip) {
+            return (
+              <DropdownTooltipTrigger
+                key={item.id}
+                description={item.tooltip.description}
+                media={item.tooltip.media}
+                side="right"
+                sideOffset={8}
+              >
+                {menuItem}
+              </DropdownTooltipTrigger>
+            );
+          }
+
+          return menuItem;
+        })}
+      </div>
+      <div
+        className={cn(
+          "pointer-events-none absolute inset-x-0 top-0 h-10 bg-gradient-to-t",
+          "from-transparent via-background/65 to-background opacity-0 transition-opacity duration-200",
+          "dark:via-muted-background-night/65 dark:to-muted-background-night",
+          scrollFadeState.hasContentAbove && "opacity-100"
+        )}
+        aria-hidden
+      />
+      <div
+        className={cn(
+          "pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-b",
+          "from-transparent via-background/65 to-background opacity-0 transition-opacity duration-200",
+          "dark:via-muted-background-night/65 dark:to-muted-background-night",
+          scrollFadeState.hasContentBelow && "opacity-100"
+        )}
+        aria-hidden
+      />
     </div>
   );
 }
