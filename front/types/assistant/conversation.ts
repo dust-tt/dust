@@ -117,7 +117,10 @@ export type UserMessageOrigin =
   // (to be created).
   | "onboarding_conversation"
   // for internal use, for reinforced agent batch LLM operations
-  | "reinforcement";
+  | "reinforcement"
+  // Internal anchor user message inserted at the start of an empty conversation so
+  // a branch can be created before any user-visible message exists.
+  | "branch_anchor";
 
 /**
  * @swaggerschema Context (swagger_schemas.ts), PrivateUserMessageContext (swagger_private_schemas.ts)

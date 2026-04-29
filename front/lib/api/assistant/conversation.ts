@@ -552,6 +552,7 @@ export function isUserMessageContextValid(
     case "project_kickoff":
     case "reinforced_skill_notification":
     case "reinforcement":
+    case "branch_anchor":
     case "web":
       return false;
     default:
@@ -834,7 +835,6 @@ export async function postUserMessage(
     // We will do best effort to create a branch, but there a several conditions that we will not create a branch.
     // - User is null, cannot create branch without a user, should never happen, but we will log an error and continue.
     // - Message has user mentions, we don't support multiple users in a branch yet.
-    // - Conversation has no content, we cannot create a branch as the start of the conversation.
     // - Last message in conversation has no content should never happen, but we will log an error and continue.
     // If we do not create a branch, the user will receive a notification that the agent is not usable.
     if (shouldCreateBranch) {
@@ -846,9 +846,36 @@ export async function postUserMessage(
           "Message has user mentions, for now we do not support branching with user mentions."
         );
       } else if (conversation.content.length === 0) {
-        logger.info(
-          "Conversation has no content, cannot create branch as the start of the conversation."
+        // Create an invisible anchor message so the branch has a previousMessageId
+        // to reference.
+        const anchorMessage = await createUserMessage(auth, {
+          conversation,
+          content: "",
+          metadata: {
+            type: "create",
+            user: user.toJSON(),
+            rank: 0,
+            context: {
+              ...context,
+              origin: "branch_anchor",
+            },
+          },
+          transaction: t,
+        });
+
+        const branch = await ConversationBranchResource.makeNew(
+          auth,
+          {
+            conversationId: conversation.id,
+            previousMessageId: anchorMessage.id,
+            state: "open",
+            userId: user.id,
+          },
+          t
         );
+
+        conversation.branchId = branch.sId;
+        nextMessageRank = 1;
       } else {
         // Get the last message in the conversation.
         const previousMessage =
