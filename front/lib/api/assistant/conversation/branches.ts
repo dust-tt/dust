@@ -380,13 +380,13 @@ export async function closeConversationBranch(
   }
 ): Promise<
   Result<
-    { closedBranchId: number },
+    { closedBranchId: number; conversationDeleted: boolean },
     DustError<CloseConversationBranchErrorCode>
   >
 > {
   const owner = auth.getNonNullableWorkspace();
 
-  return withTransaction(async (t) => {
+  const closeRes = await withTransaction(async (t) => {
     const effectiveTransaction = transaction ?? t;
 
     const conversation = await ConversationResource.fetchById(
@@ -430,8 +430,44 @@ export async function closeConversationBranch(
       }
     );
 
-    return new Ok({ closedBranchId: branch.id });
+    return new Ok({
+      branch,
+    });
   }, transaction);
+
+  if (closeRes.isErr()) {
+    return closeRes;
+  }
+
+  // If the branch sat on an internal anchor user message (origin
+  // "branch_anchor"), the conversation has nothing user-visible left, so
+  // delete it.
+  const previousOrigin =
+    await closeRes.value.branch.getPreviousUserMessageOrigin(auth);
+  const branchSitsOnAnchor = previousOrigin === "branch_anchor";
+
+  if (!branchSitsOnAnchor) {
+    return new Ok({
+      closedBranchId: closeRes.value.branch.id,
+      conversationDeleted: false,
+    });
+  }
+
+  const conversation = await ConversationResource.fetchById(
+    auth,
+    conversationId
+  );
+  if (!conversation) {
+    return new Err(
+      new DustError("conversation_not_found", "Conversation not found.")
+    );
+  }
+  await conversation.updateVisibilityToDeleted(auth);
+
+  return new Ok({
+    closedBranchId: closeRes.value.branch.id,
+    conversationDeleted: true,
+  });
 }
 
 export type RenderedOpenBranch = {
