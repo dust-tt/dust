@@ -1,8 +1,9 @@
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
 const ENABLE_SKILL_RESULT_MIME_TYPE =
-  "application/vnd.dust.tool-output.enable-skill-result" as const;
+  INTERNAL_MIME_TYPES.TOOL_OUTPUT.ENABLE_SKILL_RESULT;
 const ENABLE_SKILL_RESULT_URI_PREFIX = "dust://enable-skill-result/";
 
 const EnableSkillResultResourceSchema = z.object({
@@ -26,7 +27,7 @@ export function makeEnableSkillResultOutput({
     type: "resource",
     resource: {
       mimeType: ENABLE_SKILL_RESULT_MIME_TYPE,
-      uri: `${ENABLE_SKILL_RESULT_URI_PREFIX}${encodeURIComponent(skillId)}`,
+      uri: `${ENABLE_SKILL_RESULT_URI_PREFIX}${skillId}`,
       text,
     },
   };
@@ -51,7 +52,5 @@ export function getEnableSkillIdFromOutputBlock(
     return null;
   }
 
-  return decodeURIComponent(
-    outputBlock.resource.uri.slice(ENABLE_SKILL_RESULT_URI_PREFIX.length)
-  );
+  return outputBlock.resource.uri.slice(ENABLE_SKILL_RESULT_URI_PREFIX.length);
 }
