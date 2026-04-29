@@ -93,11 +93,20 @@ async function handler(
         });
       }
 
-      const result =
-        await WorkspaceResource.updateSandboxAllowAgentEgressRequests(
-          owner.id,
-          parsedBody.data.enabled
-        );
+      const workspace = await WorkspaceResource.fetchById(owner.sId);
+      if (!workspace) {
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Failed to load workspace to update sandbox setting.",
+          },
+        });
+      }
+
+      const result = await workspace.updateSandboxAllowAgentEgressRequests(
+        parsedBody.data.enabled
+      );
       if (result.isErr()) {
         return apiError(req, res, {
           status_code: 500,

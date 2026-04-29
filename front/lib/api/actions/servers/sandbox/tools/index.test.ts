@@ -144,10 +144,8 @@ describe("createSandboxTools", () => {
 
   it("includes add_egress_domain when agent egress requests are enabled", async () => {
     const { authenticator: auth, workspace } = await createResourceTest({});
-    await WorkspaceResource.updateSandboxAllowAgentEgressRequests(
-      workspace.id,
-      true
-    );
+    const ws = await WorkspaceResource.fetchById(workspace.sId);
+    await ws!.updateSandboxAllowAgentEgressRequests(true);
 
     const tools = await createSandboxTools(auth);
 

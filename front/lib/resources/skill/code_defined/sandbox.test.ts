@@ -41,10 +41,8 @@ describe("sandboxSkill", () => {
     expect(restrictedInstructions).toContain("There is **no** way to add");
     expect(restrictedInstructions).not.toContain("add_egress_domain");
 
-    await WorkspaceResource.updateSandboxAllowAgentEgressRequests(
-      workspace.id,
-      true
-    );
+    const ws = await WorkspaceResource.fetchById(workspace.sId);
+    await ws!.updateSandboxAllowAgentEgressRequests(true);
 
     const permissiveInstructions = await sandboxSkill.fetchInstructions(auth, {
       spaceIds: [],

@@ -63,7 +63,6 @@ type CachedWorkspaceData = {
   description: string | null;
   segmentation: WorkspaceSegmentationType | null;
   ssoEnforced: boolean;
-  sandboxAllowAgentEgressRequests: boolean;
   workOSOrganizationId: string | null;
   whiteListedProviders: ModelProviderIdType[] | null;
   defaultEmbeddingProvider: EmbeddingProviderIdType | null;
@@ -104,6 +103,8 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     WorkspaceHasDomainModel;
   static readonly KILL_SWITCH_METADATA_KEY = "killSwitched";
   static readonly FULL_WORKSPACE_KILL_SWITCH_VALUE = "full";
+  static readonly SANDBOX_ALLOW_AGENT_EGRESS_REQUESTS_METADATA_KEY =
+    "sandboxAllowAgentEgressRequests";
 
   readonly blob: Attributes<WorkspaceModel>;
 
@@ -193,8 +194,6 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
       description: workspace.description,
       segmentation: workspace.segmentation,
       ssoEnforced: workspace.ssoEnforced ?? false,
-      sandboxAllowAgentEgressRequests:
-        workspace.sandboxAllowAgentEgressRequests,
       workOSOrganizationId: workspace.workOSOrganizationId,
       whiteListedProviders: whiteListedProviders,
       defaultEmbeddingProvider: workspace.defaultEmbeddingProvider,
@@ -235,7 +234,6 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
       description: data.description,
       segmentation: data.segmentation,
       ssoEnforced: data.ssoEnforced,
-      sandboxAllowAgentEgressRequests: data.sandboxAllowAgentEgressRequests,
       workOSOrganizationId: data.workOSOrganizationId,
       whiteListedProviders: data.whiteListedProviders,
       defaultEmbeddingProvider: data.defaultEmbeddingProvider,
@@ -683,16 +681,26 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
       return new Err(new Error("Workspace not found."));
     }
 
-    return new Ok(workspace.sandboxAllowAgentEgressRequests);
+    return new Ok(workspace.getSandboxAllowAgentEgressRequests());
   }
 
-  static async updateSandboxAllowAgentEgressRequests(
-    id: ModelId,
+  getSandboxAllowAgentEgressRequests(): boolean {
+    return (
+      this.metadata?.[
+        WorkspaceResource.SANDBOX_ALLOW_AGENT_EGRESS_REQUESTS_METADATA_KEY
+      ] === true
+    );
+  }
+
+  async updateSandboxAllowAgentEgressRequests(
     sandboxAllowAgentEgressRequests: boolean
   ): Promise<Result<void, Error>> {
-    return this.updateByModelIdAndCheckExistence(id, {
-      sandboxAllowAgentEgressRequests,
-    });
+    const metadata: Record<string, string | number | boolean | object> = {
+      ...(this.metadata ?? {}),
+      [WorkspaceResource.SANDBOX_ALLOW_AGENT_EGRESS_REQUESTS_METADATA_KEY]:
+        sandboxAllowAgentEgressRequests,
+    };
+    return WorkspaceResource.updateMetadata(this.id, metadata);
   }
 
   static async updateMetronomeCustomerId(

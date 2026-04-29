@@ -176,13 +176,10 @@ describe("WorkspaceResource", () => {
         const workspaceId = workspace.sId;
         const cacheKey = getCacheKeyForWorkspace(workspaceId);
 
-        await WorkspaceResource.fetchById(workspaceId);
+        const ws = await WorkspaceResource.fetchById(workspaceId);
         expect(inMemoryCache.has(cacheKey)).toBe(true);
 
-        await WorkspaceResource.updateSandboxAllowAgentEgressRequests(
-          workspace.id,
-          true
-        );
+        await ws!.updateSandboxAllowAgentEgressRequests(true);
 
         expect(deletedKeys).toContain(cacheKey);
         expect(inMemoryCache.has(cacheKey)).toBe(false);
@@ -194,25 +191,19 @@ describe("WorkspaceResource", () => {
     it("defaults to false and can be updated", async () => {
       const initial = await WorkspaceResource.fetchById(workspace.sId);
 
-      expect(initial?.sandboxAllowAgentEgressRequests).toBe(false);
+      expect(initial?.getSandboxAllowAgentEgressRequests()).toBe(false);
 
-      const result =
-        await WorkspaceResource.updateSandboxAllowAgentEgressRequests(
-          workspace.id,
-          true
-        );
+      const result = await initial!.updateSandboxAllowAgentEgressRequests(true);
 
       expect(result.isOk()).toBe(true);
 
       const updated = await WorkspaceResource.fetchById(workspace.sId);
-      expect(updated?.sandboxAllowAgentEgressRequests).toBe(true);
+      expect(updated?.getSandboxAllowAgentEgressRequests()).toBe(true);
     });
 
     it("reads the setting by workspace id", async () => {
-      await WorkspaceResource.updateSandboxAllowAgentEgressRequests(
-        workspace.id,
-        true
-      );
+      const ws = await WorkspaceResource.fetchById(workspace.sId);
+      await ws!.updateSandboxAllowAgentEgressRequests(true);
 
       const result =
         await WorkspaceResource.fetchSandboxAllowAgentEgressRequests(
@@ -223,6 +214,19 @@ describe("WorkspaceResource", () => {
       if (result.isOk()) {
         expect(result.value).toBe(true);
       }
+    });
+
+    it("does not clobber other metadata keys", async () => {
+      await WorkspaceResource.updateMetadata(workspace.id, {
+        someOtherKey: "preserve-me",
+      });
+
+      const ws = await WorkspaceResource.fetchById(workspace.sId);
+      await ws!.updateSandboxAllowAgentEgressRequests(true);
+
+      const updated = await WorkspaceResource.fetchById(workspace.sId);
+      expect(updated?.getSandboxAllowAgentEgressRequests()).toBe(true);
+      expect(updated?.metadata?.someOtherKey).toBe("preserve-me");
     });
   });
 

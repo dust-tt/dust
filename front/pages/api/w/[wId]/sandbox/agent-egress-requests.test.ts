@@ -58,7 +58,7 @@ describe("GET/PUT /api/w/[wId]/sandbox/agent-egress-requests", () => {
     });
 
     const updated = await WorkspaceResource.fetchById(workspace.sId);
-    expect(updated?.sandboxAllowAgentEgressRequests).toBe(true);
+    expect(updated?.getSandboxAllowAgentEgressRequests()).toBe(true);
 
     expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -154,7 +154,7 @@ describe("GET/PUT /api/w/[wId]/sandbox/agent-egress-requests", () => {
     });
 
     const updated = await WorkspaceResource.fetchById(workspace.sId);
-    expect(updated?.sandboxAllowAgentEgressRequests).toBe(false);
+    expect(updated?.getSandboxAllowAgentEgressRequests()).toBe(false);
     expect(mockEmitAuditLogEvent).not.toHaveBeenCalled();
   });
 });

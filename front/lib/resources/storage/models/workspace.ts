@@ -25,7 +25,6 @@ export class WorkspaceModel extends BaseModel<WorkspaceModel> {
   declare description: string | null;
   declare segmentation: WorkspaceSegmentationType;
   declare ssoEnforced?: boolean;
-  declare sandboxAllowAgentEgressRequests: CreationOptional<boolean>;
   declare workOSOrganizationId: string | null;
   declare subscriptions: NonAttribute<SubscriptionModel[]>;
   declare whiteListedProviders: ModelProviderIdType[] | null;
@@ -64,11 +63,6 @@ WorkspaceModel.init(
     },
     ssoEnforced: {
       type: DataTypes.BOOLEAN,
-      defaultValue: false,
-    },
-    sandboxAllowAgentEgressRequests: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
       defaultValue: false,
     },
     workOSOrganizationId: {
