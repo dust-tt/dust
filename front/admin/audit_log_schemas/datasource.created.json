@@ -9,9 +9,9 @@
     }
   ],
   "metadata": {
-    "dataSourceName": "string",
+    "data_source_name": "string",
     "provider": "string",
-    "spaceId": "string",
+    "space_id": "string",
     "actor_type": "string"
   }
 }

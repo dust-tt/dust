@@ -125,8 +125,8 @@ async function handler(
           ],
           context: getAuditLogContext(auth, req),
           metadata: {
-            previousRole: updateRes.value.previousRole,
-            newRole: updateRes.value.newRole,
+            previous_role: updateRes.value.previousRole,
+            new_role: updateRes.value.newRole,
           },
         });
       }

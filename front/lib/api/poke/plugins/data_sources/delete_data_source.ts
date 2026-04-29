@@ -80,9 +80,9 @@ export const deleteDataSourcePlugin = createPlugin({
         buildAuditLogTarget("data_source", dataSource),
       ],
       metadata: {
-        dataSourceName: dataSource.name,
+        data_source_name: dataSource.name,
         provider: dataSource.connectorProvider ?? "folder",
-        deletedBy: auth.getNonNullableUser().email,
+        deleted_by: auth.getNonNullableUser().email,
       },
     });
 

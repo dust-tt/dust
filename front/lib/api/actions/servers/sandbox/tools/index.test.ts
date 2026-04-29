@@ -445,7 +445,7 @@ describe("addEgressDomainTool", () => {
         added: "true",
         domain: "example.org",
         reason: "Install package dependencies.",
-        sandboxProviderId: "provider-id",
+        sandbox_provider_id: "provider-id",
       },
     });
     if (result.isOk()) {

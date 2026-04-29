@@ -166,8 +166,8 @@ export async function runTriggeredAgentsActivity({
       }),
     ],
     metadata: {
-      triggerType: trigger.kind,
-      agentId: trigger.agentConfigurationId,
+      trigger_type: trigger.kind,
+      agent_id: trigger.agentConfigurationId,
       initiating_user_id: auth.user()?.sId ?? "unknown",
       initiating_user_email: auth.user()?.email ?? "unknown",
     },

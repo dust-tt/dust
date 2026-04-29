@@ -9,8 +9,8 @@
     }
   ],
   "metadata": {
-    "spaceName": "string",
-    "spaceKind": "string",
+    "space_name": "string",
+    "space_kind": "string",
     "actor_type": "string"
   }
 }

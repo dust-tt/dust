@@ -12,10 +12,10 @@
     }
   ],
   "metadata": {
-    "groupName": "string",
-    "userEmail": "string",
-    "directoryId": "string",
-    "roleGranted": "string",
+    "group_name": "string",
+    "user_email": "string",
+    "directory_id": "string",
+    "role_granted": "string",
     "actor_type": "string"
   }
 }

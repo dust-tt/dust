@@ -131,7 +131,7 @@ async function handler(
         targets: [buildAuditLogTarget("workspace", workspace)],
         context: getAuditLogContext(auth, req),
         metadata: {
-          connectionType: activeConnection.type,
+          connection_type: activeConnection.type,
         },
       });
 

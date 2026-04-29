@@ -188,9 +188,9 @@ async function handler(
         ],
         context: getAuditLogContext(auth, req),
         metadata: {
-          dataSourceName: dataSource.name,
+          data_source_name: dataSource.name,
           provider: dataSource.connectorProvider ?? "unknown",
-          newConnectionId: bodyValidation.right.connectionId,
+          new_connection_id: bodyValidation.right.connectionId,
         },
       });
 

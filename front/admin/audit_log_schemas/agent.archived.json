@@ -9,7 +9,7 @@
     }
   ],
   "metadata": {
-    "agentName": "string",
+    "agent_name": "string",
     "actor_type": "string"
   }
 }

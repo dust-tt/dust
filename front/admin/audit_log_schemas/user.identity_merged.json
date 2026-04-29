@@ -6,8 +6,8 @@
     }
   ],
   "metadata": {
-    "primaryUserId": "string",
-    "mergedUserId": "string",
+    "primary_user_id": "string",
+    "merged_user_id": "string",
     "actor_type": "string"
   }
 }

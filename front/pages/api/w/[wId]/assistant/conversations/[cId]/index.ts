@@ -234,7 +234,7 @@ async function handler(
         ],
         context: getAuditLogContext(auth, req),
         metadata: {
-          conversationId: conversation.sId,
+          conversation_id: conversation.sId,
         },
       });
 

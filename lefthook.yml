@@ -78,6 +78,12 @@ pre-commit:
       root: front/
       run: npm run lint:swagger-annotations
 
+    front-lint-audit-log-schemas:
+      tags: front
+      glob: "front/admin/audit_log_schemas/**/*.json"
+      root: front/
+      run: npm run lint:audit-log-schemas
+
     front-typecheck:
       tags: front
       glob: "*.{js,jsx,ts,tsx}"

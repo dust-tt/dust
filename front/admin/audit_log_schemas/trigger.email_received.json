@@ -9,8 +9,8 @@
     }
   ],
   "metadata": {
-    "senderEmail": "string",
-    "agentId": "string",
+    "sender_email": "string",
+    "agent_id": "string",
     "actor_type": "string",
     "initiating_user_id": "string",
     "initiating_user_email": "string"

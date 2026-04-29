@@ -65,7 +65,9 @@ export const revokeUsersPlugin = createPlugin({
           buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
         ],
         metadata: {
-          revokedUserIds: successfulRevocations.map((r) => r.userId).join(","),
+          revoked_user_ids: successfulRevocations
+            .map((r) => r.userId)
+            .join(","),
           count: String(successfulRevocations.length),
           source: "poke",
         },

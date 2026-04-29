@@ -557,8 +557,8 @@ async function handler(
         ],
         context: getAuditLogContext(auth, req),
         metadata: {
-          senderEmail: email.sender.email,
-          agentId: agentConfigurations.map((a) => a.sId).join(","),
+          sender_email: email.sender.email,
+          agent_id: agentConfigurations.map((a) => a.sId).join(","),
           initiating_user_id: auth.user()?.sId ?? "unknown",
           initiating_user_email: auth.user()?.email ?? "unknown",
         },

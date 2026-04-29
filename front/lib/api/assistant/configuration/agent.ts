@@ -867,7 +867,7 @@ export async function createAgentConfiguration(
         ],
         context: getAuditLogContext(auth),
         metadata: {
-          agentName: agentConfiguration.name,
+          agent_name: agentConfiguration.name,
           scope: scope,
           model: `${model.providerId}/${model.modelId}`,
         },
@@ -1280,7 +1280,7 @@ export async function archiveAgentConfiguration(
       ],
       context: getAuditLogContext(auth),
       metadata: {
-        agentName: agentConfig.name,
+        agent_name: agentConfig.name,
       },
     });
   }
@@ -1401,7 +1401,7 @@ export async function restoreAgentConfiguration(
       ],
       context: getAuditLogContext(auth),
       metadata: {
-        agentName: latestConfig.name,
+        agent_name: latestConfig.name,
       },
     });
   }
@@ -1732,10 +1732,10 @@ export async function updateAgentConfigurationsScope(
       ],
       context: getAuditLogContext(auth),
       metadata: {
-        agentName: agentConfig.name,
-        previousScope:
+        agent_name: agentConfig.name,
+        previous_scope:
           previousScopeByAgentId.get(agentConfig.sId) ?? agentConfig.scope,
-        newScope: scope,
+        new_scope: scope,
       },
     });
   }

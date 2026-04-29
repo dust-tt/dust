@@ -9,9 +9,9 @@
     }
   ],
   "metadata": {
-    "scheduleType": "string",
-    "agentId": "string",
-    "conversationId": "string",
+    "schedule_type": "string",
+    "agent_id": "string",
+    "conversation_id": "string",
     "initiating_user_id": "string",
     "initiating_user_name": "string"
   }

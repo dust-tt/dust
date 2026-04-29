@@ -86,8 +86,8 @@ export class TriggerResource extends BaseResource<TriggerModel> {
         }),
       ],
       metadata: {
-        triggerType: resource.kind,
-        agentId: resource.agentConfigurationId,
+        trigger_type: resource.kind,
+        agent_id: resource.agentConfigurationId,
       },
     });
 
@@ -328,8 +328,8 @@ export class TriggerResource extends BaseResource<TriggerModel> {
           }),
         ],
         metadata: {
-          triggerType: trigger.kind,
-          agentId: trigger.agentConfigurationId,
+          trigger_type: trigger.kind,
+          agent_id: trigger.agentConfigurationId,
         },
       });
     }
@@ -413,8 +413,8 @@ export class TriggerResource extends BaseResource<TriggerModel> {
           }),
         ],
         metadata: {
-          triggerType: this.kind,
-          agentId: this.agentConfigurationId,
+          trigger_type: this.kind,
+          agent_id: this.agentConfigurationId,
         },
       });
 
@@ -685,8 +685,8 @@ export class TriggerResource extends BaseResource<TriggerModel> {
         }),
       ],
       metadata: {
-        triggerType: this.kind,
-        agentId: this.agentConfigurationId,
+        trigger_type: this.kind,
+        agent_id: this.agentConfigurationId,
       },
     });
 
@@ -749,8 +749,8 @@ export class TriggerResource extends BaseResource<TriggerModel> {
         }),
       ],
       metadata: {
-        triggerType: this.kind,
-        agentId: this.agentConfigurationId,
+        trigger_type: this.kind,
+        agent_id: this.agentConfigurationId,
       },
     });
 

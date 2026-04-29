@@ -12,13 +12,13 @@
     }
   ],
   "metadata": {
-    "toolName": "string",
-    "toolType": "string",
-    "mcpServerName": "string",
-    "conversationId": "string",
-    "triggerId": "string",
-    "accessedDataSourceIds": "string",
-    "accessedTableIds": "string",
+    "tool_name": "string",
+    "tool_type": "string",
+    "mcp_server_name": "string",
+    "conversation_id": "string",
+    "trigger_id": "string",
+    "accessed_data_source_ids": "string",
+    "accessed_table_ids": "string",
     "actor_type": "string",
     "initiating_user_id": "string",
     "initiating_user_email": "string"

@@ -211,7 +211,7 @@ async function handler(
         ],
         context: getAuditLogContext(auth, req),
         metadata: {
-          groupIds: resolvedGroups.map((g) => g.sId).join(","),
+          group_ids: resolvedGroups.map((g) => g.sId).join(","),
           role: keyRole,
         },
       });

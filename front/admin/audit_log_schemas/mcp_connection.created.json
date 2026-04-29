@@ -9,9 +9,9 @@
     }
   ],
   "metadata": {
-    "connectionType": "string",
-    "serverType": "string",
-    "authType": "string",
+    "connection_type": "string",
+    "server_type": "string",
+    "auth_type": "string",
     "actor_type": "string"
   }
 }

@@ -114,8 +114,8 @@ async function handler(
         ],
         context: getAuditLogContext(auth, req),
         metadata: {
-          previousSpendingCap: String(previousCapMicroUsd ?? "none"),
-          newSpendingCap: String(monthly_cap_micro_usd ?? "none"),
+          previous_spending_cap: String(previousCapMicroUsd ?? "none"),
+          new_spending_cap: String(monthly_cap_micro_usd ?? "none"),
         },
       });
 

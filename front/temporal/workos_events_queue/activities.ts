@@ -698,9 +698,9 @@ async function handleGroupUpsert(
     ],
     context: { location: "system" },
     metadata: {
-      groupName: group.name,
-      directoryId: String(eventData.directoryId ?? "unknown"),
-      spaceCreated: String(spaceCreated),
+      group_name: group.name,
+      directory_id: String(eventData.directoryId ?? "unknown"),
+      space_created: String(spaceCreated),
     },
   });
 }
@@ -844,8 +844,8 @@ async function handleUserAddedToGroup(
       ],
       context: { location: "system" },
       metadata: {
-        previousOrigin,
-        newOrigin,
+        previous_origin: previousOrigin,
+        new_origin: newOrigin,
       },
     });
   }
@@ -868,10 +868,10 @@ async function handleUserAddedToGroup(
     ],
     context: { location: "system" },
     metadata: {
-      groupName: group.name,
-      userEmail: user.email,
-      directoryId: String(eventData.user.directoryId ?? "unknown"),
-      roleGranted: "member",
+      group_name: group.name,
+      user_email: user.email,
+      directory_id: String(eventData.user.directoryId ?? "unknown"),
+      role_granted: "member",
     },
   });
 }
@@ -967,10 +967,10 @@ async function handleUserRemovedFromGroup(
     ],
     context: { location: "system" },
     metadata: {
-      groupName: group.name,
-      userEmail: user.email,
-      directoryId: String(eventData.user.directoryId ?? "unknown"),
-      roleChange: "removed",
+      group_name: group.name,
+      user_email: user.email,
+      directory_id: String(eventData.user.directoryId ?? "unknown"),
+      role_change: "removed",
     },
   });
 }
@@ -1087,8 +1087,8 @@ async function handleCreateOrUpdateWorkOSUser(
       ],
       context: { location: "system" },
       metadata: {
-        previousOrigin,
-        newOrigin,
+        previous_origin: previousOrigin,
+        new_origin: newOrigin,
       },
     });
 
@@ -1109,8 +1109,8 @@ async function handleCreateOrUpdateWorkOSUser(
       ],
       context: { location: "system" },
       metadata: {
-        directoryId: String(eventData.directoryId ?? "unknown"),
-        updatedAttributes: JSON.stringify(
+        directory_id: String(eventData.directoryId ?? "unknown"),
+        updated_attributes: JSON.stringify(
           Object.keys(eventData.rawAttributes ?? {})
         ),
       },
@@ -1144,7 +1144,7 @@ async function handleCreateOrUpdateWorkOSUser(
     context: { location: "system" },
     metadata: {
       email: createdOrUpdatedUser.email,
-      directoryId: String(eventData.directoryId ?? "unknown"),
+      directory_id: String(eventData.directoryId ?? "unknown"),
     },
   });
 }
@@ -1237,8 +1237,8 @@ async function handleDeleteWorkOSUser(
     context: { location: "system" },
     metadata: {
       email: user.email,
-      directoryId: String(eventData.directoryId ?? "unknown"),
-      triggersDeleted: "true",
+      directory_id: String(eventData.directoryId ?? "unknown"),
+      triggers_deleted: "true",
     },
   });
 }
@@ -1286,8 +1286,8 @@ async function handleGroupDelete(
     ],
     context: { location: "system" },
     metadata: {
-      groupName,
-      directoryId: String(eventData.directoryId ?? "unknown"),
+      group_name: groupName,
+      directory_id: String(eventData.directoryId ?? "unknown"),
     },
   });
 }

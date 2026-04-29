@@ -9,8 +9,8 @@
     }
   ],
   "metadata": {
-    "triggerType": "string",
-    "agentId": "string",
+    "trigger_type": "string",
+    "agent_id": "string",
     "actor_type": "string"
   }
 }

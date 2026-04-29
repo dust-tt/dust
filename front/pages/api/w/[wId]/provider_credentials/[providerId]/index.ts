@@ -113,7 +113,7 @@ async function handler(
         ],
         context: getAuditLogContext(auth, req),
         metadata: {
-          providerId,
+          provider_id: providerId,
         },
       });
 
@@ -176,7 +176,7 @@ async function handler(
         ],
         context: getAuditLogContext(auth, req),
         metadata: {
-          providerId,
+          provider_id: providerId,
         },
       });
 
@@ -225,7 +225,7 @@ async function handler(
         ],
         context: getAuditLogContext(auth, req),
         metadata: {
-          providerId,
+          provider_id: providerId,
           reason: "user_deleted",
         },
       });

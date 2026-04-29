@@ -9,7 +9,7 @@
     }
   ],
   "metadata": {
-    "spaceName": "string",
+    "space_name": "string",
     "actor_type": "string"
   }
 }

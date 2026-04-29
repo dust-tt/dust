@@ -1038,11 +1038,11 @@ export async function postUserMessage(
         buildAuditLogTarget("agent", agentMessage.configuration),
       ],
       metadata: {
-        conversationId: conversation.sId,
-        agentName: agentMessage.configuration.name,
+        conversation_id: conversation.sId,
+        agent_name: agentMessage.configuration.name,
         origin: context.origin,
         ...(conversation.triggerId
-          ? { triggerId: conversation.triggerId }
+          ? { trigger_id: conversation.triggerId }
           : {}),
         initiating_user_id: auth.user()?.sId ?? "unknown",
         initiating_user_email: auth.user()?.email ?? "unknown",
@@ -3089,11 +3089,11 @@ export async function updateAgentMessageWithFinalStatus(
         buildAuditLogTarget("agent", newAgentMessage.configuration),
       ],
       metadata: {
-        conversationId: conversation.sId,
-        agentName: newAgentMessage.configuration.name,
+        conversation_id: conversation.sId,
+        agent_name: newAgentMessage.configuration.name,
         origin: "steering",
         ...(conversation.triggerId
-          ? { triggerId: conversation.triggerId }
+          ? { trigger_id: conversation.triggerId }
           : {}),
         initiating_user_id: promotedAuth.user()?.sId ?? "unknown",
         initiating_user_email: promotedAuth.user()?.email ?? "unknown",

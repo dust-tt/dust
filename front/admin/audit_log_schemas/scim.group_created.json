@@ -9,9 +9,9 @@
     }
   ],
   "metadata": {
-    "groupName": "string",
-    "directoryId": "string",
-    "spaceCreated": "string",
+    "group_name": "string",
+    "directory_id": "string",
+    "space_created": "string",
     "actor_type": "string"
   }
 }

@@ -104,7 +104,7 @@ export const inviteUser = createPlugin({
           buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
         ],
         metadata: {
-          invitedEmails: successes.map((r) => r.email).join(","),
+          invited_emails: successes.map((r) => r.email).join(","),
           count: String(successes.length),
           source: "poke",
         },

@@ -226,7 +226,7 @@ export async function createConnectionAndGetSetupUrl(
     targets: [buildAuditLogTarget("workspace", auth.getNonNullableWorkspace())],
     metadata: {
       provider: String(provider),
-      connectionId: connection.connection_id,
+      connection_id: connection.connection_id,
     },
   });
 
@@ -321,7 +321,7 @@ export async function finalizeConnection(
       ],
       metadata: {
         provider: String(provider),
-        connectionId,
+        connection_id: connectionId,
       },
     });
   } else {

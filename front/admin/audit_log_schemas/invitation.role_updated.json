@@ -9,9 +9,9 @@
     }
   ],
   "metadata": {
-    "invitedEmail": "string",
-    "previousRole": "string",
-    "newRole": "string",
+    "invited_email": "string",
+    "previous_role": "string",
+    "new_role": "string",
     "actor_type": "string"
   }
 }

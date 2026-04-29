@@ -6,8 +6,8 @@
     }
   ],
   "metadata": {
-    "isSSO": "string",
-    "authenticationMethod": "string",
+    "is_sso": "string",
+    "authentication_method": "string",
     "actor_type": "string"
   }
 }

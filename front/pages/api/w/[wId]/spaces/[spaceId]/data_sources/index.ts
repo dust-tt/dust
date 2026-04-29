@@ -208,9 +208,9 @@ async function handler(
           ],
           context: getAuditLogContext(auth, req),
           metadata: {
-            dataSourceName: dataSourceView.dataSource.name,
+            data_source_name: dataSourceView.dataSource.name,
             provider: "folder",
-            spaceId: space.sId,
+            space_id: space.sId,
           },
         });
 
@@ -632,9 +632,9 @@ const handleDataSourceWithProvider = async ({
     ],
     context: getAuditLogContext(auth, req),
     metadata: {
-      dataSourceName: dataSource.name,
+      data_source_name: dataSource.name,
       provider: provider,
-      spaceId: space.sId,
+      space_id: space.sId,
     },
   });
 
