@@ -16,10 +16,6 @@ type AutoApprovePredicate = (params: {
   conversationId: string;
 }) => Promise<boolean>;
 
-function keyFor(server: InternalMCPServerNameType, toolName: string): string {
-  return `${server}:${toolName}`;
-}
-
 const AddEgressDomainInputSchema = z.object(
   SANDBOX_TOOLS_METADATA.add_egress_domain.schema,
 );
@@ -33,60 +29,55 @@ async function shouldAutoApproveAddEgressDomain({
   rawInputs: unknown;
   conversationId: string;
 }): Promise<boolean> {
-  try {
-    const input = AddEgressDomainInputSchema.safeParse(rawInputs);
-    if (!input.success) {
-      return false;
-    }
-
-    const domain = parseExactEgressDomain(input.data.domain);
-    if (domain.isErr()) {
-      return false;
-    }
-
-    const workspacePolicy = await readWorkspacePolicy(auth);
-    if (workspacePolicy.isErr()) {
-      return false;
-    }
-
-    if (
-      domainMatchesAllowlist(domain.value, workspacePolicy.value.allowedDomains)
-    ) {
-      return true;
-    }
-
-    const sandbox = await SandboxResource.fetchByConversationId(
-      auth,
-      conversationId,
-    );
-    if (!sandbox) {
-      return false;
-    }
-
-    const sandboxPolicy = await readSandboxPolicy(sandbox.providerId);
-    if (sandboxPolicy.isErr()) {
-      return false;
-    }
-
-    return domainMatchesAllowlist(
-      domain.value,
-      sandboxPolicy.value.allowedDomains,
-    );
-  } catch {
+  const input = AddEgressDomainInputSchema.safeParse(rawInputs);
+  if (!input.success) {
     return false;
   }
-}
 
-const AUTO_APPROVE_PREDICATES = new Map<string, AutoApprovePredicate>([
-  [
-    keyFor("sandbox", SANDBOX_TOOLS_METADATA.add_egress_domain.name),
-    shouldAutoApproveAddEgressDomain,
-  ],
-]);
+  const domain = parseExactEgressDomain(input.data.domain);
+  if (domain.isErr()) {
+    return false;
+  }
+
+  const workspacePolicy = await readWorkspacePolicy(auth);
+  if (workspacePolicy.isErr()) {
+    return false;
+  }
+
+  if (
+    domainMatchesAllowlist(domain.value, workspacePolicy.value.allowedDomains)
+  ) {
+    return true;
+  }
+
+  const sandbox = await SandboxResource.fetchByConversationId(
+    auth,
+    conversationId,
+  );
+  if (!sandbox) {
+    return false;
+  }
+
+  const sandboxPolicy = await readSandboxPolicy(sandbox.providerId);
+  if (sandboxPolicy.isErr()) {
+    return false;
+  }
+
+  return domainMatchesAllowlist(
+    domain.value,
+    sandboxPolicy.value.allowedDomains,
+  );
+}
 
 export function lookupAutoApprovePredicate(
   server: InternalMCPServerNameType,
   toolName: string,
 ): AutoApprovePredicate | null {
-  return AUTO_APPROVE_PREDICATES.get(keyFor(server, toolName)) ?? null;
+  if (
+    server === "sandbox" &&
+    toolName === SANDBOX_TOOLS_METADATA.add_egress_domain.name
+  ) {
+    return shouldAutoApproveAddEgressDomain;
+  }
+  return null;
 }

@@ -95,17 +95,13 @@ export async function getExecutionStatusFromConfig(
           : null;
 
       if (predicate && context?.conversationId) {
-        try {
-          const shouldAutoApprove = await predicate({
-            auth,
-            rawInputs: context.rawInputs ?? context.toolInputs,
-            conversationId: context.conversationId,
-          });
-          if (shouldAutoApprove) {
-            return { status: "ready_allowed_implicitly" };
-          }
-        } catch {
-          return { status: "blocked_validation_required" };
+        const shouldAutoApprove = await predicate({
+          auth,
+          rawInputs: context.rawInputs ?? context.toolInputs,
+          conversationId: context.conversationId,
+        });
+        if (shouldAutoApprove) {
+          return { status: "ready_allowed_implicitly" };
         }
       }
 
