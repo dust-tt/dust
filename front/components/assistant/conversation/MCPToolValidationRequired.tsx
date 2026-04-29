@@ -101,14 +101,11 @@ export function MCPToolValidationRequired({
     setErrorMessage(null);
 
     const isAlwaysApproved = approved === "approved" && neverAskAgain;
-    const finalApproval: MCPValidationOutputType = isAlwaysApproved
-      ? "always_approved"
-      : approved;
 
     const result = await validateAction({
       validationRequest: blockedAction,
       messageId,
-      approved: finalApproval,
+      approved: isAlwaysApproved ? "always_approved" : approved,
     });
 
     if (!result.success) {
