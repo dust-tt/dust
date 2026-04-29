@@ -61,7 +61,14 @@ export const PROJECT_TODOS_TOOLS_METADATA = createToolsRecord({
       todos: z
         .array(
           z.object({
-            text: z.string().min(1).describe("The TODO description."),
+            text: z
+              .string()
+              .min(1)
+              .describe(
+                "The TODO description. Do not include the assignee's name — " +
+                  "the assignee is tracked separately via userId. Refer to the " +
+                  "assignee with 'you'/'your' pronouns when needed."
+              ),
             userId: z
               .string()
               .optional()
