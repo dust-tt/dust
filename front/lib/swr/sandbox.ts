@@ -6,25 +6,18 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type {
-  GetWorkspaceSandboxAgentEgressRequestsResponseBody,
-  PutWorkspaceSandboxAgentEgressRequestsResponseBody,
-} from "@app/pages/api/w/[wId]/sandbox/agent-egress-requests";
-import type {
   GetWorkspaceEgressPolicyResponseBody,
   PutWorkspaceEgressPolicyResponseBody,
 } from "@app/pages/api/w/[wId]/sandbox/egress-policy";
 import type { EgressPolicy } from "@app/types/sandbox/egress_policy";
 import { EMPTY_EGRESS_POLICY } from "@app/types/sandbox/egress_policy";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useState } from "react";
 import type { Fetcher } from "swr";
 
 function workspaceEgressPolicyUrl(workspaceId: string) {
   return `/api/w/${workspaceId}/sandbox/egress-policy`;
-}
-
-function workspaceSandboxAgentEgressRequestsUrl(workspaceId: string) {
-  return `/api/w/${workspaceId}/sandbox/agent-egress-requests`;
 }
 
 export function useWorkspaceEgressPolicy({
@@ -50,30 +43,6 @@ export function useWorkspaceEgressPolicy({
   };
 }
 
-export function useWorkspaceSandboxAgentEgressRequests({
-  owner,
-  disabled = false,
-}: {
-  owner: LightWorkspaceType;
-  disabled?: boolean;
-}) {
-  const { fetcher } = useFetcher();
-  const agentEgressRequestsFetcher: Fetcher<GetWorkspaceSandboxAgentEgressRequestsResponseBody> =
-    fetcher;
-  const { data, error, mutate, isLoading } = useSWRWithDefaults(
-    workspaceSandboxAgentEgressRequestsUrl(owner.sId),
-    agentEgressRequestsFetcher,
-    { disabled }
-  );
-
-  return {
-    allowAgentEgressRequests: data?.allowAgentEgressRequests ?? false,
-    isWorkspaceSandboxAgentEgressRequestsLoading: !disabled && isLoading,
-    isWorkspaceSandboxAgentEgressRequestsError: !!error,
-    mutateWorkspaceSandboxAgentEgressRequests: mutate,
-  };
-}
-
 export function useUpdateWorkspaceSandboxAgentEgressRequests({
   owner,
 }: {
@@ -81,44 +50,26 @@ export function useUpdateWorkspaceSandboxAgentEgressRequests({
 }) {
   const sendNotification = useSendNotification();
   const [isUpdating, setIsUpdating] = useState(false);
-  const { mutateWorkspaceSandboxAgentEgressRequests } =
-    useWorkspaceSandboxAgentEgressRequests({
-      owner,
-      disabled: true,
-    });
+  const [isEnabled, setIsEnabled] = useState(
+    owner.metadata?.sandboxAllowAgentEgressRequests === true
+  );
 
   const updateWorkspaceSandboxAgentEgressRequests = async (
     enabled: boolean
   ): Promise<boolean> => {
     setIsUpdating(true);
     try {
-      const response = await clientFetch(
-        workspaceSandboxAgentEgressRequestsUrl(owner.sId),
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ enabled }),
-        }
-      );
+      const response = await clientFetch(`/api/w/${owner.sId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sandboxAllowAgentEgressRequests: enabled }),
+      });
 
       if (!response.ok) {
-        const error = await getErrorFromResponse(response);
-        sendNotification({
-          type: "error",
-          title: "Failed to update sandbox network setting",
-          description: error.message,
-        });
-        return false;
+        throw new Error("Failed to update sandbox network setting");
       }
 
-      const data: PutWorkspaceSandboxAgentEgressRequestsResponseBody =
-        await response.json();
-      await mutateWorkspaceSandboxAgentEgressRequests(
-        { allowAgentEgressRequests: data.allowAgentEgressRequests },
-        false
-      );
+      setIsEnabled(enabled);
       sendNotification({
         type: "success",
         title: "Sandbox network setting updated",
@@ -126,11 +77,11 @@ export function useUpdateWorkspaceSandboxAgentEgressRequests({
           "Agent-requested sandbox domains setting has been updated.",
       });
       return true;
-    } catch {
+    } catch (error) {
       sendNotification({
         type: "error",
         title: "Failed to update sandbox network setting",
-        description: "An unexpected error occurred. Please try again.",
+        description: normalizeError(error).message,
       });
       return false;
     } finally {
@@ -139,6 +90,7 @@ export function useUpdateWorkspaceSandboxAgentEgressRequests({
   };
 
   return {
+    allowAgentEgressRequests: isEnabled,
     updateWorkspaceSandboxAgentEgressRequests,
     isUpdatingWorkspaceSandboxAgentEgressRequests: isUpdating,
   };

@@ -7,7 +7,6 @@ import {
   useUpdateWorkspaceEgressPolicy,
   useUpdateWorkspaceSandboxAgentEgressRequests,
   useWorkspaceEgressPolicy,
-  useWorkspaceSandboxAgentEgressRequests,
 } from "@app/lib/swr/sandbox";
 import { normalizeEgressPolicyDomain } from "@app/types/sandbox/egress_policy";
 import {
@@ -51,13 +50,6 @@ export function EgressPolicyPage() {
     useUpdateWorkspaceEgressPolicy({ owner });
   const {
     allowAgentEgressRequests,
-    isWorkspaceSandboxAgentEgressRequestsLoading,
-    isWorkspaceSandboxAgentEgressRequestsError,
-  } = useWorkspaceSandboxAgentEgressRequests({
-    owner,
-    disabled: !hasSandboxTools || !isAdmin,
-  });
-  const {
     updateWorkspaceSandboxAgentEgressRequests,
     isUpdatingWorkspaceSandboxAgentEgressRequests,
   } = useUpdateWorkspaceSandboxAgentEgressRequests({ owner });
@@ -139,16 +131,10 @@ export function EgressPolicyPage() {
         </ContentMessage>
       );
     }
-    if (
-      isWorkspaceEgressPolicyLoading ||
-      isWorkspaceSandboxAgentEgressRequestsLoading
-    ) {
+    if (isWorkspaceEgressPolicyLoading) {
       return <Spinner />;
     }
-    if (
-      isWorkspaceEgressPolicyError ||
-      isWorkspaceSandboxAgentEgressRequestsError
-    ) {
+    if (isWorkspaceEgressPolicyError) {
       return (
         <ContentMessage
           variant="warning"
