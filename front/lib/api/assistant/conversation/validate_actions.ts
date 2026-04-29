@@ -21,6 +21,7 @@ import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SandboxMCPActionResource } from "@app/lib/resources/sandbox_mcp_action_resource";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
+import { RESOURCES_PREFIX } from "@app/lib/resources/string_ids";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
@@ -135,10 +136,10 @@ export async function validateAction(
     );
   }
 
-  // Try regular MCP action first, then sandbox action.
-  const action = await AgentMCPActionResource.fetchById(auth, actionId);
-
-  if (!action) {
+  // Route by sId prefix — `getResourceIdFromSId` only decodes the sqid body
+  // and does not validate the prefix, so two rows with the same modelId in
+  // different tables would collide if we relied on `fetchById` returning null.
+  if (actionId.startsWith(`${RESOURCES_PREFIX.sandbox_mcp_action}_`)) {
     return validateSandboxAction(auth, conversation, {
       actionId,
       approvalState,
@@ -152,6 +153,14 @@ export async function validateAction(
       userMessageOrigin,
       branchId,
     });
+  }
+
+  const action = await AgentMCPActionResource.fetchById(auth, actionId);
+
+  if (!action) {
+    return new Err(
+      new DustError("action_not_found", `Action not found: ${actionId}`)
+    );
   }
 
   // --- Regular MCP action validation flow ---

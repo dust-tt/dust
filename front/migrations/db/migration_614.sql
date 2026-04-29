@@ -17,8 +17,8 @@ CREATE TABLE IF NOT EXISTS "sandbox_mcp_actions"
     "augmentedInputs"          JSONB                    NOT NULL DEFAULT '{}'
 );
 
-CREATE INDEX IF NOT EXISTS "sandbox_mcp_action_ws_msg_status"
+CREATE INDEX CONCURRENTLY "sandbox_mcp_action_ws_msg_status"
     ON "sandbox_mcp_actions" ("workspaceId", "agentMessageId", "status");
 
-CREATE INDEX IF NOT EXISTS "sandbox_mcp_actions_agent_message_id"
+CREATE INDEX CONCURRENTLY "sandbox_mcp_actions_agent_message_id"
     ON "sandbox_mcp_actions" ("agentMessageId");

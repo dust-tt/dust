@@ -558,9 +558,9 @@ async function handleReExecuteApprovedToolCall(
   const runContext = sandboxContext?.context.runContext;
   if (!runContext) {
     return apiError(req, res, {
-      status_code: 401,
+      status_code: 500,
       api_error: {
-        type: "invalid_request_error",
+        type: "internal_server_error",
         message:
           "Could not build agent loop context from sandbox token claims.",
       },
@@ -597,9 +597,9 @@ async function handleInitialToolCall(
     !isLightServerSideMCPToolConfiguration(runContext.toolConfiguration)
   ) {
     return apiError(req, res, {
-      status_code: 401,
+      status_code: 500,
       api_error: {
-        type: "invalid_request_error",
+        type: "internal_server_error",
         message:
           "Could not build agent loop context from sandbox token claims.",
       },
