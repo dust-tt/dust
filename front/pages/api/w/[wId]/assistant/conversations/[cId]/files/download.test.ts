@@ -78,35 +78,31 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/files/download", () =>
     expect(res._getJSONData().error.type).toBe("invalid_request_error");
   });
 
+  it("should return 400 for a raw GCS path (not scoped)", async () => {
+    const { req, res } = await setupTest();
+    req.body = {
+      filePath: `w/${WORKSPACE_SID}/conversations/${CONVERSATION_SID}/files/report.pdf`,
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(400);
+    expect(res._getJSONData().error.type).toBe("invalid_request_error");
+  });
+
+  it("should return 400 for an unknown scope prefix", async () => {
+    const { req, res } = await setupTest();
+    req.body = { filePath: "project/report.pdf" };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(400);
+    expect(res._getJSONData().error.type).toBe("invalid_request_error");
+  });
+
   it("should return 403 for path traversal with '..'", async () => {
     const { req, res } = await setupTest();
-    req.body = {
-      filePath: `w/${WORKSPACE_SID}/conversations/${CONVERSATION_SID}/files/../../other/secret.txt`,
-    };
-
-    await handler(req, res);
-
-    expect(res._getStatusCode()).toBe(403);
-    expect(res._getJSONData().error.type).toBe("workspace_auth_error");
-  });
-
-  it("should return 403 for path outside conversation scope", async () => {
-    const { req, res } = await setupTest();
-    req.body = {
-      filePath: `w/${WORKSPACE_SID}/conversations/other_conv/files/secret.txt`,
-    };
-
-    await handler(req, res);
-
-    expect(res._getStatusCode()).toBe(403);
-    expect(res._getJSONData().error.type).toBe("workspace_auth_error");
-  });
-
-  it("should return 403 for path targeting a different workspace", async () => {
-    const { req, res } = await setupTest();
-    req.body = {
-      filePath: `w/other_workspace/conversations/${CONVERSATION_SID}/files/file.txt`,
-    };
+    req.body = { filePath: "conversation/../../../etc/passwd" };
 
     await handler(req, res);
 
@@ -116,12 +112,19 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/files/download", () =>
 
   it("should normalize triple slashes before GCS access", async () => {
     const { req, res } = await setupTest();
-    // Triple slashes pass the old startsWith check and don't contain "..",
-    // but without normalization the raw path is sent to GCS as-is which could
-    // resolve to an unintended object.
-    req.body = {
-      filePath: `w/${WORKSPACE_SID}/conversations/${CONVERSATION_SID}/files///report.pdf`,
-    };
+    req.body = { filePath: "conversation/%%%report.pdf" };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(mockGetFileContentType).toHaveBeenCalledWith(
+      `w/${WORKSPACE_SID}/conversations/${CONVERSATION_SID}/files/%%%report.pdf`
+    );
+  });
+
+  it("should succeed for a valid scoped file path", async () => {
+    const { req, res } = await setupTest();
+    req.body = { filePath: "conversation/report.pdf" };
 
     await handler(req, res);
 
@@ -129,17 +132,6 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/files/download", () =>
     expect(mockGetFileContentType).toHaveBeenCalledWith(
       `w/${WORKSPACE_SID}/conversations/${CONVERSATION_SID}/files/report.pdf`
     );
-  });
-
-  it("should succeed for a valid file path", async () => {
-    const { req, res } = await setupTest();
-    req.body = {
-      filePath: `w/${WORKSPACE_SID}/conversations/${CONVERSATION_SID}/files/report.pdf`,
-    };
-
-    await handler(req, res);
-
-    expect(res._getStatusCode()).toBe(200);
     expect(mockCreateReadStream).toHaveBeenCalled();
   });
 });
