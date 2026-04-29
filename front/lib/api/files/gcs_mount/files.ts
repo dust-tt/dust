@@ -49,7 +49,7 @@ function makeFileEntry(
     lastModifiedMs,
     fileId,
     thumbnailUrl: isSupportedImageContentType(contentType)
-      ? `${config.getClientFacingUrl()}/api/w/${workspaceId}/assistant/conversations/${scope.conversationId}/files/thumbnail?filePath=${encodeURIComponent(relativeFilePath)}`
+      ? `${config.getClientFacingUrl()}/api/w/${workspaceId}/assistant/conversations/${scope.conversationId}/files/thumbnail?filePath=${encodeURIComponent(`${scope.useCase}/${relativeFilePath}`)}`
       : null,
   };
 }
