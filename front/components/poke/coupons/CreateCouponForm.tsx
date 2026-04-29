@@ -3,6 +3,7 @@ import { clientFetch } from "@app/lib/egress/client";
 import type { CreatePokeCouponResponseBody } from "@app/pages/api/poke/coupons/index";
 import type { CouponDiscountType } from "@app/types/coupon";
 import { CreateCouponBodySchema } from "@app/types/coupon";
+import { isString } from "@app/types/shared/utils/general";
 import { Button, Input, XMarkIcon } from "@dust-tt/sparkle";
 import type React from "react";
 import { useState } from "react";
@@ -21,6 +22,21 @@ interface FormState {
   durationMonths: string;
   maxRedemptions: string;
   redeemBy: string;
+}
+
+const FORM_STATE_KEYS: ReadonlyArray<keyof FormState> = [
+  "code",
+  "description",
+  "discountType",
+  "amountUsdStr",
+  "creditTypeId",
+  "durationMonths",
+  "maxRedemptions",
+  "redeemBy",
+];
+
+function isFormStateKey(key: string): key is keyof FormState {
+  return (FORM_STATE_KEYS as readonly string[]).includes(key);
 }
 
 const EMPTY_FORM: FormState = {
@@ -74,12 +90,14 @@ export function CreateCouponForm({
     if (!result.success) {
       const fieldErrors: Partial<Record<keyof FormState, string>> = {};
       for (const issue of result.error.issues) {
-        const zodField = issue.path[0] as string;
+        const pathElement = issue.path[0];
+        if (!isString(pathElement)) {
+          continue;
+        }
         // Map amountMicroUsd back to the form field name.
-        const field = (
-          zodField === "amountMicroUsd" ? "amountUsdStr" : zodField
-        ) as keyof FormState;
-        if (field) {
+        const field =
+          pathElement === "amountMicroUsd" ? "amountUsdStr" : pathElement;
+        if (isFormStateKey(field)) {
           fieldErrors[field] = issue.message;
         }
       }

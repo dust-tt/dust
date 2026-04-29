@@ -34,12 +34,16 @@ function formatDate(date: Date | string | null): string {
 
 interface CouponRedemptionsRowProps {
   couponId: string;
+  disabled: boolean;
 }
 
-function CouponRedemptionsRow({ couponId }: CouponRedemptionsRowProps) {
+function CouponRedemptionsRow({
+  couponId,
+  disabled,
+}: CouponRedemptionsRowProps) {
   const { redemptions, isRedemptionsLoading } = usePokeCouponRedemptions({
     couponId,
-    disabled: false,
+    disabled,
   });
 
   if (isRedemptionsLoading) {
@@ -158,7 +162,9 @@ function CouponRow({
           />
         </td>
       </tr>
-      {isExpanded && <CouponRedemptionsRow couponId={coupon.sId} />}
+      {isExpanded && (
+        <CouponRedemptionsRow couponId={coupon.sId} disabled={!isExpanded} />
+      )}
     </>
   );
 }
