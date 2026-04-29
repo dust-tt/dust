@@ -58,6 +58,7 @@ import logger from "@app/logger/logger";
 import {
   type ConversationForkedChildType,
   type ConversationListItemType,
+  isTerminalAgentMessageStatus,
   isUserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";
 import type { RichMention } from "@app/types/assistant/mentions";
@@ -311,6 +312,7 @@ export const ConversationViewer = ({
     isMessagesError,
     isValidating,
     messages,
+    mutateMessages,
     setSize,
     size,
   } = useConversationMessages({
@@ -653,7 +655,22 @@ export const ConversationViewer = ({
               const exists = ref.current.data.find(predicate);
 
               if (exists) {
-                ref.current.data.map((m) => (predicate(m) ? agentMessage : m));
+                // On replay (e.g. after navigating away and coming back), the
+                // existing message may already reflect the final state from
+                // the SWR snapshot. The replayed event always carries the
+                // initial "created" payload — replacing would downgrade the
+                // status (re-activating shouldStream and the message-events
+                // stream) and wipe inlineActivitySteps. Skip the replace
+                // when the existing message is already in a terminal state.
+                const isTerminal =
+                  isAgentMessageWithStreaming(exists) &&
+                  isTerminalAgentMessageStatus(exists.status);
+
+                if (!isTerminal) {
+                  ref.current.data.map((m) =>
+                    predicate(m) ? agentMessage : m
+                  );
+                }
               } else {
                 const currentData = ref.current.data.get();
                 const offset = getBranchedInsertIndex(
@@ -712,6 +729,12 @@ export const ConversationViewer = ({
 
             // Re-fetch context usage after the agent finishes so the indicator is up-to-date.
             void mutateContextUsage();
+
+            // Refresh the messages SWR cache so a future remount of this
+            // conversation (e.g. navigating away and back) sees the final
+            // status/activitySteps instead of the stale "created" snapshot,
+            // which would otherwise re-open an SSE replay.
+            void mutateMessages();
 
             // Update the conversation hasError state in the local cache without making a network request.
             void mutateConversations(
@@ -810,6 +833,7 @@ export const ConversationViewer = ({
       mutateConversationAttachments,
       mutateConversationParticipants,
       mutateConversations,
+      mutateMessages,
       openPanel,
       owner.sId,
       user.sId,

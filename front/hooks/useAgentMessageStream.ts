@@ -303,6 +303,12 @@ export function useAgentMessageStream({
     []
   );
 
+  // Short-circuit replays of events we've already processed in this hook
+  // instance. Without this, a within-mount EventSource reconnect can re-emit
+  // events whose handlers are not idempotent (inline activity step IDs are
+  // built from `Date.now()` and would collide on same-ms re-processing).
+  const seenEventIds = useRef<Set<string>>(new Set());
+
   useEffect(() => {
     return () => {
       updateMessageThrottled.cancel();
@@ -353,6 +359,12 @@ export function useAgentMessageStream({
         eventId: string;
         data: AgentMessageStateWithControlEvent;
       } = JSON.parse(eventStr);
+      if (eventPayload.eventId) {
+        if (seenEventIds.current.has(eventPayload.eventId)) {
+          return;
+        }
+        seenEventIds.current.add(eventPayload.eventId);
+      }
       const eventType = eventPayload.data.type;
       switch (eventType) {
         case "end-of-stream":
