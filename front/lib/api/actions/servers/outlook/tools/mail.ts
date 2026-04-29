@@ -6,9 +6,8 @@ import {
   processAttachment,
 } from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
 import { sanitizeFilename } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
-import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
+import { getAllowedLabelsForMCPServer } from "@app/lib/api/actions/servers/microsoft/utils";
 import { OUTLOOK_TOOLS_METADATA } from "@app/lib/api/actions/servers/outlook/mail_metadata";
-import { WorkspaceSensitivityLabelConfigResource } from "@app/lib/resources/workspace_sensitivity_label_config_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { Err, Ok } from "@app/types/shared/result";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
@@ -145,8 +144,6 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
 
     const basePath = getMailboxBasePath(sharedMailboxAddress);
 
-    console.log("GET MESSAGES CALLED WITH PARAMS");
-
     // If folderName is provided, search for the folder and get its ID
     let folderId: string | undefined;
     if (folderName) {
@@ -186,22 +183,10 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
       folderId = folder.id;
     }
 
-    // Check if the workspace has sensitivity label filtering configured.
-    const toolConfig = agentLoopContext?.runContext?.toolConfiguration;
-    const internalMCPServerId =
-      toolConfig && isLightServerSideMCPToolConfiguration(toolConfig)
-        ? toolConfig.internalMCPServerId
-        : null;
-
-    let allowedLabels: string[] = [];
-    if (internalMCPServerId) {
-      const labelConfig =
-        await WorkspaceSensitivityLabelConfigResource.fetchBySource(auth, {
-          sourceType: "mcp_connection",
-          sourceId: internalMCPServerId,
-        });
-      allowedLabels = (labelConfig?.allowedLabels ?? []) as string[];
-    }
+    const allowedLabels = await getAllowedLabelsForMCPServer(
+      auth,
+      agentLoopContext
+    );
 
     if (allowedLabels.length > 0) {
       // Two parallel requests:
@@ -331,17 +316,6 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
           return bTime - aTime;
         })
         .slice(0, top);
-      console.log("===LABELED MESSAGES===", labeledHits.length);
-
-      console.log(
-        "===UNLABELED MESSAGES===",
-        JSON.stringify(unlabeledMessages, null, 2)
-      );
-
-      console.log(
-        "===TOTAL MESSAGES AFTER MERGE===",
-        JSON.stringify(messages, null, 2)
-      );
 
       const labeledContainer =
         labeledResult?.value?.[0]?.hitsContainers?.[0] ?? {};

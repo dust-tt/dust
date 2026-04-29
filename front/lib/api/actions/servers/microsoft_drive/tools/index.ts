@@ -9,9 +9,9 @@ import {
   getFileFromConversationAttachment,
   sanitizeFilename,
 } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
-import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import {
   downloadAndProcessMicrosoftFile,
+  getAllowedLabelsForMCPServer,
   getDriveItemEndpoint,
   getGraphClient,
   searchMicrosoftDriveItems,
@@ -20,7 +20,6 @@ import {
 } from "@app/lib/api/actions/servers/microsoft/utils";
 import { MICROSOFT_DRIVE_TOOLS_METADATA } from "@app/lib/api/actions/servers/microsoft_drive/metadata";
 import { untrustedFetch } from "@app/lib/egress/server";
-import { WorkspaceSensitivityLabelConfigResource } from "@app/lib/resources/workspace_sensitivity_label_config_resource";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type AdmZip from "adm-zip";
@@ -75,21 +74,10 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
       );
     }
 
-    const toolConfig = agentLoopContext?.runContext?.toolConfiguration;
-    const internalMCPServerId =
-      toolConfig && isLightServerSideMCPToolConfiguration(toolConfig)
-        ? toolConfig.internalMCPServerId
-        : null;
-
-    let allowedLabels: string[] = [];
-    if (internalMCPServerId) {
-      const labelConfig =
-        await WorkspaceSensitivityLabelConfigResource.fetchBySource(auth, {
-          sourceType: "mcp_connection",
-          sourceId: internalMCPServerId,
-        });
-      allowedLabels = (labelConfig?.allowedLabels ?? []) as string[];
-    }
+    const allowedLabels = await getAllowedLabelsForMCPServer(
+      auth,
+      agentLoopContext
+    );
 
     try {
       const response = await searchMicrosoftDriveItems({
@@ -213,24 +201,10 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
       );
     }
 
-    const toolConfig = agentLoopContext?.runContext?.toolConfiguration;
-    const internalMCPServerId =
-      toolConfig && isLightServerSideMCPToolConfiguration(toolConfig)
-        ? toolConfig.internalMCPServerId
-        : null;
-
-    let allowedLabels: string[] = [];
-    if (internalMCPServerId) {
-      const labelConfig =
-        await WorkspaceSensitivityLabelConfigResource.fetchBySource(auth, {
-          sourceType: "mcp_connection",
-          sourceId: internalMCPServerId,
-        });
-      allowedLabels = (labelConfig?.allowedLabels ?? []) as string[];
-    }
-
-    console.log("====");
-    console.log("Allowed labels for this connection:", allowedLabels);
+    const allowedLabels = await getAllowedLabelsForMCPServer(
+      auth,
+      agentLoopContext
+    );
 
     try {
       const endpoint = await getDriveItemEndpoint(itemId, driveId, siteId);
@@ -241,8 +215,6 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
         .get();
 
       if (allowedLabels.length > 0) {
-        console.log("====");
-        console.log("File sensitivity label:", response?.sensitivityLabel);
         const labelId = response?.sensitivityLabel?.id;
         if (labelId && !allowedLabels.includes(labelId)) {
           return new Err(
