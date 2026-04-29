@@ -17,21 +17,24 @@ const customFieldsSchema = z.record(z.string(), z.string()).nullish();
 // Threshold notifications (alerts.*) — payload uses a `properties` wrapper.
 // ============================================================================
 
+// Only `customer_id` is required — every other alert field is omitted in some
+// real payloads (e.g. `triggered_by` missing on `spend_threshold_reached`),
+// and we only consume `customer_id` (the rest is logged).
 const baseAlertPropertiesSchema = z.object({
   customer_id: z.string(),
-  alert_id: z.string(),
-  timestamp: z.string(),
-  threshold: z.number(),
-  alert_name: z.string(),
-  triggered_by: z.string(),
+  alert_id: z.string().nullish(),
+  timestamp: z.string().nullish(),
+  threshold: z.number().nullish(),
+  alert_name: z.string().nullish(),
+  triggered_by: z.string().nullish(),
 });
 
 const LowRemainingCreditBalanceReachedSchema = z.object({
   id: z.string(),
   type: z.literal("alerts.low_remaining_credit_balance_reached"),
   properties: baseAlertPropertiesSchema.extend({
-    credit_type_id: z.string(),
-    remaining_balance: z.number(),
+    credit_type_id: z.string().nullish(),
+    remaining_balance: z.number().nullish(),
   }),
 });
 
@@ -39,7 +42,7 @@ const SpendThresholdReachedSchema = z.object({
   id: z.string(),
   type: z.literal("alerts.spend_threshold_reached"),
   properties: baseAlertPropertiesSchema.extend({
-    current_spend: z.number(),
+    current_spend: z.number().nullish(),
   }),
 });
 
@@ -47,8 +50,8 @@ const LowRemainingCommitBalanceReachedSchema = z.object({
   id: z.string(),
   type: z.literal("alerts.low_remaining_commit_balance_reached"),
   properties: baseAlertPropertiesSchema.extend({
-    commit_id: z.string(),
-    remaining_balance: z.number(),
+    commit_id: z.string().nullish(),
+    remaining_balance: z.number().nullish(),
   }),
 });
 
@@ -56,8 +59,8 @@ const UsageThresholdReachedSchema = z.object({
   id: z.string(),
   type: z.literal("alerts.usage_threshold_reached"),
   properties: baseAlertPropertiesSchema.extend({
-    billable_metric_id: z.string(),
-    current_usage: z.number(),
+    billable_metric_id: z.string().nullish(),
+    current_usage: z.number().nullish(),
   }),
 });
 
@@ -65,8 +68,8 @@ const InvoiceTotalReachedSchema = z.object({
   id: z.string(),
   type: z.literal("alerts.invoice_total_reached"),
   properties: baseAlertPropertiesSchema.extend({
-    invoice_id: z.string(),
-    invoice_total: z.number(),
+    invoice_id: z.string().nullish(),
+    invoice_total: z.number().nullish(),
   }),
 });
 

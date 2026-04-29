@@ -109,6 +109,7 @@ async function handler(
         logger.warn(
           {
             eventType: rawType.success ? rawType.data.type : "unknown",
+            event: rawEvent,
             error: parsedEvent.error.message,
           },
           "[Metronome Webhook] Unknown or malformed event"
