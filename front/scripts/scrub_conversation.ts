@@ -17,9 +17,7 @@ makeScript(
     },
   },
   async ({ workspaceId, conversationId, execute }, logger) => {
-    const auth = await Authenticator.internalAdminForWorkspace(workspaceId, {
-      dangerouslyRequestAllGroups: true,
-    });
+    const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
 
     const conversation = await ConversationResource.fetchById(
       auth,
