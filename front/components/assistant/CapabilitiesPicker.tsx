@@ -86,6 +86,10 @@ type CapabilityPickerItem = CapabilityPickerItemBase &
       }
   );
 
+function getCapabilityPickerItemGroupOrder(item: CapabilityPickerItem) {
+  return item.kind === "uninstalled_tool" ? 1 : 0;
+}
+
 function CapabilitiesPickerLoading({ count = 5 }: { count?: number }) {
   return (
     <div className="py-1">
@@ -474,13 +478,21 @@ export function CapabilitiesPicker({
       }
     }
 
-    return items.toSorted((a, b) =>
-      compareCapabilitySearchResults({
+    return items.toSorted((a, b) => {
+      const groupComparison =
+        getCapabilityPickerItemGroupOrder(a) -
+        getCapabilityPickerItemGroupOrder(b);
+
+      if (groupComparison !== 0) {
+        return groupComparison;
+      }
+
+      return compareCapabilitySearchResults({
         normalizedQuery: normalizedSearchText,
         a: a.sortName,
         b: b.sortName,
-      })
-    );
+      });
+    });
   }, [
     availableMCPServers,
     fetchSkillWithRelations,
