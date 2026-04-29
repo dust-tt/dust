@@ -36,11 +36,13 @@ import {
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Logger } from "@app/logger/logger";
 import logger from "@app/logger/logger";
+import type { SupportedCurrency } from "@app/types/currency";
 import { isSupportedCurrency } from "@app/types/currency";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
 import type Stripe from "stripe";
+import { metronomeAmount } from "./amounts";
 
 /**
  * Switch a Metronome contract to a different package (end old + create new).
@@ -183,7 +185,7 @@ export interface StripeTierCents {
  */
 export interface EnterprisePricingCents {
   /** Currency of the Stripe price (e.g. "usd", "eur"). */
-  currency: string;
+  currency: SupportedCurrency;
   /** Billing mode: MAU_1/5/10 for MAU-based, FIXED for flat price. */
   billingMode: SupportedEnterpriseReportUsage;
   /** All pricing tiers from Stripe (empty for FIXED). */
@@ -303,6 +305,14 @@ export async function extractEnterprisePricing(
     }
 
     // FIXED pricing: flat monthly fee, no MAU.
+    if (!isSupportedCurrency(item.price.currency)) {
+      pricingLogger.warn(
+        { priceId: item.price.id, currency: item.price.currency },
+        "Unsupported enterprise price currency"
+      );
+      return undefined;
+    }
+
     if (reportUsage === "FIXED") {
       return {
         currency: item.price.currency,
@@ -317,6 +327,14 @@ export async function extractEnterprisePricing(
     const price = await stripe.prices.retrieve(item.price.id, {
       expand: ["tiers"],
     });
+
+    if (!isSupportedCurrency(price.currency)) {
+      pricingLogger.warn(
+        { priceId: price.id, currency: price.currency },
+        "Unsupported enterprise price currency"
+      );
+      return undefined;
+    }
 
     if (!price.tiers || price.tiers.length === 0) {
       pricingLogger.warn(
@@ -455,18 +473,6 @@ function buildMauTiersField(tiers: StripeTierCents[]): string {
 }
 
 /**
- * Convert Stripe cents to Metronome pricing units.
- * USD: Metronome uses cents (same as Stripe) → no conversion.
- * EUR: Metronome uses whole euros → divide by 100.
- */
-function stripeCentsToMetronomePrice(cents: number, currency: string): number {
-  if (currency === "eur") {
-    return Math.round(cents / 100);
-  }
-  return cents;
-}
-
-/**
  * Derive per-tier prices from Stripe tiers for Metronome FLAT rate overrides.
  *
  * Returns one price per tier in Metronome pricing units (cents for USD, euros for EUR).
@@ -478,7 +484,7 @@ function stripeCentsToMetronomePrice(cents: number, currency: string): number {
  */
 function deriveTierPrices(
   tiers: StripeTierCents[],
-  currency: string
+  currency: SupportedCurrency
 ): number[] {
   let previousUpTo = 0;
   return tiers.map((tier, index) => {
@@ -488,13 +494,10 @@ function deriveTierPrices(
     // First tier with floor: derive price from flat_amount / size.
     if (index === 0 && tier.flatAmountCents > 0 && tierSize) {
       // Convert floor to Metronome units first, then divide by tier size.
-      const floorMetronome = stripeCentsToMetronomePrice(
-        tier.flatAmountCents,
-        currency
-      );
+      const floorMetronome = metronomeAmount(tier.flatAmountCents, currency);
       return Math.round(floorMetronome / tierSize);
     }
-    return stripeCentsToMetronomePrice(tier.unitAmountCents, currency);
+    return metronomeAmount(tier.unitAmountCents, currency);
   });
 }
 
@@ -588,7 +591,7 @@ export function buildEnterpriseOverrides({
       ...tierProductIds.map(disableOverride),
     ];
 
-    const floorMetronome = stripeCentsToMetronomePrice(
+    const floorMetronome = metronomeAmount(
       pricing.floorCents,
       pricing.currency
     );
@@ -675,10 +678,7 @@ export function buildEnterpriseOverrides({
 
   // Recurring commit for the floor (flat_amount on first tier).
   // Applicable to MAU Tier 1 so the commit draws down at tier 1's rate.
-  const floorMetronome = stripeCentsToMetronomePrice(
-    pricing.floorCents,
-    pricing.currency
-  );
+  const floorMetronome = metronomeAmount(pricing.floorCents, pricing.currency);
   const recurringCommits =
     pricing.floorCents > 0
       ? [
@@ -879,9 +879,7 @@ export async function provisionEnterpriseMetronomeContract({
   // Resolve the package alias based on the subscription currency.
   const packageAlias = resolvePackageAliasForCurrency(
     LEGACY_ENTERPRISE_PACKAGE_ALIAS,
-    isSupportedCurrency(enterprisePricing.currency)
-      ? enterprisePricing.currency
-      : "usd"
+    enterprisePricing.currency
   );
 
   // Anchor the Metronome contract to the Stripe billing period start so the

@@ -24,6 +24,8 @@ import type { GetWorkspaceTopUsersResponse } from "@app/pages/api/w/[wId]/analyt
 import type { GetWorkspaceUsageMetricsResponse } from "@app/pages/api/w/[wId]/analytics/usage-metrics";
 import type { GetWorkspaceAuthContextResponseType } from "@app/pages/api/w/[wId]/auth-context";
 import type { GetJoinResponseBody } from "@app/pages/api/w/[wId]/join";
+import type { GetMetronomeContractResponseBody } from "@app/pages/api/w/[wId]/metronome/contract";
+import type { GetMetronomeInvoiceResponseBody } from "@app/pages/api/w/[wId]/metronome/invoice";
 import type { GetSeatAvailabilityResponseBody } from "@app/pages/api/w/[wId]/seats/availability";
 import type { GetWorkspaceSeatsCountResponseBody } from "@app/pages/api/w/[wId]/seats/count";
 import type { GetSubscriptionsResponseBody } from "@app/pages/api/w/[wId]/subscriptions";
@@ -603,6 +605,62 @@ export function usePerSeatPricing({
     perSeatPricing: data?.perSeatPricing ?? null,
     isPerSeatPricingLoading: !error && !data && !disabled,
     isPerSeatPricingError: error,
+  };
+}
+
+export function useMetronomeContract({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const contractFetcher: Fetcher<GetMetronomeContractResponseBody> = fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/metronome/contract`,
+    contractFetcher,
+    {
+      disabled,
+      revalidateOnFocus: false,
+      dedupingInterval: 60_000,
+    }
+  );
+
+  return {
+    contract: data?.contract ?? null,
+    isMetronomeContractLoading: !error && !data && !disabled,
+    isMetronomeContractError: error,
+    mutateMetronomeContract: mutate,
+  };
+}
+
+export function useMetronomeInvoice({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const invoiceFetcher: Fetcher<GetMetronomeInvoiceResponseBody> = fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/metronome/invoice`,
+    invoiceFetcher,
+    {
+      disabled,
+      revalidateOnFocus: false,
+      dedupingInterval: 60_000,
+    }
+  );
+
+  return {
+    invoice: data?.invoice ?? null,
+    isMetronomeInvoiceLoading: !error && !data && !disabled,
+    isMetronomeInvoiceError: error,
+    mutateMetronomeInvoice: mutate,
   };
 }
 
