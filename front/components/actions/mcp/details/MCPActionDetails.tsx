@@ -147,6 +147,7 @@ export function MCPActionDetails(props: MCPActionDetailsProps) {
   return (
     <ActionExecutionProvider
       executionDurationMs={props.action.executionDurationMs}
+      startedAtMs={props.action.createdAt}
     >
       <MCPActionDetailsInner {...props} />
     </ActionExecutionProvider>

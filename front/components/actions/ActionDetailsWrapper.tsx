@@ -1,31 +1,53 @@
 import type { ActionDetailsDisplayContext } from "@app/components/actions/mcp/details/types";
 import { cn, Icon, Spinner } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
-import { createContext, useContext, useMemo } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
 interface ActionExecutionContextValue {
   executionDurationMs: number | null;
+  startedAtMs: number | null;
 }
 
 const ActionExecutionContext = createContext<ActionExecutionContextValue>({
   executionDurationMs: null,
+  startedAtMs: null,
 });
 
 interface ActionExecutionProviderProps {
   executionDurationMs: number | null;
+  startedAtMs: number | null;
   children: React.ReactNode;
 }
 
 export function ActionExecutionProvider({
   executionDurationMs,
+  startedAtMs,
   children,
 }: ActionExecutionProviderProps) {
-  const value = useMemo(() => ({ executionDurationMs }), [executionDurationMs]);
+  const value = useMemo(
+    () => ({ executionDurationMs, startedAtMs }),
+    [executionDurationMs, startedAtMs]
+  );
   return (
     <ActionExecutionContext.Provider value={value}>
       {children}
     </ActionExecutionContext.Provider>
   );
+}
+
+function useLiveElapsedMs(startedAtMs: number | null, enabled: boolean) {
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    if (!enabled || startedAtMs === null) {
+      return;
+    }
+    const id = window.setInterval(() => setNowMs(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, [enabled, startedAtMs]);
+  if (startedAtMs === null) {
+    return null;
+  }
+  return Math.max(0, nowMs - startedAtMs);
 }
 
 interface ActionDetailsWrapperProps {
@@ -52,10 +74,11 @@ function formatDurationMs(durationMs: number): string {
 
 interface DurationLabelProps {
   durationMs: number;
+  isRunning: boolean;
   size: "xs" | "sm";
 }
 
-function DurationLabel({ durationMs, size }: DurationLabelProps) {
+function DurationLabel({ durationMs, isRunning, size }: DurationLabelProps) {
   return (
     <span
       className={cn(
@@ -63,6 +86,7 @@ function DurationLabel({ durationMs, size }: DurationLabelProps) {
         size === "xs" ? "text-xs" : "text-sm"
       )}
     >
+      {isRunning ? "running for " : "executed in "}
       {formatDurationMs(durationMs)}
     </span>
   );
@@ -76,14 +100,18 @@ export function ActionDetailsWrapper({
   headerAction,
   visual,
 }: ActionDetailsWrapperProps) {
-  const { executionDurationMs: executionDurationMsContext } = useContext(
-    ActionExecutionContext
-  );
+  const {
+    executionDurationMs: executionDurationMsContext,
+    startedAtMs,
+  } = useContext(ActionExecutionContext);
   const executionDurationMs =
     executionDurationMsProp !== undefined
       ? executionDurationMsProp
       : executionDurationMsContext;
-  const hasDuration = executionDurationMs !== null;
+  const isRunning = executionDurationMs === null;
+  const liveElapsedMs = useLiveElapsedMs(startedAtMs, isRunning);
+  const displayedDurationMs = isRunning ? liveElapsedMs : executionDurationMs;
+  const hasDuration = displayedDurationMs !== null;
 
   if (displayContext === "conversation") {
     return (
@@ -97,7 +125,11 @@ export function ActionDetailsWrapper({
           <Icon visual={visual} size="xs" />
           <span className="heading-sm font-medium">{actionName}</span>
           {hasDuration && (
-            <DurationLabel durationMs={executionDurationMs} size="xs" />
+            <DurationLabel
+              durationMs={displayedDurationMs}
+              isRunning={isRunning}
+              size="xs"
+            />
           )}
           <span className="flex-grow"></span>
           {headerAction}
@@ -122,7 +154,11 @@ export function ActionDetailsWrapper({
         <Icon visual={visual} />
         <span className="heading-base">{actionName}</span>
         {hasDuration && (
-          <DurationLabel durationMs={executionDurationMs} size="sm" />
+          <DurationLabel
+            durationMs={displayedDurationMs}
+            isRunning={isRunning}
+            size="sm"
+          />
         )}
         <span className="flex-grow"></span>
         {headerAction}
