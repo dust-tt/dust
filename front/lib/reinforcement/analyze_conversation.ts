@@ -40,7 +40,9 @@ Propose configuration changes only when <analysis_workflow> yields concrete evid
 `,
 
   skill_usage_analysis: `In <skill_context>, you have received all custom skills that were enabled in the conversation.
-When enabled, skill instructions may be rendered into the conversation as dedicated <dust_system> user messages. This means that every subsequent agent action can be influenced by each enabled skill in addition to the agent's system prompt.
+<!-- TODO(2026-04-29 aubin): switch here when ungating the new skill rendering -->
+<!--When enabled, skill instructions may be rendered into the conversation as dedicated <dust_system> user messages. This means that every subsequent agent action can be influenced by each enabled skill in addition to the agent's system prompt.-->
+Skills are injected into the agent's system prompt when enabled. This means that every subsequent agent action is influenced by each enabled skill in addition to the agent's system prompt.
 The only strong signal of skill influence on the agent behavior is when the agent calls a tool that the skill provides.
 You will need to infer the impact of the skill on the agent behavior by checking tool calls and agent messages.`,
 
