@@ -197,7 +197,7 @@ export function createProjectTodosTools(
             await todo.upsertSource(auth, {
               itemId: sourceConversation.sId,
               source: {
-                sourceType: "conversation",
+                sourceType: "project_conversation",
                 sourceId: sourceConversation.sId,
                 sourceTitle:
                   sourceConversation.title ?? "Source conversation",
