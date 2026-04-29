@@ -1,15 +1,14 @@
 import { getAuthForSharedEndpointWorkspaceMembersOnly } from "@app/lib/api/auth_wrappers";
 import { createFrameSession } from "@app/lib/api/share/frame_session";
 import { Authenticator } from "@app/lib/auth";
-import { ConversationModel } from "@app/lib/models/agent/conversation";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import {
   ExternalViewerSessionModel,
   SharingGrantModel,
 } from "@app/lib/resources/storage/models/files";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -525,12 +524,7 @@ describe("GET /api/v1/public/frames/[token]", () => {
 
   describe("conversation URL", () => {
     const createFrameLinkedToConversation = async (scope: FileShareScope) => {
-      const conversation = await ConversationModel.create({
-        workspaceId: workspace.id,
-        sId: generateRandomModelSId(),
-        title: "Test conversation",
-        requestedSpaceIds: [],
-      });
+      const conversation = await ConversationFactory.createEmpty(auth);
 
       const file = await FileFactory.create(auth, user, {
         contentType: frameContentType,
