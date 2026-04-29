@@ -4,6 +4,8 @@
   "compilerOptions": {
     "module": "esnext",
     "moduleResolution": "bundler",
+    "lib": ["es2020", "dom"],
+    "types": ["node"],
     "rootDir": "src",
     "paths": {
       "@modelcontextprotocol/sdk/*": [
