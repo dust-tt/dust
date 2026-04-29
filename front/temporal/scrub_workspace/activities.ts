@@ -34,6 +34,7 @@ import { TakeawaysResource } from "@app/lib/resources/takeaways_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { WorkspaceSandboxEnvVarResource } from "@app/lib/resources/workspace_sandbox_env_var_resource";
 import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/server";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
@@ -133,6 +134,7 @@ export async function scrubWorkspaceData({
   await deleteSkills(auth);
   await deleteOnboardingTasks(auth);
   await deleteTags(auth);
+  await deleteSandboxEnvVars(auth);
   await deleteDatasources(auth);
   await deleteSpaces(auth);
   await cleanupCustomerio(auth);
@@ -245,6 +247,10 @@ async function deleteTags(auth: Authenticator) {
   for (const tag of tags) {
     await tag.delete(auth);
   }
+}
+
+async function deleteSandboxEnvVars(auth: Authenticator) {
+  await WorkspaceSandboxEnvVarResource.deleteAllForWorkspace(auth);
 }
 
 async function deleteDatasources(auth: Authenticator) {
