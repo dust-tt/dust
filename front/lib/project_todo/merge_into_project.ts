@@ -50,6 +50,7 @@ import {
 } from "@app/lib/resources/takeaways_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import logger from "@app/logger/logger";
 import type { ProjectTodoSourceInfo } from "@app/types/project_todo";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { TodoVersionedActionItem } from "@app/types/takeaways";
@@ -504,6 +505,14 @@ export async function updateTodoIfChanged(
     return false;
   }
   if (todo.markedAsDoneByType === "user") {
+    return false;
+  }
+
+  if (todo.status === "done" && blob.status === "todo") {
+    logger.debug(
+      { todoId: todo.sId, userId: todo.userId },
+      "Project todo merge: system attempted to reopen a done todo — ignored"
+    );
     return false;
   }
 
