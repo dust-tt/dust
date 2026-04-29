@@ -26,6 +26,7 @@ import {
   DialogTitle,
   InformationCircleIcon,
   Input,
+  Label,
   LockIcon,
   Page,
   PlusIcon,
@@ -295,12 +296,7 @@ export function EnvironmentSection() {
                 disabled={isUpsertingWorkspaceSandboxEnvVar}
               />
               <div className="flex flex-col gap-1">
-                <label
-                  htmlFor="sandbox-env-var-value"
-                  className="text-sm font-medium text-foreground dark:text-foreground-night"
-                >
-                  Value
-                </label>
+                <Label htmlFor="sandbox-env-var-value">Value</Label>
                 <TextArea
                   id="sandbox-env-var-value"
                   name="value"
