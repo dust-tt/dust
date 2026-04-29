@@ -3,13 +3,25 @@ import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { CronExpressionParser } from "cron-parser";
 import cronstrue from "cronstrue";
 
-// Render an instant as "HH:mm" (24-hour) in the viewer's local timezone, to
-// match the rest of the platform.
+// Render an instant as a localized time of day in the viewer's local
+// timezone. The locale is resolved from the browser/OS so users in 24h
+// regions see "14:30" and users in 12h regions see "2:30 PM".
 export function formatWakeUpTimeOfDay(timestamp: number): string {
   const date = new Date(timestamp);
-  const hours = String(date.getHours()).padStart(2, "0");
-  const minutes = String(date.getMinutes()).padStart(2, "0");
-  return `${hours}:${minutes}`;
+  return date.toLocaleTimeString(undefined, {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+// Whether the viewer's locale prefers 24-hour time. Used to keep cron
+// schedule descriptions (rendered by cronstrue) consistent with the
+// time-of-day strings produced by `formatWakeUpTimeOfDay` above.
+function prefers24HourTime(): boolean {
+  const { hourCycle } = new Intl.DateTimeFormat(undefined, {
+    hour: "numeric",
+  }).resolvedOptions();
+  return hourCycle === "h23" || hourCycle === "h24";
 }
 
 // Compute the millisecond timestamp of the next time a wake-up fires. For
@@ -63,7 +75,7 @@ export function describeWakeUpSchedule(wakeUp: WakeUpType): string {
     case "cron": {
       let description = cronstrue.toString(config.cron, {
         verbose: false,
-        use24HourTimeFormat: true,
+        use24HourTimeFormat: prefers24HourTime(),
       });
       // cronstrue renders DOM steps as ", every N days in a month", which
       // reads awkwardly. Reword to natural English; "every 2" becomes
