@@ -7,6 +7,7 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import type { AgentMessageType } from "@app/types/assistant/conversation";
 import type { TextContent } from "@app/types/assistant/generation";
+import { isString } from "@app/types/shared/utils/general";
 import { describe, expect, it } from "vitest";
 
 import { getSteps, renderUserMessage } from "./helpers";
@@ -249,7 +250,7 @@ The following skills are available for use with the skill_management__enable_ski
       throw new Error("Expected a marker resource.");
     }
     const skillId = marker.resource._meta?.["skillId"];
-    if (typeof skillId !== "string") {
+    if (!isString(skillId)) {
       throw new Error("Expected a normalized skill marker id.");
     }
     Object.assign(marker.resource, { skillId });
@@ -328,7 +329,7 @@ The following skills are available for use with the skill_management__enable_ski
 
     expect(steps).toHaveLength(1);
     expect(steps[0].actions).toHaveLength(1);
-    expect(steps[0].actions[0].followUpMessages).toEqual([
+    expect(steps[0].actions[0].enabledSkillMessages).toEqual([
       {
         role: "user",
         name: "system",
