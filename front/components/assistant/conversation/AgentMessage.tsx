@@ -435,17 +435,17 @@ export function AgentMessage({
     () =>
       Object.entries(agentMessage.citations ?? {}).reduce<
         Record<string, MCPReferenceCitation>
-      >((acc, [key, citation]) => {
+      >((acc, [ref, citation]) => {
         if (citation) {
           return {
             ...acc,
-            [key]: {
+            [ref]: {
               provider: citation.provider,
               href: citation.href,
               title: citation.title,
               description: citation.description,
               contentType: citation.contentType,
-              fileId: key,
+              ref,
             },
           };
         }

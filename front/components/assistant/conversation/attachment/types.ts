@@ -50,7 +50,6 @@ interface BaseAttachmentCitation {
 
 export interface FileAttachmentCitation extends BaseAttachmentCitation {
   type: "file";
-
   contentType: SupportedContentFragmentType;
   description: string | null;
   fileId: string | null;
@@ -59,7 +58,6 @@ export interface FileAttachmentCitation extends BaseAttachmentCitation {
 
 export interface NodeAttachmentCitation extends BaseAttachmentCitation {
   type: "node";
-
   path?: string;
   spaceIcon?: React.ComponentType;
   spaceName: string;
@@ -68,10 +66,9 @@ export interface NodeAttachmentCitation extends BaseAttachmentCitation {
 export interface MCPAttachmentCitation extends BaseAttachmentCitation {
   type: "file";
   attachmentCitationType: "mcp";
-  fileId: string;
+  fileId: string | null;
   isUploading: false;
   description?: string;
-
   contentType: AllSupportedWithDustSpecificFileContentType;
 }
 

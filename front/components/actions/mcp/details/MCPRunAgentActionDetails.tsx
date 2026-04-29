@@ -158,19 +158,21 @@ export function MCPRunAgentActionDetails({
     if (!resultResource?.resource.refs) {
       return {};
     }
-    const mcpReferenceCitations: { [key: string]: MCPReferenceCitation } = {};
-    Object.entries(resultResource.resource.refs).forEach(([key, citation]) => {
-      mcpReferenceCitations[key] = {
-        provider: citation.provider,
-        contentType:
-          citation.contentType as AllSupportedWithDustSpecificFileContentType,
-        title: citation.title,
-        href: citation.href,
-        description: citation.description,
-        fileId: key,
-      };
-    });
-    return mcpReferenceCitations;
+
+    return Object.fromEntries(
+      Object.entries(resultResource.resource.refs).map(([ref, citation]) => [
+        ref,
+        {
+          ref,
+          provider: citation.provider,
+          contentType:
+            citation.contentType as AllSupportedWithDustSpecificFileContentType,
+          title: citation.title,
+          href: citation.href,
+          description: citation.description,
+        },
+      ])
+    ) satisfies Record<string, MCPReferenceCitation>;
   }, [resultResource]);
 
   if (!childAgent) {
