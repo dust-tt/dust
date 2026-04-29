@@ -478,7 +478,7 @@ export function UserMessage({
 }
 
 function getChipDateFormat(date: Date) {
-  return date.toLocaleDateString("en-EN", {
+  return date.toLocaleDateString(undefined, {
     year: "numeric",
     month: "short",
     day: "numeric",
