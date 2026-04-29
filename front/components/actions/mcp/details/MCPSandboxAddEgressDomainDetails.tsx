@@ -42,12 +42,8 @@ export function MCPSandboxAddEgressDomainDetails({
   const status = useMemo(() => parseStatus(rawOutputText), [rawOutputText]);
 
   const actionName = isRunning
-    ? domain
-      ? `Requesting access to ${domain}`
-      : "Requesting sandbox network access"
-    : domain
-      ? `Request access to ${domain}`
-      : "Allow domain in sandbox";
+    ? `Requesting access to ${domain ?? "domain"}`
+    : `Request access to ${domain ?? "domain"}`;
 
   return (
     <ActionDetailsWrapper
