@@ -190,12 +190,15 @@ export function createProjectTodosTools(
             actorRationale: item.doneRationale ?? null,
           });
 
-          // Record the source conversation so the todo can be traced back to
-          // where it was created, and so the kickoff prompt can reference it.
+          // Record the conversation where the todo was created as a source so
+          // it surfaces in the kickoff prompt when the todo is started.
           const sourceConversation = agentLoopContext?.runContext?.conversation;
           if (sourceConversation) {
-            await todo.addConversation(auth, {
-              conversationModelId: sourceConversation.id,
+            await todo.upsertSource(auth, {
+              sourceType: "conversation",
+              sourceId: sourceConversation.sId,
+              sourceTitle: sourceConversation.title ?? "Source conversation",
+              sourceUrl: `${config.getAppUrl()}${getConversationRoute(owner.sId, sourceConversation.sId)}`,
             });
           }
 

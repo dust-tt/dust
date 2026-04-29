@@ -4,11 +4,9 @@ import {
 } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import type { Authenticator } from "@app/lib/auth";
-import config from "@app/lib/api/config";
 import { ProjectTodoResource } from "@app/lib/resources/project_todo_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { getConversationRoute } from "@app/lib/utils/router";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { APIErrorType } from "@app/types/error";
 import type { ProjectTodoType } from "@app/types/project_todo";
@@ -116,28 +114,15 @@ export async function startAgentForProjectTodo(
   const sourceUrls = sources
     .map((source) => source.sourceUrl)
     .filter((url): url is string => !!url);
-
-  // Fetch the linked conversation upfront so we can reuse the result both to
-  // surface it as a source URL in the kickoff prompt and to decide whether to
-  // create a new work conversation or append to the existing one.
-  let conversationId = await todo.getLatestConversationId(auth);
-  let conversation;
-  let action: "created" | "appended" = "appended";
-
-  // If the todo is already linked to a conversation (e.g. the one where it was
-  // created via create_todos), include that URL as the source in the prompt.
-  if (conversationId) {
-    const workspaceId = auth.getNonNullableWorkspace().sId;
-    sourceUrls.push(
-      `${config.getAppUrl()}${getConversationRoute(workspaceId, conversationId)}`
-    );
-  }
-
   const prompt = buildTodoKickoffPrompt({
     todoId: todo.sId,
     todoText: todo.text,
     sourceUrls,
   });
+
+  let conversationId = await todo.getLatestConversationId(auth);
+  let conversation;
+  let action: "created" | "appended" = "appended";
 
   if (!conversationId) {
     conversation = await createConversation(auth, {
