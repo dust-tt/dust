@@ -504,34 +504,39 @@ function EditableTodoItem({
         />
       </div>
       <TodoMetadataTooltip todo={todo} agentNameById={agentNameById}>
-        <button
-          type="button"
-          className="flex min-w-0 flex-1 cursor-pointer flex-col gap-0.5 text-left"
-          onClick={handleToggle}
-          disabled={!canEdit}
-        >
-          <span
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <button
+            type="button"
             className={cn(
-              "text-base min-h-6 transition-all duration-300",
-              isDone
-                ? "text-faint dark:text-faint-night line-through"
-                : "text-foreground dark:text-foreground-night",
-              isFlashing &&
-                "rounded bg-warning-100/40 dark:bg-warning-100-night/30"
+              "text-left",
+              canEdit ? "cursor-pointer" : "cursor-default"
             )}
+            onClick={handleToggle}
+            disabled={!canEdit}
           >
-            {isTyping ? (
-              <TypingAnimation text={todo.text} duration={16} />
-            ) : showInProgressTextAnimation ? (
-              <AnimatedText variant="muted">{todo.text}</AnimatedText>
-            ) : (
-              todo.text
-            )}
-          </span>
+            <span
+              className={cn(
+                "text-base min-h-6 transition-all duration-300",
+                isDone
+                  ? "text-faint dark:text-faint-night line-through"
+                  : "text-foreground dark:text-foreground-night",
+                isFlashing &&
+                  "rounded bg-warning-100/40 dark:bg-warning-100-night/30"
+              )}
+            >
+              {isTyping ? (
+                <TypingAnimation text={todo.text} duration={16} />
+              ) : showInProgressTextAnimation ? (
+                <AnimatedText variant="muted">{todo.text}</AnimatedText>
+              ) : (
+                todo.text
+              )}
+            </span>
+          </button>
           <div className="ml-1">
             <TodoSources sources={todo.sources} owner={owner} isDone={isDone} />
           </div>
-        </button>
+        </div>
       </TodoMetadataTooltip>
       <div className="mt-0.5 flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover/todo:opacity-100">
         {hasConversationLink ? (
