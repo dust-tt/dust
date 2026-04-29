@@ -58,6 +58,8 @@ import logger from "@app/logger/logger";
 import {
   type ConversationForkedChildType,
   type ConversationListItemType,
+  isLightAgentMessageType,
+  isTerminalAgentMessageStatus,
   isUserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";
 import type { RichMention } from "@app/types/assistant/mentions";
@@ -311,6 +313,7 @@ export const ConversationViewer = ({
     isMessagesError,
     isValidating,
     messages,
+    mutateMessages,
     setSize,
     size,
   } = useConversationMessages({
@@ -653,7 +656,25 @@ export const ConversationViewer = ({
               const exists = ref.current.data.find(predicate);
 
               if (exists) {
-                ref.current.data.map((m) => (predicate(m) ? agentMessage : m));
+                // On replay (e.g. after navigating away and coming back), the
+                // existing message may already reflect the final state from
+                // the SWR snapshot. The replayed event always carries the
+                // initial "created" payload, so replacing would downgrade the
+                // status (re-activating shouldStream and the message-events
+                // stream) and wipe inlineActivitySteps. Skip the replace only
+                // when the existing message is the same logical message (same
+                // sId) and already terminal. A retry creates a new sId at the
+                // same rank/branch, so it must still go through the replace.
+                const isReplayOfTerminalMessage =
+                  isAgentMessageWithStreaming(exists) &&
+                  exists.sId === agentMessage.sId &&
+                  isTerminalAgentMessageStatus(exists.status);
+
+                if (!isReplayOfTerminalMessage) {
+                  ref.current.data.map((m) =>
+                    predicate(m) ? agentMessage : m
+                  );
+                }
               } else {
                 const currentData = ref.current.data.get();
                 const offset = getBranchedInsertIndex(
@@ -712,6 +733,33 @@ export const ConversationViewer = ({
 
             // Re-fetch context usage after the agent finishes so the indicator is up-to-date.
             void mutateContextUsage();
+
+            // Update the messages SWR cache in place so a future remount
+            // of this conversation (e.g. navigating away and back) sees the
+            // message as terminal instead of the stale "created" snapshot
+            // (which would otherwise re-open an SSE replay). We only flip
+            // status here to avoid a network refetch on every termination,
+            // which on prod was slow enough to delay retry feedback. The
+            // richer final state (activitySteps, content, gracefully_stopped
+            // vs cancelled) is restored by the next real fetch when needed.
+            void mutateMessages(
+              (pages) =>
+                pages?.map((page) => ({
+                  ...page,
+                  messages: page.messages.map((m) =>
+                    isLightAgentMessageType(m) && m.sId === event.messageId
+                      ? {
+                          ...m,
+                          status:
+                            event.status === "error"
+                              ? ("failed" as const)
+                              : ("succeeded" as const),
+                        }
+                      : m
+                  ),
+                })),
+              { revalidate: false }
+            );
 
             // Update the conversation hasError state in the local cache without making a network request.
             void mutateConversations(
@@ -810,6 +858,7 @@ export const ConversationViewer = ({
       mutateConversationAttachments,
       mutateConversationParticipants,
       mutateConversations,
+      mutateMessages,
       openPanel,
       owner.sId,
       user.sId,

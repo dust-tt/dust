@@ -303,6 +303,17 @@ export function useAgentMessageStream({
     []
   );
 
+  // Short-circuit replays of events we've already processed in this hook
+  // instance. The hook is mounted per agent message (via AgentMessage.tsx),
+  // so the ref is scoped to a single message and resets on remount or when a
+  // retry creates a new agentMessage.sId. Within a single mount,
+  // `useEventSource` reconnects on every server-side "done" frame and on
+  // network errors using `lastEventId`; if the server replays an event we
+  // already saw (e.g. just past the cursor boundary), the handlers downstream
+  // are not idempotent — inline activity step IDs are built from `Date.now()`
+  // and same-millisecond re-processing produces duplicate React keys.
+  const seenEventIds = useRef<Set<string>>(new Set());
+
   useEffect(() => {
     return () => {
       updateMessageThrottled.cancel();
@@ -353,6 +364,12 @@ export function useAgentMessageStream({
         eventId: string;
         data: AgentMessageStateWithControlEvent;
       } = JSON.parse(eventStr);
+      if (eventPayload.eventId) {
+        if (seenEventIds.current.has(eventPayload.eventId)) {
+          return;
+        }
+        seenEventIds.current.add(eventPayload.eventId);
+      }
       const eventType = eventPayload.data.type;
       switch (eventType) {
         case "end-of-stream":
