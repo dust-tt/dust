@@ -23,6 +23,10 @@ import {
   stopProjectTodoWorkflow,
 } from "@app/temporal/project_todo/client";
 
+// Mirrors the sentinel used by the butler merge workflow when recording the
+// creating actor for butler-created project todos.
+const BUTLER_AGENT_SID = "butler";
+
 makeScript(
   {
     wId: {
@@ -41,8 +45,16 @@ makeScript(
         "Optional user sId to scope cleanup to a single owner. When omitted, " +
         "wipes todos for all users in the project plus project-wide takeaways.",
     },
+    butlerOnly: {
+      type: "boolean",
+      default: false,
+      describe:
+        "When true, only delete todos (and associated rows) created by the " +
+        "butler agent, plus project-wide takeaways. Per-user todo state is " +
+        "left untouched.",
+    },
   },
-  async ({ execute, wId, pId, userId }, logger) => {
+  async ({ execute, wId, pId, userId, butlerOnly }, logger) => {
     const workspace = await WorkspaceResource.fetchById(wId);
     if (!workspace) {
       throw new Error(`Workspace not found: ${wId}`);
@@ -75,6 +87,9 @@ makeScript(
       workspaceId,
       spaceId,
       ...(userModelId !== null ? { userId: userModelId } : {}),
+      ...(butlerOnly
+        ? { createdByAgentConfigurationId: BUTLER_AGENT_SID }
+        : {}),
     };
 
     const todos = await ProjectTodoModel.findAll({
@@ -97,6 +112,7 @@ makeScript(
         workspaceId: wId,
         spaceId: pId,
         userId: userId ?? null,
+        butlerOnly,
         todoCount: todoIds.length,
         takeawaysCount: takeawaysIds.length,
         execute,
@@ -161,15 +177,18 @@ makeScript(
         );
       }
 
-      const stateDeleted = await ProjectTodoStateModel.destroy({
-        where: {
-          workspaceId,
-          spaceId: spaceId,
-          ...(userModelId !== null ? { userId: userModelId } : {}),
-        },
-        transaction,
-      });
-      logger.info({ stateDeleted }, "Deleted project todo state rows");
+      // Per-user state is not butler-created — skip it in butler-only mode.
+      if (!butlerOnly) {
+        const stateDeleted = await ProjectTodoStateModel.destroy({
+          where: {
+            workspaceId,
+            spaceId: spaceId,
+            ...(userModelId !== null ? { userId: userModelId } : {}),
+          },
+          transaction,
+        });
+        logger.info({ stateDeleted }, "Deleted project todo state rows");
+      }
 
       if (takeawaysIds.length > 0) {
         const takeawayChildWhere = {
@@ -211,7 +230,7 @@ makeScript(
     });
 
     logger.info(
-      { workspaceId: wId, spaceId: pId, userId: userId ?? null },
+      { workspaceId: wId, spaceId: pId, userId: userId ?? null, butlerOnly },
       "Clean project todos complete"
     );
   }
