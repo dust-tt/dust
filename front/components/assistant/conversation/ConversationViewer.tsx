@@ -658,15 +658,18 @@ export const ConversationViewer = ({
                 // On replay (e.g. after navigating away and coming back), the
                 // existing message may already reflect the final state from
                 // the SWR snapshot. The replayed event always carries the
-                // initial "created" payload — replacing would downgrade the
+                // initial "created" payload, so replacing would downgrade the
                 // status (re-activating shouldStream and the message-events
-                // stream) and wipe inlineActivitySteps. Skip the replace
-                // when the existing message is already in a terminal state.
-                const isTerminal =
+                // stream) and wipe inlineActivitySteps. Skip the replace only
+                // when the existing message is the same logical message (same
+                // sId) and already terminal. A retry creates a new sId at the
+                // same rank/branch, so it must still go through the replace.
+                const isReplayOfTerminalMessage =
                   isAgentMessageWithStreaming(exists) &&
+                  exists.sId === agentMessage.sId &&
                   isTerminalAgentMessageStatus(exists.status);
 
-                if (!isTerminal) {
+                if (!isReplayOfTerminalMessage) {
                   ref.current.data.map((m) =>
                     predicate(m) ? agentMessage : m
                   );
