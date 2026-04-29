@@ -14,7 +14,7 @@ import {
   MoreIcon,
   RobotIcon,
 } from "@dust-tt/sparkle";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 interface AgentPickerProps {
   owner: WorkspaceType;
@@ -46,6 +46,7 @@ export function AgentPicker({
 }: AgentPickerProps) {
   const [searchText, setSearchText] = useState("");
   const [isOpen, setIsOpen] = useState(false);
+  const pendingAgentDetailsIdRef = useRef<string | null>(null);
 
   const searchedAgents = filterAndSortAgents(agents, searchText);
 
@@ -78,6 +79,13 @@ export function AgentPicker({
         className="h-96 w-80"
         side={side}
         align="start"
+        onCloseAutoFocus={() => {
+          const pendingId = pendingAgentDetailsIdRef.current;
+          if (pendingId !== null) {
+            pendingAgentDetailsIdRef.current = null;
+            onAgentDetailsClick?.(pendingId);
+          }
+        }}
         dropdownHeaders={
           <>
             <DropdownMenuSearchbar
@@ -118,10 +126,14 @@ export function AgentPicker({
                     variant="outline"
                     size="mini"
                     className="opacity-0 group-hover:opacity-100"
+                    onPointerDown={(e) => e.stopPropagation()}
                     onClick={(e) => {
                       e.stopPropagation();
-                      e.preventDefault();
-                      onAgentDetailsClick(c.sId);
+                      // Defer opening the details sheet until the dropdown has
+                      // fully closed, so Radix's dropdown modal layer tears
+                      // down before the sheet's modal layer mounts. Opening
+                      // them concurrently produces a visible flicker.
+                      pendingAgentDetailsIdRef.current = c.sId;
                       setIsOpen(false);
                     }}
                   />
