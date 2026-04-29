@@ -33,8 +33,8 @@ function normalizeDnsName(value: string): Result<string, Error> {
     if (!isValidDnsLabel(label)) {
       return new Err(
         new Error(
-          "Use an exact domain such as api.github.com or a wildcard such as *.github.com."
-        )
+          "Use an exact domain such as api.github.com or a wildcard such as *.github.com.",
+        ),
       );
     }
   }
@@ -42,7 +42,7 @@ function normalizeDnsName(value: string): Result<string, Error> {
   const tld = labels[labels.length - 1];
   if (!/[a-z]/.test(tld)) {
     return new Err(
-      new Error("Domain must have a top-level label containing a letter.")
+      new Error("Domain must have a top-level label containing a letter."),
     );
   }
 
@@ -84,7 +84,7 @@ function isValidDnsLabel(label: string): boolean {
 }
 
 export function normalizeEgressPolicyDomain(
-  value: string
+  value: string,
 ): Result<string, Error> {
   const trimmed = value.trim();
 
@@ -114,7 +114,7 @@ export function normalizeEgressPolicyDomain(
 }
 
 export function normalizeEgressPolicyDomains(
-  values: string[]
+  values: string[],
 ): Result<string[], Error> {
   const domains = new Set<string>();
 
@@ -129,8 +129,39 @@ export function normalizeEgressPolicyDomains(
   return new Ok([...domains]);
 }
 
+export function domainMatchesAllowlist(
+  domain: string,
+  entries: string[],
+): boolean {
+  const normalizedDomain = normalizeDnsName(domain);
+  if (normalizedDomain.isErr()) {
+    return false;
+  }
+
+  return entries.some((entry) => {
+    const normalizedEntry = normalizeEgressPolicyDomain(entry);
+    if (normalizedEntry.isErr()) {
+      return false;
+    }
+
+    const pattern = normalizedEntry.value;
+    if (!pattern.startsWith("*.")) {
+      return normalizedDomain.value === pattern;
+    }
+
+    const suffix = pattern.slice(2);
+    return (
+      normalizedDomain.value.endsWith(suffix) &&
+      normalizedDomain.value.length > suffix.length &&
+      normalizedDomain.value[
+        normalizedDomain.value.length - suffix.length - 1
+      ] === "."
+    );
+  });
+}
+
 export function normalizeEgressPolicy(
-  policy: EgressPolicy
+  policy: EgressPolicy,
 ): Result<EgressPolicy, Error> {
   const domains = normalizeEgressPolicyDomains(policy.allowedDomains);
   if (domains.isErr()) {

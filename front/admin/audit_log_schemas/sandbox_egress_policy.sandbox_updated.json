@@ -13,6 +13,8 @@
     "domain": "string",
     "added": "string",
     "reason": "string",
-    "actor_type": "string"
+    "actor_type": "string",
+    "auto_approved": "string",
+    "auto_approved_source": "string"
   }
 }

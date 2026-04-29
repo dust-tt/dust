@@ -1,5 +1,7 @@
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
+import { lookupAutoApprovePredicate } from "@app/lib/actions/auto_approve_registry";
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
+import { getInternalMCPServerNameFromSId } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMessageType } from "@app/types/assistant/conversation";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -8,13 +10,15 @@ import { isNumberOrBoolean, isString } from "@app/types/shared/utils/general";
 export interface ToolInputContext {
   agentId: string;
   toolInputs: Record<string, unknown>;
+  rawInputs?: unknown;
+  conversationId?: string;
 }
 
 export async function getExecutionStatusFromConfig(
   auth: Authenticator,
   actionConfiguration: MCPToolConfigurationType,
-  agentMessage: AgentMessageType,
-  context?: ToolInputContext
+  agentMessage: Pick<AgentMessageType, "skipToolsValidation">,
+  context?: ToolInputContext,
 ): Promise<{
   stake?: MCPToolStakeLevelType;
   status: "ready_allowed_implicitly" | "blocked_validation_required";
@@ -63,7 +67,7 @@ export async function getExecutionStatusFromConfig(
         actionConfiguration.argumentsRequiringApproval ?? [];
       const argsAndValues = extractArgRequiringApprovalValues(
         argumentsRequiringApproval,
-        toolInputs
+        toolInputs,
       );
 
       const userHasApproved = await user.hasApprovedTool(auth, {
@@ -78,8 +82,35 @@ export async function getExecutionStatusFromConfig(
       }
       return { status: "blocked_validation_required" };
     }
-    case "high":
+    case "high": {
+      const serverName = getInternalMCPServerNameFromSId(
+        actionConfiguration.toolServerId,
+      );
+      const predicate =
+        serverName !== null
+          ? lookupAutoApprovePredicate(
+              serverName,
+              actionConfiguration.originalName,
+            )
+          : null;
+
+      if (predicate && context?.conversationId) {
+        try {
+          const shouldAutoApprove = await predicate({
+            auth,
+            rawInputs: context.rawInputs ?? context.toolInputs,
+            conversationId: context.conversationId,
+          });
+          if (shouldAutoApprove) {
+            return { status: "ready_allowed_implicitly" };
+          }
+        } catch {
+          return { status: "blocked_validation_required" };
+        }
+      }
+
       return { status: "blocked_validation_required" };
+    }
     default:
       assertNever(actionConfiguration.permission);
   }
@@ -95,7 +126,7 @@ export async function setUserAlwaysApprovedTool(
   }: {
     mcpServerId: string;
     functionCallName: string;
-  }
+  },
 ) {
   if (!functionCallName) {
     throw new Error("functionCallName is required");
@@ -122,7 +153,7 @@ export async function hasUserAlwaysApprovedTool(
   }: {
     mcpServerId: string;
     functionCallName: string;
-  }
+  },
 ) {
   if (!mcpServerId) {
     throw new Error("mcpServerId is required");
@@ -146,7 +177,7 @@ export async function hasUserAlwaysApprovedTool(
 // converting them to strings for storage. Skips any arguments that are not provided.
 export function extractArgRequiringApprovalValues(
   argumentsRequiringApproval: string[],
-  toolInputs: Record<string, unknown>
+  toolInputs: Record<string, unknown>,
 ): Record<string, string> {
   const result: Record<string, string> = {};
 

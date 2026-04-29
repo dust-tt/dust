@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  domainMatchesAllowlist,
   EMPTY_EGRESS_POLICY,
   normalizeEgressPolicyDomain,
   normalizeEgressPolicyDomains,
@@ -68,6 +69,33 @@ describe("egress policy domain validation", () => {
         allowedDomains: ["api.github.com", "*.github.com"],
       },
     });
+  });
+
+  it("matches exact and wildcard allowlist entries like the Rust proxy", () => {
+    expect(domainMatchesAllowlist("api.github.com", ["*.github.com"])).toBe(
+      true,
+    );
+    expect(domainMatchesAllowlist("a.b.github.com", ["*.github.com"])).toBe(
+      true,
+    );
+    expect(domainMatchesAllowlist("github.com", ["*.github.com"])).toBe(false);
+    expect(domainMatchesAllowlist("notgithub.com", ["*.github.com"])).toBe(
+      false,
+    );
+    expect(domainMatchesAllowlist("API.GITHUB.COM.", ["*.github.com"])).toBe(
+      true,
+    );
+    expect(domainMatchesAllowlist("github.com", ["github.com"])).toBe(true);
+    expect(domainMatchesAllowlist("api.github.com", ["github.com"])).toBe(
+      false,
+    );
+  });
+
+  it("keeps non-ASCII DNS label handling aligned with the Rust proxy", () => {
+    expect(domainMatchesAllowlist("éxample.com", ["éxample.com"])).toBe(false);
+    expect(
+      domainMatchesAllowlist("xn--xample-9ua.com", ["xn--xample-9ua.com"]),
+    ).toBe(true);
   });
 
   it("keeps the empty policy singleton immutable", () => {

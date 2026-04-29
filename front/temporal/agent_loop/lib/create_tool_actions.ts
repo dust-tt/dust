@@ -57,7 +57,7 @@ export async function createToolActionsActivity(
     functionCallStepContentIds: Record<string, ModelId>;
     step: number;
     runIds: string[];
-  }
+  },
 ): Promise<CreateToolActionsResult> {
   const { agentConfiguration, agentMessage, conversation } = runAgentData;
 
@@ -132,7 +132,7 @@ async function createActionForTool(
     stepContext: StepContext;
     step: number;
     runIds: string[];
-  }
+  },
 ): Promise<{
   actionBlob: ActionBlob;
   approvalEventData?: Omit<
@@ -143,16 +143,16 @@ async function createActionForTool(
   // First, get the step content and parse inputs - we need this for medium stake checks
   const stepContent = await AgentStepContentResource.fetchByModelIdWithAuth(
     auth,
-    stepContentId
+    stepContentId,
   );
   assert(
     stepContent,
-    `Step content not found for stepContentId: ${stepContentId}`
+    `Step content not found for stepContentId: ${stepContentId}`,
   );
 
   assert(
     stepContent.isFunctionCallContent(),
-    `Expected step content to be a function call, got: ${stepContent.value.type}`
+    `Expected step content to be a function call, got: ${stepContent.value.type}`,
   );
 
   const rawInputs = JSON.parse(stepContent.value.value.arguments);
@@ -162,6 +162,8 @@ async function createActionForTool(
   // Build context for medium stake per-argument approval checks
   const mediumStakeContext: ToolInputContext = {
     agentId: agentConfiguration.sId,
+    conversationId: conversation.sId,
+    rawInputs,
     toolInputs: rawInputs,
   };
 
@@ -169,7 +171,7 @@ async function createActionForTool(
     auth,
     actionConfiguration,
     agentMessage,
-    mediumStakeContext
+    mediumStakeContext,
   );
 
   const validateToolInputsResult = validateToolInputs(rawInputs);
@@ -183,7 +185,7 @@ async function createActionForTool(
         providerId: agentConfiguration.model.providerId,
         error: validateToolInputsResult.error,
       },
-      "Tool input validation failed"
+      "Tool input validation failed",
     );
     return updateResourceAndPublishEvent(auth, {
       event: {
@@ -265,14 +267,14 @@ async function createActionForTool(
               agentName: agentConfiguration.name,
               icon: actionConfiguration.icon,
               displayedAs: getInternalMCPServerDisplayedAs(
-                actionConfiguration.toolServerId
+                actionConfiguration.toolServerId,
               ),
             },
             argumentsRequiringApproval,
             approvalArgsLabel: await getApprovalArgsLabel({
               auth,
               internalMCPServerName: getInternalMCPServerNameFromSId(
-                actionConfiguration.toolServerId
+                actionConfiguration.toolServerId,
               ),
               toolName: actionConfiguration.originalName,
               agentName: agentConfiguration.name,
