@@ -6,6 +6,7 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { isSupportedImageContentType } from "@app/types/files";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
+import type { LightWorkspaceType } from "@app/types/user";
 
 type GCSMountEntryBase = {
   fileName: string;
@@ -31,6 +32,43 @@ type GCSMountPoint = {
   useCase: "conversation";
   conversationId: string;
 };
+
+function resolvePrefix(
+  owner: LightWorkspaceType,
+  scope: GCSMountPoint
+): string {
+  switch (scope.useCase) {
+    case "conversation":
+      return getConversationFilesBasePath({
+        workspaceId: owner.sId,
+        conversationId: scope.conversationId,
+      });
+
+    default:
+      assertNever(scope.useCase);
+  }
+}
+
+/**
+ * Resolve a scoped path (e.g. `conversation/folder/file.txt`) to a full GCS object path.
+ * Returns null if the scoped path does not belong to the given use case.
+ */
+export function getGCSPathFromScopedPath({
+  prefix,
+  scopedPath,
+  useCase,
+}: {
+  prefix: string;
+  scopedPath: string;
+  useCase: GCSMountPoint["useCase"];
+}): string | null {
+  const scopePrefix = `${useCase}/`;
+  if (!scopedPath.startsWith(scopePrefix)) {
+    return null;
+  }
+
+  return prefix + scopedPath.slice(scopePrefix.length);
+}
 
 function makeDirectoryEntry(
   {
@@ -96,18 +134,7 @@ export async function listGCSMountFiles(
   scope: GCSMountPoint
 ): Promise<GCSMountEntry[]> {
   const owner = auth.getNonNullableWorkspace();
-
-  let prefix: string;
-  switch (scope.useCase) {
-    case "conversation":
-      prefix = getConversationFilesBasePath({
-        workspaceId: owner.sId,
-        conversationId: scope.conversationId,
-      });
-      break;
-    default:
-      assertNever(scope.useCase);
-  }
+  const prefix = resolvePrefix(owner, scope);
 
   const bucket = getPrivateUploadBucket();
   const gcsFiles = await bucket.getFiles({ prefix, maxResults: 200 });
@@ -203,18 +230,7 @@ export async function createGCSMountFile(
   }
 ): Promise<GCSMountFileEntry> {
   const owner = auth.getNonNullableWorkspace();
-
-  let prefix: string;
-  switch (scope.useCase) {
-    case "conversation":
-      prefix = getConversationFilesBasePath({
-        workspaceId: owner.sId,
-        conversationId: scope.conversationId,
-      });
-      break;
-    default:
-      assertNever(scope.useCase);
-  }
+  const prefix = resolvePrefix(owner, scope);
 
   const gcsPath = `${prefix}${fileName}`;
   const bucket = getPrivateUploadBucket();
