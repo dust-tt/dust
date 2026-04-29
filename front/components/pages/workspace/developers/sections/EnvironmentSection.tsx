@@ -303,6 +303,11 @@ export function EnvironmentSection() {
                   id="sandbox-env-var-value"
                   name="value"
                   autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
+                  data-lpignore="true"
+                  data-form-type="other"
                   minRows={8}
                   placeholder="Paste the secret value"
                   value={envVarForm.value}
