@@ -60,6 +60,9 @@ type AuditAction =
   | "sandbox_egress_policy.agent_requests_setting_updated"
   | "sandbox_egress_policy.sandbox_updated"
   | "sandbox_egress_policy.updated"
+  | "sandbox_env_var.created"
+  | "sandbox_env_var.deleted"
+  | "sandbox_env_var.updated"
   // SCIM / Directory Sync.
   | "scim.user_provisioned"
   | "scim.user_updated"
@@ -308,7 +311,8 @@ type AuditTargetType =
   | "invitation"
   | "group"
   | "credential"
-  | "mcp_connection";
+  | "mcp_connection"
+  | "sandbox_env_var";
 
 /**
  * Resource shape required for each audit target type.

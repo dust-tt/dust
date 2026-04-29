@@ -1,0 +1,9 @@
+{
+  "action": "sandbox_env_var.updated",
+  "targets": [{ "type": "workspace" }, { "type": "sandbox_env_var" }],
+  "metadata": {
+    "name": "string",
+    "previously_existed": "string",
+    "actor_type": "string"
+  }
+}
