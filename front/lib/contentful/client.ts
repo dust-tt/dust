@@ -108,20 +108,20 @@ export function buildPreviewQueryString(isPreview: boolean): string {
 }
 
 export function getAcademyLocaleFromCookies(
-  cookieHeader: string | undefined
+  cookies: Partial<Record<string, string>>
 ): AcademyLocale {
-  if (!cookieHeader) {
-    return DEFAULT_ACADEMY_LOCALE;
-  }
-  const match = cookieHeader
-    .split(";")
-    .map((c) => c.trim())
-    .find((c) => c.startsWith(`${ACADEMY_LOCALE_COOKIE}=`));
-  if (!match) {
-    return DEFAULT_ACADEMY_LOCALE;
-  }
-  const value = match.split("=")[1];
-  return isAcademyLocale(value) ? value : DEFAULT_ACADEMY_LOCALE;
+  const value = cookies[ACADEMY_LOCALE_COOKIE];
+  return value && isAcademyLocale(value) ? value : DEFAULT_ACADEMY_LOCALE;
+}
+
+const ACADEMY_LOCALE_MAX_AGE_SECONDS = 365 * 24 * 60 * 60;
+
+export function setAcademyLocaleCookie(locale: AcademyLocale): void {
+  const secure = window.location.protocol === "https:" ? ";Secure" : "";
+  document.cookie =
+    `${ACADEMY_LOCALE_COOKIE}=${locale}` +
+    `;path=/;max-age=${ACADEMY_LOCALE_MAX_AGE_SECONDS}` +
+    `;SameSite=Lax${secure}`;
 }
 
 export async function getAcademySettings(
@@ -189,7 +189,7 @@ export async function getQuizSettings(
   try {
     const contentfulClient = getContentfulClient(resolvedUrl);
     const response = await contentfulClient.getEntries<QuizSettingsSkeleton>({
-      content_type: "quizzSettings",
+      content_type: "quizSettings",
       limit: 1,
       ...(locale ? { locale } : {}),
     });

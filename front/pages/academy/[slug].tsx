@@ -61,7 +61,7 @@ export const getServerSideProps: GetServerSideProps<CoursePageProps> = async (
 
   context.res.setHeader("Cache-Control", "no-store");
   const resolvedUrl = buildPreviewQueryString(context.preview ?? false);
-  const locale = getAcademyLocaleFromCookies(context.req.headers.cookie);
+  const locale = getAcademyLocaleFromCookies(context.req.cookies);
 
   const [
     courseResult,
@@ -185,6 +185,8 @@ export default function CoursePage({
             completedChapterSlugs={completedChapterSlugs}
             backToAcademy={academySettings.backToAcademy}
             searchPlaceholder={academySettings.searchPlaceholder}
+            chapterReadLabel={academySettings.chapterRead}
+            quizPassedLabel={academySettings.quizPassed}
             mobileMenuTitle={academySettings.mobileMenuTitle}
           />
         ) : (
@@ -206,11 +208,19 @@ export default function CoursePage({
                 courseTitle={course.title}
                 chapters={chapters}
                 completedChapterSlugs={completedChapterSlugs}
+                backToAcademy={academySettings.backToAcademy}
+                searchPlaceholder={academySettings.searchPlaceholder}
+                chapterReadLabel={academySettings.chapterRead}
+                quizPassedLabel={academySettings.quizPassed}
+                mobileMenuTitle={academySettings.mobileMenuTitle}
               />
             ) : (
               <MobileMenuButton
                 searchableItems={searchableItems}
                 tocItems={tocItems}
+                backToAcademy={academySettings.backToAcademy}
+                searchPlaceholder={academySettings.searchPlaceholder}
+                mobileMenuTitle={academySettings.mobileMenuTitle}
               />
             )}
             <span className="ml-2 truncate text-sm font-medium text-muted-foreground">

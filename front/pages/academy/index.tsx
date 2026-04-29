@@ -36,7 +36,7 @@ export const getServerSideProps: GetServerSideProps<
 > = async (context) => {
   context.res.setHeader("Cache-Control", "no-store");
   const user = await getAcademyUser(context.req, context.res);
-  const locale = getAcademyLocaleFromCookies(context.req.headers.cookie);
+  const locale = getAcademyLocaleFromCookies(context.req.cookies);
 
   const [coursesResult, searchableResult, academySettings] = await Promise.all([
     getAllCourses("", locale),

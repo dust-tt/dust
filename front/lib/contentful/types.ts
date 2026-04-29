@@ -276,39 +276,12 @@ export const DEFAULT_ACADEMY_LOCALE: AcademyLocale = "en-US";
 export const ACADEMY_LOCALE_COOKIE = "academy_locale";
 
 export function isAcademyLocale(value: string): value is AcademyLocale {
-  return (ACADEMY_LOCALES as string[]).includes(value);
-}
-
-export interface QuizSettingsFields {
-  quizTitle: string;
-  quizSubtitle: string;
-  quizGreetingUser: string;
-  quizGreetingGeneric: string;
-  quizCompleted: string;
-  quizBestScore: string;
-  quizAttempts: string;
-  quizStartButton: string;
-  quizRetakeButton: string;
-  quizStarting: string;
-  quizReset: string;
-  quizThinking: string;
-  quizAnswerPlaceholder: string;
-  quizSubmit: string;
-  quizGreatScoreAgain: string;
-  quizChapterCompleted: string;
-  quizPerfectScore: string;
-  quizPassedMessage: string;
-  quizComplete: string;
-  quizFailMessage: string;
-  quizTryAgain: string;
-  quizYou: string;
-  quizCorrect: string;
-  quizQuestion: string;
+  return ACADEMY_LOCALES.some((l) => l === value);
 }
 
 export type QuizSettingsSkeleton = EntrySkeletonType<
-  QuizSettingsFields,
-  "quizzSettings"
+  QuizSettings,
+  "quizSettings"
 >;
 
 export interface QuizSettings {
@@ -366,39 +339,8 @@ export const DEFAULT_QUIZ_SETTINGS: QuizSettings = {
   quizQuestion: "Question",
 };
 
-export interface AcademySettingsFields {
-  academyTitle: string;
-  academySubtitle: string;
-  searchPlaceholder: string;
-  continueLearning: string;
-  backToAcademy: string;
-  continueButton: string;
-  startLearning: string;
-  featuredCourse: string;
-  chapterRead: string;
-  quizPassed: string;
-  courseObjectives: string;
-  prerequisites: string;
-  chapters: string;
-  copyAsMarkdown: string;
-  copied: string;
-  previousCourse: string;
-  nextCourse: string;
-  previousChapter: string;
-  nextChapter: string;
-  lessonObjectives: string;
-  previousContent: string;
-  nextContent: string;
-  course: string;
-  lesson: string;
-  noCourses: string;
-  mobileMenuTitle: string;
-  completed: string;
-  backTo: string;
-}
-
 export type AcademySettingsSkeleton = EntrySkeletonType<
-  AcademySettingsFields,
+  AcademySettings,
   "academySettings"
 >;
 

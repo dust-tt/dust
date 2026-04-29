@@ -48,7 +48,7 @@ export const getServerSideProps: GetServerSideProps<LessonPageProps> = async (
 
   context.res.setHeader("Cache-Control", "no-store");
   const resolvedUrl = buildPreviewQueryString(context.preview ?? false);
-  const locale = getAcademyLocaleFromCookies(context.req.headers.cookie);
+  const locale = getAcademyLocaleFromCookies(context.req.cookies);
 
   const lessonResult = await getLessonBySlug(slug, resolvedUrl, locale);
 
@@ -165,6 +165,9 @@ export default function LessonPage({
             <MobileMenuButton
               searchableItems={searchableItems}
               tocItems={tocItems}
+              backToAcademy={academySettings.backToAcademy}
+              searchPlaceholder={academySettings.searchPlaceholder}
+              mobileMenuTitle={academySettings.mobileMenuTitle}
             />
             <span className="ml-2 truncate text-sm font-medium text-muted-foreground">
               {lesson.title}

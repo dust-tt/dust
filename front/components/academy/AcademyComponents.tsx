@@ -2,6 +2,7 @@
 "use client";
 
 import { Grid, H2, P } from "@app/components/home/ContentComponents";
+import { setAcademyLocaleCookie } from "@app/lib/contentful/client";
 import { contentfulImageLoader } from "@app/lib/contentful/imageLoader";
 import type {
   AcademyLocale,
@@ -9,7 +10,6 @@ import type {
   SearchableItem,
 } from "@app/lib/contentful/types";
 import {
-  ACADEMY_LOCALE_COOKIE,
   ACADEMY_LOCALE_LABELS,
   ACADEMY_LOCALES,
 } from "@app/lib/contentful/types";
@@ -24,16 +24,16 @@ interface ChapterStatusIconsProps {
   isRead: boolean;
   isQuizPassed: boolean;
   size?: "sm" | "md";
-  chapterReadLabel?: string;
-  quizPassedLabel?: string;
+  chapterReadLabel: string;
+  quizPassedLabel: string;
 }
 
 export function ChapterStatusIcons({
   isRead,
   isQuizPassed,
   size = "sm",
-  chapterReadLabel = "Chapter read",
-  quizPassedLabel = "Quiz passed",
+  chapterReadLabel,
+  quizPassedLabel,
 }: ChapterStatusIconsProps) {
   if (!isRead && !isQuizPassed) {
     return null;
@@ -81,7 +81,7 @@ export function ChapterStatusIcons({
 
 interface AcademySearchProps {
   searchableItems: SearchableItem[];
-  placeholder?: string;
+  placeholder: string;
   className?: string;
 }
 
@@ -140,7 +140,7 @@ function extractSnippet(
 
 export function AcademySearch({
   searchableItems,
-  placeholder = "Search...",
+  placeholder,
   className,
 }: AcademySearchProps) {
   const router = useAppRouter();
@@ -337,9 +337,7 @@ export function LocaleToggle({ locale }: LocaleToggleProps) {
     if (newLocale === locale || pendingLocale) {
       return;
     }
-    const maxAgeSeconds = 365 * 24 * 60 * 60;
-    const secure = window.location.protocol === "https:" ? ";Secure" : "";
-    document.cookie = `${ACADEMY_LOCALE_COOKIE}=${newLocale};path=/;max-age=${maxAgeSeconds};SameSite=Lax${secure}`;
+    setAcademyLocaleCookie(newLocale);
     setPendingLocale(newLocale);
     router.reload();
   };
@@ -383,13 +381,13 @@ interface CourseProgressInfo {
 interface CourseCardProps {
   course: CourseSummary;
   progress?: CourseProgressInfo;
-  completedLabel?: string;
+  completedLabel: string;
 }
 
 export function CourseCard({
   course,
   progress,
-  completedLabel = "Completed",
+  completedLabel,
 }: CourseCardProps) {
   const isComplete =
     progress &&
@@ -478,7 +476,7 @@ interface CourseGridProps {
   courses: CourseSummary[];
   emptyMessage?: string;
   courseProgress?: Record<string, { completedChapterSlugs: string[] }> | null;
-  completedLabel?: string;
+  completedLabel: string;
 }
 
 export function CourseGrid({

@@ -28,11 +28,11 @@ interface ChapterSidebarProps {
   tocItems?: TocItem[];
   completedChapterSlugs?: string[];
   attemptedChapterSlugs?: string[];
-  backToAcademy?: string;
-  searchPlaceholder?: string;
-  chapterReadLabel?: string;
-  quizPassedLabel?: string;
-  mobileMenuTitle?: string;
+  backToAcademy: string;
+  searchPlaceholder: string;
+  chapterReadLabel: string;
+  quizPassedLabel: string;
+  mobileMenuTitle: string;
 }
 
 function ChapterSidebarContent({
@@ -44,7 +44,7 @@ function ChapterSidebarContent({
   tocItems,
   completedChapterSlugs,
   attemptedChapterSlugs,
-  backToAcademy = "Back to Academy",
+  backToAcademy,
   searchPlaceholder,
   chapterReadLabel,
   quizPassedLabel,
@@ -138,10 +138,7 @@ export function ChapterSidebar(props: ChapterSidebarProps) {
   );
 }
 
-export function ChapterMobileMenuButton({
-  mobileMenuTitle = "Academy",
-  ...props
-}: ChapterSidebarProps) {
+export function ChapterMobileMenuButton(props: ChapterSidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -159,7 +156,7 @@ export function ChapterMobileMenuButton({
           <div className="flex h-full flex-col bg-white">
             <div className="flex items-center justify-between border-b border-gray-200 px-3 py-3">
               <SheetTitle className="text-base font-semibold">
-                {mobileMenuTitle}
+                {props.mobileMenuTitle}
               </SheetTitle>
             </div>
             <ChapterSidebarContent

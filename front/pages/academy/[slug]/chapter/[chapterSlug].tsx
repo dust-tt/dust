@@ -60,7 +60,7 @@ export const getServerSideProps: GetServerSideProps<ChapterPageProps> = async (
 
   context.res.setHeader("Cache-Control", "no-store");
   const resolvedUrl = buildPreviewQueryString(context.preview ?? false);
-  const locale = getAcademyLocaleFromCookies(context.req.headers.cookie);
+  const locale = getAcademyLocaleFromCookies(context.req.cookies);
 
   const [
     courseResult,
@@ -263,6 +263,11 @@ export default function ChapterPage({
               tocItems={tocItems}
               completedChapterSlugs={completedChapterSlugs}
               attemptedChapterSlugs={attemptedChapterSlugs}
+              backToAcademy={academySettings.backToAcademy}
+              searchPlaceholder={academySettings.searchPlaceholder}
+              chapterReadLabel={academySettings.chapterRead}
+              quizPassedLabel={academySettings.quizPassed}
+              mobileMenuTitle={academySettings.mobileMenuTitle}
             />
             <span className="ml-2 truncate text-sm font-medium text-muted-foreground">
               {chapter.title}

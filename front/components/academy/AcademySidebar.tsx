@@ -18,15 +18,15 @@ import { useState } from "react";
 interface AcademySidebarProps {
   searchableItems: SearchableItem[];
   tocItems?: TocItem[];
-  backToAcademy?: string;
-  searchPlaceholder?: string;
-  mobileMenuTitle?: string;
+  backToAcademy: string;
+  searchPlaceholder: string;
+  mobileMenuTitle: string;
 }
 
 function SidebarContent({
   searchableItems,
   tocItems,
-  backToAcademy = "Back to Academy",
+  backToAcademy,
   searchPlaceholder,
   onNavigate,
 }: AcademySidebarProps & { onNavigate?: () => void }) {
@@ -63,12 +63,12 @@ function SidebarContent({
 }
 
 export function AcademySidebar({
-  searchableItems,
   tocItems = [],
+  ...props
 }: AcademySidebarProps) {
   return (
     <div className="sticky top-16 z-40 hidden h-[calc(100vh-4rem)] w-64 flex-col border-r border-gray-200 bg-white lg:flex">
-      <SidebarContent searchableItems={searchableItems} tocItems={tocItems} />
+      <SidebarContent {...props} tocItems={tocItems} />
     </div>
   );
 }
@@ -76,7 +76,9 @@ export function AcademySidebar({
 export function MobileMenuButton({
   searchableItems,
   tocItems = [],
-  mobileMenuTitle = "Academy",
+  backToAcademy,
+  searchPlaceholder,
+  mobileMenuTitle,
 }: AcademySidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -101,6 +103,9 @@ export function MobileMenuButton({
             <SidebarContent
               searchableItems={searchableItems}
               tocItems={tocItems}
+              backToAcademy={backToAcademy}
+              searchPlaceholder={searchPlaceholder}
+              mobileMenuTitle={mobileMenuTitle}
               onNavigate={() => setIsOpen(false)}
             />
           </div>
