@@ -308,6 +308,7 @@ export async function sendBatchCallToLlm(
     if (conversationRes.isErr()) {
       return conversationRes;
     }
+
     const promptText = systemPromptToText(input.prompt);
     const tools = JSON.stringify(
       input.specifications.map((s) => ({
