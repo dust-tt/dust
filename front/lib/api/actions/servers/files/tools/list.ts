@@ -1,26 +1,26 @@
-import { MCPError } from "@app/lib/actions/mcp_errors";
 import type {
   ToolHandlerExtra,
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { resolveMountPoint } from "@app/lib/api/actions/servers/files/tools/utils";
 import { listGCSMountFiles } from "@app/lib/api/files/gcs_mount/files";
 import { stripMimeParameters } from "@app/types/files";
-import { Err, Ok } from "@app/types/shared/result";
+import { Ok } from "@app/types/shared/result";
 import partition from "lodash/partition";
 
 export async function listHandler(
   _params: Record<string, never>,
-  { auth, agentLoopContext }: ToolHandlerExtra
+  extra: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
-  const conversation = agentLoopContext?.runContext?.conversation;
-  if (!conversation) {
-    return new Err(new MCPError("No conversation context available."));
+  const mountRes = resolveMountPoint(
+    extra.auth,
+    extra.agentLoopContext?.runContext?.conversation
+  );
+  if (mountRes.isErr()) {
+    return mountRes;
   }
 
-  const entries = await listGCSMountFiles(auth, {
-    useCase: "conversation",
-    conversationId: conversation.sId,
-  });
+  const entries = await listGCSMountFiles(extra.auth, mountRes.value.scope);
 
   const [dirs, files] = partition(entries, (e) => e.isDirectory);
 

@@ -1,8 +1,13 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { getGCSPathFromScopedPath } from "@app/lib/api/files/gcs_mount/files";
+import {
+  type GCSMountPoint,
+  getGCSPathFromScopedPath,
+} from "@app/lib/api/files/gcs_mount/files";
 import { getConversationFilesBasePath } from "@app/lib/api/files/mount_path";
+import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
+import type { ConversationType } from "@app/types/assistant/conversation";
 import { stripMimeParameters } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -11,6 +16,30 @@ import type { File as GCSFile } from "@google-cloud/storage";
 
 type ResolvedFile = { file: GCSFile; mimeType: string; sizeBytes: number };
 
+type MountPoint = { scope: GCSMountPoint; prefix: string };
+
+export function resolveMountPoint(
+  auth: Authenticator,
+  conversation: ConversationType | null | undefined
+): Ok<MountPoint> | Err<MCPError> {
+  if (!conversation) {
+    return new Err(new MCPError("No conversation context available."));
+  }
+
+  const owner = auth.getNonNullableWorkspace();
+  const scope: GCSMountPoint = {
+    useCase: "conversation",
+    conversationId: conversation.sId,
+  };
+
+  const prefix = getConversationFilesBasePath({
+    workspaceId: owner.sId,
+    conversationId: conversation.sId,
+  });
+
+  return new Ok({ scope, prefix });
+}
+
 export async function resolveConversationFile(
   path: string,
   {
@@ -18,20 +47,20 @@ export async function resolveConversationFile(
     agentLoopContext,
   }: Pick<ToolHandlerExtra, "auth" | "agentLoopContext">
 ): Promise<Ok<ResolvedFile> | Err<MCPError>> {
-  const conversation = agentLoopContext?.runContext?.conversation;
-  if (!conversation) {
-    return new Err(new MCPError("No conversation context available."));
+  const mountRes = resolveMountPoint(
+    auth,
+    agentLoopContext?.runContext?.conversation
+  );
+  if (mountRes.isErr()) {
+    return mountRes;
   }
 
-  const owner = auth.getNonNullableWorkspace();
-  const prefix = getConversationFilesBasePath({
-    workspaceId: owner.sId,
-    conversationId: conversation.sId,
-  });
+  const { scope, prefix } = mountRes.value;
+
   const gcsPath = getGCSPathFromScopedPath({
     prefix,
     scopedPath: path,
-    useCase: "conversation",
+    useCase: scope.useCase,
   });
   if (!gcsPath) {
     return new Err(

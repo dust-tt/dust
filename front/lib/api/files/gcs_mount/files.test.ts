@@ -53,7 +53,7 @@ describe("createGCSMountFile", () => {
     await createGCSMountFile(
       auth,
       { useCase: "conversation", conversationId },
-      { fileName: "report.txt", content, contentType: "text/plain" }
+      { relativeFilePath: "report.txt", content, contentType: "text/plain" }
     );
 
     expect(saveMock).toHaveBeenCalledWith(content, {
@@ -71,7 +71,7 @@ describe("createGCSMountFile", () => {
     const entry = await createGCSMountFile(
       auth,
       { useCase: "conversation", conversationId },
-      { fileName: "notes.txt", content, contentType: "text/plain" }
+      { relativeFilePath: "notes.txt", content, contentType: "text/plain" }
     );
 
     expect(entry).toMatchObject<Partial<GCSMountFileEntry>>({
@@ -90,7 +90,7 @@ describe("createGCSMountFile", () => {
       auth,
       { useCase: "conversation", conversationId },
       {
-        fileName: "photo.png",
+        relativeFilePath: "photo.png",
         content: Buffer.from("png data"),
         contentType: "image/png",
       }
@@ -106,7 +106,7 @@ describe("createGCSMountFile", () => {
       auth,
       { useCase: "conversation", conversationId },
       {
-        fileName: "data.csv",
+        relativeFilePath: "data.csv",
         content: Buffer.from("a,b"),
         contentType: "text/csv",
       }

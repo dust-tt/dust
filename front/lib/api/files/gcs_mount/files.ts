@@ -28,7 +28,7 @@ export type GCSMountFileEntry = GCSMountEntryBase & {
 
 export type GCSMountEntry = GCSMountDirectoryEntry | GCSMountFileEntry;
 
-type GCSMountPoint = {
+export type GCSMountPoint = {
   useCase: "conversation";
   conversationId: string;
 };
@@ -220,11 +220,11 @@ export async function createGCSMountFile(
   auth: Authenticator,
   scope: GCSMountPoint,
   {
-    fileName,
+    relativeFilePath,
     content,
     contentType,
   }: {
-    fileName: string;
+    relativeFilePath: string;
     content: Buffer;
     contentType: string;
   }
@@ -232,14 +232,15 @@ export async function createGCSMountFile(
   const owner = auth.getNonNullableWorkspace();
   const prefix = resolvePrefix(owner, scope);
 
-  const gcsPath = `${prefix}${fileName}`;
+  const gcsPath = `${prefix}${relativeFilePath}`;
   const bucket = getPrivateUploadBucket();
   await bucket.file(gcsPath).save(content, { contentType });
 
+  const fileName = relativeFilePath.split("/").pop() ?? relativeFilePath;
   return makeFileEntry(
     {
       fileName,
-      relativeFilePath: fileName,
+      relativeFilePath,
       sizeBytes: content.length,
       contentType,
       lastModifiedMs: Date.now(),

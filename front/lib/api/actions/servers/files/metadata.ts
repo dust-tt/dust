@@ -9,10 +9,12 @@ export const FILES_SERVER_NAME = "files" as const;
 export const FILES_LIST_ACTION_NAME = "list" as const;
 export const FILES_CAT_ACTION_NAME = "cat" as const;
 export const FILES_GREP_ACTION_NAME = "grep" as const;
+export const FILES_CREATE_ACTION_NAME = "create" as const;
 
 export const CAT_LINES_DEFAULT = 200;
 export const CAT_LINES_MAX = 500;
 export const GREP_MATCHES_MAX = 50;
+export const CREATE_CONTENT_MAX_BYTES = 50 * 1024; // 50 KB (~12K tokens).
 
 export const FILES_TOOLS_METADATA = createToolsRecord({
   [FILES_LIST_ACTION_NAME]: {
@@ -85,6 +87,32 @@ export const FILES_TOOLS_METADATA = createToolsRecord({
     displayLabels: {
       running: "Searching file",
       done: "Searched file",
+    },
+  },
+  [FILES_CREATE_ACTION_NAME]: {
+    description:
+      "Create or overwrite a file in the conversation file system. " +
+      "Accepts UTF-8 text content only. Binary files cannot be created via this tool. " +
+      `Content is capped at ${CREATE_CONTENT_MAX_BYTES / 1024} KB. ` +
+      "If the file already exists it is silently overwritten (shell \`>\` semantics). " +
+      "Returns whether the file was created or updated, along with its path and size.",
+    schema: {
+      path: z
+        .string()
+        .describe(
+          "Scoped file path for the new file (e.g. `conversation/output.json`, `conversation/reports/summary.txt`)"
+        ),
+      content: z.string().describe("UTF-8 text content to write"),
+      content_type: z
+        .string()
+        .describe(
+          "MIME content type (e.g. `text/plain`, `application/json`, `text/csv`, `text/markdown`)"
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Writing file",
+      done: "Wrote file",
     },
   },
 });
