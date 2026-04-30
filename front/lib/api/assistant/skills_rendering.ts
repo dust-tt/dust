@@ -6,7 +6,7 @@ import { SKILL_MANAGEMENT_SERVER_NAME } from "@app/lib/actions/mcp_internal_acti
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { UserMessageTypeModel } from "@app/types/assistant/generation";
 
-export type EnabledSkillType = SkillResource & {
+export type EnabledSkill = SkillResource & {
   extendedSkill: SkillResource | null;
 };
 
@@ -18,7 +18,7 @@ function renderSystemSkillMessage(text: string): UserMessageTypeModel {
   };
 }
 
-export function getEnabledSkillInstructions(skill: EnabledSkillType): string {
+export function getEnabledSkillInstructions(skill: EnabledSkill): string {
   const { name, instructions, extendedSkill } = skill;
 
   if (!extendedSkill) {
@@ -59,7 +59,7 @@ export function renderEquippedSkillsUserMessage(
 export function renderEnabledSkillUserMessageFromInstructions({
   skill,
 }: {
-  skill: EnabledSkillType;
+  skill: EnabledSkill;
 }): UserMessageTypeModel {
   const skillInstructions = getEnabledSkillInstructions(skill);
 
