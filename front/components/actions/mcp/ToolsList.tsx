@@ -1,7 +1,4 @@
-import type {
-  MCPServerFormValues,
-  ToolSettings,
-} from "@app/components/actions/mcp/forms/mcpServerFormSchema";
+import type { MCPServerFormValues } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
 import { getDefaultInternalToolStakeLevel } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import { MCP_TOOL_STAKE_LEVELS } from "@app/lib/actions/constants";
@@ -36,8 +33,11 @@ interface ToolItemProps {
   tool: { name: string; description: string };
   mayUpdate: boolean;
   availableStakeLevels: MCPToolStakeLevelType[];
-  settings: ToolSettings;
-  onChange: (settings: ToolSettings) => void;
+  metadata?: {
+    enabled: boolean;
+    permission: MCPToolStakeLevelType;
+  };
+  defaultPermission: MCPToolStakeLevelType;
 }
 
 const ToolItem = memo(
@@ -45,22 +45,32 @@ const ToolItem = memo(
     tool,
     mayUpdate,
     availableStakeLevels,
-    settings,
-    onChange,
+    metadata,
+    defaultPermission,
   }: ToolItemProps) => {
-    const toolPermission = settings.permission;
-    const toolEnabled = settings.enabled;
+    const { control } = useFormContext<MCPServerFormValues>();
+    const { field } = useController({
+      control,
+      name: `toolSettings.${tool.name}`,
+      defaultValue: {
+        enabled: metadata?.enabled ?? true,
+        permission: metadata?.permission ?? defaultPermission,
+      },
+    });
+
+    const toolPermission = field.value.permission;
+    const toolEnabled = field.value.enabled;
 
     const handleToggle = () => {
-      onChange({
-        ...settings,
+      field.onChange({
+        ...field.value,
         enabled: !toolEnabled,
       });
     };
 
     const handlePermissionChange = (permission: MCPToolStakeLevelType) => {
-      onChange({
-        ...settings,
+      field.onChange({
+        ...field.value,
         permission,
       });
     };
@@ -136,22 +146,6 @@ export const ToolsList = memo(
       [mcpServerView.server.tools]
     );
 
-    // We use a single controller for the whole `toolSettings` record because
-    // React Hook Form treats dots in field paths as nested-object separators,
-    // which would corrupt form state for tool names that contain dots.
-    const { control } = useFormContext<MCPServerFormValues>();
-    const { field } = useController({
-      control,
-      name: "toolSettings",
-    });
-
-    const handleToolChange = (toolName: string, settings: ToolSettings) => {
-      field.onChange({
-        ...field.value,
-        [toolName]: settings,
-      });
-    };
-
     const getAvailableStakeLevels = (): MCPToolStakeLevelType[] => {
       return [...MCP_TOOL_STAKE_LEVELS];
     };
@@ -210,24 +204,14 @@ export const ToolsList = memo(
                               tool.name
                             );
 
-                          const settings: ToolSettings = field.value[
-                            tool.name
-                          ] ?? {
-                            enabled: metadata?.enabled ?? true,
-                            permission:
-                              metadata?.permission ?? defaultPermission,
-                          };
-
                           return (
                             <ToolItem
                               key={index}
                               tool={tool}
                               mayUpdate={mayUpdate}
                               availableStakeLevels={availableStakeLevels}
-                              settings={settings}
-                              onChange={(next) =>
-                                handleToolChange(tool.name, next)
-                              }
+                              metadata={metadata}
+                              defaultPermission={defaultPermission}
                             />
                           );
                         }
