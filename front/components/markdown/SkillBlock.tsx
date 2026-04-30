@@ -4,7 +4,11 @@ import { Chip } from "@dust-tt/sparkle";
 import React from "react";
 import { visit } from "unist-util-visit";
 
-export function SkillBlock({ skillName }: { skillName: string }) {
+interface SkillBlockProps {
+  skillName: string;
+}
+
+export function SkillBlock({ skillName }: SkillBlockProps) {
   return (
     <Chip label={skillName} icon={getSkillIcon(null)} color="white" size="xs" />
   );
