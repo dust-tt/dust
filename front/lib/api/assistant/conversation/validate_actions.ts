@@ -341,9 +341,11 @@ async function validateSandboxAction(
   }
 
   // Standard lifecycle: approval → `ready_allowed_explicitly`, rejection →
-  // `denied`. The `call_tool` re-POST path uses a conditional UPDATE
-  // (`tryAcquireForExecution`) to flip `ready_allowed_explicitly → running`
-  // atomically, which is what makes concurrent re-POSTs race-free.
+  // `denied`. The `call_tool` polling POST reads that status and executes
+  // inline — `ready_allowed_*` → `succeeded`/`errored` in a single UPDATE.
+  // There is no intermediate `running` state for sandbox actions: the merged
+  // endpoint contract assumes one Rust client per actionId with a single
+  // in-flight poll, so no CAS interlock is needed.
   const newStatus = getMCPApprovalStateFromUserApprovalState(approvalState);
   const { updatedCount } = await sandboxAction.updateStatus(newStatus);
 

@@ -26,6 +26,7 @@ import { DEFAULT_MCP_TOOL_RETRY_POLICY } from "@app/lib/api/mcp";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import {
+  isSandboxActionInClaimsSession,
   type SandboxExecTokenPayload,
   verifySandboxExecToken,
 } from "@app/lib/api/sandbox/access_tokens";
@@ -34,7 +35,6 @@ import {
   getFeatureFlags,
   isSandboxTokenPrefix,
 } from "@app/lib/auth";
-import { MessageModel } from "@app/lib/models/agent/conversation";
 import {
   AgentMCPActionResource,
   type SandboxMCPAction,
@@ -48,26 +48,36 @@ import type {
   ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
 import type { CallMCPToolResponseType } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 
+// Initial POST + actionId-poll-while-blocked: 202 with the actionId for the
+// client to keep polling against.
 type CallToolPendingResponseType = {
   status: "pending";
   actionId: string;
 };
 
-type ApprovalStatusResponseType = {
-  status: "pending" | "approved" | "rejected" | "error";
+// Polling POST against a row that already executed (succeeded, errored, or in
+// the unreachable `running` state). 409. The result was returned on the call
+// that won execution; we do not persist it for replay.
+type CallToolAlreadyExecutedResponseType = {
+  status: "already_executed";
+};
+
+// Polling POST against a denied row. 403.
+type CallToolRejectedResponseType = {
+  status: "rejected";
 };
 
 type CallToolEndpointResponseType =
   | CallMCPToolResponseType
   | CallToolPendingResponseType
-  | ApprovalStatusResponseType;
+  | CallToolAlreadyExecutedResponseType
+  | CallToolRejectedResponseType;
 
 type EndpointResponse = NextApiResponse<
   WithAPIErrorResponse<CallToolEndpointResponseType>
@@ -113,32 +123,16 @@ async function extractSandboxClaims(
 }
 
 /**
- * Resolves the JWT's `mId` (a Message sId) to its AgentMessage model id, used
- * to scope action lookups to the JWT's session. Returns null if no agent
- * message matches in the workspace.
+ * Runs the tool and transitions the audit row from `ready_allowed_*` directly
+ * to `succeeded`/`errored` in a single UPDATE. There is no intermediate
+ * `running` state for sandbox actions — under the merged-endpoint contract
+ * (one Rust client per actionId, single in-flight poll) there is no concurrency
+ * to protect against, so the CAS interlock is unnecessary.
+ *
+ * Shared between the initial-allowed-immediately path and the polling-POST
+ * path — both arrive here with the row in `ready_allowed_*`.
  */
-async function resolveAgentMessageIdForClaims(
-  auth: Authenticator,
-  claims: SandboxExecTokenPayload
-): Promise<ModelId | null> {
-  const message = await MessageModel.findOne({
-    where: {
-      sId: claims.mId,
-      workspaceId: auth.getNonNullableWorkspace().id,
-    },
-    attributes: ["agentMessageId"],
-  });
-  return message?.agentMessageId ?? null;
-}
-
-/**
- * Runs the tool and transitions the audit row from `running` to
- * `succeeded` / `errored`. Callers are responsible for ensuring the row is in
- * `running` before invoking this — the initial allowed-immediately path does
- * an unconditional flip; the re-execute path uses the
- * `tryAcquireForExecution` CAS so concurrent re-POSTs cannot both run.
- */
-async function executeSandboxToolCall(
+async function executeAndRespond(
   auth: Authenticator,
   toolArgs: Record<string, unknown>,
   runContext: AgentLoopRunContextType,
@@ -442,11 +436,19 @@ async function handler(
 
   switch (method) {
     case "POST": {
-      const reExecRes = ReExecuteSchema.safeParse(req.body);
-      if (reExecRes.success) {
-        return handleReExecuteApprovedToolCall(req, res, auth, sandboxClaims, {
+      // POST has two shapes:
+      //   - { actionId } — polling/execute. Discriminates on body, not URL.
+      //     The polling POST is the executor: when the action is in
+      //     `ready_allowed_*`, this same call runs the tool inline and returns
+      //     the result on the response. See `handlePollingPost`.
+      //   - { toolName, arguments? } — initial call. Creates the audit row,
+      //     runs the stake check, and either executes inline or returns a
+      //     202 + actionId for the client to start polling.
+      const pollingRes = ReExecuteSchema.safeParse(req.body);
+      if (pollingRes.success) {
+        return handlePollingPost(req, res, auth, sandboxClaims, {
           view,
-          actionId: reExecRes.data.actionId,
+          actionId: pollingRes.data.actionId,
         });
       }
 
@@ -469,79 +471,34 @@ async function handler(
       });
     }
 
-    case "GET": {
-      const { actionId } = req.query;
-      if (!isString(actionId)) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Missing or invalid actionId query parameter.",
-          },
-        });
-      }
-
-      const [action, claimsAgentMessageId] = await Promise.all([
-        AgentMCPActionResource.fetchSandboxActionById(auth, actionId),
-        resolveAgentMessageIdForClaims(auth, sandboxClaims),
-      ]);
-      // Auth scope: action must belong to the JWT's agent message session.
-      // Workspace match is enforced upstream by the auth wrapper; the
-      // additional check pins the action to the JWT's specific (cId, mId).
-      if (
-        !action ||
-        claimsAgentMessageId === null ||
-        action.agentMessageId !== claimsAgentMessageId
-      ) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Action not found.",
-          },
-        });
-      }
-
-      let approvalStatus: ApprovalStatusResponseType["status"];
-      switch (action.status) {
-        case "blocked_validation_required":
-        case "blocked_authentication_required":
-        case "blocked_file_authorization_required":
-        case "blocked_child_action_input_required":
-        case "blocked_user_answer_required":
-          approvalStatus = "pending";
-          break;
-        case "ready_allowed_explicitly":
-        case "ready_allowed_implicitly":
-        case "running":
-        case "succeeded":
-          approvalStatus = "approved";
-          break;
-        case "denied":
-          approvalStatus = "rejected";
-          break;
-        case "errored":
-          approvalStatus = "error";
-          break;
-        default:
-          assertNever(action.status);
-      }
-
-      return res.status(200).json({ status: approvalStatus });
-    }
-
     default:
       return apiError(req, res, {
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message: "Only POST and GET are supported.",
+          message: "Only POST is supported.",
         },
       });
   }
 }
 
-async function handleReExecuteApprovedToolCall(
+/**
+ * The merged polling/execute endpoint. The Rust client POSTs `{ actionId }`
+ * repeatedly until it gets a non-202 response.
+ *
+ * Status mapping:
+ *   - `blocked_*`            → 202 `{ status: "pending" }`
+ *   - `ready_allowed_*`      → execute inline, return 200 + tool result
+ *   - `running`              → 409 `{ status: "already_executed" }` (defensive;
+ *                              sandbox flow no longer sets `running`)
+ *   - `succeeded`/`errored`  → 409 `{ status: "already_executed" }` — we do
+ *                              not persist tool results, so a retry after the
+ *                              winning POST cannot replay. The script in the
+ *                              sandbox surfaces an error and the user retries
+ *                              the whole thing (which produces a new actionId).
+ *   - `denied`               → 403 `{ status: "rejected" }`
+ */
+async function handlePollingPost(
   req: NextApiRequest,
   res: EndpointResponse,
   auth: Authenticator,
@@ -558,24 +515,9 @@ async function handleReExecuteApprovedToolCall(
     auth,
     actionId
   );
-  if (!action) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Action not found.",
-      },
-    });
-  }
-
-  // Auth scope: action must belong to the JWT's agent message session.
-  const claimsAgentMessageId = await resolveAgentMessageIdForClaims(
-    auth,
-    sandboxClaims
-  );
   if (
-    claimsAgentMessageId === null ||
-    action.agentMessageId !== claimsAgentMessageId
+    !action ||
+    !(await isSandboxActionInClaimsSession(auth, sandboxClaims, action))
   ) {
     return apiError(req, res, {
       status_code: 404,
@@ -586,38 +528,55 @@ async function handleReExecuteApprovedToolCall(
     });
   }
 
-  // Tool name and arguments are pulled from the stored action — the user
-  // approved a row whose inputs are fixed at insert time. Trusting body
-  // values here would let a caller execute under a stale approval.
-  const toolName = action.toolConfiguration.originalName;
-  const toolArgs = action.augmentedInputs ?? {};
+  switch (action.status) {
+    case "blocked_validation_required":
+    case "blocked_authentication_required":
+    case "blocked_file_authorization_required":
+    case "blocked_child_action_input_required":
+    case "blocked_user_answer_required":
+      res.status(202).json({ status: "pending", actionId: action.sId });
+      return;
 
-  // Atomic transition `ready_allowed_*` → `running`. Concurrent re-POSTs
-  // racing here are mutually exclusive: only one acquires execution.
-  const acquired = await action.tryAcquireForExecution();
-  if (!acquired) {
-    return apiError(req, res, {
-      status_code: 409,
-      api_error: {
-        type: "invalid_request_error",
-        message: `Action is not ready to execute (status: ${action.status}).`,
-      },
-    });
+    case "ready_allowed_explicitly":
+    case "ready_allowed_implicitly": {
+      // Tool name and arguments are pulled from the stored action — the user
+      // approved a row whose inputs are fixed at insert time. Trusting body
+      // values here would let a caller execute under a stale approval.
+      const toolName = action.toolConfiguration.originalName;
+      const toolArgs = action.augmentedInputs ?? {};
+
+      const sandboxContext = await buildSandboxAgentLoopContext(
+        auth,
+        sandboxClaims,
+        { toolName, view }
+      );
+      const runContext = sandboxContext?.context.runContext;
+      if (!runContext) {
+        await action.updateStatus("errored");
+        return apiError(req, res, contextBuildErrorBody);
+      }
+
+      return executeAndRespond(auth, toolArgs, runContext, action, res);
+    }
+
+    case "running":
+    case "succeeded":
+    case "errored":
+      // `running` is unreachable for sandbox actions today (the inline-execute
+      // path goes `ready_allowed_*` → `succeeded`/`errored` in one UPDATE).
+      // Bucket it with the post-execution terminals defensively rather than
+      // assertNever-ing — if we ever introduce a `running` transition for
+      // sandbox actions, returning 409 is still safe semantics.
+      res.status(409).json({ status: "already_executed" });
+      return;
+
+    case "denied":
+      res.status(403).json({ status: "rejected" });
+      return;
+
+    default:
+      assertNever(action.status);
   }
-
-  const sandboxContext = await buildSandboxAgentLoopContext(
-    auth,
-    sandboxClaims,
-    { toolName, view }
-  );
-  const runContext = sandboxContext?.context.runContext;
-  if (!runContext) {
-    // Roll back the running flip since we won't be executing.
-    await action.updateStatus("errored");
-    return apiError(req, res, contextBuildErrorBody);
-  }
-
-  return executeSandboxToolCall(auth, toolArgs, runContext, action, res);
 }
 
 async function handleInitialToolCall(
@@ -662,8 +621,8 @@ async function handleInitialToolCall(
 
   // Always create the audit row up-front. The status carries whether the
   // tool will block (`blocked_validation_required`) or run immediately
-  // (`ready_allowed_*`). For approved-immediately calls, executeSandboxToolCall
-  // transitions it through `running → succeeded / errored`.
+  // (`ready_allowed_*`). For approved-immediately calls, executeAndRespond
+  // transitions it directly to `succeeded`/`errored` in a single UPDATE.
   const action = await AgentMCPActionResource.makeNewSandboxAction(auth, {
     agentMessageId: runContext.agentMessage.agentMessageId,
     step: sandboxResult.step,
@@ -690,10 +649,9 @@ async function handleInitialToolCall(
     return;
   }
 
-  // Allowed-immediately path: no race possible (single fresh actionId), so a
-  // straight flip is enough. The re-execute path uses CAS instead.
-  await action.updateStatus("running");
-  return executeSandboxToolCall(auth, toolArgs, runContext, action, res);
+  // Allowed-immediately path: row stays `ready_allowed_implicitly` until
+  // executeAndRespond flips it to `succeeded`/`errored` in a single UPDATE.
+  return executeAndRespond(auth, toolArgs, runContext, action, res);
 }
 
 export default withPublicAPIAuthentication(

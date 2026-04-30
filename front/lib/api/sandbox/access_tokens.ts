@@ -1,6 +1,8 @@
 import config from "@app/lib/api/config";
 import { runOnRedis } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
+import { MessageModel } from "@app/lib/models/agent/conversation";
+import type { SandboxMCPAction } from "@app/lib/resources/agent_mcp_action_resource";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import logger from "@app/logger/logger";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
@@ -177,4 +179,32 @@ export async function verifySandboxExecToken(
   }
 
   return payload;
+}
+
+/**
+ * Pins a sandbox action to the JWT's specific (cId, mId) session. Workspace
+ * match is enforced upstream by the auth wrapper; this additional check
+ * prevents a sandbox client from polling or executing actions belonging to a
+ * different session in the same workspace.
+ *
+ * Resolves the JWT's `mId` (a Message sId) to its AgentMessage model id and
+ * compares against the action's `agentMessageId`. Returns false on either a
+ * missing message or a mismatch.
+ */
+export async function isSandboxActionInClaimsSession(
+  auth: Authenticator,
+  claims: SandboxExecTokenPayload,
+  action: SandboxMCPAction
+): Promise<boolean> {
+  const message = await MessageModel.findOne({
+    where: {
+      sId: claims.mId,
+      workspaceId: auth.getNonNullableWorkspace().id,
+    },
+    attributes: ["agentMessageId"],
+  });
+  return (
+    message?.agentMessageId != null &&
+    action.agentMessageId === message.agentMessageId
+  );
 }

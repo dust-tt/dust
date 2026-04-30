@@ -1360,7 +1360,8 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       where: {
         workspaceId: owner.id,
         agentMessageId: { [Op.in]: agentMessageIds },
-        status: { [Op.in]: TOOL_EXECUTION_BLOCKED_STATUSES },
+        // Sandbox actions only ever produce `blocked_validation_required`.
+        status: "blocked_validation_required",
       },
       order: [["createdAt", "ASC"]],
     });
@@ -1369,8 +1370,24 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       return [];
     }
 
+    // Narrow once up-front so the rest of the function uses strongly-typed
+    // locals instead of `!` chains. The `required: true` JOINs guarantee
+    // `agentMessage` and `agentMessage.message` are present at runtime;
+    // Sequelize types don't reflect that so we assert.
+    const narrowedActions = blockedActions.map((a) => {
+      assert(
+        a.agentMessage?.message,
+        "Sandbox blocked action missing agentMessage.message despite required JOIN"
+      );
+      return {
+        action: a,
+        agentMessage: a.agentMessage,
+        message: a.agentMessage.message,
+      };
+    });
+
     const parentUserMessageIds = removeNulls(
-      blockedActions.map((a) => a.agentMessage!.message!.parentId)
+      narrowedActions.map(({ message }) => message.parentId)
     );
 
     const parentUserMessages = await MessageModel.findAll({
@@ -1399,18 +1416,10 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
     const parentUserMessageById = _.keyBy(parentUserMessages, "id");
 
-    const agentConfigVersionPairs = removeNulls(
-      blockedActions.map((a) => {
-        const agentMessage = a.agentMessage;
-        if (!agentMessage) {
-          return null;
-        }
-        return {
-          agentId: agentMessage.agentConfigurationId,
-          agentVersion: agentMessage.agentConfigurationVersion,
-        };
-      })
-    );
+    const agentConfigVersionPairs = narrowedActions.map(({ agentMessage }) => ({
+      agentId: agentMessage.agentConfigurationId,
+      agentVersion: agentMessage.agentConfigurationVersion,
+    }));
 
     const agentConfigurations = await getAgentConfigurationsWithVersion(
       auth,
@@ -1424,10 +1433,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
     const result: BlockedToolExecution[] = [];
 
-    for (const action of blockedActions) {
-      const agentMessage = action.agentMessage;
-      assert(agentMessage?.message, "No message for agent message.");
-
+    for (const { action, agentMessage, message } of narrowedActions) {
       const agentConfiguration = agentConfigurationMap.get(
         `${agentMessage.agentConfigurationId}:${agentMessage.agentConfigurationVersion}`
       );
@@ -1439,17 +1445,15 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         continue;
       }
 
-      // Sandbox actions only produce "blocked_validation_required".
-      if (action.status !== "blocked_validation_required") {
-        continue;
-      }
-
-      const parentUserMessage =
-        parentUserMessageById[agentMessage.message.parentId!];
+      assert(
+        message.parentId !== null,
+        "Sandbox action's agent message has no parent"
+      );
+      const parentUserMessage = parentUserMessageById[message.parentId];
       assert(parentUserMessage?.userMessage, "Parent user message not found.");
 
       result.push({
-        messageId: agentMessage.message.sId,
+        messageId: message.sId,
         userId: parentUserMessage.userMessage?.user?.sId,
         conversationId: conversation.sId,
         actionId: this.sandboxActionModelIdToSId({
@@ -1558,28 +1562,5 @@ export class SandboxMCPAction {
       }
     );
     return { updatedCount };
-  }
-
-  /**
-   * Atomically transitions an approved action to `running`. Returns true when
-   * this caller acquired execution; false when another concurrent re-POST
-   * already did (or the row is in a non-executable state). Conditional UPDATE
-   * is the simplest way to make the re-execute path race-free without raw
-   * SQL — Sequelize accepts a status filter in `where`.
-   */
-  async tryAcquireForExecution(): Promise<boolean> {
-    const [count] = await SandboxMCPActionModel.update(
-      { status: "running" },
-      {
-        where: {
-          id: this.model.id,
-          workspaceId: this.model.workspaceId,
-          status: {
-            [Op.in]: ["ready_allowed_implicitly", "ready_allowed_explicitly"],
-          },
-        },
-      }
-    );
-    return count === 1;
   }
 }
