@@ -25,6 +25,7 @@ import type {
   SystemPromptContext,
   SystemPromptSections,
 } from "@app/lib/api/llm/types/options";
+import type { EnabledSkill } from "@app/lib/api/assistant/skills_rendering";
 import type { Authenticator } from "@app/lib/auth";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type {
