@@ -26,10 +26,15 @@ export interface RedisClientOptions {
 const DEFAULT_ISOLATION_POOL_OPTIONS = {
   acquireTimeoutMillis: 10000,
   min: 1,
-  max: 8000,
+  max: 128,
   evictionRunIntervalMillis: 15000,
   idleTimeoutMillis: 30000,
 };
+
+// Default concurrency for batched Redis cache operations (e.g. warming N keys
+// in parallel). Per-URI client is shared and pooled (isolation pool max=128),
+// Meant to be used along concurrentExecutor
+export const REDIS_CACHE_CONCURRENCY = 32;
 
 export type RedisUsageTagsType =
   | "agent_recent_authors"
