@@ -8,6 +8,7 @@ import {
 import type { InputBarSlashSuggestionCapability } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
 import { KeyboardShortcutsExtension } from "@app/components/editor/extensions/input_bar/KeyboardShortcutsExtension";
 import { PastedAttachmentExtension } from "@app/components/editor/extensions/input_bar/PastedAttachmentExtension";
+import { SkillNode } from "@app/components/editor/extensions/input_bar/SkillNode";
 import { URLDetectionExtension } from "@app/components/editor/extensions/input_bar/URLDetectionExtension";
 import { URLStorageExtension } from "@app/components/editor/extensions/input_bar/URLStorageExtension";
 import {
@@ -51,6 +52,27 @@ const useEditorService = (editor: Editor | null) => {
       // Insert text helper function.
       insertText: (text: string) => {
         editor?.chain().focus().insertContent(text).run();
+      },
+      insertSkill: ({ id, name }: { id: string; name: string }) => {
+        const selectionFrom = editor?.state.selection.from ?? 0;
+        const characterBefore =
+          selectionFrom > 0
+            ? (editor?.state.doc.textBetween(
+                Math.max(0, selectionFrom - 1),
+                selectionFrom,
+                " ",
+                "\ufffc"
+              ) ?? "")
+            : "";
+        const shouldAddSpaceBeforeSkill =
+          characterBefore.length > 0 && !/\s/.test(characterBefore);
+
+        editor
+          ?.chain()
+          .focus()
+          .insertContent(shouldAddSpaceBeforeSkill ? " " : "")
+          .insertSkillNode({ skillId: id, skillName: name })
+          .run();
       },
       // Insert mention helper function.
       insertMention: ({
@@ -130,12 +152,16 @@ const useEditorService = (editor: Editor | null) => {
           return {
             markdown: "",
             mentions: [],
+            skills: [],
           };
         }
 
+        const { mentions, skills } = extractFromEditorJSON(editor?.getJSON());
+
         return {
           markdown: editor.getMarkdown(),
-          mentions: extractFromEditorJSON(editor?.getJSON()).mentions,
+          mentions,
+          skills,
         };
       },
 
@@ -347,6 +373,7 @@ export const buildEditorExtensions = ({
         onAgentSelect,
       }),
     }),
+    SkillNode,
     EmojiExtension,
     Placeholder.configure({
       placeholder: ({ node }) => {
