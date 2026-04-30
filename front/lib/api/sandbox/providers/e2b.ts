@@ -27,13 +27,14 @@ const ONE_DAY_MS = 24 * ONE_HOUR_MS;
 
 /**
  * Outside of production, cap sandbox lifetime at 24h (E2B Pro max) so
- * forgotten local sandboxes don't linger. In production, set a generous 7-day
- * cap so the reaper (which destroys after 4 days idle) is effectively the
- * sole authority on sandbox lifecycle, while still keeping a hard E2B-side
- * safety net well above the reaper threshold.
+ * forgotten local sandboxes don't linger. In production, set a 30-day cap:
+ * the reaper destroys after 4 days *inactive*, but an actively-used sandbox
+ * can keep refreshing its inactivity timer for much longer than 4 days of
+ * wall-clock time. 30 days gives any realistic active session plenty of
+ * headroom while still keeping a hard E2B-side safety net.
  */
 const SANDBOX_LIFETIME_MS =
-  appConfig.getNodeEnv() === "production" ? 7 * ONE_DAY_MS : 24 * ONE_HOUR_MS;
+  appConfig.getNodeEnv() === "production" ? 30 * ONE_DAY_MS : 24 * ONE_HOUR_MS;
 
 /** Timeout for individual API calls to E2B (create, connect, etc.). */
 const REQUEST_TIMEOUT_MS = 30_000;
