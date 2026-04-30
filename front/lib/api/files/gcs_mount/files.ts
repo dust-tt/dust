@@ -5,8 +5,10 @@ import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { isSupportedImageContentType } from "@app/types/files";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
+import { Err, Ok } from "@app/types/shared/result";
 
 type GCSMountEntryBase = {
   fileName: string;
@@ -210,6 +212,30 @@ export async function listGCSMountFiles(
   });
 
   return [...folderEntries, ...fileEntries];
+}
+
+/**
+ * Generate a short-lived signed URL for a GCS mount file.
+ * Validates that the path belongs to the expected scope before signing.
+ */
+export async function getConversationFileMountSignedUrl(
+  auth: Authenticator,
+  scope: GCSMountPoint,
+  gcsPath: string
+): Promise<Ok<string> | Err<Error>> {
+  const owner = auth.getNonNullableWorkspace();
+  const prefix = resolvePrefix(owner, scope);
+  if (!gcsPath.startsWith(prefix)) {
+    return new Err(
+      new Error(`GCS path does not belong to the expected conversation file system.`)
+    );
+  }
+  try {
+    const url = await getPrivateUploadBucket().getSignedUrl(gcsPath);
+    return new Ok(url);
+  } catch (err) {
+    return new Err(normalizeError(err));
+  }
 }
 
 /**

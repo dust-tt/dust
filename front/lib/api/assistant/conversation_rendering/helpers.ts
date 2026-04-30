@@ -8,7 +8,7 @@ import {
   isTextContent,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { rewriteContentForModel } from "@app/lib/actions/mcp_utils";
-import { getPrivateUploadBucket } from "@app/lib/file_storage";
+import { getConversationFileMountSignedUrl } from "@app/lib/api/files/gcs_mount/files";
 import { getEnableSkillIdFromOutputBlock } from "@app/lib/api/actions/servers/skill_management/rendering";
 import {
   type EnabledSkill,
@@ -43,7 +43,7 @@ import type {
 } from "@app/types/assistant/generation";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import { removeNulls } from "@app/types/shared/utils/general";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 
 /**
  * Type for a step in agent message processing
@@ -97,9 +97,11 @@ function renderEnabledSkillMessagesForAction(
 /**
  * Renders an action result for multi-actions model
  */
-export async function renderActionForMultiActionsModel(
+async function renderActionForMultiActionsModel(
+  auth: Authenticator,
   action: AgentMCPActionWithOutputType,
-  model: ModelConfigurationType
+  model: ModelConfigurationType,
+  { conversationId }: { conversationId: string }
 ): Promise<FunctionMessageTypeModel> {
   if (action.status === "denied") {
     return {
@@ -152,15 +154,21 @@ export async function renderActionForMultiActionsModel(
       if (isTextContent(item)) {
         contentArray.push({ type: "text", text: item.text });
       } else if (isModelVisionImage(item)) {
-        try {
-          const url = await getPrivateUploadBucket().getSignedUrl(
-            item.resource.gcsPath
-          );
-          contentArray.push({ type: "image_url", image_url: { url } });
-        } catch (err) {
+        const urlRes = await getConversationFileMountSignedUrl(
+          auth,
+          { useCase: "conversation", conversationId },
+          item.resource.gcsPath
+        );
+
+        if (urlRes.isOk()) {
+          contentArray.push({
+            type: "image_url",
+            image_url: { url: urlRes.value },
+          });
+        } else {
           contentArray.push({
             type: "text",
-            text: `[Image unavailable: ${normalizeError(err).message}]`,
+            text: `[Image unavailable: ${urlRes.error.message}]`,
           });
         }
       }
@@ -182,7 +190,7 @@ export async function renderActionForMultiActionsModel(
  * Processes agent message steps
  */
 export async function getSteps(
-  _: Authenticator,
+  auth: Authenticator,
   {
     model,
     message,
@@ -228,7 +236,9 @@ export async function getSteps(
         name: action.functionCallName,
         arguments: JSON.stringify(action.params),
       },
-      result: await renderActionForMultiActionsModel(action, model),
+      result: await renderActionForMultiActionsModel(auth, action, model, {
+        conversationId,
+      }),
       enabledSkillMessages: renderEnabledSkillMessagesForAction(action, {
         enabledSkillById,
         renderSkillsAsUserMessages,
