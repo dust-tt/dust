@@ -6,6 +6,7 @@ import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { renderConversationAsText } from "@app/lib/api/assistant/conversation/render_as_text";
 import { PREVIOUS_INTERACTIONS_TO_PRESERVE } from "@app/lib/api/assistant/conversation_rendering";
 import { publishConversationEvent } from "@app/lib/api/assistant/streaming/events";
+import { createGCSMountFile } from "@app/lib/api/files/gcs_mount/files";
 import { isProviderWhitelisted } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -104,6 +105,67 @@ function findCompactionMessage(
   return undefined;
 }
 
+function formatCompactionHistoryTimestamp(date: Date): string {
+  return date.toISOString().slice(0, 16).replace(/-/g, "").replace("T", "-");
+}
+
+async function createCompactionHistoryFile(
+  auth: Authenticator,
+  {
+    targetConversationId,
+    sourceConversationId,
+    sourceMessageRank,
+    compactionMessageId,
+    renderedMessages,
+  }: {
+    targetConversationId: string;
+    sourceConversationId?: string;
+    sourceMessageRank?: number;
+    compactionMessageId: string;
+    renderedMessages: string;
+  }
+): Promise<Result<string, Error>> {
+  const generatedAt = new Date();
+  const relativeFilePath = `compactions/history-${formatCompactionHistoryTimestamp(generatedAt)}-${compactionMessageId}.md`;
+  const metadataLines = [
+    "# Conversation History Before Compaction",
+    "",
+    `Generated at: ${generatedAt.toISOString()}`,
+    `Target conversation: ${targetConversationId}`,
+    sourceConversationId
+      ? `Source conversation: ${sourceConversationId}`
+      : null,
+    sourceMessageRank !== undefined
+      ? `Source message rank: ${sourceMessageRank}`
+      : null,
+    `Compaction message: ${compactionMessageId}`,
+    "",
+    "## Conversation",
+    "",
+  ].filter((line): line is string => line !== null);
+
+  try {
+    const entry = await createGCSMountFile(
+      auth,
+      { useCase: "conversation", conversationId: targetConversationId },
+      {
+        relativeFilePath,
+        content: Buffer.from(
+          `${metadataLines.join("\n")}${renderedMessages}`,
+          "utf8"
+        ),
+        contentType: "text/markdown",
+      }
+    );
+
+    return new Ok(entry.path);
+  } catch (error) {
+    return new Err(
+      error instanceof Error ? error : new Error("Failed to write history file")
+    );
+  }
+}
+
 export async function runCompaction(
   auth: Authenticator,
   {
@@ -183,22 +245,53 @@ export async function runCompaction(
   let status: "succeeded" | "failed";
 
   if (summaryRes.isOk()) {
-    content = replaceStandaloneAttachmentIds(
-      summaryRes.value,
+    const summary = replaceStandaloneAttachmentIds(
+      summaryRes.value.summary,
       sourceConversation?.attachmentIdReplacements
     );
-    status = "succeeded";
-
-    logger.info(
-      {
-        workspaceId: owner.sId,
-        conversationId,
-        sourceConversationId: sourceConversation?.conversationId,
-        compactionMessageId,
-        status,
-      },
-      "Compaction generation succeeded"
+    const renderedMessages = replaceStandaloneAttachmentIds(
+      summaryRes.value.renderedMessages,
+      sourceConversation?.attachmentIdReplacements
     );
+
+    const historyFileRes = await createCompactionHistoryFile(auth, {
+      targetConversationId: targetConversation.sId,
+      sourceConversationId: sourceConversation?.conversationId,
+      sourceMessageRank: sourceConversation?.messageRank,
+      compactionMessageId,
+      renderedMessages,
+    });
+
+    if (historyFileRes.isOk()) {
+      content = `${summary}\n\nFull conversation history before compaction: ${historyFileRes.value}`;
+      status = "succeeded";
+
+      logger.info(
+        {
+          workspaceId: owner.sId,
+          conversationId,
+          sourceConversationId: sourceConversation?.conversationId,
+          compactionMessageId,
+          historyFilePath: historyFileRes.value,
+          status,
+        },
+        "Compaction generation succeeded"
+      );
+    } else {
+      content = null;
+      status = "failed";
+
+      logger.error(
+        {
+          workspaceId: owner.sId,
+          conversationId,
+          sourceConversationId: sourceConversation?.conversationId,
+          compactionMessageId,
+          error: historyFileRes.error,
+        },
+        "Compaction history file creation failed"
+      );
+    }
   } else {
     content = null;
     status = "failed";
@@ -253,7 +346,7 @@ async function generateCompactionSummary(
     compactionMessage: CompactionMessageType;
     model: SupportedModel;
   }
-): Promise<Result<string, Error>> {
+): Promise<Result<{ summary: string; renderedMessages: string }, Error>> {
   const owner = auth.getNonNullableWorkspace();
 
   const conversationToSummarize =
@@ -338,5 +431,5 @@ async function generateCompactionSummary(
     return new Err(new Error("Compaction LLM returned empty summary"));
   }
 
-  return new Ok(summary);
+  return new Ok({ summary, renderedMessages });
 }
