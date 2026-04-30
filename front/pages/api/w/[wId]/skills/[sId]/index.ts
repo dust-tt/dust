@@ -7,6 +7,7 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { isResourceSId } from "@app/lib/resources/string_ids";
+import { parseSkillReferences } from "@app/lib/skill_references";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import { AttachedKnowledgeSchema } from "@app/pages/api/w/[wId]/skills";
@@ -15,6 +16,7 @@ import type {
   SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import { Err, Ok } from "@app/types/shared/result";
 import { isString } from "@app/types/shared/utils/general";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
@@ -57,7 +59,7 @@ const PatchSkillRequestBodySchema = t.intersection([
     tools: t.array(
       t.type({
         mcpServerViewId: t.string,
-      })
+      }),
     ),
     attachedKnowledge: t.array(AttachedKnowledgeSchema),
     instructionsHtml: t.union([t.string, t.null]),
@@ -75,6 +77,58 @@ const PatchSkillRequestBodySchema = t.intersection([
 
 type PatchSkillRequestBody = t.TypeOf<typeof PatchSkillRequestBodySchema>;
 
+async function fetchReferencedSkillsFromInstructions(
+  auth: Authenticator,
+  instructions: string,
+  { excludeSkillId }: { excludeSkillId: string },
+) {
+  const references = parseSkillReferences(instructions);
+  const referencedSkillIds = uniq(references.map((r) => r.skillId));
+
+  if (referencedSkillIds.includes(excludeSkillId)) {
+    return new Err(new Error("A skill cannot reference itself."));
+  }
+
+  if (referencedSkillIds.length === 0) {
+    return new Ok<SkillResource[]>([]);
+  }
+
+  const referencedSkills = await SkillResource.fetchByIds(
+    auth,
+    referencedSkillIds,
+  );
+
+  const activeReferencedSkillIds = new Set(
+    referencedSkills
+      .filter((skill) => skill.status === "active")
+      .map((skill) => skill.sId),
+  );
+  const missingOrInactiveSkillIds = referencedSkillIds.filter(
+    (skillId) => !activeReferencedSkillIds.has(skillId),
+  );
+
+  if (missingOrInactiveSkillIds.length > 0) {
+    return new Err(
+      new Error(
+        `Referenced skills not found or inactive: ${missingOrInactiveSkillIds.join(", ")}`,
+      ),
+    );
+  }
+
+  return new Ok(referencedSkills);
+}
+
+function serializeSkillSummary(auth: Authenticator, skill: SkillResource) {
+  const {
+    instructions,
+    instructionsHtml,
+    tools,
+    ...skillWithoutInstructionsAndTools
+  } = skill.toJSON(auth);
+
+  return skillWithoutInstructionsAndTools;
+}
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
@@ -85,7 +139,7 @@ async function handler(
       | DeleteSkillResponseBody
     >
   >,
-  auth: Authenticator
+  auth: Authenticator,
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
 
@@ -124,6 +178,8 @@ async function handler(
         const extendedSkill = serializedSkill.extendedSkillId
           ? await SkillResource.fetchById(auth, serializedSkill.extendedSkillId)
           : null;
+        const referencedSkills = await skill.listReferencedSkills(auth);
+        const referencedBy = await skill.listReferencingSkills(auth);
 
         const skillWithRelations: SkillWithRelationsType = {
           ...serializedSkill,
@@ -132,6 +188,12 @@ async function handler(
             editors: editors ? editors.map((e) => e.toJSON()) : null,
             editedByUser: editedByUser ? editedByUser.toJSON() : null,
             extendedSkill: extendedSkill ? extendedSkill.toJSON(auth) : null,
+            referencedSkills: referencedSkills.map((s) =>
+              serializeSkillSummary(auth, s),
+            ),
+            referencedBy: referencedBy.map((s) =>
+              serializeSkillSummary(auth, s),
+            ),
           },
         };
 
@@ -210,7 +272,7 @@ async function handler(
       const mcpServerViewIds = uniq(body.tools.map((t) => t.mcpServerViewId));
       const mcpServerViews = await MCPServerViewResource.fetchByIds(
         auth,
-        mcpServerViewIds
+        mcpServerViewIds,
       );
 
       if (mcpServerViewIds.length !== mcpServerViews.length) {
@@ -227,12 +289,12 @@ async function handler(
 
       // Validate all data source views from attached knowledge exist and user has access.
       const dataSourceViewIds = uniq(
-        attachedKnowledge.map((attachment) => attachment.dataSourceViewId)
+        attachedKnowledge.map((attachment) => attachment.dataSourceViewId),
       );
 
       const dataSourceViews = await DataSourceViewResource.fetchByIds(
         auth,
-        dataSourceViewIds
+        dataSourceViewIds,
       );
       if (dataSourceViews.length !== dataSourceViewIds.length) {
         return apiError(req, res, {
@@ -245,14 +307,14 @@ async function handler(
       }
 
       const dataSourceViewIdMap = new Map(
-        dataSourceViews.map((dsv) => [dsv.sId, dsv])
+        dataSourceViews.map((dsv) => [dsv.sId, dsv]),
       );
 
       const attachedKnowledgeWithDataSourceViews = attachedKnowledge.map(
         (attachment) => ({
           dataSourceView: dataSourceViewIdMap.get(attachment.dataSourceViewId)!,
           nodeId: attachment.nodeId,
-        })
+        }),
       );
 
       const requestedSpaceIds = await SkillResource.computeRequestedSpaceIds(
@@ -260,8 +322,23 @@ async function handler(
         {
           mcpServerViews,
           attachedKnowledge: attachedKnowledgeWithDataSourceViews,
-        }
+        },
       );
+
+      const referencedSkillsRes = await fetchReferencedSkillsFromInstructions(
+        auth,
+        body.instructions,
+        { excludeSkillId: skill.sId },
+      );
+      if (referencedSkillsRes.isErr()) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: referencedSkillsRes.error.message,
+          },
+        });
+      }
 
       // Validate file attachments if provided (gated behind sandbox_tools).
       let files: FileResource[] | undefined;
@@ -314,7 +391,7 @@ async function handler(
             skillId: skill.sId,
             workspaceId: owner.sId,
           },
-          "Suggested skill accepted"
+          "Suggested skill accepted",
         );
       }
 
@@ -329,6 +406,7 @@ async function handler(
         mcpServerViews,
         name,
         reinforcement: body.reinforcement,
+        referencedSkills: referencedSkillsRes.value,
         requestedSpaceIds,
         userFacingDescription: body.userFacingDescription,
         ...(shouldActivate ? { status: "active" as const } : {}),
@@ -359,7 +437,7 @@ async function handler(
             skillId: skill.sId,
             workspaceId: owner.sId,
           },
-          "Suggested skill rejected"
+          "Suggested skill rejected",
         );
       }
 

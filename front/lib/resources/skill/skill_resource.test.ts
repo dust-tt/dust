@@ -1,10 +1,14 @@
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
-import { SkillDataSourceConfigurationModel } from "@app/lib/models/skill";
+import {
+  SkillDataSourceConfigurationModel,
+  SkillReferenceModel,
+} from "@app/lib/models/skill";
 import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { SkillAttachedKnowledge } from "@app/lib/resources/skill/skill_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { serializeSkillReference } from "@app/lib/skill_references";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
@@ -65,17 +69,17 @@ describe("SkillResource", () => {
       dataSourceView1 = await DataSourceViewFactory.folder(
         testContext.workspace,
         testContext.globalSpace,
-        testContext.user
+        testContext.user,
       );
       dataSourceView2 = await DataSourceViewFactory.folder(
         testContext.workspace,
         testContext.globalSpace,
-        testContext.user
+        testContext.user,
       );
       dataSourceView3 = await DataSourceViewFactory.folder(
         testContext.workspace,
         testContext.globalSpace,
-        testContext.user
+        testContext.user,
       );
     });
 
@@ -99,7 +103,7 @@ describe("SkillResource", () => {
             attachedKnowledge,
             existingConfigurations: [], // No existing configurations.
             skillConfigurationId: 123, // Mock skill ID.
-          }
+          },
         );
 
       expect(toDelete).toHaveLength(0);
@@ -147,7 +151,7 @@ describe("SkillResource", () => {
             attachedKnowledge,
             existingConfigurations: [],
             skillConfigurationId: 123,
-          }
+          },
         );
 
       expect(toDelete).toHaveLength(0);
@@ -155,13 +159,13 @@ describe("SkillResource", () => {
 
       // Find the configuration for dataSourceView1.
       const config1 = toUpsert.find(
-        (config) => config.dataSourceViewId === dataSourceView1.id
+        (config) => config.dataSourceViewId === dataSourceView1.id,
       );
       expect(config1?.parentsIn).toEqual(["node1", "node2"]);
 
       // Find the configuration for dataSourceView2.
       const config2 = toUpsert.find(
-        (config) => config.dataSourceViewId === dataSourceView2.id
+        (config) => config.dataSourceViewId === dataSourceView2.id,
       );
       expect(config2?.parentsIn).toEqual(["node3"]);
     });
@@ -169,7 +173,7 @@ describe("SkillResource", () => {
     it("should detect configurations that need deletion", async () => {
       const skillResource = await SkillFactory.create(
         testContext.authenticator,
-        {}
+        {},
       );
 
       // Create real database configurations.
@@ -201,7 +205,7 @@ describe("SkillResource", () => {
             attachedKnowledge,
             existingConfigurations,
             skillConfigurationId: 123,
-          }
+          },
         );
 
       expect(toDelete).toHaveLength(1);
@@ -213,7 +217,7 @@ describe("SkillResource", () => {
     it("should detect when parentsIn has changed", async () => {
       const skillResource = await SkillFactory.create(
         testContext.authenticator,
-        {}
+        {},
       );
 
       const existingConfigurations = [
@@ -243,7 +247,7 @@ describe("SkillResource", () => {
             attachedKnowledge,
             existingConfigurations,
             skillConfigurationId: 123,
-          }
+          },
         );
 
       // Should delete the old configuration and upsert the new one.
@@ -256,7 +260,7 @@ describe("SkillResource", () => {
     it("should not include unchanged configurations in toUpsert", async () => {
       const skillResource = await SkillFactory.create(
         testContext.authenticator,
-        {}
+        {},
       );
 
       const existingConfigurations = [
@@ -286,7 +290,7 @@ describe("SkillResource", () => {
             attachedKnowledge,
             existingConfigurations,
             skillConfigurationId: 123,
-          }
+          },
         );
 
       expect(toDelete).toHaveLength(0);
@@ -296,7 +300,7 @@ describe("SkillResource", () => {
     it("should handle mixed scenarios: add, update, delete", async () => {
       const skillResource = await SkillFactory.create(
         testContext.authenticator,
-        {}
+        {},
       );
 
       const existingConfigurations = [
@@ -335,7 +339,7 @@ describe("SkillResource", () => {
             attachedKnowledge,
             existingConfigurations,
             skillConfigurationId: 123,
-          }
+          },
         );
 
       // Should delete dataSourceView1 and dataSourceView2.
@@ -347,12 +351,12 @@ describe("SkillResource", () => {
       expect(toUpsert).toHaveLength(2);
 
       const updatedConfig = toUpsert.find(
-        (config) => config.dataSourceViewId === dataSourceView1.id
+        (config) => config.dataSourceViewId === dataSourceView1.id,
       );
       expect(updatedConfig?.parentsIn).toEqual(["node1", "node1_new"]);
 
       const newConfig = toUpsert.find(
-        (config) => config.dataSourceViewId === dataSourceView3.id
+        (config) => config.dataSourceViewId === dataSourceView3.id,
       );
       expect(newConfig?.parentsIn).toEqual(["node3"]);
     });
@@ -380,7 +384,7 @@ describe("SkillResource", () => {
             attachedKnowledge,
             existingConfigurations: [],
             skillConfigurationId: 123,
-          }
+          },
         );
 
       expect(toDelete).toHaveLength(0);
@@ -391,7 +395,7 @@ describe("SkillResource", () => {
     it("should create unique configurations and handle updates properly", async () => {
       const skillResource = await SkillFactory.create(
         testContext.authenticator,
-        {}
+        {},
       );
 
       // Initial creation - add two nodes to same data source view
@@ -426,7 +430,7 @@ describe("SkillResource", () => {
             attachedKnowledge,
             existingConfigurations: initialConfigurations,
             skillConfigurationId: skillResource.id,
-          }
+          },
         );
 
       // Should delete the old configuration
@@ -449,12 +453,12 @@ describe("SkillResource", () => {
 
       const skillResource = await SkillFactory.create(
         testContext.authenticator,
-        { name: "Test Skill For Update" }
+        { name: "Test Skill For Update" },
       );
 
       const agent = await AgentConfigurationFactory.createTestAgent(
         testContext.authenticator,
-        { name: "Test Agent With Skill" }
+        { name: "Test Agent With Skill" },
       );
       await SkillFactory.linkToAgent(testContext.authenticator, {
         skillId: skillResource.id,
@@ -481,7 +485,7 @@ describe("SkillResource", () => {
         where: { id: agent.id, workspaceId: testContext.workspace.id },
       });
       expect(agentAfter?.requestedSpaceIds.map((id) => Number(id))).toContain(
-        restrictedSpace.id
+        restrictedSpace.id,
       );
     });
 
@@ -493,17 +497,17 @@ describe("SkillResource", () => {
         {
           name: "Test Skill With Space",
           requestedSpaceIds: [restrictedSpace.id],
-        }
+        },
       );
 
       const agent = await AgentConfigurationFactory.createTestAgent(
         testContext.authenticator,
-        { name: "Test Agent With Space" }
+        { name: "Test Agent With Space" },
       );
 
       await AgentConfigurationModel.update(
         { requestedSpaceIds: [restrictedSpace.id] },
-        { where: { id: agent.id, workspaceId: testContext.workspace.id } }
+        { where: { id: agent.id, workspaceId: testContext.workspace.id } },
       );
 
       await SkillFactory.linkToAgent(testContext.authenticator, {
@@ -527,7 +531,7 @@ describe("SkillResource", () => {
       });
       const spaceIds = agentAfter?.requestedSpaceIds.map((id) => Number(id));
       expect(spaceIds?.filter((id) => id === restrictedSpace.id)).toHaveLength(
-        1
+        1,
       );
     });
 
@@ -542,17 +546,17 @@ describe("SkillResource", () => {
         {
           name: "Test Skill With Spaces",
           requestedSpaceIds: [space1.id, space2.id],
-        }
+        },
       );
 
       const agent = await AgentConfigurationFactory.createTestAgent(
         testContext.authenticator,
-        { name: "Test Agent" }
+        { name: "Test Agent" },
       );
 
       await AgentConfigurationModel.update(
         { requestedSpaceIds: [space1.id, space2.id] },
-        { where: { id: agent.id, workspaceId: testContext.workspace.id } }
+        { where: { id: agent.id, workspaceId: testContext.workspace.id } },
       );
 
       await SkillFactory.linkToAgent(testContext.authenticator, {
@@ -587,7 +591,7 @@ describe("SkillResource", () => {
       await GroupSpaceFactory.associate(sharedSpace, testContext.globalGroup);
       await GroupSpaceFactory.associate(
         skill1OnlySpace,
-        testContext.globalGroup
+        testContext.globalGroup,
       );
 
       const skill1 = await SkillFactory.create(testContext.authenticator, {
@@ -602,12 +606,12 @@ describe("SkillResource", () => {
 
       const agent = await AgentConfigurationFactory.createTestAgent(
         testContext.authenticator,
-        { name: "Test Agent" }
+        { name: "Test Agent" },
       );
 
       await AgentConfigurationModel.update(
         { requestedSpaceIds: [sharedSpace.id, skill1OnlySpace.id] },
-        { where: { id: agent.id, workspaceId: testContext.workspace.id } }
+        { where: { id: agent.id, workspaceId: testContext.workspace.id } },
       );
 
       await SkillFactory.linkToAgent(testContext.authenticator, {
@@ -640,6 +644,244 @@ describe("SkillResource", () => {
       expect(spaceIds).toContain(sharedSpace.id);
       expect(spaceIds).toContain(skill1OnlySpace.id);
     });
+
+    it("should store referenced skills and expose both directions", async () => {
+      const childSkill = await SkillFactory.create(testContext.authenticator, {
+        name: "Child Skill",
+      });
+      const parentSkill = await SkillFactory.create(testContext.authenticator, {
+        name: "Parent Skill",
+      });
+
+      await parentSkill.updateSkill(testContext.authenticator, {
+        name: parentSkill.name,
+        agentFacingDescription: parentSkill.agentFacingDescription,
+        userFacingDescription: parentSkill.userFacingDescription,
+        instructions: serializeSkillReference({
+          name: childSkill.name,
+          skillId: childSkill.sId,
+        }),
+        icon: parentSkill.icon,
+        mcpServerViews: [],
+        attachedKnowledge: [],
+        referencedSkills: [childSkill],
+        requestedSpaceIds: [],
+      });
+
+      const references = await SkillReferenceModel.findAll({
+        where: {
+          workspaceId: testContext.workspace.id,
+          parentSkillId: parentSkill.id,
+        },
+      });
+      expect(references).toHaveLength(1);
+      expect(references[0].childSkillId).toBe(childSkill.id);
+
+      const freshParent = await SkillResource.fetchById(
+        testContext.authenticator,
+        parentSkill.sId,
+      );
+      const freshChild = await SkillResource.fetchById(
+        testContext.authenticator,
+        childSkill.sId,
+      );
+
+      expect(
+        (
+          await freshParent!.listReferencedSkills(testContext.authenticator)
+        ).map((s) => s.sId),
+      ).toEqual([childSkill.sId]);
+      expect(
+        (
+          await freshChild!.listReferencingSkills(testContext.authenticator)
+        ).map((s) => s.sId),
+      ).toEqual([parentSkill.sId]);
+    });
+
+    it("should add referenced skill space requirements to parent skills and agents", async () => {
+      const restrictedSpace = await SpaceFactory.regular(testContext.workspace);
+      await GroupSpaceFactory.associate(
+        restrictedSpace,
+        testContext.globalGroup,
+      );
+
+      const childSkill = await SkillFactory.create(testContext.authenticator, {
+        name: "Child Skill With Space",
+        requestedSpaceIds: [restrictedSpace.id],
+      });
+      const parentSkill = await SkillFactory.create(testContext.authenticator, {
+        name: "Parent Skill With Child",
+      });
+
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { name: "Agent With Parent Skill" },
+      );
+      await SkillFactory.linkToAgent(testContext.authenticator, {
+        skillId: parentSkill.id,
+        agentConfigurationId: agent.id,
+      });
+
+      await parentSkill.updateSkill(testContext.authenticator, {
+        name: parentSkill.name,
+        agentFacingDescription: parentSkill.agentFacingDescription,
+        userFacingDescription: parentSkill.userFacingDescription,
+        instructions: serializeSkillReference({
+          name: childSkill.name,
+          skillId: childSkill.sId,
+        }),
+        icon: parentSkill.icon,
+        mcpServerViews: [],
+        attachedKnowledge: [],
+        referencedSkills: [childSkill],
+        requestedSpaceIds: [],
+      });
+
+      const freshParent = await SkillResource.fetchById(
+        testContext.authenticator,
+        parentSkill.sId,
+      );
+      expect(freshParent?.requestedSpaceIds).toContain(restrictedSpace.id);
+
+      const agentAfter = await AgentConfigurationModel.findOne({
+        where: { id: agent.id, workspaceId: testContext.workspace.id },
+      });
+      expect(agentAfter?.requestedSpaceIds.map((id) => Number(id))).toContain(
+        restrictedSpace.id,
+      );
+    });
+
+    it("should propagate referenced skill space changes to parents and agents", async () => {
+      const restrictedSpace = await SpaceFactory.regular(testContext.workspace);
+      await GroupSpaceFactory.associate(
+        restrictedSpace,
+        testContext.globalGroup,
+      );
+
+      const childSkill = await SkillFactory.create(testContext.authenticator, {
+        name: "Child Skill Updated Later",
+      });
+      const parentSkill = await SkillFactory.create(testContext.authenticator, {
+        name: "Parent Skill Propagated",
+      });
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { name: "Agent With Propagated Parent" },
+      );
+
+      await SkillFactory.linkToAgent(testContext.authenticator, {
+        skillId: parentSkill.id,
+        agentConfigurationId: agent.id,
+      });
+
+      await parentSkill.updateSkill(testContext.authenticator, {
+        name: parentSkill.name,
+        agentFacingDescription: parentSkill.agentFacingDescription,
+        userFacingDescription: parentSkill.userFacingDescription,
+        instructions: serializeSkillReference({
+          name: childSkill.name,
+          skillId: childSkill.sId,
+        }),
+        icon: parentSkill.icon,
+        mcpServerViews: [],
+        attachedKnowledge: [],
+        referencedSkills: [childSkill],
+        requestedSpaceIds: [],
+      });
+
+      await childSkill.updateSkill(testContext.authenticator, {
+        name: childSkill.name,
+        agentFacingDescription: childSkill.agentFacingDescription,
+        userFacingDescription: childSkill.userFacingDescription,
+        instructions: childSkill.instructions,
+        icon: childSkill.icon,
+        mcpServerViews: [],
+        attachedKnowledge: [],
+        requestedSpaceIds: [restrictedSpace.id],
+      });
+
+      const freshParent = await SkillResource.fetchById(
+        testContext.authenticator,
+        parentSkill.sId,
+      );
+      expect(freshParent?.requestedSpaceIds).toContain(restrictedSpace.id);
+
+      const agentAfter = await AgentConfigurationModel.findOne({
+        where: { id: agent.id, workspaceId: testContext.workspace.id },
+      });
+      expect(agentAfter?.requestedSpaceIds.map((id) => Number(id))).toContain(
+        restrictedSpace.id,
+      );
+    });
+
+    it("should update parent serialized references when a child skill is renamed", async () => {
+      const childSkill = await SkillFactory.create(testContext.authenticator, {
+        name: "Old Child Name",
+      });
+      const parentSkill = await SkillFactory.create(testContext.authenticator, {
+        name: "Parent With Rename Ref",
+      });
+
+      await parentSkill.updateSkill(testContext.authenticator, {
+        name: parentSkill.name,
+        agentFacingDescription: parentSkill.agentFacingDescription,
+        userFacingDescription: parentSkill.userFacingDescription,
+        instructions: `Use ${serializeSkillReference({
+          name: childSkill.name,
+          skillId: childSkill.sId,
+        })}`,
+        icon: parentSkill.icon,
+        mcpServerViews: [],
+        attachedKnowledge: [],
+        referencedSkills: [childSkill],
+        requestedSpaceIds: [],
+      });
+
+      await childSkill.updateSkill(testContext.authenticator, {
+        name: "New Child Name",
+        agentFacingDescription: childSkill.agentFacingDescription,
+        userFacingDescription: childSkill.userFacingDescription,
+        instructions: childSkill.instructions,
+        icon: childSkill.icon,
+        mcpServerViews: [],
+        attachedKnowledge: [],
+        requestedSpaceIds: [],
+      });
+
+      const freshParent = await SkillResource.fetchById(
+        testContext.authenticator,
+        parentSkill.sId,
+      );
+      expect(freshParent?.instructions).toContain(
+        serializeSkillReference({
+          name: "New Child Name",
+          skillId: childSkill.sId,
+        }),
+      );
+    });
+  });
+
+  describe("enableForAgent", () => {
+    it("should allow enabling any active readable skill", async () => {
+      const skill = await SkillFactory.create(testContext.authenticator, {
+        name: "Readable Skill",
+      });
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { name: "Agent Without Skill Link" },
+      );
+      const conversation = await ConversationFactory.create(
+        testContext.authenticator,
+        { agentConfigurationId: agent.sId, messagesCreatedAt: [] },
+      );
+
+      const result = await skill.enableForAgent(testContext.authenticator, {
+        agentConfiguration: agent,
+        conversation,
+      });
+
+      expect(result.isOk()).toBe(true);
+    });
   });
 
   describe("archive and restore", () => {
@@ -658,11 +900,11 @@ describe("SkillResource", () => {
       });
       expect(membershipsBeforeArchive.length).toBeGreaterThan(0);
       expect(membershipsBeforeArchive.every((m) => m.status === "active")).toBe(
-        true
+        true,
       );
 
       const { affectedCount: archiveCount } = await skill.archive(
-        testContext.authenticator
+        testContext.authenticator,
       );
       expect(archiveCount).toBe(1);
 
@@ -673,11 +915,11 @@ describe("SkillResource", () => {
         },
       });
       expect(
-        membershipsAfterArchive.every((m) => m.status === "suspended")
+        membershipsAfterArchive.every((m) => m.status === "suspended"),
       ).toBe(true);
 
       const { affectedCount: restoreCount } = await skill.restore(
-        testContext.authenticator
+        testContext.authenticator,
       );
       expect(restoreCount).toBe(1);
 
@@ -688,7 +930,7 @@ describe("SkillResource", () => {
         },
       });
       expect(membershipsAfterRestore.every((m) => m.status === "active")).toBe(
-        true
+        true,
       );
     });
   });
@@ -697,7 +939,7 @@ describe("SkillResource", () => {
     it("should delete the skill and its associated editor group", async () => {
       const skillResource = await SkillFactory.create(
         testContext.authenticator,
-        { name: "Skill To Delete" }
+        { name: "Skill To Delete" },
       );
 
       // Verify the skill and its editor group exist.
@@ -712,7 +954,7 @@ describe("SkillResource", () => {
       const editorGroupId = groupSkillBefore!.groupId;
       const [editorGroupBefore] = await GroupResource.fetchByModelIds(
         testContext.authenticator,
-        [editorGroupId]
+        [editorGroupId],
       );
       expect(editorGroupBefore).not.toBeNull();
       expect(editorGroupBefore!.kind).toBe("skill_editors");
@@ -724,7 +966,7 @@ describe("SkillResource", () => {
       // Verify the skill is deleted.
       const skillAfter = await SkillResource.fetchByModelIdWithAuth(
         testContext.authenticator,
-        skillResource.id
+        skillResource.id,
       );
       expect(skillAfter).toBeNull();
 
@@ -740,7 +982,7 @@ describe("SkillResource", () => {
       // Verify the editor group is deleted.
       const editorGroupsAfter = await GroupResource.fetchByModelIds(
         testContext.authenticator,
-        [editorGroupId]
+        [editorGroupId],
       );
       expect(editorGroupsAfter).toHaveLength(0);
     });
@@ -748,13 +990,13 @@ describe("SkillResource", () => {
     it("should delete agent-skill links when deleting a skill", async () => {
       const skillResource = await SkillFactory.create(
         testContext.authenticator,
-        { name: "Skill With Agent Link" }
+        { name: "Skill With Agent Link" },
       );
 
       // Link the skill to an agent.
       const agent = await AgentConfigurationFactory.createTestAgent(
         testContext.authenticator,
-        { name: "Test Agent With Skill" }
+        { name: "Test Agent With Skill" },
       );
       await SkillFactory.linkToAgent(testContext.authenticator, {
         skillId: skillResource.id,
@@ -764,10 +1006,10 @@ describe("SkillResource", () => {
       // Verify agent-skill link exists before deletion using Resource.
       const skillsForAgentBefore = await SkillResource.listByAgentConfiguration(
         testContext.authenticator,
-        agent
+        agent,
       );
       expect(skillsForAgentBefore.some((s) => s.id === skillResource.id)).toBe(
-        true
+        true,
       );
 
       // Delete the skill.
@@ -777,10 +1019,10 @@ describe("SkillResource", () => {
       // Verify agent-skill link is deleted.
       const skillsForAgentAfter = await SkillResource.listByAgentConfiguration(
         testContext.authenticator,
-        agent
+        agent,
       );
       expect(skillsForAgentAfter.some((s) => s.id === skillResource.id)).toBe(
-        false
+        false,
       );
     });
   });
@@ -794,7 +1036,7 @@ describe("SkillResource", () => {
       const serverView = await MCPServerViewFactory.create(
         testContext.workspace,
         server.sId,
-        space
+        space,
       );
 
       // Create a skill with the MCP server view
@@ -813,7 +1055,7 @@ describe("SkillResource", () => {
       // Test that skills with the MCP server view are returned
       const skillsWithMCP = await SkillResource.listByMCPServerViewIds(
         testContext.authenticator,
-        [serverView.id]
+        [serverView.id],
       );
       expect(skillsWithMCP).toHaveLength(1);
       expect(skillsWithMCP[0].id).toBe(skill1.id);
@@ -821,14 +1063,14 @@ describe("SkillResource", () => {
       // Test with empty array returns empty
       const emptyResult = await SkillResource.listByMCPServerViewIds(
         testContext.authenticator,
-        []
+        [],
       );
       expect(emptyResult).toHaveLength(0);
 
       // Test with non-existent IDs returns empty
       const nonExistentResult = await SkillResource.listByMCPServerViewIds(
         testContext.authenticator,
-        [999999]
+        [999999],
       );
       expect(nonExistentResult).toHaveLength(0);
     });
@@ -842,12 +1084,12 @@ describe("SkillResource", () => {
       const dsv1 = await DataSourceViewFactory.folder(
         testContext.workspace,
         space,
-        testContext.user
+        testContext.user,
       );
       const dsv2 = await DataSourceViewFactory.folder(
         testContext.workspace,
         space,
-        testContext.user
+        testContext.user,
       );
       const skill1 = await SkillFactory.create(testContext.authenticator, {
         name: "Skill With DSV1",
@@ -869,7 +1111,7 @@ describe("SkillResource", () => {
       // Test that skills with dsv1 are returned
       const skillsWithDsv1 = await SkillResource.listByDataSourceViewIds(
         testContext.authenticator,
-        [dsv1.id]
+        [dsv1.id],
       );
       expect(skillsWithDsv1).toHaveLength(1);
       expect(skillsWithDsv1[0].id).toBe(skill1.id);
@@ -877,14 +1119,14 @@ describe("SkillResource", () => {
       // Test with non-existent ID returns empty
       const emptyResult = await SkillResource.listByDataSourceViewIds(
         testContext.authenticator,
-        [dsv2.id]
+        [dsv2.id],
       );
       expect(emptyResult).toHaveLength(0);
 
       // Test with empty array returns empty
       const emptyArrayResult = await SkillResource.listByDataSourceViewIds(
         testContext.authenticator,
-        []
+        [],
       );
       expect(emptyArrayResult).toHaveLength(0);
     });
@@ -898,7 +1140,7 @@ describe("SkillResource", () => {
       const dsv = await DataSourceViewFactory.folder(
         testContext.workspace,
         space,
-        testContext.user
+        testContext.user,
       );
 
       const skill = await SkillFactory.create(testContext.authenticator, {
@@ -916,12 +1158,12 @@ describe("SkillResource", () => {
       // Re-fetch the skill to get the updated data source configurations
       const freshSkill = await SkillResource.fetchByModelIdWithAuth(
         testContext.authenticator,
-        skill.id
+        skill.id,
       );
       expect(freshSkill).not.toBeNull();
 
       const attachedKnowledge = await freshSkill!.getAttachedKnowledge(
-        testContext.authenticator
+        testContext.authenticator,
       );
 
       expect(attachedKnowledge).toHaveLength(2);
@@ -939,7 +1181,7 @@ describe("SkillResource", () => {
       const dsv = await DataSourceViewFactory.folder(
         testContext.workspace,
         space,
-        testContext.user
+        testContext.user,
       );
 
       const attachedKnowledge: SkillAttachedKnowledge[] = [
@@ -951,7 +1193,7 @@ describe("SkillResource", () => {
         {
           mcpServerViews: [],
           attachedKnowledge,
-        }
+        },
       );
 
       expect(requestedSpaceIds).toContain(space.id);
@@ -974,11 +1216,11 @@ describe("SkillResource", () => {
       // Verify both skills exist.
       const fetched1 = await SkillResource.fetchByModelIdWithAuth(
         testContext.authenticator,
-        skill1.id
+        skill1.id,
       );
       const fetched2 = await SkillResource.fetchByModelIdWithAuth(
         testContext2.authenticator,
-        skill2.id
+        skill2.id,
       );
       expect(fetched1).not.toBeNull();
       expect(fetched2).not.toBeNull();
@@ -989,14 +1231,14 @@ describe("SkillResource", () => {
       // Verify workspace1 skill is deleted.
       const deletedSkill1 = await SkillResource.fetchByModelIdWithAuth(
         testContext.authenticator,
-        skill1.id
+        skill1.id,
       );
       expect(deletedSkill1).toBeNull();
 
       // Verify workspace2 skill still exists.
       const stillExistsSkill2 = await SkillResource.fetchByModelIdWithAuth(
         testContext2.authenticator,
-        skill2.id
+        skill2.id,
       );
       expect(stillExistsSkill2).not.toBeNull();
       expect(stillExistsSkill2?.id).toBe(skill2.id);
@@ -1021,11 +1263,11 @@ describe("SkillResource", () => {
       // Verify editor groups exist.
       const editorGroupsBefore = await GroupResource.fetchByModelIds(
         testContext.authenticator,
-        editorGroupIds
+        editorGroupIds,
       );
       expect(editorGroupsBefore.length).toBe(editorGroupIds.length);
       expect(editorGroupsBefore.every((g) => g.kind === "skill_editors")).toBe(
-        true
+        true,
       );
 
       // Delete all skills for the workspace.
@@ -1034,11 +1276,11 @@ describe("SkillResource", () => {
       // Verify skills are deleted.
       const skill1After = await SkillResource.fetchByModelIdWithAuth(
         testContext.authenticator,
-        skill1.id
+        skill1.id,
       );
       const skill2After = await SkillResource.fetchByModelIdWithAuth(
         testContext.authenticator,
-        skill2.id
+        skill2.id,
       );
       expect(skill1After).toBeNull();
       expect(skill2After).toBeNull();
@@ -1052,7 +1294,7 @@ describe("SkillResource", () => {
       // Verify editor groups are deleted.
       const editorGroupsAfter = await GroupResource.fetchByModelIds(
         testContext.authenticator,
-        editorGroupIds
+        editorGroupIds,
       );
       expect(editorGroupsAfter).toHaveLength(0);
     });
@@ -1062,7 +1304,7 @@ describe("SkillResource", () => {
     it("returns an empty array when no skills are provided", async () => {
       const results = await SkillResource.listAgentMessageSkillsByCustomSkills(
         testContext.authenticator,
-        []
+        [],
       );
       expect(results).toEqual([]);
     });
@@ -1077,7 +1319,7 @@ describe("SkillResource", () => {
 
       const agent = await AgentConfigurationFactory.createTestAgent(
         testContext.authenticator,
-        { name: "Agent For Skill Test" }
+        { name: "Agent For Skill Test" },
       );
 
       await SkillFactory.linkToAgent(testContext.authenticator, {
@@ -1091,7 +1333,7 @@ describe("SkillResource", () => {
 
       const conv1 = await ConversationFactory.create(
         testContext.authenticator,
-        { agentConfigurationId: agent.sId, messagesCreatedAt: [] }
+        { agentConfigurationId: agent.sId, messagesCreatedAt: [] },
       );
       const { agentMessage: msg1 } =
         await ConversationFactory.createAgentMessage(
@@ -1100,12 +1342,12 @@ describe("SkillResource", () => {
             workspace: testContext.workspace,
             conversation: conv1,
             agentConfig: agent,
-          }
+          },
         );
 
       const conv2 = await ConversationFactory.create(
         testContext.authenticator,
-        { agentConfigurationId: agent.sId, messagesCreatedAt: [] }
+        { agentConfigurationId: agent.sId, messagesCreatedAt: [] },
       );
       const { agentMessage: msg2 } =
         await ConversationFactory.createAgentMessage(
@@ -1114,7 +1356,7 @@ describe("SkillResource", () => {
             workspace: testContext.workspace,
             conversation: conv2,
             agentConfig: agent,
-          }
+          },
         );
 
       // Enable skillA on conv1 and skillB on conv2
@@ -1135,7 +1377,7 @@ describe("SkillResource", () => {
           agentConfigurationId: agent.sId,
           agentMessageId: msg1.agentMessageId,
           conversationId: conv1.id,
-        }
+        },
       );
       await SkillResource.snapshotConversationSkillsForMessage(
         testContext.authenticator,
@@ -1143,12 +1385,12 @@ describe("SkillResource", () => {
           agentConfigurationId: agent.sId,
           agentMessageId: msg2.agentMessageId,
           conversationId: conv2.id,
-        }
+        },
       );
 
       const results = await SkillResource.listAgentMessageSkillsByCustomSkills(
         testContext.authenticator,
-        [skillA]
+        [skillA],
       );
 
       expect(results).toHaveLength(1);

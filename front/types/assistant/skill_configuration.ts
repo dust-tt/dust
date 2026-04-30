@@ -48,7 +48,7 @@ export const SkillWithoutInstructionsAndToolsSchema = z.object({
     z.object({
       fileId: z.string(),
       fileName: z.string(),
-    })
+    }),
   ),
   canWrite: z.boolean(),
   isExtendable: z.boolean(),
@@ -73,6 +73,8 @@ export type SkillRelations = {
   editors: UserType[] | null;
   editedByUser: UserType | null;
   extendedSkill: SkillType | null;
+  referencedSkills: SkillWithoutInstructionsAndToolsType[];
+  referencedBy: SkillWithoutInstructionsAndToolsType[];
 };
 
 export type SkillWithRelationsType = SkillType & {

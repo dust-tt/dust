@@ -55,6 +55,7 @@ import {
   SkillDataSourceConfigurationModel,
   SkillFileAttachmentModel,
   SkillMCPServerConfigurationModel,
+  SkillReferenceModel,
   SkillVersionModel,
 } from "@app/lib/models/skill";
 import {
@@ -223,6 +224,7 @@ export function loadAllModels() {
     OnboardingTaskModel,
     UserToolApprovalModel,
     SkillConfigurationModel,
+    SkillReferenceModel,
     SkillDataSourceConfigurationModel,
     SkillVersionModel,
     GroupSkillModel,
