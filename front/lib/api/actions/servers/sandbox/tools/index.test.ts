@@ -21,6 +21,10 @@ const {
   mockStartTelemetry,
   mockWrapCommand,
   mockEnsureActive,
+  mockLoadEnv,
+  mockLoggerError,
+  mockLoggerInfo,
+  mockLoggerWarn,
 } = vi.hoisted(() => ({
   mockAddSandboxPolicyDomain: vi.fn(),
   mockCheckEgressForwarderHealth: vi.fn(),
@@ -37,6 +41,10 @@ const {
   mockStartTelemetry: vi.fn(),
   mockWrapCommand: vi.fn(),
   mockEnsureActive: vi.fn(),
+  mockLoadEnv: vi.fn(),
+  mockLoggerError: vi.fn(),
+  mockLoggerInfo: vi.fn(),
+  mockLoggerWarn: vi.fn(),
 }));
 
 vi.mock("@app/lib/api/config", () => ({
@@ -119,11 +127,17 @@ vi.mock("@app/lib/resources/sandbox_resource", () => ({
   },
 }));
 
+vi.mock("@app/lib/resources/workspace_sandbox_env_var_resource", () => ({
+  WorkspaceSandboxEnvVarResource: {
+    loadEnv: mockLoadEnv,
+  },
+}));
+
 vi.mock("@app/logger/logger", () => ({
   default: {
-    error: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
+    error: mockLoggerError,
+    info: mockLoggerInfo,
+    warn: mockLoggerWarn,
   },
 }));
 
@@ -204,6 +218,7 @@ describe("runSandboxBashTool", () => {
     mockGetSandboxImage.mockReturnValue(new Ok({}));
     mockMountConversationFiles.mockResolvedValue(new Ok(undefined));
     mockRefreshGcsToken.mockResolvedValue(new Ok(undefined));
+    mockLoadEnv.mockResolvedValue(new Ok({}));
     mockReadNewDenyLogEntries.mockResolvedValue(new Ok([]));
     mockRevokeExecToken.mockResolvedValue(undefined);
     mockSetupEgressForwarder.mockResolvedValue(new Ok(undefined));
@@ -270,6 +285,190 @@ describe("runSandboxBashTool", () => {
         user: "agent-proxied",
       })
     );
+  });
+
+  it("redacts eligible workspace env var values from final bash output", async () => {
+    const secretValue = "high-entropy-token-123";
+    mockLoadEnv.mockResolvedValue(
+      new Ok({ DST_API_TOKEN: secretValue })
+    );
+    const sandbox = {
+      providerId: "provider-id",
+      sId: "sandbox-id",
+      exec: vi.fn().mockResolvedValue(
+        new Ok({
+          exitCode: 0,
+          stdout: `token=${secretValue}`,
+          stderr: "",
+        })
+      ),
+    };
+
+    mockEnsureActive.mockResolvedValue(
+      new Ok({
+        freshlyCreated: false,
+        sandbox,
+        wokeFromSleep: false,
+      })
+    );
+    mockCheckEgressForwarderHealth.mockResolvedValue(new Ok(true));
+
+    const result = await runSandboxBashTool(
+      { command: "echo token", description: "Run command" },
+      makeExtra()
+    );
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      throw result.error;
+    }
+    expect(result.value[0].text).toContain("«redacted: $DST_API_TOKEN»");
+    expect(result.value[0].text).not.toContain(secretValue);
+    expect(mockLoggerWarn).toHaveBeenCalledWith(
+      {
+        workspaceId: "workspace-id",
+        varNames: ["DST_API_TOKEN"],
+      },
+      "sandbox bash output contained env var values; redacted"
+    );
+  });
+
+  it("redacts eligible values from appended network proxy logs", async () => {
+    const secretValue = "another-high-entropy-token";
+    mockLoadEnv.mockResolvedValue(
+      new Ok({ DST_API_TOKEN: secretValue })
+    );
+    mockReadNewDenyLogEntries.mockResolvedValue(
+      new Ok([`denied example.com ${secretValue}`])
+    );
+    const sandbox = {
+      providerId: "provider-id",
+      sId: "sandbox-id",
+      exec: vi
+        .fn()
+        .mockResolvedValue(new Ok({ exitCode: 0, stdout: "ok", stderr: "" })),
+    };
+
+    mockEnsureActive.mockResolvedValue(
+      new Ok({
+        freshlyCreated: false,
+        sandbox,
+        wokeFromSleep: false,
+      })
+    );
+    mockCheckEgressForwarderHealth.mockResolvedValue(new Ok(true));
+
+    const result = await runSandboxBashTool(
+      { command: "echo ok", description: "Run command" },
+      makeExtra()
+    );
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      throw result.error;
+    }
+    expect(result.value[0].text).toContain(
+      "<network_proxy_logs>\ndenied example.com «redacted: $DST_API_TOKEN»\n</network_proxy_logs>"
+    );
+    expect(result.value[0].text).not.toContain(secretValue);
+  });
+
+  it("does not redact short or low-value values and logs ineligibility once per name", async () => {
+    mockLoadEnv.mockResolvedValue(
+      new Ok({
+        DST_SHORT_VALUE: "12345678",
+        DST_BOOLEAN_VALUE: "true",
+        DST_NUMERIC_VALUE: "1234567890123456",
+        DST_WORD_VALUE: "abc123def456",
+      })
+    );
+    const sandbox = {
+      providerId: "provider-id",
+      sId: "sandbox-id",
+      exec: vi.fn().mockResolvedValue(
+        new Ok({
+          exitCode: 0,
+          stdout:
+            "12345678 true 1234567890123456 abc123def456 high-entropy-token",
+          stderr: "",
+        })
+      ),
+    };
+
+    mockEnsureActive.mockResolvedValue(
+      new Ok({
+        freshlyCreated: false,
+        sandbox,
+        wokeFromSleep: false,
+      })
+    );
+    mockCheckEgressForwarderHealth.mockResolvedValue(new Ok(true));
+
+    const firstResult = await runSandboxBashTool(
+      { command: "echo values", description: "Run command" },
+      makeExtra()
+    );
+    const secondResult = await runSandboxBashTool(
+      { command: "echo values", description: "Run command" },
+      makeExtra()
+    );
+
+    expect(firstResult.isOk()).toBe(true);
+    expect(secondResult.isOk()).toBe(true);
+    if (firstResult.isErr() || secondResult.isErr()) {
+      throw new Error("Unexpected bash tool failure");
+    }
+    expect(firstResult.value[0].text).toContain(
+      "12345678 true 1234567890123456 abc123def456"
+    );
+    expect(firstResult.value[0].text).not.toContain("«redacted:");
+
+    const ineligibleLogCalls = mockLoggerInfo.mock.calls.filter(
+      (call) =>
+        call[1] ===
+        "sandbox env var value not eligible for output redaction (too short or low-value)"
+    );
+    expect(ineligibleLogCalls).toHaveLength(4);
+    expect(mockLoggerWarn).not.toHaveBeenCalledWith(
+      expect.anything(),
+      "sandbox bash output contained env var values; redacted"
+    );
+  });
+
+  it("fails closed when env var redaction materialization fails", async () => {
+    mockLoadEnv.mockResolvedValue(
+      new Err(new Error("bad ciphertext for DST_API_TOKEN"))
+    );
+    const sandbox = {
+      providerId: "provider-id",
+      sId: "sandbox-id",
+      exec: vi
+        .fn()
+        .mockResolvedValue(
+          new Ok({ exitCode: 0, stdout: "secret", stderr: "" })
+        ),
+    };
+
+    mockEnsureActive.mockResolvedValue(
+      new Ok({
+        freshlyCreated: false,
+        sandbox,
+        wokeFromSleep: false,
+      })
+    );
+    mockCheckEgressForwarderHealth.mockResolvedValue(new Ok(true));
+
+    const result = await runSandboxBashTool(
+      { command: "echo secret", description: "Run command" },
+      makeExtra()
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toBe(
+        "Failed to safely return sandbox output."
+      );
+    }
   });
 
   it("restarts the forwarder when the health check fails", async () => {

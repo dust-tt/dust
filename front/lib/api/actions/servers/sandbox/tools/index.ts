@@ -44,6 +44,7 @@ import { startTelemetry } from "@app/lib/api/sandbox/telemetry";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
+import { WorkspaceSandboxEnvVarResource } from "@app/lib/resources/workspace_sandbox_env_var_resource";
 import logger from "@app/logger/logger";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 import { isDevelopment } from "@app/types/shared/env";
@@ -52,6 +53,24 @@ import { Err, Ok, type Result } from "@app/types/shared/result";
 const DEFAULT_WORKING_DIRECTORY = "/home/agent";
 const DEFAULT_EXEC_TIMEOUT_MS = 60_000;
 const ADD_EGRESS_DOMAIN_TOOL_NAME = "add_egress_domain" as const;
+const REDACTION_MARKER_PREFIX = "«redacted:";
+const REDACTION_MARKER_SUFFIX = "»";
+const LOW_VALUE_DENYLIST = new Set([
+  "true",
+  "false",
+  "production",
+  "staging",
+  "development",
+  "admin",
+  "root",
+  "localhost",
+]);
+// Process-scoped: dedupes the per-(workspace, name) "ineligible value" log so
+// a workspace with a misconfigured short value doesn't spam logs on every bash
+// invocation. Cleared on process restart — fine, the log is a hint, not a
+// metric. Set cardinality is bounded by #(workspace × ineligible env var
+// name) on a single pod, which is small in practice.
+const loggedIneligibleRedactionValues = new Set<string>();
 
 interface FormatExecOutputOpts {
   denyLogEntries?: string[];
@@ -82,6 +101,99 @@ function formatExecOutput(
   }
 
   return sections.join("\n") || "(no output)";
+}
+
+// Eligibility floor for output redaction. Goal: avoid mass-redacting common
+// short substrings ("true", "1234", "admin", ...) that would randomly collide
+// with unrelated bash output and turn legitimate text into «redacted: $FOO».
+// The thresholds (12 chars min, 16 chars for pure-alphanumeric, denylist of
+// low-entropy words, no pure digits) are heuristic and conservative; they
+// trade off a small false-negative rate (legit short secrets won't be
+// stripped) against a much smaller false-positive rate. The skill instruction
+// is the primary disclosure control — this is a safety net.
+function isRedactionEligible(value: string): boolean {
+  const normalizedValue = value.toLowerCase();
+
+  if (value.length < 12) {
+    return false;
+  }
+
+  if (LOW_VALUE_DENYLIST.has(normalizedValue)) {
+    return false;
+  }
+
+  if (/^[0-9]+$/.test(value)) {
+    return false;
+  }
+
+  if (/^[A-Za-z0-9]+$/.test(value) && value.length < 16) {
+    return false;
+  }
+
+  return true;
+}
+
+function logIneligibleRedactionValueOnce({
+  workspaceId,
+  name,
+}: {
+  workspaceId: string;
+  name: string;
+}) {
+  const key = `${workspaceId}:${name}`;
+  if (loggedIneligibleRedactionValues.has(key)) {
+    return;
+  }
+
+  loggedIneligibleRedactionValues.add(key);
+  logger.info(
+    { workspaceId, name },
+    "sandbox env var value not eligible for output redaction (too short or low-value)"
+  );
+}
+
+// Best-effort final-payload redaction for accidental bash output leaks.
+// This does not catch transformed values, short/low-entropy values, other
+// sandbox tools, or out-of-band exfiltration. The sandbox skill instruction
+// remains the primary disclosure control.
+async function redactSandboxEnvVarsFromOutput(
+  auth: Authenticator,
+  output: string
+): Promise<Result<string, Error>> {
+  const envResult = await WorkspaceSandboxEnvVarResource.loadEnv(auth);
+  if (envResult.isErr()) {
+    return envResult;
+  }
+
+  const workspaceId = auth.getNonNullableWorkspace().sId;
+  let redactedOutput = output;
+  const redactedNames: string[] = [];
+
+  // O(env_count × output_size): split/join scans the full output once per
+  // eligible env var. Acceptable at current bounds (env_count ≤ 50 per
+  // MAX_VARS_PER_WORKSPACE, output capped upstream).
+  for (const [name, value] of Object.entries(envResult.value)) {
+    if (!isRedactionEligible(value)) {
+      logIneligibleRedactionValueOnce({ workspaceId, name });
+      continue;
+    }
+
+    if (redactedOutput.includes(value)) {
+      redactedOutput = redactedOutput
+        .split(value)
+        .join(`${REDACTION_MARKER_PREFIX} $${name}${REDACTION_MARKER_SUFFIX}`);
+      redactedNames.push(name);
+    }
+  }
+
+  if (redactedNames.length > 0) {
+    logger.warn(
+      { workspaceId, varNames: redactedNames },
+      "sandbox bash output contained env var values; redacted"
+    );
+  }
+
+  return new Ok(redactedOutput);
 }
 
 function isSandboxAgentEgressRequestsAllowed(auth: Authenticator): boolean {
@@ -298,8 +410,21 @@ export async function runSandboxBashTool(
   }
 
   const output = formatExecOutput(execResult.value, { denyLogEntries });
+  const redactedOutputResult = await redactSandboxEnvVarsFromOutput(
+    auth,
+    output
+  );
+  if (redactedOutputResult.isErr()) {
+    logger.error(
+      { err: redactedOutputResult.error },
+      "Failed to load sandbox env vars for bash output redaction"
+    );
+    return new Err(new MCPError("Failed to safely return sandbox output."));
+  }
 
-  return new Ok([{ type: "text" as const, text: output }]);
+  return new Ok([
+    { type: "text" as const, text: redactedOutputResult.value },
+  ]);
 }
 
 export async function addEgressDomainTool(
