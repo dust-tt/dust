@@ -137,8 +137,8 @@ export const ToolsList = memo(
     );
 
     // We use a single controller for the whole `toolSettings` record because
-    // RHF treats dots in field paths as nested-object separators, which would
-    // corrupt form state for tool names that contain dots.
+    // React Hook Form treats dots in field paths as nested-object separators,
+    // which would corrupt form state for tool names that contain dots.
     const { control } = useFormContext<MCPServerFormValues>();
     const { field } = useController({
       control,

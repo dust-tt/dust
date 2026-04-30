@@ -58,7 +58,9 @@ const owner = {
   whiteListedProviders: null,
   defaultEmbeddingProvider: null,
   metadata: {},
-} as unknown as LightWorkspaceType;
+  sharingPolicy: "workspace_only",
+  metronomeCustomerId: null,
+} satisfies LightWorkspaceType;
 
 const mcpServerView = {
   id: 1,
@@ -75,10 +77,13 @@ const mcpServerView = {
   server: {
     sId: "rms_1",
     name: "test-server",
+    version: "1.0.0",
     description: "Test server description",
-    icon: "Cog",
+    icon: "ToolsIcon",
+    authorization: null,
     availability: "manual",
     allowMultipleInstances: true,
+    documentationUrl: null,
     tools: [
       {
         name: TOOL_NAME_WITH_DOT,
@@ -86,34 +91,39 @@ const mcpServerView = {
       },
     ],
   },
-} as unknown as MCPServerViewType;
+} satisfies MCPServerViewType;
 
-interface HarnessProps {
-  formRef: { current: UseFormReturn<MCPServerFormValues> | null };
-}
+function renderToolsList() {
+  let form!: UseFormReturn<MCPServerFormValues>;
 
-function Harness({ formRef }: HarnessProps) {
-  const defaults = getMCPServerFormDefaults(mcpServerView);
-  const form = useForm<MCPServerFormValues>({
-    values: defaults,
-    mode: "onChange",
-    shouldUnregister: false,
-    resolver: zodResolver(
-      getMCPServerFormSchema(mcpServerView, { existingViewNames: [] })
-    ),
-  });
-  formRef.current = form;
-  return (
-    <FormProvider {...form}>
-      <ToolsList owner={owner} mcpServerView={mcpServerView} />
-    </FormProvider>
-  );
+  function Harness() {
+    const defaults = getMCPServerFormDefaults(mcpServerView);
+    const currentForm = useForm<MCPServerFormValues>({
+      values: defaults,
+      mode: "onChange",
+      shouldUnregister: false,
+      resolver: zodResolver(
+        getMCPServerFormSchema(mcpServerView, { existingViewNames: [] })
+      ),
+    });
+
+    form = currentForm;
+
+    return (
+      <FormProvider {...currentForm}>
+        <ToolsList owner={owner} mcpServerView={mcpServerView} />
+      </FormProvider>
+    );
+  }
+
+  render(<Harness />);
+
+  return { form };
 }
 
 describe("ToolsList", () => {
   it("keeps form state flat and validates when a tool name contains a dot", async () => {
-    const formRef: HarnessProps["formRef"] = { current: null };
-    render(<Harness formRef={formRef} />);
+    const { form } = renderToolsList();
 
     // Toggling the dotted-name tool's enabled state used to corrupt RHF state
     // because dots in field paths are interpreted as nested-object separators.
@@ -122,16 +132,13 @@ describe("ToolsList", () => {
       fireEvent.click(checkbox);
     });
 
-    const form = formRef.current!;
     const values = form.getValues();
 
     // The dotted key must remain a flat record entry, not a nested path.
     expect(values.toolSettings[TOOL_NAME_WITH_DOT]).toBeDefined();
     expect(values.toolSettings[TOOL_NAME_WITH_DOT].enabled).toBe(false);
     // No nested object should have been created at the path "weather.get_current".
-    expect(
-      (values.toolSettings as Record<string, unknown>).weather
-    ).toBeUndefined();
+    expect(values.toolSettings["weather"]).toBeUndefined();
 
     // Schema validation must pass — this is the user-facing failure mode.
     const isValid = await form.trigger();
