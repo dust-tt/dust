@@ -13,7 +13,7 @@ import { z } from "zod";
 // tool type system (ServerSideMCPToolType doesn't carry displayLabels).
 // Fall back to the label defined in the run_agent server metadata.
 const RUN_AGENT_RUNNING_LABEL = "Running agent";
-export const AWAITING_USER_PERMISSION_LABEL = "Awaiting user permission";
+export const AWAITING_TOOL_APPROVAL_LABEL = "Awaiting tool approval";
 
 export function getActionRunningLabel(action: AgentActionPublicType): string {
   if (action.displayLabels?.running) {

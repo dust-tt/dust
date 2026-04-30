@@ -1,5 +1,5 @@
 import {
-  AWAITING_USER_PERMISSION_LABEL,
+  AWAITING_TOOL_APPROVAL_LABEL,
   getActionDetails,
   getActionDoneLabel,
   getActionRunningLabel,
@@ -112,10 +112,10 @@ export class PlanMessageHandler {
     });
   }
 
-  setTaskAwaitingUserPermission(taskId: string = "default"): void {
+  setTaskAwaitingToolApproval(taskId: string = "default"): void {
     this.taskCards.set(taskId, {
       taskId,
-      title: AWAITING_USER_PERMISSION_LABEL,
+      title: AWAITING_TOOL_APPROVAL_LABEL,
       status: "pending",
     });
   }
@@ -150,8 +150,8 @@ export class PlanMessageHandler {
         return "continue";
       }
       case "tool_approve_execution": {
-        this.setTaskAwaitingUserPermission(taskId);
-        await this.upsertPlanMessage(AWAITING_USER_PERMISSION_LABEL);
+        this.setTaskAwaitingToolApproval(taskId);
+        await this.upsertPlanMessage(AWAITING_TOOL_APPROVAL_LABEL);
         return "continue";
       }
       case "agent_message_success":
