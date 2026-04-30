@@ -25,7 +25,6 @@ import {
   DialogHeader,
   DialogTitle,
   InformationCircleIcon,
-  Input,
   Label,
   LockIcon,
   Page,
@@ -328,18 +327,25 @@ export function EnvironmentSection() {
             <Page.Vertical align="stretch" gap="md">
               <div className="flex flex-col gap-1">
                 <Label htmlFor="sandbox-env-var-name">Name</Label>
-                <div className="flex items-stretch gap-1">
-                  <div
-                    className="flex h-9 shrink-0 items-center rounded-xl bg-muted-background px-3 font-mono text-sm text-muted-foreground dark:bg-muted-background-night dark:text-muted-foreground-night"
+                <div
+                  className={`flex h-9 w-full items-center rounded-xl border bg-muted-background pl-3 text-sm focus-within:ring focus-within:ring-inset dark:bg-muted-background-night ${
+                    isUpsertingWorkspaceSandboxEnvVar || isNameLocked
+                      ? "opacity-50"
+                      : ""
+                  }`}
+                >
+                  <span
+                    className="select-none text-muted-foreground dark:text-muted-foreground-night"
                     aria-hidden="true"
                     title="The DST_ prefix is reserved and cannot be removed."
                   >
                     {SANDBOX_ENV_VAR_PREFIX}
-                  </div>
-                  <Input
+                  </span>
+                  <input
                     id="sandbox-env-var-name"
+                    type="text"
                     placeholder="API_TOKEN"
-                    containerClassName="flex-1"
+                    className="h-full w-full flex-1 bg-transparent pr-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0 dark:text-foreground-night dark:placeholder:text-muted-foreground-night"
                     disabled={isUpsertingWorkspaceSandboxEnvVar || isNameLocked}
                     ref={nameField.ref}
                     name={nameField.name}
