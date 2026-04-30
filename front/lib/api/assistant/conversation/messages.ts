@@ -405,6 +405,7 @@ export const createAgentMessages = async (
                 {
                   configuration,
                   conversation,
+                  transaction,
                 }
               );
 
