@@ -25,7 +25,7 @@ import type { JSONContent } from "@tiptap/react";
 export const AGENT_MENTION_REGEX = /:mention\[([^\]]+)]\{sId=([^}]+?)}/g;
 export const AGENT_MENTION_REGEX_BEGINNING = new RegExp(
   "^" + AGENT_MENTION_REGEX.source,
-  AGENT_MENTION_REGEX.flags.replace("g", "")
+  AGENT_MENTION_REGEX.flags.replace("g", ""),
 );
 
 /**
@@ -35,7 +35,7 @@ export const AGENT_MENTION_REGEX_BEGINNING = new RegExp(
 export const USER_MENTION_REGEX = /:mention_user\[([^\]]+)]\{sId=([^}]+?)}/g;
 export const USER_MENTION_REGEX_BEGINNING = new RegExp(
   "^" + USER_MENTION_REGEX.source,
-  USER_MENTION_REGEX.flags.replace("g", "")
+  USER_MENTION_REGEX.flags.replace("g", ""),
 );
 
 export function startsWithUserMention(markdown: string): boolean {
@@ -70,7 +70,7 @@ export function extractFromString(content: string): MentionType[] {
 export function serializeMention(
   mention:
     | { name: string; sId: string }
-    | { id: string; type: "agent" | "user"; label: string }
+    | { id: string; type: "agent" | "user"; label: string },
 ): string {
   if ("name" in mention && "sId" in mention) {
     // Legacy format support
@@ -141,15 +141,17 @@ export function extractFromEditorJSON(node?: JSONContent): {
     const skillIcon = node.attrs?.skillIcon;
     const skillName = node.attrs?.skillName;
 
-    if (isString(skillId) && isString(skillIcon) && isString(skillName)) {
+    if (isString(skillId) && isString(skillName)) {
+      const icon = isString(skillIcon) ? skillIcon : null;
+
       skills.push({
         id: skillId,
-        icon: skillIcon,
+        icon,
         name: skillName,
       });
       textContent += serializeSkillTag({
         id: skillId,
-        icon: skillIcon,
+        icon,
         name: skillName,
       });
     }

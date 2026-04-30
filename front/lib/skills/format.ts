@@ -1,6 +1,8 @@
+import { escape, unescape } from "html-escaper";
+
 export type SkillReference = {
   id: string;
-  icon: string;
+  icon: string | null;
   name: string;
 };
 
@@ -14,14 +16,14 @@ function parseSkillTagAttributes(attributes: string): SkillReference | null {
   const name = attributes.match(/\bname="([^"]+)"/)?.[1];
   const icon = attributes.match(/\bicon="([^"]+)"/)?.[1];
 
-  if (!id || !name || !icon) {
+  if (!id || !name) {
     return null;
   }
 
   return {
-    id,
-    icon,
-    name,
+    id: unescape(id),
+    icon: icon ? unescape(icon) : null,
+    name: unescape(name),
   };
 }
 
@@ -46,5 +48,7 @@ export function extractUniqueSkillIds(content: string): string[] {
 }
 
 export function serializeSkillTag({ id, name, icon }: SkillReference): string {
-  return `<${SKILL_TAG_NAME} id="${id}" name="${name}" icon="${icon}" />`;
+  const iconAttribute = icon ? ` icon="${escape(icon)}"` : "";
+
+  return `<${SKILL_TAG_NAME} id="${escape(id)}" name="${escape(name)}"${iconAttribute} />`;
 }

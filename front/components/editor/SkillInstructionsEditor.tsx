@@ -1,6 +1,11 @@
 import { AgentInstructionDiffExtension } from "@app/components/editor/extensions/agent_builder/AgentInstructionDiffExtension";
+import { SKILL_NODE_TYPE } from "@app/components/editor/extensions/input_bar/SkillNode";
 import { KNOWLEDGE_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
 import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
+import {
+  skillReferenceItemFromAttributes,
+  type SkillReferenceItem,
+} from "@app/components/editor/extensions/skill_builder/SkillNode";
 import { SlashCommandExtension } from "@app/components/editor/extensions/skill_builder/SlashCommandExtension";
 import {
   buildSkillInstructionsExtensions,
@@ -32,6 +37,23 @@ function useEditorService(editor: Editor | null) {
             const selectedItems = node.attrs.selectedItems as KnowledgeItem[];
             if (selectedItems && selectedItems.length > 0) {
               items.push(...selectedItems);
+            }
+          }
+        });
+        return items;
+      },
+
+      getSkillReferenceItems(): SkillReferenceItem[] {
+        if (!editor) {
+          return [];
+        }
+
+        const items: SkillReferenceItem[] = [];
+        editor.state.doc.descendants((node) => {
+          if (node.type.name === SKILL_NODE_TYPE) {
+            const item = skillReferenceItemFromAttributes(node.attrs);
+            if (item) {
+              items.push(item);
             }
           }
         });
@@ -119,9 +141,9 @@ export function useSkillInstructionsEditor({
     () =>
       buildSkillInstructionsExtensions(
         isReadOnly,
-        skillInstructionsEditableExtensions
+        skillInstructionsEditableExtensions,
       ),
-    [isReadOnly]
+    [isReadOnly],
   );
 
   // Track if initial content has been set
@@ -137,7 +159,7 @@ export function useSkillInstructionsEditor({
       onBlur,
       onDelete: onDelete ? ({ editor }) => onDelete(editor) : undefined,
     },
-    [extensions, isReadOnly]
+    [extensions, isReadOnly],
   );
 
   const editorService = useEditorService(editor);
@@ -176,7 +198,7 @@ export function useSkillInstructionsEditor({
 const readOnlyStyles = cn(
   "min-h-60 w-full min-w-0 rounded-xl border p-3",
   "border-border bg-muted-background",
-  "dark:border-border-night dark:bg-muted-background-night"
+  "dark:border-border-night dark:bg-muted-background-night",
 );
 
 interface SkillInstructionsEditorContentProps {

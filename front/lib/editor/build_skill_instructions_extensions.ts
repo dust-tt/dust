@@ -5,11 +5,13 @@ import { BlockIdExtension } from "@app/components/editor/extensions/instructions
 import { InstructionsDocumentExtension } from "@app/components/editor/extensions/instructions/InstructionsDocumentExtension";
 import { InstructionsRootExtension } from "@app/components/editor/extensions/instructions/InstructionsRootExtension";
 import { ListItemExtension } from "@app/components/editor/extensions/ListItemExtension";
+import { SkillNode } from "@app/components/editor/extensions/input_bar/SkillNode";
 import { KnowledgeNode } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
 import {
   RawMarkdownBlock,
   rawMarkdownBlockParsers,
 } from "@app/components/editor/extensions/skill_builder/RawMarkdownBlock";
+import { SkillReferenceNodeView } from "@app/components/editor/extensions/skill_builder/SkillNode";
 import { LinkExtension } from "@app/components/editor/input_bar/LinkExtension";
 import { markdownStyles } from "@dust-tt/sparkle";
 import type { Extensions } from "@tiptap/core";
@@ -26,7 +28,7 @@ export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
  */
 export function buildSkillInstructionsExtensions(
   isReadOnly: boolean,
-  editableExtensions: Extensions = []
+  editableExtensions: Extensions = [],
 ): Extensions {
   const baseExtensions: Extensions = [
     InstructionsDocumentExtension,
@@ -86,6 +88,10 @@ export function buildSkillInstructionsExtensions(
     }),
     BlockIdExtension,
     KnowledgeNode.configure({ readOnly: isReadOnly }),
+    SkillNode.configure({
+      insertTrailingSpace: false,
+      nodeView: SkillReferenceNodeView,
+    }),
     InstructionSuggestionExtension.configure({ showBlockHighlight: false }),
     RawMarkdownBlock,
     ...rawMarkdownBlockParsers,

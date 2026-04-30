@@ -3,7 +3,7 @@ import type {
   SlashCommandDropdownRef,
 } from "@app/components/editor/extensions/skill_builder/SlashCommandDropdown";
 import { SlashCommandDropdown } from "@app/components/editor/extensions/skill_builder/SlashCommandDropdown";
-import { AttachmentIcon } from "@dust-tt/sparkle";
+import { AttachmentIcon, PuzzleIcon } from "@dust-tt/sparkle";
 import { Extension } from "@tiptap/core";
 import { PluginKey } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
@@ -14,6 +14,7 @@ import { exitSuggestion, Suggestion } from "@tiptap/suggestion";
 const slashCommandPluginKey = new PluginKey("slashCommand");
 
 const INSERT_KNOWLEDGE_NODE_ACTION = "insert-knowledge-node";
+const INSERT_SKILL_NODE_ACTION = "insert-skill-node";
 
 // Define available slash commands.
 const SLASH_COMMANDS: SlashCommand[] = [
@@ -31,6 +32,15 @@ const SLASH_COMMANDS: SlashCommand[] = [
           src="/static/landing/product/Knowledge_Tooltips.jpg"
         />
       ),
+    },
+  },
+  {
+    id: "reference-skill",
+    action: INSERT_SKILL_NODE_ACTION,
+    icon: PuzzleIcon,
+    label: "Reference skill",
+    tooltip: {
+      description: "Point to another skill that can be enabled when needed.",
     },
   },
 ];
@@ -73,7 +83,7 @@ export const SlashCommandExtension =
                 command.label.toLowerCase().includes(query.toLowerCase()) ||
                 command.tooltip?.description
                   .toLowerCase()
-                  .includes(query.toLowerCase())
+                  .includes(query.toLowerCase()),
             );
           },
         },
@@ -96,6 +106,8 @@ export const SlashCommandExtension =
                 .deleteRange(range)
                 .insertKnowledgeNode()
                 .run();
+            } else if (props.action === INSERT_SKILL_NODE_ACTION) {
+              editor.chain().focus().deleteRange(range).insertSkillNode().run();
             }
           },
           render: () => {

@@ -7,7 +7,7 @@ import { visit } from "unist-util-visit";
 
 export interface SkillDirectiveProps {
   skillId: string;
-  skillIcon: string;
+  skillIcon: string | null;
   skillName: string;
 }
 
@@ -48,7 +48,10 @@ export function skillDirective() {
         data.hName = "skill";
         data.hProperties = {
           skillId: node.attributes.sId,
-          skillIcon: node.attributes.icon,
+          skillIcon:
+            typeof node.attributes.icon === "string"
+              ? node.attributes.icon
+              : null,
           skillName: node.children[0].value,
         };
       }

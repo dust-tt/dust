@@ -1,4 +1,5 @@
 import { editorVariants } from "@app/components/editor/editorStyles";
+import { SKILL_NODE_TYPE } from "@app/components/editor/extensions/input_bar/SkillNode";
 import { KNOWLEDGE_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
 import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
 import {
@@ -39,8 +40,39 @@ function collectKnowledgeItems(editor: Editor): KnowledgeItem[] {
   return items;
 }
 
+function hasEmptyNode(editor: Editor, nodeType: string): boolean {
+  let hasEmptyTargetNode = false;
+  editor.state.doc.descendants((node) => {
+    if (node.type.name !== nodeType) {
+      return true;
+    }
+
+    if (nodeType === KNOWLEDGE_NODE_TYPE) {
+      if (
+        !Array.isArray(node.attrs.selectedItems) ||
+        node.attrs.selectedItems.length === 0
+      ) {
+        hasEmptyTargetNode = true;
+        return false;
+      }
+
+      return true;
+    }
+
+    if (nodeType === SKILL_NODE_TYPE) {
+      if (typeof node.attrs.skillId !== "string") {
+        hasEmptyTargetNode = true;
+        return false;
+      }
+    }
+
+    return true;
+  });
+  return hasEmptyTargetNode;
+}
+
 function toAttachedKnowledge(
-  items: readonly KnowledgeItem[]
+  items: readonly KnowledgeItem[],
 ): SkillBuilderFormData["attachedKnowledge"] {
   return items.map((item) => ({
     dataSourceViewId: item.dataSourceViewId,
@@ -53,8 +85,8 @@ function toAttachedKnowledge(
 function sanitizeSkillInstructionsHtml(html: string): string {
   try {
     const config: Config = {
-      ADD_TAGS: ["knowledge"],
-      ADD_ATTR: ["space", "dsv", "hasChildren"],
+      ADD_TAGS: ["knowledge", "skill"],
+      ADD_ATTR: ["space", "dsv", "hasChildren", "id", "name"],
       FORBID_ATTR: ["style", "class"],
     };
     return DOMPurify.sanitize(html, config);
@@ -67,10 +99,12 @@ const INSTRUCTIONS_EDITOR_SIZE = "min-h-60 max-h-[1024px]";
 
 interface SkillBuilderInstructionsEditorProps {
   onAddKnowledge?: (addKnowledge: () => void) => void;
+  onAddSkill?: (addSkill: () => void) => void;
 }
 
 export function SkillBuilderInstructionsEditor({
   onAddKnowledge,
+  onAddSkill,
 }: SkillBuilderInstructionsEditorProps) {
   const { compareVersion, isDiffMode } = useSkillVersionComparisonContext();
   const { resetField } = useFormContext<SkillBuilderFormData>();
@@ -94,7 +128,7 @@ export function SkillBuilderInstructionsEditor({
   } = useController<SkillBuilderFormData, typeof ATTACHED_KNOWLEDGE_FIELD_NAME>(
     {
       name: ATTACHED_KNOWLEDGE_FIELD_NAME,
-    }
+    },
   );
 
   const displayError =
@@ -103,19 +137,19 @@ export function SkillBuilderInstructionsEditor({
   const syncAttachedKnowledgeFromEditor = useCallback(
     (editor: Editor) => {
       attachedKnowledgeField.onChange(
-        toAttachedKnowledge(collectKnowledgeItems(editor))
+        toAttachedKnowledge(collectKnowledgeItems(editor)),
       );
     },
-    [attachedKnowledgeField.onChange]
+    [attachedKnowledgeField.onChange],
   );
 
   const syncInstructionsFromEditor = useCallback(
     (editor: Editor) => {
       instructionsField.onChange(
-        postProcessMarkdown(editor.getMarkdown()).trim()
+        postProcessMarkdown(editor.getMarkdown()).trim(),
       );
       instructionsHtmlField.onChange(
-        sanitizeSkillInstructionsHtml(editor.getHTML())
+        sanitizeSkillInstructionsHtml(editor.getHTML()),
       );
       syncAttachedKnowledgeFromEditor(editor);
     },
@@ -123,7 +157,7 @@ export function SkillBuilderInstructionsEditor({
       instructionsField.onChange,
       instructionsHtmlField.onChange,
       syncAttachedKnowledgeFromEditor,
-    ]
+    ],
   );
 
   const debouncedUpdate = useMemo(
@@ -133,7 +167,7 @@ export function SkillBuilderInstructionsEditor({
           syncInstructionsFromEditor(editor);
         }
       }, 250),
-    [isDiffMode, syncInstructionsFromEditor]
+    [isDiffMode, syncInstructionsFromEditor],
   );
 
   const handleUpdate = useCallback(
@@ -142,12 +176,12 @@ export function SkillBuilderInstructionsEditor({
         debouncedUpdate(editor);
       }
     },
-    [debouncedUpdate]
+    [debouncedUpdate],
   );
 
   const handleBlur = useCallback(() => {
     window.dispatchEvent(
-      new CustomEvent(SKILL_BUILDER_INSTRUCTIONS_BLUR_EVENT)
+      new CustomEvent(SKILL_BUILDER_INSTRUCTIONS_BLUR_EVENT),
     );
   }, []);
 
@@ -155,7 +189,7 @@ export function SkillBuilderInstructionsEditor({
     (editorInstance: Editor) => {
       syncAttachedKnowledgeFromEditor(editorInstance);
     },
-    [syncAttachedKnowledgeFromEditor]
+    [syncAttachedKnowledgeFromEditor],
   );
 
   const { owner, skillId, selectedSuggestionId, setAcceptInstructionEdits } =
@@ -201,28 +235,23 @@ export function SkillBuilderInstructionsEditor({
       return;
     }
 
-    // Check if there's already an empty knowledge node (in search mode).
-    // If so, do nothing - clicking the button already dismissed it via handleInteractOutside.
-    const { doc } = editor.state;
-    let hasEmptyKnowledgeNode = false;
-    doc.descendants((node) => {
-      if (node.type.name === KNOWLEDGE_NODE_TYPE) {
-        const selectedItems = node.attrs?.selectedItems as
-          | KnowledgeItem[]
-          | undefined;
-        if (!selectedItems || selectedItems.length === 0) {
-          hasEmptyKnowledgeNode = true;
-          return false;
-        }
-      }
-      return true;
-    });
-
-    if (hasEmptyKnowledgeNode) {
+    if (hasEmptyNode(editor, KNOWLEDGE_NODE_TYPE)) {
       return;
     }
 
     editor.chain().focus().insertKnowledgeNode().run();
+  }, [editor]);
+
+  const handleAddSkill = useCallback(() => {
+    if (!editor) {
+      return;
+    }
+
+    if (hasEmptyNode(editor, SKILL_NODE_TYPE)) {
+      return;
+    }
+
+    editor.chain().focus().insertSkillNode().run();
   }, [editor]);
 
   useEffect(() => {
@@ -230,6 +259,12 @@ export function SkillBuilderInstructionsEditor({
       onAddKnowledge(handleAddKnowledge);
     }
   }, [editor, handleAddKnowledge, onAddKnowledge]);
+
+  useEffect(() => {
+    if (editor && onAddSkill) {
+      onAddSkill(handleAddSkill);
+    }
+  }, [editor, handleAddSkill, onAddSkill]);
 
   // Register a callback that the suggestions panel can call to accept a
   // suggestion directly via the editor's ProseMirror commands.
@@ -312,7 +347,7 @@ export function SkillBuilderInstructionsEditor({
     if (selectedSuggestionId) {
       requestAnimationFrame(() => {
         const firstEdit = editor.view.dom.querySelector(
-          `[data-suggestion-id^="${selectedSuggestionId}:"]`
+          `[data-suggestion-id^="${selectedSuggestionId}:"]`,
         );
         firstEdit?.scrollIntoView({ behavior: "smooth", block: "center" });
       });
@@ -353,7 +388,7 @@ export function SkillBuilderInstructionsEditor({
               disabled: isDiffMode,
               readOnly: hasSuggestions,
             }),
-            INSTRUCTIONS_EDITOR_SIZE
+            INSTRUCTIONS_EDITOR_SIZE,
           ),
         },
       },
@@ -407,7 +442,7 @@ export function SkillBuilderInstructionsEditor({
         });
         editor.commands.applyDiff(
           preprocessMarkdownForEditor(compareText),
-          preprocessMarkdownForEditor(currentText)
+          preprocessMarkdownForEditor(currentText),
         );
         editor.setEditable(false);
       } else if (editor.storage.agentInstructionDiff?.isDiffMode) {
@@ -424,7 +459,7 @@ export function SkillBuilderInstructionsEditor({
             {
               emitUpdate: false,
               contentType: "markdown",
-            }
+            },
           );
         }
       }

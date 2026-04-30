@@ -7,12 +7,15 @@ import {
 } from "@app/lib/skills/format";
 import { isString } from "@app/types/shared/utils/general";
 import { Node } from "@tiptap/core";
+import type { ReactNodeViewProps } from "@tiptap/react";
 import { ReactNodeViewRenderer } from "@tiptap/react";
+import type React from "react";
 
 export type SkillNodeAttributes = {
-  skillId: string;
+  skillId?: string | null;
   skillIcon?: string | null;
-  skillName: string;
+  skillName?: string | null;
+  skillSerializeIcon?: boolean | null;
 };
 
 export const SKILL_NODE_TYPE = "skill";
@@ -20,14 +23,26 @@ export const SKILL_NODE_TYPE = "skill";
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
     skillNode: {
-      insertSkillNode: (attrs: SkillNodeAttributes) => ReturnType;
+      insertSkillNode: (attrs?: SkillNodeAttributes) => ReturnType;
     };
   }
 }
 
+export interface SkillNodeOptions {
+  insertTrailingSpace: boolean;
+  nodeView: React.ComponentType<ReactNodeViewProps> | null;
+}
+
 // TODO(2026-05-02 aubin): Check whether we can share logic with KnowledgeNode,
 // for example through a base extension.
-export const SkillNode = Node.create({
+export const SkillNode = Node.create<SkillNodeOptions>({
+  addOptions() {
+    return {
+      insertTrailingSpace: true,
+      nodeView: null,
+    };
+  },
+
   name: SKILL_NODE_TYPE,
   group: "inline",
   inline: true,
@@ -54,6 +69,11 @@ export const SkillNode = Node.create({
         renderHTML: (attributes) =>
           isString(attributes.skillIcon) ? { icon: attributes.skillIcon } : {},
       },
+      skillSerializeIcon: {
+        default: true,
+        parseHTML: (element) => element.hasAttribute("icon"),
+        renderHTML: () => ({}),
+      },
     };
   },
 
@@ -71,21 +91,25 @@ export const SkillNode = Node.create({
   },
 
   addNodeView() {
-    return ReactNodeViewRenderer(SkillNodeComponent);
+    return ReactNodeViewRenderer(this.options.nodeView ?? SkillNodeComponent);
   },
 
   addCommands() {
     return {
       insertSkillNode:
-        (attrs: SkillNodeAttributes) =>
-        ({ commands }) =>
-          commands.insertContent([
-            {
-              type: SKILL_NODE_TYPE,
-              attrs,
-            },
-            { type: "text", text: " " },
-          ]),
+        (attrs: SkillNodeAttributes = {}) =>
+        ({ commands }) => {
+          const node = {
+            type: SKILL_NODE_TYPE,
+            attrs,
+          };
+
+          return commands.insertContent(
+            this.options.insertTrailingSpace
+              ? [node, { type: "text", text: " " }]
+              : node,
+          );
+        },
     };
   },
 
@@ -111,6 +135,7 @@ export const SkillNode = Node.create({
         skillId: skill.id,
         skillIcon: skill.icon,
         skillName: skill.name,
+        skillSerializeIcon: skill.icon !== null,
       };
     },
   },
@@ -121,17 +146,23 @@ export const SkillNode = Node.create({
       skillId: token.skillId,
       skillIcon: token.skillIcon,
       skillName: token.skillName,
+      skillSerializeIcon: token.skillSerializeIcon,
     },
   }),
 
-  renderMarkdown: (node) =>
-    isString(node.attrs?.skillId) &&
-    isString(node.attrs?.skillIcon) &&
-    isString(node.attrs?.skillName)
-      ? serializeSkillTag({
-          id: node.attrs.skillId,
-          icon: node.attrs.skillIcon,
-          name: node.attrs.skillName,
-        })
-      : "",
+  renderMarkdown(node) {
+    if (!isString(node.attrs?.skillId) || !isString(node.attrs?.skillName)) {
+      return "";
+    }
+
+    return serializeSkillTag({
+      id: node.attrs.skillId,
+      icon:
+        node.attrs.skillSerializeIcon !== false &&
+        isString(node.attrs.skillIcon)
+          ? node.attrs.skillIcon
+          : null,
+      name: node.attrs.skillName,
+    });
+  },
 });

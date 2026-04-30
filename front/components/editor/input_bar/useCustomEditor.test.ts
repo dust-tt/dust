@@ -2,6 +2,7 @@ import {
   InputBarSlashSuggestionExtension,
   inputBarSlashSuggestionPluginKey,
 } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionExtension";
+import { SKILL_NODE_TYPE } from "@app/components/editor/extensions/input_bar/SkillNode";
 import { buildEditorExtensions } from "@app/components/editor/input_bar/useCustomEditor";
 import type { WorkspaceType } from "@app/types/user";
 import { Editor } from "@tiptap/react";
@@ -57,7 +58,7 @@ describe("buildEditorExtensions", () => {
       "```javascript\nconsole.log('Hello, world!');\n```",
       {
         contentType: "markdown",
-      }
+      },
     );
 
     const json = editor.getJSON();
@@ -85,7 +86,7 @@ describe("buildEditorExtensions", () => {
         "console.log('Hello, world!');\n" +
         "```\n" +
         "\n" +
-        "&nbsp;"
+        "&nbsp;",
     );
   });
 
@@ -160,7 +161,7 @@ describe("buildEditorExtensions", () => {
       '<skill id="skill_123" name="commit" icon="book_open" />',
       {
         contentType: "markdown",
-      }
+      },
     );
 
     const json = editor.getJSON();
@@ -169,7 +170,57 @@ describe("buildEditorExtensions", () => {
     expect(JSON.stringify(json)).toContain('"skillName":"commit"');
     expect(JSON.stringify(json)).toContain('"skillIcon":"book_open"');
     expect(editor.getMarkdown()).toContain(
-      '<skill id="skill_123" name="commit" icon="book_open" />'
+      '<skill id="skill_123" name="commit" icon="book_open" />',
+    );
+  });
+
+  it("round-trips inline skill tags without icons as skill nodes", () => {
+    editor.commands.setContent('<skill id="skill_123" name="commit" />', {
+      contentType: "markdown",
+    });
+
+    const json = editor.getJSON();
+    expect(JSON.stringify(json)).toContain('"type":"skill"');
+    expect(JSON.stringify(json)).toContain('"skillId":"skill_123"');
+    expect(JSON.stringify(json)).toContain('"skillName":"commit"');
+    expect(editor.getMarkdown()).toContain(
+      '<skill id="skill_123" name="commit" />',
+    );
+  });
+
+  it("keeps iconless skill tags iconless when display metadata is added", () => {
+    editor.commands.setContent('<skill id="skill_123" name="commit" />', {
+      contentType: "markdown",
+    });
+
+    let skillNodePosition: number | null = null;
+    editor.state.doc.descendants((node, pos) => {
+      if (node.type.name === SKILL_NODE_TYPE) {
+        skillNodePosition = pos;
+        return false;
+      }
+
+      return true;
+    });
+
+    if (skillNodePosition === null) {
+      throw new Error("Expected skill node to exist.");
+    }
+
+    const skillNode = editor.state.doc.nodeAt(skillNodePosition);
+    if (!skillNode) {
+      throw new Error("Expected skill node at recorded position.");
+    }
+
+    editor.view.dispatch(
+      editor.state.tr.setNodeMarkup(skillNodePosition, undefined, {
+        ...skillNode.attrs,
+        skillIcon: "book_open",
+      }),
+    );
+
+    expect(editor.getMarkdown()).toContain(
+      '<skill id="skill_123" name="commit" />',
     );
   });
 
@@ -234,11 +285,11 @@ describe("buildEditorExtensions", () => {
       editor.state.tr
         .insertText("/help", 1)
         .setMeta("paste", true)
-        .setMeta("uiEvent", "paste")
+        .setMeta("uiEvent", "paste"),
     );
 
     expect(
-      inputBarSlashSuggestionPluginKey.getState(editor.state)?.active
+      inputBarSlashSuggestionPluginKey.getState(editor.state)?.active,
     ).toBe(false);
   });
 });

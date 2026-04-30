@@ -1,18 +1,9 @@
 import { getSkillIcon } from "@app/lib/skill";
 import { Chip } from "@dust-tt/sparkle";
+import type { ReactNodeViewProps } from "@tiptap/react";
 import { NodeViewWrapper } from "@tiptap/react";
 
-interface SkillNodeComponentProps {
-  node: {
-    attrs: {
-      skillId?: string;
-      skillIcon?: string | null;
-      skillName?: string;
-    };
-  };
-}
-
-export function SkillNodeComponent({ node }: SkillNodeComponentProps) {
+export function SkillNodeComponent({ node }: ReactNodeViewProps) {
   const skillIcon = node.attrs.skillIcon ?? null;
   const skillName = node.attrs.skillName ?? "Skill";
 
