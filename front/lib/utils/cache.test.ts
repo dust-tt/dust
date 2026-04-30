@@ -36,6 +36,7 @@ import {
   cacheWithRedis,
   invalidateCacheAfterCommit,
   invalidateCacheWithRedis,
+  warmCacheWithRedis,
 } from "@app/lib/utils/cache";
 
 describe("invalidateCacheAfterCommit", () => {
@@ -471,6 +472,80 @@ describe("invalidateCacheWithRedis", () => {
     expect(mockRedisClient.del).toHaveBeenCalledWith(
       "cacheWithRedis-myFunc-foo-42"
     );
+  });
+});
+
+describe("warmCacheWithRedis", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockRedisClient.get.mockReset();
+    mockRedisClient.set.mockReset();
+  });
+
+  it("writes JSON-stringified value at the same key cacheWithRedis would read", async () => {
+    const fn = vi.fn().mockResolvedValue("data");
+    Object.defineProperty(fn, "name", { value: "testFn" });
+    mockRedisClient.set.mockResolvedValue("OK");
+
+    const warm = warmCacheWithRedis(fn, (arg: string) => arg, {
+      ttlMs: 60000,
+    });
+    await warm("data", "key1");
+
+    expect(mockRedisClient.set).toHaveBeenCalledWith(
+      "cacheWithRedis-testFn-key1",
+      JSON.stringify("data"),
+      { PX: 60000 }
+    );
+  });
+
+  it("omits TTL when ttlMs is not provided", async () => {
+    const fn = vi.fn().mockResolvedValue("data");
+    Object.defineProperty(fn, "name", { value: "testFn" });
+    mockRedisClient.set.mockResolvedValue("OK");
+
+    const warm = warmCacheWithRedis(fn, (arg: string) => arg);
+    await warm("data", "key1");
+
+    expect(mockRedisClient.set).toHaveBeenCalledWith(
+      "cacheWithRedis-testFn-key1",
+      JSON.stringify("data")
+    );
+  });
+
+  it("warmed value is then served by cacheWithRedis without invoking fn", async () => {
+    const fn = vi.fn().mockResolvedValue("fresh");
+    Object.defineProperty(fn, "name", { value: "testFn" });
+
+    const cache = new Map<string, string>();
+    mockRedisClient.get.mockImplementation(
+      async (key: string) => cache.get(key) ?? null
+    );
+    mockRedisClient.set.mockImplementation(
+      async (key: string, value: string) => {
+        cache.set(key, value);
+        return "OK";
+      }
+    );
+
+    const resolver = (arg: string) => arg;
+    const warm = warmCacheWithRedis(fn, resolver, { ttlMs: 60000 });
+    const cached = cacheWithRedis(fn, resolver, { ttlMs: 60000 });
+
+    await warm("warmed", "key1");
+    const result = await cached("key1");
+
+    expect(result).toBe("warmed");
+    expect(fn).not.toHaveBeenCalled();
+  });
+
+  it("throws when ttlMs > 24 hours", () => {
+    const fn = vi.fn();
+    expect(() =>
+      warmCacheWithRedis(fn, (arg: string) => arg, {
+        ttlMs: 25 * 60 * 60 * 1000,
+      })
+    ).toThrow("ttlMs should be less than 24 hours");
   });
 });
 

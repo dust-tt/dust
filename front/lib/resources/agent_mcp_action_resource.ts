@@ -38,6 +38,7 @@ import {
   batchFetchContentsFromGcs,
   batchWriteContentsToGcs,
   deleteContentsFromGcs,
+  warmGcsContentCache,
 } from "@app/lib/resources/agent_mcp_action/output_storage";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -698,6 +699,18 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     if (gcsResult.isErr()) {
       return outputItems;
     }
+
+    await warmGcsContentCache(
+      auth,
+      removeNulls(
+        outputItems.map((item) => {
+          const gcsPath = gcsResult.value.get(item.id);
+          return gcsPath
+            ? { itemId: item.id, gcsPath, content: item.content }
+            : null;
+        })
+      )
+    );
 
     // Update DB rows with their GCS paths.
     // TODO(2026-02-25 PERF): Optimize by writing items only once.

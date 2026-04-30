@@ -124,6 +124,7 @@ vi.mock("@app/lib/api/redis", () => ({
   runOnRedis: vi.fn().mockImplementation(mockRunOnRedisImpl),
   runOnRedisCache: vi.fn().mockImplementation(mockRunOnRedisCacheImpl),
   closeRedisClients: vi.fn().mockResolvedValue(undefined),
+  REDIS_CACHE_CONCURRENCY: 32,
 }));
 
 vi.mock("@app/lib/utils/cache", () => ({
@@ -139,6 +140,9 @@ vi.mock("@app/lib/utils/cache", () => ({
         };
       }
     ),
+  warmCacheWithRedis: vi.fn().mockImplementation(() => {
+    return async () => {};
+  }),
   invalidateCacheWithRedis: vi.fn().mockImplementation(() => {
     return async () => {};
   }),

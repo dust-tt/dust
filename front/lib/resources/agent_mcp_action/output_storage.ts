@@ -1,8 +1,9 @@
+import { REDIS_CACHE_CONCURRENCY } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { cacheWithRedis } from "@app/lib/utils/cache";
+import { cacheWithRedis, warmCacheWithRedis } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -75,28 +76,69 @@ export async function batchWriteContentsToGcs(
 }
 
 /**
- * Fetches raw JSON content from GCS. Throws on failure (cacheWithRedis propagates the error).
+ * Fetches content from GCS. Throws on failure (cacheWithRedis propagates the error).
  */
 // itemId is unused in the fetch logic but passed to populate the cache key.
 async function fetchGcsContent(
   auth: Authenticator,
   gcsPath: string,
   _itemId: ModelId
-): Promise<string> {
+): Promise<OutputContent> {
   const bucket = getPrivateUploadBucket();
   const file = bucket.file(gcsPath);
 
   const [buffer] = await file.download();
 
-  return buffer.toString("utf-8");
+  return JSON.parse(buffer.toString("utf-8"));
 }
+
+const gcsContentCacheKey = (
+  auth: Authenticator,
+  _gcsPath: string,
+  itemId: ModelId
+) => `w:${auth.getNonNullableWorkspace().sId}:mcp_output:${itemId}`;
 
 const fetchGcsContentCached = cacheWithRedis(
   fetchGcsContent,
-  (auth, _gcsPath, itemId) =>
-    `w:${auth.getNonNullableWorkspace().sId}:mcp_output:${itemId}`,
-  { cacheNullValues: false, ttlMs: GCS_CONTENT_CACHE_TTL_MS }
+  gcsContentCacheKey,
+  {
+    cacheNullValues: false,
+    ttlMs: GCS_CONTENT_CACHE_TTL_MS,
+  }
 );
+
+const warmOneGcsContent = warmCacheWithRedis(
+  fetchGcsContent,
+  gcsContentCacheKey,
+  { ttlMs: GCS_CONTENT_CACHE_TTL_MS }
+);
+
+export async function warmGcsContentCache(
+  auth: Authenticator,
+  items: Array<{
+    itemId: ModelId;
+    gcsPath: string;
+    content: OutputContent;
+  }>
+): Promise<void> {
+  if (items.length === 0) {
+    return;
+  }
+  try {
+    await concurrentExecutor(
+      items,
+      async ({ itemId, gcsPath, content }) => {
+        await warmOneGcsContent(content, auth, gcsPath, itemId);
+      },
+      { concurrency: REDIS_CACHE_CONCURRENCY }
+    );
+  } catch (err) {
+    logger.error(
+      { err: normalizeError(err), itemCount: items.length },
+      "Failed to warm Redis cache for MCP output items"
+    );
+  }
+}
 
 /**
  * Fetches content for a single item from cache (LRU) or GCS.
@@ -109,8 +151,8 @@ async function fetchContentFromGcs(
   itemId: ModelId
 ): Promise<Result<OutputContent, Error>> {
   try {
-    const raw = await fetchGcsContentCached(auth, gcsPath, itemId);
-    return new Ok(JSON.parse(raw) as OutputContent);
+    const content = await fetchGcsContentCached(auth, gcsPath, itemId);
+    return new Ok(content);
   } catch (err) {
     logger.error(
       { err: normalizeError(err), gcsPath },

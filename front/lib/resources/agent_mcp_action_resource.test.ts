@@ -3,12 +3,14 @@ import type {
   LightServerSideMCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
+import { getRedisCacheClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import {
   AgentMCPActionModel,
   AgentMCPActionOutputItemModel,
 } from "@app/lib/models/agent/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
+import { warmGcsContentCache } from "@app/lib/resources/agent_mcp_action/output_storage";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
@@ -379,6 +381,9 @@ describe("Output items with GCS storage", () => {
     workspace = setup.workspace;
     auth = setup.authenticator;
 
+    const redis = await getRedisCacheClient({ origin: "cache_with_redis" });
+    vi.mocked(redis.set).mockClear();
+
     agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
       name: "Test Agent",
     });
@@ -451,6 +456,26 @@ describe("Output items with GCS storage", () => {
 
     // Content should match the GCS version, proving it was read from GCS.
     expect(items![0].content).toEqual({ type: "text", text: "from GCS" });
+  });
+
+  it("warms Redis cache for each item after createOutputItems succeeds", async () => {
+    const { outputItems } = await createActionWithOutputItems([
+      { type: "text", text: "first" },
+      { type: "text", text: "second" },
+    ]);
+
+    const redis = await getRedisCacheClient({ origin: "cache_with_redis" });
+    const setCalls = vi.mocked(redis.set).mock.calls;
+
+    expect(outputItems).toHaveLength(2);
+
+    for (const item of outputItems) {
+      expect(setCalls).toContainEqual([
+        `cacheWithRedis-fetchGcsContent-w:${workspace.sId}:mcp_output:${item.id}`,
+        JSON.stringify(item.content),
+        { PX: 15 * 60 * 1000 },
+      ]);
+    }
   });
 
   it("should destroy output items from both DB and GCS", async () => {
@@ -643,5 +668,71 @@ describe("Output items with GCS storage", () => {
       .map((i) => (i.content as { type: "text"; text: string }).text)
       .sort();
     expect(texts).toEqual(["first", "second"]);
+  });
+});
+
+describe("warmGcsContentCache", () => {
+  let workspace: WorkspaceType;
+  let auth: Authenticator;
+
+  beforeEach(async () => {
+    const setup = await createResourceTest({});
+    workspace = setup.workspace;
+    auth = setup.authenticator;
+
+    const redis = await getRedisCacheClient({ origin: "cache_with_redis" });
+    vi.mocked(redis.set).mockClear();
+  });
+
+  it("is a no-op for empty items", async () => {
+    await warmGcsContentCache(auth, []);
+
+    const redis = await getRedisCacheClient({ origin: "cache_with_redis" });
+    expect(redis.set).not.toHaveBeenCalled();
+  });
+
+  it("warms each item with the correct key, value, and TTL", async () => {
+    const items = [
+      {
+        itemId: 42,
+        gcsPath: "mcp_output_items/w/x/a/42.json",
+        content: { type: "text" as const, text: "hello" },
+      },
+      {
+        itemId: 43,
+        gcsPath: "mcp_output_items/w/x/a/43.json",
+        content: { type: "text" as const, text: "world" },
+      },
+    ];
+
+    await warmGcsContentCache(auth, items);
+
+    const redis = await getRedisCacheClient({ origin: "cache_with_redis" });
+    const setCalls = vi.mocked(redis.set).mock.calls;
+
+    expect(setCalls).toHaveLength(2);
+
+    for (const item of items) {
+      expect(setCalls).toContainEqual([
+        `cacheWithRedis-fetchGcsContent-w:${workspace.sId}:mcp_output:${item.itemId}`,
+        JSON.stringify(item.content),
+        { PX: 15 * 60 * 1000 },
+      ]);
+    }
+  });
+
+  it("logs and does not throw when Redis fails", async () => {
+    const redis = await getRedisCacheClient({ origin: "cache_with_redis" });
+    vi.mocked(redis.set).mockRejectedValueOnce(new Error("redis down"));
+
+    await expect(
+      warmGcsContentCache(auth, [
+        {
+          itemId: 1,
+          gcsPath: "mcp_output_items/w/x/a/1.json",
+          content: { type: "text", text: "anything" },
+        },
+      ])
+    ).resolves.toBeUndefined();
   });
 });
