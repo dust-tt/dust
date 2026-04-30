@@ -238,6 +238,17 @@ export function EnvironmentSection() {
           after saving, only overwritten or deleted.
         </ContentMessage>
 
+        <ContentMessage
+          variant="info"
+          icon={InformationCircleIcon}
+          size="lg"
+          title="Changes apply to new sandboxes only"
+        >
+          Env vars are snapshotted at sandbox boot. Running sandboxes keep
+          their original values; new sandboxes (new conversations, restarts)
+          pick up the latest.
+        </ContentMessage>
+
         <div className="flex justify-end">
           <Button
             label="Add variable"
