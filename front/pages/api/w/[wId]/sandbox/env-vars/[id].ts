@@ -1,14 +1,10 @@
 /** @ignoreswagger */
-import {
-  buildAuditLogTarget,
-  emitAuditLogEvent,
-  getAuditLogContext,
-} from "@app/lib/api/audit/workos_audit";
+import { getAuditLogContext } from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { validateEnvVarName } from "@app/lib/api/sandbox/env_vars";
 import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
 import { WorkspaceSandboxEnvVarResource } from "@app/lib/resources/workspace_sandbox_env_var_resource";
+import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
@@ -25,8 +21,6 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  const owner = auth.getNonNullableWorkspace();
-
   if (!auth.isAdmin()) {
     return apiError(req, res, {
       status_code: 403,
@@ -48,34 +42,34 @@ async function handler(
     });
   }
 
-  const { name } = req.query;
+  const { id } = req.query;
 
-  if (!isString(name)) {
+  if (!isString(id)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Expected a string environment variable name.",
+        message: "Expected a string environment variable id.",
       },
     });
   }
 
-  const nameValidation = validateEnvVarName(name);
-  if (nameValidation.isErr()) {
+  const modelId = getResourceIdFromSId(id);
+  if (modelId === null) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: nameValidation.error,
+        message: "Invalid sandbox environment variable id.",
       },
     });
   }
 
   switch (req.method) {
     case "DELETE": {
-      const envVar = await WorkspaceSandboxEnvVarResource.fetchByName(
+      const envVar = await WorkspaceSandboxEnvVarResource.fetchById(
         auth,
-        name
+        modelId
       );
       if (!envVar) {
         return apiError(req, res, {
@@ -87,7 +81,9 @@ async function handler(
         });
       }
 
-      const deleteResult = await envVar.delete(auth);
+      const deleteResult = await envVar.delete(auth, {
+        context: getAuditLogContext(auth, req),
+      });
       if (deleteResult.isErr()) {
         return apiError(req, res, {
           status_code: 500,
@@ -97,22 +93,6 @@ async function handler(
           },
         });
       }
-
-      void emitAuditLogEvent({
-        auth,
-        action: "sandbox_env_var.deleted",
-        targets: [
-          buildAuditLogTarget("workspace", owner),
-          buildAuditLogTarget("sandbox_env_var", {
-            sId: `${owner.sId}:${name}`,
-            name,
-          }),
-        ],
-        context: getAuditLogContext(auth, req),
-        metadata: {
-          name,
-        },
-      });
 
       return res.status(200).json({ success: true });
     }

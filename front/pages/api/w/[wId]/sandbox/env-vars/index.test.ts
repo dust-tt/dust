@@ -130,6 +130,7 @@ describe("GET/POST /api/w/[wId]/sandbox/env-vars", () => {
     await handler(overwriteRequest.req, overwriteRequest.res);
     expect(overwriteRequest.res._getStatusCode()).toBe(200);
     expect(JSON.parse(overwriteRequest.res._getData())).toEqual({
+      envVar: expect.objectContaining({ name: "VAR_0" }),
       created: false,
     });
 
@@ -150,8 +151,11 @@ describe("GET/POST /api/w/[wId]/sandbox/env-vars", () => {
       },
     });
     await handler(first.req, first.res);
-    expect(first.res._getStatusCode()).toBe(200);
-    expect(JSON.parse(first.res._getData())).toEqual({ created: true });
+    expect(first.res._getStatusCode()).toBe(201);
+    expect(JSON.parse(first.res._getData())).toEqual({
+      envVar: expect.objectContaining({ name: "API_TOKEN" }),
+      created: true,
+    });
 
     const second = createEnvVarHttpRequest({
       method: "POST",
@@ -163,7 +167,10 @@ describe("GET/POST /api/w/[wId]/sandbox/env-vars", () => {
     });
     await handler(second.req, second.res);
     expect(second.res._getStatusCode()).toBe(200);
-    expect(JSON.parse(second.res._getData())).toEqual({ created: false });
+    expect(JSON.parse(second.res._getData())).toEqual({
+      envVar: expect.objectContaining({ name: "API_TOKEN" }),
+      created: false,
+    });
 
     const envResult = await WorkspaceSandboxEnvVarResource.loadEnv(first.auth);
     expect(envResult.isOk()).toBe(true);

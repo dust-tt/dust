@@ -1,4 +1,5 @@
 export type WorkspaceSandboxEnvVarType = {
+  sId: string;
   name: string;
   createdAt: number;
   updatedAt: number;

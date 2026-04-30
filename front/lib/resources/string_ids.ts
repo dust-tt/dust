@@ -77,6 +77,7 @@ export const RESOURCES_PREFIX = {
 
   // Sandboxes.
   sandbox: "sbx",
+  sandbox_env_var: "sev",
 
   // Project todos.
   project_todo_state: "pts",

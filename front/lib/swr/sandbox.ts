@@ -166,9 +166,7 @@ export function useDeleteWorkspaceSandboxEnvVar({
     setIsDeleting(true);
     try {
       const response = await clientFetch(
-        `${workspaceSandboxEnvVarsUrl(owner.sId)}/${encodeURIComponent(
-          envVar.name
-        )}`,
+        `${workspaceSandboxEnvVarsUrl(owner.sId)}/${envVar.sId}`,
         {
           method: "DELETE",
         }
