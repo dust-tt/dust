@@ -84,9 +84,12 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
   // Fetch user data whenever there is a session (or posthogId). We need the
   // user's sId for posthog.identify() in all contexts, including authenticated
   // SPAs where hasCookiesAccepted is auto-true.
+  // `silent` -> a stale `dust-has-session` cookie on a public page must not
+  // bounce the visitor through login; treat a 401 as anonymous and move on.
   const disabled = !posthogId && !hasSession;
   const { user } = useUser({
     disabled,
+    silent: true,
   });
 
   const cookieValue = cookies[DUST_COOKIES_ACCEPTED];
