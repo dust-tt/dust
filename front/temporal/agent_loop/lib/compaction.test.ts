@@ -523,8 +523,8 @@ describe("runCompaction", () => {
 
   it("marks compaction as failed when history file creation fails", async () => {
     const compactionMessage = await createCompactionMessage();
-    vi.mocked(createGCSMountFile).mockRejectedValueOnce(
-      new Error("GCS write failed")
+    vi.mocked(createGCSMountFile).mockResolvedValueOnce(
+      new Err(new Error("GCS write failed"))
     );
     vi.mocked(runMultiActionsAgent).mockResolvedValueOnce(
       new Ok({
