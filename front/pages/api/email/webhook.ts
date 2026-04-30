@@ -524,7 +524,7 @@ async function handler(
 
       let agentConfigurations: LightAgentConfigurationType[] = [];
       for (const targetEmail of targetEmails) {
-        const matchResult = await emailAssistantMatcher({
+        const matchResult = emailAssistantMatcher({
           allAgentConfigurations,
           targetEmail,
         });
