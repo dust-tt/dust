@@ -96,6 +96,7 @@ export class SlackStreamHandler {
       return;
     }
 
+    this.stopped = true;
     try {
       const res = await this.streamer.stop();
 
