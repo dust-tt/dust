@@ -75,16 +75,17 @@ describe("runCompaction", () => {
 
     vi.clearAllMocks();
     vi.mocked(createGCSMountFile).mockImplementation(
-      async (_auth, scope, { relativeFilePath, content, contentType }) => ({
-        isDirectory: false,
-        fileName: relativeFilePath.split("/").pop() ?? relativeFilePath,
-        path: `${scope.useCase}/${relativeFilePath}`,
-        sizeBytes: content.length,
-        contentType,
-        lastModifiedMs: Date.now(),
-        fileId: null,
-        thumbnailUrl: null,
-      })
+      async (_auth, scope, { relativeFilePath, content, contentType }) =>
+        new Ok({
+          isDirectory: false,
+          fileName: relativeFilePath.split("/").pop() ?? relativeFilePath,
+          path: `${scope.useCase}/${relativeFilePath}`,
+          sizeBytes: content.length,
+          contentType,
+          lastModifiedMs: Date.now(),
+          fileId: null,
+          thumbnailUrl: null,
+        })
     );
   });
 
