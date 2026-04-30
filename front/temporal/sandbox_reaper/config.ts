@@ -23,10 +23,10 @@ export const PENDING_APPROVAL_THRESHOLD_MS = pendingApprovalThresholdEnv
   ? Number(pendingApprovalThresholdEnv)
   : 30 * 60 * 1_000;
 
-/** Destroy sandboxes that have been inactive for this long. Default: 24 h. */
+/** Destroy sandboxes that have been inactive for this long. Default: 4 days. */
 const destroyThresholdEnv = EnvironmentConfig.getOptionalEnvVariable(
   "SANDBOX_DESTROY_THRESHOLD_MS"
 );
 export const DESTROY_THRESHOLD_MS = destroyThresholdEnv
   ? Number(destroyThresholdEnv)
-  : 24 * 60 * 60 * 1_000;
+  : 4 * 24 * 60 * 60 * 1_000;

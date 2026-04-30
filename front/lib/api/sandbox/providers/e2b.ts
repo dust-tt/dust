@@ -15,13 +15,21 @@ import {
   traceSandboxOperation,
 } from "@app/lib/api/sandbox/provider";
 import logger from "@app/logger/logger";
+import { isDevelopment } from "@app/types/shared/env";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { CommandExitError, NotFoundError, Sandbox } from "e2b";
 
-const SANDBOX_LIFETIME_MS = 86_400_000; // 24 hours (E2B Pro max; reaper manages lifecycle)
+/**
+ * In dev, cap sandbox lifetime at 24h (E2B Pro max) so forgotten local
+ * sandboxes don't linger. In prod, omit `timeoutMs` so the reaper is the sole
+ * authority on sandbox lifecycle.
+ */
+const SANDBOX_LIFETIME_MS: number | undefined = isDevelopment()
+  ? 86_400_000
+  : undefined;
 
 /** Timeout for individual API calls to E2B (create, connect, etc.). */
 const REQUEST_TIMEOUT_MS = 30_000;
