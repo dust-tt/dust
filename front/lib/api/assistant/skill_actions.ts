@@ -8,7 +8,6 @@ import { isRemoteDatabase } from "@app/lib/data_sources";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type {
   AgentConfigurationType,
   LightAgentConfigurationType,
@@ -30,14 +29,14 @@ export async function getSkillServers(
     skills: (SkillResource & { extendedSkill?: SkillResource | null })[];
   }
 ): Promise<MCPServerConfigurationType[]> {
-  const rawInheritedDataSourceViews = await concurrentExecutor(
-    skills,
-    (skill) => skill.listInheritedDataSourceViews(auth, agentConfiguration),
-    { concurrency: 5 }
-  );
-  const inheritedDataSourceViews = removeNulls(
-    rawInheritedDataSourceViews.flat()
-  );
+  let inheritedDataSourceViews: DataSourceViewResource[] = [];
+  if (skills.some((skill) => skill.inheritsAgentConfigurationDataSources)) {
+    inheritedDataSourceViews = await DataSourceViewResource.listBySpaceIds(
+      auth,
+      agentConfiguration.requestedSpaceIds,
+      { includeGlobalSpace: true }
+    );
+  }
 
   const remoteDbViews = inheritedDataSourceViews.filter((v) =>
     isRemoteDatabase(v.dataSource)
