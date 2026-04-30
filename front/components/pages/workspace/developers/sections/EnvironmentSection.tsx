@@ -18,6 +18,7 @@ import type { WorkspaceSandboxEnvVarType } from "@app/types/sandbox/env_var";
 import {
   Button,
   ContentMessage,
+  cn,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -328,11 +329,16 @@ export function EnvironmentSection() {
               <div className="flex flex-col gap-1">
                 <Label htmlFor="sandbox-env-var-name">Name</Label>
                 <div
-                  className={`flex h-9 w-full items-center rounded-xl border bg-muted-background pl-3 text-sm focus-within:ring focus-within:ring-inset dark:bg-muted-background-night ${
+                  aria-disabled={
                     isUpsertingWorkspaceSandboxEnvVar || isNameLocked
-                      ? "opacity-50"
-                      : ""
-                  }`}
+                  }
+                  className={cn(
+                    "flex h-9 w-full items-center rounded-xl border bg-muted-background pl-3 text-sm focus-within:ring focus-within:ring-inset dark:bg-muted-background-night",
+                    nameMessage.isError &&
+                      "border-border-warning dark:border-border-warning-night",
+                    (isUpsertingWorkspaceSandboxEnvVar || isNameLocked) &&
+                      "cursor-not-allowed opacity-50"
+                  )}
                 >
                   <span
                     className="select-none text-muted-foreground dark:text-muted-foreground-night"
@@ -345,7 +351,7 @@ export function EnvironmentSection() {
                     id="sandbox-env-var-name"
                     type="text"
                     placeholder="API_TOKEN"
-                    className="h-full w-full flex-1 border-0 bg-transparent pl-1 pr-3 text-foreground outline-none ring-0 placeholder:text-muted-foreground focus:outline-none focus:ring-0 dark:text-foreground-night dark:placeholder:text-muted-foreground-night"
+                    className="h-full w-full flex-1 border-0 bg-transparent pl-1 pr-3 text-foreground outline-none placeholder:text-muted-foreground dark:text-foreground-night dark:placeholder:text-muted-foreground-night"
                     disabled={isUpsertingWorkspaceSandboxEnvVar || isNameLocked}
                     ref={nameField.ref}
                     name={nameField.name}

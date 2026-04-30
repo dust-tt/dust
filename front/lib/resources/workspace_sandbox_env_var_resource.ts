@@ -16,7 +16,20 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { decrypt, encrypt } from "@app/types/shared/utils/encryption";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import type { Attributes, Transaction } from "sequelize";
+import type { Attributes, Includeable, Transaction } from "sequelize";
+
+const USER_JOIN_INCLUDES: Includeable[] = [
+  {
+    association: "createdByUser",
+    attributes: ["name"],
+    required: false,
+  },
+  {
+    association: "lastUpdatedByUser",
+    attributes: ["name"],
+    required: false,
+  },
+];
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface WorkspaceSandboxEnvVarResource
@@ -62,26 +75,13 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
     where?: Partial<Pick<WorkspaceSandboxEnvVarModel, "id" | "name">>,
     { withUserJoins = true }: { withUserJoins?: boolean } = {}
   ): Promise<WorkspaceSandboxEnvVarResource[]> {
-    const isPointLookup = where?.id !== undefined || where?.name !== undefined;
+    const isPointLookup = Boolean(where?.id ?? where?.name);
     const rows = await this.model.findAll({
       where: {
         ...where,
         workspaceId: auth.getNonNullableWorkspace().id,
       },
-      include: withUserJoins
-        ? [
-            {
-              association: "createdByUser",
-              attributes: ["name"],
-              required: false,
-            },
-            {
-              association: "lastUpdatedByUser",
-              attributes: ["name"],
-              required: false,
-            },
-          ]
-        : [],
+      include: withUserJoins ? USER_JOIN_INCLUDES : [],
       // Skip ordering on point lookups — primary key is unique.
       order: isPointLookup ? undefined : [["name", "ASC"]],
     });
@@ -180,15 +180,11 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
       created = true;
     }
 
-    // Reload through baseFetch so createdByUser / lastUpdatedByUser joins are
-    // populated — the row returned by update() / create() has no associations
+    // Reload by primary key to populate createdByUser / lastUpdatedByUser
+    // associations — the row returned by update() / create() has no joins
     // loaded, which would surface as "Unknown" in the UI until SWR re-lists.
-    const resource = await this.fetchById(auth, row.id);
-    if (!resource) {
-      return new Err(
-        new Error("Failed to reload sandbox environment variable after upsert.")
-      );
-    }
+    await row.reload({ include: USER_JOIN_INCLUDES });
+    const resource = this.fromRow(row);
 
     void emitAuditLogEvent({
       auth,
