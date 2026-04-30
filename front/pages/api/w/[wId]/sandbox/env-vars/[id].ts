@@ -54,8 +54,8 @@ async function handler(
     });
   }
 
-  const modelId = getResourceIdFromSId(id);
-  if (modelId === null) {
+  const envVarModelId = getResourceIdFromSId(id);
+  if (envVarModelId === null) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -69,7 +69,7 @@ async function handler(
     case "DELETE": {
       const envVar = await WorkspaceSandboxEnvVarResource.fetchById(
         auth,
-        modelId
+        envVarModelId
       );
       if (!envVar) {
         return apiError(req, res, {
