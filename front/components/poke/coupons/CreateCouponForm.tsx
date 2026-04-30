@@ -2,16 +2,20 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import type { CreatePokeCouponResponseBody } from "@app/pages/api/poke/coupons/index";
 import type { CouponDiscountType } from "@app/types/coupon";
-import { CreateCouponBodySchema } from "@app/types/coupon";
+import {
+  CouponDiscountTypeSchema,
+  CreateCouponBodySchema,
+} from "@app/types/coupon";
 import { isString } from "@app/types/shared/utils/general";
-import { Button, Input, XMarkIcon } from "@dust-tt/sparkle";
+import {
+  Button,
+  Input,
+  RadioGroup,
+  RadioGroupItem,
+  XMarkIcon,
+} from "@dust-tt/sparkle";
 import type React from "react";
 import { useState } from "react";
-
-interface CreateCouponFormProps {
-  onCreated: () => void;
-  onCancel: () => void;
-}
 
 interface FormState {
   code: string;
@@ -24,21 +28,6 @@ interface FormState {
   redeemBy: string;
 }
 
-const FORM_STATE_KEYS: ReadonlyArray<keyof FormState> = [
-  "code",
-  "description",
-  "discountType",
-  "amountUsdStr",
-  "creditTypeId",
-  "durationMonths",
-  "maxRedemptions",
-  "redeemBy",
-];
-
-function isFormStateKey(key: string): key is keyof FormState {
-  return (FORM_STATE_KEYS as readonly string[]).includes(key);
-}
-
 const EMPTY_FORM: FormState = {
   code: "",
   description: "",
@@ -49,6 +38,19 @@ const EMPTY_FORM: FormState = {
   maxRedemptions: "",
   redeemBy: "",
 };
+
+const FORM_STATE_KEYS = Object.keys(EMPTY_FORM) as ReadonlyArray<
+  keyof FormState
+>;
+
+function isFormStateKey(key: string): key is keyof FormState {
+  return (FORM_STATE_KEYS as readonly string[]).includes(key);
+}
+
+interface CreateCouponFormProps {
+  onCreated: () => void;
+  onCancel: () => void;
+}
 
 export function CreateCouponForm({
   onCreated,
@@ -175,16 +177,19 @@ export function CreateCouponForm({
           <label className="text-sm font-medium">
             Discount type <span className="text-red-500">*</span>
           </label>
-          <select
+          <RadioGroup
+            name="discountType"
             value={form.discountType}
-            onChange={(e) =>
-              set("discountType", e.target.value as CouponDiscountType)
-            }
-            className="h-9 rounded-md border bg-background px-3 text-sm dark:bg-background-night"
+            onValueChange={(value: string) => {
+              const parsed = CouponDiscountTypeSchema.safeParse(value);
+              if (parsed.success) {
+                set("discountType", parsed.data);
+              }
+            }}
           >
-            <option value="fixed">fixed</option>
-            <option value="usage_credit">usage_credit</option>
-          </select>
+            <RadioGroupItem value="fixed" label="Fixed" />
+            <RadioGroupItem value="usage_credit" label="Usage credit" />
+          </RadioGroup>
           {errors.discountType && (
             <span className="text-xs text-red-500">{errors.discountType}</span>
           )}

@@ -5,167 +5,237 @@ import {
   usePokeCouponRedemptions,
   usePokeCoupons,
 } from "@app/lib/swr/poke";
-import type { CouponRedemptionType, CouponType } from "@app/types/coupon";
+import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import type {
+  CouponDiscountType,
+  CouponRedemptionType,
+  CouponType,
+} from "@app/types/coupon";
+import type { MenuItem } from "@dust-tt/sparkle";
 import {
   ArchiveIcon,
   Button,
   ChevronDownIcon,
   ChevronRightIcon,
-  IconButton,
+  DataTable,
   PlusIcon,
   Spinner,
 } from "@dust-tt/sparkle";
-import { useState } from "react";
+import type { ColumnDef } from "@tanstack/react-table";
+import type { MouseEvent } from "react";
+import { useMemo, useState } from "react";
 
 function formatUsd(microUsd: number): string {
   return `$${(microUsd / 1_000_000).toFixed(2)}`;
 }
 
-function formatDate(date: Date | string | null): string {
-  if (!date) {
-    return "—";
-  }
-  return new Date(date).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
+interface CouponRowData {
+  sId: string;
+  code: string;
+  description: string | null;
+  discountType: CouponDiscountType;
+  amountMicroUsd: number;
+  durationMonths: number | null;
+  maxRedemptions: number | null;
+  redemptionCount: number;
+  redeemBy: Date | null;
+  archivedAt: Date | null;
+  isExpanded: boolean;
+  onClick?: () => void;
+  menuItems?: MenuItem[];
 }
 
-interface CouponRedemptionsRowProps {
-  couponId: string;
-  disabled: boolean;
+interface CouponRedemptionRowData {
+  sId: string;
+  workspaceId: string;
+  redeemedByUserId: string | null;
+  redeemedAt: Date;
+  onClick?: () => void;
+  menuItems?: MenuItem[];
 }
 
-function CouponRedemptionsRow({
-  couponId,
-  disabled,
-}: CouponRedemptionsRowProps) {
+const couponColumns: ColumnDef<CouponRowData>[] = [
+  {
+    id: "expand",
+    header: "",
+    cell: ({ row }) =>
+      row.original.isExpanded ? (
+        <ChevronDownIcon className="h-4 w-4" />
+      ) : (
+        <ChevronRightIcon className="h-4 w-4" />
+      ),
+    meta: { className: "w-8" },
+  },
+  {
+    accessorKey: "code",
+    header: "Code",
+    cell: ({ row }) => (
+      <DataTable.CellContent disabled={!!row.original.archivedAt}>
+        <div className="flex items-center gap-2">
+          <span>{row.original.code}</span>
+          {row.original.archivedAt && (
+            <span className="rounded bg-muted px-1.5 py-0.5 text-xs dark:bg-muted-night">
+              archived
+            </span>
+          )}
+        </div>
+      </DataTable.CellContent>
+    ),
+  },
+  {
+    accessorKey: "description",
+    header: "Description",
+    cell: ({ row }) => (
+      <DataTable.BasicCellContent
+        label={row.original.description ?? "—"}
+        disabled={!!row.original.archivedAt}
+      />
+    ),
+  },
+  {
+    accessorKey: "discountType",
+    header: "Type",
+    cell: ({ row }) => (
+      <DataTable.BasicCellContent
+        label={row.original.discountType}
+        disabled={!!row.original.archivedAt}
+      />
+    ),
+  },
+  {
+    accessorKey: "amountMicroUsd",
+    header: "Amount (USD)",
+    cell: ({ row }) => (
+      <DataTable.BasicCellContent
+        label={formatUsd(row.original.amountMicroUsd)}
+        disabled={!!row.original.archivedAt}
+      />
+    ),
+  },
+  {
+    accessorKey: "durationMonths",
+    header: "Duration (mo)",
+    cell: ({ row }) => (
+      <DataTable.BasicCellContent
+        label={row.original.durationMonths ?? "—"}
+        disabled={!!row.original.archivedAt}
+      />
+    ),
+  },
+  {
+    id: "uses",
+    header: "Uses",
+    cell: ({ row }) => (
+      <DataTable.BasicCellContent
+        label={`${row.original.redemptionCount}${row.original.maxRedemptions !== null ? ` / ${row.original.maxRedemptions}` : ""}`}
+        disabled={!!row.original.archivedAt}
+      />
+    ),
+  },
+  {
+    accessorKey: "redeemBy",
+    header: "Redeem by",
+    cell: ({ row }) => (
+      <DataTable.BasicCellContent
+        label={
+          row.original.redeemBy
+            ? formatTimestampToFriendlyDate(
+                new Date(row.original.redeemBy).getTime(),
+                "compactWithDay"
+              )
+            : "—"
+        }
+        disabled={!!row.original.archivedAt}
+      />
+    ),
+  },
+  {
+    id: "actions",
+    header: "",
+    cell: ({ row }) => (
+      <DataTable.MoreButton menuItems={row.original.menuItems} />
+    ),
+    meta: { className: "w-14" },
+  },
+];
+
+const redemptionColumns: ColumnDef<CouponRedemptionRowData>[] = [
+  {
+    accessorKey: "workspaceId",
+    header: "Workspace",
+    cell: ({ row }) => (
+      <DataTable.BasicCellContent label={row.original.workspaceId} />
+    ),
+  },
+  {
+    accessorKey: "redeemedByUserId",
+    header: "Redeemed by",
+    cell: ({ row }) => (
+      <DataTable.BasicCellContent
+        label={row.original.redeemedByUserId ?? "—"}
+      />
+    ),
+  },
+  {
+    accessorKey: "redeemedAt",
+    header: "Redeemed at",
+    cell: ({ row }) => (
+      <DataTable.BasicCellContent
+        label={formatTimestampToFriendlyDate(
+          new Date(row.original.redeemedAt).getTime(),
+          "compactWithDay"
+        )}
+      />
+    ),
+  },
+];
+
+interface CouponRedemptionsPanelProps {
+  coupon: CouponType;
+}
+
+function CouponRedemptionsPanel({ coupon }: CouponRedemptionsPanelProps) {
   const { redemptions, isRedemptionsLoading } = usePokeCouponRedemptions({
-    couponId,
-    disabled,
+    couponId: coupon.sId,
+    disabled: false,
   });
+
+  const data: CouponRedemptionRowData[] = useMemo(
+    () =>
+      redemptions.map((r: CouponRedemptionType) => ({
+        sId: r.sId,
+        workspaceId: r.workspaceId,
+        redeemedByUserId: r.redeemedByUserId,
+        redeemedAt: r.redeemedAt,
+      })),
+    [redemptions]
+  );
 
   if (isRedemptionsLoading) {
     return (
-      <tr>
-        <td colSpan={9} className="px-4 py-2 text-center">
-          <Spinner size="xs" />
-        </td>
-      </tr>
+      <div className="flex justify-center py-4">
+        <Spinner size="sm" />
+      </div>
     );
   }
 
-  if (redemptions.length === 0) {
-    return (
-      <tr>
-        <td
-          colSpan={9}
-          className="px-6 py-2 text-sm text-muted-foreground dark:text-muted-foreground-night"
-        >
+  return (
+    <div className="mt-2 rounded-lg border p-4">
+      <p className="mb-2 text-sm font-semibold">
+        Redemptions for <span className="font-mono">{coupon.code}</span>
+      </p>
+      {redemptions.length === 0 ? (
+        <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
           No redemptions yet.
-        </td>
-      </tr>
-    );
-  }
-
-  return (
-    <>
-      {redemptions.map((r: CouponRedemptionType) => (
-        <tr
-          key={r.sId}
-          className="bg-muted/30 dark:bg-muted-night/30 text-xs text-muted-foreground dark:text-muted-foreground-night"
-        >
-          <td className="w-8" />
-          <td className="border px-3 py-1 font-mono">↳ {r.workspaceId}</td>
-          <td className="border px-3 py-1 font-mono">
-            {r.redeemedByUserId ?? "—"}
-          </td>
-          <td className="border px-3 py-1">{formatDate(r.redeemedAt)}</td>
-          <td colSpan={5} />
-        </tr>
-      ))}
-    </>
-  );
-}
-
-interface CouponRowProps {
-  coupon: CouponType;
-  isExpanded: boolean;
-  onToggleExpand: () => void;
-  onArchive: () => void;
-}
-
-function CouponRow({
-  coupon,
-  isExpanded,
-  onToggleExpand,
-  onArchive,
-}: CouponRowProps) {
-  const isArchived = coupon.archivedAt !== null;
-
-  return (
-    <>
-      <tr
-        className={
-          isArchived
-            ? "cursor-pointer opacity-50"
-            : "cursor-pointer hover:bg-muted/20 dark:hover:bg-muted-night/20"
-        }
-        onClick={onToggleExpand}
-      >
-        <td className="w-8 px-2 py-2 text-center">
-          {isExpanded ? (
-            <ChevronDownIcon className="h-4 w-4" />
-          ) : (
-            <ChevronRightIcon className="h-4 w-4" />
-          )}
-        </td>
-        <td className="border px-4 py-2 font-semibold">
-          <div className="flex items-center gap-2">
-            {coupon.code}
-            {isArchived && (
-              <span className="rounded bg-muted px-1.5 py-0.5 text-xs dark:bg-muted-night">
-                archived
-              </span>
-            )}
-          </div>
-        </td>
-        <td className="border px-4 py-2 text-sm">
-          {coupon.description ?? "—"}
-        </td>
-        <td className="border px-4 py-2 text-sm">{coupon.discountType}</td>
-        <td className="border px-4 py-2 text-sm font-mono">
-          {formatUsd(coupon.amountMicroUsd)}
-        </td>
-        <td className="border px-4 py-2 text-sm text-center">
-          {coupon.durationMonths ?? "—"}
-        </td>
-        <td className="border px-4 py-2 text-sm text-center font-mono">
-          {coupon.redemptionCount}
-          {coupon.maxRedemptions !== null ? ` / ${coupon.maxRedemptions}` : ""}
-        </td>
-        <td className="border px-4 py-2 text-sm">
-          {formatDate(coupon.redeemBy)}
-        </td>
-        <td
-          className="border px-4 py-2 text-sm"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <IconButton
-            icon={ArchiveIcon}
-            size="xs"
-            variant="ghost"
-            disabled={isArchived}
-            tooltip={isArchived ? "Already archived" : "Archive coupon"}
-            onClick={onArchive}
-          />
-        </td>
-      </tr>
-      {isExpanded && (
-        <CouponRedemptionsRow couponId={coupon.sId} disabled={!isExpanded} />
+        </p>
+      ) : (
+        <DataTable
+          data={data}
+          columns={redemptionColumns}
+          getRowId={(row) => row.sId}
+        />
       )}
-    </>
+    </div>
   );
 }
 
@@ -178,13 +248,36 @@ export function CouponsPage() {
   const [expandedCouponId, setExpandedCouponId] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
 
-  function toggleExpand(couponId: string) {
-    setExpandedCouponId((prev) => (prev === couponId ? null : couponId));
-  }
+  const data: CouponRowData[] = useMemo(
+    () =>
+      coupons.map((coupon: CouponType) => ({
+        ...coupon,
+        isExpanded: expandedCouponId === coupon.sId,
+        onClick: () =>
+          setExpandedCouponId((prev) =>
+            prev === coupon.sId ? null : coupon.sId
+          ),
+        menuItems: coupon.archivedAt
+          ? []
+          : [
+              {
+                kind: "item" as const,
+                label: "Archive",
+                icon: ArchiveIcon,
+                onClick: (e: MouseEvent) => {
+                  e.stopPropagation();
+                  void archiveCoupon(coupon.sId);
+                },
+              },
+            ],
+      })),
+    [coupons, expandedCouponId, archiveCoupon]
+  );
 
-  async function handleArchive(couponId: string) {
-    await archiveCoupon(couponId);
-  }
+  const expandedCoupon = useMemo(
+    () => coupons.find((c) => c.sId === expandedCouponId) ?? null,
+    [coupons, expandedCouponId]
+  );
 
   if (isCouponsLoading) {
     return (
@@ -220,44 +313,13 @@ export function CouponsPage() {
         />
       </div>
 
-      <div className="w-full overflow-x-auto pb-24">
-        <table className="w-full table-auto rounded-lg text-left">
-          <thead className="bg-muted dark:bg-muted-night">
-            <tr>
-              <th className="w-8" />
-              <th className="border px-4 py-2 text-sm">Code</th>
-              <th className="border px-4 py-2 text-sm">Description</th>
-              <th className="border px-4 py-2 text-sm">Type</th>
-              <th className="border px-4 py-2 text-sm">Amount (USD)</th>
-              <th className="border px-4 py-2 text-sm">Duration (mo)</th>
-              <th className="border px-4 py-2 text-sm">Uses</th>
-              <th className="border px-4 py-2 text-sm">Redeem by</th>
-              <th className="border px-4 py-2 text-sm">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {coupons.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={9}
-                  className="px-4 py-8 text-center text-muted-foreground dark:text-muted-foreground-night"
-                >
-                  No coupons yet.
-                </td>
-              </tr>
-            ) : (
-              coupons.map((coupon: CouponType) => (
-                <CouponRow
-                  key={coupon.sId}
-                  coupon={coupon}
-                  isExpanded={expandedCouponId === coupon.sId}
-                  onToggleExpand={() => toggleExpand(coupon.sId)}
-                  onArchive={() => handleArchive(coupon.sId)}
-                />
-              ))
-            )}
-          </tbody>
-        </table>
+      <div className="w-full pb-24">
+        <DataTable
+          data={data}
+          columns={couponColumns}
+          getRowId={(row) => row.sId}
+        />
+        {expandedCoupon && <CouponRedemptionsPanel coupon={expandedCoupon} />}
       </div>
     </div>
   );
