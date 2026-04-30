@@ -1,17 +1,19 @@
+import { SkillNodeComponent } from "@app/components/editor/input_bar/SkillNodeComponent";
 import {
   parseSkillTag,
   SKILL_TAG_NAME,
   SKILL_TAG_REGEX_BEGINNING,
   serializeSkillTag,
 } from "@app/lib/skills/format";
-import { mergeAttributes, Node } from "@tiptap/core";
+import { Node } from "@tiptap/core";
 import { ReactNodeViewRenderer } from "@tiptap/react";
-import { SkillNodeComponent } from "../../input_bar/SkillNodeComponent";
 
 export type SkillNodeAttributes = {
   skillId: string;
   skillName: string;
 };
+
+export const SKILL_NODE_TYPE = "skill";
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
@@ -22,7 +24,7 @@ declare module "@tiptap/core" {
 }
 
 export const SkillNode = Node.create({
-  name: "skill",
+  name: SKILL_NODE_TYPE,
   group: "inline",
   inline: true,
   atom: true,
@@ -49,12 +51,13 @@ export const SkillNode = Node.create({
     };
   },
 
+  // HTML serialization and deserialization.
   parseHTML() {
     return [{ tag: SKILL_TAG_NAME }];
   },
 
   renderHTML({ HTMLAttributes }) {
-    return [SKILL_TAG_NAME, mergeAttributes(HTMLAttributes)];
+    return [SKILL_TAG_NAME, HTMLAttributes];
   },
 
   renderText({ node }) {
@@ -72,7 +75,7 @@ export const SkillNode = Node.create({
         ({ commands }) =>
           commands.insertContent([
             {
-              type: this.name,
+              type: SKILL_NODE_TYPE,
               attrs,
             },
             { type: "text", text: " " },
@@ -80,8 +83,9 @@ export const SkillNode = Node.create({
     };
   },
 
+  // Markdown serialization and deserialization.
   markdownTokenizer: {
-    name: "skill",
+    name: SKILL_NODE_TYPE,
     level: "inline",
     start: (src) => src.indexOf(`<${SKILL_TAG_NAME}`),
     tokenize: (src) => {
@@ -96,7 +100,7 @@ export const SkillNode = Node.create({
       }
 
       return {
-        type: "skill",
+        type: SKILL_NODE_TYPE,
         raw: match[0],
         skillId: skill.id,
         skillName: skill.name,
@@ -105,7 +109,7 @@ export const SkillNode = Node.create({
   },
 
   parseMarkdown: (token) => ({
-    type: "skill",
+    type: SKILL_NODE_TYPE,
     attrs: {
       skillId: token.skillId,
       skillName: token.skillName,
