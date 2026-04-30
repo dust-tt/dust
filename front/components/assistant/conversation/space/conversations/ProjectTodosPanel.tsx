@@ -3,6 +3,7 @@ import {
   useSpaceConversations,
   useSpaceConversationsSummary,
 } from "@app/hooks/conversations";
+import { useTodoDiffAnimations } from "@app/hooks/useTodoDiffAnimations";
 import { useAppRouter } from "@app/lib/platform";
 import {
   useAgentConfigurations,
@@ -868,134 +869,14 @@ function EditableProjectTodosPanel({
     }
   }, [isTodosLoading, frozenLastReadAt, lastReadAt]);
 
-  const diffKeys = useMemo(() => {
-    if (frozenLastReadAt === undefined || frozenLastReadAt === null) {
-      return { added: new Set<string>(), newlyDone: new Set<string>() };
-    }
-    const cutoff = new Date(frozenLastReadAt).getTime();
-    const added = new Set<string>();
-    const newlyDone = new Set<string>();
-    for (const t of todos) {
-      if (new Date(t.createdAt).getTime() > cutoff) {
-        added.add(t.sId);
-      } else if (
-        t.status === "done" &&
-        t.doneAt &&
-        new Date(t.doneAt).getTime() > cutoff
-      ) {
-        newlyDone.add(t.sId);
-      }
-    }
-    return { added, newlyDone };
-  }, [frozenLastReadAt, todos]);
-
-  const [enteringKeys, setEnteringKeys] = useState<Set<string>>(new Set());
-  const [enteredKeys, setEnteredKeys] = useState<Set<string>>(new Set());
-  const [typingKeys, setTypingKeys] = useState<Set<string>>(new Set());
-  const [doneFlashKeys, setDoneFlashKeys] = useState<Set<string>>(new Set());
-  const startRaf1Ref = useRef<number | null>(null);
-  const startRaf2Ref = useRef<number | null>(null);
-  const cleanupTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const inFlightAddedKeysRef = useRef<Set<string>>(new Set());
-  const flashedDoneKeysRef = useRef<Set<string>>(new Set());
-
-  useEffect(() => {
-    if (isTodosLoading || frozenLastReadAt === undefined) {
-      return;
-    }
-
-    const added = new Set<string>();
-    for (const sId of diffKeys.added) {
-      if (!enteredKeys.has(sId) && !inFlightAddedKeysRef.current.has(sId)) {
-        added.add(sId);
-      }
-    }
-
-    const newlyDone = new Set<string>();
-    for (const sId of diffKeys.newlyDone) {
-      if (!flashedDoneKeysRef.current.has(sId)) {
-        newlyDone.add(sId);
-      }
-    }
-
-    if (added.size === 0 && newlyDone.size === 0) {
-      return;
-    }
-
-    // Mark as read immediately so navigating away/back during animation
-    // doesn't cause the same items to re-animate on next mount.
-    void markRead();
-
-    for (const sId of newlyDone) {
-      flashedDoneKeysRef.current.add(sId);
-    }
-
-    if (added.size > 0) {
-      inFlightAddedKeysRef.current = new Set(added);
-      setTypingKeys(new Set(added));
-    }
-    setDoneFlashKeys((prev) => new Set([...prev, ...newlyDone]));
-
-    // If a revalidation triggers another pass while an animation is in-flight,
-    // reschedule from the latest keys instead of letting React's effect cleanup
-    // cancel the previous run and leave items collapsed.
-    if (startRaf1Ref.current !== null) {
-      cancelAnimationFrame(startRaf1Ref.current);
-      startRaf1Ref.current = null;
-    }
-    if (startRaf2Ref.current !== null) {
-      cancelAnimationFrame(startRaf2Ref.current);
-      startRaf2Ref.current = null;
-    }
-    if (cleanupTimeoutRef.current !== null) {
-      clearTimeout(cleanupTimeoutRef.current);
-      cleanupTimeoutRef.current = null;
-    }
-    inFlightAddedKeysRef.current = new Set();
-
-    // Double-RAF: wait for the browser to paint the initial hidden state of
-    // new items (isAdded && !isEntering → max-h-0 opacity-0) before triggering
-    // the entering animation. setTimeout(0) could fire before the first paint,
-    // causing items to flash visible before animating in.
-    startRaf1Ref.current = requestAnimationFrame(() => {
-      startRaf2Ref.current = requestAnimationFrame(() => {
-        setEnteringKeys(new Set(added));
-        startRaf1Ref.current = null;
-        startRaf2Ref.current = null;
-      });
+  const { pendingAddedKeys, enteringKeys, typingKeys, doneFlashKeys } =
+    useTodoDiffAnimations({
+      ledgerScopeKey: `${owner.sId}:${spaceId}`,
+      todos,
+      frozenLastReadAt,
+      isTodosLoading,
+      markRead,
     });
-
-    cleanupTimeoutRef.current = setTimeout(() => {
-      setEnteringKeys(new Set());
-      setEnteredKeys((prev) => new Set([...prev, ...added]));
-      inFlightAddedKeysRef.current = new Set();
-      cleanupTimeoutRef.current = null;
-    }, SUMMARY_ITEM_TRANSITION_MS);
-  }, [diffKeys, frozenLastReadAt, isTodosLoading, markRead, enteredKeys]);
-
-  // Cleanup only on unmount.
-  useEffect(() => {
-    return () => {
-      const hadInFlightAnimation = inFlightAddedKeysRef.current.size > 0;
-
-      if (startRaf1Ref.current !== null) {
-        cancelAnimationFrame(startRaf1Ref.current);
-      }
-      if (startRaf2Ref.current !== null) {
-        cancelAnimationFrame(startRaf2Ref.current);
-      }
-      if (cleanupTimeoutRef.current !== null) {
-        clearTimeout(cleanupTimeoutRef.current);
-      }
-      inFlightAddedKeysRef.current = new Set();
-
-      // If the user navigates away before the animation cleanup timeout runs,
-      // persist the read marker so the same items don't re-animate on remount.
-      if (hadInFlightAnimation) {
-        void markRead();
-      }
-    };
-  }, [markRead]);
 
   const usersBySId = useMemo(
     () => new Map(users.map((user) => [user.sId, user])),
@@ -1384,10 +1265,7 @@ function EditableProjectTodosPanel({
                       agentsLoading={isAgentsLoading}
                       agentNameById={agentNameById}
                       isExiting={pendingRemovalIds.has(todo.sId)}
-                      isAdded={
-                        diffKeys.added.has(todo.sId) &&
-                        !enteredKeys.has(todo.sId)
-                      }
+                      isAdded={pendingAddedKeys.has(todo.sId)}
                       isEntering={enteringKeys.has(todo.sId)}
                       isTyping={typingKeys.has(todo.sId)}
                       isNewlyDone={doneFlashKeys.has(todo.sId)}
