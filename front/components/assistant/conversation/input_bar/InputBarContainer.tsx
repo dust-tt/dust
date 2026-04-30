@@ -782,11 +782,6 @@ const InputBarContainer = ({
       }
     }
 
-    sendNotification({
-      title: "No match for URL",
-      description: `Pasted URL does not match any content in knowledge. ${nodeOrUrlCandidate?.provider === "microsoft" ? "(Microsoft URLs are not supported)" : ""}`,
-      type: "info",
-    });
     setNodeOrUrlCandidate(null);
   }, [
     searchResultNodes,
@@ -795,7 +790,6 @@ const InputBarContainer = ({
     editorService,
     spacesMap,
     nodeOrUrlCandidate,
-    sendNotification,
     isSpacesLoading,
   ]);
 
