@@ -197,7 +197,7 @@ function constructToolsSection({
  * Get the full instructions for an enabled skill, including extended skill instructions if applicable.
  */
 function getEnabledSkillInstructions(
-  skill: SkillResource & { extendedSkill: SkillResource | null }
+  skill: EnabledSkill
 ): string {
   const { name, instructions, extendedSkill } = skill;
 
@@ -256,7 +256,7 @@ function constructSkillsSection({
   equippedSkills,
 }: {
   systemSkills: SkillResource[];
-  enabledSkills: (SkillResource & { extendedSkill: SkillResource | null })[];
+  enabledSkills: EnabledSkill[];
   equippedSkills: SkillResource[];
 }): string {
   let skillsSection =
@@ -477,7 +477,7 @@ export function constructPromptMultiActions(
     agentsList: LightAgentConfigurationType[] | null;
     conversation?: ConversationWithoutContentType;
     serverToolsAndInstructions?: ServerToolsAndInstructions[];
-    enabledSkills: (SkillResource & { extendedSkill: SkillResource | null })[];
+    enabledSkills: EnabledSkill[];
     systemSkills: SkillResource[];
     equippedSkills: SkillResource[];
     renderSkillsAsUserMessages?: boolean;
