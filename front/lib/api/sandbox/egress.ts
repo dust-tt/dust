@@ -230,14 +230,10 @@ export async function setupEgressForwarder(
   );
 }
 
-// Phase 0 PoC: install the dsbx-issued ephemeral CA into the sandbox trust
-// store and produce a merged bundle at MITM_CA_BUNDLE_PATH that replace-style
-// trust env vars (SSL_CERT_FILE, CURL_CA_BUNDLE) can safely point at without
-// breaking non-MITM TLS to public sites. Idempotent on every boot.
-//
-// The system-store install is best-effort: clients that read the merged
-// bundle directly via env vars (curl, the only Phase 0 client) work even if
-// update-ca-certificates is unavailable on the image.
+// Produces a merged bundle (system roots ∪ dsbx ephemeral CA) so replace-style
+// trust env vars (SSL_CERT_FILE, CURL_CA_BUNDLE) don't break non-MITM TLS to
+// public sites. The system-store install is best-effort so the agent still
+// works on images without update-ca-certificates.
 async function installMitmTrustBundle(
   auth: Authenticator,
   sandbox: SandboxResource

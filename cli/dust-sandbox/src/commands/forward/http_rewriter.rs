@@ -1,11 +1,11 @@
 /// Phase 0 byte-level header rewriter.
 ///
 /// Scans HTTP/1.1 request bytes for the literal placeholder
-/// `__DUST_EXPERIMENT_PLACEHOLDER__` and replaces it with
-/// `__SUCCESSFULLY_REPLACED__`. Both strings are exactly 32 bytes long,
-/// so framing (Content-Length, header offsets) is preserved without any
-/// recomputation. The replacement is unconditional and not gated on
-/// header name; the only guard is that the byte sequence appears.
+/// `__DUST_EXPERIMENT_PLACEHOLDER__` (31 bytes) and replaces it with
+/// `__SUCCESSFULLY_REPLACED________` (also 31 bytes, padded with trailing
+/// underscores so framing — Content-Length, header offsets — is preserved
+/// without recomputation). The replacement is unconditional and not gated
+/// on header name; the only guard is that the byte sequence appears.
 pub const PHASE0_PLACEHOLDER: &[u8] = b"__DUST_EXPERIMENT_PLACEHOLDER__";
 pub const PHASE0_REPLACEMENT: &[u8] = b"__SUCCESSFULLY_REPLACED________";
 

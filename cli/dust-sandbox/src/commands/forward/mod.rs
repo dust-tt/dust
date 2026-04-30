@@ -23,7 +23,7 @@ use tracing::{debug, info, warn};
 use self::deny_log::{append_deny_log, DenyReason};
 use self::handshake::{build_handshake_frame, ALLOW_RESPONSE, DENY_RESPONSE};
 use self::http_host::parse_http_host;
-use self::http_rewriter::{rewrite_in_place, PHASE0_PLACEHOLDER, PHASE0_REPLACEMENT};
+use self::http_rewriter::rewrite_in_place;
 use self::original_dst::resolve_original_dst;
 use self::sni::parse_client_hello_sni;
 use self::tls_mitm::MitmCa;
@@ -229,8 +229,8 @@ async fn handle_connection(
                 "proxy allowed forwarded connection"
             );
 
-            if let Some(mitm) = mitm_target {
-                run_mitm_session(&runtime, mitm, client_stream, proxy_stream)
+            if let Some((sni, ca)) = mitm_target {
+                run_mitm_session(&runtime, &sni, ca, client_stream, proxy_stream)
                     .await
                     .context("MITM session failed")?;
             } else {
@@ -282,35 +282,25 @@ async fn handle_connection(
     Ok(())
 }
 
-struct MitmTarget {
-    sni: String,
-    ca: Arc<MitmCa>,
-}
-
 fn mitm_target_for(
     runtime: &ForwardRuntime,
     original_port: u16,
     domain: &str,
-) -> Option<MitmTarget> {
+) -> Option<(String, Arc<MitmCa>)> {
     if original_port != 443 {
         return None;
     }
     let ca = runtime.mitm_ca.as_ref()?;
-    if runtime.mitm_experiment_host.is_empty() {
-        return None;
-    }
     if !domain.eq_ignore_ascii_case(&runtime.mitm_experiment_host) {
         return None;
     }
-    Some(MitmTarget {
-        sni: domain.to_string(),
-        ca: Arc::clone(ca),
-    })
+    Some((domain.to_string(), Arc::clone(ca)))
 }
 
 async fn run_mitm_session<S>(
     runtime: &ForwardRuntime,
-    mitm: MitmTarget,
+    sni: &str,
+    ca: Arc<MitmCa>,
     client_stream: TcpStream,
     proxy_stream: S,
 ) -> Result<()>
@@ -322,7 +312,7 @@ where
     // TLS, just splices encrypted bytes — same as a normal request, except we
     // (dsbx) are now the originator instead of the agent.
     let upstream_server_name =
-        ServerName::try_from(mitm.sni.clone()).context("invalid upstream SNI for MITM TLS")?;
+        ServerName::try_from(sni.to_string()).context("invalid upstream SNI for MITM TLS")?;
     let upstream_tls = runtime
         .tls_connector
         .connect(upstream_server_name, proxy_stream)
@@ -331,9 +321,8 @@ where
 
     // Inbound: dsbx terminates the agent's TLS using a leaf cert minted by the
     // ephemeral CA the sandbox image already trusts.
-    let server_config = mitm
-        .ca
-        .server_config_for(&mitm.sni)
+    let server_config = ca
+        .server_config_for(sni)
         .await
         .context("failed to build MITM server config for SNI")?;
     let acceptor = TlsAcceptor::from(server_config);
@@ -402,12 +391,8 @@ where
         if count > 0 {
             info!(
                 replacements = count,
-                placeholder = std::str::from_utf8(PHASE0_PLACEHOLDER).unwrap_or(""),
-                replacement = std::str::from_utf8(PHASE0_REPLACEMENT).unwrap_or(""),
                 "dsbx MITM rewrote phase-0 placeholder in agent request"
             );
-        } else {
-            debug!("dsbx MITM saw no phase-0 placeholder in agent request");
         }
         writer.write_all(&header_buf).await?;
         writer.flush().await?;

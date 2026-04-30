@@ -7,6 +7,7 @@ const {
   mockGetEgressProxyJwtSecret,
   mockGetEgressProxyPort,
   mockGetEgressProxyTlsName,
+  mockGetEgressMitmExperimentHost,
   mockGetCurrentRegion,
   mockLoggerInfo,
   mockLookup,
@@ -15,6 +16,7 @@ const {
   mockGetEgressProxyJwtSecret: vi.fn(),
   mockGetEgressProxyPort: vi.fn(),
   mockGetEgressProxyTlsName: vi.fn(),
+  mockGetEgressMitmExperimentHost: vi.fn(),
   mockGetCurrentRegion: vi.fn(),
   mockLoggerInfo: vi.fn(),
   mockLookup: vi.fn(),
@@ -26,6 +28,7 @@ vi.mock("@app/lib/api/config", () => ({
     getEgressProxyJwtSecret: mockGetEgressProxyJwtSecret,
     getEgressProxyPort: mockGetEgressProxyPort,
     getEgressProxyTlsName: mockGetEgressProxyTlsName,
+    getEgressMitmExperimentHost: mockGetEgressMitmExperimentHost,
   },
 }));
 
@@ -66,6 +69,7 @@ describe("sandbox egress helpers", () => {
     mockGetEgressProxyJwtSecret.mockReturnValue("egress-secret");
     mockGetEgressProxyPort.mockReturnValue(4443);
     mockGetEgressProxyTlsName.mockReturnValue(undefined);
+    mockGetEgressMitmExperimentHost.mockReturnValue(undefined);
     mockGetCurrentRegion.mockReturnValue("europe-west1");
     mockLookup.mockResolvedValue({ address: "203.0.113.10", family: 4 });
   });

@@ -340,12 +340,9 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       return workspaceEnvResult;
     }
 
-    // Phase 0 PoC: when the egress MITM experiment is enabled, point
-    // replace-style trust env vars at the merged bundle (system roots ∪
-    // dsbx-issued ephemeral CA) installed by setupEgressForwarder. Done at
-    // the system-vars layer so workspace overrides cannot accidentally drop
-    // it. Empty / unset disables the experiment; in that case we leave
-    // nothing in the agent env.
+    // Set at the system layer so workspace overrides cannot drop it. Points at
+    // the merged bundle (system roots ∪ dsbx ephemeral CA) installed by
+    // setupEgressForwarder.
     const mitmEnv: Record<string, string> = config.getEgressMitmExperimentHost()
       ? {
           SSL_CERT_FILE: "/etc/dust/ca-bundle.pem",

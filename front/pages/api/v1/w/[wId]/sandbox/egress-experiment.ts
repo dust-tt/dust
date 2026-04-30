@@ -1,3 +1,4 @@
+import config from "@app/lib/api/config";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
@@ -13,12 +14,23 @@ const EXPERIMENT_HEADER = "x-dust-experiment";
  * @ignoreswagger
  * Phase 0 PoC instrumentation endpoint for the dsbx MITM substitution test.
  * Logs the inbound `X-Dust-Experiment` header so it shows up in Datadog and
- * echoes the value back to the caller. No auth, no DB, no secrets.
+ * echoes the value back to the caller. Returns 404 unless the experiment is
+ * explicitly enabled via EGRESS_MITM_EXPERIMENT_HOST.
  */
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<EgressExperimentResponse>>
 ): Promise<void> {
+  if (!config.getEgressMitmExperimentHost()) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Not found.",
+      },
+    });
+  }
+
   if (req.method !== "POST" && req.method !== "GET") {
     return apiError(req, res, {
       status_code: 405,
@@ -39,7 +51,6 @@ async function handler(
       event: "sandbox.egress_experiment.hit",
       method: req.method,
       received,
-      authorization: req.headers.authorization ?? null,
       userAgent: req.headers["user-agent"] ?? null,
       remoteAddress: req.socket.remoteAddress ?? null,
     },
