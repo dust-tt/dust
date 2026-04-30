@@ -184,7 +184,7 @@ export async function moveConversationOutOfProject(
   const participants = await conversationResource.listParticipants(auth);
 
   // Remove the project association.
-  await conversationResource.clearSpaceId(auth);
+  await conversationResource.updateSpaceId(auth, null);
 
   // Rebuild requestedSpaceIds from all agents and content fragments in the conversation.
   // When a conversation is in a project, its requestedSpaceIds is set to [projectSpaceId] only.

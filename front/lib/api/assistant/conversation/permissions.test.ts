@@ -722,7 +722,7 @@ describe("rebuildConversationRequirements", () => {
   const moveOutAndRebuild = async (conversationId: string) => {
     const conversationResource =
       await fetchConversationResource(conversationId);
-    await conversationResource.clearSpaceId(auth);
+    await conversationResource.updateSpaceId(auth, null);
     await rebuildConversationRequirements(auth, conversationResource);
   };
 
