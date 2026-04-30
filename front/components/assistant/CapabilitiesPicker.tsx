@@ -56,16 +56,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 // dropdown body, matching the slash suggestion row count.
 const CAPABILITIES_PICKER_LIST_MAX_HEIGHT_CLASS_NAME = "max-h-[22.75rem]";
 
-interface ScrollFadeState {
-  hasContentAbove: boolean;
-  hasContentBelow: boolean;
-}
-
-const EMPTY_SCROLL_FADE_STATE: ScrollFadeState = {
-  hasContentAbove: false,
-  hasContentBelow: false,
-};
-
 interface CapabilityPickerItemBase {
   description?: string;
   icon: DropdownMenuItemProps["icon"];
@@ -123,9 +113,10 @@ function CapabilitiesPickerItemsList({
   onSkillDetails,
   onToolDetails,
 }: CapabilitiesPickerItemsListProps) {
-  const [scrollFadeState, setScrollFadeState] = useState<ScrollFadeState>(
-    EMPTY_SCROLL_FADE_STATE
-  );
+  const [scrollFadeState, setScrollFadeState] = useState({
+    hasContentAbove: false,
+    hasContentBelow: false,
+  });
   const listRef = useRef<HTMLDivElement>(null);
   const itemCount = items.length;
 
@@ -133,7 +124,10 @@ function CapabilitiesPickerItemsList({
     const list = listRef.current;
 
     if (!list) {
-      setScrollFadeState(EMPTY_SCROLL_FADE_STATE);
+      setScrollFadeState({
+        hasContentAbove: false,
+        hasContentBelow: false,
+      });
       return;
     }
 
@@ -155,7 +149,10 @@ function CapabilitiesPickerItemsList({
     if (itemCount === 0) {
       setScrollFadeState((previousState) =>
         previousState.hasContentAbove || previousState.hasContentBelow
-          ? EMPTY_SCROLL_FADE_STATE
+          ? {
+              hasContentAbove: false,
+              hasContentBelow: false,
+            }
           : previousState
       );
       return;
