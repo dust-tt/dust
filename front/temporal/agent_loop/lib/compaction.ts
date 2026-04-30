@@ -118,32 +118,30 @@ async function createCompactionHistoryFile(
   auth: Authenticator,
   {
     targetConversationId,
-    sourceConversationId,
+    sourceConversation,
     sourceMessageRank,
-    compactionMessageId,
+    compactionMessage,
     renderedMessages,
   }: {
     targetConversationId: string;
-    sourceConversationId?: string;
+    sourceConversation: ConversationType;
     sourceMessageRank?: number;
-    compactionMessageId: string;
+    compactionMessage: CompactionMessageType;
     renderedMessages: string;
   }
 ): Promise<Result<string, Error>> {
   const generatedAt = new Date();
-  const relativeFilePath = `compactions/history-${formatCompactionHistoryTimestamp(generatedAt)}-${compactionMessageId}.md`;
+  const relativeFilePath = `compactions/history-${formatCompactionHistoryTimestamp(generatedAt)}-${compactionMessage.sId}.md`;
   const metadataLines = [
     "# Conversation History Before Compaction",
     "",
     `Generated at: ${generatedAt.toISOString()}`,
     `Target conversation: ${targetConversationId}`,
-    sourceConversationId
-      ? `Source conversation: ${sourceConversationId}`
-      : null,
+    `Source conversation: ${sourceConversation.sId}`,
     sourceMessageRank !== undefined
       ? `Source message rank: ${sourceMessageRank}`
       : null,
-    `Compaction message: ${compactionMessageId}`,
+    `Compaction message: ${compactionMessage.sId}`,
     "",
     "## Conversation",
     "",
@@ -261,9 +259,9 @@ export async function runCompaction(
 
     const historyFileRes = await createCompactionHistoryFile(auth, {
       targetConversationId: targetConversation.sId,
-      sourceConversationId: sourceConversation?.conversationId,
+      sourceConversation: conversationToSummarize,
       sourceMessageRank: sourceConversation?.messageRank,
-      compactionMessageId,
+      compactionMessage,
       renderedMessages,
     });
 
