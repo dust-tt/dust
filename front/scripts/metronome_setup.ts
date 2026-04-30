@@ -332,7 +332,7 @@ const PRODUCTS: ProductDef[] = [
   { name: "MAU Commit", type: "FIXED" },
   // FIXED products for credit grants — separate products for distinct invoice line items.
   {
-    name: "Free Monthly Credits",
+    name: "Free Credits",
     type: "FIXED",
   },
   {
@@ -696,12 +696,12 @@ function getRateCards(): RateCardDef[] {
   ];
 }
 
-// Recurring free credit definition shared by all packages.
+// Recurring free credit definition shared by all monthly packages.
 // Quantity starts at 0 — the credit.segment.start webhook updates it each period
 // to the actual user-based amount.
 function getFreeMonthlyRecurringCredits(): RecurringCreditDef {
   return {
-    product_name: "Free Monthly Credits",
+    product_name: "Free Credits",
     access_amount: {
       credit_type_id: getCreditTypeProgrammaticUsdId(),
       unit_price: 0,
@@ -713,6 +713,26 @@ function getFreeMonthlyRecurringCredits(): RecurringCreditDef {
     applicable_product_tags: [USAGE_TAG],
     recurrence_frequency: "MONTHLY",
     name: "Free Monthly Credits",
+  };
+}
+
+// Annual variant for annual packages. Same product, but the credit is granted
+// once per year. The credit.segment.start webhook detects ANNUAL recurrence
+// and multiplies the monthly bracket amount by 12.
+function getFreeAnnualRecurringCredits(): RecurringCreditDef {
+  return {
+    product_name: "Free Credits",
+    access_amount: {
+      credit_type_id: getCreditTypeProgrammaticUsdId(),
+      unit_price: 0,
+      quantity: 1,
+    },
+    commit_duration: { value: 1, unit: "PERIODS" },
+    priority: 1,
+    starting_at_offset: { unit: "DAYS", value: 0 }, // starts immediately
+    applicable_product_tags: [USAGE_TAG],
+    recurrence_frequency: "ANNUAL",
+    name: "Free Annual Credits",
   };
 }
 
@@ -771,7 +791,7 @@ function getPackages(): PackageDef[] {
       aliases: [{ name: "legacy-pro-annual" }],
       rate_card_name: "Legacy Pro Annual USD",
       subscriptions: [LEGACY_SEAT_SUBSCRIPTION],
-      recurring_credits: [getFreeMonthlyRecurringCredits()],
+      recurring_credits: [getFreeAnnualRecurringCredits()],
       ...BILLING_CYCLE_CONFIG,
     },
     // Enterprise: MAU-based billing, no seat subscriptions.
@@ -805,7 +825,7 @@ function getPackages(): PackageDef[] {
       aliases: [{ name: "legacy-pro-annual-eur" }],
       rate_card_name: "Legacy Pro Annual EUR",
       subscriptions: [LEGACY_SEAT_SUBSCRIPTION],
-      recurring_credits: [getFreeMonthlyRecurringCredits()],
+      recurring_credits: [getFreeAnnualRecurringCredits()],
       ...BILLING_CYCLE_CONFIG,
     },
     {
@@ -1510,6 +1530,12 @@ function packageMatches(ex: ExistingPackage, desired: PackageDef): boolean {
       return false;
     }
     if (match.priority !== desiredCredit.priority) {
+      return false;
+    }
+    if (
+      (match.recurrence_frequency ?? undefined) !==
+      (desiredCredit.recurrence_frequency ?? undefined)
+    ) {
       return false;
     }
   }
