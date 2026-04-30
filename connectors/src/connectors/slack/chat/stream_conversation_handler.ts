@@ -1,4 +1,5 @@
 import {
+  AWAITING_TOOL_APPROVAL_LABEL,
   getActionDoneLabel,
   getActionRunningLabel,
   getRunAgentNotificationOutput,
@@ -279,6 +280,10 @@ async function streamAgentAnswerToSlack(
           botId: undefined,
           slackChatBotMessageId: slackChatBotMessage.id,
         });
+
+        planHandler.setTaskAwaitingToolApproval();
+        await planHandler.upsertPlanMessage(AWAITING_TOOL_APPROVAL_LABEL);
+        await streamHandler.setThinking(AWAITING_TOOL_APPROVAL_LABEL);
 
         if (slackUserId && !slackUserInfo.is_bot) {
           await slackClient.chat.postEphemeral({
