@@ -3179,6 +3179,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     transaction?: Transaction
   ) {
     await this.update({ spaceId: space?.id ?? null }, transaction);
+    // TODO(2026-04-30): BaseResource.update does not reload joins, so we
+    // manually refresh the space here.
+    this._space = space;
 
     await ConversationResource.triggerEsIndexing(auth, this.sId);
   }
