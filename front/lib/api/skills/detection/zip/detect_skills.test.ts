@@ -79,6 +79,29 @@ describe("detectSkillsFromZip", () => {
     }
   });
 
+  test("detects a single skill directory at the top level", () => {
+    const zipBuffer = buildZipBuffer({
+      "my-skill/SKILL.md": makeSkillMd("foo", "Foo skill", "Do foo."),
+      "my-skill/helper.py": "print('hello')",
+    });
+
+    const result = detectSkillsFromZip({ zipBuffer });
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toHaveLength(1);
+      expect(result.value[0].name).toBe("foo");
+      expect(result.value[0].skillMdPath).toBe("my-skill/SKILL.md");
+      expect(result.value[0].attachments).toEqual([
+        {
+          path: "my-skill/helper.py",
+          sizeBytes: 14,
+          contentType: "text/x-python",
+          originalEntryName: "my-skill/helper.py",
+        },
+      ]);
+    }
+  });
+
   test("returns empty array when no SKILL.md files found", () => {
     const zipBuffer = buildZipBuffer({
       "README.md": "# Hello",
