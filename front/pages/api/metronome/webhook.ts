@@ -24,6 +24,8 @@ import {
   getCustomerIdFromEvent,
   MetronomeWebhookEventSchema,
 } from "@app/lib/metronome/webhook_events";
+import { PlanModel } from "@app/lib/models/plan";
+import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -386,9 +388,9 @@ async function handler(
           const { contract_id: contractId, customer_id: customerId } = event;
 
           // Read PLAN_CODE custom field to determine whether this is a
-          // Poke-scheduled Enterprise upgrade. Absence of PLAN_CODE means
-          // this contract.start is for some other flow (e.g., Pro signup) —
-          // leave the subscription alone.
+          // Poke-scheduled Enterprise upgrade. Only Enterprise plan codes
+          // should trigger a subscription swap; other plan contract starts
+          // are handled by their own creation/update flows.
           const contractResult = await getMetronomeContractById({
             metronomeCustomerId: customerId,
             metronomeContractId: contractId,
@@ -422,6 +424,25 @@ async function handler(
             break;
           }
 
+          const targetPlan = await PlanModel.findOne({
+            where: { code: targetPlanCode },
+          });
+          if (!targetPlan) {
+            logger.info(
+              { contractId, targetPlanCode, workspaceId: workspace.sId },
+              "[Metronome Webhook] contract.start: PLAN_CODE not found, leaving subscription alone"
+            );
+            break;
+          }
+
+          if (!isEntreprisePlanPrefix(targetPlan.code)) {
+            logger.info(
+              { contractId, targetPlanCode, workspaceId: workspace.sId },
+              "[Metronome Webhook] contract.start: non-enterprise PLAN_CODE, leaving subscription alone"
+            );
+            break;
+          }
+
           const activeSubscription =
             await SubscriptionResource.fetchActiveByWorkspaceModelId(
               workspace.id
@@ -448,7 +469,7 @@ async function handler(
           // a new active subscription on the target plan + new contract.
           await activeSubscription.swapMetronomeContract({
             metronomeContractId: contractId,
-            planCode: targetPlanCode,
+            planCode: targetPlan.code,
           });
 
           await invalidateContractCache(workspace.sId);
@@ -463,7 +484,7 @@ async function handler(
           logger.info(
             {
               contractId,
-              planCode: targetPlanCode,
+              planCode: targetPlan.code,
               workspaceId: workspace.sId,
             },
             "[Metronome Webhook] contract.start: subscription upgraded"

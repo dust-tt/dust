@@ -4,6 +4,7 @@ import {
   getMetronomeContractById,
   listMetronomeContracts,
 } from "@app/lib/metronome/client";
+import { PlanModel } from "@app/lib/models/plan";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -53,7 +54,39 @@ vi.mock("@app/lib/api/subscription", () => ({
 const METRONOME_CUSTOMER_ID = "cust_test_xxx";
 const OLD_CONTRACT_ID = "contract_old_xxx";
 const NEW_CONTRACT_ID = "contract_new_yyy";
-const ENT_PLAN_CODE = "PRO_PLAN_SEAT_29"; // pre-seeded; we just need a valid plan code
+const ENT_PLAN_CODE = "ENT_TEST_PLAN";
+const NON_ENTERPRISE_PLAN_CODE = "PRO_PLAN_SEAT_29";
+
+async function ensureEnterprisePlan(): Promise<void> {
+  await PlanModel.upsert({
+    code: ENT_PLAN_CODE,
+    name: "Test Enterprise",
+    maxMessages: -1,
+    maxMessagesTimeframe: "lifetime",
+    isDeepDiveAllowed: true,
+    maxImagesPerWeek: 1000,
+    maxUsersInWorkspace: 1000,
+    maxVaultsInWorkspace: 100,
+    isSlackbotAllowed: true,
+    isManagedSlackAllowed: true,
+    isManagedConfluenceAllowed: true,
+    isManagedNotionAllowed: true,
+    isManagedGoogleDriveAllowed: true,
+    isManagedGithubAllowed: true,
+    isManagedIntercomAllowed: true,
+    isManagedWebCrawlerAllowed: true,
+    isManagedSalesforceAllowed: true,
+    isSSOAllowed: true,
+    isSCIMAllowed: true,
+    isAuditLogsAllowed: true,
+    maxDataSourcesCount: -1,
+    maxDataSourcesDocumentsCount: -1,
+    maxDataSourcesDocumentsSizeMb: 100,
+    trialPeriodDays: 0,
+    canUseProduct: true,
+    isByok: false,
+  });
+}
 
 /** Build a contract event payload that matches the centralized webhook schema. */
 function contractEvent(
@@ -167,7 +200,60 @@ describe("Metronome webhook — contract.start", () => {
     expect(restoreWorkspaceAfterSubscription).not.toHaveBeenCalled();
   });
 
+  it("does nothing when PLAN_CODE refers to a non-enterprise plan", async () => {
+    const workspace = await setupMetronomeWorkspace(OLD_CONTRACT_ID);
+    const event = contractEvent("contract.start", NEW_CONTRACT_ID);
+    mockUnwrap(event);
+    vi.mocked(getMetronomeContractById).mockResolvedValue(
+      new Ok({
+        id: NEW_CONTRACT_ID,
+        customer_id: METRONOME_CUSTOMER_ID,
+        starting_at: new Date().toISOString(),
+        custom_fields: { PLAN_CODE: NON_ENTERPRISE_PLAN_CODE },
+      } as never)
+    );
+
+    const { req, res } = makeWebhookRequest(event);
+    await handler(req, res as never);
+
+    expect(res._getStatusCode()).toBe(200);
+
+    const refreshed = await WorkspaceResource.fetchById(workspace.sId);
+    const sub = await SubscriptionResource.fetchActiveByWorkspaceModelId(
+      refreshed!.id
+    );
+    expect(sub!.metronomeContractId).toBe(OLD_CONTRACT_ID);
+    expect(restoreWorkspaceAfterSubscription).not.toHaveBeenCalled();
+  });
+
+  it("does nothing when PLAN_CODE does not resolve to a Dust plan", async () => {
+    const workspace = await setupMetronomeWorkspace(OLD_CONTRACT_ID);
+    const event = contractEvent("contract.start", NEW_CONTRACT_ID);
+    mockUnwrap(event);
+    vi.mocked(getMetronomeContractById).mockResolvedValue(
+      new Ok({
+        id: NEW_CONTRACT_ID,
+        customer_id: METRONOME_CUSTOMER_ID,
+        starting_at: new Date().toISOString(),
+        custom_fields: { PLAN_CODE: "ENT_PLAN_UNKNOWN" },
+      } as never)
+    );
+
+    const { req, res } = makeWebhookRequest(event);
+    await handler(req, res as never);
+
+    expect(res._getStatusCode()).toBe(200);
+
+    const refreshed = await WorkspaceResource.fetchById(workspace.sId);
+    const sub = await SubscriptionResource.fetchActiveByWorkspaceModelId(
+      refreshed!.id
+    );
+    expect(sub!.metronomeContractId).toBe(OLD_CONTRACT_ID);
+    expect(restoreWorkspaceAfterSubscription).not.toHaveBeenCalled();
+  });
+
   it("ends the current subscription and creates a new active one with the target plan code on a successful swap", async () => {
+    await ensureEnterprisePlan();
     const workspace = await setupMetronomeWorkspace(OLD_CONTRACT_ID);
     const event = contractEvent("contract.start", NEW_CONTRACT_ID);
     mockUnwrap(event);
@@ -207,6 +293,7 @@ describe("Metronome webhook — contract.start", () => {
   });
 
   it("is idempotent — re-firing after the swap does nothing", async () => {
+    await ensureEnterprisePlan();
     const workspace = await setupMetronomeWorkspace(NEW_CONTRACT_ID);
     const event = contractEvent("contract.start", NEW_CONTRACT_ID);
     mockUnwrap(event);
