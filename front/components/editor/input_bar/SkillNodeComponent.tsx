@@ -1,8 +1,6 @@
 import { getSkillIcon } from "@app/lib/skill";
 import { Chip } from "@dust-tt/sparkle";
 import { NodeViewWrapper } from "@tiptap/react";
-// biome-ignore lint/correctness/noUnusedImports: React is required by JSX runtime in this file.
-import React from "react";
 
 interface SkillNodeComponentProps {
   node: {
