@@ -63,6 +63,7 @@ export function MentionValidationRequired({
   // Auto-scroll to make the validation card visible when it first appears.
   // The card is rendered below the message content, so without this the user
   // would have to manually scroll down to find it.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: scroll runs only on mount
   useEffect(() => {
     if (!isTriggeredByCurrentUser) {
       return;
@@ -76,7 +77,6 @@ export function MentionValidationRequired({
         behavior: "smooth",
       });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleReject = async () => {
