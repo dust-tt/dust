@@ -106,7 +106,12 @@ function findCompactionMessage(
 }
 
 function formatCompactionHistoryTimestamp(date: Date): string {
-  return date.toISOString().slice(0, 16).replace(/-/g, "").replace("T", "-");
+  return date
+    .toISOString()
+    .slice(0, 16)
+    .replace(/-/g, "")
+    .replace("T", "-")
+    .replace(":", "");
 }
 
 async function createCompactionHistoryFile(
