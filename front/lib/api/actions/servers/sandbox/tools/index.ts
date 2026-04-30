@@ -44,6 +44,7 @@ import { startTelemetry } from "@app/lib/api/sandbox/telemetry";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
+import { WorkspaceSandboxEnvVarResource } from "@app/lib/resources/workspace_sandbox_env_var_resource";
 import logger from "@app/logger/logger";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 import { isDevelopment } from "@app/types/shared/env";
@@ -52,6 +53,10 @@ import { Err, Ok, type Result } from "@app/types/shared/result";
 const DEFAULT_WORKING_DIRECTORY = "/home/agent";
 const DEFAULT_EXEC_TIMEOUT_MS = 60_000;
 const ADD_EGRESS_DOMAIN_TOOL_NAME = "add_egress_domain" as const;
+const REDACTION_MARKER_PREFIX = "«redacted:";
+const REDACTION_MARKER_SUFFIX = "»";
+const REDACTION_MIN_LENGTH = 16;
+const REDACTION_MIN_ENTROPY_BITS_PER_CHAR = 3.5;
 
 interface FormatExecOutputOpts {
   denyLogEntries?: string[];
@@ -82,6 +87,77 @@ function formatExecOutput(
   }
 
   return sections.join("\n") || "(no output)";
+}
+
+// Shannon entropy in bits/char. Uniform random characters approach
+// log2(alphabet size); dictionary words and uniform-digit strings sit well
+// below.
+function shannonEntropyBitsPerChar(value: string): number {
+  const counts = new Map<string, number>();
+  for (const ch of value) {
+    counts.set(ch, (counts.get(ch) ?? 0) + 1);
+  }
+  let entropy = 0;
+  for (const count of counts.values()) {
+    const p = count / value.length;
+    entropy -= p * Math.log2(p);
+  }
+  return entropy;
+}
+
+// Skip values too short or too low-entropy to be worth redacting. The goal
+// is to avoid mass-redacting common substrings (timestamps, short tokens,
+// dictionary words) that randomly collide with unrelated bash output and
+// turn legitimate text into «redacted: $FOO». False-negative tolerance is
+// the trade-off; the skill instruction is the primary disclosure control.
+function isRedactionEligible(value: string): boolean {
+  return (
+    value.length >= REDACTION_MIN_LENGTH &&
+    shannonEntropyBitsPerChar(value) >= REDACTION_MIN_ENTROPY_BITS_PER_CHAR
+  );
+}
+
+// Best-effort final-payload redaction for accidental bash output leaks.
+// This does not catch transformed values, short/low-entropy values, other
+// sandbox tools, or out-of-band exfiltration. The sandbox skill instruction
+// remains the primary disclosure control.
+async function redactSandboxEnvVarsFromOutput(
+  auth: Authenticator,
+  output: string
+): Promise<Result<string, Error>> {
+  const envResult = await WorkspaceSandboxEnvVarResource.loadEnv(auth);
+  if (envResult.isErr()) {
+    return envResult;
+  }
+
+  const workspaceId = auth.getNonNullableWorkspace().sId;
+  let redactedOutput = output;
+  const redactedNames: string[] = [];
+
+  // O(env_count × output_size): split/join scans the full output once per
+  // eligible env var. Acceptable at current bounds (env_count ≤ 50 per
+  // MAX_VARS_PER_WORKSPACE, output capped upstream).
+  for (const [name, value] of Object.entries(envResult.value)) {
+    if (!isRedactionEligible(value)) {
+      continue;
+    }
+
+    if (redactedOutput.includes(value)) {
+      redactedOutput = redactedOutput
+        .split(value)
+        .join(`${REDACTION_MARKER_PREFIX} $${name}${REDACTION_MARKER_SUFFIX}`);
+      redactedNames.push(name);
+    }
+  }
+
+  if (redactedNames.length > 0) {
+    logger.warn(
+      { workspaceId, varNames: redactedNames },
+      "sandbox bash output contained env var values; redacted"
+    );
+  }
+
+  return new Ok(redactedOutput);
 }
 
 function isSandboxAgentEgressRequestsAllowed(auth: Authenticator): boolean {
@@ -298,8 +374,19 @@ export async function runSandboxBashTool(
   }
 
   const output = formatExecOutput(execResult.value, { denyLogEntries });
+  const redactedOutputResult = await redactSandboxEnvVarsFromOutput(
+    auth,
+    output
+  );
+  if (redactedOutputResult.isErr()) {
+    logger.error(
+      { err: redactedOutputResult.error },
+      "Failed to load sandbox env vars for bash output redaction"
+    );
+    return new Err(new MCPError("Failed to safely return sandbox output."));
+  }
 
-  return new Ok([{ type: "text" as const, text: output }]);
+  return new Ok([{ type: "text" as const, text: redactedOutputResult.value }]);
 }
 
 export async function addEgressDomainTool(
