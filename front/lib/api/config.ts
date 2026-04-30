@@ -182,6 +182,10 @@ const config = {
         EnvironmentConfig.getOptionalEnvVariable("NODE_ENV") || "development",
     };
   },
+  getNodeEnv: (): string => {
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+    return EnvironmentConfig.getOptionalEnvVariable("NODE_ENV") || "development";
+  },
   getVizJwtSecret: (): string => {
     return EnvironmentConfig.getEnvVariable("VIZ_JWT_SECRET");
   },
