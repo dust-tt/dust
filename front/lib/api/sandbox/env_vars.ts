@@ -1,5 +1,4 @@
 import { Err, Ok, type Result } from "@app/types/shared/result";
-import { z } from "zod";
 
 export const ENV_VAR_NAME_REGEX = /^[A-Z][A-Z0-9_]{0,63}$/;
 export const MAX_VALUE_BYTES = 32 * 1024;
@@ -51,11 +50,6 @@ export function validateEnvVarName(name: string): Result<void, string> {
 
   return new Ok(undefined);
 }
-
-export const PostWorkspaceSandboxEnvVarBodySchema = z.object({
-  name: z.string(),
-  value: z.string(),
-});
 
 export function validateEnvVarValue(value: string): Result<void, string> {
   if (value.length === 0) {
