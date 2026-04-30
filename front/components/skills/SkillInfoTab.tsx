@@ -1,6 +1,7 @@
 import { KnowledgeChip } from "@app/components/editor/extensions/skill_builder/KnowledgeChip";
 import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
 import { isFullKnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
+import { SkillReferenceChip } from "@app/components/editor/extensions/skill_builder/SkillNode";
 import { SkillInstructionsReadOnlyEditor } from "@app/components/skills/SkillInstructionsReadOnlyEditor";
 import {
   getMcpServerViewDescription,
@@ -13,7 +14,10 @@ import { getSkillAvatarIcon } from "@app/lib/skill";
 import { getSpaceIcon, getSpaceName } from "@app/lib/spaces";
 import { useSkills } from "@app/lib/swr/skill_configurations";
 import { useSpaces } from "@app/lib/swr/spaces";
-import type { SkillType } from "@app/types/assistant/skill_configuration";
+import type {
+  SkillRelations,
+  SkillType,
+} from "@app/types/assistant/skill_configuration";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -28,7 +32,7 @@ import sortBy from "lodash/sortBy";
 import { useCallback, useMemo, useState } from "react";
 
 interface SkillInfoTabProps {
-  skill: SkillType;
+  skill: SkillType & { relations?: SkillRelations };
   owner: LightWorkspaceType;
   spaces?: SpaceType[];
   showDescription?: boolean;
@@ -65,7 +69,7 @@ export function SkillInfoTab({
 
   const sortedMCPServerViews = useMemo(
     () => sortBy(skill.tools.map(renderMCPServerView), "title"),
-    [skill.tools]
+    [skill.tools],
   );
 
   const requestedSpaces = useMemo(
@@ -77,13 +81,14 @@ export function SkillInfoTab({
           name: getSpaceName(space),
           Icon: getSpaceIcon(space),
         })),
-    [resolvedSpaces, skill.requestedSpaceIds]
+    [resolvedSpaces, skill.requestedSpaceIds],
   );
 
   const sortedSpaces = useMemo(
     () => sortBy(requestedSpaces, "name"),
-    [requestedSpaces]
+    [requestedSpaces],
   );
+  const referencedSkills = skill.relations?.referencedSkills ?? [];
 
   const handleKnowledgeItemsChange = useCallback((items: KnowledgeItem[]) => {
     setKnowledgeItems(items);
@@ -92,6 +97,7 @@ export function SkillInfoTab({
   const showSeparator =
     !!skill.instructions ||
     knowledgeItems.length > 0 ||
+    referencedSkills.length > 0 ||
     (hasFeature("sandbox_tools") && skill.fileAttachments.length > 0) ||
     sortedMCPServerViews.length > 0 ||
     showDiscoverableSkills ||
@@ -132,6 +138,23 @@ export function SkillInfoTab({
                 key={item.nodeId}
                 node={item.node}
                 title={item.label}
+                color="primary"
+              />
+            ))}
+          </div>
+        </div>
+      )}
+      {referencedSkills.length > 0 && (
+        <div className="flex flex-col gap-4">
+          <div className="heading-lg text-foreground dark:text-foreground-night">
+            Referenced Skills
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {referencedSkills.map((referencedSkill) => (
+              <SkillReferenceChip
+                key={referencedSkill.sId}
+                icon={referencedSkill.icon}
+                name={referencedSkill.name}
                 color="primary"
               />
             ))}
