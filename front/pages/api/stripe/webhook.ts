@@ -135,6 +135,7 @@ async function shadowProvisionMetronome({
       packageAlias: metronomePackageAlias,
       uniquenessKey: sessionId,
       startingAt: periodStart,
+      enableStripeBilling: false,
     });
 
     if (result.isErr()) {

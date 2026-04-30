@@ -8,6 +8,7 @@ import {
   getBillingCurrencyForCountry,
   resolvePackageAliasForCurrency,
 } from "@app/lib/plans/billing_currency";
+import { getStripeClient } from "@app/lib/plans/stripe";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -28,6 +29,7 @@ const StripeSetupSessionSchema = z.object({
     metronomePackageAlias: z.string(),
   }),
   customer: z.string(),
+  setup_intent: z.string().nullable().optional(),
   customer_details: z
     .object({
       address: z
@@ -40,6 +42,30 @@ const StripeSetupSessionSchema = z.object({
     .nullable()
     .optional(),
 });
+
+async function resolveCheckoutCountry({
+  setupIntentId,
+  customerCountry,
+}: {
+  setupIntentId: string | null | undefined;
+  customerCountry: string | null | undefined;
+}): Promise<string | null> {
+  if (customerCountry) {
+    return customerCountry;
+  }
+  if (!setupIntentId) {
+    return null;
+  }
+  const stripe = getStripeClient();
+  const setupIntent = await stripe.setupIntents.retrieve(setupIntentId, {
+    expand: ["payment_method"],
+  });
+  const pm = setupIntent.payment_method;
+  if (pm && typeof pm !== "string") {
+    return pm.billing_details.address?.country ?? null;
+  }
+  return null;
+}
 
 export async function handleMetronomeSetupCheckout({
   session,
@@ -64,11 +90,18 @@ export async function handleMetronomeSetupCheckout({
     metadata: { planCode, userId, metronomePackageAlias },
     customer: stripeCustomerId,
     customer_details: customerDetails,
+    setup_intent: setupIntentId,
   } = parsed.data;
 
   // Resolve the package alias based on the customer's billing country.
-  // Stripe populates customer_details.address.country from billing_address_collection.
-  const customerCountry = customerDetails?.address?.country;
+  // With billing_address_collection: "auto", Stripe may not populate
+  // customer_details.address — fall back to the SetupIntent's payment method
+  // billing details, which is reliably set for card sessions.
+  const customerCountry = await resolveCheckoutCountry({
+    setupIntentId,
+    customerCountry: customerDetails?.address?.country,
+  });
+
   const billingCurrency = customerCountry
     ? getBillingCurrencyForCountry(customerCountry, true)
     : "usd";

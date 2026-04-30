@@ -6,7 +6,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { scheduleMetronomeContractEnd } from "@app/lib/metronome/client";
 import {
-  provisionEnterpriseMetronomeContract,
+  provisionShadowEnterpriseMetronomeContract,
   switchMetronomeContractPackage,
   syncContractQuantities,
 } from "@app/lib/metronome/contracts";
@@ -65,14 +65,15 @@ import {
   renderLightWorkspaceType,
 } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
-import type {
-  BillingPeriod,
-  CheckoutUrlResult,
-  EnterpriseUpgradeFormType,
-  PlanType,
-  SubscriptionPerSeatPricing,
-  SubscriptionStatusType,
-  SubscriptionType,
+import {
+  type BillingPeriod,
+  type CheckoutUrlResult,
+  type EnterpriseUpgradeFormType,
+  isSubscriptionMetronomeBilled,
+  type PlanType,
+  type SubscriptionPerSeatPricing,
+  type SubscriptionStatusType,
+  type SubscriptionType,
 } from "@app/types/plan";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -821,7 +822,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
         );
       }
     } else if (stripeSubscription) {
-      const metronomeResult = await provisionEnterpriseMetronomeContract({
+      const metronomeResult = await provisionShadowEnterpriseMetronomeContract({
         workspace: renderLightWorkspaceType({ workspace: workspaceResource }),
         stripeSubscription,
       });
@@ -988,6 +989,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
         oldContractId: this.metronomeContractId,
         workspace: owner,
         packageAlias: LEGACY_BUSINESS_PACKAGE_ALIAS,
+        enableStripeBilling: isSubscriptionMetronomeBilled(this.toJSON()),
       });
       if (result.isErr() && !this.isMetronomeShadowBilled) {
         return new Err(result.error);

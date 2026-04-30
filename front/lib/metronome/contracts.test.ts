@@ -749,6 +749,7 @@ describe("switchMetronomeContractPackage", () => {
       oldContractId: "old-contract",
       workspace: WORKSPACE,
       packageAlias: "legacy-business",
+      enableStripeBilling: false,
     });
 
     expect(result.isOk()).toBe(true);
@@ -772,6 +773,7 @@ describe("switchMetronomeContractPackage", () => {
       oldContractId: "old-contract",
       workspace: WORKSPACE,
       packageAlias: "legacy-enterprise-eur",
+      enableStripeBilling: false,
     });
 
     expect(result.isOk()).toBe(true);
@@ -787,6 +789,7 @@ describe("switchMetronomeContractPackage", () => {
       oldContractId: "old-contract",
       workspace: WORKSPACE,
       packageAlias: "legacy-business",
+      enableStripeBilling: false,
     });
 
     expect(result.isOk()).toBe(true);
