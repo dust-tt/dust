@@ -1,3 +1,4 @@
+import { makeSId } from "@app/lib/resources/string_ids";
 import { WorkspaceSandboxEnvVarResource } from "@app/lib/resources/workspace_sandbox_env_var_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
@@ -66,7 +67,7 @@ describe("DELETE /api/w/[wId]/sandbox/env-vars/[id]", () => {
 
   it("rejects non-admin deletes", async () => {
     const { req, res } = await createDeleteRequest({ role: "user" });
-    req.query.id = "sev_placeholder";
+    req.query.id = makeSId("sandbox_env_var", { id: 1, workspaceId: 1 });
 
     await handler(req, res);
 
