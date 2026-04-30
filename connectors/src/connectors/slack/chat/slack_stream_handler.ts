@@ -54,6 +54,18 @@ export class SlackStreamHandler {
     });
   }
 
+  private handleStreamExpiredError(e: unknown, logMessage: string): void {
+    if (
+      isSlackWebAPIPlatformError(e) &&
+      e.data?.error === "message_not_in_streaming_state"
+    ) {
+      this.stopped = true;
+      logger.warn({ connectorId: this.connectorId }, logMessage);
+      return;
+    }
+    throw e;
+  }
+
   async appendText(text: string) {
     if (this.stopped) {
       return;
@@ -72,19 +84,10 @@ export class SlackStreamHandler {
         this.messageTs = res.ts;
       }
     } catch (e) {
-      if (
-        isSlackWebAPIPlatformError(e) &&
-        e.data?.error === "message_not_in_streaming_state"
-      ) {
-        this.stopped = true;
-        logger.warn(
-          { connectorId: this.connectorId },
-          "Slack stream expired mid-answer, falling back to chat.update on agent_message_success"
-        );
-        return;
-      }
-
-      throw e;
+      this.handleStreamExpiredError(
+        e,
+        "Slack stream expired mid-answer, falling back to chat.update on agent_message_success"
+      );
     }
   }
 
@@ -94,10 +97,17 @@ export class SlackStreamHandler {
     }
 
     this.stopped = true;
-    const res = await this.streamer.stop();
+    try {
+      const res = await this.streamer.stop();
 
-    if (!this.messageTs && res?.ts) {
-      this.messageTs = res.ts;
+      if (!this.messageTs && res?.ts) {
+        this.messageTs = res.ts;
+      }
+    } catch (e) {
+      this.handleStreamExpiredError(
+        e,
+        "Slack stream already expired when stopping — no action needed"
+      );
     }
   }
 }
