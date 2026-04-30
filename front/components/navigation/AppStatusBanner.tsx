@@ -1,6 +1,9 @@
 import type { AppStatus } from "@app/lib/api/status";
 import { useAuth } from "@app/lib/auth/AuthContext";
-import { FREE_BYOK_TRANSITIONING_PLAN_CODE } from "@app/lib/plans/plan_codes";
+import {
+  FREE_BYOK_TRANSITIONING_PLAN_CODE,
+  isEntreprisePlanPrefix,
+} from "@app/lib/plans/plan_codes";
 import { useAppStatus } from "@app/lib/swr/useAppStatus";
 import { DEFAULT_EMBEDDING_PROVIDER_ID } from "@app/types/assistant/models/embedding";
 import type { ByokModelProviderIdType } from "@app/types/assistant/models/types";
@@ -203,9 +206,11 @@ export function SidebarBanners() {
     <>
       <UnhealthyCredentialsBanner owner={owner} subscription={subscription} />
       {appStatus && <AppStatusBanner appStatus={appStatus} />}
-      {subscription.paymentFailingSince && isAdmin(owner) && (
-        <SubscriptionPastDueBanner />
-      )}
+      {subscription.paymentFailingSince &&
+        isAdmin(owner) &&
+        !isEntreprisePlanPrefix(subscription.plan.code) && (
+          <SubscriptionPastDueBanner />
+        )}
     </>
   );
 }
