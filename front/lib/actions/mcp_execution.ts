@@ -56,8 +56,9 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { extname } from "path";
 import type { Logger } from "pino";
 
-const SNIPPET_EXEMPT_MCP_SERVERS: readonly string[] = [
+const TEXT_OFFLOAD_EXEMPT_MCP_SERVERS: readonly string[] = [
   "conversation_files",
+  "files",
   "sandbox",
 ];
 
@@ -190,7 +191,7 @@ export async function processToolResults(
           // them from being indexed in Qdrant, which would bloat the vector store for no benefit.
           if (
             computeTextByteSize(block.text) > FILE_OFFLOAD_TEXT_SIZE_BYTES &&
-            !SNIPPET_EXEMPT_MCP_SERVERS.includes(
+            !TEXT_OFFLOAD_EXEMPT_MCP_SERVERS.includes(
               toolConfiguration.mcpServerName
             )
           ) {

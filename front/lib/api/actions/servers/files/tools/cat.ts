@@ -9,10 +9,47 @@ import {
   isReadableAsText,
   resolveConversationFile,
 } from "@app/lib/api/actions/servers/files/tools/utils";
+import { isLLMVisionSupportedImageContentType } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { File as GCSFile } from "@google-cloud/storage";
 import * as readline from "readline";
+
+const CAT_IMAGE_MAX_BYTES = 2 * 1024 * 1024; // 2 MB vision limit.
+
+function catImage(
+  file: GCSFile,
+  {
+    path,
+    mimeType,
+    sizeBytes,
+  }: { path: string; mimeType: string; sizeBytes: number }
+): ToolHandlerResult {
+  if (sizeBytes > CAT_IMAGE_MAX_BYTES) {
+    return new Ok([
+      {
+        type: "text",
+        text:
+          `\`${path}\` is an image (${Math.ceil(sizeBytes / 1024)} KB) ` +
+          `that exceeds the ${CAT_IMAGE_MAX_BYTES / 1024} KB vision limit and cannot be displayed.`,
+      },
+    ]);
+  }
+
+  return new Ok([
+    {
+      type: "resource",
+      resource: {
+        uri: `dust://files/${path}`,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.MODEL_VISION_IMAGE,
+        text: "" as const,
+        gcsPath: file.name,
+        imageContentType: mimeType,
+      },
+    },
+  ]);
+}
 
 async function catText(
   file: GCSFile,
@@ -103,8 +140,11 @@ export async function catHandler(
   if (resolvedRes.isErr()) {
     return resolvedRes;
   }
-  // TODO(20260429 FILE SYSTEM) Add image support to cat (return vision content block).
-  const { file, mimeType } = resolvedRes.value;
+  const { file, mimeType, sizeBytes } = resolvedRes.value;
+
+  if (isLLMVisionSupportedImageContentType(mimeType)) {
+    return catImage(file, { path, mimeType, sizeBytes });
+  }
 
   if (!isReadableAsText(mimeType)) {
     return new Ok([

@@ -3,8 +3,12 @@
  * These functions are used by both legacy and enhanced implementations
  */
 
-import { isTextContent } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import {
+  isModelVisionImage,
+  isTextContent,
+} from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { rewriteContentForModel } from "@app/lib/actions/mcp_utils";
+import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { getEnableSkillIdFromOutputBlock } from "@app/lib/api/actions/servers/skill_management/rendering";
 import {
   type EnabledSkill,
@@ -31,6 +35,7 @@ import type {
 } from "@app/types/assistant/conversation";
 import type {
   CompactionMessageTypeModel,
+  Content,
   FunctionCallType,
   FunctionMessageTypeModel,
   ModelMessageTypeMultiActions,
@@ -38,6 +43,7 @@ import type {
 } from "@app/types/assistant/generation";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import { removeNulls } from "@app/types/shared/utils/general";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 /**
  * Type for a step in agent message processing
@@ -91,9 +97,10 @@ function renderEnabledSkillMessagesForAction(
 /**
  * Renders an action result for multi-actions model
  */
-export function renderActionForMultiActionsModel(
-  action: AgentMCPActionWithOutputType
-): FunctionMessageTypeModel {
+export async function renderActionForMultiActionsModel(
+  action: AgentMCPActionWithOutputType,
+  model: ModelConfigurationType
+): Promise<FunctionMessageTypeModel> {
   if (action.status === "denied") {
     return {
       role: "function" as const,
@@ -131,11 +138,34 @@ export function renderActionForMultiActionsModel(
     action.output?.map(rewriteContentForModel) ?? []
   );
 
-  let output;
+  let output: string | Content[];
   if (outputItems.length === 0) {
     output = "Successfully executed action, no output.";
   } else if (outputItems.every((item) => isTextContent(item))) {
     output = outputItems.map((item) => item.text).join("\n");
+  } else if (
+    model.supportsVision &&
+    outputItems.some((item) => isModelVisionImage(item))
+  ) {
+    const contentArray: Content[] = [];
+    for (const item of outputItems) {
+      if (isTextContent(item)) {
+        contentArray.push({ type: "text", text: item.text });
+      } else if (isModelVisionImage(item)) {
+        try {
+          const url = await getPrivateUploadBucket().getSignedUrl(
+            item.resource.gcsPath
+          );
+          contentArray.push({ type: "image_url", image_url: { url } });
+        } catch (err) {
+          contentArray.push({
+            type: "text",
+            text: `[Image unavailable: ${normalizeError(err).message}]`,
+          });
+        }
+      }
+    }
+    output = contentArray;
   } else {
     output = JSON.stringify(outputItems);
   }
@@ -151,7 +181,7 @@ export function renderActionForMultiActionsModel(
 /**
  * Processes agent message steps
  */
-export function getSteps(
+export async function getSteps(
   _: Authenticator,
   {
     model,
@@ -170,7 +200,7 @@ export function getSteps(
     enabledSkillById: ReadonlyMap<string, EnabledSkill>;
     renderSkillsAsUserMessages?: boolean;
   }
-): Step[] {
+): Promise<Step[]> {
   const supportedModel = getSupportedModelConfig(model);
   if (!supportedModel) {
     return [];
@@ -198,7 +228,7 @@ export function getSteps(
         name: action.functionCallName,
         arguments: JSON.stringify(action.params),
       },
-      result: renderActionForMultiActionsModel(action),
+      result: await renderActionForMultiActionsModel(action, model),
       enabledSkillMessages: renderEnabledSkillMessagesForAction(action, {
         enabledSkillById,
         renderSkillsAsUserMessages,

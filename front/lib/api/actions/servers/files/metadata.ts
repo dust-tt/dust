@@ -33,10 +33,11 @@ export const FILES_TOOLS_METADATA = createToolsRecord({
   },
   [FILES_CAT_ACTION_NAME]: {
     description:
-      "Read the content of a text file by line range. " +
-      "Returns lines with their line numbers. " +
+      "Read the content of a file. " +
+      "For text files, returns lines with their line numbers." +
       "Use `offset` to start at a specific line and `limit` to control how many lines to return. " +
-      "When the output is truncated, a footer indicates the next offset to use.",
+      "When the output is truncated, a footer indicates the next offset to use. " +
+      "For images (JPEG, PNG, GIF), returns a vision block the model can inspect directly.",
     schema: {
       path: z
         .string()

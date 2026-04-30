@@ -14,9 +14,16 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
 import type { File as GCSFile } from "@google-cloud/storage";
 
-type ResolvedFile = { file: GCSFile; mimeType: string; sizeBytes: number };
+interface ResolvedFile {
+  file: GCSFile;
+  mimeType: string;
+  sizeBytes: number;
+}
 
-type MountPoint = { scope: GCSMountPoint; prefix: string };
+interface MountPoint {
+  prefix: string;
+  scope: GCSMountPoint;
+}
 
 export function resolveMountPoint(
   auth: Authenticator,
