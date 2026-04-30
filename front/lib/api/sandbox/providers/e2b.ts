@@ -1,4 +1,3 @@
-import appConfig from "@app/lib/api/config";
 import {
   formatSandboxImageId,
   type NetworkPolicy,
@@ -16,6 +15,7 @@ import {
   traceSandboxOperation,
 } from "@app/lib/api/sandbox/provider";
 import logger from "@app/logger/logger";
+import { isDevelopment } from "@app/types/shared/env";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -26,15 +26,16 @@ const ONE_HOUR_MS = 60 * 60 * 1_000;
 const ONE_DAY_MS = 24 * ONE_HOUR_MS;
 
 /**
- * Outside of production, cap sandbox lifetime at 24h (E2B Pro max) so
- * forgotten local sandboxes don't linger. In production, set a 30-day cap:
- * the reaper destroys after 4 days *inactive*, but an actively-used sandbox
- * can keep refreshing its inactivity timer for much longer than 4 days of
- * wall-clock time. 30 days gives any realistic active session plenty of
- * headroom while still keeping a hard E2B-side safety net.
+ * In development, cap sandbox lifetime at 24h (E2B Pro max) so forgotten
+ * local sandboxes don't linger. In production, set a 30-day cap: the reaper
+ * destroys after 4 days *inactive*, but an actively-used sandbox can keep
+ * refreshing its inactivity timer for much longer than 4 days of wall-clock
+ * time. 30 days gives any realistic active session plenty of headroom while
+ * still keeping a hard E2B-side safety net.
  */
-const SANDBOX_LIFETIME_MS =
-  appConfig.getNodeEnv() === "production" ? 30 * ONE_DAY_MS : 24 * ONE_HOUR_MS;
+const SANDBOX_LIFETIME_MS = isDevelopment()
+  ? 24 * ONE_HOUR_MS
+  : 30 * ONE_DAY_MS;
 
 /** Timeout for individual API calls to E2B (create, connect, etc.). */
 const REQUEST_TIMEOUT_MS = 30_000;
