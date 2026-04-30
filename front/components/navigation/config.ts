@@ -81,7 +81,7 @@ export type SubNavigationAdminId =
   | "providers"
   | "api_keys"
   | "dev_secrets"
-  | "egress_policy"
+  | "sandbox"
   | "analytics"
   | "credits_usage";
 
@@ -95,7 +95,7 @@ export const ADMIN_ROUTE_PATTERNS: Record<SubNavigationAdminId, string[]> = {
   credits_usage: ["/w/[wId]/developers/credits-usage"],
   providers: ["/w/[wId]/developers/providers"],
   dev_secrets: ["/w/[wId]/developers/dev-secrets"],
-  egress_policy: ["/w/[wId]/developers/egress-policy"],
+  sandbox: ["/w/[wId]/developers/sandbox"],
 };
 
 export type SubNavigationAppId =
@@ -204,7 +204,7 @@ export const getTopNavigationTabs = (
           "/w/[wId]/developers/providers",
           "/w/[wId]/developers/api-keys",
           "/w/[wId]/developers/dev-secrets",
-          "/w/[wId]/developers/egress-policy",
+          "/w/[wId]/developers/sandbox",
         ]),
       sizing: "hug",
     });
@@ -318,11 +318,11 @@ export const subNavigationAdmin = ({
           current: isCurrent("dev_secrets"),
         },
         {
-          id: "egress_policy",
-          label: "Network",
+          id: "sandbox",
+          label: "Sandbox",
           icon: GlobeAltIcon,
-          href: `/w/${owner.sId}/developers/egress-policy`,
-          current: isCurrent("egress_policy"),
+          href: `/w/${owner.sId}/developers/sandbox`,
+          current: isCurrent("sandbox"),
           featureFlag: "sandbox_tools",
         },
       ],
