@@ -11,7 +11,7 @@ describe("WorkspaceSandboxEnvVarResource", () => {
     const upsertResult = await WorkspaceSandboxEnvVarResource.upsert(
       authenticator,
       {
-        name: "API_TOKEN",
+        name: "DST_API_TOKEN",
         value: "super-secret-token",
       }
     );
@@ -25,7 +25,7 @@ describe("WorkspaceSandboxEnvVarResource", () => {
     const row = await WorkspaceSandboxEnvVarModel.findOne({
       where: {
         workspaceId: authenticator.getNonNullableWorkspace().id,
-        name: "API_TOKEN",
+        name: "DST_API_TOKEN",
       },
     });
     expect(row?.encryptedValue).toBeDefined();
@@ -38,14 +38,14 @@ describe("WorkspaceSandboxEnvVarResource", () => {
       throw envResult.error;
     }
     expect(envResult.value).toEqual({
-      API_TOKEN: "super-secret-token",
+      DST_API_TOKEN: "super-secret-token",
     });
 
     const listed =
       await WorkspaceSandboxEnvVarResource.listForWorkspace(authenticator);
     expect(listed.map((envVar) => envVar.toJSON())).toEqual([
       expect.objectContaining({
-        name: "API_TOKEN",
+        name: "DST_API_TOKEN",
         createdByName: user.name,
         lastUpdatedByName: user.name,
       }),
@@ -73,7 +73,7 @@ describe("WorkspaceSandboxEnvVarResource", () => {
 
     await WorkspaceSandboxEnvVarModel.create({
       workspaceId: authenticator.getNonNullableWorkspace().id,
-      name: "API_TOKEN",
+      name: "DST_API_TOKEN",
       encryptedValue: "not-valid-ciphertext",
       createdByUserId: user.id,
       lastUpdatedByUserId: user.id,
@@ -83,7 +83,7 @@ describe("WorkspaceSandboxEnvVarResource", () => {
       await WorkspaceSandboxEnvVarResource.loadEnv(authenticator);
     expect(envResult.isErr()).toBe(true);
     if (envResult.isErr()) {
-      expect(envResult.error.message).toContain("API_TOKEN");
+      expect(envResult.error.message).toContain("DST_API_TOKEN");
     }
   });
 });

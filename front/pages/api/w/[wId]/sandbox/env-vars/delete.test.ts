@@ -26,7 +26,7 @@ describe("DELETE /api/w/[wId]/sandbox/env-vars/[id]", () => {
     const { req, res, auth } = await createDeleteRequest();
 
     const upsertResult = await WorkspaceSandboxEnvVarResource.upsert(auth, {
-      name: "API_TOKEN",
+      name: "DST_API_TOKEN",
       value: "super-secret-token",
     });
     expect(upsertResult.isOk()).toBe(true);
@@ -40,7 +40,7 @@ describe("DELETE /api/w/[wId]/sandbox/env-vars/[id]", () => {
     expect(res._getStatusCode()).toBe(200);
     expect(JSON.parse(res._getData())).toEqual({ success: true });
     expect(
-      await WorkspaceSandboxEnvVarResource.fetchByName(auth, "API_TOKEN")
+      await WorkspaceSandboxEnvVarResource.fetchByName(auth, "DST_API_TOKEN")
     ).toBeNull();
   });
 
@@ -48,7 +48,7 @@ describe("DELETE /api/w/[wId]/sandbox/env-vars/[id]", () => {
     const { req, res, auth } = await createDeleteRequest();
 
     const upsertResult = await WorkspaceSandboxEnvVarResource.upsert(auth, {
-      name: "API_TOKEN",
+      name: "DST_API_TOKEN",
       value: "super-secret-token",
     });
     expect(upsertResult.isOk()).toBe(true);
