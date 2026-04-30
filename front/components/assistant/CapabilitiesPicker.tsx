@@ -1,9 +1,5 @@
 import { CreateMCPServerDialog } from "@app/components/actions/mcp/create/CreateMCPServerDialog";
 import { MCPServerDetails } from "@app/components/actions/mcp/MCPServerDetails";
-import {
-  compareCapabilitySearchResults,
-  matchesCapabilitySearchQuery,
-} from "@app/components/shared/capability_search";
 import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
 import {
   getMcpServerViewDescription,
@@ -79,6 +75,25 @@ type CapabilityPickerItem = CapabilityPickerItemBase &
         server: MCPServerType;
       }
   );
+
+function matchesCapabilityPickerSearchQuery({
+  description,
+  label,
+  normalizedQuery,
+}: {
+  description?: string;
+  label: string;
+  normalizedQuery: string;
+}) {
+  if (normalizedQuery.length === 0) {
+    return true;
+  }
+
+  return (
+    label.toLowerCase().includes(normalizedQuery) ||
+    (description?.toLowerCase().includes(normalizedQuery) ?? false)
+  );
+}
 
 function CapabilitiesPickerLoading({ count = 5 }: { count?: number }) {
   return (
@@ -471,17 +486,18 @@ export function CapabilitiesPicker({
 
     if (isSkillsDataReady && isToolsDataReady) {
       for (const skill of skills) {
+        const description = skill.userFacingDescription;
+
         if (
           selectedSkillIds.has(skill.sId) ||
-          !matchesCapabilitySearchQuery({
+          !matchesCapabilityPickerSearchQuery({
+            description,
             label: skill.name,
             normalizedQuery: normalizedSearchText,
           })
         ) {
           continue;
         }
-
-        const description = skill.userFacingDescription;
 
         items.push({
           kind: "skill",
@@ -496,19 +512,19 @@ export function CapabilitiesPicker({
 
       for (const serverView of serverViews) {
         const label = getMcpServerViewDisplayName(serverView);
+        const description = getMcpServerViewDescription(serverView);
 
         if (
           !isJITMCPServerView(serverView) ||
           selectedMCPServerViewIds.has(serverView.sId) ||
-          !matchesCapabilitySearchQuery({
+          !matchesCapabilityPickerSearchQuery({
+            description,
             label,
             normalizedQuery: normalizedSearchText,
           })
         ) {
           continue;
         }
-
-        const description = getMcpServerViewDescription(serverView);
 
         items.push({
           kind: "tool",
@@ -529,11 +545,13 @@ export function CapabilitiesPicker({
 
       for (const server of availableMCPServers) {
         const label = asDisplayName(server.name);
+        const description = server.description;
 
         if (
           installedServerNames.has(server.name) ||
           server.availability !== "manual" ||
-          !matchesCapabilitySearchQuery({
+          !matchesCapabilityPickerSearchQuery({
+            description,
             label,
             normalizedQuery: normalizedSearchText,
           })
@@ -548,7 +566,7 @@ export function CapabilitiesPicker({
           icon: () => getAvatar(server),
           label,
           sortName: label.toLowerCase(),
-          description: server.description,
+          description,
         });
       }
     }
@@ -562,11 +580,7 @@ export function CapabilitiesPicker({
         return groupComparison;
       }
 
-      return compareCapabilitySearchResults({
-        normalizedQuery: normalizedSearchText,
-        a: a.sortName,
-        b: b.sortName,
-      });
+      return a.sortName.localeCompare(b.sortName);
     });
   }, [
     availableMCPServers,
