@@ -132,11 +132,15 @@ async function backfillCreditsOfType(
               workspaceId: workspace.sId,
               creditId: credit.id,
             },
-            `[Backfill] Credit missing invoiceOrLineItemId, cannot determine if "free-renewal-sub" or "free-poke", skipping`
+            `[Backfill] Credit missing invoiceOrLineItemId, cannot determine if "free-renewal-*" or "free-poke", skipping`
           );
           continue;
         }
-        if (credit.invoiceOrLineItemId.startsWith("free-renewal-sub")) {
+        // Match both monthly (free-renewal-sub_xxx-...) and yearly
+        // (free-renewal-yearly-sub_xxx-...) renewal credits — both need to be
+        // reconciled with the contract's recurring credit segment, not
+        // created as net-new customer-level credits.
+        if (credit.invoiceOrLineItemId.startsWith("free-renewal-")) {
           const client = getMetronomeClient();
           const contractsResponse = await client.v2.contracts.list({
             customer_id: metronomeCustomerId,
