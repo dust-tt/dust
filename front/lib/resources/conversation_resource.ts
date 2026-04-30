@@ -3179,7 +3179,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     transaction?: Transaction
   ) {
     await this.update({ spaceId: space?.id ?? null }, transaction);
-    this._space = space;
 
     await ConversationResource.triggerEsIndexing(auth, this.sId);
   }
