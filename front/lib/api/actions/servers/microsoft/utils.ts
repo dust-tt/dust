@@ -145,7 +145,7 @@ export async function getAllowedLabelsForMCPServer(
       sourceType: "mcp_connection",
       sourceId: internalMCPServerId,
     });
-  return (labelConfig?.allowedLabels ?? []) as string[];
+  return labelConfig?.allowedLabels || [];
 }
 
 export async function getGraphClient(
