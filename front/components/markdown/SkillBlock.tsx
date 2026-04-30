@@ -1,7 +1,5 @@
 import { getSkillIcon } from "@app/lib/skill";
 import { Chip } from "@dust-tt/sparkle";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React from "react";
 import { visit } from "unist-util-visit";
 
 interface SkillBlockProps {
