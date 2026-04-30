@@ -1293,7 +1293,10 @@ export async function restoreAgentConfiguration(
   auth: Authenticator,
   agentConfigurationId: string
 ): Promise<
-  Result<{ restored: boolean }, DustError<"name_conflict" | "internal_error">>
+  Result<
+    { restored: boolean },
+    DustError<"name_conflict" | "internal_error" | "unauthorized">
+  >
 > {
   const owner = auth.getNonNullableWorkspace();
 
@@ -1314,6 +1317,19 @@ export async function restoreAgentConfiguration(
     return new Err(
       new DustError("internal_error", "Agent configuration is not archived")
     );
+  }
+
+  // Check publishing restrictions: restoring a visible agent is equivalent to publishing it.
+  if (latestConfig.scope === "visible") {
+    const { canPublish, message } = await canPublishAgent(auth);
+    if (!canPublish) {
+      return new Err(
+        new DustError(
+          "unauthorized",
+          message ?? "Publishing agents is restricted."
+        )
+      );
+    }
   }
 
   // Check for an active agent with the same name to avoid a unique constraint violation on
