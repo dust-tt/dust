@@ -19,7 +19,7 @@ import { useMCPServerViewsFromSpaces } from "@app/lib/swr/mcp_servers";
 import { useSkills } from "@app/lib/swr/skill_configurations";
 import { useSpaces } from "@app/lib/swr/spaces";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
-import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { SuggestionProps } from "@tiptap/suggestion";
 import {
@@ -155,46 +155,44 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
 
     const capabilityItems = useMemo<SlashCommand[]>(
       () =>
-        filteredCapabilities.flatMap((capability) => {
+        filteredCapabilities.map((capability) => {
           switch (capability.kind) {
-            case "skill":
-              return [
-                {
-                  action: "select-skill",
-                  description: capability.skill.userFacingDescription,
-                  icon: getSkillAvatarIcon(capability.skill.icon),
-                  id: capability.skill.sId,
-                  label: capability.skill.name,
-                  tooltip: capability.skill.userFacingDescription
-                    ? {
-                        description: capability.skill.userFacingDescription,
-                      }
-                    : undefined,
-                },
-              ];
+            case "skill": {
+              const description = capability.skill.userFacingDescription;
+
+              return {
+                action: "select-skill",
+                description,
+                icon: getSkillAvatarIcon(capability.skill.icon),
+                id: capability.skill.sId,
+                label: capability.skill.name,
+                tooltip: description
+                  ? {
+                      description,
+                    }
+                  : undefined,
+              };
+            }
             case "tool": {
               const description = getMcpServerViewDescription(
                 capability.serverView
               );
 
-              return [
-                {
-                  action: "select-tool",
-                  description,
-                  icon: () => getAvatar(capability.serverView.server),
-                  id: capability.serverView.sId,
-                  label: getMcpServerViewDisplayName(capability.serverView),
-                  tooltip: description
-                    ? {
-                        description,
-                      }
-                    : undefined,
-                },
-              ];
+              return {
+                action: "select-tool",
+                description,
+                icon: () => getAvatar(capability.serverView.server),
+                id: capability.serverView.sId,
+                label: getMcpServerViewDisplayName(capability.serverView),
+                tooltip: description
+                  ? {
+                      description,
+                    }
+                  : undefined,
+              };
             }
             default:
-              assertNeverAndIgnore(capability);
-              return [];
+              return assertNever(capability);
           }
         }),
       [filteredCapabilities]
