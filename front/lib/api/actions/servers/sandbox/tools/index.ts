@@ -422,9 +422,7 @@ export async function runSandboxBashTool(
     return new Err(new MCPError("Failed to safely return sandbox output."));
   }
 
-  return new Ok([
-    { type: "text" as const, text: redactedOutputResult.value },
-  ]);
+  return new Ok([{ type: "text" as const, text: redactedOutputResult.value }]);
 }
 
 export async function addEgressDomainTool(

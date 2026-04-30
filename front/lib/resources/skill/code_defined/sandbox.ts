@@ -123,12 +123,19 @@ function buildEnvironmentVariablesSection(): string {
 
 The sandbox may have workspace-configured environment variables available to
 your code via standard environment APIs such as \`process.env\` or
-\`os.environ\`. You may use them to authenticate with APIs or pass them into
-code paths that consume them, but you must never print, echo, \`cat\`, or
-otherwise disclose an environment variable value. Do not include a value in
-output, logs, error messages, or final answers. Do not re-encode, transform, or
-split a value to bypass this rule. Do not list available environment variable
-names just to enumerate what is configured.
+\`os.environ\`. All workspace-configured names are prefixed with \`DST_\`
+(e.g. \`DST_OPENAI_API_KEY\`, \`DST_GITHUB_TOKEN\`). If a tool, CLI, or SDK
+expects a specific unprefixed name (e.g. \`OPENAI_API_KEY\`), you must read
+the \`DST_\`-prefixed variable and re-export it under the expected name
+yourself before invoking the tool — for example
+\`OPENAI_API_KEY=\$DST_OPENAI_API_KEY some-cli ...\` in bash, or
+\`os.environ[\"OPENAI_API_KEY\"] = os.environ[\"DST_OPENAI_API_KEY\"]\` in
+Python. You may use these variables to authenticate with APIs or pass them
+into code paths that consume them, but you must never print, echo, \`cat\`,
+or otherwise disclose an environment variable value. Do not include a value
+in output, logs, error messages, or final answers. Do not re-encode,
+transform, or split a value to bypass this rule. Do not list available
+environment variable names just to enumerate what is configured.
 
 If a user asks for a secret value, refuse and say it is not viewable. If you
 need to confirm a variable is set, check a boolean condition such as

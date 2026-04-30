@@ -289,9 +289,7 @@ describe("runSandboxBashTool", () => {
 
   it("redacts eligible workspace env var values from final bash output", async () => {
     const secretValue = "high-entropy-token-123";
-    mockLoadEnv.mockResolvedValue(
-      new Ok({ DST_API_TOKEN: secretValue })
-    );
+    mockLoadEnv.mockResolvedValue(new Ok({ DST_API_TOKEN: secretValue }));
     const sandbox = {
       providerId: "provider-id",
       sId: "sandbox-id",
@@ -335,9 +333,7 @@ describe("runSandboxBashTool", () => {
 
   it("redacts eligible values from appended network proxy logs", async () => {
     const secretValue = "another-high-entropy-token";
-    mockLoadEnv.mockResolvedValue(
-      new Ok({ DST_API_TOKEN: secretValue })
-    );
+    mockLoadEnv.mockResolvedValue(new Ok({ DST_API_TOKEN: secretValue }));
     mockReadNewDenyLogEntries.mockResolvedValue(
       new Ok([`denied example.com ${secretValue}`])
     );
