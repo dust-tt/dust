@@ -92,7 +92,6 @@ export function ContextUsageIndicator({
             variant="ghost-secondary"
             size={buttonSize}
             icon={() => <CircleProgress percentage={percentage} size={16} />}
-            tooltip={`${percentage}% of context used.`}
           />
         </PopoverTrigger>
         <PopoverContent side="top" align="end" className="w-auto p-3">
