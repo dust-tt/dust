@@ -20,12 +20,12 @@ import {
 } from "@app/lib/api/actions/servers/conversation_files/metadata";
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
 import { isDustLikeAgent } from "@app/lib/api/assistant/global_agents/global_agents";
+import type { EnabledSkill } from "@app/lib/api/assistant/skills_rendering";
 import type {
   StructuredSystemPrompt,
   SystemPromptContext,
   SystemPromptSections,
 } from "@app/lib/api/llm/types/options";
-import type { EnabledSkill } from "@app/lib/api/assistant/skills_rendering";
 import type { Authenticator } from "@app/lib/auth";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type {
