@@ -5,6 +5,9 @@ import {
 } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
 import { ToolsList } from "@app/components/actions/mcp/ToolsList";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
+import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import type { LightWorkspaceType } from "@app/types/user";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { act, fireEvent, render, screen } from "@testing-library/react";
@@ -38,62 +41,40 @@ vi.mock("@dust-tt/sparkle", () => ({
   InformationCircleIcon: () => null,
 }));
 
-// Treat the test server as remote so default-stake lookups skip the internal
-// server registry.
-vi.mock("@app/lib/actions/mcp_helper", () => ({
-  isRemoteMCPServerType: () => true,
-  requiresBearerTokenConfiguration: () => false,
-  getMcpServerViewDescription: (view: { description?: string }) =>
-    view.description ?? "test description",
-}));
-
 const TOOL_NAME_WITH_DOT = "weather.get_current";
 
-const owner = {
-  sId: "ws_1",
-  id: 1,
-  name: "Test Workspace",
-  segmentation: null,
-  role: "admin",
-  whiteListedProviders: null,
-  defaultEmbeddingProvider: null,
-  metadata: {},
-  sharingPolicy: "workspace_only",
-  metronomeCustomerId: null,
-} satisfies LightWorkspaceType;
+type ToolsListTestSetup = {
+  owner: LightWorkspaceType;
+  mcpServerView: MCPServerViewType;
+};
 
-const mcpServerView = {
-  id: 1,
-  sId: "msv_1",
-  name: "Test Server",
-  description: "Test server description",
-  spaceId: "sp_1",
-  serverType: "remote",
-  oAuthUseCase: null,
-  editedByUser: null,
-  createdAt: 0,
-  updatedAt: 0,
-  toolsMetadata: undefined,
-  server: {
-    sId: "rms_1",
+async function setupToolsListTest(): Promise<ToolsListTestSetup> {
+  const { workspace, globalSpace, authenticator } = await createResourceTest({
+    role: "admin",
+  });
+  const server = await RemoteMCPServerFactory.create(workspace, {
     name: "test-server",
-    version: "1.0.0",
     description: "Test server description",
-    icon: "ToolsIcon",
-    authorization: null,
-    availability: "manual",
-    allowMultipleInstances: true,
-    documentationUrl: null,
     tools: [
       {
         name: TOOL_NAME_WITH_DOT,
         description: "Get current weather",
       },
     ],
-  },
-} satisfies MCPServerViewType;
+  });
+  const serverView = await MCPServerViewFactory.create(
+    workspace,
+    server.sId,
+    globalSpace
+  );
 
-function renderToolsList() {
+  return {
+    owner: authenticator.getNonNullableWorkspace(),
+    mcpServerView: serverView.toJSON(),
+  };
+}
+
+function renderToolsList({ owner, mcpServerView }: ToolsListTestSetup) {
   let form!: UseFormReturn<MCPServerFormValues>;
 
   function Harness() {
@@ -123,7 +104,8 @@ function renderToolsList() {
 
 describe("ToolsList", () => {
   it("keeps form state flat and validates when a tool name contains a dot", async () => {
-    const { form } = renderToolsList();
+    const setup = await setupToolsListTest();
+    const { form } = renderToolsList(setup);
 
     // Toggling the dotted-name tool's enabled state used to corrupt RHF state
     // because dots in field paths are interpreted as nested-object separators.
@@ -140,8 +122,11 @@ describe("ToolsList", () => {
     // No nested object should have been created at the path "weather.get_current".
     expect(values.toolSettings["weather"]).toBeUndefined();
 
-    // Schema validation must pass — this is the user-facing failure mode.
-    const isValid = await form.trigger();
+    // Schema validation must pass: this is the user-facing failure mode.
+    let isValid = false;
+    await act(async () => {
+      isValid = await form.trigger();
+    });
     expect(isValid).toBe(true);
     expect(form.formState.errors.toolSettings).toBeUndefined();
   });
