@@ -1,5 +1,7 @@
-import type { VirtuosoMessageListContext } from "@app/components/assistant/conversation/types";
-import type { VirtuosoMessage } from "@app/components/assistant/conversation/types";
+import type {
+  VirtuosoMessage,
+  VirtuosoMessageListContext,
+} from "@app/components/assistant/conversation/types";
 import { isAgentMessageWithStreaming } from "@app/components/assistant/conversation/types";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useMentionValidation } from "@app/lib/swr/mentions";
