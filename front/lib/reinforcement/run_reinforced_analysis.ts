@@ -566,7 +566,6 @@ async function createSkillSuggestionsFromToolCall({
           state: "pending",
           source,
           sourceConversationIds,
-          groupId: null,
         });
 
       await pruneConflictingSkillEditSuggestions(auth, skill, newSuggestion);
