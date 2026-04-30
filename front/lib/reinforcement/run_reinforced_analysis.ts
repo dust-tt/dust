@@ -5,11 +5,8 @@ import type { LLM } from "@app/lib/api/llm/llm";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
-import {
-  getLargeWhitelistedModel,
-  isProviderWhitelisted,
-} from "@app/lib/assistant";
-import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
+import { getLargeWhitelistedModel } from "@app/lib/assistant";
+import type { Authenticator } from "@app/lib/auth";
 import {
   hasSuggestionSelfConflict,
   pruneConflictingSkillEditSuggestions,
@@ -33,7 +30,6 @@ import type { ConversationResource } from "@app/lib/resources/conversation_resou
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import logger from "@app/logger/logger";
-import { GPT_5_5_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
@@ -315,13 +311,8 @@ export async function getReinforcedSkillsLLM(
   if (!owner) {
     return null;
   }
-  const useOpenAi =
-    (await hasFeatureFlag(auth, "reinforcement_on_openai")) &&
-    isProviderWhitelisted(auth, "openai");
 
-  const model = useOpenAi
-    ? GPT_5_5_MODEL_CONFIG
-    : getLargeWhitelistedModel(auth);
+  const model = getLargeWhitelistedModel(auth);
   if (!model) {
     return null;
   }
