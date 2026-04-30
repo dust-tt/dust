@@ -50,7 +50,7 @@ import {
   MoreIcon,
   ToolsIcon,
 } from "@dust-tt/sparkle";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 // Search bar is 3rem tall. Seven 3.25rem capability rows gives a 25.75rem
 // dropdown body, matching the slash suggestion row count.
@@ -118,35 +118,22 @@ function CapabilitiesPickerItemsList({
     hasContentBelow: false,
   });
   const listRef = useRef<HTMLDivElement>(null);
+  const topScrollSentinelRef = useRef<HTMLDivElement>(null);
+  const bottomScrollSentinelRef = useRef<HTMLDivElement>(null);
   const itemCount = items.length;
 
-  const updateScrollFadeState = useCallback(() => {
-    const list = listRef.current;
-
-    if (!list) {
-      setScrollFadeState({
-        hasContentAbove: false,
-        hasContentBelow: false,
-      });
-      return;
-    }
-
-    const nextState = {
-      hasContentAbove: list.scrollTop > 1,
-      hasContentBelow:
-        list.scrollTop + list.clientHeight < list.scrollHeight - 1,
-    };
-
-    setScrollFadeState((previousState) =>
-      previousState.hasContentAbove === nextState.hasContentAbove &&
-      previousState.hasContentBelow === nextState.hasContentBelow
-        ? previousState
-        : nextState
-    );
-  }, []);
-
   useEffect(() => {
-    if (itemCount === 0) {
+    const list = listRef.current;
+    const topScrollSentinel = topScrollSentinelRef.current;
+    const bottomScrollSentinel = bottomScrollSentinelRef.current;
+
+    if (
+      itemCount === 0 ||
+      !list ||
+      !topScrollSentinel ||
+      !bottomScrollSentinel ||
+      typeof IntersectionObserver === "undefined"
+    ) {
       setScrollFadeState((previousState) =>
         previousState.hasContentAbove || previousState.hasContentBelow
           ? {
@@ -158,8 +145,33 @@ function CapabilitiesPickerItemsList({
       return;
     }
 
-    updateScrollFadeState();
-  }, [itemCount, updateScrollFadeState]);
+    const observer = new IntersectionObserver(
+      (entries) => {
+        setScrollFadeState((previousState) => {
+          const nextState = { ...previousState };
+
+          for (const entry of entries) {
+            if (entry.target === topScrollSentinel) {
+              nextState.hasContentAbove = !entry.isIntersecting;
+            } else if (entry.target === bottomScrollSentinel) {
+              nextState.hasContentBelow = !entry.isIntersecting;
+            }
+          }
+
+          return previousState.hasContentAbove === nextState.hasContentAbove &&
+            previousState.hasContentBelow === nextState.hasContentBelow
+            ? previousState
+            : nextState;
+        });
+      },
+      { root: list }
+    );
+
+    observer.observe(topScrollSentinel);
+    observer.observe(bottomScrollSentinel);
+
+    return () => observer.disconnect();
+  }, [itemCount]);
 
   if (items.length === 0) {
     return (
@@ -174,60 +186,71 @@ function CapabilitiesPickerItemsList({
       <div
         ref={listRef}
         className={`overflow-y-auto ${CAPABILITIES_PICKER_LIST_MAX_HEIGHT_CLASS_NAME}`}
-        onScroll={updateScrollFadeState}
       >
-        {items.map((item) => {
-          const endComponent =
-            item.kind === "uninstalled_tool" ? (
-              <Chip size="xs" color="golden" label="Configure" />
-            ) : (
-              <Button
-                icon={MoreIcon}
-                variant="outline"
-                size="mini"
-                className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  e.preventDefault();
+        <div className="relative">
+          <div
+            ref={topScrollSentinelRef}
+            className="pointer-events-none absolute left-0 top-0 h-px w-px"
+            aria-hidden
+          />
+          <div
+            ref={bottomScrollSentinelRef}
+            className="pointer-events-none absolute bottom-0 left-0 h-px w-px"
+            aria-hidden
+          />
+          {items.map((item) => {
+            const endComponent =
+              item.kind === "uninstalled_tool" ? (
+                <Chip size="xs" color="golden" label="Configure" />
+              ) : (
+                <Button
+                  icon={MoreIcon}
+                  variant="outline"
+                  size="mini"
+                  className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
 
-                  if (item.kind === "skill") {
-                    onSkillDetails(item.skill.sId);
-                  } else {
-                    onToolDetails(item.serverView);
-                  }
-                }}
+                    if (item.kind === "skill") {
+                      onSkillDetails(item.skill.sId);
+                    } else {
+                      onToolDetails(item.serverView);
+                    }
+                  }}
+                />
+              );
+
+            const menuItem = (
+              <DropdownMenuItem
+                key={item.id}
+                icon={item.icon}
+                itemId={item.id}
+                label={item.label}
+                description={item.description}
+                truncateText
+                endComponent={endComponent}
+                className="group"
+                onClick={() => onItemSelect(item)}
               />
             );
 
-          const menuItem = (
-            <DropdownMenuItem
-              key={item.id}
-              icon={item.icon}
-              itemId={item.id}
-              label={item.label}
-              description={item.description}
-              truncateText
-              endComponent={endComponent}
-              className="group"
-              onClick={() => onItemSelect(item)}
-            />
-          );
+            if (item.kind !== "uninstalled_tool" && item.description) {
+              return (
+                <DropdownTooltipTrigger
+                  key={item.id}
+                  description={item.description}
+                  side="right"
+                  sideOffset={8}
+                >
+                  {menuItem}
+                </DropdownTooltipTrigger>
+              );
+            }
 
-          if (item.kind !== "uninstalled_tool" && item.description) {
-            return (
-              <DropdownTooltipTrigger
-                key={item.id}
-                description={item.description}
-                side="right"
-                sideOffset={8}
-              >
-                {menuItem}
-              </DropdownTooltipTrigger>
-            );
-          }
-
-          return menuItem;
-        })}
+            return menuItem;
+          })}
+        </div>
       </div>
       <div
         className={cn(
