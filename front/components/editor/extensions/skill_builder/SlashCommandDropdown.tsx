@@ -175,22 +175,6 @@ export const SlashCommandDropdown = forwardRef<
       }
 
       updateScrollFadeState();
-      const animationFrame = window.requestAnimationFrame(
-        updateScrollFadeState
-      );
-
-      const list = listRef.current;
-      if (!list || typeof ResizeObserver === "undefined") {
-        return () => window.cancelAnimationFrame(animationFrame);
-      }
-
-      const resizeObserver = new ResizeObserver(updateScrollFadeState);
-      resizeObserver.observe(list);
-
-      return () => {
-        window.cancelAnimationFrame(animationFrame);
-        resizeObserver.disconnect();
-      };
     }, [itemCount, showScrollFade, updateScrollFadeState]);
 
     // Update virtual trigger position.
