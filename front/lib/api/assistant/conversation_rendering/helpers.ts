@@ -45,6 +45,8 @@ import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 
+const RENDER_ACTIONS_CONCURRENCY = 5;
+
 /**
  * Type for a step in agent message processing
  */
@@ -225,17 +227,10 @@ export async function getSteps(
       actions: [],
     }) satisfies Step;
 
-  for (const action of actions) {
-    const stepIndex = action.step;
-    stepByStepIndex[stepIndex] = stepByStepIndex[stepIndex] || emptyStep();
-    // All these calls are not async, so we're not doing a Promise.all for now but might need to
-    // be reconsidered in the future.
-    stepByStepIndex[stepIndex].actions.push({
-      call: {
-        id: action.functionCallId,
-        name: action.functionCallName,
-        arguments: JSON.stringify(action.params),
-      },
+  const renderedActions = await concurrentExecutor(
+    actions,
+    async (action) => ({
+      action,
       result: await renderActionForMultiActionsModel(auth, action, model, {
         conversationId,
       }),
@@ -243,6 +238,21 @@ export async function getSteps(
         enabledSkillById,
         renderSkillsAsUserMessages,
       }),
+    }),
+    { concurrency: RENDER_ACTIONS_CONCURRENCY }
+  );
+
+  for (const { action, result, enabledSkillMessages } of renderedActions) {
+    const stepIndex = action.step;
+    stepByStepIndex[stepIndex] = stepByStepIndex[stepIndex] || emptyStep();
+    stepByStepIndex[stepIndex].actions.push({
+      call: {
+        id: action.functionCallId,
+        name: action.functionCallName,
+        arguments: JSON.stringify(action.params),
+      },
+      result,
+      enabledSkillMessages,
     });
   }
 
