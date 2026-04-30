@@ -196,9 +196,7 @@ function constructToolsSection({
 /**
  * Get the full instructions for an enabled skill, including extended skill instructions if applicable.
  */
-function getEnabledSkillInstructions(
-  skill: EnabledSkill
-): string {
+function getEnabledSkillInstructions(skill: EnabledSkill): string {
   const { name, instructions, extendedSkill } = skill;
 
   if (!extendedSkill) {
