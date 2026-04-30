@@ -23,15 +23,20 @@ function buildTodoKickoffPrompt({
   todoId,
   todoText,
   sourceUrls,
+  customMessage,
 }: {
   todoId: string;
   todoText: string;
   sourceUrls: string[];
+  customMessage?: string;
 }): string {
   const sourceLine =
     sourceUrls.length > 0
       ? `The item was sourced from ${sourceUrls.join(", ")}.`
       : "No explicit source was attached to this todo item.";
+  const customMessageLine = customMessage
+    ? ["", "Additional instructions :", customMessage]
+    : [];
 
   return [
     `You are working on the todo (id: ${todoId}) from the current project.`,
@@ -45,6 +50,7 @@ function buildTodoKickoffPrompt({
     "2. Use available project context and tools to complete the work.",
     "3. Share concrete outputs and next checks.",
     "4. Once the task is completed, mark this todo as done.",
+    ...customMessageLine,
   ].join("\n");
 }
 
@@ -54,10 +60,12 @@ export async function startAgentForProjectTodo(
     space,
     todoId,
     agentConfigurationId,
+    customMessage,
   }: {
     space: SpaceResource;
     todoId: string;
     agentConfigurationId?: string;
+    customMessage?: string;
   }
 ): Promise<
   Result<
@@ -111,6 +119,7 @@ export async function startAgentForProjectTodo(
     todoId: todo.sId,
     todoText: todo.text,
     sourceUrls,
+    customMessage: customMessage?.trim() || undefined,
   });
 
   let conversationId = await todo.getLatestConversationId(auth);

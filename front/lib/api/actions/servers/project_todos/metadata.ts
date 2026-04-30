@@ -176,6 +176,12 @@ export const PROJECT_TODOS_TOOLS_METADATA = createToolsRecord({
         .describe(
           "Optional agent name. If provided, the tool searches matching agent configurations and uses the best match. Defaults to Dust."
         ),
+      customMessage: z
+        .string()
+        .optional()
+        .describe(
+          "Optional additional instructions appended to the kickoff message sent to the selected agent."
+        ),
       dustProject: ConfigurableToolInputSchemas[
         INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
       ]

@@ -1,9 +1,13 @@
+import { AgentPicker } from "@app/components/assistant/AgentPicker";
 import {
   useSpaceConversations,
   useSpaceConversationsSummary,
 } from "@app/hooks/conversations";
 import { useAppRouter } from "@app/lib/platform";
-import { useAgentConfigurations } from "@app/lib/swr/assistants";
+import {
+  useAgentConfigurations,
+  useUnifiedAgentConfigurations,
+} from "@app/lib/swr/assistants";
 import {
   useBulkUpdateProjectTodoStatus,
   useCleanDoneProjectTodos,
@@ -16,6 +20,11 @@ import {
 import { timeAgoFrom } from "@app/lib/utils";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { GetProjectTodosResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_todos/index";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import {
+  compareAgentsForSort,
+  GLOBAL_AGENTS_SID,
+} from "@app/types/assistant/assistant";
 import type {
   ProjectTodoActorType,
   ProjectTodoAssigneeType,
@@ -46,8 +55,10 @@ import {
   MicrosoftLogo,
   NotionLogo,
   PlayIcon,
+  RobotIcon,
   SlackLogo,
   Spinner,
+  TextArea,
   Tooltip,
   TrashIcon,
   TypingAnimation,
@@ -434,8 +445,13 @@ interface EditableTodoItemProps {
   viewerUserId: string | null;
   onToggleDone: (todo: ProjectTodoType) => void;
   onDelete: (todo: ProjectTodoType) => void;
-  onStartWorking: (todo: ProjectTodoType) => void;
+  onStartWorking: (
+    todo: ProjectTodoType,
+    options?: { customMessage?: string; agentConfigurationId?: string }
+  ) => Promise<void>;
   owner: LightWorkspaceType;
+  activeAgents: LightAgentConfigurationType[];
+  agentsLoading: boolean;
   agentNameById: Map<string, string>;
   isExiting: boolean;
   isAdded: boolean;
@@ -452,6 +468,8 @@ function EditableTodoItem({
   onDelete,
   onStartWorking,
   owner,
+  activeAgents,
+  agentsLoading,
   agentNameById,
   isExiting,
   isAdded,
@@ -461,6 +479,11 @@ function EditableTodoItem({
   isStarting,
 }: EditableTodoItemProps) {
   const router = useAppRouter();
+  const [startMenuOpen, setStartMenuOpen] = useState(false);
+  const [startCustomMessage, setStartCustomMessage] = useState("");
+  const [selectedStartAgent, setSelectedStartAgent] =
+    useState<LightAgentConfigurationType | null>(null);
+
   const isDone = todo.status === "done";
   const hasConversationLink =
     (todo.status === "in_progress" || todo.status === "done") &&
@@ -480,6 +503,30 @@ function EditableTodoItem({
 
   const handleToggle = () => {
     onToggleDone(todo);
+  };
+
+  const handleStartMenuOpenChange = (open: boolean) => {
+    setStartMenuOpen(open);
+    if (open) {
+      setStartCustomMessage("");
+      const defaultAgent =
+        activeAgents.find((a) => a.sId === GLOBAL_AGENTS_SID.DUST) ??
+        activeAgents[0] ??
+        null;
+      setSelectedStartAgent(defaultAgent);
+    }
+  };
+
+  const handleConfirmStart = async () => {
+    setStartMenuOpen(false);
+    const agentConfigurationId =
+      selectedStartAgent && selectedStartAgent.sId !== GLOBAL_AGENTS_SID.DUST
+        ? selectedStartAgent.sId
+        : undefined;
+    await onStartWorking(todo, {
+      customMessage: startCustomMessage.trim() || undefined,
+      agentConfigurationId,
+    });
   };
 
   return (
@@ -560,25 +607,92 @@ function EditableTodoItem({
           />
         ) : (
           canEdit &&
-          !hasConversationLink && (
+          !hasConversationLink &&
+          (isDoneWithoutConversation ? (
             <Tooltip
-              label={
-                isDoneWithoutConversation
-                  ? "Reopen this to-do before starting work."
-                  : "Start working on to-do"
-              }
+              label="Reopen this to-do before starting work."
               trigger={
+                <Button icon={PlayIcon} size="xs" variant="outline" disabled />
+              }
+            />
+          ) : (
+            <DropdownMenu
+              modal={false}
+              open={startMenuOpen}
+              onOpenChange={handleStartMenuOpenChange}
+            >
+              <DropdownMenuTrigger asChild>
                 <Button
                   icon={PlayIcon}
                   size="xs"
                   variant="outline"
                   isLoading={isStarting}
-                  disabled={isStarting || isDoneWithoutConversation}
-                  onClick={() => onStartWorking(todo)}
+                  disabled={isStarting}
+                  tooltip="Start working on to-do"
                 />
-              }
-            />
-          )
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-96 p-3">
+                <div className="flex flex-col gap-3">
+                  <TextArea
+                    id={`todo-start-msg-${todo.sId}`}
+                    aria-label="Additional instructions for the agent"
+                    placeholder="(optional) Add a custom message for the agent..."
+                    value={startCustomMessage}
+                    rows={4}
+                    onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) =>
+                      setStartCustomMessage(event.target.value)
+                    }
+                  />
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="w-[200px] min-w-0 shrink-0">
+                      <AgentPicker
+                        owner={owner}
+                        agents={activeAgents}
+                        disabled={agentsLoading}
+                        isLoading={agentsLoading}
+                        mountPortal
+                        showDropdownArrow
+                        showFooterButtons={false}
+                        side="bottom"
+                        size="xs"
+                        onItemClick={(agent) => setSelectedStartAgent(agent)}
+                        pickerButton={
+                          <Button
+                            variant="ghost-secondary"
+                            size="xs"
+                            isSelect
+                            icon={
+                              selectedStartAgent
+                                ? () => (
+                                    <Avatar
+                                      size="xxs"
+                                      visual={selectedStartAgent.pictureUrl}
+                                    />
+                                  )
+                                : RobotIcon
+                            }
+                            label={selectedStartAgent?.name ?? "Agent"}
+                            className="max-w-full min-w-0"
+                          />
+                        }
+                      />
+                    </div>
+                    <div className="w-[92px] shrink-0">
+                      <Button
+                        label="Go!"
+                        variant="highlight"
+                        size="sm"
+                        className="w-full"
+                        isLoading={isStarting}
+                        disabled={isStarting || !selectedStartAgent}
+                        onClick={() => void handleConfirmStart()}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ))
         )}
         {canEdit && (
           <div className="opacity-0 transition-opacity group-hover/todo:opacity-100">
@@ -617,7 +731,7 @@ function formatTodoScopeLabel({
     return "Your to-dos";
   }
   if (scope === "all") {
-    return "Everyone's to-dos";
+    return "Project's to-dos";
   }
 
   if (selectedUserSIds.size === 0) {
@@ -676,7 +790,7 @@ function EditableProjectTodosPanel({
   owner: LightWorkspaceType;
   spaceId: string;
 }) {
-  const [assigneeScope, setAssigneeScope] = useState<TodoAssigneeScope>("mine");
+  const [assigneeScope, setAssigneeScope] = useState<TodoAssigneeScope>("all");
   const [selectedUserSIds, setSelectedUserSIds] = useState<Set<string>>(
     new Set()
   );
@@ -726,6 +840,16 @@ function EditableProjectTodosPanel({
   const [startingTodoIds, setStartingTodoIds] = useState<Set<string>>(
     new Set()
   );
+  const { agentConfigurations, isLoading: isAgentsLoading } =
+    useUnifiedAgentConfigurations({
+      workspaceId: owner.sId,
+      disabled: isTodosLoading,
+    });
+  const activeAgents = useMemo(() => {
+    const agents = agentConfigurations.filter((a) => a.status === "active");
+    agents.sort(compareAgentsForSort);
+    return agents;
+  }, [agentConfigurations]);
 
   // ── Diff animation state ────────────────────────────────────────────────────
 
@@ -893,29 +1017,7 @@ function EditableProjectTodosPanel({
     usersBySId,
     viewerUserId,
   });
-  const hideAssigneeMenu =
-    users.length === 0 ||
-    (users.length === 1 &&
-      viewerUserId !== null &&
-      users[0]?.sId === viewerUserId);
   const assigneeLabel = selectedAssigneeLabel;
-
-  useEffect(() => {
-    if (isTodosLoading) {
-      return;
-    }
-
-    // Preserve the previous UX default:
-    // - if only "you" exists, default to "Your todos"
-    // - otherwise default to "Everyone's todos"
-    if (!hideAssigneeMenu) {
-      setAssigneeScope("all");
-    } else {
-      setAssigneeScope("mine");
-      setSelectedUserSIds(new Set());
-      setIsAssigneeMenuOpen(false);
-    }
-  }, [hideAssigneeMenu, isTodosLoading]);
 
   const filteredTodos = useMemo(() => {
     switch (assigneeScope) {
@@ -1071,9 +1173,15 @@ function EditableProjectTodosPanel({
   );
 
   const handleStartWorking = useCallback(
-    async (todo: ProjectTodoType) => {
+    async (
+      todo: ProjectTodoType,
+      options?: { customMessage?: string; agentConfigurationId?: string }
+    ) => {
       setStartingTodoIds((prev) => new Set([...prev, todo.sId]));
-      const result = await doStartConversation(todo.sId);
+      const result = await doStartConversation(todo.sId, {
+        customMessage: options?.customMessage,
+        agentConfigurationId: options?.agentConfigurationId,
+      });
       if (result.isOk()) {
         const { conversationId } = result.value;
         // Reflect the new todo state (conversationId set) immediately.
@@ -1175,7 +1283,7 @@ function EditableProjectTodosPanel({
             />
             <DropdownMenuCheckboxItem
               icon={UserGroupIcon}
-              label="Everyone's to-dos"
+              label="Project's to-dos"
               checked={assigneeScope === "all"}
               onClick={() => {
                 setAssigneeScope("all");
@@ -1272,6 +1380,8 @@ function EditableProjectTodosPanel({
                       onDelete={handleDelete}
                       onStartWorking={handleStartWorking}
                       owner={owner}
+                      activeAgents={activeAgents}
+                      agentsLoading={isAgentsLoading}
                       agentNameById={agentNameById}
                       isExiting={pendingRemovalIds.has(todo.sId)}
                       isAdded={

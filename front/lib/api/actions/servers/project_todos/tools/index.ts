@@ -346,7 +346,12 @@ export function createProjectTodosTools(
       }, "Failed to reopen TODO");
     },
 
-    start_todo_agent: async ({ todoId, agentName, dustProject }) => {
+    start_todo_agent: async ({
+      todoId,
+      agentName,
+      customMessage,
+      dustProject,
+    }) => {
       return withErrorHandling(async () => {
         const contextRes = await getProjectSpace(auth, {
           agentLoopContext,
@@ -377,6 +382,7 @@ export function createProjectTodosTools(
           space,
           todoId,
           agentConfigurationId,
+          customMessage,
         });
 
         if (startRes.isErr()) {

@@ -550,11 +550,21 @@ export function useStartProjectTodoConversation({
 }) {
   const sendNotification = useSendNotification();
 
-  return async (todoId: string): Promise<Result<ProjectTodoType, Error>> => {
+  return async (
+    todoId: string,
+    options?: { customMessage?: string; agentConfigurationId?: string }
+  ): Promise<Result<ProjectTodoType, Error>> => {
     try {
       const res = await clientFetch(
         `/api/w/${owner.sId}/spaces/${spaceId}/project_todos/${todoId}/start`,
-        { method: "POST" }
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            customMessage: options?.customMessage,
+            agentConfigurationId: options?.agentConfigurationId,
+          }),
+        }
       );
 
       if (!res.ok) {
