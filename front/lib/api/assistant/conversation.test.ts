@@ -2456,7 +2456,11 @@ describe("postUserMessage", () => {
     let projectConversation: ConversationType;
     let agentWithDifferentSpace: LightAgentConfigurationType;
 
-    async function setupProjectWithRestrictedAgent() {
+    async function setupProjectWithRestrictedAgent({
+      messagesCreatedAt = [new Date()],
+    }: {
+      messagesCreatedAt?: Date[];
+    } = {}) {
       projectSpace = await SpaceFactory.project(workspace);
       anotherProjectSpace = await SpaceFactory.project(workspace);
 
@@ -2524,7 +2528,7 @@ describe("postUserMessage", () => {
         auth,
         {
           agentConfigurationId: agentWithDifferentSpace.sId,
-          messagesCreatedAt: [new Date()],
+          messagesCreatedAt,
           spaceId: projectSpace.id,
         }
       );
@@ -2696,6 +2700,110 @@ describe("postUserMessage", () => {
         );
         expect(branchRow).not.toBeNull();
         expect(secondUserMessageRow!.branchId).toBe(branchRow!.id);
+
+        rateLimiterSpy.mockRestore();
+      });
+    });
+
+    describe("with empty conversation and projects feature flag enabled", () => {
+      beforeEach(async () => {
+        await setupProjectWithRestrictedAgent({ messagesCreatedAt: [] });
+        await FeatureFlagFactory.basic(auth, "projects");
+      });
+
+      it("should create a branch with an anchor message when first message mentions a restricted agent", async () => {
+        const user = auth.getNonNullableUser();
+        const userJson = user.toJSON();
+
+        const rateLimiterSpy = vi
+          .spyOn(rateLimiterModule, "rateLimiter")
+          .mockResolvedValue(100);
+
+        expect(projectConversation.content.length).toBe(0);
+
+        const result = await postUserMessage(auth, {
+          conversation: projectConversation,
+          content: `Hello @${agentWithDifferentSpace.name}`,
+          mentions: [{ configurationId: agentWithDifferentSpace.sId }],
+          context: {
+            username: userJson.username,
+            timezone: "UTC",
+            fullName: userJson.fullName,
+            email: userJson.email,
+            profilePictureUrl: userJson.image,
+            origin: "web",
+          },
+          skipToolsValidation: false,
+        });
+
+        expect(result.isOk()).toBe(true);
+        if (!result.isOk()) {
+          return;
+        }
+
+        const branchesAfter =
+          await ConversationBranchResource.listForConversation(
+            auth,
+            projectConversation.id
+          );
+        expect(branchesAfter.length).toBe(1);
+        const branch = branchesAfter[0];
+        expect(projectConversation.branchId).toBe(branch.sId);
+
+        // Anchor message: rank 0, empty content, origin "branch_anchor".
+        const anchorMessageRow = await MessageModel.findOne({
+          where: {
+            conversationId: projectConversation.id,
+            workspaceId: workspace.id,
+            rank: 0,
+            branchId: null,
+          },
+          include: [
+            {
+              model: UserMessageModel,
+              as: "userMessage",
+              required: true,
+            },
+          ],
+        });
+        expect(anchorMessageRow).not.toBeNull();
+        expect(anchorMessageRow!.userMessage!.content).toBe("");
+        expect(anchorMessageRow!.userMessage!.userContextOrigin).toBe(
+          "branch_anchor"
+        );
+
+        // The actual user message lives on the branch at rank 1.
+        const newUserMessageRow = await MessageModel.findOne({
+          where: {
+            id: result.value.userMessage.id,
+            workspaceId: workspace.id,
+          },
+        });
+        expect(newUserMessageRow).not.toBeNull();
+        expect(newUserMessageRow!.branchId).toBe(branch.id);
+        expect(newUserMessageRow!.rank).toBe(1);
+
+        // Agent message also lives on the branch.
+        expect(result.value.agentMessages.length).toBe(1);
+        const agentMessageRow = await MessageModel.findOne({
+          where: {
+            id: result.value.agentMessages[0].id,
+            workspaceId: workspace.id,
+          },
+        });
+        expect(agentMessageRow).not.toBeNull();
+        expect(agentMessageRow!.branchId).toBe(branch.id);
+
+        // Mention is approved (not restricted) because it lives on a branch.
+        const mentionRow = await MentionModel.findOne({
+          where: {
+            messageId: result.value.userMessage.id,
+            workspaceId: workspace.id,
+            agentConfigurationId: agentWithDifferentSpace.sId,
+          },
+        });
+        expect(mentionRow).not.toBeNull();
+        expect(mentionRow!.status).toBe("approved");
 
         rateLimiterSpy.mockRestore();
       });
