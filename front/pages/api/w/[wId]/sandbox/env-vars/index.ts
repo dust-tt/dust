@@ -1,6 +1,10 @@
 /** @ignoreswagger */
 import { getAuditLogContext } from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import {
+  validateEnvVarName,
+  validateEnvVarValue,
+} from "@app/lib/api/sandbox/env_vars";
 import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
 import { WorkspaceSandboxEnvVarResource } from "@app/lib/resources/workspace_sandbox_env_var_resource";
@@ -11,8 +15,18 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 
 const PostWorkspaceSandboxEnvVarBodySchema = z.object({
-  name: z.string(),
-  value: z.string(),
+  name: z.string().superRefine((name, ctx) => {
+    const result = validateEnvVarName(name);
+    if (result.isErr()) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: result.error });
+    }
+  }),
+  value: z.string().superRefine((value, ctx) => {
+    const result = validateEnvVarValue(value);
+    if (result.isErr()) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: result.error });
+    }
+  }),
 });
 
 export type GetWorkspaceSandboxEnvVarsResponseBody = {

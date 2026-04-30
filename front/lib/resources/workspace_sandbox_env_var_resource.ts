@@ -2,11 +2,7 @@ import {
   buildAuditLogTarget,
   emitAuditLogEvent,
 } from "@app/lib/api/audit/workos_audit";
-import {
-  MAX_VARS_PER_WORKSPACE,
-  validateEnvVarName,
-  validateEnvVarValue,
-} from "@app/lib/api/sandbox/env_vars";
+import { MAX_VARS_PER_WORKSPACE } from "@app/lib/api/sandbox/env_vars";
 import type { AuditLogContext } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -127,16 +123,6 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
       Error
     >
   > {
-    const nameValidation = validateEnvVarName(name);
-    if (nameValidation.isErr()) {
-      return new Err(new Error(nameValidation.error));
-    }
-
-    const valueValidation = validateEnvVarValue(value);
-    if (valueValidation.isErr()) {
-      return new Err(new Error(valueValidation.error));
-    }
-
     const owner = auth.getNonNullableWorkspace();
     const user = auth.getNonNullableUser();
     const encryptedValue = encrypt({
@@ -152,9 +138,10 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
       },
     });
 
+    let row: WorkspaceSandboxEnvVarModel;
     let created: boolean;
     if (existing) {
-      await existing.update({
+      row = await existing.update({
         encryptedValue,
         lastUpdatedByUserId: user.id,
       });
@@ -176,7 +163,7 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
         );
       }
 
-      await this.model.create({
+      row = await this.model.create({
         workspaceId: owner.id,
         name,
         encryptedValue,
@@ -186,12 +173,7 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
       created = true;
     }
 
-    const resource = await this.fetchByName(auth, name);
-    if (!resource) {
-      return new Err(
-        new Error("Failed to reload sandbox environment variable after upsert.")
-      );
-    }
+    const resource = this.fromRow(row);
 
     void emitAuditLogEvent({
       auth,

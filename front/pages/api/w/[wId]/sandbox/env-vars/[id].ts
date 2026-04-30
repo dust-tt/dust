@@ -3,8 +3,11 @@ import { getAuditLogContext } from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
+import {
+  getResourceIdFromSId,
+  isResourceSId,
+} from "@app/lib/resources/string_ids";
 import { WorkspaceSandboxEnvVarResource } from "@app/lib/resources/workspace_sandbox_env_var_resource";
-import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
@@ -44,12 +47,12 @@ async function handler(
 
   const { id } = req.query;
 
-  if (!isString(id)) {
+  if (!isString(id) || !isResourceSId("sandbox_env_var", id)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Expected a string environment variable id.",
+        message: "Invalid sandbox environment variable id.",
       },
     });
   }
