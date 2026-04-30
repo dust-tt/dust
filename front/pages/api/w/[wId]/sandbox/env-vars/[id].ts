@@ -47,17 +47,10 @@ async function handler(
 
   const { id } = req.query;
 
-  if (!isString(id) || !isResourceSId("sandbox_env_var", id)) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid sandbox environment variable id.",
-      },
-    });
-  }
-
-  const envVarModelId = getResourceIdFromSId(id);
+  const envVarModelId =
+    isString(id) && isResourceSId("sandbox_env_var", id)
+      ? getResourceIdFromSId(id)
+      : null;
   if (envVarModelId === null) {
     return apiError(req, res, {
       status_code: 400,

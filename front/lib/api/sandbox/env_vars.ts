@@ -1,6 +1,7 @@
 import { Err, Ok, type Result } from "@app/types/shared/result";
 
 export const SANDBOX_ENV_VAR_PREFIX = "DST_";
+// 64 char total budget - 4 prefix chars - 1 leading-letter char = 59 trailing chars.
 export const ENV_VAR_NAME_REGEX = /^DST_[A-Z][A-Z0-9_]{0,59}$/;
 export const ENV_VAR_NAME_SUFFIX_REGEX = /^[A-Z][A-Z0-9_]{0,59}$/;
 export const MAX_VALUE_BYTES = 32 * 1024;

@@ -59,26 +59,31 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
 
   private static async baseFetch(
     auth: Authenticator,
-    where?: Partial<Pick<WorkspaceSandboxEnvVarModel, "id" | "name">>
+    where?: Partial<Pick<WorkspaceSandboxEnvVarModel, "id" | "name">>,
+    { withUserJoins = true }: { withUserJoins?: boolean } = {}
   ): Promise<WorkspaceSandboxEnvVarResource[]> {
+    const isPointLookup = where?.id !== undefined || where?.name !== undefined;
     const rows = await this.model.findAll({
       where: {
         ...where,
         workspaceId: auth.getNonNullableWorkspace().id,
       },
-      include: [
-        {
-          association: "createdByUser",
-          attributes: ["name"],
-          required: false,
-        },
-        {
-          association: "lastUpdatedByUser",
-          attributes: ["name"],
-          required: false,
-        },
-      ],
-      order: [["name", "ASC"]],
+      include: withUserJoins
+        ? [
+            {
+              association: "createdByUser",
+              attributes: ["name"],
+              required: false,
+            },
+            {
+              association: "lastUpdatedByUser",
+              attributes: ["name"],
+              required: false,
+            },
+          ]
+        : [],
+      // Skip ordering on point lookups — primary key is unique.
+      order: isPointLookup ? undefined : [["name", "ASC"]],
     });
 
     return rows.map((row) => this.fromRow(row));
@@ -124,6 +129,8 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
     >
   > {
     const owner = auth.getNonNullableWorkspace();
+    // Admin-only path today. If we ever seed env vars from a script or Temporal
+    // activity, swap this for an optional `actor` parameter.
     const user = auth.getNonNullableUser();
     const encryptedValue = encrypt({
       text: value,
@@ -173,7 +180,15 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
       created = true;
     }
 
-    const resource = this.fromRow(row);
+    // Reload through baseFetch so createdByUser / lastUpdatedByUser joins are
+    // populated — the row returned by update() / create() has no associations
+    // loaded, which would surface as "Unknown" in the UI until SWR re-lists.
+    const resource = await this.fetchById(auth, row.id);
+    if (!resource) {
+      return new Err(
+        new Error("Failed to reload sandbox environment variable after upsert.")
+      );
+    }
 
     void emitAuditLogEvent({
       auth,
@@ -201,13 +216,19 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
   ): Promise<Result<undefined, Error>> {
     const owner = auth.getNonNullableWorkspace();
 
-    await this.model.destroy({
+    const destroyedCount = await this.model.destroy({
       where: {
         id: this.id,
         workspaceId: owner.id,
       },
       transaction,
     });
+
+    // A concurrent delete between the endpoint's fetchById and this destroy can
+    // race us to 0 rows. Don't emit a duplicate audit event in that case.
+    if (destroyedCount === 0) {
+      return new Ok(undefined);
+    }
 
     void emitAuditLogEvent({
       auth,
@@ -238,7 +259,11 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
     auth: Authenticator
   ): Promise<Result<Record<string, string>, Error>> {
     const owner = auth.getNonNullableWorkspace();
-    const resources = await this.baseFetch(auth);
+    // Hot path on every sandbox mount — skip the user joins, we only need
+    // name + encryptedValue here.
+    const resources = await this.baseFetch(auth, undefined, {
+      withUserJoins: false,
+    });
 
     const env: Record<string, string> = {};
     for (const resource of resources) {
