@@ -15,7 +15,7 @@ import {
   isServerSideMCPServerConfiguration,
 } from "@app/lib/actions/types/guards";
 import type { SandboxResumeState } from "@app/lib/api/actions/servers/sandbox/types";
-import { SANDBOX_MCP_SERVER_NAME } from "@app/lib/api/actions/servers/sandbox/types";
+import { SANDBOX_RESUME_STATE_TYPE } from "@app/lib/api/actions/servers/sandbox/types";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
@@ -34,6 +34,7 @@ import {
   getFeatureFlags,
   isSandboxTokenPrefix,
 } from "@app/lib/auth";
+import { MessageModel } from "@app/lib/models/agent/conversation";
 import {
   AgentMCPActionResource,
   type SandboxMCPAction,
@@ -47,6 +48,7 @@ import type {
   ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
 import type { CallMCPToolResponseType } from "@dust-tt/client";
@@ -71,11 +73,11 @@ type EndpointResponse = NextApiResponse<
   WithAPIErrorResponse<CallToolEndpointResponseType>
 >;
 
-// Re-execute: actionId required, toolName optional (falls back to action record).
+// Re-execute: only `actionId` is meaningful. The tool name and arguments are
+// pulled from the stored action — accepting them in the body would let a
+// caller execute under a stale approval against fresh inputs.
 const ReExecuteSchema = z.object({
   actionId: z.string(),
-  toolName: z.string().optional(),
-  arguments: z.record(z.unknown()).optional(),
 });
 
 // Initial call: toolName required, no actionId.
@@ -92,6 +94,14 @@ const DEFAULT_SANDBOX_STEP_CONTEXT = {
   websearchResultCount: 10,
 } as const;
 
+const contextBuildErrorBody = {
+  status_code: 500,
+  api_error: {
+    type: "internal_server_error" as const,
+    message: "Could not build agent loop context from sandbox token claims.",
+  },
+};
+
 async function extractSandboxClaims(
   req: NextApiRequest
 ): Promise<SandboxExecTokenPayload | null> {
@@ -103,10 +113,30 @@ async function extractSandboxClaims(
 }
 
 /**
- * Runs the tool and transitions the audit row through `running →
- * succeeded / errored`. The audit row is always present at this point — it
- * was created by `handleInitialToolCall` (allowed-immediately path) or
- * already existed from a prior block (re-execute path).
+ * Resolves the JWT's `mId` (a Message sId) to its AgentMessage model id, used
+ * to scope action lookups to the JWT's session. Returns null if no agent
+ * message matches in the workspace.
+ */
+async function resolveAgentMessageIdForClaims(
+  auth: Authenticator,
+  claims: SandboxExecTokenPayload
+): Promise<ModelId | null> {
+  const message = await MessageModel.findOne({
+    where: {
+      sId: claims.mId,
+      workspaceId: auth.getNonNullableWorkspace().id,
+    },
+    attributes: ["agentMessageId"],
+  });
+  return message?.agentMessageId ?? null;
+}
+
+/**
+ * Runs the tool and transitions the audit row from `running` to
+ * `succeeded` / `errored`. Callers are responsible for ensuring the row is in
+ * `running` before invoking this — the initial allowed-immediately path does
+ * an unconditional flip; the re-execute path uses the
+ * `tryAcquireForExecution` CAS so concurrent re-POSTs cannot both run.
  */
 async function executeSandboxToolCall(
   auth: Authenticator,
@@ -115,7 +145,6 @@ async function executeSandboxToolCall(
   action: SandboxMCPAction,
   res: EndpointResponse
 ): Promise<void> {
-  await action.updateStatus("running");
   try {
     const result = await callMCPToolForSandbox(auth, toolArgs, runContext);
     await action.updateStatus(result.isError ? "errored" : "succeeded");
@@ -238,10 +267,14 @@ async function buildSandboxAgentLoopContext(
   } = fullToolConfiguration;
 
   // Find the parent sandbox bash action to get step context and step number.
+  // Accept both `running` and `blocked_child_action_input_required`: parallel
+  // sandbox calls inside one bash command may arrive after a sibling has
+  // already bubbled the parent up. Filtering on `running` only would lose the
+  // parent reference (and silently default `step` to 0).
   const parentAction =
     await AgentMCPActionResource.findSandboxActionForAgentMessage(auth, {
       agentMessageId: agentMessage.agentMessageId,
-      status: "running",
+      statuses: ["running", "blocked_child_action_input_required"],
     });
   const stepContext = parentAction?.stepContext ?? DEFAULT_SANDBOX_STEP_CONTEXT;
   const step = parentAction?.stepContent.step ?? 0;
@@ -298,7 +331,7 @@ async function notifyApprovalNeeded(
   // In practice the parent is always present when a sandbox tool call fires.
   if (parentAction) {
     const resumeState: SandboxResumeState = {
-      type: SANDBOX_MCP_SERVER_NAME,
+      type: SANDBOX_RESUME_STATE_TYPE,
       childActionId: action.sId,
     };
     await parentAction.markBlockedAwaitingChild(resumeState);
@@ -414,8 +447,6 @@ async function handler(
         return handleReExecuteApprovedToolCall(req, res, auth, sandboxClaims, {
           view,
           actionId: reExecRes.data.actionId,
-          toolName: reExecRes.data.toolName,
-          arguments: reExecRes.data.arguments,
         });
       }
 
@@ -450,11 +481,18 @@ async function handler(
         });
       }
 
-      const action = await AgentMCPActionResource.fetchSandboxActionById(
-        auth,
-        actionId
-      );
-      if (!action) {
+      const [action, claimsAgentMessageId] = await Promise.all([
+        AgentMCPActionResource.fetchSandboxActionById(auth, actionId),
+        resolveAgentMessageIdForClaims(auth, sandboxClaims),
+      ]);
+      // Auth scope: action must belong to the JWT's agent message session.
+      // Workspace match is enforced upstream by the auth wrapper; the
+      // additional check pins the action to the JWT's specific (cId, mId).
+      if (
+        !action ||
+        claimsAgentMessageId === null ||
+        action.agentMessageId !== claimsAgentMessageId
+      ) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {
@@ -511,13 +549,9 @@ async function handleReExecuteApprovedToolCall(
   {
     view,
     actionId,
-    toolName: bodyToolName,
-    arguments: bodyArgs,
   }: {
     view: MCPServerViewResource;
     actionId: string;
-    toolName?: string;
-    arguments?: Record<string, unknown>;
   }
 ): Promise<void> {
   const action = await AgentMCPActionResource.fetchSandboxActionById(
@@ -534,17 +568,34 @@ async function handleReExecuteApprovedToolCall(
     });
   }
 
-  // Valid pre-execute states:
-  // - `ready_allowed_implicitly`: never blocked (e.g. never_ask permission).
-  // - `running`: validated via approval flow — `validateSandboxAction` flips
-  //   the row straight to `running` after user approval (same lifecycle as
-  //   the parent bash action). `executeSandboxToolCall` re-asserts running
-  //   before invoking the tool, so re-running here is a no-op.
-  // Anything else is still blocked or already terminal.
+  // Auth scope: action must belong to the JWT's agent message session.
+  const claimsAgentMessageId = await resolveAgentMessageIdForClaims(
+    auth,
+    sandboxClaims
+  );
   if (
-    action.status !== "ready_allowed_implicitly" &&
-    action.status !== "running"
+    claimsAgentMessageId === null ||
+    action.agentMessageId !== claimsAgentMessageId
   ) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Action not found.",
+      },
+    });
+  }
+
+  // Tool name and arguments are pulled from the stored action — the user
+  // approved a row whose inputs are fixed at insert time. Trusting body
+  // values here would let a caller execute under a stale approval.
+  const toolName = action.toolConfiguration.originalName;
+  const toolArgs = action.augmentedInputs ?? {};
+
+  // Atomic transition `ready_allowed_*` → `running`. Concurrent re-POSTs
+  // racing here are mutually exclusive: only one acquires execution.
+  const acquired = await action.tryAcquireForExecution();
+  if (!acquired) {
     return apiError(req, res, {
       status_code: 409,
       api_error: {
@@ -554,36 +605,16 @@ async function handleReExecuteApprovedToolCall(
     });
   }
 
-  // Prefer the action's stored data; fall back to the request body.
-  const toolName = action.toolConfiguration.originalName ?? bodyToolName;
-  if (!toolName) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Could not determine tool name from action or request body.",
-      },
-    });
-  }
-
-  const toolArgs = bodyArgs ?? action.augmentedInputs ?? {};
-
   const sandboxContext = await buildSandboxAgentLoopContext(
     auth,
     sandboxClaims,
     { toolName, view }
   );
-
   const runContext = sandboxContext?.context.runContext;
   if (!runContext) {
-    return apiError(req, res, {
-      status_code: 500,
-      api_error: {
-        type: "internal_server_error",
-        message:
-          "Could not build agent loop context from sandbox token claims.",
-      },
-    });
+    // Roll back the running flip since we won't be executing.
+    await action.updateStatus("errored");
+    return apiError(req, res, contextBuildErrorBody);
   }
 
   return executeSandboxToolCall(auth, toolArgs, runContext, action, res);
@@ -615,14 +646,7 @@ async function handleInitialToolCall(
     !runContext ||
     !isLightServerSideMCPToolConfiguration(runContext.toolConfiguration)
   ) {
-    return apiError(req, res, {
-      status_code: 500,
-      api_error: {
-        type: "internal_server_error",
-        message:
-          "Could not build agent loop context from sandbox token claims.",
-      },
-    });
+    return apiError(req, res, contextBuildErrorBody);
   }
 
   // Check tool stakes.
@@ -666,6 +690,9 @@ async function handleInitialToolCall(
     return;
   }
 
+  // Allowed-immediately path: no race possible (single fresh actionId), so a
+  // straight flip is enough. The re-execute path uses CAS instead.
+  await action.updateStatus("running");
   return executeSandboxToolCall(auth, toolArgs, runContext, action, res);
 }
 

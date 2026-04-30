@@ -24,10 +24,8 @@ import {
   isUserQuestionResumeState,
 } from "@app/lib/actions/types";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
-import {
-  isSandboxResumeState,
-  SANDBOX_MCP_SERVER_NAME,
-} from "@app/lib/api/actions/servers/sandbox/types";
+import { SANDBOX_SERVER } from "@app/lib/api/actions/servers/sandbox/metadata";
+import { isSandboxResumeState } from "@app/lib/api/actions/servers/sandbox/types";
 import { getCitationsFromToolOutput } from "@app/lib/api/assistant/citations";
 import { getAgentConfigurationsWithVersion } from "@app/lib/api/assistant/configuration/agent";
 import type { ToolDisplayLabels } from "@app/lib/api/mcp";
@@ -596,18 +594,13 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       }
     }
 
-    // Merge sandbox-origin blocked actions for the same latest agent messages.
-    // They are stored in a separate table to dodge the agent_step_contents
-    // unique-index race, but conceptually they are part of the same
-    // approval-flow stream surfaced to the FE.
-    const sandboxBlocked = await this.listBlockedSandboxByAgentMessageIds(
-      auth,
-      { agentMessageIds: latestAgentMessageIds, conversation }
-    );
-
-    return [...blockedActionsList, ...sandboxBlocked].sort(
-      (a, b) => a.created - b.created
-    );
+    // Sandbox-origin blocked actions are NOT merged in here — they are
+    // surfaced to the FE exclusively via the parent bash action's
+    // `childBlockedActionsList` (see the `isSandboxResumeState` branch above).
+    // The agent loop's "any blocked actions on this message?" check picks up
+    // the parent in `blocked_child_action_input_required`, which is enough to
+    // hold the loop.
+    return blockedActionsList;
   }
 
   static async fetchByStepContents(
@@ -681,28 +674,32 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
   /**
    * Finds the sandbox bash AgentMCPAction on a given agent message, filtered
-   * by status. Used by:
-   *   - `call_tool` to find the running parent when bubbling up a child block
-   *   - `validateSandboxAction` to find the bubbled parent on slow-path resume
+   * by one or more statuses. Used by:
+   *   - `call_tool` to attribute a child sandbox action to its parent — accepts
+   *     either `running` or `blocked_child_action_input_required` because
+   *     parallel sandbox calls in one bash command can land while the parent
+   *     is already bubbled up by a sibling.
+   *   - `validateSandboxAction` to find the bubbled parent on user decision.
    * Returns at most one — there is at most one sandbox bash action per
-   * agent message.
+   * agent message in any non-terminal state.
    */
   static async findSandboxActionForAgentMessage(
     auth: Authenticator,
     {
       agentMessageId,
-      status,
+      statuses,
     }: {
       agentMessageId: ModelId;
-      status: ToolExecutionStatus;
+      statuses: ToolExecutionStatus[];
     }
   ): Promise<AgentMCPActionResource | null> {
     const actions = await this.baseFetch(auth, {
-      where: { agentMessageId, status },
+      where: { agentMessageId, status: { [Op.in]: statuses } },
     });
     return (
       actions.find(
-        (a) => a.toolConfiguration.mcpServerName === SANDBOX_MCP_SERVER_NAME
+        (a) =>
+          a.toolConfiguration.mcpServerName === SANDBOX_SERVER.serverInfo.name
       ) ?? null
     );
   }
@@ -1315,10 +1312,13 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
   }
 
   /**
-   * Sandbox actions only ever produce `blocked_validation_required`. The
-   * formatter is intentionally narrower than the regular blocked-action
-   * formatter: no OAuth, no file authorization, no child actions, no user
-   * questions.
+   * Resolves blocked sandbox actions for a set of agent messages into the
+   * `BlockedToolExecution[]` shape consumed by the FE. Used to populate
+   * `childBlockedActionsList` on the bubbled-up parent bash action.
+   *
+   * Sandbox actions only ever produce `blocked_validation_required` — the
+   * formatter is narrower than the regular one (no OAuth, no file
+   * authorization, no child actions, no user questions).
    */
   private static async listBlockedSandboxByAgentMessageIds(
     auth: Authenticator,
@@ -1558,5 +1558,28 @@ export class SandboxMCPAction {
       }
     );
     return { updatedCount };
+  }
+
+  /**
+   * Atomically transitions an approved action to `running`. Returns true when
+   * this caller acquired execution; false when another concurrent re-POST
+   * already did (or the row is in a non-executable state). Conditional UPDATE
+   * is the simplest way to make the re-execute path race-free without raw
+   * SQL — Sequelize accepts a status filter in `where`.
+   */
+  async tryAcquireForExecution(): Promise<boolean> {
+    const [count] = await SandboxMCPActionModel.update(
+      { status: "running" },
+      {
+        where: {
+          id: this.model.id,
+          workspaceId: this.model.workspaceId,
+          status: {
+            [Op.in]: ["ready_allowed_implicitly", "ready_allowed_explicitly"],
+          },
+        },
+      }
+    );
+    return count === 1;
   }
 }

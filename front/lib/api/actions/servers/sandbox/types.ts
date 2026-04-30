@@ -1,4 +1,8 @@
-export const SANDBOX_MCP_SERVER_NAME = "sandbox";
+// Discriminator for `StepContext.resumeState` when the parent bash action is
+// blocked because a child sandbox tool call requires approval. Intentionally
+// distinct from the MCP server name (`SANDBOX_SERVER.serverInfo.name`) — the
+// two strings happen to coincide today but mean different things.
+export const SANDBOX_RESUME_STATE_TYPE = "sandbox" as const;
 
 // `childActionId` is set by call_tool when a child sandbox action is created.
 // It is informational only — concurrent sandbox tool calls in one bash command
@@ -13,7 +17,7 @@ export const SANDBOX_MCP_SERVER_NAME = "sandbox";
 // The `type` discriminator distinguishes this from run_agent's resume state
 // (which has no `type` field) — order of guards in consumers matters.
 export type SandboxResumeState = Record<string, unknown> & {
-  type: "sandbox";
+  type: typeof SANDBOX_RESUME_STATE_TYPE;
   childActionId: string;
   execId?: string;
 };
@@ -25,7 +29,7 @@ export function isSandboxResumeState(
     typeof state === "object" &&
     state !== null &&
     "type" in state &&
-    state.type === "sandbox" &&
+    state.type === SANDBOX_RESUME_STATE_TYPE &&
     "childActionId" in state &&
     typeof state.childActionId === "string"
   );

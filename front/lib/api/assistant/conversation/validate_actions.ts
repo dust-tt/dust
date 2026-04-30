@@ -340,13 +340,11 @@ async function validateSandboxAction(
     );
   }
 
-  // Approval transitions the action straight to `running` (not the
-  // intermediate `ready_allowed_explicitly`) so that the audit row mirrors
-  // the parent bash action — both are running once the user unblocks. The
-  // executeSandboxToolCall path treats `running` as a valid pre-execute
-  // state and still walks it through `running → succeeded / errored` on
-  // re-POST.
-  const newStatus = approvalState === "rejected" ? "denied" : "running";
+  // Standard lifecycle: approval → `ready_allowed_explicitly`, rejection →
+  // `denied`. The `call_tool` re-POST path uses a conditional UPDATE
+  // (`tryAcquireForExecution`) to flip `ready_allowed_explicitly → running`
+  // atomically, which is what makes concurrent re-POSTs race-free.
+  const newStatus = getMCPApprovalStateFromUserApprovalState(approvalState);
   const { updatedCount } = await sandboxAction.updateStatus(newStatus);
 
   if (approvalState === "always_approved" && user) {
@@ -380,10 +378,17 @@ async function validateSandboxAction(
       : false;
   }, getMessageChannelId(messageId));
 
-  const sandbox = await SandboxResource.fetchByConversationId(
-    auth,
-    conversationId
-  );
+  const [sandbox, remainingBlockedChildren, parentAction] = await Promise.all([
+    SandboxResource.fetchByConversationId(auth, conversationId),
+    AgentMCPActionResource.listBlockedSandboxForAgentMessage(auth, {
+      agentMessageId: sandboxAction.agentMessageId,
+      conversation,
+    }),
+    AgentMCPActionResource.findSandboxActionForAgentMessage(auth, {
+      agentMessageId: sandboxAction.agentMessageId,
+      statuses: ["blocked_child_action_input_required"],
+    }),
+  ]);
 
   const baseLog = {
     workspaceId: owner.id,
@@ -392,49 +397,39 @@ async function validateSandboxAction(
     actionId,
     sandboxStatus: sandbox?.status,
   };
-  const verb = approvalState === "approved" ? "approved" : "rejected";
+  const verb = approvalState === "rejected" ? "rejected" : "approved";
 
-  // No sandbox or still running — Rust client poll handles it; the bash
-  // tool will return naturally and run_tool's markAsSucceeded flips the
-  // parent action. Other sandbox states (sleeping/deleted) shouldn't be
-  // reachable while a child action is blocked, but treat them as no-op.
-  if (!sandbox || sandbox.status !== "pending_approval") {
-    logger.info(baseLog, `Sandbox action ${verb} (no relaunch)`);
-    return new Ok(undefined);
-  }
-
-  // Slow path: sandbox is paused. Relaunch only if all sandbox children for
-  // this agent message are resolved (parallel scripts can have several).
-  const [remainingBlockedChildren, parentAction] = await Promise.all([
-    AgentMCPActionResource.listBlockedSandboxForAgentMessage(auth, {
-      agentMessageId: sandboxAction.agentMessageId,
-      conversation,
-    }),
-    AgentMCPActionResource.findSandboxActionForAgentMessage(auth, {
-      agentMessageId: sandboxAction.agentMessageId,
-      status: "blocked_child_action_input_required",
-    }),
-  ]);
-
+  // Other sandbox children of the same parent are still blocked — leave the
+  // parent in `blocked_child_action_input_required` and skip the relaunch.
   if (remainingBlockedChildren.length > 0) {
     logger.info(
       { ...baseLog, remaining: remainingBlockedChildren.length },
-      "Sandbox action validated but other children still blocked — not relaunching"
+      "Sandbox action validated but other children still blocked"
     );
     return new Ok(undefined);
   }
 
+  // No more blocked children for this parent. Flip parent back to `running`
+  // regardless of sandbox state — happy path: bash exec is alive and will
+  // naturally complete (markAsSucceeded then sets `succeeded`); slow path:
+  // we additionally relaunch the workflow so the bash handler can re-enter
+  // in resume mode (sees `resumeState.type === "sandbox"`).
   if (!parentAction) {
-    logger.warn(
-      baseLog,
-      "Sandbox action validated but parent bash action not found — cannot relaunch"
-    );
+    logger.warn(baseLog, "Sandbox action validated but parent not found");
     return new Ok(undefined);
   }
 
-  // Flip parent back to running; the bash handler will see
-  // resumeState.type === "sandbox" on re-entry and enter resume mode.
   await parentAction.updateStatus("running");
+
+  // Other sandbox states (sleeping/deleted) shouldn't be reachable while a
+  // child is blocked; treat them as no-op (no relaunch needed).
+  if (sandbox?.status !== "pending_approval") {
+    logger.info(
+      baseLog,
+      `Sandbox action ${verb} (parent flipped, no relaunch)`
+    );
+    return new Ok(undefined);
+  }
 
   await launchAgentLoopWorkflow({
     auth,
