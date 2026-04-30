@@ -84,9 +84,14 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
   // Fetch user data whenever there is a session (or posthogId). We need the
   // user's sId for posthog.identify() in all contexts, including authenticated
   // SPAs where hasCookiesAccepted is auto-true.
+  // This tracker is mounted globally (every page, public + app). On public
+  // pages a stale `dust-has-session` cookie can yield a 401 here; we must
+  // not redirect to login in that case. Real session expiry on app pages is
+  // still handled by other authenticated SWR calls.
   const disabled = !posthogId && !hasSession;
   const { user } = useUser({
     disabled,
+    redirectOnUnauthenticated: false,
   });
 
   const cookieValue = cookies[DUST_COOKIES_ACCEPTED];
