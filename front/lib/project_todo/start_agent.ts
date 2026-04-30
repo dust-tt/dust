@@ -4,6 +4,7 @@ import {
 } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import type { Authenticator } from "@app/lib/auth";
+import { serializeProjectTodoDirective } from "@app/lib/project_todo/format";
 import { ProjectTodoResource } from "@app/lib/resources/project_todo_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -38,10 +39,13 @@ function buildTodoKickoffPrompt({
     ? ["", "Additional instructions :", customMessage]
     : [];
 
+  const todoDirective = serializeProjectTodoDirective({
+    label: todoText,
+    sId: todoId,
+  });
+
   return [
-    `You are working on the todo (id: ${todoId}) from the current project.`,
-    "",
-    `Todo: ${todoText}`,
+    `You are working on ${todoDirective} from the current project.`,
     "",
     sourceLine,
     "",

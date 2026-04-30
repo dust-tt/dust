@@ -40,6 +40,14 @@ It is stored in the project data source and can be searched using the \`semantic
 To keep something for later project-wide use, add it with \`add_file\`.
 To reuse an existing project file in this conversation, use \`attach_to_conversation\`.
 
+## Referencing project TODOs in messages
+
+To show a **project TODO** as an interactive chip in the conversation, use this markdown directive with the todo's \`sId\`:
+
+\`:todo[Short readable label]{sId=<projectTodoSId>}\`
+
+Use the \`sId\` from \`project_todos\` tools (e.g. \`list_todos\`, \`create_todos\`) or from the kickoff message when you are working on a todo. The bracket text is display-only; keep it concise.
+
 ## Tool Usage Priority
 
 When you need to find information, uses this order (skip steps if the relevant tools are not in your tool list):
@@ -50,7 +58,7 @@ When you need to find information, uses this order (skip steps if the relevant t
 `,
 
   mcpServers: [{ name: "project_manager" }, { name: "project_todos" }],
-  version: 1,
+  version: 3,
   icon: "ActionFolderIcon",
   isRestricted: async (auth: Authenticator) => {
     const flags = await getFeatureFlags(auth);

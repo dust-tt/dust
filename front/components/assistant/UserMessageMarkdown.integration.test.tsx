@@ -223,6 +223,22 @@ Quote text
       expect(container).toBeInTheDocument();
     });
 
+    it("renders project todo directives", () => {
+      const content = ":todo[Review PR]{sId=ptodo_123}";
+      const message = { ...mockMessage, content };
+      const { container } = render(
+        <UserMessageMarkdown
+          owner={mockOwner}
+          message={message}
+          isLastMessage={false}
+        />
+      );
+      expect(
+        container.querySelector("[data-project-todo-sid]")
+      ).toHaveAttribute("data-project-todo-sid", "ptodo_123");
+      expect(container.textContent).toContain("Review PR");
+    });
+
     it("renders pasted attachments", () => {
       const content =
         ":pasted_attachment[File.pdf]{attachmentId=att-123 contentType=application/pdf}";

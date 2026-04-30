@@ -4,6 +4,10 @@ import {
   CiteBlock,
   getCiteDirective,
 } from "@app/components/markdown/CiteBlock";
+import {
+  TodoDirectiveBlock,
+  todoDirective,
+} from "@app/components/markdown/TodoDirectiveBlock";
 import { isAgentPauseOutputResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   agentMentionDirective,
@@ -28,7 +32,7 @@ export function MCPDeepDiveActionDetails({
   }, [handoffResource]);
 
   const additionalMarkdownPlugins: PluggableList = useMemo(
-    () => [getCiteDirective(), agentMentionDirective],
+    () => [getCiteDirective(), agentMentionDirective, todoDirective],
     []
   );
 
@@ -37,6 +41,7 @@ export function MCPDeepDiveActionDetails({
       sup: CiteBlock,
       // Warning: we can't rename easily `mention` to agent_mention, because the messages DB contains this name
       mention: getAgentMentionPlugin(owner),
+      todo: TodoDirectiveBlock,
     }),
     [owner]
   );
