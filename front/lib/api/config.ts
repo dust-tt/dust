@@ -177,14 +177,14 @@ const config = {
       url:
         EnvironmentConfig.getOptionalEnvVariable("DUST_PROD_API") ??
         PRODUCTION_DUST_API,
-      nodeEnv:
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        EnvironmentConfig.getOptionalEnvVariable("NODE_ENV") || "development",
+      nodeEnv: config.getNodeEnv(),
     };
   },
   getNodeEnv: (): string => {
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    return EnvironmentConfig.getOptionalEnvVariable("NODE_ENV") || "development";
+    return (
+      EnvironmentConfig.getOptionalEnvVariable("NODE_ENV") || "development"
+    );
   },
   getVizJwtSecret: (): string => {
     return EnvironmentConfig.getEnvVariable("VIZ_JWT_SECRET");

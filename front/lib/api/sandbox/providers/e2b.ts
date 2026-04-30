@@ -1,4 +1,4 @@
-import config from "@app/lib/api/config";
+import appConfig from "@app/lib/api/config";
 import {
   formatSandboxImageId,
   type NetworkPolicy,
@@ -22,13 +22,18 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { CommandExitError, NotFoundError, Sandbox } from "e2b";
 
+const ONE_HOUR_MS = 60 * 60 * 1_000;
+const ONE_DAY_MS = 24 * ONE_HOUR_MS;
+
 /**
  * Outside of production, cap sandbox lifetime at 24h (E2B Pro max) so
- * forgotten local sandboxes don't linger. In production, omit `timeoutMs` so
- * the reaper is the sole authority on sandbox lifecycle.
+ * forgotten local sandboxes don't linger. In production, set a generous 7-day
+ * cap so the reaper (which destroys after 4 days idle) is effectively the
+ * sole authority on sandbox lifecycle, while still keeping a hard E2B-side
+ * safety net well above the reaper threshold.
  */
-const SANDBOX_LIFETIME_MS: number | undefined =
-  config.getNodeEnv() !== "production" ? 86_400_000 : undefined;
+const SANDBOX_LIFETIME_MS =
+  appConfig.getNodeEnv() === "production" ? 7 * ONE_DAY_MS : 24 * ONE_HOUR_MS;
 
 /** Timeout for individual API calls to E2B (create, connect, etc.). */
 const REQUEST_TIMEOUT_MS = 30_000;
