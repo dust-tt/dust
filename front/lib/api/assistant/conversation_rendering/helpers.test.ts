@@ -6,15 +6,12 @@ import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import type { AgentMessageType } from "@app/types/assistant/conversation";
-import type {
-  FunctionMessageTypeModel,
-  TextContent,
-} from "@app/types/assistant/generation";
+import type { TextContent } from "@app/types/assistant/generation";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { describe, expect, it } from "vitest";
 
+import assert from "assert";
 import { getSteps, renderUserMessage } from "./helpers";
-import { assert } from "console";
 
 describe("renderUserMessage", () => {
   async function buildMessage(overrides: Partial<any> = {}) {
@@ -247,6 +244,7 @@ The following skills are available for use with the skill_management__enable_ski
     const enabledSkill = SkillFactory.withExtendedSkill(commitSkill);
     const model = getSupportedModelConfig(agentConfig.model);
     assert(model, "Expected a supported model configuration.");
+
     const outputBlock = makeEnableSkillResultOutput({
       skillId: commitSkill.sId,
       text: `Skill "${commitSkill.name}" has been enabled.`,
