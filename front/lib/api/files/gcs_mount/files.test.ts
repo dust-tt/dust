@@ -1,7 +1,7 @@
 import {
   createGCSMountFile,
-  getConversationFileMountSignedUrl,
   type GCSMountFileEntry,
+  getConversationFileMountSignedUrl,
 } from "@app/lib/api/files/gcs_mount/files";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
@@ -124,7 +124,9 @@ describe("getConversationFileMountSignedUrl", () => {
   let getSignedUrlMock: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
-    getSignedUrlMock = vi.fn().mockResolvedValue("https://signed.example.com/photo.png");
+    getSignedUrlMock = vi
+      .fn()
+      .mockResolvedValue("https://signed.example.com/photo.png");
     vi.mocked(getPrivateUploadBucket).mockReturnValue({
       file: vi.fn(),
       getSignedUrl: getSignedUrlMock,

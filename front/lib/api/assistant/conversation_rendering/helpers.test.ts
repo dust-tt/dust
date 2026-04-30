@@ -8,9 +8,8 @@ import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import type { AgentMessageType } from "@app/types/assistant/conversation";
 import type { TextContent } from "@app/types/assistant/generation";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import { describe, expect, it } from "vitest";
-
 import assert from "assert";
+import { describe, expect, it } from "vitest";
 import { getSteps, renderUserMessage } from "./helpers";
 
 describe("renderUserMessage", () => {
