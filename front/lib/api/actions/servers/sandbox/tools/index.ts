@@ -55,22 +55,8 @@ const DEFAULT_EXEC_TIMEOUT_MS = 60_000;
 const ADD_EGRESS_DOMAIN_TOOL_NAME = "add_egress_domain" as const;
 const REDACTION_MARKER_PREFIX = "«redacted:";
 const REDACTION_MARKER_SUFFIX = "»";
-const LOW_VALUE_DENYLIST = new Set([
-  "true",
-  "false",
-  "production",
-  "staging",
-  "development",
-  "admin",
-  "root",
-  "localhost",
-]);
-// Process-scoped: dedupes the per-(workspace, name) "ineligible value" log so
-// a workspace with a misconfigured short value doesn't spam logs on every bash
-// invocation. Cleared on process restart — fine, the log is a hint, not a
-// metric. Set cardinality is bounded by #(workspace × ineligible env var
-// name) on a single pod, which is small in practice.
-const loggedIneligibleRedactionValues = new Set<string>();
+const REDACTION_MIN_LENGTH = 16;
+const REDACTION_MIN_ENTROPY_BITS_PER_CHAR = 3.5;
 
 interface FormatExecOutputOpts {
   denyLogEntries?: string[];
@@ -103,52 +89,31 @@ function formatExecOutput(
   return sections.join("\n") || "(no output)";
 }
 
-// Eligibility floor for output redaction. Goal: avoid mass-redacting common
-// short substrings ("true", "1234", "admin", ...) that would randomly collide
-// with unrelated bash output and turn legitimate text into «redacted: $FOO».
-// The thresholds (12 chars min, 16 chars for pure-alphanumeric, denylist of
-// low-entropy words, no pure digits) are heuristic and conservative; they
-// trade off a small false-negative rate (legit short secrets won't be
-// stripped) against a much smaller false-positive rate. The skill instruction
-// is the primary disclosure control — this is a safety net.
-function isRedactionEligible(value: string): boolean {
-  const normalizedValue = value.toLowerCase();
-
-  if (value.length < 12) {
-    return false;
+// Shannon entropy in bits/char. Uniform random characters approach
+// log2(alphabet size); dictionary words and uniform-digit strings sit well
+// below.
+function shannonEntropyBitsPerChar(value: string): number {
+  const counts = new Map<string, number>();
+  for (const ch of value) {
+    counts.set(ch, (counts.get(ch) ?? 0) + 1);
   }
-
-  if (LOW_VALUE_DENYLIST.has(normalizedValue)) {
-    return false;
+  let entropy = 0;
+  for (const count of counts.values()) {
+    const p = count / value.length;
+    entropy -= p * Math.log2(p);
   }
-
-  if (/^[0-9]+$/.test(value)) {
-    return false;
-  }
-
-  if (/^[A-Za-z0-9]+$/.test(value) && value.length < 16) {
-    return false;
-  }
-
-  return true;
+  return entropy;
 }
 
-function logIneligibleRedactionValueOnce({
-  workspaceId,
-  name,
-}: {
-  workspaceId: string;
-  name: string;
-}) {
-  const key = `${workspaceId}:${name}`;
-  if (loggedIneligibleRedactionValues.has(key)) {
-    return;
-  }
-
-  loggedIneligibleRedactionValues.add(key);
-  logger.info(
-    { workspaceId, name },
-    "sandbox env var value not eligible for output redaction (too short or low-value)"
+// Skip values too short or too low-entropy to be worth redacting. The goal
+// is to avoid mass-redacting common substrings (timestamps, short tokens,
+// dictionary words) that randomly collide with unrelated bash output and
+// turn legitimate text into «redacted: $FOO». False-negative tolerance is
+// the trade-off; the skill instruction is the primary disclosure control.
+function isRedactionEligible(value: string): boolean {
+  return (
+    value.length >= REDACTION_MIN_LENGTH &&
+    shannonEntropyBitsPerChar(value) >= REDACTION_MIN_ENTROPY_BITS_PER_CHAR
   );
 }
 
@@ -174,7 +139,6 @@ async function redactSandboxEnvVarsFromOutput(
   // MAX_VARS_PER_WORKSPACE, output capped upstream).
   for (const [name, value] of Object.entries(envResult.value)) {
     if (!isRedactionEligible(value)) {
-      logIneligibleRedactionValueOnce({ workspaceId, name });
       continue;
     }
 

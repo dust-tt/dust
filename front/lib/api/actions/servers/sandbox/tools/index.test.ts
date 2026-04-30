@@ -369,7 +369,7 @@ describe("runSandboxBashTool", () => {
     expect(result.value[0].text).not.toContain(secretValue);
   });
 
-  it("does not redact short or low-value values and logs ineligibility once per name", async () => {
+  it("does not redact short or low-entropy values", async () => {
     mockLoadEnv.mockResolvedValue(
       new Ok({
         DST_SHORT_VALUE: "12345678",
@@ -400,31 +400,19 @@ describe("runSandboxBashTool", () => {
     );
     mockCheckEgressForwarderHealth.mockResolvedValue(new Ok(true));
 
-    const firstResult = await runSandboxBashTool(
-      { command: "echo values", description: "Run command" },
-      makeExtra()
-    );
-    const secondResult = await runSandboxBashTool(
+    const result = await runSandboxBashTool(
       { command: "echo values", description: "Run command" },
       makeExtra()
     );
 
-    expect(firstResult.isOk()).toBe(true);
-    expect(secondResult.isOk()).toBe(true);
-    if (firstResult.isErr() || secondResult.isErr()) {
-      throw new Error("Unexpected bash tool failure");
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      throw result.error;
     }
-    expect(firstResult.value[0].text).toContain(
+    expect(result.value[0].text).toContain(
       "12345678 true 1234567890123456 abc123def456"
     );
-    expect(firstResult.value[0].text).not.toContain("«redacted:");
-
-    const ineligibleLogCalls = mockLoggerInfo.mock.calls.filter(
-      (call) =>
-        call[1] ===
-        "sandbox env var value not eligible for output redaction (too short or low-value)"
-    );
-    expect(ineligibleLogCalls).toHaveLength(4);
+    expect(result.value[0].text).not.toContain("«redacted:");
     expect(mockLoggerWarn).not.toHaveBeenCalledWith(
       expect.anything(),
       "sandbox bash output contained env var values; redacted"

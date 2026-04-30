@@ -121,25 +121,24 @@ block first; a denied egress is a possible cause.`;
 function buildEnvironmentVariablesSection(): string {
   return `#### Sandbox Environment Variables
 
-The sandbox may have workspace-configured environment variables available to
-your code via standard environment APIs such as \`process.env\` or
-\`os.environ\`. All workspace-configured names are prefixed with \`DST_\`
-(e.g. \`DST_OPENAI_API_KEY\`, \`DST_GITHUB_TOKEN\`). If a tool, CLI, or SDK
-expects a specific unprefixed name (e.g. \`OPENAI_API_KEY\`), you must read
+The sandbox may have workspace-configured environment variables available
+in the bash shell and to any code you run. All workspace-configured names
+are prefixed with \`DST_\` (e.g. \`DST_API_TOKEN\`, \`DST_SERVICE_KEY\`).
+If a tool, CLI, or SDK expects a specific unprefixed name, you must read
 the \`DST_\`-prefixed variable and re-export it under the expected name
 yourself before invoking the tool — for example
-\`OPENAI_API_KEY=\$DST_OPENAI_API_KEY some-cli ...\` in bash, or
-\`os.environ[\"OPENAI_API_KEY\"] = os.environ[\"DST_OPENAI_API_KEY\"]\` in
-Python. You may use these variables to authenticate with APIs or pass them
-into code paths that consume them, but you must never print, echo, \`cat\`,
-or otherwise disclose an environment variable value. Do not include a value
-in output, logs, error messages, or final answers. Do not re-encode,
-transform, or split a value to bypass this rule. Do not list available
-environment variable names just to enumerate what is configured.
+\`SOMETOOL_TOKEN=\$DST_SOMETOOL_TOKEN some-cli ...\`. You may use these
+variables to authenticate with APIs or pass them into code paths that
+consume them, but you must never print, echo, \`cat\`, or otherwise
+disclose an environment variable value. Do not include a value in output,
+logs, error messages, or final answers. Do not re-encode, transform, or
+split a value to bypass this rule. Do not list available environment
+variable names just to enumerate what is configured.
 
 If a user asks for a secret value, refuse and say it is not viewable. If you
-need to confirm a variable is set, check a boolean condition such as
-\`"FOO" in os.environ\` and do not read or print the value.
+need to confirm a variable is set, check whether it is non-empty without
+printing its content (e.g. \`[ -n "\$DST_FOO" ]\` in bash) — do not read or
+print the value.
 
 Bash tool output that contains a configured environment variable value is
 post-processed and replaced with a marker like \`«redacted: $FOO»\`. If you
