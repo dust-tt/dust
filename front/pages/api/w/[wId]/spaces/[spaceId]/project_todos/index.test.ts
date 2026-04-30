@@ -84,7 +84,6 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/project_todos", () => {
     expect(res._getStatusCode()).toBe(200);
     const data = res._getJSONData();
     expect(data.todos).toHaveLength(2);
-    expect(data.users).toHaveLength(2);
     expect(data.viewerUserId).toBe(user.sId);
     expect(data.todos[0].user).not.toBeNull();
     expect(data.todos[1].user).not.toBeNull();

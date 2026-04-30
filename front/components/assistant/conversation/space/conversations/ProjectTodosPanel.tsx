@@ -845,7 +845,7 @@ function EditableProjectTodosPanel({
         if (viewerUserId === null) {
           return [];
         }
-        return todos.filter((todo) => todo.userId === viewerUserId);
+        return todos.filter((todo) => todo.user?.sId === viewerUserId);
       case "users":
         if (selectedUserSIds.size === 0) {
           return todos;
@@ -863,8 +863,8 @@ function EditableProjectTodosPanel({
     >();
 
     for (const todo of filteredTodos) {
-      const user = todo.user ?? usersBySId.get(todo.userId) ?? null;
-      const key = user?.sId ?? `unknown-${todo.userId}`;
+      const user = todo.user ?? null;
+      const key = user?.sId ?? `unknown-${todo.id}`;
       const existing = groups.get(key);
       if (existing) {
         existing.todos.push(todo);
@@ -883,7 +883,7 @@ function EditableProjectTodosPanel({
       const bName = b.user?.fullName ?? "";
       return aName.localeCompare(bName, undefined, { sensitivity: "base" });
     });
-  }, [filteredTodos, usersBySId, viewerUserId]);
+  }, [filteredTodos, viewerUserId]);
 
   // Optimistically update a todo's status in the SWR cache and send the PATCH.
   // On failure the cache is revalidated from the server.
@@ -892,7 +892,6 @@ function EditableProjectTodosPanel({
       const optimistic = (prev: GetProjectTodosResponseBody | undefined) => ({
         lastReadAt: prev?.lastReadAt ?? null,
         viewerUserId: prev?.viewerUserId ?? viewerUserId,
-        users: prev?.users ?? [],
         todos: (prev?.todos ?? []).map((t) =>
           t.sId === todo.sId ? { ...t, status } : t
         ),
@@ -936,7 +935,6 @@ function EditableProjectTodosPanel({
       const optimistic = (prev: GetProjectTodosResponseBody | undefined) => ({
         lastReadAt: prev?.lastReadAt ?? null,
         viewerUserId: prev?.viewerUserId ?? viewerUserId,
-        users: prev?.users ?? [],
         todos: (prev?.todos ?? []).map((t) =>
           targetIdSet.has(t.sId) ? { ...t, status } : t
         ),
@@ -1009,7 +1007,6 @@ function EditableProjectTodosPanel({
           (prev: GetProjectTodosResponseBody | undefined) => ({
             lastReadAt: prev?.lastReadAt ?? null,
             viewerUserId: prev?.viewerUserId ?? viewerUserId,
-            users: prev?.users ?? [],
             todos: (prev?.todos ?? []).map((t) =>
               t.sId === todo.sId
                 ? {
@@ -1181,7 +1178,7 @@ function EditableProjectTodosPanel({
           <div className="flex flex-col">
             {groupedTodosForAll.map((group) => (
               <div
-                key={group.user?.sId ?? `unknown-${group.todos[0]?.userId}`}
+                key={group.user?.sId ?? `unknown-${group.todos[0]?.id}`}
                 className="mb-4 last:mb-0"
               >
                 <TodoAssigneeHeader

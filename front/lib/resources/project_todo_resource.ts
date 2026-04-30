@@ -12,8 +12,10 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type {
+  ProjectTodoAssigneeType,
   ProjectTodoSourceInfo,
   ProjectTodoType,
 } from "@app/types/project_todo";
@@ -42,12 +44,23 @@ export interface ProjectTodoResource
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
   static model: ModelStaticWorkspaceAware<ProjectTodoModel> = ProjectTodoModel;
+  private readonly assignee: ProjectTodoAssigneeType | null;
+  private readonly conversationSId: string | null;
 
   constructor(
     model: ModelStatic<ProjectTodoModel>,
-    blob: Attributes<ProjectTodoModel>
+    blob: Attributes<ProjectTodoModel>,
+    {
+      assignee,
+      conversationSId,
+    }: {
+      assignee?: ProjectTodoAssigneeType | null;
+      conversationSId?: string | null;
+    } = {}
   ) {
     super(ProjectTodoModel, blob);
+    this.assignee = assignee ?? null;
+    this.conversationSId = conversationSId ?? null;
   }
 
   // The stable string identifier for this todo, computed from the model's
@@ -186,8 +199,58 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
       return [];
     }
 
-    return todos.map((t) => {
-      return new this(ProjectTodoModel, t.get());
+    const todoModelIds = todos.map((todo) => todo.id);
+    const assigneeModelIds = [...new Set(todos.map((todo) => todo.userId))];
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    const [assignees, conversationRows] = await Promise.all([
+      UserResource.fetchByModelIds(assigneeModelIds, { transaction }),
+      ProjectTodoConversationModel.findAll({
+        where: {
+          workspaceId,
+          projectTodoId: { [Op.in]: todoModelIds },
+        },
+        include: [
+          {
+            model: ConversationModel,
+            as: "conversation",
+            attributes: ["sId"],
+            required: true,
+          },
+        ],
+        order: [["createdAt", "DESC"]],
+        transaction,
+      }),
+    ]);
+
+    const assigneeByModelId = new Map<ModelId, ProjectTodoAssigneeType>(
+      assignees.map((assignee) => [
+        assignee.id,
+        {
+          sId: assignee.sId,
+          fullName: assignee.fullName(),
+          image: assignee.imageUrl,
+        },
+      ])
+    );
+
+    const conversationIdByTodoModelId = new Map<ModelId, string>();
+    for (const row of conversationRows) {
+      const conversationId = row.conversation?.sId;
+      if (
+        !conversationId ||
+        conversationIdByTodoModelId.has(row.projectTodoId)
+      ) {
+        continue;
+      }
+      conversationIdByTodoModelId.set(row.projectTodoId, conversationId);
+    }
+
+    return todos.map((todo) => {
+      return new this(ProjectTodoModel, todo.get(), {
+        assignee: assigneeByModelId.get(todo.userId) ?? null,
+        conversationSId: conversationIdByTodoModelId.get(todo.id) ?? null,
+      });
     });
   }
 
@@ -517,12 +580,12 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
 
   // ── Serialization ──────────────────────────────────────────────────────────
 
-  toJSON({ assigneeId }: { assigneeId: string }): ProjectTodoType {
+  toJSON(): ProjectTodoType {
     return {
+      id: this.id,
       sId: this.sId,
-      userId: assigneeId,
-      user: null,
-      conversationId: null,
+      user: this.assignee,
+      conversationId: this.conversationSId,
       text: this.text,
       status: this.status,
       doneAt: this.doneAt,

@@ -52,9 +52,10 @@ async function resolveAgentConfigurationIdByName(
 }
 
 function formatTodo(todo: ProjectTodoResource): string {
+  const json = todo.toJSON();
   const lines = [
-    `- [${todo.sId}] ${todo.text}`,
-    `  Status: ${todo.status} | Created: ${todo.createdAt.toISOString().slice(0, 10)}`,
+    `- [${json.sId}] ${json.text}`,
+    ` Assignee: ${json.user?.fullName} (${json.user?.sId}) | Status: ${json.status} | Created: ${json.createdAt.toISOString().slice(0, 10)}`,
   ];
   if (todo.doneAt) {
     lines.push(`  Done: ${todo.doneAt.toISOString().slice(0, 10)}`);
@@ -69,8 +70,8 @@ export function createProjectTodosTools(
   const owner = auth.getNonNullableWorkspace();
   const handlers: ToolHandlers<typeof PROJECT_TODOS_TOOLS_METADATA> = {
     list_todos: async ({
-      assigneeFilter,
-      statusFilter,
+      assigneeFilter = "mine",
+      statusFilter = "all",
       daysAgo = 7,
       dustProject,
     }) => {

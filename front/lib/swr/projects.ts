@@ -342,7 +342,13 @@ export function useProjectTodos({
   );
 
   const sortedUsers = useMemo(() => {
-    const users = data?.users ?? emptyArray<ProjectTodoAssigneeType>();
+    const usersById = new Map<string, ProjectTodoAssigneeType>();
+    for (const todo of data?.todos ?? emptyArray<ProjectTodoType>()) {
+      if (todo.user) {
+        usersById.set(todo.user.sId, todo.user);
+      }
+    }
+    const users = [...usersById.values()];
     const viewerUserId = data?.viewerUserId ?? null;
 
     return [...users].sort((a, b) => {
@@ -355,7 +361,7 @@ export function useProjectTodos({
         sensitivity: "base",
       });
     });
-  }, [data?.users, data?.viewerUserId]);
+  }, [data?.todos, data?.viewerUserId]);
 
   return {
     todos: data?.todos ?? [],
@@ -387,7 +393,6 @@ export function useMarkProjectTodosRead({
       todosKey,
       (prev: GetProjectTodosResponseBody | undefined) => ({
         todos: prev?.todos ?? [],
-        users: prev?.users ?? [],
         viewerUserId: prev?.viewerUserId ?? null,
         lastReadAt: immediateReadAt,
       }),

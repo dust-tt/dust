@@ -144,7 +144,7 @@ describe("PATCH /api/w/[wId]/spaces/[spaceId]/project_todos/[todoId]", () => {
     const { todo: updated } = res._getJSONData();
     expect(updated.text).toBe("Edited by project member");
     expect(updated.status).toBe("done");
-    expect(updated.userId).toBe(otherUser.sId);
+    expect(updated.user?.sId).toBe(otherUser.sId);
   });
 
   it("should return 400 when no update fields are provided", async () => {

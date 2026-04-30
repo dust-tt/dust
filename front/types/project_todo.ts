@@ -1,3 +1,5 @@
+import type { ModelId } from "@app/types/shared/model_id";
+
 export const PROJECT_TODO_STATUSES = ["todo", "in_progress", "done"] as const;
 
 export type ProjectTodoStatus = (typeof PROJECT_TODO_STATUSES)[number];
@@ -33,8 +35,8 @@ export type ProjectTodoAssigneeType = {
 };
 
 export type ProjectTodoType = {
+  id: ModelId;
   sId: string;
-  userId: string;
   user: ProjectTodoAssigneeType | null;
   conversationId: string | null;
   text: string;
