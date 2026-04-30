@@ -1,12 +1,15 @@
+import { makeEnableSkillResultOutput } from "@app/lib/api/actions/servers/skill_management/rendering";
 import { renderEquippedSkillsUserMessage } from "@app/lib/api/assistant/skills_rendering";
+import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
+import type { AgentMessageType } from "@app/types/assistant/conversation";
 import type { TextContent } from "@app/types/assistant/generation";
 import { describe, expect, it } from "vitest";
 
-import { renderUserMessage } from "./helpers";
+import { getSteps, renderUserMessage } from "./helpers";
 
 describe("renderUserMessage", () => {
   async function buildMessage(overrides: Partial<any> = {}) {
@@ -220,5 +223,119 @@ The following skills are available for use with the skill_management__enable_ski
         },
       ],
     });
+  });
+
+  it("renders enabled skills as user messages", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(
+      authenticator,
+      {
+        name: "Test Agent",
+        description: "A test agent for skill follow-up rendering",
+      }
+    );
+
+    const commitSkill = await SkillFactory.create(authenticator, {
+      name: "commit",
+      instructions: "Create a git commit with a descriptive message.",
+    });
+    const enabledSkill = SkillFactory.withExtendedSkill(commitSkill);
+    const model = getSupportedModelConfig(agentConfig.model);
+    if (!model) {
+      throw new Error("Expected a supported model configuration.");
+    }
+    const outputBlock = makeEnableSkillResultOutput({
+      skillId: commitSkill.sId,
+      text: `Skill "${commitSkill.name}" has been enabled.`,
+    });
+
+    const message = {
+      id: 1,
+      agentMessageId: 1,
+      type: "agent_message",
+      sId: "agent_msg_1",
+      version: 1,
+      rank: 1,
+      branchId: null,
+      created: Date.now(),
+      completedTs: null,
+      parentMessageId: "user_msg_1",
+      parentAgentMessageId: null,
+      status: "succeeded",
+      content: null,
+      chainOfThought: null,
+      error: null,
+      visibility: "visible",
+      configuration: agentConfig,
+      skipToolsValidation: false,
+      actions: [
+        {
+          id: 1,
+          sId: "action_1",
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          agentMessageId: 1,
+          internalMCPServerName: "skill_management",
+          toolName: "enable_skill",
+          mcpServerId: null,
+          functionCallName: "skill_management__enable_skill",
+          functionCallId: "toolu_enable_skill",
+          params: { skillName: commitSkill.name },
+          citationsAllocated: 0,
+          status: "succeeded",
+          step: 0,
+          executionDurationMs: null,
+          displayLabels: null,
+          generatedFiles: [],
+          output: [outputBlock],
+          citations: null,
+        },
+      ],
+      contents: [
+        {
+          step: 0,
+          content: {
+            type: "function_call",
+            value: {
+              id: "toolu_enable_skill",
+              name: "skill_management__enable_skill",
+              arguments: '{"skillName":"commit"}',
+            },
+          },
+        },
+      ],
+      modelInteractionDurationMs: null,
+      richMentions: [],
+      completionDurationMs: null,
+      reactions: [],
+    } satisfies AgentMessageType;
+
+    const steps = getSteps(authenticator, {
+      enabledSkillById: new Map([[enabledSkill.sId, enabledSkill]]),
+      model,
+      message,
+      workspaceId: "workspace_123",
+      conversationId: "conv_1",
+      onMissingAction: "skip",
+      renderSkillsAsUserMessages: true,
+    });
+
+    expect(steps).toHaveLength(1);
+    expect(steps[0].actions).toHaveLength(1);
+    expect(steps[0].actions[0].enabledSkillMessages).toEqual([
+      {
+        role: "user",
+        name: "system",
+        content: [
+          {
+            type: "text",
+            text:
+              "<dust_system>\n<commit>\n" +
+              "Create a git commit with a descriptive message.\n" +
+              "</commit>\n</dust_system>",
+          },
+        ],
+      },
+    ]);
   });
 });

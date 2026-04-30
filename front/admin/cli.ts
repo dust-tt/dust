@@ -500,6 +500,7 @@ const conversation = async (command: string, args: parseArgs.ParsedArgs) => {
 
       const convoRes = await renderConversationForModel(auth, {
         conversation,
+        enabledSkills: [],
         model,
         prompt,
         tools,

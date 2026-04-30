@@ -5,6 +5,11 @@
 
 import { isTextContent } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { rewriteContentForModel } from "@app/lib/actions/mcp_utils";
+import { getEnableSkillIdFromOutputBlock } from "@app/lib/api/actions/servers/skill_management/rendering";
+import {
+  type EnabledSkill,
+  renderEnabledSkillUserMessageFromInstructions,
+} from "@app/lib/api/assistant/skills_rendering";
 import type { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import {
@@ -42,8 +47,46 @@ export type Step = {
   actions: {
     call: FunctionCallType;
     result: FunctionMessageTypeModel;
+    enabledSkillMessages: UserMessageTypeModel[];
   }[];
 };
+
+function renderEnabledSkillMessagesForAction(
+  action: AgentMCPActionWithOutputType,
+  {
+    enabledSkillById,
+    renderSkillsAsUserMessages,
+  }: {
+    enabledSkillById: ReadonlyMap<string, EnabledSkill>;
+    renderSkillsAsUserMessages: boolean;
+  }
+): UserMessageTypeModel[] {
+  if (!renderSkillsAsUserMessages) {
+    return [];
+  }
+
+  const enabledSkillMessages: UserMessageTypeModel[] = [];
+
+  for (const outputBlock of action.output ?? []) {
+    const skillId = getEnableSkillIdFromOutputBlock(outputBlock);
+    if (!skillId) {
+      continue;
+    }
+
+    const skill = enabledSkillById.get(skillId);
+    if (!skill) {
+      continue;
+    }
+
+    enabledSkillMessages.push(
+      renderEnabledSkillUserMessageFromInstructions({
+        skill,
+      })
+    );
+  }
+
+  return enabledSkillMessages;
+}
 
 /**
  * Renders an action result for multi-actions model
@@ -109,19 +152,23 @@ export function renderActionForMultiActionsModel(
  * Processes agent message steps
  */
 export function getSteps(
-  auth: Authenticator,
+  _: Authenticator,
   {
     model,
     message,
     workspaceId,
     conversationId,
     onMissingAction,
+    enabledSkillById,
+    renderSkillsAsUserMessages = false,
   }: {
     model: ModelConfigurationType;
     message: AgentMessageType;
     workspaceId: string;
     conversationId: string;
     onMissingAction: "inject-placeholder" | "skip";
+    enabledSkillById: ReadonlyMap<string, EnabledSkill>;
+    renderSkillsAsUserMessages?: boolean;
   }
 ): Step[] {
   const supportedModel = getSupportedModelConfig(model);
@@ -152,6 +199,10 @@ export function getSteps(
         arguments: JSON.stringify(action.params),
       },
       result: renderActionForMultiActionsModel(action),
+      enabledSkillMessages: renderEnabledSkillMessagesForAction(action, {
+        enabledSkillById,
+        renderSkillsAsUserMessages,
+      }),
     });
   }
 
@@ -222,6 +273,7 @@ export function getSteps(
                   function_call_id: functionCall.id,
                   content: "Error: tool execution failed",
                 },
+                enabledSkillMessages: [],
               });
             }
           }

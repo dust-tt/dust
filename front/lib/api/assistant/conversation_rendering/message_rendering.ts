@@ -10,6 +10,7 @@ import {
   renderOtherAgentMessageAsUserMessage,
   renderUserMessage,
 } from "@app/lib/api/assistant/conversation_rendering/helpers";
+import type { EnabledSkill } from "@app/lib/api/assistant/skills_rendering";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
@@ -117,8 +118,9 @@ export function renderAgentSteps(
         } satisfies AssistantContentMessageTypeModel);
       }
 
-      for (const { result } of step.actions) {
+      for (const { result, enabledSkillMessages } of step.actions) {
         messages.push(result);
+        messages.push(...enabledSkillMessages);
       }
     }
   }
@@ -141,6 +143,8 @@ export async function renderAllMessages(
     excludeImages,
     onMissingAction,
     agentConfiguration,
+    enabledSkills,
+    renderSkillsAsUserMessages = false,
   }: {
     conversation: ConversationType;
     model: ModelConfigurationType;
@@ -148,9 +152,14 @@ export async function renderAllMessages(
     excludeImages?: boolean;
     onMissingAction: "inject-placeholder" | "skip";
     agentConfiguration?: AgentConfigurationType;
+    enabledSkills: EnabledSkill[];
+    renderSkillsAsUserMessages?: boolean;
   }
 ): Promise<ModelMessageTypeMultiActions[]> {
   const messages: ModelMessageTypeMultiActions[] = [];
+  const enabledSkillById = new Map(
+    enabledSkills.map((skill) => [skill.sId, skill])
+  );
 
   // Find the last succeeded compaction to use as a history boundary. Messages before it are
   // already summarized in the compaction content, so we skip them to avoid redundancy and
@@ -183,6 +192,8 @@ export async function renderAllMessages(
             workspaceId: conversation.owner.sId,
             conversationId: conversation.sId,
             onMissingAction,
+            enabledSkillById,
+            renderSkillsAsUserMessages,
           });
 
           const agentMessages = renderAgentSteps(

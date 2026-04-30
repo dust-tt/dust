@@ -44,7 +44,7 @@ describe("renderAllMessages", () => {
           role: "user",
           name: m.context.username,
           content: [{ type: "text", text: m.content }],
-        }) as UserMessageTypeModel
+        }) satisfies UserMessageTypeModel
     );
 
     vi.mocked(getSteps).mockReturnValue([
@@ -190,6 +190,7 @@ describe("renderAllMessages", () => {
 
     const result = await renderAllMessages(auth, {
       conversation,
+      enabledSkills: [],
       model,
       onMissingAction: "skip",
     });
@@ -207,6 +208,7 @@ describe("renderAllMessages", () => {
 
     const result = await renderAllMessages(auth, {
       conversation,
+      enabledSkills: [],
       model,
       onMissingAction: "skip",
     });
@@ -222,6 +224,7 @@ describe("renderAllMessages", () => {
 
     const result = await renderAllMessages(auth, {
       conversation,
+      enabledSkills: [],
       model,
       onMissingAction: "skip",
     });
@@ -239,6 +242,7 @@ describe("renderAllMessages", () => {
 
     const result = await renderAllMessages(auth, {
       conversation,
+      enabledSkills: [],
       model,
       onMissingAction: "skip",
     });
@@ -257,6 +261,7 @@ describe("renderAllMessages", () => {
 
     const result = await renderAllMessages(auth, {
       conversation,
+      enabledSkills: [],
       model,
       onMissingAction: "skip",
     });
@@ -274,6 +279,7 @@ describe("renderAllMessages", () => {
 
     const result = await renderAllMessages(auth, {
       conversation,
+      enabledSkills: [],
       model,
       onMissingAction: "skip",
     });
@@ -288,6 +294,7 @@ describe("renderAllMessages", () => {
 
     const result = await renderAllMessages(auth, {
       conversation,
+      enabledSkills: [],
       model,
       onMissingAction: "skip",
     });
@@ -325,6 +332,7 @@ describe("renderAllMessages", () => {
 
     const result = await renderAllMessages(auth, {
       conversation,
+      enabledSkills: [],
       model,
       onMissingAction: "skip",
     });
@@ -337,12 +345,13 @@ describe("renderAllMessages", () => {
     ]);
     expect(renderUserMessage).toHaveBeenCalledTimes(1);
     expect(getSteps).toHaveBeenCalledTimes(1);
-    expect((result[0] as { content: string }).content).toContain(
-      "Latest summary"
-    );
-    expect((result[0] as { content: string }).content).not.toContain(
-      "Old summary"
-    );
+    const compactionMessage = result[0];
+    expect(compactionMessage?.role).toBe("compaction");
+    if (!compactionMessage || compactionMessage.role !== "compaction") {
+      throw new Error("Expected a compaction message.");
+    }
+    expect(compactionMessage.content).toContain("Latest summary");
+    expect(compactionMessage.content).not.toContain("Old summary");
   });
 
   describe("excludeActions", () => {
@@ -374,6 +383,7 @@ describe("renderAllMessages", () => {
                 function_call_id: "toolu_123",
                 content: "result",
               },
+              enabledSkillMessages: [],
             },
           ],
         },
@@ -381,6 +391,7 @@ describe("renderAllMessages", () => {
 
       const result = await renderAllMessages(auth, {
         conversation,
+        enabledSkills: [],
         model,
         excludeActions: true,
         onMissingAction: "skip",
@@ -426,6 +437,7 @@ describe("renderAllMessages", () => {
                 function_call_id: "toolu_123",
                 content: "result",
               },
+              enabledSkillMessages: [],
             },
           ],
         },
@@ -433,6 +445,7 @@ describe("renderAllMessages", () => {
 
       const result = await renderAllMessages(auth, {
         conversation,
+        enabledSkills: [],
         model,
         excludeActions: false,
         onMissingAction: "skip",
@@ -444,6 +457,129 @@ describe("renderAllMessages", () => {
       // The assistant message should have function_calls in its structure
       const assistantMessage = result.find((m) => m.role === "assistant");
       expect(assistantMessage).toBeDefined();
+    });
+  });
+
+  it("renders enabled skill messages after tool results", async () => {
+    const conversation = createConversation([
+      { type: "agent", visibility: "visible" },
+    ]);
+
+    vi.mocked(getSteps).mockReturnValue([
+      {
+        contents: [
+          {
+            type: "function_call",
+            value: {
+              id: "toolu_enable_skill",
+              name: "skill_management__enable_skill",
+              arguments: '{"skillName":"commit"}',
+            },
+          },
+        ],
+        actions: [
+          {
+            call: {
+              id: "toolu_enable_skill",
+              name: "skill_management__enable_skill",
+              arguments: '{"skillName":"commit"}',
+            },
+            enabledSkillMessages: [
+              {
+                role: "user",
+                name: "system",
+                content: [
+                  {
+                    type: "text",
+                    text: "<dust_system>Enabled skill instructions</dust_system>",
+                  },
+                ],
+              },
+            ],
+            result: {
+              role: "function",
+              name: "skill_management__enable_skill",
+              function_call_id: "toolu_enable_skill",
+              content: 'Skill "commit" has been enabled.',
+            },
+          },
+        ],
+      },
+    ]);
+
+    const result = await renderAllMessages(auth, {
+      conversation,
+      enabledSkills: [],
+      model,
+      onMissingAction: "skip",
+      renderSkillsAsUserMessages: true,
+    });
+
+    expect(result.map((m) => m.role)).toEqual([
+      "assistant",
+      "function",
+      "user",
+    ]);
+    expect(vi.mocked(getSteps).mock.calls.at(-1)?.[1]).toMatchObject({
+      renderSkillsAsUserMessages: true,
+    });
+    const enabledSkillMessage = result[2];
+    expect(enabledSkillMessage?.role).toBe("user");
+    if (!enabledSkillMessage || enabledSkillMessage.role !== "user") {
+      throw new Error("Expected a follow-up user message.");
+    }
+    expect(enabledSkillMessage.content[0]).toEqual({
+      type: "text",
+      text: "<dust_system>Enabled skill instructions</dust_system>",
+    });
+  });
+
+  it("does not render enabled skill messages when skill user messages are disabled", async () => {
+    const conversation = createConversation([
+      { type: "agent", visibility: "visible" },
+    ]);
+
+    vi.mocked(getSteps).mockReturnValue([
+      {
+        contents: [
+          {
+            type: "function_call",
+            value: {
+              id: "toolu_enable_skill",
+              name: "skill_management__enable_skill",
+              arguments: '{"skillName":"commit"}',
+            },
+          },
+        ],
+        actions: [
+          {
+            call: {
+              id: "toolu_enable_skill",
+              name: "skill_management__enable_skill",
+              arguments: '{"skillName":"commit"}',
+            },
+            enabledSkillMessages: [],
+            result: {
+              role: "function",
+              name: "skill_management__enable_skill",
+              function_call_id: "toolu_enable_skill",
+              content: 'Skill "commit" has been enabled.',
+            },
+          },
+        ],
+      },
+    ]);
+
+    const result = await renderAllMessages(auth, {
+      conversation,
+      enabledSkills: [],
+      model,
+      onMissingAction: "skip",
+    });
+
+    expect(result.map((m) => m.role)).toEqual(["assistant", "function"]);
+    expect(vi.mocked(getSteps).mock.calls.at(-1)?.[1]).toMatchObject({
+      renderSkillsAsUserMessages: false,
     });
   });
 });

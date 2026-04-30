@@ -317,6 +317,8 @@ async function handler(
         onMissingAction,
         agentConfiguration,
         leadingMessages,
+        enabledSkills,
+        renderSkillsAsUserMessages,
       });
 
       if (convoRes.isErr()) {

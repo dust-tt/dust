@@ -146,6 +146,7 @@ describe("renderConversationForModel", () => {
       conversation: createConversation(),
       model,
       prompt: "PROMPT",
+      enabledSkills: [],
       tools: "TOOLS",
       allowedTokenCount: computeAllowedTokenCount({
         promptTokens: 10,
@@ -183,6 +184,7 @@ describe("renderConversationForModel", () => {
       conversation: createConversation(),
       model,
       prompt: "PROMPT",
+      enabledSkills: [],
       tools: "TOOLS",
       allowedTokenCount: computeAllowedTokenCount({
         promptTokens: 10,
@@ -230,6 +232,7 @@ describe("renderConversationForModel", () => {
       conversation: createConversation(),
       model,
       prompt: "PROMPT",
+      enabledSkills: [],
       tools: "TOOLS",
       allowedTokenCount: computeAllowedTokenCount({
         promptTokens: 10,
@@ -278,6 +281,7 @@ describe("renderConversationForModel", () => {
       conversation: createConversation(),
       model,
       prompt: "PROMPT",
+      enabledSkills: [],
       tools: "TOOLS",
       allowedTokenCount: computeAllowedTokenCount({
         promptTokens: 10,
@@ -319,6 +323,7 @@ describe("renderConversationForModel", () => {
       conversation: createConversation(),
       model,
       prompt: "PROMPT",
+      enabledSkills: [],
       tools: "TOOLS",
       allowedTokenCount: computeAllowedTokenCount({
         promptTokens: 10,
@@ -348,6 +353,7 @@ describe("renderConversationForModel", () => {
       conversation: createConversation(),
       model,
       prompt: "PROMPT",
+      enabledSkills: [],
       tools: "TOOLS",
       allowedTokenCount: computeAllowedTokenCount({
         promptTokens: 10,
@@ -376,6 +382,7 @@ describe("renderConversationForModel", () => {
       conversation: createConversation(),
       model,
       prompt: "PROMPT",
+      enabledSkills: [],
       tools: "TOOLS",
       allowedTokenCount: computeAllowedTokenCount({
         promptTokens: 10,
@@ -454,6 +461,7 @@ describe("renderConversationForModel", () => {
       conversation: createConversation(),
       model,
       prompt: "PROMPT",
+      enabledSkills: [],
       tools: "TOOLS",
       allowedTokenCount: computeAllowedTokenCount({
         promptTokens: 10,
@@ -498,6 +506,7 @@ describe("renderConversationForModel", () => {
       conversation: createConversation(),
       model,
       prompt: "PROMPT",
+      enabledSkills: [],
       tools: "TOOLS",
       allowedTokenCount: computeAllowedTokenCount({
         promptTokens: 10,

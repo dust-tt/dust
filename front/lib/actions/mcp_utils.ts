@@ -7,6 +7,7 @@ import {
   isToolGeneratedFile,
   isToolMarkerResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { isEnableSkillResultOutput } from "@app/lib/api/actions/servers/skill_management/rendering";
 import {
   makeFileAttachment,
   renderAttachmentXml,
@@ -118,6 +119,13 @@ export function rewriteContentForModel(
     return {
       type: "text",
       text,
+    };
+  }
+
+  if (isEnableSkillResultOutput(content)) {
+    return {
+      type: "text",
+      text: content.resource.text,
     };
   }
 

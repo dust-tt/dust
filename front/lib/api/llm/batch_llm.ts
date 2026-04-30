@@ -321,6 +321,8 @@ export async function sendBatchCallToLlm(
     const modelConversationRes = await renderConversationForModel(auth, {
       conversation: conversationRes.value,
       model: modelConfig,
+      // TODO(2026-04-29 aubin): handle this by listing skills for all the agents involved (or maybe the last one?).
+      enabledSkills: [],
       prompt: promptText,
       tools,
       allowedTokenCount:

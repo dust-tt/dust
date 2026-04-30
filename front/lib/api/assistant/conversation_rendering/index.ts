@@ -1,5 +1,6 @@
 import { groupMessagesIntoInteractions } from "@app/lib/api/assistant/conversation/interactions";
 import { renderAllMessages } from "@app/lib/api/assistant/conversation_rendering/message_rendering";
+import type { EnabledSkill } from "@app/lib/api/assistant/skills_rendering";
 import { getTextContentFromMessage } from "@app/lib/api/assistant/utils";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
@@ -32,7 +33,7 @@ import {
 // When previous interactions pruning is enabled, we'll attempt to fully preserve this number of
 // interactions. This value was originally at 1 and bumped at 3 with the introduction of
 // gracefully_stopped agent message and user message steering to don't prune tool outputs too
-// agressively.
+// aggressively.
 export const PREVIOUS_INTERACTIONS_TO_PRESERVE = 3;
 
 // Fixed number of tokens assumed for image contents
@@ -53,6 +54,8 @@ export async function renderConversationForModel(
     excludeImages,
     onMissingAction = "inject-placeholder",
     agentConfiguration,
+    enabledSkills,
+    renderSkillsAsUserMessages = false,
   }: {
     leadingMessages?: ModelMessageTypeMultiActionsWithoutContentFragment[];
     conversation: ConversationType;
@@ -65,6 +68,8 @@ export async function renderConversationForModel(
     onMissingAction?: "inject-placeholder" | "skip";
     enablePreviousInteractionsPruning?: boolean;
     agentConfiguration?: AgentConfigurationType;
+    enabledSkills: EnabledSkill[];
+    renderSkillsAsUserMessages?: boolean;
   }
 ): Promise<
   Result<
@@ -86,6 +91,8 @@ export async function renderConversationForModel(
     excludeImages,
     onMissingAction,
     agentConfiguration,
+    enabledSkills,
+    renderSkillsAsUserMessages,
   });
   const messages = [...leadingMessages, ...renderedMessages];
   const renderAllMessagesMs = Date.now() - stepStart;

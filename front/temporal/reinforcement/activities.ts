@@ -126,6 +126,7 @@ async function runReinforcedSkillsStep({
     conversation: conversationRes.value,
     model: modelConfig,
     prompt: systemPrompt,
+    enabledSkills: [],
     tools: toolsJson,
     allowedTokenCount:
       modelConfig.contextSize - modelConfig.generationTokensCount,
