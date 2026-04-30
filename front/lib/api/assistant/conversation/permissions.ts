@@ -88,9 +88,11 @@ export async function canAgentBeUsedInProjectConversation(
   {
     configuration,
     conversation,
+    transaction,
   }: {
     configuration: LightAgentConfigurationType;
     conversation: ConversationWithoutContentType;
+    transaction?: Transaction;
   }
 ): Promise<boolean> {
   if (!isProjectConversation(conversation)) {
@@ -114,7 +116,8 @@ export async function canAgentBeUsedInProjectConversation(
       auth,
       configuration.requestedSpaceIds.filter(
         (spaceId) => spaceId !== conversation.spaceId
-      )
+      ),
+      { transaction }
     );
     if (spaces.some((space) => !space.isOpen())) {
       return false;

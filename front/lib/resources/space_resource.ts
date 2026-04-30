@@ -453,18 +453,25 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   static async fetchByIds(
     auth: Authenticator,
     ids: string[],
-    { includeDeleted }: { includeDeleted?: boolean } = {}
+    {
+      includeDeleted,
+      transaction,
+    }: { includeDeleted?: boolean; transaction?: Transaction } = {}
   ): Promise<SpaceResource[]> {
     if (ids.length === 0) {
       return [];
     }
 
-    return this.baseFetch(auth, {
-      where: {
-        id: removeNulls(ids.map(getResourceIdFromSId)),
+    return this.baseFetch(
+      auth,
+      {
+        where: {
+          id: removeNulls(ids.map(getResourceIdFromSId)),
+        },
+        includeDeleted,
       },
-      includeDeleted,
-    });
+      transaction
+    );
   }
 
   static async fetchByModelIds(

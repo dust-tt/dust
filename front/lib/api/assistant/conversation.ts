@@ -1713,6 +1713,38 @@ export async function retryAgentMessage(
     return limitResult;
   }
 
+  const retryAgentConfiguration = await getAgentConfiguration(auth, {
+    agentId: message.configuration.sId,
+    variant: "extra_light",
+  });
+  if (!retryAgentConfiguration || !canAccessAgent(retryAgentConfiguration)) {
+    return new Err({
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message:
+          "Invalid agent message retry request, the agent is no longer available to you.",
+      },
+    });
+  }
+
+  if (isProjectConversation(conversation)) {
+    const canAgentBeUsed = await canAgentBeUsedInProjectConversation(auth, {
+      configuration: retryAgentConfiguration,
+      conversation,
+    });
+    if (!canAgentBeUsed) {
+      return new Err({
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message:
+            "Invalid agent message retry request, the agent is restricted by space usage.",
+        },
+      });
+    }
+  }
+
   let agentMessageResult: {
     agentMessage: AgentMessageType;
   } | null = null;
@@ -1763,30 +1795,6 @@ export async function retryAgentMessage(
         throw new AgentMessageError(
           "Invalid agent message retry request, this message was already retried."
         );
-      }
-
-      // Check if agent is still available to the user.
-      const agentConfiguration = await getAgentConfiguration(auth, {
-        agentId: message.configuration.sId,
-        variant: "extra_light",
-      });
-      if (!agentConfiguration || !canAccessAgent(agentConfiguration)) {
-        throw new AgentMessageError(
-          "Invalid agent message retry request, the agent is no longer available to you."
-        );
-      }
-
-      // Agent could be part of a conversation that was moved to a space OR the agent configuration could have changed to use a space that is not usable in a project.
-      if (isProjectConversation(conversation)) {
-        const canAgentBeUsed = await canAgentBeUsedInProjectConversation(auth, {
-          configuration: agentConfiguration,
-          conversation,
-        });
-        if (!canAgentBeUsed) {
-          throw new AgentMessageError(
-            "Invalid agent message retry request, the agent is restricted by space usage."
-          );
-        }
       }
 
       const { agentMessages } = await createAgentMessages(auth, {
