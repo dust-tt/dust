@@ -13,7 +13,6 @@ describe("WorkspaceSandboxEnvVarResource", () => {
       {
         name: "API_TOKEN",
         value: "super-secret-token",
-        user,
       }
     );
 

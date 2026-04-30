@@ -105,7 +105,6 @@ async function handler(
       const result = await WorkspaceSandboxEnvVarResource.upsert(auth, {
         name: req.body.name,
         value: req.body.value,
-        user: auth.getNonNullableUser(),
       });
       if (result.isErr()) {
         return apiError(req, res, {

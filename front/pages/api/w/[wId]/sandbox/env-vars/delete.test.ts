@@ -32,7 +32,6 @@ describe("DELETE /api/w/[wId]/sandbox/env-vars/[name]", () => {
     const upsertResult = await WorkspaceSandboxEnvVarResource.upsert(auth, {
       name: "API_TOKEN",
       value: "super-secret-token",
-      user: auth.getNonNullableUser(),
     });
     expect(upsertResult.isOk()).toBe(true);
 

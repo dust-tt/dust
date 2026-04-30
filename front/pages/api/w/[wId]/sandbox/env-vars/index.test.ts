@@ -100,7 +100,7 @@ describe("GET/POST /api/w/[wId]/sandbox/env-vars", () => {
   });
 
   it("enforces the create cap while allowing overwrite at the cap", async () => {
-    const { req, res, auth, user, workspace } = await createEnvVarRequest({
+    const { req, res, auth, workspace } = await createEnvVarRequest({
       method: "POST",
       body: { name: "NEW_TOKEN", value: "super-secret-token" },
     });
@@ -109,7 +109,6 @@ describe("GET/POST /api/w/[wId]/sandbox/env-vars", () => {
       const seedResult = await WorkspaceSandboxEnvVarResource.upsert(auth, {
         name: `VAR_${i}`,
         value: `value-${i}`,
-        user,
       });
       expect(seedResult.isOk()).toBe(true);
     }

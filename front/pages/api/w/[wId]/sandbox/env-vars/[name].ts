@@ -73,16 +73,27 @@ async function handler(
 
   switch (req.method) {
     case "DELETE": {
-      const result = await WorkspaceSandboxEnvVarResource.deleteByName(
+      const envVar = await WorkspaceSandboxEnvVarResource.fetchByName(
         auth,
         name
       );
-      if (result.isErr()) {
+      if (!envVar) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {
             type: "invalid_request_error",
-            message: result.error.message,
+            message: "Sandbox environment variable not found.",
+          },
+        });
+      }
+
+      const deleteResult = await envVar.delete(auth);
+      if (deleteResult.isErr()) {
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: deleteResult.error.message,
           },
         });
       }
