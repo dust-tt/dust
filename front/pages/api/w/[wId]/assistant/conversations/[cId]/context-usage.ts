@@ -10,9 +10,15 @@ import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 export type GetConversationContextUsageResponse = {
-  model: SupportedModel;
-  contextUsage: number;
-  contextSize: number;
+  model: SupportedModel | null;
+  contextUsage: number | null;
+  contextSize: number | null;
+};
+
+const PENDING_CONTEXT_USAGE_RESPONSE: GetConversationContextUsageResponse = {
+  model: null,
+  contextUsage: null,
+  contextSize: null,
 };
 
 async function handler(
@@ -61,13 +67,7 @@ async function handler(
         // minimal way to show reduciton of context usage as soon as possible.
         const usages = await lastCompactionRun.run.listRunUsages(auth);
         if (usages.length === 0) {
-          return apiError(req, res, {
-            status_code: 404,
-            api_error: {
-              type: "conversation_context_usage_not_found",
-              message: "No run usage found for the latest conversation run.",
-            },
-          });
+          return res.status(200).json(PENDING_CONTEXT_USAGE_RESPONSE);
         }
 
         const maxUsage = usages.reduce((max, u) =>
@@ -86,24 +86,12 @@ async function handler(
         });
       } else {
         if (!lastAgentRun) {
-          return apiError(req, res, {
-            status_code: 404,
-            api_error: {
-              type: "conversation_context_usage_not_found",
-              message: "Conversation has no run data.",
-            },
-          });
+          return res.status(200).json(PENDING_CONTEXT_USAGE_RESPONSE);
         }
 
         const usages = await lastAgentRun.run.listRunUsages(auth);
         if (usages.length === 0) {
-          return apiError(req, res, {
-            status_code: 404,
-            api_error: {
-              type: "conversation_context_usage_not_found",
-              message: "No run usage found for the latest conversation run.",
-            },
-          });
+          return res.status(200).json(PENDING_CONTEXT_USAGE_RESPONSE);
         }
 
         // Take the max promptTokens across usages of the latest run — this represents the peak
