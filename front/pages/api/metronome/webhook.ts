@@ -3,6 +3,7 @@ import apiConfig from "@app/lib/api/config";
 import {
   calculateFreeCreditAmountMicroUsd,
   countEligibleUsersForFreeCredits,
+  YEARLY_MULTIPLIER,
 } from "@app/lib/credits/free";
 import {
   getMetronomeClient,
@@ -234,8 +235,21 @@ async function handler(
             break;
           }
 
+          // Detect whether this credit comes from an annual recurring credit
+          // (annual contracts) so we grant a yearly amount instead of monthly.
+          const recurringCredit = credit.recurring_credit_id
+            ? contractResult.value.recurring_credits?.find(
+                (rc) => rc.id === credit.recurring_credit_id
+              )
+            : undefined;
+          const isAnnual = recurringCredit?.recurrence_frequency === "ANNUAL";
+
           const userCount = await countEligibleUsersForFreeCredits(workspace);
-          const amountMicroUsd = calculateFreeCreditAmountMicroUsd(userCount);
+          const monthlyAmountMicroUsd =
+            calculateFreeCreditAmountMicroUsd(userCount);
+          const amountMicroUsd = isAnnual
+            ? monthlyAmountMicroUsd * YEARLY_MULTIPLIER
+            : monthlyAmountMicroUsd;
           const amount = amountMicroUsd / 1_000_000;
 
           const updateResult = await updateMetronomeCreditSegmentAmount({
@@ -275,6 +289,7 @@ async function handler(
               segmentId,
               amountMicroUsd,
               userCount,
+              isAnnual,
               workspaceId: workspace.sId,
             },
             "[Metronome Webhook] credit.segment.start: free credit amount updated"

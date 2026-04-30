@@ -1,4 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
+import { getMetronomeClient } from "@app/lib/metronome/client";
+import { getProductFreeMonthlyCreditId } from "@app/lib/metronome/constants";
 import {
   getSubscriptionInvoices,
   isEnterpriseSubscription,
@@ -13,6 +15,8 @@ import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { LightWorkspaceType } from "@app/types/user";
 import assert from "assert";
 import type Stripe from "stripe";
 
@@ -149,6 +153,101 @@ export async function getCustomerPaymentStatus(
   }
 
   return "not_paying";
+}
+
+/**
+ * Reconcile a freshly granted free credit with the Metronome credit that was
+ * automatically created by the recurring credit on the customer's contract.
+ *
+ * The Metronome recurring credit fires at the rounded hour, so by the time we
+ * handle the Stripe webhook the corresponding credit segment usually already
+ * exists on the customer. We look it up and store its id on our credit row.
+ *
+ * Best-effort: if the contract / recurring credit / segment can't be found we
+ * log and return — the backfill script can fix the link later.
+ */
+async function linkMetronomeRecurringCreditToCredit({
+  workspace,
+  credit,
+}: {
+  workspace: LightWorkspaceType;
+  credit: CreditResource;
+}): Promise<void> {
+  const { metronomeCustomerId } = workspace;
+  if (!metronomeCustomerId) {
+    return;
+  }
+
+  try {
+    const client = getMetronomeClient();
+    const contractsResponse = await client.v2.contracts.list({
+      customer_id: metronomeCustomerId,
+      covering_date: new Date().toISOString(),
+    });
+    const contract = contractsResponse.data[0];
+    if (!contract) {
+      logger.info(
+        { workspaceId: workspace.sId, creditId: credit.id },
+        "[Free Credits] No active Metronome contract, skipping linking"
+      );
+      return;
+    }
+
+    const freeCreditProductId = getProductFreeMonthlyCreditId();
+    const existingRecurringCredit = contract.recurring_credits?.find(
+      (rc) => rc.product.id === freeCreditProductId
+    );
+    if (!existingRecurringCredit) {
+      logger.info(
+        {
+          workspaceId: workspace.sId,
+          contractId: contract.id,
+          creditId: credit.id,
+        },
+        "[Free Credits] No recurring credit on contract, skipping linking"
+      );
+      return;
+    }
+
+    const creditsResponse = await client.v1.customers.credits.list({
+      customer_id: metronomeCustomerId,
+      covering_date: new Date().toISOString(),
+      include_contract_credits: true,
+    });
+    const currentRecurringCredit = creditsResponse.data.find(
+      (c) => c.recurring_credit_id === existingRecurringCredit.id
+    );
+    if (!currentRecurringCredit) {
+      logger.info(
+        {
+          workspaceId: workspace.sId,
+          contractId: contract.id,
+          creditId: credit.id,
+        },
+        "[Free Credits] No active credit found for recurring credit, skipping linking"
+      );
+      return;
+    }
+
+    await credit.setMetronomeCreditId(currentRecurringCredit.id);
+    logger.info(
+      {
+        workspaceId: workspace.sId,
+        creditId: credit.id,
+        metronomeCreditId: currentRecurringCredit.id,
+      },
+      "[Free Credits] Linked credit to existing Metronome recurring credit"
+    );
+  } catch (err) {
+    logger.error(
+      {
+        workspaceId: workspace.sId,
+        creditId: credit.id,
+        err: normalizeError(err),
+      },
+      "[Free Credits] Failed to link credit to Metronome recurring credit"
+    );
+  }
 }
 
 export async function grantFreeCreditsFromSubscriptionStateChange({
@@ -325,10 +424,12 @@ export async function grantFreeCreditsFromSubscriptionStateChange({
     "[Free Credits] Successfully granted and activated free credit on renewal"
   );
 
+  await linkMetronomeRecurringCreditToCredit({ workspace, credit });
+
   return new Ok(undefined);
 }
 
-const YEARLY_MULTIPLIER = 12;
+export const YEARLY_MULTIPLIER = 12;
 
 export async function grantFreeCreditFromSubscriptionStateChangeYearly({
   auth,
@@ -496,6 +597,8 @@ export async function grantFreeCreditFromSubscriptionStateChangeYearly({
     },
     "[Free Credits Yearly] Successfully granted and activated free credit on yearly renewal"
   );
+
+  await linkMetronomeRecurringCreditToCredit({ workspace, credit });
 
   return new Ok(undefined);
 }
