@@ -1,53 +1,18 @@
 import { Err, Ok, type Result } from "@app/types/shared/result";
 
-export const ENV_VAR_NAME_REGEX = /^[A-Z][A-Z0-9_]{0,63}$/;
+export const SANDBOX_ENV_VAR_PREFIX = "DST_";
+// 64 char total budget - 4 prefix chars - 1 leading-letter char = 59 trailing chars.
+export const ENV_VAR_NAME_REGEX = /^DST_[A-Z][A-Z0-9_]{0,59}$/;
+export const ENV_VAR_NAME_SUFFIX_REGEX = /^[A-Z][A-Z0-9_]{0,59}$/;
 export const MAX_VALUE_BYTES = 32 * 1024;
 export const MAX_VARS_PER_WORKSPACE = 50;
-
-const RESERVED_EXACT_NAMES = new Set([
-  "PATH",
-  "HOME",
-  "USER",
-  "SHELL",
-  "PWD",
-  "TERM",
-  "LANG",
-  "LC_ALL",
-  "HOSTNAME",
-  "TMPDIR",
-]);
-
-const RESERVED_PREFIXES = [
-  "LD_",
-  "DUST_",
-  "SANDBOX_",
-  "E2B_",
-  "DD_",
-  "CONVERSATION_",
-  "WORKSPACE_",
-];
-
-export function isReservedEnvVarName(name: string): boolean {
-  return (
-    name.startsWith("_") ||
-    RESERVED_EXACT_NAMES.has(name) ||
-    RESERVED_PREFIXES.some((prefix) => name.startsWith(prefix))
-  );
-}
 
 export function validateEnvVarName(name: string): Result<void, string> {
   if (!ENV_VAR_NAME_REGEX.test(name)) {
     return new Err(
-      "Environment variable names must match /^[A-Z][A-Z0-9_]{0,63}$/."
+      "Environment variable names must start with DST_ followed by A-Z, digits or underscores (up to 64 characters total)."
     );
   }
-
-  if (isReservedEnvVarName(name)) {
-    return new Err(
-      "This environment variable name is reserved for the sandbox runtime."
-    );
-  }
-
   return new Ok(undefined);
 }
 

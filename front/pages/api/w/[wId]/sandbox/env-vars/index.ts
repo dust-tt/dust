@@ -1,9 +1,5 @@
 /** @ignoreswagger */
-import {
-  buildAuditLogTarget,
-  emitAuditLogEvent,
-  getAuditLogContext,
-} from "@app/lib/api/audit/workos_audit";
+import { getAuditLogContext } from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import {
   validateEnvVarName,
@@ -15,14 +11,30 @@ import { WorkspaceSandboxEnvVarResource } from "@app/lib/resources/workspace_san
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { WorkspaceSandboxEnvVarType } from "@app/types/sandbox/env_var";
-import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+
+const PostWorkspaceSandboxEnvVarBodySchema = z.object({
+  name: z.string().superRefine((name, ctx) => {
+    const result = validateEnvVarName(name);
+    if (result.isErr()) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: result.error });
+    }
+  }),
+  value: z.string().superRefine((value, ctx) => {
+    const result = validateEnvVarValue(value);
+    if (result.isErr()) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: result.error });
+    }
+  }),
+});
 
 export type GetWorkspaceSandboxEnvVarsResponseBody = {
   envVars: WorkspaceSandboxEnvVarType[];
 };
 
 export type PostWorkspaceSandboxEnvVarsResponseBody = {
+  envVar: WorkspaceSandboxEnvVarType;
   created: boolean;
 };
 
@@ -36,8 +48,6 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  const owner = auth.getNonNullableWorkspace();
-
   if (!auth.isAdmin()) {
     return apiError(req, res, {
       status_code: 403,
@@ -70,42 +80,23 @@ async function handler(
     }
 
     case "POST": {
-      if (!isString(req.body?.name) || !isString(req.body?.value)) {
+      const parsed = PostWorkspaceSandboxEnvVarBodySchema.safeParse(req.body);
+      if (!parsed.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: "Expected body with string fields name and value.",
-          },
-        });
-      }
-
-      const nameValidation = validateEnvVarName(req.body.name);
-      if (nameValidation.isErr()) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: nameValidation.error,
-          },
-        });
-      }
-
-      const valueValidation = validateEnvVarValue(req.body.value);
-      if (valueValidation.isErr()) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: valueValidation.error,
+            message: parsed.error.issues
+              .map((i) => `${i.path.join(".") || "body"}: ${i.message}`)
+              .join("; "),
           },
         });
       }
 
       const result = await WorkspaceSandboxEnvVarResource.upsert(auth, {
-        name: req.body.name,
-        value: req.body.value,
-        user: auth.getNonNullableUser(),
+        name: parsed.data.name,
+        value: parsed.data.value,
+        context: getAuditLogContext(auth, req),
       });
       if (result.isErr()) {
         return apiError(req, res, {
@@ -117,32 +108,10 @@ async function handler(
         });
       }
 
-      const action = result.value.created
-        ? "sandbox_env_var.created"
-        : "sandbox_env_var.updated";
-
-      void emitAuditLogEvent({
-        auth,
-        action,
-        targets: [
-          buildAuditLogTarget("workspace", owner),
-          buildAuditLogTarget("sandbox_env_var", {
-            sId: `${owner.sId}:${req.body.name}`,
-            name: req.body.name,
-          }),
-        ],
-        context: getAuditLogContext(auth, req),
-        metadata: {
-          name: req.body.name,
-          ...(result.value.created
-            ? {}
-            : {
-                previously_existed: "true",
-              }),
-        },
+      return res.status(result.value.created ? 201 : 200).json({
+        envVar: result.value.resource.toJSON(),
+        created: result.value.created,
       });
-
-      return res.status(200).json(result.value);
     }
 
     default:

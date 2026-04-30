@@ -72,7 +72,7 @@ describe("GET/POST /api/w/[wId]/sandbox/env-vars", () => {
     const postRequest = await createEnvVarRequest({
       method: "POST",
       role: "builder",
-      body: { name: "API_TOKEN", value: "super-secret-token" },
+      body: { name: "DST_API_TOKEN", value: "super-secret-token" },
     });
     await handler(postRequest.req, postRequest.res);
     expect(postRequest.res._getStatusCode()).toBe(403);
@@ -83,9 +83,9 @@ describe("GET/POST /api/w/[wId]/sandbox/env-vars", () => {
       { name: "api_token", value: "super-secret-token" },
       { name: "_API_TOKEN", value: "super-secret-token" },
       { name: "DUST_API_KEY", value: "super-secret-token" },
-      { name: "API_TOKEN", value: "" },
-      { name: "API_TOKEN", value: "abc\u0000def" },
-      { name: "API_TOKEN", value: "a".repeat(32 * 1024 + 1) },
+      { name: "DST_API_TOKEN", value: "" },
+      { name: "DST_API_TOKEN", value: "abc\u0000def" },
+      { name: "DST_API_TOKEN", value: "a".repeat(32 * 1024 + 1) },
     ]) {
       const { req, res } = await createEnvVarRequest({
         method: "POST",
@@ -100,16 +100,15 @@ describe("GET/POST /api/w/[wId]/sandbox/env-vars", () => {
   });
 
   it("enforces the create cap while allowing overwrite at the cap", async () => {
-    const { req, res, auth, user, workspace } = await createEnvVarRequest({
+    const { req, res, auth, workspace } = await createEnvVarRequest({
       method: "POST",
-      body: { name: "NEW_TOKEN", value: "super-secret-token" },
+      body: { name: "DST_NEW_TOKEN", value: "super-secret-token" },
     });
 
     for (let i = 0; i < 50; i++) {
       const seedResult = await WorkspaceSandboxEnvVarResource.upsert(auth, {
-        name: `VAR_${i}`,
+        name: `DST_VAR_${i}`,
         value: `value-${i}`,
-        user,
       });
       expect(seedResult.isOk()).toBe(true);
     }
@@ -125,12 +124,13 @@ describe("GET/POST /api/w/[wId]/sandbox/env-vars", () => {
     const overwriteRequest = createEnvVarHttpRequest({
       method: "POST",
       workspace,
-      body: { name: "VAR_0", value: "rotated-secret-token" },
+      body: { name: "DST_VAR_0", value: "rotated-secret-token" },
     });
 
     await handler(overwriteRequest.req, overwriteRequest.res);
     expect(overwriteRequest.res._getStatusCode()).toBe(200);
     expect(JSON.parse(overwriteRequest.res._getData())).toEqual({
+      envVar: expect.objectContaining({ name: "DST_VAR_0" }),
       created: false,
     });
 
@@ -139,39 +139,45 @@ describe("GET/POST /api/w/[wId]/sandbox/env-vars", () => {
     if (envResult.isErr()) {
       throw envResult.error;
     }
-    expect(envResult.value.VAR_0).toBe("rotated-secret-token");
+    expect(envResult.value.DST_VAR_0).toBe("rotated-secret-token");
   });
 
   it("creates multiline values, overwrites by name, audits without values, and never lists values", async () => {
     const first = await createEnvVarRequest({
       method: "POST",
       body: {
-        name: "API_TOKEN",
+        name: "DST_API_TOKEN",
         value: "-----BEGIN KEY-----\nline two\n-----END KEY-----",
       },
     });
     await handler(first.req, first.res);
-    expect(first.res._getStatusCode()).toBe(200);
-    expect(JSON.parse(first.res._getData())).toEqual({ created: true });
+    expect(first.res._getStatusCode()).toBe(201);
+    expect(JSON.parse(first.res._getData())).toEqual({
+      envVar: expect.objectContaining({ name: "DST_API_TOKEN" }),
+      created: true,
+    });
 
     const second = createEnvVarHttpRequest({
       method: "POST",
       workspace: first.workspace,
       body: {
-        name: "API_TOKEN",
+        name: "DST_API_TOKEN",
         value: "rotated-secret-token",
       },
     });
     await handler(second.req, second.res);
     expect(second.res._getStatusCode()).toBe(200);
-    expect(JSON.parse(second.res._getData())).toEqual({ created: false });
+    expect(JSON.parse(second.res._getData())).toEqual({
+      envVar: expect.objectContaining({ name: "DST_API_TOKEN" }),
+      created: false,
+    });
 
     const envResult = await WorkspaceSandboxEnvVarResource.loadEnv(first.auth);
     expect(envResult.isOk()).toBe(true);
     if (envResult.isErr()) {
       throw envResult.error;
     }
-    expect(envResult.value.API_TOKEN).toBe("rotated-secret-token");
+    expect(envResult.value.DST_API_TOKEN).toBe("rotated-secret-token");
 
     const listRequest = createEnvVarHttpRequest({
       method: "GET",
@@ -183,7 +189,7 @@ describe("GET/POST /api/w/[wId]/sandbox/env-vars", () => {
     expect(responseBody).toEqual({
       envVars: [
         expect.objectContaining({
-          name: "API_TOKEN",
+          name: "DST_API_TOKEN",
         }),
       ],
     });
@@ -192,14 +198,14 @@ describe("GET/POST /api/w/[wId]/sandbox/env-vars", () => {
     expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         action: "sandbox_env_var.created",
-        metadata: { name: "API_TOKEN" },
+        metadata: { name: "DST_API_TOKEN" },
       })
     );
     expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         action: "sandbox_env_var.updated",
         metadata: {
-          name: "API_TOKEN",
+          name: "DST_API_TOKEN",
           previously_existed: "true",
         },
       })

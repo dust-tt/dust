@@ -1,13 +1,12 @@
 /** @ignoreswagger */
-import {
-  buildAuditLogTarget,
-  emitAuditLogEvent,
-  getAuditLogContext,
-} from "@app/lib/api/audit/workos_audit";
+import { getAuditLogContext } from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { validateEnvVarName } from "@app/lib/api/sandbox/env_vars";
 import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
+import {
+  getResourceIdFromSId,
+  isResourceSId,
+} from "@app/lib/resources/string_ids";
 import { WorkspaceSandboxEnvVarResource } from "@app/lib/resources/workspace_sandbox_env_var_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
@@ -25,8 +24,6 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  const owner = auth.getNonNullableWorkspace();
-
   if (!auth.isAdmin()) {
     return apiError(req, res, {
       status_code: 403,
@@ -48,60 +45,50 @@ async function handler(
     });
   }
 
-  const { name } = req.query;
+  const { id } = req.query;
 
-  if (!isString(name)) {
+  const envVarModelId =
+    isString(id) && isResourceSId("sandbox_env_var", id)
+      ? getResourceIdFromSId(id)
+      : null;
+  if (envVarModelId === null) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Expected a string environment variable name.",
-      },
-    });
-  }
-
-  const nameValidation = validateEnvVarName(name);
-  if (nameValidation.isErr()) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: nameValidation.error,
+        message: "Invalid sandbox environment variable id.",
       },
     });
   }
 
   switch (req.method) {
     case "DELETE": {
-      const result = await WorkspaceSandboxEnvVarResource.deleteByName(
+      const envVar = await WorkspaceSandboxEnvVarResource.fetchById(
         auth,
-        name
+        envVarModelId
       );
-      if (result.isErr()) {
+      if (!envVar) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {
             type: "invalid_request_error",
-            message: result.error.message,
+            message: "Sandbox environment variable not found.",
           },
         });
       }
 
-      void emitAuditLogEvent({
-        auth,
-        action: "sandbox_env_var.deleted",
-        targets: [
-          buildAuditLogTarget("workspace", owner),
-          buildAuditLogTarget("sandbox_env_var", {
-            sId: `${owner.sId}:${name}`,
-            name,
-          }),
-        ],
+      const deleteResult = await envVar.delete(auth, {
         context: getAuditLogContext(auth, req),
-        metadata: {
-          name,
-        },
       });
+      if (deleteResult.isErr()) {
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: deleteResult.error.message,
+          },
+        });
+      }
 
       return res.status(200).json({ success: true });
     }
