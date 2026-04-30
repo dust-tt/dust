@@ -12,6 +12,10 @@ import {
   getCiteDirective,
 } from "@app/components/markdown/CiteBlock";
 import type { MCPReferenceCitation } from "@app/components/markdown/MCPReferenceCitation";
+import {
+  TodoDirectiveBlock,
+  todoDirective,
+} from "@app/components/markdown/TodoDirectiveBlock";
 import { getIcon } from "@app/components/resources/resources_icons";
 import { useChildAgentStream } from "@app/hooks/useChildAgentStream";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
@@ -249,7 +253,7 @@ function MCPRunAgentActionDetailsDisplay({
   };
 
   const additionalMarkdownPlugins: PluggableList = useMemo(
-    () => [getCiteDirective(), agentMentionDirective],
+    () => [getCiteDirective(), agentMentionDirective, todoDirective],
     []
   );
 
@@ -258,6 +262,7 @@ function MCPRunAgentActionDetailsDisplay({
       sup: CiteBlock,
       // Warning: we can't rename easily `mention` to agent_mention, because the messages DB contains this name
       mention: getAgentMentionPlugin(owner),
+      todo: TodoDirectiveBlock,
     }),
     [owner]
   );

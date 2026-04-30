@@ -11,6 +11,10 @@ import {
   pastedAttachmentDirective,
 } from "@app/components/markdown/PastedAttachmentBlock";
 import {
+  TodoDirectiveBlock,
+  todoDirective,
+} from "@app/components/markdown/TodoDirectiveBlock";
+import {
   agentMentionDirective,
   getAgentMentionPlugin,
   getUserMentionPlugin,
@@ -43,6 +47,7 @@ export const UserMessageMarkdown = ({
       mention_user: getUserMentionPlugin(owner),
       content_node_mention: ContentNodeMentionBlock,
       pasted_attachment: PastedAttachmentBlock,
+      todo: TodoDirectiveBlock,
     }),
     [owner]
   );
@@ -54,6 +59,7 @@ export const UserMessageMarkdown = ({
       userMentionDirective,
       contentNodeMentionDirective,
       pastedAttachmentDirective,
+      todoDirective,
     ],
     []
   );
