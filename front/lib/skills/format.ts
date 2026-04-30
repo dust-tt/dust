@@ -41,25 +41,3 @@ export function extractSkillTags(markdown: string): SkillTag[] {
 export function serializeSkillTag({ id, name }: SkillTag): string {
   return `<${SKILL_TAG_NAME} id="${id}" name="${name}" />`;
 }
-
-export function replaceSkillTagsWithDirectives(markdown: string): string {
-  return markdown.replace(SKILL_TAG_REGEX, (match) => {
-    const skill = parseSkillTag(match);
-    if (!skill) {
-      return match;
-    }
-
-    return `:skill[${skill.name}]{sId=${skill.id}}`;
-  });
-}
-
-export function replaceSkillTagsWithSlashNames(markdown: string): string {
-  return markdown.replace(SKILL_TAG_REGEX, (match) => {
-    const skill = parseSkillTag(match);
-    if (!skill) {
-      return match;
-    }
-
-    return `/${skill.name}`;
-  });
-}
