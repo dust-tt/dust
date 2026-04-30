@@ -12,7 +12,12 @@ import type {
   SkillStatus,
 } from "@app/types/assistant/skill_configuration";
 import isNil from "lodash/isNil";
-import type { CreationOptional, ForeignKey, ModelAttributes } from "sequelize";
+import type {
+  CreationOptional,
+  ForeignKey,
+  ModelAttributes,
+  NonAttribute,
+} from "sequelize";
 import { DataTypes } from "sequelize";
 
 const SKILL_MODEL_ATTRIBUTES = {
@@ -90,7 +95,7 @@ export function eitherGlobalOrCustomSkillValidation(this: {
   const hasExactlyOne = hasCustomSkill !== hasGlobalSkill;
   if (!hasExactlyOne) {
     throw new Error(
-      "Exactly one of customSkillId or globalSkillId must be set"
+      "Exactly one of customSkillId or globalSkillId must be set",
     );
   }
 }
@@ -171,7 +176,7 @@ SkillConfigurationModel.init(
         concurrently: true,
       },
     ],
-  }
+  },
 );
 
 export class SkillVersionModel extends SkillConfigurationModel {
@@ -220,7 +225,68 @@ SkillVersionModel.init(
         concurrently: true,
       },
     ],
-  }
+  },
+);
+
+export class SkillReferenceModel extends WorkspaceAwareModel<SkillReferenceModel> {
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare parentSkillId: ForeignKey<SkillConfigurationModel["id"]>;
+  declare childSkillId: ForeignKey<SkillConfigurationModel["id"]>;
+
+  declare parentSkill?: NonAttribute<SkillConfigurationModel>;
+  declare childSkill?: NonAttribute<SkillConfigurationModel>;
+}
+
+SkillReferenceModel.init(
+  {
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    parentSkillId: {
+      type: DataTypes.BIGINT,
+      allowNull: false,
+      references: {
+        model: SkillConfigurationModel,
+        key: "id",
+      },
+    },
+    childSkillId: {
+      type: DataTypes.BIGINT,
+      allowNull: false,
+      references: {
+        model: SkillConfigurationModel,
+        key: "id",
+      },
+    },
+  },
+  {
+    modelName: "skill_reference",
+    sequelize: frontSequelize,
+    indexes: [
+      {
+        fields: ["parentSkillId"],
+        concurrently: true,
+      },
+      {
+        fields: ["childSkillId"],
+        concurrently: true,
+      },
+      {
+        unique: true,
+        fields: ["workspaceId", "parentSkillId", "childSkillId"],
+        concurrently: true,
+      },
+    ],
+  },
 );
 
 // Skill config <> Edited by
@@ -241,6 +307,27 @@ UserModel.hasMany(SkillVersionModel, {
 SkillVersionModel.belongsTo(UserModel, {
   foreignKey: { name: "editedBy", allowNull: true },
   as: "editedByUser",
+});
+
+// Skill references (parent skill <> child skill)
+SkillConfigurationModel.hasMany(SkillReferenceModel, {
+  foreignKey: { name: "parentSkillId", allowNull: false },
+  onDelete: "CASCADE",
+  as: "childSkillReferences",
+});
+SkillReferenceModel.belongsTo(SkillConfigurationModel, {
+  foreignKey: { name: "parentSkillId", allowNull: false },
+  as: "parentSkill",
+});
+
+SkillConfigurationModel.hasMany(SkillReferenceModel, {
+  foreignKey: { name: "childSkillId", allowNull: false },
+  onDelete: "CASCADE",
+  as: "parentSkillReferences",
+});
+SkillReferenceModel.belongsTo(SkillConfigurationModel, {
+  foreignKey: { name: "childSkillId", allowNull: false },
+  as: "childSkill",
 });
 
 // Skill MCP Server Configuration (tools associated with a skill)
@@ -282,7 +369,7 @@ SkillMCPServerConfigurationModel.init(
         name: "idx_skill_mcp_server_config_workspace_skill_config",
       },
     ],
-  }
+  },
 );
 
 // Skill config <> MCP Server Configuration
@@ -363,7 +450,7 @@ SkillFileAttachmentModel.init(
         unique: true,
       },
     ],
-  }
+  },
 );
 
 // Skill config <> File Attachment
@@ -460,7 +547,7 @@ SkillDataSourceConfigurationModel.init(
         unique: true,
       },
     ],
-  }
+  },
 );
 
 SkillConfigurationModel.hasMany(SkillDataSourceConfigurationModel, {

@@ -4,6 +4,7 @@ import {
   SkillVersionModel,
 } from "@app/lib/models/skill";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { serializeSkillReference } from "@app/lib/skill_references";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
@@ -27,7 +28,7 @@ async function setupTest(
     skillOwnerRole?: "admin" | "builder" | "user";
     requestUserRole?: "admin" | "builder" | "user";
     method?: RequestMethod;
-  } = {}
+  } = {},
 ) {
   const skillOwnerRole = options.skillOwnerRole ?? "admin";
   const requestUserRole = options.requestUserRole ?? "admin";
@@ -52,7 +53,7 @@ async function setupTest(
   if (requestUserRole === "admin") {
     const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
       requestUser.sId,
-      workspace.sId
+      workspace.sId,
     );
     await SpaceFactory.defaults(adminAuth);
   } else {
@@ -61,14 +62,14 @@ async function setupTest(
     await MembershipFactory.associate(workspace, adminUser, { role: "admin" });
     const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
       adminUser.sId,
-      workspace.sId
+      workspace.sId,
     );
     await SpaceFactory.defaults(adminAuth);
   }
 
   let requestUserAuth = await Authenticator.fromUserIdAndWorkspaceId(
     requestUser.sId,
-    workspace.sId
+    workspace.sId,
   );
 
   // Create skill owner (might be the same as requestUser or different)
@@ -84,7 +85,7 @@ async function setupTest(
     });
     skillOwnerAuth = await Authenticator.fromUserIdAndWorkspaceId(
       skillOwner.sId,
-      workspace.sId
+      workspace.sId,
     );
   }
 
@@ -92,7 +93,7 @@ async function setupTest(
   const skillModel = await SkillFactory.create(skillOwnerAuth);
   const skill = await SkillResource.fetchByModelIdWithAuth(
     skillOwnerAuth,
-    skillModel.id
+    skillModel.id,
   );
   if (!skill) {
     throw new Error("Failed to create skill");
@@ -101,11 +102,11 @@ async function setupTest(
   // Regenerate auth to pick up the new group membership
   skillOwnerAuth = await Authenticator.fromUserIdAndWorkspaceId(
     skillOwner.sId,
-    workspace.sId
+    workspace.sId,
   );
   requestUserAuth = await Authenticator.fromUserIdAndWorkspaceId(
     requestUser.sId,
-    workspace.sId
+    workspace.sId,
   );
 
   // Set up query parameters for the skill
@@ -262,7 +263,7 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
     expect(res._getStatusCode()).toBe(404);
     expect(res._getJSONData().error.type).toBe("invalid_request_error");
     expect(res._getJSONData().error.message).toContain(
-      "MCP server views not all found"
+      "MCP server views not all found",
     );
   });
 
@@ -280,6 +281,33 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
     await handler(req, res);
     expect(res._getStatusCode()).toBe(400);
     expect(res._getJSONData().error.type).toBe("invalid_request_error");
+  });
+
+  it("should return 400 when a skill references itself", async () => {
+    const { req, res, skill } = await setupTest({
+      requestUserRole: "admin",
+      method: "PATCH",
+    });
+
+    req.body = {
+      name: skill.name,
+      agentFacingDescription: skill.agentFacingDescription,
+      userFacingDescription: skill.userFacingDescription,
+      instructions: serializeSkillReference({
+        name: skill.name,
+        skillId: skill.sId,
+      }),
+      icon: null,
+      tools: [],
+      attachedKnowledge: [],
+      instructionsHtml: null,
+    };
+
+    await handler(req, res);
+    expect(res._getStatusCode()).toBe(400);
+    expect(res._getJSONData().error.message).toBe(
+      "A skill cannot reference itself.",
+    );
   });
 
   it("should successfully update the description", async () => {
@@ -312,7 +340,7 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
     // Verify the update persisted by fetching the resource
     const updatedSkill = await SkillResource.fetchById(
       requestUserAuth,
-      skill.sId
+      skill.sId,
     );
     expect(updatedSkill).not.toBeNull();
     expect(updatedSkill?.agentFacingDescription).toBe(newDescription);
@@ -343,12 +371,12 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
     const serverView1 = await MCPServerViewFactory.create(
       workspace,
       server1.sId,
-      space1
+      space1,
     );
     const serverView2 = await MCPServerViewFactory.create(
       workspace,
       server2.sId,
-      space2
+      space2,
     );
 
     // Update skill with both tools
@@ -379,7 +407,7 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
     // Verify the update persisted in the database
     const updatedSkill = await SkillResource.fetchById(
       requestUserAuth,
-      skill.sId
+      skill.sId,
     );
     expect(updatedSkill).not.toBeNull();
     expect(updatedSkill?.requestedSpaceIds).toHaveLength(2);
@@ -416,7 +444,7 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
 
     const updatedSkill = await SkillResource.fetchById(
       requestUserAuth,
-      skill.sId
+      skill.sId,
     );
     expect(updatedSkill).not.toBeNull();
     expect(updatedSkill?.requestedSpaceIds).toContain(openSpace.id);
@@ -480,7 +508,7 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
     const serverView = await MCPServerViewFactory.create(
       workspace,
       server.sId,
-      space
+      space,
     );
 
     // Update skill with the tool
@@ -508,12 +536,12 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
     // Verify fetching the skill also shows the tool
     const updatedSkill = await SkillResource.fetchById(
       requestUserAuth,
-      skill.sId
+      skill.sId,
     );
     expect(updatedSkill).not.toBeNull();
     expect(updatedSkill?.toJSON(requestUserAuth).tools).toHaveLength(1);
     expect(updatedSkill?.toJSON(requestUserAuth).tools[0].sId).toBe(
-      serverView.sId
+      serverView.sId,
     );
   });
 
@@ -534,12 +562,12 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
     const dataSourceView1 = await DataSourceViewFactory.folder(
       workspace,
       globalSpace,
-      requestUser
+      requestUser,
     );
     const dataSourceView2 = await DataSourceViewFactory.folder(
       workspace,
       globalSpace,
-      requestUser
+      requestUser,
     );
 
     req.body = {
@@ -575,7 +603,7 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
     // Verify persistence by fetching the skill again.
     const updatedSkill = await SkillResource.fetchById(
       requestUserAuth,
-      skill.sId
+      skill.sId,
     );
     expect(updatedSkill).not.toBeNull();
     expect(updatedSkill?.dataSourceConfigurations).toHaveLength(2);
@@ -596,7 +624,7 @@ describe("PATCH /api/w/[wId]/skills/[sId] - Suggested skill activation", () => {
 
     const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
       requestUser.sId,
-      workspace.sId
+      workspace.sId,
     );
     await SpaceFactory.defaults(adminAuth);
 
@@ -630,7 +658,7 @@ describe("PATCH /api/w/[wId]/skills/[sId] - Suggested skill activation", () => {
 
     const updatedSkill = await SkillResource.fetchById(
       adminAuth,
-      suggestedSkill.sId
+      suggestedSkill.sId,
     );
     expect(updatedSkill).not.toBeNull();
     expect(updatedSkill?.status).toBe("active");
@@ -690,11 +718,11 @@ describe("PATCH /api/w/[wId]/skills/[sId] - file attachments", () => {
     // Verify persistence.
     const updatedSkill = await SkillResource.fetchById(
       requestUserAuth,
-      skill.sId
+      skill.sId,
     );
     expect(updatedSkill).not.toBeNull();
     expect(updatedSkill!.toJSON(requestUserAuth).fileAttachments).toHaveLength(
-      1
+      1,
     );
   });
 
@@ -778,10 +806,10 @@ describe("PATCH /api/w/[wId]/skills/[sId] - file attachments", () => {
     // Verify the file was added.
     const skillAfterAdd = await SkillResource.fetchById(
       requestUserAuth,
-      skill.sId
+      skill.sId,
     );
     expect(skillAfterAdd!.toJSON(requestUserAuth).fileAttachments).toHaveLength(
-      1
+      1,
     );
 
     // Now remove via the API.
@@ -804,10 +832,10 @@ describe("PATCH /api/w/[wId]/skills/[sId] - file attachments", () => {
     // Verify persistence.
     const updatedSkill = await SkillResource.fetchById(
       requestUserAuth,
-      skill.sId
+      skill.sId,
     );
     expect(updatedSkill!.toJSON(requestUserAuth).fileAttachments).toHaveLength(
-      0
+      0,
     );
 
     // Verify the join table row was deleted.
@@ -874,7 +902,7 @@ describe("DELETE /api/w/[wId]/skills/[sId]", () => {
     // Verify the skill is now archived.
     const archivedSkill = await SkillResource.fetchById(
       requestUserAuth,
-      suggestedSkill.sId
+      suggestedSkill.sId,
     );
     expect(archivedSkill).not.toBeNull();
     expect(archivedSkill?.status).toBe("archived");

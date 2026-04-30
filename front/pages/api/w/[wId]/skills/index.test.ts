@@ -1,8 +1,12 @@
 import { Authenticator } from "@app/lib/auth";
-import { SkillMCPServerConfigurationModel } from "@app/lib/models/skill";
+import {
+  SkillMCPServerConfigurationModel,
+  SkillReferenceModel,
+} from "@app/lib/models/skill";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { discoverToolsSkill } from "@app/lib/resources/skill/code_defined/discover_tools";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { serializeSkillReference } from "@app/lib/skill_references";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
@@ -29,7 +33,7 @@ import handler from "./index";
 
 async function setupTest(
   method: RequestMethod = "GET",
-  role: MembershipRoleType = "builder"
+  role: MembershipRoleType = "builder",
 ) {
   const mockRequest = await createPrivateApiMockRequest({
     method,
@@ -45,7 +49,7 @@ describe("GET /api/w/[wId]/skills", () => {
 
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
-      workspace.sId
+      workspace.sId,
     );
 
     await SkillFactory.create(auth, {
@@ -75,7 +79,7 @@ describe("GET /api/w/[wId]/skills", () => {
 
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
-      workspace.sId
+      workspace.sId,
     );
 
     await SkillFactory.create(auth, {
@@ -108,7 +112,7 @@ describe("GET /api/w/[wId]/skills", () => {
 
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
-      workspace.sId
+      workspace.sId,
     );
 
     const customSkill = await SkillFactory.create(auth, {
@@ -146,7 +150,7 @@ describe("GET /api/w/[wId]/skills", () => {
 
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
-      workspace.sId
+      workspace.sId,
     );
 
     await SkillFactory.create(auth, {
@@ -181,7 +185,7 @@ describe("GET /api/w/[wId]/skills", () => {
 
       const auth = await Authenticator.fromUserIdAndWorkspaceId(
         user.sId,
-        workspace.sId
+        workspace.sId,
       );
 
       await SkillFactory.create(auth, {
@@ -269,7 +273,7 @@ describe("GET /api/w/[wId]/skills", () => {
     const skillWithoutInstructionsAndTools = res
       ._getJSONData()
       .skills.find(
-        (s: SkillWithoutInstructionsAndToolsType) => s.sId === skill.sId
+        (s: SkillWithoutInstructionsAndToolsType) => s.sId === skill.sId,
       );
 
     expect(skillWithoutInstructionsAndTools).toMatchObject({
@@ -290,7 +294,7 @@ describe("GET /api/w/[wId]/skills", () => {
     expect(skillWithoutInstructionsAndTools).toHaveProperty("sourceMetadata");
     expect(skillWithoutInstructionsAndTools).not.toHaveProperty("instructions");
     expect(skillWithoutInstructionsAndTools).not.toHaveProperty(
-      "instructionsHtml"
+      "instructionsHtml",
     );
     expect(skillWithoutInstructionsAndTools).not.toHaveProperty("tools");
   });
@@ -300,7 +304,7 @@ describe("GET /api/w/[wId]/skills", () => {
 
     const fetchInstructionsSpy = vi.spyOn(
       discoverToolsSkill,
-      "fetchInstructions"
+      "fetchInstructions",
     );
     try {
       req.query = {
@@ -318,8 +322,8 @@ describe("GET /api/w/[wId]/skills", () => {
           ._getJSONData()
           .skills.some(
             (s: SkillWithoutInstructionsAndToolsType) =>
-              s.sId === discoverToolsSkill.sId
-          )
+              s.sId === discoverToolsSkill.sId,
+          ),
       ).toBe(true);
       expect(fetchInstructionsSpy).not.toHaveBeenCalled();
     } finally {
@@ -334,7 +338,7 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
 
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
-      workspace.sId
+      workspace.sId,
     );
 
     const skill = await SkillFactory.create(auth, {
@@ -379,7 +383,7 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
 
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
-      workspace.sId
+      workspace.sId,
     );
 
     const agent = await AgentConfigurationFactory.createTestAgent(auth, {
@@ -416,7 +420,7 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
 
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
-      workspace.sId
+      workspace.sId,
     );
 
     const skill = await SkillFactory.create(auth, {
@@ -452,7 +456,7 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
 
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
-      workspace.sId
+      workspace.sId,
     );
 
     const skill = await SkillFactory.create(auth, {
@@ -482,7 +486,7 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
 
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
-      workspace.sId
+      workspace.sId,
     );
 
     const skill = await SkillFactory.create(auth, {
@@ -561,7 +565,7 @@ describe("POST /api/w/[wId]/skills", () => {
 
     const createdSkill = await SkillResource.fetchById(
       auth,
-      responseData.skill.sId
+      responseData.skill.sId,
     );
     expect(createdSkill).not.toBeNull();
   });
@@ -569,7 +573,7 @@ describe("POST /api/w/[wId]/skills", () => {
   it("creates a skill configuration with additional requested spaces", async () => {
     const { auth, req, res, workspace, globalGroup } = await setupTest(
       "POST",
-      "admin"
+      "admin",
     );
 
     const openSpace = await SpaceFactory.regular(workspace);
@@ -599,7 +603,7 @@ describe("POST /api/w/[wId]/skills", () => {
 
     const createdSkill = await SkillResource.fetchById(
       auth,
-      responseData.skill.sId
+      responseData.skill.sId,
     );
     expect(createdSkill).not.toBeNull();
     expect(createdSkill!.requestedSpaceIds).toContain(openSpace.id);
@@ -634,10 +638,51 @@ describe("POST /api/w/[wId]/skills", () => {
     });
   });
 
+  it("creates skill references from serialized instructions", async () => {
+    const { auth, req, res, workspace } = await setupTest("POST", "admin");
+
+    const childSkill = await SkillFactory.create(auth, {
+      name: "Referenced Child Skill",
+    });
+
+    req.body = {
+      name: "Parent Skill",
+      agentFacingDescription: "Uses another skill when needed",
+      userFacingDescription: "A parent skill",
+      instructions: `When needed, enable ${serializeSkillReference({
+        name: childSkill.name,
+        skillId: childSkill.sId,
+      })}`,
+      icon: "PuzzleIcon",
+      tools: [],
+      extendedSkillId: null,
+      attachedKnowledge: [],
+      instructionsHtml: null,
+    };
+
+    await handler(req, res);
+    expect(res._getStatusCode()).toBe(200);
+
+    const createdSkill = await SkillResource.fetchById(
+      auth,
+      res._getJSONData().skill.sId,
+    );
+    expect(createdSkill).not.toBeNull();
+
+    const references = await SkillReferenceModel.findAll({
+      where: {
+        workspaceId: workspace.id,
+        parentSkillId: createdSkill!.id,
+      },
+    });
+    expect(references).toHaveLength(1);
+    expect(references[0].childSkillId).toBe(childSkill.id);
+  });
+
   it("creates a skill configuration with 2 tools", async () => {
     const { req, res, workspace, auth, user, globalSpace } = await setupTest(
       "POST",
-      "admin"
+      "admin",
     );
 
     const server1 = await RemoteMCPServerFactory.create(workspace, {
@@ -650,12 +695,12 @@ describe("POST /api/w/[wId]/skills", () => {
     const serverView1 = await MCPServerViewFactory.create(
       workspace,
       server1.sId,
-      globalSpace
+      globalSpace,
     );
     const serverView2 = await MCPServerViewFactory.create(
       workspace,
       server2.sId,
-      globalSpace
+      globalSpace,
     );
 
     req.body = {
@@ -688,11 +733,11 @@ describe("POST /api/w/[wId]/skills", () => {
 
     const createdSkill = await SkillResource.fetchById(
       auth,
-      responseData.skill.sId
+      responseData.skill.sId,
     );
     expect(createdSkill).not.toBeNull();
     expect(createdSkill!.agentFacingDescription).toBe(
-      "Use this skill all the time"
+      "Use this skill all the time",
     );
     expect(createdSkill!.instructions).toBe("Test instructions for the skill");
     expect(createdSkill!.editedBy).toBe(user.id);
@@ -716,20 +761,20 @@ describe("POST /api/w/[wId]/skills", () => {
   it("creates a skill configuration with requestedSpaceIds derived from tool's space", async () => {
     const { auth, req, res, workspace, user } = await setupTest(
       "POST",
-      "admin"
+      "admin",
     );
 
     // Create a regular space where the tool will be placed
     const regularSpace = await SpaceFactory.regular(workspace);
     const memberGroup = await GroupFactory.regular(
       workspace,
-      "Tool Space Members"
+      "Tool Space Members",
     );
     await GroupFactory.withMembers(auth, memberGroup, [user]);
     await GroupSpaceFactory.associate(regularSpace, memberGroup);
     const spaceMemberAuth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
-      workspace.sId
+      workspace.sId,
     );
 
     // Create a remote MCP server and view in the regular space
@@ -739,7 +784,7 @@ describe("POST /api/w/[wId]/skills", () => {
     const serverView = await MCPServerViewFactory.create(
       workspace,
       server.sId,
-      regularSpace
+      regularSpace,
     );
 
     req.body = {
@@ -765,7 +810,7 @@ describe("POST /api/w/[wId]/skills", () => {
 
     const createdSkill = await SkillResource.fetchById(
       spaceMemberAuth,
-      responseData.skill.sId
+      responseData.skill.sId,
     );
     expect(createdSkill).not.toBeNull();
     expect(createdSkill!.requestedSpaceIds).toEqual([regularSpace.id]);
@@ -774,19 +819,19 @@ describe("POST /api/w/[wId]/skills", () => {
   it("creates a skill with attached knowledge", async () => {
     const { req, res, auth, workspace, user, globalSpace } = await setupTest(
       "POST",
-      "admin"
+      "admin",
     );
 
     const dataSourceView = await DataSourceViewFactory.folder(
       workspace,
       globalSpace,
-      user
+      user,
     );
 
     const dataSourceView1 = await DataSourceViewFactory.folder(
       workspace,
       globalSpace,
-      user
+      user,
     );
 
     req.body = {
@@ -830,27 +875,27 @@ describe("POST /api/w/[wId]/skills", () => {
   it("creates a skill with requestedSpaceIds derived from attached knowledge's space", async () => {
     const { auth, req, res, workspace, user } = await setupTest(
       "POST",
-      "admin"
+      "admin",
     );
 
     // Create a regular space where the knowledge will be placed.
     const regularSpace = await SpaceFactory.regular(workspace);
     const memberGroup = await GroupFactory.regular(
       workspace,
-      "Knowledge Space Members"
+      "Knowledge Space Members",
     );
     await GroupFactory.withMembers(auth, memberGroup, [user]);
     await GroupSpaceFactory.associate(regularSpace, memberGroup);
     const spaceMemberAuth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
-      workspace.sId
+      workspace.sId,
     );
 
     // Create a data source view in the regular space.
     const dataSourceView = await DataSourceViewFactory.folder(
       workspace,
       regularSpace,
-      user
+      user,
     );
 
     const nodeId = "node1";
@@ -887,7 +932,7 @@ describe("POST /api/w/[wId]/skills", () => {
 
     const createdSkill = await SkillResource.fetchById(
       spaceMemberAuth,
-      responseData.skill.sId
+      responseData.skill.sId,
     );
     expect(createdSkill).not.toBeNull();
     expect(createdSkill!.requestedSpaceIds).toEqual([regularSpace.id]);
@@ -935,7 +980,7 @@ describe("POST /api/w/[wId]/skills - file attachments", () => {
     expect(data.skill.fileAttachments).toHaveLength(2);
 
     const fileNames = data.skill.fileAttachments.map(
-      (f: { fileName: string }) => f.fileName
+      (f: { fileName: string }) => f.fileName,
     );
     expect(fileNames).toContain("template.txt");
     expect(fileNames).toContain("schema.json");
@@ -973,7 +1018,7 @@ describe("POST /api/w/[wId]/skills - file attachments", () => {
     await handler(req, res);
     expect(res._getStatusCode()).toBe(403);
     expect(res._getJSONData().error.message).toContain(
-      "File attachments are not supported"
+      "File attachments are not supported",
     );
   });
 
@@ -1032,7 +1077,7 @@ describe("POST /api/w/[wId]/skills - file attachments", () => {
     await handler(req, res);
     expect(res._getStatusCode()).toBe(400);
     expect(res._getJSONData().error.message).toContain(
-      "not ready or not a skill_attachment"
+      "not ready or not a skill_attachment",
     );
   });
 });
