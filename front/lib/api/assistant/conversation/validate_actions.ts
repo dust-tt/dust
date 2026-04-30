@@ -340,9 +340,14 @@ async function validateSandboxAction(
     );
   }
 
-  const { updatedCount } = await sandboxAction.updateStatus(
-    getMCPApprovalStateFromUserApprovalState(approvalState)
-  );
+  // Approval transitions the action straight to `running` (not the
+  // intermediate `ready_allowed_explicitly`) so that the audit row mirrors
+  // the parent bash action — both are running once the user unblocks. The
+  // executeSandboxToolCall path treats `running` as a valid pre-execute
+  // state and still walks it through `running → succeeded / errored` on
+  // re-POST.
+  const newStatus = approvalState === "rejected" ? "denied" : "running";
+  const { updatedCount } = await sandboxAction.updateStatus(newStatus);
 
   if (approvalState === "always_approved" && user) {
     await handleAlwaysApproved(auth, user, {

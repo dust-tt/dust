@@ -34,7 +34,10 @@ import {
   getFeatureFlags,
   isSandboxTokenPrefix,
 } from "@app/lib/auth";
-import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import {
+  AgentMCPActionResource,
+  type SandboxMCPAction,
+} from "@app/lib/resources/agent_mcp_action_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
@@ -99,20 +102,34 @@ async function extractSandboxClaims(
   return verifySandboxExecToken(token);
 }
 
+/**
+ * Runs the tool and transitions the audit row through `running →
+ * succeeded / errored`. The audit row is always present at this point — it
+ * was created by `handleInitialToolCall` (allowed-immediately path) or
+ * already existed from a prior block (re-execute path).
+ */
 async function executeSandboxToolCall(
   auth: Authenticator,
   toolArgs: Record<string, unknown>,
   runContext: AgentLoopRunContextType,
+  action: SandboxMCPAction,
   res: EndpointResponse
 ): Promise<void> {
-  const result = await callMCPToolForSandbox(auth, toolArgs, runContext);
-  res.status(200).json({
-    success: true,
-    result: {
-      content: result.content,
-      isError: result.isError === true,
-    },
-  });
+  await action.updateStatus("running");
+  try {
+    const result = await callMCPToolForSandbox(auth, toolArgs, runContext);
+    await action.updateStatus(result.isError ? "errored" : "succeeded");
+    res.status(200).json({
+      success: true,
+      result: {
+        content: result.content,
+        isError: result.isError === true,
+      },
+    });
+  } catch (err) {
+    await action.updateStatus("errored");
+    throw err;
+  }
 }
 
 async function buildSandboxAgentLoopContext(
@@ -245,18 +262,19 @@ async function buildSandboxAgentLoopContext(
 }
 
 /**
- * Creates a blocked sandbox action and publishes approval events.
- * Returns the action's sId so the client can poll for approval status.
+ * Bubbles up a blocked sandbox action to its parent bash `AgentMCPAction` and
+ * publishes approval events. The audit row already exists — its status is
+ * `blocked_validation_required`.
  *
- * Bubbles up the blocked state to the parent bash AgentMCPAction by flipping
- * its status to `blocked_child_action_input_required` and writing a sandbox
- * `resumeState` carrying the child action id. This mirrors how `run_agent`
- * surfaces sub-agent blocks: the FE sees a single bubbled parent action and
- * resolves the child via `childBlockedActionsList`. The agent loop's "any
- * blocked actions on this message?" check naturally picks up the parent.
+ * The bubble-up flips the parent to `blocked_child_action_input_required` and
+ * stores a sandbox `resumeState` with the child id. This mirrors how
+ * `run_agent` surfaces sub-agent blocks: the FE sees a single bubbled parent
+ * and resolves the child via `childBlockedActionsList`. The agent loop's
+ * "any blocked actions on this message?" check naturally picks up the parent.
  */
-async function createBlockedSandboxAction(
+async function notifyApprovalNeeded(
   auth: Authenticator,
+  action: SandboxMCPAction,
   {
     agentConfiguration,
     agentMessage,
@@ -274,16 +292,7 @@ async function createBlockedSandboxAction(
     step: number;
     parentAction: AgentMCPActionResource | null;
   }
-): Promise<string> {
-  const action = await AgentMCPActionResource.makeNewSandboxAction(auth, {
-    agentMessageId: agentMessage.agentMessageId,
-    step,
-    status: "blocked_validation_required",
-    mcpServerConfigurationId: toolConfiguration.id.toString(),
-    toolConfiguration,
-    augmentedInputs: toolArgs,
-  });
-
+): Promise<void> {
   // Bubble up to the parent bash action. Without a parent we still publish
   // the approval event below, but the agent loop won't see anything blocked.
   // In practice the parent is always present when a sandbox tool call fires.
@@ -295,7 +304,6 @@ async function createBlockedSandboxAction(
     await parentAction.markBlockedAwaitingChild(resumeState);
   }
 
-  // Publish approval event to the frontend.
   const approvalEvent: MCPApproveExecutionEvent = {
     type: "tool_approve_execution",
     actionId: action.sId,
@@ -322,14 +330,13 @@ async function createBlockedSandboxAction(
     step,
   });
 
-  // Publish to sandbox-specific channel for the bash handler.
+  // Sandbox-specific channel — the bash handler subscribes to it to discover
+  // blocked children (in addition to its DB poll).
   await getRedisHybridManager().publish(
     `sandbox:blocked:${agentMessage.sId}`,
     JSON.stringify({ actionId: action.sId }),
     "message_events"
   );
-
-  return action.sId;
 }
 
 /**
@@ -527,15 +534,22 @@ async function handleReExecuteApprovedToolCall(
     });
   }
 
+  // Valid pre-execute states:
+  // - `ready_allowed_implicitly`: never blocked (e.g. never_ask permission).
+  // - `running`: validated via approval flow — `validateSandboxAction` flips
+  //   the row straight to `running` after user approval (same lifecycle as
+  //   the parent bash action). `executeSandboxToolCall` re-asserts running
+  //   before invoking the tool, so re-running here is a no-op.
+  // Anything else is still blocked or already terminal.
   if (
-    action.status === "blocked_validation_required" ||
-    action.status === "denied"
+    action.status !== "ready_allowed_implicitly" &&
+    action.status !== "running"
   ) {
     return apiError(req, res, {
-      status_code: 403,
+      status_code: 409,
       api_error: {
         type: "invalid_request_error",
-        message: `Action is not approved (status: ${action.status}).`,
+        message: `Action is not ready to execute (status: ${action.status}).`,
       },
     });
   }
@@ -572,7 +586,7 @@ async function handleReExecuteApprovedToolCall(
     });
   }
 
-  return executeSandboxToolCall(auth, toolArgs, runContext, res);
+  return executeSandboxToolCall(auth, toolArgs, runContext, action, res);
 }
 
 async function handleInitialToolCall(
@@ -612,7 +626,7 @@ async function handleInitialToolCall(
   }
 
   // Check tool stakes.
-  const { status } = await getExecutionStatusFromConfig(
+  const { status: stakeStatus } = await getExecutionStatusFromConfig(
     auth,
     runContext.toolConfiguration,
     runContext.agentMessage,
@@ -622,25 +636,37 @@ async function handleInitialToolCall(
     }
   );
 
-  if (status !== "blocked_validation_required") {
-    return executeSandboxToolCall(auth, toolArgs, runContext, res);
+  // Always create the audit row up-front. The status carries whether the
+  // tool will block (`blocked_validation_required`) or run immediately
+  // (`ready_allowed_*`). For approved-immediately calls, executeSandboxToolCall
+  // transitions it through `running → succeeded / errored`.
+  const action = await AgentMCPActionResource.makeNewSandboxAction(auth, {
+    agentMessageId: runContext.agentMessage.agentMessageId,
+    step: sandboxResult.step,
+    status: stakeStatus,
+    mcpServerConfigurationId: runContext.toolConfiguration.id.toString(),
+    toolConfiguration: runContext.toolConfiguration,
+    augmentedInputs: toolArgs,
+  });
+
+  if (stakeStatus === "blocked_validation_required") {
+    await notifyApprovalNeeded(auth, action, {
+      agentConfiguration: runContext.agentConfiguration,
+      agentMessage: runContext.agentMessage,
+      conversation: runContext.conversation,
+      toolConfiguration: runContext.toolConfiguration,
+      toolArgs,
+      step: sandboxResult.step,
+      parentAction: sandboxResult.parentAction,
+    });
+    res.status(202).json({
+      status: "pending",
+      actionId: action.sId,
+    });
+    return;
   }
 
-  // Create a blocked action and return 202 — the client polls GET for status.
-  const actionId = await createBlockedSandboxAction(auth, {
-    agentConfiguration: runContext.agentConfiguration,
-    agentMessage: runContext.agentMessage,
-    conversation: runContext.conversation,
-    toolConfiguration: runContext.toolConfiguration,
-    toolArgs,
-    step: sandboxResult.step,
-    parentAction: sandboxResult.parentAction,
-  });
-
-  res.status(202).json({
-    status: "pending",
-    actionId,
-  });
+  return executeSandboxToolCall(auth, toolArgs, runContext, action, res);
 }
 
 export default withPublicAPIAuthentication(
