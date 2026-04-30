@@ -11,6 +11,10 @@ import {
   pastedAttachmentDirective,
 } from "@app/components/markdown/PastedAttachmentBlock";
 import {
+  SkillBlock,
+  skillDirective,
+} from "@app/components/markdown/SkillBlock";
+import {
   TodoDirectiveBlock,
   todoDirective,
 } from "@app/components/markdown/TodoDirectiveBlock";
@@ -20,6 +24,7 @@ import {
   getUserMentionPlugin,
   userMentionDirective,
 } from "@app/lib/mentions/markdown/plugin";
+import { replaceSkillTagsWithDirectives } from "@app/lib/skills/format";
 import type { UserMessageType } from "@app/types/assistant/conversation";
 import type { WorkspaceType } from "@app/types/user";
 import { Markdown } from "@dust-tt/sparkle";
@@ -47,6 +52,7 @@ export const UserMessageMarkdown = ({
       mention_user: getUserMentionPlugin(owner),
       content_node_mention: ContentNodeMentionBlock,
       pasted_attachment: PastedAttachmentBlock,
+      skill: SkillBlock,
       todo: TodoDirectiveBlock,
     }),
     [owner]
@@ -59,14 +65,20 @@ export const UserMessageMarkdown = ({
       userMentionDirective,
       contentNodeMentionDirective,
       pastedAttachmentDirective,
+      skillDirective,
       todoDirective,
     ],
     []
   );
 
+  const displayContent = useMemo(
+    () => replaceSkillTagsWithDirectives(message.content),
+    [message.content]
+  );
+
   return (
     <Markdown
-      content={message.content}
+      content={displayContent}
       isStreaming={false}
       isLastMessage={isLastMessage}
       additionalMarkdownComponents={additionalMarkdownComponents}

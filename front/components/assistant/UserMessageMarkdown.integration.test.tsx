@@ -209,6 +209,22 @@ Quote text
       expect(container).toBeInTheDocument();
     });
 
+    it("renders inline skill tags as chips", () => {
+      const content = 'Please use <skill id="skill_123" name="commit" />';
+      const message = { ...mockMessage, content };
+      const { container } = render(
+        <UserMessageMarkdown
+          owner={mockOwner}
+          message={message}
+          isLastMessage={false}
+        />
+      );
+
+      expect(container.textContent).toContain("Please use");
+      expect(container.textContent).toContain("commit");
+      expect(container.textContent).not.toContain("<skill");
+    });
+
     it("renders content node mentions", () => {
       const content = ":content_node_mention[Document]{nodeId=doc-123}";
       const message = { ...mockMessage, content };

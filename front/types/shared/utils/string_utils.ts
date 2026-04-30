@@ -1,4 +1,5 @@
 import { replaceMentionsWithAt } from "@app/lib/mentions/format";
+import { replaceSkillTagsWithSlashNames } from "@app/lib/skills/format";
 import removeMarkdown from "remove-markdown";
 
 const CONTENT_NODE_MENTION_REGEX =
@@ -89,7 +90,11 @@ function decodeHtmlEntities(text: string): string {
 export function stripMarkdown(text: string): string {
   return decodeHtmlEntities(
     removeMarkdown(
-      replaceMentionsWithAt(replaceContentNodeMarkdownWithQuotedTitle(text))
+      replaceMentionsWithAt(
+        replaceSkillTagsWithSlashNames(
+          replaceContentNodeMarkdownWithQuotedTitle(text)
+        )
+      )
     )
   );
 }
