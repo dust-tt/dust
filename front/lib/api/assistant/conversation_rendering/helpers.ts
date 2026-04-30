@@ -7,7 +7,7 @@ import { isTextContent } from "@app/lib/actions/mcp_internal_actions/output_sche
 import { rewriteContentForModel } from "@app/lib/actions/mcp_utils";
 import { getEnableSkillIdFromOutputBlock } from "@app/lib/api/actions/servers/skill_management/rendering";
 import {
-  type EnabledSkillType,
+  type EnabledSkill,
   renderEnabledSkillUserMessageFromInstructions,
 } from "@app/lib/api/assistant/skills_rendering";
 import type { Authenticator } from "@app/lib/auth";
@@ -57,7 +57,7 @@ function renderEnabledSkillMessagesForAction(
     enabledSkillById,
     renderSkillsAsUserMessages,
   }: {
-    enabledSkillById: ReadonlyMap<string, EnabledSkillType>;
+    enabledSkillById: ReadonlyMap<string, EnabledSkill>;
     renderSkillsAsUserMessages: boolean;
   }
 ): UserMessageTypeModel[] {
@@ -167,7 +167,7 @@ export function getSteps(
     workspaceId: string;
     conversationId: string;
     onMissingAction: "inject-placeholder" | "skip";
-    enabledSkillById: ReadonlyMap<string, EnabledSkillType>;
+    enabledSkillById: ReadonlyMap<string, EnabledSkill>;
     renderSkillsAsUserMessages?: boolean;
   }
 ): Step[] {

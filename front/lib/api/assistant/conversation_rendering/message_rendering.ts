@@ -10,7 +10,7 @@ import {
   renderOtherAgentMessageAsUserMessage,
   renderUserMessage,
 } from "@app/lib/api/assistant/conversation_rendering/helpers";
-import type { EnabledSkillType } from "@app/lib/api/assistant/skills_rendering";
+import type { EnabledSkill } from "@app/lib/api/assistant/skills_rendering";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
@@ -152,7 +152,7 @@ export async function renderAllMessages(
     excludeImages?: boolean;
     onMissingAction: "inject-placeholder" | "skip";
     agentConfiguration?: AgentConfigurationType;
-    enabledSkills: EnabledSkillType[];
+    enabledSkills: EnabledSkill[];
     renderSkillsAsUserMessages?: boolean;
   }
 ): Promise<ModelMessageTypeMultiActions[]> {

@@ -1,6 +1,6 @@
 import { groupMessagesIntoInteractions } from "@app/lib/api/assistant/conversation/interactions";
 import { renderAllMessages } from "@app/lib/api/assistant/conversation_rendering/message_rendering";
-import type { EnabledSkillType } from "@app/lib/api/assistant/skills_rendering";
+import type { EnabledSkill } from "@app/lib/api/assistant/skills_rendering";
 import { getTextContentFromMessage } from "@app/lib/api/assistant/utils";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
@@ -68,7 +68,7 @@ export async function renderConversationForModel(
     onMissingAction?: "inject-placeholder" | "skip";
     enablePreviousInteractionsPruning?: boolean;
     agentConfiguration?: AgentConfigurationType;
-    enabledSkills: EnabledSkillType[];
+    enabledSkills: EnabledSkill[];
     renderSkillsAsUserMessages?: boolean;
   }
 ): Promise<
