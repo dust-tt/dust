@@ -447,7 +447,7 @@ impl Provider for MCPConnectionProvider {
         match &error {
             ProviderHttpRequestError::RequestFailed {
                 status, message, ..
-            } if *status == 400 => {
+            } if *status == 400 || *status == 401 => {
                 // Detect both "invalid_grant" and "invalid_refresh_token" as revoked token indicators.
                 let is_revoked =
                     message.contains("invalid_grant") || message.contains("invalid_refresh_token");
