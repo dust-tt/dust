@@ -15,7 +15,6 @@ import {
   traceSandboxOperation,
 } from "@app/lib/api/sandbox/provider";
 import logger from "@app/logger/logger";
-import { isDevelopment } from "@app/types/shared/env";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -23,19 +22,14 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { CommandExitError, NotFoundError, Sandbox } from "e2b";
 
 const ONE_HOUR_MS = 60 * 60 * 1_000;
-const ONE_DAY_MS = 24 * ONE_HOUR_MS;
 
 /**
- * In development, cap sandbox lifetime at 24h (E2B Pro max) so forgotten
- * local sandboxes don't linger. In production, set a 30-day cap: the reaper
- * destroys after 4 days *inactive*, but an actively-used sandbox can keep
- * refreshing its inactivity timer for much longer than 4 days of wall-clock
- * time. 30 days gives any realistic active session plenty of headroom while
- * still keeping a hard E2B-side safety net.
+ * E2B Pro hard-caps sandbox lifetime at 24h — passing a larger value errors
+ * out at create/connect time. Long-running sessions need to recreate/wake on
+ * expiry; the reaper still owns the inactivity-based teardown below this
+ * ceiling.
  */
-const SANDBOX_LIFETIME_MS = isDevelopment()
-  ? 24 * ONE_HOUR_MS
-  : 30 * ONE_DAY_MS;
+const SANDBOX_LIFETIME_MS = 24 * ONE_HOUR_MS;
 
 /** Timeout for individual API calls to E2B (create, connect, etc.). */
 const REQUEST_TIMEOUT_MS = 30_000;
