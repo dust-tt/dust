@@ -1,9 +1,5 @@
 import { compareForFuzzySort, subFilter } from "@app/lib/utils";
 
-export function normalizeCapabilitySearchQuery(query: string) {
-  return query.trim().toLowerCase();
-}
-
 export function matchesCapabilitySearchQuery({
   label,
   normalizedQuery,

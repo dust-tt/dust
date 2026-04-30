@@ -6,7 +6,6 @@ import { SlashCommandDropdown } from "@app/components/editor/extensions/skill_bu
 import {
   compareCapabilitySearchResults,
   matchesCapabilitySearchQuery,
-  normalizeCapabilitySearchQuery,
 } from "@app/components/shared/capability_search";
 import {
   getMcpServerViewDescription,
@@ -49,7 +48,7 @@ export function filterInputBarSlashSuggestions({
   serverViews: MCPServerViewType[];
   skills: SkillWithoutInstructionsAndToolsType[];
 }): InputBarSlashSuggestionCapability[] {
-  const normalizedQuery = normalizeCapabilitySearchQuery(query);
+  const normalizedQuery = query.trim().toLowerCase();
 
   const capabilities: (InputBarSlashSuggestionCapability & {
     sortName: string;

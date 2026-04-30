@@ -3,7 +3,6 @@ import { MCPServerDetails } from "@app/components/actions/mcp/MCPServerDetails";
 import {
   compareCapabilitySearchResults,
   matchesCapabilitySearchQuery,
-  normalizeCapabilitySearchQuery,
 } from "@app/components/shared/capability_search";
 import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
 import {
@@ -328,7 +327,7 @@ export function CapabilitiesPicker({
   );
 
   const normalizedSearchText = useMemo(
-    () => normalizeCapabilitySearchQuery(searchText),
+    () => searchText.trim().toLowerCase(),
     [searchText]
   );
 
