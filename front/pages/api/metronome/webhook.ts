@@ -546,7 +546,10 @@ async function handler(
               // on this customer, contract.start (whether already processed
               // or arriving shortly) will swap the subscription — leave the
               // subscription alone here and skip the scrub.
-              const successorsResult = await listMetronomeContracts(customerId);
+              const successorsResult = await listMetronomeContracts(
+                customerId,
+                { coveringDate: new Date() }
+              );
               if (successorsResult.isErr()) {
                 logger.error(
                   {
@@ -565,14 +568,8 @@ async function handler(
                 });
               }
 
-              const nowMs = Date.now();
               const hasActiveSuccessor = successorsResult.value.some(
-                (c) =>
-                  c.id !== contractId &&
-                  !c.archived_at &&
-                  new Date(c.starting_at).getTime() <= nowMs &&
-                  (!c.ending_before ||
-                    new Date(c.ending_before).getTime() > nowMs)
+                (c) => c.id !== contractId
               );
               if (hasActiveSuccessor) {
                 logger.info(

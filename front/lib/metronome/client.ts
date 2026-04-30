@@ -572,16 +572,18 @@ export async function getMetronomeRateCardById({
 }
 
 /**
- * List all contracts for a Metronome customer (active, future-scheduled,
- * archived). Used when we need to reason about overlaps rather than just
- * "the most recent" contract.
+ * List contracts for a Metronome customer. Archived contracts are excluded
+ * by default (Metronome API default). Pass `coveringDate` to restrict the
+ * response to contracts active at that point in time.
  */
 export async function listMetronomeContracts(
-  metronomeCustomerId: string
+  metronomeCustomerId: string,
+  { coveringDate }: { coveringDate?: Date } = {}
 ): Promise<Result<ContractV2[], Error>> {
   try {
     const response = await getMetronomeClient().v2.contracts.list({
       customer_id: metronomeCustomerId,
+      ...(coveringDate ? { covering_date: coveringDate.toISOString() } : {}),
     });
     return new Ok(response.data);
   } catch (err) {
