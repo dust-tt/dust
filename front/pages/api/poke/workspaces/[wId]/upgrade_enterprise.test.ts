@@ -77,7 +77,8 @@ async function ensureEnterprisePlan(): Promise<void> {
  */
 async function makeSubscriptionMetronomeBilled(
   workspace: WorkspaceType,
-  contractId: string
+  contractId: string,
+  { stripeSubscriptionId = null }: { stripeSubscriptionId?: string | null } = {}
 ): Promise<void> {
   await WorkspaceResource.updateMetronomeCustomerId(
     (await WorkspaceResource.fetchById(workspace.sId))!.id,
@@ -99,7 +100,7 @@ async function makeSubscriptionMetronomeBilled(
       status: "active",
       startDate: new Date(),
       endDate: null,
-      stripeSubscriptionId: null,
+      stripeSubscriptionId,
       metronomeContractId: contractId,
     },
     sub.getPlan()
@@ -174,6 +175,25 @@ describe("POST /api/poke/workspaces/[wId]/upgrade_enterprise — Metronome path"
       "not Metronome-only billed"
     );
     expect(createMetronomeContract).not.toHaveBeenCalled();
+  });
+
+  it("accepts a metronome-billed subscription when stripeSubscriptionId is an empty string", async () => {
+    await ensureEnterprisePlan();
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      isSuperUser: true,
+    });
+    await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID, {
+      stripeSubscriptionId: "",
+    });
+
+    req.body = defaultBody();
+    req.query.wId = workspace.sId;
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(createMetronomeContract).toHaveBeenCalled();
   });
 
   it("rejects when startingAt is in the past", async () => {

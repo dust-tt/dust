@@ -135,9 +135,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       return false;
     }
 
-    return (
-      this.stripeSubscriptionId !== null || this.metronomeContractId !== null
-    );
+    return !!this.stripeSubscriptionId || !!this.metronomeContractId;
   }
 
   /**
@@ -145,15 +143,11 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
    * Both stripeSubscriptionId and metronomeContractId are set.
    */
   get isMetronomeShadowBilled(): boolean {
-    return (
-      this.stripeSubscriptionId !== null && this.metronomeContractId !== null
-    );
+    return !!this.stripeSubscriptionId && !!this.metronomeContractId;
   }
 
   get isMetronomeOnlyBilled(): boolean {
-    return (
-      this.metronomeContractId !== null && this.stripeSubscriptionId === null
-    );
+    return !!this.metronomeContractId && !this.stripeSubscriptionId;
   }
 
   static async makeNew(
