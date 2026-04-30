@@ -255,7 +255,7 @@ export async function runCompaction(
     });
 
     if (historyFileRes.isOk()) {
-      content = `${summary}\n\nFull conversation history before compaction: ${historyFileRes.value}`;
+      content = `${summary}\n\n---\n\nFull conversation history before compaction: ${historyFileRes.value}`;
       status = "succeeded";
 
       logger.info(
