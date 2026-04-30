@@ -15,6 +15,7 @@ import type {
   UserMention,
 } from "@app/types/assistant/mentions";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { isString } from "@app/types/shared/utils/general";
 import type { JSONContent } from "@tiptap/react";
 
 type SkillReference = {
@@ -140,7 +141,7 @@ export function extractFromEditorJSON(node?: JSONContent): {
     const skillId = node.attrs?.skillId;
     const skillName = node.attrs?.skillName;
 
-    if (typeof skillId === "string" && typeof skillName === "string") {
+    if (isString(skillId) && isString(skillName)) {
       skills.push({
         id: skillId,
         name: skillName,

@@ -5,6 +5,7 @@ import {
   SKILL_TAG_REGEX_BEGINNING,
   serializeSkillTag,
 } from "@app/lib/skills/format";
+import { isString } from "@app/types/shared/utils/general";
 import { Node } from "@tiptap/core";
 import { ReactNodeViewRenderer } from "@tiptap/react";
 
@@ -36,17 +37,13 @@ export const SkillNode = Node.create({
         default: null,
         parseHTML: (element) => element.getAttribute("id"),
         renderHTML: (attributes) =>
-          typeof attributes.skillId === "string"
-            ? { id: attributes.skillId }
-            : {},
+          isString(attributes.skillId) ? { id: attributes.skillId } : {},
       },
       skillName: {
         default: null,
         parseHTML: (element) => element.getAttribute("name"),
         renderHTML: (attributes) =>
-          typeof attributes.skillName === "string"
-            ? { name: attributes.skillName }
-            : {},
+          isString(attributes.skillName) ? { name: attributes.skillName } : {},
       },
     };
   },
