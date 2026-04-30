@@ -26,20 +26,18 @@ paying close attention to the user's explicit requests and the agents' previous 
 responses. This summary should be thorough enough that the conversation can continue without \
 losing important context.
 
-Before providing your final summary, wrap your analysis in <analysis> tags to organize your \
-thoughts and ensure you've covered all necessary points. In your analysis:
+While writing the summary make sure to consider for each messages so far:
 
-1. Chronologically analyze each message in the conversation. For each section identify:
-   - The user's explicit requests and intents
-   - The agents' approaches to addressing those requests
-   - Key decisions and information exchanged
-   - Specific details: data, names, references, or artifacts mentioned
-   - Any errors or issues encountered and how they were resolved
-   - Pay special attention to user feedback and corrections
+- The user's explicit requests and intents
+- The agents' approaches to addressing those requests
+- Key decisions and information exchanged
+- Specific details: data, names, references, or artifacts mentioned
+- Any errors or issues encountered and how they were resolved
+- Pay special attention to user feedback and corrections
 
-2. Double-check for accuracy and completeness.
+Double-check for accuracy and completeness.
 
-After your analysis, provide your detailed summary in <summary> tags with these sections:
+Provide your detailed summary in <summary> tags with these sections:
 
 1. **Primary Request and Intent** — All explicit user requests and intents.
 2. **Key Topics and Concepts** — Main subjects, domains, or frameworks discussed.
@@ -51,12 +49,13 @@ conversation that are useful to the current work.
 6. **Pending Tasks** — Explicitly requested work that is still pending.
 7. **Current State** — What was being discussed or worked on immediately before this summary.
 
-Only the content of the <summary> block will be used to continue the conversation — the <analysis> \
-block is a scratchpad and will be discarded. Make sure the summary is self-contained and includes \
-all the context needed to continue without access to the original messages.
+Only the content of the <summary> block will be used to continue the conversation. Anything \
+oustside is effectively a scratchpad and will be discarded. Make sure the summary is \
+self-contained and includes all the context needed to continue without access to the \
+original messages.
 
 IMPORTANT: Respond with TEXT ONLY. Do NOT attempt to use any tools. Your entire response must be \
-plain text: an <analysis> block followed by a <summary> block.`;
+plain text: potentially some scratchpad followed by a <summary> block.`;
 
 /**
  * Extract the <summary> block from the LLM response, stripping the <analysis> scratchpad.
@@ -66,8 +65,8 @@ function extractSummary(generation: string): string {
   if (summaryMatch) {
     return summaryMatch[1].trim();
   }
-  // Fallback: if no <summary> tags, return the full generation stripped of <analysis>.
-  return generation.replace(/<analysis>[\s\S]*?<\/analysis>/g, "").trim();
+  // Fallback: if no <summary> tags, return the full generation.
+  return generation.trim();
 }
 
 function filterConversationContentUpToRank(
