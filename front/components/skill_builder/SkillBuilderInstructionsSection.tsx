@@ -7,6 +7,7 @@ import {
   Button,
   ContentMessage,
   InformationCircleIcon,
+  PuzzleIcon,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 import { useFormContext } from "react-hook-form";
@@ -19,6 +20,7 @@ export function SkillBuilderInstructionsSection() {
   const { setValue, watch } = useFormContext<SkillBuilderFormData>();
   const { compareVersion } = useSkillVersionComparisonContext();
   const [addKnowledge, setAddKnowledge] = useState<(() => void) | null>(null);
+  const [addSkill, setAddSkill] = useState<(() => void) | null>(null);
 
   const currentInstructions = watch(INSTRUCTIONS_FIELD_NAME);
   const instructionsDiffer =
@@ -52,13 +54,22 @@ export function SkillBuilderInstructionsSection() {
             />
           )}
           {!compareVersion && (
-            <Button
-              variant="primary"
-              label="Attach knowledge"
-              icon={BookOpenIcon}
-              onClick={addKnowledge ?? undefined}
-              disabled={!addKnowledge}
-            />
+            <>
+              <Button
+                variant="outline"
+                label="Reference skill"
+                icon={PuzzleIcon}
+                onClick={addSkill ?? undefined}
+                disabled={!addSkill}
+              />
+              <Button
+                variant="primary"
+                label="Attach knowledge"
+                icon={BookOpenIcon}
+                onClick={addKnowledge ?? undefined}
+                disabled={!addKnowledge}
+              />
+            </>
           )}
         </div>
       </div>
@@ -76,6 +87,7 @@ export function SkillBuilderInstructionsSection() {
       )}
       <SkillBuilderInstructionsEditor
         onAddKnowledge={(fn) => setAddKnowledge(() => fn)}
+        onAddSkill={(fn) => setAddSkill(() => fn)}
       />
     </section>
   );

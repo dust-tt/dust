@@ -1,6 +1,10 @@
 import { AgentInstructionDiffExtension } from "@app/components/editor/extensions/agent_builder/AgentInstructionDiffExtension";
 import { KNOWLEDGE_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
 import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
+import {
+  SKILL_NODE_TYPE,
+  type SkillReferenceItem,
+} from "@app/components/editor/extensions/skill_builder/SkillNode";
 import { SlashCommandExtension } from "@app/components/editor/extensions/skill_builder/SlashCommandExtension";
 import {
   buildSkillInstructionsExtensions,
@@ -30,6 +34,24 @@ function useEditorService(editor: Editor | null) {
         editor.state.doc.descendants((node) => {
           if (node.type.name === KNOWLEDGE_NODE_TYPE) {
             const selectedItems = node.attrs.selectedItems as KnowledgeItem[];
+            if (selectedItems && selectedItems.length > 0) {
+              items.push(...selectedItems);
+            }
+          }
+        });
+        return items;
+      },
+
+      getSkillReferenceItems(): SkillReferenceItem[] {
+        if (!editor) {
+          return [];
+        }
+
+        const items: SkillReferenceItem[] = [];
+        editor.state.doc.descendants((node) => {
+          if (node.type.name === SKILL_NODE_TYPE) {
+            const selectedItems = node.attrs
+              .selectedItems as SkillReferenceItem[];
             if (selectedItems && selectedItems.length > 0) {
               items.push(...selectedItems);
             }

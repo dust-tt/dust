@@ -10,6 +10,7 @@ import {
   RawMarkdownBlock,
   rawMarkdownBlockParsers,
 } from "@app/components/editor/extensions/skill_builder/RawMarkdownBlock";
+import { SkillNode } from "@app/components/editor/extensions/skill_builder/SkillNode";
 import { LinkExtension } from "@app/components/editor/input_bar/LinkExtension";
 import { markdownStyles } from "@dust-tt/sparkle";
 import type { Extensions } from "@tiptap/core";
@@ -26,7 +27,7 @@ export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
  */
 export function buildSkillInstructionsExtensions(
   isReadOnly: boolean,
-  editableExtensions: Extensions = []
+  editableExtensions: Extensions = [],
 ): Extensions {
   const baseExtensions: Extensions = [
     InstructionsDocumentExtension,
@@ -86,6 +87,7 @@ export function buildSkillInstructionsExtensions(
     }),
     BlockIdExtension,
     KnowledgeNode.configure({ readOnly: isReadOnly }),
+    SkillNode.configure({ readOnly: isReadOnly }),
     InstructionSuggestionExtension.configure({ showBlockHighlight: false }),
     RawMarkdownBlock,
     ...rawMarkdownBlockParsers,
