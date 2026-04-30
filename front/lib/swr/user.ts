@@ -1,5 +1,6 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
+import { silentFetcher } from "@app/lib/swr/fetcher";
 import {
   emptyArray,
   getErrorFromResponse,
@@ -21,14 +22,21 @@ import type { Fetcher, SWRConfiguration } from "swr";
 export function useUser(
   swrOptions?: SWRConfiguration & {
     disabled?: boolean;
+    // When true, a 401 leaves the page in place instead of redirecting to login.
+    silent?: boolean;
   }
 ) {
   const { fetcher } = useFetcher();
-  const userFetcher: Fetcher<GetUserResponseBody> = fetcher;
+  const userFetcher: Fetcher<GetUserResponseBody> = swrOptions?.silent
+    ? silentFetcher
+    : fetcher;
   const { data, error, mutate } = useSWRWithDefaults("/api/user", userFetcher, {
     revalidateOnFocus: false,
     revalidateOnReconnect: false,
     revalidateIfStale: false,
+    // 401 here is the expected outcome for anonymous visitors -> don't retry
+    // (default would log it to datadog 16 times).
+    ...(swrOptions?.silent ? { shouldRetryOnError: false } : {}),
     ...swrOptions,
   });
 
