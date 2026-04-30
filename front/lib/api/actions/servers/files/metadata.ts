@@ -112,7 +112,7 @@ export const FILES_TOOLS_METADATA = createToolsRecord({
     stake: "never_ask",
     displayLabels: {
       running: "Writing file",
-      done: "Wrote file",
+      done: "Write file",
     },
   },
 });

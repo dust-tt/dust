@@ -8,6 +8,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import { stripMimeParameters } from "@app/types/files";
+import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
@@ -20,7 +21,7 @@ type MountPoint = { scope: GCSMountPoint; prefix: string };
 export function resolveMountPoint(
   auth: Authenticator,
   conversation: ConversationType | null | undefined
-): Ok<MountPoint> | Err<MCPError> {
+): Result<MountPoint, MCPError> {
   if (!conversation) {
     return new Err(new MCPError("No conversation context available."));
   }
@@ -43,7 +44,7 @@ export async function resolveConversationFile(
   auth: Authenticator,
   conversation: ConversationType | undefined,
   path: string
-): Promise<Ok<ResolvedFile> | Err<MCPError>> {
+): Promise<Result<ResolvedFile, MCPError>> {
   const mountRes = resolveMountPoint(auth, conversation);
   if (mountRes.isErr()) {
     return mountRes;

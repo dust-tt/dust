@@ -73,12 +73,12 @@ export async function createHandler(
     );
   }
 
-  const kb = Math.ceil(entry.sizeBytes / 1024);
+  const sizeKb = Math.ceil(entry.sizeBytes / 1024);
   const verb = exists ? "Updated" : "Created";
   return new Ok([
     {
       type: "text",
-      text: `${verb} \`${entry.path}\` (${entry.contentType}, ${kb} KB)`,
+      text: `${verb} \`${entry.path}\` (${entry.contentType}, ${sizeKb} KB)`,
     },
   ]);
 }
