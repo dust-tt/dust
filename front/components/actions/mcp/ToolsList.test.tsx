@@ -48,6 +48,7 @@ vi.mock("@app/lib/actions/mcp_helper", () => ({
 }));
 
 const TOOL_NAME_WITH_DOT = "weather.get_current";
+const TOOL_NAME_WITH_UNDERSCORE = "get_messages";
 
 const owner = {
   sId: "ws_1",
@@ -88,6 +89,19 @@ const mcpServerView = {
       {
         name: TOOL_NAME_WITH_DOT,
         description: "Get current weather",
+      },
+    ],
+  },
+} satisfies MCPServerViewType;
+
+const readOnlyMcpServerView = {
+  ...mcpServerView,
+  server: {
+    ...mcpServerView.server,
+    tools: [
+      {
+        name: TOOL_NAME_WITH_UNDERSCORE,
+        description: "Get messages",
       },
     ],
   },
@@ -144,5 +158,21 @@ describe("ToolsList", () => {
     const isValid = await form.trigger();
     expect(isValid).toBe(true);
     expect(form.formState.errors.toolSettings).toBeUndefined();
+  });
+
+  it("renders in read-only mode without relying on the MCP settings form context", () => {
+    render(
+      <ToolsList
+        owner={owner}
+        mcpServerView={readOnlyMcpServerView}
+        disableUpdates
+      />
+    );
+
+    expect(screen.getByText(/available tools/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /get messages/i })
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("checkbox")).toBeNull();
   });
 });

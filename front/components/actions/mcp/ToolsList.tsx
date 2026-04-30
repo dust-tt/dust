@@ -32,12 +32,29 @@ interface ToolsListProps {
   disableUpdates?: boolean;
 }
 
+interface ToolDefinition {
+  name: string;
+  description: string;
+}
+
+interface ToolMetadata {
+  enabled: boolean;
+  permission: MCPToolStakeLevelType;
+}
+
 interface ToolItemProps {
-  tool: { name: string; description: string };
+  tool: ToolDefinition;
   mayUpdate: boolean;
   availableStakeLevels: MCPToolStakeLevelType[];
   settings: ToolSettings;
   onChange: (settings: ToolSettings) => void;
+}
+
+interface ToolsListContentProps {
+  mayUpdate: boolean;
+  tools: ToolDefinition[];
+  getSettings: (tool: ToolDefinition) => ToolSettings;
+  onToolChange: (toolName: string, settings: ToolSettings) => void;
 }
 
 const ToolItem = memo(
@@ -123,35 +140,29 @@ const ToolItem = memo(
   }
 );
 
-// We disable buttons for agent builder view because it would feel like
-// you can configure per agent
-export const ToolsList = memo(
-  ({ owner, mcpServerView, disableUpdates }: ToolsListProps) => {
-    const mayUpdate = useMemo(
-      () => (disableUpdates ? false : isAdmin(owner)),
-      [owner, disableUpdates]
-    );
-    const tools = useMemo(
-      () => mcpServerView.server.tools,
-      [mcpServerView.server.tools]
-    );
+function getDefaultToolSettings({
+  tool,
+  toolMetadataByName,
+  mcpServerView,
+}: {
+  tool: ToolDefinition;
+  toolMetadataByName: Record<string, ToolMetadata>;
+  mcpServerView: MCPServerViewType;
+}): ToolSettings {
+  const metadata = toolMetadataByName[tool.name];
+  const defaultPermission = getDefaultInternalToolStakeLevel(
+    mcpServerView.server,
+    tool.name
+  );
 
-    // We use a single controller for the whole `toolSettings` record because
-    // React Hook Form treats dots in field paths as nested-object separators,
-    // which would corrupt form state for tool names that contain dots.
-    const { control } = useFormContext<MCPServerFormValues>();
-    const { field } = useController({
-      control,
-      name: "toolSettings",
-    });
+  return {
+    enabled: metadata?.enabled ?? true,
+    permission: metadata?.permission ?? defaultPermission,
+  };
+}
 
-    const handleToolChange = (toolName: string, settings: ToolSettings) => {
-      field.onChange({
-        ...field.value,
-        [toolName]: settings,
-      });
-    };
-
+const ToolsListContent = memo(
+  ({ mayUpdate, tools, getSettings, onToolChange }: ToolsListContentProps) => {
     const getAvailableStakeLevels = (): MCPToolStakeLevelType[] => {
       return [...MCP_TOOL_STAKE_LEVELS];
     };
@@ -191,47 +202,23 @@ export const ToolsList = memo(
                 </ContentMessage>
 
                 <div>
-                  {tools && tools.length > 0 ? (
+                  {tools.length > 0 ? (
                     <div className="flex flex-col gap-4">
-                      {tools.map(
-                        (
-                          tool: { name: string; description: string },
-                          index: number
-                        ) => {
-                          const availableStakeLevels =
-                            getAvailableStakeLevels();
-                          const metadata = mcpServerView.toolsMetadata?.find(
-                            (m) => m.toolName === tool.name
-                          );
+                      {tools.map((tool, index) => {
+                        const availableStakeLevels = getAvailableStakeLevels();
+                        const settings = getSettings(tool);
 
-                          const defaultPermission =
-                            getDefaultInternalToolStakeLevel(
-                              mcpServerView.server,
-                              tool.name
-                            );
-
-                          const settings: ToolSettings = field.value[
-                            tool.name
-                          ] ?? {
-                            enabled: metadata?.enabled ?? true,
-                            permission:
-                              metadata?.permission ?? defaultPermission,
-                          };
-
-                          return (
-                            <ToolItem
-                              key={index}
-                              tool={tool}
-                              mayUpdate={mayUpdate}
-                              availableStakeLevels={availableStakeLevels}
-                              settings={settings}
-                              onChange={(next) =>
-                                handleToolChange(tool.name, next)
-                              }
-                            />
-                          );
-                        }
-                      )}
+                        return (
+                          <ToolItem
+                            key={index}
+                            tool={tool}
+                            mayUpdate={mayUpdate}
+                            availableStakeLevels={availableStakeLevels}
+                            settings={settings}
+                            onChange={(next) => onToolChange(tool.name, next)}
+                          />
+                        );
+                      })}
                     </div>
                   ) : (
                     <p className="text-sm text-faint">No tools available</p>
@@ -242,6 +229,128 @@ export const ToolsList = memo(
           </Collapsible>
         )}
       </>
+    );
+  }
+);
+
+function EditableToolsListContent({
+  mayUpdate,
+  tools,
+  mcpServerView,
+  toolMetadataByName,
+}: {
+  mayUpdate: boolean;
+  tools: ToolDefinition[];
+  mcpServerView: MCPServerViewType;
+  toolMetadataByName: Record<string, ToolMetadata>;
+}) {
+  // We use a single controller for the whole `toolSettings` record because
+  // React Hook Form treats dots in field paths as nested-object separators,
+  // which would corrupt form state for tool names that contain dots.
+  const { control } = useFormContext<MCPServerFormValues>();
+  const { field } = useController({
+    control,
+    name: "toolSettings",
+    defaultValue: {},
+  });
+
+  const toolSettings = field.value ?? {};
+
+  const handleToolChange = (toolName: string, settings: ToolSettings) => {
+    field.onChange({
+      ...toolSettings,
+      [toolName]: settings,
+    });
+  };
+
+  return (
+    <ToolsListContent
+      mayUpdate={mayUpdate}
+      tools={tools}
+      getSettings={(tool) =>
+        toolSettings[tool.name] ??
+        getDefaultToolSettings({
+          tool,
+          toolMetadataByName,
+          mcpServerView,
+        })
+      }
+      onToolChange={handleToolChange}
+    />
+  );
+}
+
+function ReadOnlyToolsListContent({
+  mayUpdate,
+  tools,
+  mcpServerView,
+  toolMetadataByName,
+}: {
+  mayUpdate: boolean;
+  tools: ToolDefinition[];
+  mcpServerView: MCPServerViewType;
+  toolMetadataByName: Record<string, ToolMetadata>;
+}) {
+  return (
+    <ToolsListContent
+      mayUpdate={mayUpdate}
+      tools={tools}
+      getSettings={(tool) =>
+        getDefaultToolSettings({
+          tool,
+          toolMetadataByName,
+          mcpServerView,
+        })
+      }
+      onToolChange={() => {}}
+    />
+  );
+}
+
+// We disable buttons for agent builder view because it would feel like
+// you can configure per agent
+export const ToolsList = memo(
+  ({ owner, mcpServerView, disableUpdates }: ToolsListProps) => {
+    const mayUpdate = useMemo(
+      () => (disableUpdates ? false : isAdmin(owner)),
+      [owner, disableUpdates]
+    );
+    const tools = useMemo(
+      () => mcpServerView.server.tools,
+      [mcpServerView.server.tools]
+    );
+    const toolMetadataByName = useMemo(
+      () =>
+        Object.fromEntries(
+          (mcpServerView.toolsMetadata ?? []).map((metadata) => [
+            metadata.toolName,
+            {
+              enabled: metadata.enabled,
+              permission: metadata.permission,
+            },
+          ])
+        ) as Record<string, ToolMetadata>,
+      [mcpServerView.toolsMetadata]
+    );
+
+    if (disableUpdates) {
+      return (
+        <ReadOnlyToolsListContent
+          mayUpdate={mayUpdate}
+          tools={tools}
+          mcpServerView={mcpServerView}
+          toolMetadataByName={toolMetadataByName}
+        />
+      );
+    }
+
+    return (
+      <EditableToolsListContent
+        mayUpdate={mayUpdate}
+        tools={tools}
+        mcpServerView={mcpServerView}
+        toolMetadataByName={toolMetadataByName}
+      />
     );
   }
 );
