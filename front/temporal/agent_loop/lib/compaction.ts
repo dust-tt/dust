@@ -121,12 +121,12 @@ function formatCompactionHistoryTimestamp(date: Date): string {
 async function createCompactionHistoryFile(
   auth: Authenticator,
   {
-    targetConversationId,
+    targetConversation,
     sourceConversation,
     compactionMessage,
     renderedMessages,
   }: {
-    targetConversationId: string;
+    targetConversation: ConversationType;
     sourceConversation: ConversationType;
     compactionMessage: CompactionMessageType;
     renderedMessages: string;
@@ -146,7 +146,7 @@ async function createCompactionHistoryFile(
 
   const entryRes = await createGCSMountFile(
     auth,
-    { useCase: "conversation", conversationId: targetConversationId },
+    { useCase: "conversation", conversationId: targetConversation.sId },
     {
       relativeFilePath,
       content: Buffer.from(
@@ -238,7 +238,7 @@ export async function runCompaction(
   const summaryRes = await generateCompactionSummary(auth, {
     sourceConversation: conversationToSummarize,
     sourceMessageRank: sourceConversation?.messageRank,
-    targetConversationId: targetConversation.sId,
+    targetConversation: targetConversation,
     compactionMessage,
     model,
   });
@@ -257,7 +257,7 @@ export async function runCompaction(
     );
 
     const historyFileRes = await createCompactionHistoryFile(auth, {
-      targetConversationId: targetConversation.sId,
+      targetConversation: targetConversation,
       sourceConversation: conversationToSummarize,
       compactionMessage,
       renderedMessages,
@@ -338,13 +338,13 @@ async function generateCompactionSummary(
   {
     sourceConversation,
     sourceMessageRank,
-    targetConversationId,
+    targetConversation,
     compactionMessage,
     model,
   }: {
     sourceConversation: ConversationType;
     sourceMessageRank?: number;
-    targetConversationId: string;
+    targetConversation: ConversationType;
     compactionMessage: CompactionMessageType;
     model: SupportedModel;
   }
@@ -406,7 +406,7 @@ async function generateCompactionSummary(
     {
       context: {
         operationType: "compaction",
-        conversationId: targetConversationId,
+        conversationId: targetConversation.sId,
         userId: auth.user()?.sId,
         workspaceId: owner.sId,
       },
