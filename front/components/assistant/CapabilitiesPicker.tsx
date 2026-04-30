@@ -50,7 +50,6 @@ import {
   MoreIcon,
   ToolsIcon,
 } from "@dust-tt/sparkle";
-import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 // Search bar is 3rem tall. Seven 3.25rem capability rows gives a 25.75rem
@@ -69,15 +68,10 @@ const EMPTY_SCROLL_FADE_STATE: ScrollFadeState = {
 
 interface CapabilityPickerItemBase {
   description?: string;
-  endComponent?: React.ReactNode;
   icon: DropdownMenuItemProps["icon"];
   id: string;
   label: string;
   sortName: string;
-  tooltip?: {
-    description: string;
-    media?: React.ReactNode;
-  };
 }
 
 type CapabilityPickerItem = CapabilityPickerItemBase &
@@ -95,10 +89,6 @@ type CapabilityPickerItem = CapabilityPickerItemBase &
         server: MCPServerType;
       }
   );
-
-function getCapabilityPickerItemGroupOrder(item: CapabilityPickerItem) {
-  return item.kind === "uninstalled_tool" ? 1 : 0;
-}
 
 function CapabilitiesPickerLoading({ count = 5 }: { count?: number }) {
   return (
@@ -122,12 +112,16 @@ interface CapabilitiesPickerItemsListProps {
   emptyMessage: string;
   items: CapabilityPickerItem[];
   onItemSelect: (item: CapabilityPickerItem) => void;
+  onSkillDetails: (skillId: string) => void;
+  onToolDetails: (serverView: MCPServerViewType) => void;
 }
 
 function CapabilitiesPickerItemsList({
   emptyMessage,
   items,
   onItemSelect,
+  onSkillDetails,
+  onToolDetails,
 }: CapabilitiesPickerItemsListProps) {
   const [scrollFadeState, setScrollFadeState] = useState<ScrollFadeState>(
     EMPTY_SCROLL_FADE_STATE
@@ -200,6 +194,28 @@ function CapabilitiesPickerItemsList({
         onScroll={updateScrollFadeState}
       >
         {items.map((item) => {
+          const endComponent =
+            item.kind === "uninstalled_tool" ? (
+              <Chip size="xs" color="golden" label="Configure" />
+            ) : (
+              <Button
+                icon={MoreIcon}
+                variant="outline"
+                size="mini"
+                className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+
+                  if (item.kind === "skill") {
+                    onSkillDetails(item.skill.sId);
+                  } else {
+                    onToolDetails(item.serverView);
+                  }
+                }}
+              />
+            );
+
           const menuItem = (
             <DropdownMenuItem
               key={item.id}
@@ -208,18 +224,17 @@ function CapabilitiesPickerItemsList({
               label={item.label}
               description={item.description}
               truncateText
-              endComponent={item.endComponent}
+              endComponent={endComponent}
               className="group"
               onClick={() => onItemSelect(item)}
             />
           );
 
-          if (item.tooltip) {
+          if (item.kind !== "uninstalled_tool" && item.description) {
             return (
               <DropdownTooltipTrigger
                 key={item.id}
-                description={item.tooltip.description}
-                media={item.tooltip.media}
+                description={item.description}
                 side="right"
                 sideOffset={8}
               >
@@ -472,21 +487,6 @@ export function CapabilitiesPicker({
           label: skill.name,
           sortName: skill.name.toLowerCase(),
           description,
-          tooltip: description ? { description } : undefined,
-          endComponent: (
-            <Button
-              icon={MoreIcon}
-              variant="outline"
-              size="mini"
-              className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
-              onClick={(e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                void fetchSkillWithRelations(skill.sId);
-                setIsOpen(false);
-              }}
-            />
-          ),
         });
       }
 
@@ -514,21 +514,6 @@ export function CapabilitiesPicker({
           label,
           sortName: label.toLowerCase(),
           description,
-          tooltip: description ? { description } : undefined,
-          endComponent: (
-            <Button
-              icon={MoreIcon}
-              variant="outline"
-              size="mini"
-              className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
-              onClick={(e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                setSelectedServerViewForDetails(serverView);
-                setIsOpen(false);
-              }}
-            />
-          ),
         });
       }
     }
@@ -560,15 +545,14 @@ export function CapabilitiesPicker({
           label,
           sortName: label.toLowerCase(),
           description: server.description,
-          endComponent: <Chip size="xs" color="golden" label="Configure" />,
         });
       }
     }
 
     return items.toSorted((a, b) => {
-      const groupComparison =
-        getCapabilityPickerItemGroupOrder(a) -
-        getCapabilityPickerItemGroupOrder(b);
+      const aGroupOrder = a.kind === "uninstalled_tool" ? 1 : 0;
+      const bGroupOrder = b.kind === "uninstalled_tool" ? 1 : 0;
+      const groupComparison = aGroupOrder - bGroupOrder;
 
       if (groupComparison !== 0) {
         return groupComparison;
@@ -582,7 +566,6 @@ export function CapabilitiesPicker({
     });
   }, [
     availableMCPServers,
-    fetchSkillWithRelations,
     isAdmin,
     isSkillsDataReady,
     isToolsDataReady,
@@ -643,14 +626,6 @@ export function CapabilitiesPicker({
             placeholder="Search capabilities"
             value={searchText}
             onChange={setSearchText}
-            onKeyDown={(e) => {
-              const firstItem = capabilityPickerItems[0];
-
-              if (e.key === "Enter" && firstItem) {
-                e.preventDefault();
-                selectCapabilityPickerItem(firstItem);
-              }
-            }}
           />
           {(!isSkillsDataReady || !isToolsDataReady) && (
             <CapabilitiesPickerLoading />
@@ -659,12 +634,20 @@ export function CapabilitiesPicker({
           {shouldShowCapabilityDropdownList && (
             <CapabilitiesPickerItemsList
               emptyMessage={
-                searchText.length > 0
+                normalizedSearchText.length > 0
                   ? "No capabilities found"
                   : "No more capabilities to select"
               }
               items={capabilityPickerItems}
               onItemSelect={selectCapabilityPickerItem}
+              onSkillDetails={(skillId) => {
+                void fetchSkillWithRelations(skillId);
+                setIsOpen(false);
+              }}
+              onToolDetails={(serverView) => {
+                setSelectedServerViewForDetails(serverView);
+                setIsOpen(false);
+              }}
             />
           )}
         </DropdownMenuContent>
