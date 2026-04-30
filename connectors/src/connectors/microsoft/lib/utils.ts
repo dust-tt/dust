@@ -1,5 +1,6 @@
 // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import { clientApiGet } from "@connectors/connectors/microsoft/lib/graph_api";
+import { isItemNotFoundError } from "@connectors/connectors/microsoft/temporal/cast_known_errors";
 import { MicrosoftNodeResource } from "@connectors/resources/microsoft_resource";
 import { cacheWithRedis } from "@connectors/types";
 import type { LoggerInterface } from "@dust-tt/client";
@@ -116,8 +117,19 @@ export async function _getListColumns({
   listId: string;
 }): Promise<ColumnDefinition[]> {
   const endpoint = `/sites/${siteId}/lists/${listId}/columns`;
-  const res = await clientApiGet(logger, client, endpoint);
-  return res.value.filter(isCustomColumn);
+  try {
+    const res = await clientApiGet(logger, client, endpoint);
+    return res.value.filter(isCustomColumn);
+  } catch (e) {
+    if (isItemNotFoundError(e)) {
+      logger.warn(
+        { siteId, listId },
+        "List not found (deleted?), skipping columns."
+      );
+      return [];
+    }
+    throw e;
+  }
 }
 
 /**
