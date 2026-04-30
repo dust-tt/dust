@@ -345,7 +345,7 @@ export function EnvironmentSection() {
                     id="sandbox-env-var-name"
                     type="text"
                     placeholder="API_TOKEN"
-                    className="h-full w-full flex-1 bg-transparent pr-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0 dark:text-foreground-night dark:placeholder:text-muted-foreground-night"
+                    className="h-full w-full flex-1 border-0 bg-transparent pl-1 pr-3 text-foreground outline-none ring-0 placeholder:text-muted-foreground focus:outline-none focus:ring-0 dark:text-foreground-night dark:placeholder:text-muted-foreground-night"
                     disabled={isUpsertingWorkspaceSandboxEnvVar || isNameLocked}
                     ref={nameField.ref}
                     name={nameField.name}
