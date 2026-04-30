@@ -2,6 +2,7 @@ import type { CacheableFunction, JsonSerializable } from "@app/lib/utils/cache";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const inMemoryCache = vi.hoisted(() => new Map<string, string>());
+const mockOpenAIModelsList = vi.hoisted(() => vi.fn());
 
 vi.mock("@app/lib/api/redis", () => ({
   getRedisCacheClient: vi.fn().mockImplementation(() =>
@@ -55,6 +56,24 @@ vi.mock("@app/lib/utils/cache", async (importOriginal) => {
 });
 
 const mockGetCredentials = vi.fn();
+const mockPostCredentials = vi.fn();
+const mockDeleteCredentials = vi.fn();
+
+vi.mock("openai", () => {
+  class MockAuthenticationError extends Error {}
+
+  class MockOpenAI {
+    static AuthenticationError = MockAuthenticationError;
+
+    models = {
+      list: mockOpenAIModelsList,
+    };
+  }
+
+  return {
+    default: MockOpenAI,
+  };
+});
 
 vi.mock("@app/types/oauth/oauth_api", async (importOriginal) => {
   const actual = (await importOriginal()) as object;
@@ -63,7 +82,8 @@ vi.mock("@app/types/oauth/oauth_api", async (importOriginal) => {
     OAuthAPI: vi.fn().mockImplementation(function () {
       return {
         getCredentials: mockGetCredentials,
-        deleteCredentials: vi.fn().mockResolvedValue(new Ok(undefined)),
+        postCredentials: mockPostCredentials,
+        deleteCredentials: mockDeleteCredentials,
       };
     }),
   };
@@ -88,9 +108,17 @@ function getHealthCacheKey(workspaceId: number): string {
 describe("ProviderCredentialResource", () => {
   beforeEach(() => {
     mockGetCredentials.mockClear();
+    mockPostCredentials.mockClear();
+    mockDeleteCredentials.mockClear();
+    mockOpenAIModelsList.mockClear();
     mockGetCredentials.mockResolvedValue(
       new Ok({ credential: { content: { api_key: "sk-test" } } })
     );
+    mockPostCredentials.mockResolvedValue(
+      new Ok({ credential: { credential_id: "cred-openai-updated" } })
+    );
+    mockDeleteCredentials.mockResolvedValue(new Ok(undefined));
+    mockOpenAIModelsList.mockResolvedValue([]);
     inMemoryCache.clear();
   });
 
@@ -320,6 +348,42 @@ describe("ProviderCredentialResource", () => {
 
       expect(inMemoryCache.has(cacheKey)).toBe(false);
       expect(inMemoryCache.has(healthCacheKey)).toBe(false);
+    });
+
+    it("invalidates cache after updateApiKey", async () => {
+      const { authenticator } = await createResourceTest({
+        role: "admin",
+        isByok: true,
+      });
+      const workspace = authenticator.getNonNullableWorkspace();
+      const cacheKey = getCacheKey(workspace.id);
+      const healthCacheKey = getHealthCacheKey(workspace.id);
+      inMemoryCache.clear();
+
+      await ProviderCredentialFactory.basic(workspace, "openai");
+
+      const [credential] =
+        await ProviderCredentialResource.listByWorkspace(authenticator);
+      await ProviderCredentialResource.fetchProvidersHealthByWorkspaceId(
+        workspace.id
+      );
+      expect(inMemoryCache.has(cacheKey)).toBe(true);
+      expect(inMemoryCache.has(healthCacheKey)).toBe(true);
+
+      await credential.updateApiKey(authenticator, { apiKey: "sk-updated" });
+
+      expect(inMemoryCache.has(cacheKey)).toBe(false);
+      expect(inMemoryCache.has(healthCacheKey)).toBe(false);
+      expect(mockOpenAIModelsList).toHaveBeenCalledOnce();
+      expect(mockPostCredentials).toHaveBeenCalledWith({
+        provider: "openai",
+        workspaceId: workspace.sId,
+        userId: authenticator.getNonNullableUser().sId,
+        credentials: { api_key: "sk-updated" },
+      });
+      expect(mockDeleteCredentials).toHaveBeenCalledWith({
+        credentialsId: "cred-openai",
+      });
     });
 
     it("returns fresh data after cache invalidation", async () => {
