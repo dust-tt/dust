@@ -1,3 +1,4 @@
+import type { VirtuosoMessageListContext } from "@app/components/assistant/conversation/types";
 import type { VirtuosoMessage } from "@app/components/assistant/conversation/types";
 import { isAgentMessageWithStreaming } from "@app/components/assistant/conversation/types";
 import { useAuth } from "@app/lib/auth/AuthContext";
@@ -13,7 +14,8 @@ import {
   Button,
   ChatBubbleLeftRightIcon,
 } from "@dust-tt/sparkle";
-import { useMemo, useState } from "react";
+import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
+import { useEffect, useMemo, useState } from "react";
 
 interface MentionValidationRequiredProps {
   triggeringUser: UserType | null;
@@ -39,6 +41,11 @@ export function MentionValidationRequired({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isProjectMembership = mention.status === "pending_project_membership";
 
+  const methods = useVirtuosoMethods<
+    VirtuosoMessage,
+    VirtuosoMessageListContext
+  >();
+
   const { validateMention } = useMentionValidation({
     workspaceId: owner.sId,
     conversationId: conversation.sId,
@@ -50,6 +57,25 @@ export function MentionValidationRequired({
     () => !triggeringUser || triggeringUser.sId === user?.sId,
     [triggeringUser, user?.sId]
   );
+
+  // Auto-scroll to make the validation card visible when it first appears.
+  // The card is rendered below the message content, so without this the user
+  // would have to manually scroll down to find it.
+  useEffect(() => {
+    if (!isTriggeredByCurrentUser) {
+      return;
+    }
+    const currentData = methods.data.get();
+    const messageIndex = currentData.findIndex((m) => m.sId === message.sId);
+    if (messageIndex !== -1) {
+      methods.scrollToItem({
+        index: messageIndex,
+        align: "end",
+        behavior: "smooth",
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleReject = async () => {
     setIsSubmitting(true);
