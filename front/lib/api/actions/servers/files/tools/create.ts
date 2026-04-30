@@ -58,27 +58,25 @@ export async function createHandler(
   const [exists] = await bucket.file(gcsPath).exists();
   const relativeFilePath = gcsPath.slice(prefix.length);
 
-  let entry;
-  try {
-    entry = await createGCSMountFile(auth, scope, {
-      relativeFilePath,
-      content: contentBuffer,
-      contentType: content_type,
-    });
-  } catch (err) {
+  const entryRes = await createGCSMountFile(auth, scope, {
+    relativeFilePath,
+    content: contentBuffer,
+    contentType: content_type,
+  });
+  if (entryRes.isErr()) {
     return new Err(
       new MCPError(
-        `Failed to write file \`${path}\`: ${normalizeError(err).message}`
+        `Failed to write file \`${path}\`: ${entryRes.error.message}`
       )
     );
   }
 
-  const sizeKb = Math.ceil(entry.sizeBytes / 1024);
+  const sizeKb = Math.ceil(entryRes.value.sizeBytes / 1024);
   const verb = exists ? "Updated" : "Created";
   return new Ok([
     {
       type: "text",
-      text: `${verb} \`${entry.path}\` (${entry.contentType}, ${sizeKb} KB)`,
+      text: `${verb} \`${entryRes.value.path}\` (${entryRes.value.contentType}, ${sizeKb} KB)`,
     },
   ]);
 }

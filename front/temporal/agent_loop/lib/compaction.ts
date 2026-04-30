@@ -138,28 +138,25 @@ async function createCompactionHistoryFile(
     "",
     "## Conversation",
     "",
-  ].filter((line): line is string => line !== null);
+  ];
 
-  try {
-    const entry = await createGCSMountFile(
-      auth,
-      { useCase: "conversation", conversationId: targetConversationId },
-      {
-        relativeFilePath,
-        content: Buffer.from(
-          `${metadataLines.join("\n")}${renderedMessages}`,
-          "utf8"
-        ),
-        contentType: "text/plain",
-      }
-    );
+  const entryRes = await createGCSMountFile(
+    auth,
+    { useCase: "conversation", conversationId: targetConversationId },
+    {
+      relativeFilePath,
+      content: Buffer.from(
+        `${metadataLines.join("\n")}${renderedMessages}`,
+        "utf8"
+      ),
+      contentType: "text/plain",
+    }
+  );
 
-    return new Ok(entry.path);
-  } catch (error) {
-    return new Err(
-      error instanceof Error ? error : new Error("Failed to write history file")
-    );
+  if (entryRes.isErr()) {
+    return entryRes;
   }
+  return new Ok(entryRes.value.path);
 }
 
 export async function runCompaction(
