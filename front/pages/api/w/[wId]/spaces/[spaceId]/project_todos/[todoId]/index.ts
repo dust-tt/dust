@@ -4,7 +4,6 @@ import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { ProjectTodoResource } from "@app/lib/resources/project_todo_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import { UserResource } from "@app/lib/resources/user_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import {
@@ -113,14 +112,10 @@ async function handler(
 
       const updatedTodo = await todo.updateWithVersion(auth, updates);
       const conversationId = await updatedTodo.getLatestConversationId(auth);
-      const [assigneeUser] = await UserResource.fetchByModelIds([
-        updatedTodo.userId,
-      ]);
-      const assigneeId = assigneeUser?.sId ?? "";
 
       return res.status(200).json({
         todo: {
-          ...updatedTodo.toJSON({ assigneeId }),
+          ...updatedTodo.toJSON(),
           conversationId,
         },
       });

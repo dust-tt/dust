@@ -71,7 +71,7 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/project_todos/[todoId]/start", () =
     const data = res._getJSONData();
     expect(data.todo.sId).toBe(todo.sId);
     expect(data.todo.status).toBe("in_progress");
-    expect(data.todo.userId).toBe(otherUser.sId);
+    expect(data.todo.user?.sId).toBe(otherUser.sId);
     expect(data.todo.conversationId).toBeTruthy();
   });
 
