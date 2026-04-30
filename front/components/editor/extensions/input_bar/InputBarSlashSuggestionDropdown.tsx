@@ -4,10 +4,6 @@ import type {
 } from "@app/components/editor/extensions/skill_builder/SlashCommandDropdown";
 import { SlashCommandDropdown } from "@app/components/editor/extensions/skill_builder/SlashCommandDropdown";
 import {
-  compareCapabilitySearchResults,
-  matchesCapabilitySearchQuery,
-} from "@app/components/shared/capability_search";
-import {
   getMcpServerViewDescription,
   getMcpServerViewDisplayName,
 } from "@app/lib/actions/mcp_helper";
@@ -18,6 +14,7 @@ import { getSkillAvatarIcon } from "@app/lib/skill";
 import { useMCPServerViewsFromSpaces } from "@app/lib/swr/mcp_servers";
 import { useSkills } from "@app/lib/swr/skill_configurations";
 import { useSpaces } from "@app/lib/swr/spaces";
+import { compareForFuzzySort, subFilter } from "@app/lib/utils";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -34,6 +31,20 @@ import type { InputBarSlashSuggestionCapability } from "./InputBarSlashSuggestio
 
 // Capability rows are 3.25rem tall, and we want to show 7 of them.
 const LIST_MAX_HEIGHT_CLASS_NAME = "max-h-[22.75rem]";
+
+function matchesCapabilityQuery({
+  label,
+  query,
+}: {
+  label: string;
+  query: string;
+}) {
+  if (query.length === 0) {
+    return true;
+  }
+
+  return subFilter(query, label.toLowerCase());
+}
 
 export function filterInputBarSlashSuggestions({
   query,
@@ -56,9 +67,9 @@ export function filterInputBarSlashSuggestions({
     ...skills
       .filter((skill) => !selectedSkillIds.has(skill.sId))
       .filter((skill) =>
-        matchesCapabilitySearchQuery({
+        matchesCapabilityQuery({
           label: skill.name,
-          normalizedQuery,
+          query: normalizedQuery,
         })
       )
       .map((skill) => ({
@@ -70,9 +81,9 @@ export function filterInputBarSlashSuggestions({
       .filter((serverView) => isJITMCPServerView(serverView))
       .filter((serverView) => !selectedMCPServerViewIds.has(serverView.sId))
       .filter((serverView) =>
-        matchesCapabilitySearchQuery({
+        matchesCapabilityQuery({
           label: getMcpServerViewDisplayName(serverView),
-          normalizedQuery,
+          query: normalizedQuery,
         })
       )
       .map((serverView) => ({
@@ -84,11 +95,14 @@ export function filterInputBarSlashSuggestions({
 
   return capabilities
     .toSorted((a, b) => {
-      return compareCapabilitySearchResults({
-        normalizedQuery,
-        a: a.sortName,
-        b: b.sortName,
-      });
+      if (normalizedQuery.length > 0) {
+        return (
+          compareForFuzzySort(normalizedQuery, a.sortName, b.sortName) ||
+          a.sortName.localeCompare(b.sortName)
+        );
+      }
+
+      return a.sortName.localeCompare(b.sortName);
     })
     .map(({ sortName: _sortName, ...capability }) => capability);
 }
