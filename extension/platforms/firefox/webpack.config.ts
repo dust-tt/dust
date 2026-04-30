@@ -148,7 +148,15 @@ export const getConfig = async ({
           test: /\.css$/,
           use: [
             "style-loader",
-            "css-loader",
+            {
+              loader: "css-loader",
+              options: {
+                modules: {
+                  auto: true,
+                  namedExport: false,
+                },
+              },
+            },
             {
               loader: "postcss-loader",
               options: {

@@ -55,7 +55,15 @@ export const getConfig = ({ env }: { env: Environment }) => {
           test: /\.css$/,
           use: [
             "style-loader",
-            "css-loader",
+            {
+              loader: "css-loader",
+              options: {
+                modules: {
+                  auto: true,
+                  namedExport: false,
+                },
+              },
+            },
             {
               loader: "postcss-loader",
               options: {
