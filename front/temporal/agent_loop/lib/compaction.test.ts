@@ -176,7 +176,7 @@ describe("runCompaction", () => {
     expect(compactionMessageRow?.status).toBe("succeeded");
     expect(compactionMessageRow?.content).toContain("Summary.");
     expect(compactionMessageRow?.content).toContain(
-      "Full conversation history before compaction: conversation/history/compaction-"
+      "Full conversation history before compaction: conversation/history/"
     );
   });
 
@@ -290,7 +290,7 @@ describe("runCompaction", () => {
       expect.objectContaining({
         relativeFilePath: expect.stringMatching(
           new RegExp(
-            `^history/compaction-\\d{8}-\\d{4}-${compactionMessage.sId}\\.history$`
+            `^history/\\d{8}-\\d{4}-compaction-${compactionMessage.sId}\\.history$`
           )
         ),
         contentType: "text/plain",
@@ -311,7 +311,7 @@ describe("runCompaction", () => {
       },
     });
     expect(compactionMessageRow?.content).toContain(
-      `conversation/history/compaction-`
+      `conversation/history/`
     );
     expect(compactionMessageRow?.content).toContain(compactionMessage.sId);
   });
@@ -464,7 +464,7 @@ describe("runCompaction", () => {
       'Use file_child_1, `file_child_2`, and "cf_child_1". Keep prefixfile_parent_1suffix unchanged.'
     );
     expect(updatedCompactionMessageRow?.content).toContain(
-      "Full conversation history before compaction: conversation/history/compaction-"
+      "Full conversation history before compaction: conversation/history/"
     );
   });
 

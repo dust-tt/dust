@@ -129,7 +129,7 @@ async function createCompactionHistoryFile(
   }
 ): Promise<Result<string, Error>> {
   const generatedAt = new Date();
-  const relativeFilePath = `history/compaction-${formatCompactionHistoryTimestamp(generatedAt)}-${compactionMessage.sId}.history`;
+  const relativeFilePath = `history/${formatCompactionHistoryTimestamp(generatedAt)}-compaction-${compactionMessage.sId}.history`;
   const metadataLines = [
     "# Conversation History Before Compaction",
     "",
