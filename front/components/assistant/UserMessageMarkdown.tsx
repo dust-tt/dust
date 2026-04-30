@@ -24,12 +24,11 @@ import {
   getUserMentionPlugin,
   userMentionDirective,
 } from "@app/lib/mentions/markdown/plugin";
-import { replaceSkillTagsWithDirectives } from "@app/lib/skills/format";
+import { parseSkillTag, SKILL_TAG_REGEX } from "@app/lib/skills/format";
 import type { UserMessageType } from "@app/types/assistant/conversation";
 import type { WorkspaceType } from "@app/types/user";
 import { Markdown } from "@dust-tt/sparkle";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
@@ -72,7 +71,15 @@ export const UserMessageMarkdown = ({
   );
 
   const displayContent = useMemo(
-    () => replaceSkillTagsWithDirectives(message.content),
+    () =>
+      message.content.replace(SKILL_TAG_REGEX, (match) => {
+        const skill = parseSkillTag(match);
+        if (!skill) {
+          return match;
+        }
+
+        return `:skill[${skill.name}]{sId=${skill.id}}`;
+      }),
     [message.content]
   );
 
