@@ -8,7 +8,6 @@ import moment from "moment";
 import type { ContentFragmentType } from "../content_fragment";
 import type { AllSupportedWithDustSpecificFileContentType } from "../files";
 import type { ModelId } from "../shared/model_id";
-import { assertNeverAndIgnore } from "../shared/utils/assert_never";
 import type { UserType, WorkspaceType } from "../user";
 import type {
   AgentConfigurationStatus,
@@ -220,23 +219,6 @@ export const AGENT_MESSAGE_STATUSES_TO_TRACK: AgentMessageStatus[] = [
   "cancelled",
   "gracefully_stopped",
 ];
-
-export function isTerminalAgentMessageStatus(
-  status: AgentMessageStatus
-): boolean {
-  switch (status) {
-    case "succeeded":
-    case "failed":
-    case "cancelled":
-    case "gracefully_stopped":
-      return true;
-    case "created":
-      return false;
-    default:
-      assertNeverAndIgnore(status);
-      return false;
-  }
-}
 
 export interface CitationType {
   description?: string;
