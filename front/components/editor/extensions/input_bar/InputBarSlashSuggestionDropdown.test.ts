@@ -63,4 +63,22 @@ describe("filterInputBarSlashSuggestions", () => {
       )
     ).toEqual(["Google Drive", "Generate Daily Report"]);
   });
+
+  it("filters out skills already referenced in the draft", async () => {
+    const { auth } = await createPrivateApiMockRequest();
+    const commitSkill = await SkillFactory.create(auth, {
+      name: "commit",
+      userFacingDescription: "",
+    });
+
+    const result = filterInputBarSlashSuggestions({
+      query: "commit",
+      selectedMCPServerViewIds: new Set(),
+      selectedSkillIds: new Set([commitSkill.sId]),
+      serverViews: [],
+      skills: [commitSkill.toJSON(auth)],
+    });
+
+    expect(result).toEqual([]);
+  });
 });

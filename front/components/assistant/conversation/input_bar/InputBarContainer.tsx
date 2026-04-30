@@ -1,7 +1,6 @@
 import { ContextUsageIndicator } from "@app/components/assistant/conversation/input_bar/ContextUsageIndicator";
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
 import { InputBarButtons } from "@app/components/assistant/conversation/input_bar/InputBarButtons";
-import { InputBarSkillChip } from "@app/components/assistant/conversation/input_bar/InputBarSkillChip";
 import {
   getDisplayNameFromPastedFileId,
   getPastedFileName,
@@ -36,7 +35,6 @@ import {
   isRichAgentMention,
   toRichAgentMentionType,
 } from "@app/types/assistant/mentions";
-import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import {
   assertNever,
@@ -150,14 +148,11 @@ export interface InputBarContainerProps {
   onNodeSelect: (node: DataSourceViewContentNode) => void;
   onNodeUnselect: (node: DataSourceViewContentNode) => void;
   onResetSelections: () => void;
-  onSkillDeselect: (skill: SkillWithoutInstructionsAndToolsType) => void;
-  onSkillSelect: (skill: SkillWithoutInstructionsAndToolsType) => void;
   owner: WorkspaceType;
   saveDraft: (markdown: string, agentMention?: RichAgentMention | null) => void;
   pendingInputText: string | null;
   selectedAgent: RichAgentMention | null;
   selectedMCPServerViews: MCPServerViewType[];
-  selectedSkills: SkillWithoutInstructionsAndToolsType[];
   stickyMentions?: RichMention[];
   user: UserType | null;
 }
@@ -185,9 +180,6 @@ const InputBarContainer = ({
   onMCPServerViewDeselect,
   selectedMCPServerViews,
   onResetSelections,
-  onSkillSelect,
-  onSkillDeselect,
-  selectedSkills,
   saveDraft,
   user,
   disableAgentSelector,
@@ -246,22 +238,25 @@ const InputBarContainer = ({
   // Create a ref to hold the editor instance
   const editorRef = useRef<Editor | null>(null);
   const pastedAttachmentIdsRef = useRef<Set<string>>(new Set());
-  const selectedSkillIds = useMemo(
-    () => new Set(selectedSkills.map((skill) => skill.sId)),
-    [selectedSkills]
+  const [draftSelectedSkillIds, setDraftSelectedSkillIds] = useState<string[]>(
+    []
+  );
+  const selectedSkillIdSet = useMemo(
+    () => new Set(draftSelectedSkillIds),
+    [draftSelectedSkillIds]
   );
   const selectedMCPServerViewIds = useMemo(
     () => new Set(selectedMCPServerViews.map((serverView) => serverView.sId)),
     [selectedMCPServerViews]
   );
   const selectedMCPServerViewIdsRef = useRef(selectedMCPServerViewIds);
-  const selectedSkillIdsRef = useRef(selectedSkillIds);
+  const selectedSkillIdsRef = useRef(selectedSkillIdSet);
   const shouldEnableSlashSuggestionRef = useRef(shouldEnableSlashSuggestion);
   const onSelectRef = useRef<
     ((capability: InputBarSlashSuggestionCapability) => void) | undefined
   >(undefined);
   selectedMCPServerViewIdsRef.current = selectedMCPServerViewIds;
-  selectedSkillIdsRef.current = selectedSkillIds;
+  selectedSkillIdsRef.current = selectedSkillIdSet;
   shouldEnableSlashSuggestionRef.current = shouldEnableSlashSuggestion;
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
@@ -469,25 +464,6 @@ const InputBarContainer = ({
     });
   };
 
-  const handleSlashSuggestionSelection = useCallback(
-    (capability: InputBarSlashSuggestionCapability) => {
-      switch (capability.kind) {
-        case "skill":
-          onSkillSelect(capability.skill);
-          break;
-        case "tool":
-          onMCPServerViewSelect(capability.serverView);
-          break;
-        default:
-          assertNeverAndIgnore(capability);
-      }
-
-      queueMicrotask(() => editorRef.current?.commands.focus());
-    },
-    [onMCPServerViewSelect, onSkillSelect]
-  );
-  onSelectRef.current = handleSlashSuggestionSelection;
-
   // Current space is taken from the conversation (if already set) or from the space prop (if provided).
   const spaceId = conversation?.spaceId ?? space?.sId ?? undefined;
 
@@ -557,6 +533,39 @@ const InputBarContainer = ({
     },
   });
 
+  const handleSkillSelect = useCallback(
+    ({ sId, name }: { sId: string; name: string }) => {
+      if (selectedSkillIdsRef.current.has(sId)) {
+        return;
+      }
+
+      editorService.insertSkill({
+        id: sId,
+        name,
+      });
+    },
+    [editorService]
+  );
+
+  const handleSlashSuggestionSelection = useCallback(
+    (capability: InputBarSlashSuggestionCapability) => {
+      switch (capability.kind) {
+        case "skill":
+          handleSkillSelect(capability.skill);
+          break;
+        case "tool":
+          onMCPServerViewSelect(capability.serverView);
+          break;
+        default:
+          assertNeverAndIgnore(capability);
+      }
+
+      queueMicrotask(() => editorRef.current?.commands.focus());
+    },
+    [handleSkillSelect, onMCPServerViewSelect]
+  );
+  onSelectRef.current = handleSlashSuggestionSelection;
+
   useEffect(() => {
     // If an attachment disappears from the uploader, remove its chip from the editor
     const currentPastedIds = new Set(
@@ -625,7 +634,7 @@ const InputBarContainer = ({
   selectedSingleAgentRef.current = selectedSingleAgent;
 
   // When a user mention is *newly added* in single-agent mode, deselect the agent
-  // and clear capabilities. Only triggers on the transition from no-user-mention to
+  // and clear side-channel capabilities. Only triggers on the transition from no-user-mention to
   // user-mention so that re-selecting an agent (via card click or URL param) isn't
   // immediately clobbered by the existing @user mention on the next editor update.
   // Uses a ref so the editor listener (registered once in the useEffect below) always
@@ -672,9 +681,11 @@ const InputBarContainer = ({
       // Auto-save draft when content changes and track user mentions.
       // Include the selected single agent so the debounced save doesn't
       // overwrite the agent mention saved by the single-agent effect.
-      const { markdown, mentions } = editorService.getMarkdownAndMentions();
+      const { markdown, mentions, skills } =
+        editorService.getMarkdownAndMentions();
       saveDraft(editorIsEmpty ? "" : markdown, selectedSingleAgentRef.current);
       const userMentioned = mentions.some((m) => m.type === "user");
+      setDraftSelectedSkillIds(skills.map((skill) => skill.id));
       setHasUserMention(userMentioned);
       onEditorMentionsChangedRef.current(userMentioned);
     };
@@ -1006,27 +1017,6 @@ const InputBarContainer = ({
             className="mb-1 flex flex-wrap items-center px-2"
             style={toolbarRowTransitionStyle}
           >
-            {selectedSkills.map((skill) => (
-              <React.Fragment key={skill.sId}>
-                <InputBarSkillChip
-                  owner={owner}
-                  skill={skill}
-                  className="m-0.5 hidden xs:flex"
-                  onRemove={() => {
-                    onSkillDeselect(skill);
-                  }}
-                />
-                <InputBarSkillChip
-                  owner={owner}
-                  skill={skill}
-                  compact
-                  className="m-0.5 flex xs:hidden"
-                  onRemove={() => {
-                    onSkillDeselect(skill);
-                  }}
-                />
-              </React.Fragment>
-            ))}
             {selectedMCPServerViews.map((msv) => (
               <React.Fragment key={msv.sId}>
                 {/* Two Chips: one for larger screens (desktop), one for smaller screens (mobile). */}
@@ -1105,11 +1095,11 @@ const InputBarContainer = ({
                     onMCPServerViewSelect={onMCPServerViewSelect}
                     onNodeSelect={onNodeSelect}
                     onNodeUnselect={onNodeUnselect}
-                    onSkillSelect={onSkillSelect}
+                    onSkillSelect={handleSkillSelect}
                     owner={owner}
                     selectedAgent={selectedSingleAgent}
                     selectedMCPServerViews={selectedMCPServerViews}
-                    selectedSkills={selectedSkills}
+                    selectedSkillIds={draftSelectedSkillIds}
                     space={space}
                     user={user}
                   />

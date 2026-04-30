@@ -141,7 +141,8 @@ export function SpaceConversationsPage() {
       input: string,
       mentions: RichMention[],
       contentFragments: ContentFragmentsType,
-      selectedMCPServerViewIds?: string[]
+      selectedMCPServerViewIds?: string[],
+      selectedSkillIds?: string[]
     ): Promise<Result<undefined, DustError>> => {
       if (isSubmitting) {
         return new Err({
@@ -159,6 +160,7 @@ export function SpaceConversationsPage() {
           mentions: mentions.map(toMentionType),
           contentFragments,
           selectedMCPServerViewIds,
+          selectedSkillIds,
         },
         spaceId,
       });

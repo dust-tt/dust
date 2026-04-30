@@ -95,6 +95,10 @@
  *                     type: array
  *                     items:
  *                       type: string
+ *                   selectedSkillIds:
+ *                     type: array
+ *                     items:
+ *                       type: string
  *               skipToolsValidation:
  *                 type: boolean
  *     responses:
@@ -127,9 +131,9 @@ import { fetchConversationMessages } from "@app/lib/api/assistant/messages";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getPaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getStatsDClient } from "@app/lib/utils/statsd";
-
 import { apiError } from "@app/logger/withlogging";
 import { InternalPostMessagesRequestBodySchema } from "@app/types/api/internal/assistant";
 import type {
@@ -308,6 +312,29 @@ async function handler(
       }
 
       const conversation = conversationRes.value;
+
+      if (context.selectedSkillIds && context.selectedSkillIds.length > 0) {
+        const skills = await SkillResource.fetchByIds(
+          auth,
+          context.selectedSkillIds
+        );
+
+        const r = await SkillResource.upsertConversationSkills(auth, {
+          conversationId: conversation.id,
+          skills,
+          enabled: true,
+        });
+
+        if (r.isErr()) {
+          return apiError(req, res, {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message: "Failed to add skills to conversation",
+            },
+          });
+        }
+      }
 
       // Find all the contentFragments that are above the user message.
       // Messages may have multiple versions, so we need to return only the max version of each message.

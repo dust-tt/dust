@@ -250,7 +250,7 @@ interface CapabilitiesPickerProps {
   user: UserType | null;
   selectedMCPServerViews: MCPServerViewType[];
   onSelect: (serverView: MCPServerViewType) => void;
-  selectedSkills: SkillWithoutInstructionsAndToolsType[];
+  selectedSkillIds: string[];
   onSkillSelect: (skill: SkillWithoutInstructionsAndToolsType) => void;
   isLoading?: boolean;
   disabled?: boolean;
@@ -262,7 +262,7 @@ export function CapabilitiesPicker({
   user,
   selectedMCPServerViews,
   onSelect,
-  selectedSkills,
+  selectedSkillIds,
   onSkillSelect,
   isLoading = false,
   disabled = false,
@@ -378,10 +378,10 @@ export function CapabilitiesPicker({
     !isServerViewsLoading && !isAvailableMCPServersLoading;
 
   const filteredSkillsUnselected = useMemo(() => {
-    const selectedSkillIds = new Set(selectedSkills.map((s) => s.sId));
+    const selectedSkillIdSet = new Set(selectedSkillIds);
 
     return skills
-      .filter((skill) => !selectedSkillIds.has(skill.sId))
+      .filter((skill) => !selectedSkillIdSet.has(skill.sId))
       .filter((skill) => {
         if (searchText.trim().length === 0) {
           return true;
@@ -393,7 +393,7 @@ export function CapabilitiesPicker({
             skill.userFacingDescription.toLowerCase().includes(query))
         );
       });
-  }, [skills, selectedSkills, searchText]);
+  }, [skills, selectedSkillIds, searchText]);
 
   const mergedItems = useMemo(() => {
     const items: MergedCapabilityItem[] = [
