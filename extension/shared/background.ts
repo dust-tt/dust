@@ -822,7 +822,7 @@ export const registerMessageListener = (platform: PlatformService) => {
                 } else {
                   const [execution] = await chrome.scripting.executeScript({
                     target: { tabId: tab.id },
-                    func: extractPage(),
+                    func: extractPage,
                   });
                   const html = execution?.result;
                   content = html ? htmlToMarkdown(html) : "no content.";
