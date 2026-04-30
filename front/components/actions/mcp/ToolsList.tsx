@@ -147,7 +147,7 @@ export const ToolsList = memo(
 
     const handleToolChange = (toolName: string, settings: ToolSettings) => {
       field.onChange({
-        ...field.value,
+        ...(field.value ?? {}),
         [toolName]: settings,
       });
     };
@@ -210,7 +210,7 @@ export const ToolsList = memo(
                               tool.name
                             );
 
-                          const settings: ToolSettings = field.value[
+                          const settings: ToolSettings = field.value?.[
                             tool.name
                           ] ?? {
                             enabled: metadata?.enabled ?? true,
