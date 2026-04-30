@@ -4,13 +4,18 @@ import { ManageUsersPanel } from "@app/components/assistant/conversation/space/M
 import { ProjectHeaderActions } from "@app/components/assistant/conversation/space/ProjectHeaderActions";
 import { SpaceAlphaTab } from "@app/components/assistant/conversation/space/SpaceAlphaTab";
 import { SpaceKnowledgeTab } from "@app/components/assistant/conversation/space/SpaceKnowledgeTab";
+import { SpaceTodosTab } from "@app/components/assistant/conversation/space/SpaceTodosTab";
 
 import { useSpaceConversations } from "@app/hooks/conversations";
 import { useActiveSpaceId } from "@app/hooks/useActiveSpaceId";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
-import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import {
+  useAuth,
+  useFeatureFlags,
+  useWorkspace,
+} from "@app/lib/auth/AuthContext";
 import { useClientType } from "@app/lib/context/clientType";
 import type { DustError } from "@app/lib/error";
 import { useAppRouter } from "@app/lib/platform";
@@ -31,6 +36,7 @@ import {
   BookOpenIcon,
   ChatBubbleLeftRightIcon,
   Cog6ToothIcon,
+  ListCheckIcon,
   Spinner,
   Tabs,
   TabsContent,
@@ -40,11 +46,12 @@ import {
 } from "@dust-tt/sparkle";
 import React, { useCallback, useRef, useState } from "react";
 
-type SpaceTab = "conversations" | "knowledge" | "settings";
+type SpaceTab = "conversations" | "todos" | "knowledge" | "settings";
 
 export function SpaceConversationsPage() {
   const owner = useWorkspace();
   const { user } = useAuth();
+  const { hasFeature } = useFeatureFlags();
   const clientType = useClientType();
   const router = useAppRouter();
   const spaceId = useActiveSpaceId();
@@ -81,6 +88,8 @@ export function SpaceConversationsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [_planLimitReached, setPlanLimitReached] = useState(false);
   const [isInvitePanelOpen, setIsInvitePanelOpen] = useState(false);
+  const canShowTodosTab =
+    hasFeature("project_todo") && spaceInfo?.kind === "project";
 
   // Parse and validate the current tab from URL hash
   const getCurrentTabFromHash = useCallback((): SpaceTab => {
@@ -95,7 +104,8 @@ export function SpaceConversationsPage() {
     if (
       hash === "knowledge" ||
       hash === "settings" ||
-      hash === "conversations"
+      hash === "conversations" ||
+      hash === "todos"
     ) {
       return hash;
     }
@@ -150,6 +160,17 @@ export function SpaceConversationsPage() {
       );
     }
   }, [spaceId]);
+
+  React.useEffect(() => {
+    if (currentTab === "todos" && !canShowTodosTab) {
+      setCurrentTab("conversations");
+      window.history.replaceState(
+        null,
+        "",
+        `${window.location.pathname}${window.location.search}#conversations`
+      );
+    }
+  }, [canShowTodosTab, currentTab]);
 
   const handleTabChange = useCallback((tab: SpaceTab) => {
     // Use replaceState to avoid adding to browser history for each tab switch
@@ -332,6 +353,9 @@ export function SpaceConversationsPage() {
               label="Conversations"
               icon={ChatBubbleLeftRightIcon}
             />
+            {canShowTodosTab && (
+              <TabsTrigger value="todos" label="To-dos" icon={ListCheckIcon} />
+            )}
             <TabsTrigger
               value="knowledge"
               label="Knowledge"
@@ -382,6 +406,12 @@ export function SpaceConversationsPage() {
         <TabsContent value="knowledge">
           <SpaceKnowledgeTab owner={owner} space={spaceInfo} />
         </TabsContent>
+
+        {canShowTodosTab && (
+          <TabsContent value="todos">
+            <SpaceTodosTab owner={owner} spaceInfo={spaceInfo} />
+          </TabsContent>
+        )}
 
         <TabsContent value="settings">
           <SpaceAboutTab
