@@ -1,7 +1,7 @@
 import { CreateDropdown } from "@app/components/assistant/CreateDropdown";
 import { filterAndSortAgents } from "@app/lib/utils";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
-import type { WorkspaceType } from "@app/types/user";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Avatar,
   Button,
@@ -17,7 +17,7 @@ import {
 import { useState } from "react";
 
 interface AgentPickerProps {
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
   agents: LightAgentConfigurationType[];
   onItemClick: (agent: LightAgentConfigurationType) => void;
   onAgentDetailsClick?: (agentId: string) => void;

@@ -12,6 +12,7 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { ProjectTodoFactory } from "@app/tests/utils/ProjectTodoFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { WorkspaceType } from "@app/types/user";
 import type { NextApiRequest, NextApiResponse } from "next";
 import type { MockRequest, MockResponse } from "node-mocks-http";
@@ -72,6 +73,29 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/project_todos/[todoId]/start", () =
     expect(data.todo.status).toBe("in_progress");
     expect(data.todo.userId).toBe(otherUser.sId);
     expect(data.todo.conversationId).toBeTruthy();
+  });
+
+  it("accepts custom start options (message + agent)", async () => {
+    const { user } = await setup();
+    const project = await SpaceFactory.project(workspace, user.id);
+    const todo = await ProjectTodoFactory.create(workspace, project, {
+      userId: user.id,
+      text: "Draft migration checklist",
+    });
+
+    req.query.spaceId = project.sId;
+    req.query.todoId = todo.sId;
+    req.body = {
+      customMessage: "Focus on safe rollout and rollback plan.",
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const data = res._getJSONData();
+    expect(data.todo.sId).toBe(todo.sId);
+    expect(data.todo.status).toBe("in_progress");
   });
 
   it("returns 405 for unsupported methods", async () => {
