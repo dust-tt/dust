@@ -237,6 +237,26 @@ describe("POST /api/poke/workspaces/[wId]/upgrade_enterprise — Metronome path"
     expect(createMetronomeContract).not.toHaveBeenCalled();
   });
 
+  it("rejects when paygEnabled is true (PAYG on Metronome is not yet supported)", async () => {
+    await ensureEnterprisePlan();
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      isSuperUser: true,
+    });
+    await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
+
+    req.body = defaultBody({ paygEnabled: true, paygCapDollars: 1000 });
+    req.query.wId = workspace.sId;
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(400);
+    expect(res._getJSONData().error.message).toContain(
+      "Pay-as-you-go is not yet supported"
+    );
+    expect(createMetronomeContract).not.toHaveBeenCalled();
+  });
+
   it("rejects when packageId is unknown", async () => {
     await ensureEnterprisePlan();
     const { req, res, workspace } = await createPrivateApiMockRequest({

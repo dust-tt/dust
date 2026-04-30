@@ -305,70 +305,66 @@ export default function EnterpriseUpgradeDialog({
                     </div>
                   )}
 
-                  {!isMetronomeBilled && (
-                    <div className="border-t pt-4">
-                      <h4 className="mb-4 font-medium">
-                        Programmatic Usage Configuration
-                      </h4>
+                  <div className="border-t pt-4">
+                    <h4 className="mb-4 font-medium">
+                      Programmatic Usage Configuration
+                    </h4>
 
-                      <div className="mb-4 flex items-center gap-2">
-                        <SliderToggle
-                          selected={freeCreditsOverrideEnabled}
-                          onClick={() =>
-                            form.setValue(
-                              "freeCreditsOverrideEnabled",
-                              !freeCreditsOverrideEnabled
-                            )
-                          }
-                        />
-                        <Label className="text-sm">
-                          Negotiated Free Credits
-                        </Label>
-                      </div>
-                      {freeCreditsOverrideEnabled && (
-                        <div className="mb-4 ml-6">
-                          <InputField
-                            control={form.control}
-                            name="freeCreditsDollars"
-                            title="Free Credits (USD)"
-                            type="number"
-                            placeholder="e.g., 100"
-                          />
-                        </div>
-                      )}
-
-                      <div className="mb-4">
+                    <div className="mb-4 flex items-center gap-2">
+                      <SliderToggle
+                        selected={freeCreditsOverrideEnabled}
+                        onClick={() =>
+                          form.setValue(
+                            "freeCreditsOverrideEnabled",
+                            !freeCreditsOverrideEnabled
+                          )
+                        }
+                      />
+                      <Label className="text-sm">Negotiated Free Credits</Label>
+                    </div>
+                    {freeCreditsOverrideEnabled && (
+                      <div className="mb-4 ml-6">
                         <InputField
                           control={form.control}
-                          name="defaultDiscountPercent"
-                          title="Default Discount (%)"
+                          name="freeCreditsDollars"
+                          title="Free Credits (USD)"
                           type="number"
-                          placeholder="0"
+                          placeholder="e.g., 100"
                         />
                       </div>
+                    )}
 
-                      <div className="mb-4 flex items-center gap-2">
-                        <SliderToggle
-                          selected={paygEnabled}
-                          onClick={() =>
-                            form.setValue("paygEnabled", !paygEnabled)
-                          }
-                        />
-                        <Label className="text-sm">Pay-as-you-go</Label>
-                      </div>
-                      {paygEnabled && (
-                        <div className="ml-6">
-                          <InputField
-                            control={form.control}
-                            name="paygCapDollars"
-                            title="PAYG Spending Cap (USD)"
-                            type="number"
-                            placeholder="e.g., 1000"
-                          />
-                        </div>
-                      )}
+                    <div className="mb-4">
+                      <InputField
+                        control={form.control}
+                        name="defaultDiscountPercent"
+                        title="Default Discount (%)"
+                        type="number"
+                        placeholder="0"
+                      />
                     </div>
-                  )}
+
+                    <div className="mb-4 flex items-center gap-2">
+                      <SliderToggle
+                        selected={paygEnabled}
+                        onClick={() =>
+                          form.setValue("paygEnabled", !paygEnabled)
+                        }
+                      />
+                      <Label className="text-sm">Pay-as-you-go</Label>
+                    </div>
+                    {paygEnabled && (
+                      <div className="ml-6">
+                        <InputField
+                          control={form.control}
+                          name="paygCapDollars"
+                          title="PAYG Spending Cap (USD)"
+                          type="number"
+                          placeholder="e.g., 1000"
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <DialogFooter>
                   <Button

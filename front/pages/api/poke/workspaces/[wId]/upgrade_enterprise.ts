@@ -139,12 +139,47 @@ async function handler(
       const currentSubscription = auth.subscriptionResource();
       const isCurrentSubscriptionMetronomeBilled =
         currentSubscription?.isMetronomeOnlyBilled ?? false;
-      const requestedMetronomeUpgrade =
-        body.metronomePackageId !== undefined || body.startingAt !== undefined;
+      const isMetronomeUpgrade =
+        body.metronomePackageId !== undefined ||
+        body.startingAt !== undefined ||
+        isCurrentSubscriptionMetronomeBilled;
+
+      // PAYG on the Metronome path is not yet wired up: there is no
+      // Metronome-side cycle-renewal or invoicing for PAYG credits, so
+      // turning the flag on would let usage exceed commit silently. Reject
+      // before persisting the config so paygCapMicroUsd never reaches the DB
+      // for a Metronome workspace. Will be lifted in a follow-up PR.
+      if (isMetronomeUpgrade && paygEnabled) {
+        const errorMessage =
+          "Pay-as-you-go is not yet supported for Metronome-billed " +
+          "subscriptions and will be added in a follow-up PR.";
+        await pluginRun.recordError(errorMessage);
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: { type: "invalid_request_error", message: errorMessage },
+        });
+      }
+
+      const upsertResult = await upsertProgrammaticUsageConfiguration(auth, {
+        freeCreditMicroUsd,
+        defaultDiscountPercent: defaultDiscountPercent ?? 0,
+        paygCapMicroUsd,
+      });
+      if (upsertResult.isErr()) {
+        const errorMessage = upsertResult.error.message;
+        await pluginRun.recordError(errorMessage);
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: errorMessage,
+          },
+        });
+      }
 
       // Metronome path: schedule the upgrade in Metronome. The subscription
       // DB record is updated later by the contract.start webhook.
-      if (requestedMetronomeUpgrade || isCurrentSubscriptionMetronomeBilled) {
+      if (isMetronomeUpgrade) {
         if (!body.metronomePackageId || !body.startingAt) {
           return apiError(req, res, {
             status_code: 400,
@@ -369,87 +404,67 @@ async function handler(
         return;
       }
 
-      let stripeSubscription = null;
-      if (!requestedMetronomeUpgrade) {
-        if (!body.stripeSubscriptionId) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message:
-                "stripeSubscriptionId is required for Stripe-billed subscriptions.",
-            },
-          });
-        }
-
-        stripeSubscription = await getStripeSubscription(
-          body.stripeSubscriptionId
-        );
-        if (!stripeSubscription) {
-          const errorMessage = "The Stripe subscription does not exist.";
-          await pluginRun.recordError(errorMessage);
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: errorMessage,
-            },
-          });
-        }
-
-        // Ensure the stripe subscription ID has not been used before (same or different workspace).
-        const isAlreadyUsed = await SubscriptionResource.isStripeIdAlreadyUsed(
-          stripeSubscription.id
-        );
-
-        if (isAlreadyUsed) {
-          const errorMessage =
-            "The Stripe subscription ID is already used by an existing subscription.";
-          await pluginRun.recordError(errorMessage);
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: errorMessage,
-            },
-          });
-        }
-
-        if (!isEnterpriseSubscription(stripeSubscription)) {
-          const errorMessage =
-            "The subscription provided is not an enterprise subscription.";
-          await pluginRun.recordError(errorMessage);
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: errorMessage,
-            },
-          });
-        }
-
-        const assertValidSubscription =
-          assertStripeSubscriptionIsValid(stripeSubscription);
-        if (assertValidSubscription.isErr()) {
-          const errorMessage = assertValidSubscription.error.invalidity_message;
-          await pluginRun.recordError(errorMessage);
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: errorMessage,
-            },
-          });
-        }
+      if (!body.stripeSubscriptionId) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "stripeSubscriptionId is required for Stripe-billed subscriptions.",
+          },
+        });
       }
 
-      const upsertResult = await upsertProgrammaticUsageConfiguration(auth, {
-        freeCreditMicroUsd,
-        defaultDiscountPercent: defaultDiscountPercent ?? 0,
-        paygCapMicroUsd,
-      });
-      if (upsertResult.isErr()) {
-        const errorMessage = upsertResult.error.message;
+      const stripeSubscription = await getStripeSubscription(
+        body.stripeSubscriptionId
+      );
+      if (!stripeSubscription) {
+        const errorMessage = "The Stripe subscription does not exist.";
+        await pluginRun.recordError(errorMessage);
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: errorMessage,
+          },
+        });
+      }
+
+      // Ensure the stripe subscription ID has not been used before (same or different workspace).
+      const isAlreadyUsed = await SubscriptionResource.isStripeIdAlreadyUsed(
+        stripeSubscription.id
+      );
+
+      if (isAlreadyUsed) {
+        const errorMessage =
+          "The Stripe subscription ID is already used by an existing subscription.";
+        await pluginRun.recordError(errorMessage);
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: errorMessage,
+          },
+        });
+      }
+
+      if (!isEnterpriseSubscription(stripeSubscription)) {
+        const errorMessage =
+          "The subscription provided is not an enterprise subscription.";
+        await pluginRun.recordError(errorMessage);
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: errorMessage,
+          },
+        });
+      }
+
+      const assertValidSubscription =
+        assertStripeSubscriptionIsValid(stripeSubscription);
+      if (assertValidSubscription.isErr()) {
+        const errorMessage = assertValidSubscription.error.invalidity_message;
         await pluginRun.recordError(errorMessage);
         return apiError(req, res, {
           status_code: 400,
@@ -470,12 +485,7 @@ async function handler(
         await restoreWorkspaceAfterSubscription(auth);
 
         // If PAYG is enabled, create the PAYG credit for the current billing period
-        if (
-          !requestedMetronomeUpgrade &&
-          stripeSubscription &&
-          paygEnabled &&
-          paygCapMicroUsd !== null
-        ) {
+        if (paygEnabled && paygCapMicroUsd !== null) {
           const paygResult = await startOrResumeEnterprisePAYG({
             auth,
             stripeSubscription,
