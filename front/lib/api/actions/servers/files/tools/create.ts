@@ -5,7 +5,10 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { CREATE_CONTENT_MAX_BYTES } from "@app/lib/api/actions/servers/files/metadata";
 import { resolveMountPoint } from "@app/lib/api/actions/servers/files/tools/utils";
-import { createGCSMountFile, getGCSPathFromScopedPath } from "@app/lib/api/files/gcs_mount/files";
+import {
+  createGCSMountFile,
+  getGCSPathFromScopedPath,
+} from "@app/lib/api/files/gcs_mount/files";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -16,11 +19,11 @@ export async function createHandler(
     content,
     content_type,
   }: { path: string; content: string; content_type: string },
-  extra: ToolHandlerExtra
+  { auth, agentLoopContext }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
   const mountRes = resolveMountPoint(
-    extra.auth,
-    extra.agentLoopContext?.runContext?.conversation
+    auth,
+    agentLoopContext?.runContext?.conversation
   );
   if (mountRes.isErr()) {
     return mountRes;
@@ -57,7 +60,7 @@ export async function createHandler(
 
   let entry;
   try {
-    entry = await createGCSMountFile(extra.auth, scope, {
+    entry = await createGCSMountFile(auth, scope, {
       relativeFilePath,
       content: contentBuffer,
       contentType: content_type,

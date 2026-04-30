@@ -1,5 +1,4 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   type GCSMountPoint,
   getGCSPathFromScopedPath,
@@ -41,16 +40,11 @@ export function resolveMountPoint(
 }
 
 export async function resolveConversationFile(
-  path: string,
-  {
-    auth,
-    agentLoopContext,
-  }: Pick<ToolHandlerExtra, "auth" | "agentLoopContext">
+  auth: Authenticator,
+  conversation: ConversationType | undefined,
+  path: string
 ): Promise<Ok<ResolvedFile> | Err<MCPError>> {
-  const mountRes = resolveMountPoint(
-    auth,
-    agentLoopContext?.runContext?.conversation
-  );
+  const mountRes = resolveMountPoint(auth, conversation);
   if (mountRes.isErr()) {
     return mountRes;
   }

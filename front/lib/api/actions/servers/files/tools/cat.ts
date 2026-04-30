@@ -93,9 +93,13 @@ async function catText(
 
 export async function catHandler(
   { path, offset, limit }: { path: string; offset?: number; limit?: number },
-  extra: ToolHandlerExtra
+  { auth, agentLoopContext }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
-  const resolvedRes = await resolveConversationFile(path, extra);
+  const resolvedRes = await resolveConversationFile(
+    auth,
+    agentLoopContext?.runContext?.conversation,
+    path
+  );
   if (resolvedRes.isErr()) {
     return resolvedRes;
   }
