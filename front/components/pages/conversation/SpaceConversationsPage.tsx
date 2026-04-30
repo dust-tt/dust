@@ -7,6 +7,7 @@ import { SpaceKnowledgeTab } from "@app/components/assistant/conversation/space/
 import { SpaceTodosTab } from "@app/components/assistant/conversation/space/SpaceTodosTab";
 
 import { useSpaceConversations } from "@app/hooks/conversations";
+import type { SpaceConversationListFilter } from "@app/hooks/conversations/useSpaceConversations";
 import { useActiveSpaceId } from "@app/hooks/useActiveSpaceId";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -72,17 +73,21 @@ export function SpaceConversationsPage() {
     owner,
     user,
   });
+  const [conversationFilter, setConversationFilter] =
+    useState<SpaceConversationListFilter>("all");
 
   const {
     conversations,
     isConversationsLoading,
     mutateConversations,
     hasMore,
+    isEmpty: isSpaceEmpty,
     loadMore,
     isLoadingMore,
   } = useSpaceConversations({
     workspaceId: owner.sId,
     spaceId: spaceId,
+    filter: conversationFilter,
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -153,6 +158,7 @@ export function SpaceConversationsPage() {
     if (prevSpaceIdRef.current !== spaceId) {
       prevSpaceIdRef.current = spaceId;
       setCurrentTab("conversations");
+      setConversationFilter("all");
       window.history.replaceState(
         null,
         "",
@@ -266,6 +272,7 @@ export function SpaceConversationsPage() {
                   conversations: [lightConversation],
                   hasMore: false,
                   lastValue: null,
+                  isEmpty: false,
                 },
               ];
             }
@@ -332,6 +339,9 @@ export function SpaceConversationsPage() {
           loadMore={loadMore}
           isLoadingMore={isLoadingMore}
           spaceInfo={spaceInfo}
+          isSpaceEmpty={isSpaceEmpty}
+          conversationFilter={conversationFilter}
+          onConversationFilterChange={setConversationFilter}
           onSubmit={handleConversationCreation}
           onOpenMembersPanel={() => setIsInvitePanelOpen(true)}
         />
@@ -398,6 +408,9 @@ export function SpaceConversationsPage() {
             loadMore={loadMore}
             isLoadingMore={isLoadingMore}
             spaceInfo={spaceInfo}
+            isSpaceEmpty={isSpaceEmpty}
+            conversationFilter={conversationFilter}
+            onConversationFilterChange={setConversationFilter}
             onSubmit={handleConversationCreation}
             onOpenMembersPanel={() => setIsInvitePanelOpen(true)}
           />
