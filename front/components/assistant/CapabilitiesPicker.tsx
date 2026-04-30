@@ -161,18 +161,7 @@ function CapabilitiesPickerItemsList({
     updateScrollFadeState();
     const animationFrame = window.requestAnimationFrame(updateScrollFadeState);
 
-    const list = listRef.current;
-    if (!list || typeof ResizeObserver === "undefined") {
-      return () => window.cancelAnimationFrame(animationFrame);
-    }
-
-    const resizeObserver = new ResizeObserver(updateScrollFadeState);
-    resizeObserver.observe(list);
-
-    return () => {
-      window.cancelAnimationFrame(animationFrame);
-      resizeObserver.disconnect();
-    };
+    return () => window.cancelAnimationFrame(animationFrame);
   }, [itemCount, updateScrollFadeState]);
 
   if (items.length === 0) {
