@@ -7,6 +7,7 @@ import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import { ProjectJoinCTA } from "@app/components/spaces/ProjectJoinCTA";
 import { useSpaceUnreadConversationIds } from "@app/hooks/conversations";
+import type { SpaceConversationListFilter } from "@app/hooks/conversations/useSpaceConversations";
 import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversationsAsRead";
 import { useSearchConversations } from "@app/hooks/useSearchConversations";
 import { useAppRouter } from "@app/lib/platform";
@@ -23,6 +24,8 @@ import type { Result } from "@app/types/shared/result";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import {
   Button,
+  ButtonsSwitch,
+  ButtonsSwitchList,
   Chip,
   cn,
   EmptyCTA,
@@ -53,6 +56,9 @@ interface SpaceConversationsTabProps {
   loadMore: () => void;
   isLoadingMore: boolean;
   spaceInfo: GetSpaceResponseBody["space"];
+  isSpaceEmpty: boolean;
+  conversationFilter: SpaceConversationListFilter;
+  onConversationFilterChange: (filter: SpaceConversationListFilter) => void;
   onSubmit: (
     input: string,
     mentions: RichMention[],
@@ -71,6 +77,9 @@ export function SpaceConversationsTab({
   loadMore,
   isLoadingMore,
   spaceInfo,
+  isSpaceEmpty,
+  conversationFilter,
+  onConversationFilterChange,
   onSubmit,
   onOpenMembersPanel,
 }: SpaceConversationsTabProps) {
@@ -88,6 +97,17 @@ export function SpaceConversationsTab({
   });
 
   const [isSearchPopoverOpen, setIsSearchPopoverOpen] = useState(false);
+
+  const noConversationsForFilterMessage = useMemo(() => {
+    switch (conversationFilter) {
+      case "all":
+        return "No conversations found.";
+      case "group":
+        return "No group conversations yet in this project.";
+      case "with_me":
+        return "You are not a participant in any conversation yet.";
+    }
+  }, [conversationFilter]);
 
   const {
     conversations: searchResults,
@@ -124,7 +144,9 @@ export function SpaceConversationsTab({
     [owner.sId, router, setSearchText]
   );
 
-  const isEmpty = !isConversationsLoading && !hasHistory;
+  const isProjectEmpty = !isConversationsLoading && isSpaceEmpty;
+  const isFilteredEmpty =
+    !isConversationsLoading && !isSpaceEmpty && !hasHistory;
 
   return (
     <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-y-auto px-6">
@@ -134,8 +156,8 @@ export function SpaceConversationsTab({
       >
         <div
           className={cn(
-            "mx-auto flex w-full max-w-4xl flex-col gap-6 py-8",
-            isEmpty && "h-full justify-center py-8"
+            "mx-auto flex w-full max-w-4xl flex-col gap-3 py-8",
+            isProjectEmpty && "h-full justify-center py-8"
           )}
         >
           <div className="flex w-full flex-col gap-3">
@@ -153,7 +175,7 @@ export function SpaceConversationsTab({
                 <Chip size="xs" color="rose" label="Archived" />
               )}
             </div>
-            {isEmpty && (
+            {isProjectEmpty && (
               <h3 className="heading-lg text-foreground dark:text-foreground-night">
                 Start a first conversation!
               </h3>
@@ -186,7 +208,7 @@ export function SpaceConversationsTab({
           </div>
 
           {/* Suggestions for empty rooms */}
-          {isEmpty ? (
+          {isProjectEmpty ? (
             <SpaceConversationsActions
               isEditor={isProjectEditor}
               onOpenMembersPanel={onOpenMembersPanel}
@@ -195,7 +217,7 @@ export function SpaceConversationsTab({
             /* Space conversations section */
             <div className="w-full">
               <div className="flex flex-col gap-3">
-                <div className="px-3 flex flex-row gap-2">
+                <div className="flex flex-row gap-2 my-3 px-3">
                   <SearchInputWithPopover
                     name="conversation-search"
                     value={searchText}
@@ -250,7 +272,30 @@ export function SpaceConversationsTab({
                     disabled={unreadConversationIds.length === 0}
                   />
                 </div>
-                <div className="flex flex-col">
+                <div className="flex justify-center">
+                  <ButtonsSwitchList
+                    key={conversationFilter}
+                    defaultValue={conversationFilter}
+                    size="xs"
+                  >
+                    <ButtonsSwitch
+                      value="all"
+                      label="All"
+                      onClick={() => onConversationFilterChange("all")}
+                    />
+                    <ButtonsSwitch
+                      value="group"
+                      label="Group"
+                      onClick={() => onConversationFilterChange("group")}
+                    />
+                    <ButtonsSwitch
+                      value="with_me"
+                      label="Mine"
+                      onClick={() => onConversationFilterChange("with_me")}
+                    />
+                  </ButtonsSwitchList>
+                </div>
+                <div className="flex flex-col -mt-6">
                   {isConversationsLoading ? (
                     <>
                       <ListItemSection>
@@ -262,6 +307,13 @@ export function SpaceConversationsTab({
                         ))}
                       </ListGroup>
                     </>
+                  ) : isFilteredEmpty ? (
+                    <div className="px-3 py-8">
+                      <EmptyCTA
+                        message={noConversationsForFilterMessage}
+                        action={null}
+                      />
+                    </div>
                   ) : (
                     Object.keys(conversationsByDate).map((dateLabel) => {
                       const dateConversations =

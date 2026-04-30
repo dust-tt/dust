@@ -81,6 +81,8 @@ export type FetchConversationOptions = {
   updatedSince?: number; // Filter conversations updated after this timestamp (milliseconds)
 };
 
+type SpaceConversationsFilter = "all" | "group" | "with_me";
+
 interface UserParticipation {
   actionRequired: boolean;
   updated: number;
@@ -1860,6 +1862,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       options,
       pagination,
       restrictToConversationModelIds,
+      filter = "all",
     }: {
       spaceId: string;
       options?: FetchConversationOptions;
@@ -1869,6 +1872,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         orderDirection?: "asc" | "desc";
       };
       restrictToConversationModelIds?: ModelId[];
+      filter?: SpaceConversationsFilter;
     }
   ): Promise<{
     conversations: ConversationResource[];
@@ -1918,22 +1922,136 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       }
     }
 
-    // Fetch limit + 1 to determine if there are more results
-    const fetchLimit = pagination.limit + 1;
+    const chunkSize = Math.max(pagination.limit + 1, 30);
+    const filteredConversations: ConversationResource[] = [];
+    let fetchCursor = pagination.lastValue;
+    let hasMoreRawConversations = true;
 
-    const conversations = await this.baseFetchWithAuthorization(auth, options, {
-      where: whereClause,
-      order: [["updatedAt", orderDirection === "desc" ? "DESC" : "ASC"]],
-      limit: fetchLimit,
-    });
+    while (
+      filteredConversations.length <= pagination.limit &&
+      hasMoreRawConversations
+    ) {
+      const batchWhereClause: WhereOptions<InferAttributes<ConversationModel>> =
+        {
+          ...whereClause,
+        };
 
-    let hasMore = false;
-    let resultConversations = conversations;
+      if (fetchCursor) {
+        const cursorMs = parseInt(fetchCursor, 10);
+        if (!Number.isNaN(cursorMs)) {
+          const operator = orderDirection === "desc" ? Op.lt : Op.gt;
+          const cursorConstraint = { [operator]: new Date(cursorMs) };
+          const existingUpdatedAt = batchWhereClause.updatedAt;
 
-    if (conversations.length > pagination.limit) {
-      hasMore = true;
-      resultConversations = conversations.slice(0, pagination.limit);
+          if (
+            existingUpdatedAt &&
+            typeof existingUpdatedAt === "object" &&
+            !Array.isArray(existingUpdatedAt)
+          ) {
+            batchWhereClause.updatedAt = {
+              ...existingUpdatedAt,
+              ...cursorConstraint,
+            };
+          } else {
+            batchWhereClause.updatedAt = cursorConstraint;
+          }
+        }
+      }
+
+      const conversationsBatch = await this.baseFetchWithAuthorization(
+        auth,
+        options,
+        {
+          where: batchWhereClause,
+          order: [["updatedAt", orderDirection === "desc" ? "DESC" : "ASC"]],
+          limit: chunkSize,
+        }
+      );
+
+      hasMoreRawConversations = conversationsBatch.length === chunkSize;
+
+      if (conversationsBatch.length === 0) {
+        break;
+      }
+
+      let matchingConversations = conversationsBatch;
+
+      if (filter === "with_me") {
+        const user = auth.user();
+        if (!user) {
+          matchingConversations = [];
+        } else {
+          const participations = await ConversationParticipantModel.findAll({
+            where: {
+              workspaceId: auth.getNonNullableWorkspace().id,
+              userId: user.id,
+              conversationId: {
+                [Op.in]: conversationsBatch.map((c) => c.id),
+              },
+              action: "posted",
+            },
+            attributes: ["conversationId"],
+          });
+
+          const matchingConversationIds = new Set(
+            participations.map((p) => p.conversationId)
+          );
+          matchingConversations = conversationsBatch.filter((conversation) =>
+            matchingConversationIds.has(conversation.id)
+          );
+        }
+      }
+
+      if (filter === "group") {
+        const participants = await ConversationParticipantModel.findAll({
+          where: {
+            workspaceId: auth.getNonNullableWorkspace().id,
+            conversationId: {
+              [Op.in]: conversationsBatch.map((c) => c.id),
+            },
+            action: "posted",
+          },
+          attributes: ["conversationId", "userId"],
+        });
+
+        const participantUserIdsByConversation = new Map<
+          ModelId,
+          Set<ModelId>
+        >();
+        for (const participant of participants) {
+          const existingUserIds =
+            participantUserIdsByConversation.get(participant.conversationId) ??
+            new Set<ModelId>();
+          existingUserIds.add(participant.userId);
+          participantUserIdsByConversation.set(
+            participant.conversationId,
+            existingUserIds
+          );
+        }
+
+        const groupConversationIds = new Set<ModelId>(
+          [...participantUserIdsByConversation.entries()].flatMap(
+            ([conversationId, participantUserIds]) =>
+              participantUserIds.size >= 2 ? [conversationId] : []
+          )
+        );
+
+        matchingConversations = conversationsBatch.filter((conversation) =>
+          groupConversationIds.has(conversation.id)
+        );
+      }
+
+      filteredConversations.push(...matchingConversations);
+
+      const lastConversationInBatch =
+        conversationsBatch[conversationsBatch.length - 1];
+      fetchCursor = lastConversationInBatch.updatedAt.getTime().toString();
     }
+
+    const hasMore = filteredConversations.length > pagination.limit;
+    const resultConversations = hasMore
+      ? filteredConversations.slice(0, pagination.limit)
+      : filteredConversations;
 
     await this.enrichWithParticipationAndReadState(auth, resultConversations);
 
