@@ -13,7 +13,6 @@ import {
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { isAllSupportedFileContentType } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
 export async function createHandler(
@@ -74,7 +73,8 @@ export async function createHandler(
     );
   }
 
-  const sizeKb = Math.ceil(entryRes.value.sizeBytes / 1024);
+  const entry = entryRes.value;
+  const sizeKb = Math.ceil(entry.sizeBytes / 1024);
   const verb = exists ? "Updated" : "Created";
 
   const items: Array<
@@ -83,7 +83,7 @@ export async function createHandler(
   > = [
     {
       type: "text",
-      text: `${verb} \`${entryRes.value.path}\` (${entryRes.value.contentType}, ${sizeKb} KB)`,
+      text: `${verb} \`${entry.path}\` (${entry.contentType}, ${sizeKb} KB)`,
     },
   ];
 
