@@ -4,11 +4,11 @@ import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { isSupportedImageContentType } from "@app/types/files";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Err, Ok } from "@app/types/shared/result";
 
 type GCSMountEntryBase = {
   fileName: string;
@@ -227,7 +227,9 @@ export async function getConversationFileMountSignedUrl(
   const prefix = resolvePrefix(owner, scope);
   if (!gcsPath.startsWith(prefix)) {
     return new Err(
-      new Error(`GCS path does not belong to the expected conversation file system.`)
+      new Error(
+        `GCS path does not belong to the expected conversation file system.`
+      )
     );
   }
   try {
