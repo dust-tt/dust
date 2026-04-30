@@ -3,10 +3,13 @@
 // which itself is invoked by the per-project projectTodoWorkflow at most once
 // per hour (based on the cron schedule).
 //
-// High-level algorithm (3 phases):
+// High-level algorithm (3 phases). Takeaways are processed in chronological
+// order (oldest → newest) so that whenever multiple sources resolve to the
+// same TODO, the most recent takeaway's status wins.
 //
 //   Phase 1 — Collect new candidates.
-//     For every (takeaway, item, targetUser) triple:
+//     For every (takeaway, item, targetUser) triple, sorted by
+//     takeaway.updatedAt ASC and applied serially:
 //       - fetchBySourceId(itemId, userId):
 //           found     → update status/doneAt if changed (no new row, text
 //                       always preserved from the first version)
@@ -20,12 +23,15 @@
 //       Missing keys mean the candidate is genuinely new.
 //
 //   Phase 3 — Create or link.
-//     For each candidate in newCandidates:
-//       - Key in dedupMap → addSource on existing todo.
+//     For each dedup group, candidates are sorted by takeaway.updatedAt ASC:
+//       - Key in dedupMap → addSource on existing todo, then apply the
+//         newest candidate's blob.
 //           If existing todo is user-created: preserve text/status (user wins).
 //           If existing todo is agent-created: update status/doneAt if
 //           changed (text is always preserved from the first version).
-//       - Not in dedupMap → makeNew + addSource (current behaviour).
+//       - Not in dedupMap → makeNew from the oldest candidate (first-version
+//         text), addSource for each remaining candidate, then apply the
+//         newest candidate's blob.
 //
 // Category mapping:
 //   actionItems  (open)    → "to_do",   status: "todo"
@@ -71,11 +77,16 @@ type TodoBlob = {
 
 // A candidate todo that has no existing source link yet and therefore needs to
 // go through the deduplication check before being created or linked.
+//
+// `takeawayUpdatedAt` is the timestamp of the takeaway extraction this
+// candidate originates from. The merge applies takeaways as a time sequence
+// (oldest → newest) so the most recent takeaway's status wins on conflict.
 type PendingCandidate = {
   itemId: string;
   userId: ModelId;
   blob: TodoBlob;
   source: ProjectTodoSourceInfo;
+  takeawayUpdatedAt: Date;
 };
 
 // ── Stats ─────────────────────────────────────────────────────────────────────
@@ -119,9 +130,16 @@ export async function mergeTakeawaysIntoProject({
 
   const adminAuth = await Authenticator.internalAdminForWorkspace(workspaceId);
 
-  // Fetch all latest takeaways for the space directly.
-  const latestTakeawaysWithSource =
-    await TakeawaysResource.fetchLatestBySpaceId(adminAuth, { spaceModelId });
+  // Fetch all latest takeaways for the space, then apply them in chronological
+  // order (oldest first) so the most recent takeaway's status wins whenever
+  // multiple sources resolve to the same TODO.
+  const latestTakeawaysWithSource = (
+    await TakeawaysResource.fetchLatestBySpaceId(adminAuth, { spaceModelId })
+  )
+    .slice()
+    .sort(
+      (a, b) => a.takeaway.updatedAt.getTime() - b.takeaway.updatedAt.getTime()
+    );
 
   stats.takeawaysProcessed = latestTakeawaysWithSource.length;
 
@@ -202,18 +220,17 @@ async function collectNewCandidates(
   const newCandidates: PendingCandidate[] = [];
   let existingUpdated = 0;
 
-  await concurrentExecutor(
-    latestTakeawaysWithSource,
-    async (takeawayWithSource) => {
-      const result = await collectDocumentCandidates(auth, {
-        takeawayWithSource,
-        usersById,
-      });
-      newCandidates.push(...result.candidates);
-      existingUpdated += result.existingUpdated;
-    },
-    { concurrency: 4 }
-  );
+  // Takeaways must be applied to existing TODOs in chronological order so the
+  // newest source's status wins. The caller pre-sorts the input by
+  // takeaway.updatedAt ASC; the loop here preserves that order.
+  for (const takeawayWithSource of latestTakeawaysWithSource) {
+    const result = await collectDocumentCandidates(auth, {
+      takeawayWithSource,
+      usersById,
+    });
+    newCandidates.push(...result.candidates);
+    existingUpdated += result.existingUpdated;
+  }
 
   return { candidates: newCandidates, existingUpdated };
 }
@@ -279,6 +296,7 @@ async function collectDocumentCandidates(
           userId,
           blob: actionItemBlob,
           source: takeawayWithSource.source,
+          takeawayUpdatedAt: takeawayWithSource.takeaway.updatedAt,
         });
       }
     }
@@ -387,19 +405,30 @@ async function createOrLinkTodos(
   await concurrentExecutor(
     dedupGroups,
     async (group) => {
+      // Resolve every candidate to its PendingCandidate and order by takeaway
+      // date (oldest → newest). The newest takeaway's blob will be applied
+      // last so its status wins; the oldest's text seeds new TODOs (the first
+      // version's wording is preserved by updateTodoIfChanged).
+      const pendings = group.candidates
+        .map(lookupPending)
+        .filter((p): p is PendingCandidate => p !== null)
+        .sort(
+          (a, b) =>
+            a.takeawayUpdatedAt.getTime() - b.takeawayUpdatedAt.getTime()
+        );
+
+      if (pendings.length === 0) {
+        return;
+      }
+
+      const newest = pendings[pendings.length - 1];
+
       if (group.kind === "existing") {
-        // Attach every candidate's source to the existing todo. The update
-        // guard lives in updateTodoIfChanged — no-op when the target todo was
-        // created by a user or already marked done by one.
-        const primary = lookupPending(group.candidates[0]);
-        if (primary) {
-          await updateTodoIfChanged(group.todo, auth, primary.blob);
-        }
-        for (const candidate of group.candidates) {
-          const pending = lookupPending(candidate);
-          if (!pending) {
-            continue;
-          }
+        // Attach every candidate's source to the existing todo, then apply the
+        // newest takeaway's blob. The update guard lives in
+        // updateTodoIfChanged — no-op when the target todo was created by a
+        // user or already marked done by one.
+        for (const pending of pendings) {
           await group.todo.upsertSource(auth, {
             itemId: pending.itemId,
             source: pending.source,
@@ -417,47 +446,44 @@ async function createOrLinkTodos(
             "Project todo merge: linked source to existing todo (semantic duplicate)"
           );
         }
+        await updateTodoIfChanged(group.todo, auth, newest.blob);
         return;
       }
 
-      // kind === "new": create one todo from the first candidate, attach every
-      // other candidate's source to it.
-      const primary = lookupPending(group.candidates[0]);
-      if (!primary) {
-        return;
-      }
+      // kind === "new": create one todo from the oldest candidate (so the
+      // first-version text is the earliest extraction's wording), attach every
+      // other candidate's source to it, and apply the newest blob at the end
+      // so the most recent status wins.
+      const oldest = pendings[0];
 
       const todo = await ProjectTodoResource.makeNewWithSource(auth, {
         blob: {
           spaceId: spaceModelId,
-          userId: primary.userId,
+          userId: oldest.userId,
           createdByType: "agent",
           createdByUserId: null,
           createdByAgentConfigurationId: BUTLER_AGENT_SID,
-          text: primary.blob.text,
-          status: primary.blob.status,
-          doneAt: primary.blob.doneAt,
+          text: oldest.blob.text,
+          status: oldest.blob.status,
+          doneAt: oldest.blob.doneAt,
         },
-        itemId: primary.itemId,
-        source: primary.source,
+        itemId: oldest.itemId,
+        source: oldest.source,
       });
       createdNew++;
 
       localLogger.info(
         {
           todoId: todo.sId,
-          itemId: primary.itemId,
-          userId: primary.userId,
-          source: primary.source,
+          itemId: oldest.itemId,
+          userId: oldest.userId,
+          source: oldest.source,
         },
         "Project todo merge: created new todo"
       );
 
-      for (let i = 1; i < group.candidates.length; i++) {
-        const pending = lookupPending(group.candidates[i]);
-        if (!pending) {
-          continue;
-        }
+      for (let i = 1; i < pendings.length; i++) {
+        const pending = pendings[i];
         await todo.upsertSource(auth, {
           itemId: pending.itemId,
           source: pending.source,
@@ -473,6 +499,10 @@ async function createOrLinkTodos(
           },
           "Project todo merge: linked source to new todo (intra-batch duplicate)"
         );
+      }
+
+      if (pendings.length > 1) {
+        await updateTodoIfChanged(todo, auth, newest.blob);
       }
     },
     { concurrency: 4 }
