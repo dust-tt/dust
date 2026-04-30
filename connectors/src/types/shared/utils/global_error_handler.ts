@@ -10,6 +10,21 @@ export function setupGlobalErrorHandler(logger: LoggerInterface) {
   }
   once = true;
   process.on("unhandledRejection", (reason, promise) => {
+    // CancelledFailure: NOT_FOUND from Temporal SDK is expected when workflows
+    // are terminated while activities are still pending on the worker.
+    // This is not actionable — downgrade from panic to warn.
+    if (
+      reason instanceof Error &&
+      reason.name === "CancelledFailure" &&
+      reason.message === "NOT_FOUND"
+    ) {
+      logger.warn(
+        { error: reason },
+        "Temporal activity cancellation for terminated workflow (ignored)"
+      );
+      return;
+    }
+
     // uuid here serves as a correlation id for the console.error and the logger.error.
     const uuid = uuidv4();
     // console.log here is important because the promise.catch() below could fail.
