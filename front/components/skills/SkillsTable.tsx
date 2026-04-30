@@ -6,15 +6,26 @@ import { getSkillAvatarIcon } from "@app/lib/skill";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
-import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
+import type {
+  SkillWithRelationsType,
+  SkillWithoutInstructionsAndToolsType,
+} from "@app/types/assistant/skill_configuration";
 import type { AgentsUsageType } from "@app/types/data_source";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import type { MenuItem } from "@dust-tt/sparkle";
 import {
+  Button,
   ClipboardIcon,
   DataTable,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSearchbar,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
   EyeIcon,
   PencilSquareIcon,
+  PuzzleIcon,
   TrashIcon,
 } from "@dust-tt/sparkle";
 import type { CellContext } from "@tanstack/react-table";
@@ -26,6 +37,7 @@ type RowData = {
   description: string;
   editors: UserType[] | null;
   usage: AgentsUsageType;
+  usedBySkills: SkillWithoutInstructionsAndToolsType[];
   updatedAt: number | null;
   createdAt: number | null;
   onClick: () => void;
@@ -103,6 +115,125 @@ const usedByColumn = (onAgentClick: (agentId: string) => void) => ({
   },
 });
 
+function UsedBySkillsButton({
+  skills,
+  onSkillClick,
+}: {
+  skills: SkillWithoutInstructionsAndToolsType[];
+  onSkillClick: (skillId: string) => void;
+}) {
+  const [searchText, setSearchText] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
+
+  if (skills.length === 0) {
+    return (
+      <Button
+        icon={PuzzleIcon}
+        variant="ghost-secondary"
+        isSelect={false}
+        size="xs"
+        label="0"
+        disabled
+      />
+    );
+  }
+
+  const query = searchText.toLowerCase();
+  const filteredSkills =
+    query.length === 0
+      ? skills
+      : skills.filter((skill) => skill.name.toLowerCase().includes(query));
+
+  return (
+    <DropdownMenu
+      open={isOpen}
+      onOpenChange={(open) => {
+        setIsOpen(open);
+        if (open) {
+          setSearchText("");
+        }
+      }}
+    >
+      <DropdownMenuTrigger asChild>
+        <Button
+          icon={PuzzleIcon}
+          variant="ghost-secondary"
+          isSelect
+          size="xs"
+          label={`${skills.length}`}
+          onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+            e.stopPropagation();
+          }}
+        />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        className="h-96 w-72"
+        align="end"
+        onClick={(e) => e.stopPropagation()}
+        dropdownHeaders={
+          <>
+            <DropdownMenuSearchbar
+              autoFocus
+              name="search-used-by-skills"
+              placeholder="Search skills"
+              value={searchText}
+              onChange={setSearchText}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && filteredSkills.length > 0) {
+                  onSkillClick(filteredSkills[0].sId);
+                  setSearchText("");
+                  setIsOpen(false);
+                }
+              }}
+            />
+            <DropdownMenuSeparator />
+          </>
+        }
+      >
+        {filteredSkills.length > 0 ? (
+          filteredSkills.map((skill) => {
+            const SkillAvatar = getSkillAvatarIcon(skill.icon);
+            return (
+              <DropdownMenuItem
+                key={`skill-picker-${skill.sId}`}
+                icon={SkillAvatar}
+                label={skill.name}
+                truncateText
+                className="py-1"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSkillClick(skill.sId);
+                  setIsOpen(false);
+                }}
+              />
+            );
+          })
+        ) : (
+          <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
+            No skills found
+          </div>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+const usedBySkillsColumn = (onSkillClick: (skillId: string) => void) => ({
+  header: "Used by skills",
+  accessorFn: (row: RowData) => row.usedBySkills.length,
+  cell: (info: CellContext<RowData, number>) => (
+    <DataTable.CellContent>
+      <UsedBySkillsButton
+        skills={info.row.original.usedBySkills}
+        onSkillClick={onSkillClick}
+      />
+    </DataTable.CellContent>
+  ),
+  meta: {
+    className: "hidden @lg:w-28 @lg:table-cell",
+  },
+});
+
 const lastEditedColumn = {
   header: "Last Edited",
   accessorKey: "updatedAt",
@@ -129,7 +260,13 @@ const menuColumn = {
   },
 };
 
-const getTableColumns = (onAgentClick: (agentId: string) => void) => {
+const getTableColumns = ({
+  onAgentClick,
+  onUsedBySkillClick,
+}: {
+  onAgentClick: (agentId: string) => void;
+  onUsedBySkillClick: (skillId: string) => void;
+}) => {
   /**
    * Columns order:
    * - Name (always)
@@ -142,6 +279,7 @@ const getTableColumns = (onAgentClick: (agentId: string) => void) => {
   return [
     nameColumn,
     usedByColumn(onAgentClick),
+    usedBySkillsColumn(onUsedBySkillClick),
     editorsColumn,
     lastEditedColumn,
     menuColumn,
@@ -152,6 +290,7 @@ type SkillsTableProps = {
   skills: SkillWithRelationsType[];
   owner: LightWorkspaceType;
   onSkillClick: (skill: SkillWithRelationsType) => void;
+  onSkillIdClick: (skillId: string) => void;
   onAgentClick: (agentId: string) => void;
 };
 
@@ -159,6 +298,7 @@ export function SkillsTable({
   skills,
   owner,
   onSkillClick,
+  onSkillIdClick,
   onAgentClick,
 }: SkillsTableProps) {
   const router = useAppRouter();
@@ -175,6 +315,7 @@ export function SkillsTable({
         description: skill.userFacingDescription,
         editors: skill.relations.editors,
         usage: skill.relations.usage,
+        usedBySkills: skill.relations.referencedBy,
         updatedAt: skill.updatedAt,
         createdAt: skill.createdAt,
         onClick: () => {
@@ -190,7 +331,7 @@ export function SkillsTable({
                   onClick: (e: React.MouseEvent) => {
                     e.stopPropagation();
                     void router.push(
-                      getSkillBuilderRoute(owner.sId, skill.sId)
+                      getSkillBuilderRoute(owner.sId, skill.sId),
                     );
                   },
                   kind: "item" as const,
@@ -214,8 +355,8 @@ export function SkillsTable({
                       getSkillBuilderRoute(
                         owner.sId,
                         "new",
-                        `extends=${skill.sId}`
-                      )
+                        `extends=${skill.sId}`,
+                      ),
                     );
                   },
                   kind: "item" as const,
@@ -235,7 +376,7 @@ export function SkillsTable({
             : [],
       })),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- router is not stable, mutating the skills list which prevent pagination to work
-    [skills, onSkillClick, owner.sId]
+    [skills, onSkillClick, owner.sId],
   );
 
   if (rows.length === 0) {
@@ -257,7 +398,10 @@ export function SkillsTable({
       <DataTable
         className="relative"
         data={rows}
-        columns={getTableColumns(onAgentClick)}
+        columns={getTableColumns({
+          onAgentClick,
+          onUsedBySkillClick: onSkillIdClick,
+        })}
         pagination={pagination}
         setPagination={setPagination}
       />

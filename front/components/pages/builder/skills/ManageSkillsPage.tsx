@@ -135,7 +135,7 @@ export function ManageSkillsPage() {
     return {
       active: sortedActiveSkills,
       editable_by_me: sortedActiveSkills.filter((s) =>
-        s.relations.editors?.some((e) => e.sId === user?.sId)
+        s.relations.editors?.some((e) => e.sId === user?.sId),
       ),
       default: sortedActiveSkills
         .filter((s) => s.isDefault || s.relations.editors === null)
@@ -152,14 +152,14 @@ export function ManageSkillsPage() {
       archived: sortedArchivedSkills,
       search: activeSkills
         .filter((s) =>
-          subFilter(skillSearch.toLowerCase(), getSkillSearchString(s))
+          subFilter(skillSearch.toLowerCase(), getSkillSearchString(s)),
         )
         .sort((a, b) =>
           compareForFuzzySort(
             skillSearch.toLowerCase(),
             getSkillSearchString(a),
-            getSkillSearchString(b)
-          )
+            getSkillSearchString(b),
+          ),
         ),
     };
   }, [activeSkills, archivedSkills, skillSearch, user]);
@@ -181,7 +181,21 @@ export function ManageSkillsPage() {
       setSelectedSkill(skill);
       setSkillIdParam(skill?.sId);
     },
-    [setSkillIdParam]
+    [setSkillIdParam],
+  );
+
+  const handleSkillIdSelect = useCallback(
+    (skillId: string) => {
+      const skill = [
+        ...activeSkills,
+        ...archivedSkills,
+        ...suggestedSkills,
+      ].find((s) => s.sId === skillId);
+      if (skill) {
+        handleSkillSelect(skill);
+      }
+    },
+    [activeSkills, archivedSkills, suggestedSkills, handleSkillSelect],
   );
 
   const visibleTabs = useMemo(() => {
@@ -220,7 +234,7 @@ export function ManageSkillsPage() {
 
   const navChildren = useMemo(
     () => <AgentSidebarMenu owner={owner} />,
-    [owner]
+    [owner],
   );
 
   useSetContentWidth("wide");
@@ -317,6 +331,7 @@ export function ManageSkillsPage() {
                   owner={owner}
                   skills={skillsByTab[activeTab]}
                   onSkillClick={handleSkillSelect}
+                  onSkillIdClick={handleSkillIdSelect}
                   onAgentClick={setAgentId}
                 />
               </>
