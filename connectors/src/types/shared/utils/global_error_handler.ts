@@ -1,4 +1,5 @@
 import type { LoggerInterface } from "@dust-tt/client";
+import { CancelledFailure } from "@temporalio/common";
 import { v4 as uuidv4 } from "uuid";
 
 let once = false;
@@ -13,11 +14,7 @@ export function setupGlobalErrorHandler(logger: LoggerInterface) {
     // CancelledFailure: NOT_FOUND from Temporal SDK is expected when workflows
     // are terminated while activities are still pending on the worker.
     // This is not actionable — downgrade from panic to warn.
-    if (
-      reason instanceof Error &&
-      reason.name === "CancelledFailure" &&
-      reason.message === "NOT_FOUND"
-    ) {
+    if (reason instanceof CancelledFailure && reason.message === "NOT_FOUND") {
       logger.warn(
         { error: reason },
         "Temporal activity cancellation for terminated workflow (ignored)"
