@@ -67,6 +67,13 @@ export const ConfluencePageSchema = z
     parentId: z.string().nullable().optional(),
     spaceId: z.string().optional(),
     body: ConfluencePageBodySchema.optional(),
+    version: z
+      .object({
+        number: z.number().optional(),
+        message: z.string().optional(),
+      })
+      .passthrough()
+      .optional(),
   })
   .passthrough()
   .transform((data) => ({
@@ -76,6 +83,7 @@ export const ConfluencePageSchema = z
     parentId: data.parentId,
     spaceId: data.spaceId,
     body: data.body,
+    version: data.version,
   }));
 
 export type ConfluencePage = z.infer<typeof ConfluencePageSchema>;
