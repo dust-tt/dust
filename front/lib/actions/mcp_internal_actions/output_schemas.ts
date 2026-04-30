@@ -80,6 +80,29 @@ export function isToolGeneratedFile(
   );
 }
 
+// GCS mount image returned by the `files__cat` tool for vision-capable models.
+// Carries a GCS path so the rendering layer can generate a fresh signed URL at render time.
+
+const ModelVisionImageSchema = z.object({
+  uri: z.string(),
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.MODEL_VISION_IMAGE),
+  text: z.literal(""),
+  gcsPath: z.string(),
+  imageContentType: z.string(),
+});
+
+export type ModelVisionImageType = z.infer<typeof ModelVisionImageSchema>;
+
+export function isModelVisionImage(
+  outputBlock: CallToolResult["content"][number] | null
+): outputBlock is { type: "resource"; resource: ModelVisionImageType } {
+  return (
+    !!outputBlock &&
+    outputBlock.type === "resource" &&
+    ModelVisionImageSchema.safeParse(outputBlock.resource).success
+  );
+}
+
 // Thinking tokens generated during the tool execution.
 
 const ThinkingOutputSchema = z.object({
