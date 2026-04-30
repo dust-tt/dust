@@ -7,6 +7,7 @@ import {
   scheduleMetronomeContractEnd,
   setMetronomeContractCustomFields,
 } from "@app/lib/metronome/client";
+import { PLAN_CODE_CUSTOM_FIELD_KEY } from "@app/lib/metronome/constants";
 import { PlanModel } from "@app/lib/models/plan";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
@@ -282,7 +283,7 @@ describe("POST /api/poke/workspaces/[wId]/upgrade_enterprise — Metronome path"
 
     expect(setMetronomeContractCustomFields).toHaveBeenCalledWith({
       contractId: NEW_CONTRACT_ID,
-      customFields: { PLAN_CODE: ENT_PLAN_CODE },
+      customFields: { [PLAN_CODE_CUSTOM_FIELD_KEY]: ENT_PLAN_CODE },
     });
 
     // Old contract is sunset, new one is skipped by id.

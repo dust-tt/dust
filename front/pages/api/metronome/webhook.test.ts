@@ -4,6 +4,7 @@ import {
   getMetronomeContractById,
   listMetronomeContracts,
 } from "@app/lib/metronome/client";
+import { PLAN_CODE_CUSTOM_FIELD_KEY } from "@app/lib/metronome/constants";
 import { PlanModel } from "@app/lib/models/plan";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
@@ -209,7 +210,9 @@ describe("Metronome webhook — contract.start", () => {
         id: NEW_CONTRACT_ID,
         customer_id: METRONOME_CUSTOMER_ID,
         starting_at: new Date().toISOString(),
-        custom_fields: { PLAN_CODE: NON_ENTERPRISE_PLAN_CODE },
+        custom_fields: {
+          [PLAN_CODE_CUSTOM_FIELD_KEY]: NON_ENTERPRISE_PLAN_CODE,
+        },
       } as never)
     );
 
@@ -235,7 +238,7 @@ describe("Metronome webhook — contract.start", () => {
         id: NEW_CONTRACT_ID,
         customer_id: METRONOME_CUSTOMER_ID,
         starting_at: new Date().toISOString(),
-        custom_fields: { PLAN_CODE: "ENT_PLAN_UNKNOWN" },
+        custom_fields: { [PLAN_CODE_CUSTOM_FIELD_KEY]: "ENT_PLAN_UNKNOWN" },
       } as never)
     );
 
@@ -262,7 +265,7 @@ describe("Metronome webhook — contract.start", () => {
         id: NEW_CONTRACT_ID,
         customer_id: METRONOME_CUSTOMER_ID,
         starting_at: new Date().toISOString(),
-        custom_fields: { PLAN_CODE: ENT_PLAN_CODE },
+        custom_fields: { [PLAN_CODE_CUSTOM_FIELD_KEY]: ENT_PLAN_CODE },
       } as never)
     );
 
@@ -302,7 +305,7 @@ describe("Metronome webhook — contract.start", () => {
         id: NEW_CONTRACT_ID,
         customer_id: METRONOME_CUSTOMER_ID,
         starting_at: new Date().toISOString(),
-        custom_fields: { PLAN_CODE: ENT_PLAN_CODE },
+        custom_fields: { [PLAN_CODE_CUSTOM_FIELD_KEY]: ENT_PLAN_CODE },
       } as never)
     );
 

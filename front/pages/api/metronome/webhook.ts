@@ -387,7 +387,7 @@ async function handler(
         case "contract.start": {
           const { contract_id: contractId, customer_id: customerId } = event;
 
-          // Read PLAN_CODE custom field to determine whether this is a
+          // Read the PLAN_CODE custom field to determine whether this is a
           // Poke-scheduled Enterprise upgrade. Only Enterprise plan codes
           // should trigger a subscription swap; other plan contract starts
           // are handled by their own creation/update flows.
@@ -419,7 +419,7 @@ async function handler(
           if (!targetPlanCode) {
             logger.info(
               { contractId, workspaceId: workspace.sId },
-              "[Metronome Webhook] contract.start: no PLAN_CODE custom field, leaving subscription alone"
+              `[Metronome Webhook] contract.start: no ${PLAN_CODE_CUSTOM_FIELD_KEY} custom field, leaving subscription alone`
             );
             break;
           }
@@ -430,7 +430,7 @@ async function handler(
           if (!targetPlan) {
             logger.info(
               { contractId, targetPlanCode, workspaceId: workspace.sId },
-              "[Metronome Webhook] contract.start: PLAN_CODE not found, leaving subscription alone"
+              `[Metronome Webhook] contract.start: ${PLAN_CODE_CUSTOM_FIELD_KEY} not found, leaving subscription alone`
             );
             break;
           }
@@ -438,7 +438,7 @@ async function handler(
           if (!isEntreprisePlanPrefix(targetPlan.code)) {
             logger.info(
               { contractId, targetPlanCode, workspaceId: workspace.sId },
-              "[Metronome Webhook] contract.start: non-enterprise PLAN_CODE, leaving subscription alone"
+              `[Metronome Webhook] contract.start: non-enterprise ${PLAN_CODE_CUSTOM_FIELD_KEY}, leaving subscription alone`
             );
             break;
           }

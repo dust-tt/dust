@@ -79,7 +79,7 @@ const PROD_PRODUCT_SEAT_SUBSCRIPTION_CREDITS =
 export const CREDIT_TYPE_USD_ID = "2714e483-4ff1-48e4-9e25-ac732e8f24f2";
 export const CREDIT_TYPE_EUR_ID = "58f0be15-cc47-4220-bdaf-072ab0e44f96";
 
-export const PLAN_CODE_CUSTOM_FIELD_KEY = "PLAN_CODE";
+export const PLAN_CODE_CUSTOM_FIELD_KEY = "DUST_PLAN_CODE";
 
 // AWU (Agentic Work Units) differs per environment.
 export const DEV_CREDIT_TYPE_AWU_ID = "1ad632f0-4e5a-44d6-a1bf-aa6f6bc550d8";
