@@ -53,11 +53,13 @@ export async function switchMetronomeContractPackage({
   oldContractId,
   workspace,
   packageAlias,
+  enableStripeBilling,
 }: {
   metronomeCustomerId: string;
   oldContractId: string;
   workspace: LightWorkspaceType;
   packageAlias: string;
+  enableStripeBilling: boolean;
 }): Promise<Result<{ metronomeContractId: string }, Error>> {
   // Round up to the next hour boundary (Metronome requires hour-aligned dates)
   // so the new contract starts exactly when the old one ends.
@@ -76,6 +78,7 @@ export async function switchMetronomeContractPackage({
     metronomeCustomerId,
     packageAlias,
     startingAt: switchAt,
+    enableStripeBilling,
   });
   if (contractResult.isErr()) {
     return new Err(contractResult.error);
@@ -106,6 +109,7 @@ export async function provisionMetronomeCustomerAndContract({
   packageAlias,
   uniquenessKey,
   startingAt,
+  enableStripeBilling = true,
 }: {
   workspace: LightWorkspaceType;
   stripeCustomerId: string;
@@ -113,6 +117,7 @@ export async function provisionMetronomeCustomerAndContract({
   uniquenessKey: string;
   // Must already be on an hour boundary (Metronome requirement).
   startingAt: Date;
+  enableStripeBilling?: boolean;
 }): Promise<
   Result<{ metronomeCustomerId: string; metronomeContractId: string }, Error>
 > {
@@ -141,6 +146,7 @@ export async function provisionMetronomeCustomerAndContract({
     packageAlias,
     uniquenessKey,
     startingAt,
+    enableStripeBilling,
   });
   if (contractResult.isErr()) {
     return new Err(contractResult.error);
@@ -845,7 +851,7 @@ export async function applyEnterpriseOverrides({
  *
  * Seats and MAU are synced by provisionMetronomeCustomerAndContract.
  */
-export async function provisionEnterpriseMetronomeContract({
+export async function provisionShadowEnterpriseMetronomeContract({
   workspace,
   stripeSubscription,
 }: {
@@ -896,6 +902,7 @@ export async function provisionEnterpriseMetronomeContract({
     packageAlias,
     uniquenessKey: stripeSubscription.id,
     startingAt: new Date(startDate),
+    enableStripeBilling: false,
   });
   if (provisionResult.isErr()) {
     return new Err(provisionResult.error);

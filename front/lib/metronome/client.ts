@@ -198,40 +198,14 @@ export async function addStripeMetronomeBillingConfig({
   metronomeCustomerId: string;
   metronomeContractId: string;
 }): Promise<Result<void, Error>> {
-  let configs;
-
-  try {
-    configs =
-      await getMetronomeClient().v1.customers.retrieveBillingConfigurations({
-        customer_id: metronomeCustomerId,
-      });
-  } catch (err) {
-    const error = normalizeError(err);
-    logger.error(
-      { error, metronomeCustomerId },
-      "[Metronome] Failed to retrieve billing configurations"
-    );
-    return new Err(error);
-  }
-
-  const stripeConfig = configs.data.find(
-    (c) => c.billing_provider === "stripe" && !c.archived_at
-  );
-  if (!stripeConfig) {
-    return new Err(
-      new Error(
-        `No active Stripe billing configuration found for Metronome customer ${metronomeCustomerId}`
-      )
-    );
-  }
-
   try {
     await getMetronomeClient().v2.contracts.edit({
       customer_id: metronomeCustomerId,
       contract_id: metronomeContractId,
       add_billing_provider_configuration_update: {
         billing_provider_configuration: {
-          billing_provider_configuration_id: stripeConfig.id,
+          billing_provider: "stripe",
+          delivery_method: "direct_to_billing_provider",
         },
         schedule: {
           effective_at: "START_OF_CURRENT_PERIOD",
@@ -243,7 +217,6 @@ export async function addStripeMetronomeBillingConfig({
       {
         metronomeCustomerId,
         metronomeContractId,
-        billingProviderConfigurationId: stripeConfig.id,
       },
       "[Metronome] Stripe billing provider linked to contract"
     );
@@ -284,12 +257,14 @@ export async function createMetronomeContract({
   packageAlias,
   uniquenessKey,
   startingAt,
+  enableStripeBilling,
 }: {
   metronomeCustomerId: string;
   packageAlias: string;
   uniquenessKey?: string;
   // Must already be on an hour boundary (Metronome requirement).
   startingAt: Date;
+  enableStripeBilling: boolean;
 }): Promise<Result<{ contractId: string }, Error>> {
   const startingAtISO = startingAt.toISOString();
 
@@ -300,6 +275,13 @@ export async function createMetronomeContract({
       starting_at: startingAtISO,
       ...(uniquenessKey ? { uniqueness_key: uniquenessKey } : {}),
     });
+
+    if (enableStripeBilling) {
+      addStripeMetronomeBillingConfig({
+        metronomeCustomerId,
+        metronomeContractId: response.data.id,
+      });
+    }
 
     logger.info(
       {
