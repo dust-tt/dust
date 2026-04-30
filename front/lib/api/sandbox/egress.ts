@@ -17,6 +17,12 @@ const EGRESS_SETUP_WAIT_MS = 500;
 const EGRESS_JWT_TTL_SECONDS = 24 * 60 * 60;
 const MAX_DENY_LOG_LINES_PER_EXEC = 20;
 
+// Phase 0 PoC: paths used when the egress MITM experiment is enabled.
+const MITM_CA_PATH = "/etc/dust/egress-ca.pem";
+const MITM_CA_BUNDLE_PATH = "/etc/dust/ca-bundle.pem";
+const MITM_SYSTEM_CA_DEST = "/usr/local/share/ca-certificates/dust-egress.crt";
+const MITM_SYSTEM_CA_BUNDLE = "/etc/ssl/certs/ca-certificates.crt";
+
 const REGION_PROXY_PREFIX = {
   "europe-west1": "eu",
   "us-central1": "us",
@@ -172,6 +178,12 @@ export async function setupEgressForwarder(
     return prepareTokenResult;
   }
 
+  const mitmExperimentHost = config.getEgressMitmExperimentHost();
+  const mitmFlags = mitmExperimentHost
+    ? `--mitm-experiment-host ${shellEscape(mitmExperimentHost)} ` +
+      `--mitm-ca-path ${shellEscape(MITM_CA_PATH)} `
+    : "";
+
   const startForwarderCommand =
     "nohup /opt/bin/dsbx forward " +
     `--token-file ${shellEscape(EGRESS_TOKEN_PATH)} ` +
@@ -179,6 +191,7 @@ export async function setupEgressForwarder(
     `--proxy-tls-name ${shellEscape(getProxyTlsName())} ` +
     `--listen ${shellEscape(EGRESS_FORWARDER_LISTEN_ADDR)} ` +
     `--deny-log ${shellEscape(EGRESS_DENY_LOG_PATH)} ` +
+    mitmFlags +
     `>${shellEscape(EGRESS_FORWARDER_LOG_PATH)} 2>&1 &`;
 
   const startResult = await runSuccessfulSandboxCommand(
@@ -198,6 +211,14 @@ export async function setupEgressForwarder(
     }
     if (healthResult.value) {
       logger.info(logContext, "Sandbox egress forwarder is healthy");
+
+      if (mitmExperimentHost) {
+        const mitmTrustResult = await installMitmTrustBundle(auth, sandbox);
+        if (mitmTrustResult.isErr()) {
+          return mitmTrustResult;
+        }
+      }
+
       return new Ok(undefined);
     }
 
@@ -207,6 +228,26 @@ export async function setupEgressForwarder(
   return new Err(
     new Error("Sandbox egress forwarder did not become healthy in time")
   );
+}
+
+// Phase 0 PoC: install the dsbx-issued ephemeral CA into the sandbox trust
+// store and produce a merged bundle at MITM_CA_BUNDLE_PATH that replace-style
+// trust env vars (SSL_CERT_FILE, CURL_CA_BUNDLE) can safely point at without
+// breaking non-MITM TLS to public sites. Idempotent on every boot.
+//
+// The system-store install is best-effort: clients that read the merged
+// bundle directly via env vars (curl, the only Phase 0 client) work even if
+// update-ca-certificates is unavailable on the image.
+async function installMitmTrustBundle(
+  auth: Authenticator,
+  sandbox: SandboxResource
+): Promise<Result<void, Error>> {
+  const command =
+    `(cp ${shellEscape(MITM_CA_PATH)} ${shellEscape(MITM_SYSTEM_CA_DEST)} && update-ca-certificates >/dev/null 2>&1) || true; ` +
+    `cat ${shellEscape(MITM_SYSTEM_CA_BUNDLE)} ${shellEscape(MITM_CA_PATH)} > ${shellEscape(MITM_CA_BUNDLE_PATH)} && ` +
+    `chmod 644 ${shellEscape(MITM_CA_BUNDLE_PATH)}`;
+
+  return runSuccessfulSandboxCommand(auth, sandbox, command, "root");
 }
 
 // Best-effort, sandbox-global deny log surfacing. The offset tracks lines

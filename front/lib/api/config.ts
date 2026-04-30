@@ -219,6 +219,13 @@ const config = {
       "EGRESS_PROXY_INTERNAL_URL"
     );
   },
+  // Phase 0 PoC: hostname for which dsbx terminates inner TLS and rewrites
+  // the experiment placeholder. Empty / unset disables MITM entirely.
+  getEgressMitmExperimentHost: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable(
+      "EGRESS_MITM_EXPERIMENT_HOST"
+    );
+  },
   getOAuthAPIConfig: (): { url: string; apiKey: string | null } => {
     return {
       url: EnvironmentConfig.getEnvVariable("OAUTH_API"),
