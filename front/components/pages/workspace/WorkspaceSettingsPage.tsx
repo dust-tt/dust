@@ -53,9 +53,10 @@ export function WorkspaceSettingsPage() {
         discordBotDataSource={discordBotDataSource}
         isDiscordBotAvailable={isDiscordBotAvailable}
       />
-      {featureFlags.includes("reinforced_agents") && (
-        <ReinforcementSection owner={owner} />
-      )}
+      {featureFlags.includes("reinforced_agents") &&
+        featureFlags.includes("reinforcement_ui") && (
+          <ReinforcementSection owner={owner} />
+        )}
     </Page.Vertical>
   );
 }
