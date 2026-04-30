@@ -68,7 +68,7 @@ import {
   WindIcon,
 } from "@dust-tt/sparkle";
 import type React from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 const SUMMARY_ITEM_TRANSITION_MS = 240;
 
@@ -296,68 +296,6 @@ function TodoSources({
   );
 }
 
-// ── Collapsible wrapper ──────────────────────────────────────────────────────
-
-const COLLAPSED_MAX_HEIGHT_PX = 650;
-
-interface CollapsibleTodoListProps {
-  children: React.ReactNode;
-}
-
-function CollapsibleTodoList({ children }: CollapsibleTodoListProps) {
-  const contentRef = useRef<HTMLDivElement>(null);
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [needsCollapse, setNeedsCollapse] = useState(false);
-
-  useEffect(() => {
-    const el = contentRef.current;
-    if (!el) {
-      return;
-    }
-
-    const observer = new ResizeObserver(() => {
-      setNeedsCollapse(el.scrollHeight > COLLAPSED_MAX_HEIGHT_PX);
-    });
-    observer.observe(el);
-
-    return () => observer.disconnect();
-  }, []);
-
-  return (
-    <div className="flex flex-col gap-2">
-      <div className="relative">
-        <div
-          ref={contentRef}
-          className="flex flex-col gap-4"
-          style={{
-            maxHeight:
-              isExpanded || !needsCollapse
-                ? undefined
-                : COLLAPSED_MAX_HEIGHT_PX,
-            overflow: "hidden",
-            transition: "max-height 200ms ease",
-          }}
-        >
-          {children}
-        </div>
-        {!isExpanded && needsCollapse && (
-          <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-b from-transparent to-background dark:to-background-night" />
-        )}
-      </div>
-      {needsCollapse && (
-        <div>
-          <Button
-            size="xs"
-            variant="outline"
-            label={isExpanded ? "Show less" : "Show more"}
-            onClick={() => setIsExpanded((prev) => !prev)}
-          />
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ── Read-only panel (archived projects) ───────────────────────────────────────
 
 function ReadOnlyTodoItem({
@@ -417,7 +355,7 @@ function ReadOnlyProjectTodosPanel({
           <Spinner size="sm" />
         </div>
       ) : (
-        <CollapsibleTodoList>
+        <div className="flex flex-col gap-4">
           <div className="flex flex-col">
             {todos.map((todo) => (
               <ReadOnlyTodoItem
@@ -433,7 +371,7 @@ function ReadOnlyProjectTodosPanel({
               You're all caught up!
             </p>
           )}
-        </CollapsibleTodoList>
+        </div>
       )}
     </div>
   );
@@ -892,13 +830,12 @@ function EditableProjectTodosPanel({
       user.fullName.toLowerCase().includes(normalizedSearch)
     );
   }, [assigneeSearch, users]);
-  const selectedAssigneeLabel = formatTodoScopeLabel({
+  const todoScopeLabel = formatTodoScopeLabel({
     scope: assigneeScope,
     selectedUserSIds,
     usersBySId,
     viewerUserId,
   });
-  const assigneeLabel = selectedAssigneeLabel;
 
   const filteredTodos = useMemo(() => {
     switch (assigneeScope) {
@@ -1127,8 +1064,8 @@ function EditableProjectTodosPanel({
               type="button"
               className="inline-flex items-center gap-1 rounded-md px-1 py-0.5 hover:bg-muted/40 dark:hover:bg-muted-night/40"
             >
-              <h3 className="heading-xl text-foreground dark:text-foreground-night">
-                {assigneeLabel}
+              <h3 className="heading-2xl text-foreground dark:text-foreground-night">
+                {todoScopeLabel}
               </h3>
               <Icon
                 visual={ChevronDownIcon}
@@ -1239,7 +1176,7 @@ function EditableProjectTodosPanel({
           <Spinner size="sm" />
         </div>
       ) : (
-        <CollapsibleTodoList>
+        <div className="flex flex-col gap-4">
           {/* Todo items */}
           <div className="flex flex-col">
             {groupedTodosForAll.map((group) => (
@@ -1283,7 +1220,7 @@ function EditableProjectTodosPanel({
               You're all caught up!
             </p>
           )}
-        </CollapsibleTodoList>
+        </div>
       )}
     </div>
   );
