@@ -148,7 +148,8 @@ export const SlashCommandDropdown = forwardRef<
         itemCount === 0 ||
         !list ||
         !topScrollSentinel ||
-        !bottomScrollSentinel
+        !bottomScrollSentinel ||
+        typeof IntersectionObserver === "undefined"
       ) {
         setScrollFadeState((previousState) =>
           previousState.hasContentAbove || previousState.hasContentBelow
