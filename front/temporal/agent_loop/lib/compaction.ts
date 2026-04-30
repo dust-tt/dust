@@ -119,28 +119,22 @@ async function createCompactionHistoryFile(
   {
     targetConversationId,
     sourceConversation,
-    sourceMessageRank,
     compactionMessage,
     renderedMessages,
   }: {
     targetConversationId: string;
     sourceConversation: ConversationType;
-    sourceMessageRank?: number;
     compactionMessage: CompactionMessageType;
     renderedMessages: string;
   }
 ): Promise<Result<string, Error>> {
   const generatedAt = new Date();
-  const relativeFilePath = `compactions/history-${formatCompactionHistoryTimestamp(generatedAt)}-${compactionMessage.sId}.md`;
+  const relativeFilePath = `history/compaction-${formatCompactionHistoryTimestamp(generatedAt)}-${compactionMessage.sId}.history`;
   const metadataLines = [
     "# Conversation History Before Compaction",
     "",
     `Generated at: ${generatedAt.toISOString()}`,
-    `Target conversation: ${targetConversationId}`,
     `Source conversation: ${sourceConversation.sId}`,
-    sourceMessageRank !== undefined
-      ? `Source message rank: ${sourceMessageRank}`
-      : null,
     `Compaction message: ${compactionMessage.sId}`,
     "",
     "## Conversation",
@@ -157,7 +151,7 @@ async function createCompactionHistoryFile(
           `${metadataLines.join("\n")}${renderedMessages}`,
           "utf8"
         ),
-        contentType: "text/markdown",
+        contentType: "text/plain",
       }
     );
 
@@ -260,7 +254,6 @@ export async function runCompaction(
     const historyFileRes = await createCompactionHistoryFile(auth, {
       targetConversationId: targetConversation.sId,
       sourceConversation: conversationToSummarize,
-      sourceMessageRank: sourceConversation?.messageRank,
       compactionMessage,
       renderedMessages,
     });
@@ -372,7 +365,7 @@ async function generateCompactionSummary(
   // TODO(compaction): Ensure we don't exceeds the model context size here, as we have no guarantee
   // that the current conversation is not exceeding it already.
   // TODO(compaction): We may want to be more mechanical about files available to the model in
-  // conversation and projects by including a lsit as part of the summary.
+  // conversation and projects by including a list as part of the summary.
   // TODO(compaction: We may want to add retries around the LLM call
 
   const conv: ModelConversationTypeMultiActions = {
