@@ -74,10 +74,9 @@ const LOGO_SETS = {
     us: [
       { name: "datadog", src: "/static/landing/logos/gray/datadog.svg" },
       { name: "clay", src: "/static/landing/logos/gray/clay.svg" },
-      // { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" }, -- temporary
+      { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" },
       { name: "assembled", src: "/static/landing/logos/gray/assembled.svg" },
       { name: "decagon", src: "/static/landing/logos/gray/decagon.svg" },
-      { name: "laurel", src: "/static/landing/logos/gray/laurel.svg" },
       { name: "evenup", src: "/static/landing/logos/gray/evenup.svg" },
       { name: "persona", src: "/static/landing/logos/gray/persona.svg" },
       { name: "1password", src: "/static/landing/logos/gray/1password.svg" },
