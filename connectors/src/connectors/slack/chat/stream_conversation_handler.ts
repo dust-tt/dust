@@ -1,4 +1,5 @@
 import {
+  AWAITING_USER_PERMISSION_LABEL,
   getActionDoneLabel,
   getActionRunningLabel,
   getRunAgentNotificationOutput,
@@ -279,6 +280,10 @@ async function streamAgentAnswerToSlack(
           botId: undefined,
           slackChatBotMessageId: slackChatBotMessage.id,
         });
+
+        planHandler.setTaskAwaitingUserPermission();
+        await planHandler.upsertPlanMessage(AWAITING_USER_PERMISSION_LABEL);
+        await streamHandler.setThinking(AWAITING_USER_PERMISSION_LABEL);
 
         if (slackUserId && !slackUserInfo.is_bot) {
           await slackClient.chat.postEphemeral({
