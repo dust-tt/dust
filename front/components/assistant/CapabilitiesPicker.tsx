@@ -159,9 +159,6 @@ function CapabilitiesPickerItemsList({
     }
 
     updateScrollFadeState();
-    const animationFrame = window.requestAnimationFrame(updateScrollFadeState);
-
-    return () => window.cancelAnimationFrame(animationFrame);
   }, [itemCount, updateScrollFadeState]);
 
   if (items.length === 0) {
