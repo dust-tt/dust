@@ -328,6 +328,21 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return SystemSkillsRegistry.isSystemSkill(this.sId);
   }
 
+  get inheritsAgentConfigurationDataSources(): boolean {
+    if (!this.globalSId) {
+      return false;
+    }
+
+    return (
+      GlobalSkillsRegistry.doesSkillInheritAgentConfigurationDataSources(
+        this.globalSId
+      ) ||
+      SystemSkillsRegistry.doesSkillInheritAgentConfigurationDataSources(
+        this.globalSId
+      )
+    );
+  }
+
   get isExtendable(): boolean {
     // System skills are baseline capabilities: they are not meant to be extended.
     return this.globalSId !== null && !this.isSystemSkill;
@@ -1831,32 +1846,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
 
     return shouldReturnEditedByUser ? editedByUser : null;
-  }
-
-  async listInheritedDataSourceViews(
-    auth: Authenticator,
-    agentConfiguration: LightAgentConfigurationType
-  ): Promise<DataSourceViewResource[] | null> {
-    if (!this.globalSId) {
-      return null;
-    }
-
-    if (
-      !GlobalSkillsRegistry.doesSkillInheritAgentConfigurationDataSources(
-        this.globalSId
-      ) &&
-      !SystemSkillsRegistry.doesSkillInheritAgentConfigurationDataSources(
-        this.globalSId
-      )
-    ) {
-      return null;
-    }
-
-    return DataSourceViewResource.listBySpaceIds(
-      auth,
-      agentConfiguration.requestedSpaceIds,
-      { includeGlobalSpace: true }
-    );
   }
 
   async archive(auth: Authenticator): Promise<{ affectedCount: number }> {
