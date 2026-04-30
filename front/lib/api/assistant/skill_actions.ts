@@ -30,14 +30,13 @@ export async function getSkillServers(
   }
 ): Promise<MCPServerConfigurationType[]> {
   let inheritedDataSourceViews: DataSourceViewResource[] = [];
-  if (skills.some(
-    (skill) => skill.inheritsAgentConfigurationDataSources
-  )) {
+  if (skills.some((skill) => skill.inheritsAgentConfigurationDataSources)) {
     inheritedDataSourceViews = await DataSourceViewResource.listBySpaceIds(
-        auth,
-        agentConfiguration.requestedSpaceIds,
-        { includeGlobalSpace: true }
-      )}
+      auth,
+      agentConfiguration.requestedSpaceIds,
+      { includeGlobalSpace: true }
+    );
+  }
 
   const remoteDbViews = inheritedDataSourceViews.filter((v) =>
     isRemoteDatabase(v.dataSource)
