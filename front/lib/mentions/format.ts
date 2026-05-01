@@ -7,7 +7,7 @@
  * - Plain text with @ symbols
  */
 
-import { serializeSkillTag } from "@app/lib/skills/format";
+import { type SkillReference, serializeSkillTag } from "@app/lib/skills/format";
 import type {
   AgentMention,
   MentionType,
@@ -17,11 +17,6 @@ import type {
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
 import type { JSONContent } from "@tiptap/react";
-
-type SkillReference = {
-  id: string;
-  name: string;
-};
 
 /**
  * Regular expression for parsing agent mention strings.
