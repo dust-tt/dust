@@ -228,9 +228,10 @@ describe("updateTodoIfChanged", () => {
     });
   });
 
-  it("updates an agent-created todo marked done by an agent (not a user)", async () => {
-    // Agent-marked completions are not treated as user-owned — the next
-    // extraction can still correct them (e.g. flip back to open).
+  it("returns false when the system tries to reopen a done todo (regardless of who marked it done)", async () => {
+    // The system must never flip a completed todo back to open — only a user
+    // can reopen a todo. This aplies even when the todo was marked done by an
+    // agent (not a user).
     const todo = makeTodoStub({
       markedAsDoneByType: "agent",
       status: "done",
@@ -244,12 +245,7 @@ describe("updateTodoIfChanged", () => {
       blob
     );
 
-    expect(updated).toBe(true);
-    expect(todo.updateWithVersion).toHaveBeenCalledWith(fakeAuth, {
-      text: "Write the report",
-      status: "todo",
-      doneAt: null,
-      actorRationale: null,
-    });
+    expect(updated).toBe(false);
+    expect(todo.updateWithVersion).not.toHaveBeenCalled();
   });
 });
