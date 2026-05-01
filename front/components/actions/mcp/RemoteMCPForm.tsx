@@ -115,7 +115,7 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
                   />
                 </PopoverTrigger>
                 <PopoverContent
-                  className="w-fit py-0"
+                  className="w-fit p-0"
                   onInteractOutside={closePopover}
                   onEscapeKeyDown={closePopover}
                 >
