@@ -50,6 +50,7 @@ describe("TakeawaysResource", () => {
         status: "open" as const,
         detectedDoneAt: null,
         detectedDoneRationale: null,
+        detectedCreationRationale: null,
       };
       const updated = await takeaway.updateWithVersion(auth, {
         actionItems: [actionItem],
@@ -77,6 +78,7 @@ describe("TakeawaysResource", () => {
               status: "open",
               detectedDoneAt: null,
               detectedDoneRationale: null,
+              detectedCreationRationale: null,
             },
           ],
         })
@@ -94,6 +96,7 @@ describe("TakeawaysResource", () => {
         status: "open" as const,
         detectedDoneAt: null,
         detectedDoneRationale: null,
+        detectedCreationRationale: null,
       };
       const actionItem2 = {
         sId: "ai_002",
@@ -103,6 +106,7 @@ describe("TakeawaysResource", () => {
         status: "done" as const,
         detectedDoneAt: "2026-04-24T00:00:00.000Z",
         detectedDoneRationale: "Mentioned as completed in summary",
+        detectedCreationRationale: null,
       };
 
       const v1 = await takeaway.updateWithVersion(auth, {
@@ -141,6 +145,7 @@ describe("TakeawaysResource", () => {
         status: "open" as const,
         detectedDoneAt: null,
         detectedDoneRationale: null,
+        detectedCreationRationale: null,
       };
 
       const first = await TakeawaysResource.makeNewForConversation(auth, {
@@ -242,6 +247,7 @@ describe("TakeawaysResource", () => {
         status: "open" as const,
         detectedDoneAt: null,
         detectedDoneRationale: null,
+        detectedCreationRationale: null,
       };
 
       const takeaway = await TakeawaysResource.makeNewForConversation(auth, {

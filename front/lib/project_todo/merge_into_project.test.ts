@@ -24,6 +24,7 @@ function makeActionItem(
     status: "open",
     detectedDoneAt: null,
     detectedDoneRationale: null,
+    detectedCreationRationale: null,
     ...overrides,
   };
 }
@@ -93,6 +94,7 @@ function makeBlob(
     status: "todo" | "done";
     doneAt: Date | null;
     reasoningDoneAt: string | null;
+    reasoningCreatedAt: string | null;
   }> = {}
 ) {
   return {
@@ -100,6 +102,7 @@ function makeBlob(
     status: "todo" as const,
     doneAt: null,
     reasoningDoneAt: null,
+    reasoningCreatedAt: null,
     ...overrides,
   };
 }

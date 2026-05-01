@@ -56,6 +56,7 @@ export function buildActionItems(
       detectedDoneAt: transitioningToDone ? now : prev.detectedDoneAt,
       detectedDoneRationale:
         update.done?.detected_done_rationale ?? prev.detectedDoneRationale,
+      detectedCreationRationale: prev.detectedCreationRationale,
     };
   });
 
@@ -79,6 +80,7 @@ export function buildActionItems(
       status: "open",
       detectedDoneAt: null,
       detectedDoneRationale: null,
+      detectedCreationRationale: item.detected_creation_rationale,
     });
   }
 
