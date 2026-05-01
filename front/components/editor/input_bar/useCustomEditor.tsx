@@ -53,27 +53,6 @@ const useEditorService = (editor: Editor | null) => {
       insertText: (text: string) => {
         editor?.chain().focus().insertContent(text).run();
       },
-      insertSkill: ({ id, name }: { id: string; name: string }) => {
-        const selectionFrom = editor?.state.selection.from ?? 0;
-        const characterBefore =
-          selectionFrom > 0
-            ? (editor?.state.doc.textBetween(
-                Math.max(0, selectionFrom - 1),
-                selectionFrom,
-                " ",
-                "\ufffc"
-              ) ?? "")
-            : "";
-        const shouldAddSpaceBeforeSkill =
-          characterBefore.length > 0 && !/\s/.test(characterBefore);
-
-        editor
-          ?.chain()
-          .focus()
-          .insertContent(shouldAddSpaceBeforeSkill ? " " : "")
-          .insertSkillNode({ skillId: id, skillName: name })
-          .run();
-      },
       // Insert mention helper function.
       insertMention: ({
         type,
