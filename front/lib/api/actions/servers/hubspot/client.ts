@@ -1204,13 +1204,30 @@ export const getDeal = async (
 
 export const getMeeting = async (
   accessToken: string,
-  meetingId: string
+  meetingId: string,
+  extraProperties?: string[]
 ): Promise<SimplePublicObject | null> => {
   const hubspotClient = new Client({ accessToken });
   try {
+    const defaultProperties = [
+      "hs_engagement_type",
+      "hs_timestamp",
+      "hs_meeting_title",
+      "hs_meeting_body",
+      "hs_meeting_outcome",
+      "hs_meeting_start_time",
+      "hs_meeting_end_time",
+      "hs_meeting_location",
+      "hs_meeting_external_url",
+      "hubspot_owner_id",
+    ];
+    // HubSpot CRM v3: meetings are created via "engagements" but retrieved via "meetings".
     const meeting = await hubspotClient.crm.objects.basicApi.getById(
-      "engagements",
-      meetingId
+      "meetings",
+      meetingId,
+      extraProperties
+        ? [...defaultProperties, ...extraProperties]
+        : defaultProperties
     );
     return meeting;
   } catch (error: any) {
@@ -1219,7 +1236,7 @@ export const getMeeting = async (
     }
     localLogger.error(
       { error, meetingId },
-      `Error fetching meeting (engagement) ${meetingId}:`
+      `Error fetching meeting ${meetingId}:`
     );
     throw normalizeError(error);
   }
