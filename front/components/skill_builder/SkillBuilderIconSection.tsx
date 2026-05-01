@@ -52,7 +52,7 @@ export function SkillBuilderIconSection() {
         </div>
       </PopoverTrigger>
       <PopoverContent
-        className="w-fit py-0"
+        className="w-fit py-0 pr-0"
         onInteractOutside={closePopover}
         onEscapeKeyDown={closePopover}
       >
