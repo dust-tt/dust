@@ -653,7 +653,12 @@ function EditableTodoItem({
   );
 }
 
-type TodoAssigneeScope = "mine" | "all" | "users";
+export type TodoAssigneeScope = "mine" | "all" | "users";
+
+export interface TodoOwnerFilter {
+  assigneeScope: TodoAssigneeScope;
+  selectedUserSIds: string[];
+}
 
 function formatTodoScopeLabel({
   scope,
@@ -725,14 +730,14 @@ function TodoAssigneeHeader({
 function EditableProjectTodosPanel({
   owner,
   spaceId,
+  todoOwnerFilter,
+  onTodoOwnerFilterChange,
 }: {
   owner: LightWorkspaceType;
   spaceId: string;
+  todoOwnerFilter: TodoOwnerFilter;
+  onTodoOwnerFilterChange: (value: TodoOwnerFilter) => void;
 }) {
-  const [assigneeScope, setAssigneeScope] = useState<TodoAssigneeScope>("all");
-  const [selectedUserSIds, setSelectedUserSIds] = useState<Set<string>>(
-    new Set()
-  );
   const [assigneeSearch, setAssigneeSearch] = useState("");
   const [isAssigneeMenuOpen, setIsAssigneeMenuOpen] = useState(false);
   const {
@@ -820,6 +825,10 @@ function EditableProjectTodosPanel({
     () => new Map(users.map((user) => [user.sId, user])),
     [users]
   );
+  const selectedUserSIds = useMemo(
+    () => new Set(todoOwnerFilter.selectedUserSIds),
+    [todoOwnerFilter.selectedUserSIds]
+  );
   const filteredUsers = useMemo(() => {
     const normalizedSearch = assigneeSearch.trim().toLowerCase();
     if (!normalizedSearch) {
@@ -831,14 +840,14 @@ function EditableProjectTodosPanel({
     );
   }, [assigneeSearch, users]);
   const todoScopeLabel = formatTodoScopeLabel({
-    scope: assigneeScope,
+    scope: todoOwnerFilter.assigneeScope,
     selectedUserSIds,
     usersBySId,
     viewerUserId,
   });
 
   const filteredTodos = useMemo(() => {
-    switch (assigneeScope) {
+    switch (todoOwnerFilter.assigneeScope) {
       case "all":
         return todos;
       case "mine":
@@ -854,7 +863,7 @@ function EditableProjectTodosPanel({
           (todo) => !!todo.user?.sId && selectedUserSIds.has(todo.user.sId)
         );
     }
-  }, [assigneeScope, selectedUserSIds, todos, viewerUserId]);
+  }, [selectedUserSIds, todoOwnerFilter.assigneeScope, todos, viewerUserId]);
   const hasDoneItems = filteredTodos.some((todo) => todo.status === "done");
   const groupedTodosForAll = useMemo(() => {
     const groups = new Map<
@@ -1086,10 +1095,12 @@ function EditableProjectTodosPanel({
             <DropdownMenuCheckboxItem
               icon={UserIcon}
               label="Your to-dos"
-              checked={assigneeScope === "mine"}
+              checked={todoOwnerFilter.assigneeScope === "mine"}
               onClick={() => {
-                setAssigneeScope("mine");
-                setSelectedUserSIds(new Set());
+                onTodoOwnerFilterChange({
+                  assigneeScope: "mine",
+                  selectedUserSIds: [],
+                });
                 setIsAssigneeMenuOpen(false);
               }}
               onSelect={(event) => {
@@ -1099,10 +1110,12 @@ function EditableProjectTodosPanel({
             <DropdownMenuCheckboxItem
               icon={UserGroupIcon}
               label="Project's to-dos"
-              checked={assigneeScope === "all"}
+              checked={todoOwnerFilter.assigneeScope === "all"}
               onClick={() => {
-                setAssigneeScope("all");
-                setSelectedUserSIds(new Set());
+                onTodoOwnerFilterChange({
+                  assigneeScope: "all",
+                  selectedUserSIds: [],
+                });
                 setIsAssigneeMenuOpen(false);
               }}
               onSelect={(event) => {
@@ -1125,19 +1138,19 @@ function EditableProjectTodosPanel({
                     )}
                     label={`${user.fullName}${viewerUserId === user.sId ? " (you)" : ""}`}
                     checked={
-                      assigneeScope === "users" &&
+                      todoOwnerFilter.assigneeScope === "users" &&
                       selectedUserSIds.has(user.sId)
                     }
                     onClick={() => {
-                      setSelectedUserSIds((previous) => {
-                        const next = new Set(previous);
-                        if (next.has(user.sId)) {
-                          next.delete(user.sId);
-                        } else {
-                          next.add(user.sId);
-                        }
-                        setAssigneeScope(next.size === 0 ? "all" : "users");
-                        return next;
+                      const next = new Set(selectedUserSIds);
+                      if (next.has(user.sId)) {
+                        next.delete(user.sId);
+                      } else {
+                        next.add(user.sId);
+                      }
+                      onTodoOwnerFilterChange({
+                        assigneeScope: next.size === 0 ? "all" : "users",
+                        selectedUserSIds: [...next],
                       });
                     }}
                     onSelect={(event) => {
@@ -1229,16 +1242,27 @@ interface ProjectTodosPanelProps {
   owner: LightWorkspaceType;
   spaceId: string;
   isReadOnly: boolean;
+  todoOwnerFilter: TodoOwnerFilter;
+  onTodoOwnerFilterChange: (value: TodoOwnerFilter) => void;
 }
 
 export function ProjectTodosPanel({
   owner,
   spaceId,
   isReadOnly,
+  todoOwnerFilter,
+  onTodoOwnerFilterChange,
 }: ProjectTodosPanelProps) {
   if (isReadOnly) {
     return <ReadOnlyProjectTodosPanel owner={owner} spaceId={spaceId} />;
   }
 
-  return <EditableProjectTodosPanel owner={owner} spaceId={spaceId} />;
+  return (
+    <EditableProjectTodosPanel
+      owner={owner}
+      spaceId={spaceId}
+      todoOwnerFilter={todoOwnerFilter}
+      onTodoOwnerFilterChange={onTodoOwnerFilterChange}
+    />
+  );
 }
