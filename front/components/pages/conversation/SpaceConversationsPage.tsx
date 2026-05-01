@@ -1,4 +1,5 @@
 import { SpaceAboutTab } from "@app/components/assistant/conversation/space/about/SpaceAboutTab";
+import type { TodoOwnerFilter } from "@app/components/assistant/conversation/space/conversations/ProjectTodosPanel";
 import { SpaceConversationsTab } from "@app/components/assistant/conversation/space/conversations/SpaceConversationsTab";
 import { ManageUsersPanel } from "@app/components/assistant/conversation/space/ManageUsersPanel";
 import { ProjectHeaderActions } from "@app/components/assistant/conversation/space/ProjectHeaderActions";
@@ -11,6 +12,12 @@ import type { SpaceConversationListFilter } from "@app/hooks/conversations/useSp
 import { useActiveSpaceId } from "@app/hooks/useActiveSpaceId";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useScopedUIPreferences } from "@app/hooks/useScopedUIPreferences";
+import {
+  DEFAULT_SPACE_PROJECT_UI_PREFERENCES,
+  type SpaceProjectTab,
+  useSpaceProjectTabs,
+} from "@app/hooks/useSpaceProjectTabs";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import {
   useAuth,
@@ -45,9 +52,7 @@ import {
   TabsTrigger,
   TestTubeIcon,
 } from "@dust-tt/sparkle";
-import React, { useCallback, useRef, useState } from "react";
-
-type SpaceTab = "conversations" | "todos" | "knowledge" | "settings";
+import { useCallback, useState } from "react";
 
 export function SpaceConversationsPage() {
   const owner = useWorkspace();
@@ -73,8 +78,14 @@ export function SpaceConversationsPage() {
     owner,
     user,
   });
-  const [conversationFilter, setConversationFilter] =
-    useState<SpaceConversationListFilter>("all");
+
+  const { value: projectUIPreferences, setValue: setProjectUIPreferences } =
+    useScopedUIPreferences({
+      scope: "projectUI",
+      resourceId: spaceId,
+      defaultValue: DEFAULT_SPACE_PROJECT_UI_PREFERENCES,
+    });
+  const conversationFilter = projectUIPreferences.conversationsFilter;
 
   const {
     conversations,
@@ -93,100 +104,34 @@ export function SpaceConversationsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [_planLimitReached, setPlanLimitReached] = useState(false);
   const [isInvitePanelOpen, setIsInvitePanelOpen] = useState(false);
-  const canShowTodosTab =
-    hasFeature("project_todo") && spaceInfo?.kind === "project";
+  const canShowTodosTab = hasFeature("project_todo");
 
-  // Parse and validate the current tab from URL hash
-  const getCurrentTabFromHash = useCallback((): SpaceTab => {
-    if (typeof window === "undefined") {
-      return "conversations";
-    }
-    const hash = window.location.hash.slice(1); // Remove the # prefix
-    // Backward compatibility: treat "context" as "knowledge"
-    if (hash === "context") {
-      return "knowledge";
-    }
-    if (
-      hash === "knowledge" ||
-      hash === "settings" ||
-      hash === "conversations" ||
-      hash === "todos"
-    ) {
-      return hash;
-    }
-    return "conversations";
-  }, []);
+  const { currentTab, handleTabChange } = useSpaceProjectTabs({
+    spaceId,
+    projectUIPreferences,
+    setProjectUIPreferences,
+    canShowTodosTab,
+  });
 
-  const [currentTab, setCurrentTab] = useState<SpaceTab>(getCurrentTabFromHash);
+  const handleConversationFilterChange = useCallback(
+    (filter: SpaceConversationListFilter) => {
+      setProjectUIPreferences({
+        ...projectUIPreferences,
+        conversationsFilter: filter,
+      });
+    },
+    [projectUIPreferences, setProjectUIPreferences]
+  );
 
-  // Sync current tab with URL hash
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
-  React.useEffect(() => {
-    const updateTabFromHash = () => {
-      const newTab = getCurrentTabFromHash();
-      setCurrentTab(newTab);
-
-      // Ensure URL has a hash. Defer with setTimeout so the route-change
-      // event fires with the empty hash first (otherwise useHashParam sees a
-      // non-empty hash and won't clear the conversation side-panel state when
-      // navigating into a project).
-      if (!window.location.hash) {
-        setTimeout(() => {
-          if (!window.location.hash) {
-            window.history.replaceState(
-              null,
-              "",
-              `${window.location.pathname}${window.location.search}#${newTab}`
-            );
-          }
-        }, 0);
-      }
-    };
-
-    // Update on mount
-    updateTabFromHash();
-
-    // Listen for hash changes
-    window.addEventListener("hashchange", updateTabFromHash);
-    return () => window.removeEventListener("hashchange", updateTabFromHash);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only run on mount and cleanup on unmount
-
-  // Reset tab to conversations when navigating to a different project.
-  const prevSpaceIdRef = useRef(spaceId);
-  React.useEffect(() => {
-    if (prevSpaceIdRef.current !== spaceId) {
-      prevSpaceIdRef.current = spaceId;
-      setCurrentTab("conversations");
-      setConversationFilter("all");
-      window.history.replaceState(
-        null,
-        "",
-        `${window.location.pathname}${window.location.search}#conversations`
-      );
-    }
-  }, [spaceId]);
-
-  React.useEffect(() => {
-    if (currentTab === "todos" && !canShowTodosTab) {
-      setCurrentTab("conversations");
-      window.history.replaceState(
-        null,
-        "",
-        `${window.location.pathname}${window.location.search}#conversations`
-      );
-    }
-  }, [canShowTodosTab, currentTab]);
-
-  const handleTabChange = useCallback((tab: SpaceTab) => {
-    // Use replaceState to avoid adding to browser history for each tab switch
-    window.history.replaceState(
-      null,
-      "",
-      `${window.location.pathname}${window.location.search}#${tab}`
-    );
-    setCurrentTab(tab);
-  }, []);
+  const handleTodoOwnerFilterChange = useCallback(
+    (todosOwnerFilter: TodoOwnerFilter) => {
+      setProjectUIPreferences({
+        ...projectUIPreferences,
+        todosOwnerFilter,
+      });
+    },
+    [projectUIPreferences, setProjectUIPreferences]
+  );
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const handleConversationCreation = useCallback(
@@ -341,7 +286,7 @@ export function SpaceConversationsPage() {
           spaceInfo={spaceInfo}
           isSpaceEmpty={isSpaceEmpty}
           conversationFilter={conversationFilter}
-          onConversationFilterChange={setConversationFilter}
+          onConversationFilterChange={handleConversationFilterChange}
           onSubmit={handleConversationCreation}
           onOpenMembersPanel={() => setIsInvitePanelOpen(true)}
         />
@@ -353,7 +298,7 @@ export function SpaceConversationsPage() {
     <div className="flex h-full w-full flex-col">
       <Tabs
         value={currentTab}
-        onValueChange={(value) => handleTabChange(value as SpaceTab)}
+        onValueChange={(value) => handleTabChange(value as SpaceProjectTab)}
         className="flex min-h-0 flex-1 flex-col pt-3"
       >
         <div className="flex items-start justify-between border-b border-separator pl-14 pr-6 lg:px-6 dark:border-separator-night">
@@ -410,7 +355,7 @@ export function SpaceConversationsPage() {
             spaceInfo={spaceInfo}
             isSpaceEmpty={isSpaceEmpty}
             conversationFilter={conversationFilter}
-            onConversationFilterChange={setConversationFilter}
+            onConversationFilterChange={handleConversationFilterChange}
             onSubmit={handleConversationCreation}
             onOpenMembersPanel={() => setIsInvitePanelOpen(true)}
           />
@@ -422,7 +367,12 @@ export function SpaceConversationsPage() {
 
         {canShowTodosTab && (
           <TabsContent value="todos">
-            <SpaceTodosTab owner={owner} spaceInfo={spaceInfo} />
+            <SpaceTodosTab
+              owner={owner}
+              spaceInfo={spaceInfo}
+              todoOwnerFilter={projectUIPreferences.todosOwnerFilter}
+              onTodoOwnerFilterChange={handleTodoOwnerFilterChange}
+            />
           </TabsContent>
         )}
 
