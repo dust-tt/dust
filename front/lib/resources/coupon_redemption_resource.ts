@@ -90,6 +90,28 @@ export class CouponRedemptionResource extends BaseResource<CouponRedemptionModel
     });
   }
 
+  static async findActiveOrPendingByCouponAndWorkspace(
+    auth: Authenticator,
+    { coupon }: { coupon: CouponResource }
+  ): Promise<CouponRedemptionResource | null> {
+    const workspace = auth.getNonNullableWorkspace();
+    const row = await this.model.findOne({
+      where: {
+        couponId: coupon.id,
+        workspaceId: workspace.id,
+        status: ["pending", "active"],
+      },
+    });
+    if (!row) {
+      return null;
+    }
+    return new this(this.model, row.get(), {
+      workspaceSId: workspace.sId,
+      couponSId: coupon.sId,
+      redeemedByUserSId: null,
+    });
+  }
+
   static async listAllByCoupon(
     coupon: CouponResource
   ): Promise<CouponRedemptionResource[]> {

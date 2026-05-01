@@ -18,7 +18,8 @@ import { Op } from "sequelize";
 export type CouponValidationError =
   | { code: "expired"; expirationDate: Date }
   | { code: "exhausted"; maxRedemptions: number }
-  | { code: "archived" };
+  | { code: "archived" }
+  | { code: "already_redeemed" };
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface CouponResource extends ReadonlyAttributesType<CouponModel> {}
