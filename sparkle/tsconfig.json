@@ -10,12 +10,12 @@
     "outDir": "./dist/esm",
     "esModuleInterop": true,
     "module": "esnext",
-    "moduleResolution": "bundler",
-    "types": ["node", "react", "react-dom", "react-syntax-highlighter"],
+    "moduleResolution": "node",
     "resolveJsonModule": true,
     "importHelpers": true,
     "isolatedModules": true,
     "jsx": "react",
+    "downlevelIteration": true,
     "paths": {
       "@sparkle/*": ["./src/*"]
     },
