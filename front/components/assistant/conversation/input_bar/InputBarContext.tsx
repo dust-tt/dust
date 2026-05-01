@@ -1,9 +1,11 @@
+import { useConversationContextUsage } from "@app/hooks/conversations";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import {
   type FileUploaderService,
   useFileUploaderService,
 } from "@app/hooks/useFileUploaderService";
-import { useAuth } from "@app/lib/auth/AuthContext";
+import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import type { GetConversationContextUsageResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/context-usage";
 import type { RichAgentMention } from "@app/types/assistant/mentions";
 import {
   createContext,
@@ -13,9 +15,17 @@ import {
   useState,
 } from "react";
 
-export const InputBarContext = createContext<{
+type ContextUsageMutator = ReturnType<
+  typeof useConversationContextUsage
+>["mutateContextUsage"];
+
+type InputBarContextValue = {
   animate: boolean;
+  contextUsage: GetConversationContextUsageResponse | null;
   getAndClearSelectedAgent: () => RichAgentMention | null;
+  isContextUsageLoading: boolean;
+  isContextUsageError: unknown;
+  mutateContextUsage: ContextUsageMutator;
   setAnimate: React.Dispatch<React.SetStateAction<boolean>>;
   setSelectedAgent: (agentMention: RichAgentMention | null) => void;
   selectedSingleAgent: RichAgentMention | null;
@@ -27,9 +37,15 @@ export const InputBarContext = createContext<{
     onCapture: (type: "text" | "screenshot") => void;
     isCapturing: boolean;
   };
-}>({
+};
+
+export const InputBarContext = createContext<InputBarContextValue>({
   animate: false,
+  contextUsage: null,
   getAndClearSelectedAgent: () => null,
+  isContextUsageLoading: false,
+  isContextUsageError: null,
+  mutateContextUsage: async () => undefined,
   setAnimate: () => {},
   setSelectedAgent: () => {},
   selectedSingleAgent: null,
@@ -52,6 +68,10 @@ export const InputBarContext = createContext<{
 interface InputBarContextProviderProps {
   children: ReactNode;
   fileUploaderService: FileUploaderService;
+  contextUsage: GetConversationContextUsageResponse | null;
+  isContextUsageLoading: boolean;
+  isContextUsageError: unknown;
+  mutateContextUsage: ContextUsageMutator;
   captureActions?: {
     onCapture: (type: "text" | "screenshot") => void;
     isCapturing: boolean;
@@ -61,6 +81,10 @@ interface InputBarContextProviderProps {
 export function InputBarContextProvider({
   children,
   fileUploaderService,
+  contextUsage,
+  isContextUsageLoading,
+  isContextUsageError,
+  mutateContextUsage,
   captureActions,
 }: InputBarContextProviderProps) {
   const [animate, setAnimate] = useState<boolean>(false);
@@ -113,8 +137,12 @@ export function InputBarContextProvider({
   const value = useMemo(
     () => ({
       animate,
+      contextUsage,
       setAnimate,
       getAndClearSelectedAgent,
+      isContextUsageLoading,
+      isContextUsageError,
+      mutateContextUsage,
       setSelectedAgent: setSelectedAgentOuter,
       selectedSingleAgent,
       setSelectedSingleAgent,
@@ -125,7 +153,11 @@ export function InputBarContextProvider({
     }),
     [
       animate,
+      contextUsage,
       getAndClearSelectedAgent,
+      isContextUsageLoading,
+      isContextUsageError,
+      mutateContextUsage,
       setSelectedAgentOuter,
       selectedSingleAgent,
       getAndClearPendingInputText,
@@ -149,6 +181,8 @@ export function InputBarProvider({ children }: InputBarProviderProps) {
   const conversationId = useActiveConversationId();
 
   const { workspace } = useAuth();
+  const { hasFeature } = useFeatureFlags();
+  const isCompactionEnabled = hasFeature("enable_compaction");
 
   const useCaseMetadata = useMemo(() => {
     if (!conversationId) {
@@ -165,6 +199,17 @@ export function InputBarProvider({ children }: InputBarProviderProps) {
     useCaseMetadata,
   });
 
+  const {
+    contextUsage,
+    isContextUsageLoading,
+    isContextUsageError,
+    mutateContextUsage,
+  } = useConversationContextUsage({
+    conversationId: isCompactionEnabled ? conversationId : null,
+    workspaceId: workspace.sId,
+    options: { disabled: !isCompactionEnabled },
+  });
+
   // Reset fileBlobs when conversationId changes.
   // We intentionally avoid using a key prop as it would remount
   // the entire page subtree (InputBarStateProvider wraps children)
@@ -176,7 +221,13 @@ export function InputBarProvider({ children }: InputBarProviderProps) {
   }
 
   return (
-    <InputBarContextProvider fileUploaderService={fileUploaderService}>
+    <InputBarContextProvider
+      fileUploaderService={fileUploaderService}
+      contextUsage={contextUsage}
+      isContextUsageLoading={isContextUsageLoading}
+      isContextUsageError={isContextUsageError}
+      mutateContextUsage={mutateContextUsage}
+    >
       {children}
     </InputBarContextProvider>
   );

@@ -25,7 +25,8 @@ export function useConversationContextUsage({
 
   return {
     contextUsage: data ?? null,
-    isContextUsageLoading: !error && !data,
+    isContextUsageLoading:
+      !options?.disabled && !!conversationId && !error && !data,
     isContextUsageError: error,
     mutateContextUsage: mutate,
   };

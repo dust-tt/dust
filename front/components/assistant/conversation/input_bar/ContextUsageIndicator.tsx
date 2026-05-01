@@ -1,7 +1,4 @@
-import {
-  useCompactConversation,
-  useConversationContextUsage,
-} from "@app/hooks/conversations";
+import { useCompactConversation } from "@app/hooks/conversations";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -10,6 +7,8 @@ import {
   PopoverRoot,
   PopoverTrigger,
 } from "@dust-tt/sparkle";
+import { useContext } from "react";
+import { InputBarContext } from "./InputBarContext";
 
 interface ContextUsageIndicatorProps {
   buttonSize: "xs" | "sm";
@@ -65,10 +64,7 @@ export function ContextUsageIndicator({
   owner,
   conversationId,
 }: ContextUsageIndicatorProps) {
-  const { contextUsage, isContextUsageLoading } = useConversationContextUsage({
-    conversationId,
-    workspaceId: owner.sId,
-  });
+  const { contextUsage, isContextUsageLoading } = useContext(InputBarContext);
 
   const { compact, isCompacting } = useCompactConversation({
     owner,
