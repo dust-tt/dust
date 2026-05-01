@@ -108,7 +108,8 @@ export async function mcpServerViewToPokeJSON(
     link: workspace
       ? `${config.getPokeAppUrl()}/${workspace.sId}/spaces/${mcpServerView.space.sId}/mcp_server_views/${mcpServerView.sId}`
       : null,
-    name: json.server.name,
+    name: json.name ?? json.server.name,
+    customName: json.name,
     type: "MCP Server View",
     space: spaceToPokeJSON(mcpServerView.space),
     connections: connections,
