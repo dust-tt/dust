@@ -1,6 +1,7 @@
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { convertMarkdownToBlockHtml } from "@app/lib/reinforcement/skill_instructions_html";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { apiError } from "@app/logger/withlogging";
 import { GetSkillHistoryQuerySchema } from "@app/types/api/internal/skill";
@@ -75,10 +76,19 @@ async function handler(
         skillVersionResources = skillVersionResources.slice(0, limit);
       }
 
-      const skillVersions = skillVersionResources.map((resource) => ({
-        ...resource.toJSON(auth),
-        version: resource.version,
-      }));
+      const skillVersions = skillVersionResources.map((resource) => {
+        const serializedSkill = resource.toJSON(auth);
+
+        return {
+          ...serializedSkill,
+          instructionsHtml:
+            serializedSkill.instructionsHtml ??
+            (serializedSkill.instructions
+              ? convertMarkdownToBlockHtml(serializedSkill.instructions)
+              : null),
+          version: resource.version,
+        };
+      });
 
       return res.status(200).json({ history: skillVersions });
     default:

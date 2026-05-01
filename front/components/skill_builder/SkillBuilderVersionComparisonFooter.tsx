@@ -16,6 +16,9 @@ export function SkillBuilderVersionComparisonFooter() {
     setValue("instructions", compareVersion.instructions ?? "", {
       shouldDirty: true,
     });
+    setValue("instructionsHtml", compareVersion.instructionsHtml ?? "", {
+      shouldDirty: true,
+    });
     setValue("agentFacingDescription", compareVersion.agentFacingDescription, {
       shouldDirty: true,
     });
