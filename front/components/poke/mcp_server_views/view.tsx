@@ -8,10 +8,7 @@ import {
   PokeTableHead,
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
-import {
-  getMcpServerViewDescription,
-  getMcpServerViewDisplayName,
-} from "@app/lib/actions/mcp_helper";
+import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { PokeMCPServerViewType } from "@app/types/poke";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -39,9 +36,13 @@ export function ViewMCPServerViewTable({
                 <PokeTableCellWithCopy label={mcpServerView.id.toString()} />
               </PokeTableRow>
               <PokeTableRow>
+                <PokeTableHead>Custom Name</PokeTableHead>
+                <PokeTableCell>{mcpServerView.customName ?? ""}</PokeTableCell>
+              </PokeTableRow>
+              <PokeTableRow>
                 <PokeTableHead>Server Name</PokeTableHead>
                 <PokeTableCell>
-                  {getMcpServerViewDisplayName(mcpServerView)}
+                  {getMcpServerDisplayName(mcpServerView.server)}
                 </PokeTableCell>
               </PokeTableRow>
               <PokeTableRow>
@@ -49,9 +50,13 @@ export function ViewMCPServerViewTable({
                 <PokeTableCellWithCopy label={mcpServerView.server.sId} />
               </PokeTableRow>
               <PokeTableRow>
+                <PokeTableHead>Custom Description</PokeTableHead>
+                <PokeTableCell>{mcpServerView.description ?? ""}</PokeTableCell>
+              </PokeTableRow>
+              <PokeTableRow>
                 <PokeTableHead>Server Description</PokeTableHead>
                 <PokeTableCell>
-                  {getMcpServerViewDescription(mcpServerView)}
+                  {mcpServerView.server.description}
                 </PokeTableCell>
               </PokeTableRow>
               <PokeTableRow>

@@ -26,7 +26,6 @@ function prepareMCPServerViewsForDisplay(
         spaceLink: `/poke/${owner.sId}/spaces/${sv.spaceId}`,
         editedAt: sv.editedByUser?.editedAt ?? undefined,
         editedBy: sv.editedByUser?.fullName ?? undefined,
-        name: sv.server.name,
       };
 
       return result;

@@ -5,6 +5,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 
 interface MCPServerView {
   sId: string;
+  name: string | null;
   createdAt: number;
   updatedAt: number;
   spaceId: string;
@@ -31,6 +32,19 @@ export function makeColumnsForMCPServerViews(): ColumnDef<MCPServerView>[] {
       },
       header: ({ column }) => (
         <PokeColumnSortableHeader column={column} label="sId" />
+      ),
+    },
+    {
+      accessorKey: "name",
+      cell: ({ row }) => {
+        const { mcpServerViewLink, name } = row.original;
+
+        return (
+          <LinkWrapper href={mcpServerViewLink}>{name ?? ""}</LinkWrapper>
+        );
+      },
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Custom name" />
       ),
     },
     {
