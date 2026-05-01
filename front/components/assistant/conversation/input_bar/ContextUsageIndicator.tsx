@@ -1,3 +1,4 @@
+import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useCompactConversation } from "@app/hooks/conversations";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -8,7 +9,6 @@ import {
   PopoverTrigger,
 } from "@dust-tt/sparkle";
 import { useContext } from "react";
-import { InputBarContext } from "./InputBarContext";
 
 interface ContextUsageIndicatorProps {
   buttonSize: "xs" | "sm";
