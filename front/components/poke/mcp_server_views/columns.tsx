@@ -39,9 +39,7 @@ export function makeColumnsForMCPServerViews(): ColumnDef<MCPServerView>[] {
       cell: ({ row }) => {
         const { mcpServerViewLink, name } = row.original;
 
-        return (
-          <LinkWrapper href={mcpServerViewLink}>{name ?? ""}</LinkWrapper>
-        );
+        return <LinkWrapper href={mcpServerViewLink}>{name ?? ""}</LinkWrapper>;
       },
       header: ({ column }) => (
         <PokeColumnSortableHeader column={column} label="Custom name" />
