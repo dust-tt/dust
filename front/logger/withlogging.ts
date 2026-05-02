@@ -176,8 +176,9 @@ export function withLogging<T>(
     const cliVersion =
       req.headers["x-dust-cli-version"] ?? req.query.cliVersion;
 
-    // Key the browser cache by X-Commit-Hash
-    res.setHeader("Vary", "X-Commit-Hash");
+    // Key the browser cache by X-Commit-Hash and Origin so CORS responses and
+    // X-Reload-Required cannot leak across tabs / origins via the shared cache.
+    res.setHeader("Vary", "X-Commit-Hash, Origin");
 
     if (typeof commitHash === "string" && commitHash.length > 0) {
       if (await shouldForceClientReload(commitHash)) {
@@ -196,6 +197,10 @@ export function withLogging<T>(
           "Force client reload"
         );
         res.setHeader("X-Reload-Required", "true");
+        // Flagged-commit responses must never be cached: the flag can be
+        // cleared in Redis at any time, but a cached "true" response would
+        // keep the tab in a reload loop until it expires.
+        res.setHeader("Cache-Control", "no-store");
       }
     }
 
