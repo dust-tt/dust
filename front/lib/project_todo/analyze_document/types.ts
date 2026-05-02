@@ -3,6 +3,9 @@ import { z } from "zod";
 export const EXTRACT_DOCUMENT_TAKEAWAYS_FUNCTION_NAME =
   "extract_document_takeaways";
 
+export const MIN_SHORT_DESCRIPTION_LENGTH = 16;
+export const MAX_SHORT_DESCRIPTION_LENGTH = 256;
+
 // New items require an assignee_user_id matching a known project member. Items
 // whose assignee cannot be resolved to a project member are intentionally
 // dropped — we'd rather miss an item than track one we can't route to a real
@@ -10,6 +13,8 @@ export const EXTRACT_DOCUMENT_TAKEAWAYS_FUNCTION_NAME =
 const NewActionItemSchema = z.object({
   short_description: z
     .string()
+    .min(MIN_SHORT_DESCRIPTION_LENGTH)
+    .max(MAX_SHORT_DESCRIPTION_LENGTH)
     .describe("Short description of the action item."),
   assignee_name: z
     .string()
@@ -36,6 +41,8 @@ const UpdatedActionItemSchema = z.object({
     ),
   short_description: z
     .string()
+    .min(MIN_SHORT_DESCRIPTION_LENGTH)
+    .max(MAX_SHORT_DESCRIPTION_LENGTH)
     .optional()
     .describe(
       "Updated description. Only set when the document materially changes the description; omit otherwise."

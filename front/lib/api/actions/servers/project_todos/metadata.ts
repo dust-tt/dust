@@ -63,7 +63,8 @@ export const PROJECT_TODOS_TOOLS_METADATA = createToolsRecord({
           z.object({
             text: z
               .string()
-              .min(1)
+              .min(16)
+              .max(256)
               .describe(
                 "The TODO description. Do not include the assignee's name — " +
                   "the assignee is tracked separately via userId. Refer to the " +
@@ -131,7 +132,12 @@ export const PROJECT_TODOS_TOOLS_METADATA = createToolsRecord({
     description: "Update a TODO.",
     schema: {
       todoId: z.string().describe("The sId of the TODO."),
-      text: z.string().optional().describe("The new TODO description."),
+      text: z
+        .string()
+        .min(16)
+        .max(256)
+        .optional()
+        .describe("The new TODO description."),
       userId: z
         .string()
         .optional()
