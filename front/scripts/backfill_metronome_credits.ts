@@ -28,7 +28,6 @@ import {
   getProductPrepaidCommitId,
 } from "@app/lib/metronome/constants";
 import { CreditResource } from "@app/lib/resources/credit_resource";
-import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import type { Logger } from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -56,32 +55,10 @@ async function backfillCreditsOfType(
       c.expirationDate > now
   );
 
-  if (credits.length === 0) {
-    logger.info(
-      {
-        workspaceId: workspace.sId,
-        metronomeCustomerId,
-        creditType: type,
-      },
-      `[Backfill] No active credits of type "${type}" to backfill, skipping`
-    );
-
-    return;
-  }
-
-  let totalAmountMicroUsd = 0;
   const metronomeItem = type === "free" ? "credit" : "commit";
 
   for (const credit of credits) {
     if (credit.metronomeCreditId) {
-      logger.info(
-        {
-          workspaceId: workspace.sId,
-          creditId: credit.id,
-          metronomeCreditId: credit.metronomeCreditId,
-        },
-        `[Backfill] Credit already linked to Metronome, skipping`
-      );
       continue;
     }
     const initialMicroUsd = credit.initialAmountMicroUsd;
@@ -93,27 +70,25 @@ async function backfillCreditsOfType(
     const initialAmount = initialMicroUsd / 1_000_000;
     const consumedAmount = consumedMicroUsd / 1_000_000;
 
-    totalAmountMicroUsd += initialMicroUsd;
-
-    if (!execute) {
-      logger.info(
-        {
-          workspaceId: workspace.sId,
-          creditId: credit.id,
-          initialUsd: initialAmount,
-          consumedUsd: consumedAmount,
-          startingAt: startingAt.toLocaleDateString("en-GB"),
-          endingBefore: endingBefore.toLocaleDateString("en-GB"),
-        },
-        `[Backfill] [DRY RUN] Would create ${metronomeItem} in Metronome`
-      );
-      continue;
-    }
-
     let result: Result<{ id: string } | null, Error>;
 
     switch (type) {
       case "committed":
+        if (!execute) {
+          logger.info(
+            {
+              workspaceId: workspace.sId,
+              creditId: credit.id,
+              initialUsd: initialAmount,
+              consumedUsd: consumedAmount,
+              startingAt: startingAt.toLocaleDateString("en-GB"),
+              endingBefore: endingBefore.toLocaleDateString("en-GB"),
+            },
+            `[Backfill] [DRY RUN] Would create ${metronomeItem} in Metronome (committed)`
+          );
+          continue;
+        }
+
         result = await createMetronomeCommit({
           metronomeCustomerId,
           productId: getProductPrepaidCommitId(),
@@ -147,6 +122,16 @@ async function backfillCreditsOfType(
             covering_date: new Date().toISOString(),
           });
           const contract = contractsResponse.data[0];
+          if (!contract) {
+            // free-renewal-* credits originate from paid Stripe subscription
+            // renewals, so a workspace holding one with no active Metronome
+            // contract is unexpected (likely stale data from a downgrade).
+            logger.warn(
+              { workspaceId: workspace.sId, creditId: credit.id },
+              "[Backfill] free-renewal credit on workspace with no active Metronome contract, skipping"
+            );
+            continue;
+          }
           const freeCreditProductId = getProductFreeMonthlyCreditId();
 
           const existingRecurringCredit = contract.recurring_credits?.find(
@@ -179,6 +164,22 @@ async function backfillCreditsOfType(
             continue;
           }
 
+          if (!execute) {
+            logger.info(
+              {
+                workspaceId: workspace.sId,
+                creditId: credit.id,
+                metronomeCreditId: currentRecurringCredit.id,
+                initialUsd: initialAmount,
+                consumedUsd: consumedAmount,
+                startingAt: startingAt.toLocaleDateString("en-GB"),
+                endingBefore: endingBefore.toLocaleDateString("en-GB"),
+              },
+              `[Backfill] [DRY RUN] Would update amount of ${metronomeItem} in Metronome`
+            );
+            continue;
+          }
+
           result = await updateMetronomeCreditSegmentAmount({
             metronomeCustomerId,
             contractId: contract.id,
@@ -187,6 +188,21 @@ async function backfillCreditsOfType(
             amount: initialAmount,
           });
         } else {
+          if (!execute) {
+            logger.info(
+              {
+                workspaceId: workspace.sId,
+                creditId: credit.id,
+                initialUsd: initialAmount,
+                consumedUsd: consumedAmount,
+                startingAt: startingAt.toLocaleDateString("en-GB"),
+                endingBefore: endingBefore.toLocaleDateString("en-GB"),
+              },
+              `[Backfill] [DRY RUN] Would create ${metronomeItem} in Metronome (free-poke)`
+            );
+            continue;
+          }
+
           // "free-poke" credits
           result = await createMetronomeCredit({
             metronomeCustomerId,
@@ -241,18 +257,6 @@ async function backfillCreditsOfType(
       `[Backfill] Successfully created ${metronomeItem} in Metronome`
     );
   }
-
-  logger.info(
-    {
-      workspaceId: workspace.sId,
-      metronomeCustomerId,
-      creditsCount: credits.length,
-      totalAmountUsd: totalAmountMicroUsd / 1_000_000,
-    },
-    execute
-      ? `[Backfill] Done processing ${metronomeItem}s`
-      : `[Backfill] [DRY RUN] Would create ${metronomeItem}s in Metronome`
-  );
 }
 
 async function backfillCreditsForWorkspace(
@@ -266,13 +270,11 @@ async function backfillCreditsForWorkspace(
     return; // Workspace not provisioned in Metronome — skip.
   }
 
-  // Check active subscription has a Metronome contract.
-  const subscription = await SubscriptionResource.fetchActiveByWorkspaceModelId(
-    workspace.id
-  );
-  if (!subscription?.metronomeContractId) {
-    return;
-  }
+  // Note: a Metronome contract isn't required at the workspace level — only
+  // the `free-renewal-*` branch needs one (it edits the contract's recurring
+  // credit segment). `free-poke` and `committed` credits are created at the
+  // customer level and work without a contract. The recurring branch handles
+  // the missing-contract case inline.
 
   if (type === "free" || type === "all") {
     await backfillCreditsOfType(
