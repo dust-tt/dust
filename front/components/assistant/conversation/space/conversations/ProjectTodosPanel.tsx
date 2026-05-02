@@ -322,7 +322,7 @@ function ReadOnlyTodoItem({
         <div className="flex flex-col gap-0.5">
           <span
             className={cn(
-              "text-base min-h-6",
+              "select-text text-base min-h-6",
               isDone
                 ? "text-faint dark:text-faint-night line-through"
                 : "text-foreground dark:text-foreground-night"
@@ -497,13 +497,7 @@ function EditableTodoItem({
       </div>
       <TodoMetadataTooltip todo={todo} agentNameById={agentNameById}>
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <button
-            type="button"
-            className="cursor-default text-left"
-            onClick={(event) => {
-              event.preventDefault();
-            }}
-          >
+          <div className="cursor-default select-text text-left">
             <span
               className={cn(
                 "text-base min-h-6 transition-all duration-300",
@@ -522,7 +516,7 @@ function EditableTodoItem({
                 todo.text
               )}
             </span>
-          </button>
+          </div>
           <div className="ml-1">
             <TodoSources sources={todo.sources} owner={owner} isDone={isDone} />
           </div>
