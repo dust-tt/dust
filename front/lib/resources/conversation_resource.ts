@@ -999,6 +999,27 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return conversations;
   }
 
+  /**
+   * Hydrates participation + read state so {@link ConversationResource#toListItem}
+   * matches sidebar rows (same fields as inbox Elasticsearch lists, minus volatile ES-only bits).
+   * Conversations the user cannot access are omitted from the map.
+   */
+  static async fetchListItemsBySIds(
+    auth: Authenticator,
+    sIds: string[]
+  ): Promise<Map<string, ConversationListItemType>> {
+    if (sIds.length === 0) {
+      return new Map();
+    }
+    const uniqueSIds = [...new Set(sIds)];
+    const conversations = await this.fetchByIds(auth, uniqueSIds);
+    if (conversations.length === 0) {
+      return new Map();
+    }
+    await this.enrichWithParticipationAndReadState(auth, conversations);
+    return new Map(conversations.map((c) => [c.sId, c.toListItem()]));
+  }
+
   static async listAll(
     auth: Authenticator,
     options?: FetchConversationOptions

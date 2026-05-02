@@ -40,6 +40,7 @@ import { SKILL_ICON } from "@app/lib/skill";
 import { getSpaceIcon } from "@app/lib/spaces";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
+import { getConversationDotStatus } from "@app/lib/utils/conversation_dot_status";
 import { hasHealthyProviders } from "@app/lib/utils/providersHealth";
 import {
   getAgentBuilderRoute,
@@ -1222,21 +1223,6 @@ function WakeUpSuffix({ nextWakeupAt }: WakeUpSuffixProps) {
       {formatWakeUpSidebarLabel(nextWakeupAt)}
     </span>
   );
-}
-
-function getConversationDotStatus(
-  conversation: ConversationListItemType
-): "blocked" | "unread" | "idle" {
-  if (conversation.actionRequired) {
-    return "blocked";
-  }
-  if (conversation.hasError) {
-    return conversation.unread ? "blocked" : "idle";
-  }
-  if (conversation.unread) {
-    return "unread";
-  }
-  return "idle";
 }
 
 const ConversationListItem = memo(

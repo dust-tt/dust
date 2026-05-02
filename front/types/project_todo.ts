@@ -1,3 +1,4 @@
+import type { ConversationDotStatus } from "@app/lib/utils/conversation_dot_status";
 import type { ModelId } from "@app/types/shared/model_id";
 
 export const PROJECT_TODO_STATUSES = ["todo", "in_progress", "done"] as const;
@@ -39,6 +40,8 @@ export type ProjectTodoType = {
   sId: string;
   user: ProjectTodoAssigneeType | null;
   conversationId: string | null;
+  /** Same semantics as the left sidebar conversation row (see `getConversationDotStatus`). */
+  conversationSidebarStatus: ConversationDotStatus | null;
   text: string;
   status: ProjectTodoStatus;
   doneAt: Date | null;
