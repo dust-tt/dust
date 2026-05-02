@@ -1,4 +1,5 @@
 import { AgentPicker } from "@app/components/assistant/AgentPicker";
+import { ConversationSidebarStatusDot } from "@app/components/assistant/conversation/ConversationSidebarStatusDot";
 import {
   useSpaceConversations,
   useSpaceConversationsSummary,
@@ -19,6 +20,7 @@ import {
   useUpdateProjectTodo,
 } from "@app/lib/swr/projects";
 import { timeAgoFrom } from "@app/lib/utils";
+import type { ConversationDotStatus } from "@app/lib/utils/conversation_dot_status";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { GetProjectTodosResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_todos/index";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
@@ -427,6 +429,8 @@ function EditableTodoItem({
   const hasConversationLink =
     (todo.status === "in_progress" || todo.status === "done") &&
     !!todo.conversationId;
+  const conversationDotStatus: ConversationDotStatus =
+    todo.conversationSidebarStatus ?? "idle";
   const isDoneWithoutConversation = isDone && !hasConversationLink;
   const canEdit = viewerUserId !== null;
   const showInProgressTextAnimation = todo.status === "in_progress";
@@ -527,21 +531,27 @@ function EditableTodoItem({
           <Tooltip
             label="Open to-do conversation"
             trigger={
-              <Button
-                icon={ChatBubbleLeftRightIcon}
-                size="xs"
-                variant="outline"
-                onClick={() => {
-                  if (!todo.conversationId) {
-                    return;
-                  }
-                  void router.push(
-                    getConversationRoute(owner.sId, todo.conversationId),
-                    undefined,
-                    { shallow: true }
-                  );
-                }}
-              />
+              <span className="relative inline-flex shrink-0">
+                <Button
+                  icon={ChatBubbleLeftRightIcon}
+                  size="xs"
+                  variant="outline"
+                  onClick={() => {
+                    if (!todo.conversationId) {
+                      return;
+                    }
+                    void router.push(
+                      getConversationRoute(owner.sId, todo.conversationId),
+                      undefined,
+                      { shallow: true }
+                    );
+                  }}
+                />
+                <ConversationSidebarStatusDot
+                  status={conversationDotStatus}
+                  className="pointer-events-none absolute -right-0.5 -top-0.5 m-0 ring-2 ring-background dark:ring-background-night"
+                />
+              </span>
             }
           />
         ) : (
@@ -762,9 +772,6 @@ function EditableProjectTodosPanel({
   const doCleanDone = useCleanDoneProjectTodos({ owner, spaceId });
   const markRead = useMarkProjectTodosRead({ owner, spaceId });
 
-  // Disabled subscriptions used only to invalidate the space conversations list
-  // and summary when a todo conversation is started — the parent page already
-  // owns the active fetch for these keys.
   const { mutateConversations: mutateSpaceConversations } =
     useSpaceConversations({
       workspaceId: owner.sId,
@@ -864,6 +871,7 @@ function EditableProjectTodosPanel({
         );
     }
   }, [selectedUserSIds, todoOwnerFilter.assigneeScope, todos, viewerUserId]);
+
   const hasDoneItems = filteredTodos.some((todo) => todo.status === "done");
   const groupedTodosForAll = useMemo(() => {
     const groups = new Map<
@@ -1025,6 +1033,7 @@ function EditableProjectTodosPanel({
                     markedAsDoneByType: null,
                     markedAsDoneByAgentConfigurationId: null,
                     conversationId,
+                    conversationSidebarStatus: "idle",
                   }
                 : t
             ),
@@ -1035,6 +1044,7 @@ function EditableProjectTodosPanel({
         // appears right away.
         void mutateSpaceConversations();
         void mutateSpaceSummary();
+        void mutateTodos();
       }
       setStartingTodoIds((prev) => {
         const next = new Set(prev);

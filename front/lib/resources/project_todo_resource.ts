@@ -586,6 +586,7 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
       sId: this.sId,
       user: this.assignee,
       conversationId: this.conversationSId,
+      conversationSidebarStatus: null,
       text: this.text,
       status: this.status,
       doneAt: this.doneAt,
