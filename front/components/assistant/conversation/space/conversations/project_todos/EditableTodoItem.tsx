@@ -11,6 +11,7 @@ import {
   useAutosizeTextArea,
 } from "@app/components/assistant/conversation/space/conversations/project_todos/utils";
 import { useAppRouter } from "@app/lib/platform";
+import { removeDiacritics } from "@app/lib/utils";
 import type { ConversationDotStatus } from "@app/lib/utils/conversation_dot_status";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
@@ -122,13 +123,13 @@ export const EditableTodoItem = memo(function EditableTodoItem({
   useAutosizeTextArea(editInputRef, draftText, isEditing);
 
   const filteredReassignMembers = useMemo(() => {
-    const normalize = (s: string) =>
-      s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-    const q = normalize(reassignSearch.trim());
+    const q = removeDiacritics(reassignSearch.trim()).toLowerCase();
     if (!q) {
       return projectMembers;
     }
-    return projectMembers.filter((m) => normalize(m.fullName).includes(q));
+    return projectMembers.filter((m) =>
+      removeDiacritics(m.fullName).toLowerCase().includes(q)
+    );
   }, [reassignSearch, projectMembers]);
 
   useEffect(() => {

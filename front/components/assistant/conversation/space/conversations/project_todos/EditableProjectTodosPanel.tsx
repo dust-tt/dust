@@ -29,6 +29,7 @@ import {
   useUpdateProjectTodo,
 } from "@app/lib/swr/projects";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
+import { removeDiacritics } from "@app/lib/utils";
 import type { GetProjectTodosResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_todos/index";
 import { compareAgentsForSort } from "@app/types/assistant/assistant";
 import type {
@@ -182,13 +183,13 @@ export function EditableProjectTodosPanel({
     [todoOwnerFilter.selectedUserSIds]
   );
   const filteredUsers = useMemo(() => {
-    const normalize = (s: string) =>
-      s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-    const q = normalize(assigneeSearch.trim());
+    const q = removeDiacritics(assigneeSearch.trim()).toLowerCase();
     if (!q) {
       return users;
     }
-    return users.filter((user) => normalize(user.fullName).includes(q));
+    return users.filter((user) =>
+      removeDiacritics(user.fullName).toLowerCase().includes(q)
+    );
   }, [assigneeSearch, users]);
   const todoScopeLabel = formatTodoScopeLabel({
     scope: todoOwnerFilter.assigneeScope,
