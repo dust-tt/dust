@@ -497,7 +497,14 @@ export const EditableTodoItem = memo(function EditableTodoItem({
           ))
         )}
         {canEdit && (
-          <div className="opacity-0 transition-opacity group-hover/todo:opacity-100">
+          <div
+            className={cn(
+              "transition-opacity",
+              overflowMenuOpen
+                ? "opacity-100"
+                : "sm:opacity-0 sm:group-hover/todo:opacity-100"
+            )}
+          >
             <DropdownMenu
               modal={false}
               open={overflowMenuOpen}
