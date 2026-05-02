@@ -42,7 +42,6 @@ const UpdatedActionItemSchema = z.object({
   short_description: z
     .string()
     .min(MIN_SHORT_DESCRIPTION_LENGTH)
-    .max(MAX_SHORT_DESCRIPTION_LENGTH)
     .optional()
     .describe(
       "Updated description. Only set when the document materially changes the description; omit otherwise."

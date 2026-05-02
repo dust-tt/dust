@@ -6,7 +6,10 @@ import {
   isContentFragmentDataSourceNode,
   isContentNodeAttachmentType,
 } from "@app/lib/api/assistant/conversation/attachments";
-import { listProjectContextAttachments } from "@app/lib/api/projects/context";
+import {
+  getProjectConversationFolderInternalId,
+  listProjectContextAttachments,
+} from "@app/lib/api/projects/context";
 import {
   fetchProjectDataSource,
   fetchProjectDataSourceView,
@@ -16,17 +19,6 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
 export type ProjectSemanticSearchScope = "knowledge" | "conversations" | "all";
-
-/**
- * Folder internal id under which conversation transcripts are indexed in the dust_project
- * data source (see connectors/dust_project/lib/conversation_formatting.ts).
- */
-export function getProjectConversationFolderInternalId(
-  dustProjectConnectorId: string,
-  spaceSId: string
-): string {
-  return `dust-project-${dustProjectConnectorId}-project-${spaceSId}`;
-}
 
 /**
  * One config per data source view; merges parent node ids when several project context

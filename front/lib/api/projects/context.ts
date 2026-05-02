@@ -30,6 +30,17 @@ import { removeNulls } from "@app/types/shared/utils/general";
 import { slugify } from "@app/types/shared/utils/string_utils";
 import { Op } from "sequelize";
 
+/**
+ * Folder internal id under which conversation transcripts are indexed in the dust_project
+ * data source (see connectors/dust_project/lib/conversation_formatting.ts).
+ */
+export function getProjectConversationFolderInternalId(
+  dustProjectConnectorId: string,
+  spaceSId: string
+): string {
+  return `dust-project-${dustProjectConnectorId}-project-${spaceSId}`;
+}
+
 export async function listProjectContentFragments(
   auth: Authenticator,
   space: SpaceResource
