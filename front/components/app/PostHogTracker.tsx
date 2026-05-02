@@ -146,6 +146,7 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
   const hasInitialized = useRef(false);
   const hasUpgradedPersistence = useRef(false);
   const lastIdentifiedUserId = useRef<string | null>(null);
+  const lastPageviewPathnameRef = useRef<string | null>(null);
 
   // Phase 1: Initialize PostHog with memory-only persistence (no cookies).
   // This captures events for all visitors including anonymous ad traffic,
@@ -417,14 +418,24 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
     currentWorkspace?.role,
   ]);
 
-  // Track pageviews on route changes.
+  // Track pageviews on client navigations when the pathname changes. Shallow
+  // query updates (e.g. space search `?q=`) still fire routeChangeComplete but
+  // must not emit a new $pageview.
   useEffect(() => {
     if (!posthog.__loaded || !isTrackablePage) {
       return;
     }
 
+    lastPageviewPathnameRef.current = router.pathname;
+
     const handleRouteChange = () => {
       const pathname = router.pathname;
+
+      if (pathname === lastPageviewPathnameRef.current) {
+        return;
+      }
+
+      lastPageviewPathnameRef.current = pathname;
 
       // Don't track pageviews on conversation pages (/conversation/[cId]), but track /conversation/new.
       const isConversationPage = /\/conversation\/(?!new$)[^/]+$/.test(
