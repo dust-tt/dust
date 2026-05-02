@@ -1,5 +1,6 @@
 import { AgentPicker } from "@app/components/assistant/AgentPicker";
 import { ConversationSidebarStatusDot } from "@app/components/assistant/conversation/ConversationSidebarStatusDot";
+import { ConfirmContext } from "@app/components/Confirm";
 import {
   useSpaceConversations,
   useSpaceConversationsSummary,
@@ -70,9 +71,10 @@ import {
   WindIcon,
 } from "@dust-tt/sparkle";
 import type React from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 const SUMMARY_ITEM_TRANSITION_MS = 240;
+const DELETE_TODO_CONFIRM_PREVIEW_MAX_CHARS = 200;
 
 // ── Metadata tooltip ──────────────────────────────────────────────────────────
 
@@ -385,7 +387,7 @@ interface EditableTodoItemProps {
   todo: ProjectTodoType;
   viewerUserId: string | null;
   onToggleDone: (todo: ProjectTodoType) => void;
-  onDelete: (todo: ProjectTodoType) => void;
+  onDelete: (todo: ProjectTodoType) => void | Promise<void>;
   onStartWorking: (
     todo: ProjectTodoType,
     options?: { customMessage?: string; agentConfigurationId?: string }
@@ -652,7 +654,7 @@ function EditableTodoItem({
                   icon={TrashIcon}
                   size="xs"
                   variant="ghost"
-                  onClick={() => onDelete(todo)}
+                  onClick={() => void onDelete(todo)}
                 />
               }
             />
@@ -771,6 +773,7 @@ function EditableProjectTodosPanel({
   });
   const doCleanDone = useCleanDoneProjectTodos({ owner, spaceId });
   const markRead = useMarkProjectTodosRead({ owner, spaceId });
+  const confirm = useContext(ConfirmContext);
 
   const { mutateConversations: mutateSpaceConversations } =
     useSpaceConversations({
@@ -1005,6 +1008,26 @@ function EditableProjectTodosPanel({
     [doDelete, mutateTodos]
   );
 
+  const requestDelete = useCallback(
+    async (todo: ProjectTodoType) => {
+      const preview =
+        todo.text.length > DELETE_TODO_CONFIRM_PREVIEW_MAX_CHARS
+          ? `${todo.text.slice(0, DELETE_TODO_CONFIRM_PREVIEW_MAX_CHARS)}…`
+          : todo.text;
+      const confirmed = await confirm({
+        title: "Delete to-do?",
+        message: `“${preview}”`,
+        validateLabel: "Delete",
+        validateVariant: "warning",
+      });
+      if (!confirmed) {
+        return;
+      }
+      void handleDelete(todo);
+    },
+    [confirm, handleDelete]
+  );
+
   const handleStartWorking = useCallback(
     async (
       todo: ProjectTodoType,
@@ -1215,7 +1238,7 @@ function EditableProjectTodosPanel({
                       todo={todo}
                       viewerUserId={viewerUserId}
                       onToggleDone={handleToggleDone}
-                      onDelete={handleDelete}
+                      onDelete={requestDelete}
                       onStartWorking={handleStartWorking}
                       owner={owner}
                       activeAgents={activeAgents}
