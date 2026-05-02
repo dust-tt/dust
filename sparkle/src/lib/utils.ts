@@ -9,3 +9,18 @@ export function assertNever(x: never): never {
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
+
+/**
+ * Normalizes a string for search comparison by:
+ * 1. Decomposing accented characters (NFD normalization)
+ * 2. Removing diacritic marks (so "é" becomes "e", "ü" becomes "u", etc.)
+ * 3. Converting to lowercase
+ *
+ * This allows searching "seb" to match "Sébastien".
+ */
+export function normalizeForSearch(text: string): string {
+  return text
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
