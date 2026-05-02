@@ -176,9 +176,8 @@ export function withLogging<T>(
     const cliVersion =
       req.headers["x-dust-cli-version"] ?? req.query.cliVersion;
 
-    // Key the browser cache by X-Commit-Hash and Origin so CORS responses and
-    // X-Reload-Required cannot leak across tabs / origins via the shared cache.
-    res.setHeader("Vary", "X-Commit-Hash, Origin");
+    // Key the browser cache by X-Commit-Hash
+    res.setHeader("Vary", "X-Commit-Hash");
 
     if (typeof commitHash === "string" && commitHash.length > 0) {
       if (await shouldForceClientReload(commitHash)) {
