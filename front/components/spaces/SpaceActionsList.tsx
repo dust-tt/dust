@@ -1,4 +1,5 @@
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
+import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchContext";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
 import { useQueryParams } from "@app/hooks/useQueryParams";
@@ -53,9 +54,9 @@ export const SpaceActionsList = ({
   space,
 }: SpaceActionsListProps) => {
   const router = useAppRouter();
+  const { frontendListFilterQuery } = React.useContext(SpaceSearchContext);
   const { q: searchParam } = useQueryParams(["q"]);
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-  const searchTerm = searchParam.value || "";
+  const searchTerm = frontendListFilterQuery ?? searchParam.value ?? "";
 
   const { serverViews, isMCPServerViewsLoading, mutateMCPServerViews } =
     useMCPServerViews({

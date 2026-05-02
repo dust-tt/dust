@@ -1,10 +1,11 @@
 import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
+import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchContext";
 import { AdminTriggersList } from "@app/components/triggers/AdminTriggersList";
 import { useQueryParams } from "@app/hooks/useQueryParams";
 import { useWebhookSourcesWithViews } from "@app/lib/swr/webhook_source";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
-import { useMemo, useState } from "react";
+import { useContext, useMemo, useState } from "react";
 
 interface SpaceActionsListProps {
   isAdmin: boolean;
@@ -38,8 +39,9 @@ export const SystemSpaceTriggersList = ({
     [webhookSourcesWithViews, space.sId]
   );
 
+  const { frontendListFilterQuery } = useContext(SpaceSearchContext);
   const { q: searchParam } = useQueryParams(["q"]);
-  const searchTerm = searchParam.value ?? "";
+  const searchTerm = frontendListFilterQuery ?? searchParam.value ?? "";
 
   if (!isAdmin) {
     return null;
