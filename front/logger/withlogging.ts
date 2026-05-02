@@ -196,6 +196,10 @@ export function withLogging<T>(
           "Force client reload"
         );
         res.setHeader("X-Reload-Required", "true");
+        // Flagged-commit responses must never be cached: the flag can be
+        // cleared in Redis at any time, but a cached "true" response would
+        // keep the tab in a reload loop until it expires.
+        res.setHeader("Cache-Control", "no-store");
       }
     }
 
