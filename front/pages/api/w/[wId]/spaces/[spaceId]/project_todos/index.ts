@@ -1,7 +1,7 @@
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ProjectTodoResource } from "@app/lib/resources/project_todo_resource";
 import { ProjectTodoStateResource } from "@app/lib/resources/project_todo_state_resource";
@@ -11,6 +11,7 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { ProjectTodoType } from "@app/types/project_todo";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 
 export interface GetProjectTodosResponseBody {
   todos: ProjectTodoType[];
@@ -18,9 +19,26 @@ export interface GetProjectTodosResponseBody {
   viewerUserId: string | null;
 }
 
+const PostProjectTodoBodySchema = z.object({
+  text: z
+    .string()
+    .trim()
+    .min(1, "Text is required.")
+    .max(256, "Text must be at most 256 characters."),
+  assigneeUserId: z.string().min(1, "Assignee is required."),
+});
+
+export interface PostProjectTodoResponseBody {
+  todo: ProjectTodoType;
+}
+
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetProjectTodosResponseBody>>,
+  res: NextApiResponse<
+    WithAPIErrorResponse<
+      GetProjectTodosResponseBody | PostProjectTodoResponseBody
+    >
+  >,
   auth: Authenticator,
   { space }: { space: SpaceResource }
 ): Promise<void> {
@@ -102,12 +120,94 @@ async function handler(
       });
     }
 
+    case "POST": {
+      const parseResult = PostProjectTodoBodySchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: parseResult.error.issues[0]?.message ?? "Invalid body.",
+          },
+        });
+      }
+
+      const { text, assigneeUserId } = parseResult.data;
+      const workspace = auth.getNonNullableWorkspace();
+      const currentUser = auth.getNonNullableUser();
+
+      const assigneeAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        assigneeUserId,
+        workspace.sId
+      );
+      const assigneeUser = assigneeAuth.user();
+      if (!assigneeUser) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Assignee user not found.",
+          },
+        });
+      }
+
+      if (!space.isMember(assigneeAuth)) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Assignee must be a member of this project.",
+          },
+        });
+      }
+
+      const newTodo = await ProjectTodoResource.makeNew(auth, {
+        spaceId: space.id,
+        userId: assigneeUser.id,
+        createdByType: "user",
+        createdByUserId: currentUser.id,
+        createdByAgentConfigurationId: null,
+        markedAsDoneByType: null,
+        markedAsDoneByUserId: null,
+        markedAsDoneByAgentConfigurationId: null,
+        text,
+        status: "todo",
+        doneAt: null,
+        actorRationale: null,
+      });
+
+      const todoResource = await ProjectTodoResource.fetchBySId(
+        auth,
+        newTodo.sId
+      );
+      if (!todoResource) {
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Failed to load the new to-do.",
+          },
+        });
+      }
+
+      // Manual creates are never linked to a conversation until someone uses "Start"
+      // (see project_todo/start); skip getLatestConversationId and keep the same shape as GET.
+      return res.status(201).json({
+        todo: {
+          ...todoResource.toJSON(),
+          conversationId: null,
+          conversationSidebarStatus: null,
+        },
+      });
+    }
+
     default:
       return apiError(req, res, {
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message: "The method passed is not supported, GET is expected.",
+          message:
+            "The method passed is not supported, GET or POST is expected.",
         },
       });
   }

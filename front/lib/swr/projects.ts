@@ -14,7 +14,10 @@ import type {
 import type { PatchProjectTodoResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_todos/[todoId]/index";
 import type { PostStartProjectTodoResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_todos/[todoId]/start";
 import type { BulkActionsResponse } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_todos/bulk-actions";
-import type { GetProjectTodosResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_todos/index";
+import type {
+  GetProjectTodosResponseBody,
+  PostProjectTodoResponseBody,
+} from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_todos/index";
 import type { CheckNameResponseBody } from "@app/pages/api/w/[wId]/spaces/check-name";
 import type { ContentFragmentInputWithContentNode } from "@app/types/api/internal/assistant";
 import type {
@@ -408,6 +411,56 @@ export function useMarkProjectTodosRead({
       // Silent — mark_read is best-effort.
     }
   }, [mutate, owner.sId, spaceId]);
+}
+
+export function useCreateProjectTodo({
+  owner,
+  spaceId,
+}: {
+  owner: LightWorkspaceType;
+  spaceId: string;
+}) {
+  const sendNotification = useSendNotification();
+
+  return async ({
+    text,
+    assigneeUserId,
+  }: {
+    text: string;
+    assigneeUserId: string;
+  }): Promise<Result<ProjectTodoType, Error>> => {
+    try {
+      const res = await clientFetch(
+        `/api/w/${owner.sId}/spaces/${spaceId}/project_todos`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text, assigneeUserId }),
+        }
+      );
+
+      if (!res.ok) {
+        const errorData = await getErrorFromResponse(res);
+        sendNotification({
+          type: "error",
+          title: "Failed to add to-do",
+          description: errorData.message,
+        });
+        return new Err(new Error(errorData.message));
+      }
+
+      const responseData: PostProjectTodoResponseBody = await res.json();
+      return new Ok(responseData.todo);
+    } catch (e) {
+      const errorMessage = normalizeError(e).message;
+      sendNotification({
+        type: "error",
+        title: "Failed to add to-do",
+        description: errorMessage,
+      });
+      return new Err(new Error(errorMessage));
+    }
+  };
 }
 
 export function useUpdateProjectTodo({
