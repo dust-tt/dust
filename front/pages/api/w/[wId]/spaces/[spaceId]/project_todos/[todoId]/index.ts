@@ -1,7 +1,7 @@
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { ProjectTodoResource } from "@app/lib/resources/project_todo_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
@@ -16,12 +16,24 @@ import { z } from "zod";
 
 const PatchProjectTodoBodySchema = z
   .object({
-    text: z.string().min(1, "Text cannot be empty.").optional(),
+    text: z
+      .string()
+      .min(1, "Text cannot be empty.")
+      .max(256, "Text must be at most 256 characters.")
+      .optional(),
     status: z.enum(PROJECT_TODO_STATUSES).optional(),
+    assigneeUserId: z.string().min(1).optional(),
   })
-  .refine((data) => data.text !== undefined || data.status !== undefined, {
-    message: "At least one of text or status must be provided.",
-  });
+  .refine(
+    (data) =>
+      data.text !== undefined ||
+      data.status !== undefined ||
+      data.assigneeUserId !== undefined,
+    {
+      message:
+        "At least one of text, status, or assigneeUserId must be provided.",
+    }
+  );
 
 export interface PatchProjectTodoResponseBody {
   todo: ProjectTodoType;
@@ -86,7 +98,8 @@ async function handler(
         });
       }
 
-      const { text, status } = parseResult.data;
+      const { text, status, assigneeUserId } = parseResult.data;
+      const workspace = auth.getNonNullableWorkspace();
 
       const updates: Parameters<typeof todo.updateWithVersion>[1] = {};
 
@@ -110,12 +123,42 @@ async function handler(
         }
       }
 
+      if (assigneeUserId !== undefined) {
+        const assigneeAuth = await Authenticator.fromUserIdAndWorkspaceId(
+          assigneeUserId,
+          workspace.sId
+        );
+        const assigneeUser = assigneeAuth.user();
+        if (!assigneeUser) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "Assignee user not found.",
+            },
+          });
+        }
+        if (!space.isMember(assigneeAuth)) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "Assignee must be a member of this project.",
+            },
+          });
+        }
+        updates.userId = assigneeUser.id;
+      }
+
       const updatedTodo = await todo.updateWithVersion(auth, updates);
-      const conversationId = await updatedTodo.getLatestConversationId(auth);
+      const todoResource =
+        (await ProjectTodoResource.fetchBySId(auth, updatedTodo.sId)) ??
+        updatedTodo;
+      const conversationId = await todoResource.getLatestConversationId(auth);
 
       return res.status(200).json({
         todo: {
-          ...updatedTodo.toJSON(),
+          ...todoResource.toJSON(),
           conversationId,
         },
       });

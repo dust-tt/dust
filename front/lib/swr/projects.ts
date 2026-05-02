@@ -474,7 +474,11 @@ export function useUpdateProjectTodo({
 
   return async (
     todoId: string,
-    updates: { text?: string; status?: ProjectTodoStatus }
+    updates: {
+      text?: string;
+      status?: ProjectTodoStatus;
+      assigneeUserId?: string;
+    }
   ): Promise<Result<ProjectTodoType, Error>> => {
     try {
       const res = await clientFetch(

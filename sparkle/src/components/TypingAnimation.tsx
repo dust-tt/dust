@@ -1,14 +1,21 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 interface TypingAnimationProps {
   text: string;
   duration?: number;
   className?: string;
+  onComplete?: () => void;
 }
 
-export function TypingAnimation({ text, duration = 50 }: TypingAnimationProps) {
+export function TypingAnimation({
+  text,
+  duration = 50,
+  onComplete,
+}: TypingAnimationProps) {
   const [displayedText, setDisplayedText] = useState<string>("");
   const [i, setI] = useState<number>(0);
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
 
   useEffect(() => {
     const typingEffect = setInterval(() => {
@@ -17,6 +24,7 @@ export function TypingAnimation({ text, duration = 50 }: TypingAnimationProps) {
         setI(i + 1);
       } else {
         clearInterval(typingEffect);
+        onCompleteRef.current?.();
       }
     }, duration);
 
@@ -25,5 +33,5 @@ export function TypingAnimation({ text, duration = 50 }: TypingAnimationProps) {
     };
   }, [duration, i, text]);
 
-  return <>{displayedText ? displayedText : text}</>;
+  return <>{displayedText}</>;
 }
