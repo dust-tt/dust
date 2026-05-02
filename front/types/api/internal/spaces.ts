@@ -41,6 +41,8 @@ export type GetPostNotionSyncResponseBody = t.TypeOf<
 export const PatchProjectMetadataBodySchema = z.object({
   description: z.string().optional(),
   archive: z.boolean().optional(),
+  todoGenerationEnabled: z.boolean().optional(),
+  initialTodoAnalysisLookback: z.enum(["now", "last_24h", "max"]).optional(),
 });
 
 export type PatchProjectMetadataBodyType = z.infer<

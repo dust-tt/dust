@@ -7,6 +7,7 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import {
   launchOrSignalProjectTodoWorkflow,
+  startImmediateProjectTodoWorkflowOnce,
   stopProjectTodoWorkflow,
 } from "@app/temporal/project_todo/client";
 import { PatchProjectMetadataBodySchema } from "@app/types/api/internal/spaces";
@@ -57,7 +58,7 @@ async function handler(
           status_code: 403,
           api_error: {
             type: "workspace_auth_error",
-            message: "Only project members can update project metadata.",
+            message: "Only project editors can update project metadata.",
           },
         });
       }
@@ -82,11 +83,22 @@ async function handler(
       const featureFlags = await getFeatureFlags(auth);
       const projectTodoEnabled = featureFlags.includes("project_todo");
 
+      const priorLastTodoAnalysisAt = metadata?.lastTodoAnalysisAt ?? null;
+      const priorTodoGenerationEnabled =
+        metadata?.todoGenerationEnabled ?? false;
+
+      const shouldTriggerFirstImmediateSync =
+        projectTodoEnabled &&
+        body.todoGenerationEnabled === true &&
+        !priorTodoGenerationEnabled &&
+        priorLastTodoAnalysisAt === null;
+
       if (!metadata) {
-        // Create new metadata
         metadata = await ProjectMetadataResource.makeNew(auth, space, {
           description: body.description ?? null,
           archivedAt: body.archive ? new Date() : null,
+          todoGenerationEnabled: body.todoGenerationEnabled ?? false,
+          initialTodoAnalysisLookback: body.initialTodoAnalysisLookback ?? null,
         });
         if (!body.archive && projectTodoEnabled) {
           void launchOrSignalProjectTodoWorkflow({
@@ -94,8 +106,13 @@ async function handler(
             spaceId: space.sId,
           });
         }
+        if (shouldTriggerFirstImmediateSync && !body.archive) {
+          void startImmediateProjectTodoWorkflowOnce({
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            spaceId: space.sId,
+          });
+        }
       } else {
-        // Update existing metadata
         if (body.archive !== undefined) {
           if (body.archive) {
             await metadata.archive();
@@ -117,6 +134,35 @@ async function handler(
         }
         if (body.description !== undefined) {
           await metadata.updateDescription(body.description);
+        }
+        if (body.todoGenerationEnabled !== undefined) {
+          await metadata.updateTodoGenerationEnabled(
+            body.todoGenerationEnabled
+          );
+          if (!body.todoGenerationEnabled) {
+            await metadata.updateInitialTodoAnalysisLookback(null);
+          }
+        }
+        if (body.initialTodoAnalysisLookback !== undefined) {
+          await metadata.updateInitialTodoAnalysisLookback(
+            body.initialTodoAnalysisLookback
+          );
+        }
+        if (
+          projectTodoEnabled &&
+          body.todoGenerationEnabled === true &&
+          !priorTodoGenerationEnabled
+        ) {
+          void launchOrSignalProjectTodoWorkflow({
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            spaceId: space.sId,
+          });
+        }
+        if (shouldTriggerFirstImmediateSync) {
+          void startImmediateProjectTodoWorkflowOnce({
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            spaceId: space.sId,
+          });
         }
       }
 

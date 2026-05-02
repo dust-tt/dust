@@ -75,6 +75,13 @@
  *                         archivedAt:
  *                           type: integer
  *                           nullable: true
+ *                         todoGenerationEnabled:
+ *                           type: boolean
+ *                           description: Whether automatic todo suggestions from project activity are enabled.
+ *                         lastTodoAnalysisAt:
+ *                           type: integer
+ *                           nullable: true
+ *                           description: Unix timestamp (ms) of the last automatic todo suggestion scan, if any.
  *       401:
  *         description: Unauthorized
  *   patch:
@@ -214,6 +221,9 @@ export type RichSpaceType = SpaceType & {
   // Useful in case of projects
   description: string | null;
   archivedAt: number | null;
+  /** Background todo suggestions from project activity (project spaces only). */
+  todoGenerationEnabled: boolean;
+  lastTodoAnalysisAt: number | null;
 };
 export type GetSpaceResponseBody = {
   space: RichSpaceType;
@@ -340,6 +350,10 @@ async function handler(
           members: currentMembers,
           description: projectMetadata?.description ?? null,
           archivedAt: projectMetadata?.archivedAt?.getTime() ?? null,
+          todoGenerationEnabled:
+            projectMetadata?.todoGenerationEnabled ?? false,
+          lastTodoAnalysisAt:
+            projectMetadata?.lastTodoAnalysisAt?.getTime() ?? null,
         },
       });
     }

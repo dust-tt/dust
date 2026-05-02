@@ -1,6 +1,6 @@
 // This module merges the latest takeaway snapshots for all conversations in a
 // project into project_todo rows. It is called by mergeTodosForProjectActivity,
-// which itself is invoked by the per-project projectTodoWorkflow at most once
+// which itself is invoked by the per-project durable projectTodoWorkflow (serialized runs)
 // per hour (based on the cron schedule).
 //
 // High-level algorithm (3 phases):
