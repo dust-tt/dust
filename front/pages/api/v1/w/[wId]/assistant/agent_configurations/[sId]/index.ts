@@ -144,6 +144,19 @@ import { fromError } from "zod-validation-error";
  *                       type: string
  *                     full_name:
  *                       type: string
+ *               skills:
+ *                 type: array
+ *                 description: Replaces the skills enabled on the agent configuration.
+ *                 items:
+ *                   type: object
+ *                   required:
+ *                     - sId
+ *                     - name
+ *                   properties:
+ *                     sId:
+ *                       type: string
+ *                     name:
+ *                       type: string
  *               toolset:
  *                 type: array
  *                 items:
