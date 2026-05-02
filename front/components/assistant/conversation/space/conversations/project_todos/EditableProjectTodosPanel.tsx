@@ -137,6 +137,16 @@ export function EditableProjectTodosPanel({
     );
   }, [spaceInfo?.members]);
 
+  const membersWithActiveTodoIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const todo of todos) {
+      if (todo.status !== "done" && todo.user?.sId) {
+        ids.add(todo.user.sId);
+      }
+    }
+    return ids;
+  }, [todos]);
+
   const defaultNewAssigneeSId = useMemo(() => {
     if (projectMembers.length === 0) {
       return null;
@@ -183,12 +193,13 @@ export function EditableProjectTodosPanel({
     [todoOwnerFilter.selectedUserSIds]
   );
   const filteredUsers = useMemo(() => {
-    const q = removeDiacritics(assigneeSearch.trim()).toLowerCase();
-    if (!q) {
+    const normalizedSearch = removeDiacritics(assigneeSearch.trim()).toLowerCase();
+    if (!normalizedSearch) {
       return users;
     }
+
     return users.filter((user) =>
-      removeDiacritics(user.fullName).toLowerCase().includes(q)
+      removeDiacritics(user.fullName).toLowerCase().includes(normalizedSearch)
     );
   }, [assigneeSearch, users]);
   const todoScopeLabel = formatTodoScopeLabel({
@@ -685,6 +696,7 @@ export function EditableProjectTodosPanel({
                       isStarting={startingTodoIds.has(todo.sId)}
                       isReadOnly={isReadOnly}
                       projectMembers={projectMembers}
+                      membersWithActiveTodoIds={membersWithActiveTodoIds}
                       onPatchTodo={patchTodoItem}
                     />
                   ))}
