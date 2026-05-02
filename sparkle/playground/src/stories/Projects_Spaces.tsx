@@ -50,6 +50,7 @@ import {
   StarStrokeIcon,
   TrashIcon,
   UserIcon,
+  normalizeForSearch,
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 
@@ -214,9 +215,9 @@ function DustMain() {
     if (!searchText.trim()) {
       return allConversations;
     }
-    const lowerSearch = searchText.toLowerCase();
+    const normalizedSearch = normalizeForSearch(searchText);
     return allConversations.filter((conv) =>
-      conv.title.toLowerCase().includes(lowerSearch)
+      normalizeForSearch(conv.title).includes(normalizedSearch)
     );
   }, [searchText, allConversations]);
 
@@ -260,9 +261,9 @@ function DustMain() {
     if (!agentSearchText.trim()) {
       return mockAgents;
     }
-    const lowerSearch = agentSearchText.toLowerCase();
+    const normalizedSearch = normalizeForSearch(agentSearchText);
     return mockAgents.filter((agent) =>
-      agent.name.toLowerCase().includes(lowerSearch)
+      normalizeForSearch(agent.name).includes(normalizedSearch)
     );
   }, [agentSearchText]);
 
@@ -270,11 +271,11 @@ function DustMain() {
     if (!peopleSearchText.trim()) {
       return mockUsers;
     }
-    const lowerSearch = peopleSearchText.toLowerCase();
+    const normalizedSearch = normalizeForSearch(peopleSearchText);
     return mockUsers.filter(
       (person) =>
-        person.fullName.toLowerCase().includes(lowerSearch) ||
-        person.email.toLowerCase().includes(lowerSearch)
+        normalizeForSearch(person.fullName).includes(normalizedSearch) ||
+        normalizeForSearch(person.email).includes(normalizedSearch)
     );
   }, [peopleSearchText]);
 
@@ -290,19 +291,19 @@ function DustMain() {
     if (!searchText.trim()) {
       return sortedCollaborators;
     }
-    const lowerSearch = searchText.toLowerCase();
+    const normalizedSearch = normalizeForSearch(searchText);
     return sortedCollaborators.filter((collaborator) => {
       if (collaborator.type === "agent") {
         const agent = collaborator.data;
         return (
-          agent.name.toLowerCase().includes(lowerSearch) ||
-          agent.description.toLowerCase().includes(lowerSearch)
+          normalizeForSearch(agent.name).includes(normalizedSearch) ||
+          normalizeForSearch(agent.description).includes(normalizedSearch)
         );
       } else {
         const person = collaborator.data;
         return (
-          person.fullName.toLowerCase().includes(lowerSearch) ||
-          person.email.toLowerCase().includes(lowerSearch)
+          normalizeForSearch(person.fullName).includes(normalizedSearch) ||
+          normalizeForSearch(person.email).includes(normalizedSearch)
         );
       }
     });
@@ -328,11 +329,11 @@ function DustMain() {
     if (!searchText.trim()) {
       return sortedSpaces;
     }
-    const lowerSearch = searchText.toLowerCase();
+    const normalizedSearch = normalizeForSearch(searchText);
     return sortedSpaces.filter(
       (space) =>
-        space.name.toLowerCase().includes(lowerSearch) ||
-        space.description.toLowerCase().includes(lowerSearch)
+        normalizeForSearch(space.name).includes(normalizedSearch) ||
+        normalizeForSearch(space.description).includes(normalizedSearch)
     );
   }, [searchText, sortedSpaces]);
 
