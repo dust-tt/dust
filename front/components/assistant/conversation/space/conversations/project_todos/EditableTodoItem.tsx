@@ -122,11 +122,13 @@ export const EditableTodoItem = memo(function EditableTodoItem({
   useAutosizeTextArea(editInputRef, draftText, isEditing);
 
   const filteredReassignMembers = useMemo(() => {
-    const q = reassignSearch.trim().toLowerCase();
+    const normalize = (s: string) =>
+      s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    const q = normalize(reassignSearch.trim());
     if (!q) {
       return projectMembers;
     }
-    return projectMembers.filter((m) => m.fullName.toLowerCase().includes(q));
+    return projectMembers.filter((m) => normalize(m.fullName).includes(q));
   }, [reassignSearch, projectMembers]);
 
   useEffect(() => {

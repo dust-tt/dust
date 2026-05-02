@@ -182,14 +182,13 @@ export function EditableProjectTodosPanel({
     [todoOwnerFilter.selectedUserSIds]
   );
   const filteredUsers = useMemo(() => {
-    const normalizedSearch = assigneeSearch.trim().toLowerCase();
-    if (!normalizedSearch) {
+    const normalize = (s: string) =>
+      s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    const q = normalize(assigneeSearch.trim());
+    if (!q) {
       return users;
     }
-
-    return users.filter((user) =>
-      user.fullName.toLowerCase().includes(normalizedSearch)
-    );
+    return users.filter((user) => normalize(user.fullName).includes(q));
   }, [assigneeSearch, users]);
   const todoScopeLabel = formatTodoScopeLabel({
     scope: todoOwnerFilter.assigneeScope,
