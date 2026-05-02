@@ -87,12 +87,14 @@ export function SkillBuilderInstructionsEditor({
     name: INSTRUCTIONS_HTML_FIELD_NAME,
   });
 
-  const { fieldState: attachedKnowledgeFieldState } = useController<
-    SkillBuilderFormData,
-    typeof ATTACHED_KNOWLEDGE_FIELD_NAME
-  >({
-    name: ATTACHED_KNOWLEDGE_FIELD_NAME,
-  });
+  const {
+    field: attachedKnowledgeField,
+    fieldState: attachedKnowledgeFieldState,
+  } = useController<SkillBuilderFormData, typeof ATTACHED_KNOWLEDGE_FIELD_NAME>(
+    {
+      name: ATTACHED_KNOWLEDGE_FIELD_NAME,
+    }
+  );
 
   const displayError =
     !!instructionsFieldState.error || !!attachedKnowledgeFieldState.error;
@@ -169,6 +171,21 @@ export function SkillBuilderInstructionsEditor({
     onBlur: handleBlur,
     onDelete: handleDelete,
   });
+
+  useEffect(() => {
+    if (!editor || editor.isDestroyed) {
+      return;
+    }
+
+    // This allows RHF to focus this custom editor when validation fails.
+    instructionsField.ref(editor.view.dom);
+    attachedKnowledgeField.ref(editor.view.dom);
+
+    return () => {
+      instructionsField.ref(null);
+      attachedKnowledgeField.ref(null);
+    };
+  }, [attachedKnowledgeField.ref, editor, instructionsField.ref]);
 
   const handleAddKnowledge = useCallback(() => {
     if (!editor) {
