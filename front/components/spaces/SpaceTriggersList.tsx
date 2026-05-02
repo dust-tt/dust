@@ -1,3 +1,4 @@
+import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchContext";
 import { WebhookSourceViewIcon } from "@app/components/triggers/WebhookSourceViewIcon";
 import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
 import { useQueryParams } from "@app/hooks/useQueryParams";
@@ -34,8 +35,9 @@ export const SpaceTriggersList = ({ owner, space }: SpaceActionsListProps) => {
     urlPrefix: "table",
   });
 
+  const { frontendListFilterQuery } = React.useContext(SpaceSearchContext);
   const { q: searchParam } = useQueryParams(["q"]);
-  const searchTerm = searchParam.value ?? "";
+  const searchTerm = frontendListFilterQuery ?? searchParam.value ?? "";
 
   const columns: ColumnDef<RowData, string>[] = [
     {
