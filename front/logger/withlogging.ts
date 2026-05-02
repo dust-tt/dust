@@ -176,6 +176,9 @@ export function withLogging<T>(
     const cliVersion =
       req.headers["x-dust-cli-version"] ?? req.query.cliVersion;
 
+    // Key the browser cache by X-Commit-Hash
+    res.setHeader("Vary", "X-Commit-Hash");
+
     if (typeof commitHash === "string" && commitHash.length > 0) {
       if (await shouldForceClientReload(commitHash)) {
         logger.info(
