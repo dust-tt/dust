@@ -5,12 +5,12 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
-const ParseMentionsRequestBodySchema = t.type({
-  markdown: t.string,
+const ParseMentionsRequestBodySchema = z.object({
+  markdown: z.string(),
 });
 
 type ParseMentionsResponseBody = {
@@ -32,19 +32,18 @@ async function handler(
     });
   }
 
-  const parsedBody = ParseMentionsRequestBodySchema.decode(req.body);
-
-  if (isLeft(parsedBody)) {
+  const parseResult = ParseMentionsRequestBodySchema.safeParse(req.body);
+  if (!parseResult.success) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Invalid request body, `markdown` (string) is required.",
+        message: fromError(parseResult.error).toString(),
       },
     });
   }
 
-  const { markdown } = parsedBody.right;
+  const { markdown } = parseResult.data;
 
   const processedMarkdown = await parseMentionsInMarkdown({ auth, markdown });
 
