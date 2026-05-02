@@ -136,6 +136,16 @@ export function EditableProjectTodosPanel({
     );
   }, [spaceInfo?.members]);
 
+  const membersWithActiveTodoIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const todo of todos) {
+      if (todo.status !== "done" && todo.user?.sId) {
+        ids.add(todo.user.sId);
+      }
+    }
+    return ids;
+  }, [todos]);
+
   const defaultNewAssigneeSId = useMemo(() => {
     if (projectMembers.length === 0) {
       return null;
@@ -685,6 +695,7 @@ export function EditableProjectTodosPanel({
                       isStarting={startingTodoIds.has(todo.sId)}
                       isReadOnly={isReadOnly}
                       projectMembers={projectMembers}
+                      membersWithActiveTodoIds={membersWithActiveTodoIds}
                       onPatchTodo={patchTodoItem}
                     />
                   ))}

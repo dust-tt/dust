@@ -65,6 +65,7 @@ export interface EditableTodoItemProps {
   isStarting: boolean;
   isReadOnly?: boolean;
   projectMembers: SpaceUserType[];
+  membersWithActiveTodoIds: Set<string>;
   onPatchTodo: (
     todoId: string,
     updates: { text?: string; assigneeUserId?: string }
@@ -87,6 +88,7 @@ export const EditableTodoItem = memo(function EditableTodoItem({
   isStarting,
   isReadOnly,
   projectMembers,
+  membersWithActiveTodoIds,
   onPatchTodo,
 }: EditableTodoItemProps) {
   const router = useAppRouter();
@@ -123,11 +125,17 @@ export const EditableTodoItem = memo(function EditableTodoItem({
 
   const filteredReassignMembers = useMemo(() => {
     const q = reassignSearch.trim().toLowerCase();
-    if (!q) {
-      return projectMembers;
-    }
-    return projectMembers.filter((m) => m.fullName.toLowerCase().includes(q));
-  }, [reassignSearch, projectMembers]);
+    const filtered = q
+      ? projectMembers.filter((m) => m.fullName.toLowerCase().includes(q))
+      : [...projectMembers];
+    // Sort: members with at least one active (non-done) todo come first,
+    // preserving alphabetical order within each group.
+    return filtered.sort((a, b) => {
+      const aActive = membersWithActiveTodoIds.has(a.sId) ? 0 : 1;
+      const bActive = membersWithActiveTodoIds.has(b.sId) ? 0 : 1;
+      return aActive - bActive;
+    });
+  }, [reassignSearch, projectMembers, membersWithActiveTodoIds]);
 
   useEffect(() => {
     if (!isNewlyDone) {
