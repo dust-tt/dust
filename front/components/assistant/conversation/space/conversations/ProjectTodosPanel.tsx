@@ -14,12 +14,14 @@ import {
 import {
   useBulkUpdateProjectTodoStatus,
   useCleanDoneProjectTodos,
+  useCreateProjectTodo,
   useDeleteProjectTodo,
   useMarkProjectTodosRead,
   useProjectTodos,
   useStartProjectTodoConversation,
   useUpdateProjectTodo,
 } from "@app/lib/swr/projects";
+import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { timeAgoFrom } from "@app/lib/utils";
 import type { ConversationDotStatus } from "@app/lib/utils/conversation_dot_status";
 import { getConversationRoute } from "@app/lib/utils/router";
@@ -59,6 +61,7 @@ import {
   MicrosoftLogo,
   NotionLogo,
   PlayIcon,
+  PlusIcon,
   RobotIcon,
   SlackLogo,
   Spinner,
@@ -71,10 +74,18 @@ import {
   WindIcon,
 } from "@dust-tt/sparkle";
 import type React from "react";
-import { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 const SUMMARY_ITEM_TRANSITION_MS = 240;
 const DELETE_TODO_CONFIRM_PREVIEW_MAX_CHARS = 200;
+const NEW_MANUAL_TODO_MAX_CHARS = 256;
 
 // ── Metadata tooltip ──────────────────────────────────────────────────────────
 
@@ -767,6 +778,11 @@ function EditableProjectTodosPanel({
   });
   const doCleanDone = useCleanDoneProjectTodos({ owner, spaceId });
   const markRead = useMarkProjectTodosRead({ owner, spaceId });
+  const doCreateTodo = useCreateProjectTodo({ owner, spaceId });
+  const { spaceInfo, isSpaceInfoLoading } = useSpaceInfo({
+    workspaceId: owner.sId,
+    spaceId,
+  });
   const confirm = useContext(ConfirmContext);
 
   const { mutateConversations: mutateSpaceConversations } =
@@ -798,6 +814,47 @@ function EditableProjectTodosPanel({
     agents.sort(compareAgentsForSort);
     return agents;
   }, [agentConfigurations]);
+
+  const projectMembers = useMemo(() => {
+    const members = spaceInfo?.members ?? [];
+    return [...members].sort((a, b) =>
+      a.fullName.localeCompare(b.fullName, undefined, { sensitivity: "base" })
+    );
+  }, [spaceInfo?.members]);
+
+  const defaultNewAssigneeSId = useMemo(() => {
+    if (projectMembers.length === 0) {
+      return null;
+    }
+    if (viewerUserId && projectMembers.some((m) => m.sId === viewerUserId)) {
+      return viewerUserId;
+    }
+    return projectMembers[0]!.sId;
+  }, [projectMembers, viewerUserId]);
+
+  const [newTodoText, setNewTodoText] = useState("");
+  const [newTodoAssigneeSId, setNewTodoAssigneeSId] = useState<string | null>(
+    null
+  );
+  const [addAssigneeSearch, setAddAssigneeSearch] = useState("");
+  const [isAddAssigneeMenuOpen, setIsAddAssigneeMenuOpen] = useState(false);
+  const [isAddingTodo, setIsAddingTodo] = useState(false);
+  const [isAddTodoComposerOpen, setIsAddTodoComposerOpen] = useState(false);
+  const addTodoInputRef = useRef<HTMLInputElement>(null);
+
+  const selectedNewAssigneeSId = newTodoAssigneeSId ?? defaultNewAssigneeSId;
+  const selectedNewAssigneeUser = useMemo(
+    () => projectMembers.find((m) => m.sId === selectedNewAssigneeSId) ?? null,
+    [projectMembers, selectedNewAssigneeSId]
+  );
+
+  const filteredAddAssigneeMembers = useMemo(() => {
+    const q = addAssigneeSearch.trim().toLowerCase();
+    if (!q) {
+      return projectMembers;
+    }
+    return projectMembers.filter((m) => m.fullName.toLowerCase().includes(q));
+  }, [addAssigneeSearch, projectMembers]);
 
   // ── Diff animation state ────────────────────────────────────────────────────
 
@@ -1022,6 +1079,60 @@ function EditableProjectTodosPanel({
     [confirm, handleDelete]
   );
 
+  const handleAddManualTodo = useCallback(async () => {
+    const text = newTodoText.trim();
+    if (!text || !selectedNewAssigneeSId || isAddingTodo) {
+      return;
+    }
+    setIsAddingTodo(true);
+    const result = await doCreateTodo({
+      text,
+      assigneeUserId: selectedNewAssigneeSId,
+    });
+    setIsAddingTodo(false);
+    if (result.isOk()) {
+      setNewTodoText("");
+      const created: ProjectTodoType = {
+        ...result.value,
+        conversationId: null,
+        conversationSidebarStatus: null,
+      };
+      await mutateTodos(
+        (prev: GetProjectTodosResponseBody | undefined) => ({
+          lastReadAt: prev?.lastReadAt ?? null,
+          viewerUserId: prev?.viewerUserId ?? null,
+          todos: [created, ...(prev?.todos ?? [])],
+        }),
+        { revalidate: true }
+      );
+      // After SWR updates, restore focus — rAF waits until layout/paint so the input isn’t skipped.
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          addTodoInputRef.current?.focus();
+        });
+      });
+    }
+  }, [
+    doCreateTodo,
+    isAddingTodo,
+    mutateTodos,
+    newTodoText,
+    selectedNewAssigneeSId,
+  ]);
+
+  const closeAddTodoComposer = useCallback(() => {
+    setIsAddAssigneeMenuOpen(false);
+    setNewTodoText("");
+    setNewTodoAssigneeSId(null);
+    setIsAddTodoComposerOpen(false);
+  }, []);
+
+  useEffect(() => {
+    if (isAddTodoComposerOpen) {
+      queueMicrotask(() => addTodoInputRef.current?.focus());
+    }
+  }, [isAddTodoComposerOpen]);
+
   const handleStartWorking = useCallback(
     async (
       todo: ProjectTodoType,
@@ -1206,6 +1317,158 @@ function EditableProjectTodosPanel({
           />
         )}
       </div>
+
+      {/* Manual add: discreet until opened; one row when expanded */}
+      {isSpaceInfoLoading ? (
+        <div className="flex h-7 items-center">
+          <Spinner size="sm" />
+        </div>
+      ) : projectMembers.length === 0 ? (
+        <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+          No project members available to assign.
+        </p>
+      ) : isAddTodoComposerOpen ? (
+        <div className="flex h-9 w-full min-w-0 items-center gap-1.5 rounded-lg border border-border/60 bg-background/80 px-1.5 py-0 shadow-sm dark:border-border-night/60 dark:bg-background-night/50">
+          <DropdownMenu
+            modal={false}
+            open={isAddAssigneeMenuOpen}
+            onOpenChange={(open) => {
+              setIsAddAssigneeMenuOpen(open);
+              if (open) {
+                setAddAssigneeSearch("");
+              }
+            }}
+          >
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-border/80 bg-muted-background/50 text-foreground hover:bg-muted-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-highlight/30 dark:border-border-night/80 dark:bg-muted-background-night/50 dark:text-foreground-night dark:hover:bg-muted-background-night/80 dark:focus-visible:ring-highlight-night/40"
+                disabled={isAddingTodo}
+                title={
+                  selectedNewAssigneeUser
+                    ? `Assign to ${selectedNewAssigneeUser.fullName}${viewerUserId === selectedNewAssigneeUser.sId ? " (you)" : ""} — click to change`
+                    : "Choose assignee"
+                }
+                aria-label={
+                  selectedNewAssigneeUser
+                    ? `Assign to ${selectedNewAssigneeUser.fullName}${viewerUserId === selectedNewAssigneeUser.sId ? " (you)" : ""}, open menu to change`
+                    : "Choose assignee"
+                }
+              >
+                <Avatar
+                  size="xxs"
+                  visual={
+                    selectedNewAssigneeUser?.image ??
+                    "/static/humanavatar/anonymous.png"
+                  }
+                />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              className="z-[1000] w-80 shadow-2xl ring-1 ring-border/60"
+              align="start"
+            >
+              <DropdownMenuSearchbar
+                autoFocus
+                name="add-todo-assignee"
+                placeholder="Search members"
+                value={addAssigneeSearch}
+                onChange={setAddAssigneeSearch}
+              />
+              <DropdownMenuSeparator />
+              <div className="max-h-64 overflow-auto">
+                {filteredAddAssigneeMembers.length > 0 ? (
+                  filteredAddAssigneeMembers.map((member) => (
+                    <DropdownMenuCheckboxItem
+                      key={`add-todo-assignee-${member.sId}`}
+                      icon={() => (
+                        <Avatar
+                          size="xxs"
+                          visual={
+                            member.image ?? "/static/humanavatar/anonymous.png"
+                          }
+                        />
+                      )}
+                      label={`${member.fullName}${viewerUserId === member.sId ? " (you)" : ""}`}
+                      checked={selectedNewAssigneeSId === member.sId}
+                      onClick={() => {
+                        setNewTodoAssigneeSId(member.sId);
+                        setIsAddAssigneeMenuOpen(false);
+                      }}
+                      onSelect={(event) => {
+                        event.preventDefault();
+                      }}
+                    />
+                  ))
+                ) : (
+                  <div className="px-3 py-2 text-sm text-muted-foreground">
+                    No members found
+                  </div>
+                )}
+              </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <input
+            ref={addTodoInputRef}
+            type="text"
+            name="new-manual-project-todo"
+            aria-label="New to-do"
+            autoComplete="off"
+            maxLength={NEW_MANUAL_TODO_MAX_CHARS}
+            placeholder="Add a to-do — Enter to add · Esc to cancel"
+            value={newTodoText}
+            disabled={isAddingTodo}
+            className={cn(
+              "min-h-0 min-w-0 flex-1 border-0 bg-transparent py-0 text-base leading-6 text-foreground",
+              "shadow-none [box-shadow:none]",
+              "outline-none ring-0 ring-offset-0",
+              "focus:shadow-none focus:[box-shadow:none] focus:outline-none focus:ring-0 focus:ring-offset-0",
+              "focus:!ring-0 focus:!ring-offset-0",
+              "focus-visible:shadow-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0",
+              "focus-visible:!ring-0",
+              "placeholder:text-muted-foreground",
+              "dark:text-foreground-night dark:placeholder:text-muted-foreground-night",
+              "disabled:opacity-60"
+            )}
+            onChange={(e) => setNewTodoText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                e.preventDefault();
+                closeAddTodoComposer();
+                return;
+              }
+              if (e.key === "Enter") {
+                e.preventDefault();
+                void handleAddManualTodo();
+              }
+            }}
+          />
+          <Tooltip
+            label="Add to-do"
+            trigger={
+              <Button
+                size="xs"
+                variant="highlight"
+                icon={PlusIcon}
+                isLoading={isAddingTodo}
+                disabled={
+                  isAddingTodo || !newTodoText.trim() || !selectedNewAssigneeSId
+                }
+                onClick={() => void handleAddManualTodo()}
+              />
+            }
+          />
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setIsAddTodoComposerOpen(true)}
+          className="flex w-full min-h-9 items-center gap-2 rounded-md px-1.5 py-1.5 text-left text-sm text-muted-foreground transition-colors hover:bg-muted-background/70 dark:text-muted-foreground-night dark:hover:bg-muted-background-night/70"
+        >
+          <Icon visual={PlusIcon} size="xs" className="shrink-0 opacity-80" />
+          <span>Add a to-do</span>
+        </button>
+      )}
 
       {/* Body */}
       {isTodosLoading || frozenLastReadAt === undefined ? (

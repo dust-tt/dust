@@ -190,4 +190,43 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/project_todos", () => {
 
     expect(res._getStatusCode()).toBe(405);
   });
+
+  it("should create a todo via POST for the authenticated user as assignee", async () => {
+    const { user, req, res, workspace } = await setup("POST");
+    const project = await SpaceFactory.project(workspace, user.id);
+
+    req.query.spaceId = project.sId;
+    req.body = {
+      text: "Manual todo from API test",
+      assigneeUserId: user.sId,
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(201);
+    const data = res._getJSONData();
+    expect(data.todo.text).toBe("Manual todo from API test");
+    expect(data.todo.user?.sId).toBe(user.sId);
+    expect(data.todo.status).toBe("todo");
+    expect(data.todo.createdByType).toBe("user");
+    expect(data.todo.conversationId).toBeNull();
+  });
+
+  it("should return 400 when assignee is not a project member", async () => {
+    const { user, req, res, workspace } = await setup("POST");
+    const project = await SpaceFactory.project(workspace, user.id);
+    const outsider = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, outsider, { role: "user" });
+
+    req.query.spaceId = project.sId;
+    req.body = {
+      text: "Todo for outsider",
+      assigneeUserId: outsider.sId,
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(400);
+    expect(res._getJSONData().error.message).toContain("member");
+  });
 });
