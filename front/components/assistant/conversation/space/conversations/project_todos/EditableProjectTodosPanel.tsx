@@ -193,13 +193,13 @@ export function EditableProjectTodosPanel({
     [todoOwnerFilter.selectedUserSIds]
   );
   const filteredUsers = useMemo(() => {
-    const normalizedSearch = removeDiacritics(assigneeSearch.trim()).toLowerCase();
-    if (!normalizedSearch) {
+    const q = removeDiacritics(assigneeSearch.trim()).toLowerCase();
+    if (!q) {
       return users;
     }
 
     return users.filter((user) =>
-      removeDiacritics(user.fullName).toLowerCase().includes(normalizedSearch)
+      removeDiacritics(user.fullName).toLowerCase().includes(q)
     );
   }, [assigneeSearch, users]);
   const todoScopeLabel = formatTodoScopeLabel({
