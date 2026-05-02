@@ -154,16 +154,6 @@ export function SpaceAboutTab({
   };
 
   const onSaveDescription = async () => {
-    const confirmed = await confirm({
-      title: "Update project description?",
-      message: "The project description will be updated.",
-      validateVariant: "warning",
-    });
-
-    if (!confirmed) {
-      return;
-    }
-
     await doUpdateMetadata({ description: projectDescription });
     setIsEditingDescription(false);
   };
