@@ -17,6 +17,10 @@ type ParseMentionsResponseBody = {
   markdown: string;
 };
 
+/**
+ * Parses pasted text containing @ mentions and converts them to the proper mention format.
+ * Matches @agentName or @userName patterns against available agents and users.
+ */
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<ParseMentionsResponseBody>>,
