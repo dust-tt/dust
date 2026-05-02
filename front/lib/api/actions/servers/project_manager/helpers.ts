@@ -6,8 +6,12 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { parseProjectConfigurationURI } from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { DataSourceFilter } from "@app/lib/api/assistant/configuration/types";
 import { isContentNodeAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
-import { listProjectContextAttachments } from "@app/lib/api/projects/context";
+import {
+  getProjectConversationFolderInternalId,
+  listProjectContextAttachments,
+} from "@app/lib/api/projects/context";
 import { fetchProjectDataSourceView } from "@app/lib/api/projects/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -25,18 +29,38 @@ export interface ProjectSpaceContext {
 
 export async function buildProjectRetrieveDataSources(
   auth: Authenticator,
-  space: SpaceResource
+  {
+    space,
+    onlyGroupConversationsAndConnectedData,
+  }: { space: SpaceResource; onlyGroupConversationsAndConnectedData: boolean }
 ): Promise<DataSourcesToolConfigurationType> {
   const owner = auth.getNonNullableWorkspace();
   const dataSources: DataSourcesToolConfigurationType = [];
 
   const projectDsViewRes = await fetchProjectDataSourceView(auth, space);
   if (projectDsViewRes.isOk()) {
+    let filter: DataSourceFilter = { parents: null, tags: null };
+    const dsView = projectDsViewRes.value.toJSON();
+    if (
+      onlyGroupConversationsAndConnectedData &&
+      dsView.dataSource.connectorId
+    ) {
+      const conversationsFolderInternalId =
+        getProjectConversationFolderInternalId(
+          dsView.dataSource.connectorId,
+          space.sId
+        );
+      filter = {
+        parents: { in: [conversationsFolderInternalId], not: [] },
+        tags: { in: ["group"], not: [], mode: "custom" },
+      };
+    }
+
     dataSources.push({
       uri: getDataSourceURI({
         workspaceId: owner.sId,
         dataSourceViewId: projectDsViewRes.value.sId,
-        filter: { parents: null, tags: null },
+        filter,
       }),
       mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
     });

@@ -962,7 +962,10 @@ export function createProjectManagerTools(
         }
 
         const { space } = contextRes.value;
-        const dataSources = await buildProjectRetrieveDataSources(auth, space);
+        const dataSources = await buildProjectRetrieveDataSources(auth, {
+          space,
+          onlyGroupConversationsAndConnectedData: false,
+        });
 
         if (dataSources.length === 0) {
           return new Err(

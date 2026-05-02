@@ -7,7 +7,7 @@ import logger from "@connectors/logger/logger";
 import { DustProjectConversationResource } from "@connectors/resources/dust_project_conversation_resource";
 import type { DataSourceConfig, ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types/shared/internal_mime_types";
-import type { ConversationPublicType } from "@dust-tt/client";
+import { type ConversationPublicType, removeNulls } from "@dust-tt/client";
 
 import {
   buildConversationMessageSections,
@@ -149,6 +149,24 @@ export async function syncConversation({
     conversation.updated ?? conversation.created
   );
 
+  // Check if the conversation is a group conversation by checking if there are multiple user IDs in the conversation
+  const isGroupConversation =
+    new Set(
+      removeNulls(
+        conversation.content
+          .map((versions) => versions[-1])
+          .map((m) =>
+            m?.type === "user_message" && m.user ? m.user.sId : null
+          )
+      )
+    ).size > 1;
+
+  const tags = [
+    `project:${projectId}`,
+    `conversation:${conversation.sId}`,
+    isGroupConversation ? "group" : "single-user",
+  ];
+
   try {
     const messageSections = buildConversationMessageSections(conversation);
     const chunks = chunkMessageSectionsForDocuments(messageSections);
@@ -214,7 +232,7 @@ export async function syncConversation({
         documentId: baseDocumentId,
         documentContent,
         timestampMs: conversation.updated ?? conversation.created,
-        tags: [`project:${projectId}`, `conversation:${conversation.sId}`],
+        tags,
         documentUrl: conversation.url,
         parents: [baseDocumentId, folderInternalId],
         parentId: folderInternalId,
@@ -249,7 +267,7 @@ export async function syncConversation({
           documentId: partDocumentId,
           documentContent,
           timestampMs: conversation.updated ?? conversation.created,
-          tags: [`project:${projectId}`, `conversation:${conversation.sId}`],
+          tags,
           documentUrl: conversation.url,
           parents: [partDocumentId, folderInternalId],
           parentId: folderInternalId,

@@ -152,7 +152,13 @@ export async function analyzeProjectTodosActivity({
   const results = await runIncludeDataRetrieval(auth, {
     citationsOffset: 0,
     retrievalTopK: 128,
-    dataSources: await buildProjectRetrieveDataSources(auth, space),
+    dataSources: await buildProjectRetrieveDataSources(auth, {
+      space,
+      // Only include group conversations and connected data.
+      // Goal is to reduce noise by not generating TODOs for purely agentic conversations or files that might be the output of agentic conversations.
+      // If one wants to have more sophisticated TODOs lifecycle management, they can do it via custom agents.
+      onlyGroupConversationsAndConnectedData: true,
+    }),
     timeFrame,
   });
 
