@@ -9,7 +9,10 @@ import { ProjectTodoResource } from "@app/lib/resources/project_todo_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { APIErrorType } from "@app/types/error";
-import type { ProjectTodoType } from "@app/types/project_todo";
+import type {
+  ProjectTodoSourceInfo,
+  ProjectTodoType,
+} from "@app/types/project_todo";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -19,23 +22,64 @@ type StartProjectTodoAgentError = {
   message: string;
 };
 
+function escapeMarkdownInlineLinkText(text: string): string {
+  return text
+    .replace(/\\/g, "\\\\")
+    .replace(/\[/g, "\\[")
+    .replace(/\]/g, "\\]");
+}
+
+function markdownInlineLink(label: string, url: string): string {
+  const dest = `<${url}>`;
+  return `[${escapeMarkdownInlineLinkText(label)}](${dest})`;
+}
+
+function linkLabelForUrlOnly(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return "Link";
+  }
+}
+
+function formatTodoSourcesMarkdown(sources: ProjectTodoSourceInfo[]): string {
+  const lines = sources
+    .map((s) => {
+      const title = s.sourceTitle?.trim();
+      const url = s.sourceUrl?.trim();
+      if (title && url) {
+        return `- ${markdownInlineLink(title, url)}`;
+      }
+      if (title) {
+        return `- **${title}**`;
+      }
+      if (url) {
+        return `- ${markdownInlineLink(linkLabelForUrlOnly(url), url)}`;
+      }
+      return null;
+    })
+    .filter((line): line is string => line !== null);
+
+  if (lines.length === 0) {
+    return "_I didn't attach sources to this todo._";
+  }
+  return lines.join("\n");
+}
+
 function buildTodoKickoffPrompt({
   todoId,
   todoText,
-  sourceUrls,
+  sources,
   customMessage,
 }: {
   todoId: string;
   todoText: string;
-  sourceUrls: string[];
+  sources: ProjectTodoSourceInfo[];
   customMessage?: string;
 }): string {
-  const sourceLine =
-    sourceUrls.length > 0
-      ? `The item was sourced from ${sourceUrls.join(", ")}.`
-      : "No explicit source was attached to this todo item.";
-  const customMessageLine = customMessage
-    ? ["", "Additional instructions :", customMessage]
+  const sourcesBlock = formatTodoSourcesMarkdown(sources);
+  const customMessageBlock = customMessage
+    ? ["", "### More from me", "", customMessage]
     : [];
 
   const todoDirective = serializeProjectTodoDirective({
@@ -44,16 +88,32 @@ function buildTodoKickoffPrompt({
   });
 
   return [
-    `You are working on ${todoDirective} from the current project.`,
+    "## Project todo",
     "",
-    sourceLine,
+    "I'm asking you to help with this todo from my project. The task is shown as the attachment on this message—I don't need you to repeat the full title unless it helps.",
     "",
-    "Please execute this task end-to-end:",
-    "1. Clarify assumptions and plan the work but avoid waiting for user input if possible.",
-    "2. Use available project context and tools to complete the work.",
-    "3. Share concrete outputs and next checks.",
-    "4. Once the task is completed, mark this todo as done.",
-    ...customMessageLine,
+    "If your tools need the todo reference, use:",
+    "",
+    todoDirective,
+    "",
+    "## Sources",
+    "",
+    sourcesBlock,
+    "",
+    "## What I'd like you to do",
+    "",
+    "1. Clarify assumptions and plan; don't wait on me if you can get context with tools.",
+    "2. Use project context and tools to carry out the work end-to-end.",
+    "3. Summarize what you did, key decisions, and anything I should verify.",
+    "",
+    "## When to mark it done",
+    "",
+    "**After your first delivery of the work:** don't mark this todo done only because *you* consider the task finished—give me a clear summary so I can react.",
+    "",
+    '**When I clearly accept the result in this chat** (e.g. "ok good for me", "looks good", "perfect", "works for me", "thanks that\'s what I needed", or any plain statement that I\'m satisfied or we\'re done): **mark this todo as done** in the same turn using the project/todo tools. Verbal approval here is the signal; don\'t assume I will only ever close it in the UI. A quick acknowledgment is fine, but do not skip marking done if I\'ve clearly approved.',
+    "",
+    "**If** I ask for more changes, say it's not quite right, or I tell you to keep the todo open, then don't mark it done yet.",
+    ...customMessageBlock,
   ].join("\n");
 }
 
@@ -115,13 +175,10 @@ export async function startAgentForProjectTodo(
     }
   );
   const sources = sourcesByTodoId.get(todo.sId) ?? [];
-  const sourceUrls = sources
-    .map((source) => source.sourceUrl)
-    .filter((url): url is string => !!url);
   const prompt = buildTodoKickoffPrompt({
     todoId: todo.sId,
     todoText: todo.text,
-    sourceUrls,
+    sources,
     customMessage: customMessage?.trim() || undefined,
   });
 
