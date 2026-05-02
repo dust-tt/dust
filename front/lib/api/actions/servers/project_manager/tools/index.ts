@@ -33,6 +33,8 @@ import {
   addFileToProject,
   fetchLatestProjectContextFileContentFragment,
   listProjectContextAttachments,
+  removeContentNodeFromProject,
+  removeFileFromProject,
 } from "@app/lib/api/projects/context";
 import { listNonArchivedMemberSpacesWithMetadata } from "@app/lib/api/projects/list";
 import { createSpaceAndGroup } from "@app/lib/api/spaces";
@@ -447,6 +449,73 @@ export function createProjectManagerTools(
           },
         ]);
       }, "Failed to update file");
+    },
+
+    remove_file: async (params) => {
+      return withErrorHandling(async () => {
+        const contextRes = await getWritableProjectContext(auth, {
+          agentLoopContext,
+          dustProject: params.dustProject,
+        });
+        if (contextRes.isErr()) {
+          return contextRes;
+        }
+
+        const { space } = contextRes.value;
+        const { fileId } = params;
+
+        const removeRes = await removeFileFromProject(auth, {
+          space,
+          fileId,
+        });
+        if (removeRes.isErr()) {
+          return new Err(
+            new MCPError(removeRes.error.message, { tracked: false })
+          );
+        }
+
+        return new Ok(
+          makeSuccessResponse({
+            success: true,
+            message: `File "${fileId}" removed from the project context.`,
+          })
+        );
+      }, "Failed to remove file from project");
+    },
+
+    remove_content_node: async (params) => {
+      return withErrorHandling(async () => {
+        const contextRes = await getWritableProjectContext(auth, {
+          agentLoopContext,
+          dustProject: params.dustProject,
+        });
+        if (contextRes.isErr()) {
+          return contextRes;
+        }
+
+        const { space } = contextRes.value;
+
+        const removeRes = await removeContentNodeFromProject(auth, {
+          space,
+          nodeId: params.nodeId,
+          nodeDataSourceViewId: params.nodeDataSourceViewId,
+        });
+        if (removeRes.isErr()) {
+          return new Err(
+            new MCPError(removeRes.error.message, { tracked: false })
+          );
+        }
+
+        return new Ok(
+          makeSuccessResponse({
+            success: true,
+            nodeId: params.nodeId,
+            nodeDataSourceViewId: params.nodeDataSourceViewId,
+            message:
+              "Content node reference removed from the project context if present (Company Data unchanged).",
+          })
+        );
+      }, "Failed to remove linked content from project");
     },
 
     attach_to_conversation: async (params) => {

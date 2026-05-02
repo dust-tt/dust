@@ -109,6 +109,53 @@ export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
       done: "Update file in project",
     },
   },
+  remove_file: {
+    description:
+      "Remove an existing file from the project context. The file will no longer be available to conversations in this project. " +
+      "Deletes the underlying file (cannot be undone). Use file IDs from get_information like other project context files.",
+    schema: {
+      fileId: z
+        .string()
+        .describe("ID of an existing file in the project context to remove"),
+      dustProject: ConfigurableToolInputSchemas[
+        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+      ]
+        .optional()
+        .describe(
+          "Optional project to remove the file from, will fallback to the conversation's project."
+        ),
+    },
+    stake: "medium",
+    displayLabels: {
+      running: "Removing file from project",
+      done: "Remove file from project",
+    },
+  },
+  remove_content_node: {
+    description:
+      "Remove a content node reference from the project context. The node will no longer be available to conversations in this project. " +
+      "Use nodeId with nodeDataSourceViewId from get_information attachments for this reference.",
+    schema: {
+      nodeId: z.string().describe("Internal node ID to remove"),
+      nodeDataSourceViewId: z
+        .string()
+        .describe(
+          "Internal data source view ID for the content node reference (from get_information attachments)"
+        ),
+      dustProject: ConfigurableToolInputSchemas[
+        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+      ]
+        .optional()
+        .describe(
+          "Optional project to remove the content node from, will fallback to the conversation's project."
+        ),
+    },
+    stake: "medium",
+    displayLabels: {
+      running: "Removing content node from project",
+      done: "Remove content node from project",
+    },
+  },
   attach_to_conversation: {
     description:
       "Attach an existing project context file to the current conversation without creating or copying a new file.",
@@ -406,6 +453,7 @@ const PROJECT_MANAGER_INSTRUCTIONS =
   "Project files and metadata are shared across all conversations in this project. " +
   "You can add all sorts of files but only text-based files are supported for updating. " +
   "You can add/update files by providing text content directly, or by copying from existing files (like those you've generated). " +
+  "You can remove a file from the project context (remove_file) or remove a content node reference from Company Data (remove_content_node). " +
   "You can also attach an existing project context file to the current conversation without recreating it. " +
   "Use list_projects to discover projects you can access and obtain the dustProject uri for other tools. " +
   "Use semantic_search to find relevant chunks in project knowledge and/or conversations (scope: knowledge, conversations, or all). " +
@@ -419,7 +467,7 @@ export const PROJECT_MANAGER_SERVER = {
     name: "project_manager",
     version: "1.0.0",
     description:
-      "Manage project files and metadata. Add, update, list files, and organize project resources.",
+      "Manage project files and metadata. Add, update, or remove files in the project context and content node references from Company Data, list files, and organize project resources.",
     icon: "ActionDocumentTextIcon",
     authorization: null,
     documentationUrl: null,

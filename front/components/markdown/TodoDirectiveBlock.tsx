@@ -1,4 +1,4 @@
-import { Chip, ListCheckIcon } from "@dust-tt/sparkle";
+import { AttachmentChip, ListCheckIcon } from "@dust-tt/sparkle";
 import { visit } from "unist-util-visit";
 
 export function TodoDirectiveBlock({
@@ -10,7 +10,11 @@ export function TodoDirectiveBlock({
 }) {
   return (
     <span data-project-todo-sid={sId} className="inline-block">
-      <Chip label={label} icon={ListCheckIcon} color="green" />
+      <AttachmentChip
+        label={label.replaceAll("\n", " ").replaceAll("\r", " ")}
+        icon={{ visual: ListCheckIcon }}
+        color="green"
+      />
     </span>
   );
 }
