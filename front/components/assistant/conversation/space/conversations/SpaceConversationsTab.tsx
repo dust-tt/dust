@@ -217,62 +217,56 @@ export function SpaceConversationsTab({
             /* Space conversations section */
             <div className="w-full">
               <div className="flex flex-col gap-3">
-                <div className="flex flex-row gap-2 my-3 px-3">
-                  <SearchInputWithPopover
-                    name="conversation-search"
-                    value={searchText}
-                    onChange={setSearchText}
-                    placeholder={`Search in ${spaceInfo.name}`}
-                    open={isSearchPopoverOpen && searchText.trim().length > 0}
-                    onOpenChange={setIsSearchPopoverOpen}
-                    items={searchResults}
-                    isLoading={isSearching}
-                    noResults={
-                      searchText.trim().length > 0 && !isSearching
-                        ? isSearchError
-                          ? "Failed to search conversations. Please try again."
-                          : "No conversations found."
-                        : ""
-                    }
-                    displayItemCount={true}
-                    renderItem={(conversation, selected) => {
-                      const conversationLabel =
-                        getConversationDisplayTitle(conversation);
-                      const time = moment(conversation.updated).fromNow();
+                <div className="my-3 flex min-w-0 flex-row gap-2 px-3">
+                  <div className="min-w-0 flex-1">
+                    <SearchInputWithPopover
+                      name="conversation-search"
+                      value={searchText}
+                      onChange={setSearchText}
+                      placeholder={`Search in ${spaceInfo.name}`}
+                      open={isSearchPopoverOpen && searchText.trim().length > 0}
+                      onOpenChange={setIsSearchPopoverOpen}
+                      items={searchResults}
+                      isLoading={isSearching}
+                      noResults={
+                        searchText.trim().length > 0 && !isSearching
+                          ? isSearchError
+                            ? "Failed to search conversations. Please try again."
+                            : "No conversations found."
+                          : ""
+                      }
+                      displayItemCount={true}
+                      renderItem={(conversation, selected) => {
+                        const conversationLabel =
+                          getConversationDisplayTitle(conversation);
+                        const time = moment(conversation.updated).fromNow();
 
-                      return (
-                        <div
-                          className={cn(
-                            "cursor-pointer px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800",
-                            selected && "bg-gray-100 dark:bg-gray-700"
-                          )}
-                          onClick={() => navigateToConversation(conversation)}
-                        >
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="min-w-0 flex-1 truncate">
-                              <div className="text-sm font-medium text-foreground dark:text-foreground-night">
-                                {conversationLabel}
+                        return (
+                          <div
+                            className={cn(
+                              "cursor-pointer px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800",
+                              selected && "bg-gray-100 dark:bg-gray-700"
+                            )}
+                            onClick={() => navigateToConversation(conversation)}
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="min-w-0 flex-1 truncate">
+                                <div className="text-sm font-medium text-foreground dark:text-foreground-night">
+                                  {conversationLabel}
+                                </div>
+                              </div>
+                              <div className="shrink-0 text-xs text-muted-foreground dark:text-muted-foreground-night">
+                                {time}
                               </div>
                             </div>
-                            <div className="shrink-0 text-xs text-muted-foreground dark:text-muted-foreground-night">
-                              {time}
-                            </div>
                           </div>
-                        </div>
-                      );
-                    }}
-                    onItemSelect={navigateToConversation}
-                  />
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    label="Mark all as read"
-                    onClick={() => markAllAsRead(unreadConversationIds)}
-                    isLoading={isMarkingAllAsRead}
-                    disabled={unreadConversationIds.length === 0}
-                  />
+                        );
+                      }}
+                      onItemSelect={navigateToConversation}
+                    />
+                  </div>
                 </div>
-                <div className="flex justify-center">
+                <div className="flex flex-row items-center justify-between gap-3">
                   <ButtonsSwitchList
                     key={conversationFilter}
                     defaultValue={conversationFilter}
@@ -281,21 +275,33 @@ export function SpaceConversationsTab({
                     <ButtonsSwitch
                       value="all"
                       label="All"
+                      tooltip="Show every conversation in this project."
                       onClick={() => onConversationFilterChange("all")}
                     />
                     <ButtonsSwitch
                       value="group"
                       label="Group"
+                      tooltip="Show only threads where at least two people have sent messages."
                       onClick={() => onConversationFilterChange("group")}
                     />
                     <ButtonsSwitch
                       value="with_me"
                       label="Mine"
+                      tooltip="Show only conversations where you have sent a message."
                       onClick={() => onConversationFilterChange("with_me")}
                     />
                   </ButtonsSwitchList>
+                  <Button
+                    size="xs"
+                    variant="outline"
+                    label="Mark all as read"
+                    className="shrink-0"
+                    onClick={() => markAllAsRead(unreadConversationIds)}
+                    isLoading={isMarkingAllAsRead}
+                    disabled={unreadConversationIds.length === 0}
+                  />
                 </div>
-                <div className="flex flex-col -mt-6">
+                <div className="flex flex-col -mt-2">
                   {isConversationsLoading ? (
                     <>
                       <ListItemSection>
