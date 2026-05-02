@@ -28,6 +28,14 @@ const makeResHandler =
           nowMs - lastMs > FORCE_RELOAD_INTERVAL_MS) &&
         !isNavigationLocked();
       if (shouldReload) {
+        datadogLogger.info(
+          {
+            commitHash: COMMIT_HASH,
+            url: res.url,
+            statusCode: res.status,
+          },
+          "[fetcher] Force client reload"
+        );
         sessionStorage.setItem(FORCE_RELOAD_SESSION_KEY, nowMs.toString());
         window.location.reload();
         // Return a never-resolving promise to prevent SWR from processing.

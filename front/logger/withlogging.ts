@@ -178,6 +178,20 @@ export function withLogging<T>(
 
     if (typeof commitHash === "string" && commitHash.length > 0) {
       if (await shouldForceClientReload(commitHash)) {
+        logger.info(
+          {
+            clientIp,
+            cliVersion,
+            commitHash,
+            method: req.method,
+            route,
+            sessionId,
+            url: req.url,
+            workspaceId,
+            ...req.logContext,
+          },
+          "Force client reload"
+        );
         res.setHeader("X-Reload-Required", "true");
       }
     }
