@@ -1034,7 +1034,11 @@ export function useUpdateProjectMetadata({
         ? updates.archive
           ? "Project archived"
           : "Project unarchived"
-        : "Project updated";
+        : updates.todoGenerationEnabled !== undefined
+          ? updates.todoGenerationEnabled
+            ? "Automatic to-do suggestions turned on"
+            : "Automatic to-do suggestions turned off"
+          : "Project updated";
 
     sendNotification({
       type: "success",

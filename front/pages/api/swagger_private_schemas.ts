@@ -852,6 +852,13 @@
  *             archivedAt:
  *               type: integer
  *               nullable: true
+ *             todoGenerationEnabled:
+ *               type: boolean
+ *               description: Whether automatic todo suggestions from project activity are enabled.
+ *             lastTodoAnalysisAt:
+ *               type: integer
+ *               nullable: true
+ *               description: Unix timestamp (ms) of the last automatic todo suggestion scan, if any.
  *     PrivateDataSourceView:
  *       type: object
  *       description: A view on a data source within a space.

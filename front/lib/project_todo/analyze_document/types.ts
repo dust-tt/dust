@@ -81,3 +81,25 @@ export const ExtractTakeawaysInputSchema = z.object({
 });
 
 export type ExtractionResult = z.infer<typeof ExtractTakeawaysInputSchema>;
+
+/**
+ * One-time lookback for the first automatic to-do analysis run after enabling generation.
+ * Stored on project_metadata for the workflow only; not exposed in public API types.
+ */
+export const INITIAL_TODO_SYNC_LOOKBACK_VALUES = [
+  "now",
+  "last_24h",
+  "max",
+] as const;
+
+export type InitialTodoSyncLookbackValue =
+  (typeof INITIAL_TODO_SYNC_LOOKBACK_VALUES)[number];
+
+export function isInitialTodoSyncLookback(
+  value: string | null | undefined
+): value is InitialTodoSyncLookbackValue {
+  return (
+    value != null &&
+    (INITIAL_TODO_SYNC_LOOKBACK_VALUES as readonly string[]).includes(value)
+  );
+}

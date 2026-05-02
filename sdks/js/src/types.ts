@@ -2639,6 +2639,9 @@ export const ProjectMetadataSchema = z.object({
   updatedAt: z.number(),
   spaceId: z.string(),
   description: z.string().nullable(),
+  archivedAt: z.number().nullable().optional(),
+  todoGenerationEnabled: z.boolean().optional(),
+  lastTodoAnalysisAt: z.number().nullable().optional(),
   members: z.array(z.string()),
 });
 export type ProjectMetadataType = z.infer<typeof ProjectMetadataSchema>;

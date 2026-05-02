@@ -3,6 +3,7 @@ import { runIncludeDataRetrieval } from "@app/lib/api/actions/servers/include_da
 import { buildProjectRetrieveDataSources } from "@app/lib/api/actions/servers/project_manager/helpers";
 import { Authenticator } from "@app/lib/auth";
 import { extractDocumentTakeaways } from "@app/lib/project_todo/analyze_document";
+import { isInitialTodoSyncLookback } from "@app/lib/project_todo/analyze_document/types";
 import { mergeTakeawaysIntoProject } from "@app/lib/project_todo/merge_into_project";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -108,6 +109,14 @@ export async function analyzeProjectTodosActivity({
     return;
   }
 
+  const metadata = await ProjectMetadataResource.fetchBySpace(adminAuth, space);
+  if (!metadata?.todoGenerationEnabled) {
+    localLogger.info(
+      "Todo generation is disabled or not configured for this project; skipping project todo analysis"
+    );
+    return;
+  }
+
   const { groupsToProcess } =
     await space.fetchManualGroupsMemberships(adminAuth);
 
@@ -140,42 +149,53 @@ export async function analyzeProjectTodosActivity({
     return;
   }
 
-  const metadata = await ProjectMetadataResource.fetchBySpace(auth, space);
-  let timeFrame: TimeFrame = { duration: 1, unit: "day" }; // Default to one day if no metadata is found
-  if (metadata?.lastTodoAnalysisAt) {
+  let timeFrame: TimeFrame | undefined = { duration: 1, unit: "day" }; // Default when no prior run and no first-sync hint
+  if (metadata.lastTodoAnalysisAt) {
     const deltaMs = Date.now() - metadata.lastTodoAnalysisAt.getTime();
     const MS_PER_HOUR = 1000 * 60 * 60;
     timeFrame = { duration: deltaMs / MS_PER_HOUR, unit: "hour" };
+  } else if (
+    metadata.initialTodoAnalysisLookback &&
+    isInitialTodoSyncLookback(metadata.initialTodoAnalysisLookback)
+  ) {
+    switch (metadata.initialTodoAnalysisLookback) {
+      case "now":
+        timeFrame = { duration: 1, unit: "hour" };
+        break;
+      case "last_24h":
+        timeFrame = { duration: 24, unit: "hour" };
+        break;
+      case "max":
+        timeFrame = undefined;
+        break;
+    }
   }
+
+  const dataSources = await buildProjectRetrieveDataSources(auth, {
+    space,
+    // Only include group conversations and connected data.
+    // Goal is to reduce noise by not generating TODOs for purely agentic conversations or files that might be the output of agentic conversations.
+    // If one wants to have more sophisticated TODOs lifecycle management, they can do it via custom agents.
+    onlyGroupConversationsAndConnectedData: true,
+  });
 
   // Fetch all recent documents changes from the project knowledge and conversations.
   const results = await runIncludeDataRetrieval(auth, {
     citationsOffset: 0,
     retrievalTopK: 128,
-    dataSources: await buildProjectRetrieveDataSources(auth, {
-      space,
-      // Only include group conversations and connected data.
-      // Goal is to reduce noise by not generating TODOs for purely agentic conversations or files that might be the output of agentic conversations.
-      // If one wants to have more sophisticated TODOs lifecycle management, they can do it via custom agents.
-      onlyGroupConversationsAndConnectedData: true,
-    }),
+    dataSources,
     timeFrame,
   });
 
   if (results.isErr()) {
     localLogger.error(
-      { error: results.error },
+      { dataSources, error: results.error },
       "Failed to retrieve include data"
     );
     return;
   }
 
-  if (metadata) {
-    await metadata.updateLastTodoAnalysisAt(new Date());
-  } else {
-    // We should always have a metadata row for a project space, but just in case.
-    localLogger.warn({}, "No project metadata found for space");
-  }
+  const documentsLastFetchedAt = new Date();
 
   const documents = removeNulls(
     results.value.map((result) => resultToTakeawaySourceDocument(result))
@@ -211,9 +231,16 @@ export async function analyzeProjectTodosActivity({
   );
 
   localLogger.info(
-    { phase: "analyze", ...stats, durationMs: Date.now() - startMs },
+    {
+      phase: "analyze",
+      ...stats,
+      documentsLastFetchedAt,
+      durationMs: Date.now() - startMs,
+    },
     "Project todo analysis complete"
   );
+
+  await metadata.recordTodoAnalysisComplete(documentsLastFetchedAt);
 }
 
 // Called by projectTodoWorkflow. Merges the latest takeaway snapshots
@@ -234,6 +261,27 @@ export async function mergeTodosForProjectActivity({
 
   if (!workspaceId) {
     localLogger.error("Workspace ID is required");
+    return;
+  }
+
+  const workspace = await WorkspaceResource.fetchById(workspaceId);
+  if (!workspace) {
+    localLogger.error("Workspace not found");
+    return;
+  }
+
+  const adminAuth = await Authenticator.internalAdminForWorkspace(workspaceId);
+  const space = await SpaceResource.fetchById(adminAuth, spaceId);
+  if (!space || !space.isProject()) {
+    localLogger.error("Space not found or not a project");
+    return;
+  }
+
+  const metadata = await ProjectMetadataResource.fetchBySpace(adminAuth, space);
+  if (!metadata?.todoGenerationEnabled) {
+    localLogger.info(
+      "Todo generation is disabled or not configured for this project; skipping project todo merge"
+    );
     return;
   }
 

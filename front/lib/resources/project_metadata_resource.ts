@@ -128,6 +128,34 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
     await this.update({ lastTodoAnalysisAt }, transaction);
   }
 
+  /** Sets last analysis time and clears one-time first-sync lookback (if any). */
+  async recordTodoAnalysisComplete(
+    documentsLastFetchedAt: Date,
+    transaction?: Transaction
+  ) {
+    await this.update(
+      {
+        lastTodoAnalysisAt: documentsLastFetchedAt,
+        initialTodoAnalysisLookback: null,
+      },
+      transaction
+    );
+  }
+
+  async updateTodoGenerationEnabled(
+    todoGenerationEnabled: boolean,
+    transaction?: Transaction
+  ) {
+    await this.update({ todoGenerationEnabled }, transaction);
+  }
+
+  async updateInitialTodoAnalysisLookback(
+    initialTodoAnalysisLookback: string | null,
+    transaction?: Transaction
+  ) {
+    await this.update({ initialTodoAnalysisLookback }, transaction);
+  }
+
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction }
@@ -153,6 +181,8 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
       }),
       description: this.description,
       archivedAt: this.archivedAt?.getTime() ?? null,
+      todoGenerationEnabled: this.todoGenerationEnabled,
+      lastTodoAnalysisAt: this.lastTodoAnalysisAt?.getTime() ?? null,
     };
   }
 }
