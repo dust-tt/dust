@@ -1,7 +1,5 @@
-import {
-  ProjectTodosPanel,
-  type TodoOwnerFilter,
-} from "@app/components/assistant/conversation/space/conversations/ProjectTodosPanel";
+import { EditableProjectTodosPanel } from "@app/components/assistant/conversation/space/conversations/project_todos/EditableProjectTodosPanel";
+import type { TodoOwnerFilter } from "@app/components/assistant/conversation/space/conversations/project_todos/TodoSubComponents";
 import { FirstSyncTodoLookbackForm } from "@app/components/assistant/conversation/space/FirstSyncTodoLookbackForm";
 import { ConfirmContext } from "@app/components/Confirm";
 import type { InitialTodoSyncLookbackValue } from "@app/lib/project_todo/analyze_document/types";
@@ -188,7 +186,7 @@ export function SpaceTodosTab({
             </div>
           </div>
         </div>
-        <ProjectTodosPanel
+        <EditableProjectTodosPanel
           owner={owner}
           spaceId={spaceInfo.sId}
           isReadOnly={!!spaceInfo.archivedAt || !spaceInfo.isMember}

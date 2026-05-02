@@ -1,4 +1,5 @@
 import { Authenticator } from "@app/lib/auth";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { ProjectTodoFactory } from "@app/tests/utils/ProjectTodoFactory";
@@ -145,6 +146,35 @@ describe("PATCH /api/w/[wId]/spaces/[spaceId]/project_todos/[todoId]", () => {
     expect(updated.text).toBe("Edited by project member");
     expect(updated.status).toBe("done");
     expect(updated.user?.sId).toBe(otherUser.sId);
+  });
+
+  it("should reassign a todo to another project member", async () => {
+    const { user } = await setup();
+    const project = await SpaceFactory.project(workspace, user.id);
+    const otherUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, otherUser, { role: "user" });
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const memberGroup =
+      project.groups.find((g) => g.kind === "regular") ?? project.groups[0]!;
+    await GroupFactory.withMembers(adminAuth, memberGroup, [otherUser]);
+
+    const todo = await ProjectTodoFactory.create(workspace, project, {
+      userId: user.id,
+      text: "Hand off this",
+    });
+
+    req.query.spaceId = project.sId;
+    req.query.todoId = todo.sId;
+    req.body = { assigneeUserId: otherUser.sId };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const { todo: updated } = res._getJSONData();
+    expect(updated.user?.sId).toBe(otherUser.sId);
+    expect(updated.text).toBe("Hand off this");
   });
 
   it("should return 400 when no update fields are provided", async () => {

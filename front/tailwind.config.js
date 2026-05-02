@@ -72,6 +72,10 @@ module.exports = {
           from: { opacity: "0", transform: "translateY(10px)" },
           to: { opacity: "1", transform: "translateY(0)" },
         },
+        "saved-pulse": {
+          "0%, 100%": { color: "inherit" },
+          "15%": { color: "#86efac" },
+        },
       },
       animation: {
         // Front overrides the preset's shared timings
@@ -83,6 +87,7 @@ module.exports = {
         fadeout: "fadeout 500ms ease-out",
         marquee: "marquee 25s linear infinite",
         "fade-in-up": "fade-in-up 0.5s ease-in-out",
+        "saved-pulse": "saved-pulse 2s ease-out",
       },
     },
   },
