@@ -183,7 +183,7 @@ export const checkActiveWorkflows: CheckFunction = async (
     if (missingActiveWorkflows.length > 0) {
       const actionLinks: ActionLink[] = missingActiveWorkflows.map((c) => ({
         label: `${provider}: ${c.dataSourceId}`,
-        url: `/poke/${c.workspaceId}/data_sources/${c.dataSourceId}`,
+        url: `https://poke.dust.tt/${c.workspaceId}/data_sources/${c.dataSourceId}`,
       }));
       reportFailure(
         { missingActiveWorkflows, actionLinks },

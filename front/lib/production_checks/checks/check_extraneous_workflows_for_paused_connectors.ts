@@ -78,7 +78,7 @@ export const checkExtraneousWorkflows: CheckFunction = async (
   if (hasExtraneousWorklows.length > 0) {
     const actionLinks: ActionLink[] = hasExtraneousWorklows.map((c) => ({
       label: `${c.provider}: ${c.dataSourceId}`,
-      url: `/poke/${c.workspaceId}/data_sources/${c.dataSourceId}`,
+      url: `https://poke.dust.tt/${c.workspaceId}/data_sources/${c.dataSourceId}`,
     }));
     reportFailure(
       { hasExtraneousWorklows, actionLinks },

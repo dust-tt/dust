@@ -40,7 +40,7 @@ export const checkEndedBackendOnlySubscriptions: CheckFunction = async (
   if (staleSubscriptions.length > 0) {
     const actionLinks: ActionLink[] = staleSubscriptions.map((s) => ({
       label: `${s.workspaceName} (sub: ${s.sId})`,
-      url: `/poke/${s.workspaceId}`,
+      url: `https://poke.dust.tt/${s.workspaceId}`,
     }));
 
     const message =

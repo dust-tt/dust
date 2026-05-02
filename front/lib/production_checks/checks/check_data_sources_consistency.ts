@@ -19,7 +19,7 @@ export const checkDataSourcesConsistency: CheckFunction = async (
     const actionLinks: ActionLink[] = managedDataSourcesWithoutConnector.map(
       (ds) => ({
         label: `Data Source: ${ds.name}`,
-        url: `/poke/${ds.workspaceId}/data_sources/${ds.name}`,
+        url: `https://poke.dust.tt/${ds.workspaceId}/data_sources/${ds.name}`,
       })
     );
     reportFailure(
