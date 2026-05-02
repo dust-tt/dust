@@ -11,6 +11,7 @@ import {
   useAutosizeTextArea,
 } from "@app/components/assistant/conversation/space/conversations/project_todos/utils";
 import { useAppRouter } from "@app/lib/platform";
+import { removeDiacritics } from "@app/lib/utils";
 import type { ConversationDotStatus } from "@app/lib/utils/conversation_dot_status";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
@@ -124,9 +125,11 @@ export const EditableTodoItem = memo(function EditableTodoItem({
   useAutosizeTextArea(editInputRef, draftText, isEditing);
 
   const filteredReassignMembers = useMemo(() => {
-    const q = reassignSearch.trim().toLowerCase();
+    const q = removeDiacritics(reassignSearch.trim()).toLowerCase();
     const filtered = q
-      ? projectMembers.filter((m) => m.fullName.toLowerCase().includes(q))
+      ? projectMembers.filter((m) =>
+          removeDiacritics(m.fullName).toLowerCase().includes(q)
+        )
       : [...projectMembers];
     // Sort: members with at least one active (non-done) todo come first,
     // preserving alphabetical order within each group.
