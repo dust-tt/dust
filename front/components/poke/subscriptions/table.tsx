@@ -11,6 +11,7 @@ import EnterpriseUpgradeDialog from "@app/components/poke/subscriptions/Enterpri
 import FreePlanUpgradeDialog from "@app/components/poke/subscriptions/FreePlanUpgradeDialog";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
+import { getMetronomeContractUrl } from "@app/lib/metronome/urls";
 import {
   FREE_NO_PLAN_CODE,
   isDustCompanyPlan,
@@ -240,12 +241,15 @@ export function ActiveSubscriptionTable({
                   )}
                 </PokeTableCell>
               </PokeTableRow>
-              {subscription.metronomeContractId && (
+              {subscription.metronomeContractId && metronomeCustomerId && (
                 <PokeTableRow>
                   <PokeTableCell>Metronome Contract</PokeTableCell>
                   <PokeTableCell>
                     <LinkWrapper
-                      href={`https://app.metronome.com/${isDevelopment() ? "sandbox/" : ""}customers/${metronomeCustomerId}/contracts/${subscription.metronomeContractId}`}
+                      href={getMetronomeContractUrl(
+                        metronomeCustomerId,
+                        subscription.metronomeContractId
+                      )}
                       target="_blank"
                       className="text-xs text-highlight-400"
                     >

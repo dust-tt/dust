@@ -40,7 +40,9 @@ export interface MetronomeEvent {
 export type MetronomeBalance = Commit | Credit;
 export type { Commit as MetronomeCommit, Credit as MetronomeCredit };
 
-export const METRONOME_CENTS_TO_MICRO_USD = 10_000;
+// Programmatic Usage Credits is a custom Metronome credit type (1 PUC = 1 USD).
+// `amount` and `balance` fields on commits/credits of this type are denominated in PUC.
+export const METRONOME_PROGRAMMATIC_USAGE_CREDIT_TO_MICRO_USD = 1_000_000;
 
 export interface MetronomeUsageListResponse {
   billableMetricId: string;

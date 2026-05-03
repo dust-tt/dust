@@ -517,6 +517,7 @@ export class CreditResource extends BaseResource<CreditModel> {
         : null,
       discount: this.discount,
       invoiceOrLineItemId: this.invoiceOrLineItemId,
+      metronomeCreditId: this.metronomeCreditId,
     };
   }
 
