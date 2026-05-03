@@ -87,9 +87,9 @@ export function SubscribePage() {
 
   // We treat user as being in free trial if they don't have any non free subs,
   // regardless of whether they're active or not.
-  const isInFreePhoneTrial = !subscriptions.some(
-    (sub) => !isFreeTrialPhonePlan(sub.plan.code)
-  );
+  const isInFreePhoneTrial =
+    subscriptions.length > 0 &&
+    !subscriptions.some((sub) => !isFreeTrialPhonePlan(sub.plan.code));
 
   // If you had another subscription before, you will not get the free trial again: we use this to show the correct message.
   // Current plan is either FREE_NO_PLAN or FREE_TEST_PLAN if you're on this paywall.
@@ -138,7 +138,7 @@ export function SubscribePage() {
                     isInFreePhoneTrial
                       ? "Subscribe to a paid plan"
                       : noPreviousSubscription
-                        ? "Start your free trial"
+                        ? "Start your subscription"
                         : "Resume your subscription"
                   }
                 />
@@ -174,12 +174,11 @@ export function SubscribePage() {
                   <>
                     <Page.P>
                       <span className="font-bold">
-                        Try the Pro plan for free for two weeks.
+                        Subscribe to the Pro plan.
                       </span>
                     </Page.P>
                     <Page.P>
-                      You will be charged after your trial ends. You can cancel
-                      at any time during your trial.
+                      You'll be charged immediately. You can cancel at any time.
                     </Page.P>
                   </>
                 )}
@@ -218,7 +217,7 @@ export function SubscribePage() {
                       ? isInFreePhoneTrial
                         ? `Subscribe with ${billingPeriod} billing`
                         : `Resume with ${billingPeriod} billing`
-                      : `Start your trial with ${billingPeriod} billing`
+                      : `Start your subscription with ${billingPeriod} billing`
                   }
                   icon={CreditCardIcon}
                   size="sm"
