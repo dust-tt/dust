@@ -524,12 +524,21 @@ const InputBarContainer = ({
   });
 
   const handleSkillSelect = useCallback(
-    ({ sId, name }: { sId: string; name: string }) => {
+    ({
+      icon,
+      name,
+      sId,
+    }: {
+      icon: string | null;
+      name: string;
+      sId: string;
+    }) => {
       editorRef.current
         ?.chain()
         .focus()
         .insertSkillNode({
           skillId: sId,
+          skillIcon: icon,
           skillName: name,
         })
         .run();
