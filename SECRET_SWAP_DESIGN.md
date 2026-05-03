@@ -462,11 +462,44 @@ and validate it on h1 before adding frame-level complexity.
   default to config vars on rollout. Promotion to secrets is fully
   manual (no auto-flagging), since the only workspace where this rolls
   out first is our internal one.
+- **Skill prompt**: explicit + concise. Names the substitution
+  mechanism so the agent can use secrets correctly and explain failure
+  modes to users. Two prefixes distinguish config vars (`DST_*`) from
+  secrets (different prefix, TBD). Hard "DO NOT" list at the top of
+  the prompt for the known foot-guns; per-secret inline notes
+  deferred. See "Skill prompt" below for details.
 
-## Open questions
+### Skill prompt
 
-1. **Skill prompt update**: revise
-   `lib/resources/skill/code_defined/sandbox.ts` to (a) distinguish
-   config vars from secrets, (b) tell the agent secrets will substitute
-   on the wire, and (c) discourage attempts to extract or transform a
-   secret value (any transformation breaks substitution).
+Goal: a concise, explicit prompt that gives the agent enough mental
+model to (a) use secrets correctly, (b) recognize and explain failure
+modes to users instead of flailing.
+
+- **Explicit, not opaque.** The prompt names the substitution mechanism.
+  The threat model is "agent leaks the secret to the world", not
+  "agent learns how the system works". Knowing substitution exists
+  helps the agent stop trying to fix what looks like a wrong-looking
+  value, and helps it explain to users when something fails (e.g. a
+  secret used in a config file context, a cert-pinned client, or a
+  non-allowlisted destination).
+- **Two env-var prefixes** distinguish the classes lexically (no per-row
+  prompt bloat):
+  - Config vars: `DST_*` (today's prefix, plaintext, offline use ok).
+  - Secrets: a different prefix, TBD. Substituted on the wire only,
+    HTTPS only, scoped to `allowedDomains`.
+  A future `dsbx list-secrets` command may surface available secret
+  names dynamically; for now the agent discovers them via env.
+- **Hard "DO NOT" list at the top** of the skill prompt for the known
+  foot-guns:
+  - Do not pass `verify=`, `ca:`, custom `RootCAs`, `tls.Config`, or a
+    custom trust manager. Breaks TLS to substituted domains.
+  - Do not transform a secret value before sending (base64, urlencode,
+    split across headers, write to a file then re-read). Any
+    transformation breaks substitution and the upstream sees garbage.
+  - Do not attempt to extract or print the real value of a secret. The
+    placeholder is what's in env on purpose.
+  - Use a secret only with its declared allowed domain. Cross-domain
+    use will not substitute and the request fails loudly.
+- **Per-secret inline notes** in the prompt are deferred. Start with the
+  hard list and the prefix convention; revisit if specific failure
+  modes turn out to need stronger steering.
