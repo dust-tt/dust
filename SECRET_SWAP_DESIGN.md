@@ -256,6 +256,19 @@ trust env vars have different semantics, some replace the trust bundle
 entirely, others append. Misconfiguring this silently breaks non-MITM TLS
 to public sites.
 
+In practice, **the coverage is very broad on Linux**. Once the dsbx CA
+is installed into the system trust store via `update-ca-certificates`
+and the env-var matrix below is applied, every standard CLI tool and
+language runtime that follows convention picks up the CA without code
+changes. That includes curl, wget, openssl, git over HTTPS, scp/rsync,
+apt, pip, npm, yarn, cargo, go modules, maven, gradle, composer,
+bundler, gcloud, aws CLI, kubectl, docker, helm, httpie, ldap clients,
+and anything else built on libcurl, libssl, libgnutls, libnss, or each
+language's stdlib TLS. The exceptions in the matrix below
+(`NODE_EXTRA_CA_CERTS`, JVM keystore, Rust `rustls-webpki`,
+cert-pinning code) are the explicit known holes; everything else is
+covered by the system store + env matrix.
+
 | Stack | System store | Env knob | Knob semantics |
 | --- | --- | --- | --- |
 | curl / wget / OpenSSL CLIs | yes | `CURL_CA_BUNDLE`, `SSL_CERT_FILE` | replace |
