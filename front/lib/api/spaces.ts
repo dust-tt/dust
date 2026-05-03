@@ -5,6 +5,7 @@ import { getWorkspaceAdministrationVersionLock } from "@app/lib/api/workspace";
 import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import { seedInitialProjectTodosForProjectCreator } from "@app/lib/project_todo/seed_initial_project_todos";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -631,6 +632,7 @@ export async function createSpaceAndGroup(
 
       const featureFlags = await getFeatureFlags(auth);
       if (featureFlags.includes("project_todo")) {
+        await seedInitialProjectTodosForProjectCreator(auth, space);
         void launchOrSignalProjectTodoWorkflow({
           workspaceId: owner.sId,
           spaceId: space.sId,

@@ -89,6 +89,12 @@ const PROJECT_TODO_MODEL_ATTRIBUTES = {
     allowNull: true,
     comment: "Explanation for why the actor made a change.",
   },
+  agentInstructions: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment:
+      "Optional kickoff instructions for the agent when this todo is started.",
+  },
   deletedAt: {
     type: DataTypes.DATE,
     allowNull: true,
@@ -124,6 +130,7 @@ export class ProjectTodoModel extends WorkspaceAwareModel<ProjectTodoModel> {
   declare status: ProjectTodoStatus;
   declare doneAt: Date | null;
   declare actorRationale: string | null;
+  declare agentInstructions: string | null;
   declare deletedAt: CreationOptional<Date | null>;
 
   declare space: NonAttribute<SpaceModel>;

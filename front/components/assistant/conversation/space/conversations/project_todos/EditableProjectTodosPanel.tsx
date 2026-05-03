@@ -17,6 +17,7 @@ import {
   useSpaceConversationsSummary,
 } from "@app/hooks/conversations";
 import { useTodoDiffAnimations } from "@app/hooks/useTodoDiffAnimations";
+import { useAppRouter } from "@app/lib/platform";
 import { compareProjectTodoAssigneeGroups } from "@app/lib/project_todo/display_order";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
@@ -31,6 +32,7 @@ import {
 } from "@app/lib/swr/projects";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { removeDiacritics } from "@app/lib/utils";
+import { getConversationRoute } from "@app/lib/utils/router";
 import type { GetProjectTodosResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_todos/index";
 import { compareAgentsForSort } from "@app/types/assistant/assistant";
 import type {
@@ -101,6 +103,7 @@ export function EditableProjectTodosPanel({
     spaceId,
   });
   const confirm = useContext(ConfirmContext);
+  const router = useAppRouter();
 
   const { mutateConversations: mutateSpaceConversations } =
     useSpaceConversations({
@@ -443,6 +446,13 @@ export function EditableProjectTodosPanel({
       });
       if (result.isOk()) {
         const { conversationId } = result.value;
+        if (todo.agentInstructions?.trim() && conversationId) {
+          void router.push(
+            getConversationRoute(owner.sId, conversationId),
+            undefined,
+            { shallow: true }
+          );
+        }
         // Reflect the new todo state (conversationId set) immediately.
         // Only patch conversationId — the server-side toJSON doesn't rehydrate
         // sources, so replacing the whole todo would transiently drop them.
@@ -481,6 +491,8 @@ export function EditableProjectTodosPanel({
       mutateTodos,
       mutateSpaceConversations,
       mutateSpaceSummary,
+      owner.sId,
+      router,
       viewerUserId,
     ]
   );
