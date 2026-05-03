@@ -390,7 +390,7 @@ export const EditableTodoItem = memo(function EditableTodoItem({
           )}
         </div>
       )}
-      <div className="mt-0.5 flex shrink-0 items-center gap-1 opacity-100">
+      <div className="mt-0.5 flex shrink-0 flex-col items-end gap-1 opacity-100 md:flex-row md:items-center">
         {hasConversationLink ? (
           <Tooltip
             label="Open to-do conversation"
@@ -513,7 +513,7 @@ export const EditableTodoItem = memo(function EditableTodoItem({
               "transition-opacity",
               overflowMenuOpen
                 ? "opacity-100"
-                : "sm:opacity-0 sm:group-hover/todo:opacity-100"
+                : "md:opacity-0 md:group-hover/todo:opacity-100"
             )}
           >
             <DropdownMenu

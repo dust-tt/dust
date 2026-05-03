@@ -134,8 +134,8 @@ export function SpaceTodosTab({
   ]);
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-1 overflow-y-auto px-6">
-      <div className="mx-auto flex h-full w-full max-w-4xl flex-col py-8">
+    <div className="flex min-h-0 w-full flex-1 basis-0 flex-col overflow-y-auto overscroll-y-contain px-6">
+      <div className="mx-auto flex w-full max-w-4xl flex-col py-8">
         <div className="mb-6 flex flex-col gap-3 border-b border-border pb-6 dark:border-border-night">
           <div className="flex items-center justify-between gap-4">
             <div className="flex min-w-0 flex-col gap-0.5">
