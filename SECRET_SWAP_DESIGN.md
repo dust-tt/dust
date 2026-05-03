@@ -448,26 +448,25 @@ and validate it on h1 before adding frame-level complexity.
   Bun, Deno, Go, Java, Rust native-tls, AWS SDKs, Git). Rust
   `rustls-webpki` and cert-pinning clients documented as known holes
   that fail loudly.
+- **Cross-sandbox replay**: documented as expected behavior. Placeholders
+  are sandbox-version-bound; replay from a different sandbox fails
+  because the destination upstream rejects the unsubstituted placeholder.
+  No special-case detection.
+- **CA private-key handling**: in-memory only, never written to disk.
+  `/etc/dust/egress-ca.pem` is the cert (public, 0644 so the agent UID
+  can read it for trust-store install paths that need it). The agent UID
+  never has a path to the key. We assume the agent UID never escalates
+  to root inside the sandbox VM; under that invariant, dsbx process
+  memory is not reachable from the agent regardless of `ptrace_scope`.
+- **Migration of existing rows**: existing `WorkspaceSandboxEnvVar` rows
+  default to config vars on rollout. Promotion to secrets is fully
+  manual (no auto-flagging), since the only workspace where this rolls
+  out first is our internal one.
 
 ## Open questions
 
-1. **Cross-sandbox replay**: if an agent persists a placeholder string
-   in a database we control and replays it from another sandbox, that
-   sandbox has a different `version` and substitution fails. Document
-   that placeholders are sandbox-version-bound.
-2. **`kernel.yama.ptrace_scope`**: confirm we set it ≥ 1 in the sandbox
-   image so a compromised UID 1003 can't ptrace dsbx. Worth confirming
-   regardless of this work, would be a finding for the redaction PR.
-3. **CA private-key handling**: keep the CA private key memory-only
-   (never on disk), and forbid the agent UID from reading
-   `/etc/dust/egress-ca.pem`. The CA cert is public; the key is the
-   sensitive half.
-4. **Skill prompt update**: revise
-   `lib/resources/skill/code_defined/sandbox.ts` to tell the agent
-   secrets will substitute on the wire, distinguish them from config
-   vars, and not to second-guess env or attempt to extract a real
-   secret value.
-5. **Migration of existing rows**: existing `WorkspaceSandboxEnvVar`
-   rows default to config vars on rollout. Do we proactively flag rows
-   whose names look secret-shaped (`*_TOKEN`, `*_KEY`, `*_SECRET`) for
-   admin review, or leave promotion fully manual?
+1. **Skill prompt update**: revise
+   `lib/resources/skill/code_defined/sandbox.ts` to (a) distinguish
+   config vars from secrets, (b) tell the agent secrets will substitute
+   on the wire, and (c) discourage attempts to extract or transform a
+   secret value (any transformation breaks substitution).
