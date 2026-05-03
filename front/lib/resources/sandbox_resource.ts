@@ -346,12 +346,22 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     // is enabled because tools/index.ts now runs setupEgressForwarder before
     // any mounts that read SSL_CERT_FILE.
     //
+    // PHASE0(remove with the experiment): DUST_EXPERIMENT_TOKEN is exposed to
+    // the agent so the smoke curl from inside the sandbox can present the
+    // shared bearer header without out-of-band setup. It is NOT a real secret;
+    // it gates the synthetic /sandbox/egress-experiment endpoint only.
+    //
     // TODO(phase 1): cover non-curl runtimes (NODE_EXTRA_CA_CERTS, DENO_CERT,
     // etc.) per CLAUDE_SECRET_SWAP_DESIGN.md §5.3.
-    const mitmEnv: Record<string, string> = config.getEgressMitmExperimentHost()
+    const mitmExperimentHost = config.getEgressMitmExperimentHost();
+    const mitmExperimentToken = config.getEgressMitmExperimentToken();
+    const mitmEnv: Record<string, string> = mitmExperimentHost
       ? {
           SSL_CERT_FILE: "/etc/dust/ca-bundle.pem",
           CURL_CA_BUNDLE: "/etc/dust/ca-bundle.pem",
+          ...(mitmExperimentToken
+            ? { DUST_EXPERIMENT_TOKEN: mitmExperimentToken }
+            : {}),
         }
       : {};
 

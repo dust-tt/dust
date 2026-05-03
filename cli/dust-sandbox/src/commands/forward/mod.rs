@@ -372,15 +372,20 @@ where
     R: tokio::io::AsyncRead + Unpin,
     W: tokio::io::AsyncWrite + Unpin,
 {
-    // Phase 0 is "headers only". We accumulate bytes until we see the CRLF CRLF
-    // header terminator (or hit a 32KB cap / read timeout), then split the
-    // buffer at that boundary and rewrite *only* the header prefix. The body
-    // tail (if any) and everything after passes through unchanged. Placeholder
-    // and replacement are equal length so no Content-Length recomputation.
+    // Phase 0 is "headers only", which means strictly the header *lines*: not
+    // the request line (method / URL / version) and not the body. We:
+    //   1. Accumulate bytes until \r\n\r\n (or hit a 32KB cap / read timeout).
+    //   2. Skip past the first \r\n (the request line stays untouched, so
+    //      placeholders in the URL pass through unsubstituted by design).
+    //   3. Rewrite the header lines in place.
+    //   4. Forward request line + rewritten headers + any trailing body bytes
+    //      verbatim, then `copy` the rest of the stream raw.
+    // Placeholder and replacement are equal length, so no Content-Length
+    // recomputation is needed.
     //
     // TODO(phase 1): handle a placeholder straddling the read boundary, and
-    // extend rewriting to bodies behind a per-secret allowlist flag. See
-    // CLAUDE_SECRET_SWAP_DESIGN.md §4.
+    // extend rewriting to bodies / URLs behind a per-secret allowlist flag.
+    // See CLAUDE_SECRET_SWAP_DESIGN.md §4.
     let mut header_buf = Vec::with_capacity(MITM_HEADER_PEEK_BUFFER_SIZE);
     let deadline = Instant::now() + MITM_HEADER_READ_TIMEOUT;
 
@@ -405,16 +410,25 @@ where
     }
 
     if !header_buf.is_empty() {
-        let split_at = find_end_of_headers(&header_buf).unwrap_or(header_buf.len());
-        let (header_part, body_tail) = header_buf.split_at_mut(split_at);
-        let count = rewrite_in_place(header_part);
+        let total_len = header_buf.len();
+        let header_end = find_end_of_headers(&header_buf).unwrap_or(total_len);
+        // Skip the request line: everything up to and including the first \r\n
+        // is left alone. If we cannot find a full request line (truncated read)
+        // we conservatively forward the whole buffer untouched.
+        let request_line_end =
+            find_request_line_end(&header_buf[..header_end]).unwrap_or(total_len);
+        let (untouched, rest) = header_buf.split_at_mut(request_line_end);
+        let body_split = header_end.saturating_sub(untouched.len()).min(rest.len());
+        let (headers_part, body_tail) = rest.split_at_mut(body_split);
+        let count = rewrite_in_place(headers_part);
         if count > 0 {
             info!(
                 replacements = count,
                 "dsbx MITM rewrote phase-0 placeholder in agent request"
             );
         }
-        writer.write_all(header_part).await?;
+        writer.write_all(untouched).await?;
+        writer.write_all(headers_part).await?;
         if !body_tail.is_empty() {
             writer.write_all(body_tail).await?;
         }
@@ -427,6 +441,10 @@ where
 
 fn find_end_of_headers(buf: &[u8]) -> Option<usize> {
     buf.windows(4).position(|w| w == b"\r\n\r\n").map(|i| i + 4)
+}
+
+fn find_request_line_end(buf: &[u8]) -> Option<usize> {
+    buf.windows(2).position(|w| w == b"\r\n").map(|i| i + 2)
 }
 
 fn display_domain(domain: &str) -> &str {
@@ -529,8 +547,8 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::find_end_of_headers;
     use super::http_rewriter::{rewrite_in_place, PHASE0_PLACEHOLDER, PHASE0_REPLACEMENT};
+    use super::{find_end_of_headers, find_request_line_end};
 
     #[test]
     fn finds_end_of_headers_offset_just_past_crlf_crlf() {
@@ -557,5 +575,31 @@ mod tests {
         assert!(body
             .windows(PHASE0_PLACEHOLDER.len())
             .any(|w| w == PHASE0_PLACEHOLDER));
+    }
+
+    #[test]
+    fn url_in_request_line_is_not_rewritten() {
+        // Phase 0 design: "no URL rewriting". A placeholder in the request
+        // line (method / path / version) must pass through unchanged. Only
+        // header lines (everything between the first \r\n and the \r\n\r\n)
+        // are eligible for substitution.
+        let buf = b"GET /?x=__DUST_EXPERIMENT_PLACEHOLDER__ HTTP/1.1\r\nHost: x\r\nX-A: __DUST_EXPERIMENT_PLACEHOLDER__\r\n\r\n";
+        let header_end = find_end_of_headers(buf).expect("should find header end");
+        let request_line_end =
+            find_request_line_end(&buf[..header_end]).expect("should find request line end");
+        let mut owned = buf.to_vec();
+        let (untouched, rest) = owned.split_at_mut(request_line_end);
+        let body_split = header_end - untouched.len();
+        let (headers_part, _body) = rest.split_at_mut(body_split);
+        let count = rewrite_in_place(headers_part);
+        assert_eq!(count, 1);
+        // URL substring is preserved verbatim.
+        assert!(untouched
+            .windows(PHASE0_PLACEHOLDER.len())
+            .any(|w| w == PHASE0_PLACEHOLDER));
+        // Header value got swapped.
+        assert!(headers_part
+            .windows(PHASE0_REPLACEMENT.len())
+            .any(|w| w == PHASE0_REPLACEMENT));
     }
 }
