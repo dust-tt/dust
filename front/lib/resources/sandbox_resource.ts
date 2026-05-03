@@ -354,17 +354,21 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     // TODO(phase 1): cover non-curl runtimes (NODE_EXTRA_CA_CERTS, DENO_CERT,
     // etc.) per SECRET_SWAP_DESIGN.md, "Client-language agnosticism" under
     // "Proposal" (specifically the per-runtime trust env-var matrix).
+    // Both env vars must be set for the experiment to engage. Setting
+    // only the host without the token would inject SSL_CERT_FILE into the
+    // agent env (pointing at a bundle that includes a CA dsbx is actively
+    // intercepting with) while the smoke endpoint stays 404, which is a
+    // half-on state we don't want.
     const mitmExperimentHost = config.getEgressMitmExperimentHost();
     const mitmExperimentToken = config.getEgressMitmExperimentToken();
-    const mitmEnv: Record<string, string> = mitmExperimentHost
-      ? {
-          SSL_CERT_FILE: "/etc/dust/ca-bundle.pem",
-          CURL_CA_BUNDLE: "/etc/dust/ca-bundle.pem",
-          ...(mitmExperimentToken
-            ? { DUST_EXPERIMENT_TOKEN: mitmExperimentToken }
-            : {}),
-        }
-      : {};
+    const mitmEnv: Record<string, string> =
+      mitmExperimentHost && mitmExperimentToken
+        ? {
+            SSL_CERT_FILE: "/etc/dust/ca-bundle.pem",
+            CURL_CA_BUNDLE: "/etc/dust/ca-bundle.pem",
+            DUST_EXPERIMENT_TOKEN: mitmExperimentToken,
+          }
+        : {};
 
     return new Ok({
       ...workspaceEnvResult.value,

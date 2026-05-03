@@ -205,6 +205,7 @@ describe("sandbox egress helpers", () => {
 
   it("passes MITM flags and installs trust bundle when experiment host is set", async () => {
     mockGetEgressMitmExperimentHost.mockReturnValue("dust.example.com");
+    mockGetEgressMitmExperimentToken.mockReturnValue("test-token");
 
     const sandbox = {
       providerId: "provider-sandbox-id",
@@ -244,6 +245,7 @@ describe("sandbox egress helpers", () => {
 
   it("surfaces failures from the MITM trust bundle install", async () => {
     mockGetEgressMitmExperimentHost.mockReturnValue("dust.example.com");
+    mockGetEgressMitmExperimentToken.mockReturnValue("test-token");
 
     const sandbox = {
       providerId: "provider-sandbox-id",
@@ -265,6 +267,27 @@ describe("sandbox egress helpers", () => {
     if (result.isErr()) {
       expect(result.error.message).toContain("trust install failed");
     }
+  });
+
+  it("does not pass MITM flags when token is unset (host alone is not enough)", async () => {
+    mockGetEgressMitmExperimentHost.mockReturnValue("dust.example.com");
+    // token stays undefined per beforeEach.
+
+    const sandbox = {
+      providerId: "provider-sandbox-id",
+      sId: "sandbox-id",
+      writeFile: vi.fn().mockResolvedValue(new Ok(undefined)),
+      exec: vi
+        .fn()
+        .mockResolvedValue(new Ok({ exitCode: 0, stdout: "", stderr: "" })),
+    };
+
+    const result = await setupEgressForwarder(auth, sandbox as never);
+
+    expect(result).toEqual(new Ok(undefined));
+    const startCall = sandbox.exec.mock.calls[1][1] as string;
+    expect(startCall).not.toContain("--mitm-experiment-host");
+    expect(startCall).not.toContain("--mitm-ca-path");
   });
 
   it("does not pass MITM flags when experiment host is unset", async () => {

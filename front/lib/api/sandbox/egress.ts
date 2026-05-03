@@ -182,7 +182,13 @@ export async function setupEgressForwarder(
     return prepareTokenResult;
   }
 
-  const mitmExperimentHost = config.getEgressMitmExperimentHost();
+  // Both env vars must be set for the experiment to engage. Setting only
+  // the host without the token would turn on dsbx MITM and trust-bundle
+  // injection while the smoke endpoint stays gated at 404, which is a
+  // half-on state we don't want.
+  const mitmHost = config.getEgressMitmExperimentHost();
+  const mitmToken = config.getEgressMitmExperimentToken();
+  const mitmExperimentHost = mitmHost && mitmToken ? mitmHost : null;
   const mitmFlags = mitmExperimentHost
     ? `--mitm-experiment-host ${shellEscape(mitmExperimentHost)} ` +
       `--mitm-ca-path ${shellEscape(MITM_CA_PATH)} `
