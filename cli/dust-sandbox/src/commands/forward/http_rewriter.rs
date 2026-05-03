@@ -1,11 +1,15 @@
-/// Phase 0 byte-level header rewriter.
+/// PHASE0(remove with the experiment): byte-level header rewriter.
 ///
 /// Scans HTTP/1.1 request bytes for the literal placeholder
 /// `__DUST_EXPERIMENT_PLACEHOLDER__` (31 bytes) and replaces it with
 /// `__SUCCESSFULLY_REPLACED________` (also 31 bytes, padded with trailing
-/// underscores so framing — Content-Length, header offsets — is preserved
+/// underscores so framing, Content-Length and header offsets, is preserved
 /// without recomputation). The replacement is unconditional and not gated
 /// on header name; the only guard is that the byte sequence appears.
+///
+/// The whole module goes away in Phase 1, replaced by an HMAC-derived
+/// placeholder format (`__DST_SECRET_<32hex>__`) and a per-secret
+/// `allowedDomains` policy gate. See CLAUDE_SECRET_SWAP_DESIGN.md §3-§4.
 pub const PHASE0_PLACEHOLDER: &[u8] = b"__DUST_EXPERIMENT_PLACEHOLDER__";
 pub const PHASE0_REPLACEMENT: &[u8] = b"__SUCCESSFULLY_REPLACED________";
 

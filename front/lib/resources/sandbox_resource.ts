@@ -341,8 +341,13 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     }
 
     // Set at the system layer so workspace overrides cannot drop it. Points at
-    // the merged bundle (system roots ∪ dsbx ephemeral CA) installed by
-    // setupEgressForwarder.
+    // the merged bundle (system roots + dsbx ephemeral CA) installed by
+    // setupEgressForwarder. Safe to inject unconditionally when the experiment
+    // is enabled because tools/index.ts now runs setupEgressForwarder before
+    // any mounts that read SSL_CERT_FILE.
+    //
+    // TODO(phase 1): cover non-curl runtimes (NODE_EXTRA_CA_CERTS, DENO_CERT,
+    // etc.) per CLAUDE_SECRET_SWAP_DESIGN.md §5.3.
     const mitmEnv: Record<string, string> = config.getEgressMitmExperimentHost()
       ? {
           SSL_CERT_FILE: "/etc/dust/ca-bundle.pem",

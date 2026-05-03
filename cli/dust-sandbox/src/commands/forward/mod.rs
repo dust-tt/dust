@@ -53,11 +53,14 @@ pub struct ForwardArgs {
     /// Path to the deny log file
     #[arg(long, default_value = "/tmp/dust-egress-denied.log")]
     deny_log: PathBuf,
-    /// Phase 0 PoC: hostname for which dsbx terminates inner TLS and rewrites
-    /// the experiment placeholder. Empty disables MITM entirely.
+    /// PHASE0(remove with the experiment): hostname for which dsbx terminates
+    /// inner TLS and rewrites the experiment placeholder. Empty disables MITM
+    /// entirely. Replaced in Phase 1 by per-secret allowedDomains policy.
     #[arg(long, default_value = "")]
     mitm_experiment_host: String,
-    /// Phase 0 PoC: where to write the ephemeral MITM CA cert (PEM).
+    /// Where to write the ephemeral MITM CA cert (PEM). Stays in Phase 1+ as
+    /// the location the sandbox image reads to install the CA into the trust
+    /// store. TODO(phase 1): consider moving the default under /run for tmpfs.
     #[arg(long, default_value = "/etc/dust/egress-ca.pem")]
     mitm_ca_path: PathBuf,
 }
@@ -89,10 +92,13 @@ struct DomainExtraction {
 pub async fn cmd_forward(args: ForwardArgs) -> Result<()> {
     let token = load_token(&args.token_file).await?;
     let tls_connector = build_tls_connector()?;
-    let listener = TcpListener::bind(args.listen)
-        .await
-        .with_context(|| format!("failed to bind forward listener on {}", args.listen))?;
 
+    // The CA must be generated and written to disk BEFORE we bind the
+    // listener. Front uses "port 9990 is LISTEN" as the readiness signal and,
+    // the moment that's true, reads /etc/dust/egress-ca.pem to build the
+    // sandbox trust bundle. Bind-then-write would race: front could see a
+    // missing or stale CA file. Same goes for restarts (stale CA from a
+    // previous boot). Keep this ordering intact.
     let mitm_ca = if args.mitm_experiment_host.is_empty() {
         None
     } else {
@@ -107,6 +113,10 @@ pub async fn cmd_forward(args: ForwardArgs) -> Result<()> {
         );
         Some(ca)
     };
+
+    let listener = TcpListener::bind(args.listen)
+        .await
+        .with_context(|| format!("failed to bind forward listener on {}", args.listen))?;
 
     info!(
         listen_addr = %args.listen,
@@ -282,6 +292,8 @@ async fn handle_connection(
     Ok(())
 }
 
+// PHASE0: scopes the MITM stage to a single experiment hostname. Phase 1
+// replaces the host check with a per-secret allowedDomains lookup.
 fn mitm_target_for(
     runtime: &ForwardRuntime,
     original_port: u16,
@@ -309,8 +321,12 @@ where
 {
     // Outbound: dsbx is a TLS client to the real upstream, tunneled through
     // the proxy's already-allowed TCP relay. The proxy doesn't see the inner
-    // TLS, just splices encrypted bytes — same as a normal request, except we
+    // TLS, just splices encrypted bytes, same as a normal request, except we
     // (dsbx) are now the originator instead of the agent.
+    //
+    // TODO(phase 1): force ALPN to advertise only "http/1.1" on this client
+    // config, otherwise we may negotiate h2 which the rewriter cannot handle.
+    // For Phase 0 the only experiment upstream is dust.tt which speaks h1.1.
     let upstream_server_name =
         ServerName::try_from(sni.to_string()).context("invalid upstream SNI for MITM TLS")?;
     let upstream_tls = runtime
@@ -356,13 +372,15 @@ where
     R: tokio::io::AsyncRead + Unpin,
     W: tokio::io::AsyncWrite + Unpin,
 {
-    // Phase 0 simplification: read up to ~32KB or until end-of-headers, run a
-    // single byte-level rewrite over that buffer, flush. Then copy the
-    // remainder (typically the body) raw. Equal placeholder/replacement
-    // length means no framing recomputation, but it also means a placeholder
-    // straddling the read boundary would not be substituted in the residual
-    // body. Acceptable for the PoC since the smoke flow puts the placeholder
-    // in headers only.
+    // Phase 0 is "headers only". We accumulate bytes until we see the CRLF CRLF
+    // header terminator (or hit a 32KB cap / read timeout), then split the
+    // buffer at that boundary and rewrite *only* the header prefix. The body
+    // tail (if any) and everything after passes through unchanged. Placeholder
+    // and replacement are equal length so no Content-Length recomputation.
+    //
+    // TODO(phase 1): handle a placeholder straddling the read boundary, and
+    // extend rewriting to bodies behind a per-secret allowlist flag. See
+    // CLAUDE_SECRET_SWAP_DESIGN.md §4.
     let mut header_buf = Vec::with_capacity(MITM_HEADER_PEEK_BUFFER_SIZE);
     let deadline = Instant::now() + MITM_HEADER_READ_TIMEOUT;
 
@@ -378,7 +396,7 @@ where
         }
         header_buf.extend_from_slice(&chunk[..n]);
 
-        if has_end_of_headers(&header_buf) {
+        if find_end_of_headers(&header_buf).is_some() {
             break;
         }
         if header_buf.len() >= MITM_HEADER_PEEK_BUFFER_SIZE {
@@ -387,14 +405,19 @@ where
     }
 
     if !header_buf.is_empty() {
-        let count = rewrite_in_place(&mut header_buf);
+        let split_at = find_end_of_headers(&header_buf).unwrap_or(header_buf.len());
+        let (header_part, body_tail) = header_buf.split_at_mut(split_at);
+        let count = rewrite_in_place(header_part);
         if count > 0 {
             info!(
                 replacements = count,
                 "dsbx MITM rewrote phase-0 placeholder in agent request"
             );
         }
-        writer.write_all(&header_buf).await?;
+        writer.write_all(header_part).await?;
+        if !body_tail.is_empty() {
+            writer.write_all(body_tail).await?;
+        }
         writer.flush().await?;
     }
 
@@ -402,8 +425,8 @@ where
     Ok(())
 }
 
-fn has_end_of_headers(buf: &[u8]) -> bool {
-    buf.windows(4).any(|w| w == b"\r\n\r\n")
+fn find_end_of_headers(buf: &[u8]) -> Option<usize> {
+    buf.windows(4).position(|w| w == b"\r\n\r\n").map(|i| i + 4)
 }
 
 fn display_domain(domain: &str) -> &str {
@@ -501,5 +524,38 @@ where
             _ => ProxyDecision::ProtocolError,
         },
         Ok(Err(_)) | Err(_) => ProxyDecision::ProtocolError,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::find_end_of_headers;
+    use super::http_rewriter::{rewrite_in_place, PHASE0_PLACEHOLDER, PHASE0_REPLACEMENT};
+
+    #[test]
+    fn finds_end_of_headers_offset_just_past_crlf_crlf() {
+        let buf = b"GET / HTTP/1.1\r\nHost: x\r\n\r\nBODY";
+        let split = find_end_of_headers(buf).expect("should find header end");
+        assert_eq!(&buf[..split], b"GET / HTTP/1.1\r\nHost: x\r\n\r\n");
+        assert_eq!(&buf[split..], b"BODY");
+    }
+
+    #[test]
+    fn body_bytes_are_not_rewritten_when_we_only_touch_the_header_prefix() {
+        // The first read coalesces headers + start of body; we must split at
+        // \r\n\r\n and only rewrite the header prefix. The body's placeholder
+        // must NOT be substituted (Phase 0 is strictly headers-only).
+        let mut buf =
+            b"POST /x HTTP/1.1\r\nHost: x\r\nX-A: __DUST_EXPERIMENT_PLACEHOLDER__\r\n\r\nbody=__DUST_EXPERIMENT_PLACEHOLDER__".to_vec();
+        let split = find_end_of_headers(&buf).expect("should find header end");
+        let (head, body) = buf.split_at_mut(split);
+        let count = rewrite_in_place(head);
+        assert_eq!(count, 1);
+        assert!(head
+            .windows(PHASE0_REPLACEMENT.len())
+            .any(|w| w == PHASE0_REPLACEMENT));
+        assert!(body
+            .windows(PHASE0_PLACEHOLDER.len())
+            .any(|w| w == PHASE0_PLACEHOLDER));
     }
 }
