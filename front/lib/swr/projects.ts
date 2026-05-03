@@ -1,6 +1,7 @@
 import { useDebounce } from "@app/hooks/useDebounce";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
+import { flattenProjectTodosWithStableAssigneeOrder } from "@app/lib/project_todo/display_order";
 import {
   emptyArray,
   getErrorFromResponse,
@@ -29,7 +30,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { type Fetcher, useSWRConfig } from "swr";
 
 export function useProjectContextAttachments({
@@ -344,6 +345,28 @@ export function useProjectTodos({
     todosFetcher
   );
 
+  const stableTodoOrderByAssigneeKeyRef = useRef<Map<string, string[]>>(
+    new Map()
+  );
+  const stableOrderScopeKeyRef = useRef(`${owner.sId}:${spaceId}`);
+  if (stableOrderScopeKeyRef.current !== `${owner.sId}:${spaceId}`) {
+    stableOrderScopeKeyRef.current = `${owner.sId}:${spaceId}`;
+    stableTodoOrderByAssigneeKeyRef.current = new Map();
+  }
+
+  const todos = useMemo(() => {
+    const raw = data?.todos ?? emptyArray<ProjectTodoType>();
+    const viewerUserId = data?.viewerUserId ?? null;
+    if (raw.length === 0) {
+      return raw;
+    }
+    return flattenProjectTodosWithStableAssigneeOrder(
+      raw,
+      viewerUserId,
+      stableTodoOrderByAssigneeKeyRef.current
+    );
+  }, [data?.todos, data?.viewerUserId]);
+
   const sortedUsers = useMemo(() => {
     const usersById = new Map<string, ProjectTodoAssigneeType>();
     for (const todo of data?.todos ?? emptyArray<ProjectTodoType>()) {
@@ -367,7 +390,7 @@ export function useProjectTodos({
   }, [data?.todos, data?.viewerUserId]);
 
   return {
-    todos: data?.todos ?? [],
+    todos,
     lastReadAt: data?.lastReadAt ?? null,
     viewerUserId: data?.viewerUserId ?? null,
     users: sortedUsers,

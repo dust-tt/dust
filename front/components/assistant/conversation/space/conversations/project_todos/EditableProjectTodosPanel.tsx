@@ -17,6 +17,7 @@ import {
   useSpaceConversationsSummary,
 } from "@app/hooks/conversations";
 import { useTodoDiffAnimations } from "@app/hooks/useTodoDiffAnimations";
+import { compareProjectTodoAssigneeGroups } from "@app/lib/project_todo/display_order";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
   useBulkUpdateProjectTodoStatus,
@@ -246,16 +247,9 @@ export function EditableProjectTodosPanel({
       }
     }
 
-    return [...groups.values()].sort((a, b) => {
-      const aIsViewer = viewerUserId !== null && a.user?.sId === viewerUserId;
-      const bIsViewer = viewerUserId !== null && b.user?.sId === viewerUserId;
-      if (aIsViewer !== bIsViewer) {
-        return aIsViewer ? -1 : 1;
-      }
-      const aName = a.user?.fullName ?? "";
-      const bName = b.user?.fullName ?? "";
-      return aName.localeCompare(bName, undefined, { sensitivity: "base" });
-    });
+    return [...groups.values()].sort((a, b) =>
+      compareProjectTodoAssigneeGroups(a, b, viewerUserId)
+    );
   }, [filteredTodos, viewerUserId]);
 
   // Optimistically update a todo's status in the SWR cache and send the PATCH.
