@@ -239,7 +239,7 @@ export function AddTodoComposer({
         autoComplete="off"
         rows={1}
         maxLength={NEW_MANUAL_TODO_MAX_CHARS}
-        placeholder="Add a to-do — Enter to add · Esc to cancel"
+        placeholder="A new awesome task..."
         value={text}
         disabled={isAdding}
         className={cn(
@@ -427,7 +427,7 @@ export function TodoSources({
   return (
     <span
       className={cn(
-        "text-xs",
+        "hidden text-xs md:block",
         isDone
           ? "text-faint dark:text-faint-night line-through"
           : "text-muted-foreground dark:text-muted-foreground-night"
