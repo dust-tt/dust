@@ -361,59 +361,113 @@ Implementation footprint:
   point `SSL_CERT_FILE`/`CURL_CA_BUNDLE` at the merged bundle.
 - Central egress proxy: no change.
 
-### Phase 1, production design
+### Two classes of sandbox env vars
+
+The `WorkspaceSandboxEnvVar` model splits into two distinct classes,
+with different semantics and different injection paths:
+
+1. **Config vars** (the `WorkspaceSandboxEnvVar` of today). Plain
+   strings meant to be used offline inside the sandbox: feature flags,
+   non-sensitive config, default region, etc. Injected as-is into the
+   agent env. Not substituted on the wire. Not bound to a domain. The
+   bash-output redactor still applies to these (best-effort, since
+   they're in env in plaintext).
+2. **Secrets** (new). Sensitive values meant to be used in HTTPS
+   requests only, scoped to a per-secret `allowedDomains` list. The
+   agent env contains only the placeholder; the real value lives in
+   `/etc/dust/egress-secrets.json` (root, 0600) and is substituted
+   on the wire by dsbx when the destination domain matches the
+   secret's allowlist. Cannot be used offline (no real value in env).
+
+Admins pick the class when creating the row. Migration path for
+existing rows: leave them as config vars by default; admins explicitly
+promote sensitive ones to secrets and set `allowedDomains` at promotion
+time.
+
+### Phase 1, MVP - HTTP/1.1
 
 - HTTP/1.1 only on port 443 (force HTTP/1 via ALPN), headers + URL only.
 - HMAC-derived `__DST_SECRET_<32hex>__` placeholder.
-- `WorkspaceSandboxEnvVar` model gains `allowedDomains: string[]` and
-  `version: int`.
+- `WorkspaceSandboxEnvVar` split into config vars and secrets (see
+  above). Secrets gain `allowedDomains: string[]` and `version: int`.
 - `front` writes `/etc/dust/egress-secrets.json` (root, 0600) per
   sandbox, alongside the JWT.
-- `buildSandboxEnvVars` injects placeholders only.
-- Trust coverage extends to Node, Python, Bun, Deno, Go, Java (keytool),
+- `buildSandboxEnvVars` injects placeholders for secrets, real values
+  for config vars.
+- Trust coverage: Node, Python, Bun, Deno, Go, Java (keytool at boot),
   Rust (native-tls), AWS SDKs, Git. Replace-style vs append-style env
-  vars set per the table above.
-- Bash redactor (#25051) is dropped or simplified, there's nothing real
-  to redact, the agent literally never has the secret.
-- Admin UI: `allowedDomains` column on the env-vars page.
-- Audit log: per-secret allowlist changes.
+  vars set per the matrix above. Rust webpki and cert-pinning clients
+  documented as known holes that fail loudly.
+- Bash redactor (#25051) keeps applying to config vars (defense in
+  depth for plaintext-in-env). Skill prompt updated to tell the agent
+  secrets will substitute on the wire and not to second-guess env.
+- Admin UI: secrets get an `allowedDomains` column; the create flow
+  asks for the class up front.
+- Audit log: per-secret allowlist changes, class promotions.
 - Estimate: ~2 engineer-weeks.
 
-### Phase 2, coverage extension
+### Phase 2, MVP - HTTP/2
 
-- HTTP/2 (h2 crate, frame-level rewriter).
-- Body substitution, opt-in per secret via `includeBody` flag.
+HTTP/2 is part of the MVP - we don't ship without it - but it's
+sequenced after Phase 1 so we can land the substitution pipeline first
+and validate it on h1 before adding frame-level complexity.
+
+- HTTP/2 frame-level rewriter (h2 crate), HPACK-aware so the
+  placeholder is recognized whether the header value is sent literally
+  or after dynamic-table indexing.
+- ALPN negotiation lets clients pick h2 again (Phase 1 forces h1).
+- Same trust/allowlist/placeholder model as Phase 1.
+
+### Phase 3, body substitution
+
+- Body scan + Content-Length recomputation, opt-in per secret via an
+  `includeBody` flag.
+- Multipart form boundary handling.
+- Chunked transfer encoding.
+
+### Phase 4+, tail cases
+
 - Websocket Upgrade.
 - Plain HTTP on non-standard ports (protocol detection from peek bytes
   rather than port keying).
-
-### Phase 3+, tail cases, opt-in
-
 - Per-protocol rewriters for non-HTTP TLS (Postgres, MySQL, Redis), opt
   in by domain.
 
+## Resolved decisions
+
+- **HTTP/2**: part of the MVP (we don't GA without it) but sequenced as
+  Phase 2 after the h1 pipeline lands and is validated.
+- **Body substitution**: not in Phase 1. Headers + URL only. OAuth
+  `client_secret`, webhook signing, and multipart forms come in Phase 3
+  with an opt-in `includeBody` flag. Advertise the limit loudly in the
+  admin UI when admins create a secret.
+- **Bash redactor (#25051)**: kept, but only applies to config vars (the
+  plaintext-in-env class). Secrets don't need it: the placeholder is
+  what's in env, not the real value.
+- **Trust coverage**: full mainstream coverage in Phase 1 (Node, Python,
+  Bun, Deno, Go, Java, Rust native-tls, AWS SDKs, Git). Rust
+  `rustls-webpki` and cert-pinning clients documented as known holes
+  that fail loudly.
+
 ## Open questions
 
-1. **HTTP/2 in Phase 1?** Many target APIs negotiate h2 by default. If
-   we skip h2 in Phase 1, we either downgrade ALPN at the dsbx terminator
-   (most SDKs handle this, a minority break) or ship h2 immediately
-   (more code in Phase 1). Currently leaning ALPN downgrade.
-2. **Body substitution in Phase 1?** OAuth `client_secret`, webhook
-   signing, and multipart forms put secrets in bodies. If we say
-   "headers-only" we need to advertise it loudly so admins know not to
-   rely on body substitution.
-3. **Cross-sandbox replay**: if an agent persists a placeholder string
+1. **Cross-sandbox replay**: if an agent persists a placeholder string
    in a database we control and replays it from another sandbox, that
    sandbox has a different `version` and substitution fails. Document
    that placeholders are sandbox-version-bound.
-4. **`kernel.yama.ptrace_scope`**: confirm we set it ≥ 1 in the sandbox
+2. **`kernel.yama.ptrace_scope`**: confirm we set it ≥ 1 in the sandbox
    image so a compromised UID 1003 can't ptrace dsbx. Worth confirming
    regardless of this work, would be a finding for the redaction PR.
-5. **CA private-key handling**: keep the CA private key memory-only
+3. **CA private-key handling**: keep the CA private key memory-only
    (never on disk), and forbid the agent UID from reading
    `/etc/dust/egress-ca.pem`. The CA cert is public; the key is the
    sensitive half.
-6. **Skill prompt update**: revise
+4. **Skill prompt update**: revise
    `lib/resources/skill/code_defined/sandbox.ts` to tell the agent
-   placeholders will substitute on the wire, and not to second-guess
-   what's in env or attempt to extract the real value.
+   secrets will substitute on the wire, distinguish them from config
+   vars, and not to second-guess env or attempt to extract a real
+   secret value.
+5. **Migration of existing rows**: existing `WorkspaceSandboxEnvVar`
+   rows default to config vars on rollout. Do we proactively flag rows
+   whose names look secret-shaped (`*_TOKEN`, `*_KEY`, `*_SECRET`) for
+   admin review, or leave promotion fully manual?
