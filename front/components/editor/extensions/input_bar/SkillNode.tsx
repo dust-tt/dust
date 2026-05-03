@@ -11,6 +11,7 @@ import { ReactNodeViewRenderer } from "@tiptap/react";
 
 export type SkillNodeAttributes = {
   skillId: string;
+  skillIcon?: string | null;
   skillName: string;
 };
 
@@ -44,6 +45,12 @@ export const SkillNode = Node.create({
         parseHTML: (element) => element.getAttribute("name"),
         renderHTML: (attributes) =>
           isString(attributes.skillName) ? { name: attributes.skillName } : {},
+      },
+      skillIcon: {
+        default: null,
+        parseHTML: (element) => element.getAttribute("icon"),
+        renderHTML: (attributes) =>
+          isString(attributes.skillIcon) ? { icon: attributes.skillIcon } : {},
       },
     };
   },
@@ -100,6 +107,7 @@ export const SkillNode = Node.create({
         type: SKILL_NODE_TYPE,
         raw: match[0],
         skillId: skill.id,
+        skillIcon: skill.icon,
         skillName: skill.name,
       };
     },
@@ -109,6 +117,7 @@ export const SkillNode = Node.create({
     type: SKILL_NODE_TYPE,
     attrs: {
       skillId: token.skillId,
+      skillIcon: token.skillIcon,
       skillName: token.skillName,
     },
   }),
@@ -116,6 +125,7 @@ export const SkillNode = Node.create({
   renderMarkdown: (node) =>
     serializeSkillTag({
       id: node.attrs?.skillId ?? "",
+      icon: node.attrs?.skillIcon ?? null,
       name: node.attrs?.skillName ?? "",
     }),
 });
