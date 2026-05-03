@@ -392,7 +392,7 @@ export async function createSpaceAndGroup(
     | { memberIds: string[]; managementMode: "manual" }
     | { groupIds: string[]; managementMode: "group" }
   ),
-  { ignoreWorkspaceLimit = false }: { ignoreWorkspaceLimit?: boolean } = {}
+  { ignoreWorkspaceLimit = false, seedInitialTodos = true }: { ignoreWorkspaceLimit?: boolean; seedInitialTodos?: boolean } = {}
 ): Promise<
   Result<
     SpaceResource,
@@ -632,7 +632,9 @@ export async function createSpaceAndGroup(
 
       const featureFlags = await getFeatureFlags(auth);
       if (featureFlags.includes("project_todo")) {
-        await seedInitialProjectTodosForProjectCreator(auth, space);
+        if (seedInitialTodos) {
+          await seedInitialProjectTodosForProjectCreator(auth, space);
+        }
         void launchOrSignalProjectTodoWorkflow({
           workspaceId: owner.sId,
           spaceId: space.sId,
