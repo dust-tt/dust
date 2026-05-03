@@ -120,6 +120,7 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
         | "status"
         | "doneAt"
         | "actorRationale"
+        | "agentInstructions"
         | "markedAsDoneByType"
         | "markedAsDoneByUserId"
         | "markedAsDoneByAgentConfigurationId"
@@ -167,6 +168,7 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
       status: this.status,
       doneAt: this.doneAt ?? null,
       actorRationale: this.actorRationale ?? null,
+      agentInstructions: this.agentInstructions ?? null,
       markedAsDoneByType: this.markedAsDoneByType ?? null,
       markedAsDoneByUserId: this.markedAsDoneByUserId ?? null,
       markedAsDoneByAgentConfigurationId:
@@ -591,6 +593,7 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
       status: this.status,
       doneAt: this.doneAt,
       actorRationale: this.actorRationale,
+      agentInstructions: this.agentInstructions,
       createdByType: this.createdByType,
       createdByAgentConfigurationId: this.createdByAgentConfigurationId,
       markedAsDoneByType: this.markedAsDoneByType,

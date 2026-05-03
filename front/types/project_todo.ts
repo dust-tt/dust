@@ -45,6 +45,8 @@ export type ProjectTodoType = {
   text: string;
   status: ProjectTodoStatus;
   doneAt: Date | null;
+  /** Optional persisted instructions merged into the kickoff prompt when the todo is started. */
+  agentInstructions: string | null;
   actorRationale: string | null;
   createdByType: ProjectTodoActorType;
   createdByAgentConfigurationId: string | null;

@@ -42,6 +42,18 @@ function linkLabelForUrlOnly(url: string): string {
   }
 }
 
+function mergeKickoffCustomMessage(
+  stored: string | null | undefined,
+  userProvided: string | undefined
+): string | undefined {
+  const s = stored?.trim();
+  const u = userProvided?.trim();
+  if (s && u) {
+    return `${s}\n\n${u}`;
+  }
+  return u ?? s ?? undefined;
+}
+
 function formatTodoSourcesMarkdown(sources: ProjectTodoSourceInfo[]): string {
   const lines = sources
     .map((s) => {
@@ -179,7 +191,10 @@ export async function startAgentForProjectTodo(
     todoId: todo.sId,
     todoText: todo.text,
     sources,
-    customMessage: customMessage?.trim() || undefined,
+    customMessage: mergeKickoffCustomMessage(
+      todo.agentInstructions,
+      customMessage
+    ),
   });
 
   let conversationId = await todo.getLatestConversationId(auth);

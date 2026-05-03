@@ -29,6 +29,7 @@ function makeTodoBlob(
     status: "todo",
     doneAt: null,
     actorRationale: null,
+    agentInstructions: null,
   };
 }
 

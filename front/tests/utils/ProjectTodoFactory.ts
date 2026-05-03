@@ -27,6 +27,7 @@ export class ProjectTodoFactory {
       status: "todo",
       doneAt: null,
       actorRationale: null,
+      agentInstructions: null,
     });
   }
 }

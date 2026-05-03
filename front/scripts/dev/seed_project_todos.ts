@@ -134,6 +134,7 @@ makeScript(
         status: "todo",
         doneAt: null,
         actorRationale: null,
+        agentInstructions: null,
       });
 
       if (seed.deleted) {

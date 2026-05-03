@@ -189,6 +189,7 @@ export function createProjectTodosTools(
             status: item.doneRationale ? "done" : "todo",
             doneAt: item.doneRationale ? new Date() : null,
             actorRationale: item.doneRationale ?? null,
+            agentInstructions: null,
           });
 
           // Record the conversation where the todo was created as a source so

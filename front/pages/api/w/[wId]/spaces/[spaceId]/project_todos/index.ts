@@ -174,6 +174,7 @@ async function handler(
         status: "todo",
         doneAt: null,
         actorRationale: null,
+        agentInstructions: null,
       });
 
       const todoResource = await ProjectTodoResource.fetchBySId(
