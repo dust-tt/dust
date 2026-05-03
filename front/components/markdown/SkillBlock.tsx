@@ -3,12 +3,18 @@ import { Chip } from "@dust-tt/sparkle";
 import { visit } from "unist-util-visit";
 
 interface SkillBlockProps {
+  skillIcon?: string | null;
   skillName: string;
 }
 
-export function SkillBlock({ skillName }: SkillBlockProps) {
+export function SkillBlock({ skillIcon, skillName }: SkillBlockProps) {
   return (
-    <Chip label={skillName} icon={getSkillIcon(null)} color="white" size="xs" />
+    <Chip
+      label={skillName}
+      icon={getSkillIcon(skillIcon ?? null)}
+      color="white"
+      size="xs"
+    />
   );
 }
 
@@ -21,6 +27,7 @@ export function skillDirective() {
         data.hName = "skill";
         data.hProperties = {
           skillId: node.attributes.sId,
+          skillIcon: node.attributes.icon,
           skillName: node.children[0].value,
         };
       }

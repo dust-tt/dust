@@ -78,7 +78,9 @@ export const UserMessageMarkdown = ({
           return match;
         }
 
-        return `:skill[${skill.name}]{sId=${skill.id}}`;
+        const iconAttribute = skill.icon ? ` icon=${skill.icon}` : "";
+
+        return `:skill[${skill.name}]{sId=${skill.id}${iconAttribute}}`;
       }),
     [message.content]
   );

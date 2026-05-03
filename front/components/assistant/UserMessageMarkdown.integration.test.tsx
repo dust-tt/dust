@@ -210,7 +210,8 @@ Quote text
     });
 
     it("renders inline skill tags as chips", () => {
-      const content = 'Please use <skill id="skill_123" name="commit" />';
+      const content =
+        'Please use <skill id="skill_123" name="commit" icon="book_open" />';
       const message = { ...mockMessage, content };
       const { container } = render(
         <UserMessageMarkdown
