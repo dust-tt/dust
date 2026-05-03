@@ -9,7 +9,7 @@
 ///
 /// The whole module goes away in Phase 1, replaced by an HMAC-derived
 /// placeholder format (`__DST_SECRET_<32hex>__`) and a per-secret
-/// `allowedDomains` policy gate. See CLAUDE_SECRET_SWAP_DESIGN.md §3-§4.
+/// `allowedDomains` policy gate. See SECRET_SWAP_DESIGN.md §3-§4.
 pub const PHASE0_PLACEHOLDER: &[u8] = b"__DUST_EXPERIMENT_PLACEHOLDER__";
 pub const PHASE0_REPLACEMENT: &[u8] = b"__SUCCESSFULLY_REPLACED________";
 

@@ -385,7 +385,7 @@ where
     //
     // TODO(phase 1): handle a placeholder straddling the read boundary, and
     // extend rewriting to bodies / URLs behind a per-secret allowlist flag.
-    // See CLAUDE_SECRET_SWAP_DESIGN.md §4.
+    // See SECRET_SWAP_DESIGN.md §4.
     let mut header_buf = Vec::with_capacity(MITM_HEADER_PEEK_BUFFER_SIZE);
     let deadline = Instant::now() + MITM_HEADER_READ_TIMEOUT;
 
