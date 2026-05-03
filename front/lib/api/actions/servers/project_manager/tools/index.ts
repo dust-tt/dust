@@ -842,13 +842,17 @@ export function createProjectManagerTools(
           );
         }
 
-        const createSpaceRes = await createSpaceAndGroup(auth, {
-          name: params.title,
-          isRestricted: params.visibility !== "open",
-          spaceKind: "project",
-          managementMode: "manual",
-          memberIds: [],
-        });
+        const createSpaceRes = await createSpaceAndGroup(
+          auth,
+          {
+            name: params.title,
+            isRestricted: params.visibility !== "open",
+            spaceKind: "project",
+            managementMode: "manual",
+            memberIds: [],
+          },
+          { seedInitialTodos: params.seedInitialTodos ?? false }
+        );
 
         if (createSpaceRes.isErr()) {
           const error = createSpaceRes.error;
