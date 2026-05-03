@@ -3,6 +3,7 @@ import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { LightWorkspaceType } from "@app/types/user";
 import Metronome, { ConflictError } from "@metronome/sdk";
 import type { Commit, ContractV2, Credit } from "@metronome/sdk/resources";
 import type { Invoice } from "@metronome/sdk/resources/v1/customers";
@@ -159,6 +160,38 @@ export async function createMetronomeCustomer({
     logger.error(
       { error, workspaceId },
       "[Metronome] Failed to create customer"
+    );
+    return new Err(error);
+  }
+}
+
+/**
+ * Update the display name of an existing Metronome customer.
+ * Used to keep the Metronome customer name in sync when a workspace is renamed.
+ */
+export async function updateMetronomeCustomerName(
+  workspace: LightWorkspaceType
+): Promise<Result<void, Error>> {
+  const { metronomeCustomerId, name } = workspace;
+  if (!metronomeCustomerId) {
+    return new Ok(undefined);
+  }
+
+  try {
+    await getMetronomeClient().v1.customers.setName({
+      customer_id: metronomeCustomerId,
+      name,
+    });
+    logger.info(
+      { metronomeCustomerId, name },
+      "[Metronome] Customer name updated"
+    );
+    return new Ok(undefined);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId, name },
+      "[Metronome] Failed to update customer name"
     );
     return new Err(error);
   }

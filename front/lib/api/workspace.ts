@@ -1,5 +1,7 @@
+import { updateWorkOSOrganizationName } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
 import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
+import { updateMetronomeCustomerName } from "@app/lib/metronome/client";
 import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
 import { getUsageToReportForSubscriptionItem } from "@app/lib/plans/usage";
@@ -56,6 +58,44 @@ export async function getWorkspaceInfos(
   }
 
   return renderLightWorkspaceType({ workspace });
+}
+
+/**
+ * Rename a workspace and propagate the new name to external systems
+ * (WorkOS organization, Metronome customer). All three updates must
+ * stay in sync — callers should always go through this helper.
+ */
+export async function renameWorkspace(
+  workspace: LightWorkspaceType,
+  newName: string
+): Promise<Result<void, Error>> {
+  const updateRes = await WorkspaceResource.updateName(workspace.id, newName);
+  if (updateRes.isErr()) {
+    return updateRes;
+  }
+
+  const renamedWorkspace = { ...workspace, name: newName };
+
+  const workOSRes = await updateWorkOSOrganizationName(renamedWorkspace);
+  const metronomeRes = await updateMetronomeCustomerName(renamedWorkspace);
+
+  if (workOSRes.isErr()) {
+    return new Err(
+      new Error(
+        `Failed to update WorkOS organization name: ${workOSRes.error.message}`
+      )
+    );
+  }
+
+  if (metronomeRes.isErr()) {
+    return new Err(
+      new Error(
+        `Failed to update Metronome customer name: ${metronomeRes.error.message}`
+      )
+    );
+  }
+
+  return new Ok(undefined);
 }
 
 export async function removeAllWorkspaceDomains(
