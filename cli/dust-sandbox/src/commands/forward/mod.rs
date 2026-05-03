@@ -325,7 +325,8 @@ where
     // (dsbx) are now the originator instead of the agent.
     //
     // TODO(phase 1): force ALPN to advertise only "http/1.1" on this client
-    // config, otherwise we may negotiate h2 which the rewriter cannot handle.
+    // config, otherwise we may negotiate h2 which the h1 rewriter cannot
+    // handle. HTTP/2 support is a Phase 2 step (frame-level + HPACK-aware).
     // For Phase 0 the only experiment upstream is dust.tt which speaks h1.1.
     let upstream_server_name =
         ServerName::try_from(sni.to_string()).context("invalid upstream SNI for MITM TLS")?;
@@ -384,8 +385,9 @@ where
     // recomputation is needed.
     //
     // TODO(phase 1): handle a placeholder straddling the read boundary, and
-    // extend rewriting to bodies / URLs behind a per-secret allowlist flag.
-    // See SECRET_SWAP_DESIGN.md §4.
+    // extend rewriting to URLs behind the per-secret allowedDomains gate.
+    // Bodies are deferred to Phase 3 with an opt-in includeBody flag.
+    // See SECRET_SWAP_DESIGN.md, "Substitution logic" under "Proposal".
     let mut header_buf = Vec::with_capacity(MITM_HEADER_PEEK_BUFFER_SIZE);
     let deadline = Instant::now() + MITM_HEADER_READ_TIMEOUT;
 

@@ -352,7 +352,8 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     // it gates the synthetic /sandbox/egress-experiment endpoint only.
     //
     // TODO(phase 1): cover non-curl runtimes (NODE_EXTRA_CA_CERTS, DENO_CERT,
-    // etc.) per SECRET_SWAP_DESIGN.md §5.3.
+    // etc.) per SECRET_SWAP_DESIGN.md, "Client-language agnosticism" under
+    // "Proposal" (specifically the per-runtime trust env-var matrix).
     const mitmExperimentHost = config.getEgressMitmExperimentHost();
     const mitmExperimentToken = config.getEgressMitmExperimentToken();
     const mitmEnv: Record<string, string> = mitmExperimentHost

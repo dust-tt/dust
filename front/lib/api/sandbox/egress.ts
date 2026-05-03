@@ -21,7 +21,7 @@ const MAX_DENY_LOG_LINES_PER_EXEC = 20;
 // in Phase 1+; the bundle/system-store paths likely stay too. The
 // installMitmTrustBundle helper is PHASE0-shaped (curl-only); Phase 1 will
 // extend it with NODE_EXTRA_CA_CERTS, keytool import, etc. See
-// SECRET_SWAP_DESIGN.md §5.
+// SECRET_SWAP_DESIGN.md, "Client-language agnosticism" under "Proposal".
 const MITM_CA_PATH = "/etc/dust/egress-ca.pem";
 const MITM_CA_BUNDLE_PATH = "/etc/dust/ca-bundle.pem";
 const MITM_SYSTEM_CA_DEST = "/usr/local/share/ca-certificates/dust-egress.crt";
@@ -240,9 +240,9 @@ export async function setupEgressForwarder(
 // works on images without update-ca-certificates.
 //
 // TODO(phase 1): extend coverage to non-curl runtimes per
-// SECRET_SWAP_DESIGN.md §5: NODE_EXTRA_CA_CERTS, DENO_CERT, Java
-// keytool import, etc. The current install only covers curl + anything
-// else that reads the system CA bundle.
+// SECRET_SWAP_DESIGN.md, "Client-language agnosticism" under "Proposal":
+// NODE_EXTRA_CA_CERTS, DENO_CERT, Java keytool import, etc. The current
+// install only covers curl + anything else that reads the system CA bundle.
 async function installMitmTrustBundle(
   auth: Authenticator,
   sandbox: SandboxResource
