@@ -2,7 +2,10 @@ import { restoreWorkspaceAfterSubscription } from "@app/lib/api/subscription";
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { floorToHourISO } from "@app/lib/metronome/client";
-import { provisionMetronomeCustomerAndContract } from "@app/lib/metronome/contracts";
+import {
+  ensureMetronomeCustomerForWorkspace,
+  provisionMetronomeContract,
+} from "@app/lib/metronome/contracts";
 import { PlanModel } from "@app/lib/models/plan";
 import {
   getBillingCurrencyForCountry,
@@ -127,28 +130,32 @@ export async function handleMetronomeSetupCheckout({
     );
   }
 
-  const provisionResult = await provisionMetronomeCustomerAndContract({
-    workspace: renderLightWorkspaceType({ workspace }),
+  const lightWorkspace = renderLightWorkspaceType({ workspace });
+
+  const customerResult = await ensureMetronomeCustomerForWorkspace({
+    workspace: lightWorkspace,
     stripeCustomerId,
+  });
+  if (customerResult.isErr()) {
+    return new Err(
+      new DustError("metronome_error", customerResult.error.message)
+    );
+  }
+  const { metronomeCustomerId } = customerResult.value;
+
+  const contractResult = await provisionMetronomeContract({
+    metronomeCustomerId,
+    workspace: lightWorkspace,
     packageAlias: resolvedPackageAlias,
     uniquenessKey: sessionId,
     startingAt: new Date(floorToHourISO(now)),
   });
-  if (provisionResult.isErr()) {
+  if (contractResult.isErr()) {
     return new Err(
-      new DustError("metronome_error", provisionResult.error.message)
+      new DustError("metronome_error", contractResult.error.message)
     );
   }
-
-  const { metronomeCustomerId, metronomeContractId } = provisionResult.value;
-
-  const updateResult = await WorkspaceResource.updateMetronomeCustomerId(
-    workspace.id,
-    metronomeCustomerId
-  );
-  if (updateResult.isErr()) {
-    return new Err(new DustError("internal_error", updateResult.error.message));
-  }
+  const { metronomeContractId } = contractResult.value;
 
   const subscriptionResult =
     await SubscriptionResource.createSubscriptionFromCheckout({

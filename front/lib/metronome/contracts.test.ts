@@ -2,7 +2,7 @@ import type { EnterprisePricingCents } from "@app/lib/metronome/contracts";
 import {
   buildEnterpriseOverrides,
   extractEnterprisePricing,
-  provisionMetronomeCustomerAndContract,
+  provisionMetronomeContract,
   switchMetronomeContractPackage,
 } from "@app/lib/metronome/contracts";
 import { Ok } from "@app/types/shared/result";
@@ -672,11 +672,11 @@ describe("buildEnterpriseOverrides", () => {
 // Contract provisioning / switching
 // ---------------------------------------------------------------------------
 
-describe("provisionMetronomeCustomerAndContract", () => {
+describe("provisionMetronomeContract", () => {
   it("syncs seats and MAU when the contract has both subscriptions", async () => {
-    const result = await provisionMetronomeCustomerAndContract({
+    const result = await provisionMetronomeContract({
+      metronomeCustomerId: "m-customer",
       workspace: WORKSPACE,
-      stripeCustomerId: "stripe-customer",
       packageAlias: "legacy-pro-monthly",
       uniquenessKey: "uniq_123",
       startingAt: new Date(START_DATE),
@@ -712,9 +712,9 @@ describe("provisionMetronomeCustomerAndContract", () => {
   it("skips seat sync when the contract has no seat subscription", async () => {
     mockGetSeatSubscriptionIdFromContract.mockReturnValue(undefined);
 
-    const result = await provisionMetronomeCustomerAndContract({
+    const result = await provisionMetronomeContract({
+      metronomeCustomerId: "m-customer",
       workspace: WORKSPACE,
-      stripeCustomerId: "stripe-customer",
       packageAlias: "legacy-enterprise",
       uniquenessKey: "uniq_123",
       startingAt: new Date(START_DATE),
@@ -728,9 +728,9 @@ describe("provisionMetronomeCustomerAndContract", () => {
   it("skips MAU sync when the contract has no MAU subscription", async () => {
     mockHasMauSubscriptionInContract.mockReturnValue(false);
 
-    const result = await provisionMetronomeCustomerAndContract({
+    const result = await provisionMetronomeContract({
+      metronomeCustomerId: "m-customer",
       workspace: WORKSPACE,
-      stripeCustomerId: "stripe-customer",
       packageAlias: "legacy-pro-monthly",
       uniquenessKey: "uniq_123",
       startingAt: new Date(START_DATE),

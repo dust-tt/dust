@@ -6,6 +6,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { scheduleMetronomeContractEnd } from "@app/lib/metronome/client";
 import {
+  ensureMetronomeCustomerForWorkspace,
   provisionShadowEnterpriseMetronomeContract,
   switchMetronomeContractPackage,
   syncContractQuantities,
@@ -751,6 +752,20 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       if (result.isErr() && !activeSubscription.isMetronomeShadowBilled) {
         throw result.error;
       }
+    }
+
+    // Ensure a Metronome customer exists for the workspace.
+    const ensureCustomerResult = await ensureMetronomeCustomerForWorkspace({
+      workspace,
+    });
+    if (ensureCustomerResult.isErr()) {
+      logger.error(
+        {
+          workspaceId: workspace.sId,
+          error: ensureCustomerResult.error.message,
+        },
+        "[Subscription] Failed to ensure Metronome customer on free-plan subscription"
+      );
     }
 
     await SubscriptionResource.invalidateSubscriptionCache(workspace.id);

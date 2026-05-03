@@ -120,7 +120,7 @@ export async function createMetronomeCustomer({
 }: {
   workspaceId: string;
   workspaceName: string;
-  stripeCustomerId: string;
+  stripeCustomerId?: string;
 }): Promise<Result<{ metronomeCustomerId: string }, Error>> {
   try {
     const response = await getMetronomeClient().v1.customers.create({
@@ -159,6 +159,62 @@ export async function createMetronomeCustomer({
     logger.error(
       { error, workspaceId },
       "[Metronome] Failed to create customer"
+    );
+    return new Err(error);
+  }
+}
+
+/**
+ * Idempotently ensure a Stripe billing configuration exists on a Metronome
+ * customer. Used to upgrade a customer that was originally created without a
+ * Stripe link (e.g., a free workspace) once the workspace gets a Stripe
+ * customer. If a non-archived Stripe configuration already exists this is a
+ * no-op.
+ */
+export async function ensureMetronomeStripeBillingConfig({
+  metronomeCustomerId,
+  stripeCustomerId,
+}: {
+  metronomeCustomerId: string;
+  stripeCustomerId: string;
+}): Promise<Result<void, Error>> {
+  try {
+    const existing =
+      await getMetronomeClient().v1.customers.retrieveBillingConfigurations({
+        customer_id: metronomeCustomerId,
+      });
+
+    const hasStripeConfig = existing.data.some(
+      (c) => c.billing_provider === "stripe" && !c.archived_at
+    );
+    if (hasStripeConfig) {
+      return new Ok(undefined);
+    }
+
+    await getMetronomeClient().v1.customers.setBillingConfigurations({
+      data: [
+        {
+          customer_id: metronomeCustomerId,
+          billing_provider: "stripe",
+          delivery_method: "direct_to_billing_provider",
+          configuration: {
+            stripe_customer_id: stripeCustomerId,
+            stripe_collection_method: "charge_automatically",
+          },
+        },
+      ],
+    });
+
+    logger.info(
+      { metronomeCustomerId, stripeCustomerId },
+      "[Metronome] Stripe billing config added to existing customer"
+    );
+    return new Ok(undefined);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId, stripeCustomerId },
+      "[Metronome] Failed to ensure Stripe billing config on customer"
     );
     return new Err(error);
   }
