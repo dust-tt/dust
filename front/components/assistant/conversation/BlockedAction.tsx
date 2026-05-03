@@ -1,6 +1,7 @@
 import { GoogleDriveFileAuthorizationRequired } from "@app/components/assistant/conversation/GoogleDriveFileAuthorizationRequired";
 import { MCPServerPersonalAuthenticationRequired } from "@app/components/assistant/conversation/MCPServerPersonalAuthenticationRequired";
 import { MCPToolValidationRequired } from "@app/components/assistant/conversation/MCPToolValidationRequired";
+import { PendingPlanApprovalCard } from "@app/components/assistant/conversation/plan_mode/PendingPlanApprovalCard";
 import { UserAnswerRequired } from "@app/components/assistant/conversation/UserAnswerRequired";
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
@@ -28,6 +29,17 @@ export function BlockedAction({
 }: BlockedActionProps) {
   switch (blockedAction.status) {
     case "blocked_validation_required":
+      if (blockedAction.metadata.toolName === "request_plan_approval") {
+        return (
+          <PendingPlanApprovalCard
+            triggeringUser={triggeringUser}
+            owner={owner}
+            blockedAction={blockedAction}
+            conversationId={conversationId}
+            messageId={messageId}
+          />
+        );
+      }
       return (
         <MCPToolValidationRequired
           triggeringUser={triggeringUser}
