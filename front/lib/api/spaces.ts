@@ -392,7 +392,13 @@ export async function createSpaceAndGroup(
     | { memberIds: string[]; managementMode: "manual" }
     | { groupIds: string[]; managementMode: "group" }
   ),
-  { ignoreWorkspaceLimit = false, seedInitialTodos = true }: { ignoreWorkspaceLimit?: boolean; seedInitialTodos?: boolean } = {}
+  {
+    ignoreWorkspaceLimit = false,
+    seedInitialTodos = true,
+  }: {
+    ignoreWorkspaceLimit?: boolean;
+    seedInitialTodos?: boolean;
+  } = {}
 ): Promise<
   Result<
     SpaceResource,
