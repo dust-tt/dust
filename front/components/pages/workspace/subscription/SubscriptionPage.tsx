@@ -389,7 +389,8 @@ export function SubscriptionPage() {
     });
 
   const plan = subscription.plan;
-  const isWorkspaceOnProPlan = isProPlan(plan);
+  const isWorkspaceOnProPlan =
+    isProPlan(plan) || isEntreprisePlanPrefix(plan.code);
   const isWorkspaceWhitelistedBusinessPlan = isWhitelistedBusinessPlan(owner);
   const canUpsellToBusinessPlan =
     isWorkspaceOnProPlan && isWorkspaceWhitelistedBusinessPlan;
