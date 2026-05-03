@@ -1,3 +1,21 @@
+// =============================================================================
+// TEMPORARY FILE — DELETE WHEN PHASE 0 OF THE MITM EGRESS EXPERIMENT IS DONE.
+//
+// This is throwaway instrumentation. It exists only to verify the dsbx-side
+// secret-substitution path end to end: the agent inside the sandbox calls
+// this endpoint with `X-Dust-Experiment: __DUST_EXPERIMENT_PLACEHOLDER__`,
+// dsbx (when enabled) rewrites the header value mid-flight, and this
+// endpoint logs what it actually received to Datadog so we can confirm the
+// substitution happened.
+//
+// Off by default: returns 404 unless both EGRESS_MITM_EXPERIMENT_HOST and
+// EGRESS_MITM_EXPERIMENT_TOKEN are set on front.
+//
+// When the experiment concludes, delete this file along with the rest of
+// the PHASE0(remove with the experiment) markers tracked in the design doc
+// (CLAUDE_SECRET_SWAP_DESIGN.md, Phase 0 section).
+// =============================================================================
+
 import config from "@app/lib/api/config";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -13,15 +31,8 @@ const EXPERIMENT_TOKEN_HEADER = "x-dust-experiment-token";
 
 /**
  * @ignoreswagger
- * PHASE0(remove with the experiment): instrumentation endpoint for the dsbx
- * MITM substitution test. Logs the inbound `X-Dust-Experiment` header so it
- * shows up in Datadog and echoes the value back to the caller.
- *
- * Returns 404 unless BOTH `EGRESS_MITM_EXPERIMENT_HOST` and
- * `EGRESS_MITM_EXPERIMENT_TOKEN` are set on front. When enabled, callers must
- * present a matching `X-Dust-Experiment-Token` header or get a 401.
- *
- * This entire file should be deleted once Phase 0 is concluded.
+ * PHASE0(remove with the experiment) — see file header for the full context
+ * and removal instructions.
  */
 async function handler(
   req: NextApiRequest,
