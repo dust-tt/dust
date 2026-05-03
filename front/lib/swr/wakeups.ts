@@ -26,7 +26,13 @@ export function useConversationWakeUps({
       ? `/api/w/${owner.sId}/assistant/conversations/${conversationId}/wakeups`
       : null,
     wakeUpsFetcher,
-    { disabled }
+    {
+      disabled,
+      // Throttle refocus revalidations: this endpoint is polled via SWR rather
+      // than pushed through the event stream, and a 60s window cuts ~1.5k
+      // req/min of redundant fetches without making the UI feel stale.
+      dedupingInterval: 60_000,
+    }
   );
 
   const wakeUps = data?.wakeUps ?? emptyArray();

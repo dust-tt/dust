@@ -17,7 +17,13 @@ export function useBlockedActions({
       ? `/api/w/${workspaceId}/assistant/conversations/${conversationId}/actions/blocked`
       : null,
     blockedActionsFetcher,
-    { disabled: conversationId === null }
+    {
+      disabled: conversationId === null,
+      // Throttle refocus revalidations: this endpoint is polled via SWR rather
+      // than pushed through the event stream, and a 60s window cuts ~1.5k
+      // req/min of redundant fetches without making the UI feel stale.
+      dedupingInterval: 60_000,
+    }
   );
 
   return {
