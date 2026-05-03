@@ -238,25 +238,16 @@ const InputBarContainer = ({
   // Create a ref to hold the editor instance
   const editorRef = useRef<Editor | null>(null);
   const pastedAttachmentIdsRef = useRef<Set<string>>(new Set());
-  const [draftSelectedSkillIds, setDraftSelectedSkillIds] = useState<string[]>(
-    []
-  );
-  const selectedSkillIdSet = useMemo(
-    () => new Set(draftSelectedSkillIds),
-    [draftSelectedSkillIds]
-  );
   const selectedMCPServerViewIds = useMemo(
     () => new Set(selectedMCPServerViews.map((serverView) => serverView.sId)),
     [selectedMCPServerViews]
   );
   const selectedMCPServerViewIdsRef = useRef(selectedMCPServerViewIds);
-  const selectedSkillIdsRef = useRef(selectedSkillIdSet);
   const shouldEnableSlashSuggestionRef = useRef(shouldEnableSlashSuggestion);
   const onSelectRef = useRef<
     ((capability: InputBarSlashSuggestionCapability) => void) | undefined
   >(undefined);
   selectedMCPServerViewIdsRef.current = selectedMCPServerViewIds;
-  selectedSkillIdsRef.current = selectedSkillIdSet;
   shouldEnableSlashSuggestionRef.current = shouldEnableSlashSuggestion;
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
@@ -484,7 +475,6 @@ const InputBarContainer = ({
       enabledRef: shouldEnableSlashSuggestionRef,
       onSelectRef,
       selectedMCPServerViewIdsRef,
-      selectedSkillIdsRef,
     },
     placeholderOverride: disableInput ? submitBlockMessage : null,
     onLongTextPaste: async ({ text, from, to }) => {
@@ -535,16 +525,16 @@ const InputBarContainer = ({
 
   const handleSkillSelect = useCallback(
     ({ sId, name }: { sId: string; name: string }) => {
-      if (selectedSkillIdsRef.current.has(sId)) {
-        return;
-      }
-
-      editorService.insertSkill({
-        id: sId,
-        name,
-      });
+      editorRef.current
+        ?.chain()
+        .focus()
+        .insertSkillNode({
+          skillId: sId,
+          skillName: name,
+        })
+        .run();
     },
-    [editorService]
+    []
   );
 
   const handleSlashSuggestionSelection = useCallback(
@@ -681,11 +671,9 @@ const InputBarContainer = ({
       // Auto-save draft when content changes and track user mentions.
       // Include the selected single agent so the debounced save doesn't
       // overwrite the agent mention saved by the single-agent effect.
-      const { markdown, mentions, skills } =
-        editorService.getMarkdownAndMentions();
+      const { markdown, mentions } = editorService.getMarkdownAndMentions();
       saveDraft(editorIsEmpty ? "" : markdown, selectedSingleAgentRef.current);
       const userMentioned = mentions.some((m) => m.type === "user");
-      setDraftSelectedSkillIds(skills.map((skill) => skill.id));
       setHasUserMention(userMentioned);
       onEditorMentionsChangedRef.current(userMentioned);
     };
@@ -1099,7 +1087,6 @@ const InputBarContainer = ({
                     owner={owner}
                     selectedAgent={selectedSingleAgent}
                     selectedMCPServerViews={selectedMCPServerViews}
-                    selectedSkillIds={draftSelectedSkillIds}
                     space={space}
                     user={user}
                   />

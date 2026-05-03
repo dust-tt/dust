@@ -250,7 +250,6 @@ interface CapabilitiesPickerProps {
   user: UserType | null;
   selectedMCPServerViews: MCPServerViewType[];
   onSelect: (serverView: MCPServerViewType) => void;
-  selectedSkillIds: string[];
   onSkillSelect: (skill: SkillWithoutInstructionsAndToolsType) => void;
   isLoading?: boolean;
   disabled?: boolean;
@@ -262,7 +261,6 @@ export function CapabilitiesPicker({
   user,
   selectedMCPServerViews,
   onSelect,
-  selectedSkillIds,
   onSkillSelect,
   isLoading = false,
   disabled = false,
@@ -377,27 +375,23 @@ export function CapabilitiesPicker({
   const isToolsDataReady =
     !isServerViewsLoading && !isAvailableMCPServersLoading;
 
-  const filteredSkillsUnselected = useMemo(() => {
-    const selectedSkillIdSet = new Set(selectedSkillIds);
-
-    return skills
-      .filter((skill) => !selectedSkillIdSet.has(skill.sId))
-      .filter((skill) => {
-        if (searchText.trim().length === 0) {
-          return true;
-        }
-        const query = searchText.toLowerCase();
-        return (
-          skill.name.toLowerCase().includes(query) ||
-          (skill.userFacingDescription &&
-            skill.userFacingDescription.toLowerCase().includes(query))
-        );
-      });
-  }, [skills, selectedSkillIds, searchText]);
+  const filteredSkills = useMemo(() => {
+    return skills.filter((skill) => {
+      if (searchText.trim().length === 0) {
+        return true;
+      }
+      const query = searchText.toLowerCase();
+      return (
+        skill.name.toLowerCase().includes(query) ||
+        (skill.userFacingDescription &&
+          skill.userFacingDescription.toLowerCase().includes(query))
+      );
+    });
+  }, [skills, searchText]);
 
   const mergedItems = useMemo(() => {
     const items: MergedCapabilityItem[] = [
-      ...filteredSkillsUnselected.map(
+      ...filteredSkills.map(
         (skill): MergedCapabilityItem => ({
           kind: "skill",
           skill,
@@ -413,7 +407,7 @@ export function CapabilitiesPicker({
       ),
     ];
     return [...items].sort((a, b) => a.sortName.localeCompare(b.sortName));
-  }, [filteredSkillsUnselected, filteredServerViewsUnselected]);
+  }, [filteredSkills, filteredServerViewsUnselected]);
 
   // - We compare by name, not sId, because names are shared between multiple instances of the same MCP server (sIds are not).
   // - We filter by manual availability to show only servers that need install step, and by search text if present.

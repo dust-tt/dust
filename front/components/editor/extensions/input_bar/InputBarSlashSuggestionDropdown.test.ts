@@ -27,7 +27,6 @@ describe("filterInputBarSlashSuggestions", () => {
     const result = filterInputBarSlashSuggestions({
       query: "spreadsheet",
       selectedMCPServerViewIds: new Set(),
-      selectedSkillIds: new Set(),
       serverViews: [calendarServerView.toJSON()],
       skills: [skill.toJSON(auth)],
     });
@@ -49,7 +48,6 @@ describe("filterInputBarSlashSuggestions", () => {
     const result = filterInputBarSlashSuggestions({
       query: "gd",
       selectedMCPServerViewIds: new Set(),
-      selectedSkillIds: new Set(),
       serverViews: [],
       skills: [
         generateDailyReportSkill.toJSON(auth),
@@ -62,23 +60,5 @@ describe("filterInputBarSlashSuggestions", () => {
         capability.kind === "skill" ? capability.skill.name : ""
       )
     ).toEqual(["Google Drive", "Generate Daily Report"]);
-  });
-
-  it("filters out skills already referenced in the draft", async () => {
-    const { auth } = await createPrivateApiMockRequest();
-    const commitSkill = await SkillFactory.create(auth, {
-      name: "commit",
-      userFacingDescription: "",
-    });
-
-    const result = filterInputBarSlashSuggestions({
-      query: "commit",
-      selectedMCPServerViewIds: new Set(),
-      selectedSkillIds: new Set([commitSkill.sId]),
-      serverViews: [],
-      skills: [commitSkill.toJSON(auth)],
-    });
-
-    expect(result).toEqual([]);
   });
 });

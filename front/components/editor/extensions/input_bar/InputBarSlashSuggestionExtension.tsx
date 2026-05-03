@@ -47,7 +47,6 @@ export interface InputBarSlashSuggestionExtensionOptions {
     ((capability: InputBarSlashSuggestionCapability) => void) | undefined
   >;
   selectedMCPServerViewIdsRef: RefObject<Set<string>>;
-  selectedSkillIdsRef: RefObject<Set<string>>;
 }
 
 export const InputBarSlashSuggestionExtension =
@@ -71,7 +70,6 @@ export const InputBarSlashSuggestionExtension =
         enabledRef: { current: false },
         onSelectRef: { current: undefined },
         selectedMCPServerViewIdsRef: { current: new Set<string>() },
-        selectedSkillIdsRef: { current: new Set<string>() },
       };
     },
 
@@ -136,7 +134,6 @@ export const InputBarSlashSuggestionExtension =
                     owner,
                     selectedMCPServerViewIdsRef:
                       extensionOptions.selectedMCPServerViewIdsRef,
-                    selectedSkillIdsRef: extensionOptions.selectedSkillIdsRef,
                   },
                   editor: props.editor,
                 });
@@ -160,7 +157,6 @@ export const InputBarSlashSuggestionExtension =
                   owner,
                   selectedMCPServerViewIdsRef:
                     extensionOptions.selectedMCPServerViewIdsRef,
-                  selectedSkillIdsRef: extensionOptions.selectedSkillIdsRef,
                 });
               },
 
