@@ -28,6 +28,7 @@ import { useClientType } from "@app/lib/context/clientType";
 import type { DustError } from "@app/lib/error";
 import { useAppRouter } from "@app/lib/platform";
 import { useSpaceInfo, useSystemSpace } from "@app/lib/swr/spaces";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { LightConversationType } from "@app/types/assistant/conversation";
 import {
@@ -105,6 +106,7 @@ export function SpaceConversationsPage() {
   const [_planLimitReached, setPlanLimitReached] = useState(false);
   const [isInvitePanelOpen, setIsInvitePanelOpen] = useState(false);
   const canShowTodosTab = hasFeature("project_todo");
+  const compactProjectTabs = useIsMobile();
 
   const { currentTab, handleTabChange } = useSpaceProjectTabs({
     spaceId,
@@ -295,25 +297,32 @@ export function SpaceConversationsPage() {
   }
 
   return (
-    <div className="flex h-full w-full flex-col">
+    <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden">
       <Tabs
         value={currentTab}
         onValueChange={(value) => handleTabChange(value as SpaceProjectTab)}
-        className="flex min-h-0 flex-1 flex-col pt-3"
+        className="flex min-h-0 flex-1 flex-col overflow-hidden pt-3"
       >
-        <div className="flex items-start justify-between border-b border-separator pl-14 pr-6 lg:px-6 dark:border-separator-night">
+        <div className="flex shrink-0 items-start justify-between border-b border-separator pl-14 pr-6 lg:px-6 dark:border-separator-night">
           <TabsList border={false}>
             <TabsTrigger
               value="conversations"
-              label="Conversations"
+              label={compactProjectTabs ? undefined : "Conversations"}
+              tooltip={compactProjectTabs ? "Conversations" : undefined}
               icon={ChatBubbleLeftRightIcon}
             />
             {canShowTodosTab && (
-              <TabsTrigger value="todos" label="To-dos" icon={ListCheckIcon} />
+              <TabsTrigger
+                value="todos"
+                label={compactProjectTabs ? undefined : "To-dos"}
+                tooltip={compactProjectTabs ? "To-dos" : undefined}
+                icon={ListCheckIcon}
+              />
             )}
             <TabsTrigger
               value="knowledge"
-              label="Knowledge"
+              label={compactProjectTabs ? undefined : "Knowledge"}
+              tooltip={compactProjectTabs ? "Knowledge" : undefined}
               icon={BookOpenIcon}
             />
             <TabsTrigger
@@ -323,7 +332,8 @@ export function SpaceConversationsPage() {
             />
             <TabsTrigger
               value="alpha"
-              label="Alpha"
+              label={compactProjectTabs ? undefined : "Alpha"}
+              tooltip={compactProjectTabs ? "Alpha" : undefined}
               icon={TestTubeIcon}
               variant="warning-secondary"
             />
