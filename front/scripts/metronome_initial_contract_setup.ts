@@ -17,7 +17,7 @@
 import { floorToHourISO, getMetronomeClient } from "@app/lib/metronome/client";
 import {
   getCreditTypeProgrammaticUsdId,
-  getProductFreeMonthlyCreditId,
+  getProductFreeCreditId,
   getProductProgrammaticUsageId,
 } from "@app/lib/metronome/constants";
 import type { Logger } from "@app/logger/logger";
@@ -57,7 +57,7 @@ async function backfillRecurringCreditForWorkspace(
     return;
   }
 
-  const freeCreditProductId = getProductFreeMonthlyCreditId();
+  const freeCreditProductId = getProductFreeCreditId();
   const creditTypeId = getCreditTypeProgrammaticUsdId();
   const programmaticUsageProductId = getProductProgrammaticUsageId();
 
