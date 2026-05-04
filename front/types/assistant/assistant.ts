@@ -46,6 +46,13 @@ export function isSupportingResponseFormat(modelId: ModelIdType) {
   return model?.supportsResponseFormat;
 }
 
+export function isAnthropicModel(modelId: ModelIdType): boolean {
+  const model = SUPPORTED_MODEL_CONFIGS.find(
+    (config) => config.modelId === modelId
+  );
+  return model?.providerId === "anthropic";
+}
+
 /**
  * Global agent list (stored here to be imported from client-side)
  */

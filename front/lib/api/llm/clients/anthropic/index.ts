@@ -4,11 +4,16 @@ import type {
   MessageCreateParamsNonStreaming,
 } from "@anthropic-ai/sdk/resources";
 import type { BetaMessageStreamParams } from "@anthropic-ai/sdk/resources/beta/messages";
+import AnthropicVertex from "@anthropic-ai/vertex-sdk";
+
+const MESSAGE_CONVERSION_CONCURRENCY = 10;
+const BATCH_PAYLOAD_BUILD_CONCURRENCY = 10;
 
 import type { AnthropicWhitelistedModelId } from "@app/lib/api/llm/clients/anthropic/types";
 import {
   ANTHROPIC_PROVIDER_ID,
   overwriteLLMParameters,
+  VERTEX_MODEL_ID_MAP,
 } from "@app/lib/api/llm/clients/anthropic/types";
 import {
   toAutoThinkingConfig,
@@ -40,6 +45,7 @@ import type {
 } from "@app/lib/api/llm/types/options";
 import { normalizePrompt } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import assert from "assert";
 
 /**
@@ -95,12 +101,17 @@ function buildSystemBlocks(
   return system;
 }
 
-export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
+export class AnthropicLLM extends LLM<LLMStreamParameters> {
   private client: Anthropic;
+  private inferenceClient: Anthropic | AnthropicVertex;
   private omittedThinking: boolean;
+  private useVertex: boolean;
   constructor(
     auth: Authenticator,
-    llmParameters: LLMParameters & { modelId: AnthropicWhitelistedModelId }
+    llmParameters: LLMParameters & {
+      modelId: AnthropicWhitelistedModelId;
+      useVertex?: boolean;
+    }
   ) {
     const params = overwriteLLMParameters(llmParameters);
     super(auth, ANTHROPIC_PROVIDER_ID, params);
@@ -108,24 +119,36 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
     assert(ANTHROPIC_API_KEY, "ANTHROPIC_API_KEY credential is required");
     this.omittedThinking = params.omittedThinking ?? false;
 
+    this.useVertex = llmParameters.useVertex ?? false;
     this.client = new Anthropic({
       apiKey: ANTHROPIC_API_KEY,
     });
+
+    // Vertex does not support batches
+    this.inferenceClient = this.useVertex
+      ? // Routing everything to Europe first to check that Vertex works correctly.
+        new AnthropicVertex({
+          region: "europe-west1",
+        })
+      : this.client;
   }
 
-  private buildBaseRequestPayload({
+  private async buildBaseRequestPayload({
     conversation,
     hasConditionalJITTools,
     prompt,
     specifications,
     forceToolCall,
-    omittedThinking = this.omittedThinking,
-  }: LLMStreamParameters): MessageCreateParamsNonStreaming {
-    const messages = conversation.messages.map((msg, index, array) =>
-      toMessage(msg, {
-        isLast: index === array.length - 1,
-        omittedThinking: this.omittedThinking,
-      })
+  }: LLMStreamParameters): Promise<MessageCreateParamsNonStreaming> {
+    const messages = await concurrentExecutor(
+      conversation.messages,
+      (msg, index) =>
+        toMessage(msg, {
+          isLast: index === conversation.messages.length - 1,
+          omittedThinking: this.omittedThinking,
+          convertToBase64: this.useVertex,
+        }),
+      { concurrency: MESSAGE_CONVERSION_CONCURRENCY }
     );
 
     // Build thinking config, use custom type if specified.
@@ -159,21 +182,9 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
 
   protected buildStreamRequestPayload(
     streamParameters: LLMStreamParameters
-  ): BetaMessageStreamParams {
-    const basePayload = this.buildBaseRequestPayload(streamParameters);
-    const outputFormat = toOutputFormatParam(this.responseFormat);
-
-    const customBetas = this.modelConfig.customBetas;
-
-    return {
-      ...basePayload,
-      stream: true,
-      ...(customBetas && customBetas.length > 0 ? { betas: customBetas } : {}),
-      output_config: outputFormat
-        ? { ...basePayload.output_config, format: outputFormat }
-        : basePayload.output_config,
-      cache_control: { type: "ephemeral" },
-    };
+  ): LLMStreamParameters {
+    // Just capture the parameters; message conversion (async) happens in sendRequest.
+    return streamParameters;
   }
 
   private createCountTokensCallback() {
@@ -187,14 +198,41 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
     }
 
     return (body: MessageCountTokensParams) =>
-      this.client.messages.countTokens(body);
+      this.inferenceClient.messages.countTokens({
+        ...body,
+        model: this.getModel(),
+      });
+  }
+
+  private getModel(): string {
+    if (!this.useVertex) {
+      return this.modelId;
+    }
+
+    return VERTEX_MODEL_ID_MAP[this.modelId] ?? this.modelId;
   }
 
   protected async *sendRequest(
-    payload: BetaMessageStreamParams
+    streamParameters: LLMStreamParameters
   ): AsyncGenerator<LLMEvent> {
+    const betas = this.modelConfig.customBetas;
+
+    const basePayload = await this.buildBaseRequestPayload(streamParameters);
+    const outputFormat = toOutputFormatParam(this.responseFormat);
+
+    const payload: BetaMessageStreamParams = {
+      ...basePayload,
+      stream: true,
+      betas,
+      output_config: outputFormat
+        ? { ...basePayload.output_config, format: outputFormat }
+        : basePayload.output_config,
+      cache_control: { type: "ephemeral" },
+      model: this.getModel(),
+    };
+
     try {
-      const events = this.client.beta.messages.stream(payload);
+      const events = this.inferenceClient.beta.messages.stream(payload);
 
       yield* streamLLMEvents(
         events,
@@ -217,11 +255,13 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
   protected override async internalSendBatchProcessing(
     conversations: Map<string, LLMStreamParameters>
   ): Promise<string> {
-    const requests = Array.from(conversations.entries()).map(
-      ([customId, streamParams]) => ({
+    const requests = await concurrentExecutor(
+      Array.from(conversations.entries()),
+      async ([customId, streamParams]) => ({
         custom_id: customId,
-        params: this.buildBaseRequestPayload(streamParams),
-      })
+        params: await this.buildBaseRequestPayload(streamParams),
+      }),
+      { concurrency: BATCH_PAYLOAD_BUILD_CONCURRENCY }
     );
 
     const batch = await this.client.messages.batches.create({ requests });

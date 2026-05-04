@@ -4,8 +4,12 @@ import { ModelSelectionSubmenu } from "@app/components/agent_builder/instruction
 import { ReasoningEffortSubmenu } from "@app/components/agent_builder/instructions/ReasoningEffortSubmenu";
 import { SuspensedCodeEditor } from "@app/components/SuspensedCodeEditor";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useModels } from "@app/lib/swr/models";
-import { isSupportingResponseFormat } from "@app/types/assistant/assistant";
+import {
+  isAnthropicModel,
+  isSupportingResponseFormat,
+} from "@app/types/assistant/assistant";
 import { validateResponseFormat } from "@app/types/assistant/models/utils";
 import {
   Button,
@@ -57,6 +61,7 @@ export function AdvancedSettings() {
   const { isDark } = useTheme();
   const { owner } = useAgentBuilderContext();
   const { models } = useModels({ owner });
+  const { hasFeature } = useFeatureFlags();
   const { field: modelSettingsField } = useController<
     AgentBuilderFormData,
     "generationSettings.modelSettings"
@@ -82,9 +87,15 @@ export function AdvancedSettings() {
   const currentValue = tempResponseFormat ?? responseFormatField.value ?? "";
   const validationError = getResponseFormatError(currentValue);
 
-  const supportsResponseFormat = isSupportingResponseFormat(
-    modelSettingsField.value.modelId
-  );
+  const modelId = modelSettingsField.value.modelId;
+  // Vertex AI does not support structured outputs — hide the option when the
+  // workspace is routed through Vertex and the selected model runs on Vertex.
+  const supportsResponseFormat =
+    isSupportingResponseFormat(modelId) &&
+    !(
+      hasFeature("use_vertex_for_anthropic_models") && isAnthropicModel(modelId)
+    );
+
   return (
     <>
       <DropdownMenu>
