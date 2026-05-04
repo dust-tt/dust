@@ -14,7 +14,7 @@ export function uriToSlug(uri: string): string {
 
 /**
  * Builds a tool output filename. The timestamp prefix is mandatory so that files are naturally
- * ordered when listing the tool_outputs/ folder and are never silently overwritten across runs.
+ * ordered when listing the results/ folder and are never silently overwritten across runs.
  */
 export function makeFileName({
   ext,

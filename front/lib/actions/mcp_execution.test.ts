@@ -227,7 +227,7 @@ describe("processToolResults", () => {
     }
   });
 
-  it("should persist DATA_SOURCE_NODE_CONTENT block to tool_outputs/", async () => {
+  it("should persist DATA_SOURCE_NODE_CONTENT block to results/", async () => {
     const { auth, conversation, action, toolConfiguration } = await setupTest();
     await FeatureFlagFactory.basic(auth, "sandbox_tools");
 
@@ -272,18 +272,18 @@ describe("processToolResults", () => {
       );
 
     const toolOutputWrite = uploadCalls.find((call) =>
-      call[0].filePath.includes("tool_outputs/")
+      call[0].filePath.includes("results/")
     );
     expect(toolOutputWrite).toBeDefined();
     expect(toolOutputWrite?.[0].filePath).toMatch(
-      /tool_outputs\/\d+_my_notion_page\.md$/
+      /results\/\d+_my_notion_page\.md$/
     );
     expect(toolOutputWrite?.[0].content).toBe(
       "# My Notion Page\n\nSome content here."
     );
   });
 
-  it("should persist large plain text block to tool_outputs/ as .txt", async () => {
+  it("should persist large plain text block to results/ as .txt", async () => {
     const { auth, conversation, action, toolConfiguration } = await setupTest();
     await FeatureFlagFactory.basic(auth, "sandbox_tools");
 
@@ -308,15 +308,15 @@ describe("processToolResults", () => {
       );
 
     const toolOutputWrite = uploadCalls.find((call) =>
-      call[0].filePath.includes("tool_outputs/")
+      call[0].filePath.includes("results/")
     );
     expect(toolOutputWrite).toBeDefined();
     expect(toolOutputWrite?.[0].filePath).toMatch(
-      /tool_outputs\/\d+_test_server\.txt$/
+      /results\/\d+_test_server\.txt$/
     );
   });
 
-  it("should persist large JSON text block to tool_outputs/ as .json", async () => {
+  it("should persist large JSON text block to results/ as .json", async () => {
     const { auth, conversation, action, toolConfiguration } = await setupTest();
     await FeatureFlagFactory.basic(auth, "sandbox_tools");
 
@@ -343,11 +343,11 @@ describe("processToolResults", () => {
       );
 
     const toolOutputWrite = uploadCalls.find((call) =>
-      call[0].filePath.includes("tool_outputs/")
+      call[0].filePath.includes("results/")
     );
     expect(toolOutputWrite).toBeDefined();
     expect(toolOutputWrite?.[0].filePath).toMatch(
-      /tool_outputs\/\d+_test_server\.json$/
+      /results\/\d+_test_server\.json$/
     );
   });
 });
