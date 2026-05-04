@@ -8,7 +8,6 @@ import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_act
 import { validateToolInputs } from "@app/lib/actions/mcp_utils";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import { getApprovalArgsLabel } from "@app/lib/actions/tool_approval_labels";
-import type { ToolInputContext } from "@app/lib/actions/tool_status";
 import { getExecutionStatusFromConfig } from "@app/lib/actions/tool_status";
 import type { StepContext } from "@app/lib/actions/types";
 import type { MCPToolRetryPolicyType } from "@app/lib/api/mcp";
@@ -159,18 +158,14 @@ async function createActionForTool(
   const argumentsRequiringApproval =
     actionConfiguration.argumentsRequiringApproval ?? [];
 
-  // Build context for medium stake per-argument approval checks
-  const mediumStakeContext: ToolInputContext = {
-    agentId: agentConfiguration.sId,
-    toolInputs: rawInputs,
-  };
-
-  const { status } = await getExecutionStatusFromConfig(
-    auth,
+  const { status } = await getExecutionStatusFromConfig(auth, {
     actionConfiguration,
     agentMessage,
-    mediumStakeContext
-  );
+    context: {
+      agentId: agentConfiguration.sId,
+      toolInputs: rawInputs,
+    },
+  });
 
   const validateToolInputsResult = validateToolInputs(rawInputs);
   if (validateToolInputsResult.isErr()) {

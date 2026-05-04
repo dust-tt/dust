@@ -10,11 +10,22 @@ export interface ToolInputContext {
   toolInputs: Record<string, unknown>;
 }
 
+type StakeCheckConfiguration = Pick<
+  MCPToolConfigurationType,
+  "permission" | "toolServerId" | "name" | "argumentsRequiringApproval"
+>;
+
 export async function getExecutionStatusFromConfig(
   auth: Authenticator,
-  actionConfiguration: MCPToolConfigurationType,
-  agentMessage: AgentMessageType,
-  context?: ToolInputContext
+  {
+    actionConfiguration,
+    agentMessage,
+    context,
+  }: {
+    actionConfiguration: StakeCheckConfiguration;
+    agentMessage: AgentMessageType;
+    context?: ToolInputContext;
+  }
 ): Promise<{
   stake?: MCPToolStakeLevelType;
   status: "ready_allowed_implicitly" | "blocked_validation_required";
