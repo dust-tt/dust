@@ -10,6 +10,7 @@ import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import {
   deleteCreditFromVoidedInvoice,
+  startCreditFromEnterpriseOneOffInvoice,
   startCreditFromProOneOffInvoice,
   voidFailedProCreditPurchaseInvoice,
 } from "@app/lib/credits/committed";
@@ -511,6 +512,10 @@ async function handler(
             isCreditPurchaseInvoice(invoice) &&
             !isEnterpriseSubscription(stripeSubscription);
 
+          const isEnterpriseCreditPurchaseInvoice =
+            isCreditPurchaseInvoice(invoice) &&
+            isEnterpriseSubscription(stripeSubscription);
+
           const workspace = await WorkspaceResource.fetchByModelId(
             subscription.workspaceId
           );
@@ -535,6 +540,24 @@ async function handler(
                   stripeSubscriptionId: invoice.subscription,
                 },
                 "[Stripe Webhook] Error processing credit purchase"
+              );
+            }
+          } else if (isEnterpriseCreditPurchaseInvoice) {
+            const creditPurchaseResult =
+              await startCreditFromEnterpriseOneOffInvoice({
+                auth,
+                invoice,
+                stripeSubscription,
+              });
+
+            if (creditPurchaseResult.isErr()) {
+              logger.error(
+                {
+                  error: creditPurchaseResult.error,
+                  invoiceId: invoice.id,
+                  stripeSubscriptionId: invoice.subscription,
+                },
+                "[Stripe Webhook] Error processing enterprise credit purchase"
               );
             }
           } else if (!isCreditPurchaseInvoice(invoice)) {

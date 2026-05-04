@@ -3,6 +3,7 @@ import {
   createEnterpriseCreditPurchase,
   createProCreditPurchase,
   deleteCreditFromVoidedInvoice,
+  startCreditFromEnterpriseOneOffInvoice,
   startCreditFromProOneOffInvoice,
   voidFailedProCreditPurchaseInvoice,
 } from "@app/lib/credits/committed";
@@ -182,6 +183,158 @@ describe("startCreditFromProOneOffInvoice", () => {
     });
 
     expect(result.isOk()).toBe(true);
+    const credits = await CreditResource.listAll(auth);
+    expect(credits[0].startDate).not.toBeNull();
+  });
+});
+
+describe("startCreditFromEnterpriseOneOffInvoice", () => {
+  let auth: Authenticator;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    auth = authenticator;
+  });
+
+  it("should throw when invoice is not a credit purchase invoice", async () => {
+    vi.mocked(isCreditPurchaseInvoice).mockReturnValue(false);
+    vi.mocked(isEnterpriseSubscription).mockReturnValue(true);
+
+    const invoice = makeCreditPurchaseInvoice();
+    const subscription = makeProSubscription();
+
+    await expect(
+      startCreditFromEnterpriseOneOffInvoice({
+        auth,
+        invoice,
+        stripeSubscription: subscription,
+      })
+    ).rejects.toThrow(
+      "Cannot process this invoice for enterprise credit purchase"
+    );
+  });
+
+  it("should throw when subscription is not enterprise", async () => {
+    vi.mocked(isCreditPurchaseInvoice).mockReturnValue(true);
+    vi.mocked(isEnterpriseSubscription).mockReturnValue(false);
+
+    const invoice = makeCreditPurchaseInvoice();
+    const subscription = makeProSubscription();
+
+    await expect(
+      startCreditFromEnterpriseOneOffInvoice({
+        auth,
+        invoice,
+        stripeSubscription: subscription,
+      })
+    ).rejects.toThrow(
+      "Cannot process this invoice for enterprise credit purchase"
+    );
+  });
+
+  it("should return error when credit amount metadata is invalid", async () => {
+    vi.mocked(isCreditPurchaseInvoice).mockReturnValue(true);
+    vi.mocked(isEnterpriseSubscription).mockReturnValue(true);
+    vi.mocked(getCreditAmountFromInvoice).mockReturnValue(null);
+
+    const invoice = makeCreditPurchaseInvoice();
+    const subscription = makeProSubscription();
+
+    const result = await startCreditFromEnterpriseOneOffInvoice({
+      auth,
+      invoice,
+      stripeSubscription: subscription,
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toBe(
+        "Invalid credit amount in invoice metadata"
+      );
+    }
+  });
+
+  it("should return error when credit not found for invoice", async () => {
+    vi.mocked(isCreditPurchaseInvoice).mockReturnValue(true);
+    vi.mocked(isEnterpriseSubscription).mockReturnValue(true);
+    vi.mocked(getCreditAmountFromInvoice).mockReturnValue(10000);
+
+    const invoice = makeCreditPurchaseInvoice();
+    const subscription = makeProSubscription();
+
+    const result = await startCreditFromEnterpriseOneOffInvoice({
+      auth,
+      invoice,
+      stripeSubscription: subscription,
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toBe("Credit not found for invoice");
+    }
+  });
+
+  it("should be idempotent and return alreadyStarted:true when credit was started optimistically", async () => {
+    vi.mocked(isCreditPurchaseInvoice).mockReturnValue(true);
+    vi.mocked(isEnterpriseSubscription).mockReturnValue(true);
+    vi.mocked(getCreditAmountFromInvoice).mockReturnValue(10000);
+
+    const invoice = makeCreditPurchaseInvoice();
+    const subscription = makeProSubscription();
+
+    const credit = await CreditResource.makeNew(auth, {
+      type: "committed",
+      initialAmountMicroUsd: 100_000_000,
+      consumedAmountMicroUsd: 0,
+      invoiceOrLineItemId: invoice.id,
+    });
+    const optimisticStart = await credit.start(auth);
+    expect(optimisticStart.isOk()).toBe(true);
+    const startedAtBefore = optimisticStart.isOk()
+      ? optimisticStart.value.startDate
+      : null;
+
+    const result = await startCreditFromEnterpriseOneOffInvoice({
+      auth,
+      invoice,
+      stripeSubscription: subscription,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.alreadyStarted).toBe(true);
+    }
+    const credits = await CreditResource.listAll(auth);
+    expect(credits[0].startDate?.getTime()).toBe(startedAtBefore?.getTime());
+  });
+
+  it("should start credit and return alreadyStarted:false when credit was not started optimistically", async () => {
+    vi.mocked(isCreditPurchaseInvoice).mockReturnValue(true);
+    vi.mocked(isEnterpriseSubscription).mockReturnValue(true);
+    vi.mocked(getCreditAmountFromInvoice).mockReturnValue(10000);
+
+    const invoice = makeCreditPurchaseInvoice();
+    const subscription = makeProSubscription();
+
+    await CreditResource.makeNew(auth, {
+      type: "committed",
+      initialAmountMicroUsd: 100_000_000,
+      consumedAmountMicroUsd: 0,
+      invoiceOrLineItemId: invoice.id,
+    });
+
+    const result = await startCreditFromEnterpriseOneOffInvoice({
+      auth,
+      invoice,
+      stripeSubscription: subscription,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.alreadyStarted).toBe(false);
+    }
     const credits = await CreditResource.listAll(auth);
     expect(credits[0].startDate).not.toBeNull();
   });
