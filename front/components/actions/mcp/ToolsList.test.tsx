@@ -4,8 +4,8 @@ import {
   type MCPServerFormValues,
 } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
 import { ToolsList } from "@app/components/actions/mcp/ToolsList";
-import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
+import { MCPServerViewTypeFactory } from "@app/tests/utils/MCPServerViewTypeFactory";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { FormProvider, type UseFormReturn, useForm } from "react-hook-form";
@@ -52,28 +52,8 @@ const TOOL_NAME_WITH_UNDERSCORE = "get_messages";
 
 const owner = LightWorkspaceFactory.build();
 
-const mcpServerView = {
-  id: 1,
-  sId: "msv_1",
-  name: "Test Server",
-  description: "Test server description",
-  spaceId: "sp_1",
-  serverType: "remote",
-  oAuthUseCase: null,
-  editedByUser: null,
-  createdAt: 0,
-  updatedAt: 0,
-  toolsMetadata: undefined,
+const mcpServerView = MCPServerViewTypeFactory.build({
   server: {
-    sId: "rms_1",
-    name: "test-server",
-    version: "1.0.0",
-    description: "Test server description",
-    icon: "ToolsIcon",
-    authorization: null,
-    availability: "manual",
-    allowMultipleInstances: true,
-    documentationUrl: null,
     tools: [
       {
         name: TOOL_NAME_WITH_DOT,
@@ -81,12 +61,10 @@ const mcpServerView = {
       },
     ],
   },
-} satisfies MCPServerViewType;
+});
 
-const readOnlyMcpServerView = {
-  ...mcpServerView,
+const readOnlyMcpServerView = MCPServerViewTypeFactory.build({
   server: {
-    ...mcpServerView.server,
     tools: [
       {
         name: TOOL_NAME_WITH_UNDERSCORE,
@@ -94,7 +72,7 @@ const readOnlyMcpServerView = {
       },
     ],
   },
-} satisfies MCPServerViewType;
+});
 
 function renderToolsList() {
   let form!: UseFormReturn<MCPServerFormValues>;
