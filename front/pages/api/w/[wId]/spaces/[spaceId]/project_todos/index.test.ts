@@ -159,6 +159,61 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/project_todos", () => {
     expect(texts).not.toContain("Other user's done");
   });
 
+  it("should still return pending agent suggestion todos completed before lastCleanedAt", async () => {
+    const { user, auth } = await setup();
+    const project = await SpaceFactory.project(workspace, user.id);
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+
+    const cutoff = new Date();
+    const beforeCutoff = new Date(cutoff.getTime() - 60_000);
+
+    const pendingDone = await ProjectTodoFactory.create(workspace, project, {
+      userId: user.id,
+      text: "Pending approval but done before clean",
+    });
+    await pendingDone.updateWithVersion(adminAuth, {
+      status: "done",
+      doneAt: beforeCutoff,
+      markedAsDoneByType: "user",
+      markedAsDoneByUserId: user.id,
+      markedAsDoneByAgentConfigurationId: null,
+      agentSuggestionStatus: "pending",
+    });
+
+    const normallyHiddenDone = await ProjectTodoFactory.create(
+      workspace,
+      project,
+      {
+        userId: user.id,
+        text: "Plain old done before clean",
+      }
+    );
+    await normallyHiddenDone.updateWithVersion(adminAuth, {
+      status: "done",
+      doneAt: beforeCutoff,
+      markedAsDoneByType: "user",
+      markedAsDoneByUserId: user.id,
+      markedAsDoneByAgentConfigurationId: null,
+    });
+
+    await ProjectTodoStateResource.upsertLastCleanedAtBySpace(auth, {
+      spaceId: project.id,
+      lastCleanedAt: cutoff,
+    });
+
+    req.query.spaceId = project.sId;
+    req.query.assignee = "all";
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const texts = res._getJSONData().todos.map((t: { text: string }) => t.text);
+
+    expect(texts).toContain("Pending approval but done before clean");
+    expect(texts).not.toContain("Plain old done before clean");
+  });
+
   it("should return 400 for non-project spaces", async () => {
     const { user } = await setup();
     const adminAuth = await Authenticator.internalAdminForWorkspace(
