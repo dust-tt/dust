@@ -170,26 +170,23 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
 
     const capabilityItems = useMemo<SlashCommand[]>(
       () =>
-        filteredCapabilities.flatMap((capability): SlashCommand[] => {
+        filteredCapabilities.flatMap((capability) => {
           switch (capability.kind) {
-            case "skill": {
-              const description = capability.skill.userFacingDescription;
-
+            case "skill":
               return [
                 {
                   action: "select-skill",
-                  description,
+                  description: capability.skill.userFacingDescription,
                   icon: getSkillAvatarIcon(capability.skill.icon),
                   id: capability.skill.sId,
                   label: capability.skill.name,
-                  tooltip: description
+                  tooltip: capability.skill.userFacingDescription
                     ? {
-                        description,
+                        description: capability.skill.userFacingDescription,
                       }
                     : undefined,
                 },
               ];
-            }
             case "tool": {
               const description = getMcpServerViewDescription(
                 capability.serverView
