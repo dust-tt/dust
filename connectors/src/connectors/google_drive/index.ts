@@ -39,6 +39,7 @@ import type {
 import {
   BaseConnectorManager,
   ConnectorManagerError,
+  ContentNodeNotFoundError,
 } from "@connectors/connectors/interface";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
@@ -731,7 +732,9 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
 
       if (!driveObject) {
         return new Err(
-          new Error(`Drive object not found with id ${internalId}`)
+          new ContentNodeNotFoundError(
+            `Drive object not found with id ${internalId}`
+          )
         );
       }
 
