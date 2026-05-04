@@ -343,6 +343,10 @@ const PRODUCTS: ProductDef[] = [
     name: "PAYG Overage",
     type: "FIXED",
   },
+  {
+    name: "Seat Subscription Credits",
+    type: "FIXED",
+  },
 ];
 
 // MAU tier rate definitions for enterprise rate cards.
