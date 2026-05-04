@@ -1,5 +1,6 @@
 import type { EditableTodoItemProps } from "@app/components/assistant/conversation/space/conversations/project_todos/EditableTodoItem";
 import { EditableTodoItem } from "@app/components/assistant/conversation/space/conversations/project_todos/EditableTodoItem";
+import { SuggestedTodoItem } from "@app/components/assistant/conversation/space/conversations/project_todos/SuggestedTodoItem";
 import { TodoAssigneeHeader } from "@app/components/assistant/conversation/space/conversations/project_todos/TodoSubComponents";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
@@ -284,28 +285,40 @@ export function ProjectTodosDataTable({
           const todo = original.todo;
           return (
             <div className="py-0.5 pl-4 pr-0">
-              <EditableTodoItem
-                todo={todo}
-                viewerUserId={viewerUserId}
-                onToggleDone={onToggleDone}
-                onDelete={onDelete}
-                onApproveAgentSuggestion={onApproveAgentSuggestion}
-                onRejectAgentSuggestion={onRejectAgentSuggestion}
-                onStartWorking={onStartWorking}
-                owner={owner}
-                activeAgents={activeAgents}
-                agentsLoading={agentsLoading}
-                agentNameById={agentNameById}
-                isExiting={pendingRemovalIds.has(todo.sId)}
-                isNew={newItemKeys.has(todo.sId)}
-                isNewlyDone={doneFlashKeys.has(todo.sId)}
-                isStarting={startingTodoIds.has(todo.sId)}
-                isReadOnly={isReadOnly}
-                isFirstOnboardingTodo={todo.sId === firstOnboardingTodoId}
-                projectMembers={projectMembers}
-                membersWithActiveTodoIds={membersWithActiveTodoIds}
-                onPatchTodo={onPatchTodo}
-              />
+              {variant === "suggested" ? (
+                <SuggestedTodoItem
+                  todo={todo}
+                  viewerUserId={viewerUserId}
+                  onApproveAgentSuggestion={onApproveAgentSuggestion}
+                  onRejectAgentSuggestion={onRejectAgentSuggestion}
+                  owner={owner}
+                  agentNameById={agentNameById}
+                  isExiting={pendingRemovalIds.has(todo.sId)}
+                  isNew={newItemKeys.has(todo.sId)}
+                  isReadOnly={isReadOnly}
+                />
+              ) : (
+                <EditableTodoItem
+                  todo={todo}
+                  viewerUserId={viewerUserId}
+                  onToggleDone={onToggleDone}
+                  onDelete={onDelete}
+                  onStartWorking={onStartWorking}
+                  owner={owner}
+                  activeAgents={activeAgents}
+                  agentsLoading={agentsLoading}
+                  agentNameById={agentNameById}
+                  isExiting={pendingRemovalIds.has(todo.sId)}
+                  isNew={newItemKeys.has(todo.sId)}
+                  isNewlyDone={doneFlashKeys.has(todo.sId)}
+                  isStarting={startingTodoIds.has(todo.sId)}
+                  isReadOnly={isReadOnly}
+                  isFirstOnboardingTodo={todo.sId === firstOnboardingTodoId}
+                  projectMembers={projectMembers}
+                  membersWithActiveTodoIds={membersWithActiveTodoIds}
+                  onPatchTodo={onPatchTodo}
+                />
+              )}
             </div>
           );
         },

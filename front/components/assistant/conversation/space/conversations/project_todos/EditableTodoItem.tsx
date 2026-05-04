@@ -44,13 +44,11 @@ import {
   MoreIcon,
   PlayIcon,
   RobotIcon,
-  SparklesIcon,
   TextArea,
   Tooltip,
   TrashIcon,
   TypingAnimation,
   UserIcon,
-  XMarkIcon,
 } from "@dust-tt/sparkle";
 import type React from "react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -60,8 +58,6 @@ export interface EditableTodoItemProps {
   viewerUserId: string | null;
   onToggleDone: (todo: ProjectTodoType) => void;
   onDelete: (todo: ProjectTodoType) => void | Promise<void>;
-  onApproveAgentSuggestion: (todo: ProjectTodoType) => void | Promise<void>;
-  onRejectAgentSuggestion: (todo: ProjectTodoType) => void | Promise<void>;
   onStartWorking: (
     todo: ProjectTodoType,
     options?: {
@@ -93,8 +89,6 @@ export const EditableTodoItem = memo(function EditableTodoItem({
   viewerUserId,
   onToggleDone,
   onDelete,
-  onApproveAgentSuggestion,
-  onRejectAgentSuggestion,
   onStartWorking,
   owner,
   activeAgents,
@@ -126,9 +120,8 @@ export const EditableTodoItem = memo(function EditableTodoItem({
   const conversationDotStatus: ConversationDotStatus =
     todo.conversationSidebarStatus ?? "idle";
   const isDoneWithoutConversation = isDone && !hasConversationLink;
-  const isPendingApproval = todo.agentSuggestionStatus === "pending";
   const canAct = viewerUserId !== null && !isReadOnly;
-  const canEdit = canAct && !isPendingApproval;
+  const canEdit = canAct;
   const showInProgressTextAnimation = todo.status === "in_progress";
   const [isFlashing, setIsFlashing] = useState(isNewlyDone);
   const [showSavedPulse, setShowSavedPulse] = useState(false);
@@ -136,9 +129,6 @@ export const EditableTodoItem = memo(function EditableTodoItem({
   const [draftText, setDraftText] = useState(todo.text);
   const [overflowMenuOpen, setOverflowMenuOpen] = useState(false);
   const [reassignSearch, setReassignSearch] = useState("");
-  const [pendingSuggestionAction, setPendingSuggestionAction] = useState<
-    "approve" | "reject" | null
-  >(null);
   const editInputRef = useRef<HTMLTextAreaElement>(null);
   const blurCommitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isCommittingRef = useRef(false);
@@ -329,19 +319,13 @@ export const EditableTodoItem = memo(function EditableTodoItem({
       )}
     >
       <div className="mt-0.5 shrink-0">
-        {isPendingApproval ? (
-          <span className="flex size-4 items-center justify-center text-muted-foreground dark:text-muted-foreground-night">
-            <SparklesIcon className="h-3.5 w-3.5" />
-          </span>
-        ) : (
-          <Checkbox
-            size="xs"
-            checked={isDone}
-            disabled={!canEdit}
-            isMutedAfterCheck
-            onCheckedChange={() => handleToggle()}
-          />
-        )}
+        <Checkbox
+          size="xs"
+          checked={isDone}
+          disabled={!canEdit}
+          isMutedAfterCheck
+          onCheckedChange={() => handleToggle()}
+        />
       </div>
       <div className="flex min-w-0 flex-1 items-start gap-2">
         {isEditing ? (
@@ -451,12 +435,6 @@ export const EditableTodoItem = memo(function EditableTodoItem({
                 </span>
               </TodoMetadataTooltip>
             </div>
-            {isPendingApproval && !showTypingAnimation && (
-              <p className="min-w-0 text-pretty text-xs leading-relaxed text-muted-foreground dark:text-muted-foreground-night">
-                {todo.actorRationale?.trim() ||
-                  "Suggested from your project takeaways."}
-              </p>
-            )}
             {!showTypingAnimation && (
               <div>
                 <TodoSources
@@ -469,317 +447,264 @@ export const EditableTodoItem = memo(function EditableTodoItem({
           </div>
         )}
         <div className="mt-0.5 flex shrink-0 items-center gap-1">
-          {isPendingApproval && canAct && !isEditing ? (
+          {hasConversationLink && (
+            <Tooltip
+              label="Open to-do conversation"
+              trigger={
+                <span className="relative inline-flex shrink-0">
+                  <Button
+                    icon={ChatBubbleLeftRightIcon}
+                    size="xs"
+                    variant="outline"
+                    onClick={() => {
+                      if (!todo.conversationId) {
+                        return;
+                      }
+                      void router.push(
+                        getConversationRoute(owner.sId, todo.conversationId),
+                        undefined,
+                        { shallow: true }
+                      );
+                    }}
+                  />
+                  <ConversationSidebarStatusDot
+                    status={conversationDotStatus}
+                    className="pointer-events-none absolute -right-0.5 -top-0.5 m-0 ring-2 ring-background dark:ring-background-night"
+                  />
+                </span>
+              }
+            />
+          )}
+          {!hasConversationLink && canEdit && (
             <div
               className={cn(
-                "flex items-center gap-1 transition-opacity",
-                "opacity-100 md:opacity-0 md:group-hover/todo:opacity-100 md:focus-within:opacity-100"
+                "flex shrink-0 items-center gap-1 transition-opacity",
+                startMenuKeepsActionsVisible
+                  ? "opacity-100"
+                  : "opacity-100 md:opacity-0 md:group-hover/todo:opacity-100 md:focus-within:opacity-100"
               )}
             >
-              <Button
-                icon={CheckIcon}
-                size="xmini"
-                variant="outline"
-                tooltip="Keep this suggestion"
-                isLoading={pendingSuggestionAction === "approve"}
-                disabled={pendingSuggestionAction !== null}
-                className="text-success-500 hover:text-success-600 dark:text-success-500-night dark:hover:text-success-600-night"
-                onClick={async (e) => {
-                  e.stopPropagation();
-                  setPendingSuggestionAction("approve");
-                  try {
-                    await onApproveAgentSuggestion(todo);
-                  } finally {
-                    setPendingSuggestionAction(null);
-                  }
-                }}
-              />
-              <Button
-                icon={XMarkIcon}
-                size="xmini"
-                variant="outline"
-                tooltip="Reject suggestion"
-                isLoading={pendingSuggestionAction === "reject"}
-                disabled={pendingSuggestionAction !== null}
-                className="text-warning-500 hover:text-warning-600 dark:text-warning-500-night dark:hover:text-warning-600-night"
-                onClick={async (e) => {
-                  e.stopPropagation();
-                  setPendingSuggestionAction("reject");
-                  try {
-                    await onRejectAgentSuggestion(todo);
-                  } finally {
-                    setPendingSuggestionAction(null);
-                  }
-                }}
-              />
-            </div>
-          ) : (
-            <>
-              {hasConversationLink && (
+              {isDoneWithoutConversation ? (
                 <Tooltip
-                  label="Open to-do conversation"
+                  label="Reopen this to-do before starting work."
                   trigger={
-                    <span className="relative inline-flex shrink-0">
-                      <Button
-                        icon={ChatBubbleLeftRightIcon}
-                        size="xs"
-                        variant="outline"
-                        onClick={() => {
-                          if (!todo.conversationId) {
-                            return;
-                          }
-                          void router.push(
-                            getConversationRoute(
-                              owner.sId,
-                              todo.conversationId
-                            ),
-                            undefined,
-                            { shallow: true }
-                          );
-                        }}
-                      />
-                      <ConversationSidebarStatusDot
-                        status={conversationDotStatus}
-                        className="pointer-events-none absolute -right-0.5 -top-0.5 m-0 ring-2 ring-background dark:ring-background-night"
-                      />
-                    </span>
+                    <Button
+                      icon={PlayIcon}
+                      size="xs"
+                      variant="outline"
+                      disabled
+                    />
                   }
                 />
-              )}
-              {!hasConversationLink && canEdit && (
-                <div
-                  className={cn(
-                    "flex shrink-0 items-center gap-1 transition-opacity",
-                    startMenuKeepsActionsVisible
-                      ? "opacity-100"
-                      : "opacity-100 md:opacity-0 md:group-hover/todo:opacity-100 md:focus-within:opacity-100"
-                  )}
+              ) : (
+                <DropdownMenu
+                  modal={false}
+                  open={startMenuOpen}
+                  onOpenChange={handleStartMenuOpenChange}
                 >
-                  {isDoneWithoutConversation ? (
-                    <Tooltip
-                      label="Reopen this to-do before starting work."
-                      trigger={
-                        <Button
-                          icon={PlayIcon}
-                          size="xs"
-                          variant="outline"
-                          disabled
-                        />
-                      }
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      icon={PlayIcon}
+                      size="xs"
+                      variant="outline"
+                      isLoading={isStarting}
+                      disabled={isStarting}
+                      isPulsing={isFirstOnboardingTodo && !startMenuOpen}
+                      tooltip="Start working on to-do"
                     />
-                  ) : (
-                    <DropdownMenu
-                      modal={false}
-                      open={startMenuOpen}
-                      onOpenChange={handleStartMenuOpenChange}
-                    >
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          icon={PlayIcon}
-                          size="xs"
-                          variant="outline"
-                          isLoading={isStarting}
-                          disabled={isStarting}
-                          isPulsing={isFirstOnboardingTodo && !startMenuOpen}
-                          tooltip="Start working on to-do"
-                        />
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-96">
-                        <div className="flex flex-col gap-3 p-3">
-                          <TextArea
-                            id={`todo-start-msg-${todo.sId}`}
-                            aria-label="Additional instructions for the agent"
-                            placeholder="(optional) Add a custom message for the agent..."
-                            value={startCustomMessage}
-                            rows={4}
-                            onChange={(
-                              event: React.ChangeEvent<HTMLTextAreaElement>
-                            ) => setStartCustomMessage(event.target.value)}
-                          />
-                          <div className="flex items-end justify-between gap-2">
-                            <div className="min-w-0 flex-1">
-                              <AgentPicker
-                                owner={owner}
-                                agents={activeAgents}
-                                disabled={agentsLoading}
-                                isLoading={agentsLoading}
-                                mountPortal
-                                showDropdownArrow
-                                showFooterButtons={false}
-                                side="bottom"
-                                size="xs"
-                                onItemClick={(agent) =>
-                                  setSelectedStartAgent(agent)
-                                }
-                                pickerButton={
-                                  <Button
-                                    variant="ghost-secondary"
-                                    size="xs"
-                                    isSelect
-                                    icon={
-                                      selectedStartAgent
-                                        ? () => (
-                                            <Avatar
-                                              size="xxs"
-                                              visual={
-                                                selectedStartAgent.pictureUrl
-                                              }
-                                            />
-                                          )
-                                        : RobotIcon
-                                    }
-                                    label={selectedStartAgent?.name ?? "Agent"}
-                                    className="max-w-full min-w-0"
-                                  />
-                                }
-                              />
-                            </div>
-                            <ButtonGroup className="shrink-0">
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-96">
+                    <div className="flex flex-col gap-3 p-3">
+                      <TextArea
+                        id={`todo-start-msg-${todo.sId}`}
+                        aria-label="Additional instructions for the agent"
+                        placeholder="(optional) Add a custom message for the agent..."
+                        value={startCustomMessage}
+                        rows={4}
+                        onChange={(
+                          event: React.ChangeEvent<HTMLTextAreaElement>
+                        ) => setStartCustomMessage(event.target.value)}
+                      />
+                      <div className="flex items-end justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <AgentPicker
+                            owner={owner}
+                            agents={activeAgents}
+                            disabled={agentsLoading}
+                            isLoading={agentsLoading}
+                            mountPortal
+                            showDropdownArrow
+                            showFooterButtons={false}
+                            side="bottom"
+                            size="xs"
+                            onItemClick={(agent) =>
+                              setSelectedStartAgent(agent)
+                            }
+                            pickerButton={
                               <Button
-                                label="Start working"
+                                variant="ghost-secondary"
+                                size="xs"
+                                isSelect
+                                icon={
+                                  selectedStartAgent
+                                    ? () => (
+                                        <Avatar
+                                          size="xxs"
+                                          visual={selectedStartAgent.pictureUrl}
+                                        />
+                                      )
+                                    : RobotIcon
+                                }
+                                label={selectedStartAgent?.name ?? "Agent"}
+                                className="max-w-full min-w-0"
+                              />
+                            }
+                          />
+                        </div>
+                        <ButtonGroup className="shrink-0">
+                          <Button
+                            label="Start working"
+                            variant="outline"
+                            size="sm"
+                            className={isFirstOnboardingTodo ? "z-10" : ""}
+                            isLoading={isStarting}
+                            isPulsing={isFirstOnboardingTodo}
+                            disabled={isStarting || !selectedStartAgent}
+                            onClick={() => void handleConfirmStart()}
+                          />
+                          <ButtonGroupDropdown
+                            align="end"
+                            items={startRedirectMenuItems}
+                            trigger={
+                              <Button
                                 variant="outline"
                                 size="sm"
-                                className={isFirstOnboardingTodo ? "z-10" : ""}
-                                isLoading={isStarting}
-                                isPulsing={isFirstOnboardingTodo}
+                                icon={ChevronDownIcon}
                                 disabled={isStarting || !selectedStartAgent}
-                                onClick={() => void handleConfirmStart()}
+                                aria-label="After start: open conversation or stay on to-dos"
                               />
-                              <ButtonGroupDropdown
-                                align="end"
-                                items={startRedirectMenuItems}
-                                trigger={
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    icon={ChevronDownIcon}
-                                    disabled={isStarting || !selectedStartAgent}
-                                    aria-label="After start: open conversation or stay on to-dos"
-                                  />
-                                }
-                              />
-                            </ButtonGroup>
-                          </div>
-                        </div>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
-                </div>
+                            }
+                          />
+                        </ButtonGroup>
+                      </div>
+                    </div>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
-              {canEdit && (
-                <div
-                  className={cn(
-                    "transition-opacity",
-                    overflowMenuOpen
-                      ? "opacity-100"
-                      : "md:opacity-0 md:group-hover/todo:opacity-100 md:focus-within:opacity-100"
-                  )}
+            </div>
+          )}
+          {canEdit && (
+            <div
+              className={cn(
+                "transition-opacity",
+                overflowMenuOpen
+                  ? "opacity-100"
+                  : "md:opacity-0 md:group-hover/todo:opacity-100 md:focus-within:opacity-100"
+              )}
+            >
+              <DropdownMenu
+                modal={false}
+                open={overflowMenuOpen}
+                onOpenChange={(open) => {
+                  setOverflowMenuOpen(open);
+                  if (open) {
+                    setReassignSearch("");
+                  }
+                }}
+              >
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    aria-label="To-do actions"
+                    icon={MoreIcon}
+                    size="xs"
+                    variant="ghost"
+                    onClick={(e: React.MouseEvent) => {
+                      e.stopPropagation();
+                    }}
+                  />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="end"
+                  className="z-[1000] w-56 shadow-2xl ring-1 ring-border/60"
                 >
-                  <DropdownMenu
-                    modal={false}
-                    open={overflowMenuOpen}
-                    onOpenChange={(open) => {
-                      setOverflowMenuOpen(open);
-                      if (open) {
+                  <DropdownMenuSub
+                    onOpenChange={(subOpen) => {
+                      if (subOpen) {
                         setReassignSearch("");
                       }
                     }}
                   >
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        aria-label="To-do actions"
-                        icon={MoreIcon}
-                        size="xs"
-                        variant="ghost"
-                        onClick={(e: React.MouseEvent) => {
-                          e.stopPropagation();
-                        }}
-                      />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent
-                      align="end"
-                      className="z-[1000] w-56 shadow-2xl ring-1 ring-border/60"
-                    >
-                      <DropdownMenuSub
-                        onOpenChange={(subOpen) => {
-                          if (subOpen) {
-                            setReassignSearch("");
-                          }
-                        }}
+                    <DropdownMenuSubTrigger
+                      label="Reassign"
+                      icon={UserIcon}
+                      disabled={projectMembers.length === 0}
+                    />
+                    <DropdownMenuPortal>
+                      <DropdownMenuSubContent
+                        alignOffset={-4}
+                        className="z-[1000] w-80 shadow-2xl ring-1 ring-border/60"
                       >
-                        <DropdownMenuSubTrigger
-                          label="Reassign"
-                          icon={UserIcon}
-                          disabled={projectMembers.length === 0}
+                        <DropdownMenuSearchbar
+                          autoFocus
+                          name={`reassign-todo-${todo.sId}`}
+                          placeholder="Search members"
+                          value={reassignSearch}
+                          onChange={setReassignSearch}
                         />
-                        <DropdownMenuPortal>
-                          <DropdownMenuSubContent
-                            alignOffset={-4}
-                            className="z-[1000] w-80 shadow-2xl ring-1 ring-border/60"
-                          >
-                            <DropdownMenuSearchbar
-                              autoFocus
-                              name={`reassign-todo-${todo.sId}`}
-                              placeholder="Search members"
-                              value={reassignSearch}
-                              onChange={setReassignSearch}
-                            />
-                            <DropdownMenuSeparator />
-                            <div className="max-h-64 overflow-auto">
-                              {filteredReassignMembers.length > 0 ? (
-                                filteredReassignMembers.map((member) => (
-                                  <DropdownMenuItem
-                                    key={`reassign-${todo.sId}-${member.sId}`}
-                                    label={`${member.fullName}${viewerUserId === member.sId ? " (you)" : ""}`}
-                                    disabled={member.sId === todo.user?.sId}
-                                    icon={() => (
-                                      <Avatar
-                                        size="xxs"
-                                        isRounded
-                                        visual={
-                                          member.image ??
-                                          "/static/humanavatar/anonymous.png"
-                                        }
-                                      />
-                                    )}
-                                    onClick={() => {
-                                      void (async () => {
-                                        try {
-                                          if (member.sId !== todo.user?.sId) {
-                                            await onPatchTodo(todo.sId, {
-                                              assigneeUserId: member.sId,
-                                            });
-                                          }
-                                        } finally {
-                                          setOverflowMenuOpen(false);
-                                        }
-                                      })();
-                                    }}
+                        <DropdownMenuSeparator />
+                        <div className="max-h-64 overflow-auto">
+                          {filteredReassignMembers.length > 0 ? (
+                            filteredReassignMembers.map((member) => (
+                              <DropdownMenuItem
+                                key={`reassign-${todo.sId}-${member.sId}`}
+                                label={`${member.fullName}${viewerUserId === member.sId ? " (you)" : ""}`}
+                                disabled={member.sId === todo.user?.sId}
+                                icon={() => (
+                                  <Avatar
+                                    size="xxs"
+                                    isRounded
+                                    visual={
+                                      member.image ??
+                                      "/static/humanavatar/anonymous.png"
+                                    }
                                   />
-                                ))
-                              ) : (
-                                <div className="px-3 py-2 text-sm text-muted-foreground">
-                                  No members found
-                                </div>
-                              )}
+                                )}
+                                onClick={() => {
+                                  void (async () => {
+                                    try {
+                                      if (member.sId !== todo.user?.sId) {
+                                        await onPatchTodo(todo.sId, {
+                                          assigneeUserId: member.sId,
+                                        });
+                                      }
+                                    } finally {
+                                      setOverflowMenuOpen(false);
+                                    }
+                                  })();
+                                }}
+                              />
+                            ))
+                          ) : (
+                            <div className="px-3 py-2 text-sm text-muted-foreground">
+                              No members found
                             </div>
-                          </DropdownMenuSubContent>
-                        </DropdownMenuPortal>
-                      </DropdownMenuSub>
-                      <DropdownMenuItem
-                        label="Delete"
-                        icon={TrashIcon}
-                        variant="warning"
-                        onClick={() => {
-                          setOverflowMenuOpen(false);
-                          void onDelete(todo);
-                        }}
-                      />
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              )}
-            </>
+                          )}
+                        </div>
+                      </DropdownMenuSubContent>
+                    </DropdownMenuPortal>
+                  </DropdownMenuSub>
+                  <DropdownMenuItem
+                    label="Delete"
+                    icon={TrashIcon}
+                    variant="warning"
+                    onClick={() => {
+                      setOverflowMenuOpen(false);
+                      void onDelete(todo);
+                    }}
+                  />
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           )}
         </div>
       </div>
