@@ -11,6 +11,7 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import {
   downloadAndProcessMicrosoftFile,
+  getAllowedLabelsForMCPServer,
   getDriveItemEndpoint,
   getGraphClient,
   searchMicrosoftDriveItems,
@@ -62,7 +63,10 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
     }
   },
 
-  search_drive_items: async ({ query }, { authInfo }) => {
+  search_drive_items: async (
+    { query },
+    { auth, authInfo, agentLoopContext }
+  ) => {
     const client = await getGraphClient(authInfo);
     if (!client) {
       return new Err(
@@ -70,10 +74,16 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
       );
     }
 
+    const allowedLabels = await getAllowedLabelsForMCPServer(
+      auth,
+      agentLoopContext
+    );
+
     try {
       const response = await searchMicrosoftDriveItems({
         client,
         query,
+        allowedLabels,
       });
 
       return new Ok([
@@ -182,7 +192,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
 
   get_file_content: async (
     { itemId, driveId, siteId, offset, limit, getAsXml },
-    { authInfo }
+    { auth, authInfo, agentLoopContext }
   ) => {
     const client = await getGraphClient(authInfo);
     if (!client) {
@@ -191,10 +201,29 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
       );
     }
 
+    const allowedLabels = await getAllowedLabelsForMCPServer(
+      auth,
+      agentLoopContext
+    );
+
     try {
       const endpoint = await getDriveItemEndpoint(itemId, driveId, siteId);
 
-      const response = await client.api(endpoint).get();
+      const response = await client
+        .api(endpoint)
+        .select("sensitivityLabel,name,file,@microsoft.graph.downloadUrl")
+        .get();
+
+      if (allowedLabels.length > 0) {
+        const labelId = response?.sensitivityLabel?.id;
+        if (labelId && !allowedLabels.includes(labelId)) {
+          return new Err(
+            new MCPError(
+              "Access denied: this file is not accessible with the current sensitivity label configuration."
+            )
+          );
+        }
+      }
 
       const downloadUrl = response["@microsoft.graph.downloadUrl"];
       const mimeType = response.file.mimeType;
