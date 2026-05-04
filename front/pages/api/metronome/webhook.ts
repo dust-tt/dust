@@ -1,8 +1,10 @@
 /** @ignoreswagger */
 import apiConfig from "@app/lib/api/config";
+import { Authenticator } from "@app/lib/auth";
 import {
   calculateFreeCreditAmountMicroUsd,
   countEligibleUsersForFreeCredits,
+  grantFreeCreditFromMetronomeSegment,
   YEARLY_MULTIPLIER,
 } from "@app/lib/credits/free";
 import {
@@ -19,6 +21,7 @@ import {
   getCustomerIdFromEvent,
   MetronomeWebhookEventSchema,
 } from "@app/lib/metronome/webhook_events";
+import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
@@ -244,12 +247,34 @@ async function handler(
             : undefined;
           const isAnnual = recurringCredit?.recurrence_frequency === "ANNUAL";
 
-          const userCount = await countEligibleUsersForFreeCredits(workspace);
-          const monthlyAmountMicroUsd =
-            calculateFreeCreditAmountMicroUsd(userCount);
-          const amountMicroUsd = isAnnual
-            ? monthlyAmountMicroUsd * YEARLY_MULTIPLIER
-            : monthlyAmountMicroUsd;
+          // ProgrammaticUsageConfiguration.freeCreditMicroUsd, if set,
+          // overrides the brackets-based calculation. Same convention as
+          // grantFreeCreditsFromSubscriptionStateChange{,Yearly}: the
+          // configured amount is the full-period amount (monthly or yearly
+          // matching the recurring credit cadence) and is used as-is.
+          const auth = await Authenticator.internalAdminForWorkspace(
+            workspace.sId
+          );
+          const programmaticConfig =
+            await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(
+              auth
+            );
+
+          let amountMicroUsd: number;
+          let userCount: number | undefined;
+          if (
+            programmaticConfig &&
+            programmaticConfig.freeCreditMicroUsd !== null
+          ) {
+            amountMicroUsd = programmaticConfig.freeCreditMicroUsd;
+          } else {
+            userCount = await countEligibleUsersForFreeCredits(workspace);
+            const monthlyAmountMicroUsd =
+              calculateFreeCreditAmountMicroUsd(userCount);
+            amountMicroUsd = isAnnual
+              ? monthlyAmountMicroUsd * YEARLY_MULTIPLIER
+              : monthlyAmountMicroUsd;
+          }
           const amount = amountMicroUsd / 1_000_000;
 
           const updateResult = await updateMetronomeCreditSegmentAmount({
@@ -281,6 +306,57 @@ async function handler(
             });
           }
 
+          // Metronome is the source of truth for the recurring free credit:
+          // create + start the matching DB credit linked by metronomeCreditId.
+          // The Stripe webhook will dedup against this when it fires.
+          const segment = credit.access_schedule?.schedule_items.find(
+            (s) => s.id === segmentId
+          );
+          if (!segment) {
+            logger.warn(
+              {
+                customerId,
+                contractId,
+                creditId,
+                segmentId,
+                workspaceId: workspace.sId,
+              },
+              "[Metronome Webhook] credit.segment.start: segment not found in access_schedule, skipping DB credit creation"
+            );
+            break;
+          }
+          const periodStart = new Date(segment.starting_at);
+          const periodEnd = new Date(segment.ending_before);
+
+          const grantResult = await grantFreeCreditFromMetronomeSegment({
+            auth,
+            metronomeCreditId: creditId,
+            contractId,
+            segmentId,
+            isAnnual,
+            amountMicroUsd,
+            periodStart,
+            periodEnd,
+          });
+
+          if (grantResult.isErr()) {
+            // The grant helper has already logged the failure with `panic`;
+            // ack the webhook so Metronome doesn't retry-storm — operators
+            // will reconcile from logs / the sync script.
+            logger.error(
+              {
+                customerId,
+                contractId,
+                creditId,
+                segmentId,
+                error: grantResult.error,
+                workspaceId: workspace.sId,
+              },
+              "[Metronome Webhook] credit.segment.start: failed to ensure DB credit"
+            );
+            break;
+          }
+
           logger.info(
             {
               customerId,
@@ -290,9 +366,16 @@ async function handler(
               amountMicroUsd,
               userCount,
               isAnnual,
+              usedProgrammaticOverride:
+                programmaticConfig?.freeCreditMicroUsd != null,
+              dbCreditId: grantResult.value.credit.id,
+              dbCreditCreated: grantResult.value.created,
+              dbCreditAlreadyExisted: grantResult.value.alreadyExisted,
+              periodStart,
+              periodEnd,
               workspaceId: workspace.sId,
             },
-            "[Metronome Webhook] credit.segment.start: free credit amount updated"
+            "[Metronome Webhook] credit.segment.start: free credit amount updated and DB credit ensured"
           );
           break;
         }

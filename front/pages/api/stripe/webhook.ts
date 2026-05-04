@@ -14,10 +14,6 @@ import {
   voidFailedProCreditPurchaseInvoice,
 } from "@app/lib/credits/committed";
 import {
-  grantFreeCreditFromSubscriptionStateChangeYearly,
-  grantFreeCreditsFromSubscriptionStateChange,
-} from "@app/lib/credits/free";
-import {
   allocatePAYGCreditsOnCycleRenewal,
   invoiceEnterprisePAYGCredits,
   isPAYGEnabled,
@@ -84,32 +80,6 @@ export const StripeBillingPeriodSchema = z.object({
   current_period_start: z.number(),
   current_period_end: z.number(),
 });
-
-function isYearlySubscription(
-  stripeSubscription: Stripe.Subscription
-): boolean {
-  const firstItem = stripeSubscription.items.data[0];
-  return firstItem?.price?.recurring?.interval === "year";
-}
-
-async function grantFreeCreditsForSubscription({
-  auth,
-  stripeSubscription,
-}: {
-  auth: Authenticator;
-  stripeSubscription: Stripe.Subscription;
-}) {
-  if (isYearlySubscription(stripeSubscription)) {
-    return grantFreeCreditFromSubscriptionStateChangeYearly({
-      auth,
-      stripeSubscription,
-    });
-  }
-  return grantFreeCreditsFromSubscriptionStateChange({
-    auth,
-    stripeSubscription,
-  });
-}
 
 /**
  * Shadow-provision Metronome customer + contract for a workspace.
@@ -419,27 +389,6 @@ async function handler(
             const auth = await Authenticator.internalAdminForWorkspace(
               workspace.sId
             );
-            const shouldGrantFreeCreditsOnCheckoutCompletion =
-              checkoutStripeSubscription.status === "active" ||
-              checkoutStripeSubscription.status === "trialing";
-
-            if (shouldGrantFreeCreditsOnCheckoutCompletion) {
-              const freeCreditsResult = await grantFreeCreditsForSubscription({
-                auth,
-                stripeSubscription: checkoutStripeSubscription,
-              });
-
-              if (freeCreditsResult.isErr()) {
-                logger.error(
-                  {
-                    error: freeCreditsResult.error,
-                    subscriptionId: checkoutStripeSubscription.id,
-                    workspaceId: workspace.sId,
-                  },
-                  "[Stripe Webhook] Error granting free credits on checkout.session.completed"
-                );
-              }
-            }
 
             if (userId) {
               const workspaceSeats =
@@ -1031,38 +980,6 @@ async function handler(
             );
           }
 
-          const subscription = await SubscriptionResource.fetchByStripeId(
-            stripeSubscription.id
-          );
-          if (subscription) {
-            const workspace = await WorkspaceResource.fetchByModelId(
-              subscription.workspaceId
-            );
-            assert(
-              workspace !== null,
-              "Workspace not found for subscription in customer.subscription.created."
-            );
-            const auth = await Authenticator.internalAdminForWorkspace(
-              workspace.sId
-            );
-
-            const freeCreditsResult = await grantFreeCreditsForSubscription({
-              auth,
-              stripeSubscription,
-            });
-
-            if (freeCreditsResult.isErr()) {
-              logger.error(
-                {
-                  error: freeCreditsResult.error,
-                  subscriptionId: stripeSubscription.id,
-                  workspaceId: workspace.sId,
-                },
-                "[Stripe Webhook] Error granting free credits on subscription created"
-              );
-            }
-          }
-
           break;
         }
 
@@ -1115,22 +1032,6 @@ async function handler(
             const auth = await Authenticator.internalAdminForWorkspace(
               workspace.sId
             );
-
-            const freeCreditsResult = await grantFreeCreditsForSubscription({
-              auth,
-              stripeSubscription,
-            });
-
-            if (freeCreditsResult.isErr()) {
-              logger.error(
-                {
-                  error: freeCreditsResult.error,
-                  subscriptionId: stripeSubscription.id,
-                  workspaceId: workspace.sId,
-                },
-                "[Stripe Webhook] Error granting free credits"
-              );
-            }
 
             if (subscriptionCycleChanged) {
               const paygEnabled = await isPAYGEnabled(auth);
