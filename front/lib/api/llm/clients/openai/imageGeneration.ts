@@ -7,11 +7,11 @@ import {
   type ImageGenerationInput,
   ImageGenerationLLM,
   type ImageGenerationOutput,
+  type ReferenceImageFile,
   type TokenCountDetails,
 } from "@app/lib/api/llm/imageGeneration";
 import type { Authenticator } from "@app/lib/auth";
 import { trustedFetch } from "@app/lib/egress/server";
-import type { FileResource } from "@app/lib/resources/file_resource";
 import { concurrentExecutor } from "@app/temporal/workflow_utils";
 import type { ImageModelIdType } from "@app/types/assistant/models/models";
 import { GPT_IMAGE_2_MODEL_ID } from "@app/types/assistant/models/openai";
@@ -88,14 +88,14 @@ export class ImageGenerationOpenAILLM extends ImageGenerationLLM {
   async generateImage(
     params: ImageGenerationInput
   ): Promise<Result<ImageGenerationOutput, ImageGenerationError>> {
-    const { prompt, aspectRatio, fileResources, quality } = params;
+    const { prompt, aspectRatio, referenceFiles, quality } = params;
 
     const size = ASPECT_RATIO_TO_IMAGE_SIZE[aspectRatio];
 
     let response: ImagesResponse;
     try {
-      if (fileResources && fileResources.length > 0) {
-        const uploadables = await this.toUploadableFiles(fileResources);
+      if (referenceFiles && referenceFiles.length > 0) {
+        const uploadables = await this.toUploadableFiles(referenceFiles);
 
         response = await this.client.images.edit({
           model: this.modelId,
@@ -202,18 +202,14 @@ export class ImageGenerationOpenAILLM extends ImageGenerationLLM {
     };
   }
 
-  private async toUploadableFiles(fileResources: FileResource[]) {
+  private async toUploadableFiles(referenceFiles: ReferenceImageFile[]) {
     return concurrentExecutor(
-      fileResources,
-      async (fileResource) => {
-        const signedUrl = await fileResource.getSignedUrlForDownload(
-          this.auth,
-          "original"
-        );
-        const res = await trustedFetch(signedUrl);
+      referenceFiles,
+      async (referenceFile) => {
+        const res = await trustedFetch(referenceFile.signedUrl);
         const arrayBuffer = await res.arrayBuffer();
-        return toFile(Buffer.from(arrayBuffer), fileResource.fileName, {
-          type: fileResource.contentType,
+        return toFile(Buffer.from(arrayBuffer), referenceFile.fileName, {
+          type: referenceFile.contentType,
         });
       },
       { concurrency: 8 }

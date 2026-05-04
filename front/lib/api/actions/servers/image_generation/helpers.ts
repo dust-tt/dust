@@ -3,11 +3,12 @@ import type {
   MCPProgressNotificationType,
   ToolGeneratedFileType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { resolveConversationFileRef } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { computeTokensCostForUsageInMicroUsd } from "@app/lib/api/assistant/token_pricing";
 import { uploadBase64ImageToFileStorage } from "@app/lib/api/files/upload";
+import type { ReferenceImageFile } from "@app/lib/api/llm/imageGeneration";
 import type { Authenticator } from "@app/lib/auth";
-import { FileResource } from "@app/lib/resources/file_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import { getStatsDClient } from "@app/lib/utils/statsd";
@@ -272,43 +273,39 @@ async function processSingleImageFile(
   auth: Authenticator,
   {
     imageFileId,
-    conversationId,
     maxImageSize,
     supportedContentTypes,
     providerId,
+    agentLoopContext,
   }: {
     imageFileId: string;
-    conversationId: string;
     maxImageSize: number;
     supportedContentTypes: string[];
     providerId: ModelProviderIdType;
+    agentLoopContext: AgentLoopContextType | undefined;
   }
-): Promise<Ok<FileResource> | Err<MCPError>> {
+): Promise<Ok<ReferenceImageFile> | Err<MCPError>> {
   const workspace = auth.getNonNullableWorkspace();
-  const fileResource = await FileResource.fetchById(auth, imageFileId);
-  if (!fileResource) {
+
+  const refResult = await resolveConversationFileRef(
+    auth,
+    imageFileId,
+    agentLoopContext
+  );
+  if (refResult.isErr()) {
     return new Err(
-      new MCPError(`File not found: ${imageFileId}`, {
-        tracked: false,
-      })
+      new MCPError(`File not found: ${imageFileId}`, { tracked: false })
     );
   }
 
-  const belongsResult = fileResource.belongsToConversation(conversationId);
-  if (belongsResult.isErr() || !belongsResult.value) {
-    return new Err(
-      new MCPError(`File ${imageFileId} does not belong to this conversation`, {
-        tracked: false,
-      })
-    );
-  }
+  const { contentType, sizeBytes, fileName, getSignedUrl } = refResult.value;
 
   // TODO(@jd) JIT resize over 20MB once imagemagick is available.
-  if (fileResource.fileSize > maxImageSize) {
+  if (sizeBytes > maxImageSize) {
     logger.warn(
       {
-        fileId: fileResource.sId,
-        fileSize: fileResource.fileSize,
+        imageFileId,
+        fileSize: sizeBytes,
         maxFileSize: maxImageSize,
         workspaceId: workspace.sId,
       },
@@ -323,28 +320,25 @@ async function processSingleImageFile(
 
     return new Err(
       new MCPError(
-        `Image file ${imageFileId} too large. Maximum allowed size is ${fileSizeToHumanReadable(maxImageSize, 0)}, but file is ${fileSizeToHumanReadable(fileResource.fileSize, 0)}.`,
-        {
-          tracked: false,
-        }
+        `Image file ${imageFileId} too large. Maximum allowed size is ${fileSizeToHumanReadable(maxImageSize, 0)}, but file is ${fileSizeToHumanReadable(sizeBytes, 0)}.`,
+        { tracked: false }
       )
     );
   }
 
-  if (!supportedContentTypes.includes(fileResource.contentType)) {
+  if (!supportedContentTypes.includes(contentType)) {
     return new Err(
       new MCPError(
-        `File ${imageFileId} is not a supported image type. Got: ${fileResource.contentType}. Supported types: ${supportedContentTypes
+        `File ${imageFileId} is not a supported image type. Got: ${contentType}. Supported types: ${supportedContentTypes
           .map((t) => t.replace("image/", "").toUpperCase())
           .join(", ")}.`,
-        {
-          tracked: false,
-        }
+        { tracked: false }
       )
     );
   }
 
-  return new Ok(fileResource);
+  const signedUrl = await getSignedUrl();
+  return new Ok({ signedUrl, fileName, contentType });
 }
 
 export async function processImageFileIds(
@@ -360,7 +354,7 @@ export async function processImageFileIds(
     supportedContentTypes: string[];
     providerId: ModelProviderIdType;
   }
-): Promise<Ok<FileResource[]> | Err<MCPError>> {
+): Promise<Ok<ReferenceImageFile[]> | Err<MCPError>> {
   if (!agentLoopContext?.runContext) {
     return new Err(
       new MCPError("No conversation context available for file access", {
@@ -369,7 +363,6 @@ export async function processImageFileIds(
     );
   }
 
-  const conversationId = agentLoopContext.runContext.conversation.sId;
   const maxImageSize = MAX_FILE_SIZES.image;
 
   const results = await concurrentExecutor(
@@ -377,10 +370,10 @@ export async function processImageFileIds(
     (imageFileId) =>
       processSingleImageFile(auth, {
         imageFileId,
-        conversationId,
         maxImageSize,
         supportedContentTypes,
         providerId,
+        agentLoopContext,
       }),
     { concurrency: 8 }
   );
@@ -390,9 +383,9 @@ export async function processImageFileIds(
     return firstError;
   }
 
-  const fileResources = results
-    .filter((r): r is Ok<FileResource> => r.isOk())
-    .map((r) => r.value);
-
-  return new Ok(fileResources);
+  return new Ok(
+    results
+      .filter((r): r is Ok<ReferenceImageFile> => r.isOk())
+      .map((r) => r.value)
+  );
 }
