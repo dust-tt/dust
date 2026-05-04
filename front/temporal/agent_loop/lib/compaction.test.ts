@@ -310,9 +310,7 @@ describe("runCompaction", () => {
         workspaceId: workspace.id,
       },
     });
-    expect(compactionMessageRow?.content).toContain(
-      `conversation/history/`
-    );
+    expect(compactionMessageRow?.content).toContain(`conversation/history/`);
     expect(compactionMessageRow?.content).toContain(compactionMessage.sId);
   });
 
