@@ -358,7 +358,8 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
     let where: WhereOptions<ProjectTodoModel> = { spaceId };
 
     // Apply per-viewer "clean done" cutoff: hide done todos completed before
-    // lastCleanedAt, regardless of assignee.
+    // lastCleanedAt, regardless of assignee. Pending agent suggestions stay
+    // visible so users can still approve or reject after cleaning.
     if (lastCleanedAt) {
       where = {
         [Op.and]: [
@@ -368,6 +369,7 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
               { status: { [Op.ne]: "done" } },
               { doneAt: null },
               { doneAt: { [Op.gte]: lastCleanedAt } },
+              { agentSuggestionStatus: "pending" },
             ],
           },
         ],

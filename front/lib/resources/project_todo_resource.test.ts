@@ -439,6 +439,57 @@ describe("ProjectTodoResource", () => {
     });
   });
 
+  describe("fetchBySpace", () => {
+    it("should hide done todos completed before lastCleanedAt", async () => {
+      const cutoff = new Date();
+      const beforeCutoff = new Date(cutoff.getTime() - 60_000);
+
+      const oldDone = await ProjectTodoResource.makeNew(
+        auth,
+        makeTodoBlob(space.id, user.id, { text: "Hidden after clean" })
+      );
+      await oldDone.updateWithVersion(auth, {
+        status: "done",
+        doneAt: beforeCutoff,
+        markedAsDoneByType: "user",
+        markedAsDoneByUserId: user.id,
+        markedAsDoneByAgentConfigurationId: null,
+      });
+
+      const visible = await ProjectTodoResource.fetchBySpace(auth, {
+        spaceId: space.id,
+        lastCleanedAt: cutoff,
+      });
+
+      expect(visible.map((t) => t.sId)).not.toContain(oldDone.sId);
+    });
+
+    it("should still return todos with pending agentSuggestionStatus when done before lastCleanedAt", async () => {
+      const cutoff = new Date();
+      const beforeCutoff = new Date(cutoff.getTime() - 60_000);
+
+      const pending = await ProjectTodoResource.makeNew(
+        auth,
+        makeTodoBlob(space.id, user.id, { text: "Pending suggestion" })
+      );
+      await pending.updateWithVersion(auth, {
+        status: "done",
+        doneAt: beforeCutoff,
+        markedAsDoneByType: "user",
+        markedAsDoneByUserId: user.id,
+        markedAsDoneByAgentConfigurationId: null,
+        agentSuggestionStatus: "pending",
+      });
+
+      const visible = await ProjectTodoResource.fetchBySpace(auth, {
+        spaceId: space.id,
+        lastCleanedAt: cutoff,
+      });
+
+      expect(visible.map((t) => t.sId)).toContain(pending.sId);
+    });
+  });
+
   describe("delete", () => {
     it("should delete the todo so fetchBySId returns null afterwards", async () => {
       const todo = await ProjectTodoResource.makeNew(
