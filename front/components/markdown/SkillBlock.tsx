@@ -2,7 +2,7 @@ import { getSkillIcon } from "@app/lib/skill";
 import { getManageSkillsRoute } from "@app/lib/utils/router";
 import type { WorkspaceType } from "@app/types/user";
 import { isBuilder } from "@app/types/user";
-import { Chip } from "@dust-tt/sparkle";
+import { AttachmentChip } from "@dust-tt/sparkle";
 import { visit } from "unist-util-visit";
 
 export interface SkillDirectiveProps {
@@ -26,9 +26,9 @@ export function SkillBlock({
     : undefined;
 
   return (
-    <Chip
+    <AttachmentChip
       label={skillName}
-      icon={getSkillIcon(skillIcon)}
+      icon={{visual: getSkillIcon(skillIcon), size: "xs"}}
       href={href}
       target={href ? "_blank" : undefined}
       color="white"
