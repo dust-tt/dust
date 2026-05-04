@@ -3,8 +3,10 @@ import type {
   MCPProgressNotificationType,
   ToolGeneratedFileType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { getFileResourceFromScopedPath } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { computeTokensCostForUsageInMicroUsd } from "@app/lib/api/assistant/token_pricing";
+import { parseScopedFilePath } from "@app/lib/api/files/mount_path";
 import { uploadBase64ImageToFileStorage } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -276,31 +278,49 @@ async function processSingleImageFile(
     maxImageSize,
     supportedContentTypes,
     providerId,
+    agentLoopContext,
   }: {
     imageFileId: string;
     conversationId: string;
     maxImageSize: number;
     supportedContentTypes: string[];
     providerId: ModelProviderIdType;
+    agentLoopContext: AgentLoopContextType | undefined;
   }
 ): Promise<Ok<FileResource> | Err<MCPError>> {
   const workspace = auth.getNonNullableWorkspace();
-  const fileResource = await FileResource.fetchById(auth, imageFileId);
-  if (!fileResource) {
-    return new Err(
-      new MCPError(`File not found: ${imageFileId}`, {
-        tracked: false,
-      })
-    );
-  }
+  let fileResource: FileResource;
 
-  const belongsResult = fileResource.belongsToConversation(conversationId);
-  if (belongsResult.isErr() || !belongsResult.value) {
-    return new Err(
-      new MCPError(`File ${imageFileId} does not belong to this conversation`, {
-        tracked: false,
-      })
+  if (parseScopedFilePath(imageFileId)) {
+    const fileResult = await getFileResourceFromScopedPath(
+      auth,
+      imageFileId,
+      agentLoopContext
     );
+    if (fileResult.isErr()) {
+      return new Err(
+        new MCPError(`File not found: ${imageFileId}`, { tracked: false })
+      );
+    }
+    fileResource = fileResult.value;
+  } else {
+    const fetchedFile = await FileResource.fetchById(auth, imageFileId);
+    if (!fetchedFile) {
+      return new Err(
+        new MCPError(`File not found: ${imageFileId}`, { tracked: false })
+      );
+    }
+    fileResource = fetchedFile;
+
+    const belongsResult = fileResource.belongsToConversation(conversationId);
+    if (belongsResult.isErr() || !belongsResult.value) {
+      return new Err(
+        new MCPError(
+          `File ${imageFileId} does not belong to this conversation`,
+          { tracked: false }
+        )
+      );
+    }
   }
 
   // TODO(@jd) JIT resize over 20MB once imagemagick is available.
@@ -381,6 +401,7 @@ export async function processImageFileIds(
         maxImageSize,
         supportedContentTypes,
         providerId,
+        agentLoopContext,
       }),
     { concurrency: 8 }
   );

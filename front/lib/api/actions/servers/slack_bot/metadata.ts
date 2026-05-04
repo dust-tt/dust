@@ -29,7 +29,7 @@ export const SLACK_BOT_TOOLS_METADATA = createToolsRecord({
         .string()
         .optional()
         .describe(
-          "Optional file id (sId) of a file in Dust to attach to the Slack message."
+          "Optional file to attach to the Slack message. Accepts a scoped file path (e.g. 'conversation/report.pdf') or a legacy file sId."
         ),
     },
     stake: "low",

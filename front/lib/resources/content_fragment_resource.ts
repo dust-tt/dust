@@ -1120,7 +1120,6 @@ export async function getContentFragmentFromAttachmentFile(
     // Check if this is a pasted content (large paste) - use simplified XML format
     if (isPastedFile(attachment.contentType)) {
       const largePaste: LargePasteType = {
-        fileId: fileStringId,
         title: attachment.title,
       };
 
@@ -1198,7 +1197,6 @@ export async function renderLightContentFragmentForModel(
   // Check if this is pasted content - render with simplified format
   if (fileStringId && isPastedFile(contentType)) {
     const largePaste: LargePasteType = {
-      fileId: fileStringId,
       title: attachment.title,
     };
 
