@@ -210,7 +210,13 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
     }
 
     const todoModelIds = todos.map((todo) => todo.id);
-    const assigneeModelIds = [...new Set(todos.map((todo) => todo.userId))];
+    const assigneeModelIds = [
+      ...new Set(
+        todos
+          .map((todo) => todo.userId)
+          .filter((id): id is ModelId => id !== null)
+      ),
+    ];
     const actorModelIds = [
       ...new Set([
         ...todos
@@ -273,7 +279,10 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
 
     return todos.map((todo) => {
       return new this(ProjectTodoModel, todo.get(), {
-        assignee: assigneeByModelId.get(todo.userId) ?? null,
+        assignee:
+          (todo.userId !== null
+            ? assigneeByModelId.get(todo.userId)
+            : undefined) ?? null,
         conversationSId: conversationIdByTodoModelId.get(todo.id) ?? null,
         createdByUserSId:
           todo.createdByUserId !== null
@@ -587,6 +596,12 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
     },
     transaction?: Transaction
   ): Promise<void> {
+    if (this.userId === null) {
+      throw new Error(
+        "Cannot upsert source for a todo without an assigned user."
+      );
+    }
+
     const workspaceId = auth.getNonNullableWorkspace().id;
     // we want one link between one given TODO (that belongs to a user) for a given source
     const identity = {

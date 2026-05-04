@@ -33,8 +33,9 @@ const PROJECT_TODO_MODEL_ATTRIBUTES = {
   },
   userId: {
     type: DataTypes.BIGINT,
-    allowNull: false,
-    comment: "Owner of the todo — a todo is always assigned to a user.",
+    allowNull: true,
+    comment:
+      "Owner of the todo — null when the todo is not assigned to a specific user.",
   },
   createdByUserId: {
     type: DataTypes.BIGINT,
@@ -113,7 +114,7 @@ export class ProjectTodoModel extends WorkspaceAwareModel<ProjectTodoModel> {
   declare spaceId: ForeignKey<SpaceModel["id"]>;
 
   // Owner
-  declare userId: ForeignKey<UserModel["id"]>;
+  declare userId: ForeignKey<UserModel["id"]> | null;
 
   // Creator — user or agent (mutually exclusive FKs).
   declare createdByType: ProjectTodoActorType;
@@ -134,7 +135,7 @@ export class ProjectTodoModel extends WorkspaceAwareModel<ProjectTodoModel> {
   declare deletedAt: CreationOptional<Date | null>;
 
   declare space: NonAttribute<SpaceModel>;
-  declare user: NonAttribute<UserModel>;
+  declare user: NonAttribute<UserModel | null>;
   declare createdByUser: NonAttribute<UserModel | null>;
   declare markedAsDoneByUser: NonAttribute<UserModel | null>;
 }
@@ -269,7 +270,7 @@ ProjectTodoModel.belongsTo(SpaceModel, {
 });
 
 ProjectTodoModel.belongsTo(UserModel, {
-  foreignKey: { name: "userId", allowNull: false },
+  foreignKey: { name: "userId", allowNull: true },
   onDelete: "RESTRICT",
   as: "user",
 });
