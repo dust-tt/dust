@@ -1,3 +1,4 @@
+import config from "@app/lib/api/config";
 import { getConnectorsPrimaryDbConnection } from "@app/lib/production_checks/utils";
 import { getTemporalClientForConnectorsNamespace } from "@app/lib/temporal";
 import type { ConnectorProvider } from "@app/types/data_source";
@@ -78,7 +79,7 @@ export const checkExtraneousWorkflows: CheckFunction = async (
   if (hasExtraneousWorklows.length > 0) {
     const actionLinks: ActionLink[] = hasExtraneousWorklows.map((c) => ({
       label: `${c.provider}: ${c.dataSourceId}`,
-      url: `https://poke.dust.tt/${c.workspaceId}/data_sources/${c.dataSourceId}`,
+      url: `${config.getPokeAppUrl()}/${c.workspaceId}/data_sources/${c.dataSourceId}`,
     }));
     reportFailure(
       { hasExtraneousWorklows, actionLinks },

@@ -1,3 +1,4 @@
+import config from "@app/lib/api/config";
 import { getFrontReplicaDbConnection } from "@app/lib/production_checks/utils";
 import type { ActionLink, CheckFunction } from "@app/types/production_checks";
 import { QueryTypes } from "sequelize";
@@ -40,7 +41,7 @@ export const checkEndedBackendOnlySubscriptions: CheckFunction = async (
   if (staleSubscriptions.length > 0) {
     const actionLinks: ActionLink[] = staleSubscriptions.map((s) => ({
       label: `${s.workspaceName} (sub: ${s.sId})`,
-      url: `https://poke.dust.tt/${s.workspaceId}`,
+      url: `${config.getPokeAppUrl()}/${s.workspaceId}`,
     }));
 
     const message =

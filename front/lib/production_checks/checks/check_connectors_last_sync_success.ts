@@ -1,3 +1,4 @@
+import config from "@app/lib/api/config";
 import {
   isBotTypeProvider,
   isWebhookBasedProvider,
@@ -91,7 +92,7 @@ export const checkConnectorsLastSyncSuccess: CheckFunction = async (
   if (stalledLastSyncConnectors.length > 0) {
     const actionLinks: ActionLink[] = stalledLastSyncConnectors.map((c) => ({
       label: `${c.provider}: ${c.dataSourceId}`,
-      url: `https://poke.dust.tt/${c.workspaceId}/data_sources/${c.dataSourceId}`,
+      url: `${config.getPokeAppUrl()}/${c.workspaceId}/data_sources/${c.dataSourceId}`,
     }));
     reportFailure(
       { stalledLastSyncConnectors, actionLinks },
