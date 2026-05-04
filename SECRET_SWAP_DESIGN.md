@@ -472,8 +472,8 @@ maintains two files and points each env var at the right one:
   back to HTTP/2 on TCP. Preserved.
 - **Encoded placeholders**: if the agent base64s, url-encodes, or splits
   the placeholder across headers, the rewriter doesn't recognize it and
-  doesn't substitute. Upstream gets garbage. This is a feature: any
-  transformation breaks substitution and the secret is never produced.
+  doesn't substitute. Upstream gets garbage. The real value never gets
+  produced, so there's no exfil concern, but the request fails.
 
 ### Verification
 
