@@ -36,12 +36,14 @@ import {
   launchMicrosoftFullSyncWorkflow,
   launchMicrosoftGarbageCollectionWorkflow,
   launchMicrosoftIncrementalSyncWorkflow,
+  launchMicrosoftSensitivityLabelsReconciliationWorkflow,
   // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 } from "@connectors/connectors/microsoft/temporal/client";
 import {
   microsoftFullSyncWorkflowId,
   microsoftGarbageCollectionWorkflowId,
   microsoftIncrementalSyncWorkflowId,
+  microsoftSensitivityLabelsReconciliationWorkflowId,
 } from "@connectors/connectors/microsoft/temporal/workflows";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import type { SelectedSiteMetadata } from "@connectors/lib/models/microsoft";
@@ -147,6 +149,14 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
     const gcRes = await launchMicrosoftGarbageCollectionWorkflow(connector.id);
     if (gcRes.isErr()) {
       throw gcRes.error;
+    }
+
+    const sensitivityLabelsReconciliationRes =
+      await launchMicrosoftSensitivityLabelsReconciliationWorkflow(
+        connector.id
+      );
+    if (sensitivityLabelsReconciliationRes.isErr()) {
+      throw sensitivityLabelsReconciliationRes.error;
     }
 
     return new Ok(connector.id.toString());
@@ -584,6 +594,9 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
     await terminateWorkflow(
       microsoftGarbageCollectionWorkflowId(this.connectorId)
     );
+    await terminateWorkflow(
+      microsoftSensitivityLabelsReconciliationWorkflowId(this.connectorId)
+    );
     // Sweep for any remaining child/transient workflows via visibility query.
     await terminateAllWorkflowsForConnectorId({
       connectorId: this.connectorId,
@@ -604,6 +617,14 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
 
     if (gcRes.isErr()) {
       return gcRes;
+    }
+
+    const sensitivityLabelsReconciliationRes =
+      await launchMicrosoftSensitivityLabelsReconciliationWorkflow(
+        this.connectorId
+      );
+    if (sensitivityLabelsReconciliationRes.isErr()) {
+      return sensitivityLabelsReconciliationRes;
     }
 
     return new Ok(undefined);
@@ -633,28 +654,19 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       );
     }
 
-    if (!["true", "false"].includes(configValue)) {
-      return new Err(
-        new Error(`Invalid config value ${configValue}, must be true or false`)
-      );
-    }
-
     switch (configKey) {
-      case "pdfEnabled": {
-        await config.update({
-          pdfEnabled: configValue === "true",
-        });
-        const workflowRes = await launchMicrosoftFullSyncWorkflow(
-          this.connectorId
-        );
-        if (workflowRes.isErr()) {
-          return workflowRes;
+      case "pdfEnabled":
+      case "csvEnabled":
+      case "largeFilesEnabled": {
+        if (!["true", "false"].includes(configValue)) {
+          return new Err(
+            new Error(
+              `Invalid config value ${configValue}, must be true or false`
+            )
+          );
         }
-        return new Ok(undefined);
-      }
-      case "csvEnabled": {
         await config.update({
-          csvEnabled: configValue === "true",
+          [configKey]: configValue === "true",
         });
         const workflowRes = await launchMicrosoftFullSyncWorkflow(
           this.connectorId
@@ -665,13 +677,21 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
         return new Ok(undefined);
       }
 
-      case "largeFilesEnabled": {
-        await config.update({
-          largeFilesEnabled: configValue === "true",
-        });
-        const workflowRes = await launchMicrosoftFullSyncWorkflow(
-          this.connectorId
-        );
+      case "microsoftSensitivityLabelsToInclude": {
+        const labels =
+          configValue.trim() === "" ? null : JSON.parse(configValue);
+        if (labels !== null && !Array.isArray(labels)) {
+          return new Err(
+            new Error(
+              "Sensitivity labels to include must be an array or empty."
+            )
+          );
+        }
+        await config.update({ allowedSensitivityLabels: labels });
+        const workflowRes =
+          await launchMicrosoftSensitivityLabelsReconciliationWorkflow(
+            this.connectorId
+          );
         if (workflowRes.isErr()) {
           return workflowRes;
         }
@@ -714,6 +734,13 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       }
       case "largeFilesEnabled": {
         return new Ok(config.largeFilesEnabled ? "true" : "false");
+      }
+      case "microsoftSensitivityLabelsToInclude": {
+        return new Ok(
+          config.allowedSensitivityLabels
+            ? JSON.stringify(config.allowedSensitivityLabels)
+            : ""
+        );
       }
       default:
         return new Err(new Error(`Invalid config key ${configKey}`));

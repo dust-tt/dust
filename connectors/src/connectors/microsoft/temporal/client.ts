@@ -9,6 +9,8 @@ import {
   microsoftFullSyncWorkflowId,
   microsoftGarbageCollectionWorkflow,
   microsoftIncrementalSyncWorkflowId,
+  microsoftSensitivityLabelsReconciliationWorkflow,
+  microsoftSensitivityLabelsReconciliationWorkflowId,
 } from "@connectors/connectors/microsoft/temporal/workflows";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { getTemporalClient, terminateWorkflow } from "@connectors/lib/temporal";
@@ -135,6 +137,56 @@ export async function launchMicrosoftIncrementalSyncWorkflow(
         error: e,
       },
       `Failed starting workflow.`
+    );
+    return new Err(normalizeError(e));
+  }
+}
+
+export async function launchMicrosoftSensitivityLabelsReconciliationWorkflow(
+  connectorId: ModelId
+): Promise<Result<string, Error>> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    return new Err(new Error(`Connector ${connectorId} not found`));
+  }
+  const client = await getTemporalClient();
+
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const workflowId =
+    microsoftSensitivityLabelsReconciliationWorkflowId(connectorId);
+
+  try {
+    await terminateWorkflow(workflowId);
+    await client.workflow.start(
+      microsoftSensitivityLabelsReconciliationWorkflow,
+      {
+        args: [{ connectorId }],
+        taskQueue: QUEUE_NAME,
+        workflowId,
+        searchAttributes: {
+          connectorId: [connectorId],
+        },
+        memo: {
+          connectorId,
+        },
+      }
+    );
+    logger.info(
+      {
+        workspaceId: dataSourceConfig.workspaceId,
+        workflowId,
+      },
+      `Started Microsoft sensitivity labels reconciliation workflow.`
+    );
+    return new Ok(workflowId);
+  } catch (e) {
+    logger.error(
+      {
+        workspaceId: dataSourceConfig.workspaceId,
+        workflowId,
+        error: e,
+      },
+      `Failed starting Microsoft sensitivity labels reconciliation workflow.`
     );
     return new Err(normalizeError(e));
   }

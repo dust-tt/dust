@@ -22,7 +22,11 @@ export type DriveItem = Pick<
 // This must match the type above and be used when using the graph API
 // Note: for some reason, $select do not work for @microsoft.graph.downloadUrl but select does.
 export const DRIVE_ITEM_EXPANDS_AND_SELECTS =
-  "$select=id,name,parentReference,webUrl,file,folder,root,deleted,createdBy,lastModifiedBy,createdDateTime,lastModifiedDateTime,size,sharepointIds&$expand=listItem($expand=fields)&select=@microsoft.graph.downloadUrl";
+  "$select=id,name,parentReference,webUrl,file,folder,root,deleted,createdBy,lastModifiedBy,createdDateTime,lastModifiedDateTime,size,sharepointIds&$expand=listItem($expand=fields($select=_IpLabelId))&select=@microsoft.graph.downloadUrl";
+
+// Value stored in `microsoft_nodes.skipReason` when a file is excluded by sensitivity label allowlist.
+export const MICROSOFT_SKIP_REASON_SENSITIVITY_LABEL_NOT_ALLOWED =
+  "sensitivity_label_not_allowed" as const;
 
 export const MICROSOFT_NODE_TYPES = [
   "sites-root",

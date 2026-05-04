@@ -39,6 +39,7 @@ export class MicrosoftOAuthProvider implements BaseOAuthStrategyProvider {
         "User.Read",
         "Sites.Read.All",
         "Files.Read.All",
+        "SensitivityLabels.Read.All",
         "offline_access",
       ];
 

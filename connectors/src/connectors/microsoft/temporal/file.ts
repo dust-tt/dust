@@ -5,7 +5,10 @@ import {
   getItem,
 } from "@connectors/connectors/microsoft/lib/graph_api";
 import type { DriveItem } from "@connectors/connectors/microsoft/lib/types";
-import { DRIVE_ITEM_EXPANDS_AND_SELECTS } from "@connectors/connectors/microsoft/lib/types";
+import {
+  DRIVE_ITEM_EXPANDS_AND_SELECTS,
+  MICROSOFT_SKIP_REASON_SENSITIVITY_LABEL_NOT_ALLOWED,
+} from "@connectors/connectors/microsoft/lib/types";
 import {
   getColumnsFromListItem,
   typeAndPathFromInternalId,
@@ -59,6 +62,85 @@ import type { Result } from "@dust-tt/client";
 import axios from "axios";
 
 const PARENT_SYNC_CACHE_TTL_MS = 30 * 60 * 1000;
+
+function getStringListItemField(
+  fields: unknown,
+  fieldName: string
+): string | null {
+  if (!fields || typeof fields !== "object") {
+    return null;
+  }
+
+  const field = Object.entries(fields).find(([key]) => key === fieldName);
+  if (!field) {
+    return null;
+  }
+
+  const [, value] = field;
+  return typeof value === "string" && value.length > 0 ? value : null;
+}
+
+function getSensitivityLabelIdFromListItemFields(
+  fields: unknown
+): string | null {
+  return getStringListItemField(fields, "_IpLabelId");
+}
+
+export function shouldSyncFileBasedOnSensitivityLabels({
+  fields,
+  allowedLabels,
+}: {
+  fields: unknown;
+  allowedLabels: string[];
+}): boolean {
+  if (allowedLabels.length === 0) {
+    return true;
+  }
+  const labelGuid = getSensitivityLabelIdFromListItemFields(fields);
+  // We always sync files that don't have a sensitivity label.
+  return !labelGuid || allowedLabels.includes(labelGuid);
+}
+
+export async function removeFileBasedOnSensitivityLabel({
+  connectorId,
+  dataSourceConfig,
+  file,
+  fileResource,
+  parentInternalId,
+  logger,
+}: {
+  connectorId: ModelId;
+  dataSourceConfig: DataSourceConfig;
+  file: DriveItem;
+  fileResource: MicrosoftNodeResource | null;
+  parentInternalId: string;
+  logger: Logger;
+}) {
+  const documentId = getDriveItemInternalId(file);
+
+  // Remove from data store if it was previously indexed.
+  if (fileResource) {
+    await deleteFile({
+      connectorId,
+      dataSourceConfig,
+      internalId: documentId,
+      logger,
+    });
+  }
+
+  const resourceBlob: WithCreationAttributes<MicrosoftNodeModel> = {
+    internalId: documentId,
+    connectorId,
+    lastSeenTs: new Date(),
+    nodeType: "file",
+    name: file.name ?? "",
+    parentInternalId,
+    mimeType: file.file?.mimeType ?? "",
+    webUrl: file.webUrl ?? null,
+    skipReason: MICROSOFT_SKIP_REASON_SENSITIVITY_LABEL_NOT_ALLOWED,
+  };
+  await MicrosoftNodeResource.upsert(resourceBlob);
+}
 
 export async function syncOneFile({
   connectorId,
@@ -116,9 +198,13 @@ export async function syncOneFile({
     connectorId,
     documentId
   );
+  const isHiddenBySensitivityLabel =
+    fileResource?.skipReason ===
+    MICROSOFT_SKIP_REASON_SENSITIVITY_LABEL_NOT_ALLOWED;
 
   if (
     fileResource &&
+    !isHiddenBySensitivityLabel &&
     isAlreadySeenItem({
       driveItemResource: fileResource,
       startSyncTs,
@@ -127,7 +213,7 @@ export async function syncOneFile({
     return false;
   }
 
-  if (fileResource?.skipReason) {
+  if (fileResource?.skipReason && !isHiddenBySensitivityLabel) {
     localLogger.info(
       { skipReason: fileResource.skipReason },
       "Skipping file sync"
@@ -169,6 +255,27 @@ export async function syncOneFile({
 
   if (!fields) {
     localLogger.warn("Unexpected missing fields for file");
+  }
+
+  const allowedLabels = providerConfig.allowedSensitivityLabels ?? [];
+  if (allowedLabels.length > 0) {
+    const shouldSync = shouldSyncFileBasedOnSensitivityLabels({
+      fields,
+      allowedLabels,
+    });
+
+    if (!shouldSync) {
+      await removeFileBasedOnSensitivityLabel({
+        connectorId,
+        dataSourceConfig,
+        file,
+        fileResource,
+        parentInternalId,
+        logger: localLogger,
+      });
+
+      return false;
+    }
   }
 
   const maxDocumentLen = providerConfig.largeFilesEnabled
