@@ -123,7 +123,7 @@ export function SubscriptionPlanCards({
               Custom
             </span>
             <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-              pay-per-use, from 100+ users
+              based on active users
             </span>
           </div>
         </div>
