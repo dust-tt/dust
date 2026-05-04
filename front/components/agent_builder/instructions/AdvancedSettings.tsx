@@ -92,7 +92,9 @@ export function AdvancedSettings() {
   // workspace is routed through Vertex and the selected model runs on Vertex.
   const supportsResponseFormat =
     isSupportingResponseFormat(modelId) &&
-    !(hasFeature("use_vertex_for_claude_models") && isAnthropicModel(modelId));
+    !(
+      hasFeature("use_vertex_for_anthropic_models") && isAnthropicModel(modelId)
+    );
 
   return (
     <>
