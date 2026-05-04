@@ -66,10 +66,10 @@
  *         description: Unauthorized
  */
 import { postNewContentFragment } from "@app/lib/api/assistant/conversation";
-import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
 import { InternalPostContentFragmentRequestBodySchema } from "@app/types/api/internal/assistant";
 import type { ContentFragmentType } from "@app/types/content_fragment";
@@ -98,7 +98,11 @@ async function handler(
   }
 
   const conversationId = req.query.cId;
-  const conversationRes = await getConversation(auth, conversationId);
+  const conversationRes =
+    await ConversationResource.fetchConversationWithoutContent(
+      auth,
+      conversationId
+    );
 
   if (conversationRes.isErr()) {
     return apiErrorForConversation(req, res, conversationRes.error);

@@ -54,6 +54,7 @@ import {
   getConversationDisplayTitle,
   getConversationUrlAccessMode,
 } from "@app/types/assistant/conversation";
+import type { ContentFragmentVersion } from "@app/types/content_fragment";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -2647,6 +2648,90 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     });
 
     return pendingMessages;
+  }
+
+  static async hasMessageForContentFragmentSeries(
+    auth: Authenticator,
+    {
+      conversation,
+      contentFragmentId,
+      contentFragmentVersion,
+      transaction,
+    }: {
+      conversation: ConversationWithoutContentType;
+      contentFragmentId: string;
+      contentFragmentVersion?: ContentFragmentVersion;
+      transaction?: Transaction;
+    }
+  ): Promise<boolean> {
+    const owner = auth.getNonNullableWorkspace();
+    let where: WhereOptions<MessageModel> = {
+      conversationId: conversation.id,
+      workspaceId: owner.id,
+    };
+
+    if (conversation.branchId) {
+      const branch = await ConversationBranchResource.fetchById(
+        auth,
+        conversation.branchId
+      );
+      if (!branch || !branch.canRead(auth)) {
+        throw new Error("Unexpected: conversation branch not found.");
+      }
+
+      const previousMessage = await MessageModel.findOne({
+        attributes: ["rank"],
+        where: {
+          id: branch.previousMessageId,
+          workspaceId: owner.id,
+        },
+        transaction,
+      });
+      if (!previousMessage) {
+        throw new Error("Unexpected: branch previous message not found.");
+      }
+
+      where = {
+        ...where,
+        [Op.or]: [
+          {
+            branchId: branch.id,
+          },
+          {
+            branchId: null,
+            rank: { [Op.lte]: previousMessage.rank },
+          },
+        ],
+      };
+    } else {
+      where = {
+        ...where,
+        branchId: null,
+      };
+    }
+
+    const message = await MessageModel.findOne({
+      attributes: ["id"],
+      where,
+      include: [
+        {
+          model: ContentFragmentModel,
+          as: "contentFragment",
+          attributes: [],
+          required: true,
+          where: {
+            workspaceId: owner.id,
+            sId: contentFragmentId,
+            ...(contentFragmentVersion
+              ? { version: contentFragmentVersion }
+              : {}),
+          },
+        },
+      ],
+      transaction,
+    });
+
+    return !!message;
   }
 
   static async updateCompactionMessageRunIds(
