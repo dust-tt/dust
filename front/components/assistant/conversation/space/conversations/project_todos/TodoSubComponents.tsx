@@ -573,14 +573,16 @@ export function formatTodoScopeLabel({
 export function TodoAssigneeHeader({
   user,
   viewerUserId,
+  className,
 }: {
   user: ProjectTodoAssigneeType | null;
   viewerUserId: string | null;
+  className?: string;
 }) {
   const isYou = viewerUserId !== null && user?.sId === viewerUserId;
 
   return (
-    <div className="mb-1 mt-2 flex items-center gap-2">
+    <div className={cn("mb-1 mt-2 flex items-center gap-2", className)}>
       <Tooltip
         label={user?.fullName ?? "Unknown user"}
         trigger={
