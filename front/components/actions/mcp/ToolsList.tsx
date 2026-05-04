@@ -2,7 +2,10 @@ import type {
   MCPServerFormValues,
   ToolSettings,
 } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
-import { getDefaultInternalToolStakeLevel } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
+import {
+  encodeMCPToolNameForForm,
+  getDefaultInternalToolStakeLevel,
+} from "@app/components/actions/mcp/forms/mcpServerFormSchema";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import { MCP_TOOL_STAKE_LEVELS } from "@app/lib/actions/constants";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -34,7 +37,7 @@ interface ToolsListProps {
 
 type ToolDefinition = MCPServerViewType["server"]["tools"][number];
 
-interface ToolItemProps {
+interface ToolItemContentProps {
   tool: ToolDefinition;
   mayUpdate: boolean;
   availableStakeLevels: ReadonlyArray<MCPToolStakeLevelType>;
@@ -42,24 +45,26 @@ interface ToolItemProps {
   onChange: (settings: ToolSettings) => void;
 }
 
-interface ToolWithSettings {
+interface EditableToolItemProps {
   tool: ToolDefinition;
-  settings: ToolSettings;
+  mayUpdate: boolean;
+  availableStakeLevels: ReadonlyArray<MCPToolStakeLevelType>;
+  defaultSettings: ToolSettings;
 }
 
 interface ToolsListContentProps {
   mayUpdate: boolean;
-  tools: ToolWithSettings[];
-  onToolChange: (toolName: string, settings: ToolSettings) => void;
+  tools: ToolDefinition[];
+  renderToolItem: (tool: ToolDefinition) => JSX.Element;
 }
 
-function ToolItem({
+function ToolItemContent({
   tool,
   mayUpdate,
   availableStakeLevels,
   settings,
   onChange,
-}: ToolItemProps) {
+}: ToolItemContentProps) {
   const toolPermission = settings.permission;
   const toolEnabled = settings.enabled;
 
@@ -153,10 +158,34 @@ function getDefaultToolSettings({
   };
 }
 
+function EditableToolItem({
+  tool,
+  mayUpdate,
+  availableStakeLevels,
+  defaultSettings,
+}: EditableToolItemProps) {
+  const { control } = useFormContext<MCPServerFormValues>();
+  const { field } = useController({
+    control,
+    name: `toolSettings.${encodeMCPToolNameForForm(tool.name)}`,
+    defaultValue: defaultSettings,
+  });
+
+  return (
+    <ToolItemContent
+      tool={tool}
+      mayUpdate={mayUpdate}
+      availableStakeLevels={availableStakeLevels}
+      settings={field.value ?? defaultSettings}
+      onChange={field.onChange}
+    />
+  );
+}
+
 function ToolsListContent({
   mayUpdate,
   tools,
-  onToolChange,
+  renderToolItem,
 }: ToolsListContentProps) {
   return (
     <>
@@ -195,16 +224,7 @@ function ToolsListContent({
               <div>
                 {tools.length > 0 ? (
                   <div className="flex flex-col gap-4">
-                    {tools.map(({ tool, settings }, index) => (
-                      <ToolItem
-                        key={index}
-                        tool={tool}
-                        mayUpdate={mayUpdate}
-                        availableStakeLevels={MCP_TOOL_STAKE_LEVELS}
-                        settings={settings}
-                        onChange={(next) => onToolChange(tool.name, next)}
-                      />
-                    ))}
+                    {tools.map((tool) => renderToolItem(tool))}
                   </div>
                 ) : (
                   <p className="text-sm text-faint">No tools available</p>
@@ -229,35 +249,19 @@ function EditableToolsList({
   tools,
   getDefaultSettings,
 }: EditableToolsListProps) {
-  // We use a single controller for the whole `toolSettings` record because
-  // React Hook Form treats dots in field paths as nested-object separators,
-  // which would corrupt form state for tool names that contain dots.
-  const { control } = useFormContext<MCPServerFormValues>();
-  const { field } = useController({
-    control,
-    name: "toolSettings",
-    defaultValue: {},
-  });
-
-  const toolSettings = field.value ?? {};
-
-  const handleToolChange = (toolName: string, settings: ToolSettings) => {
-    field.onChange({
-      ...toolSettings,
-      [toolName]: settings,
-    });
-  };
-
-  const toolsWithSettings = tools.map((tool) => ({
-    tool,
-    settings: toolSettings[tool.name] ?? getDefaultSettings(tool),
-  }));
-
   return (
     <ToolsListContent
       mayUpdate={mayUpdate}
-      tools={toolsWithSettings}
-      onToolChange={handleToolChange}
+      tools={tools}
+      renderToolItem={(tool) => (
+        <EditableToolItem
+          key={tool.name}
+          tool={tool}
+          mayUpdate={mayUpdate}
+          availableStakeLevels={MCP_TOOL_STAKE_LEVELS}
+          defaultSettings={getDefaultSettings(tool)}
+        />
+      )}
     />
   );
 }
@@ -286,15 +290,20 @@ export const ToolsList = memo(
     // MCPServerFormValues form, since this component is also rendered in
     // contexts (e.g. agent builder) that have no such FormProvider.
     if (disableUpdates) {
-      const toolsWithSettings = tools.map((tool) => ({
-        tool,
-        settings: getDefaultSettings(tool),
-      }));
       return (
         <ToolsListContent
           mayUpdate={mayUpdate}
-          tools={toolsWithSettings}
-          onToolChange={() => {}}
+          tools={tools}
+          renderToolItem={(tool) => (
+            <ToolItemContent
+              key={tool.name}
+              tool={tool}
+              mayUpdate={mayUpdate}
+              availableStakeLevels={MCP_TOOL_STAKE_LEVELS}
+              settings={getDefaultSettings(tool)}
+              onChange={() => {}}
+            />
+          )}
         />
       );
     }

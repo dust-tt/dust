@@ -1,4 +1,5 @@
 import {
+  encodeMCPToolNameForForm,
   getMCPServerFormDefaults,
   getMCPServerFormSchema,
   type MCPServerFormValues,
@@ -48,6 +49,7 @@ vi.mock("@app/lib/actions/mcp_helper", () => ({
 }));
 
 const TOOL_NAME_WITH_DOT = "weather.get_current";
+const SECOND_TOOL_NAME = "calendar.sync";
 const TOOL_NAME_WITH_UNDERSCORE = "get_messages";
 
 const owner = LightWorkspaceFactory.build();
@@ -63,6 +65,49 @@ const mcpServerView = MCPServerViewTypeFactory.build({
   },
 });
 
+const mcpServerViewWithTwoTools = MCPServerViewTypeFactory.build({
+  server: {
+    tools: [
+      {
+        name: TOOL_NAME_WITH_DOT,
+        description: "Get current weather",
+      },
+      {
+        name: SECOND_TOOL_NAME,
+        description: "Sync calendar",
+      },
+    ],
+  },
+  toolsMetadata: [
+    {
+      toolName: TOOL_NAME_WITH_DOT,
+      enabled: true,
+      permission: "low",
+    },
+    {
+      toolName: SECOND_TOOL_NAME,
+      enabled: true,
+      permission: "low",
+    },
+  ],
+});
+
+const updatedMcpServerViewWithTwoTools = MCPServerViewTypeFactory.build({
+  ...mcpServerViewWithTwoTools,
+  toolsMetadata: [
+    {
+      toolName: TOOL_NAME_WITH_DOT,
+      enabled: true,
+      permission: "low",
+    },
+    {
+      toolName: SECOND_TOOL_NAME,
+      enabled: false,
+      permission: "high",
+    },
+  ],
+});
+
 const readOnlyMcpServerView = MCPServerViewTypeFactory.build({
   server: {
     tools: [
@@ -74,17 +119,26 @@ const readOnlyMcpServerView = MCPServerViewTypeFactory.build({
   },
 });
 
-function renderToolsList() {
+function renderToolsList({
+  view = mcpServerView,
+  keepDirtyValues = false,
+}: {
+  view?: typeof mcpServerView;
+  keepDirtyValues?: boolean;
+} = {}) {
   let form!: UseFormReturn<MCPServerFormValues>;
 
-  function Harness() {
-    const defaults = getMCPServerFormDefaults(mcpServerView);
+  function Harness({ currentView }: { currentView: typeof mcpServerView }) {
+    const defaults = getMCPServerFormDefaults(currentView);
     const currentForm = useForm<MCPServerFormValues>({
       values: defaults,
       mode: "onChange",
       shouldUnregister: false,
+      resetOptions: {
+        keepDirtyValues,
+      },
       resolver: zodResolver(
-        getMCPServerFormSchema(mcpServerView, { existingViewNames: [] })
+        getMCPServerFormSchema(currentView, { existingViewNames: [] })
       ),
     });
 
@@ -92,14 +146,18 @@ function renderToolsList() {
 
     return (
       <FormProvider {...currentForm}>
-        <ToolsList owner={owner} mcpServerView={mcpServerView} />
+        <ToolsList owner={owner} mcpServerView={currentView} />
       </FormProvider>
     );
   }
 
-  render(<Harness />);
+  const rendered = render(<Harness currentView={view} />);
 
-  return { form };
+  return {
+    form,
+    rerender: (currentView: typeof mcpServerView) =>
+      rendered.rerender(<Harness currentView={currentView} />),
+  };
 }
 
 describe("ToolsList", () => {
@@ -116,15 +174,48 @@ describe("ToolsList", () => {
     const values = form.getValues();
 
     // The dotted key must remain a flat record entry, not a nested path.
-    expect(values.toolSettings[TOOL_NAME_WITH_DOT]).toBeDefined();
-    expect(values.toolSettings[TOOL_NAME_WITH_DOT].enabled).toBe(false);
+    const encodedToolName = encodeMCPToolNameForForm(TOOL_NAME_WITH_DOT);
+
+    expect(values.toolSettings[encodedToolName]).toBeDefined();
+    expect(values.toolSettings[encodedToolName].enabled).toBe(false);
     // No nested object should have been created at the path "weather.get_current".
     expect(values.toolSettings["weather"]).toBeUndefined();
+    expect(values.toolSettings[TOOL_NAME_WITH_DOT]).toBeUndefined();
 
     // Schema validation must pass — this is the user-facing failure mode.
-    const isValid = await form.trigger();
+    let isValid = false;
+    await act(async () => {
+      isValid = await form.trigger();
+    });
     expect(isValid).toBe(true);
     expect(form.formState.errors.toolSettings).toBeUndefined();
+  });
+
+  it("preserves only the edited tool on form resets", async () => {
+    const { form, rerender } = renderToolsList({
+      view: mcpServerViewWithTwoTools,
+      keepDirtyValues: true,
+    });
+
+    const [firstCheckbox] = screen.getAllByRole("checkbox");
+    await act(async () => {
+      fireEvent.click(firstCheckbox);
+    });
+
+    await act(async () => {
+      rerender(updatedMcpServerViewWithTwoTools);
+    });
+
+    const values = form.getValues();
+    expect(
+      values.toolSettings[encodeMCPToolNameForForm(TOOL_NAME_WITH_DOT)].enabled
+    ).toBe(false);
+    expect(
+      values.toolSettings[encodeMCPToolNameForForm(SECOND_TOOL_NAME)].enabled
+    ).toBe(false);
+    expect(
+      values.toolSettings[encodeMCPToolNameForForm(SECOND_TOOL_NAME)].permission
+    ).toBe("high");
   });
 
   it("does not throw when rendered outside an MCPServerFormValues FormProvider", () => {
