@@ -263,6 +263,8 @@ async function handler(
         conversation,
       });
 
+      const isNewFileExplorer = await hasFeatureFlag(auth, "new_file_explorer");
+
       const promptSections = constructPromptMultiActions(auth, {
         userMessage,
         agentConfiguration,
@@ -278,6 +280,7 @@ async function handler(
         equippedSkills,
         renderSkillsAsUserMessages,
         projectContext,
+        isNewFileExplorer,
       });
       const prompt = systemPromptToText(promptSections);
       const leadingMessages = renderSkillsAsUserMessages

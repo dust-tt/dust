@@ -30,7 +30,7 @@ export function getConversationToolOutputsBasePath({
   workspaceId: string;
   conversationId: string;
 }): string {
-  return `${getConversationFilesBasePath({ workspaceId, conversationId })}tool_outputs/`;
+  return `${getConversationFilesBasePath({ workspaceId, conversationId })}results/`;
 }
 
 export function getConversationFilePath({

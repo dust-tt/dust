@@ -386,6 +386,8 @@ export async function runModel(
     conversation,
   });
 
+  const isNewFileExplorer = await hasFeatureFlag(auth, "new_file_explorer");
+
   const prompt = constructPromptMultiActions(auth, {
     userMessage,
     agentConfiguration,
@@ -405,6 +407,7 @@ export async function runModel(
     userContext,
     workspaceContext,
     projectContext,
+    isNewFileExplorer,
   });
   const leadingMessages = renderSkillsAsUserMessages
     ? removeNulls([renderEquippedSkillsUserMessage(equippedSkills)])
