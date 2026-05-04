@@ -1,4 +1,6 @@
 import { getConnectorManager } from "@connectors/connectors";
+import { ContentNodeNotFoundError } from "@connectors/connectors/interface";
+import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type {
@@ -85,10 +87,11 @@ const _getConnectorPermissions = async (
     });
   }
 
-  const pRes = await getConnectorManager({
+  const connectorManager = getConnectorManager({
     connectorProvider: connector.type,
     connectorId: connector.id,
-  }).retrievePermissions({
+  });
+  const pRes = await connectorManager.retrievePermissions({
     parentInternalId,
     filterPermission,
     viewType,
@@ -136,31 +139,33 @@ const _getConnectorPermissions = async (
 
   // Augment the resources with their parent internal ids.
   if (filterPermission === "read") {
-    const resourcesWithParentsResults: Result<ContentNodeWithParent, Error>[] =
-      await concurrentExecutor(
-        pRes.value,
-        async (resource) => {
-          const res = await getConnectorManager({
-            connectorProvider: connector.type,
-            connectorId: connector.id,
-          }).retrieveContentNodeParents({
-            internalId: resource.internalId,
-            memoizationKey: `${resource.internalId}-${resource.parentInternalId}`,
-          });
+    const resourcesWithParentsResults: Result<
+      ContentNodeWithParent | null,
+      Error
+    >[] = await concurrentExecutor(
+      pRes.value,
+      async (resource) => {
+        const res = await connectorManager.retrieveContentNodeParents({
+          internalId: resource.internalId,
+          memoizationKey: `${resource.internalId}-${resource.parentInternalId}`,
+        });
 
-          if (res.isErr()) {
-            return new Err(res.error);
+        if (res.isErr()) {
+          if (res.error instanceof ContentNodeNotFoundError) {
+            return new Ok(null);
           }
-
-          return new Ok({
-            ...resource,
-            parentInternalIds: res.value,
-          });
-        },
-        {
-          concurrency: 10,
+          return new Err(res.error);
         }
-      );
+
+        return new Ok({
+          ...resource,
+          parentInternalIds: res.value,
+        });
+      },
+      {
+        concurrency: 10,
+      }
+    );
 
     const hasErrors = resourcesWithParentsResults.some((r) => r.isErr());
     if (hasErrors) {
@@ -175,6 +180,20 @@ const _getConnectorPermissions = async (
           ).join(", ")}`,
         },
       });
+    }
+
+    const skippedNotFoundCount = resourcesWithParentsResults.filter(
+      (r) => r.isOk() && r.value === null
+    ).length;
+    if (skippedNotFoundCount > 0) {
+      logger.info(
+        {
+          connectorId: connector.id,
+          connectorProvider: connector.type,
+          skippedNotFoundCount,
+        },
+        "Skipped read-permission content nodes that no longer exist remotely"
+      );
     }
 
     return res.status(200).json({
