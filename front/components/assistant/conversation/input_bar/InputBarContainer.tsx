@@ -475,9 +475,7 @@ const InputBarContainer = ({
       .run();
   };
 
-  const handleSlashSuggestionSelection = (
-    capability: InputBarSlashSuggestionCapability
-  ) => {
+  onSelectRef.current = (capability: InputBarSlashSuggestionCapability) => {
     switch (capability.kind) {
       case "skill":
         handleSkillSelect(capability.skill);
@@ -491,7 +489,6 @@ const InputBarContainer = ({
 
     queueMicrotask(() => editorRef.current?.commands.focus());
   };
-  onSelectRef.current = handleSlashSuggestionSelection;
 
   // Current space is taken from the conversation (if already set) or from the space prop (if provided).
   const spaceId = conversation?.spaceId ?? space?.sId ?? undefined;
