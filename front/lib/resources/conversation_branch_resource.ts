@@ -144,17 +144,17 @@ export class ConversationBranchResource extends BaseResource<ConversationBranchM
    */
   static async findMostRecentOpenBranchForUser(
     auth: Authenticator,
-    conversationId: number
+    conversationModelId: number
   ): Promise<ConversationBranchResource | null> {
     const workspace = auth.getNonNullableWorkspace();
-    const userId = auth.getNonNullableUser().id;
+    const userModelId = auth.getNonNullableUser().id;
 
     const branch = await this.model.findOne({
       where: {
         workspaceId: workspace.id,
-        conversationId,
+        conversationId: conversationModelId,
         state: "open",
-        userId,
+        userId: userModelId,
       },
       order: [["createdAt", "DESC"]],
     });
