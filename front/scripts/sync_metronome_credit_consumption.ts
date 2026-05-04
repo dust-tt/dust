@@ -288,8 +288,14 @@ async function syncCreditsOfType(
       continue;
     }
 
+    // Pass the parent contract id when present — contract-level
+    // commits / credits cannot be located by `addManualBalanceEntry`
+    // without it (Metronome returns "Unable to find commit ..." 404).
+    const entryContractId = metronomeEntry.contract?.id;
+
     const adjustResult = await deductMetronomeCreditBalance({
       metronomeCustomerId,
+      contractId: entryContractId,
       creditId: metronomeCreditId,
       segmentId,
       amount: adjustmentUsd,

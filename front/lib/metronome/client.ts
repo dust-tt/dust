@@ -1275,12 +1275,16 @@ export async function getMetronomeCommit({
  */
 export async function deductMetronomeCreditBalance({
   metronomeCustomerId,
+  contractId,
   creditId,
   segmentId,
   amount,
   reason,
 }: {
   metronomeCustomerId: string;
+  // Pass `contractId` for contract-level credits / commits. Customer-level
+  // entries (e.g., one-off poke credits) leave it undefined.
+  contractId?: string;
   creditId: string;
   segmentId: string;
   amount: number;
@@ -1293,17 +1297,17 @@ export async function deductMetronomeCreditBalance({
       amount: -amount, // negative to draw down the balance
       reason,
       segment_id: segmentId,
-      // contract_id omitted — applies to customer-level balance
+      ...(contractId ? { contract_id: contractId } : {}),
     });
     logger.info(
-      { metronomeCustomerId, creditId, segmentId, amount },
+      { metronomeCustomerId, contractId, creditId, segmentId, amount },
       "[Metronome] Manual credit deduction applied"
     );
     return new Ok(undefined);
   } catch (err) {
     const error = normalizeError(err);
     logger.error(
-      { error, metronomeCustomerId, creditId, segmentId, amount },
+      { error, metronomeCustomerId, contractId, creditId, segmentId, amount },
       "[Metronome] Failed to apply manual credit deduction"
     );
     return new Err(error);
