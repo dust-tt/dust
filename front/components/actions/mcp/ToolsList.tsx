@@ -23,7 +23,7 @@ import {
   DropdownMenuTrigger,
   InformationCircleIcon,
 } from "@dust-tt/sparkle";
-import { memo, useMemo } from "react";
+import { memo, useCallback, useMemo } from "react";
 import { useController, useFormContext } from "react-hook-form";
 
 interface ToolsListProps {
@@ -236,13 +236,11 @@ const ToolsListContent = memo(
 function EditableToolsList({
   mayUpdate,
   tools,
-  mcpServerView,
-  toolMetadataByName,
+  getDefaultSettings,
 }: {
   mayUpdate: boolean;
   tools: ToolDefinition[];
-  mcpServerView: MCPServerViewType;
-  toolMetadataByName: Record<string, ToolMetadata>;
+  getDefaultSettings: (tool: ToolDefinition) => ToolSettings;
 }) {
   // We use a single controller for the whole `toolSettings` record because
   // React Hook Form treats dots in field paths as nested-object separators,
@@ -268,12 +266,7 @@ function EditableToolsList({
       mayUpdate={mayUpdate}
       tools={tools}
       getSettings={(tool) =>
-        toolSettings[tool.name] ??
-        getDefaultToolSettings({
-          tool,
-          toolMetadataByName,
-          mcpServerView,
-        })
+        toolSettings[tool.name] ?? getDefaultSettings(tool)
       }
       onToolChange={handleToolChange}
     />
@@ -307,6 +300,11 @@ export const ToolsList = memo(
         ),
       [mcpServerView.toolsMetadata]
     );
+    const getDefaultSettings = useCallback(
+      (tool: ToolDefinition) =>
+        getDefaultToolSettings({ tool, toolMetadataByName, mcpServerView }),
+      [toolMetadataByName, mcpServerView]
+    );
 
     // Read-only path: render directly without binding to the surrounding
     // MCPServerFormValues form, since this component is also rendered in
@@ -316,13 +314,7 @@ export const ToolsList = memo(
         <ToolsListContent
           mayUpdate={mayUpdate}
           tools={tools}
-          getSettings={(tool) =>
-            getDefaultToolSettings({
-              tool,
-              toolMetadataByName,
-              mcpServerView,
-            })
-          }
+          getSettings={getDefaultSettings}
           onToolChange={() => {}}
         />
       );
@@ -332,8 +324,7 @@ export const ToolsList = memo(
       <EditableToolsList
         mayUpdate={mayUpdate}
         tools={tools}
-        mcpServerView={mcpServerView}
-        toolMetadataByName={toolMetadataByName}
+        getDefaultSettings={getDefaultSettings}
       />
     );
   }
