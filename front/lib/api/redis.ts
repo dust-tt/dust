@@ -54,6 +54,7 @@ export type RedisUsageTagsType =
   | "mcp_client_side_results"
   | "mentions_count"
   | "metronome_credit_cache"
+  | "metronome_user_block"
   | "message_events"
   | "notion_url_sync"
   | "poke_cache_invalidation"

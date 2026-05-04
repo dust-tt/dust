@@ -56,8 +56,8 @@ import { isModelAvailable, isProviderWhitelisted } from "@app/lib/assistant";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { extractFromString, serializeMention } from "@app/lib/mentions/format";
-import { hasCredits } from "@app/lib/metronome/credit_balance";
 import { isLegacyPlan } from "@app/lib/metronome/plan_type";
+import { isUserBlocked } from "@app/lib/metronome/user_block";
 import {
   AgentMCPActionModel,
   AgentMCPActionOutputItemModel,
@@ -2393,20 +2393,17 @@ async function checkMessagesLimit(
     return new Ok(undefined);
   }
 
-  // Check Metronome credits.
+  // Block users flagged by the Metronome `alerts.spend_threshold_reached`
+  // webhook. The flag is set per (workspace, user) in Redis and is only
+  // checked for non-legacy Metronome plans.
   const owner = auth.getNonNullableWorkspace();
-  const featureFlags = await getFeatureFlags(auth);
-  if (featureFlags.includes("metronome_billing") && owner.metronomeCustomerId) {
+  if (owner.metronomeCustomerId) {
     const onLegacyPlan = await isLegacyPlan(owner.sId);
     if (!onLegacyPlan) {
       const user = auth.user();
       if (user) {
-        const hasCreds = await hasCredits(
-          owner.sId,
-          user.sId,
-          owner.metronomeCustomerId
-        );
-        if (!hasCreds) {
+        const blocked = await isUserBlocked(owner.sId, user.sId);
+        if (blocked) {
           return new Err({
             status_code: 403,
             api_error: {
