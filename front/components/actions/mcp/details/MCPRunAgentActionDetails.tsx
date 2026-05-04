@@ -13,7 +13,7 @@ import {
 } from "@app/components/markdown/CiteBlock";
 import type { MCPReferenceCitation } from "@app/components/markdown/MCPReferenceCitation";
 import {
-  TodoDirectiveBlock,
+  getTodoDirectiveBlock,
   todoDirective,
 } from "@app/components/markdown/TodoDirectiveBlock";
 import { getIcon } from "@app/components/resources/resources_icons";
@@ -262,7 +262,7 @@ function MCPRunAgentActionDetailsDisplay({
       sup: CiteBlock,
       // Warning: we can't rename easily `mention` to agent_mention, because the messages DB contains this name
       mention: getAgentMentionPlugin(owner),
-      todo: TodoDirectiveBlock,
+      todo: getTodoDirectiveBlock(owner),
     }),
     [owner]
   );
