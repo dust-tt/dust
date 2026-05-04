@@ -471,7 +471,7 @@ maintains two files and points each env var at the right one:
 
 ## Phases
 
-### Phase 0, minimal end-to-end PoC (this PR)
+### Phase 0, minimal end-to-end PoC
 
 Purpose: prove the substitution path works end-to-end before investing in
 the full design. If Phase 0 works, every load-bearing claim, kernel-level
