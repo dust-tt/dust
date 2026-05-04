@@ -1089,6 +1089,11 @@ modes to users instead of flailing.
     (webpki-roots), it ships a hardcoded Mozilla bundle and won't
     trust the per-sandbox CA. The failure is a clean TLS error, but
     you'll spin trying to debug it - just switch features.
+  - For Java/JVM, use the JDK that was on the image at boot. Don't
+    `apt install` a new JDK mid-session and don't override
+    `-Djavax.net.ssl.trustStore`; the per-sandbox CA was imported
+    into the boot JDK's `cacerts` and isn't in any other keystore.
+    Symptom if you do: `PKIX path building failed`.
 - **Per-secret inline notes** in the prompt are deferred. Start with the
   hard list and the prefix convention; revisit if specific failure
   modes turn out to need stronger steering.
