@@ -142,11 +142,14 @@ export function AddTodoComposer({
   projectMembers,
   viewerUserId,
   defaultAssigneeSId,
+  hideAssigneePicker = false,
   onAdd,
 }: {
   projectMembers: SpaceUserType[];
   viewerUserId: string | null;
   defaultAssigneeSId: string;
+  /** When true, assignee is implicit (e.g. sole project member); no avatar control. */
+  hideAssigneePicker?: boolean;
   onAdd: (text: string, assigneeSId: string) => Promise<boolean>;
 }) {
   const [text, setText] = useState("");
@@ -160,7 +163,9 @@ export function AddTodoComposer({
   const selectedSId = assigneeSId ?? defaultAssigneeSId;
 
   const isExpanded =
-    inputFocused || assigneeMenuOpen || stripNewlines(text).trim().length > 0;
+    inputFocused ||
+    (!hideAssigneePicker && assigneeMenuOpen) ||
+    stripNewlines(text).trim().length > 0;
 
   const handleSubmit = useCallback(async () => {
     const trimmed = stripNewlines(text).trim();
@@ -199,24 +204,28 @@ export function AddTodoComposer({
   return (
     <div ref={containerRef} className={PROJECT_TODO_TABLE_ROW_INSET_CLASS}>
       <div className={PROJECT_TODO_ITEM_ROW_FRAME_CLASS}>
-        <div className={PROJECT_TODO_MANUAL_ADD_LEADING_CLASS}>
-          <div
-            className={cn(
-              PROJECT_TODO_MANUAL_ADD_LEADING_ASSIGNEE_ANCHOR_CLASS,
-              assigneeChromeToneClass
-            )}
-          >
-            <TodoRowAssigneeMenu
-              ariaNamePrefix="add-todo"
-              members={projectMembers}
-              viewerUserId={viewerUserId}
-              selectedSId={selectedSId}
-              onSelect={setAssigneeSId}
-              onMenuOpenChange={setAssigneeMenuOpen}
-              disabled={isAdding}
-            />
+        {hideAssigneePicker ? (
+          <div className={PROJECT_TODO_MANUAL_ADD_LEADING_CLASS} aria-hidden />
+        ) : (
+          <div className={PROJECT_TODO_MANUAL_ADD_LEADING_CLASS}>
+            <div
+              className={cn(
+                PROJECT_TODO_MANUAL_ADD_LEADING_ASSIGNEE_ANCHOR_CLASS,
+                assigneeChromeToneClass
+              )}
+            >
+              <TodoRowAssigneeMenu
+                ariaNamePrefix="add-todo"
+                members={projectMembers}
+                viewerUserId={viewerUserId}
+                selectedSId={selectedSId}
+                onSelect={setAssigneeSId}
+                onMenuOpenChange={setAssigneeMenuOpen}
+                disabled={isAdding}
+              />
+            </div>
           </div>
-        </div>
+        )}
         <div className="flex min-w-0 flex-1 items-center gap-1">
           <div
             className={cn(

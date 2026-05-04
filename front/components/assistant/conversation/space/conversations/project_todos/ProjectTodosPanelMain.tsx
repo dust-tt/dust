@@ -35,6 +35,8 @@ export function ProjectTodosPanelMain() {
     frozenLastReadAt,
     groupedRegularTodosOnly,
     filteredTodos,
+    isSoleProjectMember,
+    hideRegularTodoAssigneeHeaders,
   } = useProjectTodosPanel();
 
   return (
@@ -84,6 +86,7 @@ export function ProjectTodosPanelMain() {
               projectMembers={projectMembers}
               viewerUserId={viewerUserId}
               defaultAssigneeSId={defaultNewAssigneeSId!}
+              hideAssigneePicker={isSoleProjectMember}
               onAdd={handleAddTodo}
             />
           ))}
@@ -118,6 +121,8 @@ export function ProjectTodosPanelMain() {
                 onRejectAgentSuggestion={onRejectAgentSuggestion}
                 onStartWorking={handleStartWorking}
                 onPatchTodo={patchTodoItem}
+                hideAssigneeGroupHeaders={hideRegularTodoAssigneeHeaders}
+                allowAssigneeReassign={!isSoleProjectMember}
               />
             )}
 

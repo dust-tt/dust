@@ -68,6 +68,10 @@ export type ProjectTodosPanelData = {
   frozenLastReadAt: string | null | undefined;
   todos: ProjectTodoType[];
   filteredTodos: ProjectTodoType[];
+  /** Single project member — hide member lists, reassign, and add-row assignee picker. */
+  isSoleProjectMember: boolean;
+  /** Solo project + every visible regular to-do is assigned to the viewer — flat list, no assignee headers. */
+  hideRegularTodoAssigneeHeaders: boolean;
 };
 
 export type UseProjectTodosPanelArgs = {
