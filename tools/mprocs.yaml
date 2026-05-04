@@ -60,6 +60,22 @@ procs:
       echo "sdks-js ready. Starting front."
       ./admin/dev.sh
 
+  front-hono:
+    cwd: "<CONFIG_DIR>/../front"
+    shell: |
+      set -euo pipefail
+      export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+      [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+      nvm use
+      echo "Node $(node --version)"
+      READY_FILE="../sdks/js/dist/client.esm.js.map"
+      echo "Waiting for sdks-js to compile..."
+      echo "Expecting file: $READY_FILE"
+      while [ ! -f "$READY_FILE" ]; do sleep 1; done
+      echo "sdks-js ready. Starting front (Hono strangler)."
+      NODE_ENV=development npm run dev:hono
+    autostart: false
+
   front-workers:
     cwd: "<CONFIG_DIR>/../front"
     shell: |
