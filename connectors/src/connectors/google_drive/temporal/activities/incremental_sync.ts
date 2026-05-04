@@ -4,6 +4,7 @@ import {
 } from "@connectors/connectors/google_drive/lib";
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
 import {
+  deleteFile,
   deleteOneFile,
   getSyncPageToken,
   objectIsInFolderSelection,
@@ -136,7 +137,24 @@ export async function incrementalSync(
     for (const change of changesRes.data.changes) {
       await heartbeat();
 
-      if (change.changeType !== "file" || !change.file) {
+      if (change.changeType !== "file") {
+        continue;
+      }
+
+      if (change.removed && change.fileId) {
+        const localFile = await GoogleDriveFilesModel.findOne({
+          where: {
+            connectorId: connectorId,
+            driveFileId: change.fileId,
+          },
+        });
+        if (localFile) {
+          await deleteFile(localFile);
+        }
+        continue;
+      }
+
+      if (!change.file) {
         continue;
       }
       if (
