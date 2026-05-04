@@ -5,11 +5,11 @@ import { getStatsDClient } from "@app/lib/utils/statsd";
 export const healthApp = new Hono();
 
 healthApp.get("/api/healthz", (c) => {
-  const start = performance.now();
+  const startMs = performance.now();
   const response = c.text("ok", 200);
-  const elapsed = performance.now() - start;
+  const elapsedMs = performance.now() - startMs;
 
-  getStatsDClient().distribution("requests.health.check", elapsed);
+  getStatsDClient().distribution("requests.health.check", elapsedMs);
 
   return response;
 });
