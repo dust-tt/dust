@@ -24,10 +24,10 @@ export function SpaceConversationsActions({
     ? [
         {
           id: "onboarding-todos",
-          label: "Set up your project",
+          label: "Get your project off the ground",
           icon: ListCheckIcon,
           description:
-            "New to projects? Add a description, bring in knowledge, invite your team, and create your first to-dos",
+            "Add context, connect your knowledge, and bring the right people in. Flying solo? It still keeps everything in one place.",
           variant: "highlight" as const,
           isPulsing: true,
           onClick: () => {
