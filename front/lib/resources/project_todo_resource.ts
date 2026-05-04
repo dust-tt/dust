@@ -46,6 +46,8 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
   static model: ModelStaticWorkspaceAware<ProjectTodoModel> = ProjectTodoModel;
   private readonly assignee: ProjectTodoAssigneeType | null;
   private readonly conversationSId: string | null;
+  private readonly createdByUserSId: string | null;
+  private readonly markedAsDoneByUserSId: string | null;
 
   constructor(
     model: ModelStatic<ProjectTodoModel>,
@@ -53,14 +55,20 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
     {
       assignee,
       conversationSId,
+      createdByUserSId,
+      markedAsDoneByUserSId,
     }: {
       assignee?: ProjectTodoAssigneeType | null;
       conversationSId?: string | null;
+      createdByUserSId?: string | null;
+      markedAsDoneByUserSId?: string | null;
     } = {}
   ) {
     super(ProjectTodoModel, blob);
     this.assignee = assignee ?? null;
     this.conversationSId = conversationSId ?? null;
+    this.createdByUserSId = createdByUserSId ?? null;
+    this.markedAsDoneByUserSId = markedAsDoneByUserSId ?? null;
   }
 
   // The stable string identifier for this todo, computed from the model's
@@ -203,10 +211,21 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
 
     const todoModelIds = todos.map((todo) => todo.id);
     const assigneeModelIds = [...new Set(todos.map((todo) => todo.userId))];
+    const actorModelIds = [
+      ...new Set([
+        ...todos
+          .map((todo) => todo.createdByUserId)
+          .filter((id): id is ModelId => id !== null),
+        ...todos
+          .map((todo) => todo.markedAsDoneByUserId)
+          .filter((id): id is ModelId => id !== null),
+      ]),
+    ];
     const workspaceId = auth.getNonNullableWorkspace().id;
 
-    const [assignees, conversationRows] = await Promise.all([
+    const [assignees, actors, conversationRows] = await Promise.all([
       UserResource.fetchByModelIds(assigneeModelIds, { transaction }),
+      UserResource.fetchByModelIds(actorModelIds, { transaction }),
       ProjectTodoConversationModel.findAll({
         where: {
           workspaceId,
@@ -236,6 +255,10 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
       ])
     );
 
+    const actorSIdByModelId = new Map<ModelId, string>(
+      actors.map((actor) => [actor.id, actor.sId])
+    );
+
     const conversationIdByTodoModelId = new Map<ModelId, string>();
     for (const row of conversationRows) {
       const conversationId = row.conversation?.sId;
@@ -252,6 +275,14 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
       return new this(ProjectTodoModel, todo.get(), {
         assignee: assigneeByModelId.get(todo.userId) ?? null,
         conversationSId: conversationIdByTodoModelId.get(todo.id) ?? null,
+        createdByUserSId:
+          todo.createdByUserId !== null
+            ? (actorSIdByModelId.get(todo.createdByUserId) ?? null)
+            : null,
+        markedAsDoneByUserSId:
+          todo.markedAsDoneByUserId !== null
+            ? (actorSIdByModelId.get(todo.markedAsDoneByUserId) ?? null)
+            : null,
       });
     });
   }
@@ -625,9 +656,11 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
       agentInstructions: this.agentInstructions,
       createdByType: this.createdByType,
       createdByAgentConfigurationId: this.createdByAgentConfigurationId,
+      createdByUserId: this.createdByUserSId,
       markedAsDoneByType: this.markedAsDoneByType,
       markedAsDoneByAgentConfigurationId:
         this.markedAsDoneByAgentConfigurationId,
+      markedAsDoneByUserId: this.markedAsDoneByUserSId,
       sources: [],
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
