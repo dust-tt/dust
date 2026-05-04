@@ -1,11 +1,12 @@
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
-import type { CouponResource } from "@app/lib/resources/coupon_resource";
+import { CouponResource } from "@app/lib/resources/coupon_resource";
 import { CouponRedemptionModel } from "@app/lib/resources/storage/models/coupon_redemptions";
+import { CouponModel } from "@app/lib/resources/storage/models/coupons";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
-import { makeSId } from "@app/lib/resources/string_ids";
+import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type {
   CouponRedemptionStatus,
@@ -109,6 +110,53 @@ export class CouponRedemptionResource extends BaseResource<CouponRedemptionModel
       workspaceSId: workspace.sId,
       couponSId: coupon.sId,
       redeemedByUserSId: null,
+    });
+  }
+
+  static async listActiveByWorkspace(
+    auth: Authenticator
+  ): Promise<
+    Array<{ redemption: CouponRedemptionResource; couponCode: string }>
+  > {
+    const workspace = auth.getNonNullableWorkspace();
+    const rows = await this.model.findAll({
+      where: { workspaceId: workspace.id, status: "active" },
+      include: [
+        { model: CouponModel, as: "coupon", required: true },
+        { model: UserModel, as: "redeemedByUser", required: false },
+      ],
+      order: [["redeemedAt", "DESC"]],
+    });
+    return rows.map((r) => ({
+      redemption: new this(this.model, r.get(), {
+        workspaceSId: workspace.sId,
+        couponSId: CouponResource.modelIdToSId({ id: r.couponId }),
+        redeemedByUserSId: r.redeemedByUser?.sId ?? null,
+      }),
+      couponCode: r.coupon.code,
+    }));
+  }
+
+  static async fetchById(
+    auth: Authenticator,
+    redemptionId: string
+  ): Promise<CouponRedemptionResource | null> {
+    const workspace = auth.getNonNullableWorkspace();
+    const id = getResourceIdFromSId(redemptionId);
+    if (!id) {
+      return null;
+    }
+    const row = await this.model.findOne({
+      where: { id, workspaceId: workspace.id },
+      include: [{ model: UserModel, as: "redeemedByUser", required: false }],
+    });
+    if (!row) {
+      return null;
+    }
+    return new this(this.model, row.get(), {
+      workspaceSId: workspace.sId,
+      couponSId: CouponResource.modelIdToSId({ id: row.couponId }),
+      redeemedByUserSId: row.redeemedByUser?.sId ?? null,
     });
   }
 
