@@ -169,6 +169,7 @@ export function getToolCategory(
  */
 export function buildLlmUsageEvents({
   workspaceId,
+  isByok,
   conversationId,
   userId,
   agentMessageId,
@@ -185,6 +186,7 @@ export function buildLlmUsageEvents({
   timestamp,
 }: {
   workspaceId: string;
+  isByok: boolean;
   conversationId: string;
   userId: string | null;
   agentMessageId: string;
@@ -244,6 +246,7 @@ export function buildLlmUsageEvents({
     properties: {
       workspace_id: workspaceId,
       user_id: userId ?? "unknown",
+      is_byok: isByok ? "true" : "false",
       agent_message_id: agentMessageId,
       conversation_id: conversationId,
       agent_id: agentId ?? "unknown",
