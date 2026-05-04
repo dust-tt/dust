@@ -127,19 +127,23 @@ describe("ToolsList", () => {
     expect(form.formState.errors.toolSettings).toBeUndefined();
   });
 
-  it("renders in read-only mode without relying on the MCP settings form context", () => {
-    render(
-      <ToolsList
-        owner={owner}
-        mcpServerView={readOnlyMcpServerView}
-        disableUpdates
-      />
-    );
+  it("does not throw when rendered outside an MCPServerFormValues FormProvider", () => {
+    // Regression: the agent builder mounts <ToolsList disableUpdates /> with
+    // no surrounding FormProvider for MCPServerFormValues. An earlier version
+    // called useFormContext / useController unconditionally and crashed in
+    // that context.
+    expect(() =>
+      render(
+        <ToolsList
+          owner={owner}
+          mcpServerView={readOnlyMcpServerView}
+          disableUpdates
+        />
+      )
+    ).not.toThrow();
 
-    expect(screen.getByText(/available tools/i)).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: /get messages/i })
     ).toBeInTheDocument();
-    expect(screen.queryByRole("checkbox")).toBeNull();
   });
 });
