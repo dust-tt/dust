@@ -233,7 +233,7 @@ const ToolsListContent = memo(
   }
 );
 
-function EditableToolsListContent({
+function EditableToolsList({
   mayUpdate,
   tools,
   mcpServerView,
@@ -280,33 +280,6 @@ function EditableToolsListContent({
   );
 }
 
-function ReadOnlyToolsListContent({
-  mayUpdate,
-  tools,
-  mcpServerView,
-  toolMetadataByName,
-}: {
-  mayUpdate: boolean;
-  tools: ToolDefinition[];
-  mcpServerView: MCPServerViewType;
-  toolMetadataByName: Record<string, ToolMetadata>;
-}) {
-  return (
-    <ToolsListContent
-      mayUpdate={mayUpdate}
-      tools={tools}
-      getSettings={(tool) =>
-        getDefaultToolSettings({
-          tool,
-          toolMetadataByName,
-          mcpServerView,
-        })
-      }
-      onToolChange={() => {}}
-    />
-  );
-}
-
 // We disable buttons for agent builder view because it would feel like
 // you can configure per agent
 export const ToolsList = memo(
@@ -335,19 +308,28 @@ export const ToolsList = memo(
       [mcpServerView.toolsMetadata]
     );
 
+    // Read-only path: render directly without binding to the surrounding
+    // MCPServerFormValues form, since this component is also rendered in
+    // contexts (e.g. agent builder) that have no such FormProvider.
     if (disableUpdates) {
       return (
-        <ReadOnlyToolsListContent
+        <ToolsListContent
           mayUpdate={mayUpdate}
           tools={tools}
-          mcpServerView={mcpServerView}
-          toolMetadataByName={toolMetadataByName}
+          getSettings={(tool) =>
+            getDefaultToolSettings({
+              tool,
+              toolMetadataByName,
+              mcpServerView,
+            })
+          }
+          onToolChange={() => {}}
         />
       );
     }
 
     return (
-      <EditableToolsListContent
+      <EditableToolsList
         mayUpdate={mayUpdate}
         tools={tools}
         mcpServerView={mcpServerView}
