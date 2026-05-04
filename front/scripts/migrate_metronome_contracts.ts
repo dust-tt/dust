@@ -284,6 +284,7 @@ async function migrateWorkspace(
     packageIdToAlias: Record<string, string>;
   },
   packageAliasFilter?: string,
+  forcePackageAlias?: string,
   enableBilling?: boolean
 ): Promise<void> {
   const client = getMetronomeClient();
@@ -304,9 +305,26 @@ async function migrateWorkspace(
     return;
   }
 
-  // Apply package alias filter if set.
+  // Apply package alias filter (matched against the *derived* target alias)
+  // before any override, so callers can scope a forced migration to e.g.
+  // "all monthly Pro contracts → some custom package".
   if (packageAliasFilter && subInfo.packageAlias !== packageAliasFilter) {
     return;
+  }
+
+  // Force-override the target alias when the operator passes one.
+  if (forcePackageAlias) {
+    if (subInfo.packageAlias !== forcePackageAlias) {
+      logger.info(
+        {
+          workspaceId: workspace.sId,
+          derivedAlias: subInfo.packageAlias,
+          forcedAlias: forcePackageAlias,
+        },
+        "Forcing target package alias (overriding derived value)"
+      );
+      subInfo.packageAlias = forcePackageAlias;
+    }
   }
 
   const targetPackageId = packageInfo.aliasToPackageId[subInfo.packageAlias];
@@ -523,6 +541,12 @@ makeScript(
         "Only migrate contracts targeting this package alias (e.g., 'legacy-pro-29'). Omit to migrate all.",
       type: "string" as const,
     },
+    forcePackageAlias: {
+      alias: "P",
+      describe:
+        "Override the derived target package alias and use this one instead. Useful for one-off migrations to a custom package; combine with --packageAlias to scope the override.",
+      type: "string" as const,
+    },
     force: {
       alias: "f",
       describe:
@@ -540,11 +564,18 @@ makeScript(
   },
   async (args, logger) => {
     const packageAliasFilter = args.packageAlias;
+    const forcePackageAlias = args.forcePackageAlias;
     const enableBilling = args.enableBilling;
     if (packageAliasFilter) {
       logger.info(
         { packageAlias: packageAliasFilter },
         "Filtering to contracts targeting this package alias"
+      );
+    }
+    if (forcePackageAlias) {
+      logger.info(
+        { forcePackageAlias },
+        "Forcing the target package alias for all migrated contracts"
       );
     }
     if (enableBilling) {
@@ -571,6 +602,7 @@ makeScript(
         logger,
         packageInfo,
         packageAliasFilter,
+        forcePackageAlias,
         enableBilling
       );
     } else {
@@ -583,6 +615,7 @@ makeScript(
             logger,
             packageInfo,
             packageAliasFilter,
+            forcePackageAlias,
             enableBilling
           ),
         { concurrency: 4 }
