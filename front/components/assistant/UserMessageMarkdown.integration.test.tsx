@@ -28,9 +28,16 @@ vi.mock("@app/hooks/useURLSheet", () => ({
 const getConversationRouteMock = vi.fn(
   (..._: any[]) => "/w/w_123/a/new?agent=agent_conf_1"
 );
+const getManageSkillsRouteMock = vi.fn(
+  (workspaceId: string, skillId?: string) =>
+    `/w/${workspaceId}/builder/skills${skillId ? `#?skillId=${skillId}` : ""}`
+);
 const setQueryParamMock = vi.fn();
 vi.mock("@app/lib/utils/router", () => ({
   getConversationRoute: (...args: any[]) => getConversationRouteMock(...args),
+  getManageSkillsRoute: (
+    ...args: Parameters<typeof getManageSkillsRouteMock>
+  ) => getManageSkillsRouteMock(...args),
   setQueryParam: (...args: any[]) => setQueryParamMock(...args),
 }));
 

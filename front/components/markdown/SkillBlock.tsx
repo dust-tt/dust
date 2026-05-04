@@ -28,7 +28,7 @@ export function SkillBlock({
   return (
     <AttachmentChip
       label={skillName}
-      icon={{visual: getSkillIcon(skillIcon), size: "xs"}}
+      icon={{ visual: getSkillIcon(skillIcon), size: "xs" }}
       href={href}
       target={href ? "_blank" : undefined}
       color="white"
