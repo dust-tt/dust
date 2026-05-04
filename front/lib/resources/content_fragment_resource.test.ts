@@ -1,4 +1,4 @@
-import { Authenticator } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfigs } from "@app/lib/llms/model_configurations";
 import { renderLightContentFragmentForModel } from "@app/lib/resources/content_fragment_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
@@ -111,7 +111,10 @@ describe("renderLightContentFragmentForModel", () => {
     it("renders a queryable file attachment (CSV)", async () => {
       const result = await renderLightContentFragmentForModel(
         authenticator,
-        makeFileFragment("text/csv", { generatedTables: ["table_1"], snippet: "" }),
+        makeFileFragment("text/csv", {
+          generatedTables: ["table_1"],
+          snippet: "",
+        }),
         model,
         { excludeImages: false }
       );
@@ -177,7 +180,10 @@ describe("renderLightContentFragmentForModel", () => {
     it("still renders a queryable file attachment (CSV)", async () => {
       const result = await renderLightContentFragmentForModel(
         authenticator,
-        makeFileFragment("text/csv", { generatedTables: ["table_1"], snippet: "" }),
+        makeFileFragment("text/csv", {
+          generatedTables: ["table_1"],
+          snippet: "",
+        }),
         model,
         { excludeImages: false }
       );
