@@ -540,9 +540,10 @@ export const EditableTodoItem = memo(function EditableTodoItem({
                         label="Start working"
                         variant="outline"
                         size="sm"
+                        className={isFirstOnboardingTodo ? "z-10" : ""}
                         isLoading={isStarting}
-                        disabled={isStarting || !selectedStartAgent}
                         isPulsing={isFirstOnboardingTodo}
+                        disabled={isStarting || !selectedStartAgent}
                         onClick={() => void handleConfirmStart()}
                       />
                       <ButtonGroupDropdown
