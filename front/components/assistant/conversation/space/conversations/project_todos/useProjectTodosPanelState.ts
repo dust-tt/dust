@@ -13,6 +13,8 @@ import {
 import {
   DELETE_TODO_CONFIRM_PREVIEW_MAX_CHARS,
   isOnboardingTodo,
+  normalizeProjectTodoSearchNeedle,
+  projectTodoMatchesLocalSearch,
   SUMMARY_ITEM_TRANSITION_MS,
 } from "@app/components/assistant/conversation/space/conversations/project_todos/utils";
 import { ConfirmContext } from "@app/components/Confirm";
@@ -55,6 +57,7 @@ export function useProjectTodosPanelState({
   onTodoOwnerFilterChange,
 }: UseProjectTodosPanelArgs): ProjectTodosPanelData {
   const [assigneeSearch, setAssigneeSearch] = useState("");
+  const [debouncedTodoSearchQuery, setDebouncedTodoSearchQuery] = useState("");
   const [isAssigneeMenuOpen, setIsAssigneeMenuOpen] = useState(false);
   const {
     todos,
@@ -191,7 +194,7 @@ export function useProjectTodosPanelState({
     viewerUserId,
   });
 
-  const filteredTodos = useMemo(() => {
+  const assigneeScopedTodos = useMemo(() => {
     switch (todoOwnerFilter.assigneeScope) {
       case "all":
         return todos;
@@ -210,7 +213,23 @@ export function useProjectTodosPanelState({
     }
   }, [selectedUserSIds, todoOwnerFilter.assigneeScope, todos, viewerUserId]);
 
-  const hasDoneItems = filteredTodos.some((todo) => todo.status === "done");
+  const normalizedTodoSearchNeedle = useMemo(
+    () => normalizeProjectTodoSearchNeedle(debouncedTodoSearchQuery),
+    [debouncedTodoSearchQuery]
+  );
+
+  const filteredTodos = useMemo(() => {
+    if (normalizedTodoSearchNeedle === "") {
+      return assigneeScopedTodos;
+    }
+    return assigneeScopedTodos.filter((todo) =>
+      projectTodoMatchesLocalSearch(todo, normalizedTodoSearchNeedle)
+    );
+  }, [assigneeScopedTodos, normalizedTodoSearchNeedle]);
+
+  const hasDoneItems = assigneeScopedTodos.some(
+    (todo) => todo.status === "done"
+  );
 
   const getFirstOnboardingTodoId = (
     todos: ProjectTodoType[]
@@ -642,6 +661,9 @@ export function useProjectTodosPanelState({
     frozenLastReadAt,
     todos,
     filteredTodos,
+    assigneeScopedTodos,
+    debouncedTodoSearchQuery,
+    setDebouncedTodoSearchQuery,
     isSoleProjectMember,
     hideRegularTodoAssigneeHeaders,
   };

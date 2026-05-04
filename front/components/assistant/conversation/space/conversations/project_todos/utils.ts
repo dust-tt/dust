@@ -1,3 +1,4 @@
+import { removeDiacritics } from "@app/lib/utils";
 import type { ProjectTodoType } from "@app/types/project_todo";
 import { cn } from "@dust-tt/sparkle";
 import type React from "react";
@@ -17,6 +18,49 @@ export function stripNewlines(value: string): string {
  * a guided first conversation; manual user-created to-dos don't have them. */
 export function isOnboardingTodo(todo: ProjectTodoType): boolean {
   return !!todo.agentInstructions;
+}
+
+/** Normalizes user input for accent-insensitive, case-insensitive matching. */
+export function normalizeProjectTodoSearchNeedle(raw: string): string {
+  return removeDiacritics(raw.trim()).toLowerCase();
+}
+
+function projectTodoHaystackNormalized(s: string | null | undefined): string {
+  return normalizeProjectTodoSearchNeedle(s ?? "");
+}
+
+/** `needle` must already be `{normalizeProjectTodoSearchNeedle}` output. Empty matches all. */
+export function projectTodoMatchesLocalSearch(
+  todo: ProjectTodoType,
+  needle: string
+): boolean {
+  if (needle === "") {
+    return true;
+  }
+  if (projectTodoHaystackNormalized(todo.text).includes(needle)) {
+    return true;
+  }
+  if (
+    todo.user?.fullName &&
+    projectTodoHaystackNormalized(todo.user.fullName).includes(needle)
+  ) {
+    return true;
+  }
+  if (
+    todo.actorRationale?.trim() &&
+    projectTodoHaystackNormalized(todo.actorRationale).includes(needle)
+  ) {
+    return true;
+  }
+  for (const src of todo.sources) {
+    if (
+      src.sourceTitle?.trim() &&
+      projectTodoHaystackNormalized(src.sourceTitle).includes(needle)
+    ) {
+      return true;
+    }
+  }
+  return false;
 }
 
 export function useAutosizeTextArea(
