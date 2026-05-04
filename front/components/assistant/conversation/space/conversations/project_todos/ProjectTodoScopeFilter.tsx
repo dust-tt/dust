@@ -35,7 +35,7 @@ export function ProjectTodoScopeFilter() {
   } = useProjectTodosPanel();
 
   return (
-    <div className="border-b border-border pb-6 dark:border-border-night">
+    <div className="mb-1">
       <div className="inline-flex w-full items-center gap-2">
         <DropdownMenu
           modal={false}

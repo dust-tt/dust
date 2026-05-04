@@ -273,22 +273,22 @@ export function SpaceConversationsTab({
                     size="xs"
                   >
                     <ButtonsSwitch
-                      value="all"
-                      label="All"
-                      tooltip="Show every conversation in this project."
-                      onClick={() => onConversationFilterChange("all")}
-                    />
-                    <ButtonsSwitch
                       value="group"
-                      label="Group"
+                      label="Shared"
                       tooltip="Show only threads where at least two people have sent messages."
                       onClick={() => onConversationFilterChange("group")}
                     />
                     <ButtonsSwitch
                       value="with_me"
-                      label="Mine"
+                      label="Just mine"
                       tooltip="Show only conversations where you have sent a message."
                       onClick={() => onConversationFilterChange("with_me")}
+                    />
+                    <ButtonsSwitch
+                      value="all"
+                      label="All project's"
+                      tooltip="Show every conversation in this project."
+                      onClick={() => onConversationFilterChange("all")}
                     />
                   </ButtonsSwitchList>
                   <Button

@@ -6,6 +6,7 @@ import { RenameFileDialog } from "@app/components/assistant/conversation/space/R
 import { ConfirmContext } from "@app/components/Confirm";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import { FilePreviewSheet } from "@app/components/spaces/FilePreviewSheet";
+import { useDebounce } from "@app/hooks/useDebounce";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import type { ContextAttachmentItem } from "@app/lib/api/assistant/conversation/attachments";
 import {
@@ -41,6 +42,7 @@ import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import moment from "moment";
 import type React from "react";
 import {
+  memo,
   useCallback,
   useContext,
   useEffect,
@@ -106,6 +108,60 @@ function compareKnowledgeRowsByKindThenTitle(
   return a.title.localeCompare(b.title, undefined, { sensitivity: "base" });
 }
 
+type KnowledgeFilteredDataTableProps = {
+  columns: ColumnDef<ProjectKnowledgeRow>[];
+  data: ProjectKnowledgeRow[];
+  filter: string;
+};
+
+const KnowledgeFilteredDataTable = memo(function KnowledgeFilteredDataTable({
+  columns,
+  data,
+  filter,
+}: KnowledgeFilteredDataTableProps) {
+  return (
+    <DataTable
+      columns={columns}
+      data={data}
+      filter={filter}
+      filterColumn="title"
+      sorting={[{ id: "title", desc: false }]}
+    />
+  );
+});
+
+type KnowledgeSearchAndTableProps = {
+  columns: ColumnDef<ProjectKnowledgeRow>[];
+  data: ProjectKnowledgeRow[];
+};
+
+/** Debounced search lives here so typing does not rerender `SpaceKnowledgeTabContent`. */
+const KnowledgeSearchAndTable = memo(function KnowledgeSearchAndTable({
+  columns,
+  data,
+}: KnowledgeSearchAndTableProps) {
+  const { inputValue, debouncedValue, setValue } = useDebounce("", {
+    delay: 200,
+  });
+
+  return (
+    <>
+      <SearchInput
+        name="knowledge-search"
+        value={inputValue}
+        onChange={setValue}
+        placeholder="Filter knowledge..."
+        className="w-full"
+      />
+      <KnowledgeFilteredDataTable
+        columns={columns}
+        data={data}
+        filter={debouncedValue}
+      />
+    </>
+  );
+});
+
 export function SpaceKnowledgeTab({ owner, space }: SpaceKnowledgeTabProps) {
   const isArchived = !!space.archivedAt;
 
@@ -127,7 +183,6 @@ export function SpaceKnowledgeTab({ owner, space }: SpaceKnowledgeTabProps) {
 
 function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [searchText, setSearchText] = useState("");
   const [showRenameDialog, setShowRenameDialog] = useState(false);
   const [fileToRename, setFileToRename] = useState<{
     sId: string;
@@ -569,22 +624,7 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
               action={isArchived ? null : attachButtonWithPolicyTooltip}
             />
           ) : (
-            <>
-              <SearchInput
-                name="knowledge-search"
-                value={searchText}
-                onChange={setSearchText}
-                placeholder="Filter knowledge..."
-                className="w-full"
-              />
-              <DataTable
-                columns={columns}
-                data={tableData}
-                filter={searchText}
-                filterColumn="title"
-                sorting={[{ id: "title", desc: false }]}
-              />
-            </>
+            <KnowledgeSearchAndTable columns={columns} data={tableData} />
           )}
         </div>
       </div>

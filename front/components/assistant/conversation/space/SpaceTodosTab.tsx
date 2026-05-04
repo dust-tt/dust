@@ -1,4 +1,5 @@
 import {
+  ProjectTodoLocalSearch,
   ProjectTodoScopeFilter,
   ProjectTodosPanelMain,
   ProjectTodosPanelProvider,
@@ -32,6 +33,7 @@ export function SpaceTodosTab({
           onTodoOwnerFilterChange={onTodoOwnerFilterChange}
         >
           <ProjectTodoScopeFilter />
+          <ProjectTodoLocalSearch />
           <SuggestedTodosGenerationTile owner={owner} spaceInfo={spaceInfo} />
           <ProjectTodosPanelMain />
         </ProjectTodosPanelProvider>

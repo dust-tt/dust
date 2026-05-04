@@ -67,7 +67,13 @@ export type ProjectTodosPanelData = {
   isTodosLoading: boolean;
   frozenLastReadAt: string | null | undefined;
   todos: ProjectTodoType[];
+  /** After assignee scope; ignores description search — use for baseline empty counts. */
+  assigneeScopedTodos: ProjectTodoType[];
+  /** After assignee scope + debounced text filter (`debouncedTodoSearchQuery`). */
   filteredTodos: ProjectTodoType[];
+  /** Debounced query from ProjectTodoLocalSearch; tables filter on this. */
+  debouncedTodoSearchQuery: string;
+  setDebouncedTodoSearchQuery: (value: string) => void;
   /** Single project member — hide member lists, reassign, and add-row assignee picker. */
   isSoleProjectMember: boolean;
   /** Solo project + every visible regular to-do is assigned to the viewer — flat list, no assignee headers. */

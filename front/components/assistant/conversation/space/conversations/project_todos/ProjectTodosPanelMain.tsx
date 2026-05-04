@@ -1,6 +1,7 @@
 import { AddTodoComposer } from "@app/components/assistant/conversation/space/conversations/project_todos/AddTodoComposer";
 import { ProjectTodosDataTable } from "@app/components/assistant/conversation/space/conversations/project_todos/ProjectTodosDataTable";
 import { useProjectTodosPanel } from "@app/components/assistant/conversation/space/conversations/project_todos/ProjectTodosPanelContext";
+import { normalizeProjectTodoSearchNeedle } from "@app/components/assistant/conversation/space/conversations/project_todos/utils";
 import { Spinner } from "@dust-tt/sparkle";
 
 export function ProjectTodosPanelMain() {
@@ -35,9 +36,14 @@ export function ProjectTodosPanelMain() {
     frozenLastReadAt,
     groupedRegularTodosOnly,
     filteredTodos,
+    assigneeScopedTodos,
+    debouncedTodoSearchQuery,
     isSoleProjectMember,
     hideRegularTodoAssigneeHeaders,
   } = useProjectTodosPanel();
+
+  const hasActiveLocalSearch =
+    normalizeProjectTodoSearchNeedle(debouncedTodoSearchQuery) !== "";
 
   return (
     <>
@@ -129,7 +135,9 @@ export function ProjectTodosPanelMain() {
             {/* Empty state */}
             {filteredTodos.length === 0 && (
               <p className="text-base italic text-faint dark:text-faint-night">
-                You're all caught up!
+                {hasActiveLocalSearch && assigneeScopedTodos.length > 0
+                  ? "No to-dos match your filter."
+                  : "You're all caught up!"}
               </p>
             )}
           </>
