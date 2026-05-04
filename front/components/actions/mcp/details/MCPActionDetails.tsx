@@ -23,7 +23,6 @@ import {
   FilesystemPathDetails,
 } from "@app/components/actions/mcp/details/MCPDataSourcesFileSystemActionDetails";
 import { MCPDataWarehousesBrowseDetails } from "@app/components/actions/mcp/details/MCPDataWarehousesBrowseDetails";
-import { MCPDeepDiveActionDetails } from "@app/components/actions/mcp/details/MCPDeepDiveActionDetails";
 import { MCPExtractActionDetails } from "@app/components/actions/mcp/details/MCPExtractActionDetails";
 import { MCPGetDatabaseSchemaActionDetails } from "@app/components/actions/mcp/details/MCPGetDatabaseSchemaActionDetails";
 import { MCPImageGenerationActionDetails } from "@app/components/actions/mcp/details/MCPImageGenerationActionDetails";
@@ -326,11 +325,6 @@ function MCPActionDetailsInner({
 
   if (internalMCPServerName === "run_agent") {
     return <MCPRunAgentActionDetails {...toolOutputDetailsProps} />;
-  }
-
-  // TODO(2026-02-03 aubin): remove the component entirely on Feb, 17. See comment in PR.
-  if (internalMCPServerName?.toString() === "deep_dive") {
-    return <MCPDeepDiveActionDetails {...toolOutputDetailsProps} />;
   }
 
   if (internalMCPServerName === "agent_memory") {
