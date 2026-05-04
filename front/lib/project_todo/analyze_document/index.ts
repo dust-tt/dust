@@ -11,6 +11,7 @@ import {
   ExtractTakeawaysInputSchema,
 } from "@app/lib/project_todo/analyze_document/types";
 import { buildSpec } from "@app/lib/project_todo/analyze_document/utils";
+import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import {
   type TakeawaySourceDocument,
@@ -124,6 +125,23 @@ async function callExtractActionItemsLLM(
 // Maps raw LLM-extracted items to typed action items, reusing sIds from the
 // previous version when the LLM echoes them back, generating new UUIDs otherwise.
 
+async function buildPromptProjectDescription(
+  auth: Authenticator,
+  { spaceId }: { spaceId: string }
+): Promise<string | null> {
+  const space = await SpaceResource.fetchById(auth, spaceId);
+  if (!space) {
+    return null;
+  }
+
+  const metadata = await ProjectMetadataResource.fetchBySpace(auth, space);
+  if (!metadata?.description) {
+    return null;
+  }
+
+  return `Project description: ${metadata.description}`;
+}
+
 export type ExtractedTakeawayStats = {
   actionItems: number;
   keyDecisions: number;
@@ -163,12 +181,20 @@ export async function extractDocumentTakeaways(
 
   const previousActionItems = previousVersion?.actionItems ?? [];
 
+  const [projectMembers, projectDescription] = await Promise.all([
+    buildPromptProjectMembers(auth, { spaceId }),
+    buildPromptProjectDescription(auth, { spaceId }),
+  ]);
+
   const prompt = [
-    await buildPromptProjectMembers(auth, { spaceId }),
+    projectMembers,
+    projectDescription,
     buildPromptForSourceType(document.type),
     buildPromptActionItems(previousActionItems),
     "You MUST call the tool. Always call it, even if there are no action items, notable facts, or key decisions (use empty arrays).",
-  ].join("\n\n");
+  ]
+    .filter(Boolean)
+    .join("\n\n");
   const specification = buildSpec();
 
   const extraction = await callExtractActionItemsLLM(auth, {
