@@ -65,11 +65,9 @@ import type {
 } from "@connectors/types";
 import {
   FILE_ATTRIBUTES_TO_FETCH,
-  getGoogleIdsFromSheetContentNodeInternalId,
   getGoogleSheetContentNodeInternalId,
   googleDriveIncrementalSyncWorkflowId,
   INTERNAL_MIME_TYPES,
-  isGoogleSheetContentNodeInternalId,
   normalizeError,
 } from "@connectors/types";
 import type { ConnectorProvider, Result } from "@dust-tt/client";
@@ -723,18 +721,12 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
         return new Ok([]);
       }
 
-      const isGoogleSheetContentNode =
-        isGoogleSheetContentNodeInternalId(internalId);
-      const driveObjectId = isGoogleSheetContentNode
-        ? getGoogleIdsFromSheetContentNodeInternalId(internalId).googleFileId
-        : getDriveFileId(internalId);
-
       const authCredentials = await getAuthObject(connector.connectionId);
 
       const driveObject = await getGoogleDriveObject({
         connectorId: this.connectorId,
         authCredentials,
-        driveObjectId,
+        driveObjectId: getDriveFileId(internalId),
         cacheKey: { connectorId: this.connectorId, ts: memoizationKey },
       });
 
@@ -754,12 +746,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
         { includeAllRemoteParents: true }
       );
 
-      const parentInternalIds = parents.map((p) => getInternalId(p));
-      return new Ok(
-        isGoogleSheetContentNode
-          ? [internalId, ...parentInternalIds]
-          : parentInternalIds
-      );
+      return new Ok(parents.map((p) => getInternalId(p)));
     } catch (err) {
       return new Err(normalizeError(err));
     }
