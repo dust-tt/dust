@@ -455,6 +455,48 @@ const InputBarContainer = ({
     });
   };
 
+  const handleSkillSelect = useCallback(
+    ({
+      icon,
+      name,
+      sId,
+    }: {
+      icon: string | null;
+      name: string;
+      sId: string;
+    }) => {
+      editorRef.current
+        ?.chain()
+        .focus()
+        .insertSkillNode({
+          skillId: sId,
+          skillIcon: icon,
+          skillName: name,
+        })
+        .run();
+    },
+    []
+  );
+
+  const handleSlashSuggestionSelection = useCallback(
+    (capability: InputBarSlashSuggestionCapability) => {
+      switch (capability.kind) {
+        case "skill":
+          handleSkillSelect(capability.skill);
+          break;
+        case "tool":
+          onMCPServerViewSelect(capability.serverView);
+          break;
+        default:
+          assertNeverAndIgnore(capability);
+      }
+
+      queueMicrotask(() => editorRef.current?.commands.focus());
+    },
+    [handleSkillSelect, onMCPServerViewSelect]
+  );
+  onSelectRef.current = handleSlashSuggestionSelection;
+
   // Current space is taken from the conversation (if already set) or from the space prop (if provided).
   const spaceId = conversation?.spaceId ?? space?.sId ?? undefined;
 
@@ -522,48 +564,6 @@ const InputBarContainer = ({
       }
     },
   });
-
-  const handleSkillSelect = useCallback(
-    ({
-      icon,
-      name,
-      sId,
-    }: {
-      icon: string | null;
-      name: string;
-      sId: string;
-    }) => {
-      editorRef.current
-        ?.chain()
-        .focus()
-        .insertSkillNode({
-          skillId: sId,
-          skillIcon: icon,
-          skillName: name,
-        })
-        .run();
-    },
-    []
-  );
-
-  const handleSlashSuggestionSelection = useCallback(
-    (capability: InputBarSlashSuggestionCapability) => {
-      switch (capability.kind) {
-        case "skill":
-          handleSkillSelect(capability.skill);
-          break;
-        case "tool":
-          onMCPServerViewSelect(capability.serverView);
-          break;
-        default:
-          assertNeverAndIgnore(capability);
-      }
-
-      queueMicrotask(() => editorRef.current?.commands.focus());
-    },
-    [handleSkillSelect, onMCPServerViewSelect]
-  );
-  onSelectRef.current = handleSlashSuggestionSelection;
 
   useEffect(() => {
     // If an attachment disappears from the uploader, remove its chip from the editor
