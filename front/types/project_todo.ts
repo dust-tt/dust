@@ -50,8 +50,10 @@ export type ProjectTodoType = {
   actorRationale: string | null;
   createdByType: ProjectTodoActorType;
   createdByAgentConfigurationId: string | null;
+  createdByUserId: string | null;
   markedAsDoneByType: ProjectTodoActorType | null;
   markedAsDoneByAgentConfigurationId: string | null;
+  markedAsDoneByUserId: string | null;
   sources: ProjectTodoSourceInfo[];
   createdAt: Date;
   updatedAt: Date;

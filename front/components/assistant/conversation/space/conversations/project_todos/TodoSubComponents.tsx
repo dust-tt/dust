@@ -7,6 +7,7 @@ import {
 } from "@app/components/assistant/conversation/space/conversations/project_todos/utils";
 import { useAppRouter } from "@app/lib/platform";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
+import { useUser } from "@app/lib/swr/user";
 import { timeAgoFrom } from "@app/lib/utils";
 import type {
   ProjectTodoActorType,
@@ -14,7 +15,11 @@ import type {
   ProjectTodoType,
 } from "@app/types/project_todo";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import type { LightWorkspaceType, SpaceUserType } from "@app/types/user";
+import type {
+  LightWorkspaceType,
+  SpaceUserType,
+  UserTypeWithWorkspaces,
+} from "@app/types/user";
 import {
   Avatar,
   BookOpenIcon,
@@ -286,7 +291,10 @@ export function AddTodoComposer({
 function formatActorLabel(
   type: ProjectTodoActorType | null,
   agentId: string | null,
-  agentNameById: Map<string, string>
+  userId: string | null,
+
+  agentNameById: Map<string, string>,
+  currentUser: UserTypeWithWorkspaces | null
 ): string {
   if (!type) {
     return "someone";
@@ -299,6 +307,9 @@ function formatActorLabel(
       const name = agentId ? agentNameById.get(agentId) : null;
       return name ? `@${name}` : "an agent";
     case "user":
+      if (userId === currentUser?.sId) {
+        return "you";
+      }
       return "a user";
     default:
       assertNeverAndIgnore(type);
@@ -321,16 +332,22 @@ export function TodoMetadataTooltip({
   agentNameById,
   children,
 }: TodoMetadataTooltipProps) {
+  const { user } = useUser();
+
   const creatorLabel = formatActorLabel(
     todo.createdByType,
     todo.createdByAgentConfigurationId,
-    agentNameById
+    todo.createdByUserId,
+    agentNameById,
+    user
   );
   const doneLabel = todo.markedAsDoneByType
     ? formatActorLabel(
         todo.markedAsDoneByType,
         todo.markedAsDoneByAgentConfigurationId,
-        agentNameById
+        todo.markedAsDoneByUserId,
+        agentNameById,
+        user
       )
     : null;
 
