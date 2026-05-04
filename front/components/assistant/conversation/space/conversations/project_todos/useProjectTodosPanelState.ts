@@ -627,6 +627,7 @@ export function useProjectTodosPanelState({
     handleAddTodo,
     isTodosLoading,
     frozenLastReadAt,
+    todos,
     filteredTodos,
   };
 }
