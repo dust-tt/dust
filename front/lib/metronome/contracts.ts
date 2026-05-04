@@ -2,6 +2,7 @@ import {
   ceilToHourISO,
   createMetronomeContract,
   createMetronomeCustomer,
+  ensureMetronomeStripeBillingConfig,
   findMetronomeCustomerByAlias,
   floorToHourISO,
   getMetronomeClient,
@@ -33,6 +34,7 @@ import {
   isEnterpriseReportUsage,
   type SupportedEnterpriseReportUsage,
 } from "@app/lib/plans/usage/types";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Logger } from "@app/logger/logger";
 import logger from "@app/logger/logger";
@@ -99,34 +101,32 @@ export async function switchMetronomeContractPackage({
 }
 
 /**
- * Ensure a Metronome customer and contract exist for a workspace.
- * Creates the customer if missing, then creates a contract via the package alias.
- * Used from both Stripe webhook (checkout) and Poke (admin upgrade).
+ * Idempotently ensure a Metronome customer exists for a workspace and that
+ * its id is persisted on the workspace row.
+ *
+ * - If `workspace.metronomeCustomerId` is already set, returns it.
+ * - Otherwise looks the customer up on Metronome by ingest alias (workspace
+ *   sId), creating it if missing, then writes the id back to the workspace.
+ *
+ * `stripeCustomerId` is optional — when omitted the Metronome customer is
+ * created without a Stripe billing-provider configuration. This is the path
+ * used for free-plan workspaces that may later receive credits via Poke
+ * before they ever subscribe to a paid plan.
  */
-export async function provisionMetronomeCustomerAndContract({
+export async function ensureMetronomeCustomerForWorkspace({
   workspace,
   stripeCustomerId,
-  packageAlias,
-  uniquenessKey,
-  startingAt,
-  enableStripeBilling = true,
 }: {
   workspace: LightWorkspaceType;
-  stripeCustomerId: string;
-  packageAlias: string;
-  uniquenessKey: string;
-  // Must already be on an hour boundary (Metronome requirement).
-  startingAt: Date;
-  enableStripeBilling?: boolean;
-}): Promise<
-  Result<{ metronomeCustomerId: string; metronomeContractId: string }, Error>
-> {
-  // Find or create customer.
-  let metronomeCustomerId: string | null = null;
+  stripeCustomerId?: string;
+}): Promise<Result<{ metronomeCustomerId: string }, Error>> {
+  let metronomeCustomerId: string | null = workspace.metronomeCustomerId;
 
-  const findResult = await findMetronomeCustomerByAlias(workspace.sId);
-  if (findResult.isOk()) {
-    metronomeCustomerId = findResult.value;
+  if (!metronomeCustomerId) {
+    const findResult = await findMetronomeCustomerByAlias(workspace.sId);
+    if (findResult.isOk()) {
+      metronomeCustomerId = findResult.value;
+    }
   }
 
   if (!metronomeCustomerId) {
@@ -141,6 +141,58 @@ export async function provisionMetronomeCustomerAndContract({
     metronomeCustomerId = createResult.value.metronomeCustomerId;
   }
 
+  if (workspace.metronomeCustomerId !== metronomeCustomerId) {
+    const updateResult = await WorkspaceResource.updateMetronomeCustomerId(
+      workspace.id,
+      metronomeCustomerId
+    );
+    if (updateResult.isErr()) {
+      return new Err(updateResult.error);
+    }
+    await WorkspaceResource.invalidateCache(workspace.sId);
+  }
+
+  // If a Stripe customer is provided, make sure the Metronome customer has a
+  // Stripe billing configuration. This covers the upgrade case where the
+  // workspace was provisioned in Metronome without a Stripe link (free plan)
+  // and later acquired a Stripe customer.
+  if (stripeCustomerId) {
+    const billingResult = await ensureMetronomeStripeBillingConfig({
+      metronomeCustomerId,
+      stripeCustomerId,
+    });
+    if (billingResult.isErr()) {
+      return new Err(billingResult.error);
+    }
+  }
+
+  return new Ok({ metronomeCustomerId });
+}
+
+/**
+ * Provision a Metronome contract on an already-existing Metronome customer.
+ * Creates the contract from the given package alias, then syncs seat / MAU
+ * subscription quantities seeded by the package.
+ *
+ * The Metronome customer must already exist (call
+ * `ensureMetronomeCustomerForWorkspace` first).
+ */
+export async function provisionMetronomeContract({
+  metronomeCustomerId,
+  workspace,
+  packageAlias,
+  uniquenessKey,
+  startingAt,
+  enableStripeBilling = true,
+}: {
+  metronomeCustomerId: string;
+  workspace: LightWorkspaceType;
+  packageAlias: string;
+  uniquenessKey: string;
+  // Must already be on an hour boundary (Metronome requirement).
+  startingAt: Date;
+  enableStripeBilling?: boolean;
+}): Promise<Result<{ metronomeContractId: string }, Error>> {
   const contractResult = await createMetronomeContract({
     metronomeCustomerId,
     packageAlias,
@@ -163,10 +215,7 @@ export async function provisionMetronomeCustomerAndContract({
     return new Err(syncResult.error);
   }
 
-  return new Ok({
-    metronomeCustomerId,
-    metronomeContractId,
-  });
+  return new Ok({ metronomeContractId });
 }
 
 // ---------------------------------------------------------------------------
@@ -849,7 +898,10 @@ export async function applyEnterpriseOverrides({
  * Provision a Metronome customer + contract for an enterprise workspace,
  * extract MAU pricing from the Stripe subscription, and apply overrides.
  *
- * Seats and MAU are synced by provisionMetronomeCustomerAndContract.
+ * The enterprise package alias is intentionally a near-empty shell —
+ * subscriptions (seats / MAU / tier products) are added by
+ * `applyEnterpriseOverrides` below using the live MAU count as
+ * `initial_quantity`.
  */
 export async function provisionShadowEnterpriseMetronomeContract({
   workspace,
@@ -895,20 +947,30 @@ export async function provisionShadowEnterpriseMetronomeContract({
     new Date(stripeSubscription.current_period_start * 1000)
   );
 
-  // Provision Metronome customer and contract (also syncs seats + MAU).
-  const provisionResult = await provisionMetronomeCustomerAndContract({
+  // Ensure the customer exists (creating it if needed) and is linked to
+  // Stripe.
+  const customerResult = await ensureMetronomeCustomerForWorkspace({
     workspace,
     stripeCustomerId,
+  });
+  if (customerResult.isErr()) {
+    return new Err(customerResult.error);
+  }
+  const { metronomeCustomerId } = customerResult.value;
+
+  // Create the (empty) contract directly — overrides below will add the MAU
+  // subscriptions with the right initial quantities.
+  const contractResult = await createMetronomeContract({
+    metronomeCustomerId,
     packageAlias,
     uniquenessKey: stripeSubscription.id,
     startingAt: new Date(startDate),
     enableStripeBilling: false,
   });
-  if (provisionResult.isErr()) {
-    return new Err(provisionResult.error);
+  if (contractResult.isErr()) {
+    return new Err(contractResult.error);
   }
-
-  const { metronomeCustomerId, metronomeContractId } = provisionResult.value;
+  const { contractId: metronomeContractId } = contractResult.value;
 
   // Count MAUs for initial subscription quantities on the first invoice.
   const initialMauCount = await countMauForWorkspace(

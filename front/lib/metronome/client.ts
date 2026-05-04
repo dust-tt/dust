@@ -120,7 +120,7 @@ export async function createMetronomeCustomer({
 }: {
   workspaceId: string;
   workspaceName: string;
-  stripeCustomerId: string;
+  stripeCustomerId?: string;
 }): Promise<Result<{ metronomeCustomerId: string }, Error>> {
   try {
     const response = await getMetronomeClient().v1.customers.create({
@@ -159,6 +159,88 @@ export async function createMetronomeCustomer({
     logger.error(
       { error, workspaceId },
       "[Metronome] Failed to create customer"
+    );
+    return new Err(error);
+  }
+}
+
+/**
+ * Idempotently ensure a Metronome customer has a Stripe billing
+ * configuration pointing to the given `stripeCustomerId`.
+ *
+ * - No active Stripe config: adds one.
+ * - Active Stripe config already pointing to `stripeCustomerId`: no-op.
+ * - Active Stripe config pointing to a different `stripeCustomerId`: archives
+ *   the stale config(s) and adds a new one (defensive: should be rare, but
+ *   covers cases like a recreated Stripe customer).
+ */
+export async function ensureMetronomeStripeBillingConfig({
+  metronomeCustomerId,
+  stripeCustomerId,
+}: {
+  metronomeCustomerId: string;
+  stripeCustomerId: string;
+}): Promise<Result<void, Error>> {
+  try {
+    const existing =
+      await getMetronomeClient().v1.customers.retrieveBillingConfigurations({
+        customer_id: metronomeCustomerId,
+      });
+
+    const activeStripeConfigs = existing.data.filter(
+      (c) => c.billing_provider === "stripe" && !c.archived_at
+    );
+
+    const alreadyCorrect = activeStripeConfigs.some(
+      (c) => c.configuration?.stripe_customer_id === stripeCustomerId
+    );
+    if (alreadyCorrect) {
+      return new Ok(undefined);
+    }
+
+    if (activeStripeConfigs.length > 0) {
+      const staleIds = activeStripeConfigs.map((c) => c.id);
+      await getMetronomeClient().v1.customers.archiveBillingConfigurations({
+        customer_id: metronomeCustomerId,
+        customer_billing_provider_configuration_ids: staleIds,
+      });
+      logger.warn(
+        {
+          metronomeCustomerId,
+          stripeCustomerId,
+          archivedConfigIds: staleIds,
+          stalestripeCustomerIds: activeStripeConfigs.map(
+            (c) => c.configuration?.stripe_customer_id
+          ),
+        },
+        "[Metronome] Archived stale Stripe billing config(s) before re-adding"
+      );
+    }
+
+    await getMetronomeClient().v1.customers.setBillingConfigurations({
+      data: [
+        {
+          customer_id: metronomeCustomerId,
+          billing_provider: "stripe",
+          delivery_method: "direct_to_billing_provider",
+          configuration: {
+            stripe_customer_id: stripeCustomerId,
+            stripe_collection_method: "charge_automatically",
+          },
+        },
+      ],
+    });
+
+    logger.info(
+      { metronomeCustomerId, stripeCustomerId },
+      "[Metronome] Stripe billing config added to customer"
+    );
+    return new Ok(undefined);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId, stripeCustomerId },
+      "[Metronome] Failed to ensure Stripe billing config on customer"
     );
     return new Err(error);
   }

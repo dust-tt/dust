@@ -28,7 +28,10 @@ import {
   reactivateMetronomeContract,
   scheduleMetronomeContractEnd,
 } from "@app/lib/metronome/client";
-import { provisionMetronomeCustomerAndContract } from "@app/lib/metronome/contracts";
+import {
+  ensureMetronomeCustomerForWorkspace,
+  provisionMetronomeContract,
+} from "@app/lib/metronome/contracts";
 import { PlanModel } from "@app/lib/models/plan";
 import { resolvePackageAliasForCurrency } from "@app/lib/plans/billing_currency";
 import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
@@ -113,7 +116,7 @@ async function grantFreeCreditsForSubscription({
  * Uses shadow packages (no billing provider) so Metronome generates invoices
  * but does NOT deliver them to Stripe. Fire-and-forget: logs errors but does not throw.
  */
-async function shadowProvisionMetronome({
+async function provisionShadowMetronome({
   workspace,
   stripeCustomerId,
   metronomePackageAlias,
@@ -129,29 +132,38 @@ async function shadowProvisionMetronome({
   periodStart: Date;
 }): Promise<void> {
   try {
-    const result = await provisionMetronomeCustomerAndContract({
-      workspace: renderLightWorkspaceType({ workspace }),
+    const lightWorkspace = renderLightWorkspaceType({ workspace });
+
+    const customerResult = await ensureMetronomeCustomerForWorkspace({
+      workspace: lightWorkspace,
       stripeCustomerId,
+    });
+    if (customerResult.isErr()) {
+      logger.error(
+        { workspaceId: workspace.sId, error: customerResult.error.message },
+        "[Stripe Webhook] Failed to ensure Metronome customer for shadow provisioning"
+      );
+      return;
+    }
+    const { metronomeCustomerId } = customerResult.value;
+
+    const contractResult = await provisionMetronomeContract({
+      metronomeCustomerId,
+      workspace: lightWorkspace,
       packageAlias: metronomePackageAlias,
       uniquenessKey: sessionId,
       startingAt: periodStart,
       enableStripeBilling: false,
     });
-
-    if (result.isErr()) {
+    if (contractResult.isErr()) {
       logger.error(
-        { workspaceId: workspace.sId, error: result.error.message },
-        "[Stripe Webhook] Failed to shadow-provision Metronome"
+        { workspaceId: workspace.sId, error: contractResult.error.message },
+        "[Stripe Webhook] Failed to shadow-provision Metronome contract"
       );
       return;
     }
+    const { metronomeContractId } = contractResult.value;
 
-    const { metronomeCustomerId, metronomeContractId } = result.value;
-
-    await WorkspaceResource.updateMetronomeCustomerId(
-      workspace.id,
-      metronomeCustomerId
-    );
     await SubscriptionResource.updateMetronomeContractId(
       subscriptionModelId,
       metronomeContractId
@@ -460,7 +472,7 @@ async function handler(
                 metronomePackageAlias,
                 subscriptionCurrency
               );
-              void shadowProvisionMetronome({
+              void provisionShadowMetronome({
                 workspace,
                 stripeCustomerId: checkoutStripeSubscription.customer,
                 metronomePackageAlias: resolvedAlias,
