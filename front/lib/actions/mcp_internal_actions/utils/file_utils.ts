@@ -9,6 +9,7 @@ import {
 import { resolveConversationFile } from "@app/lib/api/actions/servers/files/tools/utils";
 import { parseScopedFilePath } from "@app/lib/api/files/mount_path";
 import type { Authenticator } from "@app/lib/auth";
+import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { streamToBuffer } from "@app/lib/utils/streams";
 import { isAgentMessageType } from "@app/types/assistant/conversation";
@@ -25,6 +26,67 @@ export function sanitizeFilename(filename: string): string {
     .substring(0, 255);
 }
 
+
+export type ConversationFileRef = {
+  contentType: string;
+  sizeBytes: number;
+  fileName: string;
+  getSignedUrl: () => Promise<string>;
+  createReadStream: () => NodeJS.ReadableStream;
+};
+
+/**
+ * Resolve a conversation file (scoped path or legacy fileId) to its metadata
+ * and lazy GCS accessors, without reading its content.
+ *
+ * Scoped paths are resolved via GCS mount path.
+ * Legacy fileIds are resolved via FileResource with a conversation ownership check.
+ */
+export async function resolveConversationFileRef(
+  auth: Authenticator,
+  fileId: string,
+  agentLoopContext: AgentLoopContextType | undefined
+): Promise<Result<ConversationFileRef, string>> {
+  if (!agentLoopContext?.runContext) {
+    return new Err("No conversation context available");
+  }
+
+  const parsed = parseScopedFilePath(fileId);
+  if (parsed) {
+    const conversation = agentLoopContext.runContext.conversation;
+    const resolvedRes = await resolveConversationFile(auth, conversation, fileId);
+    if (resolvedRes.isErr()) {
+      return new Err(resolvedRes.error.message);
+    }
+    const { file: gcsFile, mimeType, sizeBytes } = resolvedRes.value;
+    return new Ok({
+      contentType: mimeType,
+      sizeBytes,
+      fileName: sanitizeFilename(parsed.rel.split("/").pop() ?? parsed.rel),
+      getSignedUrl: () => getPrivateUploadBucket().getSignedUrl(gcsFile.name),
+      createReadStream: () => gcsFile.createReadStream(),
+    });
+  }
+
+  const conversation = agentLoopContext.runContext.conversation;
+  const fileResource = await FileResource.fetchById(auth, fileId);
+  if (!fileResource) {
+    return new Err(`File resource not found for fileId ${fileId}`);
+  }
+
+  const belongsResult = fileResource.belongsToConversation(conversation.sId);
+  if (belongsResult.isErr() || !belongsResult.value) {
+    return new Err(`File ${fileId} does not belong to this conversation`);
+  }
+
+  return new Ok({
+    contentType: fileResource.contentType,
+    sizeBytes: fileResource.fileSize,
+    fileName: sanitizeFilename(fileResource.fileName),
+    getSignedUrl: () => fileResource.getSignedUrlForDownload(auth, "original"),
+    createReadStream: () => fileResource.getReadStream({ auth, version: "original" }),
+  });
+}
 
 /**
  * Get file data from a conversation attachment, including images.

@@ -4,13 +4,10 @@ import type {
   ToolGeneratedFileType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
+import { resolveConversationFileRef } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import { computeTokensCostForUsageInMicroUsd } from "@app/lib/api/assistant/token_pricing";
-import { resolveConversationFile } from "@app/lib/api/actions/servers/files/tools/utils";
-import { parseScopedFilePath } from "@app/lib/api/files/mount_path";
 import { uploadBase64ImageToFileStorage } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
-import { getPrivateUploadBucket } from "@app/lib/file_storage";
-import { FileResource } from "@app/lib/resources/file_resource";
 import type { ReferenceImageFile } from "@app/lib/api/llm/imageGeneration";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
@@ -276,14 +273,12 @@ async function processSingleImageFile(
   auth: Authenticator,
   {
     imageFileId,
-    conversationId,
     maxImageSize,
     supportedContentTypes,
     providerId,
     agentLoopContext,
   }: {
     imageFileId: string;
-    conversationId: string;
     maxImageSize: number;
     supportedContentTypes: string[];
     providerId: ModelProviderIdType;
@@ -292,53 +287,14 @@ async function processSingleImageFile(
 ): Promise<Ok<ReferenceImageFile> | Err<MCPError>> {
   const workspace = auth.getNonNullableWorkspace();
 
-  let sizeBytes: number;
-  let contentType: string;
-  let signedUrl: string;
-  let fileName: string;
-
-  const parsed = parseScopedFilePath(imageFileId);
-  if (parsed) {
-    const conversation = agentLoopContext?.runContext?.conversation;
-    const resolvedRes = await resolveConversationFile(
-      auth,
-      conversation,
-      imageFileId
+  const refResult = await resolveConversationFileRef(auth, imageFileId, agentLoopContext);
+  if (refResult.isErr()) {
+    return new Err(
+      new MCPError(`File not found: ${imageFileId}`, { tracked: false })
     );
-    if (resolvedRes.isErr()) {
-      return new Err(
-        new MCPError(`File not found: ${imageFileId}`, { tracked: false })
-      );
-    }
-    sizeBytes = resolvedRes.value.sizeBytes;
-    contentType = resolvedRes.value.mimeType;
-    signedUrl = await getPrivateUploadBucket().getSignedUrl(
-      resolvedRes.value.file.name
-    );
-    fileName = parsed.rel.split("/").pop() ?? parsed.rel;
-  } else {
-    const fileResource = await FileResource.fetchById(auth, imageFileId);
-    if (!fileResource) {
-      return new Err(
-        new MCPError(`File not found: ${imageFileId}`, { tracked: false })
-      );
-    }
-
-    const belongsResult = fileResource.belongsToConversation(conversationId);
-    if (belongsResult.isErr() || !belongsResult.value) {
-      return new Err(
-        new MCPError(
-          `File ${imageFileId} does not belong to this conversation`,
-          { tracked: false }
-        )
-      );
-    }
-
-    sizeBytes = fileResource.fileSize;
-    contentType = fileResource.contentType;
-    signedUrl = await fileResource.getSignedUrlForDownload(auth, "original");
-    fileName = fileResource.fileName;
   }
+
+  const { contentType, sizeBytes, fileName, getSignedUrl } = refResult.value;
 
   // TODO(@jd) JIT resize over 20MB once imagemagick is available.
   if (sizeBytes > maxImageSize) {
@@ -377,6 +333,7 @@ async function processSingleImageFile(
     );
   }
 
+  const signedUrl = await getSignedUrl();
   return new Ok({ signedUrl, fileName, contentType });
 }
 
@@ -402,7 +359,6 @@ export async function processImageFileIds(
     );
   }
 
-  const conversationId = agentLoopContext.runContext.conversation.sId;
   const maxImageSize = MAX_FILE_SIZES.image;
 
   const results = await concurrentExecutor(
@@ -410,7 +366,6 @@ export async function processImageFileIds(
     (imageFileId) =>
       processSingleImageFile(auth, {
         imageFileId,
-        conversationId,
         maxImageSize,
         supportedContentTypes,
         providerId,
