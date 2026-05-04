@@ -1,3 +1,4 @@
+import { DEFAULT_TODO_OWNER_FILTER } from "@app/components/assistant/conversation/space/conversations/project_todos/projectTodosListScope";
 import {
   type ProjectUIScopedPreferences,
   readScopedUIPreferencesValue,
@@ -10,10 +11,7 @@ export const DEFAULT_SPACE_PROJECT_UI_PREFERENCES: ProjectUIScopedPreferences =
   {
     tab: "conversations",
     conversationsFilter: "all",
-    todosOwnerFilter: {
-      assigneeScope: "all",
-      selectedUserSIds: [],
-    },
+    todosOwnerFilter: DEFAULT_TODO_OWNER_FILTER,
   };
 
 /** Hash segment → tab when the user navigates with the hash (same space). */

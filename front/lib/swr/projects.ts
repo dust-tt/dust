@@ -1,3 +1,8 @@
+import {
+  buildProjectTodosListSwrKey,
+  isProjectTodosListSwrKey,
+  type TodoOwnerFilter,
+} from "@app/components/assistant/conversation/space/conversations/project_todos/projectTodosListScope";
 import { useDebounce } from "@app/hooks/useDebounce";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
@@ -328,16 +333,21 @@ export function useProjectTodos({
   owner,
   spaceId,
   disabled,
+  todoOwnerFilter,
 }: {
   owner: LightWorkspaceType;
   spaceId: string;
   disabled?: boolean;
+  todoOwnerFilter: TodoOwnerFilter;
 }) {
   const { fetcher } = useFetcher();
   const todosFetcher: Fetcher<GetProjectTodosResponseBody> = fetcher;
   const todosUrl = useMemo(
-    () => `/api/w/${owner.sId}/spaces/${spaceId}/project_todos`,
-    [owner.sId, spaceId]
+    () =>
+      disabled
+        ? null
+        : buildProjectTodosListSwrKey(owner.sId, spaceId, todoOwnerFilter),
+    [disabled, owner.sId, spaceId, todoOwnerFilter]
   );
 
   const { data, error, mutate } = useSWRWithDefaults(
@@ -411,12 +421,11 @@ export function useMarkProjectTodosRead({
 
   return useCallback(async (): Promise<void> => {
     const immediateReadAt = new Date().toISOString();
-    const todosKey = `/api/w/${owner.sId}/spaces/${spaceId}/project_todos`;
 
     // Keep local UI state in sync immediately to avoid replaying new-item
     // animations when navigating away/back before the network round-trip ends.
     await mutate(
-      todosKey,
+      (key) => isProjectTodosListSwrKey(key, owner.sId, spaceId),
       (prev: GetProjectTodosResponseBody | undefined) => ({
         todos: prev?.todos ?? [],
         viewerUserId: prev?.viewerUserId ?? null,

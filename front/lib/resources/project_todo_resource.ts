@@ -350,31 +350,54 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
     {
       spaceId,
       lastCleanedAt,
+      timeScope = "active",
+      assigneeUserId = null,
     }: {
       spaceId: ModelId;
       lastCleanedAt?: Date | null;
+      timeScope?: "active" | "last_24h" | "last_7d" | "last_30d";
+      assigneeUserId?: ModelId | null;
     }
   ): Promise<ProjectTodoResource[]> {
-    let where: WhereOptions<ProjectTodoModel> = { spaceId };
+    const MS_PER_HOUR = 60 * 60 * 1000;
 
-    // Apply per-viewer "clean done" cutoff: hide done todos completed before
-    // lastCleanedAt, regardless of assignee. Pending agent suggestions stay
-    // visible so users can still approve or reject after cleaning.
-    if (lastCleanedAt) {
-      where = {
-        [Op.and]: [
-          { spaceId },
-          {
-            [Op.or]: [
-              { status: { [Op.ne]: "done" } },
-              { doneAt: null },
-              { doneAt: { [Op.gte]: lastCleanedAt } },
-              { agentSuggestionStatus: "pending" },
-            ],
-          },
-        ],
-      };
+    const historicUpdatedSince = (
+      scope: "last_24h" | "last_7d" | "last_30d"
+    ): Date => {
+      const now = Date.now();
+      switch (scope) {
+        case "last_24h":
+          return new Date(now - 24 * MS_PER_HOUR);
+        case "last_7d":
+          return new Date(now - 7 * 24 * MS_PER_HOUR);
+        case "last_30d":
+          return new Date(now - 30 * 24 * MS_PER_HOUR);
+      }
+    };
+
+    const clauses: WhereOptions<ProjectTodoModel>[] = [{ spaceId }];
+
+    if (assigneeUserId != null) {
+      clauses.push({ userId: assigneeUserId });
     }
+
+    if (timeScope !== "active") {
+      clauses.push({
+        updatedAt: { [Op.gte]: historicUpdatedSince(timeScope) },
+      });
+    } else if (lastCleanedAt) {
+      clauses.push({
+        [Op.or]: [
+          { status: { [Op.ne]: "done" } },
+          { doneAt: null },
+          { doneAt: { [Op.gte]: lastCleanedAt } },
+          { agentSuggestionStatus: "pending" },
+        ],
+      });
+    }
+
+    const where: WhereOptions<ProjectTodoModel> =
+      clauses.length === 1 ? clauses[0]! : { [Op.and]: clauses };
 
     return this.baseFetch(auth, { where, order: [["createdAt", "DESC"]] });
   }
