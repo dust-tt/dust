@@ -5,7 +5,7 @@ import {
 } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
 import { ToolsList } from "@app/components/actions/mcp/ToolsList";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import type { LightWorkspaceType } from "@app/types/user";
+import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { FormProvider, type UseFormReturn, useForm } from "react-hook-form";
@@ -50,18 +50,7 @@ vi.mock("@app/lib/actions/mcp_helper", () => ({
 const TOOL_NAME_WITH_DOT = "weather.get_current";
 const TOOL_NAME_WITH_UNDERSCORE = "get_messages";
 
-const owner = {
-  sId: "ws_1",
-  id: 1,
-  name: "Test Workspace",
-  segmentation: null,
-  role: "admin",
-  whiteListedProviders: null,
-  defaultEmbeddingProvider: null,
-  metadata: {},
-  sharingPolicy: "workspace_only",
-  metronomeCustomerId: null,
-} satisfies LightWorkspaceType;
+const owner = LightWorkspaceFactory.build();
 
 const mcpServerView = {
   id: 1,
