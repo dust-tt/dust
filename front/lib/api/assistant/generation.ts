@@ -231,8 +231,8 @@ function constructSkillsSectionForUserMessageRendering({
     "- **Enabled**: Fully active with instructions loaded.\n\n" +
     "Enable skills proactively when a user's request matches a skill's purpose.\n" +
     `If a user message contains a \`<skill id=\"...\" name=\"...\" />\` tag, treat it as a strong hint that the ` +
-    "referenced skill is relevant. If that skill is not already enabled, and it would help, enable it with " +
-    `\`${toolDisplayName}\`.\n` +
+    "referenced skill is relevant: it means the user specifically mentioned this skill. If the skill is not already " +
+    `enabled, and it would help, enable it with \`${toolDisplayName}\`.\n` +
     "Only enable skills you actually need, enabling a skill loads its full instructions into context.\n" +
     "If you need to enable multiple skills, enable them in parallel.\n\n" +
     "When in doubt about enabling a skill, prefer enabling it as it may give you a new " +
