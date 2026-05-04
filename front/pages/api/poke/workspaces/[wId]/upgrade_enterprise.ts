@@ -289,6 +289,7 @@ async function handler(
           metronomeCustomerId,
           packageId: pkg.id,
           startingAt: startingAtDate,
+          enableStripeBilling: true,
         });
         if (createResult.isErr()) {
           const errorMessage = `Failed to create Metronome contract: ${createResult.error.message}`;
