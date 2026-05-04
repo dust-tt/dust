@@ -906,7 +906,6 @@ export async function executeUpdateMessage({
       type: "text" as const,
       text: `Message ${timestamp} updated in ${channel}`,
     },
-    { type: "text" as const, text: JSON.stringify(response, null, 2) },
   ]);
 }
 

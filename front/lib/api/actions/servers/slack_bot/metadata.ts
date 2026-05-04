@@ -54,7 +54,7 @@ export const SLACK_BOT_TOOLS_METADATA = createToolsRecord({
           "The new message content, using standard Markdown formatting. Do NOT use Slack-specific markup."
         ),
     },
-    stake: "high",
+    stake: "low",
     displayLabels: {
       running: "Editing Slack message",
       done: "Edit Slack message",
