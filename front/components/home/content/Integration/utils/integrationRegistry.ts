@@ -25,6 +25,7 @@ const EXCLUDED_MCP_SERVERS = new Set([
   "schedules_management",
   "common_utilities",
   "project_context_management",
+  "files",
   // Debug/dev only
   "primitive_types_debugger",
   "jit_testing",
