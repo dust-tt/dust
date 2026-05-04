@@ -479,7 +479,7 @@ export const EditableTodoItem = memo(function EditableTodoItem({
             <div
               className={cn(
                 "flex shrink-0 items-center gap-1 transition-opacity",
-                startMenuKeepsActionsVisible
+                startMenuKeepsActionsVisible || isFirstOnboardingTodo
                   ? "opacity-100"
                   : "opacity-100 md:opacity-0 md:group-hover/todo:opacity-100 md:focus-within:opacity-100"
               )}
