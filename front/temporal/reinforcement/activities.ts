@@ -246,7 +246,7 @@ export async function getReinforcementSettingsActivity({
   const auth = await getAuthForWorkspace(workspaceId);
   return {
     reinforcementEnabled: await hasReinforcementEnabled(auth),
-    batchModeAllowed: isReinforcementBatchModeAllowed(auth),
+    batchModeAllowed: await isReinforcementBatchModeAllowed(auth),
   };
 }
 

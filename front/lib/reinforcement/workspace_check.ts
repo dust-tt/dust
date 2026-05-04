@@ -21,7 +21,14 @@ export async function hasReinforcementEnabled(
  * Check whether batch mode is allowed for reinforcement in this workspace.
  * Defaults to true when not explicitly set.
  */
-export function isReinforcementBatchModeAllowed(auth: Authenticator): boolean {
+export async function isReinforcementBatchModeAllowed(
+  auth: Authenticator
+): Promise<boolean> {
+  // Vertex AI does not currently support batch processing.
+  if (await hasFeatureFlag(auth, "use_vertex_for_claude_models")) {
+    return false;
+  }
+
   const workspace = auth.getNonNullableWorkspace();
   return workspace.metadata?.allowReinforcementBatchMode !== false;
 }
