@@ -18,9 +18,7 @@ import {
   CONVERSATION_FILES_SERVER_NAME,
   CONVERSATION_SEARCH_FILES_ACTION_NAME,
 } from "@app/lib/api/actions/servers/conversation_files/metadata";
-import {
-  FILES_SERVER_NAME,
-} from "@app/lib/api/actions/servers/files/metadata";
+import { FILES_SERVER_NAME } from "@app/lib/api/actions/servers/files/metadata";
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
 import { isDustLikeAgent } from "@app/lib/api/assistant/global_agents/global_agents";
 import type { EnabledSkill } from "@app/lib/api/assistant/skills_rendering";
