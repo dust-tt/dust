@@ -74,11 +74,11 @@ describe("GET /api/w/[wId]/assistant/conversations/[cId]/files/[...rel]", () => 
   });
 
   it("should stream a nested file path", async () => {
-    const { req, res } = await setupTest(["tool_outputs", "report.csv"]);
+    const { req, res } = await setupTest(["results", "report.csv"]);
     await handler(req, res);
     expect(res._getStatusCode()).toBe(200);
     expect(mockGetFileContentType).toHaveBeenCalledWith(
-      expect.stringContaining("tool_outputs/report.csv")
+      expect.stringContaining("results/report.csv")
     );
   });
 
