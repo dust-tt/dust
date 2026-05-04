@@ -20,6 +20,7 @@ import {
 import { PlanMessageHandler } from "@connectors/connectors/slack/chat/plan_message_handler";
 import type { SlackStreamHandler } from "@connectors/connectors/slack/chat/slack_stream_handler";
 import { isSlackWebAPIPlatformError } from "@connectors/connectors/slack/lib/errors";
+import { formatAgentMarkdownForSlack } from "@connectors/connectors/slack/lib/format_agent_markdown_for_slack";
 import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_client";
 import { RATE_LIMITS } from "@connectors/connectors/slack/ratelimits";
 import { apiConfig } from "@connectors/lib/api/config";
@@ -232,6 +233,13 @@ async function streamAgentAnswerToSlack(
 
   const { streamHandler } = conversationData;
 
+  const slackAgentMarkdownOptions = {
+    agentMentionLinkContext: {
+      workspaceId: connector.workspaceId,
+      conversationId: conversation.sId,
+    },
+  };
+
   for await (const event of streamRes.value.eventStream) {
     switch (event.type) {
       case "tool_params":
@@ -433,7 +441,9 @@ async function streamAgentAnswerToSlack(
         await streamHandler.stop();
         await planHandler.deletePlanMessage();
         const { formattedContent, footnotes } = annotateCitations(
-          answer,
+          // Do not log unsupported directives: `answer` may still be mid-generation
+          // when we stop only because the Slack length cap was hit.
+          formatAgentMarkdownForSlack(answer, slackAgentMarkdownOptions),
           actions
         );
 
@@ -463,7 +473,11 @@ async function streamAgentAnswerToSlack(
         const actions = event.message.actions;
         const messageId = event.message.sId; // Get the message ID
         const { formattedContent, footnotes } = annotateCitations(
-          finalAnswer,
+          formatAgentMarkdownForSlack(finalAnswer, {
+            ...slackAgentMarkdownOptions,
+            // Terminal agent payload from the API — safe to detect unknown directives.
+            logUnsupportedDirectives: true,
+          }),
           actions
         );
 
@@ -602,7 +616,14 @@ async function streamAgentAnswerToSlack(
         const {
           formattedContent: cancelledContent,
           footnotes: cancelledFootnotes,
-        } = annotateCitations(answer || cancelledMessage, actions);
+        } = annotateCitations(
+          // Do not log: `answer` is streaming buffer and may end mid-directive on cancel.
+          formatAgentMarkdownForSlack(
+            answer || cancelledMessage,
+            slackAgentMarkdownOptions
+          ),
+          actions
+        );
 
         await postSlackMessageUpdate({
           messageUpdate: {
