@@ -14,7 +14,7 @@ import path from "path";
 
 const DUST_BEDROCK_IMAGE_VERSION = "1.7.0";
 const DUST_BASE_IMAGE_VERSION = "0.8.2";
-const DSBX_CLI_VERSION = "0.1.4";
+const DSBX_CLI_VERSION = "0.1.5";
 const AGENT_PROXIED_UID = 1003;
 // Built from https://github.com/openai/codex at tag rust-v0.115.0 (Apache-2.0).
 // Released via the "Release sandbox tool" GitHub Actions workflow.
