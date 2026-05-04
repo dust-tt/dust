@@ -1,10 +1,3 @@
-import {
-  ADD_TODO_BAR_SHELL_CLASS,
-  NEW_MANUAL_TODO_MAX_CHARS,
-  stripNewlines,
-  TODO_TEXTAREA_FIELD_CLASS,
-  useAutosizeTextArea,
-} from "@app/components/assistant/conversation/space/conversations/project_todos/utils";
 import { useAppRouter } from "@app/lib/platform";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useUser } from "@app/lib/swr/user";
@@ -17,274 +10,24 @@ import type {
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type {
   LightWorkspaceType,
-  SpaceUserType,
   UserTypeWithWorkspaces,
 } from "@app/types/user";
 import {
   Avatar,
   BookOpenIcon,
-  Button,
   ChatBubbleLeftRightIcon,
   ConfluenceLogo,
   cn,
   DriveLogo,
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuSearchbar,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
   GithubLogo,
   Icon,
   MicrosoftLogo,
   NotionLogo,
-  PlusIcon,
   SlackLogo,
   Tooltip,
 } from "@dust-tt/sparkle";
 import type React from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-
-// ── Assignee menu ─────────────────────────────────────────────────────────────
-
-function TodoRowAssigneeMenu({
-  ariaNamePrefix,
-  members,
-  viewerUserId,
-  selectedSId,
-  onSelect,
-  disabled,
-}: {
-  ariaNamePrefix: string;
-  members: SpaceUserType[];
-  viewerUserId: string | null;
-  selectedSId: string | null;
-  onSelect: (userSId: string) => void;
-  disabled?: boolean;
-}) {
-  const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState("");
-  const filteredMembers = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) {
-      return members;
-    }
-    return members.filter((m) => m.fullName.toLowerCase().includes(q));
-  }, [search, members]);
-  const selectedUser = members.find((m) => m.sId === selectedSId);
-  const assigneeTriggerVisual =
-    selectedUser?.image ?? "/static/humanavatar/anonymous.png";
-  const AssigneeTriggerIcon = useMemo(
-    () =>
-      function AssigneeTriggerIconFn({ className }: { className?: string }) {
-        return (
-          <Avatar
-            className={className}
-            size="xxs"
-            isRounded
-            visual={assigneeTriggerVisual}
-          />
-        );
-      },
-    [assigneeTriggerVisual]
-  );
-
-  return (
-    <DropdownMenu
-      modal={false}
-      open={open}
-      onOpenChange={(nextOpen) => {
-        setOpen(nextOpen);
-        if (nextOpen) {
-          setSearch("");
-        }
-      }}
-    >
-      <DropdownMenuTrigger asChild>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          icon={AssigneeTriggerIcon}
-          disabled={disabled}
-          title={
-            selectedUser
-              ? `Assign to ${selectedUser.fullName}${viewerUserId === selectedUser.sId ? " (you)" : ""} — click to change`
-              : "Choose assignee"
-          }
-          aria-label={
-            selectedUser
-              ? `Assign to ${selectedUser.fullName}${viewerUserId === selectedUser.sId ? " (you)" : ""}, open menu to change`
-              : "Choose assignee"
-          }
-          className="shrink-0 focus-visible:ring-0 focus-visible:ring-offset-0 dark:focus-visible:ring-0 dark:focus-visible:ring-offset-0"
-        />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        className="z-[1000] w-80 shadow-2xl ring-1 ring-border/60"
-        align="start"
-      >
-        <DropdownMenuSearchbar
-          autoFocus
-          name={`${ariaNamePrefix}-assignee-search`}
-          placeholder="Search members"
-          value={search}
-          onChange={setSearch}
-        />
-        <DropdownMenuSeparator />
-        <div className="max-h-64 overflow-auto">
-          {filteredMembers.length > 0 ? (
-            filteredMembers.map((member) => (
-              <DropdownMenuCheckboxItem
-                key={`${ariaNamePrefix}-member-${member.sId}`}
-                icon={() => (
-                  <Avatar
-                    size="xxs"
-                    isRounded
-                    visual={member.image ?? "/static/humanavatar/anonymous.png"}
-                  />
-                )}
-                label={`${member.fullName}${viewerUserId === member.sId ? " (you)" : ""}`}
-                checked={selectedSId === member.sId}
-                onClick={() => {
-                  onSelect(member.sId);
-                  setOpen(false);
-                }}
-                onSelect={(event) => {
-                  event.preventDefault();
-                }}
-              />
-            ))
-          ) : (
-            <div className="px-3 py-2 text-sm text-muted-foreground">
-              No members found
-            </div>
-          )}
-        </div>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
-
-// ── Add-todo composer ─────────────────────────────────────────────────────────
-
-export function AddTodoComposer({
-  projectMembers,
-  viewerUserId,
-  defaultAssigneeSId,
-  onAdd,
-  onClose,
-}: {
-  projectMembers: SpaceUserType[];
-  viewerUserId: string | null;
-  defaultAssigneeSId: string;
-  onAdd: (text: string, assigneeSId: string) => Promise<boolean>;
-  onClose: () => void;
-}) {
-  const [text, setText] = useState("");
-  const [assigneeSId, setAssigneeSId] = useState<string | null>(null);
-  const [isAdding, setIsAdding] = useState(false);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  const selectedSId = assigneeSId ?? defaultAssigneeSId;
-
-  useAutosizeTextArea(inputRef, text, true);
-
-  useEffect(() => {
-    queueMicrotask(() => inputRef.current?.focus());
-  }, []);
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      const target = e.target as HTMLElement;
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(target) &&
-        !target.closest("[data-radix-popper-content-wrapper]") &&
-        !stripNewlines(text).trim()
-      ) {
-        onClose();
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [text, onClose]);
-
-  const handleSubmit = useCallback(async () => {
-    const trimmed = stripNewlines(text).trim();
-    if (!trimmed || !selectedSId || isAdding) {
-      return;
-    }
-    setIsAdding(true);
-    const ok = await onAdd(trimmed, selectedSId);
-    setIsAdding(false);
-    if (ok) {
-      setText("");
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => inputRef.current?.focus());
-      });
-    }
-  }, [text, selectedSId, isAdding, onAdd]);
-
-  return (
-    <div ref={containerRef} className={ADD_TODO_BAR_SHELL_CLASS}>
-      <TodoRowAssigneeMenu
-        ariaNamePrefix="add-todo"
-        members={projectMembers}
-        viewerUserId={viewerUserId}
-        selectedSId={selectedSId}
-        onSelect={setAssigneeSId}
-        disabled={isAdding}
-      />
-      <textarea
-        ref={inputRef}
-        name="new-manual-project-todo"
-        aria-label="New to-do"
-        autoComplete="off"
-        rows={1}
-        maxLength={NEW_MANUAL_TODO_MAX_CHARS}
-        placeholder="A new awesome task..."
-        value={text}
-        disabled={isAdding}
-        className={cn(
-          TODO_TEXTAREA_FIELD_CLASS,
-          "min-w-0 flex-1",
-          "disabled:opacity-60"
-        )}
-        onChange={(e) => setText(stripNewlines(e.target.value))}
-        onKeyDown={(e) => {
-          if (e.key === "Escape") {
-            e.preventDefault();
-            onClose();
-            return;
-          }
-          if (e.key === "Enter") {
-            e.preventDefault();
-            if (!stripNewlines(text).trim()) {
-              onClose();
-            } else {
-              void handleSubmit();
-            }
-          }
-        }}
-      />
-      <Tooltip
-        label="Add to-do"
-        trigger={
-          <Button
-            size="xs"
-            variant="highlight"
-            icon={PlusIcon}
-            isLoading={isAdding}
-            disabled={isAdding || !stripNewlines(text).trim() || !selectedSId}
-            onClick={() => void handleSubmit()}
-          />
-        }
-      />
-    </div>
-  );
-}
+import { useMemo } from "react";
 
 // ── Metadata tooltip ──────────────────────────────────────────────────────────
 

@@ -63,8 +63,6 @@ export type ProjectTodosPanelData = {
   ) => Promise<void>;
   isSpaceInfoLoading: boolean;
   defaultNewAssigneeSId: string | null;
-  isAddTodoComposerOpen: boolean;
-  setIsAddTodoComposerOpen: Dispatch<SetStateAction<boolean>>;
   handleAddTodo: (text: string, assigneeSId: string) => Promise<boolean>;
   isTodosLoading: boolean;
   frozenLastReadAt: string | null | undefined;

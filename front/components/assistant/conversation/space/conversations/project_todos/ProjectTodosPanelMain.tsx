@@ -1,8 +1,7 @@
+import { AddTodoComposer } from "@app/components/assistant/conversation/space/conversations/project_todos/AddTodoComposer";
 import { ProjectTodosDataTable } from "@app/components/assistant/conversation/space/conversations/project_todos/ProjectTodosDataTable";
 import { useProjectTodosPanel } from "@app/components/assistant/conversation/space/conversations/project_todos/ProjectTodosPanelContext";
-import { AddTodoComposer } from "@app/components/assistant/conversation/space/conversations/project_todos/TodoSubComponents";
-import { ADD_TODO_BAR_SHELL_CLASS } from "@app/components/assistant/conversation/space/conversations/project_todos/utils";
-import { cn, Icon, PlusIcon, Spinner } from "@dust-tt/sparkle";
+import { Spinner } from "@dust-tt/sparkle";
 
 export function ProjectTodosPanelMain() {
   const {
@@ -31,8 +30,6 @@ export function ProjectTodosPanelMain() {
     patchTodoItem,
     isSpaceInfoLoading,
     defaultNewAssigneeSId,
-    isAddTodoComposerOpen,
-    setIsAddTodoComposerOpen,
     handleAddTodo,
     isTodosLoading,
     frozenLastReadAt,
@@ -72,7 +69,7 @@ export function ProjectTodosPanelMain() {
         </div>
       )}
       <div className="flex flex-col gap-3">
-        {/* Manual add: discreet until opened; one row when expanded */}
+        {/* Manual add: single row; expands on focus / menu / typed text */}
         {!isReadOnly &&
           (isSpaceInfoLoading ? (
             <div className="flex h-7 items-center">
@@ -82,32 +79,13 @@ export function ProjectTodosPanelMain() {
             <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
               No project members available to assign.
             </p>
-          ) : isAddTodoComposerOpen ? (
+          ) : (
             <AddTodoComposer
               projectMembers={projectMembers}
               viewerUserId={viewerUserId}
               defaultAssigneeSId={defaultNewAssigneeSId!}
               onAdd={handleAddTodo}
-              onClose={() => setIsAddTodoComposerOpen(false)}
             />
-          ) : (
-            <button
-              type="button"
-              onClick={() => setIsAddTodoComposerOpen(true)}
-              className={cn(
-                ADD_TODO_BAR_SHELL_CLASS,
-                "cursor-pointer text-left text-muted-foreground transition-colors",
-                "hover:bg-muted-background/80 dark:text-muted-foreground-night dark:hover:bg-muted-background-night/70"
-              )}
-            >
-              <span className="flex size-7 shrink-0 items-center justify-center">
-                <Icon visual={PlusIcon} size="xs" className="opacity-80" />
-              </span>
-              <span className="min-w-0 flex-1 text-base leading-6">
-                Add a to-do
-              </span>
-              <span className="size-7 shrink-0" aria-hidden />
-            </button>
           ))}
 
         {/* Body */}

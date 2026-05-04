@@ -141,8 +141,6 @@ export function useProjectTodosPanelState({
     return projectMembers[0]!.sId;
   }, [projectMembers, viewerUserId]);
 
-  const [isAddTodoComposerOpen, setIsAddTodoComposerOpen] = useState(false);
-
   // ── Diff animation state ────────────────────────────────────────────────────
 
   // Frozen snapshot of lastReadAt taken on first successful load. undefined =
@@ -626,8 +624,6 @@ export function useProjectTodosPanelState({
     patchTodoItem,
     isSpaceInfoLoading,
     defaultNewAssigneeSId,
-    isAddTodoComposerOpen,
-    setIsAddTodoComposerOpen,
     handleAddTodo,
     isTodosLoading,
     frozenLastReadAt,
