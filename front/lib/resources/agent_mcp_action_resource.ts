@@ -29,6 +29,7 @@ import {
   AgentMCPActionModel,
   AgentMCPActionOutputItemModel,
 } from "@app/lib/models/agent/actions/mcp";
+import { SandboxMCPActionModel } from "@app/lib/models/agent/actions/sandbox_mcp_action";
 import {
   AgentMessageModel,
   MessageModel,
@@ -58,6 +59,7 @@ import tracer from "@app/logger/tracer";
 import type {
   AgentMCPActionType,
   AgentMCPActionWithOutputType,
+  SandboxMCPActionType,
 } from "@app/types/actions";
 import type { AgentFunctionCallContentType } from "@app/types/assistant/agent_message_content";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -1174,4 +1176,92 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
   get functionCallName(): string {
     return this.stepContent.value.value.name;
   }
+
+  // -- Sandbox-origin MCP actions --
+  //
+  // Sandbox actions are stored in `sandbox_mcp_actions` but are part of the
+  // same approval-flow concept this Resource owns. They are exposed as plain
+  // `SandboxMCPActionType` values; mutations go through the static methods
+  // below — the model is never handed out beyond this file.
+
+  static sandboxActionModelIdToSId({
+    id,
+    workspaceId,
+  }: {
+    id: ModelId;
+    workspaceId: ModelId;
+  }): string {
+    return makeSId("sandbox_mcp_action", { id, workspaceId });
+  }
+
+  static async makeNewSandboxAction(
+    auth: Authenticator,
+    blob: Omit<CreationAttributes<SandboxMCPActionModel>, "workspaceId">
+  ): Promise<SandboxMCPActionType> {
+    const workspace = auth.getNonNullableWorkspace();
+    const model = await SandboxMCPActionModel.create({
+      ...blob,
+      workspaceId: workspace.id,
+    });
+    return sandboxActionFromModel(model);
+  }
+
+  static async fetchSandboxActionById(
+    auth: Authenticator,
+    sId: string
+  ): Promise<SandboxMCPActionType | null> {
+    const modelId = getResourceIdFromSId(sId);
+    if (!modelId) {
+      return null;
+    }
+    const model = await SandboxMCPActionModel.findOne({
+      where: {
+        id: modelId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+    return model ? sandboxActionFromModel(model) : null;
+  }
+
+  static async updateSandboxActionStatus(
+    auth: Authenticator,
+    sId: string,
+    status: ToolExecutionStatus
+  ): Promise<{ updatedCount: number }> {
+    const modelId = getResourceIdFromSId(sId);
+    if (!modelId) {
+      return { updatedCount: 0 };
+    }
+    const [updatedCount] = await SandboxMCPActionModel.update(
+      { status },
+      {
+        where: {
+          id: modelId,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+      }
+    );
+    return { updatedCount };
+  }
+}
+
+function sandboxActionFromModel(
+  model: SandboxMCPActionModel
+): SandboxMCPActionType {
+  return {
+    sId: AgentMCPActionResource.sandboxActionModelIdToSId({
+      id: model.id,
+      workspaceId: model.workspaceId,
+    }),
+    workspaceId: model.workspaceId,
+    agentMessageId: model.agentMessageId,
+    agentMCPActionId: model.agentMCPActionId,
+    status: model.status,
+    toolConfiguration: model.toolConfiguration,
+    augmentedInputs: model.augmentedInputs,
+    functionCallName: model.toolConfiguration.originalName,
+    internalMCPServerName: model.toolConfiguration.toolServerId
+      ? getInternalMCPServerNameFromSId(model.toolConfiguration.toolServerId)
+      : null,
+  };
 }
