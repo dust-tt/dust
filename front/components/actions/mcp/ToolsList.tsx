@@ -27,7 +27,7 @@ import {
   InformationCircleIcon,
 } from "@dust-tt/sparkle";
 import { memo } from "react";
-import { useController, useFormContext } from "react-hook-form";
+import { Controller, useFormContext } from "react-hook-form";
 
 interface ToolsListProps {
   owner: LightWorkspaceType;
@@ -43,13 +43,6 @@ interface ToolItemProps {
   availableStakeLevels: ReadonlyArray<MCPToolStakeLevelType>;
   settings: ToolSettings;
   onChange: (settings: ToolSettings) => void;
-}
-
-interface EditableToolItemProps {
-  tool: ToolDefinition;
-  mayUpdate: boolean;
-  availableStakeLevels: ReadonlyArray<MCPToolStakeLevelType>;
-  defaultSettings: ToolSettings;
 }
 
 function ToolItem({
@@ -131,30 +124,6 @@ function ToolItem({
   );
 }
 
-function EditableToolItem({
-  tool,
-  mayUpdate,
-  availableStakeLevels,
-  defaultSettings,
-}: EditableToolItemProps) {
-  const { control } = useFormContext<MCPServerFormValues>();
-  const { field } = useController({
-    control,
-    name: `toolSettings.${encodeMCPToolNameForForm(tool.name)}`,
-    defaultValue: defaultSettings,
-  });
-
-  return (
-    <ToolItem
-      tool={tool}
-      mayUpdate={mayUpdate}
-      availableStakeLevels={availableStakeLevels}
-      settings={field.value ?? defaultSettings}
-      onChange={field.onChange}
-    />
-  );
-}
-
 function getDefaultToolSettings({
   tool,
   toolMetadataByName,
@@ -182,6 +151,7 @@ const noop = () => {};
 // you can configure per agent
 export const ToolsList = memo(
   ({ owner, mcpServerView, disableUpdates }: ToolsListProps) => {
+    const formContext = useFormContext<MCPServerFormValues>();
     const mayUpdate = !disableUpdates && isAdmin(owner);
     const { tools } = mcpServerView.server;
     const toolMetadataByName = Object.fromEntries(
@@ -240,10 +210,6 @@ export const ToolsList = memo(
                   mcpServerView,
                 });
 
-                // Read-only path: render directly without binding to the
-                // surrounding MCPServerFormValues form, since this component is
-                // also rendered in contexts (e.g. agent builder) that have no
-                // such FormProvider.
                 if (disableUpdates) {
                   return (
                     <ToolItem
@@ -258,12 +224,20 @@ export const ToolsList = memo(
                 }
 
                 return (
-                  <EditableToolItem
+                  <Controller
                     key={tool.name}
-                    tool={tool}
-                    mayUpdate={mayUpdate}
-                    availableStakeLevels={MCP_TOOL_STAKE_LEVELS}
-                    defaultSettings={defaultSettings}
+                    control={formContext.control}
+                    name={`toolSettings.${encodeMCPToolNameForForm(tool.name)}`}
+                    defaultValue={defaultSettings}
+                    render={({ field }) => (
+                      <ToolItem
+                        tool={tool}
+                        mayUpdate={mayUpdate}
+                        availableStakeLevels={MCP_TOOL_STAKE_LEVELS}
+                        settings={field.value ?? defaultSettings}
+                        onChange={field.onChange}
+                      />
+                    )}
                   />
                 );
               })}
