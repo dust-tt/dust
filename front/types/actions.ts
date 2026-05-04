@@ -1,3 +1,4 @@
+import type { LightMCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
@@ -33,4 +34,16 @@ export type AgentMCPActionWithOutputType = AgentMCPActionType & {
   generatedFiles: ActionGeneratedFileType[];
   output: CallToolResult["content"] | null;
   citations?: Record<string, CitationType> | null;
+};
+
+export type SandboxMCPActionType = {
+  sId: string;
+  workspaceId: ModelId;
+  agentMessageId: ModelId;
+  agentMCPActionId: ModelId;
+  status: ToolExecutionStatus;
+  toolConfiguration: LightMCPToolConfigurationType;
+  augmentedInputs: Record<string, unknown>;
+  functionCallName: string;
+  internalMCPServerName: InternalMCPServerNameType | null;
 };
