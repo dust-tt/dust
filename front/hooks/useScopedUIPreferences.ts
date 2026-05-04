@@ -1,3 +1,4 @@
+import { normalizeTodosOwnerFilterFromPersistedBlob } from "@app/components/assistant/conversation/space/conversations/project_todos/projectTodosListScope";
 import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { z } from "zod";
 
@@ -7,10 +8,9 @@ const scopedUIPreferencesSchemaByScope = {
   projectUI: z.object({
     tab: z.enum(["conversations", "todos", "knowledge", "settings", "alpha"]),
     conversationsFilter: z.enum(["all", "group", "with_me"]),
-    todosOwnerFilter: z.object({
-      assigneeScope: z.enum(["mine", "all", "users"]),
-      selectedUserSIds: z.array(z.string()),
-    }),
+    todosOwnerFilter: z
+      .unknown()
+      .transform(normalizeTodosOwnerFilterFromPersistedBlob),
   }),
 } as const;
 

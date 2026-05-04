@@ -1,5 +1,5 @@
 import type { ProjectTodosDataTable } from "@app/components/assistant/conversation/space/conversations/project_todos/ProjectTodosDataTable";
-import type { TodoOwnerFilter } from "@app/components/assistant/conversation/space/conversations/project_todos/TodoSubComponents";
+import type { TodoOwnerFilter } from "@app/components/assistant/conversation/space/conversations/project_todos/projectTodosListScope";
 import type {
   ProjectTodoAssigneeType,
   ProjectTodoType,
@@ -15,14 +15,10 @@ export type GroupedTodosByAssignee = Array<{
 type ProjectTodosDataTableProps = ComponentProps<typeof ProjectTodosDataTable>;
 
 export type ProjectTodosPanelData = {
-  assigneeSearch: string;
-  setAssigneeSearch: Dispatch<SetStateAction<string>>;
-  isAssigneeMenuOpen: boolean;
-  setIsAssigneeMenuOpen: Dispatch<SetStateAction<boolean>>;
-  filteredUsers: ProjectTodoAssigneeType[];
+  isScopeMenuOpen: boolean;
+  setIsScopeMenuOpen: Dispatch<SetStateAction<boolean>>;
   todoOwnerFilter: TodoOwnerFilter;
   onTodoOwnerFilterChange: (value: TodoOwnerFilter) => void;
-  selectedUserSIds: Set<string>;
   viewerUserId: string | null;
   todoScopeLabel: string;
   isReadOnly?: boolean;
@@ -67,9 +63,9 @@ export type ProjectTodosPanelData = {
   isTodosLoading: boolean;
   frozenLastReadAt: string | null | undefined;
   todos: ProjectTodoType[];
-  /** After assignee scope; ignores description search — use for baseline empty counts. */
+  /** List returned for the current period & people filters (includes server-side filtering). */
   assigneeScopedTodos: ProjectTodoType[];
-  /** After assignee scope + debounced text filter (`debouncedTodoSearchQuery`). */
+  /** After debounced description search (`debouncedTodoSearchQuery`). */
   filteredTodos: ProjectTodoType[];
   /** Debounced query from ProjectTodoLocalSearch; tables filter on this. */
   debouncedTodoSearchQuery: string;

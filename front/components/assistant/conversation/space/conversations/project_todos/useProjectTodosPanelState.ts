@@ -2,14 +2,12 @@ import {
   groupedTodosNonPendingSuggestions,
   groupedTodosPendingSuggestionsOnly,
 } from "@app/components/assistant/conversation/space/conversations/project_todos/ProjectTodosDataTable";
+import { formatTodoScopeLabel } from "@app/components/assistant/conversation/space/conversations/project_todos/projectTodosListScope";
 import type {
   ProjectTodosPanelData,
   UseProjectTodosPanelArgs,
 } from "@app/components/assistant/conversation/space/conversations/project_todos/projectTodosPanelTypes";
-import {
-  formatTodoScopeLabel,
-  useAgentNameById,
-} from "@app/components/assistant/conversation/space/conversations/project_todos/TodoSubComponents";
+import { useAgentNameById } from "@app/components/assistant/conversation/space/conversations/project_todos/TodoSubComponents";
 import {
   DELETE_TODO_CONFIRM_PREVIEW_MAX_CHARS,
   isOnboardingTodo,
@@ -38,7 +36,6 @@ import {
   useUpdateProjectTodo,
 } from "@app/lib/swr/projects";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
-import { removeDiacritics } from "@app/lib/utils";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { GetProjectTodosResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_todos/index";
 import { compareAgentsForSort } from "@app/types/assistant/assistant";
@@ -56,20 +53,14 @@ export function useProjectTodosPanelState({
   todoOwnerFilter,
   onTodoOwnerFilterChange,
 }: UseProjectTodosPanelArgs): ProjectTodosPanelData {
-  const [assigneeSearch, setAssigneeSearch] = useState("");
   const [debouncedTodoSearchQuery, setDebouncedTodoSearchQuery] = useState("");
-  const [isAssigneeMenuOpen, setIsAssigneeMenuOpen] = useState(false);
-  const {
-    todos,
-    users,
-    viewerUserId,
-    lastReadAt,
-    isTodosLoading,
-    mutateTodos,
-  } = useProjectTodos({
-    owner,
-    spaceId,
-  });
+  const [isScopeMenuOpen, setIsScopeMenuOpen] = useState(false);
+  const { todos, viewerUserId, lastReadAt, isTodosLoading, mutateTodos } =
+    useProjectTodos({
+      owner,
+      spaceId,
+      todoOwnerFilter,
+    });
   const agentNameById = useAgentNameById(owner);
   const doUpdate = useUpdateProjectTodo({ owner, spaceId });
   const doBulkUpdateStatus = useBulkUpdateProjectTodoStatus({ owner, spaceId });
@@ -162,56 +153,16 @@ export function useProjectTodosPanelState({
   }, [isTodosLoading, frozenLastReadAt, lastReadAt]);
 
   const { newItemKeys, doneFlashKeys } = useTodoDiffAnimations({
-    ledgerScopeKey: `${owner.sId}:${spaceId}`,
+    ledgerScopeKey: `${owner.sId}:${spaceId}:${todoOwnerFilter.periodScope}:${todoOwnerFilter.peopleScope}`,
     todos,
     frozenLastReadAt,
     isTodosLoading,
     markRead,
   });
 
-  const usersBySId = useMemo(
-    () => new Map(users.map((user) => [user.sId, user])),
-    [users]
-  );
-  const selectedUserSIds = useMemo(
-    () => new Set(todoOwnerFilter.selectedUserSIds),
-    [todoOwnerFilter.selectedUserSIds]
-  );
-  const filteredUsers = useMemo(() => {
-    const q = removeDiacritics(assigneeSearch.trim()).toLowerCase();
-    if (!q) {
-      return users;
-    }
+  const todoScopeLabel = formatTodoScopeLabel(todoOwnerFilter);
 
-    return users.filter((user) =>
-      removeDiacritics(user.fullName).toLowerCase().includes(q)
-    );
-  }, [assigneeSearch, users]);
-  const todoScopeLabel = formatTodoScopeLabel({
-    scope: todoOwnerFilter.assigneeScope,
-    selectedUserSIds,
-    usersBySId,
-    viewerUserId,
-  });
-
-  const assigneeScopedTodos = useMemo(() => {
-    switch (todoOwnerFilter.assigneeScope) {
-      case "all":
-        return todos;
-      case "mine":
-        if (viewerUserId === null) {
-          return [];
-        }
-        return todos.filter((todo) => todo.user?.sId === viewerUserId);
-      case "users":
-        if (selectedUserSIds.size === 0) {
-          return todos;
-        }
-        return todos.filter(
-          (todo) => !!todo.user?.sId && selectedUserSIds.has(todo.user.sId)
-        );
-    }
-  }, [selectedUserSIds, todoOwnerFilter.assigneeScope, todos, viewerUserId]);
+  const assigneeScopedTodos = todos;
 
   const normalizedTodoSearchNeedle = useMemo(
     () => normalizeProjectTodoSearchNeedle(debouncedTodoSearchQuery),
@@ -618,14 +569,10 @@ export function useProjectTodosPanelState({
     groupedSuggestedTodosOnly.length > 0;
 
   return {
-    assigneeSearch,
-    setAssigneeSearch,
-    isAssigneeMenuOpen,
-    setIsAssigneeMenuOpen,
-    filteredUsers,
+    isScopeMenuOpen,
+    setIsScopeMenuOpen,
     todoOwnerFilter,
     onTodoOwnerFilterChange,
-    selectedUserSIds,
     viewerUserId,
     todoScopeLabel,
     isReadOnly,

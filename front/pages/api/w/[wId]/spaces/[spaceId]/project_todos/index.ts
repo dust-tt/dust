@@ -7,6 +7,44 @@ import { ProjectTodoResource } from "@app/lib/resources/project_todo_resource";
 import { ProjectTodoStateResource } from "@app/lib/resources/project_todo_state_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { getConversationDotStatus } from "@app/lib/utils/conversation_dot_status";
+import type { ModelId } from "@app/types/shared/model_id";
+
+function parseSingleQueryValue(
+  value: NextApiRequest["query"][string] | undefined
+): string | undefined {
+  const v = Array.isArray(value) ? value[0] : value;
+  return typeof v === "string" && v.trim().length > 0 ? v.trim() : undefined;
+}
+
+const PROJECT_TODO_TIME_SCOPE_VALUES = [
+  "active",
+  "last_24h",
+  "last_7d",
+  "last_30d",
+] as const;
+
+type ProjectTodoFetchTimeScope =
+  (typeof PROJECT_TODO_TIME_SCOPE_VALUES)[number];
+
+function parseProjectTodoTimeScope(
+  req: NextApiRequest
+): ProjectTodoFetchTimeScope {
+  const raw =
+    parseSingleQueryValue(req.query.period)?.toLowerCase() ?? "active";
+  if ((PROJECT_TODO_TIME_SCOPE_VALUES as readonly string[]).includes(raw)) {
+    return raw as ProjectTodoFetchTimeScope;
+  }
+  return "active";
+}
+
+function parsePeopleMineOnly(req: NextApiRequest): boolean {
+  const legacy = parseSingleQueryValue(req.query.assignee)?.toLowerCase();
+  const explicit = parseSingleQueryValue(req.query.people)?.toLowerCase();
+
+  const token = explicit ?? legacy ?? "all";
+  return token === "mine";
+}
+
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { ProjectTodoType } from "@app/types/project_todo";
@@ -58,10 +96,21 @@ async function handler(
       const state = await ProjectTodoStateResource.fetchBySpace(auth, {
         spaceId: space.id,
       });
+      const timeScope = parseProjectTodoTimeScope(req);
+      const viewerOnlyMine = parsePeopleMineOnly(req);
+      let assigneeUserId: ModelId | null = null;
+      if (viewerOnlyMine) {
+        assigneeUserId = currentUser.id;
+      }
+
+      const lastCleanedAtForFetch =
+        timeScope === "active" ? (state?.lastCleanedAt ?? null) : null;
 
       const todos = await ProjectTodoResource.fetchBySpace(auth, {
         spaceId: space.id,
-        lastCleanedAt: state?.lastCleanedAt ?? null,
+        lastCleanedAt: lastCleanedAtForFetch,
+        timeScope,
+        assigneeUserId,
       });
 
       const todoIds = todos.map((t) => t.sId);

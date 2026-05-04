@@ -1,5 +1,6 @@
 import { Authenticator } from "@app/lib/auth";
 import { ProjectTodoStateResource } from "@app/lib/resources/project_todo_state_resource";
+import { frontSequelize } from "@app/lib/resources/storage";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { ProjectTodoFactory } from "@app/tests/utils/ProjectTodoFactory";
@@ -87,6 +88,65 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/project_todos", () => {
     expect(data.viewerUserId).toBe(user.sId);
     expect(data.todos[0].user).not.toBeNull();
     expect(data.todos[1].user).not.toBeNull();
+  });
+
+  it("should return only todos assigned to the viewer when assignee=mine", async () => {
+    const { user } = await setup();
+    const project = await SpaceFactory.project(workspace, user.id);
+    const secondUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, secondUser, { role: "user" });
+
+    await ProjectTodoFactory.create(workspace, project, {
+      userId: user.id,
+      text: "Mine only",
+    });
+    await ProjectTodoFactory.create(workspace, project, {
+      userId: secondUser.id,
+      text: "Not mine",
+    });
+
+    req.query.spaceId = project.sId;
+    req.query.assignee = "mine";
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const texts = res._getJSONData().todos.map((t: { text: string }) => t.text);
+    expect(texts.sort()).toEqual(["Mine only"]);
+  });
+
+  it("should omit todos stale by updatedAt when period=last_24h", async () => {
+    const { user } = await setup();
+    const project = await SpaceFactory.project(workspace, user.id);
+
+    await ProjectTodoFactory.create(workspace, project, {
+      userId: user.id,
+      text: "Recent-ish",
+    });
+    const staleTodo = await ProjectTodoFactory.create(workspace, project, {
+      userId: user.id,
+      text: "Stale update",
+    });
+    const stalePast = new Date(Date.now() - 48 * 60 * 60 * 1000);
+    // biome-ignore lint/plugin/noRawSql: Sequelize/workspace hooks block reliable updatedAt backdating for this row
+    await frontSequelize.query(
+      `UPDATE project_todos SET "updatedAt" = :updatedAt WHERE id = :id AND "workspaceId" = :wid`,
+      {
+        replacements: {
+          updatedAt: stalePast,
+          id: staleTodo.id,
+          wid: staleTodo.workspaceId,
+        },
+      }
+    );
+
+    req.query.spaceId = project.sId;
+    req.query.period = "last_24h";
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const texts = res._getJSONData().todos.map((t: { text: string }) => t.text);
+    expect(texts).toContain("Recent-ish");
+    expect(texts).not.toContain("Stale update");
   });
 
   it("should hide cleaned done todos for all users", async () => {

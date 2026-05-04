@@ -265,54 +265,6 @@ export function TodoSources({
   );
 }
 
-// ── Filter types & helpers ────────────────────────────────────────────────────
-
-export type TodoAssigneeScope = "mine" | "all" | "users";
-
-export interface TodoOwnerFilter {
-  assigneeScope: TodoAssigneeScope;
-  selectedUserSIds: string[];
-}
-
-export function formatTodoScopeLabel({
-  scope,
-  selectedUserSIds,
-  usersBySId,
-  viewerUserId,
-}: {
-  scope: TodoAssigneeScope;
-  selectedUserSIds: Set<string>;
-  usersBySId: Map<string, ProjectTodoAssigneeType>;
-  viewerUserId: string | null;
-}) {
-  if (scope === "mine") {
-    return "Your to-dos";
-  }
-  if (scope === "all") {
-    return "Project's to-dos";
-  }
-
-  if (selectedUserSIds.size === 0) {
-    return "To-dos";
-  }
-
-  if (selectedUserSIds.size === 1) {
-    const [selectedUserSId] = selectedUserSIds;
-    const user = usersBySId.get(selectedUserSId);
-    if (!user) {
-      return "To-dos";
-    }
-
-    if (viewerUserId !== null && user.sId === viewerUserId) {
-      return "Your to-dos";
-    }
-
-    return `${user.fullName}'s to-dos`;
-  }
-
-  return `Selected to-dos (${selectedUserSIds.size})`;
-}
-
 export function TodoAssigneeHeader({
   user,
   viewerUserId,

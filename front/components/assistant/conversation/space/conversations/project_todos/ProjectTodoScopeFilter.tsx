@@ -1,173 +1,109 @@
 import { useProjectTodosPanel } from "@app/components/assistant/conversation/space/conversations/project_todos/ProjectTodosPanelContext";
+import type {
+  ProjectTodoPeopleScope,
+  ProjectTodoPeriodScope,
+} from "@app/components/assistant/conversation/space/conversations/project_todos/projectTodosListScope";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import {
-  Avatar,
   Button,
-  ChevronDownIcon,
+  ClockIcon,
+  cn,
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
-  DropdownMenuSearchbar,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  Icon,
-  UserGroupIcon,
-  UserIcon,
-  WindIcon,
 } from "@dust-tt/sparkle";
 
+const PERIOD_OPTIONS: Array<{
+  value: ProjectTodoPeriodScope;
+  label: string;
+}> = [
+  { value: "active", label: "Active" },
+  { value: "last_24h", label: "Last 24h" },
+  { value: "last_7d", label: "Last 7 days" },
+  { value: "last_30d", label: "Last 30 days" },
+];
+
+const PEOPLE_OPTIONS: Array<{
+  value: ProjectTodoPeopleScope;
+  label: string;
+}> = [
+  { value: "all_project", label: "All project's" },
+  { value: "just_mine", label: "Just mine" },
+];
+
 export function ProjectTodoScopeFilter() {
+  const isMobile = useIsMobile();
   const {
-    assigneeSearch,
-    setAssigneeSearch,
-    isAssigneeMenuOpen,
-    setIsAssigneeMenuOpen,
-    filteredUsers,
+    isScopeMenuOpen,
+    setIsScopeMenuOpen,
     todoOwnerFilter,
     onTodoOwnerFilterChange,
-    selectedUserSIds,
-    viewerUserId,
     todoScopeLabel,
-    isReadOnly,
-    hasDoneItems,
-    handleClean,
-    isCleaning,
-    isSoleProjectMember,
   } = useProjectTodosPanel();
 
   return (
-    <div className="mb-1">
-      <div className="inline-flex w-full items-center gap-2">
-        <DropdownMenu
-          modal={false}
-          open={isAssigneeMenuOpen}
-          onOpenChange={(open) => {
-            setIsAssigneeMenuOpen(open);
-            if (open) {
-              setAssigneeSearch("");
-            }
-          }}
-        >
-          <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              className="inline-flex items-center gap-1 rounded-md px-0 py-0.5 hover:bg-muted/40 dark:hover:bg-muted-night/40"
-            >
-              <h3 className="heading-2xl text-foreground dark:text-foreground-night">
-                {todoScopeLabel}
-              </h3>
-              <Icon
-                visual={ChevronDownIcon}
-                size="sm"
-                className="text-muted-foreground dark:text-muted-foreground-night"
-              />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            className="z-[1000] w-80 shadow-2xl ring-1 ring-border/60"
-            align="start"
-          >
-            {!isSoleProjectMember && (
-              <>
-                <DropdownMenuSearchbar
-                  autoFocus
-                  name="assignee-filter"
-                  placeholder="Search members"
-                  value={assigneeSearch}
-                  onChange={setAssigneeSearch}
-                />
-                <DropdownMenuSeparator />
-              </>
-            )}
-            <DropdownMenuCheckboxItem
-              icon={UserIcon}
-              label="Your to-dos"
-              checked={todoOwnerFilter.assigneeScope === "mine"}
-              onClick={() => {
-                onTodoOwnerFilterChange({
-                  assigneeScope: "mine",
-                  selectedUserSIds: [],
-                });
-                setIsAssigneeMenuOpen(false);
-              }}
-              onSelect={(event) => {
-                event.preventDefault();
-              }}
-            />
-            <DropdownMenuCheckboxItem
-              icon={UserGroupIcon}
-              label="Project's to-dos"
-              checked={todoOwnerFilter.assigneeScope === "all"}
-              onClick={() => {
-                onTodoOwnerFilterChange({
-                  assigneeScope: "all",
-                  selectedUserSIds: [],
-                });
-                setIsAssigneeMenuOpen(false);
-              }}
-              onSelect={(event) => {
-                event.preventDefault();
-              }}
-            />
-            {!isSoleProjectMember && (
-              <>
-                <DropdownMenuSeparator />
-                <div className="max-h-64 overflow-auto">
-                  {filteredUsers.length > 0 ? (
-                    filteredUsers.map((user) => (
-                      <DropdownMenuCheckboxItem
-                        key={`todo-assignee-filter-${user.sId}`}
-                        icon={() => (
-                          <Avatar
-                            size="xxs"
-                            isRounded
-                            visual={
-                              user.image ?? "/static/humanavatar/anonymous.png"
-                            }
-                          />
-                        )}
-                        label={`${user.fullName}${viewerUserId === user.sId ? " (you)" : ""}`}
-                        checked={
-                          todoOwnerFilter.assigneeScope === "users" &&
-                          selectedUserSIds.has(user.sId)
-                        }
-                        onClick={() => {
-                          const next = new Set(selectedUserSIds);
-                          if (next.has(user.sId)) {
-                            next.delete(user.sId);
-                          } else {
-                            next.add(user.sId);
-                          }
-                          onTodoOwnerFilterChange({
-                            assigneeScope: next.size === 0 ? "all" : "users",
-                            selectedUserSIds: [...next],
-                          });
-                        }}
-                        onSelect={(event) => {
-                          event.preventDefault();
-                        }}
-                      />
-                    ))
-                  ) : (
-                    <div className="px-3 py-2 text-sm text-muted-foreground">
-                      No members found
-                    </div>
-                  )}
-                </div>
-              </>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <div className="flex-1" />
+    <DropdownMenu
+      modal={false}
+      open={isScopeMenuOpen}
+      onOpenChange={setIsScopeMenuOpen}
+    >
+      <DropdownMenuTrigger asChild>
         <Button
-          size="xs"
+          type="button"
           variant="outline"
-          icon={WindIcon}
-          label="Clean"
-          tooltip="Hide all done to-dos"
-          onClick={handleClean}
-          disabled={isReadOnly || !hasDoneItems || isCleaning}
+          size="sm"
+          isSelect
+          label={isMobile ? undefined : todoScopeLabel}
+          tooltip={isMobile ? todoScopeLabel : undefined}
+          icon={ClockIcon}
+          className={cn(!isMobile && "max-w-[min(100vw-3rem,24rem)]")}
         />
-      </div>
-    </div>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        className="z-[1000] w-80 shadow-2xl ring-1 ring-border/60"
+        align="start"
+      >
+        <DropdownMenuLabel label="Historic" />
+        <DropdownMenuRadioGroup
+          value={todoOwnerFilter.periodScope}
+          className="mb-2"
+        >
+          {PERIOD_OPTIONS.map(({ value, label }) => (
+            <DropdownMenuRadioItem
+              key={value}
+              value={value}
+              label={label}
+              onClick={() => {
+                onTodoOwnerFilterChange({
+                  ...todoOwnerFilter,
+                  periodScope: value,
+                });
+              }}
+            />
+          ))}
+        </DropdownMenuRadioGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel label="People" />
+        <DropdownMenuRadioGroup value={todoOwnerFilter.peopleScope}>
+          {PEOPLE_OPTIONS.map(({ value, label }) => (
+            <DropdownMenuRadioItem
+              key={value}
+              value={value}
+              label={label}
+              onClick={() => {
+                onTodoOwnerFilterChange({
+                  ...todoOwnerFilter,
+                  peopleScope: value,
+                });
+              }}
+            />
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
