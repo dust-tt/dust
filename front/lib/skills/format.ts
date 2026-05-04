@@ -41,6 +41,12 @@ export function extractSkillTags(markdown: string): SkillReference[] {
     .filter((skill): skill is SkillReference => skill !== null);
 }
 
+export function extractUniqueSkillIds(markdown: string): string[] {
+  return Array.from(
+    new Set(extractSkillTags(markdown).map((skill) => skill.id))
+  );
+}
+
 export function serializeSkillTag({ id, name, icon }: SkillReference): string {
   return `<${SKILL_TAG_NAME} id="${id}" name="${name}" icon="${icon}" />`;
 }

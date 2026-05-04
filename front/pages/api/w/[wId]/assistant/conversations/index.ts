@@ -92,10 +92,6 @@
  *                         type: array
  *                         items:
  *                           type: string
- *                       selectedSkillIds:
- *                         type: array
- *                         items:
- *                           type: string
  *               contentFragments:
  *                 type: array
  *                 items:
@@ -139,6 +135,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { extractUniqueSkillIds } from "@app/lib/skills/format";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import { InternalPostConversationsRequestBodySchema } from "@app/types/api/internal/assistant";
@@ -367,12 +364,9 @@ async function handler(
           }
         }
 
-        // If JIT skills are selected, add them to the conversation before posting the message.
-        if (message.context.selectedSkillIds) {
-          const skills = await SkillResource.fetchByIds(
-            auth,
-            message.context.selectedSkillIds
-          );
+        const selectedSkillIds = extractUniqueSkillIds(message.content);
+        if (selectedSkillIds.length > 0) {
+          const skills = await SkillResource.fetchByIds(auth, selectedSkillIds);
 
           const r = await SkillResource.upsertConversationSkills(auth, {
             conversationId: conversation.id,

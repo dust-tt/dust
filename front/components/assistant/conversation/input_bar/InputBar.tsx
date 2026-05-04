@@ -50,8 +50,7 @@ interface InputBarProps {
     input: string,
     mentions: RichMention[],
     contentFragments: ContentFragmentsType,
-    selectedMCPServerViewIds?: string[],
-    selectedSkillIds?: string[]
+    selectedMCPServerViewIds?: string[]
   ) => Promise<Result<undefined, DustError>>;
   draftKey: string;
   conversation?: ConversationWithoutContentType;
@@ -256,7 +255,7 @@ export const InputBar = React.memo(function InputBar({
       return;
     }
 
-    const { mentions: rawMentions, markdown, skills } = markdownAndMentions;
+    const { mentions: rawMentions, markdown } = markdownAndMentions;
     // When single-agent input is enabled, inject the selected agent into mentions
     // since it's no longer in the editor as a mention node.
     const hasUserMention = rawMentions.some((m) => m.type === "user");
@@ -269,12 +268,6 @@ export const InputBar = React.memo(function InputBar({
       ? [selectedSingleAgent, ...rawMentions]
       : rawMentions;
     const mentions = _.uniqBy(allMentions, "id");
-    const selectedSkillIds = Array.from(
-      new Set(skills.map((skill) => skill.id))
-    );
-    const selectedSkillIdsForSubmit =
-      selectedSkillIds.length > 0 ? selectedSkillIds : undefined;
-
     const uploadedFiles = fileUploaderService.getFileBlobs();
     const mentionedAgents = agentConfigurations.filter((a) =>
       mentions.some((m) => m.id === a.sId && m.type === "agent")
@@ -324,8 +317,7 @@ export const InputBar = React.memo(function InputBar({
           },
           // Only send the selectedMCPServerViewIds if we are creating a new conversation.
           // Once the conversation is created, the selectedMCPServerViewIds will be updated in the conversationTools hook.
-          selectedMCPServerViews.map((sv) => sv.sId),
-          selectedSkillIdsForSubmit
+          selectedMCPServerViews.map((sv) => sv.sId)
         );
 
         if (r.isOk()) {
@@ -355,8 +347,7 @@ export const InputBar = React.memo(function InputBar({
             }),
             contentNodes: attachedNodes,
           },
-          undefined,
-          selectedSkillIdsForSubmit
+          undefined
         );
 
         // Execute these operations in parallel with the submission.

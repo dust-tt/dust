@@ -7649,12 +7649,6 @@
                         "items": {
                           "type": "string"
                         }
-                      },
-                      "selectedSkillIds": {
-                        "type": "array",
-                        "items": {
-                          "type": "string"
-                        }
                       }
                     }
                   },
@@ -8084,12 +8078,6 @@
                             }
                           },
                           "selectedMCPServerViewIds": {
-                            "type": "array",
-                            "items": {
-                              "type": "string"
-                            }
-                          },
-                          "selectedSkillIds": {
                             "type": "array",
                             "items": {
                               "type": "string"

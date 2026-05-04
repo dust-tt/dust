@@ -29,7 +29,6 @@ export function useSubmitMessage({
       mentions: MentionType[];
       contentFragments: ContentFragmentsType;
       clientSideMCPServerIds?: string[];
-      selectedSkillIds?: string[];
       origin?: ClientMessageOrigin;
       skipToolsValidation?: boolean;
     }): Promise<Result<PostMessagesResponseBody, SubmitMessageError>> => {
@@ -46,7 +45,6 @@ export function useSubmitMessage({
         mentions,
         contentFragments,
         clientSideMCPServerIds,
-        selectedSkillIds,
         origin: messageOrigin,
         skipToolsValidation,
       } = messageData;
@@ -133,7 +131,6 @@ export function useSubmitMessage({
                 Intl.DateTimeFormat().resolvedOptions().timeZone || "Etc/UTC",
               profilePictureUrl: user.image,
               clientSideMCPServerIds,
-              selectedSkillIds,
               origin,
             },
             mentions,

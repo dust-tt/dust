@@ -95,10 +95,6 @@
  *                     type: array
  *                     items:
  *                       type: string
- *                   selectedSkillIds:
- *                     type: array
- *                     items:
- *                       type: string
  *               skipToolsValidation:
  *                 type: boolean
  *     responses:
@@ -132,6 +128,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import { getPaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { extractUniqueSkillIds } from "@app/lib/skills/format";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import { apiError } from "@app/logger/withlogging";
@@ -313,11 +310,9 @@ async function handler(
 
       const conversation = conversationRes.value;
 
-      if (context.selectedSkillIds && context.selectedSkillIds.length > 0) {
-        const skills = await SkillResource.fetchByIds(
-          auth,
-          context.selectedSkillIds
-        );
+      const selectedSkillIds = extractUniqueSkillIds(content);
+      if (selectedSkillIds.length > 0) {
+        const skills = await SkillResource.fetchByIds(auth, selectedSkillIds);
 
         const r = await SkillResource.upsertConversationSkills(auth, {
           conversationId: conversation.id,

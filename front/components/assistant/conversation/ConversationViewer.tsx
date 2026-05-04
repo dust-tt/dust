@@ -884,8 +884,7 @@ export const ConversationViewer = ({
       input: string,
       mentions: RichMention[],
       contentFragments: ContentFragmentsType,
-      _selectedMCPServerViewIds?: string[],
-      selectedSkillIds?: string[]
+      _selectedMCPServerViewIds?: string[]
     ): Promise<Result<undefined, DustError>> => {
       if (!virtuosoMessageListRef?.current) {
         return new Err({
@@ -913,7 +912,6 @@ export const ConversationViewer = ({
           clientSideMCPServerIds:
             clientSideMCPServerIds ??
             agentBuilderContext?.clientSideMCPServerIds,
-          selectedSkillIds,
           skipToolsValidation: agentBuilderContext?.skipToolsValidation,
         };
 

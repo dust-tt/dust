@@ -116,8 +116,7 @@ export type VirtuosoMessageListContext = {
     input: string,
     mentions: RichMention[],
     contentFragments: ContentFragmentsType,
-    selectedMCPServerViewIds?: string[],
-    selectedSkillIds?: string[]
+    selectedMCPServerViewIds?: string[]
   ) => Promise<Result<undefined, DustError>>;
   draftKey: string;
   conversation?: ConversationWithoutContentType;

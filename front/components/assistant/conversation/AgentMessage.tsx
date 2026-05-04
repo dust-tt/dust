@@ -182,8 +182,7 @@ interface AgentMessageProps {
     input: string,
     mentions: RichMention[],
     contentFragments: ContentFragmentsType,
-    selectedMCPServerViewIds?: string[],
-    selectedSkillIds?: string[]
+    selectedMCPServerViewIds?: string[]
   ) => Promise<Result<undefined, DustError>>;
   additionalMarkdownComponents?: Components;
   additionalMarkdownPlugins?: PluggableList;

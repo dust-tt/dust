@@ -63,8 +63,7 @@ interface SpaceConversationsTabProps {
     input: string,
     mentions: RichMention[],
     contentFragments: ContentFragmentsType,
-    selectedMCPServerViewIds?: string[],
-    selectedSkillIds?: string[]
+    selectedMCPServerViewIds?: string[]
   ) => Promise<Result<undefined, any>>;
   onOpenMembersPanel: () => void;
 }
