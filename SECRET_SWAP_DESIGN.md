@@ -239,16 +239,25 @@ Phase 1 covers **HTTP request headers only**. URL substitution
 (OAuth `client_secret`, webhook payloads, multipart forms) is deferred
 to Phase 3 with an `includeBody` flag on each secret row.
 
-What's covered in Phase 1: secrets used **literally** as a header value,
-e.g. `Authorization: Bearer __DSEC_<hex>__`,
-`X-API-Key: __DSEC_<hex>__`, or `Cookie: session=__DSEC_<hex>__`.
+What's covered in Phase 1:
+
+- Secrets used **literally** as a header value, e.g.
+  `Authorization: Bearer __DSEC_<hex>__`, `X-API-Key: __DSEC_<hex>__`,
+  `Cookie: session=__DSEC_<hex>__`.
+- **HTTP Basic auth**: when dsbx sees a header line `Authorization:
+  Basic <token>`, it base64-decodes `<token>`, scans the decoded bytes
+  for the placeholder under the same gate as literal headers (SNI/Host
+  agreement on a domain in the secret's `allowedDomains`), substitutes,
+  re-encodes base64, and emits a new header line. Works for both
+  patterns the agent might use:
+  `base64("user:__DSEC_<hex>__")` (username + secret password) and
+  `base64("__DSEC_<hex>__:")` (API-key-as-Basic). Cheap because the
+  format is fixed and the placeholder alphabet survives base64 cleanly.
+  Fail-soft: if the value isn't valid base64, the header passes through
+  unchanged and fails upstream as a normal auth error.
 
 What's **not** covered in Phase 1 (failure mode in parens):
 
-- HTTP **Basic auth** (`Authorization: Basic base64(user:secret)`): the
-  agent base64s `user:placeholder`, the placeholder isn't recognized
-  inside the base64 blob, dsbx forwards as-is, upstream returns
-  `401`.
 - **HMAC-signed** flows (Stripe webhooks, GitHub webhook signing,
   custom HMAC schemes): the secret is the HMAC key, never on the
   wire. dsbx has no placeholder to find, the signature computed
@@ -256,16 +265,17 @@ What's **not** covered in Phase 1 (failure mode in parens):
 - **AWS SigV4** and similar request-signing protocols: secret is the
   signing key, same shape as HMAC. Upstream auth rejects.
 - Any flow where the agent **transforms** the placeholder before sending
-  (urlencode, base64, JWT-sign, split across headers, write to a file
-  then re-read): substitution doesn't fire, upstream gets garbage.
+  in shapes other than Basic-auth-base64 (urlencode, JWT-sign, split
+  across headers, write to a file then re-read): substitution doesn't
+  fire, upstream gets garbage.
 
 These all fail loudly at the upstream as auth errors, never silently.
-The skill prompt warns the agent that secrets are literal-header-only
-in Phase 1 and that Basic/HMAC/SigV4 will not work yet. The admin UI
-surfaces the same limit at create-secret time. Richer auth shapes get
-revisited in Phase 3+ via an explicit per-secret `format` field
-(`bearer | basic | hmac-sha256 | sigv4 | ...`) that tells dsbx how to
-apply the secret. We are explicitly **not** designing that now.
+The skill prompt warns the agent that HMAC/SigV4 will not work yet.
+The admin UI surfaces the same limit at create-secret time. Richer
+auth shapes (HMAC, SigV4) get revisited in Phase 4+ via an explicit
+per-secret `format` field (`hmac-sha256 | sigv4 | ...`) that tells
+dsbx how to apply the secret. We are explicitly **not** designing
+that now.
 
 ### CA lifetime and dsbx restarts
 
@@ -631,6 +641,14 @@ time.
   errors, or any header-section anomaly. This is the right Phase 1
   cost; carrying Phase 0's prefix-only rewriter would be unsafe on
   keep-alive connections.
+- **HTTP Basic auth** (`Authorization: Basic <base64>`). dsbx
+  recognizes the header, base64-decodes the value, scans the
+  decoded bytes for the placeholder, substitutes if found (under
+  the same SNI/Host/allowedDomains gate as literal headers),
+  re-encodes base64, and emits the rewritten header. Fail-soft on
+  invalid base64 (header passes through unchanged). Small,
+  bounded code path; does not generalize to HMAC/SigV4 (those
+  remain Phase 4+).
 - **WebSocket upgrade handling**. The upgrade request itself is
   HTTP/1.1 and goes through the normal rewriter, so
   `Authorization`/`x-api-key`/`Sec-WebSocket-Protocol` placeholders
@@ -833,10 +851,11 @@ with secrets. With Phase 3 they can, after the admin sets
   rotations and wake races. Phase 1 ships rewrite-on-wake only; this
   phase closes the gap where a rotation/deletion needs to land on a
   currently-running sandbox without waiting for sleep+wake.
-- **Richer auth formats**: per-secret `format` field
-  (`bearer | basic | hmac-sha256 | sigv4 | ...`) so dsbx can apply
-  the format-specific transformation at substitution time. Covers
-  HTTP Basic auth, AWS SigV4, HMAC webhook signing.
+- **Richer auth formats** (HMAC, SigV4): per-secret `format` field
+  (`hmac-sha256 | sigv4 | ...`) so dsbx can apply the format-specific
+  transformation at substitution time. Covers HMAC webhook signing
+  and AWS SigV4. (Basic auth is handled in Phase 1 directly because
+  it's just a base64 wrapper around a literal credential string.)
 - **WebSocket `permessage-deflate`** support (re-add the extension,
   streaming decompress/recompress). Only if a workspace needs it.
 - Plain HTTP on non-standard ports (protocol detection from peek bytes
@@ -981,6 +1000,12 @@ with secrets. With Phase 3 they can, after the admin sets
   prefix-only shape. Per-request parsing, per-request Host validation,
   pipelining handled, fail-closed on malformed/oversized/truncated
   headers.
+- **HTTP Basic auth**: handled in Phase 1 as a one-off base64 case in
+  the header rewriter. dsbx decodes `Authorization: Basic <token>`,
+  scans for the placeholder, substitutes, re-encodes. Cheap because
+  Basic is just base64-of-string; the placeholder alphabet round-trips
+  through base64 cleanly. Does not generalize to HMAC/SigV4 (those
+  need request signing, structurally different, deferred to Phase 4+).
 - **mTLS on MITM-scoped domains**: explicitly unsupported. dsbx opens
   fresh outbound TLS without a client cert; client-auth flows to a
   domain in the allowlist union fail at the upstream's handshake.
