@@ -29,6 +29,7 @@ export {
   useConversationTools,
 } from "./useConversationTools";
 export { useConversationUrlAccessMode } from "./useConversationUrlAccessMode";
+export { useOpenConversationBranch } from "./useOpenConversationBranch";
 export { usePostOnboardingFollowUp } from "./usePostOnboardingFollowUp";
 export { useSearchPrivateConversations } from "./useSearchPrivateConversations";
 export { useSearchProjectConversations } from "./useSearchProjectConversations";

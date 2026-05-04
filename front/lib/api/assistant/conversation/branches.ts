@@ -22,6 +22,7 @@ import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import {
   type CitationType,
   isUserMessageType,
+  type LightMessageType,
   type UserMessageContext,
 } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -431,4 +432,60 @@ export async function closeConversationBranch(
 
     return new Ok({ closedBranchId: branch.id });
   }, transaction);
+}
+
+export type RenderedOpenBranch = {
+  branchId: string;
+  messages: LightMessageType[];
+};
+
+export async function getMostRecentOpenBranchForConversation(
+  auth: Authenticator,
+  {
+    conversationId,
+  }: {
+    conversationId: string;
+  }
+): Promise<
+  Result<
+    RenderedOpenBranch | null,
+    DustError<"conversation_not_found" | "internal_error">
+  >
+> {
+  const conversation = await ConversationResource.fetchById(
+    auth,
+    conversationId
+  );
+  if (!conversation) {
+    return new Err(
+      new DustError("conversation_not_found", "Conversation not found.")
+    );
+  }
+
+  const openBranch =
+    await ConversationBranchResource.findMostRecentOpenBranchForUser(
+      auth,
+      conversation.id
+    );
+
+  if (!openBranch) {
+    return new Ok(null);
+  }
+
+  const branchMessages = await openBranch.fetchAllMessages(auth);
+
+  const renderedRes = await batchRenderMessages(
+    auth,
+    conversation,
+    branchMessages,
+    "light"
+  );
+  if (renderedRes.isErr()) {
+    return new Err(new DustError("internal_error", renderedRes.error.message));
+  }
+
+  return new Ok({
+    branchId: openBranch.sId,
+    messages: renderedRes.value,
+  });
 }
