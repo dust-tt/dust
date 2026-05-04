@@ -37,7 +37,7 @@ interface ToolsListProps {
 
 type ToolDefinition = MCPServerViewType["server"]["tools"][number];
 
-interface ToolItemContentProps {
+interface ToolItemProps {
   tool: ToolDefinition;
   mayUpdate: boolean;
   availableStakeLevels: ReadonlyArray<MCPToolStakeLevelType>;
@@ -52,19 +52,13 @@ interface EditableToolItemProps {
   defaultSettings: ToolSettings;
 }
 
-interface ToolsListContentProps {
-  mayUpdate: boolean;
-  tools: ToolDefinition[];
-  renderToolItem: (tool: ToolDefinition) => JSX.Element;
-}
-
-function ToolItemContent({
+function ToolItem({
   tool,
   mayUpdate,
   availableStakeLevels,
   settings,
   onChange,
-}: ToolItemContentProps) {
+}: ToolItemProps) {
   const toolPermission = settings.permission;
   const toolEnabled = settings.enabled;
 
@@ -137,6 +131,30 @@ function ToolItemContent({
   );
 }
 
+function EditableToolItem({
+  tool,
+  mayUpdate,
+  availableStakeLevels,
+  defaultSettings,
+}: EditableToolItemProps) {
+  const { control } = useFormContext<MCPServerFormValues>();
+  const { field } = useController({
+    control,
+    name: `toolSettings.${encodeMCPToolNameForForm(tool.name)}`,
+    defaultValue: defaultSettings,
+  });
+
+  return (
+    <ToolItem
+      tool={tool}
+      mayUpdate={mayUpdate}
+      availableStakeLevels={availableStakeLevels}
+      settings={field.value ?? defaultSettings}
+      onChange={field.onChange}
+    />
+  );
+}
+
 function getDefaultToolSettings({
   tool,
   toolMetadataByName,
@@ -158,120 +176,14 @@ function getDefaultToolSettings({
   };
 }
 
-function EditableToolItem({
-  tool,
-  mayUpdate,
-  availableStakeLevels,
-  defaultSettings,
-}: EditableToolItemProps) {
-  const { control } = useFormContext<MCPServerFormValues>();
-  const { field } = useController({
-    control,
-    name: `toolSettings.${encodeMCPToolNameForForm(tool.name)}`,
-    defaultValue: defaultSettings,
-  });
-
-  return (
-    <ToolItemContent
-      tool={tool}
-      mayUpdate={mayUpdate}
-      availableStakeLevels={availableStakeLevels}
-      settings={field.value ?? defaultSettings}
-      onChange={field.onChange}
-    />
-  );
-}
-
-function ToolsListContent({
-  mayUpdate,
-  tools,
-  renderToolItem,
-}: ToolsListContentProps) {
-  return (
-    <>
-      {tools && tools.length > 0 && (
-        <Collapsible defaultOpen={tools.length <= 5}>
-          <CollapsibleTrigger>
-            <div className="heading-lg">Available Tools ({tools.length})</div>
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <>
-              <ContentMessage
-                className="mb-4 mt-2 w-full"
-                variant="blue"
-                size="lg"
-                icon={InformationCircleIcon}
-                title="User Approval Settings"
-              >
-                <ul>
-                  <li>
-                    <b>High stake</b> tools need explicit user approval.
-                  </li>
-                  <li>
-                    <b>Medium stake</b> tools allow users to save per-agent
-                    confirmations.
-                  </li>
-                  <li>
-                    Users can completely disable confirmations for{" "}
-                    <b>low stake</b> tools.
-                  </li>
-                  <li>
-                    <b>Never ask</b> tools run automatically.
-                  </li>
-                </ul>
-              </ContentMessage>
-
-              <div>
-                {tools.length > 0 ? (
-                  <div className="flex flex-col gap-4">
-                    {tools.map((tool) => renderToolItem(tool))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-faint">No tools available</p>
-                )}
-              </div>
-            </>
-          </CollapsibleContent>
-        </Collapsible>
-      )}
-    </>
-  );
-}
-
-interface EditableToolsListProps {
-  mayUpdate: boolean;
-  tools: ToolDefinition[];
-  getDefaultSettings: (tool: ToolDefinition) => ToolSettings;
-}
-
-function EditableToolsList({
-  mayUpdate,
-  tools,
-  getDefaultSettings,
-}: EditableToolsListProps) {
-  return (
-    <ToolsListContent
-      mayUpdate={mayUpdate}
-      tools={tools}
-      renderToolItem={(tool) => (
-        <EditableToolItem
-          key={tool.name}
-          tool={tool}
-          mayUpdate={mayUpdate}
-          availableStakeLevels={MCP_TOOL_STAKE_LEVELS}
-          defaultSettings={getDefaultSettings(tool)}
-        />
-      )}
-    />
-  );
-}
+const noop = () => {};
 
 // We disable buttons for agent builder view because it would feel like
 // you can configure per agent
 export const ToolsList = memo(
   ({ owner, mcpServerView, disableUpdates }: ToolsListProps) => {
-    const mayUpdate = disableUpdates ? false : isAdmin(owner);
-    const tools = mcpServerView.server.tools;
+    const mayUpdate = !disableUpdates && isAdmin(owner);
+    const { tools } = mcpServerView.server;
     const toolMetadataByName = Object.fromEntries(
       (mcpServerView.toolsMetadata ?? []).map(
         (metadata): [string, ToolSettings] => [
@@ -283,37 +195,82 @@ export const ToolsList = memo(
         ]
       )
     );
-    const getDefaultSettings = (tool: ToolDefinition) =>
-      getDefaultToolSettings({ tool, toolMetadataByName, mcpServerView });
 
-    // Read-only path: render directly without binding to the surrounding
-    // MCPServerFormValues form, since this component is also rendered in
-    // contexts (e.g. agent builder) that have no such FormProvider.
-    if (disableUpdates) {
-      return (
-        <ToolsListContent
-          mayUpdate={mayUpdate}
-          tools={tools}
-          renderToolItem={(tool) => (
-            <ToolItemContent
-              key={tool.name}
-              tool={tool}
-              mayUpdate={mayUpdate}
-              availableStakeLevels={MCP_TOOL_STAKE_LEVELS}
-              settings={getDefaultSettings(tool)}
-              onChange={() => {}}
-            />
-          )}
-        />
-      );
+    if (!tools || tools.length === 0) {
+      return null;
     }
 
     return (
-      <EditableToolsList
-        mayUpdate={mayUpdate}
-        tools={tools}
-        getDefaultSettings={getDefaultSettings}
-      />
+      <Collapsible defaultOpen={tools.length <= 5}>
+        <CollapsibleTrigger>
+          <div className="heading-lg">Available Tools ({tools.length})</div>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <>
+            <ContentMessage
+              className="mb-4 mt-2 w-full"
+              variant="blue"
+              size="lg"
+              icon={InformationCircleIcon}
+              title="User Approval Settings"
+            >
+              <ul>
+                <li>
+                  <b>High stake</b> tools need explicit user approval.
+                </li>
+                <li>
+                  <b>Medium stake</b> tools allow users to save per-agent
+                  confirmations.
+                </li>
+                <li>
+                  Users can completely disable confirmations for{" "}
+                  <b>low stake</b> tools.
+                </li>
+                <li>
+                  <b>Never ask</b> tools run automatically.
+                </li>
+              </ul>
+            </ContentMessage>
+
+            <div className="flex flex-col gap-4">
+              {tools.map((tool) => {
+                const defaultSettings = getDefaultToolSettings({
+                  tool,
+                  toolMetadataByName,
+                  mcpServerView,
+                });
+
+                // Read-only path: render directly without binding to the
+                // surrounding MCPServerFormValues form, since this component is
+                // also rendered in contexts (e.g. agent builder) that have no
+                // such FormProvider.
+                if (disableUpdates) {
+                  return (
+                    <ToolItem
+                      key={tool.name}
+                      tool={tool}
+                      settings={defaultSettings}
+                      mayUpdate={mayUpdate}
+                      availableStakeLevels={MCP_TOOL_STAKE_LEVELS}
+                      onChange={noop}
+                    />
+                  );
+                }
+
+                return (
+                  <EditableToolItem
+                    key={tool.name}
+                    tool={tool}
+                    mayUpdate={mayUpdate}
+                    availableStakeLevels={MCP_TOOL_STAKE_LEVELS}
+                    defaultSettings={defaultSettings}
+                  />
+                );
+              })}
+            </div>
+          </>
+        </CollapsibleContent>
+      </Collapsible>
     );
   }
 );
