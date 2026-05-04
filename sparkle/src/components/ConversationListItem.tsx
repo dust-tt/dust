@@ -103,6 +103,7 @@ export interface ConversationListItemProps {
   };
   time: string;
   replySection?: ReactNode;
+  moreMenu?: ReactNode;
   onClick?: () => void;
   showFocus?: boolean;
 }
@@ -113,6 +114,7 @@ export function ConversationListItem({
   creator,
   time,
   replySection,
+  moreMenu,
   onClick,
   showFocus = false,
 }: ConversationListItemProps) {
@@ -145,6 +147,7 @@ export function ConversationListItem({
     <ListItem
       onClick={onClick}
       groupName="conversation-item"
+      ignorePressSelector="[data-conversation-list-item-menu]"
       className={`s-transition-colors s-duration-500 ${
         isFocusVisible ? "s-bg-highlight-50 dark:s-bg-highlight-100-night" : ""
       }`}
@@ -178,6 +181,14 @@ export function ConversationListItem({
           </div>
           <div className="s-flex s-shrink-0 s-items-center s-gap-2 s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
             <span className="s-font-normal">{time}</span>
+            {moreMenu && (
+              <div
+                data-conversation-list-item-menu
+                className="s-pointer-events-none s-opacity-0 s-transition-opacity group-focus-within/conversation-item:s-pointer-events-auto group-focus-within/conversation-item:s-opacity-100 group-hover/conversation-item:s-pointer-events-auto group-hover/conversation-item:s-opacity-100"
+              >
+                {moreMenu}
+              </div>
+            )}
           </div>
         </div>
         {conversation.description && (

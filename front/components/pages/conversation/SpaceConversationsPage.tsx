@@ -125,6 +125,10 @@ export function SpaceConversationsPage() {
     [projectUIPreferences, setProjectUIPreferences]
   );
 
+  const handleConversationBranched = useCallback(() => {
+    void mutateConversations();
+  }, [mutateConversations]);
+
   const handleTodoOwnerFilterChange = useCallback(
     (todosOwnerFilter: TodoOwnerFilter) => {
       setProjectUIPreferences({
@@ -290,6 +294,7 @@ export function SpaceConversationsPage() {
           conversationFilter={conversationFilter}
           onConversationFilterChange={handleConversationFilterChange}
           onSubmit={handleConversationCreation}
+          onConversationBranched={handleConversationBranched}
           onOpenMembersPanel={() => setIsInvitePanelOpen(true)}
         />
       </div>
@@ -367,6 +372,7 @@ export function SpaceConversationsPage() {
             conversationFilter={conversationFilter}
             onConversationFilterChange={handleConversationFilterChange}
             onSubmit={handleConversationCreation}
+            onConversationBranched={handleConversationBranched}
             onOpenMembersPanel={() => setIsInvitePanelOpen(true)}
           />
         </TabsContent>

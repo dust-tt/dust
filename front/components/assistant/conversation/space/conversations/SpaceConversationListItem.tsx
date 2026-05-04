@@ -1,3 +1,8 @@
+import {
+  ConversationMenu,
+  useConversationMenu,
+} from "@app/components/assistant/conversation/ConversationMenu";
+import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useAppRouter } from "@app/lib/platform";
 import { getConversationRoute } from "@app/lib/utils/router";
 import {
@@ -12,7 +17,12 @@ import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { stripMarkdown } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 import type { Avatar } from "@dust-tt/sparkle";
-import { ConversationListItem, ReplySection } from "@dust-tt/sparkle";
+import {
+  Button,
+  ConversationListItem,
+  MoreIcon,
+  ReplySection,
+} from "@dust-tt/sparkle";
 import uniqBy from "lodash/uniqBy";
 import moment from "moment";
 import { useMemo } from "react";
@@ -21,14 +31,19 @@ import { isMessageUnread } from "../../utils";
 
 interface SpaceConversationListItemProps {
   conversation: LightConversationType;
+  onConversationBranched?: () => Promise<void> | void;
   owner: WorkspaceType;
 }
 
 export function SpaceConversationListItem({
   conversation,
+  onConversationBranched,
   owner,
 }: SpaceConversationListItemProps) {
   const router = useAppRouter();
+  const activeConversationId = useActiveConversationId();
+  const { isMenuOpen, menuTriggerPosition, handleMenuOpenChange } =
+    useConversationMenu();
 
   const validMessages = conversation.content.filter((message) => {
     if (isCompactionMessageType(message)) {
@@ -132,6 +147,28 @@ export function SpaceConversationListItem({
               lastMessageBy={avatars[0]?.name ?? "Unknown"}
             />
           ) : null
+        }
+        moreMenu={
+          <ConversationMenu
+            activeConversationId={conversation.sId}
+            conversation={conversation}
+            onConversationBranched={onConversationBranched}
+            owner={owner}
+            trigger={({ isPendingAction }) => (
+              <Button
+                size="xmini"
+                icon={MoreIcon}
+                variant="ghost"
+                aria-label="Conversation menu"
+                isLoading={isPendingAction}
+                disabled={isPendingAction}
+              />
+            )}
+            isConversationDisplayed={activeConversationId === conversation.sId}
+            isOpen={isMenuOpen}
+            onOpenChange={handleMenuOpenChange}
+            triggerPosition={menuTriggerPosition}
+          />
         }
         onClick={async () => {
           await router.push(
