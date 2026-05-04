@@ -23,6 +23,7 @@ export {
   useAddDeleteConversationSkill,
   useConversationSkills,
 } from "./useConversationSkills";
+export { useConversationFileContent } from "./useConversationFileContent";
 export { useConversations } from "./useConversations";
 export {
   useAddDeleteConversationTool,
