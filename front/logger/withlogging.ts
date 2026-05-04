@@ -200,6 +200,12 @@ export function withLogging<T>(
         // cleared in Redis at any time, but a cached "true" response would
         // keep the tab in a reload loop until it expires.
         res.setHeader("Cache-Control", "no-store");
+      } else {
+        // Always emit an explicit "false" so 304 revalidations can heal
+        // poisoned cache entries: per HTTP spec, the browser merges 304
+        // response headers into the stored entry. If we leave the header
+        // off, a cached "true" persists forever across revalidations.
+        res.setHeader("X-Reload-Required", "false");
       }
     }
 
