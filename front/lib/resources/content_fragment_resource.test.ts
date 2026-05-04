@@ -157,7 +157,7 @@ describe("renderLightContentFragmentForModel", () => {
       await FeatureFlagFactory.basic(authenticator, "new_file_explorer");
     });
 
-    it("renders a slim file reference for a regular file attachment", async () => {
+    it("renders a slim file reference without snippet", async () => {
       const result = await renderLightContentFragmentForModel(
         authenticator,
         makeFileFragment("application/pdf"),
@@ -171,17 +171,17 @@ describe("renderLightContentFragmentForModel", () => {
       });
     });
 
-    it("renders a slim file reference for a plain text file attachment", async () => {
+    it("renders a slim file reference with snippet when available", async () => {
       const result = await renderLightContentFragmentForModel(
         authenticator,
-        makeFileFragment("text/plain"),
+        makeFileFragment("text/plain", { snippet: "First 256 chars..." }),
         model,
         { excludeImages: false }
       );
       expect(result).not.toBeNull();
       expect(result?.content[0]).toMatchObject({
         type: "text",
-        text: `<file name="file" path="conversation/file"/>`,
+        text: `<file name="file" path="conversation/file">First 256 chars...\n</file>`,
       });
     });
 
