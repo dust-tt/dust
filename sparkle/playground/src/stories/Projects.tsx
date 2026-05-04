@@ -126,6 +126,17 @@ function getRandomParticipants(conversation: Conversation): Participant[] {
   return shuffled.slice(0, count);
 }
 
+/** Playground-only: treat some conversations as "triggered" for the sidebar Inbox filter. */
+function isPlaygroundInboxTriggeredConversation(
+  conversation: Conversation
+): boolean {
+  let h = 0;
+  for (let i = 0; i < conversation.id.length; i++) {
+    h = (h + conversation.id.charCodeAt(i)) % 997;
+  }
+  return h % 4 === 0;
+}
+
 function DustMain() {
   const [activeTab, setActiveTab] = useState<"chat" | "spaces" | "admin">(
     "chat"
@@ -170,6 +181,7 @@ function DustMain() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [showProfileView, setShowProfileView] = useState(false);
   const [isAgentsDropdownOpen, setIsAgentsDropdownOpen] = useState(false);
+  const [inboxHideTriggered, setInboxHideTriggered] = useState(false);
   const sidebarLayoutRef = useRef<SidebarLayoutRef>(null);
 
   // Initialize space members with generated members when a space is first selected
@@ -396,15 +408,17 @@ function DustMain() {
 
   // Select 2-5 random conversations for inbox with status assignment
   const inboxConversations = useMemo(() => {
-    if (filteredConversations.length === 0) return [];
+    const pool = inboxHideTriggered
+      ? filteredConversations.filter(
+          (c) => !isPlaygroundInboxTriggeredConversation(c)
+        )
+      : filteredConversations;
+    if (pool.length === 0) return [];
 
     // Randomly select 2-5 conversations
     const count = Math.floor(Math.random() * 4) + 2; // 2-5
-    const shuffled = [...filteredConversations].sort(() => 0.5 - Math.random());
-    const selected = shuffled.slice(
-      0,
-      Math.min(count, filteredConversations.length)
-    );
+    const shuffled = [...pool].sort(() => 0.5 - Math.random());
+    const selected = shuffled.slice(0, Math.min(count, pool.length));
 
     // Assign statuses: ~25% probability of "blocked", rest "idle"
     return selected.map((conversation) => {
@@ -412,7 +426,7 @@ function DustMain() {
         Math.random() < 0.25 ? "blocked" : "idle";
       return { conversation, status };
     });
-  }, [filteredConversations]);
+  }, [filteredConversations, inboxHideTriggered]);
 
   const getConversationMoreMenu = (conversation: Conversation) => {
     const participants = getRandomParticipants(conversation);
@@ -666,18 +680,50 @@ function DustMain() {
                 className="s-border-b s-border-t s-border-border dark:s-border-border-night s-bg-background/50 s-px-2 s-pb-2 dark:s-bg-background-night/50"
                 actionOnHover={false}
                 action={
-                  <Button
-                    size="xmini"
-                    icon={CheckDoubleIcon}
-                    variant="ghost"
-                    aria-label="Mark all as read"
-                    tooltip="Mark all as read"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      // Add action logic here
-                    }}
-                  />
+                  <>
+                    <Button
+                      size="xmini"
+                      icon={CheckDoubleIcon}
+                      variant="ghost"
+                      aria-label="Mark all as read"
+                      tooltip="Mark all as read"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        // Add action logic here
+                      }}
+                    />
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          size="xmini"
+                          icon={MoreIcon}
+                          variant="ghost"
+                          aria-label="Inbox options"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                          }}
+                        />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <DropdownMenuLabel label="Conversations" />
+                        <DropdownMenuItem
+                          label={
+                            inboxHideTriggered
+                              ? "Show triggered"
+                              : "Hide triggered"
+                          }
+                          icon={BoltOffIcon}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setInboxHideTriggered((v) => !v);
+                          }}
+                        />
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </>
                 }
               >
                 {inboxConversations.map(({ conversation, status }) => (

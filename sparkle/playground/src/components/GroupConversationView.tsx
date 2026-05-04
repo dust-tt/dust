@@ -1,9 +1,9 @@
 import {
+  AnimatedText,
   ArchiveIcon,
   ArrowDownOnSquareIcon,
   ArrowUpOnSquareIcon,
   Avatar,
-  BookOpenIcon,
   Button,
   ButtonsSwitch,
   ButtonsSwitchList,
@@ -13,7 +13,6 @@ import {
   CheckIcon,
   Checkbox,
   Chip,
-  CircleIcon,
   Cog6ToothIcon,
   ContentMessage,
   ConversationListItem,
@@ -27,10 +26,14 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuTrigger,
   EmptyCTA,
   EmptyCTAButton,
   ExternalLinkIcon,
+  EyeIcon,
+  FolderIcon,
   Icon,
   InformationCircleIcon,
   Input,
@@ -48,15 +51,12 @@ import {
   SheetHeader,
   SheetTitle,
   SliderToggle,
-  SquareIcon,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
   ToolsIcon,
-  Tooltip,
   TrashIcon,
-  TriangleIcon,
   TypingAnimation,
   UserGroupIcon,
   WindIcon,
@@ -67,6 +67,7 @@ import { cn } from "@sparkle/lib/utils";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
+import { Separator } from "@radix-ui/react-dropdown-menu";
 import { getAgentById } from "../data/agents";
 import { getDataSourcesBySpaceId } from "../data/dataSources";
 import type {
@@ -78,7 +79,7 @@ import type {
 } from "../data/types";
 import { getUserById } from "../data/users";
 import { InputBar } from "./InputBar";
-import { WhatsNewDeltaList } from "./WhatsNewDeltaList";
+import { TodoInputBar } from "./TodoInputBar";
 
 interface GroupConversationViewProps {
   space: Space;
@@ -268,6 +269,184 @@ function seededRandom(seed: string, index: number): number {
   return x - Math.floor(x);
 }
 
+const FAKE_PROJECT_TODO_ITEMS: ChecklistItem[] = [
+  {
+    id: "fake-todo-design-copy",
+    text: "Maya to tighten the onboarding copy before the next design review.",
+  },
+  {
+    id: "fake-todo-risk-log",
+    text: "Alex to add the latest mitigation notes to the weekly risk log.",
+  },
+  {
+    id: "fake-todo-customer-brief",
+    text: "Priya to prepare a short customer brief for the roadmap sync.",
+  },
+  {
+    id: "fake-todo-data-check",
+    text: "Tom to validate the dashboard numbers against the source export.",
+  },
+  {
+    id: "fake-todo-launch-owner",
+    text: "Raphael to confirm the launch owner for the beta rollout checklist.",
+  },
+  {
+    id: "fake-todo-budget-follow-up",
+    text: "Nina to follow up on the budget question before planning closes.",
+  },
+  {
+    id: "fake-todo-doc-update",
+    text: "Lea to update the implementation notes with the latest constraints.",
+  },
+  {
+    id: "fake-todo-support-plan",
+    text: "Jordan to draft the support plan for the first week after launch.",
+  },
+  {
+    id: "fake-todo-qa-scope",
+    text: "Sam to split the QA scope into smoke tests and regression checks.",
+  },
+  {
+    id: "fake-todo-api-contract",
+    text: "Seb to confirm the API contract changes with the integrations team.",
+  },
+  {
+    id: "fake-todo-migration-window",
+    text: "Maya to propose a migration window that avoids customer peak hours.",
+  },
+  {
+    id: "fake-todo-analytics-event",
+    text: "Alex to add the missing analytics event to the release tracker.",
+  },
+];
+
+const TODO_HISTORY_FILTER_LABELS: Record<TodoHistoryFilter, string> = {
+  ongoing: "Active",
+  today: "Today",
+  last7: "Last 7 days",
+  last30: "Last 30 days",
+};
+
+const TODO_HISTORY_FILTER_OPTIONS: TodoHistoryFilter[] = [
+  "ongoing",
+  "today",
+  "last7",
+  "last30",
+];
+
+const FAKE_CLOSED_PROJECT_TODO_ITEMS: Record<
+  TodoHistoryFilter,
+  ChecklistItem[]
+> = {
+  ongoing: [],
+  today: [
+    {
+      id: "closed-today-launch-notes",
+      text: "Maya finalized the launch notes before the morning review.",
+    },
+    {
+      id: "closed-today-budget-answer",
+      text: "Nina answered the open budget question in the planning doc.",
+    },
+    {
+      id: "closed-today-dashboard-check",
+      text: "Tom checked the dashboard totals against the source export.",
+    },
+    {
+      id: "closed-today-customer-brief",
+      text: "Priya shared the customer brief for the roadmap sync.",
+    },
+    {
+      id: "closed-today-api-thread",
+      text: "Seb resolved the API contract thread with integrations.",
+    },
+  ],
+  last7: [
+    {
+      id: "closed-last7-onboarding-copy",
+      text: "Maya shipped the updated onboarding copy for review.",
+    },
+    {
+      id: "closed-last7-risk-log",
+      text: "Alex added mitigation notes to the weekly risk log.",
+    },
+    {
+      id: "closed-last7-qa-scope",
+      text: "Sam split QA scope into smoke and regression checks.",
+    },
+    {
+      id: "closed-last7-support-plan",
+      text: "Jordan drafted the first-week support plan.",
+    },
+    {
+      id: "closed-last7-migration-window",
+      text: "Raphael confirmed the preferred migration window.",
+    },
+    {
+      id: "closed-last7-analytics-event",
+      text: "Lea added the missing analytics event to the release tracker.",
+    },
+    {
+      id: "closed-last7-legal-review",
+      text: "Nina closed the legal review follow-up for launch messaging.",
+    },
+    {
+      id: "closed-last7-doc-constraints",
+      text: "Tom updated implementation notes with the latest constraints.",
+    },
+  ],
+  last30: [
+    {
+      id: "closed-last30-beta-owner",
+      text: "Raphael assigned owners for the beta rollout checklist.",
+    },
+    {
+      id: "closed-last30-data-cleanup",
+      text: "Alex completed the data cleanup pass for archived projects.",
+    },
+    {
+      id: "closed-last30-sales-enablement",
+      text: "Priya published the sales enablement one-pager.",
+    },
+    {
+      id: "closed-last30-design-review",
+      text: "Maya closed the design review notes from the kickoff.",
+    },
+    {
+      id: "closed-last30-billing-sync",
+      text: "Seb synced billing assumptions with the finance team.",
+    },
+    {
+      id: "closed-last30-qa-owners",
+      text: "Sam confirmed QA owners for the release train.",
+    },
+    {
+      id: "closed-last30-customer-list",
+      text: "Jordan cleaned up the early-access customer list.",
+    },
+    {
+      id: "closed-last30-doc-index",
+      text: "Lea organized the project docs index for new contributors.",
+    },
+    {
+      id: "closed-last30-demo-script",
+      text: "Tom recorded the demo script changes requested by support.",
+    },
+    {
+      id: "closed-last30-roadmap-sync",
+      text: "Nina captured decisions from the monthly roadmap sync.",
+    },
+    {
+      id: "closed-last30-security-check",
+      text: "Alex resolved the security checklist items for the integration.",
+    },
+    {
+      id: "closed-last30-rollout-plan",
+      text: "Raphael archived the completed rollout plan follow-ups.",
+    },
+  ],
+};
+
 // Generate joinedAt date for a member (deterministic based on space and member ID)
 function generateJoinedAt(spaceId: string, memberId: string): Date {
   const now = new Date();
@@ -356,6 +535,13 @@ interface OngoingSummary {
   projectPulse: ProjectPulseItem[];
   updatedAt: Date;
 }
+
+interface ParticipantTodoList {
+  user: User;
+  items: ChecklistItem[];
+}
+
+type TodoHistoryFilter = "ongoing" | "today" | "last7" | "last30";
 
 type SummaryRelatedConversations = Record<string, string[]>;
 type SummaryItemDiffByKey = Record<string, SummaryItemDiffState>;
@@ -876,12 +1062,20 @@ export function GroupConversationView({
 }: GroupConversationViewProps) {
   const [searchText, setSearchText] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [goodToKnowFilter, setGoodToKnowFilter] = useState<
+    "all" | "shared" | "mine"
+  >("all");
+  const [todoSearchText, setTodoSearchText] = useState("");
+  const [todoScopeFilter, setTodoScopeFilter] = useState<"all" | "mine">("all");
+  const [todoHistoryFilter, setTodoHistoryFilter] =
+    useState<TodoHistoryFilter>("ongoing");
+  const [hiddenFakeTodoItemKeys, setHiddenFakeTodoItemKeys] = useState<
+    Set<string>
+  >(new Set());
   const [ongoingSummary, setOngoingSummary] = useState<OngoingSummary | null>(
     null
   );
   const [isSummaryUpdating, setIsSummaryUpdating] = useState(false);
-  const [isOngoingSummaryExpanded, setIsOngoingSummaryExpanded] =
-    useState(false);
   const [checkedSummaryItems, setCheckedSummaryItems] = useState<
     Record<string, boolean>
   >({});
@@ -929,7 +1123,7 @@ export function GroupConversationView({
   // Active tab (for switching from suggestion cards)
   const [activeTab, setActiveTab] = useState("conversations");
 
-  // Knowledge tab state
+  // Files tab state
   const [dataSources, setDataSources] = useState<DataSource[]>(() =>
     getDataSourcesBySpaceId(space.id)
   );
@@ -1191,7 +1385,6 @@ export function GroupConversationView({
   }, [space.id, isNew, spaceMemberIds, users, avatarCount]);
 
   const hasHistory = expandedConversations.length > 0;
-  const SUMMARY_COLLAPSED_MAX_HEIGHT_PX = 260;
 
   const conversationTitleById = useMemo(() => {
     const titleMap = new Map<string, string>();
@@ -1397,7 +1590,6 @@ export function GroupConversationView({
     if (!hasHistory) {
       setOngoingSummary(null);
       setIsSummaryUpdating(false);
-      setIsOngoingSummaryExpanded(false);
       setSummaryRelatedConversations({});
       setSummaryItemDiffByKey({});
       setAutoCheckRationaleByKey({});
@@ -1434,7 +1626,6 @@ export function GroupConversationView({
 
     setOngoingSummary(initialSummary);
     setIsSummaryUpdating(true);
-    setIsOngoingSummaryExpanded(false);
     setSummaryRelatedConversations(
       buildRandomSummaryRelatedConversations(
         initialSummary,
@@ -1447,6 +1638,7 @@ export function GroupConversationView({
     setTypingItemKeys(new Set());
     setEnteringItemKeys(new Set());
     setExitingItemKeys(new Set());
+    setHiddenFakeTodoItemKeys(new Set());
 
     const generationDelayMs = (8 + Math.floor(Math.random() * 13)) * 1000;
 
@@ -1598,6 +1790,236 @@ export function GroupConversationView({
     });
     return memberList;
   }, [spaceMemberIds, space.id]);
+
+  const todoParticipants = useMemo((): User[] => {
+    const participantById = new Map<string, User>();
+
+    spaceMemberIds.forEach((userId) => {
+      const user = getUserById(userId);
+      if (user) {
+        participantById.set(userId, user);
+      }
+    });
+
+    if (participantById.size === 0) {
+      expandedConversations.forEach((conversation) => {
+        conversation.userParticipants.forEach((userId) => {
+          const user = getUserById(userId);
+          if (user) {
+            participantById.set(userId, user);
+          }
+        });
+      });
+    }
+
+    const mockCurrentUser = users[0];
+    if (mockCurrentUser) {
+      participantById.set(mockCurrentUser.id, mockCurrentUser);
+    }
+
+    [...users]
+      .sort(
+        (a, b) =>
+          seededRandom(`${space.id}-${a.id}-todo-participant`, 0) -
+          seededRandom(`${space.id}-${b.id}-todo-participant`, 0)
+      )
+      .forEach((user) => participantById.set(user.id, user));
+
+    return Array.from(participantById.values()).slice(0, 8);
+  }, [expandedConversations, space.id, spaceMemberIds, users]);
+
+  const participantTodoLists = useMemo((): ParticipantTodoList[] => {
+    if (todoParticipants.length === 0 || !ongoingSummary) {
+      return [];
+    }
+
+    const fakeTodoItems = [...FAKE_PROJECT_TODO_ITEMS]
+      .sort(
+        (a, b) =>
+          seededRandom(`${space.id}-${a.id}-fake-todo`, 0) -
+          seededRandom(`${space.id}-${b.id}-fake-todo`, 0)
+      )
+      .slice(0, Math.max(8, todoParticipants.length * 2))
+      .filter(
+        (item) =>
+          !hiddenFakeTodoItemKeys.has(getSummaryItemKey("needAttention", item))
+      );
+    const todoItems = [...ongoingSummary.needAttention, ...fakeTodoItems];
+
+    const lists: ParticipantTodoList[] = todoParticipants.map((user) => ({
+      user,
+      items: [],
+    }));
+    todoItems.forEach((item, index) => {
+      lists[index % lists.length].items.push(item);
+    });
+
+    return lists;
+  }, [hiddenFakeTodoItemKeys, ongoingSummary, space.id, todoParticipants]);
+
+  const closedParticipantTodoLists = useMemo((): ParticipantTodoList[] => {
+    if (todoParticipants.length === 0) {
+      return [];
+    }
+
+    const todoItems = [
+      ...FAKE_CLOSED_PROJECT_TODO_ITEMS[todoHistoryFilter],
+    ].sort(
+      (a, b) =>
+        seededRandom(`${space.id}-${todoHistoryFilter}-${a.id}`, 0) -
+        seededRandom(`${space.id}-${todoHistoryFilter}-${b.id}`, 0)
+    );
+
+    const lists: ParticipantTodoList[] = todoParticipants.map((user) => ({
+      user,
+      items: [],
+    }));
+    todoItems.forEach((item, index) => {
+      lists[index % lists.length].items.push(item);
+    });
+
+    return lists;
+  }, [space.id, todoHistoryFilter, todoParticipants]);
+
+  const closedTodoItemKeys = useMemo(
+    () =>
+      new Set(
+        FAKE_CLOSED_PROJECT_TODO_ITEMS[todoHistoryFilter].map((item) =>
+          getSummaryItemKey("needAttention", item)
+        )
+      ),
+    [todoHistoryFilter]
+  );
+
+  const displayedParticipantTodoLists =
+    todoHistoryFilter === "ongoing"
+      ? participantTodoLists
+      : participantTodoLists.map((list) => ({
+          ...list,
+          items: [
+            ...list.items,
+            ...(closedParticipantTodoLists.find(
+              (closedList) => closedList.user.id === list.user.id
+            )?.items ?? []),
+          ],
+        }));
+
+  const visibleParticipantTodoLists = useMemo((): ParticipantTodoList[] => {
+    const normalizedSearch = todoSearchText.trim().toLowerCase();
+    const mockCurrentUserId = users[0]?.id;
+
+    return displayedParticipantTodoLists
+      .filter(
+        (list) =>
+          todoScopeFilter === "all" || list.user.id === mockCurrentUserId
+      )
+      .map((list) => ({
+        ...list,
+        items:
+          normalizedSearch.length === 0 ||
+          list.user.fullName.toLowerCase().includes(normalizedSearch)
+            ? list.items
+            : list.items.filter((item) =>
+                item.text.toLowerCase().includes(normalizedSearch)
+              ),
+      }));
+  }, [displayedParticipantTodoLists, todoScopeFilter, todoSearchText, users]);
+  const hasDisplayedTodoItems = displayedParticipantTodoLists.some(
+    (list) => list.items.length > 0
+  );
+  const hasVisibleTodoItems = visibleParticipantTodoLists.some(
+    (list) => list.items.length > 0
+  );
+
+  const handleCleanTodoItems = () => {
+    const checkedKeys = new Set(
+      Object.entries(checkedSummaryItems)
+        .filter(
+          ([key, checked]) => checked && key.startsWith("needAttention::")
+        )
+        .map(([key]) => key)
+    );
+
+    if (checkedKeys.size === 0) {
+      return;
+    }
+
+    const checkedKeysArray = Array.from(checkedKeys);
+    const fakeTodoItemKeys = new Set(
+      FAKE_PROJECT_TODO_ITEMS.map((item) =>
+        getSummaryItemKey("needAttention", item)
+      )
+    );
+    const checkedFakeTodoKeys = checkedKeysArray.filter((key) =>
+      fakeTodoItemKeys.has(key)
+    );
+
+    setExitingItemKeys(
+      (previousExiting) => new Set([...previousExiting, ...checkedKeysArray])
+    );
+
+    if (cleanTransitionTimeoutRef.current !== null) {
+      window.clearTimeout(cleanTransitionTimeoutRef.current);
+    }
+
+    cleanTransitionTimeoutRef.current = window.setTimeout(() => {
+      setOngoingSummary((previousSummary) => {
+        if (!previousSummary) {
+          return previousSummary;
+        }
+        const updatedSummary = {
+          ...previousSummary,
+          needAttention: previousSummary.needAttention.filter(
+            (item) => !checkedKeys.has(getSummaryItemKey("needAttention", item))
+          ),
+        };
+        setSummaryRelatedConversations((previousLinks) => {
+          const validKeys = new Set(getSummaryItemKeys(updatedSummary));
+          return Object.fromEntries(
+            Object.entries(previousLinks).filter(([key]) => validKeys.has(key))
+          );
+        });
+        return updatedSummary;
+      });
+
+      setCheckedSummaryItems((previousChecked) =>
+        Object.fromEntries(
+          Object.entries(previousChecked).filter(
+            ([key]) => !checkedKeys.has(key)
+          )
+        )
+      );
+      setSummaryItemDiffByKey((previousDiffByKey) =>
+        Object.fromEntries(
+          Object.entries(previousDiffByKey).filter(
+            ([key]) => !checkedKeys.has(key)
+          )
+        )
+      );
+      setAutoCheckRationaleByKey((previousAutoCheckRationaleByKey) =>
+        Object.fromEntries(
+          Object.entries(previousAutoCheckRationaleByKey).filter(
+            ([key]) => !checkedKeys.has(key)
+          )
+        )
+      );
+      setHiddenFakeTodoItemKeys(
+        (previousHiddenFakeTodoItemKeys) =>
+          new Set([...previousHiddenFakeTodoItemKeys, ...checkedFakeTodoKeys])
+      );
+      setTypingItemKeys((previousTypingItemKeys) => {
+        const nextTypingItemKeys = new Set(previousTypingItemKeys);
+        checkedKeysArray.forEach((key) => nextTypingItemKeys.delete(key));
+        return nextTypingItemKeys;
+      });
+      setExitingItemKeys((previousExiting) => {
+        const nextExiting = new Set(previousExiting);
+        checkedKeysArray.forEach((key) => nextExiting.delete(key));
+        return nextExiting;
+      });
+      cleanTransitionTimeoutRef.current = null;
+    }, SUMMARY_ITEM_TRANSITION_MS);
+  };
 
   // Handle delete confirmation
   const handleDeleteConfirm = () => {
@@ -1870,11 +2292,8 @@ export function GroupConversationView({
                 label="Conversations"
                 icon={ChatBubbleLeftRightIcon}
               />
-              <TabsTrigger
-                value="knowledge"
-                label="Knowledge"
-                icon={BookOpenIcon}
-              />
+              <TabsTrigger value="todos" label="To-dos" icon={CheckIcon} />
+              <TabsTrigger value="knowledge" label="Files" icon={FolderIcon} />
               {showToolsAndAboutTabs && (
                 <>
                   <TabsTrigger value="Tools" label="Tools" icon={ToolsIcon} />
@@ -1997,9 +2416,9 @@ export function GroupConversationView({
                       {[
                         {
                           id: "add-knowledge",
-                          label: "Add knowledge",
+                          label: "Add files",
                           variant: "primary" as const,
-                          icon: BookOpenIcon,
+                          icon: FolderIcon,
                           description:
                             "Add files, links, or data sources relevant to this project.",
                           onClick: () => setActiveTab("knowledge"),
@@ -2024,13 +2443,7 @@ export function GroupConversationView({
                           className="s-cursor-pointer"
                         >
                           <div className="s-flex s-w-full s-flex-col s-gap-2 s-text-sm">
-                            <div
-                              className={`s-flex s-w-full s-items-center s-gap-2 s-font-semibold ${
-                                suggestion.variant === "highlight"
-                                  ? "s-text-highlight-600 dark:s-text-highlight-400"
-                                  : "s-text-foreground dark:s-text-foreground-night"
-                              }`}
-                            >
+                            <div className="s-flex s-w-full s-items-center s-gap-2 s-font-semibold s-text-foreground dark:s-text-foreground-night">
                               <Icon visual={suggestion.icon} size="sm" />
                               <div className="s-w-full">{suggestion.label}</div>
                             </div>
@@ -2046,385 +2459,101 @@ export function GroupConversationView({
                   </div>
                 )}
               </div>
-              {hasHistory && ongoingSummary && (
-                <div className="s-flex s-flex-col s-gap-3">
-                  <div className="s-inline-flex s-items-center s-gap-2 s-flex-wrap">
-                    <h3 className="s-heading-2xl s-text-foreground dark:s-text-foreground-night">
-                      What's new?
-                    </h3>
-                    <Tooltip
-                      label={`Last updated ${formatSummaryUpdatedAt(ongoingSummary.updatedAt)}`}
-                      trigger={
-                        <Chip
-                          size="xs"
-                          color={isSummaryUpdating ? "highlight" : "primary"}
-                          label={isSummaryUpdating ? "Updating" : "Just now"}
-                          isBusy={isSummaryUpdating}
-                        />
-                      }
-                    />
-                    <div className="s-flex-1" />
-                    <Button
-                      size="xs"
-                      variant="outline"
-                      icon={WindIcon}
-                      tooltip="Remove checked items"
-                      label="Clean"
-                      onClick={() => {
-                        const checkedKeys = new Set(
-                          Object.entries(checkedSummaryItems)
-                            .filter(([, checked]) => checked)
-                            .map(([key]) => key)
-                        );
-
-                        if (checkedKeys.size === 0) {
-                          return;
-                        }
-
-                        const checkedKeysArray = Array.from(checkedKeys);
-                        const exitingChecklistKeys = checkedKeysArray.filter(
-                          (key) =>
-                            key.startsWith("needAttention::") ||
-                            key.startsWith("keyDecisions::")
-                        );
-
-                        setExitingItemKeys(
-                          (previousExiting) =>
-                            new Set([
-                              ...previousExiting,
-                              ...exitingChecklistKeys,
-                            ])
-                        );
-
-                        if (cleanTransitionTimeoutRef.current !== null) {
-                          window.clearTimeout(
-                            cleanTransitionTimeoutRef.current
-                          );
-                        }
-
-                        cleanTransitionTimeoutRef.current = window.setTimeout(
-                          () => {
-                            setOngoingSummary((previousSummary) => {
-                              if (!previousSummary) {
-                                return previousSummary;
-                              }
-                              const updatedSummary = {
-                                ...previousSummary,
-                                needAttention:
-                                  previousSummary.needAttention.filter(
-                                    (item) =>
-                                      !checkedKeys.has(
-                                        getSummaryItemKey("needAttention", item)
-                                      )
-                                  ),
-                                keyDecisions:
-                                  previousSummary.keyDecisions.filter(
-                                    (item) =>
-                                      !checkedKeys.has(
-                                        getSummaryItemKey("keyDecisions", item)
-                                      )
-                                  ),
-                                projectPulse:
-                                  previousSummary.projectPulse.filter(
-                                    (item) =>
-                                      !checkedKeys.has(
-                                        getSummaryItemKey("projectPulse", item)
-                                      )
-                                  ),
-                              };
-                              setSummaryRelatedConversations(
-                                (previousLinks) => {
-                                  const validKeys = new Set(
-                                    getSummaryItemKeys(updatedSummary)
-                                  );
-                                  return Object.fromEntries(
-                                    Object.entries(previousLinks).filter(
-                                      ([key]) => validKeys.has(key)
-                                    )
-                                  );
-                                }
-                              );
-                              return updatedSummary;
-                            });
-
-                            setCheckedSummaryItems((previousChecked) =>
-                              Object.fromEntries(
-                                Object.entries(previousChecked).filter(
-                                  ([key]) => !checkedKeys.has(key)
-                                )
-                              )
-                            );
-                            setSummaryItemDiffByKey((previousDiffByKey) =>
-                              Object.fromEntries(
-                                Object.entries(previousDiffByKey).filter(
-                                  ([key]) => !checkedKeys.has(key)
-                                )
-                              )
-                            );
-                            setAutoCheckRationaleByKey(
-                              (previousAutoCheckRationaleByKey) =>
-                                Object.fromEntries(
-                                  Object.entries(
-                                    previousAutoCheckRationaleByKey
-                                  ).filter(([key]) => !checkedKeys.has(key))
-                                )
-                            );
-                            setTypingItemKeys((previousTypingItemKeys) => {
-                              const nextTypingItemKeys = new Set(
-                                previousTypingItemKeys
-                              );
-                              checkedKeysArray.forEach((key) =>
-                                nextTypingItemKeys.delete(key)
-                              );
-                              return nextTypingItemKeys;
-                            });
-                            setExitingItemKeys((previousExiting) => {
-                              const nextExiting = new Set(previousExiting);
-                              exitingChecklistKeys.forEach((key) =>
-                                nextExiting.delete(key)
-                              );
-                              return nextExiting;
-                            });
-                            cleanTransitionTimeoutRef.current = null;
-                          },
-                          SUMMARY_ITEM_TRANSITION_MS
-                        );
-                      }}
-                    />
-                  </div>
-
-                  <div className="s-relative">
-                    <div
-                      className="s-flex s-flex-col s-gap-4"
-                      style={{
-                        maxHeight: isOngoingSummaryExpanded
-                          ? 2000
-                          : SUMMARY_COLLAPSED_MAX_HEIGHT_PX,
-                        overflow: "hidden",
-                        transition: "max-height 200ms ease",
-                      }}
-                    >
-                      {ongoingSummary.needAttention.length +
-                        ongoingSummary.keyDecisions.length +
-                        ongoingSummary.projectPulse.length >
-                      0 ? (
-                        <>
-                          {[
-                            {
-                              key: "needAttention",
-                              summaryCategory: "needAttention" as const,
-                              icon: TriangleIcon,
-                              iconClassName:
-                                "s-text-warning-300 dark:s-text-warning-300-night",
-                              label: "Need to do",
-                              items: ongoingSummary.needAttention,
-                            },
-                            {
-                              key: "needKnow",
-                              summaryCategory: "keyDecisions" as const,
-                              icon: SquareIcon,
-                              iconClassName:
-                                "s-text-golden-300 dark:s-text-golden-300-night",
-                              label: "Need to know",
-                              items: ongoingSummary.keyDecisions,
-                            },
-                          ]
-                            .filter((section) => section.items.length > 0)
-                            .map((section) => (
-                              <WhatsNewDeltaList
-                                key={section.key}
-                                label={section.label}
-                                summaryCategory={section.summaryCategory}
-                                icon={section.icon}
-                                iconClassName={section.iconClassName}
-                                items={section.items}
-                                checkedSummaryItems={checkedSummaryItems}
-                                summaryRelatedConversations={
-                                  summaryRelatedConversations
-                                }
-                                summaryItemDiffByKey={summaryItemDiffByKey}
-                                typingItemKeys={typingItemKeys}
-                                enteringItemKeys={enteringItemKeys}
-                                exitingItemKeys={exitingItemKeys}
-                                typingVersion={typingVersion}
-                                getSummaryItemKey={getSummaryItemKey}
-                                renderSummaryItemText={
-                                  renderSummaryItemWithEmphasizedNames
-                                }
-                                onCheckItem={(itemKey, nextChecked) => {
-                                  setCheckedSummaryItems((previous) => ({
-                                    ...previous,
-                                    [itemKey]: nextChecked,
-                                  }));
-                                }}
-                                onCheckSection={(sectionItemKeys) => {
-                                  setCheckedSummaryItems((previous) => ({
-                                    ...previous,
-                                    ...Object.fromEntries(
-                                      sectionItemKeys.map((key) => [key, true])
-                                    ),
-                                  }));
-                                }}
-                                onConversationClick={scrollToConversationRow}
-                                conversationTitleById={conversationTitleById}
-                                autoCheckRationaleByKey={
-                                  autoCheckRationaleByKey
-                                }
-                              />
-                            ))}
-
-                          {ongoingSummary.projectPulse.length > 0 && (
-                            <div className="s-flex s-flex-col s-gap-2">
-                              <div className="s-group/summary-title s-flex s-items-center s-gap-3 s-pt-2">
-                                <div className="s-flex s-items-center s-h-4 s-w-4">
-                                  {(() => {
-                                    const sectionItemKeys =
-                                      ongoingSummary.projectPulse.map((item) =>
-                                        getSummaryItemKey("projectPulse", item)
-                                      );
-                                    const areAllSectionItemsChecked =
-                                      sectionItemKeys.length > 0 &&
-                                      sectionItemKeys.every(
-                                        (itemKey) =>
-                                          checkedSummaryItems[itemKey]
-                                      );
-
-                                    return (
-                                      <>
-                                        <Icon
-                                          visual={CircleIcon}
-                                          size="xs"
-                                          className={cn(
-                                            "group-hover/summary-title:s-hidden",
-                                            "s-text-green-300 dark:s-text-green-300-night"
-                                          )}
-                                        />
-                                        <Checkbox
-                                          size="xs"
-                                          className="s-hidden group-hover/summary-title:s-inline-block"
-                                          checked={areAllSectionItemsChecked}
-                                          onCheckedChange={(checked) => {
-                                            if (checked !== true) {
-                                              return;
-                                            }
-
-                                            setCheckedSummaryItems(
-                                              (previous) => ({
-                                                ...previous,
-                                                ...Object.fromEntries(
-                                                  sectionItemKeys.map((key) => [
-                                                    key,
-                                                    true,
-                                                  ])
-                                                ),
-                                              })
-                                            );
-                                          }}
-                                        />
-                                      </>
-                                    );
-                                  })()}
-                                </div>
-                                <h4 className="s-heading-lg s-text-foreground dark:s-text-foreground-night">
-                                  Good to know
-                                </h4>
-                              </div>
-                              <div
-                                className={cn(
-                                  "s-text-sm s-pl-7",
-                                  ongoingSummary.projectPulse.every(
-                                    (item) =>
-                                      checkedSummaryItems[
-                                        getSummaryItemKey("projectPulse", item)
-                                      ]
-                                  )
-                                    ? "s-text-faint s-line-through dark:s-text-faint-night"
-                                    : "s-text-muted-foreground dark:s-text-muted-foreground-night"
-                                )}
-                              >
-                                {ongoingSummary.projectPulse.map(
-                                  (item, index) => {
-                                    const itemKey = getSummaryItemKey(
-                                      "projectPulse",
-                                      item
-                                    );
-                                    const relatedConversationIds =
-                                      summaryRelatedConversations[itemKey] ??
-                                      [];
-                                    const isChecked =
-                                      checkedSummaryItems[itemKey] ?? false;
-                                    const shouldTypePulseItem =
-                                      typingItemKeys.has(itemKey) &&
-                                      (summaryItemDiffByKey[itemKey] ===
-                                        "modified" ||
-                                        summaryItemDiffByKey[itemKey] ===
-                                          "added");
-
-                                    return (
-                                      <span key={itemKey}>
-                                        {shouldTypePulseItem ? (
-                                          <TypingAnimation
-                                            key={`${itemKey}-${typingVersion}`}
-                                            text={item.segments
-                                              .map((segment) => segment.text)
-                                              .join("")}
-                                            duration={16}
-                                          />
-                                        ) : (
-                                          renderProjectPulseItemWithInlineLinks(
-                                            item,
-                                            relatedConversationIds,
-                                            isChecked
-                                          )
-                                        )}
-                                        {index <
-                                        ongoingSummary.projectPulse.length - 1
-                                          ? " "
-                                          : null}
-                                      </span>
-                                    );
-                                  }
-                                )}
-                              </div>
-                            </div>
-                          )}
-                        </>
-                      ) : (
-                        <div className="s-text-base s-text-faint s-italic dark:s-text-faint-night">
-                          You're all caught up!
-                        </div>
-                      )}
-                    </div>
-                    {!isOngoingSummaryExpanded &&
-                      ongoingSummary.needAttention.length +
-                        ongoingSummary.keyDecisions.length +
-                        ongoingSummary.projectPulse.length >
-                        0 && (
-                        <div className="s-pointer-events-none s-absolute s-bottom-0 s-left-0 s-right-0 s-h-10 s-bg-gradient-to-b s-from-transparent s-to-background dark:s-to-background-night" />
-                      )}
-                  </div>
-                  {ongoingSummary.needAttention.length +
-                    ongoingSummary.keyDecisions.length +
-                    ongoingSummary.projectPulse.length >
-                    0 && (
-                    <div>
-                      <Button
-                        size="xs"
-                        variant="outline"
-                        label={
-                          isOngoingSummaryExpanded ? "Show less" : "Show more"
-                        }
-                        onClick={() =>
-                          setIsOngoingSummaryExpanded((previous) => !previous)
-                        }
-                        aria-expanded={isOngoingSummaryExpanded}
-                      />
-                    </div>
-                  )}
-                </div>
-              )}
               {/* Conversations list */}
               <div className="s-flex s-flex-col s-gap-3">
+                {hasHistory &&
+                  ongoingSummary &&
+                  ongoingSummary.projectPulse.length > 0 && (
+                    <div className="s-flex s-flex-col s-gap-2">
+                      <div className="s-inline-flex s-items-center s-gap-2 s-flex-wrap">
+                        <h3 className="s-heading-lg s-text-foreground dark:s-text-foreground-night">
+                          {isSummaryUpdating ? (
+                            <AnimatedText
+                              variant="primary"
+                              className="s-text-muted-foreground"
+                            >
+                              Catching-up
+                            </AnimatedText>
+                          ) : (
+                            "Catching-up"
+                          )}
+                        </h3>
+                      </div>
+                      <div className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                        {ongoingSummary.projectPulse.map((item, index) => {
+                          const itemKey = getSummaryItemKey(
+                            "projectPulse",
+                            item
+                          );
+                          const relatedConversationIds =
+                            summaryRelatedConversations[itemKey] ?? [];
+                          const shouldTypePulseItem =
+                            typingItemKeys.has(itemKey) &&
+                            (summaryItemDiffByKey[itemKey] === "modified" ||
+                              summaryItemDiffByKey[itemKey] === "added");
+
+                          return (
+                            <span key={itemKey}>
+                              {shouldTypePulseItem ? (
+                                <TypingAnimation
+                                  key={`${itemKey}-${typingVersion}`}
+                                  text={item.segments
+                                    .map((segment) => segment.text)
+                                    .join("")}
+                                  duration={16}
+                                />
+                              ) : (
+                                renderProjectPulseItemWithInlineLinks(
+                                  item,
+                                  relatedConversationIds,
+                                  false
+                                )
+                              )}
+                              {index < ongoingSummary.projectPulse.length - 1
+                                ? " "
+                                : null}
+                            </span>
+                          );
+                        })}
+                      </div>
+                      <Separator className="s-mt-4" />
+                      <div className="s-flex s-w-full s-items-center s-justify-between s-gap-4">
+                        <ButtonsSwitchList
+                          defaultValue={goodToKnowFilter}
+                          size="xs"
+                          onValueChange={(value) => {
+                            if (
+                              value === "all" ||
+                              value === "shared" ||
+                              value === "mine"
+                            ) {
+                              setGoodToKnowFilter(value);
+                            }
+                          }}
+                        >
+                          <ButtonsSwitch value="shared" label="Shared" />
+                          <ButtonsSwitch value="mine" label="Just mine" />
+                          <ButtonsSwitch value="all" label="All project's" />
+                        </ButtonsSwitchList>
+                        <Button
+                          size="xs"
+                          variant="outline"
+                          label="Mark all as read"
+                          onClick={() => {
+                            setCheckedSummaryItems((previous) => ({
+                              ...previous,
+                              ...Object.fromEntries(
+                                ongoingSummary.projectPulse.map((item) => [
+                                  getSummaryItemKey("projectPulse", item),
+                                  true,
+                                ])
+                              ),
+                            }));
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
                 {expandedConversations.length > 0 && (
                   <>
                     <div className="s-flex s-flex-col">
@@ -2498,6 +2627,7 @@ export function GroupConversationView({
                                     <ConversationListItem
                                       conversation={conversation}
                                       creator={creator || undefined}
+                                      className="s-border-border s-border-t dark:s-border-border-night"
                                       time={time}
                                       showFocus={
                                         conversationIdToShowFocus ===
@@ -2554,9 +2684,9 @@ export function GroupConversationView({
                           },
                           {
                             id: "add-knowledge",
-                            label: "Add knowledge",
+                            label: "Add files",
                             variant: "primary" as const,
-                            icon: BookOpenIcon,
+                            icon: FolderIcon,
                             description:
                               "Add files, links, or data sources relevant to this project.",
                             onClick: () => setActiveTab("knowledge"),
@@ -2610,27 +2740,290 @@ export function GroupConversationView({
           </div>
         </TabsContent>
 
-        {/* Knowledge Tools Tab */}
+        {/* To-dos Tab */}
+        <TabsContent value="todos">
+          <div className="s-flex s-h-full s-min-h-0 s-flex-1 s-flex-col s-overflow-y-auto">
+            <div className="s-mx-auto s-flex s-w-full s-max-w-4xl s-flex-col s-gap-4 s-py-8">
+              <div className="s-flex s-flex-col s-gap-2">
+                <h2 className="s-heading-2xl s-text-foreground dark:s-text-foreground-night">
+                  To-dos
+                </h2>
+                <TodoInputBar placeholder="Describe the tasks to create" />
+              </div>
+
+              {hasHistory && ongoingSummary ? (
+                <div className="s-flex s-flex-col s-gap-6">
+                  <div className="s-flex s-w-full s-items-center s-justify-between s-gap-2">
+                    <div className="s-flex s-items-center s-gap-2">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            icon={EyeIcon}
+                            label={`${TODO_HISTORY_FILTER_LABELS[todoHistoryFilter]} · ${
+                              todoScopeFilter === "mine"
+                                ? "Just mine"
+                                : "All project's"
+                            }`}
+                            isSelect
+                          />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start">
+                          <div className="s-px-2 s-py-1.5 s-text-xs s-font-medium s-text-muted-foreground dark:s-text-muted-foreground-night">
+                            Historic
+                          </div>
+                          <DropdownMenuRadioGroup
+                            value={todoHistoryFilter}
+                            onValueChange={(value) => {
+                              if (
+                                value === "ongoing" ||
+                                value === "today" ||
+                                value === "last7" ||
+                                value === "last30"
+                              ) {
+                                setTodoHistoryFilter(value);
+                              }
+                            }}
+                          >
+                            {TODO_HISTORY_FILTER_OPTIONS.map((option) => (
+                              <DropdownMenuRadioItem
+                                key={option}
+                                value={option}
+                                label={TODO_HISTORY_FILTER_LABELS[option]}
+                              />
+                            ))}
+                          </DropdownMenuRadioGroup>
+                          <Separator className="s-my-1" />
+                          <div className="s-px-2 s-py-1.5 s-text-xs s-font-medium s-text-muted-foreground dark:s-text-muted-foreground-night">
+                            People
+                          </div>
+                          <DropdownMenuRadioGroup
+                            value={todoScopeFilter}
+                            onValueChange={(value) => {
+                              if (value === "all" || value === "mine") {
+                                setTodoScopeFilter(value);
+                              }
+                            }}
+                          >
+                            <DropdownMenuRadioItem
+                              value="all"
+                              label="All project's"
+                            />
+                            <DropdownMenuRadioItem
+                              value="mine"
+                              label="Just mine"
+                            />
+                          </DropdownMenuRadioGroup>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                    <SearchInput
+                      name="todo-search"
+                      value={todoSearchText}
+                      onChange={setTodoSearchText}
+                      placeholder="Search to-dos..."
+                      className="s-w-full"
+                    />
+                    {participantTodoLists.some(
+                      (list) => list.items.length > 0
+                    ) && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        icon={WindIcon}
+                        tooltip="Remove checked to-dos"
+                        label="Clean"
+                        onClick={handleCleanTodoItems}
+                      />
+                    )}
+                  </div>
+                  {hasDisplayedTodoItems ? (
+                    hasVisibleTodoItems ? (
+                      visibleParticipantTodoLists.map((list) => {
+                        const visibleItems = list.items;
+                        if (visibleItems.length === 0) {
+                          return null;
+                        }
+
+                        return (
+                          <div
+                            key={list.user.id}
+                            className="s-flex s-flex-col s-gap-3"
+                          >
+                            <div className="s-flex s-items-center s-gap-3">
+                              <Avatar
+                                name={list.user.fullName}
+                                visual={list.user.portrait}
+                                size="xs"
+                                isRounded={true}
+                              />
+                              <div className="s-flex s-flex-col">
+                                <h4 className="s-heading-base s-text-muted-foreground dark:s-text-foreground-night">
+                                  {list.user.fullName}
+                                </h4>
+                              </div>
+                            </div>
+                            <div className="s-flex s-flex-col s-gap-2 s-pl-11">
+                              {visibleItems.map((item) => {
+                                const itemKey = getSummaryItemKey(
+                                  "needAttention",
+                                  item
+                                );
+                                const itemDiff = summaryItemDiffByKey[itemKey];
+                                const isClosedHistoryItem =
+                                  closedTodoItemKeys.has(itemKey);
+                                const isChecked =
+                                  isClosedHistoryItem ||
+                                  (checkedSummaryItems[itemKey] ?? false);
+                                const relatedConversationIds =
+                                  summaryRelatedConversations[itemKey] ?? [];
+                                const isAdded = itemDiff === "added";
+                                const hasEntered =
+                                  enteringItemKeys.has(itemKey);
+                                const isExiting = exitingItemKeys.has(itemKey);
+                                const shouldTypeChecklistItem =
+                                  typingItemKeys.has(itemKey) &&
+                                  itemDiff === "modified";
+                                const autoCheckRationale =
+                                  autoCheckRationaleByKey[itemKey];
+
+                                return (
+                                  <div
+                                    key={itemKey}
+                                    className={cn(
+                                      "s-flex s-items-start s-gap-3 s-overflow-hidden",
+                                      "s-transition-all s-duration-200",
+                                      isExiting
+                                        ? "s-max-h-0 s-opacity-0"
+                                        : isAdded && !hasEntered
+                                          ? "s-max-h-0 s-opacity-0"
+                                          : "s-max-h-32 s-opacity-100"
+                                    )}
+                                  >
+                                    <Checkbox
+                                      size="xs"
+                                      className="s-mt-1"
+                                      isMutedAfterCheck
+                                      checked={isChecked}
+                                      disabled={isClosedHistoryItem}
+                                      onCheckedChange={(checked) => {
+                                        if (isClosedHistoryItem) {
+                                          return;
+                                        }
+                                        setCheckedSummaryItems((previous) => ({
+                                          ...previous,
+                                          [itemKey]: checked === true,
+                                        }));
+                                      }}
+                                    />
+                                    <div className="s-flex s-flex-col">
+                                      <div
+                                        className={cn(
+                                          "s-text-base s-min-h-6",
+                                          isChecked
+                                            ? "s-text-faint s-line-through dark:s-text-faint-night"
+                                            : "s-text-foreground dark:s-text-foreground-night"
+                                        )}
+                                      >
+                                        {shouldTypeChecklistItem ? (
+                                          <TypingAnimation
+                                            key={`${itemKey}-${typingVersion}`}
+                                            text={item.text}
+                                            duration={16}
+                                          />
+                                        ) : (
+                                          renderSummaryItemWithEmphasizedNames(
+                                            item.text
+                                          )
+                                        )}
+                                      </div>
+                                      {isChecked && autoCheckRationale ? (
+                                        <div className="s-text-xs s-text-faint dark:s-text-faint-night">
+                                          {autoCheckRationale}
+                                        </div>
+                                      ) : null}
+                                      {relatedConversationIds.length ===
+                                      0 ? null : (
+                                        <div className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                                          <span>In </span>
+                                          {relatedConversationIds.map(
+                                            (conversationId, index) => (
+                                              <span key={conversationId}>
+                                                <button
+                                                  type="button"
+                                                  className={cn(
+                                                    "s-underline hover:s-no-underline",
+                                                    isChecked
+                                                      ? "s-text-faint dark:s-text-faint-night"
+                                                      : "s-text-muted-foreground dark:s-text-muted-foreground-night"
+                                                  )}
+                                                  onClick={(event) => {
+                                                    event.stopPropagation();
+                                                    scrollToConversationRow(
+                                                      conversationId
+                                                    );
+                                                  }}
+                                                >
+                                                  {conversationTitleById.get(
+                                                    conversationId
+                                                  ) ?? conversationId}
+                                                </button>
+                                                {index <
+                                                  relatedConversationIds.length -
+                                                    1 && ", "}
+                                              </span>
+                                            )
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="s-text-base s-text-faint s-italic dark:s-text-faint-night">
+                        No to-dos match your filters.
+                      </div>
+                    )
+                  ) : (
+                    <div className="s-text-base s-text-faint s-italic dark:s-text-faint-night">
+                      You're all caught up!
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="s-text-base s-text-faint s-italic dark:s-text-faint-night">
+                  Start a conversation to generate project to-dos.
+                </div>
+              )}
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* Files Tab */}
         <TabsContent value="knowledge">
           <div className="s-flex s-h-full s-min-h-0 s-flex-1 s-flex-col s-overflow-y-auto s-px-6">
             <div className="s-mx-auto s-flex s-w-full s-flex-col s-gap-4 s-py-8">
               <div className="s-flex s-gap-2">
-                <h3 className="s-heading-2xl s-flex-1 s-items-center">
-                  Knowledge
-                </h3>
+                <h3 className="s-heading-2xl s-flex-1 s-items-center">Files</h3>
                 <Button
                   variant="outline"
                   icon={ArrowUpOnSquareIcon}
-                  label="Add knowledge"
+                  label="Add files"
                 />
               </div>
               {dataSources.length === 0 ? (
                 <EmptyCTA
-                  message="No knowledge files in this room yet."
+                  message="No files in this room yet."
                   action={
                     <EmptyCTAButton
                       icon={ArrowUpOnSquareIcon}
-                      label="Add knowledge"
+                      label="Add files"
                     />
                   }
                 />

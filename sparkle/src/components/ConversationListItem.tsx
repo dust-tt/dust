@@ -1,5 +1,6 @@
 import { Avatar } from "@sparkle/components/Avatar";
 import { ListItem } from "@sparkle/components/ListItem";
+import { cn } from "@sparkle/lib/utils";
 import React, { type ReactNode } from "react";
 
 export interface ReplySectionProps {
@@ -105,6 +106,7 @@ export interface ConversationListItemProps {
   replySection?: ReactNode;
   onClick?: () => void;
   showFocus?: boolean;
+  className?: string;
 }
 
 export function ConversationListItem({
@@ -115,6 +117,7 @@ export function ConversationListItem({
   replySection,
   onClick,
   showFocus = false,
+  className,
 }: ConversationListItemProps) {
   const [isFocusVisible, setIsFocusVisible] = React.useState(false);
   const hasPlayedFocusForCurrentTriggerRef = React.useRef(false);
@@ -145,9 +148,11 @@ export function ConversationListItem({
     <ListItem
       onClick={onClick}
       groupName="conversation-item"
-      className={`s-transition-colors s-duration-500 ${
-        isFocusVisible ? "s-bg-highlight-50 dark:s-bg-highlight-100-night" : ""
-      }`}
+      className={cn(
+        "s-transition-colors s-duration-500",
+        isFocusVisible && "s-bg-highlight-50 dark:s-bg-highlight-100-night",
+        className
+      )}
     >
       {creator ? (
         <Avatar

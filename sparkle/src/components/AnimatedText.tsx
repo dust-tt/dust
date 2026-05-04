@@ -20,7 +20,7 @@ type AnimatedTextVariantType = (typeof ANIMATED_TEXT_VARIANTS)[number];
 
 const animatedVariants: Record<AnimatedTextVariantType, string> = {
   primary: cn(
-    "s-from-primary-800 s-via-primary-950 s-via-50% s-to-primary-800",
+    "s-from-primary-600 s-via-primary-950 s-via-50% s-to-primary-600",
     "dark:s-from-primary-800-night dark:s-via-primary-950-night dark:s-via-50% dark:s-to-primary-800-night"
   ),
   muted: cn(
