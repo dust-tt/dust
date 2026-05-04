@@ -5,6 +5,7 @@ import {
   ArrowUpOnSquareIcon,
   Avatar,
   Button,
+  ButtonGroup,
   ButtonsSwitch,
   ButtonsSwitchList,
   Card,
@@ -42,6 +43,7 @@ import {
   LogoutIcon,
   MagicIcon,
   MoreIcon,
+  PlayIcon,
   ReplySection,
   SearchInput,
   SearchInputWithPopover,
@@ -1385,6 +1387,11 @@ export function GroupConversationView({
   }, [space.id, isNew, spaceMemberIds, users, avatarCount]);
 
   const hasHistory = expandedConversations.length > 0;
+  const projectPageTitlePrefix = space.name.endsWith("s")
+    ? `${space.name}'`
+    : `${space.name}'s`;
+  const getProjectPageTitle = (pageTitle: string) =>
+    `${projectPageTitlePrefix} ${pageTitle}`;
 
   const conversationTitleById = useMemo(() => {
     const titleMap = new Map<string, string>();
@@ -2363,7 +2370,7 @@ export function GroupConversationView({
               {/* New conversation section */}
               <div className="s-flex s-flex-col s-gap-3">
                 <h2 className="s-heading-2xl s-text-foreground dark:s-text-foreground-night">
-                  {space.name}
+                  {getProjectPageTitle("conversation")}
                 </h2>
 
                 {/* Suggestions for empty rooms */}
@@ -2744,9 +2751,9 @@ export function GroupConversationView({
         <TabsContent value="todos">
           <div className="s-flex s-h-full s-min-h-0 s-flex-1 s-flex-col s-overflow-y-auto">
             <div className="s-mx-auto s-flex s-w-full s-max-w-4xl s-flex-col s-gap-4 s-py-8">
-              <div className="s-flex s-flex-col s-gap-2">
+              <div className="s-flex s-flex-col s-gap-3">
                 <h2 className="s-heading-2xl s-text-foreground dark:s-text-foreground-night">
-                  To-dos
+                  {getProjectPageTitle("to-dos")}
                 </h2>
                 <TodoInputBar placeholder="Describe the tasks to create" />
               </div>
@@ -2892,7 +2899,7 @@ export function GroupConversationView({
                                   <div
                                     key={itemKey}
                                     className={cn(
-                                      "s-flex s-items-start s-gap-3 s-overflow-hidden",
+                                      "s-group/todo-item s-flex s-w-full s-items-start s-gap-3 s-overflow-hidden",
                                       "s-transition-all s-duration-200",
                                       isExiting
                                         ? "s-max-h-0 s-opacity-0"
@@ -2917,7 +2924,7 @@ export function GroupConversationView({
                                         }));
                                       }}
                                     />
-                                    <div className="s-flex s-flex-col">
+                                    <div className="s-flex s-min-w-0 s-flex-1 s-flex-col">
                                       <div
                                         className={cn(
                                           "s-text-base s-min-h-6",
@@ -2978,6 +2985,24 @@ export function GroupConversationView({
                                         </div>
                                       )}
                                     </div>
+                                    <div className="s-flex s-items-center s-opacity-0 s-transition-opacity group-focus-within/todo-item:s-opacity-100 group-hover/todo-item:s-opacity-100">
+                                      <ButtonGroup removeGaps>
+                                        <Button
+                                          icon={PlayIcon}
+                                          size="xs"
+                                          variant="outline"
+                                          tooltip="Start working on the todo"
+                                          aria-label="Start to-do"
+                                        />
+                                        <Button
+                                          icon={MoreIcon}
+                                          size="xs"
+                                          variant="outline"
+                                          tooltip="More actions"
+                                          aria-label="More actions"
+                                        />
+                                      </ButtonGroup>
+                                    </div>
                                   </div>
                                 );
                               })}
@@ -3008,9 +3033,11 @@ export function GroupConversationView({
         {/* Files Tab */}
         <TabsContent value="knowledge">
           <div className="s-flex s-h-full s-min-h-0 s-flex-1 s-flex-col s-overflow-y-auto s-px-6">
-            <div className="s-mx-auto s-flex s-w-full s-flex-col s-gap-4 s-py-8">
+            <div className="s-mx-auto s-flex s-w-full s-flex-col s-gap-3 s-py-8">
               <div className="s-flex s-gap-2">
-                <h3 className="s-heading-2xl s-flex-1 s-items-center">Files</h3>
+                <h3 className="s-heading-2xl s-flex-1 s-items-center">
+                  {getProjectPageTitle("files")}
+                </h3>
                 <Button
                   variant="outline"
                   icon={ArrowUpOnSquareIcon}
@@ -3055,7 +3082,7 @@ export function GroupConversationView({
             <div className="s-flex s-h-full s-min-h-0 s-flex-1 s-flex-col s-overflow-y-auto s-px-6">
               <div className="s-mx-auto s-flex s-w-full s-max-w-4xl s-flex-col s-gap-4 s-py-8">
                 <h2 className="s-heading-2xl s-text-foreground dark:s-text-foreground-night">
-                  About {space.name}
+                  {getProjectPageTitle("about")}
                 </h2>
                 <p className="s-text-foreground dark:s-text-foreground-night">
                   {space.description}
@@ -3071,7 +3098,9 @@ export function GroupConversationView({
             <div className="s-mx-auto s-flex s-w-full s-max-w-4xl s-flex-col s-gap-8 s-px-6 s-py-8">
               {/* Room Name Section */}
               <div className="s-flex s-gap-2">
-                <h3 className="s-heading-2xl s-flex-1">Settings</h3>
+                <h3 className="s-heading-2xl s-flex-1">
+                  {getProjectPageTitle("settings")}
+                </h3>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" icon={MoreIcon} />
