@@ -35,6 +35,7 @@ import {
   isRichAgentMention,
   toRichAgentMentionType,
 } from "@app/types/assistant/mentions";
+import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import {
   assertNever,
@@ -456,21 +457,17 @@ const InputBarContainer = ({
   };
 
   const handleSkillSelect = ({
-    icon,
-    name,
-    sId,
-  }: {
-    icon: string | null;
-    name: string;
-    sId: string;
-  }) => {
+    sId: skillId,
+    name: skillName,
+    icon: skillIcon,
+  }: SkillWithoutInstructionsAndToolsType) => {
     editorRef.current
       ?.chain()
       .focus()
       .insertSkillNode({
-        skillId: sId,
-        skillIcon: icon,
-        skillName: name,
+        skillId,
+        skillName,
+        skillIcon,
       })
       .run();
   };
