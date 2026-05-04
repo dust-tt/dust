@@ -333,22 +333,17 @@ export const InputBar = React.memo(function InputBar({
       setIsLocalSubmitting(true);
 
       try {
-        const submitPromise = onSubmit(
-          markdown,
-          mentions,
-          {
-            uploaded: fileUploaderService.getFileBlobs().map((cf) => {
-              return {
-                title: cf.filename,
-                fileId: cf.fileId,
-                contentType: cf.contentType,
-                url: cf.sourceUrl,
-              };
-            }),
-            contentNodes: attachedNodes,
-          },
-          undefined
-        );
+        const submitPromise = onSubmit(markdown, mentions, {
+          uploaded: fileUploaderService.getFileBlobs().map((cf) => {
+            return {
+              title: cf.filename,
+              fileId: cf.fileId,
+              contentType: cf.contentType,
+              url: cf.sourceUrl,
+            };
+          }),
+          contentNodes: attachedNodes,
+        });
 
         // Execute these operations in parallel with the submission.
         resetEditorText();
