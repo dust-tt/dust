@@ -22,8 +22,10 @@ export function skillDirective() {
   return (tree: any) => {
     visit(tree, ["textDirective"], (node) => {
       if (node.name === "skill" && node.children[0]) {
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        const data = node.data || (node.data = {});
+        const data = node.data ?? {};
+        // `unist-util-visit` directive transforms are expected to annotate the
+        // current node in place so mdast-util-to-hast can consume `node.data`.
+        node.data = data;
         data.hName = "skill";
         data.hProperties = {
           skillId: node.attributes.sId,
