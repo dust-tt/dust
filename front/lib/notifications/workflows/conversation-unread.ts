@@ -35,6 +35,7 @@ import {
   isLightAgentMessageType,
   isProjectConversation,
   isUserMessageType,
+  isVisibleMessage,
 } from "@app/types/assistant/conversation";
 import { isRichUserMention } from "@app/types/assistant/mentions";
 import { isContentFragmentType } from "@app/types/content_fragment";
@@ -226,13 +227,7 @@ const getConversationDetails = async ({
   // For new project conversations, use the first visible message
   const message = !payload.isNewProjectConversation
     ? conversation.content.find((msg) => msg.sId === payload.messageId)
-    : conversation.content.find(
-        (msg) =>
-          !(
-            msg.type === "user_message" &&
-            msg.context.origin === "branch_anchor"
-          )
-      );
+    : conversation.content.find(isVisibleMessage);
   if (!message) {
     // Message doesn't exist at all - could be true if it's in a branch.
     return new Err(new ConversationError("message_not_found"));

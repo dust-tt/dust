@@ -207,6 +207,29 @@ export function isUserMessageTypeWithContentFragments(
   return arg.type === "user_message" && "contentFragments" in arg;
 }
 
+export function isHiddenMessageOrigin(origin: UserMessageOrigin): boolean {
+  return (
+    origin === "onboarding_conversation" ||
+    origin === "project_kickoff" ||
+    origin === "reinforced_skill_notification" ||
+    origin === "branch_anchor" ||
+    origin === "wakeup"
+  );
+}
+
+export function isVisibleMessage(m: LightMessageType): boolean {
+  return (
+    m.visibility !== "deleted" &&
+    !(
+      isUserMessageTypeWithContentFragments(m) &&
+      isHiddenMessageOrigin(m.context.origin)
+    ) &&
+    // Compaction message will possibly be first messages of a conversation (forking) but they are
+    // not "visible" per se. `firstVisibleMessage` should null until a first user message is posted.
+    !isCompactionMessageType(m)
+  );
+}
+
 /**
  * Agent messages
  */

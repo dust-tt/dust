@@ -5,6 +5,7 @@ import {
   isCompactionMessageType,
   isLightAgentMessageType,
   isUserMessageTypeWithContentFragments,
+  isVisibleMessage,
   type LightConversationType,
 } from "@app/types/assistant/conversation";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
@@ -21,18 +22,6 @@ import { isMessageUnread } from "../../utils";
 interface SpaceConversationListItemProps {
   conversation: LightConversationType;
   owner: WorkspaceType;
-}
-
-function isVisibleMessage(
-  m: LightConversationType["content"][number]
-): boolean {
-  return (
-    m.visibility !== "deleted" &&
-    !(isUserMessageTypeWithContentFragments(m) && isHiddenMessage(m)) &&
-    // Compaction message will possibly be first messages of a conversation (forking) but they are
-    // not "visible" per se. `firstVisibleMessage` should null until a first user message is posted.
-    !isCompactionMessageType(m)
-  );
 }
 
 export function SpaceConversationListItem({
