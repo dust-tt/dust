@@ -6,7 +6,7 @@ import {
 } from "@connectors/connectors/google_drive/lib";
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
-import { markFolderAsVisited } from "@connectors/connectors/google_drive/temporal/activities";
+import { upsertGoogleDriveFolderMetadata } from "@connectors/connectors/google_drive/temporal/activities/mark_folder_as_visited";
 import {
   launchGoogleDriveFullSyncWorkflow,
   launchGoogleDriveIncrementalSyncWorkflow,
@@ -15,6 +15,7 @@ import {
 import { syncOneFile } from "@connectors/connectors/google_drive/temporal/file";
 import {
   getMimeTypesToSync,
+  isGoogleDriveFolder,
   MIME_TYPES_TO_EXPORT,
 } from "@connectors/connectors/google_drive/temporal/mime_types";
 import {
@@ -179,27 +180,35 @@ export const google_drive = async ({
       const reversedParents = parents.reverse();
       const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
-      // Upsert parents if missing
+      // Refresh parent metadata as manual sync is often used to repair stale names.
       for (const parent of reversedParents) {
-        const file = await GoogleDriveFilesModel.findOne({
-          where: {
-            connectorId: connector.id,
-            driveFileId: parent,
-          },
+        const parentDriveObject = await getGoogleDriveObject({
+          connectorId: connector.id,
+          authCredentials,
+          driveObjectId: getDriveFileId(parent),
+          cacheKey: { connectorId: connector.id, ts: now },
         });
-        if (!file) {
-          const parentDriveObject = await getGoogleDriveObject({
-            connectorId: connector.id,
-            authCredentials,
-            driveObjectId: getDriveFileId(parent),
-            cacheKey: { connectorId: connector.id, ts: now },
-          });
-          if (!parentDriveObject) {
-            throw new Error(`Can't find google drive object: ${parent}`);
-          }
-
-          await markFolderAsVisited(connector.id, parent, now);
+        if (!parentDriveObject) {
+          throw new Error(`Can't find google drive object: ${parent}`);
         }
+
+        await upsertGoogleDriveFolderMetadata({
+          connector,
+          authCredentials,
+          file: parentDriveObject,
+          startSyncTs: now,
+        });
+      }
+
+      if (isGoogleDriveFolder(driveObject)) {
+        await upsertGoogleDriveFolderMetadata({
+          connector,
+          authCredentials,
+          file: driveObject,
+          startSyncTs: now,
+        });
+
+        return { success: true };
       }
 
       await syncOneFile(

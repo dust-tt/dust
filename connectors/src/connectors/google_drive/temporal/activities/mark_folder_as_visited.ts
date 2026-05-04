@@ -11,8 +11,52 @@ import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import { GoogleDriveFilesModel } from "@connectors/lib/models/google_drive";
 import { getActivityLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { ModelId } from "@connectors/types";
+import type { GoogleDriveObjectType, ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES, stripNullBytes } from "@connectors/types";
+import type { OAuth2Client } from "googleapis-common";
+
+export async function upsertGoogleDriveFolderMetadata({
+  connector,
+  authCredentials,
+  file,
+  startSyncTs,
+}: {
+  connector: ConnectorResource;
+  authCredentials: OAuth2Client;
+  file: GoogleDriveObjectType;
+  startSyncTs: number;
+}) {
+  const parentGoogleIds = await getFileParentsMemoized(
+    connector.id,
+    authCredentials,
+    file,
+    startSyncTs
+  );
+
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const parents = parentGoogleIds.map((parent) => getInternalId(parent));
+  const name = stripNullBytes(file.name) ?? "";
+
+  await upsertDataSourceFolder({
+    dataSourceConfig,
+    folderId: getInternalId(file.id),
+    parents,
+    parentId: parents[1] || null,
+    title: name,
+    mimeType: INTERNAL_MIME_TYPES.GOOGLE_DRIVE.FOLDER,
+    sourceUrl: getSourceUrlForGoogleDriveFiles(file),
+  });
+
+  await GoogleDriveFilesModel.upsert({
+    connectorId: connector.id,
+    dustFileId: getInternalId(file.id),
+    driveFileId: file.id,
+    name,
+    mimeType: file.mimeType,
+    parentId: parents[1] ? getDriveFileId(parents[1]) : null,
+    lastSeenTs: new Date(),
+  });
+}
 
 export async function markFolderAsVisited(
   connectorId: ModelId,
@@ -40,34 +84,10 @@ export async function markFolderAsVisited(
     return;
   }
 
-  const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  const parentGoogleIds = await getFileParentsMemoized(
-    connectorId,
+  await upsertGoogleDriveFolderMetadata({
+    connector,
     authCredentials,
     file,
-    startSyncTs
-  );
-
-  const parents = parentGoogleIds.map((parent) => getInternalId(parent));
-  const name = stripNullBytes(file.name) ?? "";
-
-  await upsertDataSourceFolder({
-    dataSourceConfig,
-    folderId: getInternalId(file.id),
-    parents,
-    parentId: parents[1] || null,
-    title: name,
-    mimeType: INTERNAL_MIME_TYPES.GOOGLE_DRIVE.FOLDER,
-    sourceUrl: getSourceUrlForGoogleDriveFiles(file),
-  });
-
-  await GoogleDriveFilesModel.upsert({
-    connectorId: connectorId,
-    dustFileId: getInternalId(driveFileId),
-    driveFileId: file.id,
-    name,
-    mimeType: file.mimeType,
-    parentId: parents[1] ? getDriveFileId(parents[1]) : null,
-    lastSeenTs: new Date(),
+    startSyncTs,
   });
 }

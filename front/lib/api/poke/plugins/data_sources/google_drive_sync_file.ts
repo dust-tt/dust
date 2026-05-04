@@ -4,7 +4,7 @@ import logger from "@app/logger/logger";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import { Err, Ok } from "@app/types/shared/result";
 
-function extractGoogleDriveFileId(input: string): string | null {
+export function extractGoogleDriveFileId(input: string): string | null {
   const trimmedInput = input.trim();
 
   // If it's already a file ID (alphanumeric, hyphens, underscores), return it
@@ -23,10 +23,17 @@ function extractGoogleDriveFileId(input: string): string | null {
       return docsMatch[2];
     }
 
-    // Handle drive.google.com URLs: /file/d/FILE_ID/, /open?id=FILE_ID
+    // Handle drive.google.com URLs: /file/d/FILE_ID/, /drive/folders/FILE_ID, /open?id=FILE_ID
     const driveMatch = url.pathname.match(/^\/file\/d\/([a-zA-Z0-9_-]+)/);
     if (driveMatch) {
       return driveMatch[1];
+    }
+
+    const folderMatch = url.pathname.match(
+      /^\/drive(?:\/u\/\d+)?\/folders\/([a-zA-Z0-9_-]+)/
+    );
+    if (folderMatch) {
+      return folderMatch[1];
     }
 
     // Handle drive.google.com/open?id=FILE_ID
@@ -47,14 +54,14 @@ export const googleDriveSyncFilePlugin = createPlugin({
     id: "google-drive-sync-file",
     name: "Sync Google Drive File",
     description:
-      "Force sync a single Google Drive file by its file ID. This will upsert the file and all its parent folders if needed.",
+      "Force sync a single Google Drive file or folder by its ID. This will upsert the file or folder and all its parent folders.",
     resourceTypes: ["data_sources"],
     args: {
       fileId: {
         type: "string",
-        label: "File ID",
+        label: "File or Folder ID",
         description:
-          "Google Drive file ID (e.g., 1a2b3c4d5e6f7g8h9i0j or the full URL)",
+          "Google Drive file or folder ID (e.g., 1a2b3c4d5e6f7g8h9i0j or the full URL)",
       },
     },
   },
@@ -84,7 +91,7 @@ export const googleDriveSyncFilePlugin = createPlugin({
     if (!extractedFileId) {
       return new Err(
         new Error(
-          "Invalid Google Drive file ID or URL. Please provide a valid file ID or URL."
+          "Invalid Google Drive file or folder ID or URL. Please provide a valid file or folder ID or URL."
         )
       );
     }
@@ -112,7 +119,7 @@ export const googleDriveSyncFilePlugin = createPlugin({
 
     return new Ok({
       display: "text",
-      value: `Successfully synced Google Drive file: ${extractedFileId}`,
+      value: `Successfully synced Google Drive file or folder: ${extractedFileId}`,
     });
   },
 });
