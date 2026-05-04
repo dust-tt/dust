@@ -65,8 +65,6 @@ path.
   This is correct behavior and we don't try to work around it.
 - Substituting secrets in non-HTTP protocols (Postgres TLS, Redis TLS, raw
   TLS sockets). The 80/20 case is HTTPS APIs with header-based auth.
-- Replacing the central egress proxy's allowlist enforcement. The per-secret
-  allowlist is a stricter overlay, not a substitute.
 
 ## Proposal
 
@@ -104,7 +102,7 @@ implementation.
 ### Placeholder format
 
 ```
-__DST_SECRET_<32 hex chars>__
+__DSEC_<32 hex chars>__
 ```
 
 where the hex is a 16-byte random nonce, generated **once** when the
@@ -128,21 +126,14 @@ string itself rotates buys us nothing security-wise:
 - A persisted script (the agent saved a notebook with the placeholder
   embedded) keeps working after a value rotation - it picks up the new
   value via dsbx without any agent-side change, which is the right UX.
-- "Force persisted state to break loudly" was a feature of the old
-  HMAC-derived design (rotation bumped `version`, which mechanically
-  rotated the placeholder). With a per-secret random nonce there's no
-  reason to do this artificially.
 
-This is a deliberately simpler model than HMAC-deriving the placeholder
-from `(workspace, name, version)`: a random nonce removes the question
-of where a HMAC key would live, who can read it, and how it rotates.
-It's unforgeable by construction (random) and reveals nothing about the
-underlying secret.
+A random nonce is unforgeable by construction and reveals nothing about
+the underlying secret.
 
 Properties:
 
 - Fixed width, alphanumeric: safe to embed in shell, JSON, headers, URLs.
-- Greppable regex: `__DST_SECRET_[0-9a-f]{32}__`.
+- Greppable regex: `__DSEC_[0-9a-f]{32}__`.
 - Stable for the life of the secret row. Rotation of the value, edits
   to `allowedDomains`, and any other in-place change keep the same
   nonce. Only deletion ends the nonce.
@@ -244,8 +235,8 @@ Phase 1 covers **HTTP request headers only**. URL substitution
 to Phase 3 with an `includeBody` flag on each secret row.
 
 What's covered in Phase 1: secrets used **literally** as a header value,
-e.g. `Authorization: Bearer __DST_SECRET_<hex>__`,
-`X-API-Key: __DST_SECRET_<hex>__`, or `Cookie: session=__DST_SECRET_<hex>__`.
+e.g. `Authorization: Bearer __DSEC_<hex>__`,
+`X-API-Key: __DSEC_<hex>__`, or `Cookie: session=__DSEC_<hex>__`.
 
 What's **not** covered in Phase 1 (failure mode in parens):
 
@@ -523,7 +514,7 @@ Out of scope for Phase 0:
 
 - DB schema changes, model migrations, admin UI.
 - Changes to the existing `WorkspaceSandboxEnvVar` flow.
-- The random-nonce `__DST_SECRET_<32hex>__` format.
+- The random-nonce `__DSEC_<32hex>__` format.
 - The `/run/dust/egress-secrets.json` per-sandbox file.
 - CA persistence on tmpfs (Phase 0 regenerates on dsbx start; if
   `tools/index.ts` restarts dsbx mid-experiment the trust bundle goes
@@ -582,7 +573,7 @@ with different semantics and different injection paths:
    [
      {
        "name": "DSEC_OPENAI_API_KEY",
-       "placeholder": "__DST_SECRET_<32hex>__",
+       "placeholder": "__DSEC_<32hex>__",
        "value": "sk-...",
        "allowedDomains": ["api.openai.com"]
      }
@@ -610,7 +601,7 @@ time.
   haven't been worked out. dsbx scans the request line in Phase 1 and
   drops the connection if a placeholder appears there (loud failure;
   agent learns the URL path isn't supported and uses headers).
-- Random-nonce `__DST_SECRET_<32hex>__` placeholder. Each secret row has
+- Random-nonce `__DSEC_<32hex>__` placeholder. Each secret row has
   a 16-byte `placeholderNonce` column generated **once at row create
   time**. The nonce is stable for the life of the row - rotation of
   the value and edits to `allowedDomains` do **not** change the nonce.
@@ -830,10 +821,9 @@ and validate it on h1 before adding frame-level complexity.
   and any sandbox of that workspace is already authorized to use it.
   Cross-workspace replay is impossible (different random nonce).
 - **Placeholder generator**: per-secret 16-byte random nonce stored on
-  the row, not HMAC. Removes the "where does the workspace key live"
-  question entirely. Unforgeable by construction. Generated once at
-  create time and stable for the life of the row (see "Placeholder
-  nonce is stable for the life of the secret row" below).
+  the row. Unforgeable by construction. Generated once at create time
+  and stable for the life of the row (see "Placeholder nonce is stable
+  for the life of the secret row" below).
 - **Security invariant**: the real secret value is never forwarded to a
   destination outside the matching secret's `allowedDomains`. The
   placeholder itself is an opaque random nonce - whether it leaks to
