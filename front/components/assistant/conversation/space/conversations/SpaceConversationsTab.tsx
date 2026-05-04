@@ -65,6 +65,7 @@ interface SpaceConversationsTabProps {
     contentFragments: ContentFragmentsType,
     selectedMCPServerViewIds?: string[]
   ) => Promise<Result<undefined, any>>;
+  onConversationBranched?: () => Promise<void> | void;
   onOpenMembersPanel: () => void;
 }
 
@@ -81,6 +82,7 @@ export function SpaceConversationsTab({
   conversationFilter,
   onConversationFilterChange,
   onSubmit,
+  onConversationBranched,
   onOpenMembersPanel,
 }: SpaceConversationsTabProps) {
   const { isEditor: isProjectEditor } = spaceInfo;
@@ -338,6 +340,9 @@ export function SpaceConversationsTab({
                                 <SpaceConversationListItem
                                   key={conversation.sId}
                                   conversation={conversation}
+                                  onConversationBranched={
+                                    onConversationBranched
+                                  }
                                   owner={owner}
                                 />
                               ))}
