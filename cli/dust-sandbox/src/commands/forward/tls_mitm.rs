@@ -20,6 +20,12 @@ pub struct MitmCa {
     ca_cert: Certificate,
     ca_key_pair: KeyPair,
     ca_cert_pem: String,
+    // TODO(phase 1): bound this with an LRU eviction policy. Phase 0 only ever
+    // caches one entry (the single experiment SNI), so an unbounded HashMap is
+    // fine. Phase 1 expands MITM scope to the union of all secrets'
+    // allowedDomains, where the cache could grow unbounded over the
+    // sandbox-VM's lifetime. See design_docs/SECRET_SWAP_DESIGN.md, Phase 0
+    // implementation footprint ("per-SNI leaf signing with an LRU cache").
     leaf_cache: Mutex<HashMap<String, Arc<CertifiedKey>>>,
 }
 

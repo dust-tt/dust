@@ -182,10 +182,12 @@ export async function setupEgressForwarder(
     return prepareTokenResult;
   }
 
-  // Both env vars must be set for the experiment to engage. Setting only
-  // the host without the token would turn on dsbx MITM and trust-bundle
-  // injection while the smoke endpoint stays gated at 404, which is a
-  // half-on state we don't want.
+  // PHASE0(remove with the experiment): env-var-driven gating of the MITM
+  // stage. Both env vars must be set for the experiment to engage; setting
+  // only the host without the token would turn on dsbx MITM and trust-bundle
+  // injection while the smoke endpoint stays 404, which is a half-on state we
+  // don't want. Phase 1 replaces this conditional with always-on MITM driven
+  // by the configured set of secrets and their allowedDomains.
   const mitmHost = config.getEgressMitmExperimentHost();
   const mitmToken = config.getEgressMitmExperimentToken();
   const mitmExperimentHost = mitmHost && mitmToken ? mitmHost : null;

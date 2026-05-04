@@ -60,7 +60,10 @@ pub struct ForwardArgs {
     mitm_experiment_host: String,
     /// Where to write the ephemeral MITM CA cert (PEM). Stays in Phase 1+ as
     /// the location the sandbox image reads to install the CA into the trust
-    /// store. TODO(phase 1): consider moving the default under /run for tmpfs.
+    /// store. TODO(phase 1): move the default to /run/dust/egress-ca.pem
+    /// (RAM-backed tmpfs) and persist the key alongside at
+    /// /run/dust/egress-ca.key (root 0600), per design_docs/SECRET_SWAP_DESIGN.md
+    /// "CA lifetime and dsbx restarts".
     #[arg(long, default_value = "/etc/dust/egress-ca.pem")]
     mitm_ca_path: PathBuf,
 }
@@ -384,10 +387,17 @@ where
     // Placeholder and replacement are equal length, so no Content-Length
     // recomputation is needed.
     //
-    // TODO(phase 1): handle a placeholder straddling the read boundary, and
-    // extend rewriting to URLs behind the per-secret allowedDomains gate.
-    // Bodies are deferred to Phase 3 with an opt-in includeBody flag.
-    // See design_docs/SECRET_SWAP_DESIGN.md, "Substitution logic" under "Proposal".
+    // TODO(phase 1): replace this prefix-only rewriter with a full HTTP/1.1
+    // message loop (per-request parsing, per-request Host validation, pipelining
+    // handled, fail-closed on malformed/oversized/truncated headers). The
+    // current shape only rewrites the FIRST request on a connection and then
+    // raw-copies the rest, which is unsafe on keep-alive connections (subsequent
+    // requests' headers are forwarded unsubstituted). Also: drop the connection
+    // if a placeholder appears in the request line (loud failure: agent learns
+    // the URL path isn't supported and uses headers). URL substitution itself
+    // is Phase 2; bodies are Phase 3 with an opt-in includeBody flag.
+    // See design_docs/SECRET_SWAP_DESIGN.md, Phase 1 spec and "Substitution
+    // logic" under "Proposal".
     let mut header_buf = Vec::with_capacity(MITM_HEADER_PEEK_BUFFER_SIZE);
     let deadline = Instant::now() + MITM_HEADER_READ_TIMEOUT;
 
