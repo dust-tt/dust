@@ -302,6 +302,7 @@ export function CreateWebhookSourceFormContent({
                           <Button
                             label={field.value}
                             variant="outline"
+                            // biome-ignore lint/plugin/noCssImportant: legacy [GEN12] — needs cleanup
                             className="!mt-0"
                             icon={ChevronDownIcon}
                           />

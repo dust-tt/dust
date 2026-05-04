@@ -43,8 +43,10 @@ export const TODO_TEXTAREA_FIELD_CLASS = cn(
   "shadow-none [box-shadow:none]",
   "outline-none ring-0 ring-offset-0",
   "focus:shadow-none focus:[box-shadow:none] focus:outline-none focus:ring-0 focus:ring-offset-0",
+  // biome-ignore lint/plugin/noCssImportant: legacy [GEN12] — needs cleanup
   "focus:!ring-0 focus:!ring-offset-0",
   "focus-visible:shadow-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0",
+  // biome-ignore lint/plugin/noCssImportant: legacy [GEN12] — needs cleanup
   "focus-visible:!ring-0",
   "placeholder:text-muted-foreground",
   "dark:text-foreground-night dark:placeholder:text-muted-foreground-night"
