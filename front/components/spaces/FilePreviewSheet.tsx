@@ -302,6 +302,7 @@ interface FilePreviewSheetProps {
   onOpenChange: (open: boolean) => void;
 }
 
+// TODO(20260504 FILE SYSTEM) Replace this with FilePreviewDialog.
 export function FilePreviewSheet({
   file,
   owner,

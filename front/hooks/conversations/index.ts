@@ -7,6 +7,7 @@ export { useConversation } from "./useConversation";
 export { useConversationBranchActions } from "./useConversationBranchActions";
 export { useConversationContextUsage } from "./useConversationContextUsage";
 export { useConversationFeedbacks } from "./useConversationFeedbacks";
+export { useConversationFileContent } from "./useConversationFileContent";
 export { useConversationMarkAsRead } from "./useConversationMarkAsRead";
 export {
   useConversationMessage,

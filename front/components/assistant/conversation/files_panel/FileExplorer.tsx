@@ -5,13 +5,10 @@ import {
   FileExplorerFolderCard,
   type ViewMode,
 } from "@app/components/assistant/conversation/files_panel/FileExplorerItem";
+import { FilePreviewDialog } from "@app/components/assistant/conversation/files_panel/FilePreviewDialog";
 import { SandboxStatusChip } from "@app/components/assistant/conversation/files_panel/SandboxStatusChip";
 import type { SandboxTreeNode } from "@app/components/assistant/conversation/files_panel/types";
 import { buildSandboxTree } from "@app/components/assistant/conversation/files_panel/utils";
-import {
-  FilePreviewSheet,
-  type MinimalFileForPreview,
-} from "@app/components/spaces/FilePreviewSheet";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useConversationSandboxStatus } from "@app/hooks/conversations/useConversationSandboxStatus";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -110,7 +107,7 @@ export function NewFileExplorer({
   const sendNotification = useSendNotification();
   const [folderStack, setFolderStack] = useState<SandboxTreeNode[]>([]);
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
-  const [previewFile, setPreviewFile] = useState<MinimalFileForPreview | null>(
+  const [previewFile, setPreviewFile] = useState<GCSMountFileEntry | null>(
     null
   );
   const [showPreviewSheet, setShowPreviewSheet] = useState(false);
@@ -187,17 +184,10 @@ export function NewFileExplorer({
 
   const handleOpen = useCallback(
     (entry: GCSMountFileEntry) => {
-      if (!entry.fileId) {
-        return;
-      }
-      if (isInteractiveContentType(entry.contentType)) {
+      if (isInteractiveContentType(entry.contentType) && entry.fileId) {
         openPanel({ type: "interactive_content", fileId: entry.fileId });
       } else {
-        setPreviewFile({
-          sId: entry.fileId,
-          fileName: entry.fileName,
-          contentType: entry.contentType,
-        });
+        setPreviewFile(entry);
         setShowPreviewSheet(true);
       }
     },
@@ -334,11 +324,13 @@ export function NewFileExplorer({
         </div>
       </div>
 
-      <FilePreviewSheet
+      <FilePreviewDialog
         owner={owner}
-        file={previewFile}
+        entry={previewFile}
+        conversationId={conversation.sId}
         isOpen={showPreviewSheet}
         onOpenChange={setShowPreviewSheet}
+        onDownload={handleDownload}
       />
     </>
   );
