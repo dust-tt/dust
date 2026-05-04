@@ -42,9 +42,7 @@ export function extractSkillTags(markdown: string): SkillReference[] {
 }
 
 export function extractUniqueSkillIds(markdown: string): string[] {
-  return Array.from(
-    new Set(extractSkillTags(markdown).map((skill) => skill.id))
-  );
+  return [...new Set(extractSkillTags(markdown).map((skill) => skill.id))];
 }
 
 export function serializeSkillTag({ id, name, icon }: SkillReference): string {
