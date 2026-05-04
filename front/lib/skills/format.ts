@@ -1,7 +1,7 @@
 export type SkillReference = {
   id: string;
+  icon: string;
   name: string;
-  icon?: string | null;
 };
 
 export const SKILL_TAG_NAME = "skill";
@@ -12,9 +12,9 @@ export const SKILL_TAG_REGEX_BEGINNING = /^<skill\s+([^>]*?)\s*\/>/;
 function parseSkillTagAttributes(attributes: string): SkillReference | null {
   const id = attributes.match(/\bid="([^"]+)"/)?.[1];
   const name = attributes.match(/\bname="([^"]+)"/)?.[1];
-  const icon = attributes.match(/\bicon="([^"]+)"/)?.[1] ?? null;
+  const icon = attributes.match(/\bicon="([^"]+)"/)?.[1];
 
-  if (!id || !name) {
+  if (!id || !name || !icon) {
     return null;
   }
 
@@ -42,7 +42,5 @@ export function extractSkillTags(markdown: string): SkillReference[] {
 }
 
 export function serializeSkillTag({ id, name, icon }: SkillReference): string {
-  const iconAttribute = icon ? ` icon="${icon}"` : "";
-
-  return `<${SKILL_TAG_NAME} id="${id}" name="${name}"${iconAttribute} />`;
+  return `<${SKILL_TAG_NAME} id="${id}" name="${name}" icon="${icon}" />`;
 }

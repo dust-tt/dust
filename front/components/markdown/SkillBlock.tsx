@@ -7,7 +7,7 @@ import { visit } from "unist-util-visit";
 
 export interface SkillDirectiveProps {
   skillId: string;
-  skillIcon?: string | null;
+  skillIcon: string;
   skillName: string;
 }
 
@@ -28,7 +28,7 @@ export function SkillBlock({
   return (
     <Chip
       label={skillName}
-      icon={getSkillIcon(skillIcon ?? null)}
+      icon={getSkillIcon(skillIcon)}
       href={href}
       target={href ? "_blank" : undefined}
       color="white"
