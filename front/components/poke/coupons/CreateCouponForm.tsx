@@ -2,10 +2,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import type { CreatePokeCouponResponseBody } from "@app/pages/api/poke/coupons/index";
 import type { CouponDiscountType } from "@app/types/coupon";
-import {
-  CouponDiscountTypeSchema,
-  CreateCouponBodySchema,
-} from "@app/types/coupon";
+import { CreateCouponBodySchema } from "@app/types/coupon";
 import { isString } from "@app/types/shared/utils/general";
 import {
   Button,
@@ -21,31 +18,35 @@ interface FormState {
   code: string;
   description: string;
   discountType: CouponDiscountType;
-  amountUsdStr: string;
-  creditTypeId: string;
+  amountStr: string;
   durationMonths: string;
   maxRedemptions: string;
-  redeemBy: string;
+  expirationDate: string;
+}
+
+const FORM_STATE_KEYS: ReadonlyArray<keyof FormState> = [
+  "code",
+  "description",
+  "discountType",
+  "amountStr",
+  "durationMonths",
+  "maxRedemptions",
+  "expirationDate",
+];
+
+function isFormStateKey(key: string): key is keyof FormState {
+  return (FORM_STATE_KEYS as readonly string[]).includes(key);
 }
 
 const EMPTY_FORM: FormState = {
   code: "",
   description: "",
-  discountType: "fixed",
-  amountUsdStr: "",
-  creditTypeId: "",
+  discountType: "seat",
+  amountStr: "",
   durationMonths: "",
   maxRedemptions: "",
-  redeemBy: "",
+  expirationDate: "",
 };
-
-const FORM_STATE_KEYS = Object.keys(EMPTY_FORM) as ReadonlyArray<
-  keyof FormState
->;
-
-function isFormStateKey(key: string): key is keyof FormState {
-  return (FORM_STATE_KEYS as readonly string[]).includes(key);
-}
 
 interface CreateCouponFormProps {
   onCreated: () => void;
@@ -75,17 +76,14 @@ export function CreateCouponForm({
       code: form.code.trim(),
       description: form.description.trim() || null,
       discountType: form.discountType,
-      amountMicroUsd: form.amountUsdStr
-        ? Math.round(parseFloat(form.amountUsdStr) * 1_000_000)
-        : 0,
-      creditTypeId: form.creditTypeId.trim(),
+      amount: form.amountStr ? parseFloat(form.amountStr) : 0,
       durationMonths: form.durationMonths
         ? parseInt(form.durationMonths, 10)
         : null,
       maxRedemptions: form.maxRedemptions
         ? parseInt(form.maxRedemptions, 10)
         : null,
-      redeemBy: form.redeemBy || null,
+      expirationDate: form.expirationDate || null,
     };
 
     const result = CreateCouponBodySchema.safeParse(body);
@@ -96,9 +94,7 @@ export function CreateCouponForm({
         if (!isString(pathElement)) {
           continue;
         }
-        // Map amountMicroUsd back to the form field name.
-        const field =
-          pathElement === "amountMicroUsd" ? "amountUsdStr" : pathElement;
+        const field = pathElement === "amount" ? "amountStr" : pathElement;
         if (isFormStateKey(field)) {
           fieldErrors[field] = issue.message;
         }
@@ -180,49 +176,28 @@ export function CreateCouponForm({
           <RadioGroup
             name="discountType"
             value={form.discountType}
-            onValueChange={(value: string) => {
-              const parsed = CouponDiscountTypeSchema.safeParse(value);
-              if (parsed.success) {
-                set("discountType", parsed.data);
-              }
-            }}
+            onValueChange={(value) =>
+              set("discountType", value as CouponDiscountType)
+            }
           >
-            <RadioGroupItem value="fixed" label="Fixed" />
-            <RadioGroupItem value="usage_credit" label="Usage credit" />
+            <RadioGroupItem value="seat" label="Seat" />
           </RadioGroup>
-          {errors.discountType && (
-            <span className="text-xs text-red-500">{errors.discountType}</span>
-          )}
         </div>
 
         <div className="flex flex-col gap-1">
           <label className="text-sm font-medium">
-            Amount (USD) <span className="text-red-500">*</span>
+            Amount <span className="text-red-500">*</span>
           </label>
           <Input
             type="number"
-            value={form.amountUsdStr}
-            onChange={(e) => set("amountUsdStr", e.target.value)}
-            placeholder="e.g. 10.00"
-            min={0.01}
-            step={0.01}
+            value={form.amountStr}
+            onChange={(e) => set("amountStr", e.target.value)}
+            placeholder="e.g. 50"
+            min={0.5}
+            step={0.5}
           />
-          {errors.amountUsdStr && (
-            <span className="text-xs text-red-500">{errors.amountUsdStr}</span>
-          )}
-        </div>
-
-        <div className="flex flex-col gap-1 col-span-2">
-          <label className="text-sm font-medium">
-            Credit type ID (Metronome) <span className="text-red-500">*</span>
-          </label>
-          <Input
-            value={form.creditTypeId}
-            onChange={(e) => set("creditTypeId", e.target.value)}
-            placeholder="Metronome credit type ID"
-          />
-          {errors.creditTypeId && (
-            <span className="text-xs text-red-500">{errors.creditTypeId}</span>
+          {errors.amountStr && (
+            <span className="text-xs text-red-500">{errors.amountStr}</span>
           )}
         </div>
 
@@ -232,7 +207,7 @@ export function CreateCouponForm({
             type="number"
             value={form.durationMonths}
             onChange={(e) => set("durationMonths", e.target.value)}
-            placeholder="Leave blank for unlimited"
+            placeholder="Leave blank for once"
             min={1}
           />
         </div>
@@ -249,11 +224,11 @@ export function CreateCouponForm({
         </div>
 
         <div className="flex flex-col gap-1">
-          <label className="text-sm font-medium">Redeem by</label>
+          <label className="text-sm font-medium">Expiration date</label>
           <Input
             type="date"
-            value={form.redeemBy}
-            onChange={(e) => set("redeemBy", e.target.value)}
+            value={form.expirationDate}
+            onChange={(e) => set("expirationDate", e.target.value)}
           />
         </div>
 

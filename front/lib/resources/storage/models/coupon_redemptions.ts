@@ -12,6 +12,8 @@ export class CouponRedemptionModel extends WorkspaceAwareModel<CouponRedemptionM
   declare couponId: ForeignKey<CouponModel["id"]>;
   declare redeemedByUserId: ForeignKey<UserModel["id"]> | null;
   declare redeemedAt: CreationOptional<Date>;
+  declare metronomeCreditIds: string[];
+  declare status: "pending" | "failed" | "active" | "revoked";
 
   declare coupon: NonAttribute<CouponModel>;
   declare redeemedByUser: NonAttribute<UserModel>;
@@ -34,6 +36,16 @@ CouponRedemptionModel.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
+    metronomeCreditIds: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      allowNull: false,
+      defaultValue: [],
+    },
+    status: {
+      type: DataTypes.STRING(16),
+      allowNull: false,
+      defaultValue: "pending",
+    },
   },
   {
     modelName: "coupon_redemption",
@@ -48,7 +60,8 @@ CouponRedemptionModel.init(
       {
         fields: ["couponId", "workspaceId"],
         unique: true,
-        name: "coupon_redemptions_coupon_workspace_idx",
+        where: { status: ["pending", "active"] },
+        name: "coupon_redemptions_coupon_workspace_active_idx",
       },
     ],
   }

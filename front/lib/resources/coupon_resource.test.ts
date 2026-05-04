@@ -24,9 +24,9 @@ describe("CouponResource.validateRedemption", () => {
     }
   });
 
-  it("returns 'expired' when redeemBy is in the past", async () => {
+  it("returns 'expired' when expirationDate is in the past", async () => {
     const past = new Date(Date.now() - 1000);
-    const coupon = await CouponFactory.create({ redeemBy: past });
+    const coupon = await CouponFactory.create({ expirationDate: past });
     const result = coupon.validateRedemption();
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {

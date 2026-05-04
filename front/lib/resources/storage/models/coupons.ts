@@ -10,13 +10,12 @@ export class CouponModel extends BaseModel<CouponModel> {
 
   declare code: string;
   declare description: string | null;
-  declare discountType: "fixed" | "usage_credit";
-  declare creditTypeId: string;
-  declare amountMicroUsd: number;
+  declare discountType: "seat";
+  declare amount: number;
   declare durationMonths: number | null;
   declare maxRedemptions: number | null;
   declare redemptionCount: CreationOptional<number>;
-  declare redeemBy: Date | null;
+  declare expirationDate: Date | null;
   declare archivedAt: Date | null;
   declare createdByUserId: ForeignKey<UserModel["id"]> | null;
 
@@ -48,12 +47,8 @@ CouponModel.init(
       type: DataTypes.STRING(32),
       allowNull: false,
     },
-    creditTypeId: {
-      type: DataTypes.STRING(64),
-      allowNull: false,
-    },
-    amountMicroUsd: {
-      type: DataTypes.BIGINT,
+    amount: {
+      type: DataTypes.FLOAT,
       allowNull: false,
     },
     durationMonths: {
@@ -71,7 +66,7 @@ CouponModel.init(
       allowNull: false,
       defaultValue: 0,
     },
-    redeemBy: {
+    expirationDate: {
       type: DataTypes.DATE,
       allowNull: true,
       defaultValue: null,
