@@ -310,7 +310,13 @@ async function handler(
 
       const conversation = conversationRes.value;
 
-      const selectedSkillIds = extractUniqueSkillIds(content);
+      const inlineSelectedSkillIds = extractUniqueSkillIds(content);
+      // TODO(2026-05-04 aubin): Remove this fallback once all clients submit
+      // inline <skill ... /> tags instead of the legacy selectedSkillIds field.
+      const selectedSkillIds =
+        inlineSelectedSkillIds.length > 0
+          ? inlineSelectedSkillIds
+          : (context.selectedSkillIds ?? []);
       if (selectedSkillIds.length > 0) {
         const skills = await SkillResource.fetchByIds(auth, selectedSkillIds);
 
