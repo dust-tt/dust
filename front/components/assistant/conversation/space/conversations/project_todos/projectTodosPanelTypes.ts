@@ -66,6 +66,7 @@ export type ProjectTodosPanelData = {
   handleAddTodo: (text: string, assigneeSId: string) => Promise<boolean>;
   isTodosLoading: boolean;
   frozenLastReadAt: string | null | undefined;
+  todos: ProjectTodoType[];
   filteredTodos: ProjectTodoType[];
 };
 
