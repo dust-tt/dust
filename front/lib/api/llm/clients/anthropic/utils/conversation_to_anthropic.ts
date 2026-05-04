@@ -69,10 +69,12 @@ async function userContentToParam(
         content.image_url.url
       );
 
-      assert(
-        isAcceptedMediaType(mediaType),
-        `Unsupported media type: ${mediaType}`
-      );
+      if (!isAcceptedMediaType(mediaType)) {
+        return {
+          type: "text",
+          text: "Attachement: an unsupported media type was provided.",
+        };
+      }
 
       return {
         type: "image",
