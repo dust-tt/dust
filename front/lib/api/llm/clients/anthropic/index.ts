@@ -44,7 +44,6 @@ import type {
   StructuredSystemPrompt,
 } from "@app/lib/api/llm/types/options";
 import { normalizePrompt } from "@app/lib/api/llm/types/options";
-import { config } from "@app/lib/api/regions/config";
 import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import assert from "assert";
@@ -125,13 +124,11 @@ export class AnthropicLLM extends LLM<LLMStreamParameters> {
       apiKey: ANTHROPIC_API_KEY,
     });
 
-    const region =
-      config.getCurrentRegion() === "us-central1" ? "global" : "europe-west1";
-
     // Vertex does not support batches
     this.inferenceClient = this.useVertex
-      ? new AnthropicVertex({
-          region,
+      ? // Routing everything to Europe first to check that Vertex works correctly.
+        new AnthropicVertex({
+          region: "europe-west1",
         })
       : this.client;
   }
