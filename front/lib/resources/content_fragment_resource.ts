@@ -1196,20 +1196,21 @@ export async function renderLightContentFragmentForModel(
   const fileStringId =
     message.contentFragmentType === "file" ? message.fileId : null;
 
+  const isNewFileExplorer = fileStringId
+    ? await hasFeatureFlag(auth, "new_file_explorer")
+    : false;
+
   // When new_file_explorer is on, regular file attachments are accessible via the `files` server
   // (path-based). Don't inline them in conversation history. Exceptions: pasted content (inlined
   // by design), images (shown directly to vision models), and queryable tables (needed for
   // query_tables_v2 which is pre-wired at JIT time).
   if (
-    fileStringId &&
+    isNewFileExplorer &&
     !isPastedFile(contentType) &&
     !isLLMVisionSupportedImageContentType(contentType) &&
     !attachment.isQueryable
   ) {
-    const isNewFileExplorer = await hasFeatureFlag(auth, "new_file_explorer");
-    if (isNewFileExplorer) {
-      return null;
-    }
+    return null;
   }
 
   // Check if this is pasted content - render with simplified format
@@ -1270,12 +1271,14 @@ export async function renderLightContentFragmentForModel(
             url: signedUrl,
           },
         },
-        {
-          type: "text",
-          text: renderAttachmentXml({
-            attachment,
-          }),
-        },
+        ...(isNewFileExplorer
+          ? []
+          : [
+              {
+                type: "text" as const,
+                text: renderAttachmentXml({ attachment }),
+              },
+            ]),
       ],
     };
   }
