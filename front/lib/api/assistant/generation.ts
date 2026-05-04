@@ -229,8 +229,6 @@ function constructSkillsSectionForUserMessageRendering({
     "tool when they become relevant to the conversation.\n" +
     "- **Enabled**: Fully active with instructions loaded.\n\n" +
     "Enable skills proactively when a user's request matches a skill's purpose.\n" +
-    `If a user message contains a \`<skill id=\"...\" name=\"...\" />\` tag, treat it as a strong signal that the referenced skill is relevant. ` +
-    `If that skill is not already enabled and it would help, enable it with \`${SKILL_MANAGEMENT_SERVER_NAME}${TOOL_NAME_SEPARATOR}${ENABLE_SKILL_TOOL_NAME}\`.\n` +
     "Only enable skills you actually need—enabling a skill loads its full instructions into context.\n" +
     "If you need to enable multiple skills, enable them in parallel.\n\n" +
     "When in doubt about enabling a skill, prefer enabling it as it may give you a new " +
@@ -273,8 +271,6 @@ function constructSkillsSection({
     "- **Enabled**: Fully active with instructions loaded. Once enabled, a skill remains active " +
     "for the rest of the conversation.\n\n" +
     "Enable skills proactively when a user's request matches a skill's purpose.\n" +
-    `If a user message contains a \`<skill id=\"...\" name=\"...\" />\` tag, treat it as a strong signal that the referenced skill is relevant. ` +
-    `If that skill is not already enabled and it would help, enable it with \`${SKILL_MANAGEMENT_SERVER_NAME}${TOOL_NAME_SEPARATOR}${ENABLE_SKILL_TOOL_NAME}\`.\n` +
     "Only enable skills you actually need—enabling a skill loads its full instructions into context.\n" +
     "If you need to enable multiple skills, enable them in parallel.\n\n" +
     "When in doubt about enabling a skill, prefer enabling it as it may give you a new " +
