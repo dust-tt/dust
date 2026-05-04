@@ -14,6 +14,10 @@ function makeSourceFile(contentType: AllSupportedFileContentType) {
       copyFile: vi.fn(),
       name: "source-processed-bucket",
     },
+    public: {
+      copyFile: vi.fn(),
+      name: "source-public-bucket",
+    },
   };
 
   return {
@@ -40,6 +44,7 @@ function makeTargetFile() {
   const targetBuckets = {
     original: { name: "target-original-bucket" },
     processed: { name: "target-processed-bucket" },
+    public: { name: "target-public-bucket" },
   };
 
   return {
