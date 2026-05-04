@@ -140,6 +140,8 @@ describe("google drive admin cli", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
+    mocks.getFileParentsMemoized.mockReset();
+    mocks.getGoogleDriveObject.mockReset();
     mocks.getAuthObject.mockResolvedValue({});
     mocks.syncOneFile.mockResolvedValue(true);
     mocks.upsertDataSourceFolder.mockReset();
@@ -239,9 +241,7 @@ describe("google drive admin cli", () => {
     expect(result).toEqual({ success: true });
     expect(updatedFolder?.name).toBe("Current Folder Name");
     expect(updatedFolder?.parentId).toBe(parentId);
-    expect(updatedFolder?.lastSeenTs?.getTime()).toBeGreaterThan(
-      previousLastSeenTs.getTime()
-    );
+    expect(updatedFolder?.lastSeenTs).toEqual(previousLastSeenTs);
     expect(updatedParent?.name).toBe("Current Parent Name");
     expect(mocks.syncOneFile).not.toHaveBeenCalled();
     expect(mocks.upsertDataSourceFolder).toHaveBeenCalledWith(
@@ -256,5 +256,53 @@ describe("google drive admin cli", () => {
         title: "Current Folder Name",
       })
     );
+  });
+
+  it("does not upsert skipped folders into the datasource", async () => {
+    const suffix = randomUUID();
+    const folderId = `folder-${suffix}`;
+    const connector = await makeConnector(suffix);
+    const previousLastSeenTs = new Date("2025-01-01T00:00:00.000Z");
+
+    await GoogleDriveFilesModel.create({
+      connectorId: connector.id,
+      driveFileId: folderId,
+      dustFileId: `gdrive-${folderId}`,
+      lastSeenTs: previousLastSeenTs,
+      mimeType: FOLDER_MIME_TYPE,
+      name: "Stale Skipped Folder Name",
+      parentId: null,
+      skipReason: "blacklisted",
+    });
+
+    const folder = makeGoogleDriveFolder({
+      id: folderId,
+      name: "Current Skipped Folder Name",
+      parent: null,
+    });
+
+    mocks.getGoogleDriveObject.mockResolvedValue(folder);
+    mocks.getFileParentsMemoized.mockResolvedValue([folderId]);
+
+    await google_drive({
+      majorCommand: "google_drive",
+      command: "upsert-file",
+      args: {
+        connectorId: connector.id.toString(),
+        fileId: folderId,
+      },
+    });
+
+    const updatedFolder = await GoogleDriveFilesModel.findOne({
+      where: {
+        connectorId: connector.id,
+        driveFileId: folderId,
+      },
+    });
+
+    expect(updatedFolder?.name).toBe("Current Skipped Folder Name");
+    expect(updatedFolder?.lastSeenTs).toEqual(previousLastSeenTs);
+    expect(updatedFolder?.skipReason).toBe("blacklisted");
+    expect(mocks.upsertDataSourceFolder).not.toHaveBeenCalled();
   });
 });

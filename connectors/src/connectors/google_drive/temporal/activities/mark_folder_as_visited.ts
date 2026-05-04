@@ -14,17 +14,22 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { GoogleDriveObjectType, ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES, stripNullBytes } from "@connectors/types";
 import type { OAuth2Client } from "googleapis-common";
+import type { CreationAttributes } from "sequelize";
 
 export async function upsertGoogleDriveFolderMetadata({
   connector,
   authCredentials,
   file,
   startSyncTs,
+  updateLastSeenTs = false,
+  upsertDataSourceFolderForSkipped = false,
 }: {
   connector: ConnectorResource;
   authCredentials: OAuth2Client;
   file: GoogleDriveObjectType;
   startSyncTs: number;
+  updateLastSeenTs?: boolean;
+  upsertDataSourceFolderForSkipped?: boolean;
 }) {
   const parentGoogleIds = await getFileParentsMemoized(
     connector.id,
@@ -37,25 +42,39 @@ export async function upsertGoogleDriveFolderMetadata({
   const parents = parentGoogleIds.map((parent) => getInternalId(parent));
   const name = stripNullBytes(file.name) ?? "";
 
-  await upsertDataSourceFolder({
-    dataSourceConfig,
-    folderId: getInternalId(file.id),
-    parents,
-    parentId: parents[1] || null,
-    title: name,
-    mimeType: INTERNAL_MIME_TYPES.GOOGLE_DRIVE.FOLDER,
-    sourceUrl: getSourceUrlForGoogleDriveFiles(file),
+  const existingFolder = await GoogleDriveFilesModel.findOne({
+    where: {
+      connectorId: connector.id,
+      driveFileId: file.id,
+    },
   });
 
-  await GoogleDriveFilesModel.upsert({
+  if (!existingFolder?.skipReason || upsertDataSourceFolderForSkipped) {
+    await upsertDataSourceFolder({
+      dataSourceConfig,
+      folderId: getInternalId(file.id),
+      parents,
+      parentId: parents[1] || null,
+      title: name,
+      mimeType: INTERNAL_MIME_TYPES.GOOGLE_DRIVE.FOLDER,
+      sourceUrl: getSourceUrlForGoogleDriveFiles(file),
+    });
+  }
+
+  const googleDriveFileParams: CreationAttributes<GoogleDriveFilesModel> = {
     connectorId: connector.id,
     dustFileId: getInternalId(file.id),
     driveFileId: file.id,
     name,
     mimeType: file.mimeType,
     parentId: parents[1] ? getDriveFileId(parents[1]) : null,
-    lastSeenTs: new Date(),
-  });
+  };
+
+  if (updateLastSeenTs) {
+    googleDriveFileParams.lastSeenTs = new Date();
+  }
+
+  await GoogleDriveFilesModel.upsert(googleDriveFileParams);
 }
 
 export async function markFolderAsVisited(
@@ -89,5 +108,7 @@ export async function markFolderAsVisited(
     authCredentials,
     file,
     startSyncTs,
+    updateLastSeenTs: true,
+    upsertDataSourceFolderForSkipped: true,
   });
 }
