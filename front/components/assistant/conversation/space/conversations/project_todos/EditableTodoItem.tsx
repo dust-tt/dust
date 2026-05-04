@@ -136,6 +136,9 @@ export const EditableTodoItem = memo(function EditableTodoItem({
   const [draftText, setDraftText] = useState(todo.text);
   const [overflowMenuOpen, setOverflowMenuOpen] = useState(false);
   const [reassignSearch, setReassignSearch] = useState("");
+  const [pendingSuggestionAction, setPendingSuggestionAction] = useState<
+    "approve" | "reject" | null
+  >(null);
   const editInputRef = useRef<HTMLTextAreaElement>(null);
   const blurCommitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isCommittingRef = useRef(false);
@@ -311,6 +314,11 @@ export const EditableTodoItem = memo(function EditableTodoItem({
     ];
   }, [goToConversationAfterStart]);
 
+  const startMenuKeepsActionsVisible =
+    startMenuOpen ||
+    (isFirstOnboardingTodo && !hasConversationLink) ||
+    isStarting;
+
   return (
     <div
       className={cn(
@@ -376,7 +384,7 @@ export const EditableTodoItem = memo(function EditableTodoItem({
                 }
               }}
             />
-            <div className="ml-1">
+            <div>
               <TodoSources
                 sources={todo.sources}
                 owner={owner}
@@ -450,7 +458,7 @@ export const EditableTodoItem = memo(function EditableTodoItem({
               </p>
             )}
             {!showTypingAnimation && (
-              <div className="ml-1">
+              <div>
                 <TodoSources
                   sources={todo.sources}
                   owner={owner}
@@ -460,35 +468,54 @@ export const EditableTodoItem = memo(function EditableTodoItem({
             )}
           </div>
         )}
-        <div className="mt-0.5 flex shrink-0 items-center gap-1 opacity-100">
+        <div className="mt-0.5 flex shrink-0 items-center gap-1">
           {isPendingApproval && canAct && !isEditing ? (
-            <>
+            <div
+              className={cn(
+                "flex items-center gap-1 transition-opacity",
+                "opacity-100 md:opacity-0 md:group-hover/todo:opacity-100 md:focus-within:opacity-100"
+              )}
+            >
               <Button
                 icon={CheckIcon}
-                size="xs"
+                size="xmini"
                 variant="outline"
                 tooltip="Keep this suggestion"
+                isLoading={pendingSuggestionAction === "approve"}
+                disabled={pendingSuggestionAction !== null}
                 className="text-success-500 hover:text-success-600 dark:text-success-500-night dark:hover:text-success-600-night"
-                onClick={(e) => {
+                onClick={async (e) => {
                   e.stopPropagation();
-                  void onApproveAgentSuggestion(todo);
+                  setPendingSuggestionAction("approve");
+                  try {
+                    await onApproveAgentSuggestion(todo);
+                  } finally {
+                    setPendingSuggestionAction(null);
+                  }
                 }}
               />
               <Button
                 icon={XMarkIcon}
-                size="xs"
+                size="xmini"
                 variant="outline"
                 tooltip="Reject suggestion"
+                isLoading={pendingSuggestionAction === "reject"}
+                disabled={pendingSuggestionAction !== null}
                 className="text-warning-500 hover:text-warning-600 dark:text-warning-500-night dark:hover:text-warning-600-night"
-                onClick={(e) => {
+                onClick={async (e) => {
                   e.stopPropagation();
-                  void onRejectAgentSuggestion(todo);
+                  setPendingSuggestionAction("reject");
+                  try {
+                    await onRejectAgentSuggestion(todo);
+                  } finally {
+                    setPendingSuggestionAction(null);
+                  }
                 }}
               />
-            </>
+            </div>
           ) : (
             <>
-              {hasConversationLink ? (
+              {hasConversationLink && (
                 <Tooltip
                   label="Open to-do conversation"
                   trigger={
@@ -518,118 +545,126 @@ export const EditableTodoItem = memo(function EditableTodoItem({
                     </span>
                   }
                 />
-              ) : (
-                canEdit &&
-                !hasConversationLink &&
-                (isDoneWithoutConversation ? (
-                  <Tooltip
-                    label="Reopen this to-do before starting work."
-                    trigger={
-                      <Button
-                        icon={PlayIcon}
-                        size="xs"
-                        variant="outline"
-                        disabled
-                      />
-                    }
-                  />
-                ) : (
-                  <DropdownMenu
-                    modal={false}
-                    open={startMenuOpen}
-                    onOpenChange={handleStartMenuOpenChange}
-                  >
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        icon={PlayIcon}
-                        size="xs"
-                        variant="outline"
-                        isLoading={isStarting}
-                        disabled={isStarting}
-                        isPulsing={isFirstOnboardingTodo && !startMenuOpen}
-                        tooltip="Start working on to-do"
-                      />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-96">
-                      <div className="flex flex-col gap-3 p-3">
-                        <TextArea
-                          id={`todo-start-msg-${todo.sId}`}
-                          aria-label="Additional instructions for the agent"
-                          placeholder="(optional) Add a custom message for the agent..."
-                          value={startCustomMessage}
-                          rows={4}
-                          onChange={(
-                            event: React.ChangeEvent<HTMLTextAreaElement>
-                          ) => setStartCustomMessage(event.target.value)}
+              )}
+              {!hasConversationLink && canEdit && (
+                <div
+                  className={cn(
+                    "flex shrink-0 items-center gap-1 transition-opacity",
+                    startMenuKeepsActionsVisible
+                      ? "opacity-100"
+                      : "opacity-100 md:opacity-0 md:group-hover/todo:opacity-100 md:focus-within:opacity-100"
+                  )}
+                >
+                  {isDoneWithoutConversation ? (
+                    <Tooltip
+                      label="Reopen this to-do before starting work."
+                      trigger={
+                        <Button
+                          icon={PlayIcon}
+                          size="xs"
+                          variant="outline"
+                          disabled
                         />
-                        <div className="flex items-end justify-between gap-2">
-                          <div className="min-w-0 flex-1">
-                            <AgentPicker
-                              owner={owner}
-                              agents={activeAgents}
-                              disabled={agentsLoading}
-                              isLoading={agentsLoading}
-                              mountPortal
-                              showDropdownArrow
-                              showFooterButtons={false}
-                              side="bottom"
-                              size="xs"
-                              onItemClick={(agent) =>
-                                setSelectedStartAgent(agent)
-                              }
-                              pickerButton={
-                                <Button
-                                  variant="ghost-secondary"
-                                  size="xs"
-                                  isSelect
-                                  icon={
-                                    selectedStartAgent
-                                      ? () => (
-                                          <Avatar
-                                            size="xxs"
-                                            visual={
-                                              selectedStartAgent.pictureUrl
-                                            }
-                                          />
-                                        )
-                                      : RobotIcon
-                                  }
-                                  label={selectedStartAgent?.name ?? "Agent"}
-                                  className="max-w-full min-w-0"
-                                />
-                              }
-                            />
+                      }
+                    />
+                  ) : (
+                    <DropdownMenu
+                      modal={false}
+                      open={startMenuOpen}
+                      onOpenChange={handleStartMenuOpenChange}
+                    >
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          icon={PlayIcon}
+                          size="xs"
+                          variant="outline"
+                          isLoading={isStarting}
+                          disabled={isStarting}
+                          isPulsing={isFirstOnboardingTodo && !startMenuOpen}
+                          tooltip="Start working on to-do"
+                        />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-96">
+                        <div className="flex flex-col gap-3 p-3">
+                          <TextArea
+                            id={`todo-start-msg-${todo.sId}`}
+                            aria-label="Additional instructions for the agent"
+                            placeholder="(optional) Add a custom message for the agent..."
+                            value={startCustomMessage}
+                            rows={4}
+                            onChange={(
+                              event: React.ChangeEvent<HTMLTextAreaElement>
+                            ) => setStartCustomMessage(event.target.value)}
+                          />
+                          <div className="flex items-end justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                              <AgentPicker
+                                owner={owner}
+                                agents={activeAgents}
+                                disabled={agentsLoading}
+                                isLoading={agentsLoading}
+                                mountPortal
+                                showDropdownArrow
+                                showFooterButtons={false}
+                                side="bottom"
+                                size="xs"
+                                onItemClick={(agent) =>
+                                  setSelectedStartAgent(agent)
+                                }
+                                pickerButton={
+                                  <Button
+                                    variant="ghost-secondary"
+                                    size="xs"
+                                    isSelect
+                                    icon={
+                                      selectedStartAgent
+                                        ? () => (
+                                            <Avatar
+                                              size="xxs"
+                                              visual={
+                                                selectedStartAgent.pictureUrl
+                                              }
+                                            />
+                                          )
+                                        : RobotIcon
+                                    }
+                                    label={selectedStartAgent?.name ?? "Agent"}
+                                    className="max-w-full min-w-0"
+                                  />
+                                }
+                              />
+                            </div>
+                            <ButtonGroup className="shrink-0">
+                              <Button
+                                label="Start working"
+                                variant="outline"
+                                size="sm"
+                                className={isFirstOnboardingTodo ? "z-10" : ""}
+                                isLoading={isStarting}
+                                isPulsing={isFirstOnboardingTodo}
+                                disabled={isStarting || !selectedStartAgent}
+                                onClick={() => void handleConfirmStart()}
+                              />
+                              <ButtonGroupDropdown
+                                align="end"
+                                items={startRedirectMenuItems}
+                                trigger={
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    icon={ChevronDownIcon}
+                                    disabled={isStarting || !selectedStartAgent}
+                                    aria-label="After start: open conversation or stay on to-dos"
+                                  />
+                                }
+                              />
+                            </ButtonGroup>
                           </div>
-                          <ButtonGroup className="shrink-0">
-                            <Button
-                              label="Start working"
-                              variant="outline"
-                              size="sm"
-                              className={isFirstOnboardingTodo ? "z-10" : ""}
-                              isLoading={isStarting}
-                              isPulsing={isFirstOnboardingTodo}
-                              disabled={isStarting || !selectedStartAgent}
-                              onClick={() => void handleConfirmStart()}
-                            />
-                            <ButtonGroupDropdown
-                              align="end"
-                              items={startRedirectMenuItems}
-                              trigger={
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  icon={ChevronDownIcon}
-                                  disabled={isStarting || !selectedStartAgent}
-                                  aria-label="After start: open conversation or stay on to-dos"
-                                />
-                              }
-                            />
-                          </ButtonGroup>
                         </div>
-                      </div>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                ))
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                </div>
               )}
               {canEdit && (
                 <div
@@ -637,7 +672,7 @@ export const EditableTodoItem = memo(function EditableTodoItem({
                     "transition-opacity",
                     overflowMenuOpen
                       ? "opacity-100"
-                      : "md:opacity-0 md:group-hover/todo:opacity-100"
+                      : "md:opacity-0 md:group-hover/todo:opacity-100 md:focus-within:opacity-100"
                   )}
                 >
                   <DropdownMenu

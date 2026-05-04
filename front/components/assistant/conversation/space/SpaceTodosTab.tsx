@@ -1,4 +1,8 @@
-import { EditableProjectTodosPanel } from "@app/components/assistant/conversation/space/conversations/project_todos/EditableProjectTodosPanel";
+import {
+  ProjectTodoScopeFilter,
+  ProjectTodosPanelMain,
+  ProjectTodosPanelProvider,
+} from "@app/components/assistant/conversation/space/conversations/project_todos/EditableProjectTodosPanel";
 import type { TodoOwnerFilter } from "@app/components/assistant/conversation/space/conversations/project_todos/TodoSubComponents";
 import { FirstSyncTodoLookbackForm } from "@app/components/assistant/conversation/space/FirstSyncTodoLookbackForm";
 import { ConfirmContext } from "@app/components/Confirm";
@@ -134,65 +138,68 @@ export function SpaceTodosTab({
   ]);
 
   return (
-    <div className="flex min-h-0 w-full flex-1 basis-0 flex-col overflow-y-auto overscroll-y-contain px-6">
-      <div className="mx-auto flex w-full max-w-4xl flex-col py-8">
-        <div className="mb-6 flex flex-col gap-3 border-b border-border pb-6 dark:border-border-night">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex min-w-0 flex-col gap-0.5">
-              <div className="flex flex-wrap items-center gap-2">
-                <SparklesIcon
-                  className="h-4 w-4 shrink-0 text-foreground dark:text-foreground-night"
-                  aria-hidden
-                />
-                <span className="heading-sm text-foreground dark:text-foreground-night">
-                  Suggested to-dos
-                </span>
-                <Chip color="golden" label="Beta" size="mini" />
-              </div>
-              <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-                Automatic to-do suggestions from project activity
-              </div>
-            </div>
-            <div className="flex shrink-0 items-center gap-2">
-              <Tooltip
-                label={toggleTooltip}
-                trigger={
-                  <div>
-                    <SliderToggle
-                      size="xs"
-                      selected={spaceInfo.todoGenerationEnabled}
-                      disabled={sliderDisabled}
-                      onClick={
-                        structurallyDisabled
-                          ? () => {}
-                          : handleTodoGenerationToggle
-                      }
-                    />
-                  </div>
-                }
-              />
-              <Tooltip
-                label={lastScanTooltip(spaceInfo.lastTodoAnalysisAt)}
-                trigger={
-                  <button
-                    type="button"
-                    className="text-muted-foreground hover:text-foreground dark:text-muted-foreground-night dark:hover:text-foreground-night inline-flex rounded-md p-1"
-                    aria-label="Last automatic to-do suggestion scan"
-                  >
-                    <Icon visual={InformationCircleIcon} size="sm" />
-                  </button>
-                }
-              />
-            </div>
-          </div>
-        </div>
-        <EditableProjectTodosPanel
+    <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-y-auto px-6">
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-3 py-8">
+        <ProjectTodosPanelProvider
           owner={owner}
           spaceId={spaceInfo.sId}
           isReadOnly={!!spaceInfo.archivedAt || !spaceInfo.isMember}
           todoOwnerFilter={todoOwnerFilter}
           onTodoOwnerFilterChange={onTodoOwnerFilterChange}
-        />
+        >
+          <ProjectTodoScopeFilter />
+          <div className="flex flex-col gap-3 pb-4">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex min-w-0 flex-col gap-0.5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <SparklesIcon
+                    className="h-4 w-4 shrink-0 text-foreground dark:text-foreground-night"
+                    aria-hidden
+                  />
+                  <span className="heading-sm text-foreground dark:text-foreground-night">
+                    Suggested to-dos
+                  </span>
+                  <Chip color="golden" label="Beta" size="mini" />
+                </div>
+                <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+                  Automatic to-do suggestions from project activity
+                </div>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <Tooltip
+                  label={toggleTooltip}
+                  trigger={
+                    <div>
+                      <SliderToggle
+                        size="xs"
+                        selected={spaceInfo.todoGenerationEnabled}
+                        disabled={sliderDisabled}
+                        onClick={
+                          structurallyDisabled
+                            ? () => {}
+                            : handleTodoGenerationToggle
+                        }
+                      />
+                    </div>
+                  }
+                />
+                <Tooltip
+                  label={lastScanTooltip(spaceInfo.lastTodoAnalysisAt)}
+                  trigger={
+                    <button
+                      type="button"
+                      className="text-muted-foreground hover:text-foreground dark:text-muted-foreground-night dark:hover:text-foreground-night inline-flex rounded-md p-1"
+                      aria-label="Last automatic to-do suggestion scan"
+                    >
+                      <Icon visual={InformationCircleIcon} size="sm" />
+                    </button>
+                  }
+                />
+              </div>
+            </div>
+          </div>
+          <ProjectTodosPanelMain />
+        </ProjectTodosPanelProvider>
       </div>
     </div>
   );
