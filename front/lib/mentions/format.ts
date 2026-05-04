@@ -134,12 +134,10 @@ export function extractFromEditorJSON(node?: JSONContent): {
 
   if (node.type === "skill") {
     const skillId = node.attrs?.skillId;
-    const skillIcon = isString(node.attrs?.skillIcon)
-      ? node.attrs.skillIcon
-      : null;
+    const skillIcon = node.attrs?.skillIcon;
     const skillName = node.attrs?.skillName;
 
-    if (isString(skillId) && isString(skillName)) {
+    if (isString(skillId) && isString(skillIcon) && isString(skillName)) {
       skills.push({
         id: skillId,
         icon: skillIcon,

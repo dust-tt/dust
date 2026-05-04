@@ -11,6 +11,11 @@ import {
   pastedAttachmentDirective,
 } from "@app/components/markdown/PastedAttachmentBlock";
 import {
+  SkillBlock,
+  type SkillDirectiveProps,
+  skillDirective,
+} from "@app/components/markdown/SkillBlock";
+import {
   TodoDirectiveBlock,
   todoDirective,
 } from "@app/components/markdown/TodoDirectiveBlock";
@@ -20,11 +25,11 @@ import {
   getUserMentionPlugin,
   userMentionDirective,
 } from "@app/lib/mentions/markdown/plugin";
+import { parseSkillTag, SKILL_TAG_REGEX } from "@app/lib/skills/format";
 import type { UserMessageType } from "@app/types/assistant/conversation";
 import type { WorkspaceType } from "@app/types/user";
 import { Markdown } from "@dust-tt/sparkle";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
@@ -47,6 +52,14 @@ export const UserMessageMarkdown = ({
       mention_user: getUserMentionPlugin(owner),
       content_node_mention: ContentNodeMentionBlock,
       pasted_attachment: PastedAttachmentBlock,
+      skill: ({ skillIcon, skillId, skillName }: SkillDirectiveProps) => (
+        <SkillBlock
+          owner={owner}
+          skillIcon={skillIcon}
+          skillId={skillId}
+          skillName={skillName}
+        />
+      ),
       todo: TodoDirectiveBlock,
     }),
     [owner]
@@ -59,14 +72,30 @@ export const UserMessageMarkdown = ({
       userMentionDirective,
       contentNodeMentionDirective,
       pastedAttachmentDirective,
+      skillDirective,
       todoDirective,
     ],
     []
   );
 
+  const displayContent = useMemo(
+    () =>
+      message.content.replace(SKILL_TAG_REGEX, (match) => {
+        const skill = parseSkillTag(match);
+        if (!skill) {
+          return match;
+        }
+
+        const iconAttribute = skill.icon ? ` icon=${skill.icon}` : "";
+
+        return `:skill[${skill.name}]{sId=${skill.id}${iconAttribute}}`;
+      }),
+    [message.content]
+  );
+
   return (
     <Markdown
-      content={message.content}
+      content={displayContent}
       isStreaming={false}
       isLastMessage={isLastMessage}
       additionalMarkdownComponents={additionalMarkdownComponents}
