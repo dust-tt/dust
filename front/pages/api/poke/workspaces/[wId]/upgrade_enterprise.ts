@@ -6,13 +6,20 @@ import {
   upsertProgrammaticUsageConfiguration,
 } from "@app/lib/api/poke/plugins/workspaces/manage_programmatic_usage_configuration";
 import { restoreWorkspaceAfterSubscription } from "@app/lib/api/subscription";
-import { Authenticator, hasFeatureFlag } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { startOrResumeEnterprisePAYG } from "@app/lib/credits/payg";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import {
+  ceilToHourISO,
+  createMetronomeContract,
   findMetronomeCustomerByAlias,
-  getMetronomeContractById,
+  listMetronomeContracts,
+  listMetronomePackages,
+  scheduleMetronomeContractEnd,
+  setMetronomeContractCustomFields,
 } from "@app/lib/metronome/client";
+import { PLAN_CODE_CUSTOM_FIELD_KEY } from "@app/lib/metronome/constants";
+import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import {
   assertStripeSubscriptionIsValid,
   getStripeSubscription,
@@ -80,11 +87,6 @@ async function handler(
         }
       );
 
-      const useMetronomeBilling = await hasFeatureFlag(
-        auth,
-        "metronome_billing"
-      );
-
       const bodyValidation = EnterpriseUpgradeFormSchema.decode(req.body);
       if (isLeft(bodyValidation)) {
         const pathError = reporter.formatValidationErrors(bodyValidation.left);
@@ -99,192 +101,6 @@ async function handler(
         });
       }
       const body = bodyValidation.right;
-
-      let metronome:
-        | {
-            metronomeCustomerId: string;
-            metronomeContractId: string;
-            startingAt: string;
-          }
-        | undefined = undefined;
-
-      if (useMetronomeBilling) {
-        if (!body.metronomeContractId) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message:
-                "metronomeContractId is required when metronome_billing is enabled.",
-            },
-          });
-        }
-
-        const customerResult = await findMetronomeCustomerByAlias(owner.sId);
-        if (customerResult.isErr() || !customerResult.value) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: "No Metronome customer found for this workspace.",
-            },
-          });
-        }
-
-        const metronomeCustomerId = customerResult.value;
-
-        const contractResult = await getMetronomeContractById({
-          metronomeCustomerId,
-          metronomeContractId: body.metronomeContractId,
-        });
-
-        if (contractResult.isErr()) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: `Failed to retrieve Metronome contract: ${contractResult.error.message}`,
-            },
-          });
-        }
-
-        const contract = contractResult.value;
-
-        if (contract.archived_at) {
-          const errorMessage = "The Metronome contract is archived.";
-          await pluginRun.recordError(errorMessage);
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: errorMessage,
-            },
-          });
-        }
-
-        if (
-          contract.ending_before &&
-          new Date(contract.ending_before) <= new Date()
-        ) {
-          const errorMessage = "The Metronome contract has already ended.";
-          await pluginRun.recordError(errorMessage);
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: errorMessage,
-            },
-          });
-        }
-
-        if (!contract.customer_billing_provider_configuration) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message:
-                "No billing provider configured on the Metronome contract. Configure billing before upgrading.",
-            },
-          });
-        }
-
-        const isContractAlreadyUsed =
-          await SubscriptionResource.isMetronomeContractIdAlreadyUsed(
-            body.metronomeContractId
-          );
-        if (isContractAlreadyUsed) {
-          const errorMessage =
-            "The Metronome contract ID is already used by an existing subscription.";
-          await pluginRun.recordError(errorMessage);
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: errorMessage,
-            },
-          });
-        }
-
-        metronome = {
-          metronomeCustomerId,
-          metronomeContractId: body.metronomeContractId,
-          startingAt: contract.starting_at,
-        };
-      }
-
-      let stripeSubscription = null;
-      if (!useMetronomeBilling) {
-        if (!body.stripeSubscriptionId) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message:
-                "stripeSubscriptionId is required when metronome billing is not enabled.",
-            },
-          });
-        }
-
-        stripeSubscription = await getStripeSubscription(
-          body.stripeSubscriptionId
-        );
-        if (!stripeSubscription) {
-          const errorMessage = "The Stripe subscription does not exist.";
-          await pluginRun.recordError(errorMessage);
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: errorMessage,
-            },
-          });
-        }
-
-        // Ensure the stripe subscription ID has not been used before (same or different workspace).
-        const isAlreadyUsed = await SubscriptionResource.isStripeIdAlreadyUsed(
-          stripeSubscription.id
-        );
-
-        if (isAlreadyUsed) {
-          const errorMessage =
-            "The Stripe subscription ID is already used by an existing subscription.";
-          await pluginRun.recordError(errorMessage);
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: errorMessage,
-            },
-          });
-        }
-
-        if (!isEnterpriseSubscription(stripeSubscription)) {
-          const errorMessage =
-            "The subscription provided is not an enterprise subscription.";
-          await pluginRun.recordError(errorMessage);
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: errorMessage,
-            },
-          });
-        }
-
-        const assertValidSubscription =
-          assertStripeSubscriptionIsValid(stripeSubscription);
-        if (assertValidSubscription.isErr()) {
-          const errorMessage = assertValidSubscription.error.invalidity_message;
-          await pluginRun.recordError(errorMessage);
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: errorMessage,
-            },
-          });
-        }
-      }
 
       const programmaticConfigValidation =
         ProgrammaticUsageConfigurationSchema.safeParse(body);
@@ -320,6 +136,30 @@ async function handler(
           ? Math.round(paygCapDollars * 1_000_000)
           : null;
 
+      const currentSubscription = auth.subscriptionResource();
+      const isCurrentSubscriptionMetronomeBilled =
+        currentSubscription?.isMetronomeOnlyBilled ?? false;
+      const isMetronomeUpgrade =
+        body.metronomePackageId !== undefined ||
+        body.startingAt !== undefined ||
+        isCurrentSubscriptionMetronomeBilled;
+
+      // PAYG on the Metronome path is not yet wired up: there is no
+      // Metronome-side cycle-renewal or invoicing for PAYG credits, so
+      // turning the flag on would let usage exceed commit silently. Reject
+      // before persisting the config so paygCapMicroUsd never reaches the DB
+      // for a Metronome workspace. Will be lifted in a follow-up PR.
+      if (isMetronomeUpgrade && paygEnabled) {
+        const errorMessage =
+          "Pay-as-you-go is not yet supported for Metronome-billed " +
+          "subscriptions and will be added in a follow-up PR.";
+        await pluginRun.recordError(errorMessage);
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: { type: "invalid_request_error", message: errorMessage },
+        });
+      }
+
       const upsertResult = await upsertProgrammaticUsageConfiguration(auth, {
         freeCreditMicroUsd,
         defaultDiscountPercent: defaultDiscountPercent ?? 0,
@@ -337,23 +177,316 @@ async function handler(
         });
       }
 
+      // Metronome path: schedule the upgrade in Metronome. The subscription
+      // DB record is updated later by the contract.start webhook.
+      if (isMetronomeUpgrade) {
+        if (!body.metronomePackageId || !body.startingAt) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "metronomePackageId and startingAt are required for Metronome-billed subscriptions.",
+            },
+          });
+        }
+
+        if (!isEntreprisePlanPrefix(body.planCode)) {
+          const errorMessage = `Plan ${body.planCode} is not an enterprise plan.`;
+          await pluginRun.recordError(errorMessage);
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: { type: "invalid_request_error", message: errorMessage },
+          });
+        }
+
+        // Gate: only allow this flow for workspaces whose current subscription
+        // is Metronome-only billed. Running it on a free or Stripe-billed
+        // subscription would leave the workspace in a shadow-billed or
+        // orphaned state when the contract.start webhook swaps the subscription.
+        if (!isCurrentSubscriptionMetronomeBilled) {
+          const errorMessage =
+            "Workspace's current subscription is not Metronome-only billed. " +
+            "Migrate the workspace to Metronome billing before scheduling an Enterprise upgrade.";
+          await pluginRun.recordError(errorMessage);
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: { type: "invalid_request_error", message: errorMessage },
+          });
+        }
+
+        const customerResult = await findMetronomeCustomerByAlias(owner.sId);
+        if (customerResult.isErr() || !customerResult.value) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "No Metronome customer found for this workspace.",
+            },
+          });
+        }
+
+        const metronomeCustomerId = customerResult.value;
+
+        const ONE_HOUR_MS = 60 * 60 * 1000;
+        const requestedStartMs = Date.parse(body.startingAt);
+        if (Number.isNaN(requestedStartMs)) {
+          const errorMessage = "startingAt is not a valid ISO timestamp.";
+          await pluginRun.recordError(errorMessage);
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: errorMessage,
+            },
+          });
+        }
+
+        if (requestedStartMs < Date.now() + ONE_HOUR_MS) {
+          const errorMessage =
+            "startingAt must be at least one hour in the future.";
+          await pluginRun.recordError(errorMessage);
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: errorMessage,
+            },
+          });
+        }
+
+        // Metronome requires hour-aligned timestamps.
+        const startingAtDate = new Date(
+          ceilToHourISO(new Date(requestedStartMs))
+        );
+
+        const packagesResult = await listMetronomePackages();
+        if (packagesResult.isErr()) {
+          const errorMessage = `Failed to list Metronome packages: ${packagesResult.error.message}`;
+          await pluginRun.recordError(errorMessage);
+          return apiError(req, res, {
+            status_code: 502,
+            api_error: { type: "internal_server_error", message: errorMessage },
+          });
+        }
+
+        const pkg = packagesResult.value.find(
+          (p) => p.id === body.metronomePackageId
+        );
+        if (!pkg) {
+          const errorMessage = `Metronome package not found: ${body.metronomePackageId}`;
+          await pluginRun.recordError(errorMessage);
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: errorMessage,
+            },
+          });
+        }
+
+        const createResult = await createMetronomeContract({
+          metronomeCustomerId,
+          packageId: pkg.id,
+          startingAt: startingAtDate,
+          enableStripeBilling: true,
+        });
+        if (createResult.isErr()) {
+          const errorMessage = `Failed to create Metronome contract: ${createResult.error.message}`;
+          await pluginRun.recordError(errorMessage);
+          return apiError(req, res, {
+            status_code: 502,
+            api_error: {
+              type: "internal_server_error",
+              message: errorMessage,
+            },
+          });
+        }
+
+        const newMetronomeContractId = createResult.value.contractId;
+
+        // Stamp the target plan code on the new contract so the contract.start
+        // webhook can determine which plan to put the subscription on.
+        const customFieldsResult = await setMetronomeContractCustomFields({
+          contractId: newMetronomeContractId,
+          customFields: { [PLAN_CODE_CUSTOM_FIELD_KEY]: body.planCode },
+        });
+        if (customFieldsResult.isErr()) {
+          const errorMessage =
+            `Created contract ${newMetronomeContractId} but failed to set ` +
+            `${PLAN_CODE_CUSTOM_FIELD_KEY}: ${customFieldsResult.error.message}. Manual cleanup required in Metronome.`;
+          await pluginRun.recordError(errorMessage);
+          return apiError(req, res, {
+            status_code: 502,
+            api_error: {
+              type: "internal_server_error",
+              message: errorMessage,
+            },
+          });
+        }
+
+        // Sunset any other non-archived contract on this customer that
+        // overlaps with our new contract's window. We list all contracts
+        // because `getMetronomeActiveContract` returns "the most recent",
+        // which is usually our just-created contract — masking the running
+        // one.
+        const contractsResult =
+          await listMetronomeContracts(metronomeCustomerId);
+        if (contractsResult.isErr()) {
+          const errorMessage =
+            `Created new contract ${newMetronomeContractId} but failed to list ` +
+            `existing contracts to sunset: ${contractsResult.error.message}. ` +
+            `Manual cleanup may be required.`;
+          await pluginRun.recordError(errorMessage);
+          return apiError(req, res, {
+            status_code: 502,
+            api_error: { type: "internal_server_error", message: errorMessage },
+          });
+        }
+
+        const newStartMs = startingAtDate.getTime();
+        for (const existing of contractsResult.value) {
+          if (existing.id === newMetronomeContractId) {
+            continue;
+          }
+          if (existing.archived_at) {
+            continue;
+          }
+          // Future-scheduled contracts that start after ours: leave them alone
+          // (sunsetting a contract to before it starts would be invalid).
+          const existingStartMs = new Date(existing.starting_at).getTime();
+          if (existingStartMs > newStartMs) {
+            continue;
+          }
+          // Already ends in time — nothing to do.
+          const existingEndsBeforeMs = existing.ending_before
+            ? new Date(existing.ending_before).getTime()
+            : null;
+          if (
+            existingEndsBeforeMs !== null &&
+            existingEndsBeforeMs <= newStartMs
+          ) {
+            continue;
+          }
+          const sunsetResult = await scheduleMetronomeContractEnd({
+            metronomeCustomerId,
+            contractId: existing.id,
+            endingBefore: startingAtDate,
+          });
+          if (sunsetResult.isErr()) {
+            const errorMessage =
+              `Created new contract ${newMetronomeContractId} but failed to sunset ` +
+              `existing contract ${existing.id}: ${sunsetResult.error.message}. ` +
+              `Manual cleanup may be required.`;
+            await pluginRun.recordError(errorMessage);
+            return apiError(req, res, {
+              status_code: 502,
+              api_error: {
+                type: "internal_server_error",
+                message: errorMessage,
+              },
+            });
+          }
+        }
+
+        // Programmatic-usage configuration is intentionally not touched on
+        // the Metronome path: the dialog hides the section, so unrendered
+        // form defaults could otherwise overwrite an existing config.
+
+        await pluginRun.recordResult({
+          display: "text",
+          value:
+            `Workspace ${owner.name} scheduled to upgrade to enterprise plan ${body.planCode} ` +
+            `at ${startingAtDate.toISOString()} (Metronome contract ${newMetronomeContractId}). ` +
+            `Subscription will flip when the contract.start webhook fires.`,
+        });
+
+        res.status(200).json({ success: true });
+        return;
+      }
+
+      if (!body.stripeSubscriptionId) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "stripeSubscriptionId is required for Stripe-billed subscriptions.",
+          },
+        });
+      }
+
+      const stripeSubscription = await getStripeSubscription(
+        body.stripeSubscriptionId
+      );
+      if (!stripeSubscription) {
+        const errorMessage = "The Stripe subscription does not exist.";
+        await pluginRun.recordError(errorMessage);
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: errorMessage,
+          },
+        });
+      }
+
+      // Ensure the stripe subscription ID has not been used before (same or different workspace).
+      const isAlreadyUsed = await SubscriptionResource.isStripeIdAlreadyUsed(
+        stripeSubscription.id
+      );
+
+      if (isAlreadyUsed) {
+        const errorMessage =
+          "The Stripe subscription ID is already used by an existing subscription.";
+        await pluginRun.recordError(errorMessage);
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: errorMessage,
+          },
+        });
+      }
+
+      if (!isEnterpriseSubscription(stripeSubscription)) {
+        const errorMessage =
+          "The subscription provided is not an enterprise subscription.";
+        await pluginRun.recordError(errorMessage);
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: errorMessage,
+          },
+        });
+      }
+
+      const assertValidSubscription =
+        assertStripeSubscriptionIsValid(stripeSubscription);
+      if (assertValidSubscription.isErr()) {
+        const errorMessage = assertValidSubscription.error.invalidity_message;
+        await pluginRun.recordError(errorMessage);
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: errorMessage,
+          },
+        });
+      }
+
       try {
         await SubscriptionResource.pokeUpgradeWorkspaceToEnterprise(
           auth,
           body,
-          stripeSubscription,
-          metronome
+          stripeSubscription
         );
         // Restore workspace functionality after subscription upgrade
         await restoreWorkspaceAfterSubscription(auth);
 
         // If PAYG is enabled, create the PAYG credit for the current billing period
-        if (
-          !useMetronomeBilling &&
-          stripeSubscription &&
-          paygEnabled &&
-          paygCapMicroUsd !== null
-        ) {
+        if (paygEnabled && paygCapMicroUsd !== null) {
           const paygResult = await startOrResumeEnterprisePAYG({
             auth,
             stripeSubscription,

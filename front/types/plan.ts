@@ -156,7 +156,11 @@ export const EnterpriseUpgradeFormSchema = t.intersection([
   }),
   t.partial({
     stripeSubscriptionId: NonEmptyString,
-    metronomeContractId: NonEmptyString,
+    // For the Metronome path: id of the Metronome package the customer will
+    // be placed on, plus a timestamp at least one hour in the future
+    // when the new contracts starts (and the existing contract sunsets).
+    metronomePackageId: NonEmptyString,
+    startingAt: NonEmptyString,
     freeCreditsDollars: t.number,
     defaultDiscountPercent: t.number,
     paygCapDollars: t.number,

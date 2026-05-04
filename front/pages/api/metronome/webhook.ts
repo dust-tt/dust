@@ -1,5 +1,6 @@
 /** @ignoreswagger */
 import apiConfig from "@app/lib/api/config";
+import { restoreWorkspaceAfterSubscription } from "@app/lib/api/subscription";
 import { Authenticator } from "@app/lib/auth";
 import {
   calculateFreeCreditAmountMicroUsd,
@@ -10,17 +11,21 @@ import {
 import {
   getMetronomeClient,
   getMetronomeContractById,
+  listMetronomeContracts,
   updateMetronomeCreditSegmentAmount,
 } from "@app/lib/metronome/client";
 import {
   getCreditTypeProgrammaticUsdId,
   getProductFreeMonthlyCreditId,
+  PLAN_CODE_CUSTOM_FIELD_KEY,
 } from "@app/lib/metronome/constants";
 import { invalidateContractCache } from "@app/lib/metronome/plan_type";
 import {
   getCustomerIdFromEvent,
   MetronomeWebhookEventSchema,
 } from "@app/lib/metronome/webhook_events";
+import { PlanModel } from "@app/lib/models/plan";
+import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -157,7 +162,6 @@ async function handler(
         case "contract.archive":
         case "contract.create":
         case "contract.edit":
-        case "contract.start":
         case "credit.archive":
         case "credit.create":
         case "credit.edit":
@@ -380,6 +384,114 @@ async function handler(
           break;
         }
 
+        case "contract.start": {
+          const { contract_id: contractId, customer_id: customerId } = event;
+
+          // Read the PLAN_CODE custom field to determine whether this is a
+          // Poke-scheduled Enterprise upgrade. Only Enterprise plan codes
+          // should trigger a subscription swap; other plan contract starts
+          // are handled by their own creation/update flows.
+          const contractResult = await getMetronomeContractById({
+            metronomeCustomerId: customerId,
+            metronomeContractId: contractId,
+          });
+          if (contractResult.isErr()) {
+            logger.error(
+              {
+                contractId,
+                customerId,
+                error: contractResult.error,
+                workspaceId: workspace.sId,
+              },
+              "[Metronome Webhook] contract.start: failed to fetch contract"
+            );
+            return apiError(req, res, {
+              status_code: 500,
+              api_error: {
+                type: "internal_server_error",
+                message: `Error fetching contract: ${contractResult.error.message}`,
+              },
+            });
+          }
+
+          const targetPlanCode =
+            contractResult.value.custom_fields?.[PLAN_CODE_CUSTOM_FIELD_KEY];
+          if (!targetPlanCode) {
+            logger.info(
+              { contractId, workspaceId: workspace.sId },
+              `[Metronome Webhook] contract.start: no ${PLAN_CODE_CUSTOM_FIELD_KEY} custom field, leaving subscription alone`
+            );
+            break;
+          }
+
+          const targetPlan = await PlanModel.findOne({
+            where: { code: targetPlanCode },
+          });
+          if (!targetPlan) {
+            logger.info(
+              { contractId, targetPlanCode, workspaceId: workspace.sId },
+              `[Metronome Webhook] contract.start: ${PLAN_CODE_CUSTOM_FIELD_KEY} not found, leaving subscription alone`
+            );
+            break;
+          }
+
+          if (!isEntreprisePlanPrefix(targetPlan.code)) {
+            logger.info(
+              { contractId, targetPlanCode, workspaceId: workspace.sId },
+              `[Metronome Webhook] contract.start: non-enterprise ${PLAN_CODE_CUSTOM_FIELD_KEY}, leaving subscription alone`
+            );
+            break;
+          }
+
+          const activeSubscription =
+            await SubscriptionResource.fetchActiveByWorkspaceModelId(
+              workspace.id
+            );
+          if (!activeSubscription) {
+            logger.warn(
+              { contractId, customerId, workspaceId: workspace.sId },
+              "[Metronome Webhook] contract.start: no active subscription"
+            );
+            break;
+          }
+
+          // Idempotency: re-deliveries land here with the subscription
+          // already pointing at the new contract.
+          if (activeSubscription.metronomeContractId === contractId) {
+            logger.info(
+              { contractId, workspaceId: workspace.sId },
+              "[Metronome Webhook] contract.start: subscription already swapped, skipping"
+            );
+            break;
+          }
+
+          // End the current subscription as `ended_backend_only` and create
+          // a new active subscription on the target plan + new contract.
+          await activeSubscription.swapMetronomeContract({
+            metronomeContractId: contractId,
+            planCode: targetPlan.code,
+          });
+
+          await invalidateContractCache(workspace.sId);
+
+          // Cancel any scheduled scrub workflow, unpause connectors, re-enable
+          // triggers. Idempotent — safe to call regardless of prior state.
+          const auth = await Authenticator.internalAdminForWorkspace(
+            workspace.sId
+          );
+          await restoreWorkspaceAfterSubscription(auth);
+
+          logger.info(
+            {
+              contractId,
+              planCode: targetPlan.code,
+              workspaceId: workspace.sId,
+            },
+            "[Metronome Webhook] contract.start: subscription upgraded"
+          );
+          break;
+        }
+
         case "contract.end": {
           const { contract_id: contractId, customer_id: customerId } = event;
 
@@ -428,7 +540,45 @@ async function handler(
               await subscription.markAsEnded("ended");
               break;
 
-            case "active":
+            case "active": {
+              // Race-safety: an Enterprise upgrade scheduled this end as part
+              // of a transition. If a successor contract is already running
+              // on this customer, contract.start (whether already processed
+              // or arriving shortly) will swap the subscription — leave the
+              // subscription alone here and skip the scrub.
+              const successorsResult = await listMetronomeContracts(
+                customerId,
+                { coveringDate: new Date() }
+              );
+              if (successorsResult.isErr()) {
+                logger.error(
+                  {
+                    contractId,
+                    error: successorsResult.error,
+                    workspaceId: workspace.sId,
+                  },
+                  "[Metronome Webhook] contract.end: failed to list contracts for successor check"
+                );
+                return apiError(req, res, {
+                  status_code: 500,
+                  api_error: {
+                    type: "internal_server_error",
+                    message: "Error listing contracts for successor check.",
+                  },
+                });
+              }
+
+              const hasActiveSuccessor = successorsResult.value.some(
+                (c) => c.id !== contractId
+              );
+              if (hasActiveSuccessor) {
+                logger.info(
+                  { contractId, workspaceId: workspace.sId },
+                  "[Metronome Webhook] contract.end: successor contract active, skipping scrub (contract.start will swap subscription)"
+                );
+                break;
+              }
+
               await subscription.markAsEnded("ended");
               logger.info(
                 { contractId, workspaceId: workspace.sId },
@@ -455,6 +605,7 @@ async function handler(
                 });
               }
               break;
+            }
 
             default:
               assertNever(subscription.status);
