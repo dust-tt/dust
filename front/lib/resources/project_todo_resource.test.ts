@@ -30,6 +30,9 @@ function makeTodoBlob(
     doneAt: null,
     actorRationale: null,
     agentInstructions: null,
+    agentSuggestionStatus: null,
+    agentSuggestionReviewedAt: null,
+    agentSuggestionReviewedByUserId: null,
   };
 }
 

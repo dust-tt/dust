@@ -22,6 +22,13 @@ export const PROJECT_TODO_SOURCE_TYPES = [
 
 export type ProjectTodoSourceType = (typeof PROJECT_TODO_SOURCE_TYPES)[number];
 
+export const AGENT_SUGGESTION_STATUSES = [
+  "pending",
+  "approved",
+  "rejected",
+] as const;
+export type AgentSuggestionStatus = (typeof AGENT_SUGGESTION_STATUSES)[number];
+
 export type ProjectTodoSourceInfo = {
   sourceType: ProjectTodoSourceType;
   sourceId: string;
@@ -51,6 +58,8 @@ export type ProjectTodoType = {
   createdByType: ProjectTodoActorType;
   createdByAgentConfigurationId: string | null;
   createdByUserId: string | null;
+  agentSuggestionStatus: AgentSuggestionStatus | null;
+  agentSuggestionReviewedAt: Date | null;
   markedAsDoneByType: ProjectTodoActorType | null;
   markedAsDoneByAgentConfigurationId: string | null;
   markedAsDoneByUserId: string | null;

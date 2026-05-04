@@ -190,6 +190,65 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/project_todos/bulk-actions", () => 
     expect(visibleSIds.has(openTodo.sId)).toBe(true);
   });
 
+  it("should approve pending agent suggestions in the space", async () => {
+    const { user } = await setup();
+    const project = await SpaceFactory.project(workspace, user.id);
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    const todo = await ProjectTodoFactory.create(workspace, project, {
+      userId: user.id,
+    });
+    await todo.updateWithVersion(auth, {
+      agentSuggestionStatus: "pending",
+    });
+
+    req.query.spaceId = project.sId;
+    req.body = {
+      action: "approve_agent_suggestion",
+      todoIds: [todo.sId],
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(res._getJSONData()).toEqual({ success: true });
+
+    const refreshed = await ProjectTodoResource.fetchBySId(auth, todo.sId);
+    expect(refreshed?.agentSuggestionStatus).toBe("approved");
+    expect(refreshed?.agentSuggestionReviewedAt).not.toBeNull();
+    expect(refreshed?.agentSuggestionReviewedByUserId).toBe(user.id);
+  });
+
+  it("should reject pending agent suggestions and soft-delete", async () => {
+    const { user } = await setup();
+    const project = await SpaceFactory.project(workspace, user.id);
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    const todo = await ProjectTodoFactory.create(workspace, project, {
+      userId: user.id,
+    });
+    await todo.updateWithVersion(auth, {
+      agentSuggestionStatus: "pending",
+    });
+
+    req.query.spaceId = project.sId;
+    req.body = {
+      action: "reject_agent_suggestion",
+      todoIds: [todo.sId],
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(res._getJSONData()).toEqual({ success: true });
+
+    const refreshed = await ProjectTodoResource.fetchBySIdWithDeleted(
+      auth,
+      todo.sId
+    );
+    expect(refreshed?.agentSuggestionStatus).toBe("rejected");
+    expect(refreshed?.deletedAt).not.toBeNull();
+    expect(refreshed?.agentSuggestionReviewedByUserId).toBe(user.id);
+  });
+
   it("should return 400 when the body is invalid", async () => {
     const { user } = await setup();
     const project = await SpaceFactory.project(workspace, user.id);

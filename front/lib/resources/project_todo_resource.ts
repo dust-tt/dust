@@ -133,6 +133,9 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
         | "markedAsDoneByUserId"
         | "markedAsDoneByAgentConfigurationId"
         | "deletedAt"
+        | "agentSuggestionStatus"
+        | "agentSuggestionReviewedAt"
+        | "agentSuggestionReviewedByUserId"
       >
     >,
     transaction?: Transaction
@@ -182,6 +185,10 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
       markedAsDoneByAgentConfigurationId:
         this.markedAsDoneByAgentConfigurationId ?? null,
       deletedAt: this.deletedAt ?? null,
+      agentSuggestionStatus: this.agentSuggestionStatus ?? null,
+      agentSuggestionReviewedAt: this.agentSuggestionReviewedAt ?? null,
+      agentSuggestionReviewedByUserId:
+        this.agentSuggestionReviewedByUserId ?? null,
     };
     await ProjectTodoVersionModel.create(versionData, { transaction });
   }
@@ -658,6 +665,8 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
       createdByType: this.createdByType,
       createdByAgentConfigurationId: this.createdByAgentConfigurationId,
       createdByUserId: this.createdByUserSId,
+      agentSuggestionStatus: this.agentSuggestionStatus,
+      agentSuggestionReviewedAt: this.agentSuggestionReviewedAt,
       markedAsDoneByType: this.markedAsDoneByType,
       markedAsDoneByAgentConfigurationId:
         this.markedAsDoneByAgentConfigurationId,
@@ -745,6 +754,29 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
     });
 
     return new Ok({ updatedCount: todos.length });
+  }
+
+  async approveAgentSuggestion(
+    auth: Authenticator,
+    { reviewedByUserId }: { reviewedByUserId: ModelId }
+  ): Promise<void> {
+    await this.updateWithVersion(auth, {
+      agentSuggestionStatus: "approved",
+      agentSuggestionReviewedAt: new Date(),
+      agentSuggestionReviewedByUserId: reviewedByUserId,
+    });
+  }
+
+  async rejectAgentSuggestion(
+    auth: Authenticator,
+    { reviewedByUserId }: { reviewedByUserId: ModelId }
+  ): Promise<void> {
+    await this.updateWithVersion(auth, {
+      agentSuggestionStatus: "rejected",
+      agentSuggestionReviewedAt: new Date(),
+      agentSuggestionReviewedByUserId: reviewedByUserId,
+      deletedAt: new Date(),
+    });
   }
 
   async softDelete(auth: Authenticator): Promise<Result<undefined, Error>> {
