@@ -1,18 +1,23 @@
 import { z } from "zod";
 
-export type CouponDiscountType = "fixed" | "usage_credit";
+export type CouponDiscountType = "seat";
+
+export type CouponRedemptionStatus =
+  | "pending"
+  | "failed"
+  | "active"
+  | "revoked";
 
 export interface CouponType {
   sId: string;
   code: string;
   description: string | null;
   discountType: CouponDiscountType;
-  amountMicroUsd: number;
-  creditTypeId: string;
+  amount: number;
   durationMonths: number | null;
   maxRedemptions: number | null;
   redemptionCount: number;
-  redeemBy: Date | null;
+  expirationDate: Date | null;
   archivedAt: Date | null;
 }
 
@@ -22,19 +27,20 @@ export interface CouponRedemptionType {
   workspaceId: string;
   redeemedByUserId: string | null;
   redeemedAt: Date;
+  metronomeCreditIds: string[];
+  status: CouponRedemptionStatus;
 }
 
-export const CouponDiscountTypeSchema = z.enum(["fixed", "usage_credit"]);
+export const CouponDiscountTypeSchema = z.enum(["seat"]);
 
 export const CreateCouponBodySchema = z.object({
   code: z.string().min(1).max(64),
   description: z.string().max(255).nullable(),
   discountType: CouponDiscountTypeSchema,
-  amountMicroUsd: z.number().int().positive(),
-  creditTypeId: z.string().min(1),
+  amount: z.number().positive(),
   durationMonths: z.number().int().positive().nullable(),
   maxRedemptions: z.number().int().positive().nullable(),
-  redeemBy: z.coerce.date().nullable(),
+  expirationDate: z.coerce.date().nullable(),
 });
 
 export type CreateCouponBody = z.infer<typeof CreateCouponBodySchema>;

@@ -6,6 +6,7 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import Metronome, { ConflictError } from "@metronome/sdk";
 import type { Commit, ContractV2, Credit } from "@metronome/sdk/resources";
+import type { RateCardRetrieveResponse } from "@metronome/sdk/resources/v1/contracts/rate-cards";
 import type { Invoice } from "@metronome/sdk/resources/v1/customers";
 import type {
   MetronomeBalance,
@@ -461,6 +462,24 @@ export async function getMetronomeActiveContract(
       "[Metronome] Failed to list contracts"
     );
     return new Err(error);
+  }
+}
+
+/**
+ * Retrieve a specific Metronomome rate card by ID.
+ */
+export async function getMetronomeRateCardById({
+  rateCardId,
+}: {
+  rateCardId: string;
+}): Promise<Result<RateCardRetrieveResponse.Data, Error>> {
+  try {
+    const response = await getMetronomeClient().v1.contracts.rateCards.retrieve(
+      { id: rateCardId }
+    );
+    return new Ok(response.data);
+  } catch (err) {
+    return new Err(normalizeError(err));
   }
 }
 
@@ -1048,6 +1067,9 @@ export async function createMetronomeCredit({
   endingBefore,
   name,
   idempotencyKey,
+  applicableProductTags,
+  applicableProductIds,
+  priority,
 }: {
   metronomeCustomerId: string;
   productId: string;
@@ -1057,6 +1079,9 @@ export async function createMetronomeCredit({
   endingBefore: string;
   name: string;
   idempotencyKey: string;
+  applicableProductTags?: string[];
+  applicableProductIds?: string[];
+  priority: number;
 }): Promise<Result<{ id: string } | null, Error>> {
   // Metronome requires dates on hour boundaries — round down start, round up end.
   const roundedStartingAt = floorToHourISO(new Date(startingAt));
@@ -1067,8 +1092,13 @@ export async function createMetronomeCredit({
       customer_id: metronomeCustomerId,
       product_id: productId,
       name,
-      priority: 1, // Apply credits before any prepaid commits
-      applicable_product_tags: ["usage"],
+      priority,
+      ...(applicableProductTags
+        ? { applicable_product_tags: applicableProductTags }
+        : {}),
+      ...(applicableProductIds
+        ? { applicable_product_ids: applicableProductIds }
+        : {}),
       access_schedule: {
         credit_type_id: creditTypeId,
         schedule_items: [
@@ -1269,18 +1299,56 @@ export async function getMetronomeCommit({
 }
 
 /**
+ * Update the access end date on a customer-level credit.
+ * Used when revoking a coupon to cut off the credit early.
+ */
+export async function updateMetronomeCreditEndDate({
+  metronomeCustomerId,
+  creditId,
+  accessEndingBefore,
+}: {
+  metronomeCustomerId: string;
+  creditId: string;
+  accessEndingBefore: string;
+}): Promise<Result<void, Error>> {
+  try {
+    await getMetronomeClient().v1.customers.credits.updateEndDate({
+      customer_id: metronomeCustomerId,
+      credit_id: creditId,
+      access_ending_before: accessEndingBefore,
+    });
+    logger.info(
+      { metronomeCustomerId, creditId, accessEndingBefore },
+      "[Metronome] Credit end date updated"
+    );
+    return new Ok(undefined);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId, creditId, accessEndingBefore },
+      "[Metronome] Failed to update credit end date"
+    );
+    return new Err(error);
+  }
+}
+
+/**
  * Apply a manual deduction to a customer-level credit balance.
  * Used when backfilling credits that have a pre-existing consumed amount.
  * The amount parameter is a positive value and will be negated internally.
  */
 export async function deductMetronomeCreditBalance({
   metronomeCustomerId,
+  contractId,
   creditId,
   segmentId,
   amount,
   reason,
 }: {
   metronomeCustomerId: string;
+  // Pass `contractId` for contract-level credits / commits. Customer-level
+  // entries (e.g., one-off poke credits) leave it undefined.
+  contractId?: string;
   creditId: string;
   segmentId: string;
   amount: number;
@@ -1293,17 +1361,17 @@ export async function deductMetronomeCreditBalance({
       amount: -amount, // negative to draw down the balance
       reason,
       segment_id: segmentId,
-      // contract_id omitted — applies to customer-level balance
+      ...(contractId ? { contract_id: contractId } : {}),
     });
     logger.info(
-      { metronomeCustomerId, creditId, segmentId, amount },
+      { metronomeCustomerId, contractId, creditId, segmentId, amount },
       "[Metronome] Manual credit deduction applied"
     );
     return new Ok(undefined);
   } catch (err) {
     const error = normalizeError(err);
     logger.error(
-      { error, metronomeCustomerId, creditId, segmentId, amount },
+      { error, metronomeCustomerId, contractId, creditId, segmentId, amount },
       "[Metronome] Failed to apply manual credit deduction"
     );
     return new Err(error);

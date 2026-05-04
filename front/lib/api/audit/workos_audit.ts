@@ -107,7 +107,10 @@ type AuditAction =
   | "datasource.reauthorized"
   // Audit Logs.
   | "audit_log.viewed"
-  | "audit_log.export_configured";
+  | "audit_log.export_configured"
+  // Coupons.
+  | "coupon.redeemed"
+  | "coupon.revoked";
 
 export type EmitAuditLogEventParams = {
   auth: Authenticator;

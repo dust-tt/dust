@@ -4,12 +4,10 @@ import { faker } from "@faker-js/faker";
 
 interface CouponOverrides {
   code?: string;
-  discountType?: "fixed" | "usage_credit";
-  amountMicroUsd?: number;
-  creditTypeId?: string;
+  amount?: number;
   maxRedemptions?: number | null;
   redemptionCount?: number;
-  redeemBy?: Date | null;
+  expirationDate?: Date | null;
   archivedAt?: Date | null;
   durationMonths?: number | null;
   description?: string | null;
@@ -22,13 +20,12 @@ export class CouponFactory {
     const row = await CouponModel.create({
       code: overrides.code ?? faker.string.alphanumeric(8).toUpperCase(),
       description: overrides.description ?? null,
-      discountType: overrides.discountType ?? "fixed",
-      amountMicroUsd: overrides.amountMicroUsd ?? 10_000_000,
-      creditTypeId: overrides.creditTypeId ?? faker.string.uuid(),
+      discountType: "seat",
+      amount: overrides.amount ?? 10.0,
       durationMonths: overrides.durationMonths ?? null,
       maxRedemptions: overrides.maxRedemptions ?? null,
       redemptionCount: overrides.redemptionCount ?? 0,
-      redeemBy: overrides.redeemBy ?? null,
+      expirationDate: overrides.expirationDate ?? null,
       archivedAt: overrides.archivedAt ?? null,
       createdByUserId: null,
     });

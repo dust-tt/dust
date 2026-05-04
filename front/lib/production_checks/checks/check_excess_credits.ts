@@ -1,3 +1,4 @@
+import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
 import {
   getAnnualizedSubscriptionValueMicroUsd,
@@ -152,7 +153,7 @@ export const checkExcessCredits: CheckFunction = async (
 
     const actionLinks: ActionLink[] = significantExcessWorkspaces.map((w) => ({
       label: `${w.workspaceName} ($${(Number(w.totalExcessMicroUsd) / 1_000_000).toFixed(2)})`,
-      url: `/poke/${w.workspaceId}`,
+      url: `${config.getPokeAppUrl()}/${w.workspaceId}`,
     }));
 
     const thresholdDollars = EXCESS_ABSOLUTE_THRESHOLD_MICRO_USD / 1_000_000;

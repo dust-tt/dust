@@ -1,3 +1,4 @@
+import config from "@app/lib/api/config";
 import { getConnectorsPrimaryDbConnection } from "@app/lib/production_checks/utils";
 import { getTemporalClientForConnectorsNamespace } from "@app/lib/temporal";
 import {
@@ -183,7 +184,7 @@ export const checkActiveWorkflows: CheckFunction = async (
     if (missingActiveWorkflows.length > 0) {
       const actionLinks: ActionLink[] = missingActiveWorkflows.map((c) => ({
         label: `${provider}: ${c.dataSourceId}`,
-        url: `/poke/${c.workspaceId}/data_sources/${c.dataSourceId}`,
+        url: `${config.getPokeAppUrl()}/${c.workspaceId}/data_sources/${c.dataSourceId}`,
       }));
       reportFailure(
         { missingActiveWorkflows, actionLinks },

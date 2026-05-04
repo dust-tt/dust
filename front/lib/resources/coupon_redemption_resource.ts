@@ -2,13 +2,15 @@ import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { CouponResource } from "@app/lib/resources/coupon_resource";
 import { CouponRedemptionModel } from "@app/lib/resources/storage/models/coupon_redemptions";
-import { CouponModel } from "@app/lib/resources/storage/models/coupons";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { makeSId } from "@app/lib/resources/string_ids";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import type { CouponRedemptionType } from "@app/types/coupon";
+import type {
+  CouponRedemptionStatus,
+  CouponRedemptionType,
+} from "@app/types/coupon";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -70,26 +72,43 @@ export class CouponRedemptionResource extends BaseResource<CouponRedemptionModel
   ): Promise<CouponRedemptionResource> {
     const workspace = auth.getNonNullableWorkspace();
     const user = auth.getNonNullableUser();
-    const [redemption] = await Promise.all([
-      CouponRedemptionModel.create(
-        {
-          couponId: coupon.id,
-          workspaceId: workspace.id,
-          redeemedByUserId: user.id,
-          redeemedAt: new Date(),
-        },
-        { transaction }
-      ),
-      CouponModel.increment("redemptionCount", {
-        by: 1,
-        where: { id: coupon.id },
-        transaction,
-      }),
-    ]);
+    const redemption = await CouponRedemptionModel.create(
+      {
+        couponId: coupon.id,
+        workspaceId: workspace.id,
+        redeemedByUserId: user.id,
+        redeemedAt: new Date(),
+        status: "pending",
+        metronomeCreditIds: [],
+      },
+      { transaction }
+    );
     return new this(this.model, redemption.get(), {
       workspaceSId: workspace.sId,
       couponSId: coupon.sId,
       redeemedByUserSId: user.sId,
+    });
+  }
+
+  static async findActiveOrPendingByCouponAndWorkspace(
+    auth: Authenticator,
+    { coupon }: { coupon: CouponResource }
+  ): Promise<CouponRedemptionResource | null> {
+    const workspace = auth.getNonNullableWorkspace();
+    const row = await this.model.findOne({
+      where: {
+        couponId: coupon.id,
+        workspaceId: workspace.id,
+        status: ["pending", "active"],
+      },
+    });
+    if (!row) {
+      return null;
+    }
+    return new this(this.model, row.get(), {
+      workspaceSId: workspace.sId,
+      couponSId: coupon.sId,
+      redeemedByUserSId: null,
     });
   }
 
@@ -125,6 +144,44 @@ export class CouponRedemptionResource extends BaseResource<CouponRedemptionModel
     );
   }
 
+  private async applyStatusUpdate(
+    fields: { status: CouponRedemptionStatus; metronomeCreditIds?: string[] },
+    transaction?: Transaction
+  ): Promise<Result<void, Error>> {
+    try {
+      await this.update(fields, transaction);
+      return new Ok(undefined);
+    } catch (err) {
+      return new Err(normalizeError(err));
+    }
+  }
+
+  async markActive(
+    creditIds: string[],
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<Result<void, Error>> {
+    return this.applyStatusUpdate(
+      { status: "active", metronomeCreditIds: creditIds },
+      transaction
+    );
+  }
+
+  async markFailed({
+    transaction,
+  }: {
+    transaction?: Transaction;
+  } = {}): Promise<Result<void, Error>> {
+    return this.applyStatusUpdate({ status: "failed" }, transaction);
+  }
+
+  async markRevoked({
+    transaction,
+  }: {
+    transaction?: Transaction;
+  } = {}): Promise<Result<void, Error>> {
+    return this.applyStatusUpdate({ status: "revoked" }, transaction);
+  }
+
   toJSON(): CouponRedemptionType {
     return {
       sId: this.sId,
@@ -132,6 +189,8 @@ export class CouponRedemptionResource extends BaseResource<CouponRedemptionModel
       workspaceId: this.workspaceSId,
       redeemedByUserId: this.redeemedByUserSId,
       redeemedAt: this.redeemedAt,
+      metronomeCreditIds: this.metronomeCreditIds,
+      status: this.status,
     };
   }
 

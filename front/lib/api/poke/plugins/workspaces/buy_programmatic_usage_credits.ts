@@ -208,6 +208,8 @@ export const buyProgrammaticUsageCreditsPlugin = createPlugin({
           endingBefore: startResult.value.expirationDate.toISOString(),
           name: `Free poke credit ($${originalAmount.toFixed(2)})`,
           idempotencyKey: `free-poke-${workspace.sId}-${startDate.getTime()}-${expirationDate.getTime()}`,
+          priority: 1,
+          applicableProductTags: ["usage"],
         });
 
         if (metronomeResult.isErr()) {

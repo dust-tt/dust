@@ -218,6 +218,7 @@ export async function emitMetronomeUsageEventsActivity(
   }
   const auth = authResult.value;
   const workspace = auth.getNonNullableWorkspace();
+  const isByok = auth.getNonNullablePlan().isByok;
   const { agentMessageId, conversationId, userMessageId } = agentLoopArgs;
   const userMessageOrigin = agentLoopArgs.userMessageOrigin ?? "web";
 
@@ -345,6 +346,7 @@ export async function emitMetronomeUsageEventsActivity(
   // Build and ingest events.
   const llmEvents = buildLlmUsageEvents({
     workspaceId: workspace.sId,
+    isByok,
     conversationId,
     userId,
     agentMessageId,

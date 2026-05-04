@@ -34,6 +34,8 @@ const DEV_PRODUCT_MAU_COMMIT = "ababd7de-376d-41c6-a7da-40088af94433";
 const DEV_PRODUCT_FREE_MONTHLY_CREDITS = "04f41dd1-ba27-42e3-93d5-6121712a4b67";
 const DEV_PRODUCT_PREPAID_COMMIT = "5f4331b7-4bf6-488b-9a0c-51bd139ac91c";
 const DEV_PRODUCT_PAYG_OVERAGE = "f4583c77-d226-48bb-97a3-46a8087b97fe";
+const DEV_PRODUCT_SEAT_SUBSCRIPTION_CREDITS =
+  "92f3466b-2423-4f2a-a8d1-0f6e9f7f0140";
 
 // --- PROD (production) — TODO: update after running setup script in production ---
 
@@ -68,6 +70,8 @@ const PROD_PRODUCT_FREE_MONTHLY_CREDITS =
   "7379999c-5492-4e68-968f-345a26f6da63";
 const PROD_PRODUCT_PREPAID_COMMIT = "1408c9fc-dea1-4269-bd6d-1bc0aa1f1218";
 const PROD_PRODUCT_PAYG_OVERAGE = "f6b27a6e-86fc-4964-8076-371a912cee09";
+const PROD_PRODUCT_SEAT_SUBSCRIPTION_CREDITS =
+  "03faa744-c1ab-4b94-aaf1-5fdaec89e11a";
 
 // --- Credit type IDs (stable across envs unless noted) ---
 
@@ -157,6 +161,11 @@ export const getProductPrepaidCommitId = () =>
   devOrProd(DEV_PRODUCT_PREPAID_COMMIT, PROD_PRODUCT_PREPAID_COMMIT);
 export const getProductPaygOverageId = () =>
   devOrProd(DEV_PRODUCT_PAYG_OVERAGE, PROD_PRODUCT_PAYG_OVERAGE);
+export const getProductSeatSubscriptionCreditsId = () =>
+  devOrProd(
+    DEV_PRODUCT_SEAT_SUBSCRIPTION_CREDITS,
+    PROD_PRODUCT_SEAT_SUBSCRIPTION_CREDITS
+  );
 
 // MAU tier product accessors — ordered array for indexed access.
 export const MAX_MAU_TIERS = 6;

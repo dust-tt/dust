@@ -213,6 +213,8 @@ async function backfillCreditsOfType(
             endingBefore: endingBefore.toISOString(),
             name: `Free poke credit backfill (${startingAt.toISOString().split("T")[0]})`,
             idempotencyKey: `createCredit-${workspace.sId}-${startingAt.getTime()}-${endingBefore.getTime()}`,
+            priority: 1,
+            applicableProductTags: ["usage"],
           });
         }
         break;
