@@ -1,7 +1,10 @@
+import type { LightWorkspaceType } from "@app/types/user";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import { TodoDirectiveBlock, todoDirective } from "./TodoDirectiveBlock";
+import { getTodoDirectiveBlock, todoDirective } from "./TodoDirectiveBlock";
+
+const mockOwner = { sId: "w_test_ws" } as LightWorkspaceType;
 
 describe("todoDirective", () => {
   it("transforms :todo textDirective nodes with hName and hProperties", () => {
@@ -36,9 +39,10 @@ describe("todoDirective", () => {
   });
 });
 
-describe("TodoDirectiveBlock", () => {
+describe("getTodoDirectiveBlock", () => {
   it("renders label and exposes sId on the wrapper", () => {
-    render(<TodoDirectiveBlock label="My task" sId="sid_1" />);
+    const TodoChip = getTodoDirectiveBlock(mockOwner);
+    render(<TodoChip label="My task" sId="sid_1" />);
 
     expect(screen.getByText("My task")).toBeInTheDocument();
     const wrap = document.querySelector("[data-project-todo-sid]");

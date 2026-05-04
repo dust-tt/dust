@@ -16,7 +16,7 @@ import {
   skillDirective,
 } from "@app/components/markdown/SkillBlock";
 import {
-  TodoDirectiveBlock,
+  getTodoDirectiveBlock,
   todoDirective,
 } from "@app/components/markdown/TodoDirectiveBlock";
 import {
@@ -60,7 +60,7 @@ export const UserMessageMarkdown = ({
           skillName={skillName}
         />
       ),
-      todo: TodoDirectiveBlock,
+      todo: getTodoDirectiveBlock(owner),
     }),
     [owner]
   );
