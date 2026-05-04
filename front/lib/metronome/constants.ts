@@ -71,7 +71,7 @@ const PROD_PRODUCT_FREE_MONTHLY_CREDITS =
 const PROD_PRODUCT_PREPAID_COMMIT = "1408c9fc-dea1-4269-bd6d-1bc0aa1f1218";
 const PROD_PRODUCT_PAYG_OVERAGE = "f6b27a6e-86fc-4964-8076-371a912cee09";
 const PROD_PRODUCT_SEAT_SUBSCRIPTION_CREDITS =
-  "TODO_PROD_SEAT_SUBSCRIPTION_CREDITS_ID";
+  "03faa744-c1ab-4b94-aaf1-5fdaec89e11a";
 
 // --- Credit type IDs (stable across envs unless noted) ---
 
