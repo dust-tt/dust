@@ -50,10 +50,14 @@ interface ToolItemProps {
   onChange: (settings: ToolSettings) => void;
 }
 
+interface ToolWithSettings {
+  tool: ToolDefinition;
+  settings: ToolSettings;
+}
+
 interface ToolsListContentProps {
   mayUpdate: boolean;
-  tools: ToolDefinition[];
-  getSettings: (tool: ToolDefinition) => ToolSettings;
+  tools: ToolWithSettings[];
   onToolChange: (toolName: string, settings: ToolSettings) => void;
 }
 
@@ -162,7 +166,7 @@ function getDefaultToolSettings({
 }
 
 const ToolsListContent = memo(
-  ({ mayUpdate, tools, getSettings, onToolChange }: ToolsListContentProps) => {
+  ({ mayUpdate, tools, onToolChange }: ToolsListContentProps) => {
     const getAvailableStakeLevels = (): MCPToolStakeLevelType[] => {
       return [...MCP_TOOL_STAKE_LEVELS];
     };
@@ -204,9 +208,8 @@ const ToolsListContent = memo(
                 <div>
                   {tools.length > 0 ? (
                     <div className="flex flex-col gap-4">
-                      {tools.map((tool, index) => {
+                      {tools.map(({ tool, settings }, index) => {
                         const availableStakeLevels = getAvailableStakeLevels();
-                        const settings = getSettings(tool);
 
                         return (
                           <ToolItem
@@ -263,13 +266,15 @@ function EditableToolsList({
     });
   };
 
+  const toolsWithSettings = tools.map((tool) => ({
+    tool,
+    settings: toolSettings[tool.name] ?? getDefaultSettings(tool),
+  }));
+
   return (
     <ToolsListContent
       mayUpdate={mayUpdate}
-      tools={tools}
-      getSettings={(tool) =>
-        toolSettings[tool.name] ?? getDefaultSettings(tool)
-      }
+      tools={toolsWithSettings}
       onToolChange={handleToolChange}
     />
   );
@@ -312,11 +317,14 @@ export const ToolsList = memo(
     // MCPServerFormValues form, since this component is also rendered in
     // contexts (e.g. agent builder) that have no such FormProvider.
     if (disableUpdates) {
+      const toolsWithSettings = tools.map((tool) => ({
+        tool,
+        settings: getDefaultSettings(tool),
+      }));
       return (
         <ToolsListContent
           mayUpdate={mayUpdate}
-          tools={tools}
-          getSettings={getDefaultSettings}
+          tools={toolsWithSettings}
           onToolChange={() => {}}
         />
       );
