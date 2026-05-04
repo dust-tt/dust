@@ -1,3 +1,4 @@
+import type { ProjectTodoType } from "@app/types/project_todo";
 import { cn } from "@dust-tt/sparkle";
 import type React from "react";
 import { useCallback, useLayoutEffect } from "react";
@@ -9,6 +10,12 @@ export const NEW_MANUAL_TODO_MAX_CHARS = 256;
 /** To-dos are visually multi-line (soft wrap) but must not contain newline characters. */
 export function stripNewlines(value: string): string {
   return value.replace(/\r\n|\r|\n/g, " ");
+}
+
+/** Onboarding to-dos are seeded with `agentInstructions` so a user can kick off
+ * a guided first conversation; manual user-created to-dos don't have them. */
+export function isOnboardingTodo(todo: ProjectTodoType): boolean {
+  return !!todo.agentInstructions;
 }
 
 export function useAutosizeTextArea(
