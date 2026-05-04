@@ -8082,12 +8082,6 @@
                             "items": {
                               "type": "string"
                             }
-                          },
-                          "selectedSkillIds": {
-                            "type": "array",
-                            "items": {
-                              "type": "string"
-                            }
                           }
                         }
                       }

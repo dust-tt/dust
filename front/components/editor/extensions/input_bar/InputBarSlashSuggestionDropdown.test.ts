@@ -27,7 +27,6 @@ describe("filterInputBarSlashSuggestions", () => {
     const result = filterInputBarSlashSuggestions({
       query: "spreadsheet",
       selectedMCPServerViewIds: new Set(),
-      selectedSkillIds: new Set(),
       serverViews: [calendarServerView.toJSON()],
       skills: [skill.toJSON(auth)],
     });
@@ -49,7 +48,6 @@ describe("filterInputBarSlashSuggestions", () => {
     const result = filterInputBarSlashSuggestions({
       query: "gd",
       selectedMCPServerViewIds: new Set(),
-      selectedSkillIds: new Set(),
       serverViews: [],
       skills: [
         generateDailyReportSkill.toJSON(auth),
