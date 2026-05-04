@@ -1,3 +1,7 @@
+import {
+  getMicrosoftThrottleRetryAfterMs,
+  MicrosoftThrottlingError,
+} from "@connectors/connectors/microsoft/lib/errors";
 import type {
   DriveItem,
   MicrosoftNode,
@@ -34,6 +38,16 @@ export async function clientApiGet(
   try {
     return await client.api(endpoint).get();
   } catch (error) {
+    if (error instanceof GraphError && error.statusCode === 429) {
+      const retryAfterMs = getMicrosoftThrottleRetryAfterMs(
+        error.headers?.get("retry-after")
+      );
+      logger.warn(
+        { endpoint, retryAfterMs },
+        "Microsoft Graph API throttled (429). Will retry after delay."
+      );
+      throw new MicrosoftThrottlingError(endpoint, retryAfterMs);
+    }
     logger.error({ error, endpoint }, `Graph API call threw an error`);
     if (error instanceof GraphError && error.statusCode === 403) {
       throw new ExternalOAuthTokenError(error);
@@ -51,6 +65,16 @@ export async function clientApiPost(
   try {
     return await client.api(endpoint).post(content);
   } catch (error) {
+    if (error instanceof GraphError && error.statusCode === 429) {
+      const retryAfterMs = getMicrosoftThrottleRetryAfterMs(
+        error.headers?.get("retry-after")
+      );
+      logger.warn(
+        { endpoint, retryAfterMs },
+        "Microsoft Graph API throttled (429). Will retry after delay."
+      );
+      throw new MicrosoftThrottlingError(endpoint, retryAfterMs);
+    }
     logger.error({ error, endpoint }, `Graph API call threw an error`);
     if (error instanceof GraphError && error.statusCode === 403) {
       throw new ExternalOAuthTokenError(error);

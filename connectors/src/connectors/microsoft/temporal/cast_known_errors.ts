@@ -1,5 +1,7 @@
+import { MicrosoftThrottlingError } from "@connectors/connectors/microsoft/lib/errors";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import { GraphError } from "@microsoft/microsoft-graph-client";
+import { ApplicationFailure } from "@temporalio/common";
 import type {
   ActivityExecuteInput,
   ActivityInboundCallsInterceptor,
@@ -18,6 +20,12 @@ export function isMicrosoftSignInError(err: unknown): err is Error {
     ) &&
     knownMicrosoftSignInErrors.some((code) => err.message.includes(code))
   );
+}
+
+export function isThrottlingError(
+  err: unknown
+): err is MicrosoftThrottlingError {
+  return err instanceof MicrosoftThrottlingError;
 }
 
 export function isItemNotFoundError(err: unknown): err is GraphError {
@@ -91,6 +99,13 @@ export class MicrosoftCastKnownErrorsInterceptor
     try {
       return await next(input);
     } catch (err: unknown) {
+      if (isThrottlingError(err)) {
+        throw ApplicationFailure.create({
+          message: err.message,
+          nextRetryDelay: err.retryAfterMs,
+          cause: err,
+        });
+      }
       // See https://learn.microsoft.com/en-us/answers/questions/1339560/sign-in-error-code-50173
       // TODO(2025-02-12): add an error type for Microsoft client errors and catch them at strategic locations (e.g. API call to instantiate a client)
       if (isMicrosoftSignInError(err)) {
