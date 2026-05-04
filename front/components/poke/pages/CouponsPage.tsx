@@ -8,15 +8,18 @@ import {
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type {
   CouponDiscountType,
+  CouponRedemptionStatus,
   CouponRedemptionType,
   CouponType,
 } from "@app/types/coupon";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { MenuItem } from "@dust-tt/sparkle";
 import {
   ArchiveIcon,
   Button,
   ChevronDownIcon,
   ChevronRightIcon,
+  Chip,
   DataTable,
   PlusIcon,
   Spinner,
@@ -25,8 +28,20 @@ import type { ColumnDef } from "@tanstack/react-table";
 import type { MouseEvent } from "react";
 import { useMemo, useState } from "react";
 
-function formatUsd(microUsd: number): string {
-  return `$${(microUsd / 1_000_000).toFixed(2)}`;
+function getStatusChipColor(status: CouponRedemptionStatus) {
+  switch (status) {
+    case "active":
+      return "success";
+    case "pending":
+      return "primary";
+    case "failed":
+      return "rose";
+    case "revoked":
+      return "warning";
+    default:
+      assertNeverAndIgnore(status);
+      return "primary";
+  }
 }
 
 interface CouponRowData {
@@ -34,11 +49,11 @@ interface CouponRowData {
   code: string;
   description: string | null;
   discountType: CouponDiscountType;
-  amountMicroUsd: number;
+  amount: number;
   durationMonths: number | null;
   maxRedemptions: number | null;
   redemptionCount: number;
-  redeemBy: Date | null;
+  expirationDate: Date | null;
   archivedAt: Date | null;
   isExpanded: boolean;
   onClick?: () => void;
@@ -50,6 +65,7 @@ interface CouponRedemptionRowData {
   workspaceId: string;
   redeemedByUserId: string | null;
   redeemedAt: Date;
+  status: CouponRedemptionStatus;
   onClick?: () => void;
   menuItems?: MenuItem[];
 }
@@ -74,9 +90,7 @@ const couponColumns: ColumnDef<CouponRowData>[] = [
         <div className="flex items-center gap-2">
           <span>{row.original.code}</span>
           {row.original.archivedAt && (
-            <span className="rounded bg-muted px-1.5 py-0.5 text-xs dark:bg-muted-night">
-              archived
-            </span>
+            <Chip size="xs" color="primary" label="archived" />
           )}
         </div>
       </DataTable.CellContent>
@@ -103,11 +117,11 @@ const couponColumns: ColumnDef<CouponRowData>[] = [
     ),
   },
   {
-    accessorKey: "amountMicroUsd",
-    header: "Amount (USD)",
+    accessorKey: "amount",
+    header: "Amount",
     cell: ({ row }) => (
       <DataTable.BasicCellContent
-        label={formatUsd(row.original.amountMicroUsd)}
+        label={String(row.original.amount)}
         disabled={!!row.original.archivedAt}
       />
     ),
@@ -133,14 +147,14 @@ const couponColumns: ColumnDef<CouponRowData>[] = [
     ),
   },
   {
-    accessorKey: "redeemBy",
-    header: "Redeem by",
+    accessorKey: "expirationDate",
+    header: "Expiration date",
     cell: ({ row }) => (
       <DataTable.BasicCellContent
         label={
-          row.original.redeemBy
+          row.original.expirationDate
             ? formatTimestampToFriendlyDate(
-                new Date(row.original.redeemBy).getTime(),
+                new Date(row.original.expirationDate).getTime(),
                 "compactWithDay"
               )
             : "—"
@@ -188,6 +202,19 @@ const redemptionColumns: ColumnDef<CouponRedemptionRowData>[] = [
       />
     ),
   },
+  {
+    accessorKey: "status",
+    header: "Status",
+    cell: ({ row }) => (
+      <DataTable.CellContent>
+        <Chip
+          size="xs"
+          color={getStatusChipColor(row.original.status)}
+          label={row.original.status}
+        />
+      </DataTable.CellContent>
+    ),
+  },
 ];
 
 interface CouponRedemptionsPanelProps {
@@ -207,6 +234,7 @@ function CouponRedemptionsPanel({ coupon }: CouponRedemptionsPanelProps) {
         workspaceId: r.workspaceId,
         redeemedByUserId: r.redeemedByUserId,
         redeemedAt: r.redeemedAt,
+        status: r.status,
       })),
     [redemptions]
   );

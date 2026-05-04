@@ -16,7 +16,7 @@ import type { Attributes, ModelStatic, Transaction } from "sequelize";
 import { Op } from "sequelize";
 
 export type CouponValidationError =
-  | { code: "expired"; redeemBy: Date }
+  | { code: "expired"; expirationDate: Date }
   | { code: "exhausted"; maxRedemptions: number }
   | { code: "archived" };
 
@@ -51,6 +51,7 @@ export class CouponResource extends BaseResource<CouponModel> {
       const coupon = await CouponModel.create(
         {
           ...body,
+          discountType: "seat",
           createdByUserId: user.id,
         },
         { transaction }
@@ -105,8 +106,8 @@ export class CouponResource extends BaseResource<CouponModel> {
       return new Err({ code: "archived" });
     }
 
-    if (this.redeemBy && this.redeemBy < new Date()) {
-      return new Err({ code: "expired", redeemBy: this.redeemBy });
+    if (this.expirationDate && this.expirationDate < new Date()) {
+      return new Err({ code: "expired", expirationDate: this.expirationDate });
     }
 
     if (
@@ -122,18 +123,41 @@ export class CouponResource extends BaseResource<CouponModel> {
     return new Ok(undefined);
   }
 
+  async incrementRedemptionCount({
+    transaction,
+  }: {
+    transaction?: Transaction;
+  } = {}): Promise<void> {
+    await CouponModel.increment("redemptionCount", {
+      by: 1,
+      where: { id: this.id },
+      transaction,
+    });
+  }
+
+  async decrementRedemptionCount({
+    transaction,
+  }: {
+    transaction?: Transaction;
+  } = {}): Promise<void> {
+    await CouponModel.increment("redemptionCount", {
+      by: -1,
+      where: { id: this.id },
+      transaction,
+    });
+  }
+
   toJSON(): CouponType {
     return {
       sId: this.sId,
       code: this.code,
       description: this.description,
       discountType: this.discountType,
-      amountMicroUsd: this.amountMicroUsd,
-      creditTypeId: this.creditTypeId,
+      amount: this.amount,
       durationMonths: this.durationMonths,
       maxRedemptions: this.maxRedemptions,
       redemptionCount: this.redemptionCount,
-      redeemBy: this.redeemBy,
+      expirationDate: this.expirationDate,
       archivedAt: this.archivedAt,
     };
   }

@@ -37,17 +37,17 @@ describe("CouponRedemptionResource.makeNew", () => {
     expect(redemption.redeemedByUserSId).toBe(user.sId);
   });
 
-  it("increments the coupon redemptionCount", async () => {
+  it("creates redemption with pending status and empty metronomeCreditIds", async () => {
     const { auth } = await makeWorkspaceWithUserAuth();
-    const coupon = await CouponFactory.create({ maxRedemptions: 10 });
+    const coupon = await CouponFactory.create();
 
-    await CouponRedemptionResource.makeNew(auth, { coupon });
+    const redemption = await CouponRedemptionResource.makeNew(auth, { coupon });
 
-    const updated = await CouponResource.fetchByCouponId(coupon.sId);
-    expect(updated?.redemptionCount).toBe(1);
+    expect(redemption.status).toBe("pending");
+    expect(redemption.metronomeCreditIds).toEqual([]);
   });
 
-  it("enforces one redemption per workspace per coupon", async () => {
+  it("enforces at most one pending/active redemption per workspace per coupon", async () => {
     const { auth } = await makeWorkspaceWithUserAuth();
     const coupon = await CouponFactory.create();
 
@@ -58,6 +58,55 @@ describe("CouponRedemptionResource.makeNew", () => {
   });
 });
 
+describe("CouponRedemptionResource lifecycle methods", () => {
+  it("markActive sets status to active and stores credit IDs", async () => {
+    const { auth } = await makeWorkspaceWithUserAuth();
+    const coupon = await CouponFactory.create();
+    const redemption = await CouponRedemptionResource.makeNew(auth, { coupon });
+
+    const creditIds = ["credit-1", "credit-2"];
+    const result = await redemption.markActive(creditIds);
+
+    expect(result.isOk()).toBe(true);
+    expect(redemption.status).toBe("active");
+    expect(redemption.metronomeCreditIds).toEqual(creditIds);
+  });
+
+  it("markFailed sets status to failed", async () => {
+    const { auth } = await makeWorkspaceWithUserAuth();
+    const coupon = await CouponFactory.create();
+    const redemption = await CouponRedemptionResource.makeNew(auth, { coupon });
+
+    const result = await redemption.markFailed();
+
+    expect(result.isOk()).toBe(true);
+    expect(redemption.status).toBe("failed");
+  });
+
+  it("markRevoked sets status to revoked", async () => {
+    const { auth } = await makeWorkspaceWithUserAuth();
+    const coupon = await CouponFactory.create();
+    const redemption = await CouponRedemptionResource.makeNew(auth, { coupon });
+    await redemption.markActive(["credit-1"]);
+
+    const result = await redemption.markRevoked();
+
+    expect(result.isOk()).toBe(true);
+    expect(redemption.status).toBe("revoked");
+  });
+
+  it("allows a new redemption after a failed one for the same workspace+coupon", async () => {
+    const { auth } = await makeWorkspaceWithUserAuth();
+    const coupon = await CouponFactory.create();
+
+    const first = await CouponRedemptionResource.makeNew(auth, { coupon });
+    await first.markFailed();
+
+    const second = await CouponRedemptionResource.makeNew(auth, { coupon });
+    expect(second.status).toBe("pending");
+  });
+});
+
 describe("CouponRedemptionResource.listAllByCoupon", () => {
   it("returns an empty array when no redemptions exist", async () => {
     const coupon = await CouponFactory.create();
@@ -65,7 +114,7 @@ describe("CouponRedemptionResource.listAllByCoupon", () => {
     expect(redemptions).toHaveLength(0);
   });
 
-  it("returns all redemptions across workspaces and increments count per redemption", async () => {
+  it("returns all redemptions across workspaces", async () => {
     const [{ workspace: ws1, auth: auth1 }, { workspace: ws2, auth: auth2 }] =
       await Promise.all([
         makeWorkspaceWithUserAuth(),
@@ -81,9 +130,6 @@ describe("CouponRedemptionResource.listAllByCoupon", () => {
     expect(redemptions.map((r) => r.workspaceSId).sort()).toEqual(
       [ws1.sId, ws2.sId].sort()
     );
-
-    const updated = await CouponResource.fetchByCouponId(coupon.sId);
-    expect(updated?.redemptionCount).toBe(2);
   });
 
   it("resolves redeemedByUserSId when a user redeemed", async () => {
@@ -94,6 +140,23 @@ describe("CouponRedemptionResource.listAllByCoupon", () => {
 
     const [redemption] = await CouponRedemptionResource.listAllByCoupon(coupon);
     expect(redemption.redeemedByUserSId).toBe(user.sId);
+  });
+});
+
+describe("CouponResource.incrementRedemptionCount / decrementRedemptionCount", () => {
+  it("increments and decrements independently of redemption creation", async () => {
+    const coupon = await CouponFactory.create();
+
+    await coupon.incrementRedemptionCount();
+    await coupon.incrementRedemptionCount();
+
+    const afterIncrement = await CouponResource.fetchByCouponId(coupon.sId);
+    expect(afterIncrement?.redemptionCount).toBe(2);
+
+    await coupon.decrementRedemptionCount();
+
+    const afterDecrement = await CouponResource.fetchByCouponId(coupon.sId);
+    expect(afterDecrement?.redemptionCount).toBe(1);
   });
 });
 
