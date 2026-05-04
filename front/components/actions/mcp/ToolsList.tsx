@@ -322,14 +322,16 @@ export const ToolsList = memo(
     const toolMetadataByName = useMemo(
       () =>
         Object.fromEntries(
-          (mcpServerView.toolsMetadata ?? []).map((metadata) => [
-            metadata.toolName,
-            {
-              enabled: metadata.enabled,
-              permission: metadata.permission,
-            },
-          ])
-        ) as Record<string, ToolMetadata>,
+          (mcpServerView.toolsMetadata ?? []).map(
+            (metadata): [string, ToolMetadata] => [
+              metadata.toolName,
+              {
+                enabled: metadata.enabled,
+                permission: metadata.permission,
+              },
+            ]
+          )
+        ),
       [mcpServerView.toolsMetadata]
     );
 
