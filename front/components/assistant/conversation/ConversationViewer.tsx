@@ -883,8 +883,7 @@ export const ConversationViewer = ({
     async (
       input: string,
       mentions: RichMention[],
-      contentFragments: ContentFragmentsType,
-      _selectedMCPServerViewIds?: string[]
+      contentFragments: ContentFragmentsType
     ): Promise<Result<undefined, DustError>> => {
       if (!virtuosoMessageListRef?.current) {
         return new Err({

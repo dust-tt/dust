@@ -181,8 +181,7 @@ interface AgentMessageProps {
   handleSubmit: (
     input: string,
     mentions: RichMention[],
-    contentFragments: ContentFragmentsType,
-    selectedMCPServerViewIds?: string[]
+    contentFragments: ContentFragmentsType
   ) => Promise<Result<undefined, DustError>>;
   additionalMarkdownComponents?: Components;
   additionalMarkdownPlugins?: PluggableList;
