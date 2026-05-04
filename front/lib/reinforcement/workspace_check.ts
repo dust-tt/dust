@@ -25,7 +25,7 @@ export async function isReinforcementBatchModeAllowed(
   auth: Authenticator
 ): Promise<boolean> {
   // Vertex AI does not currently support batch processing.
-  if (await hasFeatureFlag(auth, "use_vertex_for_claude_models")) {
+  if (await hasFeatureFlag(auth, "use_vertex_for_anthropic_models")) {
     return false;
   }
 
