@@ -4,7 +4,6 @@ import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
 import {
   getMcpServerViewDescription,
   getMcpServerViewDisplayName,
-  mcpServersSortingFn,
 } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
@@ -30,32 +29,72 @@ import type {
   SkillWithoutInstructionsAndToolsType,
   SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { UserType, WorkspaceType } from "@app/types/user";
+import type { DropdownMenuItemProps } from "@dust-tt/sparkle";
 import {
-  BoltIcon,
   Button,
   Chip,
+  cn,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSearchbar,
   DropdownMenuTrigger,
   DropdownTooltipTrigger,
-  Icon,
   LoadingBlock,
   MoreIcon,
   ToolsIcon,
 } from "@dust-tt/sparkle";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
-type MergedCapabilityItem =
-  | {
-      kind: "skill";
-      skill: SkillWithoutInstructionsAndToolsType;
-      sortName: string;
-    }
-  | { kind: "tool"; serverView: MCPServerViewType; sortName: string };
+// Rare case where we need a Tailwind arbitrary value: after the fixed search bar, the scrollable list should fit
+// exactly seven 3.25rem rows without showing a partial row or leaving extra bottom space.
+const CAPABILITIES_PICKER_LIST_MAX_HEIGHT_CLASS_NAME = "max-h-[22.75rem]";
+
+interface CapabilityPickerItemBase {
+  description?: string;
+  icon: DropdownMenuItemProps["icon"];
+  id: string;
+  label: string;
+  sortName: string;
+}
+
+type CapabilityPickerItem = CapabilityPickerItemBase &
+  (
+    | {
+        kind: "skill";
+        skill: SkillWithoutInstructionsAndToolsType;
+      }
+    | {
+        kind: "tool";
+        serverView: MCPServerViewType;
+      }
+    | {
+        kind: "uninstalled_tool";
+        server: MCPServerType;
+      }
+  );
+
+function matchesCapabilityPickerSearchQuery({
+  description,
+  label,
+  normalizedQuery,
+}: {
+  description?: string;
+  label: string;
+  normalizedQuery: string;
+}) {
+  if (normalizedQuery.length === 0) {
+    return true;
+  }
+
+  return (
+    label.toLowerCase().includes(normalizedQuery) ||
+    (description?.toLowerCase().includes(normalizedQuery) ?? false)
+  );
+}
 
 function CapabilitiesPickerLoading({ count = 5 }: { count?: number }) {
   return (
@@ -75,173 +114,179 @@ function CapabilitiesPickerLoading({ count = 5 }: { count?: number }) {
   );
 }
 
-interface SkillMenuItemProps {
-  skill: SkillWithoutInstructionsAndToolsType;
-  onSelect: (skill: SkillWithoutInstructionsAndToolsType) => void;
-  onDetails: (skillId: string) => void;
-  closeDropdown: () => void;
+interface CapabilitiesPickerItemsListProps {
+  emptyMessage: string;
+  items: CapabilityPickerItem[];
+  onItemSelect: (item: CapabilityPickerItem) => void;
+  onSkillDetails: (skillId: string) => void;
+  onToolDetails: (serverView: MCPServerViewType) => void;
 }
 
-function SkillMenuItem({
-  skill,
-  onSelect,
-  onDetails,
-  closeDropdown,
-}: SkillMenuItemProps) {
-  const description = skill.userFacingDescription;
-  const key = `skills-picker-${skill.sId}`;
+function CapabilitiesPickerItemsList({
+  emptyMessage,
+  items,
+  onItemSelect,
+  onSkillDetails,
+  onToolDetails,
+}: CapabilitiesPickerItemsListProps) {
+  const [scrollFadeState, setScrollFadeState] = useState({
+    hasContentAbove: false,
+    hasContentBelow: false,
+  });
+  const listRef = useRef<HTMLDivElement>(null);
+  const topScrollSentinelRef = useRef<HTMLDivElement>(null);
+  const bottomScrollSentinelRef = useRef<HTMLDivElement>(null);
+  const itemCount = items.length;
 
-  const menuItem = (
-    <DropdownMenuItem
-      key={key}
-      id={key}
-      icon={getSkillAvatarIcon(skill.icon)}
-      label={skill.name}
-      truncateText
-      className="group py-1"
-      endComponent={
-        <Button
-          icon={MoreIcon}
-          variant="outline"
-          size="mini"
-          className="opacity-0 group-hover:opacity-100"
-          onClick={(e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            onDetails(skill.sId);
-            closeDropdown();
-          }}
-        />
-      }
-      onClick={(e) => {
-        e.stopPropagation();
-        e.preventDefault();
-        trackEvent({
-          area: TRACKING_AREAS.TOOLS,
-          object: "skill_select",
-          action: TRACKING_ACTIONS.SELECT,
-          extra: {
-            skill_id: skill.sId,
-            skill_name: skill.name,
-          },
+  useEffect(() => {
+    const list = listRef.current;
+    const topScrollSentinel = topScrollSentinelRef.current;
+    const bottomScrollSentinel = bottomScrollSentinelRef.current;
+
+    if (
+      itemCount === 0 ||
+      !list ||
+      !topScrollSentinel ||
+      !bottomScrollSentinel ||
+      typeof IntersectionObserver === "undefined"
+    ) {
+      setScrollFadeState((previousState) =>
+        previousState.hasContentAbove || previousState.hasContentBelow
+          ? {
+              hasContentAbove: false,
+              hasContentBelow: false,
+            }
+          : previousState
+      );
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        setScrollFadeState((previousState) => {
+          const nextState = { ...previousState };
+
+          for (const entry of entries) {
+            if (entry.target === topScrollSentinel) {
+              nextState.hasContentAbove = !entry.isIntersecting;
+            } else if (entry.target === bottomScrollSentinel) {
+              nextState.hasContentBelow = !entry.isIntersecting;
+            }
+          }
+
+          return previousState.hasContentAbove === nextState.hasContentAbove &&
+            previousState.hasContentBelow === nextState.hasContentBelow
+            ? previousState
+            : nextState;
         });
-        onSelect(skill);
-        closeDropdown();
-      }}
-    />
-  );
+      },
+      { root: list }
+    );
 
-  if (description) {
+    observer.observe(topScrollSentinel);
+    observer.observe(bottomScrollSentinel);
+
+    return () => observer.disconnect();
+  }, [itemCount]);
+
+  if (items.length === 0) {
     return (
-      <DropdownTooltipTrigger
-        key={key}
-        description={description}
-        side="right"
-        sideOffset={8}
-      >
-        {menuItem}
-      </DropdownTooltipTrigger>
+      <div className="px-2 py-4 text-center text-sm text-muted-foreground dark:text-muted-foreground-night">
+        {emptyMessage}
+      </div>
     );
   }
 
-  return menuItem;
-}
-
-interface ToolMenuItemProps {
-  serverView: MCPServerViewType;
-  onSelect: (serverView: MCPServerViewType) => void;
-  onDetails: (serverView: MCPServerViewType) => void;
-  closeDropdown: () => void;
-}
-
-function ToolMenuItem({
-  serverView,
-  onSelect,
-  onDetails,
-  closeDropdown,
-}: ToolMenuItemProps) {
-  const description = getMcpServerViewDescription(serverView);
-  const key = `capabilities-picker-${serverView.sId}`;
-
-  const menuItem = (
-    <DropdownMenuItem
-      key={key}
-      id={key}
-      icon={() => getAvatar(serverView.server)}
-      label={getMcpServerViewDisplayName(serverView)}
-      truncateText
-      className="group py-1"
-      endComponent={
-        <Button
-          icon={MoreIcon}
-          variant="outline"
-          size="mini"
-          className="opacity-0 group-hover:opacity-100"
-          onClick={(e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            onDetails(serverView);
-            closeDropdown();
-          }}
-        />
-      }
-      onClick={(e) => {
-        e.stopPropagation();
-        e.preventDefault();
-        trackEvent({
-          area: TRACKING_AREAS.TOOLS,
-          object: "tool_select",
-          action: TRACKING_ACTIONS.SELECT,
-          extra: {
-            tool_id: serverView.sId,
-            tool_name: serverView.server.name,
-          },
-        });
-        onSelect(serverView);
-        closeDropdown();
-      }}
-    />
-  );
-
-  if (description) {
-    return (
-      <DropdownTooltipTrigger
-        key={key}
-        description={description}
-        side="right"
-        sideOffset={8}
-      >
-        {menuItem}
-      </DropdownTooltipTrigger>
-    );
-  }
-
-  return menuItem;
-}
-
-interface UninstalledToolMenuItemProps {
-  server: MCPServerType;
-  onSetup: (server: MCPServerType) => void;
-}
-
-function UninstalledToolMenuItem({
-  server,
-  onSetup,
-}: UninstalledToolMenuItemProps) {
   return (
-    <DropdownMenuItem
-      key={`tools-to-install-${server.sId}`}
-      id={`tools-to-install-${server.sId}`}
-      icon={() => getAvatar(server)}
-      label={asDisplayName(server.name)}
-      truncateText
-      endComponent={<Chip size="xs" color="golden" label="Configure" />}
-      onClick={(e) => {
-        e.stopPropagation();
-        e.preventDefault();
-        onSetup(server);
-      }}
-    />
+    <div className="relative">
+      <div
+        ref={listRef}
+        className={`overflow-y-auto ${CAPABILITIES_PICKER_LIST_MAX_HEIGHT_CLASS_NAME}`}
+      >
+        <div className="relative">
+          <div
+            ref={topScrollSentinelRef}
+            className="pointer-events-none absolute left-0 top-0 h-px w-px"
+            aria-hidden
+          />
+          <div
+            ref={bottomScrollSentinelRef}
+            className="pointer-events-none absolute bottom-0 left-0 h-px w-px"
+            aria-hidden
+          />
+          {items.map((item) => {
+            const endComponent =
+              item.kind === "uninstalled_tool" ? (
+                <Chip size="xs" color="golden" label="Configure" />
+              ) : (
+                <Button
+                  icon={MoreIcon}
+                  variant="outline"
+                  size="mini"
+                  className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+
+                    if (item.kind === "skill") {
+                      onSkillDetails(item.skill.sId);
+                    } else {
+                      onToolDetails(item.serverView);
+                    }
+                  }}
+                />
+              );
+
+            const menuItem = (
+              <DropdownMenuItem
+                key={item.id}
+                icon={item.icon}
+                itemId={item.id}
+                label={item.label}
+                description={item.description}
+                truncateText
+                endComponent={endComponent}
+                className="group"
+                onClick={() => onItemSelect(item)}
+              />
+            );
+
+            if (item.kind !== "uninstalled_tool" && item.description) {
+              return (
+                <DropdownTooltipTrigger
+                  key={item.id}
+                  description={item.description}
+                  side="right"
+                  sideOffset={8}
+                >
+                  {menuItem}
+                </DropdownTooltipTrigger>
+              );
+            }
+
+            return menuItem;
+          })}
+        </div>
+      </div>
+      <div
+        className={cn(
+          "pointer-events-none absolute inset-x-0 top-0 h-10 bg-gradient-to-t",
+          "from-transparent via-background/65 to-background opacity-0 transition-opacity duration-200",
+          "dark:via-muted-background-night/65 dark:to-muted-background-night",
+          scrollFadeState.hasContentAbove && "opacity-100"
+        )}
+        aria-hidden
+      />
+      <div
+        className={cn(
+          "pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-b",
+          "from-transparent via-background/65 to-background opacity-0 transition-opacity duration-200",
+          "dark:via-muted-background-night/65 dark:to-muted-background-night",
+          scrollFadeState.hasContentBelow && "opacity-100"
+        )}
+        aria-hidden
+      />
+    </div>
   );
 }
 
@@ -309,8 +354,18 @@ export function CapabilitiesPicker({
   });
 
   const selectedMCPServerViewIds = useMemo(
-    () => selectedMCPServerViews.map((v) => v.sId),
+    () => new Set(selectedMCPServerViews.map((v) => v.sId)),
     [selectedMCPServerViews]
+  );
+
+  const selectedSkillIds = useMemo(
+    () => new Set(selectedSkills.map((s) => s.sId)),
+    [selectedSkills]
+  );
+
+  const normalizedSearchText = useMemo(
+    () => searchText.trim().toLowerCase(),
+    [searchText]
   );
 
   // Fallback: add server to conversation when it appears in serverViews.
@@ -343,22 +398,6 @@ export function CapabilitiesPicker({
     [serverViews]
   );
 
-  const filteredServerViewsUnselected = useMemo(() => {
-    return serverViews
-      .filter(
-        (v) =>
-          isJITMCPServerView(v) &&
-          (searchText.length === 0 ||
-            getMcpServerViewDisplayName(v)
-              .toLowerCase()
-              .includes(searchText.toLowerCase()) ||
-            getMcpServerViewDescription(v)
-              .toLowerCase()
-              .includes(searchText.toLowerCase()))
-      )
-      .filter((v) => !selectedMCPServerViewIds.includes(v.sId));
-  }, [serverViews, searchText, selectedMCPServerViewIds]);
-
   const { availableMCPServers, isAvailableMCPServersLoading } =
     useAvailableMCPServers({
       owner,
@@ -377,89 +416,192 @@ export function CapabilitiesPicker({
   const isToolsDataReady =
     !isServerViewsLoading && !isAvailableMCPServersLoading;
 
-  const filteredSkillsUnselected = useMemo(() => {
-    const selectedSkillIds = new Set(selectedSkills.map((s) => s.sId));
-
-    return skills
-      .filter((skill) => !selectedSkillIds.has(skill.sId))
-      .filter((skill) => {
-        if (searchText.trim().length === 0) {
-          return true;
-        }
-        const query = searchText.toLowerCase();
-        return (
-          skill.name.toLowerCase().includes(query) ||
-          (skill.userFacingDescription &&
-            skill.userFacingDescription.toLowerCase().includes(query))
-        );
-      });
-  }, [skills, selectedSkills, searchText]);
-
-  const mergedItems = useMemo(() => {
-    const items: MergedCapabilityItem[] = [
-      ...filteredSkillsUnselected.map(
-        (skill): MergedCapabilityItem => ({
-          kind: "skill",
-          skill,
-          sortName: skill.name.toLowerCase(),
-        })
-      ),
-      ...filteredServerViewsUnselected.map(
-        (serverView): MergedCapabilityItem => ({
-          kind: "tool",
-          serverView,
-          sortName: getMcpServerViewDisplayName(serverView).toLowerCase(),
-        })
-      ),
-    ];
-    return [...items].sort((a, b) => a.sortName.localeCompare(b.sortName));
-  }, [filteredSkillsUnselected, filteredServerViewsUnselected]);
-
-  // - We compare by name, not sId, because names are shared between multiple instances of the same MCP server (sIds are not).
-  // - We filter by manual availability to show only servers that need install step, and by search text if present.
-  // - We don't compute uninstalled servers until BOTH data sources have loaded to prevent flicker.
-  const filteredUninstalledServers = useMemo(() => {
-    if (!isAdmin || !isToolsDataReady || !shouldFetchToolsData) {
-      return [];
-    }
-
-    const installedServerNames = new Set(serverViews.map((v) => v.server.name));
-    const uninstalled = availableMCPServers.filter(
-      (server) =>
-        !installedServerNames.has(server.name) &&
-        server.availability === "manual"
-    );
-
-    if (searchText.length === 0) {
-      return uninstalled;
-    }
-
-    return uninstalled
-      .filter(
-        (server) =>
-          asDisplayName(server.name)
-            .toLowerCase()
-            .includes(searchText.toLowerCase()) ||
-          server.description.toLowerCase().includes(searchText.toLowerCase())
-      )
-      .sort((a, b) => mcpServersSortingFn({ mcpServer: a }, { mcpServer: b }));
-  }, [
-    isAdmin,
-    isToolsDataReady,
-    shouldFetchToolsData,
-    serverViews,
-    availableMCPServers,
-    searchText,
-  ]);
-
   const shouldShowSetupSheet = useMemo(() => {
     return !!setupSheetServer || !!setupSheetRemoteServerConfig;
   }, [setupSheetServer, setupSheetRemoteServerConfig]);
 
-  const hasVisibleItems =
-    mergedItems.length > 0 || filteredUninstalledServers.length > 0;
+  const closeDropdown = () => {
+    setSearchText("");
+    setIsOpen(false);
+  };
+
+  const selectSkill = (skill: SkillWithoutInstructionsAndToolsType) => {
+    trackEvent({
+      area: TRACKING_AREAS.TOOLS,
+      object: "skill_select",
+      action: TRACKING_ACTIONS.SELECT,
+      extra: {
+        skill_id: skill.sId,
+        skill_name: skill.name,
+      },
+    });
+    onSkillSelect(skill);
+    closeDropdown();
+  };
+
+  const selectTool = (serverView: MCPServerViewType) => {
+    trackEvent({
+      area: TRACKING_AREAS.TOOLS,
+      object: "tool_select",
+      action: TRACKING_ACTIONS.SELECT,
+      extra: {
+        tool_id: serverView.sId,
+        tool_name: serverView.server.name,
+      },
+    });
+    onSelect(serverView);
+    closeDropdown();
+  };
+
+  const setupServer = (server: MCPServerType) => {
+    const remoteMcpServerConfig = getDefaultRemoteMCPServerByName(server.name);
+
+    if (remoteMcpServerConfig) {
+      // Remote servers always use the remote flow, even if they have OAuth.
+      setSetupSheetServer(null);
+      setSetupSheetRemoteServerConfig(remoteMcpServerConfig);
+    } else {
+      // Internal servers (with or without OAuth)
+      setSetupSheetServer(server);
+      setSetupSheetRemoteServerConfig(null);
+    }
+
+    setIsSettingUpServer(true);
+    setIsOpen(false);
+  };
+
+  const selectCapabilityPickerItem = (item: CapabilityPickerItem) => {
+    switch (item.kind) {
+      case "skill":
+        return selectSkill(item.skill);
+      case "tool":
+        return selectTool(item.serverView);
+      case "uninstalled_tool":
+        return setupServer(item.server);
+      default:
+        assertNeverAndIgnore(item);
+    }
+  };
+
+  const capabilityPickerItems = useMemo<CapabilityPickerItem[]>(() => {
+    const items: CapabilityPickerItem[] = [];
+
+    if (isSkillsDataReady && isToolsDataReady) {
+      for (const skill of skills) {
+        const description = skill.userFacingDescription;
+
+        if (
+          selectedSkillIds.has(skill.sId) ||
+          !matchesCapabilityPickerSearchQuery({
+            description,
+            label: skill.name,
+            normalizedQuery: normalizedSearchText,
+          })
+        ) {
+          continue;
+        }
+
+        items.push({
+          kind: "skill",
+          skill,
+          id: `skills-picker-${skill.sId}`,
+          icon: getSkillAvatarIcon(skill.icon),
+          label: skill.name,
+          sortName: skill.name.toLowerCase(),
+          description,
+        });
+      }
+
+      for (const serverView of serverViews) {
+        const label = getMcpServerViewDisplayName(serverView);
+        const description = getMcpServerViewDescription(serverView);
+
+        if (
+          !isJITMCPServerView(serverView) ||
+          selectedMCPServerViewIds.has(serverView.sId) ||
+          !matchesCapabilityPickerSearchQuery({
+            description,
+            label,
+            normalizedQuery: normalizedSearchText,
+          })
+        ) {
+          continue;
+        }
+
+        items.push({
+          kind: "tool",
+          serverView,
+          id: `capabilities-picker-${serverView.sId}`,
+          icon: () => getAvatar(serverView.server),
+          label,
+          sortName: label.toLowerCase(),
+          description,
+        });
+      }
+    }
+
+    if (isAdmin && isToolsDataReady && shouldFetchToolsData) {
+      const installedServerNames = new Set(
+        serverViews.map((v) => v.server.name)
+      );
+
+      for (const server of availableMCPServers) {
+        const label = asDisplayName(server.name);
+        const description = server.description;
+
+        if (
+          installedServerNames.has(server.name) ||
+          server.availability !== "manual" ||
+          !matchesCapabilityPickerSearchQuery({
+            description,
+            label,
+            normalizedQuery: normalizedSearchText,
+          })
+        ) {
+          continue;
+        }
+
+        items.push({
+          kind: "uninstalled_tool",
+          server,
+          id: `tools-to-install-${server.sId}`,
+          icon: () => getAvatar(server),
+          label,
+          sortName: label.toLowerCase(),
+          description,
+        });
+      }
+    }
+
+    return items.toSorted((a, b) => {
+      const aGroupOrder = a.kind === "uninstalled_tool" ? 1 : 0;
+      const bGroupOrder = b.kind === "uninstalled_tool" ? 1 : 0;
+      const groupComparison = aGroupOrder - bGroupOrder;
+
+      if (groupComparison !== 0) {
+        return groupComparison;
+      }
+
+      return a.sortName.localeCompare(b.sortName);
+    });
+  }, [
+    availableMCPServers,
+    isAdmin,
+    isSkillsDataReady,
+    isToolsDataReady,
+    normalizedSearchText,
+    selectedMCPServerViewIds,
+    selectedSkillIds,
+    serverViews,
+    shouldFetchToolsData,
+    skills,
+  ]);
+
   const hasNoVisibleItems =
-    isSkillsDataReady && isToolsDataReady && !hasVisibleItems;
+    isSkillsDataReady && isToolsDataReady && capabilityPickerItems.length === 0;
+
+  const shouldShowCapabilityDropdownList =
+    capabilityPickerItems.length > 0 || hasNoVisibleItems;
 
   return (
     <>
@@ -490,125 +632,42 @@ export function CapabilitiesPicker({
           />
         </DropdownMenuTrigger>
         <DropdownMenuContent
-          className="max-h-96 w-64"
+          className="w-80"
           align="start"
           onAnimationEnd={() => {
             if (!isOpen) {
               setIsClosing(false);
             }
           }}
-          dropdownHeaders={
-            <DropdownMenuSearchbar
-              autoFocus
-              name="search-capabilities"
-              placeholder="Search capabilities"
-              value={searchText}
-              onChange={setSearchText}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && mergedItems.length > 0) {
-                  const first = mergedItems[0];
-                  if (first.kind === "skill") {
-                    trackEvent({
-                      area: TRACKING_AREAS.TOOLS,
-                      object: "skill_select",
-                      action: TRACKING_ACTIONS.SELECT,
-                      extra: {
-                        skill_id: first.skill.sId,
-                        skill_name: first.skill.name,
-                      },
-                    });
-                    onSkillSelect(first.skill);
-                  } else {
-                    trackEvent({
-                      area: TRACKING_AREAS.TOOLS,
-                      object: "tool_select",
-                      action: TRACKING_ACTIONS.SELECT,
-                      extra: {
-                        tool_id: first.serverView.sId,
-                        tool_name: first.serverView.server.name,
-                      },
-                    });
-                    onSelect(first.serverView);
-                  }
-                  setSearchText("");
-                  setIsOpen(false);
-                }
-              }}
-            />
-          }
         >
+          <DropdownMenuSearchbar
+            autoFocus
+            name="search-capabilities"
+            placeholder="Search capabilities"
+            value={searchText}
+            onChange={setSearchText}
+          />
           {(!isSkillsDataReady || !isToolsDataReady) && (
             <CapabilitiesPickerLoading />
           )}
 
-          {isSkillsDataReady &&
-            isToolsDataReady &&
-            mergedItems.map((item) => {
-              switch (item.kind) {
-                case "skill":
-                  return (
-                    <SkillMenuItem
-                      key={`skills-picker-${item.skill.sId}`}
-                      skill={item.skill}
-                      onSelect={onSkillSelect}
-                      onDetails={(sId) => void fetchSkillWithRelations(sId)}
-                      closeDropdown={() => setIsOpen(false)}
-                    />
-                  );
-                case "tool":
-                  return (
-                    <ToolMenuItem
-                      key={`capabilities-picker-${item.serverView.sId}`}
-                      serverView={item.serverView}
-                      onSelect={onSelect}
-                      onDetails={setSelectedServerViewForDetails}
-                      closeDropdown={() => setIsOpen(false)}
-                    />
-                  );
-                default:
-                  return null;
+          {shouldShowCapabilityDropdownList && (
+            <CapabilitiesPickerItemsList
+              emptyMessage={
+                normalizedSearchText.length > 0
+                  ? "No capabilities found"
+                  : "No more capabilities to select"
               }
-            })}
-
-          {isToolsDataReady &&
-            filteredUninstalledServers.length > 0 &&
-            filteredUninstalledServers.map((server) => (
-              <UninstalledToolMenuItem
-                key={`tools-to-install-${server.sId}`}
-                server={server}
-                onSetup={(server) => {
-                  const remoteMcpServerConfig = getDefaultRemoteMCPServerByName(
-                    server.name
-                  );
-
-                  if (remoteMcpServerConfig) {
-                    // Remote servers always use the remote flow, even if they have OAuth.
-                    setSetupSheetServer(null);
-                    setSetupSheetRemoteServerConfig(remoteMcpServerConfig);
-                  } else {
-                    // Internal servers (with or without OAuth)
-                    setSetupSheetServer(server);
-                    setSetupSheetRemoteServerConfig(null);
-                  }
-
-                  setIsSettingUpServer(true);
-                  setIsOpen(false);
-                }}
-              />
-            ))}
-
-          {hasNoVisibleItems && (
-            <DropdownMenuItem
-              id="capabilities-picker-no-selected"
-              icon={() => <Icon visual={BoltIcon} size="xs" />}
-              label={
-                searchText.length > 0
-                  ? "No result"
-                  : "No more skills or tools to select"
-              }
-              truncateText
-              disabled
-              className="italic"
+              items={capabilityPickerItems}
+              onItemSelect={selectCapabilityPickerItem}
+              onSkillDetails={(skillId) => {
+                void fetchSkillWithRelations(skillId);
+                setIsOpen(false);
+              }}
+              onToolDetails={(serverView) => {
+                setSelectedServerViewForDetails(serverView);
+                setIsOpen(false);
+              }}
             />
           )}
         </DropdownMenuContent>
