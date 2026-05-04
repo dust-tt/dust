@@ -77,7 +77,12 @@ state lives there.
 
 Phase 1 ships **headers only**. URL substitution (placeholder appearing
 in the request line) is deferred to Phase 2. Body substitution is
-deferred to Phase 3. See "Phases" below for the full sequencing.
+deferred to Phase 3. **WebSockets are part of MVP**: upgrade-request
+headers are substituted under the normal HTTP/1.1 rules in Phase 1,
+post-101 frames are byte-spliced in Phase 1 so MITM-scoped WS
+connections don't break, and in-frame substitution lands in Phase 3
+alongside body substitution (same `includeBody` opt-in, same
+machinery). See "Phases" below for the full sequencing.
 
 ### Why dsbx and not the central egress proxy
 
@@ -626,6 +631,17 @@ time.
   errors, or any header-section anomaly. This is the right Phase 1
   cost; carrying Phase 0's prefix-only rewriter would be unsafe on
   keep-alive connections.
+- **WebSocket upgrade handling**. The upgrade request itself is
+  HTTP/1.1 and goes through the normal rewriter, so
+  `Authorization`/`x-api-key`/`Sec-WebSocket-Protocol` placeholders
+  in the upgrade headers substitute correctly. When dsbx observes
+  the upstream answering `101 Switching Protocols`, it **switches
+  that connection into bidirectional byte-splice mode** for the
+  remainder, no further parsing. This keeps MITM-scoped websocket
+  APIs working in Phase 1 (Anthropic streaming, OpenAI Realtime,
+  anything that authenticates in the upgrade). In-frame
+  substitution (the case where the agent sends a JSON auth payload
+  in the first frame) is **not** in Phase 1, see Phase 3.
 - **Substitution gate**: SNI + HTTP `Host:` (h1) + h2 `:authority:`
   must all agree on a domain in the matching secret's `allowedDomains`.
   On a recognized placeholder with disagreement (or destination not in
@@ -774,12 +790,41 @@ and validate it on h1 before adding frame-level complexity.
   the Phase 2 design pass.
 - Same trust/allowlist/placeholder model as Phase 1.
 
-### Phase 3, body substitution
+### Phase 3, body and WebSocket frame substitution (MVP)
 
-- Body scan + Content-Length recomputation, opt-in per secret via an
-  `includeBody` flag.
-- Multipart form boundary handling.
-- Chunked transfer encoding.
+Phase 3 closes the rest of MVP coverage by extending substitution to
+HTTP message bodies and WebSocket frame payloads. Both gate on the
+same per-secret `includeBody` opt-in (off by default).
+
+- **HTTP body**: body scan + Content-Length recomputation, opt-in per
+  secret via `includeBody`. Multipart form boundary handling. Chunked
+  transfer encoding.
+- **WebSocket frames** (post-101 substitution, opt-in via the same
+  `includeBody` flag):
+  - RFC 6455 frame parser (use `tungstenite` for framing). Unmask
+    client→server payload, scan for the placeholder, substitute,
+    recompute payload length, re-emit (re-masking is allowed by the
+    spec; pick a fresh mask).
+  - Fragmented messages: bounded-buffer reassembly with a per-message
+    cap (e.g. 1 MB) so a placeholder straddling frame boundaries is
+    found. Frames over the cap are spliced unchanged.
+  - **Strip `permessage-deflate`** from the upgrade request before
+    forwarding. Server falls back to uncompressed frames; rewriter
+    operates on plaintext payloads. Avoids streaming
+    decompress/recompress with shared sliding-window state. Bandwidth
+    cost on chatty APIs is acceptable for MVP; revisit if a workspace
+    needs deflate support.
+  - Server→client direction is byte-spliced (no substitution; the real
+    secret never travels in that direction).
+  - Same allowlist gate as headers: substitution only happens when the
+    upgrade was negotiated against an SNI/Host that's in the secret's
+    `allowedDomains`. Unknown placeholders inside frames on a
+    MITM-scoped connection drop the connection.
+
+Without Phase 3, websocket APIs that authenticate via a first-frame
+JSON payload (Discord gateway, some custom backends) can't be used
+with secrets. With Phase 3 they can, after the admin sets
+`includeBody` on the secret.
 
 ### Phase 4+, tail cases
 
@@ -792,7 +837,8 @@ and validate it on h1 before adding frame-level complexity.
   (`bearer | basic | hmac-sha256 | sigv4 | ...`) so dsbx can apply
   the format-specific transformation at substitution time. Covers
   HTTP Basic auth, AWS SigV4, HMAC webhook signing.
-- Websocket Upgrade.
+- **WebSocket `permessage-deflate`** support (re-add the extension,
+  streaming decompress/recompress). Only if a workspace needs it.
 - Plain HTTP on non-standard ports (protocol detection from peek bytes
   rather than port keying).
 - Per-protocol rewriters for non-HTTP TLS (Postgres, MySQL, Redis), opt
@@ -802,6 +848,16 @@ and validate it on h1 before adding frame-level complexity.
 
 - **HTTP/2**: part of the MVP (we don't GA without it) but sequenced as
   Phase 2 after the h1 pipeline lands and is validated.
+- **WebSockets**: full support is part of the MVP. Phase 1 covers
+  upgrade-request header substitution (the common case: Anthropic
+  streaming, OpenAI Realtime, anything that authenticates in the
+  upgrade) and byte-splices post-101 frames so MITM-scoped WS
+  connections don't break. Phase 3 adds in-frame substitution for
+  APIs that authenticate via a first-frame payload (Discord-style),
+  using the same `includeBody` opt-in as body substitution.
+  `permessage-deflate` is **stripped at upgrade time** in Phase 3 to
+  keep the frame rewriter on plaintext; full deflate support is a
+  Phase 4+ tail case.
 - **Body substitution**: not in Phase 1. Phase 1 = headers only;
   URL = Phase 2; body = Phase 3. OAuth
   `client_secret`, webhook signing, and multipart forms come in Phase 3
