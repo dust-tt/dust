@@ -9,17 +9,23 @@ import type { ConversationType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
-const MOUNT_TIMEOUT_MS = 30_000;
+const MOUNT_TIMEOUT_MS = 35_000;
 const MOUNT_POINT = "/files/conversation";
+const TOKEN_FILE = "/tmp/token.json";
+const TOKEN_SERVER_READY_TIMEOUT_SECONDS = 5;
 
 /**
  * Mount GCS conversation files into a running sandbox via gcsfuse.
  *
  * The mount sequence:
  *  1. Mint a downscoped token scoped to the conversation prefix.
- *  2. Write the token JSON to /tmp/token.json in the sandbox.
- *  3. Start the token HTTP server (netcat loop on :9876) and wait for it.
- *  4. Run gcsfuse with --token-url pointing to the local token server.
+ *  2. In a single sandbox exec: write token, start token server, poll until
+ *     it's listening, then run gcsfuse. Bundling avoids ~3 E2B exec
+ *     round-trips (~270 ms each) plus the previous hardcoded `sleep 1`.
+ *
+ * The bundled script runs as root because gcsfuse needs root for FUSE.
+ * /tmp/token.json is chmod'd 666 so refreshGcsToken (default user) can
+ * overwrite it later.
  */
 export async function mountConversationFiles(
   auth: Authenticator,
@@ -47,7 +53,6 @@ export async function mountConversationFiles(
     prefix,
   });
 
-  // 1. Mint downscoped token.
   const tokenResult = await mintDownscopedGcsToken({ bucket, prefix });
   if (tokenResult.isErr()) {
     childLogger.error(
@@ -65,61 +70,28 @@ export async function mountConversationFiles(
     expires_in: expiresInSeconds,
   });
 
-  // 2. Write token file into the sandbox.
-  const writeResult = await sandbox.exec(
-    auth,
-    `printf '%s' '${escapeSingleQuotes(tokenJson)}' > /tmp/token.json`
-  );
-  if (writeResult.isErr()) {
-    childLogger.error(
-      { err: writeResult.error },
-      "GCS mount: failed to write token file"
-    );
-    return writeResult;
-  }
-
-  // 3. Start token server and wait until it's listening.
-  // The server script is a netcat loop baked into the template.
-  // Start in background, then verify with a separate exec (matching PoC).
-  const startResult = await sandbox.exec(
-    auth,
-    "bash /home/agent/.bin/token-server.sh > /tmp/server.log 2>&1 &"
-  );
-  if (startResult.isErr()) {
-    childLogger.error(
-      { err: startResult.error },
-      "GCS mount: failed to start token server"
-    );
-    return startResult;
-  }
-
-  const checkResult = await sandbox.exec(
-    auth,
-    "sleep 1 && curl -sf http://127.0.0.1:9876 > /dev/null 2>&1"
-  );
-  if (checkResult.isErr() || checkResult.value.exitCode !== 0) {
-    const msg = "Token server not ready after 1s";
-    childLogger.error({}, msg);
-    return new Err(new Error(msg));
-  }
-
-  // 4. Mount via gcsfuse (runs as root for FUSE permissions).
-  const mountCmd = buildMountCommand({ bucket, prefix });
-  const mountResult = await sandbox.exec(auth, mountCmd, {
+  const mountScript = buildMountScript({ tokenJson, bucket, prefix });
+  const mountResult = await sandbox.exec(auth, mountScript, {
     timeoutMs: MOUNT_TIMEOUT_MS,
     user: "root",
   });
   if (mountResult.isErr()) {
     childLogger.error(
       { err: mountResult.error },
-      "GCS mount: gcsfuse mount failed"
+      "GCS mount: exec failed"
     );
     return mountResult;
   }
 
   if (mountResult.value.exitCode !== 0) {
-    const msg = `gcsfuse exited with code ${mountResult.value.exitCode}: ${mountResult.value.stderr}`;
-    childLogger.error({ stderr: mountResult.value.stderr }, msg);
+    const msg = `GCS mount script exited with code ${mountResult.value.exitCode}: ${mountResult.value.stderr}`;
+    childLogger.error(
+      {
+        exitCode: mountResult.value.exitCode,
+        stderr: mountResult.value.stderr,
+      },
+      msg
+    );
     return new Err(new Error(msg));
   }
 
@@ -182,10 +154,12 @@ export async function refreshGcsToken(
   return new Ok(undefined);
 }
 
-function buildMountCommand({
+function buildMountScript({
+  tokenJson,
   bucket,
   prefix,
 }: {
+  tokenJson: string;
   bucket: string;
   prefix: string;
 }): string {
@@ -206,7 +180,23 @@ function buildMountCommand({
     `--enable-hns=false`,
   ].join(" ");
 
-  return `timeout 30 gcsfuse ${flags} ${bucket} ${MOUNT_POINT} 2>&1`;
+  // chmod 666 so refreshGcsToken (default user) can overwrite the file later.
+  return `set -e
+printf '%s' '${escapeSingleQuotes(tokenJson)}' > ${TOKEN_FILE}
+chmod 666 ${TOKEN_FILE}
+bash /home/agent/.bin/token-server.sh > /tmp/server.log 2>&1 &
+deadline=$(( $(date +%s) + ${TOKEN_SERVER_READY_TIMEOUT_SECONDS} ))
+while true; do
+  if curl -sf http://127.0.0.1:9876 > /dev/null 2>&1; then
+    break
+  fi
+  if [ $(date +%s) -ge $deadline ]; then
+    echo "Token server not ready after ${TOKEN_SERVER_READY_TIMEOUT_SECONDS}s" >&2
+    exit 41
+  fi
+  sleep 0.05
+done
+timeout 30 gcsfuse ${flags} ${bucket} ${MOUNT_POINT} 2>&1`;
 }
 
 function escapeSingleQuotes(s: string): string {

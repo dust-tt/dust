@@ -12,8 +12,8 @@ const EGRESS_TOKEN_PATH = "/etc/dust/egress-token";
 const EGRESS_DENY_LOG_PATH = "/tmp/dust-egress-denied.log";
 const EGRESS_DENY_LOG_OFFSET_PATH = "/tmp/.dust-egress-deny-offset";
 const EGRESS_FORWARDER_LOG_PATH = "/tmp/dust-forwarder.log";
-const EGRESS_SETUP_WAIT_RETRIES = 6;
-const EGRESS_SETUP_WAIT_MS = 500;
+const EGRESS_SETUP_HEALTH_TIMEOUT_SECONDS = 3;
+const EGRESS_SETUP_TIMEOUT_MS = 5_000;
 const EGRESS_JWT_TTL_SECONDS = 24 * 60 * 60;
 const MAX_DENY_LOG_LINES_PER_EXEC = 20;
 
@@ -39,36 +39,10 @@ function shellEscape(value: string): string {
   return `'${value.replaceAll("'", "'\\''")}'`;
 }
 
-async function sleep(delayMs: number): Promise<void> {
-  await new Promise((resolve) => setTimeout(resolve, delayMs));
-}
-
 async function resolveProxyAddr(): Promise<string> {
   const proxyHost = getProxyHost();
   const { address } = await lookup(proxyHost, { family: 4 });
   return address;
-}
-
-async function runSuccessfulSandboxCommand(
-  auth: Authenticator,
-  sandbox: SandboxResource,
-  command: string,
-  user?: string
-): Promise<Result<void, Error>> {
-  const result = await sandbox.exec(auth, command, user ? { user } : undefined);
-  if (result.isErr()) {
-    return result;
-  }
-
-  if (result.value.exitCode !== 0) {
-    return new Err(
-      new Error(
-        `Sandbox command failed with exit code ${result.value.exitCode}: ${result.value.stderr || result.value.stdout || command}`
-      )
-    );
-  }
-
-  return new Ok(undefined);
 }
 
 export function mintEgressJwt(providerId: string, workspaceId: string): string {
@@ -153,26 +127,36 @@ export async function setupEgressForwarder(
     sandbox.providerId,
     auth.getNonNullableWorkspace().sId
   );
-  const tokenWriteResult = await sandbox.writeFile(
-    auth,
-    EGRESS_TOKEN_PATH,
-    new TextEncoder().encode(token).buffer
-  );
-  if (tokenWriteResult.isErr()) {
-    return tokenWriteResult;
+
+  const setupScript = buildEgressSetupScript({ token, proxyAddr });
+  const result = await sandbox.exec(auth, setupScript, {
+    user: "root",
+    timeoutMs: EGRESS_SETUP_TIMEOUT_MS,
+  });
+  if (result.isErr()) {
+    return result;
   }
 
-  const prepareTokenResult = await runSuccessfulSandboxCommand(
-    auth,
-    sandbox,
-    `chmod 600 ${shellEscape(EGRESS_TOKEN_PATH)}`,
-    "root"
-  );
-  if (prepareTokenResult.isErr()) {
-    return prepareTokenResult;
+  if (result.value.exitCode !== 0) {
+    return new Err(
+      new Error(
+        `Egress setup script exited with code ${result.value.exitCode}: ${result.value.stderr}`
+      )
+    );
   }
 
-  const startForwarderCommand =
+  logger.info(logContext, "Sandbox egress forwarder is healthy");
+  return new Ok(undefined);
+}
+
+function buildEgressSetupScript({
+  token,
+  proxyAddr,
+}: {
+  token: string;
+  proxyAddr: string;
+}): string {
+  const dsbxCommand =
     "nohup /opt/bin/dsbx forward " +
     `--token-file ${shellEscape(EGRESS_TOKEN_PATH)} ` +
     `--proxy-addr ${shellEscape(`${proxyAddr}:${config.getEgressProxyPort()}`)} ` +
@@ -181,32 +165,22 @@ export async function setupEgressForwarder(
     `--deny-log ${shellEscape(EGRESS_DENY_LOG_PATH)} ` +
     `>${shellEscape(EGRESS_FORWARDER_LOG_PATH)} 2>&1 &`;
 
-  const startResult = await runSuccessfulSandboxCommand(
-    auth,
-    sandbox,
-    startForwarderCommand,
-    "root"
-  );
-  if (startResult.isErr()) {
-    return startResult;
-  }
-
-  for (let i = 0; i < EGRESS_SETUP_WAIT_RETRIES; i++) {
-    const healthResult = await checkEgressForwarderHealth(auth, sandbox);
-    if (healthResult.isErr()) {
-      return healthResult;
-    }
-    if (healthResult.value) {
-      logger.info(logContext, "Sandbox egress forwarder is healthy");
-      return new Ok(undefined);
-    }
-
-    await sleep(EGRESS_SETUP_WAIT_MS);
-  }
-
-  return new Err(
-    new Error("Sandbox egress forwarder did not become healthy in time")
-  );
+  return `set -e
+mkdir -p /etc/dust
+printf '%s' ${shellEscape(token)} > ${EGRESS_TOKEN_PATH}
+chmod 600 ${EGRESS_TOKEN_PATH}
+${dsbxCommand}
+deadline=$(( $(date +%s) + ${EGRESS_SETUP_HEALTH_TIMEOUT_SECONDS} ))
+while true; do
+  if ss -tln sport = :9990 | grep -q LISTEN; then
+    exit 0
+  fi
+  if [ $(date +%s) -ge $deadline ]; then
+    echo "Egress forwarder not healthy after ${EGRESS_SETUP_HEALTH_TIMEOUT_SECONDS}s" >&2
+    exit 42
+  fi
+  sleep 0.05
+done`;
 }
 
 // Best-effort, sandbox-global deny log surfacing. The offset tracks lines
