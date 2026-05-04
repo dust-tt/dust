@@ -226,16 +226,22 @@ export class FileStorage {
   }
 
   /**
-   * Copy a file within the same bucket with retry logic.
+   * Copy a file within Cloud Storage with retry logic.
    *
    * The GCS SDK's built-in autoRetry is effectively disabled for copy operations and
    * "socket hang up" errors aren't in the SDK's retryable error list anyway.
    * Since copy is idempotent (same source, same destination), retrying is safe.
    */
-  async copyFile(srcPath: string, destPath: string): Promise<void> {
+  async copyFile(
+    srcPath: string,
+    destPath: string,
+    destinationStorage: FileStorage = this
+  ): Promise<void> {
+    const destinationFile = destinationStorage.file(destPath);
+
     for (let attempt = 1; attempt <= GCS_COPY_MAX_RETRIES; attempt++) {
       try {
-        await this.bucket.file(srcPath).copy(this.bucket.file(destPath));
+        await this.file(srcPath).copy(destinationFile);
         return;
       } catch (err) {
         if (attempt === GCS_COPY_MAX_RETRIES) {
@@ -247,7 +253,9 @@ export class FileStorage {
         logger.warn(
           {
             error: normalizeError(err),
+            srcBucket: this.name,
             srcPath,
+            destBucket: destinationStorage.name,
             destPath,
             attempt,
             maxRetries: GCS_COPY_MAX_RETRIES,
