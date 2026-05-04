@@ -226,6 +226,26 @@ Quote text
       expect(container.textContent).not.toContain("<skill");
     });
 
+    it("links inline skill tags for builders", () => {
+      const content =
+        'Please use <skill id="skill_123" name="commit" icon="book_open" />';
+      const message = { ...mockMessage, content };
+      const builderOwner = { ...mockOwner, role: "builder" } as const;
+      const { container } = render(
+        <UserMessageMarkdown
+          owner={builderOwner}
+          message={message}
+          isLastMessage={false}
+        />
+      );
+
+      const skillLink = container.querySelector("a[href]");
+      expect(skillLink).toHaveAttribute(
+        "href",
+        "/w/test-workspace/builder/skills#?skillId=skill_123"
+      );
+    });
+
     it("renders content node mentions", () => {
       const content = ":content_node_mention[Document]{nodeId=doc-123}";
       const message = { ...mockMessage, content };

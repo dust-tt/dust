@@ -12,6 +12,7 @@ import {
 } from "@app/components/markdown/PastedAttachmentBlock";
 import {
   SkillBlock,
+  type SkillDirectiveProps,
   skillDirective,
 } from "@app/components/markdown/SkillBlock";
 import {
@@ -51,7 +52,14 @@ export const UserMessageMarkdown = ({
       mention_user: getUserMentionPlugin(owner),
       content_node_mention: ContentNodeMentionBlock,
       pasted_attachment: PastedAttachmentBlock,
-      skill: SkillBlock,
+      skill: ({ skillIcon, skillId, skillName }: SkillDirectiveProps) => (
+        <SkillBlock
+          owner={owner}
+          skillIcon={skillIcon}
+          skillId={skillId}
+          skillName={skillName}
+        />
+      ),
       todo: TodoDirectiveBlock,
     }),
     [owner]
