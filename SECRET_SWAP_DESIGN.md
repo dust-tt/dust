@@ -34,7 +34,10 @@ path.
   that secret.
 - The mechanism is transparent to the default HTTPS client of every
   mainstream language (curl, Python, Node, Bun, Deno, Go, Java, Ruby, PHP,
-  Rust with native-tls). No agent code changes required.
+  Rust with native-tls). Most clients work without code changes; SDKs
+  that auto-discover env vars by exact name (OpenAI, Stripe, etc.) need
+  a one-line aliasing snippet because secrets are exposed under a
+  dedicated `DSEC_*` prefix (see Phase 1 spec for the rationale).
 - The real secret value is never forwarded to a destination outside the
   matching secret's `allowedDomains`. This is the load-bearing security
   invariant.
@@ -100,24 +103,45 @@ implementation.
 __DST_SECRET_<32 hex chars>__
 ```
 
-where the hex is a 16-byte random nonce, generated when the secret row is
-created and stored on the row as `placeholderNonce`. Rotation generates
-a new nonce.
+where the hex is a 16-byte random nonce, generated **once** when the
+secret row is created and stored on the row as `placeholderNonce`.
+
+**The nonce is stable for the life of the secret.** It does not change
+on value rotation. It does not change on `allowedDomains` edits. The
+only thing that "ends" the nonce is deletion of the secret row, after
+which the nonce is never reused (a recreated secret with the same name
+gets a fresh random nonce).
+
+Why a stable nonce: the placeholder is an opaque alias. Substitution
+fires when dsbx observes the placeholder *and* the request destination
+is in the secret's allowedDomains *and* the sandbox has the secret
+provisioned in `/run/dust/egress-secrets.json`. Whether the placeholder
+string itself rotates buys us nothing security-wise:
+
+- An attacker who exfiltrates a placeholder can't use it: they don't
+  have a sandbox provisioned with the secret, so substitution never
+  fires for them.
+- A persisted script (the agent saved a notebook with the placeholder
+  embedded) keeps working after a value rotation - it picks up the new
+  value via dsbx without any agent-side change, which is the right UX.
+- "Force persisted state to break loudly" was a feature of the old
+  HMAC-derived design (rotation bumped `version`, which mechanically
+  rotated the placeholder). With a per-secret random nonce there's no
+  reason to do this artificially.
 
 This is a deliberately simpler model than HMAC-deriving the placeholder
 from `(workspace, name, version)`: a random nonce removes the question
-of where a HMAC key would live, who can read it, and how it rotates. The
-nonce is stored alongside the encrypted value (same row, same encryption
-posture). It's unforgeable by construction (random) and reveals nothing
-about the underlying secret.
+of where a HMAC key would live, who can read it, and how it rotates.
+It's unforgeable by construction (random) and reveals nothing about the
+underlying secret.
 
 Properties:
 
 - Fixed width, alphanumeric: safe to embed in shell, JSON, headers, URLs.
 - Greppable regex: `__DST_SECRET_[0-9a-f]{32}__`.
-- Stable across sandbox boots until the row is rotated. Rotation issues
-  a new nonce, which rotates the placeholder and forces persisted agent
-  state to break loudly.
+- Stable for the life of the secret row. Rotation of the value, edits
+  to `allowedDomains`, and any other in-place change keep the same
+  nonce. Only deletion ends the nonce.
 - Workspace-scoped identity: a given secret has the same placeholder in
   every sandbox of the workspace it belongs to. A persisted placeholder
   replayed from sandbox A to sandbox B of the same workspace will
@@ -142,8 +166,11 @@ domains are unaffected.
   on dsbx with that leaf. Open outbound TLS toward the real upstream
   (still tunneled through the central egress proxy on 4443). On the
   decrypted inner stream, if the protocol parses as HTTP/1.1 or HTTP/2
-  (per ALPN), run the header/URL rewriter. If a recognized placeholder
-  appears on a non-allowed domain, drop. Otherwise re-encrypt outbound.
+  (per ALPN), run the header rewriter. Substitution applies only to
+  header values in Phase 1; if a placeholder appears in the request
+  line (URL path/query) dsbx drops the connection (URL substitution
+  is Phase 2). If a recognized placeholder appears on a non-allowed
+  domain, drop. Otherwise re-encrypt outbound.
   If the inner protocol is *not* HTTP/1.1 or HTTP/2 (e.g. Postgres TLS
   on a MITM-scoped domain), the bytes are re-encrypted and forwarded
   unchanged: dsbx doesn't substitute and doesn't scan for the
@@ -544,9 +571,21 @@ time.
 
 ### Phase 1, MVP - HTTP/1.1
 
-- HTTP/1.1 only on port 443 (force HTTP/1 via ALPN), headers + URL only.
+- HTTP/1.1 only on port 443 (force HTTP/1 via ALPN), **headers only**.
+  URL substitution (placeholder appearing in the request line / Path-
+  and-Query) is deferred to Phase 2 because URL-context encoding rules
+  (reserved chars, percent-encoding, ambiguity around `+` vs `%20`)
+  haven't been worked out. dsbx scans the request line in Phase 1 and
+  drops the connection if a placeholder appears there (loud failure;
+  agent learns the URL path isn't supported and uses headers).
 - Random-nonce `__DST_SECRET_<32hex>__` placeholder. Each secret row has
-  a 16-byte `placeholderNonce` column generated at create/rotate time.
+  a 16-byte `placeholderNonce` column generated **once at row create
+  time**. The nonce is stable for the life of the row - rotation of
+  the value and edits to `allowedDomains` do **not** change the nonce.
+  Only deletion ends the nonce. Running sandboxes that hold the
+  placeholder string in env continue to work after a value rotation
+  without any env refresh: file-watch propagates the new value, dsbx
+  reloads, the same placeholder substitutes to the new value.
 - **MITM scope = allowlist union**: dsbx terminates TLS only when the
   SNI matches a domain in some configured secret's `allowedDomains`
   (exact match or leading-`*.` wildcard). Other 443 traffic stays on
@@ -598,14 +637,43 @@ time.
   values, allowedDomains updates, and deletions propagate to running
   sandboxes within seconds. Closes the "secret remains usable for up
   to 30 days" window that the snapshot-only model would have left
-  open. Notes:
-  - Deleting a secret removes the entry from the file; subsequent
-    requests bearing that placeholder fail substitution and drop.
-    The agent's env still contains the placeholder string (env is
-    set at process exec, not synced live), but it no longer
-    substitutes - the agent sees auth-style failures.
-  - The file-watch + rewrite pattern mirrors the egress proxy's
-    GCS-backed policy reload at a different layer.
+  open.
+
+  **Failure semantics** (load-bearing - "best-effort propagation"
+  is not enough for rotation/deletion):
+
+  - **Atomic write at front**: write to a temp file in the same
+    directory, then rename. dsbx never sees a partially-written
+    file. POSIX rename is atomic on the same filesystem.
+  - **Fail-closed parse at dsbx**: on inotify event, dsbx attempts
+    to parse the new file. On any parse error (truncated, malformed
+    JSON, schema mismatch), dsbx **clears its in-memory secret
+    map** rather than retaining the old state. No secret will
+    substitute until a valid file appears. This is the strict-mode
+    fallback: rather than risk releasing a rotated-out value, drop
+    everything. Logged loudly.
+  - **Sleeping sandboxes**: a paused sandbox VM keeps tmpfs intact
+    in suspended RAM, so the secrets file is whatever it was at
+    suspend time. On wake, the wake path in `front` rewrites the
+    secrets file from current state before any agent code runs.
+    dsbx reloads via inotify or on its own restart-after-wake.
+  - **Unreachable sandboxes / write failures**: front retries with
+    backoff (e.g. 3 attempts). After exhaustion, front
+    **kills the sandbox** (forces a fresh provisioning on next
+    use). User loses any in-flight agent state on that sandbox -
+    accepted cost for the security correctness rotation/deletion
+    requires. A rotated/deleted secret cannot linger past the
+    propagation deadline.
+  - **Deletion**: file-watch removes the entry. Subsequent requests
+    bearing that placeholder don't substitute; dsbx forwards the
+    literal placeholder to upstream which auth-rejects. Agent sees
+    a clean failure. The agent's env still carries the placeholder
+    string (env is set at exec time, not synced live), but it's
+    inert - it just looks like a stale token. The skill prompt
+    documents this so agents recognize the pattern.
+
+  The file-watch + rewrite pattern mirrors the egress proxy's
+  GCS-backed policy reload at a different layer.
 - **Per-secret allowedDomains and the central egress allowlist are
   configured independently** (no save-time subset validation,
   no auto-add). Reason: the central egress allowlist is the union of
@@ -652,6 +720,12 @@ and validate it on h1 before adding frame-level complexity.
   placeholder is recognized whether the header value is sent literally
   or after dynamic-table indexing.
 - ALPN negotiation lets clients pick h2 again (Phase 1 forces h1).
+- **URL substitution** (placeholder in request-line path/query for h1,
+  `:path` pseudo-header for h2). Encoding rules: secrets used in URL
+  position must validate as URL-safe at admin set time (alphanumeric
+  + `-._~`), or a `urlSafe: true` flag on the secret indicates dsbx
+  should percent-encode at substitution time. Decision pending in
+  the Phase 2 design pass.
 - Same trust/allowlist/placeholder model as Phase 1.
 
 ### Phase 3, body substitution
@@ -735,6 +809,25 @@ and validate it on h1 before adding frame-level complexity.
   secret; dsbx inotify-watches and reloads. Closes the up-to-30-day
   stale-secret window the snapshot-only model would have left open.
   ~+0.5 engineer-week on top of Phase 1.
+- **Placeholder nonce is stable for the life of the secret row.**
+  Generated once at create time, kept across value rotations and
+  allowedDomains edits. Only deletion ends it. Running sandboxes
+  carrying the placeholder string in env continue to work after a
+  value rotation - file-watch propagates the new value, the same
+  placeholder substitutes to the new value, no env refresh needed.
+- **Propagation failure policy**: front retries with backoff; after
+  N exhausted attempts, **kill the sandbox**. Accepted disruption
+  cost in exchange for the guarantee that a rotated/deleted secret
+  cannot linger past the propagation deadline.
+- **Secrets-file write is atomic** (temp + rename). **dsbx parses
+  fail-closed**: on parse error, the in-memory secret map is cleared
+  (no substitution until a valid file appears), not retained.
+- **Sleeping sandboxes**: front rewrites the secrets file on the
+  wake path before any agent code runs.
+- **URL substitution**: deferred from Phase 1 to Phase 2.
+  Phase 1 substitutes in headers only; dsbx drops on observed
+  placeholder in the request line (loud failure). URL-context
+  encoding rules will be specified in Phase 2.
 - **Migration of existing rows**: existing `WorkspaceSandboxEnvVar` rows
   default to config vars on rollout. Promotion to secrets is fully
   manual (no auto-flagging), since the only workspace where this rolls
