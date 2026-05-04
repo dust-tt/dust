@@ -28,18 +28,43 @@ const makeResHandler =
           nowMs - lastMs > FORCE_RELOAD_INTERVAL_MS) &&
         !isNavigationLocked();
       if (shouldReload) {
-        datadogLogger.info(
-          {
-            commitHash: COMMIT_HASH,
-            url: res.url,
-            statusCode: res.status,
-          },
-          "[fetcher] Force client reload"
-        );
-        sessionStorage.setItem(FORCE_RELOAD_SESSION_KEY, nowMs.toString());
-        window.location.reload();
-        // Return a never-resolving promise to prevent SWR from processing.
-        return new Promise(() => {});
+        // Stale cached responses from before Cache-Control: no-store was
+        // deployed (#25115) may still carry X-Reload-Required: true after
+        // the flag has been cleared in Redis. Confirm with a cache-busting
+        // request before reloading.
+        let confirmedFlagged = true;
+        try {
+          const confirmRes = await clientFetch(res.url, {
+            cache: "reload",
+            headers: addClientVersionHeaders(),
+          });
+          confirmedFlagged =
+            confirmRes.headers.get("X-Reload-Required") === "true";
+        } catch {
+          // Network error — assume still flagged and proceed with reload.
+        }
+        if (!confirmedFlagged) {
+          datadogLogger.info(
+            {
+              commitHash: COMMIT_HASH,
+              url: res.url,
+            },
+            "[fetcher] Skipping reload: cached X-Reload-Required not confirmed by server"
+          );
+        } else {
+          datadogLogger.info(
+            {
+              commitHash: COMMIT_HASH,
+              url: res.url,
+              statusCode: res.status,
+            },
+            "[fetcher] Force client reload"
+          );
+          sessionStorage.setItem(FORCE_RELOAD_SESSION_KEY, nowMs.toString());
+          window.location.reload();
+          // Return a never-resolving promise to prevent SWR from processing.
+          return new Promise(() => {});
+        }
       }
     }
 
