@@ -1214,15 +1214,14 @@ export async function renderLightContentFragmentForModel(
     !attachment.isQueryable &&
     !isContentNodeAttachmentType(attachment)
   ) {
+    const snippet = attachment.snippet;
+    const fileTag = snippet
+      ? `<file name="${attachment.title}" path="conversation/${attachment.title}">${snippet}\n</file>`
+      : `<file name="${attachment.title}" path="conversation/${attachment.title}"/>`;
     return {
       role: "content_fragment",
       name: `attach_${contentType}`,
-      content: [
-        {
-          type: "text",
-          text: `<file name="${attachment.title}" path="conversation/${attachment.title}"/>`,
-        },
-      ],
+      content: [{ type: "text", text: fileTag }],
     };
   }
 
