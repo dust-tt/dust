@@ -137,6 +137,135 @@ export async function startCreditFromProOneOffInvoice({
   return new Ok(undefined);
 }
 
+// We added this method because even though it's super rare, ENT customer
+// can self-serve credits, and if their plan/account was not correctly configured it can fail
+// with no path to recovery (other than manual eng intervention)
+export async function startCreditFromEnterpriseOneOffInvoice({
+  auth,
+  invoice,
+  stripeSubscription,
+}: {
+  auth: Authenticator;
+  invoice: Stripe.Invoice;
+  stripeSubscription: Stripe.Subscription;
+}): Promise<Result<{ alreadyStarted: boolean }, Error>> {
+  if (
+    !isCreditPurchaseInvoice(invoice) ||
+    !isEnterpriseSubscription(stripeSubscription)
+  ) {
+    throw new Error(
+      `Cannot process this invoice for enterprise credit purchase: ${invoice.id}\n` +
+        `isCreditPurchaseInvoice: ${isCreditPurchaseInvoice(invoice)}\n` +
+        `isEntrepriseSubscription: ${isEnterpriseSubscription(stripeSubscription)}`
+    );
+  }
+
+  const workspace = auth.getNonNullableWorkspace();
+  const creditAmountCents = getCreditAmountFromInvoice(invoice);
+
+  if (creditAmountCents === null) {
+    logger.error(
+      {
+        workspaceId: workspace.sId,
+        invoiceId: invoice.id,
+        creditAmountCents: invoice.metadata?.credit_amount_cents,
+      },
+      "[Credit Purchase] Invalid credit amount in invoice metadata"
+    );
+    getStatsDClient().increment("credits.top_up.error", 1, [
+      `workspace_id:${workspace.sId}`,
+      "type:committed",
+      "customer:enterprise",
+    ]);
+    return new Err(new Error("Invalid credit amount in invoice metadata"));
+  }
+
+  const credit = await CreditResource.fetchByInvoiceOrLineItemId(
+    auth,
+    invoice.id
+  );
+
+  if (!credit) {
+    logger.error(
+      {
+        panic: true,
+        workspaceId: workspace.sId,
+        invoiceId: invoice.id,
+      },
+      "[Credit Purchase] Credit not found for paid enterprise invoice"
+    );
+    getStatsDClient().increment("credits.top_up.error", 1, [
+      `workspace_id:${workspace.sId}`,
+      "type:committed",
+      "customer:enterprise",
+    ]);
+    return new Err(new Error("Credit not found for invoice"));
+  }
+
+  // For enterprise, the credit is normally started optimistically at invoice creation
+  // (see createEnterpriseCreditPurchase). The webhook firing later just
+  // confirms payment, so finding a started credit is the expected case.
+  if (credit.startDate !== null) {
+    logger.info(
+      {
+        workspaceId: workspace.sId,
+        invoiceId: invoice.id,
+        creditId: credit.id,
+      },
+      "[Credit Purchase] Enterprise credit already started, ack only"
+    );
+    return new Ok({ alreadyStarted: true });
+  }
+
+  // Edge case: optimistic start did not happen. Recover by starting the credit now.
+  const startResult = await credit.start(auth);
+  if (startResult.isErr()) {
+    logger.error(
+      {
+        workspaceId: workspace.sId,
+        creditAmountCents,
+        invoiceId: invoice.id,
+        creditId: credit.id,
+        expirationDate: credit.expirationDate,
+      },
+      "[Credit Purchase] Error starting enterprise credit from webhook"
+    );
+    getStatsDClient().increment("credits.top_up.error", 1, [
+      `workspace_id:${workspace.sId}`,
+      "type:committed",
+      "customer:enterprise",
+    ]);
+    return new Err(startResult.error);
+  }
+  getStatsDClient().increment("credits.top_up.success", 1, [
+    `workspace_id:${workspace.sId}`,
+    "type:committed",
+    "customer:enterprise",
+  ]);
+
+  const metronomeResult = await addMetronomeCommitsForWorkspace({
+    auth,
+    credit,
+    amountCredits: creditAmountCents / 100,
+    startDate: startResult.value.startDate,
+    expirationDate: startResult.value.expirationDate,
+  });
+  if (metronomeResult.isErr()) {
+    return new Err(metronomeResult.error);
+  }
+
+  logger.info(
+    {
+      workspaceId: workspace.sId,
+      creditAmountCents,
+      invoiceId: invoice.id,
+      creditId: credit.id,
+    },
+    "[Credit Purchase] Recovered and started enterprise credit from webhook"
+  );
+  return new Ok({ alreadyStarted: false });
+}
+
 export async function voidFailedProCreditPurchaseInvoice({
   auth,
   invoice,
