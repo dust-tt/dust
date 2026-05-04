@@ -6329,68 +6329,6 @@
         }
       }
     },
-    "/api/w/{wId}/assistant/conversations/{cId}/branches": {
-      "get": {
-        "summary": "Get the most recent open branch for a conversation",
-        "description": "Returns the most recently opened branch for a specific conversation, or null if none exists.",
-        "tags": [
-          "Private Conversations"
-        ],
-        "parameters": [
-          {
-            "in": "path",
-            "name": "wId",
-            "required": true,
-            "description": "ID of the workspace",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "cId",
-            "required": true,
-            "description": "ID of the conversation",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successfully retrieved the open branch (or null if none)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "branch": {
-                      "nullable": true,
-                      "type": "object",
-                      "description": "The most recent open branch for the conversation, or null if none is open"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request parameters"
-          },
-          "404": {
-            "description": "Conversation not found"
-          },
-          "500": {
-            "description": "Internal server error"
-          }
-        }
-      }
-    },
     "/api/w/{wId}/assistant/conversations/{cId}/cancel": {
       "post": {
         "summary": "Cancel message generation",
