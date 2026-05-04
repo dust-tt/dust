@@ -233,15 +233,17 @@ const ToolsListContent = memo(
   }
 );
 
+interface EditableToolsListProps {
+  mayUpdate: boolean;
+  tools: ToolDefinition[];
+  getDefaultSettings: (tool: ToolDefinition) => ToolSettings;
+}
+
 function EditableToolsList({
   mayUpdate,
   tools,
   getDefaultSettings,
-}: {
-  mayUpdate: boolean;
-  tools: ToolDefinition[];
-  getDefaultSettings: (tool: ToolDefinition) => ToolSettings;
-}) {
+}: EditableToolsListProps) {
   // We use a single controller for the whole `toolSettings` record because
   // React Hook Form treats dots in field paths as nested-object separators,
   // which would corrupt form state for tool names that contain dots.
