@@ -103,12 +103,12 @@ export class AnthropicLLM extends LLM<LLMStreamParameters> {
   private client: Anthropic;
   private inferenceClient: Anthropic | AnthropicVertex;
   private omittedThinking: boolean;
-  private vertex: boolean;
+  private useVertex: boolean;
   constructor(
     auth: Authenticator,
     llmParameters: LLMParameters & {
       modelId: AnthropicWhitelistedModelId;
-      vertex?: boolean;
+      useVertex?: boolean;
     }
   ) {
     const params = overwriteLLMParameters(llmParameters);
@@ -117,7 +117,7 @@ export class AnthropicLLM extends LLM<LLMStreamParameters> {
     assert(ANTHROPIC_API_KEY, "ANTHROPIC_API_KEY credential is required");
     this.omittedThinking = params.omittedThinking ?? false;
 
-    this.vertex = llmParameters.vertex ?? false;
+    this.useVertex = llmParameters.useVertex ?? false;
     this.client = new Anthropic({
       apiKey: ANTHROPIC_API_KEY,
     });
@@ -126,7 +126,7 @@ export class AnthropicLLM extends LLM<LLMStreamParameters> {
       config.getCurrentRegion() === "us-central1" ? "global" : "europe-west1";
 
     // Vertex does not support batches
-    this.inferenceClient = this.vertex
+    this.inferenceClient = this.useVertex
       ? new AnthropicVertex({
           region,
         })
@@ -146,7 +146,7 @@ export class AnthropicLLM extends LLM<LLMStreamParameters> {
         toMessage(msg, {
           isLast: index === conversation.messages.length - 1,
           omittedThinking: this.omittedThinking,
-          convertToBase64: this.vertex,
+          convertToBase64: this.useVertex,
         }),
       { concurrency: 10 }
     );
@@ -205,7 +205,7 @@ export class AnthropicLLM extends LLM<LLMStreamParameters> {
   }
 
   private getModel(): string {
-    if (!this.vertex) {
+    if (!this.useVertex) {
       return this.modelId;
     }
 
