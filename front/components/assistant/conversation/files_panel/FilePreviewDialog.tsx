@@ -27,7 +27,7 @@ import {
   Spinner,
   cn,
 } from "@dust-tt/sparkle";
-import type { ColumnDef } from "@tanstack/react-table";
+import type { CellContext, ColumnDef } from "@tanstack/react-table";
 
 const MAX_CSV_ROWS = 200;
 const MAX_TEXT_CHARS = 100_000;
@@ -128,15 +128,14 @@ function DelimitedPreview({ content, mimeType }: DelimitedPreviewProps) {
   );
   const displayed = allRows.slice(0, MAX_CSV_ROWS);
 
+  type Row = Record<string, string>;
+
   const baseRatio = Math.floor(100 / headers.length);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const columns: ColumnDef<any>[] = headers.map((header, idx) => ({
+  const columns: ColumnDef<Row>[] = headers.map((header, idx) => ({
     id: header,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    accessorFn: (row: any) => row[header] ?? "",
+    accessorFn: (row: Row) => row[header] ?? "",
     header,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    cell: (info: any) => (
+    cell: (info: CellContext<Row, unknown>) => (
       <DataTable.BasicCellContent label={String(info.getValue() ?? "")} />
     ),
     meta: {
@@ -148,8 +147,7 @@ function DelimitedPreview({ content, mimeType }: DelimitedPreviewProps) {
     },
   }));
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const data: any[] = displayed.map((row) =>
+  const data: Row[] = displayed.map((row) =>
     Object.fromEntries(headers.map((h, i) => [h, row[i] ?? ""]))
   );
 
