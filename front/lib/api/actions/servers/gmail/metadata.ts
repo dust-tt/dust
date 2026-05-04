@@ -181,10 +181,7 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
     description: `Modify the labels of a message. System label IDs can be used directly (INBOX, SPAM, TRASH, UNREAD, STARRED, IMPORTANT, ...). User labels should be retrieved first via get_labels to get their IDs.`,
     schema: {
       messageId: z.string().describe("The ID of the message to modify."),
-      addLabelIds: z
-        .array(z.string())
-        .optional()
-        .describe("Label IDs to add."),
+      addLabelIds: z.array(z.string()).optional().describe("Label IDs to add."),
       removeLabelIds: z
         .array(z.string())
         .optional()
