@@ -215,6 +215,22 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
       done: "Archive Gmail messages",
     },
   },
+  mark_as_read: {
+    description:
+      "Mark one or more Gmail messages as read. Use this after triaging or reviewing messages so they no longer appear as unread.",
+    schema: {
+      messageIds: z
+        .array(z.string())
+        .min(1)
+        .max(1000)
+        .describe("The Gmail message IDs to mark as read. Maximum 1000."),
+    },
+    stake: "medium",
+    displayLabels: {
+      running: "Marking Gmail messages as read",
+      done: "Mark Gmail messages as read",
+    },
+  },
   create_reply_draft: {
     description: `Create a reply draft to an existing email thread in Gmail.
 - The draft will be saved in the user's Gmail account and can be reviewed and sent later.

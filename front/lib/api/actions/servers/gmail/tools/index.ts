@@ -137,6 +137,34 @@ async function listGmailLabels(
   return new Ok(result.labels ?? []);
 }
 
+function resolveLabelIdsFromList(
+  labels: string[],
+  allLabels: GmailLabel[]
+): Err<MCPError> | Ok<string[]> {
+  const byNormalizedName = new Map(
+    allLabels.map((l) => [normalizeLabelName(l.name), l])
+  );
+  const byId = new Map(allLabels.map((l) => [l.id, l]));
+
+  const ids: string[] = [];
+  for (const label of labels) {
+    const byName = byNormalizedName.get(normalizeLabelName(label));
+    if (byName) {
+      ids.push(byName.id);
+    } else if (byId.has(label)) {
+      ids.push(label);
+    } else {
+      const available = allLabels.map((l) => l.name).join(", ");
+      return new Err(
+        new MCPError(
+          `Label "${label}" not found. Available labels: ${available}`
+        )
+      );
+    }
+  }
+  return new Ok(ids);
+}
+
 async function resolveLabelIds(
   labels: string[],
   accessToken: string
@@ -151,18 +179,10 @@ async function resolveLabelIds(
     return labelListResult;
   }
 
-  const labelsByNormalizedName = new Map(
-    labelListResult.value.map((label) => [
-      normalizeLabelName(label.name),
-      label,
-    ])
+  return resolveLabelIdsFromList(
+    normalizedLabelsResult.value,
+    labelListResult.value
   );
-  const labelIds = normalizedLabelsResult.value.map((label) => {
-    const matchingLabel = labelsByNormalizedName.get(normalizeLabelName(label));
-    return matchingLabel?.id ?? label;
-  });
-
-  return new Ok(labelIds);
 }
 
 async function batchModifyMessages({
@@ -549,15 +569,36 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
       );
     }
 
-    const addLabelIdsResult = addLabels?.length
-      ? await resolveLabelIds(addLabels, accessToken)
+    // Fetch the label list once and resolve both add/remove from it.
+    const labelListResult = await listGmailLabels(accessToken);
+    if (labelListResult.isErr()) {
+      return labelListResult;
+    }
+    const allLabels = labelListResult.value;
+
+    const addNormalizedResult = addLabels?.length
+      ? normalizeLabelInputs(addLabels)
+      : new Ok(undefined);
+    if (addNormalizedResult.isErr()) {
+      return addNormalizedResult;
+    }
+
+    const removeNormalizedResult = removeLabels?.length
+      ? normalizeLabelInputs(removeLabels)
+      : new Ok(undefined);
+    if (removeNormalizedResult.isErr()) {
+      return removeNormalizedResult;
+    }
+
+    const addLabelIdsResult = addNormalizedResult.value
+      ? resolveLabelIdsFromList(addNormalizedResult.value, allLabels)
       : new Ok(undefined);
     if (addLabelIdsResult.isErr()) {
       return addLabelIdsResult;
     }
 
-    const removeLabelIdsResult = removeLabels?.length
-      ? await resolveLabelIds(removeLabels, accessToken)
+    const removeLabelIdsResult = removeNormalizedResult.value
+      ? resolveLabelIdsFromList(removeNormalizedResult.value, allLabels)
       : new Ok(undefined);
     if (removeLabelIdsResult.isErr()) {
       return removeLabelIdsResult;
@@ -606,6 +647,20 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
       messageIds,
       removeLabelIds: ["INBOX"],
       successMessage: "Gmail messages archived successfully",
+    });
+  },
+
+  mark_as_read: async ({ messageIds }, { authInfo }) => {
+    const accessToken = authInfo?.token;
+    if (!accessToken) {
+      return new Err(new MCPError("Authentication required"));
+    }
+
+    return batchModifyMessages({
+      accessToken,
+      messageIds,
+      removeLabelIds: ["UNREAD"],
+      successMessage: "Gmail messages marked as read successfully",
     });
   },
 

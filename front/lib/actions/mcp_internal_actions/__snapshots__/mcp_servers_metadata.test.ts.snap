@@ -187,13 +187,18 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "search_advanced": "never_ask",
   },
   "gmail": {
+    "archive_messages": "medium",
     "create_draft": "medium",
     "create_reply_draft": "medium",
     "delete_draft": "high",
     "get_attachment": "never_ask",
     "get_drafts": "never_ask",
     "get_messages": "never_ask",
+    "list_labels": "never_ask",
+    "mark_as_read": "medium",
+    "move_messages_to_label": "medium",
     "send_mail": "high",
+    "update_message_labels": "medium",
   },
   "gong": {
     "get_call": "never_ask",

@@ -389,6 +389,7 @@ export const INTERNAL_MCP_SERVERS = {
       update_message_labels: ["messageIds", "addLabels", "removeLabels"],
       move_messages_to_label: ["messageIds", "label"],
       archive_messages: ["messageIds"],
+      mark_as_read: ["messageIds"],
       send_mail: ["to", "from"],
     },
     tools_retry_policies: undefined,
