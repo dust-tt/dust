@@ -130,7 +130,7 @@ function getSeatBasedPlanItems(
       plans: ["business"],
     },
     {
-      label: "Advanced models (GPT-5, Claude, Gemini, Mistral\u2026)",
+      label: "Advanced models (GPT-5, Claude, Gemini, Mistral…)",
       variant: "check",
       display: ["landing", "subscribe"],
       plans: ["pro", "business"],
