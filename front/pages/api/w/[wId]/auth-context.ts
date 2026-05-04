@@ -97,7 +97,7 @@ async function handler(
     isBuilder: auth.isBuilder(),
     featureFlags,
     ...(isEligibleForTrial !== undefined && { isEligibleForTrial }),
-    vizUrl: config.getVizPublicUrl(),
+    vizUrl: "http://localhost:3007/", // config.getVizPublicUrl(),
     providersHealth: auth.providersHealth(),
   });
 }

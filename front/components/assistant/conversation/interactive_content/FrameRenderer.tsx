@@ -105,6 +105,8 @@ export function FrameRenderer({
   );
   const isFullScreen = fullScreenHash === "true";
 
+  const [frameRenderKey, setFrameRenderKey] = useState(0);
+
   const { fileContent, error, mutateFileContent } = useFileContent({
     fileId,
     owner,
@@ -126,6 +128,31 @@ export function FrameRenderer({
   });
 
   const [showCode, setShowCode] = React.useState(false);
+
+  const handleEditText = useCallback(
+    async (editId: string, oldText: string, newText: string) => {
+      const response = await clientFetch(
+        `/api/w/${owner.sId}/files/${fileId}/edit-text`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ editId, oldText, newText }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await getErrorFromResponse(response);
+        return { success: false, error: errorData.message };
+      }
+
+      await mutateFileContent(
+        `/api/w/${owner.sId}/files/${fileId}?action=view`
+      );
+      setFrameRenderKey((k) => k + 1);
+      return { success: true };
+    },
+    [owner.sId, fileId, mutateFileContent]
+  );
 
   const restoreLayout = useCallback(() => {
     if (panel) {
@@ -357,10 +384,12 @@ export function FrameRenderer({
                 complete: true,
                 identifier: `viz-${fileId}`,
               }}
-              key={`viz-${fileId}`}
+              key={`viz-${fileId}-${frameRenderKey}`}
               conversationId={conversation?.sId ?? null}
+              isEditable={true}
               spaceId={frameSpaceId}
               isInDrawer={true}
+              onEditText={handleEditText}
               ref={iframeRef}
             />
             {conversation && (

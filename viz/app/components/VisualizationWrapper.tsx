@@ -4,6 +4,7 @@ import { Spinner } from "@viz/app/components/Components";
 import { ErrorBoundary } from "@viz/app/components/ErrorBoundary";
 import { VizContext } from "@viz/app/components/VizContext";
 import { extractFileRefs } from "@viz/app/lib/parseFileRefs";
+import { transformEditableText } from "@viz/app/lib/transformEditableText";
 import type {
   VisualizationAPI,
   VisualizationConfig,
@@ -29,7 +30,7 @@ import { toBlob, toSvg } from "html-to-image";
 import * as lucideAll from "lucide-react";
 import * as papaparseAll from "papaparse";
 import * as reactAll from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useResizeDetector } from "react-resize-detector";
 import { importCode, Runner } from "react-runner";
 import * as rechartsAll from "recharts";
@@ -168,6 +169,17 @@ export function useVisualizationAPI(
     await sendCrossDocumentMessage("displayCode", null);
   }, [sendCrossDocumentMessage]);
 
+  const editText = useCallback(
+    async (editId: string, oldText: string, newText: string) => {
+      return await sendCrossDocumentMessage("editText", {
+        editId,
+        oldText,
+        newText,
+      });
+    },
+    [sendCrossDocumentMessage]
+  );
+
   const addEventListener = useCallback(
     (
       eventType: SupportedEventType,
@@ -211,6 +223,7 @@ export function useVisualizationAPI(
     addEventListener,
     displayCode,
     downloadFile,
+    editText,
     sendHeightToParent,
   };
 }
@@ -298,6 +311,20 @@ export function VisualizationWrapperWithErrorBoundary({
   );
 }
 
+interface EditState {
+  editId: string;
+  oldText: string;
+  rectTop: number;
+  rectBottom: number;
+  left: number;
+  width: number;
+}
+
+interface HoverState {
+  top: number;
+  right: number;
+}
+
 // This component renders the generated code.
 // It gets the generated code via message passing to the host window.
 export function VisualizationWrapper({
@@ -307,14 +334,31 @@ export function VisualizationWrapper({
   config: VisualizationConfig;
   api: VisualizationAPI;
 }) {
-  const { identifier, isFullHeight = false, isPdfMode = false } = config;
+  const {
+    identifier,
+    isEditable = false,
+    isFullHeight = false,
+    isPdfMode = false,
+  } = config;
   const [runnerParams, setRunnerParams] = useState<RunnerParams | null>(null);
   const [vizReady, setVizReady] = useState(false);
 
   const [errored, setErrorMessage] = useState<Error | null>(null);
 
-  const { sendHeightToParent, downloadFile, displayCode, addEventListener } =
-    api.ui;
+  const [editState, setEditState] = useState<EditState | null>(null);
+  const [editValue, setEditValue] = useState("");
+  const [hoverState, setHoverState] = useState<HoverState | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const editInputRef = useRef<HTMLInputElement>(null);
+  const isSavingRef = useRef(false);
+
+  const {
+    sendHeightToParent,
+    downloadFile,
+    displayCode,
+    editText,
+    addEventListener,
+  } = api.ui;
 
   const memoizedDownloadFile = useDownloadFileCallback(downloadFile);
 
@@ -356,8 +400,8 @@ export function VisualizationWrapper({
   useEffect(() => {
     const loadCode = async () => {
       try {
-        const codeToUse = await api.data.fetchCode();
-        if (!codeToUse) {
+        const fetchedCode = await api.data.fetchCode();
+        if (!fetchedCode) {
           setErrorMessage(
             new Error("No code provided to visualization component")
           );
@@ -365,7 +409,12 @@ export function VisualizationWrapper({
         }
         // Validate Tailwind code before processing to catch arbitrary values early. Error gets
         // exposed to user for retry, providing feedback to the model.
-        validateTailwindCode(codeToUse);
+        validateTailwindCode(fetchedCode);
+
+        // Wrap JSXText nodes with editable spans when inline editing is enabled.
+        const codeToUse = isEditable
+          ? transformEditableText(fetchedCode)
+          : fetchedCode;
 
         const baseImports: Record<string, unknown> = {
           papaparse: papaparseAll,
@@ -429,7 +478,7 @@ export function VisualizationWrapper({
     };
 
     loadCode();
-  }, [memoizedDownloadFile, handleScreenshotDownload, api.data]);
+  }, [memoizedDownloadFile, handleScreenshotDownload, api.data, isEditable]);
 
   const handleSVGDownload = useCallback(async () => {
     if (ref.current) {
@@ -459,6 +508,146 @@ export function VisualizationWrapper({
   const handleDisplayCode = useCallback(async () => {
     await displayCode();
   }, [displayCode]);
+
+  // Inject CSS that marks editable spans as interactive and highlights them on hover.
+  useEffect(() => {
+    if (!isEditable) {
+      return;
+    }
+    const style = document.createElement("style");
+    style.textContent = `
+      [data-editable] {
+        cursor: pointer;
+        border-radius: 2px;
+        transition: background-color 0.1s, outline-color 0.1s;
+      }
+      [data-editable]:hover {
+        background-color: rgba(59, 130, 246, 0.08);
+        outline: 1.5px dashed rgba(59, 130, 246, 0.45);
+        outline-offset: 2px;
+      }
+    `;
+    document.head.appendChild(style);
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, [isEditable]);
+
+  // Focus and select the edit input whenever the popover opens.
+  useEffect(() => {
+    if (editState && editInputRef.current) {
+      editInputRef.current.focus();
+      editInputRef.current.select();
+    }
+  }, [editState]);
+
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent) => {
+      if (!isEditable || editState) {
+        return;
+      }
+      const target = (e.target as Element).closest("[data-editable]");
+      if (target) {
+        const rect = target.getBoundingClientRect();
+        // Badge sits at the top-right corner of the span, slightly above it.
+        setHoverState({
+          top: rect.top - 14,
+          right: window.innerWidth - rect.right,
+        });
+      } else {
+        setHoverState(null);
+      }
+    },
+    [isEditable, editState]
+  );
+
+  const handleMouseLeave = useCallback(() => {
+    setHoverState(null);
+  }, []);
+
+  const handleClick = useCallback(
+    (e: React.MouseEvent) => {
+      if (!isEditable) {
+        return;
+      }
+      const target = (e.target as Element).closest("[data-editable]");
+      if (!target) {
+        setEditState(null);
+        return;
+      }
+      const editId = target.getAttribute("data-edit-id") ?? "";
+      const oldText = (target as HTMLElement).innerText;
+      const rect = target.getBoundingClientRect();
+      setHoverState(null);
+      setSaveError(null);
+      setEditState({
+        editId,
+        oldText,
+        rectTop: rect.top,
+        rectBottom: rect.bottom,
+        left: rect.left,
+        width: rect.width,
+      });
+      setEditValue(oldText);
+    },
+    [isEditable]
+  );
+
+  const handleSave = useCallback(async () => {
+    if (!editState || isSavingRef.current) {
+      return;
+    }
+    isSavingRef.current = true;
+    const { editId, oldText } = editState;
+    const newText = editValue;
+
+    // Optimistic update: mutate DOM immediately and close the popover.
+    const target = document.querySelector<HTMLElement>(
+      `[data-edit-id="${editId}"]`
+    );
+    if (target) {
+      target.textContent = newText;
+    }
+    setEditState(null);
+    setSaveError(null);
+
+    try {
+      const result = await editText(editId, oldText, newText);
+      if (!result.success) {
+        // Revert the optimistic DOM change.
+        if (target) {
+          target.textContent = oldText;
+        }
+        // Reopen the popover with a fresh position.
+        const rect = target?.getBoundingClientRect();
+        if (rect) {
+          setEditState({
+            editId,
+            oldText,
+            rectTop: rect.top,
+            rectBottom: rect.bottom,
+            left: rect.left,
+            width: rect.width,
+          });
+        }
+        setEditValue(newText);
+        setSaveError(result.error ?? "Failed to save changes.");
+      }
+    } finally {
+      isSavingRef.current = false;
+    }
+  }, [editState, editValue, editText]);
+
+  const handleEditKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === "Escape") {
+        setEditState(null);
+      } else if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+        void handleSave();
+      }
+    },
+    [handleSave]
+  );
 
   // Add message listeners for export requests.
   useEffect(() => {
@@ -497,6 +686,9 @@ export function VisualizationWrapper({
     <div
       className={`relative font-sans group/viz ${heightClass}`}
       data-viz-ready={vizReady}
+      onMouseMove={isEditable ? handleMouseMove : undefined}
+      onMouseLeave={isEditable ? handleMouseLeave : undefined}
+      onClick={isEditable ? handleClick : undefined}
     >
       {shouldShowControls && (
         <div className="flex flex-row gap-2 absolute top-2 right-2 rounded transition opacity-0 group-hover/viz:opacity-100 z-50">
@@ -541,6 +733,120 @@ export function VisualizationWrapper({
           />
         </VizContext.Provider>
       </div>
+
+      {/* Pencil badge — appears at the top-right corner of the hovered span */}
+      {isEditable && hoverState && !editState && (
+        <div
+          style={{
+            position: "fixed",
+            top: hoverState.top,
+            right: hoverState.right,
+            zIndex: 60,
+            pointerEvents: "none",
+          }}
+          className="flex items-center gap-0.5 rounded-full border border-blue-200 bg-white px-1.5 py-0.5 shadow-sm"
+        >
+          <svg
+            className="h-2.5 w-2.5 text-blue-500"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2.5}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+            />
+          </svg>
+          <span className="text-[10px] font-medium text-blue-500">Edit</span>
+        </div>
+      )}
+
+      {/* Inline edit popover */}
+      {isEditable &&
+        editState &&
+        (() => {
+          const POPOVER_HEIGHT = saveError ? 158 : 130;
+          const spaceBelow = window.innerHeight - editState.rectBottom;
+          const top =
+            spaceBelow >= POPOVER_HEIGHT + 10
+              ? editState.rectBottom + 8
+              : editState.rectTop - POPOVER_HEIGHT - 8;
+
+          return (
+            <div
+              style={{
+                position: "fixed",
+                top,
+                left: Math.min(
+                  editState.left,
+                  window.innerWidth - Math.max(editState.width, 280) - 12
+                ),
+                width: Math.max(editState.width, 280),
+                zIndex: 60,
+              }}
+              className="flex flex-col gap-2.5 rounded-xl border border-gray-200 bg-white p-3 shadow-xl"
+            >
+              {/* Header */}
+              <div className="flex items-center gap-1.5">
+                <svg
+                  className="h-3 w-3 shrink-0 text-blue-500"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2.5}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                  />
+                </svg>
+                <span className="text-xs font-semibold text-gray-600">
+                  Edit text
+                </span>
+              </div>
+
+              {/* Input */}
+              <input
+                ref={editInputRef}
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                onKeyDown={handleEditKeyDown}
+                className="w-full rounded-lg border border-gray-300 px-2.5 py-1.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              />
+
+              {/* Error */}
+              {saveError && (
+                <p className="rounded-md bg-red-50 px-2 py-1 text-xs text-red-600">
+                  {saveError}
+                </p>
+              )}
+
+              {/* Footer */}
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-gray-400">
+                  ⌘↵ save · Esc cancel
+                </span>
+                <div className="flex gap-1.5">
+                  <button
+                    onClick={() => setEditState(null)}
+                    className="rounded-lg px-2.5 py-1 text-xs text-gray-600 transition hover:bg-gray-100"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => void handleSave()}
+                    className="rounded-lg bg-blue-600 px-2.5 py-1 text-xs font-medium text-white transition hover:bg-blue-700"
+                  >
+                    Save
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
     </div>
   );
 }

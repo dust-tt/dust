@@ -80,6 +80,7 @@ const getExtensionFromBlob = (blob: Blob): string => {
 // Custom hook to encapsulate the logic for handling visualization messages.
 function useVisualizationDataHandler({
   getFileBlob,
+  onEditText,
   setCodeDrawerOpened,
   setContentHeight,
   setErrorMessage,
@@ -87,6 +88,11 @@ function useVisualizationDataHandler({
   vizIframeRef,
 }: {
   getFileBlob: (fileId: string) => Promise<Blob | null>;
+  onEditText?: (
+    editId: string,
+    oldText: string,
+    newText: string
+  ) => Promise<{ success: boolean; error?: string }>;
   setCodeDrawerOpened: (v: SetStateAction<boolean>) => void;
   setContentHeight: (v: SetStateAction<number>) => void;
   setErrorMessage: (v: SetStateAction<string | null>) => void;
@@ -182,6 +188,18 @@ function useVisualizationDataHandler({
           setCodeDrawerOpened(true);
           break;
 
+        case "editText": {
+          const editResult = onEditText
+            ? await onEditText(
+                data.params.editId,
+                data.params.oldText,
+                data.params.newText
+              )
+            : { success: false, error: "Editing is not supported here" };
+          sendResponseToIframe(data, editResult, event.source);
+          break;
+        }
+
         default:
           assertNever(data);
       }
@@ -193,6 +211,7 @@ function useVisualizationDataHandler({
     code,
     downloadFileFromBlob,
     getFileBlob,
+    onEditText,
     setContentHeight,
     setErrorMessage,
     setCodeDrawerOpened,
@@ -235,12 +254,18 @@ export function CodeDrawer({
 interface VisualizationActionIframeProps {
   agentConfigurationId: string | null;
   conversationId: string | null;
-  spaceId?: string | null;
+  isEditable?: boolean;
   isInDrawer?: boolean;
+  isPublic?: boolean;
+  onEditText?: (
+    editId: string,
+    oldText: string,
+    newText: string
+  ) => Promise<{ success: boolean; error?: string }>;
+  spaceId?: string | null;
   visualization: Visualization;
   vizUrl: string;
   workspaceId: string;
-  isPublic?: boolean;
 }
 
 export const VisualizationActionIframe = forwardRef<
@@ -274,8 +299,10 @@ export const VisualizationActionIframe = forwardRef<
   const {
     agentConfigurationId,
     conversationId,
+    isEditable = false,
     isInDrawer = false,
     isPublic = false,
+    onEditText,
     spaceId,
     visualization,
     workspaceId,
@@ -315,6 +342,7 @@ export const VisualizationActionIframe = forwardRef<
 
   useVisualizationDataHandler({
     getFileBlob,
+    onEditText,
     setCodeDrawerOpened,
     setContentHeight,
     setErrorMessage,
@@ -363,8 +391,12 @@ export const VisualizationActionIframe = forwardRef<
       params.set("fullHeight", "true");
     }
 
+    if (isEditable) {
+      params.set("editable", "true");
+    }
+
     return `${props.vizUrl}/content?${params.toString()}`;
-  }, [visualization, isInDrawer, props.vizUrl]);
+  }, [visualization, isInDrawer, isEditable, props.vizUrl]);
 
   return (
     <div className={cn("relative flex flex-col", isInDrawer && "h-full")}>

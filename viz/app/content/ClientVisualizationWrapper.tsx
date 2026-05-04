@@ -11,6 +11,7 @@ import { useMemo } from "react";
 interface ClientVisualizationWrapperProps {
   allowedOrigins: string[];
   identifier: string;
+  isEditable?: boolean;
   isFullHeight?: boolean;
 }
 
@@ -21,6 +22,7 @@ interface ClientVisualizationWrapperProps {
 export function ClientVisualizationWrapper({
   allowedOrigins,
   identifier,
+  isEditable = false,
   isFullHeight = false,
 }: ClientVisualizationWrapperProps) {
   const sendCrossDocumentMessage = useMemo(
@@ -40,6 +42,7 @@ export function ClientVisualizationWrapper({
   const config: VisualizationConfig = {
     allowedOrigins,
     identifier,
+    isEditable,
     isFullHeight,
     isPdfMode: false,
     dataAPI,

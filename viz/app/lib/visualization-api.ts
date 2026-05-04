@@ -26,6 +26,11 @@ export interface VisualizationUIAPI {
   ) => () => void;
   displayCode: () => Promise<void>;
   downloadFile: (blob: Blob, filename?: string) => Promise<void>;
+  editText: (
+    editId: string,
+    oldText: string,
+    newText: string
+  ) => Promise<{ success: boolean; error?: string }>;
   sendHeightToParent: ({ height }: { height: number | null }) => Promise<void>;
 }
 
@@ -43,6 +48,7 @@ export interface VisualizationAPI {
 export interface VisualizationConfig {
   identifier: string;
   allowedOrigins: string[];
+  isEditable?: boolean;
   isFullHeight?: boolean;
   isPdfMode?: boolean;
   dataAPI: VisualizationDataAPI;
