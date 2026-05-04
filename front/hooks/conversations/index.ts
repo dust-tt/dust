@@ -7,6 +7,7 @@ export { useConversation } from "./useConversation";
 export { useConversationBranchActions } from "./useConversationBranchActions";
 export { useConversationContextUsage } from "./useConversationContextUsage";
 export { useConversationFeedbacks } from "./useConversationFeedbacks";
+export { useConversationFileContent } from "./useConversationFileContent";
 export { useConversationMarkAsRead } from "./useConversationMarkAsRead";
 export {
   useConversationMessage,
@@ -23,7 +24,6 @@ export {
   useAddDeleteConversationSkill,
   useConversationSkills,
 } from "./useConversationSkills";
-export { useConversationFileContent } from "./useConversationFileContent";
 export { useConversations } from "./useConversations";
 export {
   useAddDeleteConversationTool,

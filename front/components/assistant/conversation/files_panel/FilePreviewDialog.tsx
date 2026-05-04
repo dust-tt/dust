@@ -13,6 +13,7 @@ import {
   ArrowDownOnSquareIcon,
   Button,
   CodeBlock,
+  cn,
   DataTable,
   Dialog,
   DialogContent,
@@ -22,10 +23,9 @@ import {
   Icon,
   Markdown,
   ScrollArea,
-  ScrollBar,
   ScrollableDataTable,
+  ScrollBar,
   Spinner,
-  cn,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 
@@ -34,9 +34,15 @@ const MAX_TEXT_CHARS = 100_000;
 
 function getConversationFileUrl(
   owner: LightWorkspaceType,
-  conversationId: string,
-  filePath: string
+  {
+    conversationId,
+    filePath,
+  }: {
+    conversationId: string;
+    filePath: string;
+  }
 ): string {
+  // TODO(20260504 FILE SYSTEM): Align endpoint so it accepts the scoped version.
   // entry.path is scoped (e.g. "conversation/notes.txt") but [...rel].ts
   // expects the path relative to the conversation's /files/ base, so strip the scope prefix.
   // Use an absolute URL so iframe/audio src attributes resolve against the API origin, not the
@@ -104,6 +110,8 @@ interface DelimitedPreviewProps {
   mimeType: string;
 }
 
+type Row = Record<string, string>;
+
 function DelimitedPreview({ content, mimeType }: DelimitedPreviewProps) {
   const isTsv =
     mimeType === "text/tsv" || mimeType === "text/tab-separated-values";
@@ -127,8 +135,6 @@ function DelimitedPreview({ content, mimeType }: DelimitedPreviewProps) {
     line.split(delimiter).map((c) => c.trim().replace(/^"|"$/g, ""))
   );
   const displayed = allRows.slice(0, MAX_CSV_ROWS);
-
-  type Row = Record<string, string>;
 
   const baseRatio = Math.floor(100 / headers.length);
   const columns: ColumnDef<Row>[] = headers.map((header, idx) => ({
@@ -177,7 +183,10 @@ function FilePreviewDialogContent({
   owner,
   processedContent,
 }: FilePreviewDialogContentProps) {
-  const fileUrl = getConversationFileUrl(owner, conversationId, entry.path);
+  const fileUrl = getConversationFileUrl(owner, {
+    conversationId,
+    filePath: entry.path,
+  });
 
   if (isContentLoading) {
     return (

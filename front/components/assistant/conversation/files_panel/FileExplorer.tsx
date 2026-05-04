@@ -5,10 +5,10 @@ import {
   FileExplorerFolderCard,
   type ViewMode,
 } from "@app/components/assistant/conversation/files_panel/FileExplorerItem";
+import { FilePreviewDialog } from "@app/components/assistant/conversation/files_panel/FilePreviewDialog";
 import { SandboxStatusChip } from "@app/components/assistant/conversation/files_panel/SandboxStatusChip";
 import type { SandboxTreeNode } from "@app/components/assistant/conversation/files_panel/types";
 import { buildSandboxTree } from "@app/components/assistant/conversation/files_panel/utils";
-import { FilePreviewDialog } from "@app/components/assistant/conversation/files_panel/FilePreviewDialog";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useConversationSandboxStatus } from "@app/hooks/conversations/useConversationSandboxStatus";
 import { useSendNotification } from "@app/hooks/useNotification";

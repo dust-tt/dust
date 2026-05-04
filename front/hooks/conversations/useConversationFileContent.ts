@@ -1,8 +1,8 @@
 import { parseScopedFilePath } from "@app/lib/api/files/mount_path";
 import { clientFetch } from "@app/lib/egress/client";
 import { useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { LightWorkspaceType } from "@app/types/user";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { LightWorkspaceType } from "@app/types/user";
 
 export function useConversationFileContent({
   owner,
