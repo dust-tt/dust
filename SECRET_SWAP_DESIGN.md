@@ -340,9 +340,29 @@ hypothesis we plan to verify per release.
 Verified by the smoke matrix: curl, wget, openssl s_client, Python
 (`urllib`, `requests`, `httpx`), Node (`fetch`, `https`), Bun, Deno,
 Go (`net/http`), Java (post-keytool), Ruby (`Net::HTTP`), PHP
-(`file_get_contents`), git over HTTPS, AWS CLI. The matrix exceptions
-(Rust `rustls-webpki`, JVM without keytool import, cert-pinning code,
-mTLS clients) are the explicit known holes.
+(`file_get_contents`), git over HTTPS, AWS CLI.
+
+Known holes (matrix exceptions):
+
+- **Rust `rustls-webpki`**: hardcoded Mozilla bundle compiled into
+  the binary, no env var reaches it.
+- **JVM when the boot-time keytool import didn't land in the
+  keystore the running JDK reads.** Java doesn't honor
+  `SSL_CERT_FILE` / `NODE_EXTRA_CA_CERTS` / etc.; the only way to
+  add a CA is to mutate `$JAVA_HOME/lib/security/cacerts` via
+  `keytool -importcert`. The boot script runs that import
+  (see § "Client-language agnosticism" → step 4), and "Java
+  (post-keytool)" in the smoke matrix verifies the happy path.
+  Failure shows up if a JDK gets installed mid-session (the new
+  JDK has an untouched `cacerts`), if the image carries multiple
+  JDKs and the running one isn't the one we imported into, or if
+  agent code passes `-Djavax.net.ssl.trustStore=...` pointing at
+  a different keystore. Failure mode is a clean `PKIX path
+  building failed` TLS error, no silent leak.
+- **Cert-pinning clients**: by design, they reject the dsbx leaf.
+- **mTLS clients**: dsbx terminates the agent's TLS and opens a
+  fresh outbound TLS without forwarding any client cert, so client-
+  auth flows fail at the upstream's handshake.
 
 Tools we expect to work but don't currently exercise in the smoke
 matrix (treat as hypothesis until verified): apt/pip/npm/cargo/yarn
