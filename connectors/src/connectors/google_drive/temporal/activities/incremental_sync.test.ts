@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   changeList: vi.fn(),
+  deleteFile: vi.fn(),
   deleteOneFile: vi.fn(),
   driveObjectToDustType: vi.fn(),
   getAuthObject: vi.fn(),
@@ -46,6 +47,7 @@ vi.mock("@connectors/connectors/google_drive/lib/hierarchy", () => ({
 vi.mock(
   "@connectors/connectors/google_drive/temporal/activities/common/utils",
   () => ({
+    deleteFile: mocks.deleteFile,
     deleteOneFile: mocks.deleteOneFile,
     getSyncPageToken: mocks.getSyncPageToken,
     objectIsInFolderSelection: mocks.objectIsInFolderSelection,
