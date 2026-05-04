@@ -25,6 +25,8 @@ declare module "@tiptap/core" {
   }
 }
 
+// TODO(2026-05-02 aubin): Check whether we can share logic with KnowledgeNode,
+// for example through a base extension.
 export const SkillNode = Node.create({
   name: SKILL_NODE_TYPE,
   group: "inline",
