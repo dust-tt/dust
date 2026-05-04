@@ -121,8 +121,13 @@ export async function publishMCPResults(
         return true;
       }
 
-      // If it's a notification (no id, then let's drop it).
-      return true;
+      // If it's a notification (no id), drop it.
+      if (!("id" in payload)) {
+        return true;
+      }
+
+      // Different request ID — keep it.
+      return false;
     },
     getMCPServerChannelId(auth, { mcpServerId })
   );
