@@ -877,6 +877,38 @@ export async function executePostMessage(
   ]);
 }
 
+export async function executeUpdateMessage({
+  accessToken,
+  channel,
+  timestamp,
+  message,
+}: {
+  accessToken: string;
+  channel: string;
+  timestamp: string;
+  message: string;
+}) {
+  const slackClient = await getSlackClient(accessToken);
+  const slackFormattedMessage = slackifyMarkdown(message);
+
+  const response = await slackClient.chat.update({
+    channel,
+    ts: timestamp,
+    text: slackFormattedMessage,
+  });
+
+  if (!response.ok) {
+    return new Err(new MCPError("Failed to update message"));
+  }
+
+  return new Ok([
+    {
+      type: "text" as const,
+      text: `Message ${timestamp} updated in ${channel}`,
+    },
+  ]);
+}
+
 export async function executeScheduleMessage(
   auth: Authenticator,
   agentLoopContext: AgentLoopContextType,

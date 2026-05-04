@@ -9,6 +9,7 @@ import {
   executeListPublicChannels,
   executePostMessage,
   executeSearchUser,
+  executeUpdateMessage,
   getSlackClient,
 } from "@app/lib/api/actions/servers/slack/helpers";
 import { SLACK_BOT_TOOLS_METADATA } from "@app/lib/api/actions/servers/slack_bot/metadata";
@@ -43,6 +44,25 @@ export function createSlackBotTools(
       } catch (error) {
         return new Err(
           new MCPError(`Error posting message: ${normalizeError(error)}`)
+        );
+      }
+    },
+    edit_message: async ({ channel, timestamp, message }, { authInfo }) => {
+      const accessToken = authInfo?.token;
+      if (!accessToken) {
+        return new Err(new MCPError("Access token not found"));
+      }
+
+      try {
+        return await executeUpdateMessage({
+          accessToken,
+          channel,
+          timestamp,
+          message,
+        });
+      } catch (error) {
+        return new Err(
+          new MCPError(`Error editing message: ${normalizeError(error)}`)
         );
       }
     },
