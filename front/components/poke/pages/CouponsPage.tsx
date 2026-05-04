@@ -28,10 +28,6 @@ import type { ColumnDef } from "@tanstack/react-table";
 import type { MouseEvent } from "react";
 import { useMemo, useState } from "react";
 
-function formatAmount(amount: number): string {
-  return String(amount);
-}
-
 function getStatusChipColor(status: CouponRedemptionStatus) {
   switch (status) {
     case "active":
@@ -125,7 +121,7 @@ const couponColumns: ColumnDef<CouponRowData>[] = [
     header: "Amount",
     cell: ({ row }) => (
       <DataTable.BasicCellContent
-        label={formatAmount(row.original.amount)}
+        label={String(row.original.amount)}
         disabled={!!row.original.archivedAt}
       />
     ),

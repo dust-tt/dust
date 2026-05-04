@@ -18,7 +18,7 @@ interface FormState {
   code: string;
   description: string;
   discountType: CouponDiscountType;
-  amountStr: string;
+  amount: string;
   durationMonths: string;
   maxRedemptions: string;
   expirationDate: string;
@@ -28,7 +28,7 @@ const FORM_STATE_KEYS: ReadonlyArray<keyof FormState> = [
   "code",
   "description",
   "discountType",
-  "amountStr",
+  "amount",
   "durationMonths",
   "maxRedemptions",
   "expirationDate",
@@ -42,7 +42,7 @@ const EMPTY_FORM: FormState = {
   code: "",
   description: "",
   discountType: "seat",
-  amountStr: "",
+  amount: "",
   durationMonths: "",
   maxRedemptions: "",
   expirationDate: "",
@@ -76,7 +76,7 @@ export function CreateCouponForm({
       code: form.code.trim(),
       description: form.description.trim() || null,
       discountType: form.discountType,
-      amount: form.amountStr ? parseFloat(form.amountStr) : 0,
+      amount: form.amount ? parseFloat(form.amount) : 0,
       durationMonths: form.durationMonths
         ? parseInt(form.durationMonths, 10)
         : null,
@@ -94,9 +94,8 @@ export function CreateCouponForm({
         if (!isString(pathElement)) {
           continue;
         }
-        const field = pathElement === "amount" ? "amountStr" : pathElement;
-        if (isFormStateKey(field)) {
-          fieldErrors[field] = issue.message;
+        if (isFormStateKey(pathElement)) {
+          fieldErrors[pathElement] = issue.message;
         }
       }
       setErrors(fieldErrors);
@@ -190,14 +189,14 @@ export function CreateCouponForm({
           </label>
           <Input
             type="number"
-            value={form.amountStr}
-            onChange={(e) => set("amountStr", e.target.value)}
+            value={form.amount}
+            onChange={(e) => set("amount", e.target.value)}
             placeholder="e.g. 50"
             min={0.5}
             step={0.5}
           />
-          {errors.amountStr && (
-            <span className="text-xs text-red-500">{errors.amountStr}</span>
+          {errors.amount && (
+            <span className="text-xs text-red-500">{errors.amount}</span>
           )}
         </div>
 
