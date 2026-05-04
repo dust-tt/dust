@@ -256,7 +256,7 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
     });
   }
 
-  // Fetches a todo by its stable string sId.
+  // Fetches a todo by its stable string sId, excluding soft-deleted rows.
   static async fetchBySId(
     auth: Authenticator,
     sId: string
@@ -267,6 +267,35 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
     }
     const results = await this.baseFetch(auth, { where: { id }, limit: 1 });
     return results[0] ?? null;
+  }
+
+  // Fetches a todo by its stable string sId, including soft-deleted rows.
+  static async fetchBySIdWithDeleted(
+    auth: Authenticator,
+    sId: string
+  ): Promise<ProjectTodoResource | null> {
+    const id = getResourceIdFromSId(sId);
+    if (id === null) {
+      return null;
+    }
+
+    const todo = await ProjectTodoModel.findOne({
+      where: { id, workspaceId: auth.getNonNullableWorkspace().id },
+    });
+
+    return todo ? new this(ProjectTodoModel, todo.get()) : null;
+  }
+
+  // Fetches a todo by its numeric ModelId, including soft-deleted rows.
+  static async fetchByModelIdWithDeleted(
+    auth: Authenticator,
+    id: ModelId
+  ): Promise<ProjectTodoResource | null> {
+    const todo = await ProjectTodoModel.findOne({
+      where: { id, workspaceId: auth.getNonNullableWorkspace().id },
+    });
+
+    return todo ? new this(ProjectTodoModel, todo.get()) : null;
   }
 
   static async fetchBySpace(
