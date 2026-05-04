@@ -7,6 +7,8 @@ const {
   mockGetEgressProxyJwtSecret,
   mockGetEgressProxyPort,
   mockGetEgressProxyTlsName,
+  mockGetEgressMitmExperimentHost,
+  mockGetEgressMitmExperimentToken,
   mockGetCurrentRegion,
   mockLoggerInfo,
   mockLookup,
@@ -15,6 +17,8 @@ const {
   mockGetEgressProxyJwtSecret: vi.fn(),
   mockGetEgressProxyPort: vi.fn(),
   mockGetEgressProxyTlsName: vi.fn(),
+  mockGetEgressMitmExperimentHost: vi.fn(),
+  mockGetEgressMitmExperimentToken: vi.fn(),
   mockGetCurrentRegion: vi.fn(),
   mockLoggerInfo: vi.fn(),
   mockLookup: vi.fn(),
@@ -26,6 +30,8 @@ vi.mock("@app/lib/api/config", () => ({
     getEgressProxyJwtSecret: mockGetEgressProxyJwtSecret,
     getEgressProxyPort: mockGetEgressProxyPort,
     getEgressProxyTlsName: mockGetEgressProxyTlsName,
+    getEgressMitmExperimentHost: mockGetEgressMitmExperimentHost,
+    getEgressMitmExperimentToken: mockGetEgressMitmExperimentToken,
   },
 }));
 
@@ -66,6 +72,8 @@ describe("sandbox egress helpers", () => {
     mockGetEgressProxyJwtSecret.mockReturnValue("egress-secret");
     mockGetEgressProxyPort.mockReturnValue(4443);
     mockGetEgressProxyTlsName.mockReturnValue(undefined);
+    mockGetEgressMitmExperimentHost.mockReturnValue(undefined);
+    mockGetEgressMitmExperimentToken.mockReturnValue(undefined);
     mockGetCurrentRegion.mockReturnValue("europe-west1");
     mockLookup.mockResolvedValue({ address: "203.0.113.10", family: 4 });
   });
@@ -193,5 +201,110 @@ describe("sandbox egress helpers", () => {
     if (result.isErr()) {
       expect(result.error.message).toContain("sandbox command failed");
     }
+  });
+
+  it("passes MITM flags and installs trust bundle when experiment host is set", async () => {
+    mockGetEgressMitmExperimentHost.mockReturnValue("dust.example.com");
+    mockGetEgressMitmExperimentToken.mockReturnValue("test-token");
+
+    const sandbox = {
+      providerId: "provider-sandbox-id",
+      sId: "sandbox-id",
+      writeFile: vi.fn().mockResolvedValue(new Ok(undefined)),
+      exec: vi
+        .fn()
+        .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
+        .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
+        .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
+        .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" })),
+    };
+
+    const result = await setupEgressForwarder(auth, sandbox as never);
+
+    expect(result).toEqual(new Ok(undefined));
+    expect(sandbox.exec).toHaveBeenNthCalledWith(
+      2,
+      auth,
+      expect.stringContaining("--mitm-experiment-host 'dust.example.com'"),
+      { user: "root" }
+    );
+    expect(sandbox.exec).toHaveBeenNthCalledWith(
+      2,
+      auth,
+      expect.stringContaining("--mitm-ca-path '/etc/dust/egress-ca.pem'"),
+      { user: "root" }
+    );
+    // installMitmTrustBundle is the 4th exec (after chmod, start, health).
+    expect(sandbox.exec).toHaveBeenNthCalledWith(
+      4,
+      auth,
+      expect.stringContaining("/etc/dust/ca-bundle.pem"),
+      { user: "root" }
+    );
+  });
+
+  it("surfaces failures from the MITM trust bundle install", async () => {
+    mockGetEgressMitmExperimentHost.mockReturnValue("dust.example.com");
+    mockGetEgressMitmExperimentToken.mockReturnValue("test-token");
+
+    const sandbox = {
+      providerId: "provider-sandbox-id",
+      sId: "sandbox-id",
+      writeFile: vi.fn().mockResolvedValue(new Ok(undefined)),
+      exec: vi
+        .fn()
+        .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
+        .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
+        .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
+        .mockResolvedValueOnce(
+          new Ok({ exitCode: 1, stdout: "", stderr: "trust install failed" })
+        ),
+    };
+
+    const result = await setupEgressForwarder(auth, sandbox as never);
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain("trust install failed");
+    }
+  });
+
+  it("does not pass MITM flags when token is unset (host alone is not enough)", async () => {
+    mockGetEgressMitmExperimentHost.mockReturnValue("dust.example.com");
+    // token stays undefined per beforeEach.
+
+    const sandbox = {
+      providerId: "provider-sandbox-id",
+      sId: "sandbox-id",
+      writeFile: vi.fn().mockResolvedValue(new Ok(undefined)),
+      exec: vi
+        .fn()
+        .mockResolvedValue(new Ok({ exitCode: 0, stdout: "", stderr: "" })),
+    };
+
+    const result = await setupEgressForwarder(auth, sandbox as never);
+
+    expect(result).toEqual(new Ok(undefined));
+    const startCall = sandbox.exec.mock.calls[1][1] as string;
+    expect(startCall).not.toContain("--mitm-experiment-host");
+    expect(startCall).not.toContain("--mitm-ca-path");
+  });
+
+  it("does not pass MITM flags when experiment host is unset", async () => {
+    const sandbox = {
+      providerId: "provider-sandbox-id",
+      sId: "sandbox-id",
+      writeFile: vi.fn().mockResolvedValue(new Ok(undefined)),
+      exec: vi
+        .fn()
+        .mockResolvedValue(new Ok({ exitCode: 0, stdout: "", stderr: "" })),
+    };
+
+    const result = await setupEgressForwarder(auth, sandbox as never);
+
+    expect(result).toEqual(new Ok(undefined));
+    const startCall = sandbox.exec.mock.calls[1][1] as string;
+    expect(startCall).not.toContain("--mitm-experiment-host");
+    expect(startCall).not.toContain("--mitm-ca-path");
   });
 });

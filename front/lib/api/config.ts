@@ -219,6 +219,22 @@ const config = {
       "EGRESS_PROXY_INTERNAL_URL"
     );
   },
+  // PHASE0(remove with the experiment): hostname for which dsbx terminates
+  // inner TLS and rewrites the experiment placeholder. Empty / unset disables
+  // MITM entirely.
+  getEgressMitmExperimentHost: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable(
+      "EGRESS_MITM_EXPERIMENT_HOST"
+    );
+  },
+  // PHASE0(remove with the experiment): shared bearer token required to hit
+  // the egress-experiment endpoint. Set alongside EGRESS_MITM_EXPERIMENT_HOST.
+  // Unset = endpoint always 404s even if the host is set.
+  getEgressMitmExperimentToken: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable(
+      "EGRESS_MITM_EXPERIMENT_TOKEN"
+    );
+  },
   getOAuthAPIConfig: (): { url: string; apiKey: string | null } => {
     return {
       url: EnvironmentConfig.getEnvVariable("OAUTH_API"),

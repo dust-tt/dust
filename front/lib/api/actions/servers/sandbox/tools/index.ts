@@ -241,6 +241,19 @@ export async function runSandboxBashTool(
 
   const { sandbox, freshlyCreated, wokeFromSleep } = ensureResult.value;
 
+  // Egress forwarder setup must run BEFORE GCS mounts. When the MITM
+  // experiment is enabled, sandbox_resource.buildSandboxEnvVars exports
+  // SSL_CERT_FILE / CURL_CA_BUNDLE pointing at /etc/dust/ca-bundle.pem, which
+  // setupEgressForwarder is responsible for creating. Mounting (gcsfuse and
+  // friends) makes HTTPS calls that read the trust bundle via those env vars,
+  // so the bundle has to exist first.
+  if (freshlyCreated) {
+    const setupResult = await setupEgressForwarder(auth, sandbox);
+    if (setupResult.isErr()) {
+      return new Err(new MCPError(setupResult.error.message));
+    }
+  }
+
   const imageResult = getSandboxImage(auth);
   if (imageResult.isOk()) {
     const image = imageResult.value;
@@ -275,13 +288,6 @@ export async function runSandboxBashTool(
       { err: imageResult.error },
       "Failed to get sandbox image for GCS mount"
     );
-  }
-
-  if (freshlyCreated) {
-    const setupResult = await setupEgressForwarder(auth, sandbox);
-    if (setupResult.isErr()) {
-      return new Err(new MCPError(setupResult.error.message));
-    }
   }
 
   const healthResult = await checkEgressForwarderHealth(auth, sandbox);

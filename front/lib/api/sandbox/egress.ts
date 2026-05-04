@@ -17,6 +17,16 @@ const EGRESS_SETUP_WAIT_MS = 500;
 const EGRESS_JWT_TTL_SECONDS = 24 * 60 * 60;
 const MAX_DENY_LOG_LINES_PER_EXEC = 20;
 
+// Paths used when the egress MITM experiment is enabled. The CA path stays
+// in Phase 1+; the bundle/system-store paths likely stay too. The
+// installMitmTrustBundle helper is PHASE0-shaped (curl-only); Phase 1 will
+// extend it with NODE_EXTRA_CA_CERTS, keytool import, etc. See
+// design_docs/SECRET_SWAP_DESIGN.md, "Client-language agnosticism" under "Proposal".
+const MITM_CA_PATH = "/etc/dust/egress-ca.pem";
+const MITM_CA_BUNDLE_PATH = "/etc/dust/ca-bundle.pem";
+const MITM_SYSTEM_CA_DEST = "/usr/local/share/ca-certificates/dust-egress.crt";
+const MITM_SYSTEM_CA_BUNDLE = "/etc/ssl/certs/ca-certificates.crt";
+
 const REGION_PROXY_PREFIX = {
   "europe-west1": "eu",
   "us-central1": "us",
@@ -172,6 +182,20 @@ export async function setupEgressForwarder(
     return prepareTokenResult;
   }
 
+  // PHASE0(remove with the experiment): env-var-driven gating of the MITM
+  // stage. Both env vars must be set for the experiment to engage; setting
+  // only the host without the token would turn on dsbx MITM and trust-bundle
+  // injection while the smoke endpoint stays 404, which is a half-on state we
+  // don't want. Phase 1 replaces this conditional with always-on MITM driven
+  // by the configured set of secrets and their allowedDomains.
+  const mitmHost = config.getEgressMitmExperimentHost();
+  const mitmToken = config.getEgressMitmExperimentToken();
+  const mitmExperimentHost = mitmHost && mitmToken ? mitmHost : null;
+  const mitmFlags = mitmExperimentHost
+    ? `--mitm-experiment-host ${shellEscape(mitmExperimentHost)} ` +
+      `--mitm-ca-path ${shellEscape(MITM_CA_PATH)} `
+    : "";
+
   const startForwarderCommand =
     "nohup /opt/bin/dsbx forward " +
     `--token-file ${shellEscape(EGRESS_TOKEN_PATH)} ` +
@@ -179,6 +203,7 @@ export async function setupEgressForwarder(
     `--proxy-tls-name ${shellEscape(getProxyTlsName())} ` +
     `--listen ${shellEscape(EGRESS_FORWARDER_LISTEN_ADDR)} ` +
     `--deny-log ${shellEscape(EGRESS_DENY_LOG_PATH)} ` +
+    mitmFlags +
     `>${shellEscape(EGRESS_FORWARDER_LOG_PATH)} 2>&1 &`;
 
   const startResult = await runSuccessfulSandboxCommand(
@@ -198,6 +223,14 @@ export async function setupEgressForwarder(
     }
     if (healthResult.value) {
       logger.info(logContext, "Sandbox egress forwarder is healthy");
+
+      if (mitmExperimentHost) {
+        const mitmTrustResult = await installMitmTrustBundle(auth, sandbox);
+        if (mitmTrustResult.isErr()) {
+          return mitmTrustResult;
+        }
+      }
+
       return new Ok(undefined);
     }
 
@@ -207,6 +240,27 @@ export async function setupEgressForwarder(
   return new Err(
     new Error("Sandbox egress forwarder did not become healthy in time")
   );
+}
+
+// Produces a merged bundle (system roots + dsbx ephemeral CA) so replace-style
+// trust env vars (SSL_CERT_FILE, CURL_CA_BUNDLE) don't break non-MITM TLS to
+// public sites. The system-store install is best-effort so the agent still
+// works on images without update-ca-certificates.
+//
+// TODO(phase 1): extend coverage to non-curl runtimes per
+// design_docs/SECRET_SWAP_DESIGN.md, "Client-language agnosticism" under "Proposal":
+// NODE_EXTRA_CA_CERTS, DENO_CERT, Java keytool import, etc. The current
+// install only covers curl + anything else that reads the system CA bundle.
+async function installMitmTrustBundle(
+  auth: Authenticator,
+  sandbox: SandboxResource
+): Promise<Result<void, Error>> {
+  const command =
+    `(cp ${shellEscape(MITM_CA_PATH)} ${shellEscape(MITM_SYSTEM_CA_DEST)} && update-ca-certificates >/dev/null 2>&1) || true; ` +
+    `cat ${shellEscape(MITM_SYSTEM_CA_BUNDLE)} ${shellEscape(MITM_CA_PATH)} > ${shellEscape(MITM_CA_BUNDLE_PATH)} && ` +
+    `chmod 644 ${shellEscape(MITM_CA_BUNDLE_PATH)}`;
+
+  return runSuccessfulSandboxCommand(auth, sandbox, command, "root");
 }
 
 // Best-effort, sandbox-global deny log surfacing. The offset tracks lines

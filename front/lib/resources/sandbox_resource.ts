@@ -340,9 +340,40 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       return workspaceEnvResult;
     }
 
+    // Set at the system layer so workspace overrides cannot drop it. Points at
+    // the merged bundle (system roots + dsbx ephemeral CA) installed by
+    // setupEgressForwarder. Safe to inject unconditionally when the experiment
+    // is enabled because tools/index.ts now runs setupEgressForwarder before
+    // any mounts that read SSL_CERT_FILE.
+    //
+    // PHASE0(remove with the experiment): DUST_EXPERIMENT_TOKEN is exposed to
+    // the agent so the smoke curl from inside the sandbox can present the
+    // shared bearer header without out-of-band setup. It is NOT a real secret;
+    // it gates the synthetic /sandbox/egress-experiment endpoint only.
+    //
+    // TODO(phase 1): cover non-curl runtimes (NODE_EXTRA_CA_CERTS, DENO_CERT,
+    // etc.) per design_docs/SECRET_SWAP_DESIGN.md, "Client-language agnosticism" under
+    // "Proposal" (specifically the per-runtime trust env-var matrix).
+    // Both env vars must be set for the experiment to engage. Setting
+    // only the host without the token would inject SSL_CERT_FILE into the
+    // agent env (pointing at a bundle that includes a CA dsbx is actively
+    // intercepting with) while the smoke endpoint stays 404, which is a
+    // half-on state we don't want.
+    const mitmExperimentHost = config.getEgressMitmExperimentHost();
+    const mitmExperimentToken = config.getEgressMitmExperimentToken();
+    const mitmEnv: Record<string, string> =
+      mitmExperimentHost && mitmExperimentToken
+        ? {
+            SSL_CERT_FILE: "/etc/dust/ca-bundle.pem",
+            CURL_CA_BUNDLE: "/etc/dust/ca-bundle.pem",
+            DUST_EXPERIMENT_TOKEN: mitmExperimentToken,
+          }
+        : {};
+
     return new Ok({
       ...workspaceEnvResult.value,
       ...imageEnvVars,
+      ...mitmEnv,
       DD_API_KEY: config.getDatadogApiKey() ?? "",
       DD_HOST: "http-intake.logs.datadoghq.eu",
       CONVERSATION_ID: conversation.sId,
