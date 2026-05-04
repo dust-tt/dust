@@ -437,7 +437,11 @@ export function EditableProjectTodosPanel({
   const handleStartWorking = useCallback(
     async (
       todo: ProjectTodoType,
-      options?: { customMessage?: string; agentConfigurationId?: string }
+      options?: {
+        customMessage?: string;
+        agentConfigurationId?: string;
+        goToConversation?: boolean;
+      }
     ) => {
       setStartingTodoIds((prev) => new Set([...prev, todo.sId]));
       const result = await doStartConversation(todo.sId, {
@@ -446,7 +450,7 @@ export function EditableProjectTodosPanel({
       });
       if (result.isOk()) {
         const { conversationId } = result.value;
-        if (todo.agentInstructions?.trim() && conversationId) {
+        if (options?.goToConversation && conversationId) {
           void router.push(
             getConversationRoute(owner.sId, conversationId),
             undefined,

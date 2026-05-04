@@ -22,12 +22,17 @@ import {
   AnimatedText,
   Avatar,
   Button,
+  ButtonGroup,
+  ButtonGroupDropdown,
   ChatBubbleLeftRightIcon,
   Checkbox,
+  CheckIcon,
+  ChevronDownIcon,
   cn,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  type DropdownMenuItemProps,
   DropdownMenuPortal,
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
@@ -35,6 +40,7 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
+  Icon,
   MoreIcon,
   PlayIcon,
   RobotIcon,
@@ -54,7 +60,11 @@ export interface EditableTodoItemProps {
   onDelete: (todo: ProjectTodoType) => void | Promise<void>;
   onStartWorking: (
     todo: ProjectTodoType,
-    options?: { customMessage?: string; agentConfigurationId?: string }
+    options?: {
+      customMessage?: string;
+      agentConfigurationId?: string;
+      goToConversation?: boolean;
+    }
   ) => Promise<void>;
   owner: LightWorkspaceType;
   activeAgents: LightAgentConfigurationType[];
@@ -95,6 +105,9 @@ export const EditableTodoItem = memo(function EditableTodoItem({
   const router = useAppRouter();
   const [startMenuOpen, setStartMenuOpen] = useState(false);
   const [startCustomMessage, setStartCustomMessage] = useState("");
+  const [goToConversationAfterStart, setGoToConversationAfterStart] = useState(
+    () => !!todo.agentInstructions?.trim()
+  );
   const [selectedStartAgent, setSelectedStartAgent] =
     useState<LightAgentConfigurationType | null>(null);
 
@@ -256,8 +269,37 @@ export const EditableTodoItem = memo(function EditableTodoItem({
     await onStartWorking(todo, {
       customMessage: startCustomMessage.trim() || undefined,
       agentConfigurationId,
+      goToConversation: goToConversationAfterStart,
     });
   };
+
+  const startRedirectMenuItems = useMemo((): DropdownMenuItemProps[] => {
+    const check = (
+      <Icon
+        size="xs"
+        visual={CheckIcon}
+        className="text-muted-foreground dark:text-muted-foreground-night"
+      />
+    );
+    return [
+      {
+        label: "Redirect to conversation",
+        onSelect: (e) => {
+          e.preventDefault();
+          setGoToConversationAfterStart(true);
+        },
+        endComponent: goToConversationAfterStart ? check : undefined,
+      },
+      {
+        label: "Stay on to-dos",
+        onSelect: (e) => {
+          e.preventDefault();
+          setGoToConversationAfterStart(false);
+        },
+        endComponent: !goToConversationAfterStart ? check : undefined,
+      },
+    ];
+  }, [goToConversationAfterStart]);
 
   return (
     <div
@@ -456,8 +498,8 @@ export const EditableTodoItem = memo(function EditableTodoItem({
                       setStartCustomMessage(event.target.value)
                     }
                   />
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="w-[200px] min-w-0 shrink-0">
+                  <div className="flex items-end justify-between gap-2">
+                    <div className="min-w-0 flex-1">
                       <AgentPicker
                         owner={owner}
                         agents={activeAgents}
@@ -490,17 +532,29 @@ export const EditableTodoItem = memo(function EditableTodoItem({
                         }
                       />
                     </div>
-                    <div className="w-[92px] shrink-0">
+                    <ButtonGroup className="shrink-0">
                       <Button
-                        label="Go!"
-                        variant="highlight"
+                        label="Start working"
+                        variant="outline"
                         size="sm"
-                        className="w-full"
                         isLoading={isStarting}
                         disabled={isStarting || !selectedStartAgent}
                         onClick={() => void handleConfirmStart()}
                       />
-                    </div>
+                      <ButtonGroupDropdown
+                        align="end"
+                        items={startRedirectMenuItems}
+                        trigger={
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            icon={ChevronDownIcon}
+                            disabled={isStarting || !selectedStartAgent}
+                            aria-label="After start: open conversation or stay on to-dos"
+                          />
+                        }
+                      />
+                    </ButtonGroup>
                   </div>
                 </div>
               </DropdownMenuContent>
