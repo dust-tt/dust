@@ -157,10 +157,12 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
         .describe("The Gmail message IDs to update. Maximum 1000."),
       addLabels: z
         .array(z.string())
+        .min(1)
         .optional()
         .describe("Label IDs or exact label names to apply."),
       removeLabels: z
         .array(z.string())
+        .min(1)
         .optional()
         .describe("Label IDs or exact label names to remove."),
     },

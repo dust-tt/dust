@@ -20,6 +20,8 @@ import {
   extractAttachments,
   fetchFromGmail,
   findAttachmentData,
+  type GmailLabel,
+  type GmailLabelListResponse,
   getErrorText,
   getHeaderValue,
   isGmailMessage,
@@ -93,16 +95,6 @@ function buildAndEncodeEmail(params: {
   return new Ok(encodedMessage);
 }
 
-interface GmailLabel {
-  id: string;
-  name: string;
-  type?: string;
-}
-
-interface GmailLabelListResponse {
-  labels?: GmailLabel[];
-}
-
 function normalizeLabelName(label: string): string {
   return label.trim().toLowerCase();
 }
@@ -154,10 +146,9 @@ function resolveLabelIdsFromList(
     } else if (byId.has(label)) {
       ids.push(label);
     } else {
-      const available = allLabels.map((l) => l.name).join(", ");
       return new Err(
         new MCPError(
-          `Label "${label}" not found. Available labels: ${available}`
+          `Label "${label}" not found. Call list_labels to see available labels.`
         )
       );
     }
@@ -238,8 +229,8 @@ async function batchModifyMessages({
       text: JSON.stringify(
         {
           messageIds: normalizedMessageIds,
-          addedLabelIds: addLabelIds,
-          removedLabelIds: removeLabelIds,
+          addedLabelIds: addLabelIds ?? null,
+          removedLabelIds: removeLabelIds ?? null,
         },
         null,
         2
