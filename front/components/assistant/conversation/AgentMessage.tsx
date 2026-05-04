@@ -794,7 +794,7 @@ export function AgentMessage({
 
     if (canBranchConversation) {
       dropdownItems.push({
-        label: "Branch conversation",
+        label: "Branch from here",
         icon: ActionGitBranchIcon,
         onSelect: () => {
           void branchConversation(agentMessage.sId);
