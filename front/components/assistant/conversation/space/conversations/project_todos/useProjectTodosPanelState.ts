@@ -256,6 +256,19 @@ export function useProjectTodosPanelState({
     [groupedTodosForAll]
   );
 
+  const isSoleProjectMember = projectMembers.length === 1;
+
+  const hideRegularTodoAssigneeHeaders = useMemo(() => {
+    if (!isSoleProjectMember || viewerUserId === null) {
+      return false;
+    }
+    const regularTodos = groupedRegularTodosOnly.flatMap((g) => g.todos);
+    if (regularTodos.length === 0) {
+      return false;
+    }
+    return regularTodos.every((t) => t.user?.sId === viewerUserId);
+  }, [groupedRegularTodosOnly, isSoleProjectMember, viewerUserId]);
+
   // Optimistically update a todo's status in the SWR cache and send the PATCH.
   // On failure the cache is revalidated from the server.
   const handleSetStatus = useCallback(
@@ -629,5 +642,7 @@ export function useProjectTodosPanelState({
     frozenLastReadAt,
     todos,
     filteredTodos,
+    isSoleProjectMember,
+    hideRegularTodoAssigneeHeaders,
   };
 }

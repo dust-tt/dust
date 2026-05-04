@@ -138,6 +138,10 @@ export type ProjectTodosDataTableProps = {
   onRejectAllSuggestedForAssignee?: (todoIds: string[]) => void | Promise<void>;
   onStartWorking: EditableTodoItemProps["onStartWorking"];
   onPatchTodo: EditableTodoItemProps["onPatchTodo"];
+  /** Regular table: omit per-assignee header rows (flat list). */
+  hideAssigneeGroupHeaders?: boolean;
+  /** When false, hides the overflow "Reassign" submenu (e.g. sole project member). */
+  allowAssigneeReassign?: boolean;
 };
 
 export function ProjectTodosDataTable({
@@ -164,6 +168,8 @@ export function ProjectTodosDataTable({
   onRejectAllSuggestedForAssignee,
   onStartWorking,
   onPatchTodo,
+  hideAssigneeGroupHeaders = false,
+  allowAssigneeReassign = true,
 }: ProjectTodosDataTableProps) {
   const [bulkAssigneeAction, setBulkAssigneeAction] =
     useState<BulkAssigneeActionState>(null);
@@ -198,10 +204,18 @@ export function ProjectTodosDataTable({
     [onRejectAllSuggestedForAssignee]
   );
 
-  const data = useMemo(
-    () => flattenGroupedTodos(groupedTodosForAll, variant),
-    [groupedTodosForAll, variant]
-  );
+  const data = useMemo(() => {
+    if (
+      variant === "regular" &&
+      hideAssigneeGroupHeaders &&
+      groupedTodosForAll.length > 0
+    ) {
+      return groupedTodosForAll.flatMap((group) =>
+        group.todos.map((todo) => ({ kind: "todo" as const, todo }))
+      );
+    }
+    return flattenGroupedTodos(groupedTodosForAll, variant);
+  }, [groupedTodosForAll, variant, hideAssigneeGroupHeaders]);
 
   const columns = useMemo<ColumnDef<ProjectTodoTableRow>[]>(
     () => [
@@ -317,6 +331,7 @@ export function ProjectTodosDataTable({
                   projectMembers={projectMembers}
                   membersWithActiveTodoIds={membersWithActiveTodoIds}
                   onPatchTodo={onPatchTodo}
+                  allowAssigneeReassign={allowAssigneeReassign}
                 />
               )}
             </div>
@@ -350,6 +365,7 @@ export function ProjectTodosDataTable({
       runBulkRejectForGroup,
       onApproveAllSuggestedForAssignee,
       onRejectAllSuggestedForAssignee,
+      allowAssigneeReassign,
     ]
   );
 

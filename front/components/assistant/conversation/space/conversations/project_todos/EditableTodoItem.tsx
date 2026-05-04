@@ -82,6 +82,7 @@ export interface EditableTodoItemProps {
     todoId: string,
     updates: { text?: string; assigneeUserId?: string }
   ) => Promise<void>;
+  allowAssigneeReassign?: boolean;
 }
 
 export const EditableTodoItem = memo(function EditableTodoItem({
@@ -103,6 +104,7 @@ export const EditableTodoItem = memo(function EditableTodoItem({
   projectMembers,
   membersWithActiveTodoIds,
   onPatchTodo,
+  allowAssigneeReassign = true,
 }: EditableTodoItemProps) {
   const router = useAppRouter();
   const [startMenuOpen, setStartMenuOpen] = useState(false);
@@ -627,72 +629,74 @@ export const EditableTodoItem = memo(function EditableTodoItem({
                   align="end"
                   className="z-[1000] w-56 shadow-2xl ring-1 ring-border/60"
                 >
-                  <DropdownMenuSub
-                    onOpenChange={(subOpen) => {
-                      if (subOpen) {
-                        setReassignSearch("");
-                      }
-                    }}
-                  >
-                    <DropdownMenuSubTrigger
-                      label="Reassign"
-                      icon={UserIcon}
-                      disabled={projectMembers.length === 0}
-                    />
-                    <DropdownMenuPortal>
-                      <DropdownMenuSubContent
-                        alignOffset={-4}
-                        className="z-[1000] w-80 shadow-2xl ring-1 ring-border/60"
-                      >
-                        <DropdownMenuSearchbar
-                          autoFocus
-                          name={`reassign-todo-${todo.sId}`}
-                          placeholder="Search members"
-                          value={reassignSearch}
-                          onChange={setReassignSearch}
-                        />
-                        <DropdownMenuSeparator />
-                        <div className="max-h-64 overflow-auto">
-                          {filteredReassignMembers.length > 0 ? (
-                            filteredReassignMembers.map((member) => (
-                              <DropdownMenuItem
-                                key={`reassign-${todo.sId}-${member.sId}`}
-                                label={`${member.fullName}${viewerUserId === member.sId ? " (you)" : ""}`}
-                                disabled={member.sId === todo.user?.sId}
-                                icon={() => (
-                                  <Avatar
-                                    size="xxs"
-                                    isRounded
-                                    visual={
-                                      member.image ??
-                                      "/static/humanavatar/anonymous.png"
-                                    }
-                                  />
-                                )}
-                                onClick={() => {
-                                  void (async () => {
-                                    try {
-                                      if (member.sId !== todo.user?.sId) {
-                                        await onPatchTodo(todo.sId, {
-                                          assigneeUserId: member.sId,
-                                        });
+                  {allowAssigneeReassign && (
+                    <DropdownMenuSub
+                      onOpenChange={(subOpen) => {
+                        if (subOpen) {
+                          setReassignSearch("");
+                        }
+                      }}
+                    >
+                      <DropdownMenuSubTrigger
+                        label="Reassign"
+                        icon={UserIcon}
+                        disabled={projectMembers.length === 0}
+                      />
+                      <DropdownMenuPortal>
+                        <DropdownMenuSubContent
+                          alignOffset={-4}
+                          className="z-[1000] w-80 shadow-2xl ring-1 ring-border/60"
+                        >
+                          <DropdownMenuSearchbar
+                            autoFocus
+                            name={`reassign-todo-${todo.sId}`}
+                            placeholder="Search members"
+                            value={reassignSearch}
+                            onChange={setReassignSearch}
+                          />
+                          <DropdownMenuSeparator />
+                          <div className="max-h-64 overflow-auto">
+                            {filteredReassignMembers.length > 0 ? (
+                              filteredReassignMembers.map((member) => (
+                                <DropdownMenuItem
+                                  key={`reassign-${todo.sId}-${member.sId}`}
+                                  label={`${member.fullName}${viewerUserId === member.sId ? " (you)" : ""}`}
+                                  disabled={member.sId === todo.user?.sId}
+                                  icon={() => (
+                                    <Avatar
+                                      size="xxs"
+                                      isRounded
+                                      visual={
+                                        member.image ??
+                                        "/static/humanavatar/anonymous.png"
                                       }
-                                    } finally {
-                                      setOverflowMenuOpen(false);
-                                    }
-                                  })();
-                                }}
-                              />
-                            ))
-                          ) : (
-                            <div className="px-3 py-2 text-sm text-muted-foreground">
-                              No members found
-                            </div>
-                          )}
-                        </div>
-                      </DropdownMenuSubContent>
-                    </DropdownMenuPortal>
-                  </DropdownMenuSub>
+                                    />
+                                  )}
+                                  onClick={() => {
+                                    void (async () => {
+                                      try {
+                                        if (member.sId !== todo.user?.sId) {
+                                          await onPatchTodo(todo.sId, {
+                                            assigneeUserId: member.sId,
+                                          });
+                                        }
+                                      } finally {
+                                        setOverflowMenuOpen(false);
+                                      }
+                                    })();
+                                  }}
+                                />
+                              ))
+                            ) : (
+                              <div className="px-3 py-2 text-sm text-muted-foreground">
+                                No members found
+                              </div>
+                            )}
+                          </div>
+                        </DropdownMenuSubContent>
+                      </DropdownMenuPortal>
+                    </DropdownMenuSub>
+                  )}
                   <DropdownMenuItem
                     label="Delete"
                     icon={TrashIcon}

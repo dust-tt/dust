@@ -31,6 +31,7 @@ export function ProjectTodoScopeFilter() {
     hasDoneItems,
     handleClean,
     isCleaning,
+    isSoleProjectMember,
   } = useProjectTodosPanel();
 
   return (
@@ -65,14 +66,18 @@ export function ProjectTodoScopeFilter() {
             className="z-[1000] w-80 shadow-2xl ring-1 ring-border/60"
             align="start"
           >
-            <DropdownMenuSearchbar
-              autoFocus
-              name="assignee-filter"
-              placeholder="Search members"
-              value={assigneeSearch}
-              onChange={setAssigneeSearch}
-            />
-            <DropdownMenuSeparator />
+            {!isSoleProjectMember && (
+              <>
+                <DropdownMenuSearchbar
+                  autoFocus
+                  name="assignee-filter"
+                  placeholder="Search members"
+                  value={assigneeSearch}
+                  onChange={setAssigneeSearch}
+                />
+                <DropdownMenuSeparator />
+              </>
+            )}
             <DropdownMenuCheckboxItem
               icon={UserIcon}
               label="Your to-dos"
@@ -103,63 +108,65 @@ export function ProjectTodoScopeFilter() {
                 event.preventDefault();
               }}
             />
-            <DropdownMenuSeparator />
-            <div className="max-h-64 overflow-auto">
-              {filteredUsers.length > 0 ? (
-                filteredUsers.map((user) => (
-                  <DropdownMenuCheckboxItem
-                    key={`todo-assignee-filter-${user.sId}`}
-                    icon={() => (
-                      <Avatar
-                        size="xxs"
-                        isRounded
-                        visual={
-                          user.image ?? "/static/humanavatar/anonymous.png"
+            {!isSoleProjectMember && (
+              <>
+                <DropdownMenuSeparator />
+                <div className="max-h-64 overflow-auto">
+                  {filteredUsers.length > 0 ? (
+                    filteredUsers.map((user) => (
+                      <DropdownMenuCheckboxItem
+                        key={`todo-assignee-filter-${user.sId}`}
+                        icon={() => (
+                          <Avatar
+                            size="xxs"
+                            isRounded
+                            visual={
+                              user.image ?? "/static/humanavatar/anonymous.png"
+                            }
+                          />
+                        )}
+                        label={`${user.fullName}${viewerUserId === user.sId ? " (you)" : ""}`}
+                        checked={
+                          todoOwnerFilter.assigneeScope === "users" &&
+                          selectedUserSIds.has(user.sId)
                         }
+                        onClick={() => {
+                          const next = new Set(selectedUserSIds);
+                          if (next.has(user.sId)) {
+                            next.delete(user.sId);
+                          } else {
+                            next.add(user.sId);
+                          }
+                          onTodoOwnerFilterChange({
+                            assigneeScope: next.size === 0 ? "all" : "users",
+                            selectedUserSIds: [...next],
+                          });
+                        }}
+                        onSelect={(event) => {
+                          event.preventDefault();
+                        }}
                       />
-                    )}
-                    label={`${user.fullName}${viewerUserId === user.sId ? " (you)" : ""}`}
-                    checked={
-                      todoOwnerFilter.assigneeScope === "users" &&
-                      selectedUserSIds.has(user.sId)
-                    }
-                    onClick={() => {
-                      const next = new Set(selectedUserSIds);
-                      if (next.has(user.sId)) {
-                        next.delete(user.sId);
-                      } else {
-                        next.add(user.sId);
-                      }
-                      onTodoOwnerFilterChange({
-                        assigneeScope: next.size === 0 ? "all" : "users",
-                        selectedUserSIds: [...next],
-                      });
-                    }}
-                    onSelect={(event) => {
-                      event.preventDefault();
-                    }}
-                  />
-                ))
-              ) : (
-                <div className="px-3 py-2 text-sm text-muted-foreground">
-                  No members found
+                    ))
+                  ) : (
+                    <div className="px-3 py-2 text-sm text-muted-foreground">
+                      No members found
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+              </>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
         <div className="flex-1" />
-        {!isReadOnly && hasDoneItems && (
-          <Button
-            size="xs"
-            variant="outline"
-            icon={WindIcon}
-            label="Clean"
-            tooltip="Hide all done to-dos"
-            onClick={handleClean}
-            disabled={isCleaning}
-          />
-        )}
+        <Button
+          size="xs"
+          variant="outline"
+          icon={WindIcon}
+          label="Clean"
+          tooltip="Hide all done to-dos"
+          onClick={handleClean}
+          disabled={isReadOnly || !hasDoneItems || isCleaning}
+        />
       </div>
     </div>
   );
