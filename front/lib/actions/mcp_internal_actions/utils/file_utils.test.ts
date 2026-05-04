@@ -1,6 +1,6 @@
-import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
-import { createConversation } from "@app/lib/api/assistant/conversation";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
+import { createConversation } from "@app/lib/api/assistant/conversation";
+import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
@@ -232,7 +232,7 @@ describe("resolveConversationFileRef", () => {
   });
 
   it("returns the signed URL and metadata for a legacy fileId", async () => {
-    const { authenticator: auth, workspace } = await createResourceTest({
+    const { authenticator: auth } = await createResourceTest({
       role: "admin",
     });
 

@@ -3,12 +3,12 @@ import type {
   MCPProgressNotificationType,
   ToolGeneratedFileType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { resolveConversationFileRef } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { computeTokensCostForUsageInMicroUsd } from "@app/lib/api/assistant/token_pricing";
 import { uploadBase64ImageToFileStorage } from "@app/lib/api/files/upload";
-import type { Authenticator } from "@app/lib/auth";
 import type { ReferenceImageFile } from "@app/lib/api/llm/imageGeneration";
+import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import { getStatsDClient } from "@app/lib/utils/statsd";
@@ -287,7 +287,11 @@ async function processSingleImageFile(
 ): Promise<Ok<ReferenceImageFile> | Err<MCPError>> {
   const workspace = auth.getNonNullableWorkspace();
 
-  const refResult = await resolveConversationFileRef(auth, imageFileId, agentLoopContext);
+  const refResult = await resolveConversationFileRef(
+    auth,
+    imageFileId,
+    agentLoopContext
+  );
   if (refResult.isErr()) {
     return new Err(
       new MCPError(`File not found: ${imageFileId}`, { tracked: false })

@@ -1,4 +1,5 @@
 import type { AgentLoopContextType } from "@app/lib/actions/types";
+import { resolveConversationFile } from "@app/lib/api/actions/servers/files/tools/utils";
 import type { ConversationAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import {
   conversationAttachmentId,
@@ -6,7 +7,6 @@ import {
   isFileAttachmentType,
   makeFileAttachment,
 } from "@app/lib/api/assistant/conversation/attachments";
-import { resolveConversationFile } from "@app/lib/api/actions/servers/files/tools/utils";
 import { parseScopedFilePath } from "@app/lib/api/files/mount_path";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
@@ -25,7 +25,6 @@ export function sanitizeFilename(filename: string): string {
     .replace(/[^\w\-._]/g, "_")
     .substring(0, 255);
 }
-
 
 export type ConversationFileRef = {
   contentType: string;
@@ -54,7 +53,11 @@ export async function resolveConversationFileRef(
   const parsed = parseScopedFilePath(fileId);
   if (parsed) {
     const conversation = agentLoopContext.runContext.conversation;
-    const resolvedRes = await resolveConversationFile(auth, conversation, fileId);
+    const resolvedRes = await resolveConversationFile(
+      auth,
+      conversation,
+      fileId
+    );
     if (resolvedRes.isErr()) {
       return new Err(resolvedRes.error.message);
     }
@@ -84,7 +87,8 @@ export async function resolveConversationFileRef(
     sizeBytes: fileResource.fileSize,
     fileName: sanitizeFilename(fileResource.fileName),
     getSignedUrl: () => fileResource.getSignedUrlForDownload(auth, "original"),
-    createReadStream: () => fileResource.getReadStream({ auth, version: "original" }),
+    createReadStream: () =>
+      fileResource.getReadStream({ auth, version: "original" }),
   });
 }
 

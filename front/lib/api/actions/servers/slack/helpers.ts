@@ -804,7 +804,11 @@ export async function executePostMessage(
         new MCPError(`File not found: ${fileId}`, { tracked: false })
       );
     }
-    const { buffer: fileBuffer, filename, contentType: filetype } = fileResult.value;
+    const {
+      buffer: fileBuffer,
+      filename,
+      contentType: filetype,
+    } = fileResult.value;
 
     // Resolve channel id using the shared helper function.
     const channelId = await resolveChannelId({
