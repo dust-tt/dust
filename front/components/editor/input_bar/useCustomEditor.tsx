@@ -8,6 +8,7 @@ import {
 import type { InputBarSlashSuggestionCapability } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
 import { KeyboardShortcutsExtension } from "@app/components/editor/extensions/input_bar/KeyboardShortcutsExtension";
 import { PastedAttachmentExtension } from "@app/components/editor/extensions/input_bar/PastedAttachmentExtension";
+import { SkillNode } from "@app/components/editor/extensions/input_bar/SkillNode";
 import { URLDetectionExtension } from "@app/components/editor/extensions/input_bar/URLDetectionExtension";
 import { URLStorageExtension } from "@app/components/editor/extensions/input_bar/URLStorageExtension";
 import {
@@ -130,12 +131,16 @@ const useEditorService = (editor: Editor | null) => {
           return {
             markdown: "",
             mentions: [],
+            skills: [],
           };
         }
 
+        const { mentions, skills } = extractFromEditorJSON(editor?.getJSON());
+
         return {
           markdown: editor.getMarkdown(),
-          mentions: extractFromEditorJSON(editor?.getJSON()).mentions,
+          mentions,
+          skills,
         };
       },
 
@@ -347,6 +352,7 @@ export const buildEditorExtensions = ({
         onAgentSelect,
       }),
     }),
+    SkillNode,
     EmojiExtension,
     Placeholder.configure({
       placeholder: ({ node }) => {

@@ -7,6 +7,7 @@
  * - Plain text with @ symbols
  */
 
+import { type SkillReference, serializeSkillTag } from "@app/lib/skills/format";
 import type {
   AgentMention,
   MentionType,
@@ -14,6 +15,7 @@ import type {
   UserMention,
 } from "@app/types/assistant/mentions";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { isString } from "@app/types/shared/utils/general";
 import type { JSONContent } from "@tiptap/react";
 
 /**
@@ -99,12 +101,14 @@ export function replaceMentionsWithAt(text: string): string {
 export function extractFromEditorJSON(node?: JSONContent): {
   text: string;
   mentions: RichMention[];
+  skills: SkillReference[];
 } {
   let textContent = "";
   let mentions: RichMention[] = [];
+  let skills: SkillReference[] = [];
 
   if (!node) {
-    return { text: textContent, mentions };
+    return { text: textContent, mentions, skills };
   }
 
   // Check if the node is of type 'text' and concatenate its text.
@@ -128,6 +132,27 @@ export function extractFromEditorJSON(node?: JSONContent): {
     });
   }
 
+  if (node.type === "skill") {
+    const skillId = node.attrs?.skillId;
+    const skillIcon = isString(node.attrs?.skillIcon)
+      ? node.attrs.skillIcon
+      : null;
+    const skillName = node.attrs?.skillName;
+
+    if (isString(skillId) && isString(skillName)) {
+      skills.push({
+        id: skillId,
+        icon: skillIcon,
+        name: skillName,
+      });
+      textContent += serializeSkillTag({
+        id: skillId,
+        icon: skillIcon,
+        name: skillName,
+      });
+    }
+  }
+
   // If the node is a 'hardBreak' or a 'paragraph', add a newline character.
   if (node.type && ["hardBreak", "paragraph"].includes(node.type)) {
     textContent += "\n";
@@ -145,8 +170,9 @@ export function extractFromEditorJSON(node?: JSONContent): {
       const childResult = extractFromEditorJSON(childNode);
       textContent += childResult.text;
       mentions = mentions.concat(childResult.mentions);
+      skills = skills.concat(childResult.skills);
     });
   }
 
-  return { text: textContent, mentions };
+  return { text: textContent, mentions, skills };
 }

@@ -156,6 +156,38 @@ describe("buildEditorExtensions", () => {
     expect(hasCodeMark).toBe(true);
   });
 
+  it("round-trips inline skill tags as skill nodes", () => {
+    editor.commands.setContent(
+      '<skill id="skill_123" name="commit" icon="book_open" />',
+      {
+        contentType: "markdown",
+      }
+    );
+
+    const json = editor.getJSON();
+    expect(JSON.stringify(json)).toContain('"type":"skill"');
+    expect(JSON.stringify(json)).toContain('"skillId":"skill_123"');
+    expect(JSON.stringify(json)).toContain('"skillName":"commit"');
+    expect(JSON.stringify(json)).toContain('"skillIcon":"book_open"');
+    expect(editor.getMarkdown()).toContain(
+      '<skill id="skill_123" name="commit" icon="book_open" />'
+    );
+  });
+
+  it("round-trips inline skill tags without an icon", () => {
+    editor.commands.setContent('<skill id="skill_123" name="commit" />', {
+      contentType: "markdown",
+    });
+
+    const json = editor.getJSON();
+    expect(JSON.stringify(json)).toContain('"type":"skill"');
+    expect(JSON.stringify(json)).toContain('"skillId":"skill_123"');
+    expect(JSON.stringify(json)).toContain('"skillName":"commit"');
+    expect(editor.getMarkdown()).toContain(
+      '<skill id="skill_123" name="commit" />'
+    );
+  });
+
   it("should handle bullet list with `*`", () => {
     editor.commands.setContent("* hello\n* world", {
       contentType: "markdown",
