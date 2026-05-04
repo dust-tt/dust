@@ -352,7 +352,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     // it gates the synthetic /sandbox/egress-experiment endpoint only.
     //
     // TODO(phase 1): cover non-curl runtimes (NODE_EXTRA_CA_CERTS, DENO_CERT,
-    // etc.) per SECRET_SWAP_DESIGN.md, "Client-language agnosticism" under
+    // etc.) per design_docs/SECRET_SWAP_DESIGN.md, "Client-language agnosticism" under
     // "Proposal" (specifically the per-runtime trust env-var matrix).
     // Both env vars must be set for the experiment to engage. Setting
     // only the host without the token would inject SSL_CERT_FILE into the

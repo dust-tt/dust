@@ -13,7 +13,7 @@
 //
 // When the experiment concludes, delete this file along with the rest of
 // the PHASE0(remove with the experiment) markers tracked in the design doc
-// (SECRET_SWAP_DESIGN.md, Phase 0 section).
+// (design_docs/SECRET_SWAP_DESIGN.md, Phase 0 section).
 // =============================================================================
 
 import config from "@app/lib/api/config";

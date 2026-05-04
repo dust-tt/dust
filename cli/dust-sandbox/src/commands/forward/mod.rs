@@ -387,7 +387,7 @@ where
     // TODO(phase 1): handle a placeholder straddling the read boundary, and
     // extend rewriting to URLs behind the per-secret allowedDomains gate.
     // Bodies are deferred to Phase 3 with an opt-in includeBody flag.
-    // See SECRET_SWAP_DESIGN.md, "Substitution logic" under "Proposal".
+    // See design_docs/SECRET_SWAP_DESIGN.md, "Substitution logic" under "Proposal".
     let mut header_buf = Vec::with_capacity(MITM_HEADER_PEEK_BUFFER_SIZE);
     let deadline = Instant::now() + MITM_HEADER_READ_TIMEOUT;
 
