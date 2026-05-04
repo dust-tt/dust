@@ -48,8 +48,8 @@ import {
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-// Search bar is 3rem tall. Seven 3.25rem capability rows gives a 25.75rem
-// dropdown body, matching the slash suggestion row count.
+// Rare case where we need a Tailwind arbitrary value: after the fixed search bar, the scrollable list should fit
+// exactly seven 3.25rem rows without showing a partial row or leaving extra bottom space.
 const CAPABILITIES_PICKER_LIST_MAX_HEIGHT_CLASS_NAME = "max-h-[22.75rem]";
 
 interface CapabilityPickerItemBase {
