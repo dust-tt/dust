@@ -30,6 +30,20 @@
       }
     },
     {
+      "name": "front-api",
+      "path": "front-api",
+      "settings": {
+        "typescript.preferences.useLabelDetailsInCompletion": true,
+        "typescript.preferences.includePackageJsonAutoImports": "off",
+        "typescript.experimental.useTsgo": true,
+        "editor.defaultFormatter": "biomejs.biome",
+        "files.exclude": {
+          "**/node_modules": true,
+          "**/dist": true
+        }
+      }
+    },
+    {
       "name": "front-spa",
       "path": "front-spa",
       "settings": {
