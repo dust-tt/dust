@@ -37,6 +37,7 @@ import {
   useConversations,
 } from "@app/hooks/conversations";
 import { useConversationAttachments } from "@app/hooks/conversations/useConversationAttachments";
+import { useOpenConversationBranch } from "@app/hooks/conversations/useOpenConversationBranch";
 import { planFileKey } from "@app/hooks/conversations/usePlanFile";
 import { useConversationEvents } from "@app/hooks/useConversationEvents";
 import { useEnableBrowserNotification } from "@app/hooks/useEnableBrowserNotification";
@@ -261,6 +262,9 @@ export const ConversationViewer = ({
     null
   );
 
+  const { openBranch } = useOpenConversationBranch({ owner, conversationId });
+  const hasInjectedOpenBranchRef = useRef(false);
+
   const {
     conversation,
     conversationError,
@@ -418,6 +422,31 @@ export const ConversationViewer = ({
     conversation?.unread,
     conversation?.lastReadMs,
   ]);
+
+  // Restore an open branch (and its messages) when the user reloads or
+  // navigates back to a conversation that has a pending open branch. The
+  // conversation fetch only returns the main thread, so without this the
+  // approval modal would never re-open.
+  useEffect(() => {
+    if (
+      !initialListData ||
+      !openBranch ||
+      !ref.current ||
+      hasInjectedOpenBranchRef.current
+    ) {
+      return;
+    }
+    hasInjectedOpenBranchRef.current = true;
+
+    const branchMessages = convertLightMessageTypeToVirtuosoMessages(
+      openBranch.messages
+    );
+    for (const msg of branchMessages) {
+      const insertIdx = getBranchedInsertIndex(ref.current.data.get(), msg);
+      ref.current.data.insert([msg], insertIdx);
+    }
+    setBranchIdToApprove(openBranch.branchId);
+  }, [initialListData, openBranch]);
 
   // Sync the virtuoso ref with the side panel context.
   const {
