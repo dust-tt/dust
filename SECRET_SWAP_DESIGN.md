@@ -457,8 +457,20 @@ maintains two files and points each env var at the right one:
   secret domain is ever needed, dsbx would have to extract the agent's
   client cert and re-present it on the outbound side - significant
   complexity, deferred indefinitely.
-- **Long-lived processes started before env export**: don't pick up the
-  trust. Boot order is enforced.
+- **Daemons that started before our boot script ran the env export**:
+  trust env vars (`NODE_EXTRA_CA_CERTS`, `DENO_CERT`, `SSL_CERT_FILE`,
+  etc.) are read by the runtime only at process startup. A process
+  whose environment was set before the boot script wrote the exports
+  has no path to pick them up later, so its TLS to MITM-scoped
+  domains fails (clean PKIX/TLS error, no silent leak). The boot
+  sequence is ordered so this doesn't bite agent-spawned processes
+  (dsbx start → CA install → keytool → env export → the agent gets
+  to spawn anything). The residual case is image-level daemons the
+  sandbox base image brings up during early init before our boot
+  script runs (Jupyter kernel pool, language servers, pre-spawned
+  MCP servers). We don't have such a daemon today that needs TLS
+  to MITM-scoped domains; if one is ever added it has to be ordered
+  after the env-export step.
 - **Non-HTTP protocols over TLS** (Postgres, MySQL, Redis, SMTP STARTTLS,
   raw TLS): dsbx terminates inbound TLS but the rewriter only understands
   HTTP/1.1 and HTTP/2. The placeholder reaches upstream and is rejected
