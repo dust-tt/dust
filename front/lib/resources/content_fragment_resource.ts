@@ -6,13 +6,16 @@ import type {
 import {
   conversationAttachmentId,
   getAttachmentFromContentFragment,
+  isContentNodeAttachmentType,
   renderAttachmentXml,
   renderLargePasteXml,
 } from "@app/lib/api/assistant/conversation/attachments";
 import appConfig from "@app/lib/api/config";
 import config from "@app/lib/api/config";
+
 import { getFileContent } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
+import { hasFeatureFlag } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import type { MessageModel } from "@app/lib/models/agent/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -1195,6 +1198,34 @@ export async function renderLightContentFragmentForModel(
   const fileStringId =
     message.contentFragmentType === "file" ? message.fileId : null;
 
+  const isNewFileExplorer = fileStringId
+    ? await hasFeatureFlag(auth, "new_file_explorer")
+    : false;
+
+  // When new_file_explorer is on, regular file attachments are accessible via the `files` server
+  // (path-based). Don't inline them in conversation history, instead emit a slim notice so the
+  // model knows the file exists and how to reach it. Exceptions: pasted content (inlined by
+  // design), images (shown directly to vision models), queryable tables (needed for
+  // query_tables_v2 which is pre-wired at JIT time).
+  if (
+    isNewFileExplorer &&
+    !isPastedFile(contentType) &&
+    !isLLMVisionSupportedImageContentType(contentType) &&
+    !attachment.isQueryable &&
+    !isContentNodeAttachmentType(attachment)
+  ) {
+    const snippet = attachment.snippet;
+    const fileTag = snippet
+      ? `<file name="${attachment.title}" path="conversation/${attachment.title}">${snippet}\n</file>`
+      : `<file name="${attachment.title}" path="conversation/${attachment.title}"/>`;
+
+    return {
+      role: "content_fragment",
+      name: `attach_${contentType}`,
+      content: [{ type: "text", text: fileTag }],
+    };
+  }
+
   // Check if this is pasted content - render with simplified format
   if (fileStringId && isPastedFile(contentType)) {
     const largePaste: LargePasteType = {
@@ -1253,12 +1284,14 @@ export async function renderLightContentFragmentForModel(
             url: signedUrl,
           },
         },
-        {
-          type: "text",
-          text: renderAttachmentXml({
-            attachment,
-          }),
-        },
+        ...(isNewFileExplorer
+          ? []
+          : [
+              {
+                type: "text" as const,
+                text: renderAttachmentXml({ attachment }),
+              },
+            ]),
       ],
     };
   }

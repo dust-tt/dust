@@ -24,6 +24,7 @@ import {
 import { getConversationDataSourceViews } from "@app/lib/api/assistant/jit/utils";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import type { Authenticator } from "@app/lib/auth";
+import { hasFeatureFlag } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import {
   CONTENT_OUTDATED_MSG,
@@ -88,7 +89,16 @@ const handlers: ToolHandlers<typeof CONVERSATION_FILES_TOOLS_METADATA> = {
     }
 
     const conversation = agentLoopContext.runContext.conversation;
-    const attachments = await listAttachments(auth, { conversation });
+    const allAttachments = await listAttachments(auth, { conversation });
+
+    // When new_file_explorer is on, files are surfaced via the `files` server.
+    // Only list content nodes and queryable attachments (tables) here.
+    const isNewFileExplorer = await hasFeatureFlag(auth, "new_file_explorer");
+    const attachments = isNewFileExplorer
+      ? allAttachments.filter(
+          (a) => isContentNodeAttachmentType(a) || a.isQueryable
+        )
+      : allAttachments;
 
     if (attachments.length === 0) {
       return new Ok([
