@@ -14,10 +14,11 @@ import { useFormContext } from "react-hook-form";
 const LARGE_INSTRUCTIONS_CHARACTER_THRESHOLD = 40_000;
 
 const INSTRUCTIONS_FIELD_NAME = "instructions";
+const INSTRUCTIONS_HTML_FIELD_NAME = "instructionsHtml";
 
 export function SkillBuilderInstructionsSection() {
   const { setValue, watch } = useFormContext<SkillBuilderFormData>();
-  const { compareVersion } = useSkillVersionComparisonContext();
+  const { compareVersion, exitDiffMode } = useSkillVersionComparisonContext();
   const [addKnowledge, setAddKnowledge] = useState<(() => void) | null>(null);
 
   const currentInstructions = watch(INSTRUCTIONS_FIELD_NAME);
@@ -33,6 +34,12 @@ export function SkillBuilderInstructionsSection() {
       shouldDirty: true,
       shouldValidate: true,
     });
+    setValue(
+      INSTRUCTIONS_HTML_FIELD_NAME,
+      compareVersion.instructionsHtml ?? "",
+      { shouldDirty: true }
+    );
+    exitDiffMode();
   };
 
   return (
