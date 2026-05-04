@@ -6,6 +6,7 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import Metronome, { ConflictError } from "@metronome/sdk";
 import type { Commit, ContractV2, Credit } from "@metronome/sdk/resources";
+import type { RateCardRetrieveResponse } from "@metronome/sdk/resources/v1/contracts/rate-cards";
 import type { Invoice } from "@metronome/sdk/resources/v1/customers";
 import type {
   MetronomeBalance,
@@ -465,34 +466,26 @@ export async function getMetronomeActiveContract(
 }
 
 /**
- * Retrieve a specific Metronome contract by customer + contract ID.
+ * Retrieve a specific Metronomome rate card by ID.
  */
 export async function getMetronomeRateCardById({
   rateCardId,
 }: {
   rateCardId: string;
-}): Promise<
-  Result<
-    {
-      fiat_credit_type_id: string | undefined;
-      fiat_credit_type_name: string | undefined;
-    },
-    Error
-  >
-> {
+}): Promise<Result<RateCardRetrieveResponse.Data, Error>> {
   try {
     const response = await getMetronomeClient().v1.contracts.rateCards.retrieve(
       { id: rateCardId }
     );
-    return new Ok({
-      fiat_credit_type_id: response.data.fiat_credit_type?.id,
-      fiat_credit_type_name: response.data.fiat_credit_type?.name,
-    });
+    return new Ok(response.data);
   } catch (err) {
     return new Err(normalizeError(err));
   }
 }
 
+/**
+ * Retrieve a specific Metronome contract by customer + contract ID.
+ */
 export async function getMetronomeContractById({
   metronomeCustomerId,
   metronomeContractId,

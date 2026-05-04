@@ -36,7 +36,7 @@ export async function getCreditTypeFromContract(
     return result;
   }
 
-  const { fiat_credit_type_id } = result.value;
+  const fiat_credit_type_id = result.value.fiat_credit_type?.id;
   if (!fiat_credit_type_id) {
     return new Err(new Error("Rate card has no fiat_credit_type_id"));
   }
