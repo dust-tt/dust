@@ -479,7 +479,7 @@ export function CapabilitiesPicker({
       case "uninstalled_tool":
         return setupServer(item.server);
       default:
-        assertNeverAndIgnore(item)
+        assertNeverAndIgnore(item);
     }
   };
 
