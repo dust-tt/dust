@@ -1218,6 +1218,7 @@ export async function renderLightContentFragmentForModel(
     const fileTag = snippet
       ? `<file name="${attachment.title}" path="conversation/${attachment.title}">${snippet}\n</file>`
       : `<file name="${attachment.title}" path="conversation/${attachment.title}"/>`;
+
     return {
       role: "content_fragment",
       name: `attach_${contentType}`,
