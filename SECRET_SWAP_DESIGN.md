@@ -331,18 +331,19 @@ to public sites.
 
 In practice, **HTTPS coverage on Linux is broad** for any tool the
 agent UID runs that uses standard TLS libraries. Once the dsbx CA is
-installed into the system trust store via `update-ca-certificates` and
-the env-var matrix below is applied, the verified-as-of-design list
-below picks up the CA without code changes. The smoke matrix
-(§ "Verification") is the source of truth; the prose below is the
-hypothesis we plan to verify per release.
+installed into the system trust store via `update-ca-certificates`
+and the env-var matrix below is applied, mainstream HTTPS clients
+pick up the CA without code changes.
 
-Verified by the smoke matrix: curl, wget, openssl s_client, Python
-(`urllib`, `requests`, `httpx`), Node (`fetch`, `https`), Bun, Deno,
-Go (`net/http`), Java (post-keytool), Ruby (`Net::HTTP`), PHP
-(`file_get_contents`), git over HTTPS, AWS CLI.
+Expected to work: curl, wget, openssl s_client, Python (`urllib`,
+`requests`, `httpx`), Node (`fetch`, `https`), Bun, Deno, Go
+(`net/http`), Java (post-keytool), Ruby (`Net::HTTP`), PHP
+(`file_get_contents`), git over HTTPS, AWS CLI, plus
+apt/pip/npm/cargo/yarn package fetches, gcloud, kubectl, helm,
+httpie. SSH-based tools (scp, rsync over ssh) are unaffected
+because they don't use TLS.
 
-Known holes (matrix exceptions):
+Known holes:
 
 - **Rust `rustls-webpki`**: hardcoded Mozilla bundle compiled into
   the binary, no env var reaches it.
@@ -351,24 +352,17 @@ Known holes (matrix exceptions):
   `SSL_CERT_FILE` / `NODE_EXTRA_CA_CERTS` / etc.; the only way to
   add a CA is to mutate `$JAVA_HOME/lib/security/cacerts` via
   `keytool -importcert`. The boot script runs that import
-  (see § "Client-language agnosticism" → step 4), and "Java
-  (post-keytool)" in the smoke matrix verifies the happy path.
-  Failure shows up if a JDK gets installed mid-session (the new
-  JDK has an untouched `cacerts`), if the image carries multiple
-  JDKs and the running one isn't the one we imported into, or if
-  agent code passes `-Djavax.net.ssl.trustStore=...` pointing at
-  a different keystore. Failure mode is a clean `PKIX path
-  building failed` TLS error, no silent leak.
+  (see § "Client-language agnosticism" → step 4). Failure shows up
+  if a JDK gets installed mid-session (the new JDK has an untouched
+  `cacerts`), if the image carries multiple JDKs and the running
+  one isn't the one we imported into, or if agent code passes
+  `-Djavax.net.ssl.trustStore=...` pointing at a different
+  keystore. Failure mode is a clean `PKIX path building failed`
+  TLS error, no silent leak.
 - **Cert-pinning clients**: by design, they reject the dsbx leaf.
 - **mTLS clients**: dsbx terminates the agent's TLS and opens a
   fresh outbound TLS without forwarding any client cert, so client-
   auth flows fail at the upstream's handshake.
-
-Tools we expect to work but don't currently exercise in the smoke
-matrix (treat as hypothesis until verified): apt/pip/npm/cargo/yarn
-package fetches, gcloud, kubectl, helm, httpie. SSH-based tools (scp,
-rsync over ssh) are unaffected by the MITM either way - they don't
-use TLS.
 
 | Stack | System store | Env knob | Knob semantics |
 | --- | --- | --- | --- |
@@ -474,44 +468,6 @@ maintains two files and points each env var at the right one:
   the placeholder across headers, the rewriter doesn't recognize it and
   doesn't substitute. Upstream gets garbage. The real value never gets
   produced, so there's no exfil concern, but the request fails.
-
-### Verification
-
-A smoke matrix runs per stack on every dsbx release: one MITM'd domain
-(placeholder must materialize as the real secret upstream), one non-MITM
-public domain (TLS must still verify against the public web).
-
-```
-# baseline
-curl https://api.allowed-mitm.example/   # MITM → real secret in headers
-curl https://www.google.com/             # non-MITM → must verify
-
-# Python
-python -c "import urllib.request; urllib.request.urlopen('https://...')"
-python -c "import requests; requests.get('https://...')"
-python -c "import httpx; httpx.get('https://...')"
-
-# JS runtimes
-node -e "fetch('https://...').then(r=>r.text())"
-bun  -e "fetch('https://...').then(r=>r.text())"
-deno eval "await fetch('https://...')"
-
-# Compiled
-go run /tmp/get.go                                 # net/http
-java GetURL                                        # post-keytool
-cargo run                                          # reqwest+native-tls
-cargo run                                          # reqwest+rustls-webpki, EXPECTED FAIL
-
-# Misc
-ruby -rnet/http -e "Net::HTTP.get(URI('https://...'))"
-php -r "file_get_contents('https://...');"
-git clone https://github.com/...
-aws s3 ls
-wget https://...
-```
-
-Each case asserts the public domain succeeds and the controlled MITM
-upstream records the real secret in the captured `Authorization` header.
 
 ## Phases
 
