@@ -157,24 +157,32 @@ describe("renderLightContentFragmentForModel", () => {
       await FeatureFlagFactory.basic(authenticator, "new_file_explorer");
     });
 
-    it("skips a regular file attachment", async () => {
+    it("renders a slim file reference for a regular file attachment", async () => {
       const result = await renderLightContentFragmentForModel(
         authenticator,
         makeFileFragment("application/pdf"),
         model,
         { excludeImages: false }
       );
-      expect(result).toBeNull();
+      expect(result).not.toBeNull();
+      expect(result?.content[0]).toMatchObject({
+        type: "text",
+        text: `<file name="file" path="conversation/file"/>`,
+      });
     });
 
-    it("skips a plain text file attachment", async () => {
+    it("renders a slim file reference for a plain text file attachment", async () => {
       const result = await renderLightContentFragmentForModel(
         authenticator,
         makeFileFragment("text/plain"),
         model,
         { excludeImages: false }
       );
-      expect(result).toBeNull();
+      expect(result).not.toBeNull();
+      expect(result?.content[0]).toMatchObject({
+        type: "text",
+        text: `<file name="file" path="conversation/file"/>`,
+      });
     });
 
     it("still renders a queryable file attachment (CSV)", async () => {

@@ -18,6 +18,9 @@ import {
   CONVERSATION_FILES_SERVER_NAME,
   CONVERSATION_SEARCH_FILES_ACTION_NAME,
 } from "@app/lib/api/actions/servers/conversation_files/metadata";
+import {
+  FILES_SERVER_NAME,
+} from "@app/lib/api/actions/servers/files/metadata";
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
 import { isDustLikeAgent } from "@app/lib/api/assistant/global_agents/global_agents";
 import type { EnabledSkill } from "@app/lib/api/assistant/skills_rendering";
@@ -333,6 +336,7 @@ function constructSkillsSection({
   return skillsSection;
 }
 
+// TODO(20260504 FILE SYSTEM): Remove in favor of constructAttachmentsSectionNewFileExplorer.
 function constructAttachmentsSection(): string {
   return (
     "# ATTACHMENTS\n" +
@@ -345,6 +349,17 @@ function constructAttachmentsSection(): string {
     `- isSearchable: attachment contents are available for semantic search, i.e. when semantically searching conversation files' content, using \`${getPrefixedToolName(CONVERSATION_FILES_SERVER_NAME, CONVERSATION_SEARCH_FILES_ACTION_NAME)}\`,` +
     " contents of this attachment will be considered in the search.\n" +
     "Other tools that accept files (referenced by their id) as arguments can be available. Rely on their description and the files' types to decide which tool to use on which file.\n"
+  );
+}
+
+function constructAttachmentsSectionNewFileExplorer(): string {
+  return (
+    "# FILES\n" +
+    `Files attached to the conversation are accessible via the \`${FILES_SERVER_NAME}\` server.\n\n` +
+    "Some attachments remain visible in the conversation history as metadata tags:\n\n" +
+    "- Tabular files (CSV, spreadsheets) are queryable via the query tables tool;\n" +
+    "- Connected data references (content nodes with a `nodeId` and `sourceUrl`) appear as `<attachment>` tags; use the available search and retrieval tools to access their full content.\n\n" +
+    "Pasted content appears inline in `<pastedContent>` tags and already contains the full text, no tool call needed.\n"
   );
 }
 
@@ -466,6 +481,7 @@ export function constructPromptMultiActions(
     userContext,
     workspaceContext,
     projectContext,
+    isNewFileExplorer = false,
   }: {
     userMessage: UserMessageType;
     agentConfiguration: AgentConfigurationType;
@@ -485,6 +501,7 @@ export function constructPromptMultiActions(
     userContext?: string;
     workspaceContext?: string;
     projectContext?: string;
+    isNewFileExplorer?: boolean;
   }
 ): SystemPromptSections {
   const owner = auth.workspace();
@@ -529,7 +546,9 @@ export function constructPromptMultiActions(
         enabledSkills,
         equippedSkills,
       });
-  const attachmentsSection = constructAttachmentsSection();
+  const attachmentsSection = isNewFileExplorer
+    ? constructAttachmentsSectionNewFileExplorer()
+    : constructAttachmentsSection();
   const pastedContentSection = constructPastedContentSection();
   const guidelinesSection = constructGuidelinesSection({ agentConfiguration });
 

@@ -6,11 +6,13 @@ import type {
 import {
   conversationAttachmentId,
   getAttachmentFromContentFragment,
+  isContentNodeAttachmentType,
   renderAttachmentXml,
   renderLargePasteXml,
 } from "@app/lib/api/assistant/conversation/attachments";
 import appConfig from "@app/lib/api/config";
 import config from "@app/lib/api/config";
+
 import { getFileContent } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
@@ -1201,16 +1203,27 @@ export async function renderLightContentFragmentForModel(
     : false;
 
   // When new_file_explorer is on, regular file attachments are accessible via the `files` server
-  // (path-based). Don't inline them in conversation history. Exceptions: pasted content (inlined
-  // by design), images (shown directly to vision models), and queryable tables (needed for
+  // (path-based). Don't inline them in conversation history, instead emit a slim notice so the
+  // model knows the file exists and how to reach it. Exceptions: pasted content (inlined by
+  // design), images (shown directly to vision models), queryable tables (needed for
   // query_tables_v2 which is pre-wired at JIT time).
   if (
     isNewFileExplorer &&
     !isPastedFile(contentType) &&
     !isLLMVisionSupportedImageContentType(contentType) &&
-    !attachment.isQueryable
+    !attachment.isQueryable &&
+    !isContentNodeAttachmentType(attachment)
   ) {
-    return null;
+    return {
+      role: "content_fragment",
+      name: `attach_${contentType}`,
+      content: [
+        {
+          type: "text",
+          text: `<file name="${attachment.title}" path="conversation/${attachment.title}"/>`,
+        },
+      ],
+    };
   }
 
   // Check if this is pasted content - render with simplified format
