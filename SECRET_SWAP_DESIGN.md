@@ -72,10 +72,14 @@ path.
 
 Place the MITM in `dsbx`, the per-sandbox forwarder we already run as root.
 Generate an ephemeral CA at sandbox boot, terminate the agent's outbound
-TLS in dsbx, rewrite HTTP headers/URLs containing the placeholder, and
+TLS in dsbx, rewrite HTTP request headers containing the placeholder, and
 re-encrypt outbound to the upstream (still tunneled through the central
 egress proxy). The central egress proxy keeps doing TCP splice; no MITM
 state lives there.
+
+Phase 1 ships **headers only**. URL substitution (placeholder appearing
+in the request line) is deferred to Phase 2. Body substitution is
+deferred to Phase 3. See "Phases" below for the full sequencing.
 
 ### Why dsbx and not the central egress proxy
 
@@ -232,12 +236,40 @@ agent opens TLS to an allowed domain but inserts `Host:` for a
 different one. The per-secret allowlist is stricter than (and orthogonal
 to) the egress domain policy.
 
-### Header-only initially, body later
+### Substitution scope: headers in Phase 1
 
-Phase 1 covers headers and URL only. The common API auth case
-(`Authorization`, `X-API-Key`, `Cookie`) is fully covered. Bodies (OAuth
-`client_secret`, webhook signing, multipart forms) come in **Phase 3**
-with an `includeBody` flag on each secret row.
+Phase 1 covers **HTTP request headers only**. URL substitution
+(placeholder in path/query) is deferred to Phase 2. Body substitution
+(OAuth `client_secret`, webhook payloads, multipart forms) is deferred
+to Phase 3 with an `includeBody` flag on each secret row.
+
+What's covered in Phase 1: secrets used **literally** as a header value,
+e.g. `Authorization: Bearer __DST_SECRET_<hex>__`,
+`X-API-Key: __DST_SECRET_<hex>__`, or `Cookie: session=__DST_SECRET_<hex>__`.
+
+What's **not** covered in Phase 1 (failure mode in parens):
+
+- HTTP **Basic auth** (`Authorization: Basic base64(user:secret)`): the
+  agent base64s `user:placeholder`, the placeholder isn't recognized
+  inside the base64 blob, dsbx forwards as-is, upstream returns
+  `401`.
+- **HMAC-signed** flows (Stripe webhooks, GitHub webhook signing,
+  custom HMAC schemes): the secret is the HMAC key, never on the
+  wire. dsbx has no placeholder to find, the signature computed
+  against the placeholder doesn't validate, upstream rejects.
+- **AWS SigV4** and similar request-signing protocols: secret is the
+  signing key, same shape as HMAC. Upstream auth rejects.
+- Any flow where the agent **transforms** the placeholder before sending
+  (urlencode, base64, JWT-sign, split across headers, write to a file
+  then re-read): substitution doesn't fire, upstream gets garbage.
+
+These all fail loudly at the upstream as auth errors, never silently.
+The skill prompt warns the agent that secrets are literal-header-only
+in Phase 1 and that Basic/HMAC/SigV4 will not work yet. The admin UI
+surfaces the same limit at create-secret time. Richer auth shapes get
+revisited in Phase 3+ via an explicit per-secret `format` field
+(`bearer | basic | hmac-sha256 | sigv4 | ...`) that tells dsbx how to
+apply the secret. We are explicitly **not** designing that now.
 
 ### CA lifetime and dsbx restarts
 
@@ -582,10 +614,12 @@ time.
   a 16-byte `placeholderNonce` column generated **once at row create
   time**. The nonce is stable for the life of the row - rotation of
   the value and edits to `allowedDomains` do **not** change the nonce.
-  Only deletion ends the nonce. Running sandboxes that hold the
-  placeholder string in env continue to work after a value rotation
-  without any env refresh: file-watch propagates the new value, dsbx
-  reloads, the same placeholder substitutes to the new value.
+  Only deletion ends the nonce. Sandboxes that hold the placeholder
+  string in env continue to work after a value rotation without any
+  env refresh: on the next wake, front rewrites the secrets file with
+  the new value, the same placeholder substitutes to the new value.
+  (Push-to-active-sandbox propagation lands in a later phase, see
+  "Live update / rotation" below.)
 - **MITM scope = allowlist union**: dsbx terminates TLS only when the
   SNI matches a domain in some configured secret's `allowedDomains`
   (exact match or leading-`*.` wildcard). Other 443 traffic stays on
@@ -625,55 +659,76 @@ time.
 - `WorkspaceSandboxEnvVar` split into config vars and secrets (see
   above). Secrets gain `allowedDomains: string[]` and `placeholderNonce`.
 - `front` writes `/run/dust/egress-secrets.json` (tmpfs, root-owned
-  0600) at sandbox provisioning. The file is plaintext with the
-  schema documented above (`name`, `placeholder`, `value`,
-  `allowedDomains`). dsbx reads the file on every startup (initial
-  and any subsequent restart by `tools/index.ts` health-recovery)
-  from the same path.
-- **Live update via file-watch.** When admin updates / rotates /
-  deletes a secret, `front` rewrites `/run/dust/egress-secrets.json`
-  on every active sandbox of the workspace. dsbx inotify-watches the
-  file and reloads its in-memory secret map on change. Rotated
-  values, allowedDomains updates, and deletions propagate to running
-  sandboxes within seconds. Closes the "secret remains usable for up
-  to 30 days" window that the snapshot-only model would have left
-  open.
+  0600) at sandbox provisioning **and on the wake path** (before any
+  agent code runs after a paused sandbox resumes). The file is
+  plaintext with the schema documented above (`name`, `placeholder`,
+  `value`, `allowedDomains`). dsbx reads the file on every startup
+  (initial and any subsequent restart by `tools/index.ts`
+  health-recovery) from the same path.
 
-  **Failure semantics** (load-bearing - "best-effort propagation"
-  is not enough for rotation/deletion):
+- **How `front` writes the file** (root-owned 0600, atomic, no
+  user-readable temp window):
 
-  - **Atomic write at front**: write to a temp file in the same
-    directory, then rename. dsbx never sees a partially-written
-    file. POSIX rename is atomic on the same filesystem.
-  - **Fail-closed parse at dsbx**: on inotify event, dsbx attempts
-    to parse the new file. On any parse error (truncated, malformed
-    JSON, schema mismatch), dsbx **clears its in-memory secret
-    map** rather than retaining the old state. No secret will
-    substitute until a valid file appears. This is the strict-mode
-    fallback: rather than risk releasing a rotated-out value, drop
-    everything. Logged loudly.
-  - **Sleeping sandboxes**: a paused sandbox VM keeps tmpfs intact
-    in suspended RAM, so the secrets file is whatever it was at
-    suspend time. On wake, the wake path in `front` rewrites the
-    secrets file from current state before any agent code runs.
-    dsbx reloads via inotify or on its own restart-after-wake.
-  - **Unreachable sandboxes / write failures**: front retries with
-    backoff (e.g. 3 attempts). After exhaustion, front
-    **kills the sandbox** (forces a fresh provisioning on next
-    use). User loses any in-flight agent state on that sandbox -
-    accepted cost for the security correctness rotation/deletion
-    requires. A rotated/deleted secret cannot linger past the
-    propagation deadline.
-  - **Deletion**: file-watch removes the entry. Subsequent requests
-    bearing that placeholder don't substitute; dsbx forwards the
-    literal placeholder to upstream which auth-rejects. Agent sees
-    a clean failure. The agent's env still carries the placeholder
-    string (env is set at exec time, not synced live), but it's
-    inert - it just looks like a stale token. The skill prompt
-    documents this so agents recognize the pattern.
+  The current `SandboxResource.writeFile` delegates to E2B's
+  `sandbox.files.write`, which doesn't expose ownership/mode controls
+  and lands the file as the default sandbox user. That's not
+  acceptable for a file holding plaintext secrets - the agent UID
+  could `inotify`-watch a temp path and snapshot it before we move
+  it. We avoid that with a single privileged `exec` call that pipes
+  the JSON content via **stdin** (so the secret never appears in
+  argv, in a process listing, or as a separately-owned file):
 
-  The file-watch + rewrite pattern mirrors the egress proxy's
-  GCS-backed policy reload at a different layer.
+  ```
+  install -o root -g root -m 600 \
+      /dev/stdin /run/dust/.egress-secrets.json.<rand>.tmp \
+    && mv /run/dust/.egress-secrets.json.<rand>.tmp \
+          /run/dust/egress-secrets.json
+  ```
+
+  Run via `sandbox.exec(..., { user: "root", stdin: jsonContent })`.
+  `install` creates the temp file as `root:root 0600` from byte zero
+  (no mode-change race), the rename is atomic on the same tmpfs, and
+  the agent UID never has read access at any point.
+
+  We're explicitly **not** using `writeFile` to a `/tmp` path
+  followed by a privileged copy - the inbound temp would be
+  agent-readable for the duration. We're also explicitly **not**
+  inlining the JSON in argv: even though our wrapper around E2B
+  exec doesn't log command args (`traceSandboxOperation` only
+  records `provider_id`/`workspace_id`), `ps` from inside the VM
+  could observe the running command's argv, and E2B-side logging
+  is out of our control. Stdin avoids both.
+
+- **Live update / rotation: deferred to a later phase.** We
+  knowingly do **not** ship file-watch / inotify / push-on-rotate in
+  Phase 1. The Phase 1 propagation model is **rewrite-on-wake**:
+  - On sandbox create or wake, `front` rewrites the secrets file
+    from current admin state before any agent code runs.
+  - On admin rotation/deletion of a secret while sandboxes are
+    sleeping, the next wake picks up the new state.
+  - On admin rotation/deletion while a sandbox is **active**, the
+    Phase 1 model accepts that the running sandbox keeps using the
+    old value until it sleeps and wakes again, OR until front
+    explicitly kills+recreates it. The kill-and-recreate path
+    exists for the "rotated/deleted secret must not linger" case
+    but is operator-driven, not automatic.
+
+  The race / serialization questions (admin rotation mid-wake,
+  multi-instance front coordination, push-to-active-sandbox
+  semantics) are **knowingly underspecified** at this stage. The
+  later "live update" phase will address them - likely with
+  inotify + atomic write + fail-closed parse + a coordination
+  primitive for concurrent rotations - but we're not committing
+  to a design now. Callout for design pass: the inotify/atomic-
+  rename/fail-closed-parse pattern from earlier drafts is a good
+  starting point but didn't fully cover wake races; we revisit
+  with fresh eyes when we sequence that phase.
+
+  Why this is acceptable for Phase 1: the only workspace consuming
+  this on rollout is our internal one (see "Migration of existing
+  rows" under Resolved decisions). Until external workspaces are
+  on the secrets path, "rotation propagates on next wake" is a fine
+  property to ship with.
 - **Per-secret allowedDomains and the central egress allowlist are
   configured independently** (no save-time subset validation,
   no auto-add). Reason: the central egress allowlist is the union of
@@ -707,8 +762,8 @@ time.
   asks for the class up front.
 - Audit log: per-secret allowlist changes, class promotions, rotations,
   deletions.
-- Estimate: ~2 engineer-weeks plus ~0.5 week for file-watch + active-
-  sandbox propagation.
+- Estimate: ~2 engineer-weeks. Live-update push-to-active-sandbox
+  lands in a later phase (see "Live update / rotation").
 
 ### Phase 2, MVP - HTTP/2
 
@@ -737,6 +792,15 @@ and validate it on h1 before adding frame-level complexity.
 
 ### Phase 4+, tail cases
 
+- **Live update / push-to-active-sandbox**: file-watch (inotify) +
+  atomic write + fail-closed parse + serialization for concurrent
+  rotations and wake races. Phase 1 ships rewrite-on-wake only; this
+  phase closes the gap where a rotation/deletion needs to land on a
+  currently-running sandbox without waiting for sleep+wake.
+- **Richer auth formats**: per-secret `format` field
+  (`bearer | basic | hmac-sha256 | sigv4 | ...`) so dsbx can apply
+  the format-specific transformation at substitution time. Covers
+  HTTP Basic auth, AWS SigV4, HMAC webhook signing.
 - Websocket Upgrade.
 - Plain HTTP on non-standard ports (protocol detection from peek bytes
   rather than port keying).
@@ -747,7 +811,8 @@ and validate it on h1 before adding frame-level complexity.
 
 - **HTTP/2**: part of the MVP (we don't GA without it) but sequenced as
   Phase 2 after the h1 pipeline lands and is validated.
-- **Body substitution**: not in Phase 1. Headers + URL only. OAuth
+- **Body substitution**: not in Phase 1. Phase 1 = headers only;
+  URL = Phase 2; body = Phase 3. OAuth
   `client_secret`, webhook signing, and multipart forms come in Phase 3
   with an opt-in `includeBody` flag. Advertise the limit loudly in the
   admin UI when admins create a secret.
@@ -766,7 +831,9 @@ and validate it on h1 before adding frame-level complexity.
   Cross-workspace replay is impossible (different random nonce).
 - **Placeholder generator**: per-secret 16-byte random nonce stored on
   the row, not HMAC. Removes the "where does the workspace key live"
-  question entirely. Unforgeable by construction. Rotation = new nonce.
+  question entirely. Unforgeable by construction. Generated once at
+  create time and stable for the life of the row (see "Placeholder
+  nonce is stable for the life of the secret row" below).
 - **Security invariant**: the real secret value is never forwarded to a
   destination outside the matching secret's `allowedDomains`. The
   placeholder itself is an opaque random nonce - whether it leaks to
@@ -803,27 +870,27 @@ and validate it on h1 before adding frame-level complexity.
   store); key is root-owned 0600. tmpfs is RAM-backed, never hits
   durable storage. Combined with the no-escalation invariant, the agent
   UID has no path to the key.
-- **Live update / rotation**: in scope for Phase 1 via file-watch.
-  `front` rewrites `/run/dust/egress-secrets.json` on every active
-  sandbox of the workspace when admin updates / rotates / deletes a
-  secret; dsbx inotify-watches and reloads. Closes the up-to-30-day
-  stale-secret window the snapshot-only model would have left open.
-  ~+0.5 engineer-week on top of Phase 1.
+- **Live update / rotation**: **deferred** out of Phase 1. Phase 1
+  ships rewrite-on-wake only: front rewrites
+  `/run/dust/egress-secrets.json` at sandbox create and on the wake
+  path before any agent code runs, so rotations/deletions land on
+  the next wake. Push-to-active-sandbox via file-watch (inotify +
+  atomic write + fail-closed parse + race serialization) lands in
+  a later phase; the design for it is **knowingly underspecified**
+  right now. Acceptable because the rollout is internal-only, so
+  "rotation propagates on next wake" is fine for now.
 - **Placeholder nonce is stable for the life of the secret row.**
   Generated once at create time, kept across value rotations and
-  allowedDomains edits. Only deletion ends it. Running sandboxes
-  carrying the placeholder string in env continue to work after a
-  value rotation - file-watch propagates the new value, the same
-  placeholder substitutes to the new value, no env refresh needed.
-- **Propagation failure policy**: front retries with backoff; after
-  N exhausted attempts, **kill the sandbox**. Accepted disruption
-  cost in exchange for the guarantee that a rotated/deleted secret
-  cannot linger past the propagation deadline.
-- **Secrets-file write is atomic** (temp + rename). **dsbx parses
-  fail-closed**: on parse error, the in-memory secret map is cleared
-  (no substitution until a valid file appears), not retained.
-- **Sleeping sandboxes**: front rewrites the secrets file on the
-  wake path before any agent code runs.
+  allowedDomains edits. Only deletion ends it. After a rotation,
+  the next wake of any sandbox holding the placeholder picks up the
+  new value via the rewritten secrets file - no env refresh needed,
+  same placeholder substitutes to the new value.
+- **Secrets-file write mechanism**: `front` writes
+  `/run/dust/egress-secrets.json` via a single privileged exec
+  with the JSON piped on **stdin**, calling `install -o root -g root
+  -m 600 /dev/stdin <tmp>` and atomically renaming onto the target.
+  No agent-readable temp file, no secret in argv, no logging
+  exposure. See "How front writes the file" under Phase 1 spec.
 - **URL substitution**: deferred from Phase 1 to Phase 2.
   Phase 1 substitutes in headers only; dsbx drops on observed
   placeholder in the request line (loud failure). URL-context
@@ -831,7 +898,16 @@ and validate it on h1 before adding frame-level complexity.
 - **Migration of existing rows**: existing `WorkspaceSandboxEnvVar` rows
   default to config vars on rollout. Promotion to secrets is fully
   manual (no auto-flagging), since the only workspace where this rolls
-  out first is our internal one.
+  out first is our internal one. **Already-running sandboxes at the
+  moment of promotion are explicitly not covered**: env vars are
+  injected at sandbox create only (`provider.create`), not per-exec,
+  so a sandbox that exists at promotion time keeps the plaintext
+  `DST_*` value in its process env until it sleeps and wakes (or is
+  killed/recreated). We accept that gap because rollout is
+  internal-only and we don't intend to retroactively secure existing
+  sandboxes. External-workspace rollout would need a kill-on-promote
+  pass; that decision is deferred until external rollout is on the
+  table.
 - **Skill prompt**: explicit + concise. Names the substitution
   mechanism so the agent can use secrets correctly and explain failure
   modes to users. Two prefixes distinguish config vars (`DST_*`) from
