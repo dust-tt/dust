@@ -13,6 +13,7 @@ import appConfig from "@app/lib/api/config";
 import config from "@app/lib/api/config";
 import { getFileContent } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
+import { hasFeatureFlag } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import type { MessageModel } from "@app/lib/models/agent/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -1194,6 +1195,22 @@ export async function renderLightContentFragmentForModel(
   // Get fileId directly from the message based on content fragment type.
   const fileStringId =
     message.contentFragmentType === "file" ? message.fileId : null;
+
+  // When new_file_explorer is on, regular file attachments are accessible via the `files` server
+  // (path-based). Don't inline them in conversation history. Exceptions: pasted content (inlined
+  // by design), images (shown directly to vision models), and queryable tables (needed for
+  // query_tables_v2 which is pre-wired at JIT time).
+  if (
+    fileStringId &&
+    !isPastedFile(contentType) &&
+    !isLLMVisionSupportedImageContentType(contentType) &&
+    !attachment.isQueryable
+  ) {
+    const isNewFileExplorer = await hasFeatureFlag(auth, "new_file_explorer");
+    if (isNewFileExplorer) {
+      return null;
+    }
+  }
 
   // Check if this is pasted content - render with simplified format
   if (fileStringId && isPastedFile(contentType)) {
