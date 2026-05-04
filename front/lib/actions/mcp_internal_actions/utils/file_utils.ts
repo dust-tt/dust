@@ -7,10 +7,7 @@ import {
   makeFileAttachment,
 } from "@app/lib/api/assistant/conversation/attachments";
 import { resolveConversationFile } from "@app/lib/api/actions/servers/files/tools/utils";
-import {
-  getConversationFilesBasePath,
-  parseScopedFilePath,
-} from "@app/lib/api/files/mount_path";
+import { parseScopedFilePath } from "@app/lib/api/files/mount_path";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { streamToBuffer } from "@app/lib/utils/streams";
@@ -28,47 +25,6 @@ export function sanitizeFilename(filename: string): string {
     .substring(0, 255);
 }
 
-// TODO(20260504 FILE SYSTEM): Replace with file path.
-/**
- * Resolve a scoped file path (e.g. "conversation/report.pdf") to a FileResource
- * by computing the full GCS mount path and looking it up in the database.
- * Returns an error if no DB record exists — callers that require a FileResource
- * (e.g. image generation) should use this and propagate the error.
- */
-export async function getFileResourceFromScopedPath(
-  auth: Authenticator,
-  scopedPath: string,
-  agentLoopContext: AgentLoopContextType | undefined
-): Promise<Result<FileResource, string>> {
-  if (!agentLoopContext?.runContext) {
-    return new Err("No conversation context available");
-  }
-
-  const parsed = parseScopedFilePath(scopedPath);
-  if (!parsed) {
-    return new Err(`Invalid scoped path: ${scopedPath}`);
-  }
-
-  const owner = auth.getNonNullableWorkspace();
-  const conversation = agentLoopContext.runContext.conversation;
-
-  const gcsPath =
-    getConversationFilesBasePath({
-      workspaceId: owner.sId,
-      conversationId: conversation.sId,
-    }) + parsed.rel;
-
-  const [fileResource] = await FileResource.fetchByMountFilePaths(auth, [
-    gcsPath,
-  ]);
-  if (!fileResource) {
-    return new Err(
-      `No file record found for path: ${scopedPath}. Only tracked files (uploads, agent-generated) can be used here.`
-    );
-  }
-
-  return new Ok(fileResource);
-}
 
 /**
  * Get file data from a conversation attachment, including images.

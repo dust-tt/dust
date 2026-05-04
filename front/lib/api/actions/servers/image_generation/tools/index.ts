@@ -17,7 +17,7 @@ import { IMAGE_GENERATION_TOOLS_METADATA } from "@app/lib/api/actions/servers/im
 import { getImageGenerationLLM } from "@app/lib/api/llm/getImageGenerationLLM";
 import type { ImageGenerationInput } from "@app/lib/api/llm/imageGeneration";
 import type { Authenticator } from "@app/lib/auth";
-import type { FileResource } from "@app/lib/resources/file_resource";
+import type { ReferenceImageFile } from "@app/lib/api/llm/imageGeneration";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import { Err } from "@app/types/shared/result";
@@ -68,7 +68,7 @@ export function createImageGenerationTools(
         return rateLimitResult;
       }
 
-      let referenceFileResources: FileResource[] = [];
+      let referenceFiles: ReferenceImageFile[] = [];
 
       if (referenceImages && referenceImages.length > 0) {
         const processResult = await processImageFileIds(auth, {
@@ -80,13 +80,13 @@ export function createImageGenerationTools(
         if (processResult.isErr()) {
           return processResult;
         }
-        referenceFileResources = processResult.value;
+        referenceFiles = processResult.value;
       }
 
       const generationInput = {
         prompt,
         aspectRatio,
-        fileResources: referenceFileResources,
+        referenceFiles,
         quality,
       } satisfies ImageGenerationInput;
 

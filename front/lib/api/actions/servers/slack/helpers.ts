@@ -2,9 +2,7 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import { getFileFromConversationAttachment } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import config from "@app/lib/api/config";
-import { parseScopedFilePath } from "@app/lib/api/files/mount_path";
 import type { Authenticator } from "@app/lib/auth";
-import { FileResource } from "@app/lib/resources/file_resource";
 import { removeDiacritics } from "@app/lib/utils";
 import { cacheWithRedis } from "@app/lib/utils/cache";
 import { getConversationRoute } from "@app/lib/utils/router";
@@ -796,44 +794,17 @@ export async function executePostMessage(
 
   // If a file is provided, upload it as attachment of the original message.
   if (fileId) {
-    let fileBuffer: Buffer;
-    let filename: string;
-    let filetype: string;
-
-    if (parseScopedFilePath(fileId)) {
-      // Scoped path: read bytes directly (handles both tracked and untracked
-      // GCS files such as tool outputs without a DB record).
-      const fileResult = await getFileFromConversationAttachment(
-        auth,
-        fileId,
-        agentLoopContext
+    const fileResult = await getFileFromConversationAttachment(
+      auth,
+      fileId,
+      agentLoopContext
+    );
+    if (fileResult.isErr()) {
+      return new Err(
+        new MCPError(`File not found: ${fileId}`, { tracked: false })
       );
-      if (fileResult.isErr()) {
-        return new Err(
-          new MCPError(`File not found: ${fileId}`, { tracked: false })
-        );
-      }
-      fileBuffer = fileResult.value.buffer;
-      filename = fileResult.value.filename;
-      filetype = fileResult.value.contentType;
-    } else {
-      // Legacy fileId: fetch FileResource and download via signed URL.
-      const file = await FileResource.fetchById(auth, fileId);
-      if (!file) {
-        return new Err(new MCPError("File not found", { tracked: false }));
-      }
-      const signedUrl = await file.getSignedUrlForDownload(auth, "original");
-      // eslint-disable-next-line no-restricted-globals
-      const fileResp = await fetch(signedUrl);
-      if (!fileResp.ok) {
-        return new Err(
-          new MCPError(`Failed to fetch file (HTTP ${fileResp.status})`)
-        );
-      }
-      fileBuffer = Buffer.from(await fileResp.arrayBuffer());
-      filename = file.fileName ?? `upload_${file.sId}`;
-      filetype = file.contentType;
     }
+    const { buffer: fileBuffer, filename, contentType: filetype } = fileResult.value;
 
     // Resolve channel id using the shared helper function.
     const channelId = await resolveChannelId({
