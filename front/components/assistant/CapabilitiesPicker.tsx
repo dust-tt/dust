@@ -29,6 +29,7 @@ import type {
   SkillWithoutInstructionsAndToolsType,
   SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import type { DropdownMenuItemProps } from "@dust-tt/sparkle";
@@ -472,14 +473,13 @@ export function CapabilitiesPicker({
   const selectCapabilityPickerItem = (item: CapabilityPickerItem) => {
     switch (item.kind) {
       case "skill":
-        selectSkill(item.skill);
-        return;
+        return selectSkill(item.skill);
       case "tool":
-        selectTool(item.serverView);
-        return;
+        return selectTool(item.serverView);
       case "uninstalled_tool":
-        setupServer(item.server);
-        return;
+        return setupServer(item.server);
+      default:
+        assertNeverAndIgnore(item)
     }
   };
 
