@@ -36,7 +36,7 @@ export function useConversationBranchActions({
         if (!res.ok) {
           throw new Error("Failed to merge branch");
         }
-        void mutateOpenBranch(undefined, { revalidate: false });
+        void mutateOpenBranch({ branch: null }, { revalidate: false });
         return true;
       } catch {
         sendNotification({ type: "error", title: "Failed to publish branch" });
@@ -62,7 +62,7 @@ export function useConversationBranchActions({
         if (!res.ok) {
           throw new Error("Failed to close branch");
         }
-        void mutateOpenBranch(undefined, { revalidate: false });
+        void mutateOpenBranch({ branch: null }, { revalidate: false });
         return true;
       } catch {
         sendNotification({ type: "error", title: "Failed to reject branch" });
