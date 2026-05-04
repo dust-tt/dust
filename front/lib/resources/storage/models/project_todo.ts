@@ -370,13 +370,9 @@ export class ProjectTodoSourceModel extends WorkspaceAwareModel<ProjectTodoSourc
   declare createdAt: CreationOptional<Date>;
 
   declare projectTodoId: ForeignKey<ProjectTodoModel["id"]>;
-  // Owner of the todo this source links to. Denormalized from the parent
-  // project_todo row so the (workspaceId, itemId, userId) uniqueness can be
-  // enforced at the DB level. Always equal to projectTodo.userId.
-  declare userId: ForeignKey<UserModel["id"]>;
   // sId of the takeaway item that produced this link. At most one row per
-  // (workspaceId, itemId, userId) — if the same item reappears later (same
-  // sId echoed by the LLM) the row is upserted, not duplicated.
+  // (workspaceId, itemId) — if the same item reappears later the row is
+  // upserted, not duplicated.
   declare itemId: string;
   declare sourceType: ProjectTodoSourceType;
   declare sourceId: string;
@@ -384,7 +380,6 @@ export class ProjectTodoSourceModel extends WorkspaceAwareModel<ProjectTodoSourc
   declare sourceUrl: string | null;
 
   declare projectTodo: NonAttribute<ProjectTodoModel>;
-  declare user: NonAttribute<UserModel>;
 }
 
 ProjectTodoSourceModel.init(
@@ -397,12 +392,6 @@ ProjectTodoSourceModel.init(
     projectTodoId: {
       type: DataTypes.BIGINT,
       allowNull: false,
-    },
-    userId: {
-      type: DataTypes.BIGINT,
-      allowNull: false,
-      comment:
-        "Owner of the linked todo, denormalized for uniqueness enforcement.",
     },
     itemId: {
       type: DataTypes.STRING,
@@ -449,19 +438,8 @@ ProjectTodoSourceModel.init(
         concurrently: true,
       },
       {
-        name: "project_todo_sources_userId_idx",
-        fields: ["userId"],
-        concurrently: true,
-      },
-      {
-        name: "project_todo_sources_ws_todo_source_user_unique_idx",
-        fields: [
-          "workspaceId",
-          "projectTodoId",
-          "sourceType",
-          "sourceId",
-          "userId",
-        ],
+        name: "project_todo_sources_ws_todo_source_unique_idx",
+        fields: ["workspaceId", "projectTodoId", "sourceType", "sourceId"],
         unique: true,
         concurrently: true,
       },
@@ -478,10 +456,4 @@ ProjectTodoSourceModel.belongsTo(ProjectTodoModel, {
 ProjectTodoModel.hasMany(ProjectTodoSourceModel, {
   foreignKey: { name: "projectTodoId", allowNull: false },
   as: "sources",
-});
-
-ProjectTodoSourceModel.belongsTo(UserModel, {
-  foreignKey: { name: "userId", allowNull: false },
-  onDelete: "RESTRICT",
-  as: "user",
 });

@@ -280,7 +280,7 @@ describe("ProjectTodoResource", () => {
   });
 
   describe("upsertSource", () => {
-    it("should not create a new source when called twice with the same (workspaceId, sourceType, sourceId, userId)", async () => {
+    it("should not create a new source when called twice with the same itemId", async () => {
       const todo = await ProjectTodoResource.makeNew(
         auth,
         makeTodoBlob(space.id, user.id)
@@ -396,7 +396,7 @@ describe("ProjectTodoResource", () => {
       ]);
     });
 
-    it("should create a separate source for a different user with the same (sourceType, sourceId)", async () => {
+    it("should create separate sources for different itemIds even with the same (sourceType, sourceId)", async () => {
       const otherSetup = await createResourceTest({ role: "user" });
       const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
         otherSetup.user.sId,

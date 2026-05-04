@@ -395,15 +395,12 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
   }
 
   // Batch variant: fetches the current todo row for each itemId in one pass.
-  // Returns a map from `${itemId}:${userId}` to the matching ProjectTodoResource
-  // — missing entries mean no todo yet exists for that (item, user) pair.
-  //
-  // This is the identity lookup used by the merge workflow's Phase 1 to detect
-  // items that are already linked to a todo and can therefore skip dedup.
+  // Returns a map from itemId to the matching ProjectTodoResource — missing
+  // entries mean no todo yet exists for that item.
   static async fetchByItemIds(
     auth: Authenticator,
     { itemIds }: { itemIds: string[] }
-  ): Promise<Map<string, Map<ModelId, ProjectTodoResource>>> {
+  ): Promise<Map<string, ProjectTodoResource>> {
     if (itemIds.length === 0) {
       return new Map();
     }
@@ -429,16 +426,13 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
       linkedRows.map((t) => [t.id, t])
     );
 
-    const result = new Map<string, Map<ModelId, ProjectTodoResource>>();
+    const result = new Map<string, ProjectTodoResource>();
     for (const source of sources) {
       const todo = rowById.get(source.projectTodoId);
       if (!todo) {
         continue;
       }
-      const byUser =
-        result.get(source.itemId) ?? new Map<ModelId, ProjectTodoResource>();
-      byUser.set(source.userId, todo);
-      result.set(source.itemId, byUser);
+      result.set(source.itemId, todo);
     }
 
     return result;
@@ -581,10 +575,9 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
   // ── Source links (* => todo) ─────────────────────────────────────────────
 
   // Links the given takeaway item + source document to this todo. Idempotent
-  // by (workspaceId, sourceType, sourceId, userId, projectTodoId): if a row already exists for this,\
-  // its fields are updated to point at this todo and
-  // source — so a Temporal activity retry after a partial success converges
-  // to the same state instead of creating a duplicate.
+  // by (workspaceId, itemId): if a row already exists for this itemId its
+  // title and URL are updated so Temporal activity retries converge instead
+  // of creating a duplicate.
   async upsertSource(
     auth: Authenticator,
     {
@@ -596,19 +589,12 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
     },
     transaction?: Transaction
   ): Promise<void> {
-    if (this.userId === null) {
-      throw new Error(
-        "Cannot upsert source for a todo without an assigned user."
-      );
-    }
-
     const workspaceId = auth.getNonNullableWorkspace().id;
-    // we want one link between one given TODO (that belongs to a user) for a given source
+    // we want one link between one given TODO for a given source
     const identity = {
       workspaceId,
       sourceType: source.sourceType,
       sourceId: source.sourceId,
-      userId: this.userId,
       projectTodoId: this.id,
     };
     const payload = {
