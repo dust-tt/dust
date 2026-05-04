@@ -336,6 +336,9 @@ async function buildDeduplicationGroups(
         userId,
       });
       for (const todo of todos) {
+        if (todo.userId === null) {
+          continue;
+        }
         const bucket = existingTodosByUser.get(todo.userId) ?? [];
         bucket.push(todo);
         existingTodosByUser.set(todo.userId, bucket);
