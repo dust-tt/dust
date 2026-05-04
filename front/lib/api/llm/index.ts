@@ -86,7 +86,7 @@ export async function getLLM(
   if (isAnthropicWhitelistedModelId(modelId)) {
     const featureFlags = await getFeatureFlags(auth);
 
-    const vertex =
+    const useVertex =
       // Vertex does not support structured outputs yet
       !responseFormat &&
       featureFlags.includes("use_vertex_for_claude_models") &&
@@ -94,7 +94,7 @@ export async function getLLM(
       isVertexWhitelistedModelId(modelId);
 
     return new AnthropicLLM(auth, {
-      vertex,
+      useVertex,
       credentials,
       getTraceInput,
       getTraceOutput,
