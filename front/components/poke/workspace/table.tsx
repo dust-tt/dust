@@ -6,10 +6,10 @@ import {
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
 import type { DataRetentionConfig } from "@app/lib/data_retention";
+import { getMetronomeCustomerUrl } from "@app/lib/metronome/urls";
 import { usePokeWorkOSDSyncStatus } from "@app/lib/swr/poke";
 import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
 import type { ExtensionConfigurationType } from "@app/types/extension";
-import { isDevelopment } from "@app/types/shared/env";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 import type { WorkspaceDomain } from "@app/types/workspace";
@@ -121,7 +121,7 @@ export function WorkspaceInfoTable({
               <PokeTableCell>
                 {metronomeCustomerId ? (
                   <LinkWrapper
-                    href={`https://app.metronome.com/${isDevelopment() ? "sandbox/" : ""}customers/${metronomeCustomerId}`}
+                    href={getMetronomeCustomerUrl(metronomeCustomerId)}
                     target="_blank"
                     className="text-xs text-highlight-400"
                   >

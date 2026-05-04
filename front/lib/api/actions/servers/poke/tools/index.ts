@@ -14,8 +14,8 @@ import {
 } from "@app/lib/api/actions/servers/poke/tools/utils";
 import { workspaceHandlers } from "@app/lib/api/actions/servers/poke/tools/workspace";
 import config from "@app/lib/api/config";
+import { getMetronomeCustomerUrl } from "@app/lib/metronome/urls";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { isDevelopment } from "@app/types/shared/env";
 
 const handlers: ToolHandlers<typeof POKE_TOOLS_METADATA> = {
   [GET_WORKSPACE_METADATA_TOOL_NAME]: async ({ workspace_id }, extra) => {
@@ -60,7 +60,7 @@ const handlers: ToolHandlers<typeof POKE_TOOLS_METADATA> = {
           ? `https://dashboard.workos.com/${workosEnvironmentId}/organizations/${workspaceResource.workOSOrganizationId}`
           : null,
         metronome: workspaceResource?.metronomeCustomerId
-          ? `https://app.metronome.com/${isDevelopment() ? "sandbox/" : ""}customers/${workspaceResource.metronomeCustomerId}`
+          ? getMetronomeCustomerUrl(workspaceResource.metronomeCustomerId)
           : null,
         health: `https://metabase.dust.tt/dashboard/34-snowflake-workspace-health?end_date=2030-12-31&start_date=2024-01-01&tab=30-executive-summary&workspace_size_difference_margin=0.2&workspacesid=${targetWorkspace.sId}`,
       },

@@ -14,11 +14,12 @@ import {
   listMetronomeUsageWithGroups,
 } from "@app/lib/metronome/client";
 import {
+  getCreditTypeProgrammaticUsdId,
   getMetricLlmProviderCostProgrammaticId,
   getMetricToolInvocationsProgrammaticId,
 } from "@app/lib/metronome/constants";
 import type { MetronomeBalance } from "@app/lib/metronome/types";
-import { METRONOME_CENTS_TO_MICRO_USD } from "@app/lib/metronome/types";
+import { METRONOME_PROGRAMMATIC_USAGE_CREDIT_TO_MICRO_USD } from "@app/lib/metronome/types";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
@@ -101,8 +102,8 @@ function aggregateToFourHourBuckets(
 }
 
 interface ParsedBalance {
-  initialAmountCents: number;
-  balanceCents: number;
+  initialAmountCredits: number;
+  balanceCredits: number;
   intervals: { start: number; end: number }[];
 }
 
@@ -121,11 +122,11 @@ function calculateCreditTotalsFromBalances(
   // summation inside the timestamp loop.
   const parsed: ParsedBalance[] = balances.map((entry) => {
     const items = entry.access_schedule?.schedule_items ?? [];
-    let initialAmountCents = 0;
+    let initialAmountCredits = 0;
     const intervals: { start: number; end: number }[] = [];
 
     for (const item of items) {
-      initialAmountCents += item.amount;
+      initialAmountCredits += item.amount;
       intervals.push({
         start: new Date(item.starting_at).getTime(),
         end: new Date(item.ending_before).getTime(),
@@ -133,8 +134,8 @@ function calculateCreditTotalsFromBalances(
     }
 
     return {
-      initialAmountCents,
-      balanceCents: entry.balance ?? 0,
+      initialAmountCredits,
+      balanceCredits: entry.balance ?? 0,
       intervals,
     };
   });
@@ -149,23 +150,23 @@ function calculateCreditTotalsFromBalances(
   >();
 
   for (const timestamp of timestamps) {
-    let totalInitialCents = 0;
-    let totalBalanceCents = 0;
+    let totalInitialCredits = 0;
+    let totalBalanceCredits = 0;
 
     for (const b of parsed) {
       const isActive = b.intervals.some(
         (iv) => timestamp >= iv.start && timestamp < iv.end
       );
       if (isActive) {
-        totalInitialCents += b.initialAmountCents;
-        totalBalanceCents += b.balanceCents;
+        totalInitialCredits += b.initialAmountCredits;
+        totalBalanceCredits += b.balanceCredits;
       }
     }
 
     const totalInitialMicroUsd =
-      totalInitialCents * METRONOME_CENTS_TO_MICRO_USD;
+      totalInitialCredits * METRONOME_PROGRAMMATIC_USAGE_CREDIT_TO_MICRO_USD;
     const totalRemainingMicroUsd =
-      totalBalanceCents * METRONOME_CENTS_TO_MICRO_USD;
+      totalBalanceCredits * METRONOME_PROGRAMMATIC_USAGE_CREDIT_TO_MICRO_USD;
 
     result.set(timestamp, {
       totalInitialCreditsMicroUsd: totalInitialMicroUsd,
@@ -401,7 +402,14 @@ export async function handleMetronomeUsageRequest(
           "[Metronome] Failed to fetch balances for credit overlay"
         );
       }
-      const balances = balancesResult.isOk() ? balancesResult.value : [];
+      const programmaticUsdCreditTypeId = getCreditTypeProgrammaticUsdId();
+      const balances = balancesResult.isOk()
+        ? balancesResult.value.filter(
+            (entry) =>
+              entry.access_schedule?.credit_type?.id ===
+              programmaticUsdCreditTypeId
+          )
+        : [];
       const creditTotalsMap = calculateCreditTotalsFromBalances(
         balances,
         timestamps

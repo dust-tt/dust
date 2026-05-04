@@ -838,7 +838,6 @@ export async function listMetronomeBalances(
       include_balance: true,
       include_contract_balances: true,
       covering_date: new Date().toISOString(),
-      exclude_zero_balances: true,
     })) {
       balances.push(entry);
     }

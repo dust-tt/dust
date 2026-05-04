@@ -1,8 +1,7 @@
 import {
   formatMicroUsdToUsd,
-  makeColumnsForCredits,
+  makeColumnsForUnifiedCredits,
 } from "@app/components/poke/credits/columns";
-import { makeColumnsForMetronomeBalances } from "@app/components/poke/credits/metronome_columns";
 import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditionalDataTables";
 import { safeLazy, Tooltip } from "@dust-tt/sparkle";
 import { Suspense } from "react";
@@ -31,15 +30,9 @@ function PokeChartFallback() {
 }
 
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
-import type { PokeCreditType } from "@app/pages/api/poke/workspaces/[wId]/credits";
-import type {
-  PokeCreditsData,
-  PokeMetronomeBalancesData,
-} from "@app/poke/swr/credits";
-import {
-  usePokeCredits,
-  usePokeMetronomeBalances,
-} from "@app/poke/swr/credits";
+import type { PokeUnifiedCreditRow } from "@app/pages/api/poke/workspaces/[wId]/credits";
+import type { PokeCreditsData } from "@app/poke/swr/credits";
+import { usePokeCredits } from "@app/poke/swr/credits";
 import type { SubscriptionType } from "@app/types/plan";
 import type { WorkspaceType } from "@app/types/user";
 
@@ -52,22 +45,29 @@ interface CreditsDataTableProps {
   loadOnInit?: boolean;
 }
 
-function sortByStartDateDescending(
-  credits: PokeCreditType[]
-): PokeCreditType[] {
-  return [...credits].sort((a, b) => {
-    // Null start dates go first (pending credits)
-    if (!a.startDate && !b.startDate) {
+function sortRowsByStartDateDescending(
+  rows: PokeUnifiedCreditRow[]
+): PokeUnifiedCreditRow[] {
+  return [...rows].sort((a, b) => {
+    const aStart =
+      (a.internal?.startDate
+        ? new Date(a.internal.startDate).getTime()
+        : a.metronome?.startDate) ?? null;
+    const bStart =
+      (b.internal?.startDate
+        ? new Date(b.internal.startDate).getTime()
+        : b.metronome?.startDate) ?? null;
+    // Null start dates go first (pending credits).
+    if (aStart === null && bStart === null) {
       return 0;
     }
-    if (!a.startDate) {
+    if (aStart === null) {
       return -1;
     }
-    if (!b.startDate) {
+    if (bStart === null) {
       return 1;
     }
-    // Most recent first (descending order)
-    return new Date(b.startDate).getTime() - new Date(a.startDate).getTime();
+    return bStart - aStart;
   });
 }
 
@@ -115,28 +115,13 @@ export function CreditsDataTable({
               </div>
             )}
             <PokeDataTable
-              columns={makeColumnsForCredits()}
-              data={sortByStartDateDescending(data.credits)}
+              columns={makeColumnsForUnifiedCredits({
+                metronomeCustomerId: owner.metronomeCustomerId,
+              })}
+              data={sortRowsByStartDateDescending(data.rows)}
               defaultFilterColumn="type"
             />
           </div>
-        )}
-      </PokeDataTableConditionalFetch>
-
-      <PokeDataTableConditionalFetch<
-        PokeMetronomeBalancesData,
-        PokeMetronomeBalancesData
-      >
-        header="Metronome Balances"
-        owner={owner}
-        useSWRHook={usePokeMetronomeBalances}
-      >
-        {(data) => (
-          <PokeDataTable
-            columns={makeColumnsForMetronomeBalances()}
-            data={data.credits}
-            defaultFilterColumn="type"
-          />
         )}
       </PokeDataTableConditionalFetch>
 

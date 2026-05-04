@@ -1,10 +1,11 @@
 import type { Authenticator } from "@app/lib/auth";
 import { listMetronomeBalances } from "@app/lib/metronome/client";
+import { getCreditTypeProgrammaticUsdId } from "@app/lib/metronome/constants";
 import type {
   MetronomeCommit,
   MetronomeCredit,
 } from "@app/lib/metronome/types";
-import { METRONOME_CENTS_TO_MICRO_USD } from "@app/lib/metronome/types";
+import { METRONOME_PROGRAMMATIC_USAGE_CREDIT_TO_MICRO_USD } from "@app/lib/metronome/types";
 import { apiError } from "@app/logger/withlogging";
 import type {
   CreditDisplayData,
@@ -32,21 +33,25 @@ function mapMetronomeType(
 }
 
 function getScheduleTotals(entry: MetronomeCommit | MetronomeCredit): {
-  initialAmountCents: number;
+  initialAmountCredits: number;
   startDateMs: number | null;
   expirationDateMs: number | null;
 } {
   const items = entry.access_schedule?.schedule_items ?? [];
   if (items.length === 0) {
-    return { initialAmountCents: 0, startDateMs: null, expirationDateMs: null };
+    return {
+      initialAmountCredits: 0,
+      startDateMs: null,
+      expirationDateMs: null,
+    };
   }
 
-  let totalAmountCents = 0;
+  let totalAmountCredits = 0;
   let earliestStartMs = new Date(items[0].starting_at).getTime();
   let latestEndMs = new Date(items[0].ending_before).getTime();
 
   for (const item of items) {
-    totalAmountCents += item.amount;
+    totalAmountCredits += item.amount;
     const startMs = new Date(item.starting_at).getTime();
     const endMs = new Date(item.ending_before).getTime();
     earliestStartMs = Math.min(earliestStartMs, startMs);
@@ -54,23 +59,24 @@ function getScheduleTotals(entry: MetronomeCommit | MetronomeCredit): {
   }
 
   return {
-    initialAmountCents: totalAmountCents,
+    initialAmountCredits: totalAmountCredits,
     startDateMs: earliestStartMs,
     expirationDateMs: latestEndMs,
   };
 }
 
-function toDisplayData(
+export function metronomeBalanceToDisplayData(
   entry: MetronomeCommit | MetronomeCredit
 ): CreditDisplayData {
   const type = mapMetronomeType(entry);
-  const { initialAmountCents, startDateMs, expirationDateMs } =
+  const { initialAmountCredits, startDateMs, expirationDateMs } =
     getScheduleTotals(entry);
 
   const initialAmountMicroUsd =
-    initialAmountCents * METRONOME_CENTS_TO_MICRO_USD;
-  const balanceCents = entry.balance ?? 0;
-  const remainingAmountMicroUsd = balanceCents * METRONOME_CENTS_TO_MICRO_USD;
+    initialAmountCredits * METRONOME_PROGRAMMATIC_USAGE_CREDIT_TO_MICRO_USD;
+  const balanceCredits = entry.balance ?? 0;
+  const remainingAmountMicroUsd =
+    balanceCredits * METRONOME_PROGRAMMATIC_USAGE_CREDIT_TO_MICRO_USD;
   const consumedAmountMicroUsd = Math.max(
     0,
     initialAmountMicroUsd - remainingAmountMicroUsd
@@ -129,7 +135,14 @@ export async function handleMetronomeBalancesRequest(
         });
       }
 
-      const credits: CreditDisplayData[] = result.value.map(toDisplayData);
+      const programmaticUsdCreditTypeId = getCreditTypeProgrammaticUsdId();
+      const credits: CreditDisplayData[] = result.value
+        .filter(
+          (entry) =>
+            entry.access_schedule?.credit_type?.id ===
+            programmaticUsdCreditTypeId
+        )
+        .map(metronomeBalanceToDisplayData);
 
       return res.status(200).json({ credits });
     }
