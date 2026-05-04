@@ -10,7 +10,7 @@ import {
 } from "@app/components/markdown/InstructionBlock";
 import { quickReplyDirective } from "@app/components/markdown/QuickReplyBlock";
 import {
-  TodoDirectiveBlock,
+  getTodoDirectiveBlock,
   todoDirective,
 } from "@app/components/markdown/TodoDirectiveBlock";
 import { toolDirective } from "@app/components/markdown/tool/tool";
@@ -63,7 +63,7 @@ export const AgentMessageMarkdown = ({
       // Warning: we can't rename easily `mention` to agent_mention, because the messages DB contains this name
       mention: getAgentMentionPlugin(owner),
       mention_user: getUserMentionPlugin(owner),
-      todo: TodoDirectiveBlock,
+      todo: getTodoDirectiveBlock(owner),
       dustimg: getImgPlugin(owner),
       instruction_block: InstructionBlock,
       ...additionalMarkdownComponents,

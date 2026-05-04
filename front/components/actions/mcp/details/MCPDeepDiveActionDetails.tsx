@@ -5,7 +5,7 @@ import {
   getCiteDirective,
 } from "@app/components/markdown/CiteBlock";
 import {
-  TodoDirectiveBlock,
+  getTodoDirectiveBlock,
   todoDirective,
 } from "@app/components/markdown/TodoDirectiveBlock";
 import { isAgentPauseOutputResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
@@ -41,7 +41,7 @@ export function MCPDeepDiveActionDetails({
       sup: CiteBlock,
       // Warning: we can't rename easily `mention` to agent_mention, because the messages DB contains this name
       mention: getAgentMentionPlugin(owner),
-      todo: TodoDirectiveBlock,
+      todo: getTodoDirectiveBlock(owner),
     }),
     [owner]
   );
