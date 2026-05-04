@@ -1,9 +1,11 @@
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import {
   BookOpenIcon,
   Card,
   CardGrid,
   ContactsUserIcon,
   Icon,
+  ListCheckIcon,
 } from "@dust-tt/sparkle";
 
 interface SpaceConversationsActionsProps {
@@ -15,31 +17,54 @@ export function SpaceConversationsActions({
   isEditor,
   onOpenMembersPanel,
 }: SpaceConversationsActionsProps) {
-  const suggestions = [
-    {
-      id: "add-context",
-      label: "Add knowledge",
-      icon: BookOpenIcon,
-      description:
-        "Add files, links, or data sources relevant to this project.",
-      onClick: () => {
-        window.location.hash = "context";
-      },
-    },
-    ...(isEditor
-      ? [
-          {
-            id: "manage-members",
-            label: "Manage members",
-            icon: ContactsUserIcon,
-            description: "Invite people to this project as members or editors.",
-            onClick: () => {
-              onOpenMembersPanel();
-            },
+  const { hasFeature } = useFeatureFlags();
+  const canShowTodosTab = hasFeature("project_todo");
+
+  const suggestions = canShowTodosTab
+    ? [
+        {
+          id: "onboarding-todos",
+          label: "Set up your project",
+          icon: ListCheckIcon,
+          description:
+            "New to projects? Add a description, bring in knowledge, invite your team, and create your first to-dos",
+          variant: "highlight" as const,
+          isPulsing: true,
+          onClick: () => {
+            window.location.hash = "todos";
           },
-        ]
-      : []),
-  ];
+        },
+      ]
+    : [
+        {
+          id: "add-context",
+          label: "Add knowledge",
+          icon: BookOpenIcon,
+          description:
+            "Add files, links, or data sources relevant to this project.",
+          variant: "primary" as const,
+          isPulsing: false,
+          onClick: () => {
+            window.location.hash = "context";
+          },
+        },
+        ...(isEditor
+          ? [
+              {
+                id: "manage-members",
+                label: "Manage members",
+                icon: ContactsUserIcon,
+                description:
+                  "Invite people to this project as members or editors.",
+                variant: "primary" as const,
+                isPulsing: false,
+                onClick: () => {
+                  onOpenMembersPanel();
+                },
+              },
+            ]
+          : []),
+      ];
 
   return (
     <div className="flex flex-col gap-3">
@@ -50,8 +75,9 @@ export function SpaceConversationsActions({
         {suggestions.map((suggestion) => (
           <Card
             key={suggestion.id}
-            variant="primary"
+            variant={suggestion.variant}
             size="lg"
+            isPulsing={suggestion.isPulsing}
             onClick={suggestion.onClick}
             className="cursor-pointer"
           >
@@ -60,11 +86,9 @@ export function SpaceConversationsActions({
                 <Icon visual={suggestion.icon} size="sm" />
                 <div className="w-full">{suggestion.label}</div>
               </div>
-              {suggestion.description && (
-                <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                  {suggestion.description}
-                </div>
-              )}
+              <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                {suggestion.description}
+              </div>
             </div>
           </Card>
         ))}

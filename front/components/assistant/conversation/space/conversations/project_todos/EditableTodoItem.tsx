@@ -75,6 +75,7 @@ export interface EditableTodoItemProps {
   isNewlyDone: boolean;
   isStarting: boolean;
   isReadOnly?: boolean;
+  isFirstOnboardingTodo: boolean;
   projectMembers: SpaceUserType[];
   membersWithActiveTodoIds: Set<string>;
   onPatchTodo: (
@@ -98,6 +99,7 @@ export const EditableTodoItem = memo(function EditableTodoItem({
   isNewlyDone,
   isStarting,
   isReadOnly,
+  isFirstOnboardingTodo,
   projectMembers,
   membersWithActiveTodoIds,
   onPatchTodo,
@@ -483,11 +485,12 @@ export const EditableTodoItem = memo(function EditableTodoItem({
                   variant="outline"
                   isLoading={isStarting}
                   disabled={isStarting}
+                  isPulsing={isFirstOnboardingTodo && !startMenuOpen}
                   tooltip="Start working on to-do"
                 />
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-96 p-3">
-                <div className="flex flex-col gap-3">
+              <DropdownMenuContent align="end" className="w-96">
+                <div className="flex flex-col gap-3 p-3">
                   <TextArea
                     id={`todo-start-msg-${todo.sId}`}
                     aria-label="Additional instructions for the agent"
@@ -539,6 +542,7 @@ export const EditableTodoItem = memo(function EditableTodoItem({
                         size="sm"
                         isLoading={isStarting}
                         disabled={isStarting || !selectedStartAgent}
+                        isPulsing={isFirstOnboardingTodo}
                         onClick={() => void handleConfirmStart()}
                       />
                       <ButtonGroupDropdown

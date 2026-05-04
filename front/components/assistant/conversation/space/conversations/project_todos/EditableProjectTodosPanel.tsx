@@ -9,6 +9,7 @@ import {
 import {
   ADD_TODO_BAR_SHELL_CLASS,
   DELETE_TODO_CONFIRM_PREVIEW_MAX_CHARS,
+  isOnboardingTodo,
   SUMMARY_ITEM_TRANSITION_MS,
 } from "@app/components/assistant/conversation/space/conversations/project_todos/utils";
 import { ConfirmContext } from "@app/components/Confirm";
@@ -233,6 +234,19 @@ export function EditableProjectTodosPanel({
   }, [selectedUserSIds, todoOwnerFilter.assigneeScope, todos, viewerUserId]);
 
   const hasDoneItems = filteredTodos.some((todo) => todo.status === "done");
+
+  const getFirstOnboardingTodoId = (
+    todos: ProjectTodoType[]
+  ): string | null => {
+    for (const todo of todos) {
+      if (isOnboardingTodo(todo) && todo.status !== "done") {
+        return todo.sId;
+      }
+    }
+    return null;
+  };
+  const firstOnboardingTodoId = getFirstOnboardingTodoId(filteredTodos);
+
   const groupedTodosForAll = useMemo(() => {
     const groups = new Map<
       string,
@@ -705,6 +719,7 @@ export function EditableProjectTodosPanel({
                       isNewlyDone={doneFlashKeys.has(todo.sId)}
                       isStarting={startingTodoIds.has(todo.sId)}
                       isReadOnly={isReadOnly}
+                      isFirstOnboardingTodo={todo.sId === firstOnboardingTodoId}
                       projectMembers={projectMembers}
                       membersWithActiveTodoIds={membersWithActiveTodoIds}
                       onPatchTodo={patchTodoItem}
