@@ -29,7 +29,8 @@ import {
 
 import type { InputBarSlashSuggestionCapability } from "./InputBarSlashSuggestionTypes";
 
-// Capability rows are 3.25rem tall, and we want to show 7 of them.
+// Rare case where we need a Tailwind arbitrary value: after the fixed search bar, the scrollable list should fit
+// exactly seven 3.25rem rows without showing a partial row or leaving extra bottom space.
 const LIST_MAX_HEIGHT_CLASS_NAME = "max-h-[22.75rem]";
 
 function matchesCapabilityQuery({
