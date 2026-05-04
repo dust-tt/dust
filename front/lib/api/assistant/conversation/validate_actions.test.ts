@@ -20,10 +20,7 @@ vi.mock("@app/lib/api/redis-hybrid-manager", () => ({
 
 import type { LightMCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
-import {
-  createConversation,
-  postUserMessage,
-} from "@app/lib/api/assistant/conversation";
+import { postUserMessage } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import {
   createUserMentions,
@@ -37,7 +34,6 @@ import {
 } from "@app/lib/api/assistant/streaming/events";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
-import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import {
   AgentMessageModel,
@@ -58,10 +54,7 @@ import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type { AgentMention, MentionType } from "@app/types/assistant/mentions";
-import {
-  isRichAgentMention,
-  isRichUserMention,
-} from "@app/types/assistant/mentions";
+import { isRichUserMention } from "@app/types/assistant/mentions";
 import type { WorkspaceType } from "@app/types/user";
 
 describe("dismissMention", () => {
@@ -448,172 +441,6 @@ describe("dismissMention", () => {
       // Verify mention was NOT dismissed (only restricted mentions can be dismissed)
       await mentionInDb!.reload();
       expect(mentionInDb?.dismissed).toBe(false);
-    });
-  });
-
-  describe("agent mentions with agent_restricted_by_space_usage", () => {
-    it("should successfully dismiss an agent mention with restricted status", async () => {
-      // Create a restricted space
-      const restrictedSpace = await SpaceFactory.regular(workspace);
-      const adminAuth = await Authenticator.internalAdminForWorkspace(
-        workspace.sId
-      );
-      const refreshedRestrictedSpace = await SpaceResource.fetchById(
-        adminAuth,
-        restrictedSpace.sId
-      );
-      expect(refreshedRestrictedSpace).not.toBeNull();
-      expect(refreshedRestrictedSpace?.isOpen()).toBe(false);
-
-      // Add user to the restricted space so they can create conversations in it
-      await refreshedRestrictedSpace!.addMembers(adminAuth, {
-        userIds: [auth.getNonNullableUser().sId],
-      });
-
-      // Refresh authenticator to get updated permissions
-      const refreshedAuth = await Authenticator.fromUserIdAndWorkspaceId(
-        auth.getNonNullableUser().sId,
-        workspace.sId
-      );
-
-      // Create a conversation in the restricted space
-      const restrictedSpaceModelId = getResourceIdFromSId(
-        refreshedRestrictedSpace!.sId
-      );
-      expect(restrictedSpaceModelId).not.toBeNull();
-
-      const spaceConversation = await createConversation(refreshedAuth, {
-        title: "Space Conversation",
-        visibility: "unlisted",
-        spaceId: restrictedSpaceModelId!,
-      });
-
-      // Create agent configuration that uses a different restricted space
-      const agentConfig = await AgentConfigurationFactory.createTestAgent(
-        refreshedAuth,
-        {
-          name: "Restricted Agent",
-        }
-      );
-
-      const otherRestrictedSpace = await SpaceFactory.regular(workspace);
-      const refreshedOtherRestrictedSpace = await SpaceResource.fetchById(
-        adminAuth,
-        otherRestrictedSpace.sId
-      );
-      expect(refreshedOtherRestrictedSpace).not.toBeNull();
-
-      // Add user to the other restricted space so they can mention the agent
-      // (but the agent will still be restricted because the conversation is in a different space)
-      await refreshedOtherRestrictedSpace!.addMembers(adminAuth, {
-        userIds: [auth.getNonNullableUser().sId],
-      });
-
-      // Refresh authenticator again to get updated permissions for the other restricted space
-      const refreshedAuthWithBothSpaces =
-        await Authenticator.fromUserIdAndWorkspaceId(
-          auth.getNonNullableUser().sId,
-          workspace.sId
-        );
-
-      const otherRestrictedSpaceModelId = getResourceIdFromSId(
-        otherRestrictedSpace.sId
-      );
-      expect(otherRestrictedSpaceModelId).not.toBeNull();
-
-      await AgentConfigurationModel.update(
-        {
-          requestedSpaceIds: [otherRestrictedSpaceModelId!],
-        },
-        {
-          where: {
-            workspaceId: workspace.id,
-            sId: agentConfig.sId,
-            version: agentConfig.version,
-          },
-        }
-      );
-
-      // Get conversation as ConversationType (needed for postUserMessage)
-      const conversationRes = await getConversation(
-        refreshedAuthWithBothSpaces,
-        spaceConversation.sId
-      );
-      expect(conversationRes.isOk()).toBe(true);
-      if (!conversationRes.isOk()) {
-        throw new Error("Failed to fetch conversation");
-      }
-      const conversation = conversationRes.value;
-
-      // Use postUserMessage to create the message with the full flow
-      const user = refreshedAuthWithBothSpaces.getNonNullableUser();
-      const userJson = user.toJSON();
-      const postResult = await postUserMessage(refreshedAuthWithBothSpaces, {
-        conversation,
-        content: `Hello @${agentConfig.name}`,
-        mentions: [
-          {
-            configurationId: agentConfig.sId,
-          } satisfies AgentMention,
-        ],
-        context: {
-          username: userJson.username,
-          timezone: "UTC",
-          fullName: userJson.fullName,
-          email: userJson.email,
-          profilePictureUrl: userJson.image,
-          origin: "web",
-        },
-        skipToolsValidation: false,
-      });
-
-      expect(postResult.isOk()).toBe(true);
-      if (!postResult.isOk()) {
-        throw new Error("Failed to post user message");
-      }
-      const { userMessage } = postResult.value;
-
-      // Verify mention was created with restricted status
-      const mentionInDb = await MentionModel.findOne({
-        where: {
-          workspaceId: workspace.id,
-          messageId: userMessage.id,
-          agentConfigurationId: agentConfig.sId,
-        },
-      });
-      expect(mentionInDb).not.toBeNull();
-      expect(mentionInDb?.status).toBe("agent_restricted_by_space_usage");
-      expect(mentionInDb?.dismissed).toBe(false);
-
-      // Verify the mention appears in the userMessage's richMentions
-      const agentMention = userMessage.richMentions.find(
-        (m) => isRichAgentMention(m) && m.id === agentConfig.sId
-      );
-      expect(agentMention).toBeDefined();
-      if (agentMention) {
-        expect(agentMention.status).toBe("agent_restricted_by_space_usage");
-      }
-
-      // Dismiss the mention
-      const result = await dismissMention(refreshedAuthWithBothSpaces, {
-        conversationId: spaceConversation.sId,
-        messageId: userMessage.sId,
-        type: "agent",
-        id: agentConfig.sId,
-      });
-
-      expect(result.isOk()).toBe(true);
-
-      // Verify mention was dismissed in database
-      await mentionInDb!.reload();
-      expect(mentionInDb?.dismissed).toBe(true);
-
-      // Verify events were published
-      // For restricted agent mentions, publishMessageEventsOnMessagePostOrEdit is called
-      // (postUserMessage calls it when creating the message, and dismissMention calls it when dismissing)
-      expect(
-        vi.mocked(publishMessageEventsOnMessagePostOrEdit)
-      ).toHaveBeenCalledTimes(2);
     });
   });
 

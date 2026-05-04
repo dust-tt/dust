@@ -117,7 +117,10 @@ export type UserMessageOrigin =
   // (to be created).
   | "onboarding_conversation"
   // for internal use, for reinforced agent batch LLM operations
-  | "reinforcement";
+  | "reinforcement"
+  // Internal anchor user message inserted at the start of an empty conversation so
+  // a branch can be created before any user-visible message exists.
+  | "branch_anchor";
 
 /**
  * @swaggerschema Context (swagger_schemas.ts), PrivateUserMessageContext (swagger_private_schemas.ts)
@@ -202,6 +205,29 @@ export function isUserMessageTypeWithContentFragments(
   arg: MessageType | LightMessageType
 ): arg is UserMessageTypeWithContentFragments {
   return arg.type === "user_message" && "contentFragments" in arg;
+}
+
+export function isHiddenMessageOrigin(origin: UserMessageOrigin): boolean {
+  return (
+    origin === "onboarding_conversation" ||
+    origin === "project_kickoff" ||
+    origin === "reinforced_skill_notification" ||
+    origin === "branch_anchor" ||
+    origin === "wakeup"
+  );
+}
+
+export function isVisibleMessage(m: LightMessageType): boolean {
+  return (
+    m.visibility !== "deleted" &&
+    !(
+      isUserMessageTypeWithContentFragments(m) &&
+      isHiddenMessageOrigin(m.context.origin)
+    ) &&
+    // Compaction message will possibly be first messages of a conversation (forking) but they are
+    // not "visible" per se. `firstVisibleMessage` should null until a first user message is posted.
+    !isCompactionMessageType(m)
+  );
 }
 
 /**

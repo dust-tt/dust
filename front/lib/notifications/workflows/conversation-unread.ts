@@ -35,6 +35,7 @@ import {
   isLightAgentMessageType,
   isProjectConversation,
   isUserMessageType,
+  isVisibleMessage,
 } from "@app/types/assistant/conversation";
 import { isRichUserMention } from "@app/types/assistant/mentions";
 import { isContentFragmentType } from "@app/types/content_fragment";
@@ -87,6 +88,7 @@ export const shouldSendNotificationForAgentAnswer = (
     case "agent_sidekick":
     case "reinforced_skill_notification":
     case "reinforcement":
+    case "branch_anchor":
       // Internal bootstrap conversations shouldn't trigger unread notifications.
       return false;
     case "api":
@@ -222,10 +224,10 @@ const getConversationDetails = async ({
   const isFromTrigger = !!conversation.triggerId;
 
   // Retrieve the message that triggered the notification.
-  // For new project conversations, use the first message
+  // For new project conversations, use the first visible message
   const message = !payload.isNewProjectConversation
     ? conversation.content.find((msg) => msg.sId === payload.messageId)
-    : conversation.content[0];
+    : conversation.content.find(isVisibleMessage);
   if (!message) {
     // Message doesn't exist at all - could be true if it's in a branch.
     return new Err(new ConversationError("message_not_found"));
