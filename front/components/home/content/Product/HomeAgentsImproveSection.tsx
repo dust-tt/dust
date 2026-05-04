@@ -211,7 +211,7 @@ export function HomeAgentsImproveSection() {
             <HomeEyebrow label="How dust agents improve with you" />
           </HomeReveal>
           <HomeReveal delay={80}>
-            <H2 className="max-w-[820px] text-balance text-center font-medium leading-[1.05] tracking-[-0.03em] text-foreground">
+            <H2 className="max-w-[820px] text-balance text-center font-semibold leading-[1.08] tracking-[-0.03em] text-foreground">
               Agents that understand how you work and get smarter over time
             </H2>
           </HomeReveal>

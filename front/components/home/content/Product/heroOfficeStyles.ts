@@ -122,6 +122,10 @@ export const SCENE_CSS = `
 /* AI agents */
 .dust-floor-host .agent {
   transform: translate(var(--x, 0px), var(--y, 0px));
+  transition: opacity 320ms ease;
+}
+.dust-floor-host .agent:not(.active) {
+  opacity: 0.45;
 }
 .dust-floor-host .agent-body {
   transform-box: fill-box; transform-origin: 50% 50%;
@@ -130,6 +134,15 @@ export const SCENE_CSS = `
 @keyframes dust-floor-agent-pulse {
   0%,100% { transform: scale(1); }
   50%     { transform: scale(1.03); }
+}
+/* Idle agents (not part of the current scenario) read as background props:
+   the blue disc fades to a light gray. The disc is the first <circle> child
+   of .agent-body — the icon glyph follows. */
+.dust-floor-host .agent-body > circle {
+  transition: fill 320ms ease;
+}
+.dust-floor-host .agent:not(.active) .agent-body > circle {
+  fill: #B2B6BD;
 }
 /* Halo is hidden by default. Same .active rule as the @name chip: only
    the agents in the running scenario radiate. */

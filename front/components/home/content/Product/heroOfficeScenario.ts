@@ -25,7 +25,56 @@ export interface AgentDef {
   label: string;
   /** Subtitle shown below the name in the agent's chat card. */
   cardRole: string;
+  /** Inline SVG markup (24x24 viewBox) for the floor avatar's glyph. The
+   *  agent builder injects this inside a stroked group on the blue disc.
+   *  Pick a mark that reflects what the agent does in its scenario. */
+  iconSvg: string;
+  /** Optional pre-rendered image (PNG/SVG) used INSTEAD of the disc + iconSvg.
+   *  When set, the floor avatar and chat-card avatar render this image as
+   *  the entire mark — useful for full-color illustrated agents. */
+  iconImage?: string;
 }
+
+// 24x24 viewBox glyphs used as the floor avatar mark for each agent. Stroke
+// + linecap/linejoin are inherited from the parent <g>, so each path can be
+// stroke-only (white). Solid dots can override with fill="#FFFFFF" stroke="none".
+const ICON_TARGET = `
+  <circle cx="12" cy="12" r="9"/>
+  <circle cx="12" cy="12" r="5"/>
+  <circle cx="12" cy="12" r="1.6" fill="#FFFFFF" stroke="none"/>
+`;
+const ICON_GIT_BRANCH = `
+  <line x1="6" y1="3" x2="6" y2="15"/>
+  <circle cx="18" cy="6" r="3"/>
+  <circle cx="6" cy="18" r="3"/>
+  <path d="M18 9a9 9 0 0 1-9 9"/>
+`;
+const ICON_WRENCH = `
+  <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+`;
+const ICON_ZAP = `
+  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+`;
+const ICON_CLIPBOARD_CHECK = `
+  <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
+  <rect x="9" y="3" width="6" height="3" rx="1"/>
+  <polyline points="9 13 11 15 15 11"/>
+`;
+const ICON_ROCKET = `
+  <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/>
+  <path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/>
+  <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/>
+  <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/>
+`;
+const ICON_PEN = `
+  <path d="M12 20h9"/>
+  <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4z"/>
+`;
+const ICON_SPARKLE = `
+  <path d="M12 3l1.7 5.3L19 10l-5.3 1.7L12 17l-1.7-5.3L5 10l5.3-1.7z"/>
+  <circle cx="19" cy="19" r="0.9" fill="#FFFFFF" stroke="none"/>
+  <circle cx="5" cy="19" r="0.9" fill="#FFFFFF" stroke="none"/>
+`;
 
 export interface CastSlot {
   ref: string;
@@ -84,6 +133,8 @@ const salesScenario: Scenario = {
       startRoom: "office-t",
       label: "@LeadQual",
       cardRole: "Agent · Sales",
+      iconSvg: ICON_TARGET,
+      iconImage: "/static/landing/home/agent-leadqual.png",
     },
   ],
   cast: [
@@ -210,12 +261,16 @@ const supportScenario: Scenario = {
       startRoom: "office-bl",
       label: "@TicketRouter",
       cardRole: "Agent · Support",
+      iconSvg: ICON_GIT_BRANCH,
+      iconImage: "/static/landing/home/agent-ticketrouter.png",
     },
     {
       id: "a3",
       startRoom: "office-d",
       label: "@ProductExpert",
       cardRole: "Agent · Engineering",
+      iconSvg: ICON_WRENCH,
+      iconImage: "/static/landing/home/agent-productexpert.png",
     },
   ],
   cast: [
@@ -340,6 +395,8 @@ const engineeringScenario: Scenario = {
       startRoom: "office-t",
       label: "@Incident",
       cardRole: "Agent · Ops",
+      iconSvg: ICON_ZAP,
+      iconImage: "/static/landing/home/agent-incident.png",
     },
   ],
   cast: [
@@ -481,6 +538,8 @@ const onboardingScenario: Scenario = {
       startRoom: "office-c",
       label: "@OnboardGuide",
       cardRole: "Agent · People",
+      iconSvg: ICON_CLIPBOARD_CHECK,
+      iconImage: "/static/landing/home/agent-onboardguide.png",
     },
   ],
   cast: [
@@ -618,6 +677,8 @@ const orgNavScenario: Scenario = {
       startRoom: "office-c",
       label: "@Dust",
       cardRole: "Agent · Knowledge",
+      iconSvg: ICON_SPARKLE,
+      iconImage: "/static/landing/home/agent-dust.png",
     },
   ],
   cast: [
@@ -731,12 +792,16 @@ const marketingScenario: Scenario = {
       startRoom: "office-c",
       label: "@LaunchOps",
       cardRole: "Agent · Marketing",
+      iconSvg: ICON_ROCKET,
+      iconImage: "/static/landing/home/agent-launchops.png",
     },
     {
       id: "a7",
       startRoom: "office-c",
       label: "@ContentWriter",
       cardRole: "Agent · Marketing",
+      iconSvg: ICON_PEN,
+      iconImage: "/static/landing/home/agent-contentwriter.png",
     },
   ],
   cast: [

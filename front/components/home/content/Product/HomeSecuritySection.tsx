@@ -2,7 +2,7 @@ import { H2, P } from "@app/components/home/ContentComponents";
 import { HomeEyebrow } from "@app/components/home/content/Product/HomeEyebrow";
 import { HomeReveal } from "@app/components/home/content/Product/HomeReveal";
 
-type Accent = "blue" | "golden" | "green";
+type Accent = "red" | "green" | "blue";
 
 interface AccentTheme {
   bg: string;
@@ -15,23 +15,14 @@ interface AccentTheme {
 }
 
 const ACCENT: Record<Accent, AccentTheme> = {
-  blue: {
-    bg: "bg-blue-50",
-    bgSubtle: "bg-blue-50/50",
-    iconBg: "bg-blue-200",
-    iconAccent: "bg-blue-500",
-    number: "text-blue-500",
-    dot: "bg-blue-500",
-    rowHover: "hover:bg-blue-50/50",
-  },
-  golden: {
-    bg: "bg-golden-50",
-    bgSubtle: "bg-golden-50/50",
-    iconBg: "bg-golden-200",
-    iconAccent: "bg-golden-500",
-    number: "text-golden-500",
-    dot: "bg-golden-500",
-    rowHover: "hover:bg-golden-50/50",
+  red: {
+    bg: "bg-rose-50",
+    bgSubtle: "bg-rose-50/50",
+    iconBg: "bg-rose-200",
+    iconAccent: "bg-rose-500",
+    number: "text-rose-500",
+    dot: "bg-rose-500",
+    rowHover: "hover:bg-rose-50/50",
   },
   green: {
     bg: "bg-green-50",
@@ -41,6 +32,15 @@ const ACCENT: Record<Accent, AccentTheme> = {
     number: "text-green-700",
     dot: "bg-green-700",
     rowHover: "hover:bg-green-50/50",
+  },
+  blue: {
+    bg: "bg-blue-50",
+    bgSubtle: "bg-blue-50/50",
+    iconBg: "bg-blue-200",
+    iconAccent: "bg-blue-500",
+    number: "text-blue-500",
+    dot: "bg-blue-500",
+    rowHover: "hover:bg-blue-50/50",
   },
 };
 
@@ -55,7 +55,7 @@ const COLUMNS: ComplianceColumn[] = [
   {
     code: "01",
     title: "Security & compliance",
-    accent: "blue",
+    accent: "red",
     items: [
       "SOC 2 Type II certified",
       "GDPR compliant — EU data residency",
@@ -70,7 +70,7 @@ const COLUMNS: ComplianceColumn[] = [
   {
     code: "02",
     title: "Performance & scale",
-    accent: "golden",
+    accent: "green",
     items: [
       "99.9% uptime SLA",
       "10,000+ users per workspace",
@@ -81,7 +81,7 @@ const COLUMNS: ComplianceColumn[] = [
   {
     code: "03",
     title: "Integration architecture",
-    accent: "green",
+    accent: "blue",
     items: [
       "RESTful API for custom integrations",
       "MCP for proprietary systems",
@@ -94,15 +94,46 @@ const COLUMNS: ComplianceColumn[] = [
   },
 ];
 
-function HalfCircleIcon({ accent }: { accent: Accent }) {
-  const theme = ACCENT[accent];
+// Padlock-with-shackle icon — recolored per accent. The SVG ships with
+// pink/red defaults; here we map the lighter shape to the accent's 200-tone
+// and the body to the accent's primary tone so each column reads in its
+// own brand register.
+const ICON_COLORS: Record<Accent, { light: string; dark: string }> = {
+  red: { light: "#FFC3DF", dark: "#E14322" },
+  green: { light: "#E2F78C", dark: "#418B5C" },
+  blue: { light: "#9FDBFF", dark: "#1C91FF" },
+};
+
+function PadlockIcon({ accent }: { accent: Accent }) {
+  const c = ICON_COLORS[accent];
   return (
-    <div className="relative h-9 w-9" aria-hidden="true">
-      <div className={`absolute inset-0 rounded-full ${theme.iconBg}`} />
-      <div
-        className={`absolute inset-x-0 bottom-0 h-1/2 rounded-b-full ${theme.iconAccent}`}
+    <svg
+      width="30"
+      height="40"
+      viewBox="0 0 77 100"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+      className="flex-shrink-0"
+    >
+      <path
+        d="M0 99.9997C0 78.8631 17.1346 61.7285 38.2712 61.7285C59.4078 61.7285 76.5424 78.8631 76.5424 99.9997H0Z"
+        fill={c.light}
       />
-    </div>
+      <path
+        d="M20.436 40.9289V24.0845C20.436 14.2348 28.4208 6.25 38.2706 6.25C48.1203 6.25 56.1051 14.2348 56.1051 24.0845V40.9289"
+        stroke={c.light}
+        strokeWidth="10"
+      />
+      <path
+        d="M0 61.7292C0 40.5926 17.1346 23.458 38.2712 23.458C59.4078 23.458 76.5424 40.5926 76.5424 61.7292H0Z"
+        fill={c.dark}
+      />
+      <path
+        d="M38.271 68.707C42.8946 68.707 46.6428 72.4552 46.6428 77.0789C46.6426 80.3388 44.7777 83.1607 42.0579 84.5432V89.2376C42.0577 91.3289 40.3623 93.0246 38.271 93.0246C36.1797 93.0246 34.4843 91.3289 34.4841 89.2376V84.5432C31.7643 83.1607 29.8994 80.3388 29.8992 77.0789C29.8992 72.4552 33.6474 68.707 38.271 68.707Z"
+        fill="#111418"
+      />
+    </svg>
   );
 }
 
@@ -117,7 +148,7 @@ export function HomeSecuritySection() {
             <HomeEyebrow label="Enterprise ready, obviously" />
           </HomeReveal>
           <HomeReveal delay={80}>
-            <H2 className="max-w-[820px] text-balance font-medium leading-[1.1] tracking-[-0.03em] text-foreground">
+            <H2 className="max-w-[820px] text-balance font-semibold leading-[1.08] tracking-[-0.03em] text-foreground">
               When AI has access to your company&apos;s knowledge, &ldquo;mostly
               secure&rdquo; doesn&apos;t cut it.
             </H2>
@@ -159,22 +190,23 @@ export function HomeSecuritySection() {
             </a>
           </div>
 
-          {/* Tinted columns sitting in a hairline grid (matches the AgentsImprove + Bento family) */}
-          <div className="grid grid-cols-1 gap-px overflow-hidden rounded-3xl bg-border md:grid-cols-3">
+          {/* Tinted columns sitting flush — no separator. Each column's
+              tinted bg lands directly next to its neighbor. */}
+          <div className="grid grid-cols-1 overflow-hidden rounded-3xl md:grid-cols-3">
             {COLUMNS.map((column, colIdx) => {
               const theme = ACCENT[column.accent];
               return (
                 <div key={column.code} className={`flex flex-col ${theme.bg}`}>
                   {/* Column header */}
                   <header className="flex items-center gap-4 px-7 pb-6 pt-7">
-                    <HalfCircleIcon accent={column.accent} />
-                    <div className="flex flex-col gap-0.5">
+                    <PadlockIcon accent={column.accent} />
+                    <div className="flex flex-col">
                       <span
-                        className={`text-2xl font-semibold leading-none tracking-[-0.02em] md:text-3xl ${theme.number}`}
+                        className={`text-base font-semibold leading-tight tracking-[-0.02em] md:text-lg ${theme.number}`}
                       >
                         {column.code}
                       </span>
-                      <span className="text-base font-semibold tracking-[-0.01em] text-foreground">
+                      <span className="text-base font-semibold leading-tight tracking-[-0.01em] text-foreground">
                         {column.title}
                       </span>
                     </div>

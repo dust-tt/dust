@@ -318,7 +318,7 @@ export function HomeTeamUsageSection() {
       <div className="mx-auto flex w-full max-w-[1180px] flex-col gap-12 px-6">
         <div className="flex flex-col items-center gap-6 text-center">
           <HomeEyebrow label="How every team uses Dust" />
-          <h2 className="m-0 max-w-[760px] text-balance text-center text-4xl font-semibold leading-[1.02] tracking-[-0.03em] text-foreground md:text-5xl xl:text-6xl">
+          <h2 className="m-0 max-w-[760px] text-balance text-center text-4xl font-semibold leading-[1.08] tracking-[-0.03em] text-foreground md:text-5xl xl:text-6xl">
             One platform, every team, compounding value
           </h2>
           <p className="m-0 max-w-[560px] text-base leading-[1.55] text-muted-foreground">

@@ -161,7 +161,7 @@ export function mountFloorScene(
   ];
   const agentSlotInRoom: Record<string, number> = {};
   const agents = allAgentDefs.map((d: AgentDef) => {
-    const el = buildAgent(d.id, d.label);
+    const el = buildAgent(d.id, d.label, d.iconSvg, d.iconImage);
     agentsLayer.appendChild(el);
     el._tagTxt.textContent = d.label;
     const rect = rooms[d.startRoom].interior[0];

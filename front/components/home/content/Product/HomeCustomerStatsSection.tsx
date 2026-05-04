@@ -322,7 +322,7 @@ export function HomeCustomerStatsSection() {
     <section className="relative w-full bg-background py-24">
       <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-12 px-6">
         <HomeReveal>
-          <H2 className="font-medium tracking-[-0.03em] text-foreground">
+          <H2 className="font-semibold leading-[1.08] tracking-[-0.03em] text-foreground">
             Don&rsquo;t take our word for it
           </H2>
         </HomeReveal>

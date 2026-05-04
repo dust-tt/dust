@@ -3,7 +3,7 @@ import { HomeAgentsImproveSection } from "@app/components/home/content/Product/H
 import { HomeAIOperatorsCTASection } from "@app/components/home/content/Product/HomeAIOperatorsCTASection";
 import { HomeCoordinatedSection } from "@app/components/home/content/Product/HomeCoordinatedSection";
 import { HomeCustomerStatsSection } from "@app/components/home/content/Product/HomeCustomerStatsSection";
-import { HomeImpactMetricsSection } from "@app/components/home/content/Product/HomeImpactMetricsSection";
+import { HomeNewsSection } from "@app/components/home/content/Product/HomeNewsSection";
 import { HomeQuotesSection } from "@app/components/home/content/Product/HomeQuotesSection";
 import { HomeSecuritySection } from "@app/components/home/content/Product/HomeSecuritySection";
 import { HomeTeamSportSection } from "@app/components/home/content/Product/HomeTeamSportSection";
@@ -36,7 +36,6 @@ const HOME_REVEAL_CSS = `
     transition-property: opacity, transform, letter-spacing;
     transition-duration: 500ms;
     transition-timing-function: cubic-bezier(0.215, 0.61, 0.355, 1);
-    will-change: opacity, transform;
   }
   .home-reveal-up { transform: translate3d(0, 14px, 0); }
   .home-reveal-right { transform: translate3d(-6px, 0, 0); }
@@ -68,13 +67,13 @@ export function IntroSection() {
         <HeroOfficeSection />
         <div className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] flex w-screen flex-col">
           <HomeTrustedSection />
-          <HomeImpactMetricsSection />
           <HomeCoordinatedSection />
+          <HomeQuotesSection quotes={QUOTES} />
           <HomeTeamSportSection />
           <HomeAgentsImproveSection />
-          <HomeQuotesSection quotes={QUOTES} />
           <HomeTeamUsageSection />
           <HomeCustomerStatsSection />
+          <HomeNewsSection />
           <HomeSecuritySection />
           <HomeAIOperatorsCTASection />
         </div>

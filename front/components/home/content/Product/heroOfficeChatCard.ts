@@ -16,9 +16,14 @@ import type { AgentDef } from "@app/components/home/content/Product/heroOfficeSc
 // agent avatar is the same disc with an embedded sparkle robot SVG instead.
 // ---------------------------------------------------------------------------
 
-/** Inline sparkle-robot SVG used as the agent's chat-card avatar glyph. */
-const AGENT_AVATAR_SVG =
-  '<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="7" width="16" height="12" rx="3"/><circle cx="9" cy="13" r="1.2" fill="white" stroke="none"/><circle cx="15" cy="13" r="1.2" fill="white" stroke="none"/><path d="M12 4v3"/><circle cx="12" cy="3.4" r="1" fill="white" stroke="none"/></svg>';
+/** Sparkle-robot fallback used when an agent didn't pass a custom icon. */
+const AGENT_AVATAR_FALLBACK_SVG =
+  '<rect x="4" y="7" width="16" height="12" rx="3"/><circle cx="9" cy="13" r="1.2" fill="white" stroke="none"/><circle cx="15" cy="13" r="1.2" fill="white" stroke="none"/><path d="M12 4v3"/><circle cx="12" cy="3.4" r="1" fill="white" stroke="none"/>';
+
+/** Wrap a 24x24 viewBox icon body (paths/rects/etc.) in an outer SVG sized
+ *  for the chat-card avatar. Stroke + linecap shared with the floor agent. */
+const wrapAgentIcon = (innerSvg: string): string =>
+  `<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${innerSvg}</svg>`;
 
 /** Build the chat card's user avatar (round disc with the teammate photo).
  *  Uses a real <img> with object-fit: cover so non-square photos center-
@@ -38,11 +43,30 @@ export function buildChatCardUserAvatar(photoUrl?: string): HTMLDivElement {
   return avatar;
 }
 
-/** Build the chat card's agent avatar (blue disc with the robot glyph). */
-export function buildChatCardAgentAvatar(): HTMLDivElement {
+/** Build the chat card's agent avatar — either the same 24x24 viewBox icon
+ *  body the floor avatar uses (rendered on the brand-blue disc), or, when
+ *  `iconImage` is provided, that pre-rendered illustration filling the
+ *  avatar slot directly. Keeps the floor mark and the message-bubble mark
+ *  in lockstep regardless of which agent is speaking. */
+export function buildChatCardAgentAvatar(
+  iconSvg?: string,
+  iconImage?: string
+): HTMLDivElement {
   const avatar = document.createElement("div");
+  if (iconImage) {
+    // Image-based agent — drop the agent-avatar (blue disc) class so the
+    // illustration carries the avatar's color and shape on its own.
+    avatar.className = "chat-card-avatar";
+    const img = document.createElement("img");
+    img.src = iconImage;
+    img.alt = "";
+    img.loading = "lazy";
+    img.decoding = "async";
+    avatar.appendChild(img);
+    return avatar;
+  }
   avatar.className = "chat-card-avatar agent-avatar";
-  avatar.innerHTML = AGENT_AVATAR_SVG;
+  avatar.innerHTML = wrapAgentIcon(iconSvg ?? AGENT_AVATAR_FALLBACK_SVG);
   return avatar;
 }
 
@@ -189,6 +213,12 @@ export interface ChatCardOptions {
   name?: string;
   role?: string;
   avatar?: string;
+  /** When `isAgent`, the inner SVG markup (24x24 viewBox) used as the avatar
+   *  glyph — keeps the floor mark and the message bubble mark in sync. */
+  agentIconSvg?: string;
+  /** When `isAgent`, an illustration that wins over the SVG glyph and fills
+   *  the avatar slot directly. Mirrors AgentDef.iconImage. */
+  agentIconImage?: string;
 }
 
 export interface Reaction {
@@ -274,7 +304,7 @@ export function createChatCard(deps: ChatCardDeps): ChatCardModule {
       card.appendChild(header);
 
       const avatar = isAgent
-        ? buildChatCardAgentAvatar()
+        ? buildChatCardAgentAvatar(opts.agentIconSvg, opts.agentIconImage)
         : buildChatCardUserAvatar(opts.avatar);
       header.appendChild(avatar);
 
@@ -705,6 +735,8 @@ export function createChatCard(deps: ChatCardDeps): ChatCardModule {
       name: def.label.replace(/^@/, ""),
       role: def.cardRole,
       isAgent: true,
+      agentIconSvg: def.iconSvg,
+      agentIconImage: def.iconImage,
     });
   }
 
