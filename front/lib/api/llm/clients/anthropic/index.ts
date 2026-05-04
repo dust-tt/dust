@@ -6,6 +6,9 @@ import type {
 import type { BetaMessageStreamParams } from "@anthropic-ai/sdk/resources/beta/messages";
 import AnthropicVertex from "@anthropic-ai/vertex-sdk";
 
+const MESSAGE_CONVERSION_CONCURRENCY = 10;
+const BATCH_PAYLOAD_BUILD_CONCURRENCY = 10;
+
 import type { AnthropicWhitelistedModelId } from "@app/lib/api/llm/clients/anthropic/types";
 import {
   ANTHROPIC_PROVIDER_ID,
@@ -148,7 +151,7 @@ export class AnthropicLLM extends LLM<LLMStreamParameters> {
           omittedThinking: this.omittedThinking,
           convertToBase64: this.useVertex,
         }),
-      { concurrency: 10 }
+      { concurrency: MESSAGE_CONVERSION_CONCURRENCY }
     );
 
     // Build thinking config, use custom type if specified.
@@ -261,7 +264,7 @@ export class AnthropicLLM extends LLM<LLMStreamParameters> {
         custom_id: customId,
         params: await this.buildBaseRequestPayload(streamParams),
       }),
-      { concurrency: 10 }
+      { concurrency: BATCH_PAYLOAD_BUILD_CONCURRENCY }
     );
 
     const batch = await this.client.messages.batches.create({ requests });
