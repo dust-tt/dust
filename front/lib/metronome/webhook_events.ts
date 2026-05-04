@@ -65,6 +65,21 @@ const LowRemainingCommitBalanceReachedSchema = z.object({
   }),
 });
 
+// Contract-level credit balance — fires for credits attached to a contract
+// (e.g. the recurring `Free Usage Credits (AWU)` credit). Not in the public
+// webhook docs but present in the UI's sample payload, distinct from
+// `alerts.low_remaining_credit_balance_reached` (customer-level credits).
+const LowRemainingContractCreditBalanceReachedSchema = z.object({
+  id: z.string(),
+  type: z.literal("alerts.low_remaining_contract_credit_balance_reached"),
+  properties: baseAlertPropertiesSchema.extend({
+    contract_id: z.string().nullish(),
+    credit_id: z.string().nullish(),
+    credit_type_id: z.string().nullish(),
+    remaining_balance: z.number().nullish(),
+  }),
+});
+
 const UsageThresholdReachedSchema = z.object({
   id: z.string(),
   type: z.literal("alerts.usage_threshold_reached"),
@@ -357,6 +372,7 @@ const PaymentGateExternalInitiateSchema = z.object({
 
 export const MetronomeWebhookEventSchema = z.discriminatedUnion("type", [
   LowRemainingCreditBalanceReachedSchema,
+  LowRemainingContractCreditBalanceReachedSchema,
   LowRemainingSeatBalanceReachedSchema,
   SpendThresholdReachedSchema,
   LowRemainingCommitBalanceReachedSchema,

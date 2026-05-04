@@ -43,15 +43,18 @@ function truncatePropertyValue(value: string): string {
 // Tool category mapping
 // ---------------------------------------------------------------------------
 
-type ToolCategory =
-  | "retrieval"
-  | "deep_research"
-  | "reasoning"
-  | "connectors"
-  | "generation"
-  | "agents"
-  | "actions"
-  | "platform";
+export const TOOL_CATEGORIES = [
+  "retrieval",
+  "deep_research",
+  "reasoning",
+  "connectors",
+  "generation",
+  "agents",
+  "actions",
+  "platform",
+] as const;
+
+type ToolCategory = (typeof TOOL_CATEGORIES)[number];
 
 // Exhaustive map — TypeScript will error if a new internal MCP server is added
 // without being categorized here.
@@ -219,6 +222,7 @@ export function buildLlmUsageEvents({
   for (const usage of runUsages) {
     const key = `${usage.providerId}|${usage.modelId}`;
     const existing = groups.get(key);
+
     if (existing) {
       existing.promptTokens += usage.promptTokens;
       existing.completionTokens += usage.completionTokens;
@@ -259,7 +263,10 @@ export function buildLlmUsageEvents({
       cache_creation_tokens: group.cacheCreationTokens,
       // Provider cost without markup — markup is applied in Metronome rate card.
       cost_micro_usd: group.costMicroUsd,
+      // TODO: This is a temporary conversion factor. Includes markup. Actual cost TBD.
+      cost_awu: Math.ceil((group.costMicroUsd * 1.3) / 10_000),
       is_programmatic_usage: isProgrammaticUsage ? "true" : "false",
+      is_free_usage: "false",
       auth_method: authMethod ?? "unknown",
       api_key_name: apiKeyName ?? "unknown",
       message_status: messageStatus,

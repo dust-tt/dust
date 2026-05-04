@@ -16,7 +16,7 @@ import {
 } from "@app/lib/metronome/client";
 import {
   getCreditTypeProgrammaticUsdId,
-  getProductFreeMonthlyCreditId,
+  getProductFreeCreditId,
   PLAN_CODE_CUSTOM_FIELD_KEY,
 } from "@app/lib/metronome/constants";
 import { invalidateContractCache } from "@app/lib/metronome/plan_type";
@@ -150,6 +150,7 @@ async function handler(
       switch (event.type) {
         case "alerts.invoice_total_reached":
         case "alerts.low_remaining_commit_balance_reached":
+        case "alerts.low_remaining_contract_credit_balance_reached":
         case "alerts.low_remaining_credit_balance_reached":
         case "alerts.low_remaining_seat_balance_reached":
         case "alerts.spend_threshold_reached":
@@ -226,7 +227,7 @@ async function handler(
           }
 
           if (
-            credit.product.id !== getProductFreeMonthlyCreditId() ||
+            credit.product.id !== getProductFreeCreditId() ||
             credit.access_schedule?.credit_type?.id !==
               getCreditTypeProgrammaticUsdId()
           ) {
