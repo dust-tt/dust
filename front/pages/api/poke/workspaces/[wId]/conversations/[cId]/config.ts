@@ -49,7 +49,8 @@ async function handler(
     case "GET":
       const cRes = await ConversationResource.fetchConversationWithoutContent(
         auth,
-        cId
+        cId,
+        { includeDeleted: true }
       );
       if (cRes.isErr()) {
         return apiError(req, res, {

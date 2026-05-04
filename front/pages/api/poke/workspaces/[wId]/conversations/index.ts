@@ -4,13 +4,20 @@ import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import type {
+  ConversationVisibility,
+  ConversationWithoutContentType,
+} from "@app/types/assistant/conversation";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+export type PokeListConversationItem = ConversationWithoutContentType & {
+  visibility?: ConversationVisibility;
+};
+
 export type PokeListConversations = {
-  conversations: ConversationWithoutContentType[];
+  conversations: PokeListConversationItem[];
 };
 
 async function handler(
@@ -37,7 +44,7 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      let conversations: ConversationWithoutContentType[];
+      let conversations: PokeListConversationItem[];
 
       if (isString(triggerId)) {
         // Get conversations for this trigger
@@ -63,7 +70,8 @@ async function handler(
             {
               agentConfigurationId: agentId,
               cutoffDate: new Date(), // Current time to get all conversations.
-            }
+            },
+            { includeDeleted: true }
           );
 
         conversations = conversationResources.map((c) => {
