@@ -10,6 +10,8 @@ import {
   useCancelMessage,
   useConversationBranchActions,
 } from "@app/hooks/conversations";
+import { useAppRouter } from "@app/lib/platform";
+import { getProjectRoute } from "@app/lib/utils/router";
 import {
   ArrowLeftIcon,
   ScrollArea,
@@ -61,6 +63,8 @@ export function ConversationBranchApprovalModal({
   );
   const [selectedMessage, setSelectedMessage] =
     useState<AgentMessageWithStreaming | null>(null);
+
+  const router = useAppRouter();
 
   const { mergeBranch, closeBranch, isMerging, isClosing } =
     useConversationBranchActions({
@@ -178,9 +182,21 @@ export function ConversationBranchApprovalModal({
                 setActiveBranchAction("close");
                 try {
                   await cancelOngoingAgentGenerations();
-                  const ok = await closeBranch(branchId);
+                  const { ok, conversationDeleted } =
+                    await closeBranch(branchId);
                   if (ok) {
                     context.setBranchIdToApprove?.(null);
+                    // The conversation only existed to host this branch — it
+                    // was just soft-deleted server-side. Send the user back to
+                    // the project page rather than a stale conversation view.
+                    if (conversationDeleted && context.conversation?.spaceId) {
+                      void router.push(
+                        getProjectRoute(
+                          context.owner.sId,
+                          context.conversation.spaceId
+                        )
+                      );
+                    }
                   }
                 } finally {
                   setActiveBranchAction(null);
