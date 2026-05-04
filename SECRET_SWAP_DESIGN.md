@@ -269,7 +269,14 @@ What's **not** covered in Phase 1 (failure mode in parens):
   across headers, write to a file then re-read): substitution doesn't
   fire, upstream gets garbage.
 
-These all fail loudly at the upstream as auth errors, never silently.
+In all of these cases dsbx forwards whatever the agent produced
+unchanged (the placeholder isn't recognized, or the secret never
+appears on the wire to begin with). The upstream then sees garbage
+where it expected a credential and rejects with a 401-class error.
+That's an upstream property, not a guarantee dsbx provides; from
+our system's perspective the request just passes through. The
+agent observes a normal auth failure.
+
 The skill prompt warns the agent that HMAC/SigV4 will not work yet.
 The admin UI surfaces the same limit at create-secret time. Richer
 auth shapes (HMAC, SigV4) get revisited in Phase 4+ via an explicit
