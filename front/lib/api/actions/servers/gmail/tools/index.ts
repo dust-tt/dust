@@ -93,6 +93,141 @@ function buildAndEncodeEmail(params: {
   return new Ok(encodedMessage);
 }
 
+interface GmailLabel {
+  id: string;
+  name: string;
+  type?: string;
+}
+
+interface GmailLabelListResponse {
+  labels?: GmailLabel[];
+}
+
+function normalizeLabelName(label: string): string {
+  return label.trim().toLowerCase();
+}
+
+function normalizeLabelInputs(labels: string[]): Err<MCPError> | Ok<string[]> {
+  const normalizedLabels = labels.map((label) => label.trim());
+
+  if (normalizedLabels.some((label) => label.length === 0)) {
+    return new Err(new MCPError("Label names or IDs cannot be empty"));
+  }
+
+  return new Ok(Array.from(new Set(normalizedLabels)));
+}
+
+async function listGmailLabels(
+  accessToken: string
+): Promise<Err<MCPError> | Ok<GmailLabel[]>> {
+  const response = await fetchFromGmail(
+    "/gmail/v1/users/me/labels",
+    accessToken,
+    {
+      method: "GET",
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await getErrorText(response);
+    return new Err(new MCPError(`Failed to list labels: ${errorText}`));
+  }
+
+  const result: GmailLabelListResponse = await response.json();
+  return new Ok(result.labels ?? []);
+}
+
+async function resolveLabelIds(
+  labels: string[],
+  accessToken: string
+): Promise<Err<MCPError> | Ok<string[]>> {
+  const normalizedLabelsResult = normalizeLabelInputs(labels);
+  if (normalizedLabelsResult.isErr()) {
+    return normalizedLabelsResult;
+  }
+
+  const labelListResult = await listGmailLabels(accessToken);
+  if (labelListResult.isErr()) {
+    return labelListResult;
+  }
+
+  const labelsByNormalizedName = new Map(
+    labelListResult.value.map((label) => [
+      normalizeLabelName(label.name),
+      label,
+    ])
+  );
+  const labelIds = normalizedLabelsResult.value.map((label) => {
+    const matchingLabel = labelsByNormalizedName.get(normalizeLabelName(label));
+    return matchingLabel?.id ?? label;
+  });
+
+  return new Ok(labelIds);
+}
+
+async function batchModifyMessages({
+  accessToken,
+  messageIds,
+  addLabelIds,
+  removeLabelIds,
+  successMessage,
+}: {
+  accessToken: string;
+  messageIds: string[];
+  addLabelIds?: string[];
+  removeLabelIds?: string[];
+  successMessage: string;
+}): Promise<Err<MCPError> | Ok<{ type: "text"; text: string }[]>> {
+  const normalizedMessageIds = Array.from(
+    new Set(messageIds.map((messageId) => messageId.trim()))
+  );
+
+  if (normalizedMessageIds.some((messageId) => messageId.length === 0)) {
+    return new Err(new MCPError("Message IDs cannot be empty"));
+  }
+
+  const response = await fetchFromGmail(
+    "/gmail/v1/users/me/messages/batchModify",
+    accessToken,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        ids: normalizedMessageIds,
+        addLabelIds,
+        removeLabelIds,
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await getErrorText(response);
+    return new Err(
+      new MCPError(
+        `Failed to modify Gmail messages: ${response.status} ${response.statusText} - ${errorText}`
+      )
+    );
+  }
+
+  return new Ok([
+    { type: "text" as const, text: successMessage },
+    {
+      type: "text" as const,
+      text: JSON.stringify(
+        {
+          messageIds: normalizedMessageIds,
+          addedLabelIds: addLabelIds,
+          removedLabelIds: removeLabelIds,
+        },
+        null,
+        2
+      ),
+    },
+  ]);
+}
+
 const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
   get_drafts: async ({ q, pageToken }, { authInfo }) => {
     const accessToken = authInfo?.token;
@@ -367,6 +502,111 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
         text: markdownOutput,
       },
     ]);
+  },
+
+  list_labels: async (_, { authInfo }) => {
+    const accessToken = authInfo?.token;
+    if (!accessToken) {
+      return new Err(new MCPError("Authentication required"));
+    }
+
+    const labelListResult = await listGmailLabels(accessToken);
+    if (labelListResult.isErr()) {
+      return labelListResult;
+    }
+
+    return new Ok([
+      { type: "text" as const, text: "Labels fetched successfully" },
+      {
+        type: "text" as const,
+        text: JSON.stringify(
+          {
+            labels: labelListResult.value.map((label) => ({
+              id: label.id,
+              name: label.name,
+              type: label.type,
+            })),
+          },
+          null,
+          2
+        ),
+      },
+    ]);
+  },
+
+  update_message_labels: async (
+    { messageIds, addLabels, removeLabels },
+    { authInfo }
+  ) => {
+    const accessToken = authInfo?.token;
+    if (!accessToken) {
+      return new Err(new MCPError("Authentication required"));
+    }
+
+    if (!addLabels?.length && !removeLabels?.length) {
+      return new Err(
+        new MCPError("At least one label must be provided to add or remove")
+      );
+    }
+
+    const addLabelIdsResult = addLabels?.length
+      ? await resolveLabelIds(addLabels, accessToken)
+      : new Ok(undefined);
+    if (addLabelIdsResult.isErr()) {
+      return addLabelIdsResult;
+    }
+
+    const removeLabelIdsResult = removeLabels?.length
+      ? await resolveLabelIds(removeLabels, accessToken)
+      : new Ok(undefined);
+    if (removeLabelIdsResult.isErr()) {
+      return removeLabelIdsResult;
+    }
+
+    return batchModifyMessages({
+      accessToken,
+      messageIds,
+      addLabelIds: addLabelIdsResult.value,
+      removeLabelIds: removeLabelIdsResult.value,
+      successMessage: "Gmail message labels updated successfully",
+    });
+  },
+
+  move_messages_to_label: async (
+    { messageIds, label, archive = true },
+    { authInfo }
+  ) => {
+    const accessToken = authInfo?.token;
+    if (!accessToken) {
+      return new Err(new MCPError("Authentication required"));
+    }
+
+    const labelIdsResult = await resolveLabelIds([label], accessToken);
+    if (labelIdsResult.isErr()) {
+      return labelIdsResult;
+    }
+
+    return batchModifyMessages({
+      accessToken,
+      messageIds,
+      addLabelIds: labelIdsResult.value,
+      removeLabelIds: archive ? ["INBOX"] : undefined,
+      successMessage: "Gmail messages moved successfully",
+    });
+  },
+
+  archive_messages: async ({ messageIds }, { authInfo }) => {
+    const accessToken = authInfo?.token;
+    if (!accessToken) {
+      return new Err(new MCPError("Authentication required"));
+    }
+
+    return batchModifyMessages({
+      accessToken,
+      messageIds,
+      removeLabelIds: ["INBOX"],
+      successMessage: "Gmail messages archived successfully",
+    });
   },
 
   get_attachment: async (

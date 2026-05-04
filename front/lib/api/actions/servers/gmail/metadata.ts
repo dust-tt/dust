@@ -134,6 +134,87 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
       done: "Get Gmail attachment",
     },
   },
+  list_labels: {
+    description:
+      "List Gmail labels available in the mailbox, including system labels such as INBOX and user-created labels/folders.",
+    schema: {},
+    stake: "never_ask",
+    displayLabels: {
+      running: "Listing Gmail labels",
+      done: "List Gmail labels",
+    },
+  },
+  update_message_labels: {
+    description: `Apply and/or remove Gmail labels on one or more messages.
+- Gmail folders are represented as labels.
+- Label inputs can be Gmail label IDs or exact label names from list_labels.
+- Use this to triage messages without changing their content.`,
+    schema: {
+      messageIds: z
+        .array(z.string())
+        .min(1)
+        .max(1000)
+        .describe("The Gmail message IDs to update. Maximum 1000."),
+      addLabels: z
+        .array(z.string())
+        .optional()
+        .describe("Label IDs or exact label names to apply."),
+      removeLabels: z
+        .array(z.string())
+        .optional()
+        .describe("Label IDs or exact label names to remove."),
+    },
+    stake: "medium",
+    displayLabels: {
+      running: "Updating Gmail labels",
+      done: "Update Gmail labels",
+    },
+  },
+  move_messages_to_label: {
+    description: `Move one or more Gmail messages to a label/folder.
+- Gmail folders are represented as labels.
+- The label input can be a Gmail label ID or exact label name from list_labels.
+- By default this also archives the messages by removing the INBOX label.`,
+    schema: {
+      messageIds: z
+        .array(z.string())
+        .min(1)
+        .max(1000)
+        .describe("The Gmail message IDs to move. Maximum 1000."),
+      label: z
+        .string()
+        .describe(
+          "The Gmail label ID or exact label name to move messages to."
+        ),
+      archive: z
+        .boolean()
+        .optional()
+        .describe(
+          "Whether to remove the INBOX label after applying the destination label. Defaults to true."
+        ),
+    },
+    stake: "medium",
+    displayLabels: {
+      running: "Moving Gmail messages",
+      done: "Move Gmail messages",
+    },
+  },
+  archive_messages: {
+    description:
+      "Archive one or more Gmail messages by removing the INBOX label. The messages remain available in All Mail and other labels.",
+    schema: {
+      messageIds: z
+        .array(z.string())
+        .min(1)
+        .max(1000)
+        .describe("The Gmail message IDs to archive. Maximum 1000."),
+    },
+    stake: "medium",
+    displayLabels: {
+      running: "Archiving Gmail messages",
+      done: "Archive Gmail messages",
+    },
+  },
   create_reply_draft: {
     description: `Create a reply draft to an existing email thread in Gmail.
 - The draft will be saved in the user's Gmail account and can be reviewed and sent later.
@@ -207,12 +288,12 @@ export const GMAIL_SERVER = {
   serverInfo: {
     name: "gmail",
     version: "1.0.0",
-    description: "Access messages and email drafts.",
+    description: "Access, send, and organize Gmail messages and drafts.",
     authorization: {
       provider: "google_drive",
       supported_use_cases: ["personal_actions", "platform_actions"],
       scope:
-        "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.compose",
+        "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.compose https://www.googleapis.com/auth/gmail.modify",
     },
     icon: "GmailLogo",
     documentationUrl: "https://docs.dust.tt/docs/gmail",

@@ -386,6 +386,9 @@ export const INTERNAL_MCP_SERVERS = {
     isPreview: false,
     tools_arguments_requiring_approval: {
       create_draft: ["to"],
+      update_message_labels: ["messageIds", "addLabels", "removeLabels"],
+      move_messages_to_label: ["messageIds", "label"],
+      archive_messages: ["messageIds"],
       send_mail: ["to", "from"],
     },
     tools_retry_policies: undefined,
