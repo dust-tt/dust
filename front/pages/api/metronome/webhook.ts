@@ -16,7 +16,7 @@ import {
 } from "@app/lib/metronome/client";
 import {
   getCreditTypeProgrammaticUsdId,
-  getProductFreeMonthlyCreditId,
+  getProductFreeCreditId,
   PLAN_CODE_CUSTOM_FIELD_KEY,
 } from "@app/lib/metronome/constants";
 import { invalidateContractCache } from "@app/lib/metronome/plan_type";
@@ -226,7 +226,7 @@ async function handler(
           }
 
           if (
-            credit.product.id !== getProductFreeMonthlyCreditId() ||
+            credit.product.id !== getProductFreeCreditId() ||
             credit.access_schedule?.credit_type?.id !==
               getCreditTypeProgrammaticUsdId()
           ) {

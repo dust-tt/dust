@@ -22,6 +22,7 @@ import {
   PROD_CREDIT_TYPE_AWU_ID,
   PROD_CREDIT_TYPE_PROG_USD_ID,
 } from "@app/lib/metronome/constants";
+import { TOOL_CATEGORIES } from "@app/lib/metronome/events";
 
 if (!process.env.METRONOME_API_KEY) {
   console.error("METRONOME_API_KEY env var required");
@@ -154,6 +155,13 @@ interface RecurringCreditDef {
     value: number;
   };
   applicable_product_tags?: string[];
+  // Mutually exclusive with applicable_product_tags. Filters drawdown by
+  // pricing/presentation group values (e.g. { is_free_usage: "true" }).
+  specifiers?: Array<{
+    presentation_group_values?: Record<string, string>;
+    pricing_group_values?: Record<string, string>;
+    product_tags?: string[];
+  }>;
   recurrence_frequency?: "MONTHLY" | "QUARTERLY" | "ANNUAL" | "WEEKLY";
   name?: string;
 }
@@ -256,6 +264,52 @@ const METRICS: MetricDef[] = [
       ["mcp_server_id"],
     ],
   },
+  // AWU-based AI cost metrics — sum cost_awu directly (no unit conversion).
+  // Used by the new AI Usage products for AWU rate cards (e.g. Enterprise EUR).
+  {
+    name: "LLM Cost AWU (Programmatic)",
+    event_type_filter: { in_values: ["llm_usage_v3"] },
+    property_filters: [
+      { name: "cost_awu", exists: true },
+      { name: "is_programmatic_usage", in_values: ["true"] },
+      { name: "is_free_usage", exists: true },
+      { name: "api_key_name", exists: true },
+      { name: "model_id", exists: true },
+      { name: "origin", exists: true },
+      { name: "agent_id", exists: true },
+    ],
+    aggregation_type: "SUM",
+    aggregation_key: "cost_awu",
+    group_keys: [
+      ["api_key_name"],
+      ["model_id"],
+      ["origin"],
+      ["agent_id"],
+      ["is_free_usage"],
+    ],
+  },
+  {
+    name: "LLM Cost AWU (User)",
+    event_type_filter: { in_values: ["llm_usage_v3"] },
+    property_filters: [
+      { name: "cost_awu", exists: true },
+      { name: "is_programmatic_usage", in_values: ["false"] },
+      { name: "is_free_usage", exists: true },
+      { name: "user_id", exists: true },
+      { name: "model_id", exists: true },
+      { name: "origin", exists: true },
+      { name: "agent_id", exists: true },
+    ],
+    aggregation_type: "SUM",
+    aggregation_key: "cost_awu",
+    group_keys: [
+      ["user_id"],
+      ["model_id"],
+      ["origin"],
+      ["agent_id"],
+      ["is_free_usage"],
+    ],
+  },
   // Phase 2 token metrics removed — will be added when Pricing Index is ready.
 ];
 
@@ -280,20 +334,21 @@ const PRODUCTS: ProductDef[] = [
     tags: [USAGE_TAG],
   },
   // --- New pricing usage products (AWU) ---
-  // 1 AWU = $0.01. AI Usage: cost_micro_usd / 10_000 = AWU (100 AWU per dollar of cost).
-  // Tool Usage: count × tool_weight = AWU (weight configured per tool category in rate card).
+  // 1 AWU = $0.01. AI Usage is priced directly on the cost_awu event property
+  // (no quantity_conversion). Tool Usage: count × tool_weight = AWU (weight
+  // configured per tool category in rate card via pricing_group_values).
   {
     name: "AI Usage (User)",
     type: "USAGE",
-    billable_metric_name: "LLM Provider Cost (User)",
-    quantity_conversion: { conversion_factor: 10_000, operation: "DIVIDE" },
+    billable_metric_name: "LLM Cost AWU (User)",
+    presentation_group_key: ["is_free_usage"],
     tags: [USAGE_TAG],
   },
   {
     name: "AI Usage (Programmatic)",
     type: "USAGE",
-    billable_metric_name: "LLM Provider Cost (Programmatic)",
-    quantity_conversion: { conversion_factor: 10_000, operation: "DIVIDE" },
+    billable_metric_name: "LLM Cost AWU (Programmatic)",
+    presentation_group_key: ["is_free_usage"],
     tags: [USAGE_TAG],
   },
   {
@@ -316,6 +371,13 @@ const PRODUCTS: ProductDef[] = [
   // Seats synced from membership create/revoke hooks (same as new pricing).
   {
     name: "Workspace Seat",
+    type: "SUBSCRIPTION",
+  },
+  // Regular Seat — SUBSCRIPTION product for new (non-legacy) plans (e.g. Enterprise EUR).
+  // Same seat-sync mechanism as Workspace Seat; kept as a separate product so legacy
+  // and new pricing live on distinct rate cards without conflict.
+  {
+    name: "Regular Seat",
     type: "SUBSCRIPTION",
   },
   // MAU product — single subscription for simple (non-tiered) enterprise contracts.
@@ -373,6 +435,40 @@ function buildMauTierRates(creditTypeId: string): RateDef[] {
       credit_type_id: creditTypeId,
     })
   );
+}
+
+// Per-category AWU price for Tool Usage rates on the Enterprise EUR rate card.
+// Placeholder of 1 AWU per invocation everywhere — adjust per category when the
+// final pricing is set.
+const ENTERPRISE_EUR_TOOL_CATEGORY_PRICES_AWU: Record<
+  (typeof TOOL_CATEGORIES)[number],
+  number
+> = {
+  retrieval: 1,
+  deep_research: 2,
+  reasoning: 1,
+  connectors: 1,
+  generation: 1,
+  agents: 1,
+  actions: 1,
+  platform: 1,
+};
+
+function buildEnterpriseEurToolUsageRates(): RateDef[] {
+  return TOOL_CATEGORIES.flatMap((category): RateDef[] => {
+    const price = ENTERPRISE_EUR_TOOL_CATEGORY_PRICES_AWU[category];
+    return (["Tool Usage (User)", "Tool Usage (Programmatic)"] as const).map(
+      (productName): RateDef => ({
+        product_name: productName,
+        starting_at: "2026-04-01T00:00:00.000Z",
+        entitled: true,
+        rate_type: "FLAT",
+        price,
+        credit_type_id: getCreditTypeAwuId(),
+        pricing_group_values: { tool_category: category },
+      })
+    );
+  });
 }
 
 // Function — evaluated after detectEnvironment() resolves ENV (needed for AWU credit type).
@@ -641,6 +737,52 @@ function getRateCards(): RateCardDef[] {
         ...buildMauTierRates(CREDIT_TYPE_EUR_ID),
       ],
     },
+    // --- Enterprise EUR: new (non-legacy) enterprise rate card ---
+    // Per-seat billing in EUR + AWU-based AI/Tool usage.
+    // - Regular Seat: €45/seat/month (subscription).
+    // - AI Usage: priced directly on cost_awu (1 AWU per unit, no multiplier).
+    // - Tool Usage: per-category AWU price via pricing_group_values.tool_category.
+    {
+      name: "Enterprise EUR",
+      description:
+        "Enterprise plan (EUR). Per-seat billing + AWU-based AI/Tool usage.",
+      aliases: [{ name: "enterprise-eur" }],
+      fiat_credit_type_id: CREDIT_TYPE_EUR_ID,
+      credit_type_conversions: [
+        {
+          custom_credit_type_id: getCreditTypeAwuId(),
+          fiat_per_custom_credit: 0.01,
+        },
+      ],
+      rates: [
+        {
+          product_name: "Regular Seat",
+          starting_at: "2026-04-01T00:00:00.000Z",
+          entitled: true,
+          rate_type: "FLAT",
+          billing_frequency: "MONTHLY",
+          price: 45,
+          credit_type_id: CREDIT_TYPE_EUR_ID,
+        },
+        {
+          product_name: "AI Usage (User)",
+          starting_at: "2026-04-01T00:00:00.000Z",
+          entitled: true,
+          rate_type: "FLAT",
+          price: 1,
+          credit_type_id: getCreditTypeAwuId(),
+        },
+        {
+          product_name: "AI Usage (Programmatic)",
+          starting_at: "2026-04-01T00:00:00.000Z",
+          entitled: true,
+          rate_type: "FLAT",
+          price: 1,
+          credit_type_id: getCreditTypeAwuId(),
+        },
+        ...buildEnterpriseEurToolUsageRates(),
+      ],
+    },
     // --- Example: New Business plan with AWU-based usage pricing ---
     // Seats in USD, AI/Tool usage in AWU (1 AWU = $0.01).
     // This is a template — uncomment and adjust when new pricing goes live.
@@ -721,6 +863,26 @@ function getFreeMonthlyRecurringCredits(): RecurringCreditDef {
   };
 }
 
+// Monthly recurring AWU credit that draws down only on usage tagged as free
+// via the `is_free_usage` presentation group. Granted at a very high quantity
+// so it effectively zeros out free-tagged usage on every billing period.
+function getFreeUsageAwuRecurringCredits(): RecurringCreditDef {
+  return {
+    product_name: "Free Credits",
+    access_amount: {
+      credit_type_id: getCreditTypeAwuId(),
+      unit_price: 0,
+      quantity: 1_000_000_000,
+    },
+    commit_duration: { value: 1, unit: "PERIODS" },
+    priority: 1,
+    starting_at_offset: { unit: "DAYS", value: 0 }, // starts immediately
+    specifiers: [{ presentation_group_values: { is_free_usage: "true" } }],
+    recurrence_frequency: "MONTHLY",
+    name: "Free Usage Credits (AWU)",
+  };
+}
+
 // Annual variant for annual packages. Same product, but the credit is granted
 // once per year. The credit.segment.start webhook detects ANNUAL recurrence
 // and multiplies the monthly bracket amount by 12.
@@ -745,6 +907,21 @@ function getFreeAnnualRecurringCredits(): RecurringCreditDef {
 const LEGACY_SEAT_SUBSCRIPTION: PackageSubscription = {
   temporary_id: "legacy-seat-sub",
   product_name: "Workspace Seat",
+  billing_frequency: "MONTHLY",
+  collection_schedule: "ADVANCE",
+  quantity_management_mode: "QUANTITY_ONLY",
+  initial_quantity: 1,
+  proration: {
+    is_prorated: true,
+    invoice_behavior: "BILL_ON_NEXT_COLLECTION_DATE",
+  },
+};
+
+// Seat subscription definition for new (non-legacy) per-seat packages.
+// Same shape as LEGACY_SEAT_SUBSCRIPTION but bound to the Regular Seat product.
+const REGULAR_SEAT_SUBSCRIPTION: PackageSubscription = {
+  temporary_id: "regular-seat-sub",
+  product_name: "Regular Seat",
   billing_frequency: "MONTHLY",
   collection_schedule: "ADVANCE",
   quantity_management_mode: "QUANTITY_ONLY",
@@ -839,6 +1016,18 @@ function getPackages(): PackageDef[] {
       rate_card_name: "Legacy Enterprise MAU EUR",
       scheduled_charges_on_usage_invoices: "ALL",
       recurring_credits: [getFreeMonthlyRecurringCredits()],
+      ...BILLING_CYCLE_CONFIG,
+    },
+    // New Enterprise EUR — per-seat billing (Regular Seat) + AWU AI/Tool usage.
+    // Includes a recurring AWU credit that draws down on usage tagged as free
+    // via the `is_free_usage` presentation group.
+    {
+      name: "Enterprise EUR",
+      aliases: [{ name: "enterprise-eur" }],
+      rate_card_name: "Enterprise EUR",
+      subscriptions: [REGULAR_SEAT_SUBSCRIPTION],
+      scheduled_charges_on_usage_invoices: "ALL",
+      recurring_credits: [getFreeUsageAwuRecurringCredits()],
       ...BILLING_CYCLE_CONFIG,
     },
   ];
@@ -1671,6 +1860,7 @@ async function syncPackages(): Promise<void> {
               ...(credit.applicable_product_tags
                 ? { applicable_product_tags: credit.applicable_product_tags }
                 : {}),
+              ...(credit.specifiers ? { specifiers: credit.specifiers } : {}),
               ...(credit.recurrence_frequency
                 ? { recurrence_frequency: credit.recurrence_frequency }
                 : {}),

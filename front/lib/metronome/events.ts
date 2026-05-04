@@ -43,15 +43,18 @@ function truncatePropertyValue(value: string): string {
 // Tool category mapping
 // ---------------------------------------------------------------------------
 
-type ToolCategory =
-  | "retrieval"
-  | "deep_research"
-  | "reasoning"
-  | "connectors"
-  | "generation"
-  | "agents"
-  | "actions"
-  | "platform";
+export const TOOL_CATEGORIES = [
+  "retrieval",
+  "deep_research",
+  "reasoning",
+  "connectors",
+  "generation",
+  "agents",
+  "actions",
+  "platform",
+] as const;
+
+type ToolCategory = (typeof TOOL_CATEGORIES)[number];
 
 // Exhaustive map — TypeScript will error if a new internal MCP server is added
 // without being categorized here.
@@ -213,18 +216,24 @@ export function buildLlmUsageEvents({
       cachedTokens: number;
       cacheCreationTokens: number;
       costMicroUsd: number;
+      costAwu: number;
     }
   >();
 
   for (const usage of runUsages) {
     const key = `${usage.providerId}|${usage.modelId}`;
     const existing = groups.get(key);
+
+    // TODO: This is a temporary conversion factor. Actual cost TBD.
+    const costAwu = Math.ceil(usage.costMicroUsd / 10_000);
+
     if (existing) {
       existing.promptTokens += usage.promptTokens;
       existing.completionTokens += usage.completionTokens;
       existing.cachedTokens += usage.cachedTokens ?? 0;
       existing.cacheCreationTokens += usage.cacheCreationTokens ?? 0;
       existing.costMicroUsd += usage.costMicroUsd;
+      existing.costAwu += costAwu;
     } else {
       groups.set(key, {
         providerId: usage.providerId,
@@ -234,6 +243,7 @@ export function buildLlmUsageEvents({
         cachedTokens: usage.cachedTokens ?? 0,
         cacheCreationTokens: usage.cacheCreationTokens ?? 0,
         costMicroUsd: usage.costMicroUsd,
+        costAwu,
       });
     }
   }
@@ -259,7 +269,9 @@ export function buildLlmUsageEvents({
       cache_creation_tokens: group.cacheCreationTokens,
       // Provider cost without markup — markup is applied in Metronome rate card.
       cost_micro_usd: group.costMicroUsd,
+      cost_awu: group.costAwu,
       is_programmatic_usage: isProgrammaticUsage ? "true" : "false",
+      is_free_usage: "false",
       auth_method: authMethod ?? "unknown",
       api_key_name: apiKeyName ?? "unknown",
       message_status: messageStatus,
