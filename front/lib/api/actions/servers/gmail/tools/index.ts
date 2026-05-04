@@ -246,30 +246,88 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
     ]);
   },
 
-  archive_message: async ({ messageId }, { authInfo }) => {
+  get_labels: async (_, { authInfo }) => {
     const accessToken = authInfo?.token;
     if (!accessToken) {
       return new Err(new MCPError("Authentication required"));
     }
 
+    const response = await fetchFromGmail(
+      "/gmail/v1/users/me/labels",
+      accessToken,
+      { method: "GET" }
+    );
+
+    if (!response.ok) {
+      const errorText = await getErrorText(response);
+      return new Err(new MCPError(`Failed to get labels: ${errorText}`));
+    }
+
+    const result = await response.json();
+
+    return new Ok([
+      { type: "text" as const, text: "Labels fetched successfully" },
+      {
+        type: "text" as const,
+        text: JSON.stringify({ labels: result.labels ?? [] }, null, 2),
+      },
+    ]);
+  },
+
+  set_message_labels: async (
+    { messageId, addLabelIds, removeLabelIds },
+    { authInfo }
+  ) => {
+    const accessToken = authInfo?.token;
+    if (!accessToken) {
+      return new Err(new MCPError("Authentication required"));
+    }
+
+    if (!addLabelIds?.length && !removeLabelIds?.length) {
+      return new Err(
+        new MCPError("At least one label ID must be added or removed")
+      );
+    }
+
     const encodedMessageId = encodeURIComponent(messageId);
+
+    // To archive a message, remove the "INBOX" system label with removeLabelIds: ["INBOX"].
     const response = await fetchFromGmail(
       `/gmail/v1/users/me/messages/${encodedMessageId}/modify`,
       accessToken,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ removeLabelIds: ["INBOX"] }),
+        body: JSON.stringify({
+          addLabelIds: addLabelIds ?? [],
+          removeLabelIds: removeLabelIds ?? [],
+        }),
       }
     );
 
     if (!response.ok) {
       const errorText = await getErrorText(response);
-      return new Err(new MCPError(`Failed to archive message: ${errorText}`));
+      return new Err(
+        new MCPError(`Failed to modify message labels: ${errorText}`)
+      );
     }
 
+    const result = await response.json();
+
     return new Ok([
-      { type: "text" as const, text: "Message archived successfully" },
+      { type: "text" as const, text: "Message labels modified successfully" },
+      {
+        type: "text" as const,
+        text: JSON.stringify(
+          {
+            messageId: result.id,
+            threadId: result.threadId,
+            labelIds: result.labelIds,
+          },
+          null,
+          2
+        ),
+      },
     ]);
   },
 

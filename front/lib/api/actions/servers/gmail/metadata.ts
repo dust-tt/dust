@@ -167,16 +167,33 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
       done: "Create Gmail reply draft",
     },
   },
-  archive_message: {
+  get_labels: {
     description:
-      "Archive a Gmail message by removing it from the inbox. The message is not deleted and can be found via search or in All Mail.",
+      "Retrieve all Gmail labels, including system labels and user-created labels.",
+    schema: {},
+    stake: "never_ask",
+    displayLabels: {
+      running: "Getting Gmail labels",
+      done: "Get Gmail labels",
+    },
+  },
+  set_message_labels: {
+    description: `Modify the labels of a message. System label IDs can be used directly (INBOX, SPAM, TRASH, UNREAD, STARRED, IMPORTANT, ...). User labels should be retrieved first via get_labels to get their IDs.`,
     schema: {
-      messageId: z.string().describe("The ID of the message to archive"),
+      messageId: z.string().describe("The ID of the message to modify."),
+      addLabelIds: z
+        .array(z.string())
+        .optional()
+        .describe("Label IDs to add."),
+      removeLabelIds: z
+        .array(z.string())
+        .optional()
+        .describe("Label IDs to remove."),
     },
     stake: "medium",
     displayLabels: {
-      running: "Archiving Gmail message",
-      done: "Archive Gmail message",
+      running: "Modifying Gmail message labels",
+      done: "Modify Gmail message labels",
     },
   },
   send_mail: {
