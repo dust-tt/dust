@@ -7,8 +7,9 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import type { AgentMessageType } from "@app/types/assistant/conversation";
 import type { TextContent } from "@app/types/assistant/generation";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import assert from "assert";
 import { describe, expect, it } from "vitest";
-
 import { getSteps, renderUserMessage } from "./helpers";
 
 describe("renderUserMessage", () => {
@@ -241,9 +242,8 @@ The following skills are available for use with the skill_management__enable_ski
     });
     const enabledSkill = SkillFactory.withExtendedSkill(commitSkill);
     const model = getSupportedModelConfig(agentConfig.model);
-    if (!model) {
-      throw new Error("Expected a supported model configuration.");
-    }
+    assert(model, "Expected a supported model configuration.");
+
     const outputBlock = makeEnableSkillResultOutput({
       skillId: commitSkill.sId,
       text: `Skill "${commitSkill.name}" has been enabled.`,
@@ -337,5 +337,178 @@ The following skills are available for use with the skill_management__enable_ski
         ],
       },
     ]);
+  });
+});
+
+describe("vision image rendering in getSteps", () => {
+  const buildVisionTest = async (gcsPathOverride?: string) => {
+    const { authenticator, conversationsSpace } = await createResourceTest({
+      role: "admin",
+    });
+    const workspaceId = authenticator.getNonNullableWorkspace().sId;
+
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(
+      authenticator,
+      {
+        name: "Vision Agent",
+        description: "An agent that reads images",
+        model: { providerId: "anthropic", modelId: "claude-sonnet-4-6" },
+      }
+    );
+    const conversation = await ConversationFactory.create(authenticator, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [],
+      spaceId: conversationsSpace.id,
+    });
+    const conversationId = conversation.sId;
+    const model = getSupportedModelConfig(agentConfig.model);
+    if (!model) {
+      throw new Error("Expected a supported model configuration.");
+    }
+
+    const gcsPath =
+      gcsPathOverride ??
+      `w/${workspaceId}/conversations/${conversationId}/files/photo.png`;
+
+    const message: AgentMessageType = {
+      id: 1,
+      agentMessageId: 1,
+      type: "agent_message" as const,
+      sId: "agent_msg_1",
+      version: 1,
+      rank: 1,
+      branchId: null,
+      created: Date.now(),
+      completedTs: null,
+      parentMessageId: "user_msg_1",
+      parentAgentMessageId: null,
+      status: "succeeded" as const,
+      content: null,
+      chainOfThought: null,
+      error: null,
+      visibility: "visible" as const,
+      configuration: agentConfig,
+      skipToolsValidation: false,
+      actions: [
+        {
+          id: 1,
+          sId: "action_1",
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          agentMessageId: 1,
+          internalMCPServerName: "files",
+          toolName: "cat",
+          mcpServerId: null,
+          functionCallName: "files__cat",
+          functionCallId: "toolu_cat_1",
+          params: { path: "conversation/photo.png" },
+          citationsAllocated: 0,
+          status: "succeeded" as const,
+          step: 0,
+          executionDurationMs: null,
+          displayLabels: null,
+          generatedFiles: [],
+          citations: null,
+          output: (() => {
+            const resource = {
+              uri: "dust://files/conversation/photo.png",
+              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.MODEL_VISION_IMAGE,
+              text: "" as const,
+              gcsPath,
+              imageContentType: "image/png",
+            };
+            return [{ type: "resource" as const, resource }];
+          })(),
+        },
+      ],
+      contents: [
+        {
+          step: 0,
+          content: {
+            type: "function_call" as const,
+            value: {
+              id: "toolu_cat_1",
+              name: "files__cat",
+              arguments: '{"path":"conversation/photo.png"}',
+            },
+          },
+        },
+      ],
+      modelInteractionDurationMs: null,
+      richMentions: [],
+      completionDurationMs: null,
+      reactions: [],
+    };
+
+    return { auth: authenticator, message, model, workspaceId, conversationId };
+  };
+
+  it("produces an image_url block when the model supports vision", async () => {
+    const { auth, message, model, workspaceId, conversationId } =
+      await buildVisionTest();
+
+    const steps = await getSteps(auth, {
+      model,
+      message,
+      workspaceId,
+      conversationId,
+      enabledSkillById: new Map(),
+      onMissingAction: "skip",
+    });
+
+    expect(steps).toHaveLength(1);
+    const result = steps[0].actions[0].result;
+    expect(result.role).toBe("function");
+    expect(Array.isArray(result.content)).toBe(true);
+    if (Array.isArray(result.content)) {
+      expect(result.content).toEqual([
+        {
+          type: "image_url",
+          image_url: { url: "https://signed-url.test" },
+        },
+      ]);
+    }
+  });
+
+  it("falls back to JSON when the model does not support vision", async () => {
+    const { auth, message, model, workspaceId, conversationId } =
+      await buildVisionTest();
+    const nonVisionModel = { ...model, supportsVision: false };
+
+    const steps = await getSteps(auth, {
+      model: nonVisionModel,
+      message,
+      workspaceId,
+      conversationId,
+      enabledSkillById: new Map(),
+      onMissingAction: "skip",
+    });
+
+    const result = steps[0].actions[0].result;
+    expect(typeof result.content).toBe("string");
+  });
+
+  it("renders [Image unavailable] when the path does not belong to the conversation", async () => {
+    const foreignGcsPath = `w/other-workspace/conversations/other-conv/files/photo.png`;
+    const { auth, message, model, workspaceId, conversationId } =
+      await buildVisionTest(foreignGcsPath);
+
+    const steps = await getSteps(auth, {
+      model,
+      message,
+      workspaceId,
+      conversationId,
+      enabledSkillById: new Map(),
+      onMissingAction: "skip",
+    });
+
+    const result = steps[0].actions[0].result;
+    expect(Array.isArray(result.content)).toBe(true);
+    if (Array.isArray(result.content)) {
+      expect(result.content[0]).toMatchObject({
+        type: "text",
+        text: expect.stringContaining("Image unavailable"),
+      });
+    }
   });
 });
