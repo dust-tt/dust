@@ -4,6 +4,7 @@ import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type {
+  AgentSuggestionStatus,
   ProjectTodoActorType,
   ProjectTodoSourceType,
   ProjectTodoStatus,
@@ -101,6 +102,20 @@ const PROJECT_TODO_MODEL_ATTRIBUTES = {
     allowNull: true,
     defaultValue: null,
   },
+  agentSuggestionStatus: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    defaultValue: null,
+  },
+  agentSuggestionReviewedAt: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    defaultValue: null,
+  },
+  agentSuggestionReviewedByUserId: {
+    type: DataTypes.BIGINT,
+    allowNull: true,
+  },
 } as const;
 
 // ── Main model ──────────────────────────────────────────────────────────────
@@ -133,6 +148,9 @@ export class ProjectTodoModel extends WorkspaceAwareModel<ProjectTodoModel> {
   declare actorRationale: string | null;
   declare agentInstructions: string | null;
   declare deletedAt: CreationOptional<Date | null>;
+  declare agentSuggestionStatus: AgentSuggestionStatus | null;
+  declare agentSuggestionReviewedAt: Date | null;
+  declare agentSuggestionReviewedByUserId: ForeignKey<UserModel["id"]> | null;
 
   declare space: NonAttribute<SpaceModel>;
   declare user: NonAttribute<UserModel | null>;
@@ -285,6 +303,15 @@ ProjectTodoModel.belongsTo(UserModel, {
   foreignKey: { name: "markedAsDoneByUserId", allowNull: true },
   onDelete: "RESTRICT",
   as: "markedAsDoneByUser",
+});
+
+ProjectTodoModel.belongsTo(UserModel, {
+  foreignKey: {
+    name: "agentSuggestionReviewedByUserId",
+    allowNull: true,
+  },
+  onDelete: "RESTRICT",
+  as: "agentSuggestionReviewedByUser",
 });
 
 // ── Join table: ProjectTodo → Conversation (output direction only) ──────────

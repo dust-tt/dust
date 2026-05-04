@@ -18,6 +18,7 @@ import {
   useSpaceConversationsSummary,
 } from "@app/hooks/conversations";
 import { useTodoDiffAnimations } from "@app/hooks/useTodoDiffAnimations";
+import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
 import { compareProjectTodoAssigneeGroups } from "@app/lib/project_todo/display_order";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
@@ -300,6 +301,42 @@ export function EditableProjectTodosPanel({
       }
     },
     [handleSetStatus]
+  );
+
+  const onApproveAgentSuggestion = useCallback(
+    async (todo: ProjectTodoType) => {
+      await clientFetch(
+        `/api/w/${owner.sId}/spaces/${spaceId}/project_todos/bulk-actions`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "approve_agent_suggestion",
+            todoIds: [todo.sId],
+          }),
+        }
+      );
+      await mutateTodos();
+    },
+    [owner.sId, spaceId, mutateTodos]
+  );
+
+  const onRejectAgentSuggestion = useCallback(
+    async (todo: ProjectTodoType) => {
+      await clientFetch(
+        `/api/w/${owner.sId}/spaces/${spaceId}/project_todos/bulk-actions`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "reject_agent_suggestion",
+            todoIds: [todo.sId],
+          }),
+        }
+      );
+      await mutateTodos();
+    },
+    [owner.sId, spaceId, mutateTodos]
   );
 
   const patchTodoItem = useCallback(
@@ -709,6 +746,8 @@ export function EditableProjectTodosPanel({
                       viewerUserId={viewerUserId}
                       onToggleDone={handleToggleDone}
                       onDelete={requestDelete}
+                      onApproveAgentSuggestion={onApproveAgentSuggestion}
+                      onRejectAgentSuggestion={onRejectAgentSuggestion}
                       onStartWorking={handleStartWorking}
                       owner={owner}
                       activeAgents={activeAgents}

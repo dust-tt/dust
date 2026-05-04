@@ -438,6 +438,7 @@ async function createOrLinkTodos(
           createdByType: "agent",
           createdByUserId: null,
           createdByAgentConfigurationId: BUTLER_AGENT_SID,
+          agentSuggestionStatus: "pending",
           text: primary.blob.text,
           status: primary.blob.status,
           doneAt: primary.blob.doneAt,
@@ -519,11 +520,8 @@ export async function updateTodoIfChanged(
   }
 
   const statusChanged = todo.status !== blob.status;
-  const doneAtChanged =
-    todo.doneAt?.toISOString() !== blob.doneAt?.toISOString();
-  const actorRationaleAtChanged = todo.actorRationale !== blob.reasoningDoneAt;
 
-  if (statusChanged || doneAtChanged || actorRationaleAtChanged) {
+  if (statusChanged) {
     await todo.updateWithVersion(auth, {
       text: todo.text,
       status: blob.status,

@@ -26,6 +26,14 @@ export const BulkActionsBodySchema = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("clean_done"),
   }),
+  z.object({
+    action: z.literal("approve_agent_suggestion"),
+    todoIds: z.array(z.string().min(1)).min(1).max(200),
+  }),
+  z.object({
+    action: z.literal("reject_agent_suggestion"),
+    todoIds: z.array(z.string().min(1)).min(1).max(200),
+  }),
 ]);
 
 async function handler(
@@ -123,6 +131,38 @@ async function handler(
       return res
         .status(200)
         .json({ success: true, cleanedCount: result.value.cleanedCount });
+    }
+
+    case "approve_agent_suggestion": {
+      const user = auth.getNonNullableUser();
+      for (const sId of body.todoIds) {
+        const todo = await ProjectTodoResource.fetchBySId(auth, sId);
+        if (
+          !todo ||
+          todo.spaceId !== space.id ||
+          todo.agentSuggestionStatus !== "pending"
+        ) {
+          continue;
+        }
+        await todo.approveAgentSuggestion(auth, { reviewedByUserId: user.id });
+      }
+      return res.status(200).json({ success: true });
+    }
+
+    case "reject_agent_suggestion": {
+      const user = auth.getNonNullableUser();
+      for (const sId of body.todoIds) {
+        const todo = await ProjectTodoResource.fetchBySId(auth, sId);
+        if (
+          !todo ||
+          todo.spaceId !== space.id ||
+          todo.agentSuggestionStatus !== "pending"
+        ) {
+          continue;
+        }
+        await todo.rejectAgentSuggestion(auth, { reviewedByUserId: user.id });
+      }
+      return res.status(200).json({ success: true });
     }
 
     default:
