@@ -14,6 +14,7 @@ import {
   createAgentMessages,
   createCompactionMessage,
   createUserMessage,
+  hasAgentMessageAfterRank,
 } from "@app/lib/api/assistant/conversation/messages";
 import {
   canAgentBeUsedInProjectConversation,
@@ -1127,7 +1128,7 @@ export async function editUserMessage(
     mentions,
     skipToolsValidation,
   }: {
-    conversation: ConversationType;
+    conversation: ConversationWithoutContentType;
     message: UserMessageType;
     content: string;
     mentions: MentionType[];
@@ -1142,7 +1143,7 @@ export async function editUserMessage(
   const user = auth.user();
   const owner = auth.workspace();
 
-  if (!owner || owner.id !== conversation.owner.id) {
+  if (!owner) {
     return new Err({
       status_code: 400,
       api_error: {
@@ -1287,16 +1288,13 @@ export async function editUserMessage(
 
       if (hasAgentMentions) {
         // Check if there are any agent messages after the edited user message
-        // by checking conversation.content (which is indexed by rank)
-        const hasAgentMessagesAfter = conversation.content
-          .slice(messageRow.rank + 1)
-          .some((versions) => {
-            if (versions.length === 0) {
-              return false;
-            }
-            const latestVersion = versions[versions.length - 1];
-            return isAgentMessageType(latestVersion);
-          });
+        // by querying the DB within the same transaction.
+        const hasAgentMessagesAfter = await hasAgentMessageAfterRank(auth, {
+          conversation,
+          rank: messageRow.rank,
+          branchId: messageRow.branchId ?? null,
+          transaction: t,
+        });
 
         const agentMessages: AgentMessageType[] = [];
 
@@ -1391,11 +1389,13 @@ export async function editUserMessage(
   // TODO(DURABLE-AGENTS 2025-07-17): Publish message events to all open tabs to maintain
   // conversation state synchronization in multiplex mode. This is a temporary solution -
   // we should move this to a dedicated real-time sync mechanism.
+  // Content fragments are omitted: edits only change the text, and the client preserves
+  // existing content fragments when handling edit events.
   await publishMessageEventsOnMessagePostOrEdit(
     conversation,
     {
       ...userMessage,
-      contentFragments: getRelatedContentFragments(conversation, userMessage),
+      contentFragments: [],
     },
     agentMessages
   );

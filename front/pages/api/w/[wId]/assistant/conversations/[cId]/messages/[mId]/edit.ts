@@ -57,8 +57,7 @@
  *         description: Unauthorized
  */
 import { editUserMessage } from "@app/lib/api/assistant/conversation";
-import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
-import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
+import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -140,19 +139,24 @@ async function handler(
   }
 
   const branchId = messageRes.value.getBranchId() ?? null;
+  const conversation = { ...conversationResource.toJSON(), branchId };
 
-  const conversationRes = await getConversation(
+  const renderedMessagesRes = await batchRenderMessages(
     auth,
-    conversationId,
-    false,
-    branchId
+    conversationResource,
+    [messageRes.value],
+    "full"
   );
 
-  if (conversationRes.isErr()) {
-    return apiErrorForConversation(req, res, conversationRes.error);
+  if (renderedMessagesRes.isErr()) {
+    return apiError(req, res, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: "Failed to render message.",
+      },
+    });
   }
-
-  const conversation = conversationRes.value;
 
   switch (req.method) {
     case "POST":
@@ -170,9 +174,9 @@ async function handler(
         });
       }
 
-      const message = conversation.content
-        .flat()
-        .find((m) => m.sId === messageId);
+      const message = renderedMessagesRes.value.find(
+        (m) => m.sId === messageId
+      );
       if (!message || !isUserMessageType(message)) {
         return apiError(req, res, {
           status_code: 400,
