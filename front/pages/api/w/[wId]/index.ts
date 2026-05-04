@@ -5,7 +5,7 @@ import {
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { updateWorkOSOrganizationName } from "@app/lib/api/workos/organization";
+import { renameWorkspace } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -179,21 +179,18 @@ async function handler(
       }
 
       if ("name" in body) {
-        await workspace.updateWorkspaceSettings({
-          name: escape(body.name),
-        });
-        owner.name = body.name;
-
-        const updateRes = await updateWorkOSOrganizationName(owner);
-        if (updateRes.isErr()) {
+        const newName = escape(body.name);
+        const renameRes = await renameWorkspace(owner, newName);
+        if (renameRes.isErr()) {
           return apiError(req, res, {
             status_code: 500,
             api_error: {
               type: "internal_server_error",
-              message: `Failed to update WorkOS organization name: ${updateRes.error.message}`,
+              message: renameRes.error.message,
             },
           });
         }
+        owner.name = newName;
       } else if ("ssoEnforced" in body) {
         await workspace.updateWorkspaceSettings({
           ssoEnforced: body.ssoEnforced,
