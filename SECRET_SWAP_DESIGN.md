@@ -78,8 +78,8 @@ state lives there.
 
 | Property | dsbx (chosen) | Central egress proxy |
 | --- | --- | --- |
-| Real secret lives in | sandbox VM, dsbx (root, 0600) | proxy pod only |
-| CA private key blast radius | per-sandbox, ephemeral, memory-only | one CA signs leaves for every domain in every workspace |
+| Real secret lives in | sandbox VM tmpfs, root-only (0600) | proxy pod only |
+| CA private key blast radius | per-sandbox-VM on tmpfs (root 0600, RAM-backed) | one CA signs leaves for every domain in every workspace |
 | TLS terminations on the path | one extra (dsbx) | one extra (proxy) |
 | Code change weight | one binary (~1000-1500 LOC including tests) | proxy + secret store + CA mgmt + per-conn key fetches on a regional hot path |
 | Agent reach to real secret | requires sandbox root escape | impossible from sandbox |
@@ -217,8 +217,9 @@ with an `includeBody` flag on each secret row.
 The MITM CA is **per-sandbox-VM**, not per-dsbx-process. dsbx generates
 the CA cert + private key on first start of a sandbox VM and persists
 both to **tmpfs** at `/run/dust/egress-ca.pem` (cert, root 0644 so the
-agent UID can install it into the system store) and
-`/run/dust/egress-ca.key` (key, root 0600). On any subsequent dsbx
+boot script can install it into the system trust store; the agent UID
+can read it but doesn't need to) and `/run/dust/egress-ca.key` (key,
+root 0600, never readable by the agent UID). On any subsequent dsbx
 restart within the same sandbox VM, dsbx reads the existing CA from
 tmpfs and reuses it.
 
@@ -256,18 +257,26 @@ trust env vars have different semantics, some replace the trust bundle
 entirely, others append. Misconfiguring this silently breaks non-MITM TLS
 to public sites.
 
-In practice, **the coverage is very broad on Linux**. Once the dsbx CA
-is installed into the system trust store via `update-ca-certificates`
-and the env-var matrix below is applied, every standard CLI tool and
-language runtime that follows convention picks up the CA without code
-changes. That includes curl, wget, openssl, git over HTTPS, scp/rsync,
-apt, pip, npm, yarn, cargo, go modules, maven, gradle, composer,
-bundler, gcloud, aws CLI, kubectl, docker, helm, httpie, ldap clients,
-and anything else built on libcurl, libssl, libgnutls, libnss, or each
-language's stdlib TLS. The exceptions in the matrix below
-(`NODE_EXTRA_CA_CERTS`, JVM keystore, Rust `rustls-webpki`,
-cert-pinning code) are the explicit known holes; everything else is
-covered by the system store + env matrix.
+In practice, **HTTPS coverage on Linux is broad** for any tool the
+agent UID runs that uses standard TLS libraries. Once the dsbx CA is
+installed into the system trust store via `update-ca-certificates` and
+the env-var matrix below is applied, the verified-as-of-design list
+below picks up the CA without code changes. The smoke matrix
+(§ "Verification") is the source of truth; the prose below is the
+hypothesis we plan to verify per release.
+
+Verified by the smoke matrix: curl, wget, openssl s_client, Python
+(`urllib`, `requests`, `httpx`), Node (`fetch`, `https`), Bun, Deno,
+Go (`net/http`), Java (post-keytool), Ruby (`Net::HTTP`), PHP
+(`file_get_contents`), git over HTTPS, AWS CLI. The matrix exceptions
+(Rust `rustls-webpki`, JVM without keytool import, cert-pinning code,
+mTLS clients) are the explicit known holes.
+
+Tools we expect to work but don't currently exercise in the smoke
+matrix (treat as hypothesis until verified): apt/pip/npm/cargo/yarn
+package fetches, gcloud, kubectl, helm, httpie. SSH-based tools (scp,
+rsync over ssh) are unaffected by the MITM either way - they don't
+use TLS.
 
 | Stack | System store | Env knob | Knob semantics |
 | --- | --- | --- | --- |
@@ -347,6 +356,15 @@ maintains two files and points each env var at the right one:
 - **Cert-pinning clients**: by design, they reject the dsbx leaf. We
   don't try to MITM a pinning client. Empirically rare in agent-written
   code.
+- **mTLS / client-cert auth on MITM-scoped domains**: dsbx terminates
+  the agent's TLS and opens a fresh outbound TLS to the upstream
+  without forwarding any client certificate. Any flow that authenticates
+  via mTLS to a domain in the secret-allowlist union will fail at the
+  upstream's client-auth handshake. mTLS to non-MITM domains
+  (TCP-spliced, dsbx never terminates) is unaffected. If mTLS to a
+  secret domain is ever needed, dsbx would have to extract the agent's
+  client cert and re-present it on the outbound side - significant
+  complexity, deferred indefinitely.
 - **Long-lived processes started before env export**: don't pick up the
   trust. Boot order is enforced.
 - **Non-HTTP protocols over TLS** (Postgres, MySQL, Redis, SMTP STARTTLS,
@@ -473,8 +491,9 @@ Implementation footprint:
 - `cli/dust-sandbox`: ~200-400 LOC plus tests. Ephemeral CA via `rcgen`,
   per-SNI leaf signing with an LRU cache, single-rule substring replacer
   on HTTP/1.1 request headers, scoped to the experiment hostname.
-- `front`: ~50-100 LOC. One endpoint file, one swagger annotation, one
-  functional test.
+- `front`: ~50-100 LOC. One endpoint file (marked `@ignoreswagger`
+  because it's intentionally undocumented and disappears with Phase
+  0), one functional test.
 - Sandbox image: ~20 lines in the boot sequence to install the CA and
   point `SSL_CERT_FILE`/`CURL_CA_BUNDLE` at the merged bundle.
 - Central egress proxy: no change.
@@ -533,13 +552,33 @@ time.
   (exact match or leading-`*.` wildcard). Other 443 traffic stays on
   the existing TCP-splice path. The allowlist union is computed by
   `front` at sandbox boot and shipped in
-  `/run/dust/egress-secrets.json`; dsbx loads it once on start.
+  `/run/dust/egress-secrets.json`.
+- **Full HTTP/1.1 message loop in the rewriter**, not the Phase 0
+  "first-headers + raw-copy" shape. Every request on a keep-alive
+  connection is parsed individually, Host/`:authority:` validated
+  per-request, substituted, and re-emitted. Pipelined requests are
+  handled. The rewriter fails closed (drops the connection) on
+  malformed, oversized, or truncated headers, response-side framing
+  errors, or any header-section anomaly. This is the right Phase 1
+  cost; carrying Phase 0's prefix-only rewriter would be unsafe on
+  keep-alive connections.
 - **Substitution gate**: SNI + HTTP `Host:` (h1) + h2 `:authority:`
   must all agree on a domain in the matching secret's `allowedDomains`.
   On a recognized placeholder with disagreement (or destination not in
   the secret's allowlist), dsbx drops the connection on the MITM-scoped
   surface and emits a structured deny-log event including the secret
   name, SNI, and disagreeing Host/authority.
+- **Secret value validation, two layers**:
+  - Admin UI: reject values containing CR (`\r`), LF (`\n`), NUL
+    (`\0`), or other ASCII control characters at create/update time.
+    Max length 8KB to stay well below typical header-line limits.
+    Closes the CRLF-injection primitive at the source (admin can't
+    set a value that, once substituted, smuggles a header).
+  - dsbx: defense in depth. At substitution time, if the cleartext
+    value contains any of the same forbidden bytes, refuse to
+    substitute and drop the connection with a deny-log event. This
+    catches anything that bypasses admin UI (direct DB writes, future
+    code paths).
 - **CA persisted on tmpfs**: dsbx writes the per-sandbox-VM CA to
   `/run/dust/egress-ca.{pem,key}` on first start; reuses on restart.
   Key is root-owned 0600. Cert is root-owned 0644 so the boot script
@@ -547,30 +586,61 @@ time.
 - `WorkspaceSandboxEnvVar` split into config vars and secrets (see
   above). Secrets gain `allowedDomains: string[]` and `placeholderNonce`.
 - `front` writes `/run/dust/egress-secrets.json` (tmpfs, root-owned
-  0600) per sandbox at boot, alongside the JWT. The file is plaintext
-  with the schema documented above (`name`, `placeholder`, `value`,
-  `allowedDomains`).
-- `buildSandboxEnvVars` injects placeholders for secrets, real values
-  for config vars.
+  0600) at sandbox provisioning. The file is plaintext with the
+  schema documented above (`name`, `placeholder`, `value`,
+  `allowedDomains`). dsbx reads the file on every startup (initial
+  and any subsequent restart by `tools/index.ts` health-recovery)
+  from the same path.
+- **Live update via file-watch.** When admin updates / rotates /
+  deletes a secret, `front` rewrites `/run/dust/egress-secrets.json`
+  on every active sandbox of the workspace. dsbx inotify-watches the
+  file and reloads its in-memory secret map on change. Rotated
+  values, allowedDomains updates, and deletions propagate to running
+  sandboxes within seconds. Closes the "secret remains usable for up
+  to 30 days" window that the snapshot-only model would have left
+  open. Notes:
+  - Deleting a secret removes the entry from the file; subsequent
+    requests bearing that placeholder fail substitution and drop.
+    The agent's env still contains the placeholder string (env is
+    set at process exec, not synced live), but it no longer
+    substitutes - the agent sees auth-style failures.
+  - The file-watch + rewrite pattern mirrors the egress proxy's
+    GCS-backed policy reload at a different layer.
+- **Per-secret allowedDomains and the central egress allowlist are
+  configured independently** (no save-time subset validation,
+  no auto-add). Reason: the central egress allowlist is the union of
+  default policy + workspace policy + sandbox-level dynamic policy
+  (the agent can request additional sandbox-level entries via
+  `add_egress_domain`). That union isn't fully knowable at the
+  admin's secret-edit time. Instead, errors surface loudly at
+  runtime - if a secret's allowedDomains include a domain the
+  central proxy denies, the request drops at the proxy with a clear
+  log entry. Admin debugs by adding the domain to the relevant
+  policy layer.
 - Trust coverage: Node, Python (Requests + HTTPX, separately), Bun,
   Deno, Go, Java (keytool at boot), Rust (native-tls), AWS SDKs, Git.
   Replace-style vs append-style env vars set per the matrix above.
-  Rust webpki and cert-pinning clients documented as known holes that
-  fail loudly.
+  Rust webpki, cert-pinning, and mTLS clients documented as known
+  holes that fail loudly.
+- **Secret env-var naming**: secrets are exposed in the agent env
+  under a dedicated prefix (e.g. `DSEC_*`; final prefix TBD), not
+  under SDK-natural names. Agents that use SDKs which auto-discover
+  env vars by exact name (e.g. OpenAI, Stripe) write a one-line
+  mapping at the top of their script (`import os; os.environ["OPENAI_API_KEY"]
+  = os.environ["DSEC_OPENAI_API_KEY"]`). The skill prompt
+  documents this convention up front. The lexical signal in env
+  preserves the agent's ability to enumerate which env vars are
+  secrets at a glance, at the cost of one mapping line per SDK.
 - Bash redactor (#25051) keeps applying to config vars (defense in
   depth for plaintext-in-env). Skill prompt updated to tell the agent
-  secrets will substitute on the wire and not to second-guess env.
+  secrets will substitute on the wire, distinguish them from config,
+  and walk through the foot-guns.
 - Admin UI: secrets get an `allowedDomains` column; the create flow
   asks for the class up front.
-- Audit log: per-secret allowlist changes, class promotions, rotations.
-- **Live update is out of scope for Phase 1.** Secret edits
-  (`allowedDomains`, value rotation, deletion, class promotion) apply
-  only to *new* sandboxes. Running sandboxes keep the snapshot they
-  booted with. Document this in the admin UI. Phase 2 may add
-  kill-and-recreate of running sandboxes on secret change; for now an
-  admin who needs the change to take effect immediately recreates the
-  sandbox.
-- Estimate: ~2 engineer-weeks.
+- Audit log: per-secret allowlist changes, class promotions, rotations,
+  deletions.
+- Estimate: ~2 engineer-weeks plus ~0.5 week for file-watch + active-
+  sandbox propagation.
 
 ### Phase 2, MVP - HTTP/2
 
@@ -659,9 +729,12 @@ and validate it on h1 before adding frame-level complexity.
   store); key is root-owned 0600. tmpfs is RAM-backed, never hits
   durable storage. Combined with the no-escalation invariant, the agent
   UID has no path to the key.
-- **Live update / rotation**: out of scope for Phase 1. Secret edits
-  apply to new sandboxes only; running sandboxes keep their boot-time
-  snapshot. Phase 2 may add kill-and-recreate on change.
+- **Live update / rotation**: in scope for Phase 1 via file-watch.
+  `front` rewrites `/run/dust/egress-secrets.json` on every active
+  sandbox of the workspace when admin updates / rotates / deletes a
+  secret; dsbx inotify-watches and reloads. Closes the up-to-30-day
+  stale-secret window the snapshot-only model would have left open.
+  ~+0.5 engineer-week on top of Phase 1.
 - **Migration of existing rows**: existing `WorkspaceSandboxEnvVar` rows
   default to config vars on rollout. Promotion to secrets is fully
   manual (no auto-flagging), since the only workspace where this rolls
@@ -672,6 +745,31 @@ and validate it on h1 before adding frame-level complexity.
   secrets (different prefix, TBD). Hard "DO NOT" list at the top of
   the prompt for the known foot-guns; per-secret inline notes
   deferred. See "Skill prompt" below for details.
+- **Secret env-var naming**: secrets are exposed under the dedicated
+  prefix only (e.g. `DSEC_*`), not under SDK-natural names. Agents map
+  to SDK-expected names with a one-line aliasing snippet at the top of
+  their script. Trade: the lexical signal in env (the agent can
+  enumerate secrets via prefix) wins over the no-code-changes goal,
+  which was overstated for SDKs that auto-discover by exact name.
+- **`allowedDomains` vs central egress allowlist**: configured
+  independently. No save-time subset validation, no auto-add. Reason:
+  the central allowlist is the union of default + workspace +
+  sandbox-level dynamic policy (the agent can request
+  per-sandbox additions via `add_egress_domain`), so the relevant
+  union isn't fully known at admin secret-edit time. Errors surface
+  at runtime via the proxy deny path with clear log entries.
+- **Secret value validation**: admin UI rejects CR / LF / NUL / other
+  ASCII control chars and enforces a max length (~8KB). dsbx
+  fail-closed at substitution time as defense in depth. Closes the
+  CRLF-injection primitive at both ends.
+- **HTTP/1.1 rewriter**: full message loop, not Phase 0's first-headers-
+  prefix-only shape. Per-request parsing, per-request Host validation,
+  pipelining handled, fail-closed on malformed/oversized/truncated
+  headers.
+- **mTLS on MITM-scoped domains**: explicitly unsupported. dsbx opens
+  fresh outbound TLS without a client cert; client-auth flows to a
+  domain in the allowlist union fail at the upstream's handshake.
+  mTLS to non-MITM domains (TCP-spliced) is unaffected.
 
 ### Skill prompt
 
@@ -689,10 +787,24 @@ modes to users instead of flailing.
 - **Two env-var prefixes** distinguish the classes lexically (no per-row
   prompt bloat):
   - Config vars: `DST_*` (today's prefix, plaintext, offline use ok).
-  - Secrets: a different prefix, TBD. Substituted on the wire only,
-    HTTPS only, scoped to `allowedDomains`.
+  - Secrets: a different prefix, TBD (e.g. `DSEC_*`). Substituted on
+    the wire only, HTTPS only, scoped to `allowedDomains`.
   A future `dsbx list-secrets` command may surface available secret
   names dynamically; for now the agent discovers them via env.
+- **SDK aliasing**. SDKs that auto-discover env vars by exact name
+  (OpenAI looks for `OPENAI_API_KEY`, Stripe for `STRIPE_SECRET_KEY`,
+  etc.) will not find a `DSEC_*`-prefixed secret. The skill prompt
+  instructs the agent to add a one-line alias at the top of its
+  script when using such an SDK:
+  ```python
+  import os
+  os.environ["OPENAI_API_KEY"] = os.environ["DSEC_OPENAI_API_KEY"]
+  # then use the SDK normally
+  ```
+  This is the deliberate trade for keeping the lexical signal in env.
+  The aliasing line only assigns the placeholder to a second name in
+  the agent's process - the substitution still happens on the wire
+  in dsbx.
 - **Hard "DO NOT" list at the top** of the skill prompt for the known
   foot-guns:
   - Do not pass `verify=`, `ca:`, custom `RootCAs`, `tls.Config`, or a

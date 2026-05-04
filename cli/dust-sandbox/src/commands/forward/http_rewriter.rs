@@ -7,8 +7,9 @@
 /// without recomputation). The replacement is unconditional and not gated
 /// on header name; the only guard is that the byte sequence appears.
 ///
-/// The whole module goes away in Phase 1, replaced by an HMAC-derived
-/// placeholder format (`__DST_SECRET_<32hex>__`) and a per-secret
+/// The whole module goes away in Phase 1, replaced by a random-nonce
+/// placeholder format (`__DST_SECRET_<32hex>__` where the hex is a
+/// per-secret 16-byte nonce stored on the row) and a per-secret
 /// `allowedDomains` policy gate. See SECRET_SWAP_DESIGN.md, sections
 /// "Placeholder format" and "Substitution logic" under "Proposal".
 pub const PHASE0_PLACEHOLDER: &[u8] = b"__DUST_EXPERIMENT_PLACEHOLDER__";
