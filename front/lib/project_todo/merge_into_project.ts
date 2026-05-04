@@ -7,7 +7,7 @@
 //
 //   Phase 1 — Collect new candidates.
 //     For every (takeaway, item, targetUser) triple:
-//       - fetchBySourceId(itemId, userId):
+//       - fetchByItemId(itemId):
 //           found     → update status/doneAt if changed (no new row, text
 //                       always preserved from the first version)
 //           not found → push to newCandidates[]
@@ -252,9 +252,8 @@ async function collectDocumentCandidates(
     blob: actionItemBlob(item),
   }));
 
-  // Batch-fetch existing todos by itemId. The result map is keyed by
-  // `${itemId}:${userId}`, matching the lookup below so a hit means
-  // "this (item, user) pair is already linked to a todo — skip dedup".
+  // Batch-fetch existing todos by itemId. A hit means "this item is already
+  // linked to a todo — skip dedup".
   const allActionItemIds = actionItems.map((t) => t.itemId);
   const existingByKey = await ProjectTodoResource.fetchByItemIds(auth, {
     itemIds: allActionItemIds,
@@ -264,7 +263,7 @@ async function collectDocumentCandidates(
   let existingUpdated = 0;
   for (const { itemId, targetUserIds, blob: actionItemBlob } of actionItems) {
     for (const userId of targetUserIds) {
-      const existing = existingByKey.get(itemId)?.get(userId) ?? null;
+      const existing = existingByKey.get(itemId) ?? null;
       if (existing !== null) {
         // Source link exists — update content if it has changed.
         const updated = await updateTodoIfChanged(
