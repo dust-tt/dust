@@ -11,6 +11,7 @@ import { z } from "zod";
 export const ValidateActionSchema = z.object({
   actionId: z.string(),
   approved: z.enum(["approved", "rejected", "always_approved"]),
+  resumeAncestorConversations: z.boolean().optional(),
 });
 
 export type ValidateActionResponse = {
@@ -70,12 +71,13 @@ async function handler(
     });
   }
 
-  const { actionId, approved } = parseResult.data;
+  const { actionId, approved, resumeAncestorConversations } = parseResult.data;
 
   const result = await validateAction(auth, conversation, {
     actionId,
     approvalState: approved,
     messageId: mId,
+    resumeAncestorConversations,
   });
 
   if (result.isErr()) {

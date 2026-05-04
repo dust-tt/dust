@@ -2560,6 +2560,97 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   }
 
   /**
+   * Resolve the parent conversation and parent agent message that spawned the
+   * given agent message in this conversation via run_agent / agent_handover.
+   *
+   * Walks the agent message → its parent user message (in the same conversation)
+   * → that user message's `agenticOriginMessageId` (the parent agent message,
+   * possibly in another conversation).
+   *
+   * Returns null when the agent message has no agentic origin (root
+   * conversation), when the parent message can no longer be found, or when the
+   * caller does not have access to the parent conversation.
+   */
+  async findAgenticParent(
+    auth: Authenticator,
+    { agentMessageId }: { agentMessageId: string }
+  ): Promise<{
+    conversation: ConversationResource;
+    agentMessageId: string;
+  } | null> {
+    const owner = auth.getNonNullableWorkspace();
+
+    const agentMessage = await MessageModel.findOne({
+      where: {
+        workspaceId: owner.id,
+        conversationId: this.id,
+        sId: agentMessageId,
+      },
+      attributes: ["parentId"],
+    });
+
+    if (!agentMessage?.parentId) {
+      return null;
+    }
+
+    const parentMessage = await MessageModel.findOne({
+      where: {
+        workspaceId: owner.id,
+        id: agentMessage.parentId,
+      },
+      attributes: [],
+      include: [
+        {
+          model: UserMessageModel,
+          as: "userMessage",
+          required: true,
+          attributes: ["agenticOriginMessageId"],
+        },
+      ],
+    });
+
+    const agenticOriginMessageId =
+      parentMessage?.userMessage?.agenticOriginMessageId;
+    if (!agenticOriginMessageId) {
+      return null;
+    }
+
+    const ancestorMessage = await MessageModel.findOne({
+      where: {
+        workspaceId: owner.id,
+        sId: agenticOriginMessageId,
+      },
+      attributes: [],
+      include: [
+        {
+          model: ConversationModel,
+          as: "conversation",
+          required: true,
+          attributes: ["sId"],
+        },
+      ],
+    });
+
+    if (!ancestorMessage?.conversation) {
+      return null;
+    }
+
+    const parentConversation = await ConversationResource.fetchById(
+      auth,
+      ancestorMessage.conversation.sId
+    );
+
+    if (!parentConversation) {
+      return null;
+    }
+
+    return {
+      conversation: parentConversation,
+      agentMessageId: agenticOriginMessageId,
+    };
+  }
+
+  /**
    * Get the latest agent message id by rank for a given conversation.
    * @returns The latest agent message id, version and rank.
    */
