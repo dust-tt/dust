@@ -4,6 +4,8 @@ import {
   extractTableOfContents,
 } from "@app/lib/contentful/tableOfContents";
 import type {
+  AcademySettings,
+  AcademySettingsSkeleton,
   AuthorSkeleton,
   BlogAuthor,
   BlogImage,
@@ -23,7 +25,17 @@ import type {
   CustomerStorySummary,
   Lesson,
   LessonSkeleton,
+  QuizSettings,
+  QuizSettingsSkeleton,
   SearchableItem,
+} from "@app/lib/contentful/types";
+import {
+  ACADEMY_LOCALE_COOKIE,
+  type AcademyLocale,
+  DEFAULT_ACADEMY_LOCALE,
+  DEFAULT_ACADEMY_SETTINGS,
+  DEFAULT_QUIZ_SETTINGS,
+  isAcademyLocale,
 } from "@app/lib/contentful/types";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
@@ -93,6 +105,130 @@ export function buildPreviewQueryString(isPreview: boolean): string {
   return isPreview
     ? `?preview=true&secret=${config.getContentfulPreviewSecret()}`
     : "";
+}
+
+export function getAcademyLocaleFromCookies(
+  cookies: Partial<Record<string, string>>
+): AcademyLocale {
+  const value = cookies[ACADEMY_LOCALE_COOKIE];
+  return value && isAcademyLocale(value) ? value : DEFAULT_ACADEMY_LOCALE;
+}
+
+const ACADEMY_LOCALE_MAX_AGE_SECONDS = 365 * 24 * 60 * 60;
+
+export function setAcademyLocaleCookie(locale: AcademyLocale): void {
+  const secure = window.location.protocol === "https:" ? ";Secure" : "";
+  document.cookie =
+    `${ACADEMY_LOCALE_COOKIE}=${locale}` +
+    `;path=/;max-age=${ACADEMY_LOCALE_MAX_AGE_SECONDS}` +
+    `;SameSite=Lax${secure}`;
+}
+
+export async function getAcademySettings(
+  resolvedUrl: string = "",
+  locale?: AcademyLocale
+): Promise<AcademySettings> {
+  try {
+    const contentfulClient = getContentfulClient(resolvedUrl);
+    const response = await contentfulClient.getEntries<AcademySettingsSkeleton>(
+      {
+        content_type: "academySettings",
+        limit: 1,
+        ...(locale ? { locale } : {}),
+      }
+    );
+    const entry = response.items[0];
+    if (!entry) {
+      return DEFAULT_ACADEMY_SETTINGS;
+    }
+    const f = entry.fields;
+    const d = DEFAULT_ACADEMY_SETTINGS;
+    return {
+      academyTitle: f.academyTitle ?? d.academyTitle,
+      academySubtitle: f.academySubtitle ?? d.academySubtitle,
+      searchPlaceholder: f.searchPlaceholder ?? d.searchPlaceholder,
+      continueLearning: f.continueLearning ?? d.continueLearning,
+      backToAcademy: f.backToAcademy ?? d.backToAcademy,
+      continueButton: f.continueButton ?? d.continueButton,
+      startLearning: f.startLearning ?? d.startLearning,
+      featuredCourse: f.featuredCourse ?? d.featuredCourse,
+      chapterRead: f.chapterRead ?? d.chapterRead,
+      quizPassed: f.quizPassed ?? d.quizPassed,
+      courseObjectives: f.courseObjectives ?? d.courseObjectives,
+      prerequisites: f.prerequisites ?? d.prerequisites,
+      chapters: f.chapters ?? d.chapters,
+      copyAsMarkdown: f.copyAsMarkdown ?? d.copyAsMarkdown,
+      copied: f.copied ?? d.copied,
+      previousCourse: f.previousCourse ?? d.previousCourse,
+      nextCourse: f.nextCourse ?? d.nextCourse,
+      previousChapter: f.previousChapter ?? d.previousChapter,
+      nextChapter: f.nextChapter ?? d.nextChapter,
+      lessonObjectives: f.lessonObjectives ?? d.lessonObjectives,
+      previousContent: f.previousContent ?? d.previousContent,
+      nextContent: f.nextContent ?? d.nextContent,
+      course: f.course ?? d.course,
+      lesson: f.lesson ?? d.lesson,
+      noCourses: f.noCourses ?? d.noCourses,
+      mobileMenuTitle: f.mobileMenuTitle ?? d.mobileMenuTitle,
+      completed: f.completed ?? d.completed,
+      backTo: f.backTo ?? d.backTo,
+    };
+  } catch (err) {
+    logger.error(
+      { err: normalizeError(err) },
+      "Error fetching academy settings"
+    );
+    return DEFAULT_ACADEMY_SETTINGS;
+  }
+}
+
+export async function getQuizSettings(
+  resolvedUrl: string = "",
+  locale?: AcademyLocale
+): Promise<QuizSettings> {
+  try {
+    const contentfulClient = getContentfulClient(resolvedUrl);
+    const response = await contentfulClient.getEntries<QuizSettingsSkeleton>({
+      content_type: "quizSettings",
+      limit: 1,
+      ...(locale ? { locale } : {}),
+    });
+    const entry = response.items[0];
+    if (!entry) {
+      return DEFAULT_QUIZ_SETTINGS;
+    }
+    const f = entry.fields;
+    const d = DEFAULT_QUIZ_SETTINGS;
+    return {
+      quizTitle: f.quizTitle ?? d.quizTitle,
+      quizSubtitle: f.quizSubtitle ?? d.quizSubtitle,
+      quizGreetingUser: f.quizGreetingUser ?? d.quizGreetingUser,
+      quizGreetingGeneric: f.quizGreetingGeneric ?? d.quizGreetingGeneric,
+      quizCompleted: f.quizCompleted ?? d.quizCompleted,
+      quizBestScore: f.quizBestScore ?? d.quizBestScore,
+      quizAttempts: f.quizAttempts ?? d.quizAttempts,
+      quizStartButton: f.quizStartButton ?? d.quizStartButton,
+      quizRetakeButton: f.quizRetakeButton ?? d.quizRetakeButton,
+      quizStarting: f.quizStarting ?? d.quizStarting,
+      quizReset: f.quizReset ?? d.quizReset,
+      quizThinking: f.quizThinking ?? d.quizThinking,
+      quizAnswerPlaceholder: f.quizAnswerPlaceholder ?? d.quizAnswerPlaceholder,
+      quizSubmit: f.quizSubmit ?? d.quizSubmit,
+      quizGreatScoreAgain: f.quizGreatScoreAgain ?? d.quizGreatScoreAgain,
+      quizChapterCompleted: f.quizChapterCompleted ?? d.quizChapterCompleted,
+      quizPerfectScore: f.quizPerfectScore ?? d.quizPerfectScore,
+      quizPassedMessage: f.quizPassedMessage ?? d.quizPassedMessage,
+      quizComplete: f.quizComplete ?? d.quizComplete,
+      quizFailMessage: f.quizFailMessage ?? d.quizFailMessage,
+      quizTryAgain: f.quizTryAgain ?? d.quizTryAgain,
+      quizYou: f.quizYou ?? d.quizYou,
+      quizCorrect: f.quizCorrect ?? d.quizCorrect,
+      quizQuestion: f.quizQuestion ?? d.quizQuestion,
+    };
+  } catch (err) {
+    logger.error({ err: normalizeError(err) }, "Error fetching quiz settings");
+    return DEFAULT_QUIZ_SETTINGS;
+  }
 }
 
 export function isPreviewMode(resolvedUrl: string): boolean {
@@ -1071,7 +1207,8 @@ function contentfulEntryToCourse(entry: Entry<CourseSkeleton>): Course | null {
 }
 
 export async function getAllCourses(
-  resolvedUrl: string = ""
+  resolvedUrl: string = "",
+  locale?: AcademyLocale
 ): Promise<Result<CourseSummary[], Error>> {
   try {
     const contentfulClient = getContentfulClient(resolvedUrl);
@@ -1079,6 +1216,7 @@ export async function getAllCourses(
     const response = await contentfulClient.getEntries<CourseSkeleton>({
       content_type: "course",
       limit: 1000,
+      ...(locale ? { locale } : {}),
     });
 
     const courses = response.items
@@ -1113,7 +1251,8 @@ export async function getAllCourses(
 
 export async function getCourseBySlug(
   slug: string,
-  resolvedUrl: string
+  resolvedUrl: string,
+  locale?: AcademyLocale
 ): Promise<Result<Course | null, Error>> {
   try {
     const contentfulClient = getContentfulClient(resolvedUrl);
@@ -1123,6 +1262,7 @@ export async function getCourseBySlug(
       "fields.slug": slug,
       limit: 1,
       include: 1 as const, // Allow one level for embedded entries/assets in rich text, but prevent deep circular references
+      ...(locale ? { locale } : {}),
     };
 
     const response =
@@ -1220,7 +1360,8 @@ function contentfulEntryToChapter(
 
 export async function getChaptersByCourseSlug(
   courseSlug: string,
-  resolvedUrl: string = ""
+  resolvedUrl: string = "",
+  locale?: AcademyLocale
 ): Promise<Result<ChapterSummary[], Error>> {
   try {
     const contentfulClient = getContentfulClient(resolvedUrl);
@@ -1232,6 +1373,7 @@ export async function getChaptersByCourseSlug(
       "fields.slug": courseSlug,
       limit: 1,
       include: 1 as const,
+      ...(locale ? { locale } : {}),
     };
 
     const response =
@@ -1269,7 +1411,8 @@ export async function getChaptersByCourseSlug(
 
 export async function getChapterBySlug(
   slug: string,
-  resolvedUrl: string
+  resolvedUrl: string,
+  locale?: AcademyLocale
 ): Promise<Result<Chapter | null, Error>> {
   try {
     const contentfulClient = getContentfulClient(resolvedUrl);
@@ -1279,6 +1422,7 @@ export async function getChapterBySlug(
       "fields.slug": slug,
       limit: 1,
       include: 1 as const,
+      ...(locale ? { locale } : {}),
     };
 
     const response =
@@ -1297,10 +1441,13 @@ export async function getChapterBySlug(
 }
 
 export async function getSearchableItems(
-  resolvedUrl: string = ""
+  resolvedUrl: string = "",
+  locale?: AcademyLocale
 ): Promise<Result<SearchableItem[], Error>> {
   try {
     const contentfulClient = getContentfulClient(resolvedUrl);
+
+    const localeParam = locale ? { locale } : {};
 
     const [coursesResponse, lessonsResponse, chaptersResponse] =
       await Promise.all([
@@ -1308,16 +1455,19 @@ export async function getSearchableItems(
           content_type: "course",
           limit: 1000,
           include: 1 as const,
+          ...localeParam,
         }),
         contentfulClient.getEntries<LessonSkeleton>({
           content_type: "lesson",
           limit: 1000,
           include: 1 as const,
+          ...localeParam,
         }),
         contentfulClient.getEntries<ChapterSkeleton>({
           content_type: "chapter",
           limit: 1000,
           include: 1 as const,
+          ...localeParam,
         }),
       ]);
 
@@ -1609,7 +1759,8 @@ function contentfulEntryToLesson(entry: Entry<LessonSkeleton>): Lesson | null {
 
 export async function getLessonBySlug(
   slug: string,
-  resolvedUrl: string
+  resolvedUrl: string,
+  locale?: AcademyLocale
 ): Promise<Result<Lesson | null, Error>> {
   try {
     const contentfulClient = getContentfulClient(resolvedUrl);
@@ -1619,6 +1770,7 @@ export async function getLessonBySlug(
       "fields.slug": slug,
       limit: 1,
       include: 1 as const, // Allow one level for embedded entries/assets in rich text, but prevent deep circular references
+      ...(locale ? { locale } : {}),
     };
 
     const response =

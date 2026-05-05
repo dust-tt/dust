@@ -5,12 +5,18 @@ import {
   AcademySearch,
   ContinueLearningCard,
   CourseGrid,
+  LocaleToggle,
 } from "@app/components/academy/AcademyComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { Pagination } from "@app/components/shared/Pagination";
 import { getAcademyUser } from "@app/lib/api/academy";
-import { getAllCourses, getSearchableItems } from "@app/lib/contentful/client";
+import {
+  getAcademyLocaleFromCookies,
+  getAcademySettings,
+  getAllCourses,
+  getSearchableItems,
+} from "@app/lib/contentful/client";
 import type { CourseListingPageProps } from "@app/lib/contentful/types";
 import {
   useAcademyBackfill,
@@ -28,11 +34,14 @@ import { useMemo } from "react";
 export const getServerSideProps: GetServerSideProps<
   CourseListingPageProps
 > = async (context) => {
+  context.res.setHeader("Cache-Control", "no-store");
   const user = await getAcademyUser(context.req, context.res);
+  const locale = getAcademyLocaleFromCookies(context.req.cookies);
 
-  const [coursesResult, searchableResult] = await Promise.all([
-    getAllCourses(),
-    getSearchableItems(),
+  const [coursesResult, searchableResult, academySettings] = await Promise.all([
+    getAllCourses("", locale),
+    getSearchableItems("", locale),
+    getAcademySettings("", locale),
   ]);
 
   if (coursesResult.isErr()) {
@@ -46,6 +55,8 @@ export const getServerSideProps: GetServerSideProps<
         searchableItems: [],
         gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
         academyUser: user ? { firstName: user.firstName, sId: user.sId } : null,
+        locale,
+        academySettings,
       },
     };
   }
@@ -56,6 +67,8 @@ export const getServerSideProps: GetServerSideProps<
       searchableItems: searchableResult.isOk() ? searchableResult.value : [],
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
       academyUser: user ? { firstName: user.firstName, sId: user.sId } : null,
+      locale,
+      academySettings,
     },
   };
 };
@@ -65,6 +78,8 @@ export default function AcademyListing({
   courses,
   searchableItems,
   academyUser,
+  locale,
+  academySettings,
 }: CourseListingPageProps) {
   const router = useRouter();
   const browserId = useAcademyBrowserId();
@@ -119,10 +134,17 @@ export default function AcademyListing({
       <AcademyLayout>
         <div className="col-span-12 flex flex-col gap-4 pt-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex flex-col gap-3">
-            <AcademyHeader />
+            <AcademyHeader
+              title={academySettings.academyTitle}
+              subtitle={academySettings.academySubtitle}
+            />
           </div>
-          <div className="mb-4 w-full sm:mb-0 sm:w-72">
-            <AcademySearch searchableItems={searchableItems} />
+          <div className="mb-4 flex w-full items-center gap-2 sm:mb-0 sm:w-auto">
+            <LocaleToggle locale={locale} />
+            <AcademySearch
+              searchableItems={searchableItems}
+              placeholder={academySettings.searchPlaceholder}
+            />
           </div>
         </div>
 
@@ -130,13 +152,18 @@ export default function AcademyListing({
           <ContinueLearningCard
             courses={courses}
             courseProgress={courseProgress}
+            continueLearningLabel={academySettings.continueLearning}
+            continueButtonLabel={academySettings.continueButton}
+            chapterReadLabel={academySettings.chapterRead}
+            quizPassedLabel={academySettings.quizPassed}
           />
         )}
 
         <CourseGrid
           courses={paginatedCourses}
-          emptyMessage="No courses available yet. Check back soon!"
+          emptyMessage={academySettings.noCourses}
           courseProgress={courseProgress}
+          completedLabel={academySettings.completed}
         />
 
         {courses.length > ACADEMY_PAGE_SIZE && (
