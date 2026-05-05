@@ -1,18 +1,16 @@
-import type { ProjectTodosDataTable } from "@app/components/assistant/conversation/space/conversations/project_todos/ProjectTodosDataTable";
 import type { TodoOwnerFilter } from "@app/components/assistant/conversation/space/conversations/project_todos/projectTodosListScope";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   ProjectTodoAssigneeType,
   ProjectTodoType,
 } from "@app/types/project_todo";
 import type { LightWorkspaceType, SpaceUserType } from "@app/types/user";
-import type { ComponentProps, Dispatch, SetStateAction } from "react";
+import type { Dispatch, SetStateAction } from "react";
 
 export type GroupedTodosByAssignee = Array<{
   user: ProjectTodoAssigneeType | null;
   todos: ProjectTodoType[];
 }>;
-
-type ProjectTodosDataTableProps = ComponentProps<typeof ProjectTodosDataTable>;
 
 export type ProjectTodosPanelData = {
   isScopeMenuOpen: boolean;
@@ -29,7 +27,7 @@ export type ProjectTodosPanelData = {
   owner: LightWorkspaceType;
   groupedSuggestedTodosOnly: GroupedTodosByAssignee;
   groupedRegularTodosOnly: GroupedTodosByAssignee;
-  activeAgents: ProjectTodosDataTableProps["activeAgents"];
+  activeAgents: LightAgentConfigurationType[];
   isAgentsLoading: boolean;
   agentNameById: Map<string, string>;
   pendingRemovalIds: Set<string>;

@@ -1,7 +1,7 @@
 import {
   groupedTodosNonPendingSuggestions,
   groupedTodosPendingSuggestionsOnly,
-} from "@app/components/assistant/conversation/space/conversations/project_todos/ProjectTodosDataTable";
+} from "@app/components/assistant/conversation/space/conversations/project_todos/projectTodosGrouping";
 import { formatTodoScopeLabel } from "@app/components/assistant/conversation/space/conversations/project_todos/projectTodosListScope";
 import type {
   ProjectTodosPanelData,

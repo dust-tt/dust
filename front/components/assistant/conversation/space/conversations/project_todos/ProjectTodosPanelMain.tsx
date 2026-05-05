@@ -9,26 +9,8 @@ export function ProjectTodosPanelMain() {
     showSuggestedTodosTable,
     groupedSuggestedTodosOnly,
     viewerUserId,
-    owner,
-    activeAgents,
-    isAgentsLoading,
-    agentNameById,
-    pendingRemovalIds,
-    newItemKeys,
-    doneFlashKeys,
-    startingTodoIds,
-    isReadOnly,
-    firstOnboardingTodoId,
     projectMembers,
-    membersWithActiveTodoIds,
-    handleToggleDone,
-    requestDelete,
-    onApproveAgentSuggestion,
-    onRejectAgentSuggestion,
-    onApproveAllSuggestedForAssignee,
-    onRejectAllSuggestedForAssignee,
-    handleStartWorking,
-    patchTodoItem,
+    isReadOnly,
     isSpaceInfoLoading,
     defaultNewAssigneeSId,
     handleAddTodo,
@@ -52,27 +34,6 @@ export function ProjectTodosPanelMain() {
           <ProjectTodosDataTable
             variant="suggested"
             groupedTodosForAll={groupedSuggestedTodosOnly}
-            viewerUserId={viewerUserId}
-            owner={owner}
-            activeAgents={activeAgents}
-            agentsLoading={isAgentsLoading}
-            agentNameById={agentNameById}
-            pendingRemovalIds={pendingRemovalIds}
-            newItemKeys={newItemKeys}
-            doneFlashKeys={doneFlashKeys}
-            startingTodoIds={startingTodoIds}
-            isReadOnly={isReadOnly}
-            firstOnboardingTodoId={firstOnboardingTodoId}
-            projectMembers={projectMembers}
-            membersWithActiveTodoIds={membersWithActiveTodoIds}
-            onToggleDone={handleToggleDone}
-            onDelete={requestDelete}
-            onApproveAgentSuggestion={onApproveAgentSuggestion}
-            onRejectAgentSuggestion={onRejectAgentSuggestion}
-            onApproveAllSuggestedForAssignee={onApproveAllSuggestedForAssignee}
-            onRejectAllSuggestedForAssignee={onRejectAllSuggestedForAssignee}
-            onStartWorking={handleStartWorking}
-            onPatchTodo={patchTodoItem}
           />
         </div>
       )}
@@ -108,27 +69,7 @@ export function ProjectTodosPanelMain() {
               <ProjectTodosDataTable
                 variant="regular"
                 groupedTodosForAll={groupedRegularTodosOnly}
-                viewerUserId={viewerUserId}
-                owner={owner}
-                activeAgents={activeAgents}
-                agentsLoading={isAgentsLoading}
-                agentNameById={agentNameById}
-                pendingRemovalIds={pendingRemovalIds}
-                newItemKeys={newItemKeys}
-                doneFlashKeys={doneFlashKeys}
-                startingTodoIds={startingTodoIds}
-                isReadOnly={isReadOnly}
-                firstOnboardingTodoId={firstOnboardingTodoId}
-                projectMembers={projectMembers}
-                membersWithActiveTodoIds={membersWithActiveTodoIds}
-                onToggleDone={handleToggleDone}
-                onDelete={requestDelete}
-                onApproveAgentSuggestion={onApproveAgentSuggestion}
-                onRejectAgentSuggestion={onRejectAgentSuggestion}
-                onStartWorking={handleStartWorking}
-                onPatchTodo={patchTodoItem}
                 hideAssigneeGroupHeaders={hideRegularTodoAssigneeHeaders}
-                allowAssigneeReassign={!isSoleProjectMember}
               />
             )}
 
