@@ -86,7 +86,8 @@ function appendPreviouslyEnabledSkillsSection(
     "## Previously Enabled Skills",
     "The following skills were enabled before compaction. They are no longer active and may need to be re-enabled if they become relevant again:",
     ...sortedEnabledSkills.map(
-      (skill) => `- ${skill.name}: ${skill.agentFacingDescription}`
+      (skill) =>
+        `- ${skill.name}: ${skill.agentFacingDescription.replaceAll("\n", "\n  ")}`
     ),
   ].join("\n");
 
