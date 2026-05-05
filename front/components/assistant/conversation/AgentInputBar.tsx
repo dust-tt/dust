@@ -1,4 +1,5 @@
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
+import { ContextUsageWarningBanner } from "@app/components/assistant/conversation/ContextUsageWarningBanner";
 import { useGenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import type {
@@ -20,6 +21,7 @@ import {
   useConversationContextUsage,
 } from "@app/hooks/conversations";
 import { CONTEXT_USAGE_PERCENT_THRESHOLDS } from "@app/hooks/conversations/useConversationContextUsage";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { useConversationWakeUps } from "@app/lib/swr/wakeups";
@@ -46,7 +48,6 @@ import {
   useVirtuosoMethods,
 } from "@virtuoso.dev/message-list";
 import { useEffect, useMemo, useState } from "react";
-import { ContextUsageWarningBanner } from "./ContextUsageWarningBanner";
 
 const MAX_DISTANCE_FOR_SMOOTH_SCROLL = 2048;
 
@@ -107,6 +108,9 @@ export const AgentInputBar = ({
 
   const draftAgent = agentBuilderContext?.draftAgent;
 
+  const { hasFeature } = useFeatureFlags();
+  const isCompactionEnabled = hasFeature("enable_compaction");
+
   const { contextUsage, contextUsagePercentage } = useConversationContextUsage({
     conversationId: context.conversation?.sId ?? "",
     workspaceId: context.owner.sId,
@@ -117,11 +121,17 @@ export const AgentInputBar = ({
     (message) => isCompactionMessage(message) && message.status === "created"
   )
     ? "Wait for compaction to finish."
-    : contextUsagePercentage &&
+    : isCompactionEnabled &&
+        contextUsagePercentage &&
         contextUsagePercentage >=
           CONTEXT_USAGE_PERCENT_THRESHOLDS["force_compaction"]
       ? "Context is full, compact to continue."
       : null;
+  const showContextUsageBanner =
+    isCompactionEnabled &&
+    contextUsage &&
+    !!contextUsagePercentage &&
+    contextUsagePercentage >= CONTEXT_USAGE_PERCENT_THRESHOLDS["show_warning"];
 
   const { activeWakeUp } = useConversationWakeUps({
     owner: context.owner,
@@ -457,7 +467,14 @@ export const AgentInputBar = ({
           )}
         </ContentMessageInline>
       )}
-      {activeWakeUp && context.conversation && (
+      {showContextUsageBanner && (
+        <ContextUsageWarningBanner
+          owner={context.owner}
+          conversationId={context.conversation?.sId ?? ""}
+          contextUsage={contextUsage}
+        />
+      )}
+      {!showContextUsageBanner && activeWakeUp && context.conversation && (
         <WakeUpBanner
           wakeUp={activeWakeUp}
           owner={context.owner}
@@ -465,16 +482,6 @@ export const AgentInputBar = ({
           isOwner={isActiveWakeUpOwner}
         />
       )}
-      {contextUsage &&
-        !!contextUsagePercentage &&
-        contextUsagePercentage >=
-          CONTEXT_USAGE_PERCENT_THRESHOLDS["show_warning"] && (
-          <ContextUsageWarningBanner
-            owner={context.owner}
-            conversationId={context.conversation?.sId ?? ""}
-            contextUsage={contextUsage}
-          />
-        )}
       <InputBar
         owner={context.owner}
         user={context.user}
