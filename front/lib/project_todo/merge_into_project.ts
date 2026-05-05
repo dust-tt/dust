@@ -42,7 +42,10 @@ import {
   type DeduplicatedGroup,
   type ExistingTodosByUser,
 } from "@app/lib/project_todo/deduplicate_candidates";
-import { ProjectTodoResource } from "@app/lib/resources/project_todo_resource";
+import {
+  ProjectTodoResource,
+  type TodosByItemId,
+} from "@app/lib/resources/project_todo_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import {
   TakeawaysResource,
@@ -63,6 +66,9 @@ const BUTLER_AGENT_SID = "butler";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+// Outer key: userId (ModelId), inner key: itemId (action item sId).
+type PendingByUserId = Map<ModelId, Map<string, PendingCandidate>>;
+
 type TodoBlob = {
   text: string;
   status: "todo" | "done";
@@ -73,7 +79,7 @@ type TodoBlob = {
 
 // A candidate todo that has no existing source link yet and therefore needs to
 // go through the deduplication check before being created or linked.
-type PendingCandidate = {
+export type PendingCandidate = {
   itemId: string;
   userId: ModelId;
   blob: TodoBlob;
@@ -222,7 +228,7 @@ async function collectNewCandidates(
 
 // Processes one document's takeaway: updates todos whose source link already
 // exists and returns items that need to go through dedup + creation.
-async function collectDocumentCandidates(
+export async function collectDocumentCandidates(
   auth: Authenticator,
   {
     takeawayWithSource,
@@ -255,32 +261,42 @@ async function collectDocumentCandidates(
   // Batch-fetch existing todos by itemId. A hit means "this item is already
   // linked to a todo — skip dedup".
   const allActionItemIds = actionItems.map((t) => t.itemId);
-  const existingByKey = await ProjectTodoResource.fetchByItemIds(auth, {
-    itemIds: allActionItemIds,
-  });
+  const existingByItemId: TodosByItemId =
+    await ProjectTodoResource.fetchByItemIds(auth, {
+      itemIds: allActionItemIds,
+    });
 
   const candidates: PendingCandidate[] = [];
   let existingUpdated = 0;
   for (const { itemId, targetUserIds, blob: actionItemBlob } of actionItems) {
     for (const userId of targetUserIds) {
-      const existing = existingByKey.get(itemId) ?? null;
-      if (existing !== null) {
-        // Source link exists — update content if it has changed.
-        const updated = await updateTodoIfChanged(
-          existing,
-          auth,
-          actionItemBlob
-        );
-        if (updated) {
-          existingUpdated++;
-        }
-      } else {
+      const existing = existingByItemId.get(itemId)?.get(userId) ?? [];
+      if (existing.length === 0) {
         candidates.push({
           itemId,
           userId,
           blob: actionItemBlob,
           source: takeawayWithSource.source,
         });
+      } else if (
+        existing.length > 1 &&
+        existing.some((t) => t.status === "done")
+      ) {
+        // Multiple existing todos with at least one done — skip.
+      } else {
+        // Source link exists — update content if it has changed. When there
+        // are multiple undone todos, prefer the most recently created one.
+        const targetTodo = existing.reduce((a, b) =>
+          a.createdAt >= b.createdAt ? a : b
+        );
+        const updated = await updateTodoIfChanged(
+          targetTodo,
+          auth,
+          actionItemBlob
+        );
+        if (updated) {
+          existingUpdated++;
+        }
       }
     }
   }
@@ -305,20 +321,18 @@ async function buildDeduplicationGroups(
     spaceModelId: ModelId;
   }
 ): Promise<DeduplicatedGroup[]> {
-  const deduplicateCandidates: DeduplicateCandidate[] = newCandidates.map(
-    (c) => ({
-      itemId: c.itemId,
-      userId: c.userId,
-      text: c.blob.text,
-    })
-  );
+  const dedupInput: DeduplicateCandidate[] = newCandidates.map((c) => ({
+    itemId: c.itemId,
+    userId: c.userId,
+    text: c.blob.text,
+  }));
 
   const model = getSmallWhitelistedModel(auth);
   if (!model) {
     localLogger.warn(
       "Project todo merge: no whitelisted model, skipping deduplication"
     );
-    return deduplicateCandidates.map((c) => ({ kind: "new", candidates: [c] }));
+    return dedupInput.map((c) => ({ kind: "new", candidates: [c] }));
   }
 
   // Fetch all existing todos for each unique target user in a single pass,
@@ -348,7 +362,7 @@ async function buildDeduplicationGroups(
 
   return batchDeduplicateCandidates(auth, {
     model,
-    candidates: deduplicateCandidates,
+    candidates: dedupInput,
     existingTodosByUser,
   });
 }
@@ -376,16 +390,16 @@ async function createOrLinkTodos(
 
   // Dedup groups reference candidates by (userId, itemId); fetch the original
   // PendingCandidate (with blob + source) by that pair.
-  const pendingByUserItem = new Map<ModelId, Map<string, PendingCandidate>>();
+  const pendingByUserId: PendingByUserId = new Map();
   for (const c of newCandidates) {
     const inner =
-      pendingByUserItem.get(c.userId) ?? new Map<string, PendingCandidate>();
+      pendingByUserId.get(c.userId) ?? new Map<string, PendingCandidate>();
     inner.set(c.itemId, c);
-    pendingByUserItem.set(c.userId, inner);
+    pendingByUserId.set(c.userId, inner);
   }
 
   function lookupPending(c: DeduplicateCandidate): PendingCandidate | null {
-    return pendingByUserItem.get(c.userId)?.get(c.itemId) ?? null;
+    return pendingByUserId.get(c.userId)?.get(c.itemId) ?? null;
   }
 
   await concurrentExecutor(

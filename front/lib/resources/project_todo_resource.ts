@@ -30,6 +30,10 @@ import {
   type Transaction,
 } from "sequelize";
 
+// Return type of fetchByItemIds: outer key is itemId (action item sId), inner
+// key is userId (ModelId).
+export type TodosByItemId = Map<string, Map<ModelId, ProjectTodoResource[]>>;
+
 type ProjectTodoVersionCreationAttributes =
   CreationAttributes<ProjectTodoModel> & {
     projectTodoId: ModelId;
@@ -432,7 +436,7 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
   static async fetchByItemIds(
     auth: Authenticator,
     { itemIds }: { itemIds: string[] }
-  ): Promise<Map<string, ProjectTodoResource>> {
+  ): Promise<Map<string, Map<ModelId, ProjectTodoResource[]>>> {
     if (itemIds.length === 0) {
       return new Map();
     }
@@ -458,13 +462,19 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
       linkedRows.map((t) => [t.id, t])
     );
 
-    const result = new Map<string, ProjectTodoResource>();
+    const result: TodosByItemId = new Map();
     for (const source of sources) {
       const todo = rowById.get(source.projectTodoId);
       if (!todo) {
         continue;
       }
-      result.set(source.itemId, todo);
+      const byUser =
+        result.get(source.itemId) ?? new Map<ModelId, ProjectTodoResource[]>();
+      const userId = todo.userId;
+      if (userId !== null) {
+        byUser.set(userId, [...(byUser.get(userId) ?? []), todo]);
+      }
+      result.set(source.itemId, byUser);
     }
 
     return result;
