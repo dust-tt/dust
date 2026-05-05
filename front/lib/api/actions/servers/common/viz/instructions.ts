@@ -79,6 +79,12 @@ export const VIZ_FILE_HANDLING_GUIDELINES = `
   - Create a local object URL from the \`File\` when rendering (e.g. \`const src = URL.createObjectURL(file)\`).
   - Use the resulting object URL for \`<img src={src} alt="..." />\` or as a background image; do not attempt to fetch remote images (no internet access).
   - When creating custom components that render files, always use \`fileId\` as the prop name for file identifiers (e.g., \`<EventPhoto fileId="fil_abc123" caption="..." />\`). This naming convention ensures proper file prefetching during server-side rendering.
+- Importing other frames as React components:
+  - A frame whose file ID starts with "fil_" can be imported directly as a React component using a standard ES import: \`import MyComponent from "fil_abc123"\`.
+  - The default export of the imported frame is available as a fully functional React component that can be rendered like any other component.
+  - This enables frame composition: a parent frame can assemble multiple child frames into a single layout without duplicating code.
+  - Transitive imports are supported — an imported frame may itself import other frames.
+  - The same \`@dust/react-hooks\` utilities (\`useFile\`, \`triggerUserFileDownload\`, \`captureScreenshot\`) and all standard libraries (recharts, shadcn, lucide-react, etc.) are available inside imported frames.
 `;
 
 export const VIZ_LIBRARY_USAGE = `
@@ -183,6 +189,28 @@ import { triggerUserFileDownload } from "@dust/react-hooks";
   Download Data
 </button>
 \`\`\`
+`;
+
+export const VIZ_FRAME_IMPORT_EXAMPLE = `
+Example importing another frame as a React component:
+
+\`\`\`
+// Parent frame that composes two child frames side by side.
+import React from "react";
+import SalesChart from "fil_abc123";   // another frame
+import RegionMap from "fil_def456";    // another frame
+
+export default function Dashboard() {
+  return (
+    <div className="flex flex-col gap-6 p-4">
+      <SalesChart />
+      <RegionMap />
+    </div>
+  );
+}
+\`\`\`
+
+The file ID (e.g. "fil_abc123") comes from the \`<attachment id="\${FILE_ID}" ...>\` tag of the frame file.
 `;
 
 export const VIZ_CHART_EXAMPLES = `
