@@ -212,6 +212,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Programmatic access to MCP tools from inside the sandbox via the dsbx CLI",
     stage: "dust_only",
   },
+  sandbox_workspace_admin: {
+    description:
+      "Workspace admin configuration for the sandbox: whitelisted domains, environment variables, and the agent egress request setting/tool",
+    stage: "dust_only",
+  },
   skills_as_user_messages: {
     description:
       "Render skills in assistant conversations as synthetic user messages instead of in the system prompt",

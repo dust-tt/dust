@@ -323,7 +323,7 @@ export const subNavigationAdmin = ({
           icon: GlobeAltIcon,
           href: `/w/${owner.sId}/developers/sandbox`,
           current: isCurrent("sandbox"),
-          featureFlag: "sandbox_tools",
+          featureFlag: "sandbox_workspace_admin",
         },
       ],
     });

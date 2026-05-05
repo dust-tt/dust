@@ -1,4 +1,5 @@
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   emptyArray,
@@ -24,6 +25,14 @@ import type { Fetcher } from "swr";
 
 function workspaceEgressPolicyUrl(workspaceId: string) {
   return `/api/w/${workspaceId}/sandbox/egress-policy`;
+}
+
+export function useHasSandboxWorkspaceAdmin(): boolean {
+  const { featureFlags } = useFeatureFlags();
+  return (
+    featureFlags.includes("sandbox_tools") &&
+    featureFlags.includes("sandbox_workspace_admin")
+  );
 }
 
 function workspaceSandboxEnvVarsUrl(workspaceId: string) {

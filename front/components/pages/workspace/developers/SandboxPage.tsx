@@ -1,6 +1,7 @@
 import { EnvironmentSection } from "@app/components/pages/workspace/developers/sections/EnvironmentSection";
 import { NetworkSection } from "@app/components/pages/workspace/developers/sections/NetworkSection";
-import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useAuth } from "@app/lib/auth/AuthContext";
+import { useHasSandboxWorkspaceAdmin } from "@app/lib/swr/sandbox";
 import {
   CommandLineIcon,
   ContentMessage,
@@ -10,8 +11,7 @@ import {
 
 export function SandboxPage() {
   const { isAdmin } = useAuth();
-  const { featureFlags } = useFeatureFlags();
-  const hasSandboxTools = featureFlags.includes("sandbox_tools");
+  const hasSandboxAdmin = useHasSandboxWorkspaceAdmin();
 
   const renderBody = () => {
     if (!isAdmin) {
@@ -22,10 +22,10 @@ export function SandboxPage() {
       );
     }
 
-    if (!hasSandboxTools) {
+    if (!hasSandboxAdmin) {
       return (
         <ContentMessage variant="info" icon={InformationCircleIcon} size="lg">
-          Sandbox tools are not enabled for this workspace.
+          Sandbox workspace administration is not enabled for this workspace.
         </ContentMessage>
       );
     }
