@@ -553,6 +553,76 @@ describe("createConversationFork", () => {
     ]);
   });
 
+  it("triggers child ES indexing after lineage creation", async () => {
+    const { auth } = await createPrivateApiMockRequest();
+
+    const parentConversation = await createConversation(auth, {
+      title: "Parent conversation",
+      visibility: "unlisted",
+      spaceId: null,
+    });
+
+    const userMessage = await createUserMessage(auth, {
+      conversation: parentConversation,
+      rank: 0,
+      content: "How should I continue this?",
+    });
+    const sourceMessage = await createAgentMessage(auth, {
+      conversation: parentConversation,
+      rank: 1,
+      parentId: userMessage.id,
+      status: "succeeded",
+    });
+
+    const indexCalls: Array<{
+      conversationId: string;
+      hasForkLineage: boolean;
+    }> = [];
+    const triggerEsIndexingSpy = vi
+      .spyOn(ConversationResource, "triggerEsIndexing")
+      .mockImplementation(async (indexAuth, conversationId) => {
+        const conversation = await ConversationModel.findOne({
+          attributes: ["id"],
+          where: {
+            sId: conversationId,
+            workspaceId: indexAuth.getNonNullableWorkspace().id,
+          },
+        });
+        const forkCount = conversation
+          ? await ConversationForkModel.count({
+              where: {
+                childConversationId: conversation.id,
+                workspaceId: indexAuth.getNonNullableWorkspace().id,
+              },
+            })
+          : 0;
+
+        indexCalls.push({
+          conversationId,
+          hasForkLineage: forkCount > 0,
+        });
+      });
+
+    try {
+      const result = await createConversationFork(auth, {
+        conversationId: parentConversation.sId,
+        sourceMessageId: sourceMessage.sId,
+      });
+
+      expect(result.isErr()).toBe(false);
+      if (result.isErr()) {
+        throw result.error;
+      }
+
+      expect(indexCalls).toContainEqual({
+        conversationId: result.value,
+        hasForkLineage: true,
+      });
+    } finally {
+      triggerEsIndexingSpy.mockRestore();
+    }
+  });
+
   it("uses the source agent message model for fork compaction", async () => {
     const { auth } = await createPrivateApiMockRequest();
 

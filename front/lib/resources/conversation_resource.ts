@@ -84,6 +84,8 @@ export type FetchConversationOptions = {
 
 type SpaceConversationsFilter = "all" | "group" | "with_me";
 
+const FORK_CHILD_REINDEX_CONCURRENCY = 8;
+
 interface UserParticipation {
   actionRequired: boolean;
   updated: number;
@@ -1013,7 +1015,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       return new Map();
     }
     const uniqueSIds = [...new Set(sIds)];
-    const conversations = await this.fetchByIds(auth, uniqueSIds);
+    const conversations = await this.fetchByIds(auth, uniqueSIds, {
+      includeForkingData: true,
+    });
     if (conversations.length === 0) {
       return new Map();
     }
@@ -1509,7 +1513,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     const conversations = await this.baseFetchWithAuthorization(
       auth,
-      {},
+      { includeForkingData: true },
       {
         where: whereClause,
         order: [["updatedAt", orderDirection === "desc" ? "DESC" : "ASC"]],
@@ -1624,7 +1628,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     // ES because every mark-as-read would force a full document re-index (write amplification).
     const dbConversations = await this.fetchByIds(
       auth,
-      items.map((i) => i.sId)
+      items.map((i) => i.sId),
+      { includeForkingData: true }
     );
     const readMap = await this.fetchReadMapForUser(
       auth,
@@ -3187,14 +3192,14 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     title: string,
     transaction?: Transaction
   ) {
-    return this.update(
-      auth,
-      sId,
-      {
-        title,
-      },
-      transaction
-    );
+    const conversation = await ConversationResource.fetchById(auth, sId);
+    if (conversation === null) {
+      return new Err(new ConversationError("conversation_not_found"));
+    }
+
+    await conversation.updateTitle(auth, title, transaction);
+
+    return new Ok(undefined);
   }
 
   static async updateUrlAccessMode(
@@ -3364,10 +3369,44 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return new Ok(undefined);
   }
 
-  async updateTitle(auth: Authenticator, title: string) {
-    await this.update({ title });
+  private async triggerForkedChildrenEsIndexing(auth: Authenticator) {
+    const childForks = await ConversationForkModel.findAll({
+      attributes: ["childConversationId"],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        parentConversationId: this.id,
+      },
+    });
+
+    if (childForks.length === 0) {
+      return;
+    }
+
+    const childConversations = await ConversationModel.findAll({
+      attributes: ["sId"],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        id: { [Op.in]: childForks.map((fork) => fork.childConversationId) },
+      },
+    });
+
+    await concurrentExecutor(
+      childConversations,
+      (childConversation) =>
+        ConversationResource.triggerEsIndexing(auth, childConversation.sId),
+      { concurrency: FORK_CHILD_REINDEX_CONCURRENCY }
+    );
+  }
+
+  async updateTitle(
+    auth: Authenticator,
+    title: string,
+    transaction?: Transaction
+  ) {
+    await this.update({ title }, transaction);
 
     await ConversationResource.triggerEsIndexing(auth, this.sId);
+    await this.triggerForkedChildrenEsIndexing(auth);
   }
 
   async updateVisibilityToDeleted(auth: Authenticator) {

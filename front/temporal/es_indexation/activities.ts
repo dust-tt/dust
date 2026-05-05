@@ -104,7 +104,8 @@ export async function indexConversationEsActivity({
   // hard-deleted (scrubbed) and soft-deleted cases. Both should be removed from the index.
   const conversation = await ConversationResource.fetchById(
     auth,
-    conversationId
+    conversationId,
+    { includeForkingData: true }
   );
 
   if (!conversation) {
