@@ -58,6 +58,7 @@ import type { Logger } from "pino";
 const TEXT_OFFLOAD_EXEMPT_MCP_SERVERS: readonly string[] = [
   "conversation_files",
   "files",
+  "interactive_content",
   "sandbox",
 ];
 
