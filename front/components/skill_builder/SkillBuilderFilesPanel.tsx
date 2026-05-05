@@ -240,15 +240,10 @@ function SkillBuilderFilesPanelContent({
 }: SkillBuilderFilesPanelContentProps) {
   const { owner } = useSkillBuilderContext();
 
-  const fieldIndexById = useMemo(
-    () => new Map(fields.map((field, index) => [field.id, index])),
-    [fields]
-  );
-
   const rows = useMemo<FilePanelRow[]>(
     () =>
       fields
-        .map((field) => {
+        .map((field, originalIndex) => {
           const contentType = field.contentType ?? DEFAULT_FILE_CONTENT_TYPE;
           const isAdded = isDiffMode && !compareFileIds.has(field.fileId);
           return {
@@ -266,10 +261,22 @@ function SkillBuilderFilesPanelContent({
               ? "Added in this version"
               : getSingularFileCategoryLabelForContentType(contentType),
             thumbnailUrl: getFileViewUrl(owner, field.fileId),
+            action: !isDiffMode ? (
+              <Button
+                type="button"
+                variant="ghost"
+                icon={XMarkIcon}
+                size="xs"
+                onClick={(e: React.MouseEvent) => {
+                  e.stopPropagation();
+                  onRemove(originalIndex);
+                }}
+              />
+            ) : undefined,
           };
         })
         .sort((a, b) => a.title.localeCompare(b.title)),
-    [fields, isDiffMode, compareFileIds, owner, onOpenPreview]
+    [fields, isDiffMode, compareFileIds, owner, onOpenPreview, onRemove]
   );
 
   const emptyContent = isDiffMode ? (
@@ -299,39 +306,11 @@ function SkillBuilderFilesPanelContent({
 
   return (
     <FilesTab
+      emptyContent={emptyContent}
       isLoading={isProcessingFiles && fields.length === 0}
       owner={owner}
       rows={rows}
       searchInputName="skill-file-search"
-    >
-      <FilesTab.Empty>{emptyContent}</FilesTab.Empty>
-      {!isDiffMode && (
-        <FilesTab.RowAction>
-          {(row) => {
-            if (!row.id) {
-              return null;
-            }
-
-            const index = fieldIndexById.get(row.id);
-            if (index === undefined) {
-              return null;
-            }
-
-            return (
-              <Button
-                type="button"
-                variant="ghost"
-                icon={XMarkIcon}
-                size="xs"
-                onClick={(e: React.MouseEvent) => {
-                  e.stopPropagation();
-                  onRemove(index);
-                }}
-              />
-            );
-          }}
-        </FilesTab.RowAction>
-      )}
-    </FilesTab>
+    />
   );
 }
