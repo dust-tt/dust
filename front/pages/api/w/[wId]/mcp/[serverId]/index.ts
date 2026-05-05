@@ -41,6 +41,11 @@ const PatchMCPServerBodySchema = z
           message: "Either sharedSecret or customHeaders must be provided",
         }
       )
+  )
+  .or(
+    z.object({
+      meta: z.record(z.string(), z.string()).nullable(),
+    })
   );
 
 export type PatchMCPServerBody = z.infer<typeof PatchMCPServerBodySchema>;
@@ -326,6 +331,17 @@ async function handleRemotePatch(
     const update = await server.updateMetadata(auth, {
       sharedSecret: body.sharedSecret,
       customHeaders: sanitizedRecord,
+      lastSyncAt: new Date(),
+    });
+    if (update.isErr()) {
+      if (update.error.code === "unauthorized") {
+        return respondUnauthorizedUpdate(req, res);
+      }
+      return assertNever(update.error.code);
+    }
+  } else if ("meta" in body) {
+    const update = await server.updateMetadata(auth, {
+      meta: body.meta,
       lastSyncAt: new Date(),
     });
     if (update.isErr()) {
