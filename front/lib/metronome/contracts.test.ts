@@ -397,7 +397,8 @@ describe("buildEnterpriseOverrides", () => {
     };
 
     const result = buildEnterpriseOverrides({
-      phases: [{ pricing, startDate: START_DATE }],
+      pricing,
+      startDate: START_DATE,
       initialMauCount: 0,
     });
 
@@ -423,7 +424,8 @@ describe("buildEnterpriseOverrides", () => {
     };
 
     const result = buildEnterpriseOverrides({
-      phases: [{ pricing, startDate: START_DATE }],
+      pricing,
+      startDate: START_DATE,
       initialMauCount: 0,
     });
 
@@ -465,7 +467,8 @@ describe("buildEnterpriseOverrides", () => {
     };
 
     const result = buildEnterpriseOverrides({
-      phases: [{ pricing, startDate: START_DATE }],
+      pricing,
+      startDate: START_DATE,
       initialMauCount: 0,
     });
 
@@ -491,7 +494,8 @@ describe("buildEnterpriseOverrides", () => {
     };
 
     const result = buildEnterpriseOverrides({
-      phases: [{ pricing, startDate: START_DATE }],
+      pricing,
+      startDate: START_DATE,
       initialMauCount: 0,
     });
 
@@ -520,7 +524,8 @@ describe("buildEnterpriseOverrides", () => {
     };
 
     const result = buildEnterpriseOverrides({
-      phases: [{ pricing, startDate: START_DATE }],
+      pricing,
+      startDate: START_DATE,
       initialMauCount: 0,
     });
 
@@ -553,7 +558,8 @@ describe("buildEnterpriseOverrides", () => {
     };
 
     const result = buildEnterpriseOverrides({
-      phases: [{ pricing, startDate: START_DATE }],
+      pricing,
+      startDate: START_DATE,
       initialMauCount: 0,
     });
 
@@ -584,7 +590,8 @@ describe("buildEnterpriseOverrides", () => {
     };
 
     const result = buildEnterpriseOverrides({
-      phases: [{ pricing, startDate: START_DATE }],
+      pricing,
+      startDate: START_DATE,
       initialMauCount: 0,
     });
 
@@ -612,7 +619,8 @@ describe("buildEnterpriseOverrides", () => {
     };
 
     const result = buildEnterpriseOverrides({
-      phases: [{ pricing, startDate: START_DATE }],
+      pricing,
+      startDate: START_DATE,
       initialMauCount: 0,
     });
 
@@ -641,7 +649,8 @@ describe("buildEnterpriseOverrides", () => {
     };
 
     const result = buildEnterpriseOverrides({
-      phases: [{ pricing, startDate: START_DATE }],
+      pricing,
+      startDate: START_DATE,
       initialMauCount: 0,
     });
 
@@ -656,128 +665,6 @@ describe("buildEnterpriseOverrides", () => {
 
     expect(result.recurring_commits![0].access_amount.unit_price).toBe(325000);
     expect(result.custom_fields?.MAU_TIERS).toBe("FLOOR-101-201");
-  });
-
-  it("multi-phase: emits dated overrides + per-phase commits", () => {
-    // 2-phase scheduled subscription:
-    //   Phase 1: floor 450k for 100 MAUs + overage 4500/MAU (= 4500 across all → simple mode)
-    //   Phase 2: floor 600k for 100 MAUs + overage 6000/MAU (= 6000 across all → simple mode)
-    const phase1Pricing: EnterprisePricingCents = {
-      currency: "usd",
-      billingMode: "MAU_1",
-      tiers: [
-        { upTo: 100, unitAmountCents: 0, flatAmountCents: 450000 },
-        { upTo: undefined, unitAmountCents: 4500, flatAmountCents: 0 },
-      ],
-      floorCents: 450000,
-    };
-    const phase2Pricing: EnterprisePricingCents = {
-      currency: "usd",
-      billingMode: "MAU_1",
-      tiers: [
-        { upTo: 100, unitAmountCents: 0, flatAmountCents: 600000 },
-        { upTo: undefined, unitAmountCents: 6000, flatAmountCents: 0 },
-      ],
-      floorCents: 600000,
-    };
-    const PHASE_BOUNDARY = "2026-07-01T00:00:00.000Z";
-
-    const result = buildEnterpriseOverrides({
-      phases: [
-        {
-          pricing: phase1Pricing,
-          startDate: START_DATE,
-          endDate: PHASE_BOUNDARY,
-        },
-        { pricing: phase2Pricing, startDate: PHASE_BOUNDARY },
-      ],
-      initialMauCount: 0,
-    });
-
-    // Two MAU price overrides (one per phase) + one disable for each tier product.
-    const mauOverrides = result.overrides.filter((o) =>
-      o.override_specifiers?.some((s) => s.product_id === "mau-product")
-    );
-    expect(mauOverrides).toHaveLength(2);
-    expect(mauOverrides[0].starting_at).toBe(START_DATE);
-    expect(mauOverrides[0].ending_before).toBe(PHASE_BOUNDARY);
-    expect(mauOverrides[0].overwrite_rate.price).toBe(4500);
-    expect(mauOverrides[1].starting_at).toBe(PHASE_BOUNDARY);
-    expect(mauOverrides[1].ending_before).toBeUndefined();
-    expect(mauOverrides[1].overwrite_rate.price).toBe(6000);
-
-    // One recurring commit per phase, each scoped to its date range.
-    expect(result.recurring_commits).toHaveLength(2);
-    expect(result.recurring_commits![0].starting_at).toBe(START_DATE);
-    expect(result.recurring_commits![0].ending_before).toBe(PHASE_BOUNDARY);
-    expect(result.recurring_commits![0].access_amount.unit_price).toBe(450000);
-    expect(result.recurring_commits![1].starting_at).toBe(PHASE_BOUNDARY);
-    expect(result.recurring_commits![1].ending_before).toBeUndefined();
-    expect(result.recurring_commits![1].access_amount.unit_price).toBe(600000);
-  });
-
-  it("multi-phase: rejects mismatched billing mode", () => {
-    const phase1: EnterprisePricingCents = {
-      currency: "usd",
-      billingMode: "MAU_1",
-      tiers: [{ upTo: undefined, unitAmountCents: 2000, flatAmountCents: 0 }],
-      floorCents: 0,
-    };
-    const phase2: EnterprisePricingCents = {
-      currency: "usd",
-      billingMode: "MAU_5",
-      tiers: [{ upTo: undefined, unitAmountCents: 2000, flatAmountCents: 0 }],
-      floorCents: 0,
-    };
-
-    expect(() =>
-      buildEnterpriseOverrides({
-        phases: [
-          {
-            pricing: phase1,
-            startDate: START_DATE,
-            endDate: "2026-07-01T00:00:00.000Z",
-          },
-          { pricing: phase2, startDate: "2026-07-01T00:00:00.000Z" },
-        ],
-        initialMauCount: 0,
-      })
-    ).toThrow(/billing mode/);
-  });
-
-  it("multi-phase: rejects mismatched tier boundaries", () => {
-    const phase1: EnterprisePricingCents = {
-      currency: "usd",
-      billingMode: "MAU_1",
-      tiers: [
-        { upTo: 100, unitAmountCents: 0, flatAmountCents: 450000 },
-        { upTo: undefined, unitAmountCents: 4500, flatAmountCents: 0 },
-      ],
-      floorCents: 450000,
-    };
-    const phase2: EnterprisePricingCents = {
-      currency: "usd",
-      billingMode: "MAU_1",
-      tiers: [
-        { upTo: 200, unitAmountCents: 0, flatAmountCents: 600000 },
-        { upTo: undefined, unitAmountCents: 4500, flatAmountCents: 0 },
-      ],
-      floorCents: 600000,
-    };
-
-    expect(() =>
-      buildEnterpriseOverrides({
-        phases: [
-          {
-            pricing: phase1,
-            startDate: START_DATE,
-            endDate: "2026-07-01T00:00:00.000Z",
-          },
-          { pricing: phase2, startDate: "2026-07-01T00:00:00.000Z" },
-        ],
-        initialMauCount: 0,
-      })
-    ).toThrow(/tier .* boundary/);
   });
 });
 

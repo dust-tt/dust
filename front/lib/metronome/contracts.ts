@@ -15,6 +15,7 @@ import {
   getProductMauId,
   getProductMauTierIds,
   MAX_MAU_TIERS,
+  PHASED_SUBSCRIPTION_CUSTOM_FIELD_KEY,
 } from "@app/lib/metronome/constants";
 import {
   computeTierQuantity,
@@ -600,7 +601,6 @@ export async function extractEnterprisePricingPhases(
 
 interface OverrideEntry {
   starting_at: string;
-  ending_before?: string;
   type: "OVERWRITE";
   entitled: boolean;
   product_id?: string;
@@ -633,7 +633,6 @@ interface RecurringCommitEntry {
   product_id: string;
   name: string;
   starting_at: string;
-  ending_before?: string;
   rate_type: "LIST_RATE";
   priority: number;
   access_amount: {
@@ -726,75 +725,8 @@ function deriveTierPrices(
 }
 
 /**
- * Determine whether a phase uses "simple mode" (single MAU product with a
- * uniform per-MAU rate) versus "tiered mode" (one MAU Tier product per Stripe
- * tier). Simple mode kicks in when all derived per-tier prices collapse to a
- * single value — the floor (if any) is still handled by a recurring commit.
- */
-function isSimplePhaseMode(pricing: EnterprisePricingCents): boolean {
-  if (pricing.tiers.length === 0) {
-    return false;
-  }
-  const tierPrices = deriveTierPrices(pricing.tiers, pricing.currency);
-  return tierPrices.length > 0 && tierPrices.every((p) => p === tierPrices[0]);
-}
-
-/**
- * Validate that all phases share the same contract-wide structure:
- * billing mode, currency, tier-boundary layout, and simple-vs-tiered shape.
- *
- * These dimensions cannot vary inside a single Metronome contract — they
- * determine which products the overrides target and what value is stored in
- * the contract-level MAU_TIERS / MAU_THRESHOLD custom fields. Only prices and
- * floor amounts are allowed to differ across phases.
- */
-function assertPhasesAreConsistent(phases: EnterprisePricingPhase[]): void {
-  if (phases.length <= 1) {
-    return;
-  }
-  const first = phases[0].pricing;
-
-  for (let i = 1; i < phases.length; i++) {
-    const p = phases[i].pricing;
-    if (p.currency !== first.currency) {
-      throw new Error(
-        `Phase ${i} currency (${p.currency}) differs from phase 0 (${first.currency}) — currency cannot change within a single Metronome contract.`
-      );
-    }
-    if (p.billingMode !== first.billingMode) {
-      throw new Error(
-        `Phase ${i} billing mode (${p.billingMode}) differs from phase 0 (${first.billingMode}) — billing mode cannot change within a single Metronome contract.`
-      );
-    }
-    if (first.billingMode === "FIXED") {
-      continue;
-    }
-    if (p.tiers.length !== first.tiers.length) {
-      throw new Error(
-        `Phase ${i} has ${p.tiers.length} tiers, phase 0 has ${first.tiers.length} — tier layout must match across phases.`
-      );
-    }
-    for (let t = 0; t < first.tiers.length; t++) {
-      if (p.tiers[t].upTo !== first.tiers[t].upTo) {
-        throw new Error(
-          `Phase ${i} tier ${t} boundary (${p.tiers[t].upTo}) differs from phase 0 (${first.tiers[t].upTo}) — tier boundaries must match across phases.`
-        );
-      }
-    }
-    if (isSimplePhaseMode(p) !== isSimplePhaseMode(first)) {
-      throw new Error(
-        `Phase ${i} switches between simple and tiered mode vs phase 0 — all phases must use the same shape.`
-      );
-    }
-  }
-}
-
-/**
- * Build the Metronome contract edit payload for enterprise pricing overrides.
- *
- * Each phase in `phases` produces its own time-bounded set of rate overrides
- * (and a recurring commit, if it has a floor). Subscriptions and custom
- * fields are contract-scoped and emitted once, derived from the first phase.
+ * Build the Metronome contract edit payload for enterprise pricing overrides
+ * for a SINGLE phase / contract.
  *
  * For MAU-based plans (MAU_1/5/10):
  * - Uses MAU Tier products (one per Stripe tier) with FLAT rate overrides.
@@ -804,21 +736,23 @@ function assertPhasesAreConsistent(phases: EnterprisePricingPhase[]): void {
  *
  * For FIXED plans:
  * - Disables all MAU products (billing is a flat Stripe fee).
+ *
+ * When a Stripe SubscriptionSchedule has multiple phases, each phase becomes
+ * its own Metronome contract (chained on the same customer). Per-phase
+ * overrides are simpler than time-multiplexed overrides — a contract carries
+ * its own MAU_TIERS / MAU_THRESHOLD / billing mode / tier layout, so phases
+ * can change any of those without coordination.
  */
 export function buildEnterpriseOverrides({
-  phases,
+  pricing,
+  startDate,
   initialMauCount,
 }: {
-  phases: EnterprisePricingPhase[];
+  pricing: EnterprisePricingCents;
+  startDate: string;
   initialMauCount: number;
 }): EnterpriseOverridesPayload {
-  if (phases.length === 0) {
-    throw new Error("buildEnterpriseOverrides requires at least one phase");
-  }
-  assertPhasesAreConsistent(phases);
-
-  const firstPhase = phases[0];
-  const { currency, billingMode } = firstPhase.pricing;
+  const { currency, billingMode } = pricing;
   const creditTypeId = CURRENCY_TO_CREDIT_TYPE_ID[currency];
   if (!creditTypeId) {
     throw new Error(
@@ -826,10 +760,8 @@ export function buildEnterpriseOverrides({
     );
   }
 
-  // Disable a product for the full contract lifetime — these are products
-  // we're never going to bill on, regardless of phase.
-  const disableOverrideForContract = (productId: string): OverrideEntry => ({
-    starting_at: firstPhase.startDate,
+  const disableOverride = (productId: string): OverrideEntry => ({
+    starting_at: startDate,
     type: "OVERWRITE" as const,
     entitled: false,
     override_specifiers: [
@@ -846,97 +778,71 @@ export function buildEnterpriseOverrides({
   if (billingMode === "FIXED") {
     return {
       overrides: [
-        disableOverrideForContract(getProductMauId()),
-        ...getProductMauTierIds().map(disableOverrideForContract),
+        disableOverride(getProductMauId()),
+        ...getProductMauTierIds().map(disableOverride),
       ],
     };
   }
 
-  if (firstPhase.pricing.tiers.length > MAX_MAU_TIERS) {
+  if (pricing.tiers.length > MAX_MAU_TIERS) {
     throw new Error(
-      `Too many tiers (${firstPhase.pricing.tiers.length}) — max ${MAX_MAU_TIERS} supported`
+      `Too many tiers (${pricing.tiers.length}) — max ${MAX_MAU_TIERS} supported`
     );
   }
 
+  const tierPrices = deriveTierPrices(pricing.tiers, currency);
   const tierProductIds = getProductMauTierIds();
   const mauThreshold = String(billingModeToMauThreshold(billingMode));
-  const useSimpleMode = isSimplePhaseMode(firstPhase.pricing);
 
-  // Helper: build a price override for one product, scoped to a single phase.
-  const phasePriceOverride = (
-    phase: EnterprisePricingPhase,
-    productId: string,
-    price: number
-  ): OverrideEntry => ({
-    starting_at: phase.startDate,
-    ...(phase.endDate ? { ending_before: phase.endDate } : {}),
-    type: "OVERWRITE" as const,
-    entitled: true,
-    override_specifiers: [
-      { product_id: productId, billing_frequency: "MONTHLY" as const },
-    ],
-    overwrite_rate: {
-      rate_type: "FLAT" as const,
-      price,
+  const floorMetronome = metronomeAmount(pricing.floorCents, currency);
+  const recurringCommit = (
+    applicableProductId: string
+  ): RecurringCommitEntry => ({
+    product_id: getProductMauCommitId(),
+    name: "MAU Commit",
+    starting_at: startDate,
+    rate_type: "LIST_RATE" as const,
+    priority: 100,
+    access_amount: {
       credit_type_id: creditTypeId,
+      unit_price: floorMetronome,
+      quantity: 1,
     },
+    invoice_amount: {
+      credit_type_id: creditTypeId,
+      unit_price: floorMetronome,
+      quantity: 1,
+    },
+    commit_duration: { value: 1, unit: "PERIODS" as const },
+    recurrence_frequency: "MONTHLY" as const,
+    applicable_product_ids: [applicableProductId],
   });
 
-  // Helper: build a recurring commit for a phase's floor, scoped to that phase.
-  const phaseFloorCommit = (
-    phase: EnterprisePricingPhase,
-    applicableProductId: string
-  ): RecurringCommitEntry | undefined => {
-    if (phase.pricing.floorCents <= 0) {
-      return undefined;
-    }
-    const floorMetronome = metronomeAmount(
-      phase.pricing.floorCents,
-      phase.pricing.currency
-    );
-    return {
-      product_id: getProductMauCommitId(),
-      name: "MAU Commit",
-      starting_at: phase.startDate,
-      ...(phase.endDate ? { ending_before: phase.endDate } : {}),
-      rate_type: "LIST_RATE" as const,
-      priority: 100,
-      access_amount: {
-        credit_type_id: creditTypeId,
-        unit_price: floorMetronome,
-        quantity: 1,
-      },
-      invoice_amount: {
-        credit_type_id: creditTypeId,
-        unit_price: floorMetronome,
-        quantity: 1,
-      },
-      commit_duration: { value: 1, unit: "PERIODS" as const },
-      recurrence_frequency: "MONTHLY" as const,
-      applicable_product_ids: [applicableProductId],
-    };
-  };
+  // Simple mode kicks in when all derived per-tier prices collapse to a single
+  // value — the floor (if any) is still handled by a recurring commit.
+  const allSamePrice =
+    tierPrices.length > 0 && tierPrices.every((p) => p === tierPrices[0]);
 
-  if (useSimpleMode) {
-    const overrides: OverrideEntry[] = [];
-    const recurringCommits: RecurringCommitEntry[] = [];
-
-    for (const phase of phases) {
-      const tierPrices = deriveTierPrices(
-        phase.pricing.tiers,
-        phase.pricing.currency
-      );
-      overrides.push(
-        phasePriceOverride(phase, getProductMauId(), tierPrices[0])
-      );
-      const commit = phaseFloorCommit(phase, getProductMauId());
-      if (commit) {
-        recurringCommits.push(commit);
-      }
-    }
-    // Tier products stay disabled for the entire contract — simple mode only
-    // bills the MAU product.
-    overrides.push(...tierProductIds.map(disableOverrideForContract));
+  if (allSamePrice) {
+    const overrides: OverrideEntry[] = [
+      {
+        starting_at: startDate,
+        type: "OVERWRITE" as const,
+        entitled: true,
+        override_specifiers: [
+          {
+            product_id: getProductMauId(),
+            billing_frequency: "MONTHLY" as const,
+          },
+        ],
+        overwrite_rate: {
+          rate_type: "FLAT" as const,
+          price: tierPrices[0],
+          credit_type_id: creditTypeId,
+        },
+      },
+      ...tierProductIds.map(disableOverride),
+    ];
 
     return {
       overrides,
@@ -955,8 +861,8 @@ export function buildEnterpriseOverrides({
           },
         },
       ],
-      ...(recurringCommits.length > 0
-        ? { recurring_commits: recurringCommits }
+      ...(pricing.floorCents > 0
+        ? { recurring_commits: [recurringCommit(getProductMauId())] }
         : {}),
       custom_fields: {
         MAU_THRESHOLD: mauThreshold,
@@ -966,42 +872,41 @@ export function buildEnterpriseOverrides({
 
   // Multi-tier: use MAU Tier products with per-tier FLAT prices.
   const overrides: OverrideEntry[] = [];
-  const recurringCommits: RecurringCommitEntry[] = [];
 
-  // Disable the default MAU product for the contract — tiered contracts bill
-  // through the MAU Tier products instead.
-  overrides.push(disableOverrideForContract(getProductMauId()));
+  // Disable the default MAU product (tiered contracts use MAU Tier products instead).
+  overrides.push(disableOverride(getProductMauId()));
 
-  for (const phase of phases) {
-    const tierPrices = deriveTierPrices(
-      phase.pricing.tiers,
-      phase.pricing.currency
-    );
-    for (let i = 0; i < phase.pricing.tiers.length; i++) {
-      overrides.push(
-        phasePriceOverride(phase, tierProductIds[i], tierPrices[i])
-      );
-    }
-    const commit = phaseFloorCommit(phase, tierProductIds[0]);
-    if (commit) {
-      recurringCommits.push(commit);
-    }
+  // Enable MAU Tier products with per-tier FLAT prices.
+  for (let i = 0; i < pricing.tiers.length; i++) {
+    overrides.push({
+      starting_at: startDate,
+      type: "OVERWRITE" as const,
+      entitled: true,
+      override_specifiers: [
+        {
+          product_id: tierProductIds[i],
+          billing_frequency: "MONTHLY" as const,
+        },
+      ],
+      overwrite_rate: {
+        rate_type: "FLAT" as const,
+        price: tierPrices[i],
+        credit_type_id: creditTypeId,
+      },
+    });
   }
 
-  // Disable unused tier products for the entire contract (these don't change
-  // across phases — tier count is invariant per assertPhasesAreConsistent).
-  for (let i = firstPhase.pricing.tiers.length; i < MAX_MAU_TIERS; i++) {
-    overrides.push(disableOverrideForContract(tierProductIds[i]));
+  // Disable unused tier products.
+  for (let i = pricing.tiers.length; i < MAX_MAU_TIERS; i++) {
+    overrides.push(disableOverride(tierProductIds[i]));
   }
 
-  // Add subscriptions for each enabled tier (so syncMauCount can set
-  // quantities). Distribute the initial MAU count across tiers for the first
-  // invoice, using the first phase's tier boundaries — tier layout is
-  // invariant across phases per assertPhasesAreConsistent.
-  const mauTiersField = buildMauTiersField(firstPhase.pricing.tiers);
+  // Add subscriptions for each enabled tier (so syncMauCount can set quantities).
+  // Distribute initialMauCount across tiers for the first invoice.
+  const mauTiersField = buildMauTiersField(pricing.tiers);
   const tierBoundaries = parseMauTiers(mauTiersField) ?? [];
   const addSubscriptions: SubscriptionEntry[] = [];
-  for (let i = 0; i < firstPhase.pricing.tiers.length; i++) {
+  for (let i = 0; i < pricing.tiers.length; i++) {
     const tierQuantity = tierBoundaries[i]
       ? computeTierQuantity(initialMauCount, tierBoundaries[i])
       : 0;
@@ -1024,8 +929,8 @@ export function buildEnterpriseOverrides({
   return {
     overrides,
     add_subscriptions: addSubscriptions,
-    ...(recurringCommits.length > 0
-      ? { recurring_commits: recurringCommits }
+    ...(pricing.floorCents > 0
+      ? { recurring_commits: [recurringCommit(tierProductIds[0])] }
       : {}),
     custom_fields: {
       MAU_TIERS: mauTiersField,
@@ -1037,37 +942,33 @@ export function buildEnterpriseOverrides({
 /**
  * Apply enterprise pricing overrides on a Metronome contract.
  * Uses buildEnterpriseOverrides to construct the payload, then sends it.
- *
- * Pass `phases` to express scheduled rate changes (Stripe SubscriptionSchedule
- * phases). Each phase emits its own dated rate overrides + recurring commit.
  */
 export async function applyEnterpriseOverrides({
   metronomeCustomerId,
   contractId,
-  phases,
+  pricing,
+  startDate,
   overrideLogger,
   workspaceId,
   initialMauCount,
 }: {
   metronomeCustomerId: string;
   contractId: string;
-  phases: EnterprisePricingPhase[];
+  pricing: EnterprisePricingCents;
+  startDate: string;
   overrideLogger: Logger;
   workspaceId: string;
   initialMauCount: number;
 }): Promise<void> {
-  if (phases.length === 0) {
-    throw new Error("applyEnterpriseOverrides requires at least one phase");
-  }
   const payload = buildEnterpriseOverrides({
-    phases,
+    pricing,
+    startDate,
     initialMauCount,
   });
 
-  const billingMode = phases[0].pricing.billingMode;
   overrideLogger.info(
-    { workspaceId, contractId, phaseCount: phases.length, ...payload },
-    `Applying enterprise overrides (${billingMode}, ${phases.length} phase${phases.length === 1 ? "" : "s"})`
+    { workspaceId, contractId, ...payload },
+    `Applying enterprise overrides (${pricing.billingMode})`
   );
 
   const client = getMetronomeClient();
@@ -1131,19 +1032,127 @@ export async function applyEnterpriseOverrides({
   }
 
   overrideLogger.info(
-    { workspaceId, contractId, billingMode },
+    { workspaceId, contractId, billingMode: pricing.billingMode },
     "Enterprise overrides applied"
   );
 }
 
 /**
- * Provision a Metronome customer + contract for an enterprise workspace,
- * extract MAU pricing from the Stripe subscription, and apply overrides.
+ * Provision one Metronome contract per Stripe SubscriptionSchedule phase
+ * (chained on the same customer).
+ *
+ * Each phase contract carries its own pricing, custom fields (MAU_TIERS /
+ * MAU_THRESHOLD), and floor commit. Per-phase contracts are bounded by
+ * `starting_at` / `ending_before` so Metronome activates them in turn — the
+ * `contract.start` webhook then rotates `subscription.metronomeContractId` to
+ * the newly-active contract.
+ *
+ * All contracts in the chain share the same `PHASED_SUBSCRIPTION_CUSTOM_FIELD_KEY`
+ * value (the Stripe subscription id) so the webhook can recognize a phase
+ * activation versus an unrelated `contract.start` event.
+ */
+export async function provisionEnterpriseContractsForPhases({
+  metronomeCustomerId,
+  workspace,
+  phases,
+  packageAlias,
+  uniquenessKeyPrefix,
+  enableStripeBilling,
+  initialMauCount,
+  phaseGroupId,
+  contractsLogger,
+}: {
+  metronomeCustomerId: string;
+  workspace: LightWorkspaceType;
+  phases: EnterprisePricingPhase[];
+  packageAlias: string;
+  /** Combined with the phase index to form a stable uniquenessKey per phase. */
+  uniquenessKeyPrefix: string;
+  enableStripeBilling: boolean;
+  initialMauCount: number;
+  /**
+   * Stable group identifier shared across every contract in the chain (so the
+   * webhook can recognize them as siblings). Typically the Stripe subscription
+   * id.
+   */
+  phaseGroupId: string;
+  contractsLogger: Logger;
+}): Promise<Result<{ contractIds: string[] }, Error>> {
+  if (phases.length === 0) {
+    return new Err(
+      new Error("provisionEnterpriseContractsForPhases requires ≥1 phase")
+    );
+  }
+
+  const contractIds: string[] = [];
+
+  for (let i = 0; i < phases.length; i++) {
+    const phase = phases[i];
+
+    const contractResult = await createMetronomeContract({
+      metronomeCustomerId,
+      packageAlias,
+      uniquenessKey: `${uniquenessKeyPrefix}_phase_${i}`,
+      startingAt: new Date(phase.startDate),
+      endingBefore: phase.endDate ? new Date(phase.endDate) : undefined,
+      enableStripeBilling,
+    });
+    if (contractResult.isErr()) {
+      return new Err(contractResult.error);
+    }
+    const { contractId } = contractResult.value;
+    contractIds.push(contractId);
+
+    contractsLogger.info(
+      {
+        workspaceId: workspace.sId,
+        metronomeCustomerId,
+        contractId,
+        phaseIndex: i,
+        phaseStart: phase.startDate,
+        phaseEnd: phase.endDate,
+        billingMode: phase.pricing.billingMode,
+      },
+      "[Metronome] Created per-phase enterprise contract"
+    );
+
+    await applyEnterpriseOverrides({
+      metronomeCustomerId,
+      contractId,
+      pricing: phase.pricing,
+      startDate: phase.startDate,
+      overrideLogger: contractsLogger,
+      workspaceId: workspace.sId,
+      initialMauCount,
+    });
+
+    // Tag every contract in the chain with the same group id so the
+    // contract.start webhook can recognize phase activations.
+    await getMetronomeClient().v1.customFields.setValues({
+      entity: "contract",
+      entity_id: contractId,
+      custom_fields: {
+        [PHASED_SUBSCRIPTION_CUSTOM_FIELD_KEY]: phaseGroupId,
+      },
+    });
+  }
+
+  return new Ok({ contractIds });
+}
+
+/**
+ * Provision a Metronome customer + per-phase contracts for an enterprise
+ * workspace, extract MAU pricing from the Stripe subscription, and apply
+ * overrides on each contract.
  *
  * The enterprise package alias is intentionally a near-empty shell —
  * subscriptions (seats / MAU / tier products) are added by
  * `applyEnterpriseOverrides` below using the live MAU count as
  * `initial_quantity`.
+ *
+ * Returns the FIRST contract id (the one currently active). Subsequent phase
+ * contracts coexist on the customer and the `contract.start` webhook rotates
+ * `subscription.metronomeContractId` when each later phase activates.
  */
 export async function provisionShadowEnterpriseMetronomeContract({
   workspace,
@@ -1185,8 +1194,7 @@ export async function provisionShadowEnterpriseMetronomeContract({
     );
   }
 
-  // Resolve the package alias based on the subscription currency (consistent
-  // across phases per assertPhasesAreConsistent).
+  // Resolve the package alias based on the active phase's currency.
   const packageAlias = resolvePackageAliasForCurrency(
     LEGACY_ENTERPRISE_PACKAGE_ALIAS,
     phases[0].pricing.currency
@@ -1203,35 +1211,30 @@ export async function provisionShadowEnterpriseMetronomeContract({
   }
   const { metronomeCustomerId } = customerResult.value;
 
-  // Create the (empty) contract directly — overrides below will add the MAU
-  // subscriptions with the right initial quantities.
-  const contractResult = await createMetronomeContract({
-    metronomeCustomerId,
-    packageAlias,
-    uniquenessKey: stripeSubscription.id,
-    startingAt: new Date(startDate),
-    enableStripeBilling: false,
-  });
-  if (contractResult.isErr()) {
-    return new Err(contractResult.error);
-  }
-  const { contractId: metronomeContractId } = contractResult.value;
-
   // Count MAUs for initial subscription quantities on the first invoice.
+  // Reuse the same count for every phase contract (each contract's first
+  // invoice gets the live MAU count; later usage is reported via events).
   const initialMauCount = await countMauForWorkspace(
     workspace,
     phases[0].pricing.billingMode
   );
 
-  // Apply MAU rate overrides + floor commit (per phase).
-  await applyEnterpriseOverrides({
+  const provisionResult = await provisionEnterpriseContractsForPhases({
     metronomeCustomerId,
-    contractId: metronomeContractId,
+    workspace,
     phases,
-    overrideLogger: logger,
-    workspaceId: workspace.sId,
+    packageAlias,
+    uniquenessKeyPrefix: stripeSubscription.id,
+    enableStripeBilling: false,
     initialMauCount,
+    phaseGroupId: stripeSubscription.id,
+    contractsLogger: logger,
   });
+  if (provisionResult.isErr()) {
+    return new Err(provisionResult.error);
+  }
+
+  const metronomeContractId = provisionResult.value.contractIds[0];
 
   return new Ok({ metronomeCustomerId, metronomeContractId });
 }

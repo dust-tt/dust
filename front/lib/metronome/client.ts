@@ -447,6 +447,7 @@ export async function createMetronomeContract({
   packageId,
   uniquenessKey,
   startingAt,
+  endingBefore,
   enableStripeBilling,
 }: {
   metronomeCustomerId: string;
@@ -457,6 +458,9 @@ export async function createMetronomeContract({
   uniquenessKey?: string;
   // Must already be on an hour boundary (Metronome requirement).
   startingAt: Date;
+  // Optional. Must already be on an hour boundary. Used to bound a contract
+  // when chaining multiple per-phase contracts on the same customer.
+  endingBefore?: Date;
   enableStripeBilling: boolean;
 }): Promise<Result<{ contractId: string }, Error>> {
   if (!packageAlias === !packageId) {
@@ -467,6 +471,7 @@ export async function createMetronomeContract({
     );
   }
   const startingAtISO = startingAt.toISOString();
+  const endingBeforeISO = endingBefore?.toISOString();
   const packageLabel = packageAlias ?? packageId!;
 
   try {
@@ -475,6 +480,7 @@ export async function createMetronomeContract({
       ...(packageAlias ? { package_alias: packageAlias } : {}),
       ...(packageId ? { package_id: packageId } : {}),
       starting_at: startingAtISO,
+      ...(endingBeforeISO ? { ending_before: endingBeforeISO } : {}),
       ...(uniquenessKey ? { uniqueness_key: uniquenessKey } : {}),
     });
 

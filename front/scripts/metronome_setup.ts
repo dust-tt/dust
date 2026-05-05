@@ -18,6 +18,7 @@ import {
   CREDIT_TYPE_USD_ID,
   DEV_CREDIT_TYPE_AWU_ID,
   DEV_CREDIT_TYPE_PROG_USD_ID,
+  PHASED_SUBSCRIPTION_CUSTOM_FIELD_KEY,
   PLAN_CODE_CUSTOM_FIELD_KEY,
   PROD_CREDIT_TYPE_AWU_ID,
   PROD_CREDIT_TYPE_PROG_USD_ID,
@@ -2042,6 +2043,7 @@ const CUSTOM_FIELD_KEYS: Array<{
   { entity: "contract", key: "MAU_TIERS" },
   { entity: "contract", key: "MAU_THRESHOLD" },
   { entity: "contract", key: PLAN_CODE_CUSTOM_FIELD_KEY },
+  { entity: "contract", key: PHASED_SUBSCRIPTION_CUSTOM_FIELD_KEY },
 ];
 
 async function syncCustomFields(): Promise<void> {
