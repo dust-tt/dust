@@ -4,7 +4,7 @@ import { createEnterpriseCreditPurchase } from "@app/lib/credits/committed";
 import { createMetronomeCredit } from "@app/lib/metronome/client";
 import {
   getCreditTypeProgrammaticUsdId,
-  getProductFreeMonthlyCreditId,
+  getProductFreeCreditId,
 } from "@app/lib/metronome/constants";
 import {
   getStripeSubscription,
@@ -201,7 +201,7 @@ export const buyProgrammaticUsageCreditsPlugin = createPlugin({
         const amount = Math.ceil(amountMicroUsd / 1_000_000);
         const metronomeResult = await createMetronomeCredit({
           metronomeCustomerId,
-          productId: getProductFreeMonthlyCreditId(),
+          productId: getProductFreeCreditId(),
           creditTypeId: getCreditTypeProgrammaticUsdId(),
           amount,
           startingAt: startResult.value.startDate.toISOString(),

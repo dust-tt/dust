@@ -22,6 +22,11 @@ import {
   PROD_CREDIT_TYPE_AWU_ID,
   PROD_CREDIT_TYPE_PROG_USD_ID,
 } from "@app/lib/metronome/constants";
+import { TOOL_CATEGORIES } from "@app/lib/metronome/events";
+
+// Number of pricing tiers for any tiered seat-style product (MAU, Regular
+// Seat, future). Tier products and rates are derived from the prefix.
+const SEAT_TIER_COUNT = 6;
 
 if (!process.env.METRONOME_API_KEY) {
   console.error("METRONOME_API_KEY env var required");
@@ -154,6 +159,13 @@ interface RecurringCreditDef {
     value: number;
   };
   applicable_product_tags?: string[];
+  // Mutually exclusive with applicable_product_tags. Filters drawdown by
+  // pricing/presentation group values (e.g. { is_free_usage: "true" }).
+  specifiers?: Array<{
+    presentation_group_values?: Record<string, string>;
+    pricing_group_values?: Record<string, string>;
+    product_tags?: string[];
+  }>;
   recurrence_frequency?: "MONTHLY" | "QUARTERLY" | "ANNUAL" | "WEEKLY";
   name?: string;
 }
@@ -256,6 +268,52 @@ const METRICS: MetricDef[] = [
       ["mcp_server_id"],
     ],
   },
+  // AWU-based AI cost metrics — sum cost_awu directly (no unit conversion).
+  // Used by the new AI Usage products for AWU rate cards (e.g. Enterprise EUR).
+  {
+    name: "LLM Cost AWU (Programmatic)",
+    event_type_filter: { in_values: ["llm_usage_v3"] },
+    property_filters: [
+      { name: "cost_awu", exists: true },
+      { name: "is_programmatic_usage", in_values: ["true"] },
+      { name: "is_free_usage", exists: true },
+      { name: "api_key_name", exists: true },
+      { name: "model_id", exists: true },
+      { name: "origin", exists: true },
+      { name: "agent_id", exists: true },
+    ],
+    aggregation_type: "SUM",
+    aggregation_key: "cost_awu",
+    group_keys: [
+      ["api_key_name"],
+      ["model_id"],
+      ["origin"],
+      ["agent_id"],
+      ["is_free_usage"],
+    ],
+  },
+  {
+    name: "LLM Cost AWU (User)",
+    event_type_filter: { in_values: ["llm_usage_v3"] },
+    property_filters: [
+      { name: "cost_awu", exists: true },
+      { name: "is_programmatic_usage", in_values: ["false"] },
+      { name: "is_free_usage", exists: true },
+      { name: "user_id", exists: true },
+      { name: "model_id", exists: true },
+      { name: "origin", exists: true },
+      { name: "agent_id", exists: true },
+    ],
+    aggregation_type: "SUM",
+    aggregation_key: "cost_awu",
+    group_keys: [
+      ["user_id"],
+      ["model_id"],
+      ["origin"],
+      ["agent_id"],
+      ["is_free_usage"],
+    ],
+  },
   // Phase 2 token metrics removed — will be added when Pricing Index is ready.
 ];
 
@@ -280,20 +338,21 @@ const PRODUCTS: ProductDef[] = [
     tags: [USAGE_TAG],
   },
   // --- New pricing usage products (AWU) ---
-  // 1 AWU = $0.01. AI Usage: cost_micro_usd / 10_000 = AWU (100 AWU per dollar of cost).
-  // Tool Usage: count × tool_weight = AWU (weight configured per tool category in rate card).
+  // 1 AWU = $0.01. AI Usage is priced directly on the cost_awu event property
+  // (no quantity_conversion). Tool Usage: count × tool_weight = AWU (weight
+  // configured per tool category in rate card via pricing_group_values).
   {
     name: "AI Usage (User)",
     type: "USAGE",
-    billable_metric_name: "LLM Provider Cost (User)",
-    quantity_conversion: { conversion_factor: 10_000, operation: "DIVIDE" },
+    billable_metric_name: "LLM Cost AWU (User)",
+    presentation_group_key: ["is_free_usage"],
     tags: [USAGE_TAG],
   },
   {
     name: "AI Usage (Programmatic)",
     type: "USAGE",
-    billable_metric_name: "LLM Provider Cost (Programmatic)",
-    quantity_conversion: { conversion_factor: 10_000, operation: "DIVIDE" },
+    billable_metric_name: "LLM Cost AWU (Programmatic)",
+    presentation_group_key: ["is_free_usage"],
     tags: [USAGE_TAG],
   },
   {
@@ -318,17 +377,22 @@ const PRODUCTS: ProductDef[] = [
     name: "Workspace Seat",
     type: "SUBSCRIPTION",
   },
+  // Regular Seat — SUBSCRIPTION product for new (non-legacy) plans (e.g. Enterprise EUR).
+  // Same seat-sync mechanism as Workspace Seat; kept as a separate product so legacy
+  // and new pricing live on distinct rate cards without conflict.
+  {
+    name: "Regular Seat",
+    type: "SUBSCRIPTION",
+  },
   // MAU product — single subscription for simple (non-tiered) enterprise contracts.
   // Used when no MAU_TIERS custom field is set on the contract.
   { name: "MAU", type: "SUBSCRIPTION" },
-  // MAU tier products — one per pricing tier for enterprise contracts with graduated pricing.
-  // Enabled per-contract via overrides. Quantity managed by syncMauCount based on MAU_TIERS custom field.
-  { name: "MAU Tier 1", type: "SUBSCRIPTION" },
-  { name: "MAU Tier 2", type: "SUBSCRIPTION" },
-  { name: "MAU Tier 3", type: "SUBSCRIPTION" },
-  { name: "MAU Tier 4", type: "SUBSCRIPTION" },
-  { name: "MAU Tier 5", type: "SUBSCRIPTION" },
-  { name: "MAU Tier 6", type: "SUBSCRIPTION" },
+  // Tiered seat products — one per pricing tier for contracts with graduated
+  // pricing. Not entitled by default; enabled per contract via overrides.
+  // Quantity managed by the MAU/seat sync flow based on the contract's tier
+  // custom field.
+  ...buildSeatTierProducts("MAU"),
+  ...buildSeatTierProducts("Regular Seat"),
   // MAU Commit — appears as a line item on invoices for the monthly minimum charge.
   { name: "MAU Commit", type: "FIXED" },
   // FIXED products for credit grants — separate products for distinct invoice line items.
@@ -350,19 +414,31 @@ const PRODUCTS: ProductDef[] = [
   },
 ];
 
-// MAU tier rate definitions for enterprise rate cards.
-// Not entitled by default — enabled per contract via overrides with per-tier pricing.
-const MAU_TIER_PRODUCT_NAMES = [
-  "MAU Tier 1",
-  "MAU Tier 2",
-  "MAU Tier 3",
-  "MAU Tier 4",
-  "MAU Tier 5",
-  "MAU Tier 6",
-] as const;
+// "MAU Tier 1", …, "MAU Tier 6" / "Regular Seat Tier 1", …, "Regular Seat Tier 6".
+function buildSeatTierProductNames(prefix: string): string[] {
+  return Array.from(
+    { length: SEAT_TIER_COUNT },
+    (_, i) => `${prefix} Tier ${i + 1}`
+  );
+}
 
-function buildMauTierRates(creditTypeId: string): RateDef[] {
-  return MAU_TIER_PRODUCT_NAMES.map(
+// SUBSCRIPTION product entries to inject into PRODUCTS for a tiered seat family.
+function buildSeatTierProducts(prefix: string): ProductDef[] {
+  return buildSeatTierProductNames(prefix).map(
+    (name): ProductDef => ({ name, type: "SUBSCRIPTION" })
+  );
+}
+
+// Default rate entries for a tiered seat family on a rate card. Not entitled
+// by default — enabled per contract via overrides with per-tier pricing.
+function buildSeatTierRates({
+  prefix,
+  creditTypeId,
+}: {
+  prefix: string;
+  creditTypeId: string;
+}): RateDef[] {
+  return buildSeatTierProductNames(prefix).map(
     (name): RateDef => ({
       product_name: name,
       starting_at: "2026-04-01T00:00:00.000Z",
@@ -373,6 +449,40 @@ function buildMauTierRates(creditTypeId: string): RateDef[] {
       credit_type_id: creditTypeId,
     })
   );
+}
+
+// Per-category AWU price for Tool Usage rates on the Enterprise EUR rate card.
+// Placeholder of 1 AWU per invocation everywhere — adjust per category when the
+// final pricing is set.
+const ENTERPRISE_EUR_TOOL_CATEGORY_PRICES_AWU: Record<
+  (typeof TOOL_CATEGORIES)[number],
+  number
+> = {
+  retrieval: 1,
+  deep_research: 2,
+  reasoning: 1,
+  connectors: 1,
+  generation: 1,
+  agents: 1,
+  actions: 1,
+  platform: 1,
+};
+
+function buildEnterpriseEurToolUsageRates(): RateDef[] {
+  return TOOL_CATEGORIES.flatMap((category): RateDef[] => {
+    const price = ENTERPRISE_EUR_TOOL_CATEGORY_PRICES_AWU[category];
+    return (["Tool Usage (User)", "Tool Usage (Programmatic)"] as const).map(
+      (productName): RateDef => ({
+        product_name: productName,
+        starting_at: "2026-04-01T00:00:00.000Z",
+        entitled: true,
+        rate_type: "FLAT",
+        price,
+        credit_type_id: getCreditTypeAwuId(),
+        pricing_group_values: { tool_category: category },
+      })
+    );
+  });
 }
 
 // Function — evaluated after detectEnvironment() resolves ENV (needed for AWU credit type).
@@ -504,7 +614,10 @@ function getRateCards(): RateCardDef[] {
           price: 1,
           credit_type_id: getCreditTypeProgrammaticUsdId(),
         },
-        ...buildMauTierRates(CREDIT_TYPE_USD_ID),
+        ...buildSeatTierRates({
+          prefix: "MAU",
+          creditTypeId: CREDIT_TYPE_USD_ID,
+        }),
       ],
     },
     // --- EUR variants: same seat prices, billed in EUR ---
@@ -638,7 +751,62 @@ function getRateCards(): RateCardDef[] {
           price: 1,
           credit_type_id: getCreditTypeProgrammaticUsdId(),
         },
-        ...buildMauTierRates(CREDIT_TYPE_EUR_ID),
+        ...buildSeatTierRates({
+          prefix: "MAU",
+          creditTypeId: CREDIT_TYPE_EUR_ID,
+        }),
+      ],
+    },
+    // --- Enterprise EUR: new (non-legacy) enterprise rate card ---
+    // Per-seat billing in EUR + AWU-based AI/Tool usage.
+    // - Regular Seat: €45/seat/month (subscription).
+    // - AI Usage: priced directly on cost_awu (1 AWU per unit, no multiplier).
+    // - Tool Usage: per-category AWU price via pricing_group_values.tool_category.
+    {
+      name: "Enterprise EUR",
+      description:
+        "Enterprise plan (EUR). Per-seat billing + AWU-based AI/Tool usage.",
+      aliases: [{ name: "enterprise-eur" }],
+      fiat_credit_type_id: CREDIT_TYPE_EUR_ID,
+      credit_type_conversions: [
+        {
+          custom_credit_type_id: getCreditTypeAwuId(),
+          fiat_per_custom_credit: 0.01,
+        },
+      ],
+      rates: [
+        {
+          product_name: "Regular Seat",
+          starting_at: "2026-04-01T00:00:00.000Z",
+          entitled: true,
+          rate_type: "FLAT",
+          billing_frequency: "MONTHLY",
+          price: 45,
+          credit_type_id: CREDIT_TYPE_EUR_ID,
+        },
+        {
+          product_name: "AI Usage (User)",
+          starting_at: "2026-04-01T00:00:00.000Z",
+          entitled: true,
+          rate_type: "FLAT",
+          price: 1,
+          credit_type_id: getCreditTypeAwuId(),
+        },
+        {
+          product_name: "AI Usage (Programmatic)",
+          starting_at: "2026-04-01T00:00:00.000Z",
+          entitled: true,
+          rate_type: "FLAT",
+          price: 1,
+          credit_type_id: getCreditTypeAwuId(),
+        },
+        ...buildEnterpriseEurToolUsageRates(),
+        // Per-tier Regular Seat rates — not entitled by default; enabled per
+        // contract via overrides with the actual per-tier price (in EUR).
+        ...buildSeatTierRates({
+          prefix: "Regular Seat",
+          creditTypeId: CREDIT_TYPE_EUR_ID,
+        }),
       ],
     },
     // --- Example: New Business plan with AWU-based usage pricing ---
@@ -721,6 +889,26 @@ function getFreeMonthlyRecurringCredits(): RecurringCreditDef {
   };
 }
 
+// Monthly recurring AWU credit that draws down only on usage tagged as free
+// via the `is_free_usage` presentation group. Granted at a very high quantity
+// so it effectively zeros out free-tagged usage on every billing period.
+function getFreeUsageAwuRecurringCredits(): RecurringCreditDef {
+  return {
+    product_name: "Free Credits",
+    access_amount: {
+      credit_type_id: getCreditTypeAwuId(),
+      unit_price: 0,
+      quantity: 1_000_000_000,
+    },
+    commit_duration: { value: 1, unit: "PERIODS" },
+    priority: 1,
+    starting_at_offset: { unit: "DAYS", value: 0 }, // starts immediately
+    specifiers: [{ presentation_group_values: { is_free_usage: "true" } }],
+    recurrence_frequency: "MONTHLY",
+    name: "Free Usage Credits",
+  };
+}
+
 // Annual variant for annual packages. Same product, but the credit is granted
 // once per year. The credit.segment.start webhook detects ANNUAL recurrence
 // and multiplies the monthly bracket amount by 12.
@@ -745,6 +933,21 @@ function getFreeAnnualRecurringCredits(): RecurringCreditDef {
 const LEGACY_SEAT_SUBSCRIPTION: PackageSubscription = {
   temporary_id: "legacy-seat-sub",
   product_name: "Workspace Seat",
+  billing_frequency: "MONTHLY",
+  collection_schedule: "ADVANCE",
+  quantity_management_mode: "QUANTITY_ONLY",
+  initial_quantity: 1,
+  proration: {
+    is_prorated: true,
+    invoice_behavior: "BILL_ON_NEXT_COLLECTION_DATE",
+  },
+};
+
+// Seat subscription definition for new (non-legacy) per-seat packages.
+// Same shape as LEGACY_SEAT_SUBSCRIPTION but bound to the Regular Seat product.
+const REGULAR_SEAT_SUBSCRIPTION: PackageSubscription = {
+  temporary_id: "regular-seat-sub",
+  product_name: "Regular Seat",
   billing_frequency: "MONTHLY",
   collection_schedule: "ADVANCE",
   quantity_management_mode: "QUANTITY_ONLY",
@@ -839,6 +1042,18 @@ function getPackages(): PackageDef[] {
       rate_card_name: "Legacy Enterprise MAU EUR",
       scheduled_charges_on_usage_invoices: "ALL",
       recurring_credits: [getFreeMonthlyRecurringCredits()],
+      ...BILLING_CYCLE_CONFIG,
+    },
+    // New Enterprise EUR — per-seat billing (Regular Seat) + AWU AI/Tool usage.
+    // Includes a recurring AWU credit that draws down on usage tagged as free
+    // via the `is_free_usage` presentation group.
+    {
+      name: "Enterprise EUR",
+      aliases: [{ name: "enterprise-eur" }],
+      rate_card_name: "Enterprise EUR",
+      subscriptions: [REGULAR_SEAT_SUBSCRIPTION],
+      scheduled_charges_on_usage_invoices: "ALL",
+      recurring_credits: [getFreeUsageAwuRecurringCredits()],
       ...BILLING_CYCLE_CONFIG,
     },
   ];
@@ -938,6 +1153,34 @@ async function syncMetrics(): Promise<void> {
       ids.metrics[desired.name] = ex.id;
     } else {
       if (ex) {
+        if (ex.aggregation_key !== desired.aggregation_key) {
+          console.log(
+            `    [diff] ${desired.name}: aggregation_key ${ex.aggregation_key} → ${desired.aggregation_key}`
+          );
+        }
+        if (
+          ex.aggregation_type?.toLowerCase() !==
+          desired.aggregation_type.toLowerCase()
+        ) {
+          console.log(
+            `    [diff] ${desired.name}: aggregation_type ${ex.aggregation_type} → ${desired.aggregation_type}`
+          );
+        }
+        if (!groupKeysMatch) {
+          console.log(
+            `    [diff] ${desired.name}: group_keys ${JSON.stringify(sortGroupKeys(ex.group_keys ?? []))} → ${JSON.stringify(sortGroupKeys(desired.group_keys ?? []))}`
+          );
+        }
+        if (!eventTypeMatch) {
+          console.log(
+            `    [diff] ${desired.name}: event_type_filter ${JSON.stringify(ex.event_type_filter?.in_values?.sort() ?? [])} → ${JSON.stringify([...desired.event_type_filter.in_values].sort())}`
+          );
+        }
+        if (!propertyFiltersMatch) {
+          console.log(
+            `    [diff] ${desired.name}: property_filters ${JSON.stringify(sortFilters(ex.property_filters ?? []))} → ${JSON.stringify(sortFilters(desired.property_filters ?? []))}`
+          );
+        }
         console.log(
           `  ↻ ${desired.name} — config changed${EXECUTE ? ", archiving" : ""} ${ex.id}`
         );
@@ -1000,26 +1243,33 @@ function productMatches(
 ): boolean {
   const cur = ex.current;
   if (!cur) {
+    console.log(`    [diff] ${desired.name}: no current revision`);
     return false;
   }
 
-  // Check type
   if (ex.type !== desired.type) {
+    console.log(
+      `    [diff] ${desired.name}: type ${ex.type} → ${desired.type}`
+    );
     return false;
   }
 
-  // Check metric ID
   const expectedMetricId = desired.billable_metric_name
     ? ids.metrics[desired.billable_metric_name]
     : undefined;
   if (expectedMetricId && cur.billable_metric_id !== expectedMetricId) {
+    console.log(
+      `    [diff] ${desired.name}: billable_metric_id ${cur.billable_metric_id} → ${expectedMetricId}`
+    );
     return false;
   }
   if (!expectedMetricId && cur.billable_metric_id) {
+    console.log(
+      `    [diff] ${desired.name}: billable_metric_id ${cur.billable_metric_id} should be unset`
+    );
     return false;
   }
 
-  // Check quantity_conversion
   const desiredQc = desired.quantity_conversion;
   const existingQc = cur.quantity_conversion;
   if (desiredQc && existingQc) {
@@ -1027,21 +1277,18 @@ function productMatches(
       desiredQc.conversion_factor !== existingQc.conversion_factor ||
       desiredQc.operation.toUpperCase() !== existingQc.operation.toUpperCase()
     ) {
+      console.log(
+        `    [diff] ${desired.name}: quantity_conversion ${JSON.stringify(existingQc)} → ${JSON.stringify(desiredQc)}`
+      );
       return false;
     }
-  } else if (
-    desiredQc !== undefined &&
-    existingQc !== undefined &&
-    desiredQc !== null &&
-    existingQc !== null
-  ) {
-    // One is set, the other isn't
-    if (!!desiredQc !== !!existingQc) {
-      return false;
-    }
+  } else if (!!desiredQc !== !!existingQc) {
+    console.log(
+      `    [diff] ${desired.name}: quantity_conversion presence ${!!existingQc} → ${!!desiredQc}`
+    );
+    return false;
   }
 
-  // Check quantity_rounding
   const desiredQr = desired.quantity_rounding;
   const existingQr = cur.quantity_rounding;
   if (desiredQr && existingQr) {
@@ -1050,26 +1297,39 @@ function productMatches(
       desiredQr.rounding_method.toUpperCase() !==
         existingQr.rounding_method.toUpperCase()
     ) {
+      console.log(
+        `    [diff] ${desired.name}: quantity_rounding ${JSON.stringify(existingQr)} → ${JSON.stringify(desiredQr)}`
+      );
       return false;
     }
   } else if (!!desiredQr !== !!existingQr) {
+    console.log(
+      `    [diff] ${desired.name}: quantity_rounding presence ${!!existingQr} → ${!!desiredQr}`
+    );
     return false;
   }
 
-  // Check group keys
   if (!arraysEqual(cur.pricing_group_key, desired.pricing_group_key)) {
+    console.log(
+      `    [diff] ${desired.name}: pricing_group_key [${cur.pricing_group_key ?? ""}] → [${desired.pricing_group_key ?? ""}]`
+    );
     return false;
   }
   if (
     !arraysEqual(cur.presentation_group_key, desired.presentation_group_key)
   ) {
+    console.log(
+      `    [diff] ${desired.name}: presentation_group_key [${cur.presentation_group_key ?? ""}] → [${desired.presentation_group_key ?? ""}]`
+    );
     return false;
   }
 
-  // Check tags
   if (
     !arraysEqual([...(cur.tags ?? [])].sort(), [...(desired.tags ?? [])].sort())
   ) {
+    console.log(
+      `    [diff] ${desired.name}: tags [${cur.tags ?? ""}] → [${desired.tags ?? ""}]`
+    );
     return false;
   }
 
@@ -1234,6 +1494,7 @@ async function rateCardMatches(
     product_id?: string;
     entitled?: boolean;
     billing_frequency?: string;
+    pricing_group_values?: Record<string, string>;
     rate?: {
       price?: number;
       credit_type?: { id: string };
@@ -1253,12 +1514,28 @@ async function rateCardMatches(
     return false;
   }
 
+  // Stable serialization of pricing_group_values so two rates on the same
+  // product but different group values can be told apart.
+  const serializeGroupValues = (v?: Record<string, string>): string =>
+    JSON.stringify(
+      Object.fromEntries(
+        Object.entries(v ?? {}).sort(([a], [b]) => a.localeCompare(b))
+      )
+    );
+
   for (const desiredRate of desired.rates) {
     const productId = ids.products[desiredRate.product_name];
-    const match = existingRates.find((r) => r.product_id === productId);
+    const desiredGroupKey = serializeGroupValues(
+      desiredRate.pricing_group_values
+    );
+    const match = existingRates.find(
+      (r) =>
+        r.product_id === productId &&
+        serializeGroupValues(r.pricing_group_values) === desiredGroupKey
+    );
     if (!match) {
       console.log(
-        `    [diff] ${ex.name}: product ${desiredRate.product_name} (${productId}) not found in existing rates`
+        `    [diff] ${ex.name}: product ${desiredRate.product_name} (${productId}) with group_values ${desiredGroupKey} not found in existing rates`
       );
       return false;
     }
@@ -1447,25 +1724,30 @@ interface ExistingPackage {
 }
 
 function packageMatches(ex: ExistingPackage, desired: PackageDef): boolean {
-  // Check rate card cascade
   if (recreated.rateCards.has(desired.rate_card_name)) {
+    console.log(
+      `    [diff] ${desired.name}: rate card "${desired.rate_card_name}" recreated this run`
+    );
     return false;
   }
 
-  // Check rate card ID matches the expected one.
   const expectedRateCardId = ids.rateCards[desired.rate_card_name];
   if (expectedRateCardId && ex.rate_card_id !== expectedRateCardId) {
+    console.log(
+      `    [diff] ${desired.name}: rate_card_id ${ex.rate_card_id} → ${expectedRateCardId}`
+    );
     return false;
   }
 
-  // Check subscriptions count
   const desiredSubs = desired.subscriptions ?? [];
   const existingSubs = ex.subscriptions ?? [];
   if (desiredSubs.length !== existingSubs.length) {
+    console.log(
+      `    [diff] ${desired.name}: subscription count ${existingSubs.length} → ${desiredSubs.length}`
+    );
     return false;
   }
 
-  // Check each subscription's config
   for (const desiredSub of desiredSubs) {
     const productId = ids.products[desiredSub.product_name];
     const matchingSub = existingSubs.find(
@@ -1474,21 +1756,33 @@ function packageMatches(ex: ExistingPackage, desired: PackageDef): boolean {
         productId
     );
     if (!matchingSub) {
+      console.log(
+        `    [diff] ${desired.name}: subscription product ${desiredSub.product_name} (${productId}) not found`
+      );
       return false;
     }
     if (matchingSub.collection_schedule !== desiredSub.collection_schedule) {
+      console.log(
+        `    [diff] ${desired.name}: ${desiredSub.product_name} collection_schedule ${matchingSub.collection_schedule} → ${desiredSub.collection_schedule}`
+      );
       return false;
     }
     if (
       matchingSub.subscription_rate.billing_frequency !==
       desiredSub.billing_frequency
     ) {
+      console.log(
+        `    [diff] ${desired.name}: ${desiredSub.product_name} billing_frequency ${matchingSub.subscription_rate.billing_frequency} → ${desiredSub.billing_frequency}`
+      );
       return false;
     }
     if (desiredSub.proration) {
       if (
         matchingSub.proration.is_prorated !== desiredSub.proration.is_prorated
       ) {
+        console.log(
+          `    [diff] ${desired.name}: ${desiredSub.product_name} proration.is_prorated ${matchingSub.proration.is_prorated} → ${desiredSub.proration.is_prorated}`
+        );
         return false;
       }
       if (
@@ -1496,6 +1790,9 @@ function packageMatches(ex: ExistingPackage, desired: PackageDef): boolean {
         matchingSub.proration.invoice_behavior !==
           desiredSub.proration.invoice_behavior
       ) {
+        console.log(
+          `    [diff] ${desired.name}: ${desiredSub.product_name} proration.invoice_behavior ${matchingSub.proration.invoice_behavior} → ${desiredSub.proration.invoice_behavior}`
+        );
         return false;
       }
     }
@@ -1504,43 +1801,62 @@ function packageMatches(ex: ExistingPackage, desired: PackageDef): boolean {
       matchingSub.quantity_management_mode !==
         desiredSub.quantity_management_mode
     ) {
+      console.log(
+        `    [diff] ${desired.name}: ${desiredSub.product_name} quantity_management_mode ${matchingSub.quantity_management_mode} → ${desiredSub.quantity_management_mode}`
+      );
       return false;
     }
   }
 
-  // Check scheduled_charges_on_usage_invoices
   if (
     (desired.scheduled_charges_on_usage_invoices ?? undefined) !==
     (ex.scheduled_charges_on_usage_invoices ?? undefined)
   ) {
+    console.log(
+      `    [diff] ${desired.name}: scheduled_charges_on_usage_invoices ${ex.scheduled_charges_on_usage_invoices} → ${desired.scheduled_charges_on_usage_invoices}`
+    );
     return false;
   }
 
-  // Check recurring credits count and product IDs (implicit product recreation cascade).
   const desiredCredits = desired.recurring_credits ?? [];
   const existingCredits = ex.recurring_credits ?? [];
   if (desiredCredits.length !== existingCredits.length) {
+    console.log(
+      `    [diff] ${desired.name}: recurring_credits count ${existingCredits.length} → ${desiredCredits.length}`
+    );
     return false;
   }
   for (const desiredCredit of desiredCredits) {
     const productId = ids.products[desiredCredit.product_name];
     const match = existingCredits.find((c) => c.product.id === productId);
     if (!match) {
+      console.log(
+        `    [diff] ${desired.name}: recurring credit for product ${desiredCredit.product_name} (${productId}) not found`
+      );
       return false;
     }
     if (
       match.access_amount.credit_type_id !==
       desiredCredit.access_amount.credit_type_id
     ) {
+      console.log(
+        `    [diff] ${desired.name}: recurring credit ${desiredCredit.product_name} credit_type_id ${match.access_amount.credit_type_id} → ${desiredCredit.access_amount.credit_type_id}`
+      );
       return false;
     }
     if (match.priority !== desiredCredit.priority) {
+      console.log(
+        `    [diff] ${desired.name}: recurring credit ${desiredCredit.product_name} priority ${match.priority} → ${desiredCredit.priority}`
+      );
       return false;
     }
     if (
       (match.recurrence_frequency ?? undefined) !==
       (desiredCredit.recurrence_frequency ?? undefined)
     ) {
+      console.log(
+        `    [diff] ${desired.name}: recurring credit ${desiredCredit.product_name} recurrence_frequency ${match.recurrence_frequency} → ${desiredCredit.recurrence_frequency}`
+      );
       return false;
     }
   }
@@ -1671,6 +1987,7 @@ async function syncPackages(): Promise<void> {
               ...(credit.applicable_product_tags
                 ? { applicable_product_tags: credit.applicable_product_tags }
                 : {}),
+              ...(credit.specifiers ? { specifiers: credit.specifiers } : {}),
               ...(credit.recurrence_frequency
                 ? { recurrence_frequency: credit.recurrence_frequency }
                 : {}),
@@ -1756,6 +2073,88 @@ async function syncCustomFields(): Promise<void> {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Sync: Alerts (default threshold notifications)
+// ---------------------------------------------------------------------------
+
+interface AlertDef {
+  name: string;
+  alert_type:
+    | "low_credit_balance_reached"
+    | "low_remaining_contract_credit_balance_reached"
+    | "low_remaining_commit_balance_reached";
+  threshold: number;
+  // Idempotency key — Metronome rejects duplicate creates with the same key.
+  uniqueness_key: string;
+  // Tag identifying which credit type the threshold tracks. Resolved at sync
+  // time (AWU ID differs per environment).
+  credit_type: "AWU";
+}
+
+// Default alerts applied to all customers (no `customer_id` set on create):
+// fire when AWU credit / contract-credit / commit balance reaches 0.
+const ALERTS: AlertDef[] = [
+  {
+    name: "Default: Empty credit balance (AWU)",
+    alert_type: "low_credit_balance_reached",
+    threshold: 0,
+    uniqueness_key: "default-low-credit-balance-zero-awu",
+    credit_type: "AWU",
+  },
+  {
+    name: "Default: Empty contract credit balance (AWU)",
+    alert_type: "low_remaining_contract_credit_balance_reached",
+    threshold: 0,
+    uniqueness_key: "default-low-contract-credit-balance-zero-awu",
+    credit_type: "AWU",
+  },
+  {
+    name: "Default: Empty commit balance (AWU)",
+    alert_type: "low_remaining_commit_balance_reached",
+    threshold: 0,
+    uniqueness_key: "default-low-commit-balance-zero-awu",
+    credit_type: "AWU",
+  },
+];
+
+async function syncAlerts(): Promise<void> {
+  console.log("\n=== Syncing Alerts ===");
+
+  for (const desired of ALERTS) {
+    const creditTypeId =
+      desired.credit_type === "AWU" ? getCreditTypeAwuId() : undefined;
+
+    if (!EXECUTE) {
+      console.log(
+        `  + [DRYRUN] Would create alert: ${desired.name} (${desired.alert_type}, threshold=${desired.threshold})`
+      );
+      continue;
+    }
+
+    try {
+      const created = await client.v1.alerts.create({
+        name: desired.name,
+        alert_type: desired.alert_type,
+        threshold: desired.threshold,
+        uniqueness_key: desired.uniqueness_key,
+        credit_type_id: creditTypeId,
+      });
+      const id = (created as { data: { id: string } }).data.id;
+      console.log(`  + Created: ${desired.name} → ${id}`);
+    } catch (err) {
+      // Metronome returns 409 when uniqueness_key already exists.
+      const status = (err as { status?: number })?.status;
+      if (status === 409) {
+        console.log(
+          `  ✓ ${desired.name} — already exists (uniqueness_key="${desired.uniqueness_key}")`
+        );
+      } else {
+        throw err;
+      }
+    }
+  }
+}
+
 async function main(): Promise<void> {
   ENV = await detectEnvironment();
   console.log(
@@ -1771,6 +2170,7 @@ async function main(): Promise<void> {
   await syncRateCards();
   await syncPackages();
   await syncCustomFields();
+  await syncAlerts();
 
   if (!EXECUTE) {
     console.log("\n✓ Dry-run complete. Pass --execute to apply changes.");
