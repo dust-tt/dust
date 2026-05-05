@@ -17,6 +17,7 @@ export const attachedKnowledgeSchema = z.object({
 const fileAttachmentSchema = z.object({
   fileId: z.string(),
   fileName: z.string(),
+  contentType: z.string().optional(),
 });
 
 export const skillBuilderFormSchema = z.object({

@@ -2660,6 +2660,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       fileAttachments: this.fileAttachments.map((file) => ({
         fileId: file.sId,
         fileName: file.fileName,
+        contentType: file.contentType,
       })),
       canWrite: this.canWrite(auth),
       isExtendable: this.isExtendable,
