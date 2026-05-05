@@ -5,6 +5,7 @@ import { SuggestedTodosGenerationTile } from "@app/components/assistant/conversa
 import { ConfirmContext } from "@app/components/Confirm";
 import { useSpaceConversationsSummary } from "@app/hooks/conversations";
 import { useArchiveProject } from "@app/hooks/useArchiveProject";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useCheckProjectName } from "@app/lib/swr/projects";
 import {
   useProjectMetadata,
@@ -55,6 +56,7 @@ export function SpaceAboutTab({
   space,
   onOpenMembersPanel,
 }: SpaceAboutTabProps) {
+  const { hasFeature } = useFeatureFlags();
   const {
     members: projectMembers,
     isEditor: isProjectEditor,
@@ -368,9 +370,11 @@ export function SpaceAboutTab({
                 )}
               </div>
             </div>
-            <div className="border-t border-border py-4">
-              <SuggestedTodosGenerationTile owner={owner} space={space} />
-            </div>
+            {hasFeature("project_todo") && (
+              <div className="border-t border-border py-4">
+                <SuggestedTodosGenerationTile owner={owner} space={space} />
+              </div>
+            )}
           </div>
         </div>
 

@@ -1,6 +1,7 @@
 import { ProjectSettingsOptionLabel } from "@app/components/assistant/conversation/space/about/ProjectSettingsOptionLabel";
 import { FirstSyncTodoLookbackForm } from "@app/components/assistant/conversation/space/FirstSyncTodoLookbackForm";
 import { ConfirmContext } from "@app/components/Confirm";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { InitialTodoSyncLookbackValue } from "@app/lib/project_todo/analyze_document/types";
 import { useUpdateProjectMetadata } from "@app/lib/swr/spaces";
 import { timeAgoFrom } from "@app/lib/utils";
@@ -41,6 +42,7 @@ export function SuggestedTodosGenerationTile({
   owner,
   space,
 }: SuggestedTodosGenerationTileProps) {
+  const { hasFeature } = useFeatureFlags();
   const confirm = useContext(ConfirmContext);
   const updateProjectMetadata = useUpdateProjectMetadata({
     owner,
@@ -131,6 +133,10 @@ export function SuggestedTodosGenerationTile({
   const onToggleClick = structurallyDisabled
     ? () => {}
     : handleTodoGenerationToggle;
+
+  if (!hasFeature("project_todo")) {
+    return null;
+  }
 
   return (
     <div className="flex items-center justify-between gap-4">
