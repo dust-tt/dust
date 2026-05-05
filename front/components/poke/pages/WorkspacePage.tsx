@@ -128,9 +128,11 @@ export function WorkspacePage() {
   const {
     activeSubscription,
     hasDummyFeature,
+    hasMetronomeFeature,
     membersCount,
     metronomeCustomerId,
     stripeSubscription,
+    stripeCustomerId,
     subscriptions,
     whitelistableFeatures,
     workspaceVerifiedDomains,
@@ -227,6 +229,8 @@ export function WorkspacePage() {
                   subscription={activeSubscription}
                   subscriptions={subscriptions}
                   programmaticUsageConfig={programmaticUsageConfig}
+                  hasMetronomeBillingFeature={hasMetronomeFeature}
+                  stripeCustomerId={stripeCustomerId}
                 />
               </TabsContent>
               <TabsContent value="planlimitations">

@@ -53,12 +53,16 @@ interface EnterpriseUpgradeDialogProps {
   owner: WorkspaceType;
   subscription: SubscriptionType;
   programmaticUsageConfig: ProgrammaticUsageConfigurationType | null;
+  hasMetronomeBillingFeature: boolean;
+  stripeCustomerId: string | null;
 }
 
 export default function EnterpriseUpgradeDialog({
   owner,
   subscription,
   programmaticUsageConfig,
+  hasMetronomeBillingFeature,
+  stripeCustomerId,
 }: EnterpriseUpgradeDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -73,14 +77,15 @@ export default function EnterpriseUpgradeDialog({
     }
   }, []);
 
-  const isMetronomeBilled = isSubscriptionMetronomeBilled(subscription);
+  const useMetronomePath =
+    isSubscriptionMetronomeBilled(subscription) || hasMetronomeBillingFeature;
   const { plans } = usePokePlans();
   const {
     packages: metronomePackages,
     isPackagesLoading,
     packagesError,
   } = usePokeMetronomePackages({
-    disabled: !isMetronomeBilled || !open,
+    disabled: !useMetronomePath || !open,
   });
   const router = useAppRouter();
 
@@ -108,7 +113,7 @@ export default function EnterpriseUpgradeDialog({
     [metronomePackages]
   );
   const isEnterprisePackageSelectionDisabled =
-    isMetronomeBilled &&
+    useMetronomePath &&
     (isPackagesLoading ||
       !!packagesError ||
       enterprisePackageOptions.length === 0);
@@ -120,11 +125,12 @@ export default function EnterpriseUpgradeDialog({
   const form = useForm<EnterpriseUpgradeFormType>({
     resolver: ioTsResolver(EnterpriseUpgradeFormSchema),
     defaultValues: {
-      stripeSubscriptionId: !isMetronomeBilled
+      stripeSubscriptionId: !useMetronomePath
         ? (subscription.stripeSubscriptionId ?? "")
         : undefined,
-      metronomePackageId: isMetronomeBilled ? "" : undefined,
-      startingAt: isMetronomeBilled ? minStartingAtLocal : undefined,
+      metronomePackageId: useMetronomePath ? "" : undefined,
+      startingAt: useMetronomePath ? minStartingAtLocal : undefined,
+      stripeCustomerId: useMetronomePath ? (stripeCustomerId ?? "") : undefined,
       planCode: "",
       freeCreditsOverrideEnabled: freeCreditMicroUsd !== null,
       freeCreditsDollars:
@@ -216,7 +222,7 @@ export default function EnterpriseUpgradeDialog({
           <DialogTitle>Upgrade {owner.name} to Enterprise.</DialogTitle>
           <DialogDescription>
             Select the enterprise plan and provide the{" "}
-            {isMetronomeBilled
+            {useMetronomePath
               ? "Metronome package and contract start time"
               : "Stripe subscription Id"}{" "}
             of the customer.
@@ -250,7 +256,7 @@ export default function EnterpriseUpgradeDialog({
                         }))}
                     />
                   </div>
-                  {isMetronomeBilled ? (
+                  {useMetronomePath ? (
                     <>
                       {isPackagesLoading && (
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -291,6 +297,15 @@ export default function EnterpriseUpgradeDialog({
                           min={minStartingAtLocal}
                           step={3600}
                           transformValue={snapDatetimeLocalToHour}
+                        />
+                      </div>
+                      <div className="grid-cols grid items-center gap-4">
+                        <InputField
+                          control={form.control}
+                          name="stripeCustomerId"
+                          title="Stripe Customer Id"
+                          placeholder="cus_1234567890"
+                          readOnly={stripeCustomerId !== null}
                         />
                       </div>
                     </>

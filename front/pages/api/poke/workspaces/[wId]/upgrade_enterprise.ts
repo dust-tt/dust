@@ -6,27 +6,29 @@ import {
   upsertProgrammaticUsageConfiguration,
 } from "@app/lib/api/poke/plugins/workspaces/manage_programmatic_usage_configuration";
 import { restoreWorkspaceAfterSubscription } from "@app/lib/api/subscription";
-import { Authenticator } from "@app/lib/auth";
+import { Authenticator, hasFeatureFlag } from "@app/lib/auth";
 import { startOrResumeEnterprisePAYG } from "@app/lib/credits/payg";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import {
   ceilToHourISO,
   createMetronomeContract,
-  findMetronomeCustomerByAlias,
   listMetronomeContracts,
   listMetronomePackages,
   scheduleMetronomeContractEnd,
   setMetronomeContractCustomFields,
 } from "@app/lib/metronome/client";
 import { PLAN_CODE_CUSTOM_FIELD_KEY } from "@app/lib/metronome/constants";
+import { ensureMetronomeCustomerForWorkspace } from "@app/lib/metronome/contracts";
 import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import {
   assertStripeSubscriptionIsValid,
+  getStripeCustomer,
   getStripeSubscription,
   isEnterpriseSubscription,
 } from "@app/lib/plans/stripe";
 import { PluginRunResource } from "@app/lib/resources/plugin_run_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { EnterpriseUpgradeFormSchema } from "@app/types/plan";
@@ -139,10 +141,20 @@ async function handler(
       const currentSubscription = auth.subscriptionResource();
       const isCurrentSubscriptionMetronomeBilled =
         currentSubscription?.isMetronomeOnlyBilled ?? false;
+      const hasMetronomeFlag = await hasFeatureFlag(auth, "metronome_billing");
+
+      // A workspace with the Metronome flag and no Stripe subscription
+      // (free / no plan) can be upgraded straight to a Metronome Enterprise
+      // contract: we'll provision the Metronome customer in this handler
+      // and let the ocntract.start webhook flip the subscription.
+      const canStartFreshMetronomeContract =
+        hasMetronomeFlag && !currentSubscription?.stripeSubscriptionId;
+
       const isMetronomeUpgrade =
         body.metronomePackageId !== undefined ||
         body.startingAt !== undefined ||
-        isCurrentSubscriptionMetronomeBilled;
+        isCurrentSubscriptionMetronomeBilled ||
+        canStartFreshMetronomeContract;
 
       // PAYG on the Metronome path is not yet wired up: there is no
       // Metronome-side cycle-renewal or invoicing for PAYG credits, so
@@ -180,13 +192,17 @@ async function handler(
       // Metronome path: schedule the upgrade in Metronome. The subscription
       // DB record is updated later by the contract.start webhook.
       if (isMetronomeUpgrade) {
-        if (!body.metronomePackageId || !body.startingAt) {
+        if (
+          !body.metronomePackageId ||
+          !body.startingAt ||
+          !body.stripeCustomerId
+        ) {
           return apiError(req, res, {
             status_code: 400,
             api_error: {
               type: "invalid_request_error",
               message:
-                "metronomePackageId and startingAt are required for Metronome-billed subscriptions.",
+                "metronomePackageId, startingAt and stripeCustomerId are required for Metronome-billed subscriptions.",
             },
           });
         }
@@ -200,14 +216,17 @@ async function handler(
           });
         }
 
-        // Gate: only allow this flow for workspaces whose current subscription
-        // is Metronome-only billed. Running it on a free or Stripe-billed
-        // subscription would leave the workspace in a shadow-billed or
-        // orphaned state when the contract.start webhook swaps the subscription.
-        if (!isCurrentSubscriptionMetronomeBilled) {
+        // Allow this flow either when the workspace is already
+        // Metronome-only billed, or when it has the metronome_billing flag
+        // and no Stripe subscription.
+        if (
+          !isCurrentSubscriptionMetronomeBilled &&
+          !canStartFreshMetronomeContract
+        ) {
           const errorMessage =
-            "Workspace's current subscription is not Metronome-only billed. " +
-            "Migrate the workspace to Metronome billing before scheduling an Enterprise upgrade.";
+            "Workspace cannot be upgraded via the Metronome path: it is " +
+            "Stripe-billed and not yet migrated. Migrate the workspace to " +
+            "Metronome billing before scheduling an Enterprise upgrade.";
           await pluginRun.recordError(errorMessage);
           return apiError(req, res, {
             status_code: 400,
@@ -215,18 +234,34 @@ async function handler(
           });
         }
 
-        const customerResult = await findMetronomeCustomerByAlias(owner.sId);
-        if (customerResult.isErr() || !customerResult.value) {
+        // Validate the Stripe customer exists before we touch Metronome
+        const stripeCustomer = await getStripeCustomer(body.stripeCustomerId);
+        if (!stripeCustomer) {
+          const errorMessage = `Stripe customer not found: ${body.stripeCustomerId}.`;
+          await pluginRun.recordError(errorMessage);
           return apiError(req, res, {
             status_code: 400,
+            api_error: { type: "invalid_request_error", message: errorMessage },
+          });
+        }
+
+        const customerResult = await ensureMetronomeCustomerForWorkspace({
+          workspace: renderLightWorkspaceType({ workspace: owner }),
+          stripeCustomerId: body.stripeCustomerId,
+        });
+        if (customerResult.isErr()) {
+          const errorMessage = `Failed to ensure Metronome customer: ${customerResult.error.message}`;
+          await pluginRun.recordError(errorMessage);
+          return apiError(req, res, {
+            status_code: 502,
             api_error: {
-              type: "invalid_request_error",
-              message: "No Metronome customer found for this workspace.",
+              type: "internal_server_error",
+              message: errorMessage,
             },
           });
         }
 
-        const metronomeCustomerId = customerResult.value;
+        const { metronomeCustomerId } = customerResult.value;
 
         const ONE_HOUR_MS = 60 * 60 * 1000;
         const requestedStartMs = Date.parse(body.startingAt);

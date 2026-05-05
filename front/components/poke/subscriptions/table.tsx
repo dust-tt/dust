@@ -169,6 +169,8 @@ interface ActiveSubscriptionTableProps {
   subscription: SubscriptionType;
   subscriptions: SubscriptionType[];
   programmaticUsageConfig: ProgrammaticUsageConfigurationType | null;
+  hasMetronomeBillingFeature: boolean;
+  stripeCustomerId: string | null;
 }
 
 export function ActiveSubscriptionTable({
@@ -177,6 +179,8 @@ export function ActiveSubscriptionTable({
   subscription,
   subscriptions,
   programmaticUsageConfig,
+  hasMetronomeBillingFeature,
+  stripeCustomerId,
 }: ActiveSubscriptionTableProps) {
   const status = getSubscriptionDisplayStatus(subscription);
   const { chipColor, chipLabel, cardClass } = STATUS_CONFIG[status];
@@ -200,6 +204,8 @@ export function ActiveSubscriptionTable({
               owner={owner}
               subscription={subscription}
               programmaticUsageConfig={programmaticUsageConfig}
+              hasMetronomeBillingFeature={hasMetronomeBillingFeature}
+              stripeCustomerId={stripeCustomerId}
             />
           </div>
           <PokeTable>
@@ -434,12 +440,16 @@ interface UpgradeDowngradeModalProps {
   owner: WorkspaceType;
   subscription: SubscriptionType;
   programmaticUsageConfig: ProgrammaticUsageConfigurationType | null;
+  hasMetronomeBillingFeature: boolean;
+  stripeCustomerId: string | null;
 }
 
 function UpgradeDowngradeModal({
   owner,
   subscription,
   programmaticUsageConfig,
+  hasMetronomeBillingFeature,
+  stripeCustomerId,
 }: UpgradeDowngradeModalProps) {
   const router = useAppRouter();
   const { plans } = usePokePlans();
@@ -559,6 +569,8 @@ function UpgradeDowngradeModal({
                 owner={owner}
                 subscription={subscription}
                 programmaticUsageConfig={programmaticUsageConfig}
+                hasMetronomeBillingFeature={hasMetronomeBillingFeature}
+                stripeCustomerId={stripeCustomerId}
               />
             </div>
             {isProPlanPrefix(subscription.plan.code) && (

@@ -1,20 +1,23 @@
 import { Authenticator } from "@app/lib/auth";
 import {
   createMetronomeContract,
-  findMetronomeCustomerByAlias,
   listMetronomeContracts,
   listMetronomePackages,
   scheduleMetronomeContractEnd,
   setMetronomeContractCustomFields,
 } from "@app/lib/metronome/client";
 import { PLAN_CODE_CUSTOM_FIELD_KEY } from "@app/lib/metronome/constants";
+import { ensureMetronomeCustomerForWorkspace } from "@app/lib/metronome/contracts";
 import { PlanModel } from "@app/lib/models/plan";
+import { getStripeCustomer } from "@app/lib/plans/stripe";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { Ok } from "@app/types/shared/result";
 import type { WorkspaceType } from "@app/types/user";
+import type Stripe from "stripe";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import handler from "./upgrade_enterprise";
@@ -25,7 +28,6 @@ vi.mock("@app/lib/metronome/client", async () => {
   >("@app/lib/metronome/client");
   return {
     ...actual,
-    findMetronomeCustomerByAlias: vi.fn(),
     listMetronomePackages: vi.fn(),
     createMetronomeContract: vi.fn(),
     setMetronomeContractCustomFields: vi.fn(),
@@ -34,11 +36,32 @@ vi.mock("@app/lib/metronome/client", async () => {
   };
 });
 
+vi.mock("@app/lib/metronome/contracts", async () => {
+  const actual = await vi.importActual<
+    typeof import("@app/lib/metronome/contracts")
+  >("@app/lib/metronome/contracts");
+  return {
+    ...actual,
+    ensureMetronomeCustomerForWorkspace: vi.fn(),
+  };
+});
+
+vi.mock("@app/lib/plans/stripe", async () => {
+  const actual = await vi.importActual<typeof import("@app/lib/plans/stripe")>(
+    "@app/lib/plans/stripe"
+  );
+  return {
+    ...actual,
+    getStripeCustomer: vi.fn(),
+  };
+});
+
 const METRONOME_CUSTOMER_ID = "cust_test_xxx";
 const EXISTING_CONTRACT_ID = "contract_existing_xxx";
 const NEW_CONTRACT_ID = "contract_new_yyy";
 const PACKAGE_ID = "pkg_ent_usd";
 const ENT_PLAN_CODE = "ENT_TEST_PLAN";
+const STRIPE_CUSTOMER_ID = "cus_test_xxx";
 
 async function ensureEnterprisePlan(): Promise<void> {
   await PlanModel.upsert({
@@ -117,6 +140,7 @@ function defaultBody(overrides: Record<string, unknown> = {}) {
     planCode: ENT_PLAN_CODE,
     metronomePackageId: PACKAGE_ID,
     startingAt: futureIso(2),
+    stripeCustomerId: STRIPE_CUSTOMER_ID,
     freeCreditsOverrideEnabled: false,
     paygEnabled: false,
     ...overrides,
@@ -125,9 +149,12 @@ function defaultBody(overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   // Default-happy mocks; individual tests override as needed.
-  vi.mocked(findMetronomeCustomerByAlias).mockResolvedValue(
-    new Ok(METRONOME_CUSTOMER_ID)
+  vi.mocked(ensureMetronomeCustomerForWorkspace).mockResolvedValue(
+    new Ok({ metronomeCustomerId: METRONOME_CUSTOMER_ID })
   );
+  vi.mocked(getStripeCustomer).mockResolvedValue({
+    id: STRIPE_CUSTOMER_ID,
+  } as unknown as Stripe.Customer);
   vi.mocked(listMetronomePackages).mockResolvedValue(
     new Ok([{ id: PACKAGE_ID, name: "Enterprise USD", aliases: [] }])
   );
@@ -173,7 +200,7 @@ describe("POST /api/poke/workspaces/[wId]/upgrade_enterprise — Metronome path"
 
     expect(res._getStatusCode()).toBe(400);
     expect(res._getJSONData().error.message).toContain(
-      "not Metronome-only billed"
+      "Stripe-billed and not yet migrated"
     );
     expect(createMetronomeContract).not.toHaveBeenCalled();
   });
@@ -324,5 +351,79 @@ describe("POST /api/poke/workspaces/[wId]/upgrade_enterprise — Metronome path"
     expect(sub).not.toBeNull();
     expect(sub!.metronomeContractId).toBe(EXISTING_CONTRACT_ID);
     expect(sub!.status).toBe("active");
+  });
+
+  it("rejects when stripeCustomerId is missing", async () => {
+    await ensureEnterprisePlan();
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      isSuperUser: true,
+    });
+    await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
+
+    req.body = defaultBody({ stripeCustomerId: undefined });
+    req.query.wId = workspace.sId;
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(400);
+    expect(res._getJSONData().error.message).toContain("stripeCustomerId");
+    expect(createMetronomeContract).not.toHaveBeenCalled();
+  });
+
+  it("rejects when the Stripe customer does not exist", async () => {
+    await ensureEnterprisePlan();
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      isSuperUser: true,
+    });
+    await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
+    vi.mocked(getStripeCustomer).mockResolvedValueOnce(null);
+
+    req.body = defaultBody();
+    req.query.wId = workspace.sId;
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(400);
+    expect(res._getJSONData().error.message).toContain(
+      "Stripe customer not found"
+    );
+    expect(createMetronomeContract).not.toHaveBeenCalled();
+  });
+
+  it("accepts a fresh workspace with the metronome_billing flag and provisions the Metronome customer with the Stripe link", async () => {
+    await ensureEnterprisePlan();
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      isSuperUser: true,
+    });
+    // Don't mark Metronome-billed; default workspace has no Stripe sub.
+    // Enable the flag to unlock the fresh-Metronome path.
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    await FeatureFlagFactory.basic(adminAuth, "metronome_billing");
+
+    req.body = defaultBody();
+    req.query.wId = workspace.sId;
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(ensureMetronomeCustomerForWorkspace).toHaveBeenCalledWith(
+      expect.objectContaining({ stripeCustomerId: STRIPE_CUSTOMER_ID })
+    );
+    expect(createMetronomeContract).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metronomeCustomerId: METRONOME_CUSTOMER_ID,
+        packageId: PACKAGE_ID,
+        enableStripeBilling: true,
+      })
+    );
+    expect(setMetronomeContractCustomFields).toHaveBeenCalledWith({
+      contractId: NEW_CONTRACT_ID,
+      customFields: { [PLAN_CODE_CUSTOM_FIELD_KEY]: ENT_PLAN_CODE },
+    });
   });
 });

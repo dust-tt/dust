@@ -399,6 +399,25 @@ export const getStripeSubscription = async (
   }
 };
 
+/**
+ * Calls the Stripe API to retrieve a customer by its ID. Returns `null` when
+ * the customer cannot be retrieved or has been deleted.
+ */
+export const getStripeCustomer = async (
+  stripeCustomerId: string
+): Promise<Stripe.Customer | null> => {
+  const stripe = getStripeClient();
+  try {
+    const customer = await stripe.customers.retrieve(stripeCustomerId);
+    if (customer.deleted) {
+      return null;
+    }
+    return customer;
+  } catch {
+    return null;
+  }
+};
+
 export async function getSubscriptionInvoices({
   subscriptionId,
   status,
