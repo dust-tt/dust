@@ -13,7 +13,7 @@ import fs from "fs";
 import path from "path";
 
 const DUST_BEDROCK_IMAGE_VERSION = "1.7.0";
-const DUST_BASE_IMAGE_VERSION = "0.8.2";
+const DUST_BASE_IMAGE_VERSION = "0.8.3";
 const DSBX_CLI_VERSION = "0.1.5";
 const AGENT_PROXIED_UID = 1003;
 // Built from https://github.com/openai/codex at tag rust-v0.115.0 (Apache-2.0).
@@ -178,8 +178,14 @@ SHELLEOF`,
         runtime: "node",
       },
       { name: "tsx", description: "TypeScript executor", runtime: "node" },
+      {
+        name: "pptxgenjs",
+        version: "4.0.1",
+        description: "PowerPoint generation library",
+        runtime: "node",
+      },
     ],
-    { installCmd: "npm install -g typescript tsx" }
+    { installCmd: "npm install -g typescript tsx pptxgenjs@4.0.1" }
   )
   .runCmd(
     `curl -fsSL https://github.com/dust-tt/dust/releases/download/dsbx-v${DSBX_CLI_VERSION}/dsbx-linux-x86_64 -o /tmp/dsbx && ` +
