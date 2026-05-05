@@ -37,7 +37,7 @@ export async function persistToolOutput(
   auth: Authenticator,
   conversation: ConversationType,
   block: CallToolResult["content"][number],
-  { toolName }: { toolName: string }
+  { toolName, serverName }: { toolName: string; serverName: string }
 ): Promise<PersistedToolOutput | null> {
   const owner = auth.getNonNullableWorkspace();
   const basePath = getConversationToolOutputsBasePath({
@@ -62,7 +62,7 @@ export async function persistToolOutput(
   }
 
   // Text blocks above the offload threshold.
-  if (shouldOffloadTextBlock(block)) {
+  if (shouldOffloadTextBlock(block, { serverName })) {
     const { fileName, contentType } = inferTextFileMetadata(
       block.text,
       toolName

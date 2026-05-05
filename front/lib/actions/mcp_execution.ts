@@ -58,7 +58,6 @@ import type { Logger } from "pino";
 const TEXT_OFFLOAD_EXEMPT_MCP_SERVERS: readonly string[] = [
   "conversation_files",
   "files",
-  "interactive_content",
   "sandbox",
 ];
 
@@ -175,7 +174,8 @@ export async function processToolResults(
     toolCallResultContent,
     async (block, idx) => {
       await persistToolOutput(auth, conversation, block, {
-        toolName: toolConfiguration.mcpServerName,
+        toolName: toolConfiguration.name,
+        serverName: toolConfiguration.mcpServerName,
       });
 
       switch (block.type) {
