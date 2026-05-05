@@ -53,12 +53,13 @@ Layout:
 - \`/files/conversation/results/\` — **tool outputs are automatically
   persisted here as a side effect of every tool call you make.** Two cases
   qualify:
-  1. Structured outputs (search results, browsed pages, data-source nodes)
-     are saved as \`.json\` or \`.md\`.
+  1. Output blocks that represent fetched content (the contents of a
+     data-source node such as a connected Notion or Drive document, or the
+     result of the web-browse tool) are saved as \`.md\`.
   2. Plain text outputs larger than 20 KiB (20480 bytes) are saved as
      \`.txt\`, or \`.json\` when the body parses as JSON.
-  Filenames have the form \`<epochMs>_<tool-slug>.<ext>\`, e.g.
-  \`1714896000000_search-files.json\`, so a plain \`ls\` lists them in
+  Filenames have the form \`<epochMs>_<slug>.<ext>\`, e.g.
+  \`1714896000000_my-notion-page.md\`, so a plain \`ls\` lists them in
   chronological order. Smaller plain-text outputs are not persisted — they
   live only in the conversation transcript.
 
