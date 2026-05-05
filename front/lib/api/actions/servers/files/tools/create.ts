@@ -95,7 +95,7 @@ export async function createHandler(
       resource: {
         text: `${verb} \`${entry.path}\``,
         uri: entry.path,
-        mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.SCOPED_FILE,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE_PATH,
         path: entry.path,
         title: entry.fileName,
         contentType: entry.contentType,

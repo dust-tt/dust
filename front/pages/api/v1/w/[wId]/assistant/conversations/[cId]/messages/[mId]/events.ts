@@ -1,6 +1,7 @@
 // This endpoint is redirected (307) to /api/sse/v1/w/[wId]/assistant/conversations/[cId]/messages/[mId]/events
 // via middleware. The /api/sse/ prefix allows the ingress to route SSE traffic to front-sse pods.
 
+import type { ActionGeneratedDBFileType } from "@app/lib/actions/types";
 import { isRunAgentQueryProgressOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { getConversationMessageType } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
@@ -199,6 +200,12 @@ async function handler(
             eventId: event.eventId,
             data: {
               ...event.data,
+              action: {
+                ...event.data.action,
+                generatedFiles: event.data.action.generatedFiles.filter(
+                  (f): f is ActionGeneratedDBFileType => f.fileId !== null
+                ),
+              },
               notification: {
                 ...event.data.notification,
                 // For backward compatibility, we need to move the _meta.data to the root level.

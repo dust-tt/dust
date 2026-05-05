@@ -1,6 +1,7 @@
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { getConversationRoute } from "@app/lib/utils/router";
+import type { ActionGeneratedDBFileType } from "@app/lib/actions/types";
 import type { AgentsGetViewType } from "@app/types/assistant/agent";
 import type {
   AgentMessageType,
@@ -160,8 +161,17 @@ function getRawContents(msg: AgentMessageType): Array<{
 export function addBackwardCompatibleAgentMessageFields(
   agentMessage: AgentMessageType
 ): AgentMessagePublicType {
+  // File path files have no public file resource. Omit them from each action's generatedFiles.
+  const publicActions = agentMessage.actions.map((action) => ({
+    ...action,
+    generatedFiles: action.generatedFiles.filter(
+      (f): f is ActionGeneratedDBFileType => f.fileId !== null
+    ),
+  }));
+
   return {
     ...agentMessage,
+    actions: publicActions,
     // Map "gracefully_stopped" to "succeeded" for backward compatibility with the public API.
     status:
       agentMessage.status === "gracefully_stopped"

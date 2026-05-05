@@ -85,7 +85,7 @@ export function isToolGeneratedFile(
 const ToolGeneratedFilePathSchema = z.object({
   text: z.string(),
   uri: z.string(),
-  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.SCOPED_FILE),
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE_PATH),
   path: z.string(),
   title: z.string(),
   contentType: z.enum(
