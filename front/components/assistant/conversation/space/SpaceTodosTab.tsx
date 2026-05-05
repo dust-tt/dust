@@ -4,7 +4,6 @@ import {
   ProjectTodosToolbar,
 } from "@app/components/assistant/conversation/space/conversations/project_todos/EditableProjectTodosPanel";
 import type { TodoOwnerFilter } from "@app/components/assistant/conversation/space/conversations/project_todos/projectTodosListScope";
-import { SuggestedTodosGenerationTile } from "@app/components/assistant/conversation/space/conversations/project_todos/SuggestedTodosGenerationTile";
 import type { GetSpaceResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
 import type { WorkspaceType } from "@app/types/user";
 
@@ -38,7 +37,6 @@ export function SpaceTodosTab({
         >
           <div className="flex flex-col gap-3">
             <ProjectTodosToolbar />
-            <SuggestedTodosGenerationTile owner={owner} spaceInfo={spaceInfo} />
             <ProjectTodosPanelMain />
           </div>
         </ProjectTodosPanelProvider>
