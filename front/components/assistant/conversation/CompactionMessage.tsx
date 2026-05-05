@@ -71,6 +71,8 @@ export function CompactionMessage({
     case "created": {
       const parentConversation = conversation.forkingData?.forkedFrom;
       const parentConversationTitle =
+        message.sourceConversationId &&
+        message.sourceConversationId !== conversation.sId &&
         parentConversation &&
         parentConversation.parentConversationId === message.sourceConversationId
           ? parentConversation.parentConversationTitle
