@@ -922,8 +922,17 @@ export const ConversationViewer = ({
     owner,
     conversationId,
     onEvent: onEventCallback,
+    // Also gate on initialListData being set: that only happens after the
+    // Virtuoso init effect runs, which itself waits for !isValidating (fresh
+    // SWR data). Without this gate, the conversation SSE starts as soon as
+    // cached data exists (isLoadingInitialData = false) while Virtuoso is still
+    // empty — so agent_message_new fires against an empty list, bypasses the
+    // terminal-status guard, and re-opens the message-events stream.
     isReadyToConsumeStream:
-      !isConversationLoading && !isLoadingInitialData && messages.length !== 0,
+      !isConversationLoading &&
+      !isLoadingInitialData &&
+      messages.length !== 0 &&
+      initialListData !== undefined,
   });
 
   const handleSubmit = useCallback(
