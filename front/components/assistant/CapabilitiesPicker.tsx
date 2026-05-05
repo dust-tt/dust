@@ -351,16 +351,6 @@ export function CapabilitiesPicker({
     disabled: !shouldFetchToolsData,
   });
 
-  const selectedMCPServerViewIds = useMemo(
-    () => new Set(selectedMCPServerViews.map((v) => v.sId)),
-    [selectedMCPServerViews]
-  );
-
-  const selectedSkillIds = useMemo(
-    () => new Set(selectedSkills.map((s) => s.sId)),
-    [selectedSkills]
-  );
-
   const normalizedSearchText = useMemo(
     () => searchText.trim().toLowerCase(),
     [searchText]
@@ -481,15 +471,17 @@ export function CapabilitiesPicker({
     }
   };
 
-  const capabilityPickerItems = useMemo<CapabilityPickerItem[]>(() => {
+  const capabilityPickerItems = (() => {
     const items: CapabilityPickerItem[] = [];
+    const selectedMCPServerViewIds = new Set(
+      selectedMCPServerViews.map((v) => v.sId)
+    );
 
     if (isSkillsDataReady && isToolsDataReady) {
       for (const skill of skills) {
         const description = skill.userFacingDescription;
 
         if (
-          selectedSkillIds.has(skill.sId) ||
           !matchesCapabilityPickerSearchQuery({
             description,
             label: skill.name,
@@ -582,18 +574,7 @@ export function CapabilitiesPicker({
 
       return a.sortName.localeCompare(b.sortName);
     });
-  }, [
-    availableMCPServers,
-    isAdmin,
-    isSkillsDataReady,
-    isToolsDataReady,
-    normalizedSearchText,
-    selectedMCPServerViewIds,
-    selectedSkillIds,
-    serverViews,
-    shouldFetchToolsData,
-    skills,
-  ]);
+  })();
 
   const hasNoVisibleItems =
     isSkillsDataReady && isToolsDataReady && capabilityPickerItems.length === 0;
