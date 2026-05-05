@@ -1,6 +1,6 @@
 import { SkillBuilderAgentFacingDescriptionSection } from "@app/components/skill_builder/SkillBuilderAgentFacingDescriptionSection";
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
-import { SkillBuilderFilesSection } from "@app/components/skill_builder/SkillBuilderFilesSection";
+import { SkillBuilderFilesPanel } from "@app/components/skill_builder/SkillBuilderFilesPanel";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import {
   SkillBuilderFormContext,
@@ -35,6 +35,7 @@ import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 import {
+  AttachmentIcon,
   BarFooter,
   BarHeader,
   Button,
@@ -48,7 +49,7 @@ import {
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useMemo, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useFormContext, useWatch } from "react-hook-form";
 
 interface SkillBuilderProps {
   skill?: SkillType;
@@ -66,6 +67,7 @@ export default function SkillBuilder({
   const router = useAppRouter();
   const sendNotification = useSendNotification();
   const [isSaving, setIsSaving] = useState(false);
+  const [isFilesPanelOpen, setIsFilesPanelOpen] = useState(false);
   const isMobile = useIsMobile();
 
   const { editors } = useSkillEditors({
@@ -181,6 +183,13 @@ export default function SkillBuilder({
 
   const showSuggestionsPanel =
     skill && !isMobile && hasReinforcedAgents && hasPendingSuggestions;
+  const canUseFilesPanel = hasFeature("sandbox_tools");
+  const rightPanelType =
+    canUseFilesPanel && isFilesPanelOpen
+      ? "files"
+      : showSuggestionsPanel
+        ? "suggestions"
+        : null;
 
   const leftPanel = (
     <div className="flex h-full w-full flex-col">
@@ -198,6 +207,13 @@ export default function SkillBuilder({
         }
         rightActions={
           <div className="flex items-center gap-2">
+            {canUseFilesPanel && (
+              <SkillBuilderFilesButton
+                isMobile={isMobile}
+                isOpen={isFilesPanelOpen}
+                onToggle={() => setIsFilesPanelOpen((open) => !open)}
+              />
+            )}
             <BarHeader.ButtonBar variant="close" onClose={handleCancel} />
           </div>
         }
@@ -231,7 +247,6 @@ export default function SkillBuilder({
           <SkillBuilderRequestedSpacesSection />
           <SkillBuilderAgentFacingDescriptionSection />
           <SkillBuilderInstructionsSection />
-          {hasFeature("sandbox_tools") && <SkillBuilderFilesSection />}
           <SkillBuilderToolsSection extendedSkill={extendedSkill} />
           <SkillBuilderSettingsOrComparisonFooter
             skill={skill}
@@ -268,18 +283,30 @@ export default function SkillBuilder({
         <SkillVersionComparisonProvider>
           <div
             className={cn(
-              "flex h-dvh flex-row",
+              "relative flex h-dvh flex-row",
               "bg-background text-foreground",
               "dark:bg-background-night dark:text-foreground-night"
             )}
           >
-            {showSuggestionsPanel ? (
+            {isMobile && rightPanelType === "files" ? (
+              <>
+                {leftPanel}
+                <div className="absolute inset-0 z-50 bg-background dark:bg-background-night">
+                  <SkillBuilderFilesPanel
+                    onClose={() => setIsFilesPanelOpen(false)}
+                  />
+                </div>
+              </>
+            ) : rightPanelType ? (
               <ResizablePanelGroup
                 id="skill-builder-layout"
                 direction="horizontal"
                 className="h-full w-full"
               >
-                <ResizablePanel defaultSize={65} minSize={40}>
+                <ResizablePanel
+                  defaultSize={rightPanelType === "files" ? 70 : 65}
+                  minSize={40}
+                >
                   <div className="h-full w-full overflow-y-auto">
                     {leftPanel}
                   </div>
@@ -287,9 +314,21 @@ export default function SkillBuilder({
 
                 <>
                   <ResizableHandle withHandle />
-                  <ResizablePanel defaultSize={35} minSize={20} maxSize={50}>
-                    <div className="h-full w-full overflow-y-auto">
-                      <SkillBuilderSuggestionsPanel />
+                  <ResizablePanel
+                    defaultSize={rightPanelType === "files" ? 30 : 35}
+                    minSize={20}
+                    maxSize={50}
+                  >
+                    <div className="h-full w-full overflow-hidden">
+                      {rightPanelType === "files" ? (
+                        <SkillBuilderFilesPanel
+                          onClose={() => setIsFilesPanelOpen(false)}
+                        />
+                      ) : (
+                        <div className="h-full w-full overflow-y-auto">
+                          <SkillBuilderSuggestionsPanel />
+                        </div>
+                      )}
                     </div>
                   </ResizablePanel>
                 </>
@@ -301,6 +340,34 @@ export default function SkillBuilder({
         </SkillVersionComparisonProvider>
       </FormProvider>
     </SkillBuilderFormContext.Provider>
+  );
+}
+
+function SkillBuilderFilesButton({
+  isMobile,
+  onToggle,
+}: {
+  isMobile: boolean;
+  isOpen: boolean;
+  onToggle: () => void;
+}) {
+  const { control } = useFormContext<SkillBuilderFormData>();
+  const fileAttachments = useWatch({ control, name: "fileAttachments" }) ?? [];
+
+  const label = isMobile
+    ? undefined
+    : fileAttachments.length > 0
+      ? `Files (${fileAttachments.length})`
+      : "Files";
+
+  return (
+    <Button
+      size="sm"
+      label={label}
+      icon={AttachmentIcon}
+      variant="ghost"
+      onClick={onToggle}
+    />
   );
 }
 
