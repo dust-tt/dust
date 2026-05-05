@@ -1,7 +1,6 @@
 import { EnvironmentSection } from "@app/components/pages/workspace/developers/sections/EnvironmentSection";
 import { NetworkSection } from "@app/components/pages/workspace/developers/sections/NetworkSection";
-import { useAuth } from "@app/lib/auth/AuthContext";
-import { useHasSandboxWorkspaceAdmin } from "@app/lib/swr/sandbox";
+import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import {
   CommandLineIcon,
   ContentMessage,
@@ -11,7 +10,10 @@ import {
 
 export function SandboxPage() {
   const { isAdmin } = useAuth();
-  const hasSandboxAdmin = useHasSandboxWorkspaceAdmin();
+  const { featureFlags } = useFeatureFlags();
+  const hasSandboxAdmin =
+    featureFlags.includes("sandbox_tools") &&
+    featureFlags.includes("sandbox_workspace_admin");
 
   const renderBody = () => {
     if (!isAdmin) {

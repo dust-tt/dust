@@ -3,10 +3,13 @@ import {
   MAX_VALUE_BYTES,
   SANDBOX_ENV_VAR_PREFIX,
 } from "@app/lib/api/sandbox/env_vars";
-import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import {
+  useAuth,
+  useFeatureFlags,
+  useWorkspace,
+} from "@app/lib/auth/AuthContext";
 import {
   useDeleteWorkspaceSandboxEnvVar,
-  useHasSandboxWorkspaceAdmin,
   useUpsertWorkspaceSandboxEnvVar,
   useWorkspaceSandboxEnvVars,
 } from "@app/lib/swr/sandbox";
@@ -68,7 +71,10 @@ const DEFAULT_FORM_VALUES: FormValues = { name: "", value: "" };
 export function EnvironmentSection() {
   const owner = useWorkspace();
   const { isAdmin } = useAuth();
-  const hasSandboxAdmin = useHasSandboxWorkspaceAdmin();
+  const { featureFlags } = useFeatureFlags();
+  const hasSandboxAdmin =
+    featureFlags.includes("sandbox_tools") &&
+    featureFlags.includes("sandbox_workspace_admin");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isNameLocked, setIsNameLocked] = useState(false);
   const [envVarToDelete, setEnvVarToDelete] =

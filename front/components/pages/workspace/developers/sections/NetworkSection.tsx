@@ -1,6 +1,9 @@
-import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import {
-  useHasSandboxWorkspaceAdmin,
+  useAuth,
+  useFeatureFlags,
+  useWorkspace,
+} from "@app/lib/auth/AuthContext";
+import {
   useUpdateWorkspaceEgressPolicy,
   useUpdateWorkspaceSandboxAgentEgressRequests,
   useWorkspaceEgressPolicy,
@@ -28,7 +31,10 @@ import { useState } from "react";
 export function NetworkSection() {
   const owner = useWorkspace();
   const { isAdmin } = useAuth();
-  const hasSandboxAdmin = useHasSandboxWorkspaceAdmin();
+  const { featureFlags } = useFeatureFlags();
+  const hasSandboxAdmin =
+    featureFlags.includes("sandbox_tools") &&
+    featureFlags.includes("sandbox_workspace_admin");
   const [domainInput, setDomainInput] = useState("");
   const [isEnableAgentRequestsDialogOpen, setIsEnableAgentRequestsDialogOpen] =
     useState(false);
