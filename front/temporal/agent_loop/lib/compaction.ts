@@ -38,7 +38,7 @@ While writing the summary make sure to consider for each messages so far:
 Double-check for accuracy and completeness.
 
 If skills were enabled during the conversation, briefly capture which skills were enabled, in what
-context they were useful, and how likely they are to need re-enabling later.
+context they were useful, and any indication that they may need to be re-enabled later.
 
 Provide your detailed summary in <summary> tags with these sections:
 
