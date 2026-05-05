@@ -5,6 +5,7 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { metronomeAmount } from "@app/lib/metronome/amounts";
 import {
+  ceilToHourISO,
   createMetronomeCredit,
   floorToHourISO,
   getMetronomeRateCardById,
@@ -92,43 +93,27 @@ export async function createCouponCredit({
   creditTypeId: string;
   currency: SupportedCurrency;
 }): Promise<Result<string[], Error>> {
-  const scheduleItems =
-    coupon.durationMonths === null
-      ? [{ startingAt: redeemedAt, endingBefore: addMonths(redeemedAt, 1) }]
-      : Array.from({ length: coupon.durationMonths }, (_, i) => ({
-          startingAt: addMonths(redeemedAt, i),
-          endingBefore: addMonths(redeemedAt, i + 1),
-        }));
+  const durationMonths = coupon.durationMonths ?? 1;
+  const result = await createMetronomeCredit({
+    metronomeCustomerId,
+    productId: getProductSeatSubscriptionCreditsId(),
+    creditTypeId,
+    amount: metronomeAmount(coupon.amount * 100, currency),
+    startingAt: floorToHourISO(redeemedAt),
+    endingBefore: ceilToHourISO(addMonths(redeemedAt, durationMonths)),
+    name: `Coupon: ${coupon.code}`,
+    idempotencyKey: `coupon-${redemptionId}-0`,
+    priority: 0,
+    applicableProductIds: getApplicableProductIdsForDiscountType(
+      coupon.discountType
+    ),
+  });
 
-  const creditIds: string[] = [];
-
-  for (let i = 0; i < scheduleItems.length; i++) {
-    const item = scheduleItems[i];
-    const result = await createMetronomeCredit({
-      metronomeCustomerId,
-      productId: getProductSeatSubscriptionCreditsId(),
-      creditTypeId,
-      amount: metronomeAmount(coupon.amount * 100, currency),
-      startingAt: item.startingAt.toISOString(),
-      endingBefore: item.endingBefore.toISOString(),
-      name: `Coupon: ${coupon.code}`,
-      idempotencyKey: `coupon-${redemptionId}-${i}`,
-      priority: 0,
-      applicableProductIds: getApplicableProductIdsForDiscountType(
-        coupon.discountType
-      ),
-    });
-
-    if (result.isErr()) {
-      return new Err(result.error);
-    }
-
-    if (result.value !== null) {
-      creditIds.push(result.value.id);
-    }
+  if (result.isErr()) {
+    return new Err(result.error);
   }
 
-  return new Ok(creditIds);
+  return new Ok(result.value !== null ? [result.value.id] : []);
 }
 
 export async function endCouponCredit({
@@ -140,7 +125,7 @@ export async function endCouponCredit({
   metronomeCreditIds: string[];
   endAt: Date;
 }): Promise<Result<void, Error>> {
-  const accessEndingBefore = floorToHourISO(endAt);
+  const accessEndingBefore = ceilToHourISO(endAt);
 
   for (const creditId of metronomeCreditIds) {
     const result = await updateMetronomeCreditEndDate({
