@@ -4,7 +4,6 @@ import type {
 } from "@app/lib/api/actions/servers/image_generation/helpers";
 import type { ImageGenerationToolInput } from "@app/lib/api/actions/servers/image_generation/metadata";
 import type { Authenticator } from "@app/lib/auth";
-import type { FileResource } from "@app/lib/resources/file_resource";
 import type { ImageModelIdType } from "@app/types/assistant/models/models";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 import type { LLMCredentialsType } from "@app/types/provider_credential";
@@ -16,11 +15,17 @@ export type TokenCountDetails = {
   totalTokens: number;
 };
 
+export type ReferenceImageFile = {
+  signedUrl: string;
+  fileName: string;
+  contentType: string;
+};
+
 export type ImageGenerationInput = Omit<
   ImageGenerationToolInput,
   "referenceImages" | "outputName"
 > & {
-  fileResources?: FileResource[];
+  referenceFiles?: ReferenceImageFile[];
 };
 
 export type ImageGenerationOutput = {

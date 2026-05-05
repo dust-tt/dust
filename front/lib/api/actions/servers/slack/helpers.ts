@@ -1,8 +1,8 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import { getFileFromConversationAttachment } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import { FileResource } from "@app/lib/resources/file_resource";
 import { removeDiacritics } from "@app/lib/utils";
 import { cacheWithRedis } from "@app/lib/utils/cache";
 import { getConversationRoute } from "@app/lib/utils/router";
@@ -794,14 +794,21 @@ export async function executePostMessage(
 
   // If a file is provided, upload it as attachment of the original message.
   if (fileId) {
-    const file = await FileResource.fetchById(auth, fileId);
-    if (!file) {
+    const fileResult = await getFileFromConversationAttachment(
+      auth,
+      fileId,
+      agentLoopContext
+    );
+    if (fileResult.isErr()) {
       return new Err(
-        new MCPError("File not found", {
-          tracked: false,
-        })
+        new MCPError(`File not found: ${fileId}`, { tracked: false })
       );
     }
+    const {
+      buffer: fileBuffer,
+      filename,
+      contentType: filetype,
+    } = fileResult.value;
 
     // Resolve channel id using the shared helper function.
     const channelId = await resolveChannelId({
@@ -819,24 +826,11 @@ export async function executePostMessage(
       );
     }
 
-    const signedUrl = await file.getSignedUrlForDownload(auth, "original");
-    // eslint-disable-next-line no-restricted-globals
-    const fileResp = await fetch(signedUrl);
-    if (!fileResp.ok) {
-      return new Err(
-        new MCPError(`Failed to fetch file (HTTP ${fileResp.status})`)
-      );
-    }
-    const arrayBuf = await fileResp.arrayBuffer();
-    const fileBuffer = Buffer.from(arrayBuf);
-
-    const filename = file.fileName ?? `upload_${file.sId}`;
-
     const baseArgs = {
       channel_id: channelId,
       file: fileBuffer,
       filename,
-      filetype: file.contentType,
+      filetype,
       initial_comment: message,
     };
     const uploadResp = threadTs
