@@ -18,6 +18,7 @@ import {
 import type { StepContext } from "@app/lib/actions/types";
 import {
   isFileAuthorizationInfo,
+  isSandboxResumeState,
   isUserQuestionResumeState,
 } from "@app/lib/actions/types";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
@@ -59,6 +60,7 @@ import tracer from "@app/logger/tracer";
 import type {
   AgentMCPActionType,
   AgentMCPActionWithOutputType,
+  SandboxToolExecutionType,
 } from "@app/types/actions";
 import type { AgentFunctionCallContentType } from "@app/types/assistant/agent_message_content";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -519,7 +521,32 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
           authorizationInfo: null,
         });
       } else if (action.status === "blocked_child_action_input_required") {
-        const conversationId = action.stepContext.resumeState?.conversationId;
+        const { resumeState } = action.stepContext;
+
+        if (isSandboxResumeState(resumeState)) {
+          const childBlockedActionsList =
+            await this.listBlockedSandboxToolExecutionsForAgentMessage(auth, {
+              agentMessageId: action.agentMessageId,
+              messageId: agentMessage.message.sId,
+              conversationId: conversation.sId,
+              agentConfiguration,
+              userId: parentUserMessage.userMessage?.user?.sId,
+            });
+
+          blockedActionsList.push({
+            ...baseActionParams,
+            status: action.status,
+            resumeState,
+            childBlockedActionsList,
+            metadata: {
+              ...baseActionParams.metadata,
+            },
+            authorizationInfo: null,
+          });
+          continue;
+        }
+
+        const conversationId = resumeState?.conversationId;
 
         // conversation was not created so we can skip it
         if (!conversationId || !isString(conversationId)) {
@@ -545,7 +572,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         blockedActionsList.push({
           ...baseActionParams,
           status: action.status,
-          resumeState: action.stepContext.resumeState,
+          resumeState,
           childBlockedActionsList,
           metadata: {
             ...baseActionParams.metadata,
@@ -564,6 +591,8 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       }
     }
 
+    // Sandbox children are surfaced under their parent's
+    // `childBlockedActionsList`.
     return blockedActionsList;
   }
 
@@ -1176,26 +1205,165 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     return this.stepContent.value.value.name;
   }
 
-  // Spawns a child sandbox tool execution under this agent action. The child
-  // lives in `sandbox_tool_executions` (separate table to dodge the
-  // `agent_step_contents` unique-index race) but is parented by this row, so
-  // the spawner is an instance method that fills in the FK from `this.id`.
-  // Returns the new execution's sId — read paths land with the approval flow.
+  // Sandbox tool executions live in their own table (split from
+  // `agent_mcp_actions` to dodge the `agent_step_contents` unique-index race).
+  // Helpers below stay on this resource so the model never escapes the file.
+
+  static sandboxToolExecutionModelIdToSId({
+    id,
+    workspaceId,
+  }: {
+    id: ModelId;
+    workspaceId: ModelId;
+  }): string {
+    return makeSId("sandbox_tool_execution", { id, workspaceId });
+  }
+
   async spawnChildSandboxToolExecution(
     blob: Omit<
       CreationAttributes<SandboxToolExecutionModel>,
       "workspaceId" | "agentMessageId" | "agentMCPActionId"
     >
-  ): Promise<string> {
+  ): Promise<SandboxToolExecutionType> {
     const model = await SandboxToolExecutionModel.create({
       ...blob,
       workspaceId: this.workspaceId,
       agentMessageId: this.agentMessageId,
       agentMCPActionId: this.id,
     });
-    return makeSId("sandbox_tool_execution", {
+    return sandboxToolExecutionFromModel(model);
+  }
+
+  static async fetchSandboxToolExecutionById(
+    auth: Authenticator,
+    sId: string
+  ): Promise<SandboxToolExecutionType | null> {
+    const modelId = getResourceIdFromSId(sId);
+    if (!modelId) {
+      return null;
+    }
+    const model = await SandboxToolExecutionModel.findOne({
+      where: {
+        id: modelId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+    return model ? sandboxToolExecutionFromModel(model) : null;
+  }
+
+  static async updateSandboxToolExecutionStatus(
+    auth: Authenticator,
+    sId: string,
+    status: ToolExecutionStatus
+  ): Promise<{ updatedCount: number }> {
+    const modelId = getResourceIdFromSId(sId);
+    if (!modelId) {
+      return { updatedCount: 0 };
+    }
+    const [updatedCount] = await SandboxToolExecutionModel.update(
+      { status },
+      {
+        where: {
+          id: modelId,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+      }
+    );
+    return { updatedCount };
+  }
+
+  /**
+   * Resolves blocked sandbox tool executions for an agent message into the
+   * `BlockedToolExecution[]` shape consumed by the FE.
+   */
+  static async listBlockedSandboxToolExecutionsForAgentMessage(
+    auth: Authenticator,
+    {
+      agentMessageId,
+      messageId,
+      conversationId,
+      agentConfiguration,
+      userId,
+    }: {
+      agentMessageId: ModelId;
+      messageId: string;
+      conversationId: string;
+      agentConfiguration: { sId: string; name: string };
+      userId: string | undefined;
+    }
+  ): Promise<BlockedToolExecution[]> {
+    const owner = auth.getNonNullableWorkspace();
+
+    const blockedExecutions = await SandboxToolExecutionModel.findAll({
+      where: {
+        workspaceId: owner.id,
+        agentMessageId,
+        status: "blocked_validation_required", // Only blocked validation required sandbox executions are surfaced to the FE.
+      },
+      order: [["createdAt", "ASC"]],
+    });
+
+    const result: BlockedToolExecution[] = [];
+    for (const execution of blockedExecutions) {
+      result.push({
+        messageId,
+        userId,
+        conversationId,
+        actionId: this.sandboxToolExecutionModelIdToSId({
+          id: execution.id,
+          workspaceId: owner.id,
+        }),
+        configurationId: isLightServerSideMCPToolConfiguration(
+          execution.toolConfiguration
+        )
+          ? execution.toolConfiguration.sId
+          : agentConfiguration.sId,
+        created: execution.createdAt.getTime(),
+        inputs: execution.augmentedInputs,
+        stake: execution.toolConfiguration.permission,
+        metadata: {
+          toolName: execution.toolConfiguration.originalName,
+          mcpServerName: execution.toolConfiguration.mcpServerName,
+          agentName: agentConfiguration.name,
+          icon: execution.toolConfiguration.icon,
+        },
+        argumentsRequiringApproval:
+          execution.toolConfiguration.argumentsRequiringApproval,
+        approvalArgsLabel: await getApprovalArgsLabel({
+          auth,
+          internalMCPServerName: execution.toolConfiguration.toolServerId
+            ? getInternalMCPServerNameFromSId(
+                execution.toolConfiguration.toolServerId
+              )
+            : null,
+          toolName: execution.toolConfiguration.originalName,
+          agentName: agentConfiguration.name,
+          inputs: execution.augmentedInputs,
+          argumentsRequiringApproval:
+            execution.toolConfiguration.argumentsRequiringApproval ?? [],
+        }),
+        status: "blocked_validation_required",
+        authorizationInfo: null,
+      });
+    }
+    return result;
+  }
+}
+
+function sandboxToolExecutionFromModel(
+  model: SandboxToolExecutionModel
+): SandboxToolExecutionType {
+  return {
+    sId: AgentMCPActionResource.sandboxToolExecutionModelIdToSId({
       id: model.id,
       workspaceId: model.workspaceId,
-    });
-  }
+    }),
+    workspaceId: model.workspaceId,
+    agentMessageId: model.agentMessageId,
+    agentMCPActionId: model.agentMCPActionId,
+    status: model.status,
+    toolConfiguration: model.toolConfiguration,
+    augmentedInputs: model.augmentedInputs,
+    functionCallName: model.toolConfiguration.originalName,
+  };
 }
