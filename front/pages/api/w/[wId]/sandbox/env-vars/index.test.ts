@@ -33,6 +33,7 @@ async function createEnvVarRequest({
 }) {
   const request = await createPrivateApiMockRequest({ method, role });
   await FeatureFlagFactory.basic(request.auth, "sandbox_tools");
+  await FeatureFlagFactory.basic(request.auth, "sandbox_workspace_admin");
   request.req.body = body;
   return request;
 }

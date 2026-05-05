@@ -18,6 +18,7 @@ async function createDeleteRequest({
     role,
   });
   await FeatureFlagFactory.basic(request.auth, "sandbox_tools");
+  await FeatureFlagFactory.basic(request.auth, "sandbox_workspace_admin");
   return request;
 }
 
