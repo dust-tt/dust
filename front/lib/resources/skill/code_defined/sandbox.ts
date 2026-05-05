@@ -23,8 +23,6 @@ function buildSandboxInstructionProse({
     "The sandbox provides an isolated Linux environment for running code, scripts, and shell commands.",
     "Use `bash` to run commands and scripts.",
     "The sandbox persists for the conversation duration.",
-    "Conversation files are mounted at /files/conversation.",
-    "This includes files uploaded by the user and files created by the agent.",
   ];
 
   if (hasDsbxTools) {
@@ -34,11 +32,58 @@ function buildSandboxInstructionProse({
     );
   }
 
-  instructions.push(
-    "Write output files (scripts, results, exports) to /files/conversation to make them available to the user."
-  );
-
   return instructions.join(" ");
+}
+
+function buildConversationFilesSection(): string {
+  return `#### Sandbox Conversation File System
+
+The conversation file system is mounted read-write inside the sandbox at
+\`/files/conversation\`. This is the canonical surface for navigating,
+inspecting, and producing conversation files — strongly prefer it over the
+\`files\` MCP server when the sandbox is running.
+
+Layout:
+
+- \`/files/conversation/\` — files uploaded by the user and files you write
+  for the user (scripts, exports, reports, charts). Anything you write here
+  is delivered to the user as a conversation file. Put deliverables
+  directly in this directory; do not write your own files into
+  \`results/\`, that path is managed automatically.
+- \`/files/conversation/results/\` — **tool outputs are automatically
+  persisted here as a side effect of every tool call you make.** Two cases
+  qualify:
+  1. Structured outputs (search results, browsed pages, data-source nodes)
+     are saved as \`.json\` or \`.md\`.
+  2. Plain text outputs larger than 20 KiB (20480 bytes) are saved as
+     \`.txt\`, or \`.json\` when the body parses as JSON.
+  Filenames have the form \`<epochMs>_<tool-slug>.<ext>\`, e.g.
+  \`1714896000000_search-files.json\`, so a plain \`ls\` lists them in
+  chronological order. Smaller plain-text outputs are not persisted — they
+  live only in the conversation transcript.
+
+The exact same files are also exposed by the \`files\` MCP server (tools
+\`list\`, \`cat\`, \`grep\`, \`create\`) under scoped paths like
+\`conversation/results/<file>\`. The MCP server and the mount are two views
+on the same underlying conversation storage: a write through one is
+immediately visible through the other.
+
+Default to the sandbox, not the \`files\` MCP server. Whenever the sandbox
+is available, navigate and process conversation files and tool outputs
+with bash on \`/files/conversation\` using the standard POSIX toolchain
+plus \`jq\` / \`rg\` (see the available tools manifest below). This is
+cheaper than MCP round-trips, keeps intermediate output out of the
+conversation context, and lets you compose pipelines. Reach for the
+\`files\` MCP server only for a trivial one-shot read where spinning up a
+shell command would be heavier than needed. Never re-call a tool just to
+re-read its output: the previous result is already on disk under
+\`/files/conversation/results/\`.
+
+Typical workflow when a prior tool returned a large output: locate the most
+recent matching file under \`/files/conversation/results/\`, then use
+\`jq\` / \`rg\` / \`grep\` to extract just the fields or lines you need,
+instead of paging the whole blob back through \`files__cat\` or re-running
+the tool.`;
 }
 
 function formatWorkspaceAllowlist(domains: string[]): string {
@@ -157,6 +202,7 @@ async function buildSandboxInstructions(
 ): Promise<string> {
   const networkAccessSection = await buildNetworkAccessSection(auth);
   const environmentVariablesSection = buildEnvironmentVariablesSection();
+  const conversationFilesSection = buildConversationFilesSection();
   const sandboxInstructions = buildSandboxInstructionProse({ hasDsbxTools });
 
   let toolsResult;
@@ -168,7 +214,7 @@ async function buildSandboxInstructions(
   } else {
     const imageResult = getSandboxImage(auth);
     if (imageResult.isErr()) {
-      return `${sandboxInstructions}\n\n${networkAccessSection}\n\n${environmentVariablesSection}`;
+      return `${sandboxInstructions}\n\n${conversationFilesSection}\n\n${networkAccessSection}\n\n${environmentVariablesSection}`;
     }
     toolsResult = new Ok(
       filterDsbxToolEntries(imageResult.value.tools, {
@@ -178,13 +224,15 @@ async function buildSandboxInstructions(
   }
 
   if (toolsResult.isErr()) {
-    return `${sandboxInstructions}\n\n${networkAccessSection}\n\n${environmentVariablesSection}`;
+    return `${sandboxInstructions}\n\n${conversationFilesSection}\n\n${networkAccessSection}\n\n${environmentVariablesSection}`;
   }
 
   const manifest = createToolManifest(toolsResult.value);
   const manifestYaml = toolManifestToYAML(manifest);
 
   return `${sandboxInstructions}
+
+${conversationFilesSection}
 
 ${networkAccessSection}
 
