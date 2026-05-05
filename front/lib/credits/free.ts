@@ -194,18 +194,21 @@ export async function grantFreeCreditFromMetronomeSegment({
     periodEnd
   );
   if (existingForPeriod) {
+    await existingForPeriod.setMetronomeCreditId(metronomeCreditId);
+    await existingForPeriod.updateInitialAmountMicroUsd(auth, amountMicroUsd);
     logger.info(
       {
         workspaceId: workspace.sId,
         existingCreditId: existingForPeriod.id,
         existingMetronomeCreditId: existingForPeriod.metronomeCreditId,
         newMetronomeCreditId: metronomeCreditId,
+        amountMicroUsd,
         segmentId,
         contractId,
         periodStart,
         periodEnd,
       },
-      "[Free Credits] free credit already exists for this period (likely contract recreated), ignoring"
+      "[Free Credits] free credit already exists for this period (likely contract recreated), updated metronomeCreditId and amount"
     );
     return new Ok({
       credit: existingForPeriod,
