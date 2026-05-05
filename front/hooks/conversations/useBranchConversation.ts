@@ -4,8 +4,20 @@ import { useAppRouter } from "@app/lib/platform";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { PostConversationForkResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/forks";
+import { isRecord, isString } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useState } from "react";
+
+function isPostConversationForkResponseBody(
+  value: unknown
+): value is PostConversationForkResponseBody {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    isRecord(value) &&
+    isString(value.conversationId)
+  );
+}
 
 export function useBranchConversation({
   owner,
@@ -55,11 +67,21 @@ export function useBranchConversation({
           return false;
         }
 
-        const { conversationId: forkedConversationId } =
-          (await res.json()) as PostConversationForkResponseBody;
+        const responseBody: unknown = await res.json();
+        if (!isPostConversationForkResponseBody(responseBody)) {
+          sendNotification({
+            type: "error",
+            title: "Failed to branch conversation",
+            description: "Unexpected response from server.",
+          });
+
+          return false;
+        }
 
         void onConversationBranched?.();
-        void router.push(getConversationRoute(owner.sId, forkedConversationId));
+        void router.push(
+          getConversationRoute(owner.sId, responseBody.conversationId)
+        );
 
         return true;
       } catch {
