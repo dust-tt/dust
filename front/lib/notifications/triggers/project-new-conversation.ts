@@ -94,6 +94,11 @@ const triggerProjectNewConversationNotifications = async (
     return new Ok(undefined);
   }
 
+  // Skip notification for conversations created from a todo.
+  if (conversation.metadata?.projectTodoId) {
+    return new Ok(undefined);
+  }
+
   const userThatCreatedConversation = auth.user();
 
   // If no user context (e.g., API call without specific user), skip notification.
