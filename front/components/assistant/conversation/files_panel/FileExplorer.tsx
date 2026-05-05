@@ -5,7 +5,7 @@ import {
   FileExplorerFolderCard,
   type ViewMode,
 } from "@app/components/assistant/conversation/files_panel/FileExplorerItem";
-import { FilePreviewDialog } from "@app/components/assistant/conversation/files_panel/FilePreviewDialog";
+import { ConversationFilePreviewDialog } from "@app/components/assistant/conversation/files_panel/FilePreviewDialog";
 import { SandboxStatusChip } from "@app/components/assistant/conversation/files_panel/SandboxStatusChip";
 import type { SandboxTreeNode } from "@app/components/assistant/conversation/files_panel/types";
 import { buildSandboxTree } from "@app/components/assistant/conversation/files_panel/utils";
@@ -337,7 +337,7 @@ export function NewFileExplorer({
         </div>
       </div>
 
-      <FilePreviewDialog
+      <ConversationFilePreviewDialog
         owner={owner}
         entry={previewFile}
         conversationId={conversation.sId}

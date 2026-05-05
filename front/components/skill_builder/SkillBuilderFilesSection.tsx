@@ -1,8 +1,19 @@
+import {
+  FilePreviewDialog,
+  type FilePreviewDialogFile,
+  needsFilePreviewTextContent,
+} from "@app/components/assistant/conversation/files_panel/FilePreviewDialog";
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { useSkillVersionComparisonContext } from "@app/components/skill_builder/SkillBuilderVersionContext";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  getFileDownloadUrl,
+  getFileViewUrl,
+  useFileMetadata,
+  useSkillAttachmentFileContent,
+} from "@app/lib/swr/files";
 import {
   ArrowGoBackIcon,
   Button,
@@ -10,6 +21,7 @@ import {
   cn,
   DocumentIcon,
   EmptyCTA,
+  EyeIcon,
   PlusIcon,
   Spinner,
   XMarkIcon,
@@ -17,12 +29,17 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
+type SkillBuilderFileAttachment =
+  SkillBuilderFormData["fileAttachments"][number];
+
 export function SkillBuilderFilesSection() {
   const { owner, skillId } = useSkillBuilderContext();
   const sendNotification = useSendNotification();
   const { setValue } = useFormContext<SkillBuilderFormData>();
   const { compareVersion, isDiffMode } = useSkillVersionComparisonContext();
   const [canScrollFilesDown, setCanScrollFilesDown] = useState(false);
+  const [previewFileAttachment, setPreviewFileAttachment] =
+    useState<SkillBuilderFileAttachment | null>(null);
 
   const { fields, append, remove } = useFieldArray<
     SkillBuilderFormData,
@@ -109,6 +126,40 @@ export function SkillBuilderFilesSection() {
   const onUploadClick = () => {
     fileInputRef.current?.click();
   };
+
+  const openPreviewDialog = (fileAttachment: SkillBuilderFileAttachment) => {
+    setPreviewFileAttachment(fileAttachment);
+  };
+
+  const isPreviewOpen = !!previewFileAttachment;
+  const previewFileId = isPreviewOpen
+    ? (previewFileAttachment?.fileId ?? null)
+    : null;
+  const { fileMetadata, isFileMetadataLoading, isFileMetadataError } =
+    useFileMetadata({
+      fileId: previewFileId,
+      owner,
+    });
+  const previewContentType = fileMetadata?.contentType ?? "";
+  const needsPreviewTextContent =
+    needsFilePreviewTextContent(previewContentType);
+  const { fileContent, isFileContentLoading, fileContentError } =
+    useSkillAttachmentFileContent({
+      fileId: previewFileId,
+      owner,
+      config: {
+        disabled: !isPreviewOpen || !fileMetadata || !needsPreviewTextContent,
+      },
+    });
+  const previewFile: FilePreviewDialogFile | null = previewFileAttachment
+    ? {
+        contentType: previewContentType,
+        fileName: fileMetadata?.fileName ?? previewFileAttachment.fileName,
+        viewUrl: getFileViewUrl(owner, previewFileAttachment.fileId),
+      }
+    : null;
+  const isPreviewMetadataLoading =
+    isPreviewOpen && !!previewFileAttachment && isFileMetadataLoading;
 
   const onFileInputChange = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -238,16 +289,39 @@ export function SkillBuilderFilesSection() {
                     visual={<ContextItem.Visual visual={DocumentIcon} />}
                     hoverAction={!isDiffMode}
                     action={
-                      !isDiffMode ? (
+                      <div className="flex items-center gap-1">
                         <Button
                           type="button"
                           variant="ghost"
-                          icon={XMarkIcon}
+                          icon={EyeIcon}
                           size="xs"
-                          onClick={() => remove(originalIndex)}
+                          tooltip="Preview"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openPreviewDialog(field);
+                          }}
                         />
-                      ) : undefined
+                        {!isDiffMode && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            icon={XMarkIcon}
+                            size="xs"
+                            tooltip="Remove"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              remove(originalIndex);
+                              if (
+                                previewFileAttachment?.fileId === field.fileId
+                              ) {
+                                setPreviewFileAttachment(null);
+                              }
+                            }}
+                          />
+                        )}
+                      </div>
                     }
+                    onClick={() => openPreviewDialog(field)}
                   />
                 );
               })}
@@ -265,6 +339,26 @@ export function SkillBuilderFilesSection() {
           />
         </div>
       )}
+      <FilePreviewDialog
+        file={previewFile}
+        fileContent={fileContent}
+        fileContentError={isFileMetadataError || fileContentError}
+        isFileContentLoading={isPreviewMetadataLoading || isFileContentLoading}
+        isOpen={isPreviewOpen}
+        onDownload={() => {
+          if (previewFileAttachment) {
+            window.open(
+              getFileDownloadUrl(owner, previewFileAttachment.fileId),
+              "_blank"
+            );
+          }
+        }}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPreviewFileAttachment(null);
+          }
+        }}
+      />
     </div>
   );
 }

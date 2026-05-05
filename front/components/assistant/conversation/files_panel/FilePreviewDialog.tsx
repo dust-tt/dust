@@ -33,6 +33,15 @@ import { useEffect } from "react";
 const MAX_CSV_ROWS = 200;
 const MAX_TEXT_CHARS = 100_000;
 
+type FilePreviewCategory = ReturnType<typeof getFilePreviewConfig>["category"];
+
+export interface FilePreviewDialogFile {
+  contentType: string;
+  fileName: string;
+  thumbnailUrl?: string | null;
+  viewUrl: string;
+}
+
 function getConversationFileUrl(
   owner: LightWorkspaceType,
   {
@@ -88,6 +97,23 @@ function getCodeLanguage(fileName: string): string {
   const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
 
   return EXTENSION_TO_LANGUAGE[ext] ?? "text";
+}
+
+function getPreviewCategory(contentType: string): FilePreviewCategory {
+  return getFilePreviewConfig(stripMimeParameters(contentType)).category;
+}
+
+function categoryNeedsTextContent(category: FilePreviewCategory): boolean {
+  return (
+    category === "code" ||
+    category === "markdown" ||
+    category === "text" ||
+    category === "delimited"
+  );
+}
+
+export function needsFilePreviewTextContent(contentType: string): boolean {
+  return categoryNeedsTextContent(getPreviewCategory(contentType));
 }
 
 function getDelimitedRecordCount({
@@ -166,29 +192,22 @@ function DelimitedPreview({ content, mimeType }: DelimitedPreviewProps) {
 }
 
 interface FilePreviewDialogContentProps {
-  category: ReturnType<typeof getFilePreviewConfig>["category"];
-  conversationId: string;
-  entry: GCSMountFileEntry;
+  category: FilePreviewCategory;
+  file: FilePreviewDialogFile;
   fileContent: string | null;
   isContentLoading: boolean;
-  owner: LightWorkspaceType;
+  mimeType: string;
   processedContent: ProcessedContent | null;
 }
 
 function FilePreviewDialogContent({
   category,
-  conversationId,
-  entry,
+  file,
   fileContent,
   isContentLoading,
-  owner,
+  mimeType,
   processedContent,
 }: FilePreviewDialogContentProps) {
-  const fileUrl = getConversationFileUrl(owner, {
-    conversationId,
-    filePath: entry.path,
-  });
-
   if (isContentLoading) {
     return (
       <div className="flex h-48 items-center justify-center">
@@ -204,8 +223,8 @@ function FilePreviewDialogContent({
     case "image":
       return (
         <img
-          src={entry.thumbnailUrl ?? fileUrl}
-          alt={entry.fileName}
+          src={file.thumbnailUrl ?? file.viewUrl}
+          alt={file.fileName}
           className="w-full rounded-lg object-contain"
         />
       );
@@ -213,9 +232,9 @@ function FilePreviewDialogContent({
     case "pdf":
       return (
         <iframe
-          src={`${fileUrl}#navpanes=0`}
+          src={`${file.viewUrl}#navpanes=0`}
           className="h-[70vh] w-full rounded-lg border-0"
-          title={entry.fileName}
+          title={file.fileName}
         />
       );
 
@@ -232,7 +251,7 @@ function FilePreviewDialogContent({
     case "audio":
       return (
         <div className="flex flex-col gap-4">
-          <audio controls className="w-full" src={fileUrl}>
+          <audio controls className="w-full" src={file.viewUrl}>
             Your browser does not support the audio element.
           </audio>
         </div>
@@ -240,12 +259,7 @@ function FilePreviewDialogContent({
 
     case "delimited":
       if (fileContent) {
-        return (
-          <DelimitedPreview
-            content={fileContent.slice(0, MAX_TEXT_CHARS)}
-            mimeType={stripMimeParameters(entry.contentType)}
-          />
-        );
+        return <DelimitedPreview content={fileContent} mimeType={mimeType} />;
       }
       return null;
 
@@ -261,14 +275,14 @@ function FilePreviewDialogContent({
       return null;
 
     case "code": {
-      const lang = getCodeLanguage(entry.fileName);
-      const raw = fileContent?.slice(0, MAX_TEXT_CHARS) ?? "";
+      const lang = getCodeLanguage(file.fileName);
+      const raw = fileContent ?? "";
       let displayContent = raw;
       if (lang === "json") {
         try {
           displayContent = JSON.stringify(JSON.parse(raw), null, 2);
         } catch {
-          // keep raw if not valid JSON
+          // Keep raw content if the JSON is invalid.
         }
       }
       return (
@@ -287,22 +301,24 @@ function FilePreviewDialogContent({
 }
 
 interface FilePreviewDialogProps {
-  conversationId: string;
-  entry: GCSMountFileEntry | null;
+  file: FilePreviewDialogFile | null;
+  fileContent?: string | null;
+  fileContentError?: unknown;
+  isFileContentLoading?: boolean;
   isOpen: boolean;
-  onDownload: (entry: GCSMountFileEntry) => void;
-  onNext?: () => void;
   onOpenChange: (open: boolean) => void;
+  onDownload: () => void;
+  onNext?: () => void;
   onPrev?: () => void;
-  owner: LightWorkspaceType;
 }
 
 export function FilePreviewDialog({
-  entry,
-  conversationId,
+  file,
+  fileContent,
+  fileContentError,
+  isFileContentLoading = false,
   isOpen,
   onOpenChange,
-  owner,
   onDownload,
   onPrev,
   onNext,
@@ -332,26 +348,13 @@ export function FilePreviewDialog({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onPrev, onNext]);
 
-  const mimeType = stripMimeParameters(entry?.contentType ?? "");
-  const { category } = getFilePreviewConfig(mimeType);
-
-  const needsTextContent =
-    category === "code" ||
-    category === "markdown" ||
-    category === "text" ||
-    category === "delimited";
-
-  const { fileContent, isFileContentLoading, fileContentError } =
-    useConversationFileContent({
-      owner,
-      conversationId,
-      filePath: entry?.path ?? null,
-      disabled: !isOpen || !entry || !needsTextContent,
-    });
+  const mimeType = stripMimeParameters(file?.contentType ?? "");
+  const category = getPreviewCategory(mimeType);
+  const needsTextContent = categoryNeedsTextContent(category);
 
   const hasError = needsTextContent && !!fileContentError;
   const isContentLoading =
-    isOpen && !!entry && !hasError && needsTextContent && isFileContentLoading;
+    isOpen && !!file && !hasError && isFileContentLoading;
 
   const truncatedContent = fileContent?.slice(0, MAX_TEXT_CHARS) ?? null;
 
@@ -360,8 +363,8 @@ export function FilePreviewDialog({
       ? processFileContent(truncatedContent, mimeType)
       : null;
 
-  const FileIcon = entry
-    ? getFileTypeIcon(entry.contentType, entry.fileName)
+  const FileIcon = file
+    ? getFileTypeIcon(file.contentType, file.fileName)
     : null;
 
   const recordCounts =
@@ -389,7 +392,7 @@ export function FilePreviewDialog({
                   "text-foreground dark:text-foreground-night"
                 )}
               >
-                {entry?.fileName ?? ""}
+                {file?.fileName ?? ""}
               </span>
             </div>
             {recordCounts && (
@@ -413,28 +416,26 @@ export function FilePreviewDialog({
           </div>
         ) : category === "delimited" ? (
           <div className="flex min-h-0 flex-1 flex-col px-4">
-            {entry && (
+            {file && (
               <FilePreviewDialogContent
                 category={category}
-                conversationId={conversationId}
-                entry={entry}
+                file={file}
                 fileContent={truncatedContent}
                 isContentLoading={isContentLoading}
-                owner={owner}
+                mimeType={mimeType}
                 processedContent={processedContent}
               />
             )}
           </div>
         ) : (
           <div className="min-h-0 flex-1 overflow-y-auto px-4">
-            {entry && (
+            {file && (
               <FilePreviewDialogContent
                 category={category}
-                conversationId={conversationId}
-                entry={entry}
+                file={file}
                 fileContent={truncatedContent}
                 isContentLoading={isContentLoading}
-                owner={owner}
+                mimeType={mimeType}
                 processedContent={processedContent}
               />
             )}
@@ -465,12 +466,70 @@ export function FilePreviewDialog({
               size="sm"
               icon={ArrowDownOnSquareIcon}
               label="Download"
-              onClick={() => entry && onDownload(entry)}
-              disabled={!entry}
+              onClick={onDownload}
+              disabled={!file}
             />
           </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+interface ConversationFilePreviewDialogProps {
+  conversationId: string;
+  entry: GCSMountFileEntry | null;
+  isOpen: boolean;
+  onDownload: (entry: GCSMountFileEntry) => void;
+  onOpenChange: (open: boolean) => void;
+  owner: LightWorkspaceType;
+}
+
+export function ConversationFilePreviewDialog({
+  conversationId,
+  entry,
+  isOpen,
+  onDownload,
+  onOpenChange,
+  owner,
+}: ConversationFilePreviewDialogProps) {
+  const needsTextContent = entry
+    ? needsFilePreviewTextContent(entry.contentType)
+    : false;
+
+  const { fileContent, isFileContentLoading, fileContentError } =
+    useConversationFileContent({
+      owner,
+      conversationId,
+      filePath: entry?.path ?? null,
+      disabled: !isOpen || !entry || !needsTextContent,
+    });
+
+  const file = entry
+    ? {
+        contentType: entry.contentType,
+        fileName: entry.fileName,
+        thumbnailUrl: entry.thumbnailUrl,
+        viewUrl: getConversationFileUrl(owner, {
+          conversationId,
+          filePath: entry.path,
+        }),
+      }
+    : null;
+
+  return (
+    <FilePreviewDialog
+      file={file}
+      fileContent={fileContent}
+      fileContentError={fileContentError}
+      isFileContentLoading={isFileContentLoading}
+      isOpen={isOpen}
+      onDownload={() => {
+        if (entry) {
+          onDownload(entry);
+        }
+      }}
+      onOpenChange={onOpenChange}
+    />
   );
 }

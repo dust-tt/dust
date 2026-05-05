@@ -1,0 +1,96 @@
+/** @ignoreswagger */
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import type { Authenticator } from "@app/lib/auth";
+import { FileResource } from "@app/lib/resources/file_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { streamToBuffer } from "@app/lib/utils/streams";
+import { apiError } from "@app/logger/withlogging";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import { isString } from "@app/types/shared/utils/general";
+import type { NextApiRequest, NextApiResponse } from "next";
+
+export interface SkillAttachmentContentResponseBody {
+  content: string;
+}
+
+async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse<
+    WithAPIErrorResponse<SkillAttachmentContentResponseBody>
+  >,
+  auth: Authenticator
+): Promise<void> {
+  const { fileId } = req.query;
+
+  if (!isString(fileId)) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid file ID.",
+      },
+    });
+  }
+
+  if (req.method !== "GET") {
+    return apiError(req, res, {
+      status_code: 405,
+      api_error: {
+        type: "method_not_supported_error",
+        message: "The method passed is not supported, GET is expected.",
+      },
+    });
+  }
+
+  const file = await FileResource.fetchById(auth, fileId);
+  if (!file || file.useCase !== "skill_attachment") {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "file_not_found",
+        message: "File not found.",
+      },
+    });
+  }
+
+  const skillId = file.useCaseMetadata?.skillId;
+  if (skillId) {
+    const skill = await SkillResource.fetchById(auth, skillId);
+    if (!skill || !skill.canWrite(auth)) {
+      return apiError(req, res, {
+        status_code: 403,
+        api_error: {
+          type: "app_auth_error",
+          message: "Only skill editors can preview this file.",
+        },
+      });
+    }
+  } else if (!auth.isBuilder()) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "app_auth_error",
+        message: "Only builders can preview unattached skill files.",
+      },
+    });
+  }
+
+  const bufferResult = await streamToBuffer(
+    file.getReadStream({ auth, version: "original" })
+  );
+  if (bufferResult.isErr()) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "file_not_found",
+        message: "File not found.",
+      },
+    });
+  }
+
+  return res.status(200).json({
+    content: bufferResult.value.toString("utf-8"),
+  });
+}
+
+export default withSessionAuthenticationForWorkspace(handler);
