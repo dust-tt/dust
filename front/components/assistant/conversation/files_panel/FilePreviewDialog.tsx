@@ -22,9 +22,7 @@ import {
   DialogTitle,
   Icon,
   Markdown,
-  ScrollArea,
   ScrollableDataTable,
-  ScrollBar,
   Spinner,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
@@ -396,7 +394,7 @@ export function FilePreviewDialog({
             )}
           </div>
         ) : (
-          <ScrollArea className="min-h-0 flex-1 overflow-x-hidden px-4">
+          <div className="min-h-0 flex-1 overflow-y-auto px-4">
             {entry && (
               <FilePreviewDialogContent
                 category={category}
@@ -408,8 +406,7 @@ export function FilePreviewDialog({
                 processedContent={processedContent}
               />
             )}
-            <ScrollBar />
-          </ScrollArea>
+          </div>
         )}
         <DialogFooter className="px-4">
           <Button
