@@ -1265,35 +1265,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   /**
-   * List all distinct enabled skills for a conversation, including both
-   * conversation-level and agent-scoped conversation skills.
-   */
-  static async listAllEnabledByConversation(
-    auth: Authenticator,
-    {
-      conversation,
-      transaction,
-    }: {
-      conversation: ConversationWithoutContentType;
-      transaction?: Transaction;
-    }
-  ): Promise<SkillResource[]> {
-    const workspace = auth.getNonNullableWorkspace();
-
-    const conversationSkills = await ConversationSkillModel.findAll({
-      where: {
-        workspaceId: workspace.id,
-        conversationId: conversation.id,
-      },
-      transaction,
-    });
-
-    return this.fetchBySkillReferences(auth, conversationSkills, {
-      transaction,
-    });
-  }
-
-  /**
    * List skills for the agent loop, returning system skills, (extended) enabled skills,
    * and equipped skills.
    */
