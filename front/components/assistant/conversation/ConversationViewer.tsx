@@ -7,6 +7,7 @@ import {
   parseDataAsMessageIdAndActionId,
   useConversationSidePanelContext,
 } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import { useGenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import {
   createPlaceholderAgentMessage,
   createPlaceholderUserMessage,
@@ -251,6 +252,7 @@ export const ConversationViewer = ({
       VirtuosoMessageListMethods<VirtuosoMessage, VirtuosoMessageListContext>
     >(null);
   const sendNotification = useSendNotification();
+  const { incrementPendingSteeringCount } = useGenerationContext();
   const { hasFeature } = useFeatureFlags();
   const isCompactionEnabled = hasFeature("enable_compaction");
 
@@ -1000,6 +1002,10 @@ export const ConversationViewer = ({
           .get()
           .some((m) => m.type === "agent_message" && m.status === "created");
 
+        if (hasRunningAgent && conversationId) {
+          incrementPendingSteeringCount(conversationId);
+        }
+
         const placeholderAgentMessages: VirtuosoMessage[] = [];
         if (!hasRunningAgent) {
           for (const mention of mentions) {
@@ -1149,6 +1155,7 @@ export const ConversationViewer = ({
       setLimitReachedCode,
       submitMessage,
       user,
+      incrementPendingSteeringCount,
     ]
   );
 

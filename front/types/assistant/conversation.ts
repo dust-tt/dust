@@ -239,11 +239,13 @@ export type AgentMessageStatus =
   | "succeeded"
   | "failed"
   | "cancelled"
+  | "interrupted"
   | "gracefully_stopped";
 
 export const AGENT_MESSAGE_STATUSES_TO_TRACK: AgentMessageStatus[] = [
   "succeeded",
   "cancelled",
+  "interrupted",
   "gracefully_stopped",
 ];
 
@@ -254,6 +256,7 @@ export function isTerminalAgentMessageStatus(
     case "succeeded":
     case "failed":
     case "cancelled":
+    case "interrupted":
     case "gracefully_stopped":
       return true;
     case "created":

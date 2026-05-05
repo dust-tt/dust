@@ -35,6 +35,7 @@ import { pluralize } from "@app/types/shared/utils/string_utils";
 import {
   ArrowDownIcon,
   ArrowUpIcon,
+  BoltIcon,
   Button,
   ContentMessageAction,
   ContentMessageInline,
@@ -47,17 +48,22 @@ import {
   useVirtuosoLocation,
   useVirtuosoMethods,
 } from "@virtuoso.dev/message-list";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 const MAX_DISTANCE_FOR_SMOOTH_SCROLL = 2048;
+const DOUBLE_ESC_WINDOW_MS = 300;
 
-export const AgentInputBar = ({
-  context,
-}: {
+interface AgentInputBarProps {
   context: VirtuosoMessageListContext;
-}) => {
+}
+
+export const AgentInputBar = ({ context }: AgentInputBarProps) => {
   const [blockedActionIndex, setBlockedActionIndex] = useState<number>(0);
-  const [isStopping, setIsStopping] = useState<boolean>(false);
+  const [pendingAction, setPendingAction] = useState<
+    "stop" | "interrupt" | null
+  >(null);
+  const pendingActionRef = useRef(pendingAction);
+  pendingActionRef.current = pendingAction;
   const generationContext = useGenerationContext();
   const { getBlockedActions, hasPendingValidations, startPulsingAction } =
     useBlockedActionsContext();
@@ -298,21 +304,72 @@ export const AgentInputBar = ({
 
   useEffect(() => {
     if (
-      isStopping &&
-      generationContext &&
+      pendingAction !== null &&
       !generationContext.generatingMessages.some(
         (m) => m.conversationId === context.conversation?.sId
       )
     ) {
-      setIsStopping(false);
+      setPendingAction(null);
     }
-  }, [isStopping, generationContext, context.conversation]);
+  }, [pendingAction, generationContext, context.conversation]);
 
-  if (!generationContext) {
-    throw new Error(
-      "AssistantInputBarVirtuoso must be used within a GenerationContextProvider"
-    );
-  }
+  const lastEscTimeRef = useRef<number>(0);
+  const handleKeyDownRef = useRef<(e: KeyboardEvent) => void>(() => {});
+
+  // Updated on every render so the stable listener below always reads fresh values.
+  handleKeyDownRef.current = (e: KeyboardEvent) => {
+    if (e.key !== "Escape") {
+      return;
+    }
+    const cId = context.conversation?.sId ?? "";
+    const msgs = generationContext.getConversationGeneratingMessages(cId);
+    if (msgs.length === 0) {
+      return;
+    }
+    const hasPending =
+      (generationContext.pendingSteeringByConversation[cId] ?? 0) > 0;
+
+    const doAction = (action: "cancel" | "interrupt") => {
+      if (!context.conversation || pendingActionRef.current !== null) {
+        return;
+      }
+      const pending: "stop" | "interrupt" =
+        action === "interrupt" ? "interrupt" : "stop";
+      pendingActionRef.current = pending;
+      setPendingAction(pending);
+      const messageIds = generationContext.generatingMessages
+        .filter((m) => m.conversationId === context.conversation?.sId)
+        .map((m) => m.messageId);
+      generationContext.clearPendingSteeringCount(context.conversation.sId);
+      void cancelMessage(messageIds, action).then(() => {
+        setPendingAction(null);
+        mutateConversation();
+      });
+    };
+
+    const now = Date.now();
+    const timeSinceLastEscMs = now - lastEscTimeRef.current;
+    if (timeSinceLastEscMs < DOUBLE_ESC_WINDOW_MS) {
+      e.preventDefault();
+      lastEscTimeRef.current = 0;
+      doAction("cancel");
+    } else {
+      // Potential single ESC — wait to see if a second ESC follows.
+      e.preventDefault();
+      lastEscTimeRef.current = now;
+      setTimeout(() => {
+        if (lastEscTimeRef.current === now) {
+          doAction(hasPending ? "interrupt" : "cancel");
+        }
+      }, DOUBLE_ESC_WINDOW_MS);
+    }
+  };
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => handleKeyDownRef.current(e);
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, []);
 
   if (
     context.isProjectMember === false &&
@@ -337,28 +394,40 @@ export const AgentInputBar = ({
       context.conversation?.sId ?? ""
     );
 
+  const conversationId = context.conversation?.sId ?? "";
+  const hasPendingMessages =
+    (generationContext.pendingSteeringByConversation[conversationId] ?? 0) > 0;
+
   const showStopButton = generatingMessages.length > 0;
   const showMessageNavigation = !agentBuilderContext;
   const showNavigationContainer = showStopButton || showMessageNavigation;
 
   const getStopButtonLabel = () => {
-    if (isStopping) {
-      return "Stopping...";
+    if (pendingAction === "interrupt") {
+      return "Skipping…";
     }
-
+    if (pendingAction === "stop") {
+      return "Stopping…";
+    }
+    if (hasPendingMessages) {
+      return "Skip";
+    }
     return generatingMessages.length > 1 ? "Stop all" : "Stop";
   };
 
-  const handleStopGeneration = async () => {
+  const getConversationMessageIds = () =>
+    generationContext.generatingMessages
+      .filter((m) => m.conversationId === context.conversation?.sId)
+      .map((m) => m.messageId);
+
+  const handleAction = async (action: "cancel" | "interrupt") => {
     if (!context.conversation) {
       return;
     }
-    setIsStopping(true); // We don't set it back to false immediately cause it takes a bit of time to cancel.
-    await cancelMessage(
-      generationContext.generatingMessages
-        .filter((m) => m.conversationId === context.conversation?.sId)
-        .map((m) => m.messageId)
-    );
+    setPendingAction(action === "interrupt" ? "interrupt" : "stop");
+    generationContext.clearPendingSteeringCount(context.conversation.sId);
+    await cancelMessage(getConversationMessageIds(), action);
+    setPendingAction(null);
     void mutateConversation();
   };
 
@@ -393,9 +462,13 @@ export const AgentInputBar = ({
                 <Button
                   variant="ghost"
                   label={getStopButtonLabel()}
-                  icon={StopIcon}
-                  onClick={handleStopGeneration}
-                  disabled={isStopping}
+                  icon={hasPendingMessages ? BoltIcon : StopIcon}
+                  onClick={
+                    hasPendingMessages
+                      ? () => handleAction("interrupt")
+                      : () => handleAction("cancel")
+                  }
+                  disabled={pendingAction !== null}
                   size="xs"
                 />
                 {showMessageNavigation && (

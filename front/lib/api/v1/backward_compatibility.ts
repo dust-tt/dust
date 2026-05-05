@@ -172,11 +172,13 @@ export function addBackwardCompatibleAgentMessageFields(
   return {
     ...agentMessage,
     actions: publicActions,
-    // Map "gracefully_stopped" to "succeeded" for backward compatibility with the public API.
+    // Map "gracefully_stopped" to "succeeded" and "interrupted" to "cancelled" for the public API.
     status:
       agentMessage.status === "gracefully_stopped"
         ? "succeeded"
-        : agentMessage.status,
+        : agentMessage.status === "interrupted"
+          ? "cancelled"
+          : agentMessage.status,
     rawContents: getRawContents(agentMessage),
   };
 }

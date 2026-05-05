@@ -96,6 +96,7 @@ import {
 } from "@app/lib/api/actions/servers/query_tables_v2/metadata";
 import { isValidJSON } from "@app/lib/utils/json";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
+import type { AgentMessageStatus } from "@app/types/assistant/conversation";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -113,12 +114,7 @@ export interface MCPActionDetailsProps {
   action: AgentMCPActionWithOutputType;
   owner: LightWorkspaceType;
   lastNotification: ProgressNotificationContentType | null;
-  messageStatus?:
-    | "created"
-    | "succeeded"
-    | "failed"
-    | "cancelled"
-    | "gracefully_stopped";
+  messageStatus?: AgentMessageStatus;
   displayContext: ActionDetailsDisplayContext;
 }
 

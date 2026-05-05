@@ -6376,7 +6376,8 @@
                     "type": "string",
                     "enum": [
                       "cancel",
-                      "gracefully_stop"
+                      "gracefully_stop",
+                      "interrupt"
                     ]
                   },
                   "messageIds": {
