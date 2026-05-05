@@ -1162,6 +1162,26 @@ export async function getContentFragmentFromAttachmentFile(
   }
 }
 
+function renderFileOrAttachmentXml(
+  attachment: ConversationAttachmentType,
+  {
+    content,
+    isNewFileExplorer,
+  }: {
+    content?: string | null;
+    isNewFileExplorer: boolean;
+  }
+): string {
+  if (isNewFileExplorer) {
+    const path = `conversation/${attachment.title}`;
+    return content
+      ? `<file name="${attachment.title}" path="${path}">${content}\n</file>`
+      : `<file name="${attachment.title}" path="${path}"/>`;
+  }
+
+  return renderAttachmentXml({ attachment, content: content ?? null });
+}
+
 // Render only a tag to specify that a content fragment was injected at a given position except for
 // images when the model support them.
 export async function renderLightContentFragmentForModel(
@@ -1202,37 +1222,8 @@ export async function renderLightContentFragmentForModel(
     ? await hasFeatureFlag(auth, "new_file_explorer")
     : false;
 
-  // When new_file_explorer is on, regular file attachments are accessible via the `files` server
-  // (path-based). Don't inline them in conversation history, instead emit a slim notice so the
-  // model knows the file exists and how to reach it. Exceptions: pasted content (inlined by
-  // design), images (shown directly to vision models), queryable tables (needed for
-  // query_tables_v2 which is pre-wired at JIT time).
-  if (
-    isNewFileExplorer &&
-    !isPastedFile(contentType) &&
-    !isLLMVisionSupportedImageContentType(contentType) &&
-    !attachment.isQueryable &&
-    !isContentNodeAttachmentType(attachment)
-  ) {
-    const snippet = attachment.snippet;
-    const fileTag = snippet
-      ? `<file name="${attachment.title}" path="conversation/${attachment.title}">${snippet}\n</file>`
-      : `<file name="${attachment.title}" path="conversation/${attachment.title}"/>`;
-
-    return {
-      role: "content_fragment",
-      name: `attach_${contentType}`,
-      content: [{ type: "text", text: fileTag }],
-    };
-  }
-
-  // Check if this is pasted content - render with simplified format
+  // Pasted content is always inlined regardless of feature flags.
   if (fileStringId && isPastedFile(contentType)) {
-    const largePaste: LargePasteType = {
-      fileId: fileStringId,
-      title: attachment.title,
-    };
-
     return {
       role: "content_fragment",
       name: `attach_pasted_content`,
@@ -1240,7 +1231,7 @@ export async function renderLightContentFragmentForModel(
         {
           type: "text",
           text: renderLargePasteXml({
-            largePaste,
+            largePaste: { title: attachment.title },
             content: attachment.snippet ?? "",
           }),
         },
@@ -1248,6 +1239,8 @@ export async function renderLightContentFragmentForModel(
     };
   }
 
+  // Images: send pixel data to vision models, always include a <file> tag so the model
+  // can reference the path in subsequent tool calls (e.g. generate_image referenceImages).
   if (fileStringId && isLLMVisionSupportedImageContentType(contentType)) {
     if (excludeImages || !model.supportsVision) {
       return {
@@ -1256,8 +1249,8 @@ export async function renderLightContentFragmentForModel(
         content: [
           {
             type: "text",
-            text: renderAttachmentXml({
-              attachment,
+            text: renderFileOrAttachmentXml(attachment, {
+              isNewFileExplorer,
               content:
                 "[Image content interpreted by a vision-enabled model. " +
                 "Description not available in this context.",
@@ -1284,14 +1277,34 @@ export async function renderLightContentFragmentForModel(
             url: signedUrl,
           },
         },
-        ...(isNewFileExplorer
-          ? []
-          : [
-              {
-                type: "text" as const,
-                text: renderAttachmentXml({ attachment }),
-              },
-            ]),
+        {
+          type: "text" as const,
+          text: renderFileOrAttachmentXml(attachment, { isNewFileExplorer }),
+        },
+      ],
+    };
+  }
+
+  // When new_file_explorer is on, regular file attachments are accessible via the `files` server
+  // (path-based). Emit a slim <file> tag so the model knows the file exists and how to reach it.
+  // Queryable tables and content nodes are excluded: they rely on legacy attachment XML for
+  // query_tables_v2 and include_file wiring.
+  if (
+    isNewFileExplorer &&
+    !attachment.isQueryable &&
+    !isContentNodeAttachmentType(attachment)
+  ) {
+    return {
+      role: "content_fragment",
+      name: `attach_${contentType}`,
+      content: [
+        {
+          type: "text",
+          text: renderFileOrAttachmentXml(attachment, {
+            isNewFileExplorer,
+            content: attachment.snippet,
+          }),
+        },
       ],
     };
   }
