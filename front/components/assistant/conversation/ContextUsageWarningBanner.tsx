@@ -7,7 +7,7 @@ import {
   InformationCircleIcon,
 } from "@dust-tt/sparkle";
 
-interface WakeUpBannerProps {
+interface ContextUsageWarningBannerProps {
   owner: LightWorkspaceType;
   conversationId: string;
   contextUsage: GetConversationContextUsageResponse;
@@ -17,7 +17,7 @@ export const ContextUsageWarningBanner = ({
   owner,
   conversationId,
   contextUsage,
-}: WakeUpBannerProps) => {
+}: ContextUsageWarningBannerProps) => {
   const { compact, isCompacting } = useCompactConversation({
     owner,
     conversationId,
