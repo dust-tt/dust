@@ -48,7 +48,6 @@ export const SkillWithoutInstructionsAndToolsSchema = z.object({
     z.object({
       fileId: z.string(),
       fileName: z.string(),
-      contentType: z.string().optional(),
     })
   ),
   canWrite: z.boolean(),
