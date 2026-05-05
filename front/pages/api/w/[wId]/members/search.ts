@@ -13,20 +13,12 @@ import { fromError } from "zod-validation-error";
 
 const DEFAULT_PAGE_LIMIT = 25;
 
-const GROUP_KINDS_WITHOUT_SYSTEM = GROUP_KINDS.filter(
-  (kind): kind is Exclude<(typeof GROUP_KINDS)[number], "system"> =>
-    kind !== "system"
-) as [
-  Exclude<(typeof GROUP_KINDS)[number], "system">,
-  ...Exclude<(typeof GROUP_KINDS)[number], "system">[],
-];
-
 const SearchMembersQuerySchema = z.object({
   offset: z.coerce.number().int().min(0).catch(0),
   limit: z.coerce.number().int().min(0).max(150).catch(DEFAULT_PAGE_LIMIT),
   searchTerm: z.string().optional(),
   searchEmails: z.string().optional(),
-  groupKind: z.enum(GROUP_KINDS_WITHOUT_SYSTEM).optional(),
+  groupKind: z.enum(GROUP_KINDS).exclude(["system"]).optional(),
   buildersOnly: z
     .string()
     .transform((v) => v === "true")
