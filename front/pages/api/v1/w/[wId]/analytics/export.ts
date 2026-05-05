@@ -140,6 +140,7 @@ async function handler(
 
       const owner = auth.getNonNullableWorkspace();
       const result = await exportTable({
+        auth,
         table: q.data.table,
         startDate: q.data.startDate,
         endDate: q.data.endDate,

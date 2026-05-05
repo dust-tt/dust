@@ -27,6 +27,7 @@ import {
 } from "@app/lib/api/assistant/observability/tool_usage";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { formatUTCDateFromMillis } from "@app/lib/api/elasticsearch";
+import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -155,6 +156,7 @@ export type ExportTableData =
     };
 
 export async function exportTable({
+  auth,
   table,
   startDate,
   endDate,
@@ -162,6 +164,7 @@ export async function exportTable({
   owner,
   includeHiddenAgents,
 }: {
+  auth: Authenticator;
   table: AnalyticsExportTable;
   startDate: string;
   endDate: string;
@@ -177,7 +180,13 @@ export async function exportTable({
     case "source":
       return exportSource({ startDate, endDate, timezone, owner });
     case "agents":
-      return exportAgents({ startDate, endDate, owner, includeHiddenAgents });
+      return exportAgents({
+        auth,
+        startDate,
+        endDate,
+        owner,
+        includeHiddenAgents,
+      });
     case "users":
       return exportUsers({ startDate, endDate, timezone, owner });
     case "skill_usage":
@@ -351,11 +360,13 @@ async function exportSource({
 }
 
 async function exportAgents({
+  auth,
   startDate,
   endDate,
   owner,
   includeHiddenAgents,
 }: {
+  auth: Authenticator;
   startDate: string;
   endDate: string;
   owner: WorkspaceType;
@@ -369,7 +380,7 @@ async function exportAgents({
 
   const result = await fetchAgentExportRows(
     baseQuery,
-    owner,
+    auth,
     includeHiddenAgents
   );
 
