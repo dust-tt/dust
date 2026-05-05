@@ -72,16 +72,15 @@ export function CompactionMessage({
       const parentConversation = conversation.forkingData?.forkedFrom;
       const parentConversationTitle =
         parentConversation?.parentConversationTitle;
-      const isSummarizingParentConversation = Boolean(
+      const isCompactingOtherConversation = Boolean(
         message.sourceConversationId &&
           message.sourceConversationId !== conversation.sId &&
           parentConversation?.parentConversationId ===
             message.sourceConversationId
       );
-      const label =
-        isSummarizingParentConversation && parentConversationTitle
-          ? `Summarizing '${truncate(parentConversationTitle, MAX_SOURCE_CONVERSATION_TITLE_LENGTH)}', this may take a moment`
-          : "Compacting context, this may take a moment…";
+      const label = isCompactingOtherConversation
+        ? `Summarizing '${truncate(parentConversationTitle ?? "External conversation", MAX_SOURCE_CONVERSATION_TITLE_LENGTH)}', this may take a moment`
+        : "Compacting context, this may take a moment…";
 
       return (
         <div className="flex items-center justify-center gap-1.5">
