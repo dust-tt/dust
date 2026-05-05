@@ -27,6 +27,18 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMemo } from "react";
 import { useForm } from "react-hook-form";
 
+async function patchServer(serverUrl: string, body: object) {
+  const response = await clientFetch(serverUrl, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    const res = await response.json();
+    throw new Error(res.error?.message ?? "Failed to update server");
+  }
+}
+
 interface MCPServerDetailsProps {
   owner: WorkspaceType;
   onClose: () => void;
@@ -187,13 +199,15 @@ export function MCPServerDetails({
     icon?: string;
     authSharedSecret?: string;
     authCustomHeaders?: any;
+    authMeta?: Record<string, string> | null;
   }) => {
     const hasServerViewChanges = diff.serverView !== undefined;
     const hasIconChanges = diff.icon !== undefined;
     const hasSecretChanges = diff.authSharedSecret !== undefined;
     const hasHeaderChanges = diff.authCustomHeaders !== undefined;
+    const hasMetaChanges = diff.authMeta !== undefined;
     const hasRemoteChanges =
-      hasIconChanges || hasSecretChanges || hasHeaderChanges;
+      hasIconChanges || hasSecretChanges || hasHeaderChanges || hasMetaChanges;
 
     if (!hasServerViewChanges && !hasRemoteChanges) {
       return;
@@ -215,31 +229,22 @@ export function MCPServerDetails({
       }
     }
 
-    // Patch remote server settings if needed.
-    if (hasRemoteChanges) {
-      const patchBody: any = {};
-      if (diff.icon) {
-        patchBody.icon = diff.icon;
-      }
-      if (diff.authSharedSecret) {
-        patchBody.sharedSecret = diff.authSharedSecret;
-      }
-      if (diff.authCustomHeaders !== undefined) {
-        patchBody.customHeaders = diff.authCustomHeaders;
-      }
+    // Patch remote server settings if needed. icon and meta use separate
+    // requests because they are distinct discriminants in the API schema.
+    // sharedSecret and customHeaders can be combined in one request.
+    const serverUrl = `/api/w/${owner.sId}/mcp/${mcpServerView?.server.sId}`;
 
-      const response = await clientFetch(
-        `/api/w/${owner.sId}/mcp/${mcpServerView?.server.sId}`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(patchBody),
-        }
-      );
-      if (!response.ok) {
-        const body = await response.json();
-        throw new Error(body.error?.message ?? "Failed to update server");
-      }
+    if (hasIconChanges) {
+      await patchServer(serverUrl, { icon: diff.icon });
+    }
+    if (hasSecretChanges || hasHeaderChanges) {
+      await patchServer(serverUrl, {
+        ...(hasSecretChanges && { sharedSecret: diff.authSharedSecret }),
+        ...(hasHeaderChanges && { customHeaders: diff.authCustomHeaders }),
+      });
+    }
+    if (hasMetaChanges) {
+      await patchServer(serverUrl, { meta: diff.authMeta });
     }
   };
 
