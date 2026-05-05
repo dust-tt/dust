@@ -13,6 +13,25 @@ import { Err, Ok } from "@app/types/shared/result";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import sanitizeHtml from "sanitize-html";
 
+const DEFAULT_MESSAGE_FIELDS = [
+  "id",
+  "conversationId",
+  "subject",
+  "bodyPreview",
+  "importance",
+  "receivedDateTime",
+  "sentDateTime",
+  "hasAttachments",
+  "isDraft",
+  "isRead",
+  "from",
+  "toRecipients",
+  "ccRecipients",
+  "bccRecipients",
+  "replyTo",
+  "parentFolderId",
+];
+
 const fetchFromOutlook = async (
   endpoint: string,
   accessToken: string,
@@ -206,31 +225,12 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
         ? `(${search}) AND (${labelKql})`
         : labelKql;
 
-      const defaultSearchFields = [
-        "id",
-        "conversationId",
-        "subject",
-        "bodyPreview",
-        "importance",
-        "receivedDateTime",
-        "sentDateTime",
-        "hasAttachments",
-        "isDraft",
-        "isRead",
-        "from",
-        "toRecipients",
-        "ccRecipients",
-        "bccRecipients",
-        "replyTo",
-        "parentFolderId",
-      ];
-
       const searchRequest: Record<string, unknown> = {
         entityTypes: ["message"],
         query: { queryString: labeledQueryString },
         from: skip,
         size: Math.min(top, 100),
-        fields: select && select.length > 0 ? select : defaultSearchFields,
+        fields: select && select.length > 0 ? select : DEFAULT_MESSAGE_FIELDS,
       };
       if (sharedMailboxAddress) {
         searchRequest.contentSources = [
@@ -253,10 +253,7 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
       if (select && select.length > 0) {
         unlabeledParams.append("$select", select.join(","));
       } else {
-        unlabeledParams.append(
-          "$select",
-          "id,conversationId,subject,bodyPreview,importance,receivedDateTime,sentDateTime,hasAttachments,isDraft,isRead,from,toRecipients,ccRecipients,bccRecipients,replyTo,parentFolderId"
-        );
+        unlabeledParams.append("$select", DEFAULT_MESSAGE_FIELDS.join(","));
       }
       const unlabeledEndpoint = folderId
         ? `${basePath}/mailFolders/${folderId}/messages?${unlabeledParams.toString()}`
@@ -354,10 +351,7 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
     if (select && select.length > 0) {
       params.append("$select", select.join(","));
     } else {
-      params.append(
-        "$select",
-        "id,conversationId,subject,bodyPreview,importance,receivedDateTime,sentDateTime,hasAttachments,isDraft,isRead,from,toRecipients,ccRecipients,bccRecipients,replyTo,parentFolderId"
-      );
+      params.append("$select", DEFAULT_MESSAGE_FIELDS.join(","));
     }
 
     // Use different endpoint if folderId is provided
