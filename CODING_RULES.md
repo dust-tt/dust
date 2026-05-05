@@ -262,6 +262,56 @@ const apiUrl = config.getApiUrl();
 const isProduction = config.getNodeEnv() === "production";
 ```
 
+### [GEN12] Avoid `!important` in CSS
+
+Do not use `!important` in stylesheets, CSS modules, Tailwind `@apply` blocks, CSS-in-JS, or
+template literals that produce CSS. This also covers Tailwind's `!` important-prefix utilities
+(e.g. `focus:!ring-0`, `!mt-0`) — they compile to `!important` and have the same downsides.
+`!important` breaks the cascade, makes specificity issues harder to debug, and tends to spread
+once introduced — every override forces the next one.
+
+Fix the underlying specificity issue instead: increase selector specificity, reorder rules, scope
+via a parent class, drop conflicting utilities, or restructure the component.
+
+Narrow exceptions are acceptable when:
+
+- Overriding styles from a third-party library that we do not control.
+- Dev-only tooling that injects inspection/debug styles at runtime.
+
+In those cases, add a brief comment on the same line or directly above explaining why
+`!important` is required.
+
+Reviewer: If you detect `!important` (including Tailwind's `!` prefix) without a justifying
+comment, ask the author to remove it and address the underlying specificity issue.
+
+Example:
+
+```
+/* BAD */
+.button {
+  color: red !important;
+}
+
+/* GOOD */
+.toolbar .button {
+  color: red;
+}
+
+/* GOOD — third-party library override */
+.allotment-pane {
+  /* allotment computes inline styles; only !important wins. */
+  cursor: default !important;
+}
+```
+
+```tsx
+// BAD — Tailwind important prefix
+<div className="focus:!ring-0 !mt-0" />
+
+// GOOD — drop the conflicting utility, or scope via a parent
+<div className="focus:ring-transparent mt-0" />
+```
+
 ## SECURITY
 
 ### [SEC1] No sensitive data outside of HTTP bodies or headers

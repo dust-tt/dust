@@ -86,6 +86,14 @@
       "plugins": ["./.grit/patterns/noNextImports.grit"]
     },
     {
+      "includes": [
+        "**",
+        "!front/components/dev/devStyleOverrides.ts",
+        "!front/components/sparkle/ThemeContext.tsx"
+      ],
+      "plugins": ["./.grit/patterns/noCssImportant.grit"]
+    },
+    {
       "includes": ["front/**/*.tsx", "front-spa/**/*.tsx"],
       "plugins": ["./.grit/patterns/noSparkleClassInFront.grit"]
     },
