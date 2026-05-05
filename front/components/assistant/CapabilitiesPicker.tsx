@@ -201,7 +201,10 @@ function CapabilitiesPickerItemsList({
     <div className="relative">
       <div
         ref={listRef}
-        className={`overflow-y-auto ${CAPABILITIES_PICKER_LIST_MAX_HEIGHT_CLASS_NAME}`}
+        className={cn(
+          "overflow-y-auto",
+          CAPABILITIES_PICKER_LIST_MAX_HEIGHT_CLASS_NAME
+        )}
       >
         <div className="relative">
           <div
@@ -237,7 +240,29 @@ function CapabilitiesPickerItemsList({
                 />
               );
 
-            const menuItem = (
+            if (item.kind !== "uninstalled_tool" && item.description) {
+              return (
+                <DropdownTooltipTrigger
+                  key={item.id}
+                  description={item.description}
+                  side="right"
+                  sideOffset={8}
+                >
+                  <DropdownMenuItem
+                    icon={item.icon}
+                    itemId={item.id}
+                    label={item.label}
+                    description={item.description}
+                    truncateText
+                    endComponent={endComponent}
+                    className="group"
+                    onClick={() => onItemSelect(item)}
+                  />
+                </DropdownTooltipTrigger>
+              );
+            }
+
+            return (
               <DropdownMenuItem
                 key={item.id}
                 icon={item.icon}
@@ -250,21 +275,6 @@ function CapabilitiesPickerItemsList({
                 onClick={() => onItemSelect(item)}
               />
             );
-
-            if (item.kind !== "uninstalled_tool" && item.description) {
-              return (
-                <DropdownTooltipTrigger
-                  key={item.id}
-                  description={item.description}
-                  side="right"
-                  sideOffset={8}
-                >
-                  {menuItem}
-                </DropdownTooltipTrigger>
-              );
-            }
-
-            return menuItem;
           })}
         </div>
       </div>
@@ -351,10 +361,7 @@ export function CapabilitiesPicker({
     disabled: !shouldFetchToolsData,
   });
 
-  const normalizedSearchText = useMemo(
-    () => searchText.trim().toLowerCase(),
-    [searchText]
-  );
+  const normalizedSearchText = searchText.trim().toLowerCase();
 
   // Fallback: add server to conversation when it appears in serverViews.
   useEffect(() => {
