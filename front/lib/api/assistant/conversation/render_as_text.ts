@@ -49,6 +49,22 @@ export interface RenderConversationAsTextOptions {
   toMessageIndex?: number;
 }
 
+export function renderEnabledSkillsAsText(
+  enabledSkills: ReadonlyArray<{ name: string }>
+): string {
+  if (enabledSkills.length === 0) {
+    return "Currently enabled skills before compaction:\n- None";
+  }
+
+  const sortedEnabledSkills = [...enabledSkills].sort((a, b) =>
+    a.name.localeCompare(b.name)
+  );
+
+  return `Currently enabled skills before compaction:\n${sortedEnabledSkills
+    .map((skill) => `- ${skill.name}`)
+    .join("\n")}`;
+}
+
 /**
  * Render a conversation's messages as a plain text string. Supports both full and light
  * conversation types. Takes the last version of each message group (for full conversations).

@@ -3,7 +3,10 @@ import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import { updateCompactionMessageWithContentAndFinalStatus } from "@app/lib/api/assistant/conversation";
 import { replaceStandaloneAttachmentIds } from "@app/lib/api/assistant/conversation/compaction_attachment_id_replacements";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
-import { renderConversationAsText } from "@app/lib/api/assistant/conversation/render_as_text";
+import {
+  renderConversationAsText,
+  renderEnabledSkillsAsText,
+} from "@app/lib/api/assistant/conversation/render_as_text";
 import { PREVIOUS_INTERACTIONS_TO_PRESERVE } from "@app/lib/api/assistant/conversation_rendering";
 import { publishConversationEvent } from "@app/lib/api/assistant/streaming/events";
 import { isProviderWhitelisted } from "@app/lib/assistant";
@@ -295,13 +298,7 @@ async function generateCompactionSummary(
     skipRunningAgentMessages: true,
   });
 
-  const renderedEnabledSkills =
-    enabledSkills.length > 0
-      ? `Currently enabled skills before compaction:\n${[...enabledSkills]
-          .sort((a, b) => a.name.localeCompare(b.name))
-          .map((skill) => `- ${skill.name}`)
-          .join("\n")}`
-      : "Currently enabled skills before compaction:\n- None";
+  const renderedEnabledSkills = renderEnabledSkillsAsText(enabledSkills);
 
   // TODO(compaction): Ensure we don't exceeds the model context size here, as we have no guarantee
   // that the current conversation is not exceeding it already.
