@@ -366,6 +366,10 @@ type CommonButtonProps = Omit<MetaButtonProps, "children"> &
 
 export type ButtonIconType = React.ComponentType | React.ReactElement;
 
+function isReactElement(visual: ButtonIconType): visual is React.ReactElement {
+  return React.isValidElement(visual);
+}
+
 export type IconOnlyButtonProps = CommonButtonProps & {
   size: IconOnlySize;
   icon: ButtonIconType;
@@ -427,16 +431,15 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       startPulse();
     }, [briefPulse]);
 
-    const renderIcon = (visual: ButtonIconType, extraClass = "") =>
-      React.isValidElement(visual) ? (
-        <span className={cn(extraClass, "s-shrink-0")}>{visual}</span>
-      ) : (
-        <Icon
-          visual={visual as React.ComponentType}
-          size={iconSize}
-          className={cn(extraClass)}
-        />
+    const renderIcon = (visual: ButtonIconType, extraClass = "") => {
+      if (isReactElement(visual)) {
+        return <span className={cn(extraClass, "s-shrink-0")}>{visual}</span>;
+      }
+
+      return (
+        <Icon visual={visual} size={iconSize} className={cn(extraClass)} />
       );
+    };
     const renderChevron = (visual: React.ComponentType, extraClass = "") => (
       <Icon
         visual={visual}

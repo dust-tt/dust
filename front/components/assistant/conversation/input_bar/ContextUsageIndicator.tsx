@@ -75,6 +75,10 @@ export function ContextUsageIndicator({
     conversationId,
   });
 
+  if (isContextUsageLoading) {
+    return null;
+  }
+
   const percentage =
     contextUsage &&
     contextUsage.contextUsage !== null &&
@@ -82,10 +86,6 @@ export function ContextUsageIndicator({
     contextUsage.contextSize > 0
       ? Math.round((contextUsage.contextUsage / contextUsage.contextSize) * 100)
       : 0;
-
-  if (isContextUsageLoading) {
-    return null;
-  }
 
   return (
     <div className="hidden md:block" onClick={(e) => e.stopPropagation()}>
