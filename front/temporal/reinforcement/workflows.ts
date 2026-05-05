@@ -355,6 +355,9 @@ export async function reinforcementWorkspaceWorkflow({
           workspaceId,
           batchId: batchResult.batchId,
           reinforcementConversationMap,
+          conversationSkillMap: Object.fromEntries(
+            pendingConversations.map((c) => [c.conversationId, c.skillIds])
+          ),
         });
 
       if (continuations.length === 0) {

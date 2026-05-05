@@ -5,13 +5,12 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
-const PokeDeleteInvitationRequestBodySchema = t.type({
-  email: t.string,
+const PokeDeleteInvitationRequestBodySchema = z.object({
+  email: z.string(),
 });
 
 type PokePostInvitationResponseBody = {
@@ -44,21 +43,20 @@ async function handler(
 
   switch (req.method) {
     case "DELETE": {
-      const bodyValidation = PokeDeleteInvitationRequestBodySchema.decode(
+      const bodyValidation = PokeDeleteInvitationRequestBodySchema.safeParse(
         req.body
       );
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+      if (!bodyValidation.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request body: ${pathError}`,
+            message: `Invalid request body: ${fromError(bodyValidation.error).toString()}`,
           },
         });
       }
 
-      const { email } = bodyValidation.right;
+      const { email } = bodyValidation.data;
 
       // !! this is ok because we're in Poke as dust super user, do not copy paste
       // this mindlessly !!

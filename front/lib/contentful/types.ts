@@ -262,6 +262,151 @@ export interface SearchableItem {
   courseSlug?: string | null;
 }
 
+export type AcademyLocale = "en-US" | "fr";
+
+export const ACADEMY_LOCALES: AcademyLocale[] = ["en-US", "fr"];
+
+export const ACADEMY_LOCALE_LABELS: Record<AcademyLocale, string> = {
+  "en-US": "EN",
+  fr: "FR",
+};
+
+export const DEFAULT_ACADEMY_LOCALE: AcademyLocale = "en-US";
+
+export const ACADEMY_LOCALE_COOKIE = "academy_locale";
+
+export function isAcademyLocale(value: string): value is AcademyLocale {
+  return ACADEMY_LOCALES.some((l) => l === value);
+}
+
+export type QuizSettingsSkeleton = EntrySkeletonType<
+  QuizSettings,
+  "quizSettings"
+>;
+
+export interface QuizSettings {
+  quizTitle: string;
+  quizSubtitle: string;
+  quizGreetingUser: string;
+  quizGreetingGeneric: string;
+  quizCompleted: string;
+  quizBestScore: string;
+  quizAttempts: string;
+  quizStartButton: string;
+  quizRetakeButton: string;
+  quizStarting: string;
+  quizReset: string;
+  quizThinking: string;
+  quizAnswerPlaceholder: string;
+  quizSubmit: string;
+  quizGreatScoreAgain: string;
+  quizChapterCompleted: string;
+  quizPerfectScore: string;
+  quizPassedMessage: string;
+  quizComplete: string;
+  quizFailMessage: string;
+  quizTryAgain: string;
+  quizYou: string;
+  quizCorrect: string;
+  quizQuestion: string;
+}
+
+export const DEFAULT_QUIZ_SETTINGS: QuizSettings = {
+  quizTitle: "Test Your Knowledge",
+  quizSubtitle: "Answer 5 questions — score 3 or more to pass",
+  quizGreetingUser: "Ready to test your understanding, {name}?",
+  quizGreetingGeneric: "Ready to test your understanding of this content?",
+  quizCompleted: "Completed",
+  quizBestScore: "Best score",
+  quizAttempts: "attempts",
+  quizStartButton: "Start Quiz",
+  quizRetakeButton: "Take Quiz Again",
+  quizStarting: "Starting quiz...",
+  quizReset: "Reset",
+  quizThinking: "Thinking...",
+  quizAnswerPlaceholder: "Type your answer...",
+  quizSubmit: "Submit",
+  quizGreatScoreAgain: "Great Score Again!",
+  quizChapterCompleted: "Chapter Completed!",
+  quizPerfectScore: "Excellent work! You've mastered this content.",
+  quizPassedMessage: "Well done! You passed the quiz.",
+  quizComplete: "Quiz Complete",
+  quizFailMessage:
+    "You need at least {passing}/{total} to pass. Review the content and try again!",
+  quizTryAgain: "Try Again",
+  quizYou: "You",
+  quizCorrect: "correct",
+  quizQuestion: "Question",
+};
+
+export type AcademySettingsSkeleton = EntrySkeletonType<
+  AcademySettings,
+  "academySettings"
+>;
+
+export interface AcademySettings {
+  academyTitle: string;
+  academySubtitle: string;
+  searchPlaceholder: string;
+  continueLearning: string;
+  backToAcademy: string;
+  continueButton: string;
+  startLearning: string;
+  featuredCourse: string;
+  chapterRead: string;
+  quizPassed: string;
+  courseObjectives: string;
+  prerequisites: string;
+  chapters: string;
+  copyAsMarkdown: string;
+  copied: string;
+  previousCourse: string;
+  nextCourse: string;
+  previousChapter: string;
+  nextChapter: string;
+  lessonObjectives: string;
+  previousContent: string;
+  nextContent: string;
+  course: string;
+  lesson: string;
+  noCourses: string;
+  mobileMenuTitle: string;
+  completed: string;
+  backTo: string;
+}
+
+export const DEFAULT_ACADEMY_SETTINGS: AcademySettings = {
+  academyTitle: "Dust Academy",
+  academySubtitle:
+    "Check out our courses, tutorials, and videos to learn everything about Dust",
+  searchPlaceholder: "Search...",
+  continueLearning: "Continue Learning",
+  backToAcademy: "Back to Academy",
+  continueButton: "Continue",
+  startLearning: "Start learning",
+  featuredCourse: "Featured Course",
+  chapterRead: "Chapter read",
+  quizPassed: "Quiz passed",
+  courseObjectives: "Course Objectives",
+  prerequisites: "Prerequisites",
+  chapters: "Chapters",
+  copyAsMarkdown: "Copy as Markdown",
+  copied: "Copied!",
+  previousCourse: "Previous Course",
+  nextCourse: "Next Course",
+  previousChapter: "Previous Chapter",
+  nextChapter: "Next Chapter",
+  lessonObjectives: "Lesson Objectives",
+  previousContent: "Previous",
+  nextContent: "Next",
+  course: "Course",
+  lesson: "Lesson",
+  noCourses: "No courses available yet. Check back soon!",
+  mobileMenuTitle: "Academy",
+  completed: "Completed",
+  backTo: "Back to {title}",
+};
+
 export interface AcademyUser {
   firstName: string;
   sId: string;
@@ -272,6 +417,8 @@ export interface CourseListingPageProps {
   searchableItems: SearchableItem[];
   gtmTrackingId: string | null;
   academyUser?: AcademyUser | null;
+  locale: AcademyLocale;
+  academySettings: AcademySettings;
 }
 
 export interface CoursePageProps {
@@ -283,6 +430,9 @@ export interface CoursePageProps {
   academyUser?: AcademyUser | null;
   fullWidth?: boolean;
   preview?: boolean;
+  locale: AcademyLocale;
+  academySettings: AcademySettings;
+  quizSettings: QuizSettings;
 }
 
 // Chapter types
@@ -337,6 +487,9 @@ export interface ChapterPageProps {
   academyUser?: AcademyUser | null;
   fullWidth?: boolean;
   preview?: boolean;
+  locale: AcademyLocale;
+  academySettings: AcademySettings;
+  quizSettings: QuizSettings;
 }
 
 // Lesson types
@@ -413,4 +566,7 @@ export interface LessonPageProps {
   gtmTrackingId: string | null;
   academyUser?: AcademyUser | null;
   preview?: boolean;
+  locale: AcademyLocale;
+  academySettings: AcademySettings;
+  quizSettings: QuizSettings;
 }
