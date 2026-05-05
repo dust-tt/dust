@@ -1013,9 +1013,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       return new Map();
     }
     const uniqueSIds = [...new Set(sIds)];
-    const conversations = await this.fetchByIds(auth, uniqueSIds, {
-      includeForkingData: true,
-    });
+    const conversations = await this.fetchByIds(auth, uniqueSIds);
     if (conversations.length === 0) {
       return new Map();
     }
@@ -1511,7 +1509,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     const conversations = await this.baseFetchWithAuthorization(
       auth,
-      { includeForkingData: true },
+      {},
       {
         where: whereClause,
         order: [["updatedAt", orderDirection === "desc" ? "DESC" : "ASC"]],
