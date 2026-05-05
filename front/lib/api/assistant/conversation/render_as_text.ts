@@ -1,4 +1,3 @@
-import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type {
   AgentMessageType,
   AgentMessageWithFeedbackType,
@@ -48,22 +47,6 @@ export interface RenderConversationAsTextOptions {
   // flattened message list).
   fromMessageIndex?: number;
   toMessageIndex?: number;
-}
-
-export function renderEnabledSkillsAsText(
-  enabledSkills: ReadonlyArray<SkillResource>
-): string {
-  if (enabledSkills.length === 0) {
-    return "Currently enabled skills before compaction:\n- None";
-  }
-
-  const sortedEnabledSkills = [...enabledSkills].sort((a, b) =>
-    a.name.localeCompare(b.name)
-  );
-
-  return `Currently enabled skills before compaction:\n${sortedEnabledSkills
-    .map((skill) => `- ${skill.name}`)
-    .join("\n")}`;
 }
 
 /**

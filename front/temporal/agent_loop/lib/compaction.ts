@@ -3,16 +3,12 @@ import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import { updateCompactionMessageWithContentAndFinalStatus } from "@app/lib/api/assistant/conversation";
 import { replaceStandaloneAttachmentIds } from "@app/lib/api/assistant/conversation/compaction_attachment_id_replacements";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
-import {
-  renderConversationAsText,
-  renderEnabledSkillsAsText,
-} from "@app/lib/api/assistant/conversation/render_as_text";
+import { renderConversationAsText } from "@app/lib/api/assistant/conversation/render_as_text";
 import { PREVIOUS_INTERACTIONS_TO_PRESERVE } from "@app/lib/api/assistant/conversation_rendering";
 import { publishConversationEvent } from "@app/lib/api/assistant/streaming/events";
 import { isProviderWhitelisted } from "@app/lib/assistant";
 import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import logger from "@app/logger/logger";
 import type { CompactionSourceConversation } from "@app/types/assistant/compaction";
 import type {
@@ -41,7 +37,7 @@ While writing the summary make sure to consider for each messages so far:
 
 Double-check for accuracy and completeness.
 
-If currently enabled skills are provided, briefly capture which skills were enabled, in what
+If skills were enabled during the conversation, briefly capture which skills were enabled, in what
 context they were useful, and how likely they are to need re-enabling later.
 
 Provide your detailed summary in <summary> tags with these sections:
@@ -184,14 +180,7 @@ export async function runCompaction(
     "skills_as_user_messages"
   );
 
-  const enabledSkills = renderSkillsAsUserMessages
-    ? await SkillResource.listAllEnabledByConversation(auth, {
-        conversation: targetConversation,
-      })
-    : [];
-
   const summaryRes = await generateCompactionSummary(auth, {
-    enabledSkills,
     sourceConversation: conversationToSummarize,
     sourceMessageRank: sourceConversation?.messageRank,
     targetConversationId: targetConversation.sId,
@@ -262,14 +251,12 @@ export async function runCompaction(
 async function generateCompactionSummary(
   auth: Authenticator,
   {
-    enabledSkills,
     sourceConversation,
     sourceMessageRank,
     targetConversationId,
     compactionMessage,
     model,
   }: {
-    enabledSkills: SkillResource[];
     sourceConversation: ConversationType;
     sourceMessageRank?: number;
     targetConversationId: string;
@@ -296,8 +283,6 @@ async function generateCompactionSummary(
     skipRunningAgentMessages: true,
   });
 
-  const renderedEnabledSkills = renderEnabledSkillsAsText(enabledSkills);
-
   // TODO(compaction): Ensure we don't exceeds the model context size here, as we have no guarantee
   // that the current conversation is not exceeding it already.
   // TODO(compaction): We may want to be more mechanical about files available to the model in
@@ -311,7 +296,7 @@ async function generateCompactionSummary(
         content: [
           {
             type: "text",
-            text: `Conversation to summarize:\n\n${renderedMessages}\n\n${renderedEnabledSkills}`,
+            text: `Conversation to summarize:\n\n${renderedMessages}`,
           },
         ],
         name: "",
