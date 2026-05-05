@@ -41,7 +41,7 @@ function buildConversationFilesSection(): string {
 The conversation file system is mounted read-write inside the sandbox at
 \`/files/conversation\`. This is the canonical surface for navigating,
 inspecting, and producing conversation files — strongly prefer it over the
-\`files\` MCP server when the sandbox is running.
+\`files\` MCP server when the sandbox is available.
 
 Layout:
 
