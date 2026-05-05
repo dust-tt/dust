@@ -1,6 +1,5 @@
 import type { AttachmentCreator } from "@app/lib/api/assistant/conversation/attachments";
 import type { GetConversationAttachmentsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/attachments";
-import type { ReactNode } from "react";
 
 export type ConversationAttachmentItem =
   GetConversationAttachmentsResponseBody["attachments"][number];
@@ -16,27 +15,16 @@ export type FilePanelCategory =
   | "knowledge"
   | "other";
 
-export type FilePanelRow = {
-  id?: string;
+export type ConversationAttachmentRow = {
   title: string;
   contentType: string;
   fileId: string | null;
-  category: FilePanelCategory;
-  action?: ReactNode;
-  creator?: AttachmentCreator | null;
-  date: number | null;
-  isHighlighted?: boolean;
-  isInProjectContext?: boolean;
-  onClick?: () => void;
-  source?: "agent" | "user" | null;
-  subtitle?: string;
-  thumbnailUrl?: string;
-};
-
-export type ConversationAttachmentRow = FilePanelRow & {
   source: "agent" | "user" | null;
+  category: FilePanelCategory;
   isInProjectContext: boolean;
   creator: AttachmentCreator | null;
+  date: number | null;
+  onClick?: () => void;
 };
 
 export type SandboxTreeNode = {

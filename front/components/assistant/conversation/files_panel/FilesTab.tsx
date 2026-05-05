@@ -1,6 +1,6 @@
 import type {
+  ConversationAttachmentRow,
   FilePanelCategory,
-  FilePanelRow,
 } from "@app/components/assistant/conversation/files_panel/types";
 import {
   CATEGORY_CONFIG,
@@ -14,7 +14,6 @@ import {
   Avatar,
   Card,
   CardGrid,
-  cn,
   Icon,
   ScrollArea,
   SearchInput,
@@ -26,20 +25,12 @@ import moment from "moment";
 import { useMemo } from "react";
 
 interface FilesTabProps {
-  emptyContent?: React.ReactNode;
   isLoading: boolean;
   owner: LightWorkspaceType;
-  rows: FilePanelRow[];
-  searchInputName?: string;
+  rows: ConversationAttachmentRow[];
 }
 
-export function FilesTab({
-  emptyContent,
-  isLoading,
-  owner,
-  rows,
-  searchInputName = "file-search",
-}: FilesTabProps) {
+export function FilesTab({ isLoading, owner, rows }: FilesTabProps) {
   const {
     inputValue: search,
     debouncedValue: debouncedSearch,
@@ -55,7 +46,7 @@ export function FilesTab({
   }, [rows, debouncedSearch]);
 
   const groupedByCategory = useMemo(() => {
-    const groups = new Map<FilePanelCategory, FilePanelRow[]>();
+    const groups = new Map<FilePanelCategory, ConversationAttachmentRow[]>();
     for (const row of filteredRows) {
       const existing = groups.get(row.category);
       if (existing) {
@@ -77,11 +68,9 @@ export function FilesTab({
 
   if (rows.length === 0) {
     return (
-      emptyContent ?? (
-        <div className="p-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
-          Conversation attachments & generated content will appear here.
-        </div>
-      )
+      <div className="p-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
+        Conversation attachments & generated content will appear here.
+      </div>
     );
   }
 
@@ -90,7 +79,7 @@ export function FilesTab({
       {rows.length > MIN_FILES_FOR_SEARCH && (
         <div className="shrink-0 px-4 pt-4">
           <SearchInput
-            name={searchInputName}
+            name="file-search"
             placeholder="Search files..."
             value={search}
             onChange={setSearch}
@@ -121,7 +110,7 @@ function FileCards({
   rows,
   owner,
 }: {
-  rows: FilePanelRow[];
+  rows: ConversationAttachmentRow[];
   owner: LightWorkspaceType;
 }) {
   return (
@@ -130,7 +119,7 @@ function FileCards({
         if (row.category === "image" && row.fileId) {
           return (
             <Card
-              key={row.id ?? row.fileId}
+              key={row.fileId}
               size="sm"
               variant="primary"
               onClick={row.onClick}
@@ -138,32 +127,23 @@ function FileCards({
               className="overflow-hidden"
             >
               <img
-                src={row.thumbnailUrl ?? getFileProcessedUrl(owner, row.fileId)}
+                src={getFileProcessedUrl(owner, row.fileId)}
                 alt={row.title}
                 className="absolute inset-0 h-full w-full object-cover"
               />
               <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-2 pt-6">
-                <div className="flex items-center justify-between gap-2">
-                  <Tooltip
-                    tooltipTriggerAsChild
-                    label={row.title}
-                    trigger={
-                      <div
-                        className={cn(
-                          "min-w-0 flex-1 truncate text-sm font-medium text-white",
-                          row.isHighlighted && "text-success"
-                        )}
-                      >
-                        {row.title}
-                      </div>
-                    }
-                  />
-                  {row.action}
-                </div>
+                <Tooltip
+                  tooltipTriggerAsChild
+                  label={row.title}
+                  trigger={
+                    <div className="truncate text-sm font-medium text-white">
+                      {row.title}
+                    </div>
+                  }
+                />
                 <div className="flex items-center justify-between text-white/70">
                   <div className="text-xs ">
-                    {row.subtitle ??
-                      (row.date ? `${moment(row.date).fromNow()}` : null)}
+                    {row.date ? `${moment(row.date).fromNow()}` : null}
                   </div>
                   <div className="flex items-center gap-3">
                     {row.isInProjectContext && (
@@ -188,7 +168,7 @@ function FileCards({
         const FileIcon = getFileTypeIcon(row.contentType, row.title);
         return (
           <Card
-            key={row.id ?? row.fileId ?? row.title}
+            key={row.fileId ?? row.title}
             size="sm"
             variant="primary"
             onClick={row.onClick}
@@ -200,23 +180,15 @@ function FileCards({
                   tooltipTriggerAsChild
                   label={row.title}
                   trigger={
-                    <div
-                      className={cn(
-                        "min-w-0 flex-1 truncate text-sm font-medium",
-                        row.isHighlighted &&
-                          "text-success dark:text-success-night"
-                      )}
-                    >
+                    <div className="min-w-0 flex-1 truncate text-sm font-medium">
                       {row.title}
                     </div>
                   }
                 />
-                {row.action}
               </div>
               <div className="flex items-center justify-between">
                 <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-                  {row.subtitle ??
-                    (row.date ? `${moment(row.date).fromNow()}` : null)}
+                  {row.date ? `${moment(row.date).fromNow()}` : null}
                 </div>
                 <div className="flex items-center gap-3">
                   {row.isInProjectContext && (
@@ -245,7 +217,7 @@ function FileCards({
   );
 }
 
-function CreatorAvatar({ row }: { row: FilePanelRow }) {
+function CreatorAvatar({ row }: { row: ConversationAttachmentRow }) {
   if (row.creator) {
     return (
       <Tooltip
