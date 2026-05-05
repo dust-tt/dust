@@ -309,6 +309,66 @@ Score 2 if Seb's items are extracted but Rcs's item is missing or wrongly assign
 Score 3 if Rcs's opt-in item and Seb's items 3/4/5 are correctly extracted, items 1 and 2 are not.`,
     },
 
+    // ── Re-analysis of same document must not duplicate items ─────────────────
+
+    {
+      scenarioId: "idempotent-re-analysis",
+      document: {
+        id: "doc-8",
+        title: "Sprint planning",
+        type: "slack",
+        text: [
+          "Alice: I'll write the migration script for the users table by Friday",
+          "Bob: I'll review it once it's ready",
+        ].join("\n"),
+        uri: "https://example.com/doc-8",
+      },
+      members: [
+        { sId: "user-alice", fullName: "Alice Martin", email: "alice@co.com" },
+        { sId: "user-bob", fullName: "Bob Chen", email: "bob@co.com" },
+      ],
+      previousVersion: {
+        actionItems: [
+          {
+            sId: "prev-migr-1",
+            shortDescription: "Write the migration script for the users table",
+            assigneeUserId: "user-alice",
+            assigneeName: "Alice Martin",
+            status: "open",
+            detectedDoneAt: null,
+            detectedDoneRationale: null,
+            detectedCreationRationale:
+              "Alice committed to writing the migration script by Friday",
+          },
+          {
+            sId: "prev-review-1",
+            shortDescription: "Review the migration PR once it's ready",
+            assigneeUserId: "user-bob",
+            assigneeName: "Bob Chen",
+            status: "open",
+            detectedDoneAt: null,
+            detectedDoneRationale: null,
+            detectedCreationRationale:
+              "Bob committed to reviewing the migration PR",
+          },
+        ],
+      },
+      expectedAssertions: [
+        shouldPreserveSId("actionItem", "prev-migr-1"),
+        shouldPreserveSId("actionItem", "prev-review-1"),
+        maxActionItems(2),
+      ],
+      judgeCriteria: `This document was already analyzed once and produced two action items (Alice:
+migration script, Bob: review PR). On this second pass, both items are already
+tracked in the 'Previously tracked' list. The document is unchanged, so nothing
+has changed.
+
+Score 0 if the same items are re-extracted as NEW action items (duplicates created).
+Score 1 if sIds from the previous version are not preserved.
+Score 2 if no duplicates but the output has extra spurious items.
+Score 3 if the two existing items are preserved with their original sIds and no new items are added.`,
+    },
+
     // ── No inline completion should be registered ──────────────────────────────
 
     {
