@@ -1,5 +1,9 @@
+import type { AgentLoopContextType } from "@app/lib/actions/types";
+import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import config from "@app/lib/api/config";
+import type { Authenticator } from "@app/lib/auth";
 import { untrustedFetch } from "@app/lib/egress/server";
+import { WorkspaceSensitivityLabelConfigResource } from "@app/lib/resources/workspace_sensitivity_label_config_resource";
 import logger from "@app/logger/logger";
 import {
   isTextExtractionSupportedContentType,
@@ -120,6 +124,28 @@ export interface TeamsUser {
   displayName: string;
   mail: string;
   userPrincipalName: string;
+}
+
+export async function getAllowedLabelsForMCPServer(
+  auth: Authenticator,
+  agentLoopContext: AgentLoopContextType | undefined
+): Promise<string[]> {
+  const toolConfig = agentLoopContext?.runContext?.toolConfiguration;
+  const internalMCPServerId =
+    toolConfig && isLightServerSideMCPToolConfiguration(toolConfig)
+      ? toolConfig.internalMCPServerId
+      : null;
+
+  if (!internalMCPServerId) {
+    return [];
+  }
+
+  const labelConfig =
+    await WorkspaceSensitivityLabelConfigResource.fetchBySource(auth, {
+      sourceType: "mcp_connection",
+      sourceId: internalMCPServerId,
+    });
+  return labelConfig?.allowedLabels || [];
 }
 
 export async function getGraphClient(
@@ -384,19 +410,29 @@ export async function searchMicrosoftDriveItems({
   client,
   query,
   pageSize = 25,
+  allowedLabels = [],
 }: {
   client: Client;
   query: string;
   pageSize?: number;
+  allowedLabels?: string[];
 }): Promise<any> {
   const endpoint = `/search/query`;
+
+  let queryString = query;
+  if (allowedLabels.length > 0) {
+    const labelKql = allowedLabels
+      .map((label) => `InformationProtectionLabelId:${label}`)
+      .join(" OR ");
+    queryString = query ? `(${query}) AND (${labelKql})` : labelKql;
+  }
 
   const requestBody = {
     requests: [
       {
         entityTypes: ["driveItem"],
         query: {
-          queryString: query,
+          queryString,
         },
         size: pageSize,
       },
