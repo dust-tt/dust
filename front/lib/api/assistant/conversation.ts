@@ -80,6 +80,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
@@ -2924,6 +2925,16 @@ export async function updateCompactionMessageWithContentAndFinalStatus(
         transaction: t,
       }
     );
+
+    if (status === "succeeded") {
+      await SkillResource.clearAllEnabledByConversation(
+        auth,
+        {
+          conversation,
+        },
+        { transaction: t }
+      );
+    }
   });
 
   return {

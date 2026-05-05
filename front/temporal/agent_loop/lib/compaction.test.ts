@@ -3,12 +3,14 @@ import { compactConversation } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import type { Authenticator } from "@app/lib/auth";
 import { CompactionMessageModel } from "@app/lib/models/agent/conversation";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { launchCompactionWorkflow } from "@app/temporal/agent_loop/client";
 import { runCompaction } from "@app/temporal/agent_loop/lib/compaction";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   CompactionMessageType,
   ConversationType,
@@ -42,7 +44,7 @@ describe("runCompaction", () => {
   let auth: Authenticator;
   let workspace: Awaited<ReturnType<typeof createResourceTest>>["workspace"];
   let conversation: ConversationType;
-  let agentConfig: LightAgentConfigurationType;
+  let agentConfig: AgentConfigurationType;
 
   beforeEach(async () => {
     const setup = await createResourceTest({});
@@ -159,7 +161,77 @@ describe("runCompaction", () => {
     expect(compactionMessageRow?.content).toBe("Summary.");
   });
 
+  it("adds a previously enabled skills section and clears conversation skills on success", async () => {
+    const skill = await SkillFactory.create(auth, {
+      name: "Commit",
+      agentFacingDescription: "Use this skill to prepare and make git commits.",
+    });
+    await SkillFactory.linkToAgent(auth, {
+      skillId: skill.id,
+      agentConfigurationId: agentConfig.id,
+    });
+    const enableResult = await skill.enableForAgent(auth, {
+      agentConfiguration: agentConfig,
+      conversation,
+    });
+    expect(enableResult.isOk()).toBe(true);
+
+    const compactionMessage = await createCompactionMessage();
+
+    vi.mocked(runMultiActionsAgent).mockImplementationOnce(async () => {
+      return new Ok({
+        actions: [],
+        generation:
+          "<analysis>Scratchpad.</analysis><summary>Summary.</summary>",
+      });
+    });
+
+    const result = await runCompaction(auth, {
+      conversationId: conversation.sId,
+      compactionMessageId: compactionMessage.sId,
+      compactionMessageVersion: compactionMessage.version,
+      model: MODEL,
+    });
+
+    expect(result.isOk()).toBe(true);
+
+    const compactionMessageRow = await CompactionMessageModel.findOne({
+      where: {
+        id: compactionMessage.compactionMessageId,
+        workspaceId: workspace.id,
+      },
+    });
+
+    expect(compactionMessageRow?.content).toContain("Summary.");
+    expect(compactionMessageRow?.content).toContain(
+      "## Previously Enabled Skills"
+    );
+    expect(compactionMessageRow?.content).toContain(
+      "- Commit: Use this skill to prepare and make git commits."
+    );
+
+    const enabledSkills = await SkillResource.listAllEnabledByConversation(
+      auth,
+      { conversation }
+    );
+    expect(enabledSkills).toEqual([]);
+  });
+
   it("keeps the run id when compaction fails", async () => {
+    const skill = await SkillFactory.create(auth, {
+      name: "Commit",
+      agentFacingDescription: "Use this skill to prepare and make git commits.",
+    });
+    await SkillFactory.linkToAgent(auth, {
+      skillId: skill.id,
+      agentConfigurationId: agentConfig.id,
+    });
+    const enableResult = await skill.enableForAgent(auth, {
+      agentConfiguration: agentConfig,
+      conversation,
+    });
+    expect(enableResult.isOk()).toBe(true);
+
     const compactionMessage = await createCompactionMessage();
 
     vi.mocked(runMultiActionsAgent).mockImplementationOnce(
@@ -189,6 +261,12 @@ describe("runCompaction", () => {
     expect(compactionMessageRow?.runIds).toEqual(["llm_trace_run_2"]);
     expect(compactionMessageRow?.status).toBe("failed");
     expect(compactionMessageRow?.content).toBeNull();
+
+    const enabledSkills = await SkillResource.listAllEnabledByConversation(
+      auth,
+      { conversation }
+    );
+    expect(enabledSkills.map((s) => s.name)).toEqual(["Commit"]);
   });
 
   it("sanitizes run ids before interpolating them into SQL", async () => {

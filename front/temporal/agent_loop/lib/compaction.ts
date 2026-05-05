@@ -9,6 +9,7 @@ import { publishConversationEvent } from "@app/lib/api/assistant/streaming/event
 import { isProviderWhitelisted } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import logger from "@app/logger/logger";
 import type { CompactionSourceConversation } from "@app/types/assistant/compaction";
 import type {
@@ -67,6 +68,29 @@ function extractSummary(generation: string): string {
   }
   // Fallback: if no <summary> tags, return the full generation.
   return generation.trim();
+}
+
+function appendPreviouslyEnabledSkillsSection(
+  summary: string,
+  enabledSkills: SkillResource[]
+): string {
+  if (enabledSkills.length === 0) {
+    return summary;
+  }
+
+  const sortedEnabledSkills = [...enabledSkills].sort((a, b) =>
+    a.name.localeCompare(b.name)
+  );
+
+  const skillsSection = [
+    "## Previously Enabled Skills",
+    "The following skills were enabled before compaction. They are no longer active and may need to be re-enabled if they become relevant again:",
+    ...sortedEnabledSkills.map(
+      (skill) => `- ${skill.name}: ${skill.agentFacingDescription}`
+    ),
+  ].join("\n");
+
+  return `${summary}\n\n${skillsSection}`;
 }
 
 function filterConversationContentUpToRank(
@@ -170,6 +194,10 @@ export async function runCompaction(
     conversationToSummarize = sourceConversationRes.value;
   }
 
+  const enabledSkills = await SkillResource.listAllEnabledByConversation(auth, {
+    conversation: targetConversation,
+  });
+
   const summaryRes = await generateCompactionSummary(auth, {
     sourceConversation: conversationToSummarize,
     sourceMessageRank: sourceConversation?.messageRank,
@@ -182,9 +210,12 @@ export async function runCompaction(
   let status: "succeeded" | "failed";
 
   if (summaryRes.isOk()) {
-    content = replaceStandaloneAttachmentIds(
-      summaryRes.value,
-      sourceConversation?.attachmentIdReplacements
+    content = appendPreviouslyEnabledSkillsSection(
+      replaceStandaloneAttachmentIds(
+        summaryRes.value,
+        sourceConversation?.attachmentIdReplacements
+      ),
+      enabledSkills
     );
     status = "succeeded";
 
