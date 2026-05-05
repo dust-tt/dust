@@ -1,6 +1,7 @@
 import { stripCRLF } from "./string_utils";
 
 export type HeaderRow = { key: string; value: string };
+export type MetaRow = { key: string; value: string };
 
 export function sanitizeHeaderPart(s: string): string {
   return stripCRLF(s).trim();
