@@ -35,10 +35,14 @@ export function parseSkillTag(tag: string): SkillReference | null {
   return parseSkillTagAttributes(attributes);
 }
 
-export function extractSkillTags(markdown: string): SkillReference[] {
-  return [...markdown.matchAll(SKILL_TAG_REGEX)]
+export function extractSkillTags(content: string): SkillReference[] {
+  return [...content.matchAll(SKILL_TAG_REGEX)]
     .map((match) => parseSkillTag(match[0]))
     .filter((skill): skill is SkillReference => skill !== null);
+}
+
+export function extractUniqueSkillIds(content: string): string[] {
+  return [...new Set(extractSkillTags(content).map((skill) => skill.id))];
 }
 
 export function serializeSkillTag({ id, name, icon }: SkillReference): string {

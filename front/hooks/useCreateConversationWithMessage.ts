@@ -47,7 +47,6 @@ export function useCreateConversationWithMessage({
         contentFragments: ContentFragmentsType;
         clientSideMCPServerIds?: string[];
         selectedMCPServerViewIds?: string[];
-        selectedSkillIds?: string[];
         origin?: ClientMessageOrigin;
       };
       visibility?: ConversationVisibility;
@@ -70,7 +69,6 @@ export function useCreateConversationWithMessage({
         contentFragments,
         clientSideMCPServerIds,
         selectedMCPServerViewIds,
-        selectedSkillIds,
         origin: messageOrigin,
       } = messageData;
       const origin = messageOrigin ?? contextOrigin;
@@ -90,7 +88,6 @@ export function useCreateConversationWithMessage({
               profilePictureUrl: user.image,
               clientSideMCPServerIds,
               selectedMCPServerViewIds,
-              selectedSkillIds,
               origin,
             },
             mentions,

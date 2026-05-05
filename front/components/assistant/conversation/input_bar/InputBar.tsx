@@ -10,9 +10,7 @@ import { InputBarContext } from "@app/components/assistant/conversation/input_ba
 import { useConversationDrafts } from "@app/components/assistant/conversation/input_bar/useConversationDrafts";
 import { PlanCard } from "@app/components/assistant/conversation/plan_mode/PlanCard";
 import {
-  useAddDeleteConversationSkill,
   useAddDeleteConversationTool,
-  useConversationSkills,
   useConversationTools,
 } from "@app/hooks/conversations";
 import { RUNNING_AGENT_SWITCH_BLOCK_MESSAGE } from "@app/lib/api/assistant/errors";
@@ -27,7 +25,6 @@ import {
 } from "@app/types/assistant/assistant";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { RichMention } from "@app/types/assistant/mentions";
-import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import { isEqualNode } from "@app/types/data_source_view";
@@ -53,8 +50,7 @@ interface InputBarProps {
     input: string,
     mentions: RichMention[],
     contentFragments: ContentFragmentsType,
-    selectedMCPServerViewIds?: string[],
-    selectedSkillIds?: string[]
+    selectedMCPServerViewIds?: string[]
   ) => Promise<Result<undefined, DustError>>;
   draftKey: string;
   conversation?: ConversationWithoutContentType;
@@ -189,10 +185,6 @@ export const InputBar = React.memo(function InputBar({
     MCPServerViewType[]
   >([]);
 
-  const [selectedSkills, setSelectedSkills] = useState<
-    SkillWithoutInstructionsAndToolsType[]
-  >([]);
-
   const { conversationTools } = useConversationTools({
     conversationId: conversation?.sId,
     workspaceId: owner.sId,
@@ -207,31 +199,10 @@ export const InputBar = React.memo(function InputBar({
     conversationId: conversation?.sId,
     workspaceId: owner.sId,
   });
-
-  const { conversationSkills } = useConversationSkills({
-    conversationId: conversation?.sId,
-    workspaceId: owner.sId,
-  });
-
-  // The truth is in the conversationSkills, we need to update the selectedSkills when the conversationSkills change.
-  useEffect(() => {
-    setSelectedSkills(conversationSkills);
-  }, [conversationSkills]);
-
-  const selectedSkillIds = useMemo(
-    () => new Set(selectedSkills.map((skill) => skill.sId)),
-    [selectedSkills]
-  );
   const selectedMCPServerViewIds = useMemo(
     () => new Set(selectedMCPServerViews.map((serverView) => serverView.sId)),
     [selectedMCPServerViews]
   );
-
-  // JIT skills apply to all agents in the conversation, so we pass null for agentConfigurationId
-  const { addSkill, deleteSkill } = useAddDeleteConversationSkill({
-    conversationId: conversation?.sId,
-    workspaceId: owner.sId,
-  });
 
   const handleMCPServerViewSelect = useCallback(
     (serverView: MCPServerViewType) => {
@@ -261,32 +232,6 @@ export const InputBar = React.memo(function InputBar({
       void deleteTool(serverView.sId);
     },
     [deleteTool, selectedMCPServerViewIds]
-  );
-
-  const handleSkillSelect = useCallback(
-    (skill: SkillWithoutInstructionsAndToolsType) => {
-      if (selectedSkillIds.has(skill.sId)) {
-        return;
-      }
-
-      setSelectedSkills((prev) =>
-        prev.some((s) => s.sId === skill.sId) ? prev : [...prev, skill]
-      );
-      void addSkill(skill.sId);
-    },
-    [addSkill, selectedSkillIds]
-  );
-
-  const handleSkillDeselect = useCallback(
-    (skill: SkillWithoutInstructionsAndToolsType) => {
-      if (!selectedSkillIds.has(skill.sId)) {
-        return;
-      }
-
-      setSelectedSkills((prev) => prev.filter((s) => s.sId !== skill.sId));
-      void deleteSkill(skill.sId);
-    },
-    [deleteSkill, selectedSkillIds]
   );
 
   const activeAgents = useMemo(() => {
@@ -323,7 +268,6 @@ export const InputBar = React.memo(function InputBar({
       ? [selectedSingleAgent, ...rawMentions]
       : rawMentions;
     const mentions = _.uniqBy(allMentions, "id");
-
     const uploadedFiles = fileUploaderService.getFileBlobs();
     const mentionedAgents = agentConfigurations.filter((a) =>
       mentions.some((m) => m.id === a.sId && m.type === "agent")
@@ -373,9 +317,7 @@ export const InputBar = React.memo(function InputBar({
           },
           // Only send the selectedMCPServerViewIds if we are creating a new conversation.
           // Once the conversation is created, the selectedMCPServerViewIds will be updated in the conversationTools hook.
-          selectedMCPServerViews.map((sv) => sv.sId),
-          // JIT skills for new conversations
-          selectedSkills.map((s) => s.sId)
+          selectedMCPServerViews.map((sv) => sv.sId)
         );
 
         if (r.isOk()) {
@@ -432,10 +374,6 @@ export const InputBar = React.memo(function InputBar({
   const handleResetSelections = () => {
     setSelectedMCPServerViews((prev) => {
       prev.forEach((sv) => void deleteTool(sv.sId));
-      return [];
-    });
-    setSelectedSkills((prev) => {
-      prev.forEach((s) => void deleteSkill(s.sId));
       return [];
     });
     setAttachedNodes([]);
@@ -510,9 +448,6 @@ export const InputBar = React.memo(function InputBar({
             selectedMCPServerViews={selectedMCPServerViews}
             onMCPServerViewSelect={handleMCPServerViewSelect}
             onMCPServerViewDeselect={handleMCPServerViewDeselect}
-            selectedSkills={selectedSkills}
-            onSkillSelect={handleSkillSelect}
-            onSkillDeselect={handleSkillDeselect}
             onResetSelections={handleResetSelections}
             isAgentBuilder={isAgentBuilder}
             attachedNodes={attachedNodes}

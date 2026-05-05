@@ -32,7 +32,6 @@ describe("buildEditorExtensions", () => {
           enabledRef: { current: true },
           onSelectRef: { current: undefined },
           selectedMCPServerViewIdsRef: { current: new Set<string>() },
-          selectedSkillIdsRef: { current: new Set<string>() },
         }),
       ],
     });

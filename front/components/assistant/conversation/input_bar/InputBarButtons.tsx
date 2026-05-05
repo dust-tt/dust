@@ -44,7 +44,6 @@ interface InputBarButtonsProps {
   owner: WorkspaceType;
   selectedAgent: RichAgentMention | null;
   selectedMCPServerViews: MCPServerViewType[];
-  selectedSkills: SkillWithoutInstructionsAndToolsType[];
   space: SpaceType | undefined;
   user: UserType | null;
 }
@@ -69,7 +68,6 @@ export const InputBarButtons = React.memo(function InputBarButtons({
   owner,
   selectedAgent,
   selectedMCPServerViews,
-  selectedSkills,
   space,
   user,
 }: InputBarButtonsProps) {
@@ -130,7 +128,6 @@ export const InputBarButtons = React.memo(function InputBarButtons({
       user={user}
       selectedMCPServerViews={selectedMCPServerViews}
       onSelect={onMCPServerViewSelect}
-      selectedSkills={selectedSkills}
       onSkillSelect={onSkillSelect}
       buttonSize={buttonSize}
       disabled={isInputDisabled}

@@ -49,13 +49,11 @@ function matchesCapabilityQuery({
 export function filterInputBarSlashSuggestions({
   query,
   selectedMCPServerViewIds,
-  selectedSkillIds,
   serverViews,
   skills,
 }: {
   query: string;
   selectedMCPServerViewIds: Set<string>;
-  selectedSkillIds: Set<string>;
   serverViews: MCPServerViewType[];
   skills: SkillWithoutInstructionsAndToolsType[];
 }): InputBarSlashSuggestionCapability[] {
@@ -65,7 +63,6 @@ export function filterInputBarSlashSuggestions({
     sortName: string;
   })[] = [
     ...skills
-      .filter((skill) => !selectedSkillIds.has(skill.sId))
       .filter((skill) =>
         matchesCapabilityQuery({
           label: skill.name,
@@ -116,19 +113,10 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
     onClose: () => void;
     owner: LightWorkspaceType;
     selectedMCPServerViewIdsRef: RefObject<Set<string>>;
-    selectedSkillIdsRef: RefObject<Set<string>>;
   }
 >(
   (
-    {
-      clientRect,
-      command,
-      query,
-      onClose,
-      owner,
-      selectedMCPServerViewIdsRef,
-      selectedSkillIdsRef,
-    },
+    { clientRect, command, query, onClose, owner, selectedMCPServerViewIdsRef },
     ref
   ) => {
     const dropdownRef = useRef<SlashCommandDropdownRef>(null);
@@ -154,17 +142,10 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
           query,
           selectedMCPServerViewIds:
             selectedMCPServerViewIdsRef.current ?? new Set<string>(),
-          selectedSkillIds: selectedSkillIdsRef.current ?? new Set<string>(),
           serverViews,
           skills,
         }),
-      [
-        query,
-        selectedMCPServerViewIdsRef,
-        selectedSkillIdsRef,
-        serverViews,
-        skills,
-      ]
+      [query, selectedMCPServerViewIdsRef, serverViews, skills]
     );
 
     const capabilityItems = useMemo<SlashCommand[]>(

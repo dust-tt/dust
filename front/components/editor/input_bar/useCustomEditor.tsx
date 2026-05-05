@@ -235,7 +235,6 @@ export interface CustomEditorProps {
       ((capability: InputBarSlashSuggestionCapability) => void) | undefined
     >;
     selectedMCPServerViewIdsRef: React.RefObject<Set<string>>;
-    selectedSkillIdsRef: React.RefObject<Set<string>>;
   };
   // Override the default editor placeholder (e.g. to show a blocked-state reason).
   placeholderOverride?: string | null;
@@ -378,7 +377,6 @@ export const buildEditorExtensions = ({
         onSelectRef: slashSuggestion.onSelectRef,
         selectedMCPServerViewIdsRef:
           slashSuggestion.selectedMCPServerViewIdsRef,
-        selectedSkillIdsRef: slashSuggestion.selectedSkillIdsRef,
       })
     );
   }

@@ -1,7 +1,6 @@
 import { ContextUsageIndicator } from "@app/components/assistant/conversation/input_bar/ContextUsageIndicator";
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
 import { InputBarButtons } from "@app/components/assistant/conversation/input_bar/InputBarButtons";
-import { InputBarSkillChip } from "@app/components/assistant/conversation/input_bar/InputBarSkillChip";
 import {
   getDisplayNameFromPastedFileId,
   getPastedFileName,
@@ -150,14 +149,11 @@ export interface InputBarContainerProps {
   onNodeSelect: (node: DataSourceViewContentNode) => void;
   onNodeUnselect: (node: DataSourceViewContentNode) => void;
   onResetSelections: () => void;
-  onSkillDeselect: (skill: SkillWithoutInstructionsAndToolsType) => void;
-  onSkillSelect: (skill: SkillWithoutInstructionsAndToolsType) => void;
   owner: WorkspaceType;
   saveDraft: (markdown: string, agentMention?: RichAgentMention | null) => void;
   pendingInputText: string | null;
   selectedAgent: RichAgentMention | null;
   selectedMCPServerViews: MCPServerViewType[];
-  selectedSkills: SkillWithoutInstructionsAndToolsType[];
   stickyMentions?: RichMention[];
   user: UserType | null;
 }
@@ -185,9 +181,6 @@ const InputBarContainer = ({
   onMCPServerViewDeselect,
   selectedMCPServerViews,
   onResetSelections,
-  onSkillSelect,
-  onSkillDeselect,
-  selectedSkills,
   saveDraft,
   user,
   disableAgentSelector,
@@ -246,22 +239,16 @@ const InputBarContainer = ({
   // Create a ref to hold the editor instance
   const editorRef = useRef<Editor | null>(null);
   const pastedAttachmentIdsRef = useRef<Set<string>>(new Set());
-  const selectedSkillIds = useMemo(
-    () => new Set(selectedSkills.map((skill) => skill.sId)),
-    [selectedSkills]
-  );
   const selectedMCPServerViewIds = useMemo(
     () => new Set(selectedMCPServerViews.map((serverView) => serverView.sId)),
     [selectedMCPServerViews]
   );
   const selectedMCPServerViewIdsRef = useRef(selectedMCPServerViewIds);
-  const selectedSkillIdsRef = useRef(selectedSkillIds);
   const shouldEnableSlashSuggestionRef = useRef(shouldEnableSlashSuggestion);
   const onSelectRef = useRef<
     ((capability: InputBarSlashSuggestionCapability) => void) | undefined
   >(undefined);
   selectedMCPServerViewIdsRef.current = selectedMCPServerViewIds;
-  selectedSkillIdsRef.current = selectedSkillIds;
   shouldEnableSlashSuggestionRef.current = shouldEnableSlashSuggestion;
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
@@ -469,24 +456,36 @@ const InputBarContainer = ({
     });
   };
 
-  const handleSlashSuggestionSelection = useCallback(
-    (capability: InputBarSlashSuggestionCapability) => {
-      switch (capability.kind) {
-        case "skill":
-          onSkillSelect(capability.skill);
-          break;
-        case "tool":
-          onMCPServerViewSelect(capability.serverView);
-          break;
-        default:
-          assertNeverAndIgnore(capability);
-      }
+  const handleSkillSelect = ({
+    sId: skillId,
+    name: skillName,
+    icon: skillIcon,
+  }: SkillWithoutInstructionsAndToolsType) => {
+    editorRef.current
+      ?.chain()
+      .focus()
+      .insertSkillNode({
+        skillId,
+        skillName,
+        skillIcon,
+      })
+      .run();
+  };
 
-      queueMicrotask(() => editorRef.current?.commands.focus());
-    },
-    [onMCPServerViewSelect, onSkillSelect]
-  );
-  onSelectRef.current = handleSlashSuggestionSelection;
+  onSelectRef.current = (capability: InputBarSlashSuggestionCapability) => {
+    switch (capability.kind) {
+      case "skill":
+        handleSkillSelect(capability.skill);
+        break;
+      case "tool":
+        onMCPServerViewSelect(capability.serverView);
+        break;
+      default:
+        assertNeverAndIgnore(capability);
+    }
+
+    queueMicrotask(() => editorRef.current?.commands.focus());
+  };
 
   // Current space is taken from the conversation (if already set) or from the space prop (if provided).
   const spaceId = conversation?.spaceId ?? space?.sId ?? undefined;
@@ -508,7 +507,6 @@ const InputBarContainer = ({
       enabledRef: shouldEnableSlashSuggestionRef,
       onSelectRef,
       selectedMCPServerViewIdsRef,
-      selectedSkillIdsRef,
     },
     placeholderOverride: disableInput ? submitBlockMessage : null,
     onLongTextPaste: async ({ text, from, to }) => {
@@ -625,7 +623,7 @@ const InputBarContainer = ({
   selectedSingleAgentRef.current = selectedSingleAgent;
 
   // When a user mention is *newly added* in single-agent mode, deselect the agent
-  // and clear capabilities. Only triggers on the transition from no-user-mention to
+  // and clear side-channel capabilities. Only triggers on the transition from no-user-mention to
   // user-mention so that re-selecting an agent (via card click or URL param) isn't
   // immediately clobbered by the existing @user mention on the next editor update.
   // Uses a ref so the editor listener (registered once in the useEffect below) always
@@ -1006,27 +1004,6 @@ const InputBarContainer = ({
             className="mb-1 flex flex-wrap items-center px-2"
             style={toolbarRowTransitionStyle}
           >
-            {selectedSkills.map((skill) => (
-              <React.Fragment key={skill.sId}>
-                <InputBarSkillChip
-                  owner={owner}
-                  skill={skill}
-                  className="m-0.5 hidden xs:flex"
-                  onRemove={() => {
-                    onSkillDeselect(skill);
-                  }}
-                />
-                <InputBarSkillChip
-                  owner={owner}
-                  skill={skill}
-                  compact
-                  className="m-0.5 flex xs:hidden"
-                  onRemove={() => {
-                    onSkillDeselect(skill);
-                  }}
-                />
-              </React.Fragment>
-            ))}
             {selectedMCPServerViews.map((msv) => (
               <React.Fragment key={msv.sId}>
                 {/* Two Chips: one for larger screens (desktop), one for smaller screens (mobile). */}
@@ -1105,11 +1082,10 @@ const InputBarContainer = ({
                     onMCPServerViewSelect={onMCPServerViewSelect}
                     onNodeSelect={onNodeSelect}
                     onNodeUnselect={onNodeUnselect}
-                    onSkillSelect={onSkillSelect}
+                    onSkillSelect={handleSkillSelect}
                     owner={owner}
                     selectedAgent={selectedSingleAgent}
                     selectedMCPServerViews={selectedMCPServerViews}
-                    selectedSkills={selectedSkills}
                     space={space}
                     user={user}
                   />
