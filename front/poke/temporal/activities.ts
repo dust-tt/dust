@@ -179,7 +179,6 @@ export async function scrubSpaceActivity({
   }
 
   // Delete all takeaways for this space. This must run before project todos because
-  // ProjectTodoTakeawaySourcesModel holds RESTRICT FKs on both ProjectTodoModel and
   // TakeawaySourcesModel, so the join-table rows must be removed first.
   await TakeawaysResource.deleteAllForSpace(auth, { spaceModelId: space.id });
 

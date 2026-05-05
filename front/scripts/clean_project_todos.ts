@@ -9,7 +9,6 @@ import {
   ProjectTodoVersionModel,
 } from "@app/lib/resources/storage/models/project_todo";
 import { ProjectTodoStateModel } from "@app/lib/resources/storage/models/project_todo_state";
-import { ProjectTodoTakeawaySourcesModel } from "@app/lib/resources/storage/models/project_todo_takeaway_sources";
 import {
   TakeawaySourcesModel,
   TakeawaysModel,
@@ -155,11 +154,6 @@ makeScript(
           where: todoChildWhere,
           transaction,
         });
-        const takeawayLinkDeleted =
-          await ProjectTodoTakeawaySourcesModel.destroy({
-            where: todoChildWhere,
-            transaction,
-          });
         const todoDeleted = await ProjectTodoModel.destroy({
           where: todoWhere,
           transaction,
@@ -170,7 +164,6 @@ makeScript(
             versionDeleted,
             conversationDeleted,
             sourceDeleted,
-            takeawayLinkDeleted,
             todoDeleted,
           },
           "Deleted project todo rows"

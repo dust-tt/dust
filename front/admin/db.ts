@@ -109,7 +109,6 @@ import {
   ProjectTodoVersionModel,
 } from "@app/lib/resources/storage/models/project_todo";
 import { ProjectTodoStateModel } from "@app/lib/resources/storage/models/project_todo_state";
-import { ProjectTodoTakeawaySourcesModel } from "@app/lib/resources/storage/models/project_todo_takeaway_sources";
 import {
   RunModel,
   RunUsageModel,
@@ -249,7 +248,6 @@ export function loadAllModels() {
     TakeawaysModel,
     TakeawaySourcesModel,
     TakeawaysVersionModel,
-    ProjectTodoTakeawaySourcesModel,
     UserProjectNotificationPreferenceModel,
     WorkspaceSensitivityLabelConfigModel,
     WorkspaceSandboxEnvVarModel,
