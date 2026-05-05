@@ -6,15 +6,15 @@ import { useEffect, useState } from "react";
 // Set to null when there's nothing to promote.
 // =============================================================================
 const CURRENT_PROMO: PromoConfig | null = {
-  id: "supercharge-revops-webinar-2026-05",
-  image: "/static/landing/RevOps_Webinar_Banner.jpeg",
-  link: "https://watch.getcontrast.io/register/dust-supercharge-revops-with-dust?utm_source=website",
-  title: "Supercharge RevOps with Dust",
-  subtitle: "Live with the Dust team — May 5th, 3:30 PM Paris time",
-  hostedBy: "Hosted by Iris Beraud (RevOps Manager at Dust)",
+  id: "dust-for-gtm-engineers-webinar-2026-05",
+  image: "/static/landing/GTM_Engineers_Webinar_Banner.png",
+  link: "https://watch.getcontrast.io/register/dust-dust-for-gtm-engineers?utm_source=website",
+  title: "Dust for GTM Engineers",
+  subtitle: "May 12th, 5:30 PM CEST / 8:30 AM PDT",
+  hostedBy: "Hosted by Maxence Garnier (GTM Engineer at Dust)",
   linkLabel: "Register Now",
-  // Banner auto-hides after this date (May 5th 4:00 PM Paris / CEST).
-  expiresAt: new Date("2026-05-05T16:00:00+02:00"),
+  // Banner auto-hides after this date (May 12th 7:00 PM Paris / CEST).
+  expiresAt: new Date("2026-05-12T19:00:00+02:00"),
 };
 // =============================================================================
 
