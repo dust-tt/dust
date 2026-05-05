@@ -2,6 +2,7 @@ import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { untrustedFetch } from "@app/lib/egress/server";
 import { WorkspaceSensitivityLabelConfigResource } from "@app/lib/resources/workspace_sensitivity_label_config_resource";
 import logger from "@app/logger/logger";
@@ -137,6 +138,11 @@ export async function getAllowedLabelsForMCPServer(
       : null;
 
   if (!internalMCPServerId) {
+    return [];
+  }
+
+  const featureFlags = await getFeatureFlags(auth);
+  if (!featureFlags.includes("sensitivity_labels")) {
     return [];
   }
 
