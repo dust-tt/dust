@@ -195,7 +195,9 @@ export async function grantFreeCreditFromMetronomeSegment({
   );
   if (existingForPeriod) {
     await existingForPeriod.setMetronomeCreditId(metronomeCreditId);
-    if (amountMicroUsd > existingForPeriod.consumedAmountMicroUsd) {
+    const amountUpdated =
+      amountMicroUsd > existingForPeriod.consumedAmountMicroUsd;
+    if (amountUpdated) {
       await existingForPeriod.updateInitialAmountMicroUsd(auth, amountMicroUsd);
     }
     logger.info(
@@ -204,13 +206,17 @@ export async function grantFreeCreditFromMetronomeSegment({
         existingCreditId: existingForPeriod.id,
         existingMetronomeCreditId: existingForPeriod.metronomeCreditId,
         newMetronomeCreditId: metronomeCreditId,
-        amountMicroUsd,
+        existingInitialAmountMicroUsd: existingForPeriod.initialAmountMicroUsd,
+        existingConsumedAmountMicroUsd:
+          existingForPeriod.consumedAmountMicroUsd,
+        newAmountMicroUsd: amountMicroUsd,
+        amountUpdated,
         segmentId,
         contractId,
         periodStart,
         periodEnd,
       },
-      "[Free Credits] free credit already exists for this period (likely contract recreated), updated metronomeCreditId and amount"
+      `[Free Credits] free credit already exists for this period (likely contract recreated), updated metronomeCreditId${amountUpdated ? " and amount" : ""}`
     );
     return new Ok({
       credit: existingForPeriod,
