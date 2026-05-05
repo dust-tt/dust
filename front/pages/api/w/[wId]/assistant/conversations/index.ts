@@ -295,6 +295,15 @@ async function handler(
         metadata,
       });
 
+      // Register the creator as a participant immediately so that access checks
+      // relying on participation (e.g. "private conversation URLs by default") pass
+      // before the first message is posted.
+      await ConversationResource.upsertParticipation(auth, {
+        conversation,
+        action: "subscribed",
+        user: user.toJSON() ?? null,
+      });
+
       const newContentFragments: ContentFragmentType[] = [];
       let newMessage: UserMessageType | null = null;
 
