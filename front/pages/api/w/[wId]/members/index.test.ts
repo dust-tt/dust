@@ -267,7 +267,10 @@ describe("GET /api/w/[wId]/members", () => {
       NextApiResponse
     >({
       method: "GET",
-      query: parseQueryString(firstPageData.nextPageUrl),
+      query: {
+        ...parseQueryString(firstPageData.nextPageUrl),
+        wId: workspace.sId,
+      },
       headers: {},
     });
 
