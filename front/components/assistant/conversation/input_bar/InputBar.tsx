@@ -402,17 +402,17 @@ export const InputBar = React.memo(function InputBar({
           "bg-muted-background dark:bg-muted-background-night",
           "border",
           "border-border-dark dark:border-border-dark/10",
-          "sm:border-border-dark/50 sm:focus-within:border-border-dark",
-          "dark:focus-within:border-border-dark-night sm:focus-within:border-border-dark",
+          "sm:border-border-dark/50 sm:has-[.tiptap:focus]:border-border-dark",
+          "dark:has-[.tiptap:focus]:border-border-dark-night sm:has-[.tiptap:focus]:border-border-dark",
           isFloating
             ? classNames(
-                "focus-within:ring-1 dark:focus-within:ring-1",
-                "dark:focus-within:ring-highlight/30-night focus-within:ring-highlight/30",
-                "sm:focus-within:ring-2 dark:sm:focus-within:ring-2"
+                "has-[.tiptap:focus]:ring-1 dark:has-[.tiptap:focus]:ring-1",
+                "dark:has-[.tiptap:focus]:ring-highlight/30-night has-[.tiptap:focus]:ring-highlight/30",
+                "sm:has-[.tiptap:focus]:ring-2 dark:sm:has-[.tiptap:focus]:ring-2"
               )
             : classNames(
-                "focus-within:border-highlight-300",
-                "dark:focus-within:border-highlight-300-night"
+                "has-[.tiptap:focus]:border-highlight-300",
+                "dark:has-[.tiptap:focus]:border-highlight-300-night"
               ),
           "duration-300"
         )}
