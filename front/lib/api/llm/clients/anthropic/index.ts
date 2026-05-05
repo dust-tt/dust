@@ -5,10 +5,7 @@ import type {
 } from "@anthropic-ai/sdk/resources";
 import type { BetaMessageStreamParams } from "@anthropic-ai/sdk/resources/beta/messages";
 import AnthropicVertex from "@anthropic-ai/vertex-sdk";
-
-const MESSAGE_CONVERSION_CONCURRENCY = 10;
-const BATCH_PAYLOAD_BUILD_CONCURRENCY = 10;
-
+import config from "@app/lib/api/config";
 import type { AnthropicWhitelistedModelId } from "@app/lib/api/llm/clients/anthropic/types";
 import {
   ANTHROPIC_PROVIDER_ID,
@@ -47,6 +44,9 @@ import { normalizePrompt } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import assert from "assert";
+
+const MESSAGE_CONVERSION_CONCURRENCY = 10;
+const BATCH_PAYLOAD_BUILD_CONCURRENCY = 10;
 
 /**
  * Maps prompt tiers to Anthropic system blocks with cache breakpoints.
@@ -129,6 +129,7 @@ export class AnthropicLLM extends LLM<LLMStreamParameters> {
       ? // Routing everything to Europe first to check that Vertex works correctly.
         new AnthropicVertex({
           region: "europe-west1",
+          projectId: config.getVertexAiProjectId(),
         })
       : this.client;
   }

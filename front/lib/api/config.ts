@@ -581,6 +581,9 @@ const config = {
   getMetronomeWebhookSecret: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("METRONOME_WEBHOOK_SECRET");
   },
+  getVertexAiProjectId: (): string => {
+    return EnvironmentConfig.getEnvVariable("VERTEX_AI_PROJECT_ID");
+  },
 };
 
 export default config;
