@@ -79,6 +79,7 @@ export const AgentInputBar = ({
   const { bottomOffset, listOffset, visibleListHeight } = useVirtuosoLocation();
 
   const allMessages = methods.data.get();
+  const lastMessage = allMessages.at(-1);
 
   const lastUserMessage = allMessages
     .filter(isUserMessage)
@@ -105,6 +106,19 @@ export const AgentInputBar = ({
   )
     ? "Wait for compaction to finish"
     : null;
+  const agentMessageBlockMessage = allMessages.some(
+    (message) =>
+      isAgentMessageWithStreaming(message) && message.status === "created"
+  )
+    ? "Wait for the agent response to finish"
+    : null;
+  const lastCompactionBlockMessage =
+    lastMessage && isCompactionMessage(lastMessage)
+      ? "Send a new message before compacting again"
+      : null;
+  const compactConversationBlockMessage = agentMessageBlockMessage
+    ? agentMessageBlockMessage
+    : (compactionBlockMessage ?? lastCompactionBlockMessage);
 
   const { activeWakeUp } = useConversationWakeUps({
     owner: context.owner,
@@ -461,6 +475,7 @@ export const AgentInputBar = ({
         isSubmitting={agentBuilderContext?.isSubmitting === true}
         isAgentBuilder={!!agentBuilderContext}
         submitBlockMessage={wakeUpBlockMessage ?? compactionBlockMessage}
+        compactConversationBlockMessage={compactConversationBlockMessage}
       />
     </div>
   );

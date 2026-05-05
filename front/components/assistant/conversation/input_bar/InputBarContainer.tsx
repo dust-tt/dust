@@ -130,6 +130,7 @@ export interface InputBarContainerProps {
   // active wake-up, or compaction in progress). `submitBlockMessage` on its
   // own only mutes the send button.
   disableInput: boolean;
+  compactConversationBlockMessage?: string | null;
   submitBlockMessage: string | null;
   onShake: () => void;
   conversation?: ConversationWithoutContentType;
@@ -185,6 +186,7 @@ const InputBarContainer = ({
   user,
   disableAgentSelector,
   disableInput,
+  compactConversationBlockMessage = null,
   submitBlockMessage,
   onShake,
 }: InputBarContainerProps) => {
@@ -1196,6 +1198,9 @@ const InputBarContainer = ({
                 buttonSize={buttonSize}
                 owner={owner}
                 conversationId={conversation?.sId}
+                compactConversationBlockMessage={
+                  compactConversationBlockMessage
+                }
               />
             )}
             {!subscription.plan.isByok &&

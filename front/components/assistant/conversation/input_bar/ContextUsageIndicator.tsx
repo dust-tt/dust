@@ -15,6 +15,7 @@ interface ContextUsageIndicatorProps {
   buttonSize: "xs" | "sm";
   owner: LightWorkspaceType;
   conversationId?: string | null;
+  compactConversationBlockMessage?: string | null;
 }
 
 interface CircleProgressProps {
@@ -64,6 +65,7 @@ export function ContextUsageIndicator({
   buttonSize,
   owner,
   conversationId,
+  compactConversationBlockMessage = null,
 }: ContextUsageIndicatorProps) {
   const { contextUsage, isContextUsageLoading } = useConversationContextUsage({
     conversationId,
@@ -86,6 +88,9 @@ export function ContextUsageIndicator({
     contextUsage.contextSize > 0
       ? Math.round((contextUsage.contextUsage / contextUsage.contextSize) * 100)
       : 0;
+  const isCompactButtonDisabled = Boolean(
+    isCompacting || !contextUsage?.model || compactConversationBlockMessage
+  );
 
   return (
     <div className="hidden md:block" onClick={(e) => e.stopPropagation()}>
@@ -108,12 +113,16 @@ export function ContextUsageIndicator({
                   variant="outline"
                   size="xs"
                   label={isCompacting ? "Compacting" : "Compact now"}
+                  tooltip={compactConversationBlockMessage ?? undefined}
                   onClick={() => {
-                    if (contextUsage?.model) {
+                    if (
+                      contextUsage?.model &&
+                      !compactConversationBlockMessage
+                    ) {
                       void compact(contextUsage.model);
                     }
                   }}
-                  disabled={isCompacting || !contextUsage?.model}
+                  disabled={isCompactButtonDisabled}
                   isLoading={isCompacting}
                 />
               )}
