@@ -1,12 +1,22 @@
+import type { Authenticator } from "@app/lib/auth";
+import { AgentMessageModel } from "@app/lib/models/agent/conversation";
+import { AgentMessageSkillModel } from "@app/lib/models/skill/conversation_skill";
 import {
   PER_SKILL_CONVERSATION_CAP,
   WEIGHT_FEEDBACK,
   WEIGHT_TOOL_ERRORS,
   WEIGHT_USER_ENGAGEMENT,
 } from "@app/lib/reinforcement/constants";
-import { scoreAndSelectConversations } from "@app/lib/reinforcement/selection";
+import {
+  findConversationsWithSkills,
+  scoreAndSelectConversations,
+} from "@app/lib/reinforcement/selection";
+import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import type { ModelId } from "@app/types/shared/model_id";
-import { describe, expect, it } from "vitest";
+import type { LightWorkspaceType } from "@app/types/user";
+import { beforeEach, describe, expect, it } from "vitest";
 
 function makeConversationSkillMap(
   entries: { convId: ModelId; skillIds: string[] }[]
@@ -287,6 +297,88 @@ describe("scoreAndSelectConversations", () => {
     //       = 0.45 + 0.30 + 0.25 = 1.0
     expect(WEIGHT_FEEDBACK + WEIGHT_TOOL_ERRORS + WEIGHT_USER_ENGAGEMENT).toBe(
       1.0
+    );
+  });
+});
+
+describe("findConversationsWithSkills", () => {
+  let auth: Authenticator;
+  let workspace: LightWorkspaceType;
+
+  beforeEach(async () => {
+    ({ authenticator: auth, workspace } = await createResourceTest({
+      role: "admin",
+    }));
+  });
+
+  it("excludes skills with reinforcement='off' and only returns conversations with at least one eligible skill", async () => {
+    // Create 3 skills: one per reinforcement mode.
+    const skillOn = await SkillFactory.create(auth, { name: "Skill On" });
+    await skillOn.updateReinforcement("on");
+    const skillAuto = await SkillFactory.create(auth, { name: "Skill Auto" });
+    // "auto" is the default, no update needed.
+    const skillOff = await SkillFactory.create(auth, { name: "Skill Off" });
+    await skillOff.updateReinforcement("off");
+
+    // Conversation A uses all 3 skills. Has 2 user messages to pass the scoring filter.
+    const convA = await ConversationFactory.create(auth, {
+      agentConfigurationId: "test-agent",
+      messagesCreatedAt: [new Date(), new Date()],
+    });
+    const agentMessageA = await AgentMessageModel.create({
+      status: "created",
+      agentConfigurationId: "test-agent",
+      agentConfigurationVersion: 0,
+      workspaceId: workspace.id,
+      skipToolsValidation: false,
+    });
+    const skillLinksA = [skillOn, skillAuto, skillOff].map((skill) => ({
+      workspaceId: workspace.id,
+      agentMessageId: agentMessageA.id,
+      customSkillId: skill.id,
+      globalSkillId: null,
+      conversationId: convA.id,
+      source: "conversation" as const,
+      agentConfigurationId: null,
+      addedByUserId: null,
+    }));
+    await AgentMessageSkillModel.bulkCreate(skillLinksA);
+
+    // Conversation B uses only the "off" skill. Has 2 user messages.
+    const convB = await ConversationFactory.create(auth, {
+      agentConfigurationId: "test-agent",
+      messagesCreatedAt: [new Date(), new Date()],
+    });
+    const agentMessageB = await AgentMessageModel.create({
+      status: "created",
+      agentConfigurationId: "test-agent",
+      agentConfigurationVersion: 0,
+      workspaceId: workspace.id,
+      skipToolsValidation: false,
+    });
+    const skillLinksB = [skillOff].map((skill) => ({
+      workspaceId: workspace.id,
+      agentMessageId: agentMessageB.id,
+      customSkillId: skill.id,
+      globalSkillId: null,
+      conversationId: convB.id,
+      source: "conversation" as const,
+      agentConfigurationId: null,
+      addedByUserId: null,
+    }));
+    await AgentMessageSkillModel.bulkCreate(skillLinksB);
+
+    const results = await findConversationsWithSkills(auth, {
+      cutoffDate: new Date(0), // Far past: all recent conversations qualify.
+    });
+
+    // Only conv A qualifies — conv B's only skill is "off".
+    expect(results).toHaveLength(1);
+    expect(results[0].conversationId).toBe(convA.sId);
+
+    // Only the enabled skills (on + auto) are included, not the "off" one.
+    expect(results[0].skillIds.sort()).toEqual(
+      [skillOn.sId, skillAuto.sId].sort()
     );
   });
 });

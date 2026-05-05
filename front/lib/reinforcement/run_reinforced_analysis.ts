@@ -340,6 +340,7 @@ export async function processSkillReinforcedEvents({
   operationType,
   contextId,
   conversation,
+  eligibleSkillIds,
 }: {
   auth: Authenticator;
   events: LLMEvent[];
@@ -347,6 +348,7 @@ export async function processSkillReinforcedEvents({
   operationType: ReinforcedSkillsOperationType;
   contextId: string;
   conversation?: ConversationResource;
+  eligibleSkillIds: string[];
 }): Promise<ProcessReinforcedSkillsEventsResult> {
   const errorEvents = events.filter((e) => e.type === "error");
   if (errorEvents.length > 0) {
@@ -402,6 +404,7 @@ export async function processSkillReinforcedEvents({
       operationType,
       contextId,
       conversation,
+      eligibleSkillIds,
     });
     switch (result.type) {
       case "created": {
@@ -457,6 +460,7 @@ async function createSkillSuggestionsFromToolCall({
   operationType,
   contextId,
   conversation,
+  eligibleSkillIds,
 }: {
   auth: Authenticator;
   toolName: string;
@@ -465,6 +469,7 @@ async function createSkillSuggestionsFromToolCall({
   operationType: ReinforcedSkillsOperationType;
   contextId: string;
   conversation?: ConversationResource;
+  eligibleSkillIds: string[];
 }): Promise<ToolCallResult> {
   switch (toolName) {
     case "edit_skill": {
@@ -487,6 +492,17 @@ async function createSkillSuggestionsFromToolCall({
           "ReinforcedSkills: skill not found for edit_skill"
         );
         return { type: "error", errorMessage: "Skill not found" };
+      }
+
+      if (!eligibleSkillIds.includes(parsed.data.skillId)) {
+        logger.warn(
+          { skillId: parsed.data.skillId, contextId },
+          "ReinforcedSkills: skill is not eligible for reinforcement suggestions"
+        );
+        return {
+          type: "error",
+          errorMessage: `Skill ${parsed.data.skillId} is not eligible for reinforcement suggestions`,
+        };
       }
 
       const hasInstructionEdits =
