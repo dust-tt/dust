@@ -518,12 +518,12 @@ async function normalizePhaseItem(
  * If the subscription is not part of a SubscriptionSchedule, returns a single
  * phase from the current items, anchored at `contractStartDate`.
  *
- * Otherwise fetches the schedule, drops phases that ended before
- * `contractStartDate`, and clamps the first kept phase's start to that date so
- * the resulting overrides line up with the new Metronome contract start. The
- * final phase has no `endDate` (open-ended override) — Stripe schedules
- * default to `end_behavior: "release"`, where the last phase's pricing carries
- * forward indefinitely.
+ * Otherwise fetches the schedule, drops phases that have already ended (relative
+ * to `now` or the contract start, whichever is later), and clamps the first
+ * kept phase's start to the contract start so the resulting overrides line up
+ * with the new Metronome contract start. The final phase has no `endDate`
+ * (open-ended override) — Stripe schedules default to `end_behavior: "release"`,
+ * where the last phase's pricing carries forward indefinitely.
  *
  * Returns an empty array if the subscription has no enterprise pricing.
  */
@@ -552,6 +552,10 @@ export async function extractEnterprisePricingPhases(
   const schedule = await stripe.subscriptionSchedules.retrieve(scheduleId);
 
   const contractStartMs = new Date(contractStartDate).getTime();
+  // Cutoff for dropping past phases. The contract anchor is typically
+  // `current_period_start` which is itself in the past, so a phase that ended
+  // mid-period is still in the past today — filter relative to `now` as well.
+  const cutoffMs = Math.max(contractStartMs, Date.now());
   const phases: EnterprisePricingPhase[] = [];
 
   for (let i = 0; i < schedule.phases.length; i++) {
@@ -559,8 +563,8 @@ export async function extractEnterprisePricingPhases(
     const phaseEndMs = phase.end_date * 1000;
     const phaseStartMs = phase.start_date * 1000;
 
-    // Drop phases that have already ended by the time the contract starts.
-    if (phaseEndMs <= contractStartMs) {
+    // Drop phases that have already ended.
+    if (phaseEndMs <= cutoffMs) {
       continue;
     }
 
