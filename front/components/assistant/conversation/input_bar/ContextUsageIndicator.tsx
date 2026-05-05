@@ -105,11 +105,13 @@ export function ContextUsageIndicator({
           <Button
             variant="ghost-secondary"
             size={buttonSize}
-            icon={<CircleProgress
+            icon={
+              <CircleProgress
                 percentage={contextUsagePercentage}
                 size={16}
                 variant={circleProgressVariant}
-              />}
+              />
+            }
           />
         </PopoverTrigger>
         <PopoverContent side="top" align="end" className="w-auto p-3">
