@@ -113,6 +113,19 @@ const REINFORCED_SKILLS_TOOL_DEFINITIONS: Record<
         )
         .optional()
         .describe("Tools to add or remove from the skill."),
+      agentFacingDescriptionEdit: z
+        .object({
+          content: z
+            .string()
+            .min(1)
+            .describe(
+              "The full new agent-facing description (replaces the current one)."
+            ),
+        })
+        .optional()
+        .describe(
+          "Replacement for the skill's agent-facing description. Should typically be its own suggestion, not bundled with instruction or tool edits."
+        ),
       analysis: z
         .string()
         .optional()
@@ -508,11 +521,17 @@ async function createSkillSuggestionsFromToolCall({
       const hasInstructionEdits =
         (parsed.data.instructionEdits?.length ?? 0) > 0;
       const hasToolEdits = (parsed.data.toolEdits?.length ?? 0) > 0;
-      if (!hasInstructionEdits && !hasToolEdits) {
+      const hasAgentFacingDescriptionEdit =
+        parsed.data.agentFacingDescriptionEdit !== undefined;
+      if (
+        !hasInstructionEdits &&
+        !hasToolEdits &&
+        !hasAgentFacingDescriptionEdit
+      ) {
         return {
           type: "error",
           errorMessage:
-            "edit_skill requires at least one instruction edit or tool edit.",
+            "edit_skill requires at least one instruction edit, tool edit, or description edit.",
         };
       }
 
@@ -529,6 +548,7 @@ async function createSkillSuggestionsFromToolCall({
           {
             instructionEdits: parsed.data.instructionEdits,
             toolEdits: parsed.data.toolEdits,
+            agentFacingDescriptionEdit: parsed.data.agentFacingDescriptionEdit,
           },
           skill.instructionsHtml
         )
@@ -567,6 +587,7 @@ async function createSkillSuggestionsFromToolCall({
           suggestion: {
             instructionEdits: parsed.data.instructionEdits,
             toolEdits: parsed.data.toolEdits,
+            agentFacingDescriptionEdit: parsed.data.agentFacingDescriptionEdit,
           },
           analysis: parsed.data.analysis ?? null,
           title: parsed.data.title ?? null,

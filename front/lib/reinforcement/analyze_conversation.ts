@@ -16,6 +16,7 @@ const ASSEMBLY_ORDER = [
   "instructions_guidance",
   "instruction_editing",
   "tools_guidance",
+  "agent_facing_description_guidance",
 ] as const;
 
 type SectionKey = (typeof ASSEMBLY_ORDER)[number];
@@ -69,8 +70,9 @@ ALWAYS ensure that the suggestion is inline with the skill's purpose and instruc
 Consider the following improvements to a skill:
 - Review instructions to determine if the skill is meeting the user intent and properly utilizing the configured tools: <instructions_guidance>.
 - If the skill references or requires external actions or knowledge, then tools may need to be added or removed. See <tools_guidance>.
+- If the conversation reveals that the agent enabled the skill in the wrong situation, or failed to enable it when it should have, the agent-facing description may need to be improved. See <agent_facing_description_guidance>.
 All improvements that should be treated as a single atomic unit should be grouped together in a single suggestion.
-NEVER group things that are not related to each other.
+NEVER group things that are not related to each other. In particular, an agent-facing description change should almost always be its own suggestion.
 
 Step 5: For each skill, look for agent behavior that is directly aligned with the skill's purpose, but the behavior was not defined in the skill instructions.
 This is an opportunity to improve the skill instructions for all future agents and conversations.
@@ -110,6 +112,20 @@ ONLY make suggestions that will affect the skill behavior. NEVER suggest cosmeti
 - Only suggest removing a tool if there is clear evidence the tool is causing confusion or is unused and cluttering the skill configuration.
 - When suggesting a tool addition, ensure the tool exists in the workspace by checking available tools first.
 - When the conversation involves a tool call that failed or produced unexpected results, call describe_mcp for the relevant MCP to understand the full list of available tools and their correct usage before suggesting instruction changes.`,
+
+  agent_facing_description_guidance: `The agent-facing description (\`<agentFacingDescription>\` in the skill context) is what the agent reads to decide WHEN to enable the skill. It is NOT the skill's behavior — that lives in \`<instructions>\`.
+
+Suggest editing it only when the conversation surfaces clear evidence of a routing problem:
+- The agent enabled the skill in a situation it does not actually cover.
+- The agent failed to enable the skill in a situation that should obviously have triggered it.
+- The current description is misleading, vague, or incomplete in a way that explains the routing mistake.
+
+When suggesting a description edit:
+- Provide the FULL replacement text in \`agentFacingDescriptionEdit.content\` — it overwrites the existing description.
+- Preserve the skill's actual purpose. Sharpen the trigger conditions; do not redefine the skill.
+- Keep it focused on routing signals (when to use, what scenarios). Do not duplicate the instructions.
+- Use the same language as the existing description.
+- Make the description edit its OWN edit_skill call. Do NOT bundle it with instructionEdits or toolEdits unless they are tightly coupled to the same routing fix.`,
 };
 
 export function buildSkillAnalysisSystemPrompt(): string {
