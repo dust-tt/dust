@@ -117,6 +117,11 @@ export function TodoMetadataTooltip({
           {todo.actorRationale}
         </div>
       )}
+      {todo.agentSuggestionStatus === "pending" ? (
+        <div className="break-all font-mono text-[11px] tabular-nums text-muted-foreground dark:text-muted-foreground-night">
+          ID: {todo.sId}
+        </div>
+      ) : null}
     </div>
   );
 
