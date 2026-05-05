@@ -42,7 +42,7 @@ function CircleProgress({
       width={size}
       height={size}
       viewBox={`0 0 ${size} ${size}`}
-      className={variant === "warning" ? "text-red-400 dark:text-red-400" : ""}
+      className={variant === "warning" ? "text-red-400 dark:text-red-400-night" : ""}
     >
       <circle
         cx={size / 2}

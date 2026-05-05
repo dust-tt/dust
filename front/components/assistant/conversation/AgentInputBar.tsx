@@ -46,6 +46,7 @@ import {
   useVirtuosoMethods,
 } from "@virtuoso.dev/message-list";
 import { useEffect, useMemo, useState } from "react";
+import { ContextUsageWarningBanner } from "./ContextUsageWarningBanner";
 
 const MAX_DISTANCE_FOR_SMOOTH_SCROLL = 2048;
 
@@ -106,7 +107,7 @@ export const AgentInputBar = ({
 
   const draftAgent = agentBuilderContext?.draftAgent;
 
-  const { contextUsagePercentage } = useConversationContextUsage({
+  const { contextUsage, contextUsagePercentage } = useConversationContextUsage({
     conversationId: context.conversation?.sId ?? "",
     workspaceId: context.owner.sId,
     options: { disabled: !context.conversation },
@@ -464,6 +465,16 @@ export const AgentInputBar = ({
           isOwner={isActiveWakeUpOwner}
         />
       )}
+      {contextUsage &&
+        !!contextUsagePercentage &&
+        contextUsagePercentage >=
+          CONTEXT_USAGE_PERCENT_THRESHOLDS["show_warning"] && (
+          <ContextUsageWarningBanner
+            owner={context.owner}
+            conversationId={context.conversation?.sId ?? ""}
+            contextUsage={contextUsage}
+          />
+        )}
       <InputBar
         owner={context.owner}
         user={context.user}
