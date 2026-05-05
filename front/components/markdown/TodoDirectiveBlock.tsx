@@ -159,6 +159,13 @@ function TodoDirectivePopoverBody({
           ) : null}
         </dd>
 
+        <dt className="text-muted-foreground dark:text-muted-foreground-night">
+          ID
+        </dt>
+        <dd className="min-w-0 text-right font-mono text-[11px] font-medium tabular-nums text-foreground dark:text-foreground-night">
+          <span className="break-all select-text">{todo.sId}</span>
+        </dd>
+
         {hasConversation && todo.conversationId && activityCaption ? (
           <>
             <dt className="text-muted-foreground dark:text-muted-foreground-night">
