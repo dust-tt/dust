@@ -23,23 +23,69 @@ import {
   Tooltip,
 } from "@dust-tt/sparkle";
 import moment from "moment";
-import { useMemo } from "react";
+import type { ComponentType, ReactElement, ReactNode } from "react";
+import { Children, isValidElement, useMemo } from "react";
 
 interface FilesTabProps {
-  emptyContent?: React.ReactNode;
+  children?: ReactNode;
   isLoading: boolean;
   owner: LightWorkspaceType;
   rows: FilePanelRow[];
   searchInputName?: string;
 }
 
-export function FilesTab({
-  emptyContent,
+interface FilesTabEmptyProps {
+  children: ReactNode;
+}
+
+function FilesTabEmpty(_props: FilesTabEmptyProps) {
+  return null;
+}
+
+type FilePanelRowActionRenderer = (row: FilePanelRow) => ReactNode;
+
+interface FilesTabRowActionProps {
+  children: FilePanelRowActionRenderer;
+}
+
+function FilesTabRowAction(_props: FilesTabRowActionProps) {
+  return null;
+}
+
+function isElementOfType<P>(
+  child: ReactNode,
+  component: ComponentType<P>
+): child is ReactElement<P> {
+  return isValidElement(child) && child.type === component;
+}
+
+function useFilesTabSlots(children: ReactNode) {
+  return useMemo(() => {
+    let emptyContent: ReactNode | null = null;
+    let rowActionRenderer: FilePanelRowActionRenderer | null = null;
+
+    Children.forEach(children, (child) => {
+      if (isElementOfType(child, FilesTabEmpty)) {
+        emptyContent = child.props.children;
+      }
+
+      if (isElementOfType(child, FilesTabRowAction)) {
+        rowActionRenderer = child.props.children;
+      }
+    });
+
+    return { emptyContent, rowActionRenderer };
+  }, [children]);
+}
+
+function FilesTabBase({
+  children,
   isLoading,
   owner,
   rows,
   searchInputName = "file-search",
 }: FilesTabProps) {
+  const { emptyContent, rowActionRenderer } = useFilesTabSlots(children);
   const {
     inputValue: search,
     debouncedValue: debouncedSearch,
@@ -107,7 +153,11 @@ export function FilesTab({
             return (
               <div key={value}>
                 <SectionLabel>{plural}</SectionLabel>
-                <FileCards rows={categoryRows} owner={owner} />
+                <FileCards
+                  rows={categoryRows}
+                  owner={owner}
+                  rowActionRenderer={rowActionRenderer}
+                />
               </div>
             );
           })}
@@ -120,9 +170,11 @@ export function FilesTab({
 function FileCards({
   rows,
   owner,
+  rowActionRenderer,
 }: {
   rows: FilePanelRow[];
   owner: LightWorkspaceType;
+  rowActionRenderer: FilePanelRowActionRenderer | null;
 }) {
   return (
     <CardGrid>
@@ -158,7 +210,7 @@ function FileCards({
                       </div>
                     }
                   />
-                  {row.action}
+                  {rowActionRenderer?.(row)}
                 </div>
                 <div className="flex items-center justify-between text-white/70">
                   <div className="text-xs ">
@@ -211,7 +263,7 @@ function FileCards({
                     </div>
                   }
                 />
-                {row.action}
+                {rowActionRenderer?.(row)}
               </div>
               <div className="flex items-center justify-between">
                 <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
@@ -268,10 +320,15 @@ function CreatorAvatar({ row }: { row: FilePanelRow }) {
   return null;
 }
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
+function SectionLabel({ children }: { children: ReactNode }) {
   return (
     <div className="heading-sm pb-2 text-foreground dark:text-foreground-night">
       {children}
     </div>
   );
 }
+
+export const FilesTab = Object.assign(FilesTabBase, {
+  Empty: FilesTabEmpty,
+  RowAction: FilesTabRowAction,
+});

@@ -1,6 +1,5 @@
 import type { AttachmentCreator } from "@app/lib/api/assistant/conversation/attachments";
 import type { GetConversationAttachmentsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/attachments";
-import type { ReactNode } from "react";
 
 export type ConversationAttachmentItem =
   GetConversationAttachmentsResponseBody["attachments"][number];
@@ -22,7 +21,6 @@ export type FilePanelRow = {
   contentType: string;
   fileId: string | null;
   category: FilePanelCategory;
-  action?: ReactNode;
   creator?: AttachmentCreator | null;
   date: number | null;
   isHighlighted?: boolean;
