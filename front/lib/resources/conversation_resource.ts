@@ -372,7 +372,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         return [];
       }
 
-      const branchedAt = fork.branchedAt.getTime();
+      const branchedAtMs = fork.branchedAt.getTime();
       const sourceMessageId = fork.sourceMessage.sId;
       const user = new UserResource(
         UserResource.model,
@@ -389,14 +389,14 @@ export class ConversationResource extends BaseResource<ConversationModel> {
                 parentConversationId: conversation.sId,
                 parentConversationTitle: conversation.title,
                 sourceMessageId,
-                branchedAt,
+                branchedAt: branchedAtMs,
                 user,
               },
             },
             title: fork.childConversation.title,
           }),
           sourceMessageId,
-          branchedAt,
+          branchedAt: branchedAtMs,
           user,
         },
       ];
