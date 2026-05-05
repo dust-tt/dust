@@ -204,8 +204,6 @@ export default function SkillBuilder({
     rightPanelType === "files"
       ? FILES_RIGHT_PANEL_SIZE
       : SUGGESTIONS_RIGHT_PANEL_SIZE;
-  const shouldRenderDesktopRightPanelLayout =
-    !isMobile && (canUseFilesPanel || showSuggestionsPanel || rightPanelType);
 
   useEffect(() => {
     if (requestedRightPanelType) {
@@ -346,7 +344,7 @@ export default function SkillBuilder({
                   />
                 </div>
               </>
-            ) : shouldRenderDesktopRightPanelLayout ? (
+            ) : rightPanelType ? (
               <ResizablePanelGroup
                 id="skill-builder-layout"
                 direction="horizontal"
@@ -391,12 +389,10 @@ export default function SkillBuilder({
                         <SkillBuilderFilesPanel
                           onClose={() => setIsFilesPanelOpen(false)}
                         />
-                      ) : rightPanelType === "suggestions" ? (
+                      ) : (
                         <div className="h-full w-full overflow-y-auto">
                           <SkillBuilderSuggestionsPanel />
                         </div>
-                      ) : (
-                        <div />
                       )}
                     </div>
                   </ResizablePanel>
