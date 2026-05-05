@@ -3,7 +3,9 @@ import type { ConversationForkingDataType } from "@app/types/assistant/conversat
 import type { UserType } from "@app/types/user";
 import { describe, expect, it } from "vitest";
 
-type ConversationSearchAuth = Parameters<typeof buildConversationSearchDocument>[0];
+type ConversationSearchAuth = Parameters<
+  typeof buildConversationSearchDocument
+>[0];
 type ConversationSearchConversation = Parameters<
   typeof buildConversationSearchDocument
 >[1];
