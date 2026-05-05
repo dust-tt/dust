@@ -54,7 +54,7 @@ interface UseSpaceProjectTabsParams {
 
 /**
  * Space page tabs: URL hash + `projectUI` scoped preferences (per space).
- * - On `spaceId` change: restore persisted tab and sync the hash.
+ * - On `spaceId` change: use the incoming URL hash if valid, else restore persisted tab.
  * - On `hashchange`: follow hash and persist.
  * - Empty hash: deferred `replaceState` so other layout hooks can observe an empty hash first.
  */
@@ -79,7 +79,10 @@ export function useSpaceProjectTabs({
       spaceId,
       DEFAULT_SPACE_PROJECT_UI_PREFERENCES
     );
-    const newTab = persisted.tab;
+    // Honour an incoming hash (e.g. a shared link with #todos) before falling
+    // back to the persisted tab. Without this the layout effect was overwriting
+    // the URL hash with the last-visited tab on every spaceId change.
+    const newTab = parseSpaceTabFromLocationHash(persisted.tab);
     setCurrentTab(newTab);
     replaceUrlHashWithTab(newTab);
   }, [spaceId]);
