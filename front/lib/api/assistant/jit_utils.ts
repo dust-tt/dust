@@ -46,6 +46,11 @@ export async function listAttachments(
       };
 
       for (const f of generatedFiles) {
+        // File path only, skip JIT attachment tracking.
+        if (!f.fileId) {
+          continue;
+        }
+
         attachments.set(
           f.fileId,
           makeFileAttachment({

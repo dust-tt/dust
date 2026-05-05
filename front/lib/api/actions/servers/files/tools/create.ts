@@ -3,6 +3,7 @@ import type {
   ToolHandlerExtra,
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { ToolGeneratedFilePathType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { CREATE_CONTENT_MAX_BYTES } from "@app/lib/api/actions/servers/files/metadata";
 import { resolveMountPoint } from "@app/lib/api/actions/servers/files/tools/utils";
 import {
@@ -10,8 +11,10 @@ import {
   getGCSPathFromScopedPath,
 } from "@app/lib/api/files/gcs_mount/files";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
+import { isAllSupportedFileContentType } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
 export async function createHandler(
   {
@@ -75,10 +78,30 @@ export async function createHandler(
 
   const sizeKb = Math.ceil(entry.sizeBytes / 1024);
   const verb = exists ? "Updated" : "Created";
-  return new Ok([
+
+  const items: Array<
+    | { type: "text"; text: string }
+    | { type: "resource"; resource: ToolGeneratedFilePathType }
+  > = [
     {
       type: "text",
       text: `${verb} \`${entry.path}\` (${entry.contentType}, ${sizeKb} KB)`,
     },
-  ]);
+  ];
+
+  if (isAllSupportedFileContentType(entry.contentType)) {
+    items.push({
+      type: "resource",
+      resource: {
+        text: `${verb} \`${entry.path}\``,
+        uri: entry.path,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.SCOPED_FILE,
+        path: entry.path,
+        title: entry.fileName,
+        contentType: entry.contentType,
+      },
+    });
+  }
+
+  return new Ok(items);
 }
