@@ -568,8 +568,8 @@ function getRateCards(): RateCardDef[] {
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: true,
           rate_type: "FLAT",
-          price: 2700,
-          billing_frequency: "MONTHLY",
+          price: 32400,
+          billing_frequency: "ANNUAL",
         },
         {
           product_name: "Programmatic Usage",
@@ -707,8 +707,8 @@ function getRateCards(): RateCardDef[] {
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: true,
           rate_type: "FLAT",
-          price: 27,
-          billing_frequency: "MONTHLY",
+          price: 324,
+          billing_frequency: "ANNUAL",
           credit_type_id: CREDIT_TYPE_EUR_ID,
         },
         {
@@ -943,6 +943,20 @@ const LEGACY_SEAT_SUBSCRIPTION: PackageSubscription = {
   },
 };
 
+// Seat subscription definition shared by all legacy packages.
+const LEGACY_SEAT_ANNUAL_SUBSCRIPTION: PackageSubscription = {
+  temporary_id: "legacy-seat-annual-sub",
+  product_name: "Workspace Seat",
+  billing_frequency: "ANNUAL",
+  collection_schedule: "ADVANCE",
+  quantity_management_mode: "QUANTITY_ONLY",
+  initial_quantity: 1,
+  proration: {
+    is_prorated: true,
+    invoice_behavior: "BILL_ON_NEXT_COLLECTION_DATE",
+  },
+};
+
 // Seat subscription definition for new (non-legacy) per-seat packages.
 // Same shape as LEGACY_SEAT_SUBSCRIPTION but bound to the Regular Seat product.
 const REGULAR_SEAT_SUBSCRIPTION: PackageSubscription = {
@@ -998,7 +1012,7 @@ function getPackages(): PackageDef[] {
       name: "Legacy Pro Annual USD",
       aliases: [{ name: "legacy-pro-annual" }],
       rate_card_name: "Legacy Pro Annual USD",
-      subscriptions: [LEGACY_SEAT_SUBSCRIPTION],
+      subscriptions: [LEGACY_SEAT_ANNUAL_SUBSCRIPTION],
       recurring_credits: [getFreeAnnualRecurringCredits()],
       ...BILLING_CYCLE_CONFIG,
     },
@@ -1032,7 +1046,7 @@ function getPackages(): PackageDef[] {
       name: "Legacy Pro Annual EUR",
       aliases: [{ name: "legacy-pro-annual-eur" }],
       rate_card_name: "Legacy Pro Annual EUR",
-      subscriptions: [LEGACY_SEAT_SUBSCRIPTION],
+      subscriptions: [LEGACY_SEAT_ANNUAL_SUBSCRIPTION],
       recurring_credits: [getFreeAnnualRecurringCredits()],
       ...BILLING_CYCLE_CONFIG,
     },
@@ -2080,7 +2094,6 @@ async function syncCustomFields(): Promise<void> {
 interface AlertDef {
   name: string;
   alert_type:
-    | "low_credit_balance_reached"
     | "low_remaining_contract_credit_balance_reached"
     | "low_remaining_commit_balance_reached";
   threshold: number;
@@ -2094,13 +2107,6 @@ interface AlertDef {
 // Default alerts applied to all customers (no `customer_id` set on create):
 // fire when AWU credit / contract-credit / commit balance reaches 0.
 const ALERTS: AlertDef[] = [
-  {
-    name: "Default: Empty credit balance (AWU)",
-    alert_type: "low_credit_balance_reached",
-    threshold: 0,
-    uniqueness_key: "default-low-credit-balance-zero-awu",
-    credit_type: "AWU",
-  },
   {
     name: "Default: Empty contract credit balance (AWU)",
     alert_type: "low_remaining_contract_credit_balance_reached",
