@@ -1,3 +1,5 @@
+import { useCallback } from "react";
+
 import {
   useCompactConversation,
   useConversationContextUsage,
@@ -75,10 +77,6 @@ export function ContextUsageIndicator({
     conversationId,
   });
 
-  if (isContextUsageLoading) {
-    return null;
-  }
-
   const percentage =
     contextUsage &&
     contextUsage.contextUsage !== null &&
@@ -87,6 +85,15 @@ export function ContextUsageIndicator({
       ? Math.round((contextUsage.contextUsage / contextUsage.contextSize) * 100)
       : 0;
 
+  const circleProgressIcon = useCallback(
+    () => <CircleProgress percentage={percentage} size={16} />,
+    [percentage]
+  );
+
+  if (isContextUsageLoading) {
+    return null;
+  }
+
   return (
     <div className="hidden md:block" onClick={(e) => e.stopPropagation()}>
       <PopoverRoot>
@@ -94,7 +101,7 @@ export function ContextUsageIndicator({
           <Button
             variant="ghost-secondary"
             size={buttonSize}
-            icon={() => <CircleProgress percentage={percentage} size={16} />}
+            icon={circleProgressIcon}
           />
         </PopoverTrigger>
         <PopoverContent side="top" align="end" className="w-auto p-3">
