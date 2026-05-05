@@ -157,7 +157,23 @@ describe("createSandboxTools", () => {
     expect(tools.map((tool) => tool.name)).not.toContain("add_egress_domain");
   });
 
-  it("includes add_egress_domain when agent egress requests are enabled", async () => {
+  it("includes add_egress_domain when both flag and metadata are set", async () => {
+    const { workspace, user } = await createResourceTest({});
+    await WorkspaceResource.updateMetadata(workspace.id, {
+      sandboxAllowAgentEgressRequests: true,
+    });
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    await FeatureFlagFactory.basic(auth, "sandbox_workspace_admin");
+
+    const tools = await createSandboxTools(auth);
+
+    expect(tools.map((tool) => tool.name)).toContain("add_egress_domain");
+  });
+
+  it("omits add_egress_domain when flag is off, even if metadata is set", async () => {
     const { workspace, user } = await createResourceTest({});
     await WorkspaceResource.updateMetadata(workspace.id, {
       sandboxAllowAgentEgressRequests: true,
@@ -169,7 +185,7 @@ describe("createSandboxTools", () => {
 
     const tools = await createSandboxTools(auth);
 
-    expect(tools.map((tool) => tool.name)).toContain("add_egress_domain");
+    expect(tools.map((tool) => tool.name)).not.toContain("add_egress_domain");
   });
 });
 

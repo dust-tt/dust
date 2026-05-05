@@ -49,9 +49,12 @@ function formatWorkspaceAllowlist(domains: string[]): string {
 }
 
 async function buildNetworkAccessSection(auth: Authenticator): Promise<string> {
+  const flags = await getFeatureFlags(auth);
+  const hasWorkspaceAdmin = flags.includes("sandbox_workspace_admin");
   const allowAgentRequests =
+    hasWorkspaceAdmin &&
     auth.getNonNullableWorkspace().metadata?.sandboxAllowAgentEgressRequests ===
-    true;
+      true;
   const policyResult = await readWorkspacePolicy(auth);
   let workspaceDomains: string[] = [];
   if (policyResult.isErr()) {

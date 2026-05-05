@@ -11,7 +11,9 @@ import {
 export function SandboxPage() {
   const { isAdmin } = useAuth();
   const { featureFlags } = useFeatureFlags();
-  const hasSandboxTools = featureFlags.includes("sandbox_tools");
+  const hasSandboxAdmin =
+    featureFlags.includes("sandbox_tools") &&
+    featureFlags.includes("sandbox_workspace_admin");
 
   const renderBody = () => {
     if (!isAdmin) {
@@ -22,10 +24,10 @@ export function SandboxPage() {
       );
     }
 
-    if (!hasSandboxTools) {
+    if (!hasSandboxAdmin) {
       return (
         <ContentMessage variant="info" icon={InformationCircleIcon} size="lg">
-          Sandbox tools are not enabled for this workspace.
+          Sandbox workspace administration is not enabled for this workspace.
         </ContentMessage>
       );
     }

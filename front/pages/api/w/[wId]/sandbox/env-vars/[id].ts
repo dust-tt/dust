@@ -45,6 +45,17 @@ async function handler(
     });
   }
 
+  if (!(await hasFeatureFlag(auth, "sandbox_workspace_admin"))) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "feature_flag_not_found",
+        message:
+          "Sandbox workspace admin configuration is not enabled for this workspace.",
+      },
+    });
+  }
+
   const { id } = req.query;
 
   const envVarModelId =

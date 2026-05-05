@@ -6,7 +6,7 @@ import {
 } from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { renameWorkspace } from "@app/lib/api/workspace";
-import type { Authenticator } from "@app/lib/auth";
+import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { apiError } from "@app/logger/withlogging";
@@ -305,6 +305,17 @@ async function handler(
         await workspace.updateWorkspaceSettings({ metadata: newMetadata });
         owner.metadata = newMetadata;
       } else if ("sandboxAllowAgentEgressRequests" in body) {
+        if (!(await hasFeatureFlag(auth, "sandbox_workspace_admin"))) {
+          return apiError(req, res, {
+            status_code: 403,
+            api_error: {
+              type: "feature_flag_not_found",
+              message:
+                "Sandbox workspace admin configuration is not enabled for this workspace.",
+            },
+          });
+        }
+
         const previousMetadata = owner.metadata ?? {};
         const newMetadata = {
           ...previousMetadata,

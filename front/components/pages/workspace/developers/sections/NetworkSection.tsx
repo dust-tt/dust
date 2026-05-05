@@ -32,7 +32,9 @@ export function NetworkSection() {
   const owner = useWorkspace();
   const { isAdmin } = useAuth();
   const { featureFlags } = useFeatureFlags();
-  const hasSandboxTools = featureFlags.includes("sandbox_tools");
+  const hasSandboxAdmin =
+    featureFlags.includes("sandbox_tools") &&
+    featureFlags.includes("sandbox_workspace_admin");
   const [domainInput, setDomainInput] = useState("");
   const [isEnableAgentRequestsDialogOpen, setIsEnableAgentRequestsDialogOpen] =
     useState(false);
@@ -43,7 +45,7 @@ export function NetworkSection() {
     isWorkspaceEgressPolicyError,
   } = useWorkspaceEgressPolicy({
     owner,
-    disabled: !hasSandboxTools || !isAdmin,
+    disabled: !hasSandboxAdmin || !isAdmin,
   });
   const { updateWorkspaceEgressPolicy, isUpdatingWorkspaceEgressPolicy } =
     useUpdateWorkspaceEgressPolicy({ owner });
@@ -123,10 +125,10 @@ export function NetworkSection() {
         </ContentMessage>
       );
     }
-    if (!hasSandboxTools) {
+    if (!hasSandboxAdmin) {
       return (
         <ContentMessage variant="info" icon={InformationCircleIcon} size="lg">
-          Sandbox tools are not enabled for this workspace.
+          Sandbox workspace administration is not enabled for this workspace.
         </ContentMessage>
       );
     }

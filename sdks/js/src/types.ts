@@ -736,6 +736,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "salesforce_tool"
   | "sandbox_dsbx_tools"
   | "sandbox_tools"
+  | "sandbox_workspace_admin"
   | "self_created_slack_app_connector_rollout"
   | "show_debug_tools"
   | "slack_bot_mcp"

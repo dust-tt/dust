@@ -72,7 +72,9 @@ export function EnvironmentSection() {
   const owner = useWorkspace();
   const { isAdmin } = useAuth();
   const { featureFlags } = useFeatureFlags();
-  const hasSandboxTools = featureFlags.includes("sandbox_tools");
+  const hasSandboxAdmin =
+    featureFlags.includes("sandbox_tools") &&
+    featureFlags.includes("sandbox_workspace_admin");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isNameLocked, setIsNameLocked] = useState(false);
   const [envVarToDelete, setEnvVarToDelete] =
@@ -84,7 +86,7 @@ export function EnvironmentSection() {
     isWorkspaceSandboxEnvVarsError,
   } = useWorkspaceSandboxEnvVars({
     owner,
-    disabled: !hasSandboxTools || !isAdmin,
+    disabled: !hasSandboxAdmin || !isAdmin,
   });
   const { upsertWorkspaceSandboxEnvVar, isUpsertingWorkspaceSandboxEnvVar } =
     useUpsertWorkspaceSandboxEnvVar({ owner });
@@ -193,10 +195,10 @@ export function EnvironmentSection() {
         </ContentMessage>
       );
     }
-    if (!hasSandboxTools) {
+    if (!hasSandboxAdmin) {
       return (
         <ContentMessage variant="info" icon={InformationCircleIcon} size="lg">
-          Sandbox tools are not enabled for this workspace.
+          Sandbox workspace administration is not enabled for this workspace.
         </ContentMessage>
       );
     }

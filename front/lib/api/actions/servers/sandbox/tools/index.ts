@@ -186,7 +186,15 @@ export async function createSandboxTools(
   };
 
   const tools = buildTools(SANDBOX_TOOLS_METADATA, handlers);
-  if (isSandboxAgentEgressRequestsAllowed(auth)) {
+
+  // The add_egress_domain tool requires both the workspace admin flag
+  // (gates the whole agent-egress-requests configuration) and the
+  // per-workspace setting that admins toggle on top of it.
+  const flags = await getFeatureFlags(auth);
+  if (
+    flags.includes("sandbox_workspace_admin") &&
+    isSandboxAgentEgressRequestsAllowed(auth)
+  ) {
     return tools;
   }
 
@@ -399,6 +407,9 @@ export async function addEgressDomainTool(
   { domain, reason }: { domain: string; reason: string },
   { auth, agentLoopContext }: ToolHandlerExtra
 ): Promise<Result<Array<{ type: "text"; text: string }>, MCPError>> {
+  // Defense-in-depth: createSandboxTools already filters this tool out when the
+  // sandbox_workspace_admin flag is off, so this metadata-only check is enough
+  // to reject any caller that bypasses tool-list filtering.
   if (!isSandboxAgentEgressRequestsAllowed(auth)) {
     return new Err(
       new MCPError(
