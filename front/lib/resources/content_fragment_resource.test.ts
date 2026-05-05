@@ -1,6 +1,7 @@
 import type { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfigs } from "@app/lib/llms/model_configurations";
 import { renderLightContentFragmentForModel } from "@app/lib/resources/content_fragment_resource";
+import { FileResource } from "@app/lib/resources/file_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type {
@@ -98,14 +99,9 @@ describe("renderLightContentFragmentForModel", () => {
   beforeEach(async () => {
     const { authenticator: auth } = await createResourceTest({});
     authenticator = auth;
-    vi.spyOn(
-      await import("@app/lib/resources/file_resource").then(
-        (m) => m.FileResource.prototype
-      ),
-      "getSignedUrlForDownload"
-    )
-      .mockResolvedValue("https://signed.url/image.png")
-      .mockName("getSignedUrlForDownload");
+    vi.spyOn(FileResource.prototype, "getSignedUrlForDownload").mockResolvedValue(
+      "https://signed.url/image.png"
+    );
   });
 
   describe("new_file_explorer FF off", () => {
