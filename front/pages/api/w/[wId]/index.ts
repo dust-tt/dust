@@ -108,6 +108,10 @@ const WorkspaceSandboxAgentEgressRequestsUpdateBodySchema = t.type({
   sandboxAllowAgentEgressRequests: t.boolean,
 });
 
+const WorkspaceReinforcementCapUpdateBodySchema = t.type({
+  reinforcementCapMicroUsd: t.number,
+});
+
 const PostWorkspaceRequestBodySchema = t.union([
   WorkspaceAllowedDomainUpdateBodySchema,
   WorkspaceBatchDomainUpdateBodySchema,
@@ -126,6 +130,7 @@ const PostWorkspaceRequestBodySchema = t.union([
   WorkspaceOpenProjectsUpdateBodySchema,
   WorkspaceManualProjectKnowledgeManagementUpdateBodySchema,
   WorkspaceSandboxAgentEgressRequestsUpdateBodySchema,
+  WorkspaceReinforcementCapUpdateBodySchema,
 ]);
 
 async function handler(
@@ -304,6 +309,14 @@ async function handler(
           ...previousMetadata,
           allowManualProjectKnowledgeManagement:
             body.allowManualProjectKnowledgeManagement,
+        };
+        await workspace.updateWorkspaceSettings({ metadata: newMetadata });
+        owner.metadata = newMetadata;
+      } else if ("reinforcementCapMicroUsd" in body) {
+        const previousMetadata = owner.metadata ?? {};
+        const newMetadata = {
+          ...previousMetadata,
+          reinforcementCapMicroUsd: body.reinforcementCapMicroUsd,
         };
         await workspace.updateWorkspaceSettings({ metadata: newMetadata });
         owner.metadata = newMetadata;

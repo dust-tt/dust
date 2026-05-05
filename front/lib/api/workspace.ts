@@ -431,14 +431,20 @@ export interface WorkspaceMetadata {
   maintenance?: "relocation" | "relocation-done";
   killSwitched?: WorkspaceKillSwitchValue;
   allowContentCreationFileSharing?: boolean;
+  allowEmailAgents?: boolean;
   allowVoiceTranscription?: boolean;
   allowOpenProjects?: boolean;
   allowManualProjectKnowledgeManagement?: boolean;
+  allowReinforcement?: boolean;
+  allowReinforcementBatchMode?: boolean;
   privateConversationUrlsByDefault?: boolean;
   autoCreateSpaceForProvisionedGroups?: boolean;
   disableManualInvitations?: boolean;
+  disableExtensionMcpTools?: boolean;
+  isBusiness?: boolean;
   phoneCountry?: string;
   sandboxAllowAgentEgressRequests?: boolean;
+  reinforcementCapMicroUsd?: number;
 }
 
 export async function updateWorkspaceMetadata(
