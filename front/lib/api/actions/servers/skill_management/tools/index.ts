@@ -50,12 +50,6 @@ const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
     }
 
     const featureFlags = await getFeatureFlags(auth);
-    // TODO(2026-04-29 aubin): drop this and start always rendering like this a few weeks prior to the release so that
-    //  we don't have to handle the backfill.
-    const renderSkillsAsUserMessages = featureFlags.includes(
-      "skills_as_user_messages"
-    );
-
     // Load skill file attachments to the sandbox (behind feature flag).
     if (
       !featureFlags.includes("sandbox_tools") ||
@@ -63,11 +57,9 @@ const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
     ) {
       const text = `Skill "${skill.name}" has been enabled.`;
 
-      return new Ok(
-        renderSkillsAsUserMessages
-          ? [makeEnableSkillResultOutput({ skillId: skill.sId, text })]
-          : [{ type: "text" as const, text }]
-      );
+      return new Ok([
+        makeEnableSkillResultOutput({ skillId: skill.sId, text }),
+      ]);
     }
 
     const ensureResult = await SandboxResource.ensureActive(auth, conversation);
@@ -93,11 +85,7 @@ const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
       `Skill "${skill.name}" has been enabled.` +
       (fileMessage ? `\n\n${fileMessage}` : "");
 
-    return new Ok(
-      renderSkillsAsUserMessages
-        ? [makeEnableSkillResultOutput({ skillId: skill.sId, text })]
-        : [{ type: "text" as const, text }]
-    );
+    return new Ok([makeEnableSkillResultOutput({ skillId: skill.sId, text })]);
   },
 };
 
