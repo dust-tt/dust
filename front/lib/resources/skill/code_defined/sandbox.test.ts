@@ -53,6 +53,7 @@ describe("sandboxSkill", () => {
       user.sId,
       workspace.sId
     );
+    await FeatureFlagFactory.basic(refreshedAuth, "sandbox_workspace_admin");
 
     const permissiveInstructions = await sandboxSkill.fetchInstructions(
       refreshedAuth,
