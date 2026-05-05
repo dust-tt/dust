@@ -6,21 +6,16 @@ language js
 // utilities (e.g. `focus:!ring-0`, `!mt-0`). See CODING_RULES.md [GEN12].
 // Narrow exceptions for third-party library overrides and dev tooling are
 // scoped via biome.json overrides.
+//
+// One regex per quote style; each covers all three flagged forms:
+//   - `!important` keyword (CSS-in-JS, template literals, inline styles)
+//   - Tailwind modifier-prefixed important: `:!<utility>` (e.g. `focus:!ring-0`)
+//   - Tailwind leading important: `"!<utility>"` (e.g. `!mt-0`)
 pattern css_important_string() {
     or {
-        // `!important` keyword anywhere in a string literal.
-        r"\"[^\"]*!important[^\"]*\"",
-        r"'[^']*!important[^']*'",
-        r"`[^`]*!important[^`]*`",
-        // Tailwind v3 modifier-prefixed important, e.g. `focus:!ring-0`.
-        r"\"[^\"]*:![a-z][^\"]*\"",
-        r"'[^']*:![a-z][^']*'",
-        r"`[^`]*:![a-z][^`]*`",
-        // Tailwind v3 leading important at start of a className string,
-        // e.g. `!ring-0`, `!mt-0`.
-        r"\"![a-z][^\"]*\"",
-        r"'![a-z][^']*'",
-        r"`![a-z][^`]*`"
+        r"\"(?:![a-z]|[^\"]*(?:!important|:![a-z]))[^\"]*\"",
+        r"'(?:![a-z]|[^']*(?:!important|:![a-z]))[^']*'",
+        r"`(?:![a-z]|[^`]*(?:!important|:![a-z]))[^`]*`"
     }
 }
 
