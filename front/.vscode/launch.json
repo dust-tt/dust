@@ -19,6 +19,26 @@
       "command": "npm run dev:worker",
       "cwd": "${workspaceFolder}",
       "envFile": "${workspaceFolder}/.env.local"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug current vitest file",
+      "program": "${workspaceFolder}/../node_modules/vitest/vitest.mjs",
+      "args": ["run", "${relativeFile}"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "autoAttachChildProcesses": true,
+      "skipFiles": ["<node_internals>/**", "**/node_modules/**"],
+      "smartStep": true,
+      "envFile": "${workspaceFolder}/.env.local",
+      "env": {
+        "NODE_ENV": "test",
+        "VITEST_DEBUG": "1",
+        "FRONT_DATABASE_URI": "${env:TEST_FRONT_DATABASE_URI}",
+        "REDIS_URI": "${env:TEST_REDIS_URI}",
+        "REDIS_CACHE_URI": "${env:TEST_REDIS_URI}"
+      }
     }
   ]
 }
