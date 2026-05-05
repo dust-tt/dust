@@ -113,7 +113,9 @@ export const SLACK_PERSONAL_TOOLS_METADATA = createToolsRecord({
       fileId: z
         .string()
         .optional()
-        .describe("The file id of the file to attach to the message."),
+        .describe(
+          "Optional file to attach to the message. Accepts a scoped file path (e.g. 'conversation/report.pdf') or a legacy file sId."
+        ),
     },
     stake: "medium",
     displayLabels: {

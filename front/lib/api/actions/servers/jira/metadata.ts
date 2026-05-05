@@ -356,7 +356,7 @@ export const JIRA_TOOLS_METADATA = createToolsRecord({
           fileId: z
             .string()
             .describe(
-              "The fileId from conversation attachments (use conversation_list_files to get available files)"
+              "The file reference from the conversation. Accepts a scoped file path (e.g. 'conversation/report.pdf') or a legacy file sId."
             ),
         }),
         z.object({

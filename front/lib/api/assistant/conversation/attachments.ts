@@ -63,7 +63,6 @@ export type ContentNodeAttachmentType = BaseConversationAttachmentType & {
 };
 
 export type LargePasteType = {
-  fileId: string;
   title: string;
 };
 

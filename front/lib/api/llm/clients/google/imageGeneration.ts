@@ -69,20 +69,15 @@ export class ImageGenerationGoogleLLM extends ImageGenerationLLM {
   async generateImage(
     params: ImageGenerationInput
   ): Promise<Result<ImageGenerationOutput, ImageGenerationError>> {
-    const { prompt, aspectRatio, fileResources, quality } = params;
+    const { prompt, aspectRatio, referenceFiles, quality } = params;
 
     let imageParts: Part[] = [];
 
-    if (fileResources && fileResources.length > 0) {
+    if (referenceFiles && referenceFiles.length > 0) {
       imageParts = await concurrentExecutor(
-        fileResources,
-        async (fileResource) => {
-          const signedUrl = await fileResource.getSignedUrlForDownload(
-            this.auth,
-            "original"
-          );
-          return createPartFromUri(signedUrl, fileResource.contentType);
-        },
+        referenceFiles,
+        async (referenceFile) =>
+          createPartFromUri(referenceFile.signedUrl, referenceFile.contentType),
         { concurrency: 8 }
       );
     }

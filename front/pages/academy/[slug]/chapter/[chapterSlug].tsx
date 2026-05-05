@@ -1,3 +1,4 @@
+import { LocaleToggle } from "@app/components/academy/AcademyComponents";
 import { AcademyQuiz } from "@app/components/academy/AcademyQuiz";
 import {
   ChapterMobileMenuButton,
@@ -9,9 +10,12 @@ import LandingLayout from "@app/components/home/LandingLayout";
 import { getAcademyUser } from "@app/lib/api/academy";
 import {
   buildPreviewQueryString,
+  getAcademyLocaleFromCookies,
+  getAcademySettings,
   getChapterBySlug,
   getChaptersByCourseSlug,
   getCourseBySlug,
+  getQuizSettings,
   getSearchableItems,
 } from "@app/lib/contentful/client";
 import { contentfulImageLoader } from "@app/lib/contentful/imageLoader";
@@ -54,15 +58,25 @@ export const getServerSideProps: GetServerSideProps<ChapterPageProps> = async (
     return { notFound: true };
   }
 
+  context.res.setHeader("Cache-Control", "no-store");
   const resolvedUrl = buildPreviewQueryString(context.preview ?? false);
+  const locale = getAcademyLocaleFromCookies(context.req.cookies);
 
-  const [courseResult, chapterResult, chaptersResult, searchableResult] =
-    await Promise.all([
-      getCourseBySlug(slug, resolvedUrl),
-      getChapterBySlug(chapterSlug, resolvedUrl),
-      getChaptersByCourseSlug(slug, resolvedUrl),
-      getSearchableItems(resolvedUrl),
-    ]);
+  const [
+    courseResult,
+    chapterResult,
+    chaptersResult,
+    searchableResult,
+    academySettings,
+    quizSettings,
+  ] = await Promise.all([
+    getCourseBySlug(slug, resolvedUrl, locale),
+    getChapterBySlug(chapterSlug, resolvedUrl, locale),
+    getChaptersByCourseSlug(slug, resolvedUrl, locale),
+    getSearchableItems(resolvedUrl, locale),
+    getAcademySettings(resolvedUrl, locale),
+    getQuizSettings(resolvedUrl, locale),
+  ]);
 
   if (courseResult.isErr() || !courseResult.value) {
     logger.error(
@@ -116,6 +130,9 @@ export const getServerSideProps: GetServerSideProps<ChapterPageProps> = async (
         : null,
       fullWidth: true,
       preview: context.preview ?? false,
+      locale,
+      academySettings,
+      quizSettings,
     },
   };
 };
@@ -133,6 +150,9 @@ export default function ChapterPage({
   searchableItems,
   academyUser,
   preview,
+  locale,
+  academySettings,
+  quizSettings,
 }: ChapterPageProps) {
   const [isCopied, copyToClipboard] = useCopyToClipboard();
   const ogImageUrl = courseImage?.url ?? "https://dust.tt/static/og_image.png";
@@ -225,6 +245,11 @@ export default function ChapterPage({
           tocItems={tocItems}
           completedChapterSlugs={completedChapterSlugs}
           attemptedChapterSlugs={attemptedChapterSlugs}
+          backToAcademy={academySettings.backToAcademy}
+          searchPlaceholder={academySettings.searchPlaceholder}
+          chapterReadLabel={academySettings.chapterRead}
+          quizPassedLabel={academySettings.quizPassed}
+          mobileMenuTitle={academySettings.mobileMenuTitle}
         />
         <article className="min-w-0 flex-1">
           {/* Mobile menu button */}
@@ -238,6 +263,11 @@ export default function ChapterPage({
               tocItems={tocItems}
               completedChapterSlugs={completedChapterSlugs}
               attemptedChapterSlugs={attemptedChapterSlugs}
+              backToAcademy={academySettings.backToAcademy}
+              searchPlaceholder={academySettings.searchPlaceholder}
+              chapterReadLabel={academySettings.chapterRead}
+              quizPassedLabel={academySettings.quizPassed}
+              mobileMenuTitle={academySettings.mobileMenuTitle}
             />
             <span className="ml-2 truncate text-sm font-medium text-muted-foreground">
               {chapter.title}
@@ -283,12 +313,17 @@ export default function ChapterPage({
                         variant="outline"
                         size="xs"
                         icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
-                        label={isCopied ? "Copied!" : "Copy as Markdown"}
+                        label={
+                          isCopied
+                            ? academySettings.copied
+                            : academySettings.copyAsMarkdown
+                        }
                         onClick={handleCopyAsMarkdown}
                       />
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-2">
+                    <LocaleToggle locale={locale} />
                     {chapter.estimatedDurationMinutes && (
                       <div className="flex items-center gap-1 rounded-full bg-white/80 px-3 py-1.5 text-xs font-medium text-gray-700 backdrop-blur-sm">
                         <svg
@@ -345,6 +380,7 @@ export default function ChapterPage({
                 contentSlug={chapter.slug}
                 courseSlug={courseSlug}
                 browserId={anonBrowserId}
+                quizSettings={quizSettings}
               />
             </div>
 
@@ -362,7 +398,7 @@ export default function ChapterPage({
                       className="group flex flex-col"
                     >
                       <P size="sm" className="text-muted-foreground">
-                        Previous Chapter
+                        {academySettings.previousChapter}
                       </P>
                       <span className="mt-1 text-base font-medium text-foreground transition-colors group-hover:text-highlight">
                         &larr; {previousChapter.title}
@@ -375,7 +411,7 @@ export default function ChapterPage({
                       className="group flex flex-col items-end sm:items-start"
                     >
                       <P size="sm" className="text-muted-foreground">
-                        Next Chapter
+                        {academySettings.nextChapter}
                       </P>
                       <span className="mt-1 text-base font-medium text-foreground transition-colors group-hover:text-highlight">
                         {nextChapter.title} &rarr;

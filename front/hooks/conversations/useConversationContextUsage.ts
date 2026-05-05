@@ -2,6 +2,12 @@ import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetConversationContextUsageResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/context-usage";
 import type { Fetcher } from "swr";
 
+export const CONTEXT_USAGE_PERCENT_THRESHOLDS = {
+  enable_compaction: 33,
+  show_warning: 70,
+  force_compaction: 80,
+};
+
 export function useConversationContextUsage({
   conversationId,
   workspaceId,
@@ -23,8 +29,17 @@ export function useConversationContextUsage({
     options
   );
 
+  const percentage =
+    data &&
+    data.contextUsage !== null &&
+    data.contextSize !== null &&
+    data.contextSize > 0
+      ? Math.round((data.contextUsage / data.contextSize) * 100)
+      : 0;
+
   return {
     contextUsage: data ?? null,
+    contextUsagePercentage: percentage,
     isContextUsageLoading: !error && !data,
     isContextUsageError: error,
     mutateContextUsage: mutate,

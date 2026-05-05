@@ -312,6 +312,65 @@ Example:
 <div className="focus:ring-transparent mt-0" />
 ```
 
+### [GEN13] Use zod for runtime validation, not io-ts
+
+We are migrating off `io-ts` in favor of `zod`. All new schemas (request bodies, query
+parameters, form validation, runtime parsing of external data) must be written with `zod`. Do
+not introduce new `io-ts` codecs, and do not import `io-ts`, `io-ts-types`, `io-ts-reporters`,
+or `fp-ts/lib/Either` in new code.
+
+Existing `io-ts` codecs may remain — they will be migrated incrementally. When modifying a file
+that already uses `io-ts`, prefer migrating its codecs to `zod` if the change is local; if the
+codec is shared across many consumers, leave the migration to a dedicated PR.
+
+For error formatting, use `fromError` from `zod-validation-error` to produce a readable message
+from a `ZodError`.
+
+Example:
+
+```
+// BAD — new code using io-ts
+import * as t from "io-ts";
+import { isLeft } from "fp-ts/lib/Either";
+import * as reporter from "io-ts-reporters";
+
+const BodySchema = t.type({
+  name: t.string,
+  count: t.number,
+});
+
+const validation = BodySchema.decode(req.body);
+if (isLeft(validation)) {
+  const message = reporter.formatValidationErrors(validation.left);
+  return apiError(req, res, { status_code: 400, api_error: { type: "invalid_request_error", message } });
+}
+const { name, count } = validation.right;
+
+// GOOD — new code using zod
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
+
+const BodySchema = z.object({
+  name: z.string(),
+  count: z.number(),
+});
+
+const validation = BodySchema.safeParse(req.body);
+if (!validation.success) {
+  return apiError(req, res, {
+    status_code: 400,
+    api_error: {
+      type: "invalid_request_error",
+      message: fromError(validation.error).toString(),
+    },
+  });
+}
+const { name, count } = validation.data;
+```
+
+Reviewer: If you see new `io-ts` imports or codecs introduced by a PR, require the author to
+rewrite them in `zod`.
+
 ## SECURITY
 
 ### [SEC1] No sensitive data outside of HTTP bodies or headers

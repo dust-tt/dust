@@ -52,7 +52,7 @@ export interface SlashCommandDropdownProps
   > {
   emptyMessage?: string;
   header?: string;
-  listMaxHeightClassName?: string;
+  listMaxHeightClassName?: `max-h-${string}`;
   onClose?: () => void;
   showScrollFade?: boolean;
   size?: "default" | "wide";

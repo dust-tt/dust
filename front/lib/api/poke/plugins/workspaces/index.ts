@@ -1,4 +1,5 @@
 export * from "./add_user_to_workos_organization";
+export * from "./apply_coupon";
 export * from "./apply_group_roles";
 export * from "./buy_programmatic_usage_credits";
 export * from "./check_message_usage";
@@ -24,6 +25,7 @@ export * from "./rename_workspace";
 export * from "./reset_message_rate_limit";
 export * from "./reset_provisioned_members_not_in_directory";
 export * from "./restore_conversation";
+export * from "./revoke_coupon";
 export * from "./revoke_users";
 export * from "./run_reinforcement_workflow";
 export * from "./send_onboarding_conversation";
