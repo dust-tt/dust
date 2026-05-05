@@ -27,6 +27,7 @@ import {
 import { useCallback, useState } from "react";
 
 import { EditConversationTitleDialog } from "./EditConversationTitleDialog";
+import { getParentConversationTitleLabel } from "./utils";
 
 export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
   const activeConversationId = useActiveConversationId();
@@ -95,8 +96,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
       return null;
     }
 
-    const chipLabel =
-      forkedFrom.parentConversationTitle ?? "Unnamed parent conversation";
+    const chipLabel = getParentConversationTitleLabel(forkedFrom);
 
     return (
       <div className="flex h-9 items-center">
