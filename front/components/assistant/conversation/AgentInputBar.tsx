@@ -112,6 +112,11 @@ export const AgentInputBar = ({
     disabled: !context.conversation,
   });
 
+  const { contextUsage, isContextUsageLoading } = useConversationContextUsage({
+    conversationId,
+    workspaceId: owner.sId,
+  });
+
   const isActiveWakeUpOwner = activeWakeUp?.user.sId === context.user.sId;
   const wakeUpBlockMessage =
     activeWakeUp && !isActiveWakeUpOwner

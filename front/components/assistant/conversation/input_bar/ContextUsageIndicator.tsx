@@ -2,6 +2,7 @@ import {
   useCompactConversation,
   useConversationContextUsage,
 } from "@app/hooks/conversations";
+import { CONTEXT_USAGE_PERCENT_THRESHOLDS } from "@app/hooks/conversations/useConversationContextUsage";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -22,7 +23,6 @@ interface CircleProgressProps {
   size?: number;
 }
 
-const CONTEXT_USAGE_PERCENT_THRESHOLD = 33;
 const COMPACTION_GUIDE_URL = "https://docs.dust.tt/docs/context-compaction";
 
 function CircleProgress({ percentage, size = 16 }: CircleProgressProps) {
@@ -103,7 +103,8 @@ export function ContextUsageIndicator({
               {percentage}% of context used.
             </span>
             <div className="flex items-center gap-3">
-              {percentage > CONTEXT_USAGE_PERCENT_THRESHOLD && (
+              {percentage >
+                CONTEXT_USAGE_PERCENT_THRESHOLDS["enable_compaction"] && (
                 <Button
                   variant="outline"
                   size="xs"
