@@ -4,6 +4,7 @@ import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { WorkspaceType } from "@app/types/user";
 import { isAdmin, isBuilder } from "@app/types/user";
 import {
+  ActionPieChartIcon,
   BarChartIcon,
   BoltIcon,
   BracesIcon,
@@ -85,6 +86,7 @@ export type SubNavigationAdminId =
   | "sandbox"
   | "analytics"
   | "credits_usage"
+  | "usage"
   | "reinforcement";
 
 export const ADMIN_ROUTE_PATTERNS: Record<SubNavigationAdminId, string[]> = {
@@ -98,6 +100,7 @@ export const ADMIN_ROUTE_PATTERNS: Record<SubNavigationAdminId, string[]> = {
   providers: ["/w/[wId]/developers/providers"],
   dev_secrets: ["/w/[wId]/developers/dev-secrets"],
   sandbox: ["/w/[wId]/developers/sandbox"],
+  usage: ["/w/[wId]/usage"],
   reinforcement: ["/w/[wId]/developers/reinforcement"],
 };
 
@@ -208,6 +211,7 @@ export const getTopNavigationTabs = (
           "/w/[wId]/developers/api-keys",
           "/w/[wId]/developers/dev-secrets",
           "/w/[wId]/developers/sandbox",
+          "/w/[wId]/usage",
           "/w/[wId]/developers/reinforcement",
         ]),
       sizing: "hug",
@@ -254,6 +258,14 @@ export const subNavigationAdmin = ({
           icon: CompanyIcon,
           href: `/w/${owner.sId}/workspace`,
           current: isCurrent("workspace"),
+        },
+        {
+          id: "usage",
+          label: "Usage",
+          icon: ActionPieChartIcon,
+          href: `/w/${owner.sId}/usage`,
+          current: isCurrent("usage"),
+          featureFlag: "metronome_billing_usage_page",
         },
         {
           id: "model_providers",

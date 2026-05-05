@@ -83,6 +83,10 @@ const ModelProvidersPage = withSuspense(
     ),
   "ModelProvidersPage"
 );
+const UsagePage = withSuspense(
+  () => import("@dust-tt/front/components/pages/workspace/UsagePage"),
+  "UsagePage"
+);
 
 export const adminRoutes: RouteObject[] = [
   { path: "me", element: <ProfilePage /> },
@@ -93,6 +97,7 @@ export const adminRoutes: RouteObject[] = [
       { path: "model-providers", element: <ModelProvidersPage /> },
       { path: "workspace", element: <WorkspaceSettingsPage /> },
       { path: "analytics", element: <AnalyticsPage /> },
+      { path: "usage", element: <UsagePage /> },
       { path: "subscription", element: <SubscriptionPage /> },
       {
         path: "subscription/manage",
