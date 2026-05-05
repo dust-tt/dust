@@ -59,7 +59,6 @@ export const triggerProviderCredentialsHealthUpdatedNotifications = async (
   let paginationParams: MembershipsPaginationParams | undefined = {
     orderColumn: "createdAt",
     orderDirection: "asc",
-    lastValue: null,
     limit: NOVU_BULK_TRIGGER_LIMIT,
   };
 

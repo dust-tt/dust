@@ -11,10 +11,9 @@ import type {
   EnumValues,
   SupportedResourceType,
 } from "@app/types/poke/plugins";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 export interface PokeGetPluginAsyncArgsResponseBody {
   asyncArgs: Record<
@@ -23,11 +22,11 @@ export interface PokeGetPluginAsyncArgsResponseBody {
   >;
 }
 
-const asyncArgsCodec = t.type({
-  pluginId: t.string,
-  resourceType: t.string,
-  resourceId: t.union([t.string, t.undefined]),
-  workspaceId: t.union([t.string, t.undefined]),
+const asyncArgsSchema = z.object({
+  pluginId: z.string(),
+  resourceType: z.string(),
+  resourceId: z.string().optional(),
+  workspaceId: z.string().optional(),
 });
 
 async function handler(
@@ -50,22 +49,20 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const queryValidation = asyncArgsCodec.decode(req.query);
+      const queryValidation = asyncArgsSchema.safeParse(req.query);
 
-      if (isLeft(queryValidation)) {
-        const pathError = reporter.formatValidationErrors(queryValidation.left);
-
+      if (!queryValidation.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request body: ${pathError}`,
+            message: `Invalid request body: ${fromError(queryValidation.error).toString()}`,
           },
         });
       }
 
       const { pluginId, resourceType, resourceId, workspaceId } =
-        queryValidation.right;
+        queryValidation.data;
 
       const plugin = pluginManager.getPluginById(pluginId);
       if (!plugin) {

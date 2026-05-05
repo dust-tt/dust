@@ -10,15 +10,14 @@ import { getClientIp } from "@app/lib/utils/request";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import {
-  createIoTsCodecFromArgs,
+  createZodSchemaFromArgs,
   supportedResourceTypes,
 } from "@app/types/poke/plugins";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { IncomingForm } from "formidable";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 export const config = {
   api: {
@@ -26,23 +25,18 @@ export const config = {
   },
 };
 
-const [first, second, ...rest] = supportedResourceTypes;
-const SupportedResourceTypeCodec = t.union([
-  t.literal(first),
-  t.literal(second),
-  ...rest.map((value) => t.literal(value)),
-]);
+const SupportedResourceTypeSchema = z.enum(supportedResourceTypes);
 
-const RunPluginParamsCodec = t.union([
-  t.type({
-    pluginId: t.string,
-    resourceType: SupportedResourceTypeCodec,
+const RunPluginParamsSchema = z.union([
+  z.object({
+    pluginId: z.string(),
+    resourceType: SupportedResourceTypeSchema,
   }),
-  t.type({
-    pluginId: t.string,
-    resourceId: t.string,
-    resourceType: SupportedResourceTypeCodec,
-    workspaceId: t.string,
+  z.object({
+    pluginId: z.string(),
+    resourceId: z.string(),
+    resourceType: SupportedResourceTypeSchema,
+    workspaceId: z.string(),
   }),
 ]);
 
@@ -72,25 +66,21 @@ async function handler(
 
   switch (req.method) {
     case "POST": {
-      const pluginRunValidation = RunPluginParamsCodec.decode(req.query);
-      if (isLeft(pluginRunValidation)) {
-        const pathError = reporter.formatValidationErrors(
-          pluginRunValidation.left
-        );
-
+      const pluginRunValidation = RunPluginParamsSchema.safeParse(req.query);
+      if (!pluginRunValidation.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `The query is invalid: ${pathError}`,
+            message: `The query is invalid: ${fromError(pluginRunValidation.error).toString()}`,
           },
         });
       }
 
-      const { pluginId, resourceType } = pluginRunValidation.right;
+      const { pluginId, resourceType } = pluginRunValidation.data;
       const { resourceId, workspaceId } =
-        "resourceId" in pluginRunValidation.right
-          ? pluginRunValidation.right
+        "resourceId" in pluginRunValidation.data
+          ? pluginRunValidation.data
           : {
               resourceId: undefined,
               workspaceId: undefined,
@@ -167,25 +157,21 @@ async function handler(
         });
       }
 
-      const pluginCodec = createIoTsCodecFromArgs(plugin.manifest.args);
-      const pluginArgsValidation = pluginCodec.decode(formData);
-      if (isLeft(pluginArgsValidation)) {
-        const pathError = reporter.formatValidationErrors(
-          pluginArgsValidation.left
-        );
-
+      const pluginSchema = createZodSchemaFromArgs(plugin.manifest.args);
+      const pluginArgsValidation = pluginSchema.safeParse(formData);
+      if (!pluginArgsValidation.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `The request body is invalid: ${pathError}`,
+            message: `The request body is invalid: ${fromError(pluginArgsValidation.error).toString()}`,
           },
         });
       }
 
       const pluginRun = await PluginRunResource.makeNew(
         plugin,
-        pluginArgsValidation.right,
+        pluginArgsValidation.data,
         auth.getNonNullableUser(),
         workspaceId ? auth.getNonNullableWorkspace() : null,
         {
@@ -199,7 +185,7 @@ async function handler(
         runRes = await plugin.execute(
           auth,
           resource,
-          pluginArgsValidation.right
+          pluginArgsValidation.data
         );
       } catch (error) {
         const errorMessage = normalizeError(error).message;

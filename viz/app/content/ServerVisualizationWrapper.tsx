@@ -3,6 +3,78 @@ import type { PreFetchedFile } from "@viz/app/lib/data-apis/cache-data-api";
 import logger from "@viz/app/lib/logger";
 import { extractFileRefs } from "@viz/app/lib/parseFileRefs";
 
+const FRAME_MIME_TYPES = new Set([
+  "application/vnd.dust.frame",
+  "application/vnd.dust.frame.slideshow",
+]);
+
+async function fetchFileRefsRecursively(
+  text: string,
+  frontApiUrl: string,
+  headers: Record<string, string>,
+  visited: Set<string>
+): Promise<PreFetchedFile[]> {
+  const refs = extractFileRefs(text);
+  const results: PreFetchedFile[] = [];
+
+  await Promise.all(
+    refs.map(async (ref) => {
+      const key = ref.type === "fileId" ? ref.fileId : ref.scopedPath;
+      if (visited.has(key)) {
+        return;
+      }
+      visited.add(key);
+
+      const fileEndpoint =
+        ref.type === "fileId"
+          ? `${frontApiUrl}/api/v1/viz/files/${ref.fileId}`
+          : `${frontApiUrl}/api/v1/viz/files/${ref.scopedPath}`;
+
+      try {
+        const fileResponse = await fetch(fileEndpoint, {
+          headers,
+          cache: "no-store",
+        });
+
+        if (!fileResponse.ok) {
+          logger.warn(
+            { key, status: fileResponse.status },
+            "Failed to fetch file ref"
+          );
+          return;
+        }
+
+        const arrayBuffer = await fileResponse.arrayBuffer();
+        const mimeType =
+          fileResponse.headers.get("content-type") ||
+          "application/octet-stream";
+
+        results.push({
+          data: Buffer.from(arrayBuffer).toString("base64"),
+          fileId: key,
+          mimeType,
+        });
+
+        // Recursively fetch refs from nested frames.
+        if (FRAME_MIME_TYPES.has(mimeType)) {
+          const nestedText = Buffer.from(arrayBuffer).toString("utf-8");
+          const nested = await fetchFileRefsRecursively(
+            nestedText,
+            frontApiUrl,
+            headers,
+            visited
+          );
+          results.push(...nested);
+        }
+      } catch (_err) {
+        logger.error({ key }, "Failed to fetch file ref");
+      }
+    })
+  );
+
+  return results;
+}
+
 interface ServerSideVisualizationWrapperProps {
   accessToken: string;
   allowedOrigins: string[];
@@ -55,54 +127,13 @@ export async function ServerSideVisualizationWrapper({
         return;
       }
 
-      // SERVER-SIDE: Extract file refs from code (both fil_xxx IDs and scoped paths).
-      const fileRefs = extractFileRefs(prefetchedCode);
-
-      if (fileRefs.length > 0) {
-        // SERVER-SIDE: Fetch all referenced files.
-        const fetchedFiles = await Promise.all(
-          fileRefs.map(async (ref) => {
-            const key = ref.type === "fileId" ? ref.fileId : ref.scopedPath;
-            const fileEndpoint =
-              ref.type === "fileId"
-                ? `${process.env.DUST_FRONT_API}/api/v1/viz/files/${ref.fileId}`
-                : `${process.env.DUST_FRONT_API}/api/v1/viz/files/${ref.scopedPath}`;
-
-            try {
-              const fileResponse = await fetch(fileEndpoint, {
-                headers,
-                cache: "no-store",
-              });
-
-              if (!fileResponse.ok) {
-                logger.warn(
-                  { key, status: fileResponse.status },
-                  "Failed to fetch file ref"
-                );
-                return null;
-              }
-
-              const arrayBuffer = await fileResponse.arrayBuffer();
-              const mimeType =
-                fileResponse.headers.get("content-type") ||
-                "application/octet-stream";
-
-              return {
-                data: Buffer.from(arrayBuffer).toString("base64"),
-                fileId: key,
-                mimeType,
-              };
-            } catch (_err) {
-              logger.error({ key }, "Failed to fetch file ref");
-              return null;
-            }
-          })
-        );
-
-        preFetchedFiles = fetchedFiles.filter(
-          (f): f is PreFetchedFile => f !== null
-        );
-      }
+      // SERVER-SIDE: Recursively fetch all file refs (including nested frame imports).
+      preFetchedFiles = await fetchFileRefsRecursively(
+        prefetchedCode,
+        process.env.DUST_FRONT_API ?? "",
+        headers,
+        new Set()
+      );
     } else {
       logger.warn(
         { identifier, status: codeResponse.status },

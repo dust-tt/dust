@@ -24,7 +24,7 @@ import {
 } from "@app/lib/metronome/client";
 import {
   getCreditTypeProgrammaticUsdId,
-  getProductFreeMonthlyCreditId,
+  getProductFreeCreditId,
   getProductPrepaidCommitId,
 } from "@app/lib/metronome/constants";
 import { CreditResource } from "@app/lib/resources/credit_resource";
@@ -132,7 +132,7 @@ async function backfillCreditsOfType(
             );
             continue;
           }
-          const freeCreditProductId = getProductFreeMonthlyCreditId();
+          const freeCreditProductId = getProductFreeCreditId();
 
           const existingRecurringCredit = contract.recurring_credits?.find(
             (rc) => rc.product.id === freeCreditProductId
@@ -206,7 +206,7 @@ async function backfillCreditsOfType(
           // "free-poke" credits
           result = await createMetronomeCredit({
             metronomeCustomerId,
-            productId: getProductFreeMonthlyCreditId(),
+            productId: getProductFreeCreditId(),
             creditTypeId: getCreditTypeProgrammaticUsdId(),
             amount: initialAmount,
             startingAt: startingAt.toISOString(),

@@ -76,6 +76,7 @@ async function runReinforcedSkillsStep({
   contextId,
   source,
   conversation,
+  eligibleSkillIds,
 }: {
   auth: Authenticator;
   reinforcementConversationId: string;
@@ -84,6 +85,7 @@ async function runReinforcedSkillsStep({
   contextId: string;
   source: "synthetic" | "reinforcement";
   conversation?: ConversationResource;
+  eligibleSkillIds: string[];
 }): Promise<{
   isTerminal: boolean;
   suggestionsCreated: number;
@@ -184,6 +186,7 @@ async function runReinforcedSkillsStep({
       operationType,
       contextId,
       conversation,
+      eligibleSkillIds,
     });
 
     // Store results for all terminal tool calls so the conversation is complete.
@@ -369,6 +372,7 @@ export async function analyzeConversationStepActivity({
     contextId: conversationId,
     source: "synthetic",
     conversation,
+    eligibleSkillIds: skillIds,
   });
 }
 
@@ -467,6 +471,7 @@ export async function aggregateSuggestionsForSkillStepActivity({
     systemPrompt: buildSkillAggregationSystemPrompt(),
     contextId: skillId,
     source: "reinforcement",
+    eligibleSkillIds: [skillId],
   });
 }
 
@@ -709,10 +714,13 @@ export async function processSkillConversationAnalysisBatchResultActivity({
   workspaceId,
   batchId,
   reinforcementConversationMap,
+  conversationSkillMap,
 }: {
   workspaceId: string;
   batchId: string;
   reinforcementConversationMap: Record<string, string>;
+  // mapping from analysed conversation id to analysed skill ids
+  conversationSkillMap: Record<string, string[]>;
 }): Promise<ConversationContinuationInfo[]> {
   const auth = await getAuthForWorkspace(workspaceId);
 
@@ -773,6 +781,7 @@ export async function processSkillConversationAnalysisBatchResultActivity({
         operationType: "reinforcement_analyze_conversation",
         contextId: analysedConvId,
         conversation: conversationById.get(analysedConvId),
+        eligibleSkillIds: conversationSkillMap[analysedConvId] ?? [],
       });
       totalCreated += result.suggestionsCreated;
 
@@ -998,6 +1007,7 @@ export async function processSkillAggregationBatchResultActivity({
       source: "reinforcement",
       operationType: "reinforcement_aggregate_suggestions",
       contextId: skillId,
+      eligibleSkillIds: [skillId],
     });
 
     // Store results for all terminal tool calls.

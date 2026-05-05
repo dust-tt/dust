@@ -8,10 +8,9 @@ import { apiError } from "@app/logger/withlogging";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { UserType } from "@app/types/user";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 export type PokeAgentConfigurationType = LightAgentConfigurationType & {
   versionAuthor?: UserType | null;
@@ -21,8 +20,8 @@ export type PokeGetAgentConfigurationsResponseBody = {
   agentConfigurations: PokeAgentConfigurationType[];
 };
 
-const GetAgentConfigurationsQuerySchema = t.type({
-  view: t.union([t.literal("admin_internal"), t.literal("archived")]),
+const GetAgentConfigurationsQuerySchema = z.object({
+  view: z.enum(["admin_internal", "archived"]),
 });
 
 async function handler(
@@ -49,21 +48,20 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const queryValidation = GetAgentConfigurationsQuerySchema.decode(
+      const queryValidation = GetAgentConfigurationsQuerySchema.safeParse(
         req.query
       );
-      if (isLeft(queryValidation)) {
-        const pathError = reporter.formatValidationErrors(queryValidation.left);
+      if (!queryValidation.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid query parameters: ${pathError}`,
+            message: `Invalid query parameters: ${fromError(queryValidation.error).toString()}`,
           },
         });
       }
 
-      const { view } = queryValidation.right;
+      const { view } = queryValidation.data;
       const viewParam = view;
 
       const agentConfigurations = await getAgentConfigurationsForView({

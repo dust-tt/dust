@@ -107,9 +107,12 @@ export function buildPromptActionItems(
     "(birthday lunches, personal events, casual meetups) are not action items even if someone " +
     "commits to arranging them.\n\n" +
     "Output rules:\n" +
-    "- Place brand-new action items in `new_action_items`. They MUST have a clear assignee " +
-    "matching one of the project members; if you cannot identify a project member as assignee, " +
-    "do not extract the item.\n" +
+    "- Place brand-new action items (not already in the tracked list below) in `new_action_items`. " +
+    "They MUST have a clear assignee matching one of the project members; if you cannot identify " +
+    "a project member as assignee, do not extract the item.\n" +
+    "- **Never re-extract tracked items**: any item already listed under 'Previously tracked' below is " +
+    "already recorded. Do NOT put it in `new_action_items` even if you see it in the document — " +
+    "doing so creates a duplicate. If nothing changed, omit it entirely.\n" +
     "- Place changes to previously tracked items in `updated_action_items`, keyed by their sId. " +
     "Only include fields that materially changed in this document; omit unchanged fields. " +
     "Do not include items that have not changed at all.\n" +
@@ -121,8 +124,8 @@ export function buildPromptActionItems(
     "- Never include the assignee's name in the description — the assignee is tracked separately via assignee_user_id. Refer to the assignee with 'you'/'your' pronouns when needed.\n\n";
   if (previousActionItems.length > 0) {
     prompt +=
-      "Previously tracked action items (reference their sId in `updated_action_items` " +
-      "to record changes):\n";
+      "Previously tracked action items — ALREADY RECORDED, do NOT re-add to `new_action_items`. " +
+      "Only reference in `updated_action_items` if this document explicitly changes them:\n";
     for (const item of previousActionItems) {
       prompt += `<action_item sId="${item.sId}" status="${item.status}">`;
       prompt += `<short_description>${item.shortDescription}</short_description>`;

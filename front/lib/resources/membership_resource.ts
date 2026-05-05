@@ -49,7 +49,7 @@ type GetMembershipsOptions = RequireAtLeastOne<{
 export type MembershipsPaginationParams = {
   orderColumn: "createdAt";
   orderDirection: "asc" | "desc";
-  lastValue: number | null | undefined;
+  lastValue?: number;
   limit: number;
 };
 
