@@ -4,7 +4,7 @@ import type { Fetcher } from "swr";
 
 export const CONTEXT_USAGE_PERCENT_THRESHOLDS = {
   enable_compaction: 33,
-  show_warning: 75,
+  show_warning: 2,
   force_compaction: 80,
 };
 

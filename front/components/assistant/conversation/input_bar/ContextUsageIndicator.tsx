@@ -21,11 +21,16 @@ interface ContextUsageIndicatorProps {
 interface CircleProgressProps {
   percentage: number;
   size?: number;
+  variant?: "default" | "warning";
 }
 
 const COMPACTION_GUIDE_URL = "https://docs.dust.tt/docs/context-compaction";
 
-function CircleProgress({ percentage, size = 16 }: CircleProgressProps) {
+function CircleProgress({
+  percentage,
+  size = 16,
+  variant = "default",
+}: CircleProgressProps) {
   const strokeWidth = size * 0.14;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
@@ -33,7 +38,12 @@ function CircleProgress({ percentage, size = 16 }: CircleProgressProps) {
   const offset = circumference - (clampedPct / 100) * circumference;
 
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+    <svg
+      width={size}
+      height={size}
+      viewBox={`0 0 ${size} ${size}`}
+      className={variant === "warning" ? "text-red-400 dark:text-red-400" : ""}
+    >
       <circle
         cx={size / 2}
         cy={size / 2}
@@ -81,6 +91,11 @@ export function ContextUsageIndicator({
     return null;
   }
 
+  const circleProgressVariant =
+    contextUsagePercentage > CONTEXT_USAGE_PERCENT_THRESHOLDS["show_warning"]
+      ? "warning"
+      : "default";
+
   return (
     <div className="hidden md:block" onClick={(e) => e.stopPropagation()}>
       <PopoverRoot>
@@ -89,7 +104,11 @@ export function ContextUsageIndicator({
             variant="ghost-secondary"
             size={buttonSize}
             icon={() => (
-              <CircleProgress percentage={contextUsagePercentage} size={16} />
+              <CircleProgress
+                percentage={contextUsagePercentage}
+                size={16}
+                variant={circleProgressVariant}
+              />
             )}
           />
         </PopoverTrigger>
