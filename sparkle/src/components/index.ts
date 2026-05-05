@@ -17,6 +17,7 @@ export { Bar, BarFooter, BarHeader } from "./Bar";
 export type { BreadcrumbItem } from "./Breadcrumbs";
 export { Breadcrumbs } from "./Breadcrumbs";
 export type {
+  ButtonIconType,
   ButtonProps,
   IconOnlyButtonProps,
   RegularButtonProps,
