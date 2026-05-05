@@ -5,18 +5,17 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
 import { startManualCheckWorkflow } from "@app/temporal/production_checks/client";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 export type RunProductionCheckResponseBody = {
   workflowId: string;
   checkName: string;
 };
 
-const RunCheckRequestSchema = t.type({
-  checkName: t.string,
+const RunCheckRequestSchema = z.object({
+  checkName: z.string(),
 });
 
 async function handler(
@@ -46,19 +45,18 @@ async function handler(
     });
   }
 
-  const bodyValidation = RunCheckRequestSchema.decode(req.body);
-  if (isLeft(bodyValidation)) {
-    const pathError = reporter.formatValidationErrors(bodyValidation.left);
+  const bodyValidation = RunCheckRequestSchema.safeParse(req.body);
+  if (!bodyValidation.success) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: `Invalid request body: ${pathError}`,
+        message: `Invalid request body: ${fromError(bodyValidation.error).toString()}`,
       },
     });
   }
 
-  const { checkName } = bodyValidation.right;
+  const { checkName } = bodyValidation.data;
 
   const result = await startManualCheckWorkflow(checkName);
   if (result.isErr()) {
