@@ -39,10 +39,9 @@ While writing the summary make sure to consider for each messages so far:
 Double-check for accuracy and completeness.
 
 If a list of currently enabled skills is provided, preserve that information in the summary.
-The important thing to capture is not just which skills were enabled, but in what context they
-were enabled and why they were useful at that point in the conversation. When the conversation
-makes it clear, explain briefly what problem each skill was helping with or why it may need to be
-re-enabled later.
+Capture not just which skills were enabled, but briefly in what context they were enabled and why
+they were useful. If it is clear from the conversation, mention why they may need to be re-enabled
+later.
 
 Provide your detailed summary in <summary> tags with these sections:
 
@@ -55,8 +54,8 @@ conversation that are useful to the current work.
 5. **Issues and Resolutions** — Problems encountered, how they were resolved, and user feedback.
 6. **Pending Tasks** — Explicitly requested work that is still pending.
 7. **Current State** — What was being discussed or worked on immediately before this summary.
-8. **Previously Enabled Skills** — Which skills were enabled before compaction, in what context
-they were enabled, and why they were useful at that point.
+8. **Previously Enabled Skills** — Which skills were enabled before compaction, why they were
+useful, and any useful re-enable context.
 
 Only the content of the <summary> block will be used to continue the conversation. Anything \
 outside is effectively a scratchpad and will be discarded. Make sure the summary is \
