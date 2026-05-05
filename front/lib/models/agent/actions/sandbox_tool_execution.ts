@@ -4,7 +4,7 @@ import { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
-import type { CreationOptional, ForeignKey } from "sequelize";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
 /**
@@ -27,6 +27,8 @@ export class SandboxToolExecutionModel extends WorkspaceAwareModel<SandboxToolEx
   declare mcpServerConfigurationId: string;
   declare toolConfiguration: LightMCPToolConfigurationType;
   declare augmentedInputs: Record<string, unknown>;
+
+  declare agentMessage?: NonAttribute<AgentMessageModel>;
 }
 
 SandboxToolExecutionModel.init(

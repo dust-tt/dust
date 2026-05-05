@@ -1,4 +1,7 @@
-import type { ActionApprovalStateType } from "@app/lib/actions/mcp";
+import type {
+  ActionApprovalStateType,
+  LightMCPToolConfigurationType,
+} from "@app/lib/actions/mcp";
 import {
   getMCPApprovalStateFromUserApprovalState,
   isMCPApproveExecutionEvent,
@@ -16,10 +19,71 @@ import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { SandboxResource } from "@app/lib/resources/sandbox_resource";
+import { RESOURCES_PREFIX } from "@app/lib/resources/string_ids";
+import type { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
+import type { UserMessageOrigin } from "@app/types/assistant/conversation";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+
+/**
+ * Persists "always approved" rules for a tool when the user selects that option.
+ * Shared between regular and sandbox action validation flows.
+ */
+async function handleAlwaysApproved(
+  auth: Authenticator,
+  user: UserResource,
+  {
+    toolConfiguration,
+    functionCallName,
+    augmentedInputs,
+    agentMessageId,
+  }: {
+    toolConfiguration: LightMCPToolConfigurationType;
+    functionCallName: string;
+    augmentedInputs: Record<string, unknown>;
+    agentMessageId: ModelId;
+  }
+): Promise<void> {
+  const owner = auth.getNonNullableWorkspace();
+  switch (toolConfiguration.permission) {
+    case "low":
+      await setUserAlwaysApprovedTool(auth, {
+        mcpServerId: toolConfiguration.toolServerId,
+        functionCallName,
+      });
+      break;
+    case "medium": {
+      const agentMessage = await AgentMessageModel.findOne({
+        where: {
+          workspaceId: owner.id,
+          id: agentMessageId,
+        },
+      });
+      if (agentMessage) {
+        const argumentsRequiringApproval =
+          toolConfiguration.argumentsRequiringApproval ?? [];
+        const argsAndValues = extractArgRequiringApprovalValues(
+          argumentsRequiringApproval,
+          augmentedInputs
+        );
+
+        await user.createToolApproval(auth, {
+          mcpServerId: toolConfiguration.toolServerId,
+          toolName: functionCallName,
+          agentId: agentMessage.agentConfigurationId,
+          argsAndValues,
+        });
+      }
+      break;
+    }
+    default:
+      break;
+  }
+}
 
 export async function validateAction(
   auth: Authenticator,
@@ -71,12 +135,34 @@ export async function validateAction(
     );
   }
 
+  // Route by sId prefix — `getResourceIdFromSId` only decodes the sqid body
+  // and does not validate the prefix, so two rows with the same modelId in
+  // different tables would collide if we relied on `fetchById` returning null.
+  if (actionId.startsWith(`${RESOURCES_PREFIX.sandbox_tool_execution}_`)) {
+    return validateSandboxAction(auth, conversation, {
+      actionId,
+      approvalState,
+      messageId,
+      conversationId,
+      conversationTitle,
+      agentMessageId,
+      agentMessageVersion,
+      userMessageId,
+      userMessageVersion,
+      userMessageOrigin,
+      branchId,
+    });
+  }
+
   const action = await AgentMCPActionResource.fetchById(auth, actionId);
+
   if (!action) {
     return new Err(
       new DustError("action_not_found", `Action not found: ${actionId}`)
     );
   }
+
+  // --- Regular MCP action validation flow ---
 
   const agentStepContent =
     await AgentStepContentResource.fetchByModelIdWithAuth(
@@ -106,39 +192,12 @@ export async function validateAction(
   );
 
   if (approvalState === "always_approved" && user) {
-    switch (action.toolConfiguration.permission) {
-      case "low":
-        await setUserAlwaysApprovedTool(auth, {
-          mcpServerId: action.toolConfiguration.toolServerId,
-          functionCallName: action.functionCallName,
-        });
-        break;
-      case "medium":
-        const agentMessage = await AgentMessageModel.findOne({
-          where: {
-            workspaceId: owner.id,
-            id: action.agentMessageId,
-          },
-        });
-        if (agentMessage) {
-          const argumentsRequiringApproval =
-            action.toolConfiguration.argumentsRequiringApproval ?? [];
-          const argsAndValues = extractArgRequiringApprovalValues(
-            argumentsRequiringApproval,
-            action.augmentedInputs
-          );
-
-          await user.createToolApproval(auth, {
-            mcpServerId: action.toolConfiguration.toolServerId,
-            toolName: action.functionCallName,
-            agentId: agentMessage.agentConfigurationId,
-            argsAndValues,
-          });
-        }
-        break;
-      default:
-        break;
-    }
+    await handleAlwaysApproved(auth, user, {
+      toolConfiguration: action.toolConfiguration,
+      functionCallName: action.functionCallName,
+      augmentedInputs: action.augmentedInputs,
+      agentMessageId: action.agentMessageId,
+    });
   }
 
   if (updatedCount === 0) {
@@ -165,6 +224,8 @@ export async function validateAction(
   }, getMessageChannelId(messageId));
 
   // We only launch the agent loop if there are no remaining blocked actions.
+  // Sandbox blocked actions are NOT included — they are handled independently
+  // by the sandbox client polling for status.
   const blockedActions =
     await AgentMCPActionResource.listBlockedActionsForConversation(
       auth,
@@ -219,5 +280,181 @@ export async function validateAction(
     `Action ${approvalState === "approved" ? "approved" : "rejected"} by user`
   );
 
+  return new Ok(undefined);
+}
+
+/**
+ * Updates a child sandbox action's status. Relaunches the parent agent loop
+ * workflow only if the sandbox is `pending_approval` (slow path — bash
+ * activity exited). On the happy path the bash tool's open HTTP connection
+ * carries the result back; the Rust client poll detects the status flip.
+ */
+async function validateSandboxAction(
+  auth: Authenticator,
+  conversation: ConversationResource,
+  {
+    actionId,
+    approvalState,
+    messageId,
+    conversationId,
+    conversationTitle,
+    agentMessageId,
+    agentMessageVersion,
+    userMessageId,
+    userMessageVersion,
+    userMessageOrigin,
+    branchId,
+  }: {
+    actionId: string;
+    approvalState: ActionApprovalStateType;
+    messageId: string;
+    conversationId: string;
+    conversationTitle: string | null;
+    agentMessageId: string;
+    agentMessageVersion: number;
+    userMessageId: string;
+    userMessageVersion: number;
+    userMessageOrigin: UserMessageOrigin | null;
+    branchId: string | null;
+  }
+): Promise<Result<void, DustError>> {
+  const owner = auth.getNonNullableWorkspace();
+  const user = auth.user();
+
+  const sandboxExecution =
+    await AgentMCPActionResource.fetchSandboxToolExecutionById(auth, actionId);
+  if (!sandboxExecution) {
+    return new Err(
+      new DustError("action_not_found", `Action not found: ${actionId}`)
+    );
+  }
+
+  if (sandboxExecution.status !== "blocked_validation_required") {
+    return new Err(
+      new DustError(
+        "action_not_blocked",
+        `Action is not blocked: ${sandboxExecution.status}`
+      )
+    );
+  }
+
+  // Standard lifecycle: approval → `ready_allowed_explicitly`, rejection →
+  // `denied`. The `call_tool` polling POST reads that status and executes
+  // inline — `ready_allowed_*` → `succeeded`/`errored` in a single UPDATE.
+  // There is no intermediate `running` state for sandbox executions: the
+  // merged endpoint contract assumes one Rust client per actionId with a
+  // single in-flight poll, so no CAS interlock is needed.
+  const newStatus = getMCPApprovalStateFromUserApprovalState(approvalState);
+  const { updatedCount } =
+    await AgentMCPActionResource.updateSandboxToolExecutionStatus(
+      auth,
+      sandboxExecution.sId,
+      newStatus
+    );
+
+  if (approvalState === "always_approved" && user) {
+    await handleAlwaysApproved(auth, user, {
+      toolConfiguration: sandboxExecution.toolConfiguration,
+      functionCallName: sandboxExecution.functionCallName,
+      augmentedInputs: sandboxExecution.augmentedInputs,
+      agentMessageId: sandboxExecution.agentMessageId,
+    });
+  }
+
+  if (updatedCount === 0) {
+    logger.info(
+      {
+        actionId,
+        messageId,
+        approvalState,
+        workspaceId: owner.sId,
+        userId: user?.sId,
+      },
+      "Sandbox execution already approved or rejected"
+    );
+    return new Ok(undefined);
+  }
+
+  // Remove the tool approval request event from the message channel.
+  await getRedisHybridManager().removeEvent((event) => {
+    const payload = JSON.parse(event.message["payload"]);
+    return isMCPApproveExecutionEvent(payload)
+      ? payload.actionId === actionId
+      : false;
+  }, getMessageChannelId(messageId));
+
+  const [sandbox, remainingBlockedChildren, parentAction] = await Promise.all([
+    SandboxResource.fetchByConversationId(auth, conversationId),
+    AgentMCPActionResource.listBlockedSandboxToolExecutionsForAgentMessage(
+      auth,
+      {
+        agentMessageId: sandboxExecution.agentMessageId,
+        conversation,
+      }
+    ),
+    AgentMCPActionResource.findSandboxActionForAgentMessage(auth, {
+      agentMessageId: sandboxExecution.agentMessageId,
+      statuses: ["blocked_child_action_input_required"],
+    }),
+  ]);
+
+  const baseLog = {
+    workspaceId: owner.id,
+    conversationId,
+    messageId,
+    actionId,
+    sandboxStatus: sandbox?.status,
+  };
+  const verb = approvalState === "rejected" ? "rejected" : "approved";
+
+  // Other sandbox children of the same parent are still blocked — leave the
+  // parent in `blocked_child_action_input_required` and skip the relaunch.
+  if (remainingBlockedChildren.length > 0) {
+    logger.info(
+      { ...baseLog, remaining: remainingBlockedChildren.length },
+      "Sandbox action validated but other children still blocked"
+    );
+    return new Ok(undefined);
+  }
+
+  // No more blocked children for this parent. Flip parent back to `running`
+  // regardless of sandbox state — happy path: bash exec is alive and will
+  // naturally complete (markAsSucceeded then sets `succeeded`); slow path:
+  // we additionally relaunch the workflow so the bash handler can re-enter
+  // in resume mode (sees `resumeState.type === "sandbox"`).
+  if (!parentAction) {
+    logger.warn(baseLog, "Sandbox action validated but parent not found");
+    return new Ok(undefined);
+  }
+
+  await parentAction.updateStatus("running");
+
+  // Other sandbox states (sleeping/deleted) shouldn't be reachable while a
+  // child is blocked; treat them as no-op (no relaunch needed).
+  if (sandbox?.status !== "pending_approval") {
+    logger.info(
+      baseLog,
+      `Sandbox action ${verb} (parent flipped, no relaunch)`
+    );
+    return new Ok(undefined);
+  }
+
+  await launchAgentLoopWorkflow({
+    auth,
+    agentLoopArgs: {
+      agentMessageId,
+      agentMessageVersion,
+      conversationId,
+      conversationTitle,
+      conversationBranchId: branchId,
+      userMessageId,
+      userMessageVersion,
+      userMessageOrigin,
+    },
+    startStep: parentAction.stepContent.step,
+    waitForCompletion: true,
+  });
+
+  logger.info(baseLog, `Sandbox action ${verb} (relaunched parent loop)`);
   return new Ok(undefined);
 }
