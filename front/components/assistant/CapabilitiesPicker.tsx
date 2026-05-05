@@ -411,9 +411,8 @@ export function CapabilitiesPicker({
   const isToolsDataReady =
     !isServerViewsLoading && !isAvailableMCPServersLoading;
 
-  const shouldShowSetupSheet = useMemo(() => {
-    return !!setupSheetServer || !!setupSheetRemoteServerConfig;
-  }, [setupSheetServer, setupSheetRemoteServerConfig]);
+  const shouldShowSetupSheet =
+    !!setupSheetServer || !!setupSheetRemoteServerConfig;
 
   const closeDropdown = () => {
     setSearchText("");
