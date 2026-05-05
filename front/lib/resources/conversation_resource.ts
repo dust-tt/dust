@@ -307,7 +307,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           model: ConversationModel,
           as: "childConversation",
           required: true,
-          attributes: ["sId", "title"],
+          attributes: ["sId", "title", "createdAt"],
         },
         {
           model: MessageModel,
@@ -372,16 +372,32 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         return [];
       }
 
+      const branchedAt = fork.branchedAt.getTime();
+      const sourceMessageId = fork.sourceMessage.sId;
+      const user = new UserResource(
+        UserResource.model,
+        fork.createdByUser.get()
+      ).toJSON();
+
       return [
         {
           childConversationId: fork.childConversation.sId,
-          childConversationTitle: fork.childConversation.title,
-          sourceMessageId: fork.sourceMessage.sId,
-          branchedAt: fork.branchedAt.getTime(),
-          user: new UserResource(
-            UserResource.model,
-            fork.createdByUser.get()
-          ).toJSON(),
+          childConversationTitle: getConversationDisplayTitle({
+            created: fork.childConversation.createdAt.getTime(),
+            forkingData: {
+              forkedFrom: {
+                parentConversationId: conversation.sId,
+                parentConversationTitle: conversation.title,
+                sourceMessageId,
+                branchedAt,
+                user,
+              },
+            },
+            title: fork.childConversation.title,
+          }),
+          sourceMessageId,
+          branchedAt,
+          user,
         },
       ];
     });
