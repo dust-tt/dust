@@ -105,6 +105,11 @@ const config = {
       "SENDGRID_GENERIC_EMAIL_TEMPLATE_ID"
     );
   },
+  getStripePublishableKey: (): string => {
+    return EnvironmentConfig.getEnvVariable(
+      "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY"
+    );
+  },
   getStripeSecretKey: (): string => {
     return EnvironmentConfig.getEnvVariable("STRIPE_SECRET_KEY");
   },

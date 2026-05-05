@@ -36,7 +36,7 @@ import {
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import {
   cancelSubscriptionImmediately,
-  createMetronomeSetupCheckoutSession,
+  createEmbeddedMetronomeSetupCheckoutSession,
   createStripeBusinessSubscription,
   createStripeSubscriptionCheckoutSession,
   getBusinessProPlanProductId,
@@ -1109,7 +1109,11 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     owner: WorkspaceType,
     user: UserType,
     billingPeriod: BillingPeriod,
-    { useMetronomeBilling }: { useMetronomeBilling: boolean }
+    {
+      useMetronomeBilling,
+    }: {
+      useMetronomeBilling: boolean;
+    }
   ): Promise<CheckoutUrlResult> {
     const isBusiness = !!owner.metadata?.isBusiness;
     const { planCode, allowedPaymentMethods, metronomePackageAlias } =
@@ -1141,25 +1145,31 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       `Cannot subscribe to plan ${planCode}: already subscribed to a Pro plan.`
     );
 
-    let checkoutUrl: string | null;
     if (useMetronomeBilling) {
-      checkoutUrl = await createMetronomeSetupCheckoutSession({
-        owner,
-        user,
-        planCode,
-        metronomePackageAlias,
-        allowedPaymentMethods,
-      });
-    } else {
-      checkoutUrl = await createStripeSubscriptionCheckoutSession({
-        owner,
-        user,
-        billingPeriod,
-        planCode,
-        metronomePackageAlias,
-        allowedPaymentMethods,
-      });
+      const { clientSecret, sessionId } =
+        await createEmbeddedMetronomeSetupCheckoutSession({
+          owner,
+          user,
+          planCode,
+          metronomePackageAlias,
+          allowedPaymentMethods,
+        });
+      return {
+        mode: "embedded",
+        clientSecret,
+        sessionId,
+        plan: renderPlanFromModel({ plan: proPlan }),
+      };
     }
+
+    const checkoutUrl = await createStripeSubscriptionCheckoutSession({
+      owner,
+      user,
+      billingPeriod,
+      planCode,
+      metronomePackageAlias,
+      allowedPaymentMethods,
+    });
 
     assert(
       checkoutUrl,
@@ -1167,6 +1177,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     );
 
     return {
+      mode: "hosted",
       checkoutUrl,
       plan: renderPlanFromModel({ plan: proPlan }),
     };

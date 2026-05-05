@@ -8,6 +8,7 @@ import type {
   GroupByType,
 } from "@app/lib/api/analytics/programmatic_cost";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
+import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetNoWorkspaceAuthContextResponseType } from "@app/pages/api/auth-context";
 import type { GetPendingInvitationsLookupResponseBody } from "@app/pages/api/invitations";
@@ -28,7 +29,10 @@ import type { GetMetronomeContractResponseBody } from "@app/pages/api/w/[wId]/me
 import type { GetMetronomeInvoiceResponseBody } from "@app/pages/api/w/[wId]/metronome/invoice";
 import type { GetSeatAvailabilityResponseBody } from "@app/pages/api/w/[wId]/seats/availability";
 import type { GetWorkspaceSeatsCountResponseBody } from "@app/pages/api/w/[wId]/seats/count";
-import type { GetSubscriptionsResponseBody } from "@app/pages/api/w/[wId]/subscriptions";
+import type {
+  GetSubscriptionsResponseBody,
+  PostSubscriptionResponseBody,
+} from "@app/pages/api/w/[wId]/subscriptions";
 import type { GetSubscriptionPricingResponseBody } from "@app/pages/api/w/[wId]/subscriptions/pricing";
 import type { GetSubscriptionStatusResponseBody } from "@app/pages/api/w/[wId]/subscriptions/status";
 import type { GetSubscriptionTrialInfoResponseBody } from "@app/pages/api/w/[wId]/subscriptions/trial-info";
@@ -38,9 +42,10 @@ import type { GetWelcomeResponseBody } from "@app/pages/api/w/[wId]/welcome";
 import type { GetWorkspaceAnalyticsResponse } from "@app/pages/api/w/[wId]/workspace-analytics";
 import type { GetWorkspaceLookupResponseBody } from "@app/pages/api/workspace-lookup";
 import type { APIErrorResponse, RegionRedirectError } from "@app/types/error";
+import type { BillingPeriod } from "@app/types/plan";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import type { LightWorkspaceType } from "@app/types/user";
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 
 // Type guard to check if response is a region redirect
@@ -967,4 +972,40 @@ export function useWorkspaceLookup({ flow }: { flow: string | null }) {
     isWorkspaceLookupLoading: !error && !data && !!flow,
     isWorkspaceLookupError: error,
   };
+}
+
+export function useCreateCheckoutSession({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const [isCreating, setIsCreating] = useState(false);
+
+  const createSession = useCallback(
+    async ({
+      billingPeriod,
+      couponCode,
+    }: {
+      billingPeriod: BillingPeriod;
+      couponCode?: string;
+    }): Promise<PostSubscriptionResponseBody | null> => {
+      setIsCreating(true);
+      try {
+        const res = await clientFetch(`/api/w/${workspaceId}/subscriptions`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ billingPeriod, couponCode }),
+        });
+        if (!res.ok) {
+          return null;
+        }
+        return res.json() as Promise<PostSubscriptionResponseBody>;
+      } finally {
+        setIsCreating(false);
+      }
+    },
+    [workspaceId]
+  );
+
+  return { createSession, isCreating };
 }

@@ -198,27 +198,9 @@ export function MetronomeSubscriptionPanel({
 
   const { submit: handleSubscribePlan, isSubmitting: isSubscribingPlan } =
     useSubmitFunction(async () => {
-      const res = await clientFetch(`/api/w/${owner.sId}/subscriptions`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ billingPeriod }),
-      });
-
-      if (!res.ok) {
-        sendNotification({
-          type: "error",
-          title: "Subscription failed",
-          description: "Failed to subscribe to a new plan.",
-        });
-        return;
-      }
-
-      const content = await res.json();
-      if (content.checkoutUrl) {
-        await router.push(content.checkoutUrl);
-      } else if (content.success) {
-        router.reload();
-      }
+      await router.push(
+        `/w/${owner.sId}/subscription/checkout?billingPeriod=${billingPeriod}`
+      );
     });
 
   const { submit: cancelSubscription, isSubmitting: isCancelling } =

@@ -187,7 +187,11 @@ export type FreePlanUpgradeFormType = t.TypeOf<
   typeof FreePlanUpgradeFormSchema
 >;
 
-export type CheckoutUrlResult = {
-  checkoutUrl: string;
-  plan: PlanType;
-};
+export type CheckoutUrlResult =
+  | { mode: "hosted"; checkoutUrl: string; plan: PlanType }
+  | {
+      mode: "embedded";
+      clientSecret: string;
+      sessionId: string;
+      plan: PlanType;
+    };

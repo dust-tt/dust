@@ -6,17 +6,18 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import handler from "./index";
 
 const TEST_CHECKOUT_URL = "https://checkout.stripe.com/test-session";
-const TEST_METRONOME_CHECKOUT_URL =
-  "https://checkout.stripe.com/test-setup-session";
+const TEST_CLIENT_SECRET = "cs_test_client_secret";
+const TEST_SESSION_ID = "cs_test_session_id";
 
 vi.mock("@app/lib/plans/stripe", async () => {
   return {
     createStripeSubscriptionCheckoutSession: vi
       .fn()
       .mockResolvedValue("https://checkout.stripe.com/test-session"),
-    createMetronomeSetupCheckoutSession: vi
-      .fn()
-      .mockResolvedValue("https://checkout.stripe.com/test-setup-session"),
+    createEmbeddedMetronomeSetupCheckoutSession: vi.fn().mockResolvedValue({
+      clientSecret: "cs_test_client_secret",
+      sessionId: "cs_test_session_id",
+    }),
     getProPlanStripeProductId: vi.fn().mockResolvedValue("testProductID"),
     getStripeSubscription: vi.fn().mockResolvedValue({
       id: "sub_test123",
@@ -47,7 +48,7 @@ describe("POST /api/w/[wId]/subscriptions", () => {
     expect(res._getJSONData().error.type).toBe("invalid_request_error");
   });
 
-  it("returns checkoutUrl and plan details for new subscription", async () => {
+  it("returns hosted checkoutUrl and plan details for legacy subscription", async () => {
     const { req, res } = await createPrivateApiMockRequest({
       method: "POST",
       role: "admin",
@@ -61,6 +62,7 @@ describe("POST /api/w/[wId]/subscriptions", () => {
 
     expect(res._getStatusCode()).toBe(200);
     const data = res._getJSONData();
+    expect(data.mode).toEqual("hosted");
     expect(data.checkoutUrl).toEqual(TEST_CHECKOUT_URL);
     expect(data.plan).toEqual(
       expect.objectContaining({
@@ -90,11 +92,12 @@ describe("POST /api/w/[wId]/subscriptions", () => {
 
     expect(res._getStatusCode()).toBe(200);
     const data = res._getJSONData();
+    expect(data.mode).toEqual("hosted");
     expect(data.checkoutUrl).toEqual(TEST_CHECKOUT_URL);
     expect(data.plan).toBeDefined();
   });
 
-  it("returns Metronome setup checkout URL when metronome_billing flag is enabled", async () => {
+  it("returns embedded clientSecret and sessionId when metronome_billing flag is enabled", async () => {
     const { req, res, auth } = await createPrivateApiMockRequest({
       method: "POST",
       role: "admin",
@@ -110,7 +113,9 @@ describe("POST /api/w/[wId]/subscriptions", () => {
 
     expect(res._getStatusCode()).toBe(200);
     const data = res._getJSONData();
-    expect(data.checkoutUrl).toEqual(TEST_METRONOME_CHECKOUT_URL);
+    expect(data.mode).toEqual("embedded");
+    expect(data.clientSecret).toEqual(TEST_CLIENT_SECRET);
+    expect(data.sessionId).toEqual(TEST_SESSION_ID);
     expect(data.plan).toEqual(
       expect.objectContaining({
         code: expect.any(String),
