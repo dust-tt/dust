@@ -25,8 +25,8 @@ import {
   applyEnterpriseOverrides,
   buildEnterpriseOverrides,
   countMauForWorkspace,
-  type EnterprisePricingCents,
-  extractEnterprisePricing,
+  type EnterprisePricingPhase,
+  extractEnterprisePricingPhases,
 } from "@app/lib/metronome/contracts";
 import { syncMauCount } from "@app/lib/metronome/mau_sync";
 import { syncSeatCount } from "@app/lib/metronome/seats";
@@ -131,7 +131,8 @@ async function getPackageInfo(): Promise<{
  * Returns undefined if no active paid subscription.
  *
  * For enterprise plans, also extracts the per-MAU pricing from the Stripe subscription
- * so it can be applied as a rate override on the Metronome contract.
+ * — including all SubscriptionSchedule phases — so each phase can be applied as a
+ * dated rate override on the Metronome contract.
  */
 async function getSubscriptionInfo(
   workspace: LightWorkspaceType,
@@ -141,7 +142,7 @@ async function getSubscriptionInfo(
       packageAlias: string;
       startDate: string;
       subscriptionModelId: number;
-      enterprisePricing?: EnterprisePricingCents;
+      enterprisePhases?: EnterprisePricingPhase[];
     }
   | undefined
 > {
@@ -176,17 +177,18 @@ async function getSubscriptionInfo(
 
   const planCode = subscription.getPlan().code;
 
-  // Enterprise plans: extract MAU pricing from Stripe tiers.
+  // Enterprise plans: extract MAU pricing per schedule phase from Stripe.
   if (isEntreprisePlanPrefix(planCode)) {
     if (!stripeSubscription) {
       return undefined;
     }
 
-    const enterprisePricing = await extractEnterprisePricing(
+    const enterprisePhases = await extractEnterprisePricingPhases(
       stripeSubscription,
+      startDate,
       logger
     );
-    if (!enterprisePricing) {
+    if (enterprisePhases.length === 0) {
       logger.warn(
         { workspaceId: workspace.sId, planCode },
         "Enterprise plan but no MAU pricing found in Stripe — skipping"
@@ -194,16 +196,15 @@ async function getSubscriptionInfo(
       return undefined;
     }
 
+    const phaseCurrency = enterprisePhases[0].pricing.currency;
     return {
       packageAlias: resolvePackageAliasForCurrency(
         LEGACY_ENTERPRISE_PACKAGE_ALIAS,
-        isSupportedCurrency(enterprisePricing.currency)
-          ? enterprisePricing.currency
-          : "usd"
+        isSupportedCurrency(phaseCurrency) ? phaseCurrency : "usd"
       ),
       startDate,
       subscriptionModelId: subscription.id,
-      enterprisePricing,
+      enterprisePhases,
     };
   }
 
@@ -380,19 +381,20 @@ async function migrateWorkspace(
   }
 
   // Count MAUs for initial subscription quantities.
-  const initialMauCount = isEnterprise
-    ? await countMauForWorkspace(
-        workspace,
-        subInfo.enterprisePricing!.billingMode
-      )
-    : 0;
+  const enterprisePhases = subInfo.enterprisePhases;
+  const initialMauCount =
+    isEnterprise && enterprisePhases
+      ? await countMauForWorkspace(
+          workspace,
+          enterprisePhases[0].pricing.billingMode
+        )
+      : 0;
 
   // Build enterprise overrides for both logging and contract creation.
   const enterpriseOverrides =
-    isEnterprise && subInfo.enterprisePricing
+    isEnterprise && enterprisePhases
       ? buildEnterpriseOverrides({
-          pricing: subInfo.enterprisePricing,
-          startDate: subInfo.startDate,
+          phases: enterprisePhases,
           initialMauCount,
         })
       : undefined;
@@ -405,6 +407,19 @@ async function migrateWorkspace(
       targetAlias,
       targetPackageId,
       startDate: subInfo.startDate,
+      ...(enterprisePhases
+        ? {
+            phaseCount: enterprisePhases.length,
+            phases: enterprisePhases.map((p) => ({
+              startDate: p.startDate,
+              endDate: p.endDate,
+              billingMode: p.pricing.billingMode,
+              currency: p.pricing.currency,
+              floorCents: p.pricing.floorCents,
+              tiers: p.pricing.tiers,
+            })),
+          }
+        : {}),
       ...(oldContractId
         ? { oldContractId, oldAlias, action: "MIGRATE" }
         : { action: "CREATE_NEW" }),
@@ -451,12 +466,11 @@ async function migrateWorkspace(
     "New contract created"
   );
 
-  if (enterpriseOverrides) {
+  if (enterpriseOverrides && enterprisePhases) {
     await applyEnterpriseOverrides({
       metronomeCustomerId,
       contractId: newContractId,
-      pricing: subInfo.enterprisePricing!,
-      startDate: subInfo.startDate,
+      phases: enterprisePhases,
       overrideLogger: logger,
       workspaceId: workspace.sId,
       initialMauCount,
