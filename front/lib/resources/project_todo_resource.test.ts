@@ -490,6 +490,145 @@ describe("ProjectTodoResource", () => {
     });
   });
 
+  describe("fetchByItemIds", () => {
+    it("returns an empty map when no itemIds are provided", async () => {
+      const result = await ProjectTodoResource.fetchByItemIds(auth, {
+        itemIds: [],
+      });
+      expect(result.size).toBe(0);
+    });
+
+    it("returns an empty map when none of the itemIds are linked", async () => {
+      const result = await ProjectTodoResource.fetchByItemIds(auth, {
+        itemIds: ["ghost-item-1", "ghost-item-2"],
+      });
+      expect(result.size).toBe(0);
+    });
+
+    it("returns a single-element array when one todo is linked to an itemId", async () => {
+      const todo = await ProjectTodoResource.makeNewWithSource(auth, {
+        blob: makeTodoBlob(space.id, user.id),
+        itemId: "item-single",
+        source: {
+          sourceType: "slack",
+          sourceId: "src-A",
+          sourceTitle: null,
+          sourceUrl: null,
+        },
+      });
+
+      const result = await ProjectTodoResource.fetchByItemIds(auth, {
+        itemIds: ["item-single"],
+      });
+
+      const todos = result.get("item-single")?.get(user.id);
+      expect(todos).toHaveLength(1);
+      expect(todos?.[0].sId).toBe(todo.sId);
+    });
+
+    it("wraps the linked todo in a single-element array", async () => {
+      const todo = await ProjectTodoResource.makeNew(
+        auth,
+        makeTodoBlob(space.id, user.id)
+      );
+      await todo.upsertSource(auth, {
+        itemId: "item-array-check",
+        source: {
+          sourceType: "slack",
+          sourceId: "src-Z",
+          sourceTitle: null,
+          sourceUrl: null,
+        },
+      });
+
+      const result = await ProjectTodoResource.fetchByItemIds(auth, {
+        itemIds: ["item-array-check"],
+      });
+
+      const todos = result.get("item-array-check")?.get(user.id);
+      expect(Array.isArray(todos)).toBe(true);
+      expect(todos).toHaveLength(1);
+      expect(todos?.[0].sId).toBe(todo.sId);
+    });
+
+    it("returns an array with multiple todos when several todos are linked to the same itemId and userId", async () => {
+      const todo1 = await ProjectTodoResource.makeNew(
+        auth,
+        makeTodoBlob(space.id, user.id, { text: "First" })
+      );
+      await todo1.upsertSource(auth, {
+        itemId: "item-multi",
+        source: {
+          sourceType: "slack",
+          sourceId: "src-A",
+          sourceTitle: null,
+          sourceUrl: null,
+        },
+      });
+
+      const todo2 = await ProjectTodoResource.makeNew(
+        auth,
+        makeTodoBlob(space.id, user.id, { text: "Second" })
+      );
+      await todo2.upsertSource(auth, {
+        itemId: "item-multi",
+        source: {
+          sourceType: "slack",
+          sourceId: "src-B",
+          sourceTitle: null,
+          sourceUrl: null,
+        },
+      });
+
+      const result = await ProjectTodoResource.fetchByItemIds(auth, {
+        itemIds: ["item-multi"],
+      });
+
+      const todos = result.get("item-multi")?.get(user.id) ?? [];
+      expect(todos).toHaveLength(2);
+      const sIds = todos.map((t) => t.sId).sort();
+      expect(sIds).toContain(todo1.sId);
+      expect(sIds).toContain(todo2.sId);
+    });
+
+    it("keeps todos from different users under separate keys in the inner map", async () => {
+      const otherSetup = await createResourceTest({ role: "user" });
+      const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        otherSetup.user.sId,
+        workspace.sId
+      );
+
+      await ProjectTodoResource.makeNewWithSource(auth, {
+        blob: makeTodoBlob(space.id, user.id),
+        itemId: "item-two-users",
+        source: {
+          sourceType: "slack",
+          sourceId: "src-user1",
+          sourceTitle: null,
+          sourceUrl: null,
+        },
+      });
+      await ProjectTodoResource.makeNewWithSource(otherAuth, {
+        blob: makeTodoBlob(space.id, otherSetup.user.id),
+        itemId: "item-two-users",
+        source: {
+          sourceType: "slack",
+          sourceId: "src-user2",
+          sourceTitle: null,
+          sourceUrl: null,
+        },
+      });
+
+      const result = await ProjectTodoResource.fetchByItemIds(auth, {
+        itemIds: ["item-two-users"],
+      });
+
+      const byUser = result.get("item-two-users");
+      expect(byUser?.get(user.id)).toHaveLength(1);
+      expect(byUser?.get(otherSetup.user.id)).toHaveLength(1);
+    });
+  });
+
   describe("delete", () => {
     it("should delete the todo so fetchBySId returns null afterwards", async () => {
       const todo = await ProjectTodoResource.makeNew(

@@ -1,17 +1,23 @@
 import type { Authenticator } from "@app/lib/auth";
 import {
   actionItemBlob,
+  collectDocumentCandidates,
   updateTodoIfChanged,
 } from "@app/lib/project_todo/merge_into_project";
-import type { ProjectTodoResource } from "@app/lib/resources/project_todo_resource";
+import { ProjectTodoResource } from "@app/lib/resources/project_todo_resource";
+import type { TakeawaysWithSource } from "@app/lib/resources/takeaways_resource";
+import { TakeawaysResource } from "@app/lib/resources/takeaways_resource";
+import type { UserResource } from "@app/lib/resources/user_resource";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type {
   ProjectTodoActorType,
+  ProjectTodoSourceInfo,
   ProjectTodoStatus,
 } from "@app/types/project_todo";
 import type { TodoVersionedActionItem } from "@app/types/takeaways";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// ── Fixtures ──────────────────────────────────────────────────────────────────
+// ── Shared fixtures ───────────────────────────────────────────────────────────
 
 function makeActionItem(
   overrides: Partial<TodoVersionedActionItem> = {}
@@ -25,6 +31,18 @@ function makeActionItem(
     detectedDoneAt: null,
     detectedDoneRationale: null,
     detectedCreationRationale: null,
+    ...overrides,
+  };
+}
+
+function makeSource(
+  overrides: Partial<ProjectTodoSourceInfo> = {}
+): ProjectTodoSourceInfo {
+  return {
+    sourceType: "slack",
+    sourceId: "conv-test-1",
+    sourceTitle: "Test Conversation",
+    sourceUrl: null,
     ...overrides,
   };
 }
@@ -60,6 +78,211 @@ describe("actionItemBlob", () => {
       makeActionItem({ shortDescription: "Deploy to prod" })
     );
     expect(blob.text).toBe("Deploy to prod");
+  });
+});
+
+// ── collectDocumentCandidates ─────────────────────────────────────────────────
+
+describe("collectDocumentCandidates", () => {
+  let auth: Authenticator;
+  let user: UserResource;
+  let usersById: Map<string, UserResource>;
+  let takeawayBase: TakeawaysResource;
+  let source: ProjectTodoSourceInfo;
+
+  beforeEach(async () => {
+    const setup = await createResourceTest({ role: "user" });
+    auth = setup.authenticator;
+    user = setup.user;
+    usersById = new Map([[user.sId, user]]);
+    source = makeSource();
+    takeawayBase = await TakeawaysResource.makeNew(auth, {
+      spaceId: setup.globalSpace.id,
+      actionItems: [],
+    });
+  });
+
+  function makeTakeawayWithSource(
+    actionItems: TodoVersionedActionItem[]
+  ): TakeawaysWithSource {
+    // Reuse takeawayBase with a fresh actionItems list by spreading into a
+    // plain wrapper. collectDocumentCandidates reads `.takeaway.actionItems`
+    // and `.source`, nothing else.
+    return {
+      takeaway: Object.assign(Object.create(takeawayBase), {
+        actionItems,
+      }) as TakeawaysResource,
+      source,
+    };
+  }
+
+  it("returns the action item as a new candidate when no existing todo is linked", async () => {
+    const tws = makeTakeawayWithSource([
+      makeActionItem({
+        sId: "item-new",
+        assigneeUserId: user.sId,
+        status: "open",
+      }),
+    ]);
+
+    const { candidates, existingUpdated } = await collectDocumentCandidates(
+      auth,
+      { takeawayWithSource: tws, usersById }
+    );
+
+    expect(candidates).toHaveLength(1);
+    expect(candidates[0].itemId).toBe("item-new");
+    expect(existingUpdated).toBe(0);
+  });
+
+  it("updates the existing agent-created todo and returns no candidate when status changed", async () => {
+    const todo = await ProjectTodoResource.makeNew(auth, {
+      spaceId: takeawayBase.spaceId,
+      userId: user.id,
+      createdByType: "agent",
+      createdByUserId: null,
+      createdByAgentConfigurationId: "butler",
+      markedAsDoneByType: null,
+      markedAsDoneByUserId: null,
+      markedAsDoneByAgentConfigurationId: null,
+      text: "Write the report",
+      status: "todo",
+      doneAt: null,
+      actorRationale: null,
+      agentInstructions: null,
+    });
+    await todo.upsertSource(auth, { itemId: "item-existing", source });
+
+    const tws = makeTakeawayWithSource([
+      makeActionItem({
+        sId: "item-existing",
+        assigneeUserId: user.sId,
+        status: "done",
+        detectedDoneAt: "2026-05-01T10:00:00.000Z",
+      }),
+    ]);
+
+    const { candidates, existingUpdated } = await collectDocumentCandidates(
+      auth,
+      { takeawayWithSource: tws, usersById }
+    );
+
+    expect(candidates).toHaveLength(0);
+    expect(existingUpdated).toBe(1);
+    const refreshed = await ProjectTodoResource.fetchBySId(auth, todo.sId);
+    expect(refreshed?.status).toBe("done");
+  });
+
+  it("skips entirely when multiple existing todos are present and any is done", async () => {
+    const spaceId = takeawayBase.spaceId;
+    const agentBlob = {
+      spaceId,
+      userId: user.id,
+      createdByType: "agent" as const,
+      createdByUserId: null,
+      createdByAgentConfigurationId: "butler",
+      markedAsDoneByType: null,
+      markedAsDoneByUserId: null,
+      markedAsDoneByAgentConfigurationId: null,
+      text: "Multi item",
+      status: "todo" as const,
+      doneAt: null,
+      actorRationale: null,
+      agentInstructions: null,
+    };
+
+    const doneTodo = await ProjectTodoResource.makeNew(auth, {
+      ...agentBlob,
+      status: "done",
+      doneAt: new Date("2026-04-01T00:00:00.000Z"),
+    });
+    await doneTodo.upsertSource(auth, {
+      itemId: "item-multi-done",
+      source: { ...source, sourceId: "src-done" },
+    });
+
+    const openTodo = await ProjectTodoResource.makeNew(auth, agentBlob);
+    await openTodo.upsertSource(auth, {
+      itemId: "item-multi-done",
+      source: { ...source, sourceId: "src-open" },
+    });
+
+    const tws = makeTakeawayWithSource([
+      makeActionItem({
+        sId: "item-multi-done",
+        assigneeUserId: user.sId,
+        status: "done",
+        detectedDoneAt: "2026-05-01T00:00:00.000Z",
+      }),
+    ]);
+
+    const { candidates, existingUpdated } = await collectDocumentCandidates(
+      auth,
+      { takeawayWithSource: tws, usersById }
+    );
+
+    expect(candidates).toHaveLength(0);
+    expect(existingUpdated).toBe(0);
+  });
+
+  it("updates only the most recently created todo when multiple exist and none is done", async () => {
+    const spaceId = takeawayBase.spaceId;
+    const agentBlob = {
+      spaceId,
+      userId: user.id,
+      createdByType: "agent" as const,
+      createdByUserId: null,
+      createdByAgentConfigurationId: "butler",
+      markedAsDoneByType: null,
+      markedAsDoneByUserId: null,
+      markedAsDoneByAgentConfigurationId: null,
+      text: "Multi open item",
+      status: "todo" as const,
+      doneAt: null,
+      actorRationale: null,
+      agentInstructions: null,
+    };
+
+    const olderTodo = await ProjectTodoResource.makeNew(auth, agentBlob);
+    await olderTodo.upsertSource(auth, {
+      itemId: "item-multi-open",
+      source: { ...source, sourceId: "src-older" },
+    });
+
+    const newerTodo = await ProjectTodoResource.makeNew(auth, agentBlob);
+    await newerTodo.upsertSource(auth, {
+      itemId: "item-multi-open",
+      source: { ...source, sourceId: "src-newer" },
+    });
+
+    const tws = makeTakeawayWithSource([
+      makeActionItem({
+        sId: "item-multi-open",
+        assigneeUserId: user.sId,
+        status: "done",
+        detectedDoneAt: "2026-05-01T00:00:00.000Z",
+      }),
+    ]);
+
+    const { candidates, existingUpdated } = await collectDocumentCandidates(
+      auth,
+      { takeawayWithSource: tws, usersById }
+    );
+
+    expect(candidates).toHaveLength(0);
+    expect(existingUpdated).toBe(1);
+
+    const olderRefreshed = await ProjectTodoResource.fetchBySId(
+      auth,
+      olderTodo.sId
+    );
+    const newerRefreshed = await ProjectTodoResource.fetchBySId(
+      auth,
+      newerTodo.sId
+    );
+    // The newer todo (higher createdAt) should have been updated to done.
+    expect(newerRefreshed?.status).toBe("done");
+    expect(olderRefreshed?.status).toBe("todo");
   });
 });
 
