@@ -1108,6 +1108,22 @@ export const ConversationViewer = ({
             : m
         );
 
+        // When there are pending user mentions, MentionValidationRequired
+        // renders below the user message — scroll to the bottom so the action
+        // card is visible.
+        const hasPendingMentions = messageFromBackend.richMentions?.some(
+          (m) =>
+            m.status === "pending_conversation_access" ||
+            m.status === "pending_project_membership"
+        );
+        if (hasPendingMentions) {
+          virtuosoMessageListRef.current.scrollToItem({
+            index: "LAST",
+            align: "end",
+            behavior: customSmoothScroll,
+          });
+        }
+
         void mutateConversations(
           (currentData: ConversationListItemType[] | undefined) =>
             currentData?.map((c) =>
