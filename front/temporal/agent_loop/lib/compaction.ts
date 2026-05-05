@@ -41,10 +41,8 @@ While writing the summary make sure to consider for each messages so far:
 
 Double-check for accuracy and completeness.
 
-If a list of currently enabled skills is provided, preserve that information in the summary.
-Capture not just which skills were enabled, but briefly in what context they were enabled and why
-they were useful. If it is clear from the conversation, mention why they may need to be re-enabled
-later.
+If currently enabled skills are provided, preserve not just which skills were enabled, but briefly
+in what context they were useful and why they may need to be re-enabled later.
 
 Provide your detailed summary in <summary> tags with these sections:
 
