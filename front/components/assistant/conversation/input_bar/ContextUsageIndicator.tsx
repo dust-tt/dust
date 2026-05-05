@@ -2,6 +2,7 @@ import {
   useCompactConversation,
   useConversationContextUsage,
 } from "@app/hooks/conversations";
+import { CONTEXT_USAGE_PERCENT_THRESHOLDS } from "@app/hooks/conversations/useConversationContextUsage";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -20,12 +21,16 @@ interface ContextUsageIndicatorProps {
 interface CircleProgressProps {
   percentage: number;
   size?: number;
+  variant?: "default" | "warning";
 }
 
-const CONTEXT_USAGE_PERCENT_THRESHOLD = 33;
 const COMPACTION_GUIDE_URL = "https://docs.dust.tt/docs/context-compaction";
 
-function CircleProgress({ percentage, size = 16 }: CircleProgressProps) {
+function CircleProgress({
+  percentage,
+  size = 16,
+  variant = "default",
+}: CircleProgressProps) {
   const strokeWidth = size * 0.14;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
@@ -33,7 +38,14 @@ function CircleProgress({ percentage, size = 16 }: CircleProgressProps) {
   const offset = circumference - (clampedPct / 100) * circumference;
 
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+    <svg
+      width={size}
+      height={size}
+      viewBox={`0 0 ${size} ${size}`}
+      className={
+        variant === "warning" ? "text-red-400 dark:text-red-400-night" : ""
+      }
+    >
       <circle
         cx={size / 2}
         cy={size / 2}
@@ -65,10 +77,12 @@ export function ContextUsageIndicator({
   owner,
   conversationId,
 }: ContextUsageIndicatorProps) {
-  const { contextUsage, isContextUsageLoading } = useConversationContextUsage({
-    conversationId,
-    workspaceId: owner.sId,
-  });
+  const { contextUsage, contextUsagePercentage, isContextUsageLoading } =
+    useConversationContextUsage({
+      conversationId,
+      workspaceId: owner.sId,
+      options: { disabled: !conversationId },
+    });
 
   const { compact, isCompacting } = useCompactConversation({
     owner,
@@ -79,13 +93,10 @@ export function ContextUsageIndicator({
     return null;
   }
 
-  const percentage =
-    contextUsage &&
-    contextUsage.contextUsage !== null &&
-    contextUsage.contextSize !== null &&
-    contextUsage.contextSize > 0
-      ? Math.round((contextUsage.contextUsage / contextUsage.contextSize) * 100)
-      : 0;
+  const circleProgressVariant =
+    contextUsagePercentage > CONTEXT_USAGE_PERCENT_THRESHOLDS["show_warning"]
+      ? "warning"
+      : "default";
 
   return (
     <div className="hidden md:block" onClick={(e) => e.stopPropagation()}>
@@ -94,16 +105,23 @@ export function ContextUsageIndicator({
           <Button
             variant="ghost-secondary"
             size={buttonSize}
-            icon={() => <CircleProgress percentage={percentage} size={16} />}
+            icon={() => (
+              <CircleProgress
+                percentage={contextUsagePercentage}
+                size={16}
+                variant={circleProgressVariant}
+              />
+            )}
           />
         </PopoverTrigger>
         <PopoverContent side="top" align="end" className="w-auto p-3">
           <div className="flex flex-col items-start gap-3">
             <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-              {percentage}% of context used.
+              {contextUsagePercentage}% of context used.
             </span>
             <div className="flex items-center gap-3">
-              {percentage > CONTEXT_USAGE_PERCENT_THRESHOLD && (
+              {contextUsagePercentage >
+                CONTEXT_USAGE_PERCENT_THRESHOLDS["enable_compaction"] && (
                 <Button
                   variant="outline"
                   size="xs"
