@@ -5,10 +5,13 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { jsonToMarkdown } from "@app/lib/actions/mcp_internal_actions/utils";
-import { processAttachment } from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
+import {
+  extractTextFromBuffer,
+  processAttachment,
+} from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
+import { sanitizeFilename } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import {
   downloadSalesforceContent,
-  extractTextFromSalesforceAttachment,
   getAllSalesforceAttachments,
 } from "@app/lib/api/actions/servers/salesforce/api_helper";
 import {
@@ -324,18 +327,64 @@ export function createSalesforceTools(auth: Authenticator): ToolDefinition[] {
           );
         }
 
-        return processAttachment({
-          mimeType: targetAttachment.mimeType,
-          filename: targetAttachment.filename || `attachment-${attachmentId}`,
-          extractText: async () =>
-            extractTextFromSalesforceAttachment(
-              conn,
-              attachmentId,
-              targetAttachment.mimeType
-            ),
-          downloadContent: async () =>
-            downloadSalesforceContent(conn, attachmentId),
+        const { mimeType, filename, size } = targetAttachment;
+        const safeFilename = filename || `attachment-${attachmentId}`;
+
+        // 50MB — matches the platform limit for data files (types/files.ts MAX_FILE_SIZES["data"]).
+        const MAX_ATTACHMENT_SIZE_BYTES = 50 * 1024 * 1024;
+        if (size !== undefined && size > MAX_ATTACHMENT_SIZE_BYTES) {
+          return new Err(
+            new MCPError(
+              `Attachment is too large to download (${(size / (1024 * 1024)).toFixed(1)}MB). Maximum supported size is 50MB.`
+            )
+          );
+        }
+
+        // Download once upfront; reuse buffer for both text extraction and binary blob.
+        // Avoids a double network call to Salesforce (mirrors Microsoft Drive pattern).
+        const downloadResult = await downloadSalesforceContent(
+          conn,
+          attachmentId
+        );
+        if (downloadResult.isErr()) {
+          return new Err(
+            new MCPError(
+              `Failed to download attachment: ${downloadResult.error}`
+            )
+          );
+        }
+        const buffer = downloadResult.value;
+
+        const result = await processAttachment({
+          mimeType,
+          filename: safeFilename,
+          extractText: async () => extractTextFromBuffer(buffer, mimeType),
+          downloadContent: async () => new Ok(buffer),
         });
+
+        if (result.isErr()) {
+          return new Err(result.error);
+        }
+
+        // Always include a raw binary resource block so the user receives a
+        // downloadable file, even when text extraction succeeded (PDFs).
+        if (result.value.some((c) => c.type === "resource")) {
+          return new Ok(result.value);
+        }
+
+        const sanitized = sanitizeFilename(safeFilename);
+        return new Ok([
+          ...result.value,
+          {
+            type: "resource" as const,
+            resource: {
+              blob: buffer.toString("base64"),
+              _meta: { text: `Attachment: ${sanitized}` },
+              mimeType,
+              uri: sanitized,
+            },
+          },
+        ]);
       });
     },
   };
