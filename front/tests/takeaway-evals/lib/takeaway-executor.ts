@@ -132,7 +132,7 @@ export async function executeTakeawayExtraction(
     buildMockMembersPrompt(testCase.members),
     buildPromptForSourceType(testCase.document.type),
     buildPromptActionItems(previousActionItems),
-    "You MUST call the tool. Always call it, even if there are no action items, notable facts, or key decisions (use empty arrays).",
+    "You MUST call the tool. Always call it, even if there are no action items (use empty arrays).",
   ].join("\n\n");
 
   const specification = buildSpec();

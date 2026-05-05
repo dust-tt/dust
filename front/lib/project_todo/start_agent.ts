@@ -116,7 +116,7 @@ function buildTodoKickoffPrompt({
     "",
     "1. Clarify assumptions and plan; don't wait on me if you can get context with tools.",
     "2. Use project context and tools to carry out the work end-to-end.",
-    "3. Summarize what you did, key decisions, and anything I should verify.",
+    "3. Summarize what you did, and anything I should verify.",
     "",
     "## When to mark it done",
     "",

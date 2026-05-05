@@ -206,8 +206,6 @@ export async function analyzeProjectTodosActivity({
     documentsAnalyzed: 0,
     documentsFailed: 0,
     actionItemsExtracted: 0,
-    keyDecisionsExtracted: 0,
-    notableFactsExtracted: 0,
   };
 
   await concurrentExecutor(
@@ -221,8 +219,6 @@ export async function analyzeProjectTodosActivity({
       if (result) {
         stats.documentsAnalyzed++;
         stats.actionItemsExtracted += result.actionItems;
-        stats.keyDecisionsExtracted += result.keyDecisions;
-        stats.notableFactsExtracted += result.notableFacts;
       } else {
         stats.documentsFailed++;
       }
