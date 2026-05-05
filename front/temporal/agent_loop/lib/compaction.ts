@@ -7,7 +7,7 @@ import { renderConversationAsText } from "@app/lib/api/assistant/conversation/re
 import { PREVIOUS_INTERACTIONS_TO_PRESERVE } from "@app/lib/api/assistant/conversation_rendering";
 import { publishConversationEvent } from "@app/lib/api/assistant/streaming/events";
 import { isProviderWhitelisted } from "@app/lib/assistant";
-import type { Authenticator } from "@app/lib/auth";
+import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import logger from "@app/logger/logger";
@@ -194,9 +194,16 @@ export async function runCompaction(
     conversationToSummarize = sourceConversationRes.value;
   }
 
-  const enabledSkills = await SkillResource.listAllEnabledByConversation(auth, {
-    conversation: targetConversation,
-  });
+  const renderSkillsAsUserMessages = await hasFeatureFlag(
+    auth,
+    "skills_as_user_messages"
+  );
+
+  const enabledSkills = renderSkillsAsUserMessages
+    ? await SkillResource.listAllEnabledByConversation(auth, {
+        conversation: targetConversation,
+      })
+    : [];
 
   const summaryRes = await generateCompactionSummary(auth, {
     sourceConversation: conversationToSummarize,
@@ -248,6 +255,7 @@ export async function runCompaction(
   const result = await updateCompactionMessageWithContentAndFinalStatus(auth, {
     conversation: targetConversation,
     compactionMessage,
+    clearEnabledSkillsOnSuccess: renderSkillsAsUserMessages,
     status,
     content,
   });

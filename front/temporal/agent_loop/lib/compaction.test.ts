@@ -8,6 +8,7 @@ import { launchCompactionWorkflow } from "@app/temporal/agent_loop/client";
 import { runCompaction } from "@app/temporal/agent_loop/lib/compaction";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
@@ -162,6 +163,8 @@ describe("runCompaction", () => {
   });
 
   it("adds a previously enabled skills section and clears conversation skills on success", async () => {
+    await FeatureFlagFactory.basic(auth, "skills_as_user_messages");
+
     const skill = await SkillFactory.create(auth, {
       name: "Commit",
       agentFacingDescription: "Use this skill to prepare and make git commits.",
@@ -218,6 +221,8 @@ describe("runCompaction", () => {
   });
 
   it("keeps the run id when compaction fails", async () => {
+    await FeatureFlagFactory.basic(auth, "skills_as_user_messages");
+
     const skill = await SkillFactory.create(auth, {
       name: "Commit",
       agentFacingDescription: "Use this skill to prepare and make git commits.",

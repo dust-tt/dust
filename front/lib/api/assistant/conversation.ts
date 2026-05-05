@@ -2897,11 +2897,13 @@ export async function updateCompactionMessageWithContentAndFinalStatus(
   {
     conversation,
     compactionMessage,
+    clearEnabledSkillsOnSuccess,
     status,
     content,
   }: {
     conversation: ConversationWithoutContentType;
     compactionMessage: CompactionMessageType;
+    clearEnabledSkillsOnSuccess: boolean;
     status: "succeeded" | "failed";
     content: string | null;
   }
@@ -2926,7 +2928,7 @@ export async function updateCompactionMessageWithContentAndFinalStatus(
       }
     );
 
-    if (status === "succeeded") {
+    if (status === "succeeded" && clearEnabledSkillsOnSuccess) {
       await SkillResource.clearAllEnabledByConversation(
         auth,
         {
