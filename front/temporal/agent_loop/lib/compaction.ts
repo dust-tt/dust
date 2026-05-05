@@ -42,7 +42,7 @@ While writing the summary make sure to consider for each messages so far:
 Double-check for accuracy and completeness.
 
 If currently enabled skills are provided, briefly capture which skills were enabled, in what
-context they were useful, and why they may need to be re-enabled later.
+context they were useful, and how likely they are to need re-enabling later.
 
 Provide your detailed summary in <summary> tags with these sections:
 
