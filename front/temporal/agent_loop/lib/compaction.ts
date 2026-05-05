@@ -38,6 +38,10 @@ While writing the summary make sure to consider for each messages so far:
 
 Double-check for accuracy and completeness.
 
+If a list of currently enabled skills is provided, preserve that information in the summary.
+Describe which of those skills were enabled before compaction and, when the conversation makes it
+clear, why they were enabled or in what context they may need to be re-enabled later.
+
 Provide your detailed summary in <summary> tags with these sections:
 
 1. **Primary Request and Intent** — All explicit user requests and intents.
@@ -49,6 +53,8 @@ conversation that are useful to the current work.
 5. **Issues and Resolutions** — Problems encountered, how they were resolved, and user feedback.
 6. **Pending Tasks** — Explicitly requested work that is still pending.
 7. **Current State** — What was being discussed or worked on immediately before this summary.
+8. **Previously Enabled Skills** — Which skills were enabled before compaction and any useful
+context for re-enabling them later.
 
 Only the content of the <summary> block will be used to continue the conversation. Anything \
 oustside is effectively a scratchpad and will be discarded. Make sure the summary is \
@@ -68,30 +74,6 @@ function extractSummary(generation: string): string {
   }
   // Fallback: if no <summary> tags, return the full generation.
   return generation.trim();
-}
-
-function appendPreviouslyEnabledSkillsSection(
-  summary: string,
-  enabledSkills: SkillResource[]
-): string {
-  if (enabledSkills.length === 0) {
-    return summary;
-  }
-
-  const sortedEnabledSkills = [...enabledSkills].sort((a, b) =>
-    a.name.localeCompare(b.name)
-  );
-
-  const skillsSection = [
-    "## Previously Enabled Skills",
-    "The following skills were enabled before compaction. They are no longer active and may need to be re-enabled if they become relevant again:",
-    ...sortedEnabledSkills.map(
-      (skill) =>
-        `- ${skill.name}: ${skill.agentFacingDescription.replaceAll("\n", "\n  ")}`
-    ),
-  ].join("\n");
-
-  return `${summary}\n\n${skillsSection}`;
 }
 
 function filterConversationContentUpToRank(
@@ -207,6 +189,7 @@ export async function runCompaction(
     : [];
 
   const summaryRes = await generateCompactionSummary(auth, {
+    enabledSkills,
     sourceConversation: conversationToSummarize,
     sourceMessageRank: sourceConversation?.messageRank,
     targetConversationId: targetConversation.sId,
@@ -218,12 +201,9 @@ export async function runCompaction(
   let status: "succeeded" | "failed";
 
   if (summaryRes.isOk()) {
-    content = appendPreviouslyEnabledSkillsSection(
-      replaceStandaloneAttachmentIds(
-        summaryRes.value,
-        sourceConversation?.attachmentIdReplacements
-      ),
-      enabledSkills
+    content = replaceStandaloneAttachmentIds(
+      summaryRes.value,
+      sourceConversation?.attachmentIdReplacements
     );
     status = "succeeded";
 
@@ -280,12 +260,14 @@ export async function runCompaction(
 async function generateCompactionSummary(
   auth: Authenticator,
   {
+    enabledSkills,
     sourceConversation,
     sourceMessageRank,
     targetConversationId,
     compactionMessage,
     model,
   }: {
+    enabledSkills: SkillResource[];
     sourceConversation: ConversationType;
     sourceMessageRank?: number;
     targetConversationId: string;
@@ -312,6 +294,14 @@ async function generateCompactionSummary(
     skipRunningAgentMessages: true,
   });
 
+  const renderedEnabledSkills =
+    enabledSkills.length > 0
+      ? `Currently enabled skills before compaction:\n${[...enabledSkills]
+          .sort((a, b) => a.name.localeCompare(b.name))
+          .map((skill) => `- ${skill.name}`)
+          .join("\n")}`
+      : "Currently enabled skills before compaction:\n- None";
+
   // TODO(compaction): Ensure we don't exceeds the model context size here, as we have no guarantee
   // that the current conversation is not exceeding it already.
   // TODO(compaction): We may want to be more mechanical about files available to the model in
@@ -325,7 +315,7 @@ async function generateCompactionSummary(
         content: [
           {
             type: "text",
-            text: `Conversation to summarize:\n\n${renderedMessages}`,
+            text: `${renderedEnabledSkills}\n\nConversation to summarize:\n\n${renderedMessages}`,
           },
         ],
         name: "",
