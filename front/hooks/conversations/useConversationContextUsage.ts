@@ -29,8 +29,17 @@ export function useConversationContextUsage({
     options
   );
 
+  const percentage =
+    data &&
+    data.contextUsage !== null &&
+    data.contextSize !== null &&
+    data.contextSize > 0
+      ? Math.round((data.contextUsage / data.contextSize) * 100)
+      : 0;
+
   return {
     contextUsage: data ?? null,
+    contextUsagePercentage: percentage,
     isContextUsageLoading: !error && !data,
     isContextUsageError: error,
     mutateContextUsage: mutate,

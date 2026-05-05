@@ -65,10 +65,12 @@ export function ContextUsageIndicator({
   owner,
   conversationId,
 }: ContextUsageIndicatorProps) {
-  const { contextUsage, isContextUsageLoading } = useConversationContextUsage({
-    conversationId,
-    workspaceId: owner.sId,
-  });
+  const { contextUsage, contextUsagePercentage, isContextUsageLoading } =
+    useConversationContextUsage({
+      conversationId,
+      workspaceId: owner.sId,
+      options: { disabled: !conversationId },
+    });
 
   const { compact, isCompacting } = useCompactConversation({
     owner,
@@ -79,14 +81,6 @@ export function ContextUsageIndicator({
     return null;
   }
 
-  const percentage =
-    contextUsage &&
-    contextUsage.contextUsage !== null &&
-    contextUsage.contextSize !== null &&
-    contextUsage.contextSize > 0
-      ? Math.round((contextUsage.contextUsage / contextUsage.contextSize) * 100)
-      : 0;
-
   return (
     <div className="hidden md:block" onClick={(e) => e.stopPropagation()}>
       <PopoverRoot>
@@ -94,16 +88,18 @@ export function ContextUsageIndicator({
           <Button
             variant="ghost-secondary"
             size={buttonSize}
-            icon={() => <CircleProgress percentage={percentage} size={16} />}
+            icon={() => (
+              <CircleProgress percentage={contextUsagePercentage} size={16} />
+            )}
           />
         </PopoverTrigger>
         <PopoverContent side="top" align="end" className="w-auto p-3">
           <div className="flex flex-col items-start gap-3">
             <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-              {percentage}% of context used.
+              {contextUsagePercentage}% of context used.
             </span>
             <div className="flex items-center gap-3">
-              {percentage >
+              {contextUsagePercentage >
                 CONTEXT_USAGE_PERCENT_THRESHOLDS["enable_compaction"] && (
                 <Button
                   variant="outline"
