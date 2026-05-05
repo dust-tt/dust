@@ -325,6 +325,14 @@ async function handler(
         spaceId: resolvedSpaceModelId,
       });
 
+      if (resolvedFragments.length > 0) {
+        await ConversationResource.upsertParticipation(auth, {
+          conversation,
+          action: "subscribed",
+          user: auth.user()?.toJSON() ?? null,
+        });
+      }
+
       let newContentFragment: ContentFragmentType | null = null;
       let newMessage: UserMessageType | null = null;
 
