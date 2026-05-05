@@ -196,8 +196,14 @@ export async function setupEgressForwarder(
       `--mitm-ca-path ${shellEscape(MITM_CA_PATH)} `
     : "";
 
+  // Strip SSL_CERT_FILE / CURL_CA_BUNDLE from dsbx's own env. The sandbox-wide
+  // env vars (set by buildSandboxEnvVars when MITM is enabled) point at
+  // /etc/dust/ca-bundle.pem, which is created by installMitmTrustBundle AFTER
+  // dsbx is healthy. If dsbx inherits those vars, rustls-native-certs honors
+  // SSL_CERT_FILE, fails to read the missing bundle, and dsbx exits before
+  // binding 9990, so the health check times out forever.
   const startForwarderCommand =
-    "nohup /opt/bin/dsbx forward " +
+    "nohup env -u SSL_CERT_FILE -u CURL_CA_BUNDLE /opt/bin/dsbx forward " +
     `--token-file ${shellEscape(EGRESS_TOKEN_PATH)} ` +
     `--proxy-addr ${shellEscape(`${proxyAddr}:${config.getEgressProxyPort()}`)} ` +
     `--proxy-tls-name ${shellEscape(getProxyTlsName())} ` +
