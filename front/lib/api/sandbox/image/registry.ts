@@ -13,7 +13,7 @@ import fs from "fs";
 import path from "path";
 
 const DUST_BEDROCK_IMAGE_VERSION = "1.7.0";
-const DUST_BASE_IMAGE_VERSION = "0.8.6";
+const DUST_BASE_IMAGE_VERSION = "0.8.5";
 const DSBX_CLI_VERSION = "0.1.7";
 const AGENT_PROXIED_UID = 1003;
 // Built from https://github.com/openai/codex at tag rust-v0.115.0 (Apache-2.0).
@@ -45,7 +45,6 @@ const PYTHON_LIBRARIES: PythonLibrary[] = [
   { name: "plotly", version: "6.6.0", description: "Interactive plots" },
   { name: "requests", version: "2.32.5", description: "HTTP library" },
   { name: "openpyxl", version: "3.1.5", description: "Excel file support" },
-  { name: "xlsxwriter", version: "3.2.9", description: "Excel file writer" },
   { name: "pdfplumber", version: "0.11.9", description: "PDF extraction" },
   { name: "pypdf", version: "6.8.0", description: "PDF manipulation" },
   { name: "reportlab", version: "4.4.10", description: "PDF generation" },
@@ -72,6 +71,16 @@ const PYTHON_LIBRARIES: PythonLibrary[] = [
     name: "duckdb",
     version: "1.4.4",
     description: "In-process OLAP / SQL on dataframes",
+  },
+  {
+    name: "markitdown",
+    version: "0.1.3",
+    description: "Office file to Markdown conversion",
+  },
+  {
+    name: "pdf2image",
+    version: "1.17.0",
+    description: "PDF to image conversion",
   },
 ];
 
@@ -141,9 +150,11 @@ SHELLEOF`,
   })
   // Create profile directory and copy profile scripts
   // The other tools are installed in bedrock
-  .runCmd("apt-get install -y jq pandoc imagemagick ffmpeg unzip file", {
-    user: "root",
-  })
+  .runCmd(
+    "apt-get update && apt-get install -y jq pandoc imagemagick ffmpeg unzip file " +
+      "libreoffice poppler-utils qpdf",
+    { user: "root" }
+  )
   .registerTool([
     { name: "git", description: "Version control system", runtime: "system" },
     { name: "curl", description: "HTTP client", runtime: "system" },
@@ -166,6 +177,21 @@ SHELLEOF`,
     {
       name: "file",
       description: "Determine file type",
+      runtime: "system",
+    },
+    {
+      name: "libreoffice",
+      description: "Office suite (soffice CLI for pptx/xlsx/docx conversion)",
+      runtime: "system",
+    },
+    {
+      name: "poppler-utils",
+      description: "PDF utilities: pdftoppm, pdftotext, pdfimages",
+      runtime: "system",
+    },
+    {
+      name: "qpdf",
+      description: "PDF transformation (merge, split, encrypt)",
       runtime: "system",
     },
   ])
@@ -249,6 +275,18 @@ SHELLEOF`,
     getLocalContent(PROFILE_LOCAL_DIR, "gemini.sh"),
     `${PROFILE_DIR}/gemini.sh`
   )
+  .runCmd(`mkdir -p ${PROFILE_DIR}/soffice`, { user: "root" })
+  .copy(
+    getLocalContent(PROFILE_LOCAL_DIR, "soffice/ooxml.py"),
+    `${PROFILE_DIR}/soffice/ooxml.py`,
+    { user: "root" }
+  )
+  .copy(
+    getLocalContent(PROFILE_LOCAL_DIR, "soffice/xlsx_inspect.py"),
+    `${PROFILE_DIR}/soffice/xlsx_inspect.py`,
+    { user: "root" }
+  )
+  .runCmd(`chmod +x ${PROFILE_DIR}/soffice/xlsx_inspect.py`, { user: "root" })
   // Telemetry configs for fluent-bit
   .copy(
     getLocalContent(TELEMETRY_LOCAL_DIR, "fluent-bit.conf"),
@@ -373,6 +411,17 @@ SHELLEOF`,
     usage: "list_dir [path] [--depth N] [--offset N] [--limit N]",
     returns: "Sorted paths with type suffixes and pagination hint",
     profile: ["openai", "gemini"],
+    runtime: "system",
+  })
+  // --- xlsx_inspect: structural inspection of .xlsx workbooks ---
+  .registerTool({
+    name: "xlsx_inspect",
+    description:
+      "Inspect .xlsx structure: sheets, formulas, cached values, number formats, font and fill color (theme/indexed colors resolved to ARGB). --grep --meta searches by metadata tokens (e.g. 'fill: FFFF...' for yellow highlights, 'numFmt: 0%' for percent-formatted cells)",
+    usage:
+      "xlsx_inspect <file> [--sheet NAME] [--range A1:Z50] [--grep PATTERN [--regex] [--meta]] [--names] [--limit N] [--offset N]",
+    returns:
+      "Workbook overview, or one cell per line: '<address>  <formula or value>  [cached result]  numFmt: <fmt>  [font: <color>]  [fill: <color>]'. Empty cells skipped",
     runtime: "system",
   })
   .withCapability("gcsfuse")
