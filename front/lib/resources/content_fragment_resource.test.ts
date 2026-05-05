@@ -125,7 +125,10 @@ describe("renderLightContentFragmentForModel", () => {
     it("renders a queryable CSV as <attachment>", async () => {
       const result = await renderLightContentFragmentForModel(
         authenticator,
-        makeFileFragment("text/csv", { generatedTables: ["table_1"], snippet: "" }),
+        makeFileFragment("text/csv", {
+          generatedTables: ["table_1"],
+          snippet: "",
+        }),
         visionModel,
         { excludeImages: false }
       );
@@ -221,7 +224,10 @@ describe("renderLightContentFragmentForModel", () => {
     it("renders a queryable CSV as <attachment> (bypasses new file explorer)", async () => {
       const result = await renderLightContentFragmentForModel(
         authenticator,
-        makeFileFragment("text/csv", { generatedTables: ["table_1"], snippet: "" }),
+        makeFileFragment("text/csv", {
+          generatedTables: ["table_1"],
+          snippet: "",
+        }),
         visionModel,
         { excludeImages: false }
       );
