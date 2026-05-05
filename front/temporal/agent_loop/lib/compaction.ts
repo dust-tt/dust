@@ -41,8 +41,8 @@ While writing the summary make sure to consider for each messages so far:
 
 Double-check for accuracy and completeness.
 
-If currently enabled skills are provided, preserve not just which skills were enabled, but briefly
-in what context they were useful and why they may need to be re-enabled later.
+If currently enabled skills are provided, briefly capture which skills were enabled, in what
+context they were useful, and why they may need to be re-enabled later.
 
 Provide your detailed summary in <summary> tags with these sections:
 
