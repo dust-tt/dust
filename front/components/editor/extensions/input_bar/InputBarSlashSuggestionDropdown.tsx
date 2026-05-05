@@ -220,7 +220,7 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
     return (
       <SlashCommandDropdown
         key={
-          isSkillsLoading && isSpacesLoading && isServerViewsLoading
+          isCapabilitiesLoading
             ? "loading"
             : "loaded"
         }
