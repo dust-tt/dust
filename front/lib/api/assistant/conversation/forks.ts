@@ -667,6 +667,11 @@ export async function createConversationFork(
     return childConversationId;
   }
 
+  await ConversationResource.triggerEsIndexing(
+    auth,
+    childConversationId.value.childConversationId
+  );
+
   const childConversation = await getConversation(
     auth,
     childConversationId.value.childConversationId

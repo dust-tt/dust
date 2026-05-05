@@ -1624,7 +1624,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     // ES because every mark-as-read would force a full document re-index (write amplification).
     const dbConversations = await this.fetchByIds(
       auth,
-      items.map((i) => i.sId)
+      items.map((i) => i.sId),
+      { includeForkingData: true }
     );
     const readMap = await this.fetchReadMapForUser(
       auth,
