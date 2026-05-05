@@ -48,8 +48,14 @@ import {
   ScrollArea,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm, useFormContext, useWatch } from "react-hook-form";
+import type { ImperativePanelHandle } from "react-resizable-panels";
+
+type SkillBuilderRightPanelType = "files" | "suggestions";
+
+const FILES_RIGHT_PANEL_SIZE = 30;
+const SUGGESTIONS_RIGHT_PANEL_SIZE = 35;
 
 interface SkillBuilderProps {
   skill?: SkillType;
@@ -68,6 +74,9 @@ export default function SkillBuilder({
   const sendNotification = useSendNotification();
   const [isSaving, setIsSaving] = useState(false);
   const [isFilesPanelOpen, setIsFilesPanelOpen] = useState(false);
+  const [renderedRightPanelType, setRenderedRightPanelType] =
+    useState<SkillBuilderRightPanelType | null>(null);
+  const rightPanelRef = useRef<ImperativePanelHandle | null>(null);
   const isMobile = useIsMobile();
 
   const { editors } = useSkillEditors({
@@ -184,12 +193,35 @@ export default function SkillBuilder({
   const showSuggestionsPanel =
     skill && !isMobile && hasReinforcedAgents && hasPendingSuggestions;
   const canUseFilesPanel = hasFeature("sandbox_tools");
-  const rightPanelType =
+  const requestedRightPanelType: SkillBuilderRightPanelType | null =
     canUseFilesPanel && isFilesPanelOpen
       ? "files"
       : showSuggestionsPanel
         ? "suggestions"
         : null;
+  const rightPanelType = requestedRightPanelType ?? renderedRightPanelType;
+  const rightPanelSize =
+    rightPanelType === "files"
+      ? FILES_RIGHT_PANEL_SIZE
+      : SUGGESTIONS_RIGHT_PANEL_SIZE;
+
+  useEffect(() => {
+    if (requestedRightPanelType) {
+      setRenderedRightPanelType(requestedRightPanelType);
+    }
+  }, [requestedRightPanelType]);
+
+  useEffect(() => {
+    if (isMobile || !rightPanelType || !rightPanelRef.current) {
+      return;
+    }
+
+    if (requestedRightPanelType) {
+      rightPanelRef.current.expand(rightPanelSize);
+    } else {
+      rightPanelRef.current.collapse();
+    }
+  }, [isMobile, requestedRightPanelType, rightPanelType, rightPanelSize]);
 
   const leftPanel = (
     <div className="flex h-full w-full flex-col">
@@ -291,7 +323,22 @@ export default function SkillBuilder({
             {isMobile && rightPanelType === "files" ? (
               <>
                 {leftPanel}
-                <div className="absolute inset-0 z-50 bg-background dark:bg-background-night">
+                <div
+                  className={cn(
+                    "absolute inset-0 z-50 bg-background transition-transform duration-300 ease-out dark:bg-background-night",
+                    requestedRightPanelType === "files"
+                      ? "translate-x-0"
+                      : "translate-x-full"
+                  )}
+                  onTransitionEnd={(event) => {
+                    if (event.currentTarget !== event.target) {
+                      return;
+                    }
+                    if (requestedRightPanelType !== "files") {
+                      setRenderedRightPanelType(null);
+                    }
+                  }}
+                >
                   <SkillBuilderFilesPanel
                     onClose={() => setIsFilesPanelOpen(false)}
                   />
@@ -303,21 +350,39 @@ export default function SkillBuilder({
                 direction="horizontal"
                 className="h-full w-full"
               >
-                <ResizablePanel
-                  defaultSize={rightPanelType === "files" ? 70 : 65}
-                  minSize={40}
-                >
+                <ResizablePanel defaultSize={100} minSize={40}>
                   <div className="h-full w-full overflow-y-auto">
                     {leftPanel}
                   </div>
                 </ResizablePanel>
 
                 <>
-                  <ResizableHandle withHandle />
+                  <ResizableHandle
+                    withHandle={!!requestedRightPanelType}
+                    disabled={!requestedRightPanelType}
+                  />
                   <ResizablePanel
-                    defaultSize={rightPanelType === "files" ? 30 : 35}
+                    ref={rightPanelRef}
+                    defaultSize={0}
                     minSize={20}
                     maxSize={50}
+                    collapsible
+                    collapsedSize={0}
+                    onTransitionEnd={(event) => {
+                      if (event.currentTarget !== event.target) {
+                        return;
+                      }
+                      if (
+                        !requestedRightPanelType &&
+                        rightPanelRef.current?.isCollapsed()
+                      ) {
+                        setRenderedRightPanelType(null);
+                      }
+                    }}
+                    className={cn(
+                      "flex-0 overflow-hidden transition-all duration-300 ease-out",
+                      !requestedRightPanelType && "pointer-events-none"
+                    )}
                   >
                     <div className="h-full w-full overflow-hidden">
                       {rightPanelType === "files" ? (
@@ -345,6 +410,7 @@ export default function SkillBuilder({
 
 function SkillBuilderFilesButton({
   isMobile,
+  isOpen,
   onToggle,
 }: {
   isMobile: boolean;
@@ -365,7 +431,7 @@ function SkillBuilderFilesButton({
       size="sm"
       label={label}
       icon={AttachmentIcon}
-      variant="ghost"
+      variant={isOpen ? "outline" : "ghost"}
       onClick={onToggle}
     />
   );
