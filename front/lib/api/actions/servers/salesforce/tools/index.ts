@@ -327,8 +327,18 @@ export function createSalesforceTools(auth: Authenticator): ToolDefinition[] {
           );
         }
 
-        const { mimeType, filename } = targetAttachment;
+        const { mimeType, filename, size } = targetAttachment;
         const safeFilename = filename || `attachment-${attachmentId}`;
+
+        // 50MB — matches the platform limit for data files (types/files.ts MAX_FILE_SIZES["data"]).
+        const MAX_ATTACHMENT_SIZE_BYTES = 50 * 1024 * 1024;
+        if (size !== undefined && size > MAX_ATTACHMENT_SIZE_BYTES) {
+          return new Err(
+            new MCPError(
+              `Attachment is too large to download (${(size / (1024 * 1024)).toFixed(1)}MB). Maximum supported size is 50MB.`
+            )
+          );
+        }
 
         // Download once upfront; reuse buffer for both text extraction and binary blob.
         // Avoids a double network call to Salesforce (mirrors Microsoft Drive pattern).
