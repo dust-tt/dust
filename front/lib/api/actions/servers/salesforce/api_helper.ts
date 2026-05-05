@@ -1,4 +1,3 @@
-import { extractTextFromBuffer } from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
 import { SF_API_VERSION } from "@app/lib/api/actions/servers/salesforce/helpers";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -224,24 +223,6 @@ export async function downloadSalesforceContent(
   } else {
     return downloadSalesforceAttachment(conn, attachmentId);
   }
-}
-
-export async function extractTextFromSalesforceAttachment(
-  conn: Connection,
-  attachmentId: string,
-  mimeType: string
-): Promise<Result<string, string>> {
-  if (!isValidSalesforceId(attachmentId)) {
-    return new Err("Invalid Salesforce ID format");
-  }
-
-  const downloadResult = await downloadSalesforceContent(conn, attachmentId);
-
-  if (downloadResult.isErr()) {
-    return downloadResult;
-  }
-
-  return extractTextFromBuffer(downloadResult.value, mimeType);
 }
 
 function getMimeType(fileType: string): string {
