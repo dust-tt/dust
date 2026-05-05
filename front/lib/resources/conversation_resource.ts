@@ -84,8 +84,6 @@ export type FetchConversationOptions = {
 
 type SpaceConversationsFilter = "all" | "group" | "with_me";
 
-const FORK_CHILD_REINDEX_CONCURRENCY = 8;
-
 interface UserParticipation {
   actionRequired: boolean;
   updated: number;
@@ -3192,14 +3190,14 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     title: string,
     transaction?: Transaction
   ) {
-    const conversation = await ConversationResource.fetchById(auth, sId);
-    if (conversation === null) {
-      return new Err(new ConversationError("conversation_not_found"));
-    }
-
-    await conversation.updateTitle(auth, title, transaction);
-
-    return new Ok(undefined);
+    return this.update(
+      auth,
+      sId,
+      {
+        title,
+      },
+      transaction
+    );
   }
 
   static async updateUrlAccessMode(
@@ -3369,44 +3367,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return new Ok(undefined);
   }
 
-  private async triggerForkedChildrenEsIndexing(auth: Authenticator) {
-    const childForks = await ConversationForkModel.findAll({
-      attributes: ["childConversationId"],
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        parentConversationId: this.id,
-      },
-    });
-
-    if (childForks.length === 0) {
-      return;
-    }
-
-    const childConversations = await ConversationModel.findAll({
-      attributes: ["sId"],
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        id: { [Op.in]: childForks.map((fork) => fork.childConversationId) },
-      },
-    });
-
-    await concurrentExecutor(
-      childConversations,
-      (childConversation) =>
-        ConversationResource.triggerEsIndexing(auth, childConversation.sId),
-      { concurrency: FORK_CHILD_REINDEX_CONCURRENCY }
-    );
-  }
-
-  async updateTitle(
-    auth: Authenticator,
-    title: string,
-    transaction?: Transaction
-  ) {
-    await this.update({ title }, transaction);
+  async updateTitle(auth: Authenticator, title: string) {
+    await this.update({ title });
 
     await ConversationResource.triggerEsIndexing(auth, this.sId);
-    await this.triggerForkedChildrenEsIndexing(auth);
   }
 
   async updateVisibilityToDeleted(auth: Authenticator) {

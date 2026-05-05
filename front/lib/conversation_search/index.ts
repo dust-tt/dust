@@ -3,33 +3,15 @@ import {
   CONVERSATION_SEARCH_ALIAS_NAME,
   withEs,
 } from "@app/lib/api/elasticsearch";
+import type { Authenticator } from "@app/lib/auth";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { WakeUpResource } from "@app/lib/resources/wakeup_resource";
 import { getConversationDisplayTitle } from "@app/types/assistant/conversation";
 import type { ConversationSearchDocument } from "@app/types/conversation_search/conversation_search";
 import type { Result } from "@app/types/shared/result";
 
-type ConversationSearchAuthenticator = {
-  getNonNullableWorkspace: () => { sId: string };
-};
-
-type ConversationSearchConversation = Pick<
-  ConversationResource,
-  | "createdAt"
-  | "forkingData"
-  | "getRequestedSpaceIdsFromModel"
-  | "hasError"
-  | "metadata"
-  | "sId"
-  | "space"
-  | "title"
-  | "triggerSId"
-  | "updatedAt"
-  | "visibility"
->;
-
 function getConversationSearchTitle(
-  conversation: ConversationSearchConversation
+  conversation: ConversationResource
 ): string | null {
   if (!conversation.forkingData?.forkedFrom || conversation.title) {
     return conversation.title;
@@ -43,8 +25,8 @@ function getConversationSearchTitle(
 }
 
 export function buildConversationSearchDocument(
-  auth: ConversationSearchAuthenticator,
-  conversation: ConversationSearchConversation,
+  auth: Authenticator,
+  conversation: ConversationResource,
   participants: Array<{
     userId: string;
     actionRequired: boolean;

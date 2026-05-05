@@ -36,7 +36,6 @@ import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
-import type { ModelId } from "@app/types/shared/model_id";
 import type { LightWorkspaceType } from "@app/types/user";
 import { assert, beforeEach, describe, expect, it, vi } from "vitest";
 import { destroyConversation } from "../api/assistant/conversation/destroy";
@@ -55,8 +54,6 @@ vi.mock(import("../../lib/api/redis"), async (importOriginal) => {
 });
 
 const RESTRICTED_PROJECT_SPACE_ACCESS_TEST_TIMEOUT_MS = 30_000;
-const SOURCE_AGENT_MESSAGE_RANK = 1;
-const TEST_AGENT_CONFIGURATION_ID = "agent-configuration-id";
 
 const setupTestAgents = async (
   workspace: LightWorkspaceType,
@@ -85,34 +82,6 @@ const setupTestAgents = async (
 const dateFromDaysAgo = (days: number) => {
   return new Date(new Date().getTime() - days * 24 * 60 * 60 * 1000);
 };
-
-async function makeSourceAgentMessage({
-  auth,
-  conversationModelId,
-}: {
-  auth: Authenticator;
-  conversationModelId: ModelId;
-}): Promise<MessageModel> {
-  const workspace = auth.getNonNullableWorkspace();
-
-  const agentMessage = await AgentMessageModel.create({
-    agentConfigurationId: TEST_AGENT_CONFIGURATION_ID,
-    agentConfigurationVersion: 0,
-    skipToolsValidation: false,
-    workspaceId: workspace.id,
-  });
-
-  return MessageModel.create({
-    agentMessageId: agentMessage.id,
-    contentFragmentId: null,
-    conversationId: conversationModelId,
-    parentId: null,
-    rank: SOURCE_AGENT_MESSAGE_RANK,
-    sId: generateRandomModelSId(),
-    userMessageId: null,
-    workspaceId: workspace.id,
-  });
-}
 
 describe("ConversationResource", () => {
   describe("fetchByModelIds", () => {
@@ -6662,114 +6631,6 @@ describe("ConversationResource cleanup on delete", () => {
         conversationId: conversation.sId,
         workspaceId: workspace.sId,
       });
-    });
-
-    it("triggers child workflow when a parent fork title changes", async () => {
-      const { workspace, authenticator: auth } = await createResourceTest({
-        role: "admin",
-      });
-
-      const parentConversation = await ConversationResource.makeNew(
-        auth,
-        {
-          sId: generateRandomModelSId(),
-          title: "Parent title",
-          visibility: "unlisted",
-          requestedSpaceIds: [],
-        },
-        null
-      );
-      const childConversation = await ConversationResource.makeNew(
-        auth,
-        {
-          sId: generateRandomModelSId(),
-          title: null,
-          visibility: "unlisted",
-          requestedSpaceIds: [],
-        },
-        null
-      );
-      const sourceMessage = await makeSourceAgentMessage({
-        auth,
-        conversationModelId: parentConversation.id,
-      });
-      await ConversationForkResource.makeNew(auth, {
-        parentConversation,
-        childConversation,
-        sourceMessageModelId: sourceMessage.id,
-        branchedAt: new Date("2026-05-05T10:00:00.000Z"),
-      });
-
-      await FeatureFlagFactory.basic(auth, "conversation_search_indexing");
-      mockWorkflow().mockClear();
-
-      await parentConversation.updateTitle(auth, "Renamed parent");
-
-      expect(mockWorkflow()).toHaveBeenCalledTimes(2);
-      expect(mockWorkflow()).toHaveBeenCalledWith({
-        conversationId: parentConversation.sId,
-        workspaceId: workspace.sId,
-      });
-      expect(mockWorkflow()).toHaveBeenCalledWith({
-        conversationId: childConversation.sId,
-        workspaceId: workspace.sId,
-      });
-    });
-
-    it("renders fork titles in the DB list fallback", async () => {
-      const { authenticator: auth } = await createResourceTest({
-        role: "admin",
-      });
-
-      const parentConversation = await ConversationResource.makeNew(
-        auth,
-        {
-          sId: generateRandomModelSId(),
-          title: "Parent title",
-          visibility: "unlisted",
-          requestedSpaceIds: [],
-        },
-        null
-      );
-      const childConversation = await ConversationResource.makeNew(
-        auth,
-        {
-          sId: generateRandomModelSId(),
-          title: null,
-          visibility: "unlisted",
-          requestedSpaceIds: [],
-        },
-        null
-      );
-      const sourceMessage = await makeSourceAgentMessage({
-        auth,
-        conversationModelId: parentConversation.id,
-      });
-      await ConversationForkResource.makeNew(auth, {
-        parentConversation,
-        childConversation,
-        sourceMessageModelId: sourceMessage.id,
-        branchedAt: new Date("2026-05-05T10:00:00.000Z"),
-      });
-
-      await ConversationResource.upsertParticipation(auth, {
-        conversation: childConversation.toJSON(),
-        action: "posted",
-        user: auth.getNonNullableUser().toJSON(),
-      });
-
-      const result =
-        await ConversationResource.listPrivateConversationsForUserPaginatedFromDB(
-          auth,
-          { limit: 10 }
-        );
-
-      expect(result.conversations).toContainEqual(
-        expect.objectContaining({
-          sId: childConversation.sId,
-          title: "Branched from 'Parent title'",
-        })
-      );
     });
 
     it("does not trigger workflow on markAsReadForAuthUser (volatile state not in ES)", async () => {
