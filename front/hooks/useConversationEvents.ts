@@ -21,7 +21,7 @@ export function useConversationEvents({
         return null;
       }
 
-      const esURL = `/api/w/${owner.sId}/assistant/conversations/${conversationId}/events`;
+      const esURL = `/api/sse/w/${owner.sId}/assistant/conversations/${conversationId}/events`;
       let lastEventId = "";
       if (lastEvent) {
         const eventPayload: {
