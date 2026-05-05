@@ -99,9 +99,10 @@ describe("renderLightContentFragmentForModel", () => {
   beforeEach(async () => {
     const { authenticator: auth } = await createResourceTest({});
     authenticator = auth;
-    vi.spyOn(FileResource.prototype, "getSignedUrlForDownload").mockResolvedValue(
-      "https://signed.url/image.png"
-    );
+    vi.spyOn(
+      FileResource.prototype,
+      "getSignedUrlForDownload"
+    ).mockResolvedValue("https://signed.url/image.png");
   });
 
   describe("new_file_explorer FF off", () => {
