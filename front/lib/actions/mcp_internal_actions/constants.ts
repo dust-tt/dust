@@ -1338,7 +1338,7 @@ export function getInternalMCPServerNameFromSId(
 export function getInternalMCPServerIconByName(
   name: InternalMCPServerNameType
 ): InternalAllowedIconType {
-  const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
+  const server: InternalMCPServerEntry | undefined = INTERNAL_MCP_SERVERS[name];
   if (!server) {
     return "ActionRobotIcon";
   }
@@ -1353,7 +1353,7 @@ export function getInternalMCPServerDisplayedAs(
   if (!name) {
     return undefined;
   }
-  const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
+  const server: InternalMCPServerEntry | undefined = INTERNAL_MCP_SERVERS[name];
   if (!server) {
     return undefined;
   }
