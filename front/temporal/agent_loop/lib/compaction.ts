@@ -313,7 +313,7 @@ async function generateCompactionSummary(
         content: [
           {
             type: "text",
-            text: `${renderedEnabledSkills}\n\nConversation to summarize:\n\n${renderedMessages}`,
+            text: `Conversation to summarize:\n\n${renderedMessages}\n\n${renderedEnabledSkills}`,
           },
         ],
         name: "",
