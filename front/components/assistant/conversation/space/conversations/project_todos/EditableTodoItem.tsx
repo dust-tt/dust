@@ -137,9 +137,31 @@ export const EditableTodoItem = memo(function EditableTodoItem({
   const clickOffsetRef = useRef<number | null>(null);
   const [typingDismissed, setTypingDismissed] = useState(false);
   const measureRef = useRef<HTMLSpanElement>(null);
+  const typingAnimationLockedTextRef = useRef<string | null>(null);
 
   const displayText = stripNewlines(todo.text);
   const showTypingAnimation = isNew && !typingDismissed;
+
+  useEffect(() => {
+    if (!isNew) {
+      typingAnimationLockedTextRef.current = null;
+    }
+  }, [isNew]);
+
+  useEffect(() => {
+    if (!showTypingAnimation) {
+      typingAnimationLockedTextRef.current = null;
+    }
+  }, [showTypingAnimation]);
+
+  let typingAnimationSourceText = displayText;
+  if (showTypingAnimation) {
+    if (typingAnimationLockedTextRef.current === null) {
+      typingAnimationLockedTextRef.current = displayText;
+    }
+    typingAnimationSourceText = typingAnimationLockedTextRef.current;
+  }
+
   useAutosizeTextArea(editInputRef, draftText, isEditing);
 
   const filteredReassignMembers = useMemo(() => {
@@ -387,7 +409,7 @@ export const EditableTodoItem = memo(function EditableTodoItem({
                   aria-hidden
                   className="invisible block w-full min-w-0 break-words text-pretty text-base leading-6"
                 >
-                  {displayText}
+                  {typingAnimationSourceText}
                 </span>
               )}
               <TodoMetadataTooltip todo={todo} agentNameById={agentNameById}>
@@ -425,7 +447,7 @@ export const EditableTodoItem = memo(function EditableTodoItem({
                 >
                   {showTypingAnimation ? (
                     <TypingAnimation
-                      text={displayText}
+                      text={typingAnimationSourceText}
                       duration={16}
                       onComplete={() => setTypingDismissed(true)}
                     />
