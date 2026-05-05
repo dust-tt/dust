@@ -581,25 +581,15 @@ describe("createConversationFork", () => {
     const triggerEsIndexingSpy = vi
       .spyOn(ConversationResource, "triggerEsIndexing")
       .mockImplementation(async (indexAuth, conversationId) => {
-        const conversation = await ConversationModel.findOne({
-          attributes: ["id"],
-          where: {
-            sId: conversationId,
-            workspaceId: indexAuth.getNonNullableWorkspace().id,
-          },
-        });
-        const forkCount = conversation
-          ? await ConversationForkModel.count({
-              where: {
-                childConversationId: conversation.id,
-                workspaceId: indexAuth.getNonNullableWorkspace().id,
-              },
-            })
-          : 0;
+        const conversation = await ConversationResource.fetchById(
+          indexAuth,
+          conversationId,
+          { includeForkingData: true }
+        );
 
         indexCalls.push({
           conversationId,
-          hasForkLineage: forkCount > 0,
+          hasForkLineage: Boolean(conversation?.forkingData?.forkedFrom),
         });
       });
 

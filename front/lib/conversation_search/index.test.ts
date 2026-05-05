@@ -1,9 +1,12 @@
-import type { Authenticator } from "@app/lib/auth";
 import { buildConversationSearchDocument } from "@app/lib/conversation_search";
-import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { ConversationForkingDataType } from "@app/types/assistant/conversation";
 import type { UserType } from "@app/types/user";
 import { describe, expect, it } from "vitest";
+
+type ConversationSearchAuth = Parameters<typeof buildConversationSearchDocument>[0];
+type ConversationSearchConversation = Parameters<
+  typeof buildConversationSearchDocument
+>[1];
 
 const WORKSPACE_ID = "w_test";
 const CONVERSATION_ID = "conv_test";
@@ -24,10 +27,10 @@ const FORKING_USER: UserType = {
   username: "forker",
 };
 
-function makeAuth(): Authenticator {
+function makeAuth(): ConversationSearchAuth {
   return {
     getNonNullableWorkspace: () => ({ sId: WORKSPACE_ID }),
-  } as Authenticator;
+  };
 }
 
 function makeForkingData(
@@ -50,7 +53,7 @@ function makeConversation({
 }: {
   forkingData?: ConversationForkingDataType;
   title: string | null;
-}): ConversationResource {
+}): ConversationSearchConversation {
   return {
     createdAt: CREATED_AT,
     forkingData,
@@ -63,7 +66,7 @@ function makeConversation({
     triggerSId: null,
     updatedAt: UPDATED_AT,
     visibility: "unlisted",
-  } as unknown as ConversationResource;
+  };
 }
 
 describe("buildConversationSearchDocument", () => {
