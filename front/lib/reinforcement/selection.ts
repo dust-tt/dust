@@ -117,6 +117,9 @@ async function fetchEligibleSkillIds(
 /**
  * Stage 2: Discover conversations that used eligible custom skills,
  * filtering out conversations where skills were invoked by custom agents.
+ *
+ * The returned skill IDs per conversation contain only the eligible skills,
+ * not every skill used in the conversation.
  */
 async function discoverConversations(
   auth: Authenticator,
