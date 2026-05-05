@@ -195,7 +195,9 @@ export async function grantFreeCreditFromMetronomeSegment({
   );
   if (existingForPeriod) {
     await existingForPeriod.setMetronomeCreditId(metronomeCreditId);
-    await existingForPeriod.updateInitialAmountMicroUsd(auth, amountMicroUsd);
+    if (amountMicroUsd > existingForPeriod.consumedAmountMicroUsd) {
+      await existingForPeriod.updateInitialAmountMicroUsd(auth, amountMicroUsd);
+    }
     logger.info(
       {
         workspaceId: workspace.sId,
