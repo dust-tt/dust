@@ -68,15 +68,25 @@ export function CompactionMessage({
           </span>
         </div>
       );
-    case "created":
+    case "created": {
+      const parentConversation = conversation.forkingData?.forkedFrom;
+      const isParentConversation =
+        parentConversation?.parentConversationId ===
+        message.sourceConversationId;
+      const label =
+        isParentConversation && parentConversation.parentConversationTitle
+          ? `Summarizing '${truncate(parentConversation.parentConversationTitle, MAX_SOURCE_CONVERSATION_TITLE_LENGTH)}', this may take a moment`
+          : "Compacting context, this may take a moment…";
+
       return (
         <div className="flex items-center justify-center gap-1.5">
           <Spinner size="xs" />
           <AnimatedText variant="muted" className="text-sm">
-            Compacting context, this may take a moment…
+            {label}
           </AnimatedText>
         </div>
       );
+    }
     default:
       assertNeverAndIgnore(message.status);
       return null;
