@@ -264,6 +264,15 @@ export async function getDeltaResults({
   return { results: res.value };
 }
 
+export const DELTA_MAX_ITEMS = 500_000;
+
+export class DeltaTooLargeError extends Error {
+  constructor(public readonly itemCount: number) {
+    super(`Delta exceeded item threshold (${itemCount} items)`);
+    this.name = "DeltaTooLargeError";
+  }
+}
+
 /**
  * Similar to getDeltaResults but goes through pagination (returning results and
  * the deltalink)
@@ -287,6 +296,7 @@ export async function getFullDeltaResults({
   let pageCount = 0;
 
   do {
+    heartbeatFunction();
     const {
       results,
       nextLink: newNextLink,
@@ -302,6 +312,17 @@ export async function getFullDeltaResults({
       { pageCount, pageItems: results.length, totalItems: itemMap.size },
       "Delta pagination progress"
     );
+    if (itemMap.size > DELTA_MAX_ITEMS) {
+      logger.warn(
+        {
+          totalItems: itemMap.size,
+          parentInternalId,
+          threshold: DELTA_MAX_ITEMS,
+        },
+        "Delta exceeded item threshold, aborting incremental sync"
+      );
+      throw new DeltaTooLargeError(itemMap.size);
+    }
     nextLink = newNextLink;
     deltaLink = finalDeltaLink;
     heartbeatFunction();

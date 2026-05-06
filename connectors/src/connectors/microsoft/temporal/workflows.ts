@@ -21,6 +21,7 @@ const {
   groupRootItemsByDriveId,
   isMicrosoftFullSyncRunning,
   reconcileSensitivityLabelsForParent,
+  launchMicrosoftFullSyncForDrive,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "30 minutes",
 });
@@ -230,12 +231,19 @@ export async function incrementalSyncWorkflowV2({
 
   const startSyncTs = new Date().getTime();
   for (const nodeId of Object.keys(groupedItems)) {
+    const rootNodeIds = groupedItems[nodeId] as string[];
     // Step 1: Fetch delta data and upload to GCS
-    const { gcsFilePath } = await fetchDeltaForRootNodesInDrive({
+    const { gcsFilePath, deltaTooLarge } = await fetchDeltaForRootNodesInDrive({
       connectorId,
       driveId: nodeId,
-      rootNodeIds: groupedItems[nodeId] as string[],
+      rootNodeIds,
     });
+
+    if (deltaTooLarge) {
+      await populateDeltas(connectorId, rootNodeIds);
+      await launchMicrosoftFullSyncForDrive({ connectorId, rootNodeIds });
+      continue;
+    }
 
     // Skip processing if no delta data was fetched
     if (!gcsFilePath) {
