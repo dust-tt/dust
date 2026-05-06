@@ -194,6 +194,25 @@ export function NewFileExplorer({
     [openPanel]
   );
 
+  const previewIndex = useMemo(() => {
+    if (!previewFile) {
+      return -1;
+    }
+    return filesAtLevel.findIndex((f) => f.path === previewFile.path);
+  }, [filesAtLevel, previewFile]);
+
+  const handlePreviewPrev = useCallback(() => {
+    if (previewIndex > 0) {
+      setPreviewFile(filesAtLevel[previewIndex - 1] ?? null);
+    }
+  }, [filesAtLevel, previewIndex]);
+
+  const handlePreviewNext = useCallback(() => {
+    if (previewIndex >= 0 && previewIndex < filesAtLevel.length - 1) {
+      setPreviewFile(filesAtLevel[previewIndex + 1] ?? null);
+    }
+  }, [filesAtLevel, previewIndex]);
+
   const handleDownload = useCallback(
     async (entry: GCSMountFileEntry) => {
       if (isDownloadingRef.current) {
@@ -241,12 +260,17 @@ export function NewFileExplorer({
     <>
       <div className="flex h-full flex-col">
         <AppLayoutTitle>
-          <div className="flex h-full items-center justify-between">
-            <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
-              File explorer
-            </span>
+          <div className="flex h-full items-center justify-between gap-2">
+            <FileExplorerBreadcrumb
+              folderStack={folderStack}
+              onNavigate={handleBreadcrumbNavigate}
+            />
             <div className="flex items-center gap-2">
               {sandboxStatus && <SandboxStatusChip status={sandboxStatus} />}
+              <FileExplorerViewToggle
+                value={viewMode}
+                onValueChange={setViewMode}
+              />
               <Button
                 variant="ghost"
                 size="sm"
@@ -258,17 +282,6 @@ export function NewFileExplorer({
         </AppLayoutTitle>
 
         <div className="flex flex-1 flex-col overflow-hidden gap-5 pt-5 px-4">
-          <div className="flex shrink-0 items-center justify-between">
-            <FileExplorerBreadcrumb
-              folderStack={folderStack}
-              onNavigate={handleBreadcrumbNavigate}
-            />
-            <FileExplorerViewToggle
-              value={viewMode}
-              onValueChange={setViewMode}
-            />
-          </div>
-
           {isLoading ? (
             <div className="flex flex-1 items-center justify-center">
               <Spinner />
@@ -331,6 +344,12 @@ export function NewFileExplorer({
         isOpen={showPreviewSheet}
         onOpenChange={setShowPreviewSheet}
         onDownload={handleDownload}
+        onPrev={previewIndex > 0 ? handlePreviewPrev : undefined}
+        onNext={
+          previewIndex >= 0 && previewIndex < filesAtLevel.length - 1
+            ? handlePreviewNext
+            : undefined
+        }
       />
     </>
   );
