@@ -29,6 +29,23 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { makeScript } from "./helpers";
 import { runOnAllWorkspaces } from "./workspace_helpers";
 
+// Metronome publishes a 55 RPS API limit. Cap the script at 40 RPS to leave
+// headroom for concurrent production traffic on the same API key.
+const METRONOME_MAX_RPS = 40;
+const METRONOME_MIN_INTERVAL_MS = 1000 / METRONOME_MAX_RPS;
+let metronomeNextSlotAt = 0;
+
+async function paceMetronome<T>(fn: () => Promise<T>): Promise<T> {
+  const now = Date.now();
+  const slot = Math.max(now, metronomeNextSlotAt);
+  metronomeNextSlotAt = slot + METRONOME_MIN_INTERVAL_MS;
+  const wait = slot - now;
+  if (wait > 0) {
+    await new Promise((r) => setTimeout(r, wait));
+  }
+  return fn();
+}
+
 type FreeCreditSubtype =
   | "free-poke"
   | "free-yearly-renewal"
@@ -85,12 +102,14 @@ async function backfillFromMetronome(
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
   const programmaticUsdCreditTypeId = getCreditTypeProgrammaticUsdId();
 
-  const creditsResult = await listMetronomeCustomerCredits({
-    metronomeCustomerId,
-    includeContractCredits: true,
-    includeBalance: true,
-    coveringDate: new Date().toISOString(),
-  });
+  const creditsResult = await paceMetronome(() =>
+    listMetronomeCustomerCredits({
+      metronomeCustomerId,
+      includeContractCredits: true,
+      includeBalance: true,
+      coveringDate: new Date().toISOString(),
+    })
+  );
 
   if (creditsResult.isErr()) {
     logger.error(
