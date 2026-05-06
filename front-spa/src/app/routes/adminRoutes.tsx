@@ -39,6 +39,13 @@ const SandboxPage = withSuspense(
     import("@dust-tt/front/components/pages/workspace/developers/SandboxPage"),
   "SandboxPage"
 );
+const ReinforcementPage = withSuspense(
+  () =>
+    import(
+      "@dust-tt/front/components/pages/workspace/developers/ReinforcementPage"
+    ),
+  "ReinforcementPage"
+);
 const MembersPage = withSuspense(
   () => import("@dust-tt/front/components/pages/workspace/MembersPage"),
   "MembersPage"
@@ -112,6 +119,10 @@ export const adminRoutes: RouteObject[] = [
       {
         path: "developers/sandbox",
         element: <SandboxPage />,
+      },
+      {
+        path: "developers/reinforcement",
+        element: <ReinforcementPage />,
       },
     ],
   },
