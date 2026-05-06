@@ -1,4 +1,4 @@
-import { AddTodoComposer } from "@app/components/assistant/conversation/space/conversations/project_tasks/AddTaskComposer";
+import { AddTaskComposer } from "@app/components/assistant/conversation/space/conversations/project_tasks/AddTaskComposer";
 import { ProjectTasksDataTable } from "@app/components/assistant/conversation/space/conversations/project_tasks/ProjectTasksDataTable";
 import { useProjectTasksPanel } from "@app/components/assistant/conversation/space/conversations/project_tasks/ProjectTasksPanelContext";
 import { normalizeProjectTaskSearchNeedle } from "@app/components/assistant/conversation/space/conversations/project_tasks/utils";
@@ -49,7 +49,7 @@ export function ProjectTasksPanelMain() {
               No project members available to assign.
             </p>
           ) : (
-            <AddTodoComposer
+            <AddTaskComposer
               projectMembers={projectMembers}
               viewerUserId={viewerUserId}
               defaultAssigneeSId={defaultNewAssigneeSId!}
