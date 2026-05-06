@@ -60,6 +60,7 @@ import {
   PencilSquareIcon,
   PlusCircleIcon,
   SidekickIcon,
+  Spinner,
   TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
@@ -410,11 +411,11 @@ export function ConversationMenu({
           {hasFeature("sessions_branching") && (
             <>
               <DropdownMenuItem
-                label="Branch conversation"
+                label={isBranching ? "Branching..." : "Branch conversation"}
                 onClick={() => {
                   void branchConversation();
                 }}
-                icon={ActionGitBranchIcon}
+                icon={isBranching ? <Spinner size="xs" /> : ActionGitBranchIcon}
                 disabled={isBranching}
               />
               <DropdownMenuSeparator />

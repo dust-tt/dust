@@ -79,7 +79,7 @@ export function useBranchConversation({
         }
 
         void onConversationBranched?.();
-        void router.push(
+        await router.push(
           getConversationRoute(owner.sId, responseBody.conversationId)
         );
 

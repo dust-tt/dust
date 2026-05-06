@@ -218,12 +218,13 @@ NavigationListItem.displayName = "NavigationListItem";
 interface NavigationListItemActionProps
   extends React.HTMLAttributes<HTMLDivElement> {
   showOnHover?: boolean;
+  isLoading?: boolean;
 }
 
 const NavigationListItemAction = React.forwardRef<
   HTMLDivElement,
   NavigationListItemActionProps
->(({ className, ...props }, ref) => {
+>(({ className, isLoading = false, ...props }, ref) => {
   return (
     <div
       ref={ref}
@@ -235,7 +236,13 @@ const NavigationListItemAction = React.forwardRef<
       )}
       {...props}
     >
-      <Button size="xmini" icon={MoreIcon} variant="ghost" />
+      <Button
+        size="xmini"
+        icon={MoreIcon}
+        variant="ghost"
+        isLoading={isLoading}
+        disabled={isLoading}
+      />
     </div>
   );
 });

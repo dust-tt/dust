@@ -102,6 +102,7 @@ import {
   InteractiveImageGrid,
   LinkIcon,
   MoreIcon,
+  Spinner,
   StopIcon,
   Tooltip,
   TrashIcon,
@@ -794,8 +795,8 @@ export function AgentMessage({
 
     if (canBranchConversation) {
       dropdownItems.push({
-        label: "Branch from here",
-        icon: ActionGitBranchIcon,
+        label: isBranching ? "Branching..." : "Branch from here",
+        icon: isBranching ? <Spinner size="xs" /> : ActionGitBranchIcon,
         onSelect: () => {
           void branchConversation(agentMessage.sId);
         },
@@ -842,8 +843,9 @@ export function AgentMessage({
             <Button
               variant="outline"
               size="xs"
-              icon={MoreIcon}
+              icon={isBranching ? <Spinner size="xs" /> : MoreIcon}
               className="text-muted-foreground"
+              disabled={isBranching}
             />
           }
           items={dropdownItems}
