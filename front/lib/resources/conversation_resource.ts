@@ -1649,8 +1649,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     // ES because every mark-as-read would force a full document re-index (write amplification).
     const dbConversations = await this.fetchByIds(
       auth,
-      items.map((i) => i.sId),
-      { includeForkingData: true }
+      items.map((i) => i.sId)
     );
     const readMap = await this.fetchReadMapForUser(
       auth,
@@ -1690,9 +1689,14 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           }
 
           const dbItem = dbResource.toListItem();
-          // Omit `nextWakeupAt`: DB always returns null vs ES has the real wakeup time.
-          const esCleaned = omit(esItem, "nextWakeupAt");
-          const dbCleaned = omit(dbItem, "nextWakeupAt");
+          // nextWakeupAt is ES-only. DB list items also derive title fallbacks for untitled
+          // conversations, which would require rehydrating fork data to compare here.
+          const keysToOmit =
+            dbResource.title === null
+              ? ["nextWakeupAt", "title"]
+              : ["nextWakeupAt"];
+          const esCleaned = omit(esItem, keysToOmit);
+          const dbCleaned = omit(dbItem, keysToOmit);
           if (!isEqual(esCleaned, dbCleaned)) {
             const divergingKeys = (
               Object.keys({ ...esCleaned, ...dbCleaned }) as Array<
