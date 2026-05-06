@@ -397,6 +397,7 @@ export interface MetronomePackageSummary {
   id: string;
   name: string;
   aliases: string[];
+  rateCardId?: string;
 }
 
 // Cache the package list for a few minutes as the catalog rarely changes and
@@ -424,6 +425,7 @@ export async function listMetronomePackages(): Promise<
         id: pkg.id,
         name: pkg.name ?? "",
         aliases: pkg.aliases?.map((a) => a.name) ?? [],
+        rateCardId: pkg.rate_card_id ?? undefined,
       });
     }
     packageListCache = {

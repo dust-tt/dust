@@ -9,6 +9,7 @@ import {
   createMetronomeCredit,
   floorToHourISO,
   getMetronomeRateCardById,
+  listMetronomePackages,
   updateMetronomeCreditEndDate,
 } from "@app/lib/metronome/client";
 import {
@@ -49,6 +50,46 @@ export async function getCreditTypeFromContract(
     return result;
   }
 
+  const fiat_credit_type_id = result.value.fiat_credit_type?.id;
+  if (!fiat_credit_type_id) {
+    return new Err(new Error("Rate card has no fiat_credit_type_id"));
+  }
+  const creditTypeIdToCurrency = Object.fromEntries(
+    Object.entries(CURRENCY_TO_CREDIT_TYPE_ID).map(([c, id]) => [id, c])
+  );
+  const currency = creditTypeIdToCurrency[fiat_credit_type_id];
+  if (!isSupportedCurrency(currency)) {
+    return new Err(
+      new Error(
+        `Unsupported currency for credit type id: ${fiat_credit_type_id}`
+      )
+    );
+  }
+  return new Ok({ creditTypeId: fiat_credit_type_id, currency });
+}
+
+export async function getCreditTypeFromPackage(
+  packageAlias: string
+): Promise<
+  Result<{ creditTypeId: string; currency: SupportedCurrency }, Error>
+> {
+  const packagesResult = await listMetronomePackages();
+  if (packagesResult.isErr()) {
+    return packagesResult;
+  }
+  const pkg = packagesResult.value.find((p) =>
+    p.aliases.includes(packageAlias)
+  );
+  if (!pkg) {
+    return new Err(new Error(`No package found for alias: ${packageAlias}`));
+  }
+  if (!pkg.rateCardId) {
+    return new Err(new Error(`Package ${packageAlias} has no rate_card_id`));
+  }
+  const result = await getMetronomeRateCardById({ rateCardId: pkg.rateCardId });
+  if (result.isErr()) {
+    return result;
+  }
   const fiat_credit_type_id = result.value.fiat_credit_type?.id;
   if (!fiat_credit_type_id) {
     return new Err(new Error("Rate card has no fiat_credit_type_id"));
@@ -147,7 +188,13 @@ export type RedeemCouponError =
 
 export async function redeemCoupon(
   auth: Authenticator,
-  { coupon }: { coupon: CouponResource }
+  {
+    coupon,
+    metronomePackageAlias,
+  }: {
+    coupon: CouponResource;
+    metronomePackageAlias?: string;
+  }
 ): Promise<Result<CouponRedemptionResource, RedeemCouponError | Error>> {
   const validation = coupon.validateRedemption();
   if (validation.isErr()) {
@@ -175,22 +222,22 @@ export async function redeemCoupon(
     });
   }
 
-  const contract = await getActiveContract(workspace.sId);
-  if (!contract) {
-    return new Err(
-      new Error("No active Metronome contract found for workspace")
-    );
+  let creditTypeIdResult;
+  if (metronomePackageAlias) {
+    creditTypeIdResult = await getCreditTypeFromPackage(metronomePackageAlias);
+  } else {
+    const contract = await getActiveContract(workspace.sId);
+    if (!contract) {
+      return new Err(
+        new Error("No active Metronome contract found for workspace")
+      );
+    }
+    creditTypeIdResult = await getCreditTypeFromContract(contract);
   }
-
-  const creditTypeIdResult = await getCreditTypeFromContract(contract);
   if (creditTypeIdResult.isErr()) {
     return creditTypeIdResult;
   }
   const { creditTypeId, currency } = creditTypeIdResult.value;
-  logger.info(
-    { creditTypeId, currency, workspaceId: workspace.sId },
-    "[Metronome] Resolved credit type for coupon redemption"
-  );
 
   let redemption: CouponRedemptionResource;
   try {
