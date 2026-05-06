@@ -24,7 +24,7 @@ type DroppedFile = { id: string; file: File; objectUrl?: string };
 interface TodoInputBarProps {
   placeholder?: string;
   className?: string;
-  onCreateTasks?: () => void;
+  onCreateTasks?: (text: string) => void;
 }
 
 export function TodoInputBar({
@@ -34,6 +34,7 @@ export function TodoInputBar({
 }: TodoInputBarProps) {
   const [isFocused, setIsFocused] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [inputText, setInputText] = useState("");
   const [droppedFiles, setDroppedFiles] = useState<DroppedFile[]>([]);
   const [selectedDroppedFile, setSelectedDroppedFile] =
     useState<DroppedFile | null>(null);
@@ -137,6 +138,15 @@ export function TodoInputBar({
 
   const showFocusStyle = isFocused || isDragOver;
 
+  const handleCreateTasks = () => {
+    if (inputText.trim().length === 0) {
+      return;
+    }
+    onCreateTasks?.(inputText);
+    richTextAreaRef.current?.setContent("");
+    setInputText("");
+  };
+
   return (
     <div
       ref={containerRef}
@@ -190,6 +200,7 @@ export function TodoInputBar({
               ref={richTextAreaRef}
               placeholder={placeholder}
               onFocus={handleFocus}
+              onTextChange={setInputText}
               variant="compact"
               showFormattingMenu
               showAskSidekickMenu={false}
@@ -215,7 +226,7 @@ export function TodoInputBar({
               icon={PlusIcon}
               label="Create"
               isRounded
-              onClick={onCreateTasks}
+              onClick={handleCreateTasks}
             />
           </div>
         </div>

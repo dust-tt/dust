@@ -47,6 +47,7 @@ import {
   MagicIcon,
   MoreIcon,
   PlayIcon,
+  PlusIcon,
   ReplySection,
   SearchInput,
   SearchInputWithPopover,
@@ -90,6 +91,7 @@ import type {
 } from "../data/types";
 import { getUserById } from "../data/users";
 import { InputBar } from "./InputBar";
+import { SuggestionBox } from "./SuggestionBox";
 import { TodoInputBar } from "./TodoInputBar";
 
 interface GroupConversationViewProps {
@@ -329,6 +331,26 @@ const FAKE_PROJECT_TODO_ITEMS: ChecklistItem[] = [
     id: "fake-todo-analytics-event",
     text: "Add the missing analytics event to the release tracker.",
   },
+];
+
+const TODO_SUGGESTION_TEXTS = [
+  "Summarize the open decisions from the latest project thread.",
+  "Prepare the follow-up notes for the next sync.",
+  "Update the project tracker with the latest owner and deadline.",
+  "Draft the customer-facing summary for review.",
+  "Check the release checklist for missing blockers.",
+  "Add the latest constraints to the implementation notes.",
+  "Validate the current numbers against the source export.",
+  "Write the rollout risk notes before the planning review.",
+];
+
+const PARTICIPANT_TODO_SUGGESTION_TEXTS = [
+  "Turn the latest customer feedback into follow-up tasks.",
+  "Add the missing rollout note to the project tracker.",
+  "Prepare a short update before the next project sync.",
+  "Check whether the open blocker still needs escalation.",
+  "Summarize the action items from the last discussion.",
+  "Update the implementation note with the latest decision.",
 ];
 
 const TODO_HISTORY_FILTER_LABELS: Record<TodoHistoryFilter, string> = {
@@ -575,6 +597,13 @@ interface ParticipantTodoList {
 }
 
 type TodoHistoryFilter = "ongoing" | "today" | "last7" | "last30";
+type TodoSuggestionStatus = "idle" | "working" | "ready";
+
+interface TodoSuggestionItem {
+  id: string;
+  userId: string;
+  text: string;
+}
 
 type SummaryRelatedConversations = Record<string, string[]>;
 type SummaryItemDiffByKey = Record<string, SummaryItemDiffState>;
@@ -1100,6 +1129,22 @@ export function GroupConversationView({
   >("all");
   const [todoSearchText, setTodoSearchText] = useState("");
   const [todoReassignSearchText, setTodoReassignSearchText] = useState("");
+  const [todoSuggestionStatus, setTodoSuggestionStatus] =
+    useState<TodoSuggestionStatus>("idle");
+  const [todoSuggestions, setTodoSuggestions] = useState<TodoSuggestionItem[]>(
+    []
+  );
+  const [todoSuggestionTextById, setTodoSuggestionTextById] = useState<
+    Record<string, string>
+  >({});
+  const [
+    participantTodoSuggestionsByUserId,
+    setParticipantTodoSuggestionsByUserId,
+  ] = useState<Record<string, TodoSuggestionItem[]>>({});
+  const [
+    participantTodoSuggestionTextById,
+    setParticipantTodoSuggestionTextById,
+  ] = useState<Record<string, string>>({});
   const [todoItemTextByKey, setTodoItemTextByKey] = useState<
     Record<string, string>
   >({});
@@ -1143,6 +1188,9 @@ export function GroupConversationView({
   const deltaTransitionStartTimeoutRef = useRef<number | null>(null);
   const cleanTransitionTimeoutRef = useRef<number | null>(null);
   const autoCleanTimeoutRef = useRef<number | null>(null);
+  const todoSuggestionTimeoutRef = useRef<number | null>(null);
+  const todoSuggestionCounterRef = useRef(0);
+  const hasSeededParticipantTodoSuggestionsRef = useRef(false);
   const todoDraftItemCounterRef = useRef(0);
   const pendingFocusTodoItemKeyRef = useRef<string | null>(null);
   const todoItemEditorRefs = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -1614,6 +1662,9 @@ export function GroupConversationView({
       if (autoCleanTimeoutRef.current !== null) {
         window.clearTimeout(autoCleanTimeoutRef.current);
       }
+      if (todoSuggestionTimeoutRef.current !== null) {
+        window.clearTimeout(todoSuggestionTimeoutRef.current);
+      }
     };
   }, []);
 
@@ -1918,6 +1969,74 @@ export function GroupConversationView({
     );
   }, [todoParticipants, todoReassignSearchText]);
 
+  useEffect(() => {
+    if (
+      hasSeededParticipantTodoSuggestionsRef.current ||
+      todoParticipants.length === 0
+    ) {
+      return;
+    }
+
+    hasSeededParticipantTodoSuggestionsRef.current = true;
+    const suggestionsByUserId: Record<string, TodoSuggestionItem[]> = {};
+
+    todoParticipants.slice(0, 2).forEach((participant, participantIndex) => {
+      suggestionsByUserId[participant.id] = [0, 1].map((offset) => {
+        const suggestionIndex =
+          (participantIndex * 2 + offset) %
+          PARTICIPANT_TODO_SUGGESTION_TEXTS.length;
+        return {
+          id: `participant-suggestion-${participant.id}-${offset}`,
+          userId: participant.id,
+          text: PARTICIPANT_TODO_SUGGESTION_TEXTS[suggestionIndex],
+        };
+      });
+    });
+
+    setParticipantTodoSuggestionsByUserId(suggestionsByUserId);
+  }, [todoParticipants]);
+
+  const generateTodoSuggestions = useCallback(
+    (prompt: string): TodoSuggestionItem[] => {
+      if (todoParticipants.length === 0) {
+        return [];
+      }
+
+      const normalizedPrompt = prompt.trim();
+      const suggestionCount = Math.min(4, Math.max(2, todoParticipants.length));
+      const promptSuggestion: ChecklistItem = {
+        id: "prompt-suggestion",
+        text: normalizedPrompt.endsWith(".")
+          ? normalizedPrompt
+          : `${normalizedPrompt}.`,
+      };
+      const suggestionPool = [
+        promptSuggestion,
+        ...TODO_SUGGESTION_TEXTS.map((text, index) => ({
+          id: `template-${index}`,
+          text,
+        })),
+      ];
+
+      return suggestionPool.slice(0, suggestionCount).map((item, index) => {
+        const participant =
+          todoParticipants[
+            Math.floor(
+              seededRandom(`${space.id}-${normalizedPrompt}-${index}`, 0) *
+                todoParticipants.length
+            )
+          ] ?? todoParticipants[index % todoParticipants.length];
+
+        return {
+          id: `todo-suggestion-${todoSuggestionCounterRef.current + index}`,
+          userId: participant.id,
+          text: item.text,
+        };
+      });
+    },
+    [space.id, todoParticipants]
+  );
+
   const participantTodoLists = useMemo((): ParticipantTodoList[] => {
     if (todoParticipants.length === 0 || !ongoingSummary) {
       return [];
@@ -2208,6 +2327,150 @@ export function GroupConversationView({
       });
     },
     []
+  );
+
+  const acceptTodoSuggestions = useCallback(
+    (suggestionsToAccept: TodoSuggestionItem[]) => {
+      const nonEmptySuggestions = suggestionsToAccept
+        .map((suggestion) => ({
+          ...suggestion,
+          text: (
+            todoSuggestionTextById[suggestion.id] ?? suggestion.text
+          ).trim(),
+        }))
+        .filter((suggestion) => suggestion.text.length > 0);
+
+      if (nonEmptySuggestions.length === 0) {
+        return;
+      }
+
+      setTodoDraftItemsByUserId((previousDraftItemsByUserId) => {
+        const nextDraftItemsByUserId = { ...previousDraftItemsByUserId };
+
+        nonEmptySuggestions.forEach((suggestion) => {
+          const draftItem: ChecklistItem = {
+            id: `suggested-todo-${suggestion.id}`,
+            text: suggestion.text,
+          };
+          nextDraftItemsByUserId[suggestion.userId] = [
+            ...(nextDraftItemsByUserId[suggestion.userId] ?? []),
+            draftItem,
+          ];
+        });
+
+        return nextDraftItemsByUserId;
+      });
+
+      const acceptedSuggestionIds = new Set(
+        nonEmptySuggestions.map((suggestion) => suggestion.id)
+      );
+      const remainingSuggestions = todoSuggestions.filter(
+        (suggestion) => !acceptedSuggestionIds.has(suggestion.id)
+      );
+
+      setTodoSuggestions(remainingSuggestions);
+      if (remainingSuggestions.length === 0) {
+        setTodoSuggestionStatus("idle");
+      }
+      setTodoSuggestionTextById((previousTextById) => {
+        const nextTextById = { ...previousTextById };
+        nonEmptySuggestions.forEach((suggestion) => {
+          delete nextTextById[suggestion.id];
+        });
+        return nextTextById;
+      });
+    },
+    [todoSuggestionTextById, todoSuggestions]
+  );
+
+  const rejectTodoSuggestions = useCallback(() => {
+    if (todoSuggestionTimeoutRef.current !== null) {
+      window.clearTimeout(todoSuggestionTimeoutRef.current);
+      todoSuggestionTimeoutRef.current = null;
+    }
+
+    setTodoSuggestionStatus("idle");
+    setTodoSuggestions([]);
+    setTodoSuggestionTextById({});
+  }, []);
+
+  const acceptParticipantTodoSuggestion = useCallback(
+    (suggestion: TodoSuggestionItem) => {
+      const text = (
+        participantTodoSuggestionTextById[suggestion.id] ?? suggestion.text
+      ).trim();
+
+      if (text.length > 0) {
+        const draftItem: ChecklistItem = {
+          id: `participant-suggested-todo-${suggestion.id}`,
+          text,
+        };
+        setTodoDraftItemsByUserId((previousDraftItemsByUserId) => ({
+          ...previousDraftItemsByUserId,
+          [suggestion.userId]: [
+            ...(previousDraftItemsByUserId[suggestion.userId] ?? []),
+            draftItem,
+          ],
+        }));
+      }
+
+      setParticipantTodoSuggestionsByUserId((previousSuggestionsByUserId) => ({
+        ...previousSuggestionsByUserId,
+        [suggestion.userId]: (
+          previousSuggestionsByUserId[suggestion.userId] ?? []
+        ).filter((item) => item.id !== suggestion.id),
+      }));
+      setParticipantTodoSuggestionTextById((previousTextById) => {
+        const nextTextById = { ...previousTextById };
+        delete nextTextById[suggestion.id];
+        return nextTextById;
+      });
+    },
+    [participantTodoSuggestionTextById]
+  );
+
+  const rejectParticipantTodoSuggestion = useCallback(
+    (suggestion: TodoSuggestionItem) => {
+      setParticipantTodoSuggestionsByUserId((previousSuggestionsByUserId) => ({
+        ...previousSuggestionsByUserId,
+        [suggestion.userId]: (
+          previousSuggestionsByUserId[suggestion.userId] ?? []
+        ).filter((item) => item.id !== suggestion.id),
+      }));
+      setParticipantTodoSuggestionTextById((previousTextById) => {
+        const nextTextById = { ...previousTextById };
+        delete nextTextById[suggestion.id];
+        return nextTextById;
+      });
+    },
+    []
+  );
+
+  const handleCreateTodoSuggestions = useCallback(
+    (prompt: string) => {
+      const normalizedPrompt = prompt.trim();
+      if (normalizedPrompt.length === 0) {
+        return;
+      }
+
+      if (todoSuggestionTimeoutRef.current !== null) {
+        window.clearTimeout(todoSuggestionTimeoutRef.current);
+      }
+
+      setTodoSuggestionStatus("working");
+      setTodoSuggestions([]);
+      setTodoSuggestionTextById({});
+
+      const delayMs = 500 + Math.floor(Math.random() * 1000);
+      todoSuggestionTimeoutRef.current = window.setTimeout(() => {
+        const suggestions = generateTodoSuggestions(normalizedPrompt);
+        todoSuggestionCounterRef.current += suggestions.length;
+        setTodoSuggestions(suggestions);
+        setTodoSuggestionStatus("ready");
+        todoSuggestionTimeoutRef.current = null;
+      }, delayMs);
+    },
+    [generateTodoSuggestions]
   );
 
   useEffect(() => {
@@ -2977,8 +3240,59 @@ export function GroupConversationView({
                 <h2 className="s-heading-2xl s-text-foreground dark:s-text-foreground-night">
                   {getProjectPageTitle("to-dos")}
                 </h2>
-                <TodoInputBar placeholder="Describe the tasks to create" />
+                <TodoInputBar
+                  placeholder="Describe the tasks to create"
+                  onCreateTasks={handleCreateTodoSuggestions}
+                />
               </div>
+
+              {todoSuggestionStatus !== "idle" && (
+                <SuggestionBox
+                  status={todoSuggestionStatus}
+                  title="Create tasks"
+                  workingLabel="Creating suggested to-dos..."
+                  headerIcon={PlusIcon}
+                  items={todoSuggestions.map((suggestion) => {
+                    const participant = todoParticipants.find(
+                      (user) => user.id === suggestion.userId
+                    );
+
+                    return {
+                      id: suggestion.id,
+                      groupTitle: participant?.fullName ?? "Participant",
+                      groupVisual: (
+                        <Avatar
+                          name={participant?.fullName ?? "Participant"}
+                          visual={participant?.portrait}
+                          size="xs"
+                          isRounded
+                        />
+                      ),
+                      text: suggestion.text,
+                    };
+                  })}
+                  textById={todoSuggestionTextById}
+                  acceptItemLabel="Add this to-do"
+                  acceptAllLabel="Accept all"
+                  rejectAllLabel="Cancel"
+                  onTextChange={(id, text) => {
+                    setTodoSuggestionTextById((previousTextById) => ({
+                      ...previousTextById,
+                      [id]: text,
+                    }));
+                  }}
+                  onAcceptItem={(id) => {
+                    const suggestion = todoSuggestions.find(
+                      (item) => item.id === id
+                    );
+                    if (suggestion) {
+                      acceptTodoSuggestions([suggestion]);
+                    }
+                  }}
+                  onAcceptAll={() => acceptTodoSuggestions(todoSuggestions)}
+                  onRejectAll={rejectTodoSuggestions}
+                />
+              )}
 
               {hasHistory && ongoingSummary ? (
                 <div className="s-flex s-flex-col s-gap-6">
@@ -3071,6 +3385,9 @@ export function GroupConversationView({
                               getSummaryItemKey("needAttention", item)
                             )
                         );
+                        const participantTodoSuggestions =
+                          participantTodoSuggestionsByUserId[list.user.id] ??
+                          [];
 
                         return (
                           <div
@@ -3090,6 +3407,48 @@ export function GroupConversationView({
                                 </h4>
                               </div>
                             </div>
+                            {participantTodoSuggestions.length > 0 && (
+                              <SuggestionBox
+                                status="ready"
+                                workingLabel="Creating suggested to-dos..."
+                                title="Suggestions"
+                                items={participantTodoSuggestions.map(
+                                  (suggestion) => ({
+                                    id: suggestion.id,
+                                    text: suggestion.text,
+                                  })
+                                )}
+                                textById={participantTodoSuggestionTextById}
+                                acceptItemLabel="Add this to-do"
+                                onTextChange={(id, text) => {
+                                  setParticipantTodoSuggestionTextById(
+                                    (previousTextById) => ({
+                                      ...previousTextById,
+                                      [id]: text,
+                                    })
+                                  );
+                                }}
+                                onAcceptItem={(id) => {
+                                  const suggestion =
+                                    participantTodoSuggestions.find(
+                                      (item) => item.id === id
+                                    );
+                                  if (suggestion) {
+                                    acceptParticipantTodoSuggestion(suggestion);
+                                  }
+                                }}
+                                onAcceptAll={() => {
+                                  participantTodoSuggestions.forEach(
+                                    acceptParticipantTodoSuggestion
+                                  );
+                                }}
+                                onRejectAll={() => {
+                                  participantTodoSuggestions.forEach(
+                                    rejectParticipantTodoSuggestion
+                                  );
+                                }}
+                              />
+                            )}
                             <div className="s-flex s-flex-col s-gap-2">
                               {visibleItemsWithDrafts.map((item) => {
                                 const itemKey = getSummaryItemKey(
