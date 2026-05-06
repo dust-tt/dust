@@ -84,6 +84,12 @@ pre-commit:
       root: front/
       run: npm run lint:audit-log-schemas
 
+    front-lint-sandbox-ensure:
+      tags: front
+      glob: "*.{js,jsx,ts,tsx}"
+      root: front/
+      run: npm run lint:sandbox-ensure
+
     front-typecheck:
       tags: front
       glob: "*.{js,jsx,ts,tsx}"
