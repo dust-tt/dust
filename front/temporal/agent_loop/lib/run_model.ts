@@ -91,6 +91,7 @@ const ASK_USER_QUESTION_ALLOWED_ORIGINS: UserMessageOrigin[] = [
   "slack",
   "extension",
   "agent_sidekick",
+  "onboarding_conversation",
 ];
 
 // Concatenate two content strings, ensuring at least one whitespace character
@@ -305,11 +306,6 @@ export async function runModel(
   }
 
   // Filter out ask_user_question for origins that don't support interactive questions.
-  const ASK_USER_QUESTION_ALLOWED_ORIGINS: UserMessageOrigin[] = [
-    "web",
-    "slack",
-    "onboarding_conversation",
-  ];
   const filteredMcpActions = !ASK_USER_QUESTION_ALLOWED_ORIGINS.includes(
     userMessage.context.origin
   )

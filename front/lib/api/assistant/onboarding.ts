@@ -206,7 +206,7 @@ export function buildOnboardingPrompt(options: {
         .join(", ");
       userContext += `The user indicated they use these platforms: ${platformNames}\n`;
       userContext +=
-        "Prioritize suggesting these tools and keep the onboarding grounded in those tools.";
+        "Prioritize suggesting these tools. Guide the user through connecting them one by one.";
     }
   }
 
@@ -214,11 +214,10 @@ export function buildOnboardingPrompt(options: {
     .map((sId) => asDisplayName(sId))
     .join(", ");
 
-  const otherToolNames = tools.slice(2).map((sId) => asDisplayName(sId));
-  const additionalToolGuidance =
-    otherToolNames.length > 0
-      ? `Other relevant tools you can suggest later: ${otherToolNames.join(", ")}.`
-      : "Keep the options focused on the most relevant tools.";
+  const additionalSuggestedToolNames = tools
+    .slice(2)
+    .map((sId) => asDisplayName(sId))
+    .join(", ");
 
   const firstMessageSection = alreadyConfiguredTopTool
     ? buildFirstMessageWithConfiguredTool(alreadyConfiguredTopTool)
@@ -241,8 +240,9 @@ ${languageInstruction}${userContext}
 1. Be direct and action-focused.
 2. Use \`ask_user_question\` whenever the user needs to choose a direction, confirm what to do next, or pick between candidate tools or tasks.
 3. In onboarding, all user-facing choices must be presented through \`ask_user_question\`.
-4. Use \`toolSetup\` only after the user has already confirmed they want one specific tool. At that point, render the card and stop for that turn.
-5. You MUST NOT hallucinate:
+4. Use \`toolSetup\` only after the user has already confirmed they want one specific tool, and only if that tool is not already available to you. If the tool is already available, use it immediately instead.
+5. Never use a \`toolSetup\` card in the first message or as a choice menu.
+6. You MUST NOT hallucinate:
 - NEVER suggest cross-tool queries like "get answers from multiple sources"
 - NEVER assume what data the user has (no "find your design docs", "search your specs", etc.)
 - NEVER invent role-specific scenarios (no "as a designer, you can search design feedback...")
@@ -268,13 +268,6 @@ Questions should be specific to what you found:
 - Found emails from Sarah and Mike -> ask_user_question options like "Draft a reply to Sarah" and "Summarize Mike's email"
 - Found PR reviews pending -> ask_user_question options like "Show PR details" and "List my open PRs"
 - Found Notion pages -> ask_user_question options like "Open recent page" and "Search for..."
-
-### Limited setup UI
-- A single \`toolSetup\` card is available only after the user explicitly confirmed they want one specific tool to connect
-- Never use a \`toolSetup\` card in the first message
-- Never use more than one \`toolSetup\` card at a time
-- Never use a \`toolSetup\` card as a choice menu, this does not work
-- Exact format when needed: \`:toolSetup[Connect Tool Name]{sId=tool_id}\`
 
 ## Automation flow
 
@@ -302,21 +295,22 @@ ${firstMessageSection}
 If the user says they already have an idea of what they want to do with Dust (e.g., "I already have an idea", "I know what I want to do"):
 1. Acknowledge enthusiastically (one line)
 2. Ask them what they'd like to accomplish - be genuinely curious and helpful
-3. Once they share their goal, help them achieve that one goal first before expanding
+3. Once they share their goal, help them achieve it
 4. If their goal would benefit from connecting a specific tool, mention it naturally and, if they agree, follow the single-tool connection flow above
 
 ### When user wants to skip initial tool setup
 1. Acknowledge briefly (one line)
 2. If they already have a concrete work goal, help with that first
-3. If they are still exploring which tool to connect, first use \`ask_user_question\` to ask which category sounds most useful
+3. Otherwise, use \`ask_user_question\` to ask which category sounds most useful
 4. After they pick a category, use \`ask_user_question\` again to refine to 2-3 specific tools in that category
-5. Include a skip option in both of those questions so they can opt out at any point
-6. Only render a \`toolSetup\` card after they confirm one specific tool
+5. Include a skip option in both questions so they can opt out at any point
+6. If they confirm one specific tool and it is already available to you, use it immediately
+7. Otherwise render exactly one \`toolSetup\` card and stop there for this turn
 
 ### When user asks to connect a tool
 1. Acknowledge briefly
-2. Render exactly one \`toolSetup\` card for that specific tool and stop there for this turn
-3. Once the tool is ready, inspect real data and show personalized suggestions grounded in what you found
+2. If the tool is already available to you, use it immediately to inspect real data and show personalized suggestions grounded in what you found
+3. Otherwise render exactly one \`toolSetup\` card for that specific tool and stop there for this turn
 4. If there are multiple strong next steps, use \`ask_user_question\` to let the user choose, but keep the choice set tight and justified by the data
 
 ### When user skips ALL tools
@@ -325,19 +319,18 @@ If the user says they already have an idea of what they want to do with Dust (e.
 3. Use \`ask_user_question\` if you need the user to choose a focused starting point
 
 ### When user asks to connect more tools
-1. Use \`ask_user_question\` with only the 2 most relevant options first
+1. Use \`ask_user_question\` with 2-3 relevant options at a time
 2. Put the most relevant tools first, especially ${suggestedTopToolNames}
-3. ${additionalToolGuidance}
-4. If the user wants more than those options, you can then offer the next most relevant tools
-5. If the user picks a tool, follow the single-tool connection flow above
+${additionalSuggestedToolNames ? `3. You can offer other relevant tools later, including ${additionalSuggestedToolNames}\n` : ""}4. If the user picks a tool, follow the single-tool connection flow above
 
 ### When user says they already connected a tool
 If the user says they already connected a tool (e.g., "I already connected Gmail", "It's already set up", "I connected it"):
 1. Acknowledge briefly (e.g., "Great!")
-2. If they named a specific tool, render exactly one \`toolSetup\` card for that tool and stop there for this turn
-3. If it is unclear which tool they mean, use \`ask_user_question\` to disambiguate with one precise question
-4. Once the tool is ready, present results with specific names, titles, or dates
-5. If there are 2-4 sensible follow-ups, use \`ask_user_question\` with concrete options grounded in the data and keep the list as short as possible
+2. If it is unclear which tool they mean, use \`ask_user_question\` to disambiguate with one precise question
+3. If they named a specific tool and it is already available to you, use it immediately
+4. Otherwise render exactly one \`toolSetup\` card for that tool and stop there for this turn
+5. Once the tool is ready, present results with specific names, titles, or dates
+6. If there are 2-4 sensible follow-ups, use \`ask_user_question\` with concrete options grounded in the data and keep the list as short as possible
 
 ### Tool categories for reference
 - **Email & Calendar**: Gmail, Outlook, Google Calendar, Outlook Calendar
@@ -448,15 +441,13 @@ export function buildOnboardingFollowUpPrompt(
     : "";
 
   return `<dust_system>
-The user is ready to use ${toolName}.
+The user just connected ${toolName}.
 ${languageInstruction}
-This is still onboarding. Keep the response focused on one concrete first success.
-
-**Immediately use the ${toolId} tool** to fetch real data and show a focused next step.
+**Immediately use the ${toolId} tool** to fetch real data and show personalized suggestions.
 
 Query guidance: ${queryGuidance}
 
-Briefly confirm that the tool is ready, share what you found, and if there are 2-3 justified next steps use \`ask_user_question\` in the same response with concrete options grounded in the data.
+Briefly confirm the connection (one line + emoji), share what you found, and if there are 2-3 actionable next steps use \`ask_user_question\` in the same response with concrete options grounded in the data.
 </dust_system>`;
 }
 
