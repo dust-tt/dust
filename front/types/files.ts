@@ -391,6 +391,8 @@ export const FILE_FORMATS = {
   "audio/x-wav": { cat: "audio", exts: [".wav"], isSafeToDisplay: true },
   "audio/ogg": { cat: "audio", exts: [".ogg"], isSafeToDisplay: true },
   "audio/webm": { cat: "audio", exts: [".webm"], isSafeToDisplay: true },
+  // Chrome sometimes uses video/webm for audio files, and we can still process them as audio only files
+  "video/webm": { cat: "audio", exts: [".webm"], isSafeToDisplay: true },
 
   // Unknown.
   "application/octet-stream": {

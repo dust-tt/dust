@@ -419,6 +419,14 @@ const PROCESSING_BY_CONTENT_TYPE = new Map<
       processedContentType: "text/plain",
     },
   ],
+  // Chrome sometimes uses video/webm for audio files, and we can still process them as audio only files
+  [
+    "video/webm",
+    {
+      process: extractTextFromAudioAndUpload,
+      processedContentType: "text/plain",
+    },
+  ],
   [
     "audio/ogg",
     {
