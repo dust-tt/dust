@@ -256,7 +256,8 @@ export function useSkillAttachmentFileContent({
     async (url: string) => {
       const response = await clientFetch(url);
       if (!response.ok) {
-        throw new Error(`Failed to fetch file content: ${response.status}`);
+        const errorData = await getErrorFromResponse(response);
+        throw new Error(errorData.message);
       }
       return response.text();
     },
