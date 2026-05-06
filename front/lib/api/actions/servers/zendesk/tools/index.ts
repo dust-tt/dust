@@ -143,7 +143,13 @@ const handlers: ToolHandlers<typeof ZENDESK_TOOLS_METADATA> = {
           continue;
         }
 
-        if (!ensureFileSize(contentType, attachment.size)) {
+        if (
+          !ensureFileSize(contentType, attachment.size, {
+            hasNewFileExplorer: false,
+            hasSandboxTools: false,
+            useCase: "conversation",
+          })
+        ) {
           contentBlocks.push({
             type: "text" as const,
             text:

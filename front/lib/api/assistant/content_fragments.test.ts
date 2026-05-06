@@ -34,6 +34,8 @@ function createMockContentFragment(
     contentFragmentVersion: "latest",
     expiredReason: null,
     contentFragmentType: "file",
+    mountRelativePath: null,
+    skipFileProcessing: false,
     fileId: generateRandomModelSId(),
     snippet: null,
     generatedTables: [],

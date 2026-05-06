@@ -73,6 +73,8 @@ export function AccountSettings({ owner }: AccountSettingsProps) {
   const [hasNotificationChanges, setHasNotificationChanges] = useState(false);
 
   const fileUploaderService = useFileUploaderService({
+    hasNewFileExplorer: false,
+    hasSandboxTools: false,
     owner,
     useCase: "avatar",
   });

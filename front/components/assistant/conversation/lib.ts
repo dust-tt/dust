@@ -61,6 +61,8 @@ export function createPlaceholderUserMessage({
             type: "content_fragment" as const,
             contentFragmentType: "file" as const,
             fileId: cf.fileId,
+            mountRelativePath: null,
+            skipFileProcessing: false,
             title: cf.title,
             snippet: null,
             generatedTables: [],

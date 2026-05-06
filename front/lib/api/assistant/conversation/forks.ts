@@ -12,6 +12,7 @@ import { replaceStandaloneAttachmentIds } from "@app/lib/api/assistant/conversat
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { getOrCreateConversationDataSourceFromFile } from "@app/lib/api/data_sources";
+import { isSandboxRawDelimitedConversationFile } from "@app/lib/api/files/sandbox_raw";
 import {
   isFileTypeUpsertableForUseCase,
   processAndUpsertToDataSource,
@@ -297,6 +298,10 @@ async function addFileToConversationDatasource(
     carriedFile: FileResource;
   }
 ): Promise<void> {
+  if (isSandboxRawDelimitedConversationFile(carriedFile)) {
+    return;
+  }
+
   const childDataSourceRes = await getOrCreateConversationDataSourceFromFile(
     auth,
     carriedFile
@@ -494,6 +499,7 @@ async function carryOverConversationAttachments(
       const shouldCopyFileToDatasource =
         carriedFile !== null &&
         !carriedFile.useCaseMetadata?.skipDataSourceIndexing &&
+        !isSandboxRawDelimitedConversationFile(carriedFile) &&
         isFileTypeUpsertableForUseCase(carriedFile);
 
       if (shouldCopyFileToDatasource) {

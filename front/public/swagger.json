@@ -10671,6 +10671,15 @@
             "nullable": true,
             "description": "Present for file content fragments"
           },
+          "mountRelativePath": {
+            "type": "string",
+            "nullable": true,
+            "description": "Scoped path for mounted conversation files."
+          },
+          "skipFileProcessing": {
+            "type": "boolean",
+            "description": "Whether upload-time file processing was skipped."
+          },
           "snippet": {
             "type": "string",
             "nullable": true
@@ -13134,6 +13143,16 @@
             "type": "string",
             "description": "The id of the previously uploaded file (optional if `content` and `contentType` are set)",
             "example": "fil_123456"
+          },
+          "mountRelativePath": {
+            "type": "string",
+            "nullable": true,
+            "description": "Scoped path for mounted conversation files.",
+            "example": "conversation/report.csv"
+          },
+          "skipFileProcessing": {
+            "type": "boolean",
+            "description": "Whether upload-time file processing was skipped."
           },
           "nodeId": {
             "type": "string",

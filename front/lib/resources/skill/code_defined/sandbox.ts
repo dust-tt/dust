@@ -84,7 +84,12 @@ Typical workflow when a prior tool returned a large output: locate the most
 recent matching file under \`/files/conversation/results/\`, then use
 \`jq\` / \`rg\` / \`grep\` to extract just the fields or lines you need,
 instead of paging the whole blob back through \`files__cat\` or re-running
-the tool.`;
+the tool.
+
+For tabular files (CSV, TSV, Excel) under \`/files/conversation\`, code is
+the preferred way to interact with them: analyze them with pandas, DuckDB,
+or the standard csv module. For very large files prefer chunked reads
+(\`pandas.read_csv(..., chunksize=...)\`) or DuckDB to keep memory bounded.`;
 }
 
 function formatWorkspaceAllowlist(domains: string[]): string {

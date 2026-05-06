@@ -1,3 +1,5 @@
+import { FileResource } from "@app/lib/resources/file_resource";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import {
   createPublicApiAuthenticationTests,
   createPublicApiMockRequest,
@@ -96,5 +98,66 @@ describe("POST /api/w/[wId]/files", () => {
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(200);
+  });
+
+  it("accepts and stamps raw sandbox CSV uploads when both required flags are enabled", async () => {
+    const { req, res, auth } = await createPublicApiMockRequest({
+      method: "POST",
+    });
+    await FeatureFlagFactory.basic(auth, "sandbox_tools");
+    await FeatureFlagFactory.basic(auth, "new_file_explorer");
+
+    req.body = {
+      contentType: "text/csv",
+      fileName: "large.csv",
+      fileSize: 60 * 1024 * 1024,
+      useCase: "conversation",
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const data = JSON.parse(res._getData());
+    const file = await FileResource.fetchById(auth, data.file.sId);
+    expect(file?.useCaseMetadata?.skipFileProcessing).toBe(true);
+    expect(file?.useCaseMetadata?.skipDataSourceIndexing).toBe(true);
+  });
+
+  it("keeps the 50 MB CSV limit when new_file_explorer is not enabled", async () => {
+    const { req, res, auth } = await createPublicApiMockRequest({
+      method: "POST",
+    });
+    await FeatureFlagFactory.basic(auth, "sandbox_tools");
+
+    req.body = {
+      contentType: "text/csv",
+      fileName: "large.csv",
+      fileSize: 60 * 1024 * 1024,
+      useCase: "conversation",
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(400);
+  });
+
+  it("does not raise the CSV limit for upsert_table system-key uploads", async () => {
+    const { req, res, auth } = await createPublicApiMockRequest({
+      method: "POST",
+      systemKey: true,
+    });
+    await FeatureFlagFactory.basic(auth, "sandbox_tools");
+    await FeatureFlagFactory.basic(auth, "new_file_explorer");
+
+    req.body = {
+      contentType: "text/csv",
+      fileName: "large.csv",
+      fileSize: 60 * 1024 * 1024,
+      useCase: "upsert_table",
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(400);
   });
 });

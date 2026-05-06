@@ -29,6 +29,7 @@ export async function copyContent(
 
   if (
     !includeProcessedVersion ||
+    sourceFile.useCaseMetadata?.skipFileProcessing === true ||
     !hasProcessedVersion(sourceFile.contentType)
   ) {
     return;

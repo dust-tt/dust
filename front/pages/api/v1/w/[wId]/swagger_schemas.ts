@@ -397,6 +397,14 @@
  *           type: string
  *           description: The id of the previously uploaded file (optional if `content` and `contentType` are set)
  *           example: fil_123456
+ *         mountRelativePath:
+ *           type: string
+ *           nullable: true
+ *           description: Scoped path for mounted conversation files.
+ *           example: conversation/report.csv
+ *         skipFileProcessing:
+ *           type: boolean
+ *           description: Whether upload-time file processing was skipped.
  *         nodeId:
  *           type: string
  *           description: The id of the content node (optional if `content` and `contentType` are set)

@@ -833,6 +833,28 @@ describe("FileResource", () => {
       expect(path).toContain("/processed");
     });
 
+    it("should resolve to 'original' version for spreadsheets when file processing is skipped", async () => {
+      const { authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+
+      const file = await FileFactory.create(auth, null, {
+        contentType:
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        fileName: "large.xlsx",
+        fileSize: 1000,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: {
+          conversationId: "conv-1",
+          skipFileProcessing: true,
+        },
+      });
+
+      const { path } = file.getContentBucketAndPath(auth);
+      expect(path).toContain("/original");
+    });
+
     it("should resolve to 'processed' version for images in conversation", async () => {
       const { authenticator: auth } = await createResourceTest({
         role: "admin",

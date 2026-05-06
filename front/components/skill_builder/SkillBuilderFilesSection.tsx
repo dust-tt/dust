@@ -37,6 +37,8 @@ export function SkillBuilderFilesSection() {
   const fileListBottomSentinelRef = useRef<HTMLDivElement>(null);
 
   const { handleFilesUpload, isProcessingFiles } = useFileUploaderService({
+    hasNewFileExplorer: false,
+    hasSandboxTools: false,
     owner,
     useCase: "skill_attachment",
     useCaseMetadata: skillId ? { skillId } : undefined,
