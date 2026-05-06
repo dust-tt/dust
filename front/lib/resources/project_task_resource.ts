@@ -1,7 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
-import { ProjectTaskStateResource } from "@app/lib/resources/project_task_state_resource";
 import {
   ProjectTaskConversationModel,
   ProjectTaskModel,
@@ -715,37 +714,6 @@ export class ProjectTaskResource extends BaseResource<ProjectTaskModel> {
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
     };
-  }
-
-  // ── Lifecycle ──────────────────────────────────────────────────────────────
-
-  // Marks all done todos as "cleaned" for the authenticated user in the given
-  // space by updating the per-user cutoff timestamp stored in project_todo_state.
-  static async cleanDoneBySpace(
-    auth: Authenticator,
-    { spaceId }: { spaceId: ModelId }
-  ): Promise<Result<{ cleanedCount: number }, Error>> {
-    const cleanedAt = new Date();
-    const workspaceId = auth.getNonNullableWorkspace().id;
-    const userId = auth.getNonNullableUser().id;
-
-    const cleanedCount = await ProjectTaskModel.count({
-      where: {
-        workspaceId,
-        spaceId,
-        userId,
-        deletedAt: null,
-        status: "done",
-        doneAt: { [Op.lte]: cleanedAt },
-      },
-    });
-
-    await ProjectTaskStateResource.upsertLastCleanedAtBySpace(auth, {
-      spaceId,
-      lastCleanedAt: cleanedAt,
-    });
-
-    return new Ok({ cleanedCount });
   }
 
   // Applies the same updates to a batch of todos in a single transaction.
