@@ -15,7 +15,7 @@ import {
 } from "@app/lib/swr/workspaces";
 import type { BillingPeriod } from "@app/types/plan";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import { Page, Spinner } from "@dust-tt/sparkle";
+import { DustLogoSquare, Icon, Spinner } from "@dust-tt/sparkle";
 import {
   EmbeddedCheckout,
   EmbeddedCheckoutProvider,
@@ -142,44 +142,58 @@ export function CheckoutPage() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col">
-      <Page>
-        <div className="flex w-full flex-col gap-8 lg:flex-row lg:gap-12">
-          {/* Left pane: plan summary + coupon + total */}
-          <div className="flex flex-col gap-4 lg:w-1/2">
-            <h2 className="text-lg font-semibold">Plan summary</h2>
+    <main className="flex min-h-screen">
+      {/* Left pane: plan summary + coupon + total */}
+      <div className="flex w-1/2 flex-col gap-14 p-24">
+        {/* Logo */}
+        <div>
+          <Icon visual={DustLogoSquare} size="lg" />
+        </div>
 
-            {/* Line items */}
-            <div className="flex flex-col gap-3 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">
-                  Price per seat ({billingPeriod}), excl. taxes
-                </span>
-                <span>
-                  {getPriceAsString({
-                    currency,
-                    priceInCents: seatPriceCents,
-                  })}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Number of seats</span>
-                <span>{seats}</span>
-              </div>
-              <div className="flex justify-between border-t border-separator pt-3 font-medium">
-                <span>Subtotal, excl. taxes</span>
-                <span>
-                  {getPriceAsString({
-                    currency,
-                    priceInCents: subtotalCents,
-                  })}
-                </span>
-              </div>
+        <div className="flex flex-col gap-11">
+          {/* Plan header */}
+          <div className="flex flex-col">
+            <span className="text-base text-muted-foreground">Your plan</span>
+            <h1 className="text-5xl font-semibold text-foreground">
+              {isBusiness ? "Business plan" : "Pro plan"}
+            </h1>
+            <span className="text-sm text-muted-foreground">
+              {billingPeriod === "yearly"
+                ? "billed annually"
+                : "billed monthly"}
+            </span>
+          </div>
+
+          {/* Line items */}
+          <div className="flex flex-col text-sm">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">
+                Price per seat (excl. taxes)
+              </span>
+              <span>
+                {getPriceAsString({
+                  currency,
+                  priceInCents: seatPriceCents,
+                })}
+              </span>
+            </div>
+            <div className="mt-3 flex justify-between">
+              <span className="text-muted-foreground">Number of seats</span>
+              <span>{seats}</span>
+            </div>
+            <div className="mt-6 flex justify-between border-t border-separator pt-3 font-medium">
+              <span>Subtotal (excl. taxes)</span>
+              <span>
+                {getPriceAsString({
+                  currency,
+                  priceInCents: subtotalCents,
+                })}
+              </span>
             </div>
 
             {/* Total due today — always visible */}
-            <div className="flex justify-between border-t border-separator pt-3 text-base font-semibold">
-              <span>Total due today, excl. taxes</span>
+            <div className="mt-6 flex justify-between border-t border-separator pt-3 text-base font-semibold">
+              <span>Total due today (excl. taxes)</span>
               <span>
                 {getPriceAsString({
                   currency,
@@ -188,29 +202,29 @@ export function CheckoutPage() {
               </span>
             </div>
 
-            <p className="text-xs text-muted-foreground">
+            <p className="mt-11 text-xs text-muted-foreground">
               Final currency and tax amount are determined by the country
               entered in the payment form.
             </p>
           </div>
-
-          {/* Right pane: Stripe Embedded Checkout */}
-          <div className="lg:w-1/2">
-            {isCreating || !clientSecret ? (
-              <div className="flex h-64 items-center justify-center">
-                <Spinner size="lg" />
-              </div>
-            ) : (
-              <EmbeddedCheckoutProvider
-                stripe={getStripePromise()}
-                options={{ clientSecret }}
-              >
-                <EmbeddedCheckout />
-              </EmbeddedCheckoutProvider>
-            )}
-          </div>
         </div>
-      </Page>
+      </div>
+
+      {/* Right pane: Stripe Embedded Checkout */}
+      <div className="w-1/2 p-24">
+        {isCreating || !clientSecret ? (
+          <div className="flex h-64 items-center justify-center">
+            <Spinner size="lg" />
+          </div>
+        ) : (
+          <EmbeddedCheckoutProvider
+            stripe={getStripePromise()}
+            options={{ clientSecret }}
+          >
+            <EmbeddedCheckout />
+          </EmbeddedCheckoutProvider>
+        )}
+      </div>
     </main>
   );
 }
