@@ -1,4 +1,7 @@
-import { getFilePreviewConfig } from "@app/components/spaces/FilePreviewSheet";
+import {
+  type FilePreviewCategory,
+  getFilePreviewConfig,
+} from "@app/components/spaces/FilePreviewSheet";
 import { useConversationFileContent } from "@app/hooks/conversations/useConversationFileContent";
 import config from "@app/lib/api/config";
 import { parseScopedFilePath } from "@app/lib/api/files/mount_path";
@@ -32,8 +35,6 @@ import { useEffect } from "react";
 
 const MAX_CSV_ROWS = 200;
 const MAX_TEXT_CHARS = 100_000;
-
-type FilePreviewCategory = ReturnType<typeof getFilePreviewConfig>["category"];
 
 export interface FilePreviewDialogFile {
   contentType: string;
