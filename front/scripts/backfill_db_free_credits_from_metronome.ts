@@ -287,13 +287,19 @@ makeScript(
         "Optional workspace sId to process (processes all if omitted)",
       required: false,
     },
+    fromWorkspaceId: {
+      type: "number" as const,
+      description:
+        "Resume from this numeric workspace model id (skips workspaces with id < this value)",
+      required: false,
+    },
   },
-  async ({ workspaceId, execute }, logger) => {
+  async ({ workspaceId, fromWorkspaceId, execute }, logger) => {
     await runOnAllWorkspaces(
       async (workspace) => {
         await backfillFromMetronome(workspace, execute, logger);
       },
-      { concurrency: 4, wId: workspaceId }
+      { concurrency: 4, wId: workspaceId, fromWorkspaceId }
     );
   }
 );
