@@ -15,7 +15,6 @@ import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MC
 import { useAuth } from "@app/lib/auth/AuthContext";
 import type { DustError } from "@app/lib/error";
 import { isFreeTrialPhonePlan } from "@app/lib/plans/plan_codes";
-import { useWorkspaceActiveSubscription } from "@app/lib/swr/workspaces";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { RichMention } from "@app/types/assistant/mentions";
@@ -155,10 +154,8 @@ function PreviewContent({
 
 export function AgentBuilderPreview() {
   const { owner, isAdmin } = useAgentBuilderContext();
-  const { user } = useAuth();
-  const { activeSubscription } = useWorkspaceActiveSubscription({ owner });
-  const isTrialPlan =
-    activeSubscription && isFreeTrialPhonePlan(activeSubscription.plan.code);
+  const { user, subscription } = useAuth();
+  const isTrialPlan = isFreeTrialPhonePlan(subscription.plan.code);
   const { isMCPServerViewsLoading } = useMCPServerViewsContext();
   const { isPreviewPanelOpen } = usePreviewPanelContext();
 
