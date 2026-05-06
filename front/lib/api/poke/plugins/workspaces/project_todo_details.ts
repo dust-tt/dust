@@ -110,7 +110,7 @@ export const projectTodoDetailsPlugin = createPlugin({
 
     return new Ok({
       display: "markdown",
-      value: `## ${statusEmoji[todo.status] ?? "❓"} Project TODO \`${todo.id}\ \`${todo.sId}\` 
+      value: `## ${statusEmoji[todo.status] ?? "❓"} Project TODO \`${todo.id}\` \`${todo.sId}\` 
 
 **Text:** ${todo.text}
 
