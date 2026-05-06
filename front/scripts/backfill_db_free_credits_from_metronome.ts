@@ -89,6 +89,7 @@ async function backfillFromMetronome(
     metronomeCustomerId,
     includeContractCredits: true,
     includeBalance: true,
+    coveringDate: new Date().toISOString(),
   });
 
   if (creditsResult.isErr()) {
