@@ -216,6 +216,19 @@ async function handler(
               },
             },
           };
+        } else if (event.data.type === "agent_action_success") {
+          publicEvent = {
+            eventId: event.eventId,
+            data: {
+              ...event.data,
+              action: {
+                ...event.data.action,
+                generatedFiles: event.data.action.generatedFiles.filter(
+                  (f): f is ActionGeneratedDBFileType => f.fileId !== null
+                ),
+              },
+            },
+          };
         } else {
           publicEvent = {
             eventId: event.eventId,
