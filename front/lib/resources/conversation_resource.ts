@@ -467,7 +467,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     // Default `useFileSystem` to true when the caller hasn't pinned a value. Pinning the flag on
     // the conversation gives stable behavior across its lifetime:
     // existing conversations (no flag set) keep the legacy behavior.
-    const metadata: ConversationMetadata = blob.metadata ?? {};
+    const metadata: ConversationMetadata = blob.metadata
+      ? { ...blob.metadata }
+      : {};
     if (metadata.useFileSystem === undefined) {
       metadata.useFileSystem = true;
     }
