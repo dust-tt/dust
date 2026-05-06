@@ -636,10 +636,7 @@ export async function startSkillConversationAnalysisBatchActivity({
         existingConversationId: existingReinforcementConvId,
         prompt: systemPrompt,
         specifications,
-        ...getReinforcedSkillsDefaultOptions(
-          "reinforcement_analyze_conversation",
-          skillIds
-        ),
+        userContextOrigin: "reinforcement",
       });
       orderedAnalysedConversationIds.push(conversationId);
     } else {

@@ -45,7 +45,6 @@ export interface LlmConversationOptions
   extends LLMParametersWithoutConversation {
   newMessages: ModelMessageTypeMultiActionsWithoutContentFragment[];
   existingConversationId?: string;
-  agentConfigurationId?: string;
   enabledSkills?: EnabledSkill[];
   equippedSkills?: SkillResource[];
   title?: string;
@@ -381,6 +380,7 @@ export async function sendBatchCallToLlm(
   const batchId = await llm.sendBatchProcessing(batchMap);
   return new Ok({ batchId, conversationIds });
 }
+
 export interface BatchDownloadResult {
   events: Map<string, LLMEvent[]>;
   storedResultInfo: Map<string, StoreLlmResultInfo>;

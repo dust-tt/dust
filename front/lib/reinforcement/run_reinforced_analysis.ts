@@ -1,5 +1,4 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
-import type { EnabledSkill } from "@app/lib/api/assistant/skills_rendering";
 import { getLLM } from "@app/lib/api/llm";
 import { writeBatchUserMessages } from "@app/lib/api/llm/batch_llm";
 import type { LLM } from "@app/lib/api/llm/llm";
@@ -226,23 +225,13 @@ export function classifySkillToolCalls(
 export function getReinforcedSkillsDefaultOptions(
   operationType: ReinforcedSkillsOperationType,
   skillIds: string[]
-): {
-  visibility: "test";
-  metadata: ReturnType<typeof getReinforcedSkillsMetadata>;
-  userContextUsername: string;
-  userContextOrigin: "reinforcement";
-  agentConfigurationId: string;
-  enabledSkills: EnabledSkill[];
-  equippedSkills: SkillResource[];
-} {
+) {
   return {
     visibility: "test" as const,
     metadata: getReinforcedSkillsMetadata(operationType, skillIds),
     userContextUsername: "reinforcement",
     userContextOrigin: "reinforcement" as const,
     agentConfigurationId: REINFORCEMENT_SKILLS_AGENT_ID,
-    enabledSkills: [],
-    equippedSkills: [],
   };
 }
 
