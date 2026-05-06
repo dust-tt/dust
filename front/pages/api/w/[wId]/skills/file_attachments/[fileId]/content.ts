@@ -42,12 +42,12 @@ async function handler(
       const skillId = file.useCaseMetadata?.skillId;
       if (skillId) {
         const skill = await SkillResource.fetchById(auth, skillId);
-        if (!skill || !skill.canWrite(auth)) {
+        if (!skill) {
           return apiError(req, res, {
-            status_code: 403,
+            status_code: 404,
             api_error: {
-              type: "app_auth_error",
-              message: "Only skill editors can preview this file.",
+              type: "file_not_found",
+              message: "File not found.",
             },
           });
         }

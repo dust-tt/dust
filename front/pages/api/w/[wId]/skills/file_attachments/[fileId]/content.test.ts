@@ -2,6 +2,7 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { PassThrough } from "stream";
 import { describe, expect, it, vi } from "vitest";
 
@@ -49,13 +50,17 @@ describe("GET /api/w/[wId]/skills/file_attachments/[fileId]/content", () => {
     getReadStreamSpy.mockRestore();
   });
 
-  it("streams skill attachment content for a skill editor", async () => {
+  it("streams skill attachment content for a readable skill", async () => {
     const { auth, req, res, user } = await createPrivateApiMockRequest({
       method: "GET",
       role: "user",
     });
-    const skill = await SkillFactory.create(auth);
+    const skill = await SkillFactory.create(auth, {
+      addCurrentUserAsEditor: false,
+    });
     const { getReadStreamSpy, pipeSpy } = mockFileStream();
+
+    expect(skill.canWrite(auth)).toBe(false);
 
     const file = await FileFactory.create(auth, user, {
       contentType: "text/yaml",
@@ -76,6 +81,46 @@ describe("GET /api/w/[wId]/skills/file_attachments/[fileId]/content", () => {
     expect(res._getStatusCode()).toBe(200);
     expect(res.getHeader("Content-Type")).toBe("text/yaml");
     expect(pipeSpy).toHaveBeenCalledWith(res);
+
+    getReadStreamSpy.mockRestore();
+  });
+
+  it("returns 404 when the attached skill cannot be fetched", async () => {
+    const { auth, req, res, user, workspace } =
+      await createPrivateApiMockRequest({
+        method: "GET",
+        role: "user",
+      });
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    const skill = await SkillFactory.create(auth, {
+      requestedSpaceIds: [restrictedSpace.id],
+    });
+    const { getReadStreamSpy } = mockFileStream();
+
+    const file = await FileFactory.create(auth, user, {
+      contentType: "text/yaml",
+      fileName: "restricted.yaml",
+      fileSize: 11,
+      status: "ready",
+      useCase: "skill_attachment",
+      useCaseMetadata: { skillId: skill.sId },
+    });
+
+    req.query = {
+      ...req.query,
+      fileId: file.sId,
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(404);
+    expect(res._getJSONData()).toEqual({
+      error: {
+        type: "file_not_found",
+        message: "File not found.",
+      },
+    });
+    expect(getReadStreamSpy).not.toHaveBeenCalled();
 
     getReadStreamSpy.mockRestore();
   });
