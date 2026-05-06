@@ -87,6 +87,21 @@ function getToolEdits(args: Record<string, unknown>): ToolEditItem[] {
   return edits.filter(isToolEditItem);
 }
 
+function getAgentFacingDescriptionEditContent(
+  args: Record<string, unknown>
+): string | undefined {
+  const edit = args.agentFacingDescriptionEdit;
+  if (
+    typeof edit !== "object" ||
+    edit === null ||
+    !("content" in edit) ||
+    typeof edit.content !== "string"
+  ) {
+    return undefined;
+  }
+  return edit.content;
+}
+
 function findEditSkillCall(toolCalls: ToolCall[]): ToolCall | undefined {
   return toolCalls.find((tc) => tc.name === "edit_skill");
 }
@@ -165,6 +180,30 @@ export function validateToolCallAssertion(
       }
       return { success: true };
     }
+    case "editSkillWithAgentFacingDescription": {
+      const editCalls = toolCalls.filter((tc) => tc.name === "edit_skill");
+      const matching = editCalls.find(
+        (call) =>
+          getSkillId(call.arguments) === assertion.skillId &&
+          getAgentFacingDescriptionEditContent(call.arguments) !== undefined
+      );
+      if (!matching) {
+        return {
+          success: false,
+          error: `Expected edit_skill to be called with agentFacingDescriptionEdit for skillId "${assertion.skillId}", but no such call was made`,
+        };
+      }
+      if (assertion.sourceSuggestionIds) {
+        const sourceResult = validateSourceSuggestionIds(
+          matching,
+          assertion.sourceSuggestionIds
+        );
+        if (sourceResult) {
+          return sourceResult;
+        }
+      }
+      return { success: true };
+    }
     case "editSkill": {
       const call = findEditSkillCall(toolCalls);
       if (!call) {
@@ -198,10 +237,16 @@ export function validateToolCallAssertion(
         }
         const instructionEdits = getInstructionEdits(tc.arguments);
         const toolEdits = getToolEdits(tc.arguments);
-        if (instructionEdits.length > 0 || toolEdits.length > 0) {
+        const hasDescriptionEdit =
+          getAgentFacingDescriptionEditContent(tc.arguments) !== undefined;
+        if (
+          instructionEdits.length > 0 ||
+          toolEdits.length > 0 ||
+          hasDescriptionEdit
+        ) {
           return {
             success: false,
-            error: `Expected no suggestions, but edit_skill was called with ${instructionEdits.length} instructionEdit(s) and ${toolEdits.length} toolEdit(s)`,
+            error: `Expected no suggestions, but edit_skill was called with ${instructionEdits.length} instructionEdit(s), ${toolEdits.length} toolEdit(s)${hasDescriptionEdit ? ", and an agentFacingDescriptionEdit" : ""}`,
           };
         }
       }
