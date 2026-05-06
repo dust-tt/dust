@@ -14,8 +14,8 @@
 //           not found → push to newCandidates[]
 //
 //   Phase 2 — Semantic deduplication.
-//     - Pre-fetch existing todos per (userId, category) for the space.
-//     - Run one LLM call per non-empty (userId, category) group to detect
+//     - Pre-fetch all existing todos for the space (all users, including deleted).
+//     - Run ONE LLM call with all candidates and all existing todos to detect
 //       items that describe the same task despite different wording.
 //     - Build dedupMap: `${userId}:${itemId}` → matching ProjectTaskResource.
 //       Missing keys mean the candidate is genuinely new.
@@ -31,7 +31,6 @@ import {
   batchDeduplicateCandidates,
   type DeduplicateCandidate,
   type DeduplicatedGroup,
-  type ExistingTodosByUser,
 } from "@app/lib/project_task/deduplicate_candidates";
 import {
   ProjectTaskResource,
@@ -291,9 +290,9 @@ export async function collectDocumentCandidates(
 
 // ── Phase 2 ───────────────────────────────────────────────────────────────────
 
-// Pre-fetches all existing todos per (userId, category) and runs batch semantic
-// deduplication via LLM. Returns one singleton "new" group per candidate if no
-// model is available — Phase 3 then creates fresh todos for all of them.
+// Pre-fetches all existing todos for the space and runs semantic deduplication
+// via a single LLM call across all users. Returns one singleton "new" group per
+// candidate if no model is available — Phase 3 then creates fresh todos for all.
 async function buildDeduplicationGroups(
   auth: Authenticator,
   {
@@ -320,39 +319,17 @@ async function buildDeduplicationGroups(
     return dedupInput.map((c) => ({ kind: "new", candidates: [c] }));
   }
 
-  // Fetch all existing todos for each unique target user in a single pass,
-  // then nest them under userId → category → todos for lookup by the LLM
-  // calls.
-  const uniqueUserIds = [
-    ...new Set(newCandidates.map((c) => c.userId as ModelId)),
-  ];
-  const existingTodosByUser: ExistingTodosByUser = new Map();
-
-  await concurrentExecutor(
-    uniqueUserIds,
-    async (userId) => {
-      // we want deleted TODOs to match them
-      const todos =
-        await ProjectTaskResource.fetchLatestBySpaceForUserIncludingDeleted(
-          auth,
-          { spaceId: spaceModelId, userId }
-        );
-      for (const todo of todos) {
-        if (todo.userId === null) {
-          continue;
-        }
-        const bucket = existingTodosByUser.get(todo.userId) ?? [];
-        bucket.push(todo);
-        existingTodosByUser.set(todo.userId, bucket);
-      }
-    },
-    { concurrency: 4 }
-  );
+  // Fetch all existing tasks for the space in one pass (including deleted).
+  // All tasks across all users are passed to a single LLM call.
+  const existingTodos =
+    await ProjectTaskResource.fetchAllBySpaceIncludingDeleted(auth, {
+      spaceId: spaceModelId,
+    });
 
   return batchDeduplicateCandidates(auth, {
     model,
     candidates: dedupInput,
-    existingTodosByUser,
+    existingTodos,
   });
 }
 

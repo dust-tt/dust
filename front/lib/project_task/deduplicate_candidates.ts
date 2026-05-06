@@ -1,8 +1,8 @@
 // Semantic deduplication for project TODO candidates during the merge workflow.
 //
-// batchDeduplicateCandidates groups candidates by (userId, category), runs one
-// LLM call per non-empty group, and returns a flat list of DeduplicatedGroup.
-// Each group describes one todo that Phase 3 will touch:
+// batchDeduplicateCandidates receives ALL candidates and ALL existing todos for
+// the space (across all users), runs ONE LLM call, and returns a flat list of
+// DeduplicatedGroup. Each group describes one todo that Phase 3 will touch:
 //
 //   - { kind: "existing", todo, candidates }
 //       Attach every candidate's source to the existing todo.
@@ -14,9 +14,8 @@
 // forgets to include it in any partition, it is emitted as a singleton
 // "new" group so sources are never silently dropped.
 //
-// The LLM is handed one flat, numbered list of items per (userId, category)
-// group — existing todos first, then new candidates — and asked to partition
-// it into semantic clusters. Per cluster:
+// The LLM is handed one flat, numbered list — existing todos first, then new
+// candidates — and asked to partition it into semantic clusters. Per cluster:
 //
 //   - no existing → the cluster becomes one "new" group; the first candidate
 //     drives the content, the rest attach their sources;
@@ -25,15 +24,14 @@
 //     additional existing todos in the same cluster are ignored (we don't
 //     merge existing todos here).
 //
-// On LLM failure the affected (userId, category) group is treated as all-new
-// (one singleton "new" group per candidate), so the caller always falls back
-// to creating fresh todos rather than silently discarding data.
+// On LLM failure the whole call is treated as all-new (one singleton "new"
+// group per candidate), so the caller always falls back to creating fresh todos
+// rather than silently discarding data.
 
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import type { Authenticator } from "@app/lib/auth";
 import type { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
@@ -49,9 +47,7 @@ export type DeduplicateCandidate = {
   text: string;
 };
 
-// One todo that Phase 3 will touch. A group's candidates all share the same
-// userId and category (grouping is per (userId, category) before the LLM
-// call).
+// One task that Phase 3 will touch.
 export type DeduplicatedGroup =
   | {
       kind: "existing";
@@ -65,13 +61,14 @@ export type DeduplicatedGroup =
       candidates: DeduplicateCandidate[];
     };
 
-// Nested map shape for existing todos passed in by the caller:
-// userId → todos.
-export type ExistingTodosByUser = Map<ModelId, ProjectTaskResource[]>;
-
 // ── LLM tool ─────────────────────────────────────────────────────────────────
 
 const REPORT_GROUPS_FUNCTION_NAME = "report_groups";
+
+// Warn when combined item count risks context pressure. The LLM call still
+// fires — this is purely a signal for monitoring.
+// 500 * 256 = 128k
+const CONTEXT_PRESSURE_THRESHOLD = 500;
 
 const DeduplicationResultSchema = z.object({
   groups: z.array(z.array(z.number().int())),
@@ -144,13 +141,11 @@ function buildDeduplicationPrompt(
   ].join("\n");
 }
 
-// ── LLM call for a single (userId, category) group ───────────────────────────
+// ── LLM call ─────────────────────────────────────────────────────────────────
 
 // Returns the LLM's partitioning of `[...existingTodos, ...candidates]` as
 // an array of groups of 0-based indexes, or an empty array on failure (each
 // candidate then ends up in its own singleton "new" group downstream).
-// Precondition: all candidates must share the same category — batchDeduplicateCandidates
-// enforces this by grouping on (userId, category) before calling here.
 export async function runDeduplicationLLMCall(
   auth: Authenticator,
   {
@@ -314,67 +309,69 @@ export function resolveDeduplicationGroups<TTodo>(
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
-// Runs semantic deduplication for all new candidates. Groups candidates by
-// (userId, category), executes one LLM call per group (up to 4 concurrent),
-// and returns a flat list of DeduplicatedGroup covering every input
-// candidate.
+// Runs semantic deduplication for all new candidates in a single LLM call.
+// All candidates and all existing todos (across all users) are presented to the
+// model as one flat numbered list. Returns a flat list of DeduplicatedGroup
+// covering every input candidate.
+//
+// Fast path: if there is at most one candidate and no existing todos, the LLM
+// call is skipped and a singleton "new" group is returned directly.
+//
+// On LLM failure every candidate is returned as its own singleton "new" group
+// so the caller always creates fresh todos rather than silently dropping data.
 export async function batchDeduplicateCandidates(
   auth: Authenticator,
   {
     model,
     candidates,
-    existingTodosByUser,
+    existingTodos,
   }: {
     model: ModelConfigurationType;
     candidates: DeduplicateCandidate[];
-    existingTodosByUser: ExistingTodosByUser;
+    existingTodos: ProjectTaskResource[];
   }
 ): Promise<DeduplicatedGroup[]> {
-  const results: DeduplicatedGroup[] = [];
-
-  // Group candidates by userId → candidates.
-  // TODO: to move above, we are doing it for each batch this is wasteful
-  const candidatesByUserId = new Map<ModelId, DeduplicateCandidate[]>();
-  for (const candidate of candidates) {
-    const bucket = candidatesByUserId.get(candidate.userId) ?? [];
-
-    bucket.push(candidate);
-    candidatesByUserId.set(candidate.userId, bucket);
+  if (candidates.length === 0) {
+    return [];
   }
 
-  // Flatten to a list of (candidates, existingTodos) jobs so the executor
-  // can schedule them at a fixed parallelism.
-  const jobs: Array<{
-    candidates: DeduplicateCandidate[];
-    existingTodos: ProjectTaskResource[];
-  }> = [];
-  for (const [userId, candidates] of candidatesByUserId) {
-    const existingTodos = existingTodosByUser.get(userId) ?? [];
-    jobs.push({ candidates, existingTodos });
+  const owner = auth.getNonNullableWorkspace();
+
+  // Fast path: single candidate with no existing todos needs no LLM call.
+  if (existingTodos.length === 0 && candidates.length === 1) {
+    return [{ kind: "new", candidates }];
   }
 
-  await concurrentExecutor(
-    jobs,
-    async ({ candidates, existingTodos }) => {
-      // Fast path: one candidate, no existing. No LLM call needed; emit a
-      // singleton "new" group directly.
-      if (existingTodos.length === 0 && candidates.length <= 1) {
-        results.push({ kind: "new", candidates });
-        return;
-      }
+  const totalItems = existingTodos.length + candidates.length;
 
-      const llmGroups = await runDeduplicationLLMCall(auth, {
-        model,
-        candidates,
-        existingTodos,
-      });
+  if (totalItems > CONTEXT_PRESSURE_THRESHOLD) {
+    logger.warn(
+      {
+        workspaceId: owner.sId,
+        existingTodoCount: existingTodos.length,
+        candidateCount: candidates.length,
+        totalItems,
+        threshold: CONTEXT_PRESSURE_THRESHOLD,
+      },
+      "Project todo dedup: large combined item count may cause context pressure — proceeding with single LLM call"
+    );
+  } else {
+    logger.info(
+      {
+        workspaceId: owner.sId,
+        existingTodoCount: existingTodos.length,
+        candidateCount: candidates.length,
+        totalItems,
+      },
+      "Project todo dedup: running single LLM call for all users"
+    );
+  }
 
-      results.push(
-        ...resolveDeduplicationGroups(candidates, existingTodos, llmGroups)
-      );
-    },
-    { concurrency: 4 }
-  );
+  const llmGroups = await runDeduplicationLLMCall(auth, {
+    model,
+    candidates,
+    existingTodos,
+  });
 
-  return results;
+  return resolveDeduplicationGroups(candidates, existingTodos, llmGroups);
 }
