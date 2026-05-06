@@ -17,6 +17,7 @@ import {
 import {
   getCreditTypeProgrammaticUsdId,
   getProductFreeCreditId,
+  PHASED_SUBSCRIPTION_CUSTOM_FIELD_KEY,
   PLAN_CODE_CUSTOM_FIELD_KEY,
 } from "@app/lib/metronome/constants";
 import { invalidateContractCache } from "@app/lib/metronome/plan_type";
@@ -413,6 +414,55 @@ async function handler(
                 message: `Error fetching contract: ${contractResult.error.message}`,
               },
             });
+          }
+
+          // Phase rotation: when a contract is part of a chain of per-phase
+          // enterprise contracts (PHASED_SUBSCRIPTION_CUSTOM_FIELD_KEY set),
+          // just point subscription.metronomeContractId at the newly-active
+          // contract. Plan code does not change across phases.
+          const phaseGroupId =
+            contractResult.value.custom_fields?.[
+              PHASED_SUBSCRIPTION_CUSTOM_FIELD_KEY
+            ];
+          if (phaseGroupId) {
+            const activeSubscription =
+              await SubscriptionResource.fetchActiveByWorkspaceModelId(
+                workspace.id
+              );
+            if (!activeSubscription) {
+              logger.warn(
+                { contractId, customerId, workspaceId: workspace.sId },
+                "[Metronome Webhook] contract.start: phase activation but no active subscription"
+              );
+              break;
+            }
+
+            // Idempotency: re-deliveries land here with the subscription
+            // already pointing at the new contract.
+            if (activeSubscription.metronomeContractId === contractId) {
+              logger.info(
+                { contractId, workspaceId: workspace.sId },
+                "[Metronome Webhook] contract.start: phase already active, skipping"
+              );
+              break;
+            }
+
+            await SubscriptionResource.updateMetronomeContractId(
+              activeSubscription.id,
+              contractId
+            );
+            await invalidateContractCache(workspace.sId);
+
+            logger.info(
+              {
+                contractId,
+                phaseGroupId,
+                previousContractId: activeSubscription.metronomeContractId,
+                workspaceId: workspace.sId,
+              },
+              "[Metronome Webhook] contract.start: rotated subscription to new phase contract"
+            );
+            break;
           }
 
           const targetPlanCode =
