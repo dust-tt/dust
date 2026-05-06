@@ -190,19 +190,19 @@ function DelimitedPreview({ content, mimeType }: DelimitedPreviewProps) {
 interface FilePreviewDialogContentProps {
   category: FilePreviewCategory;
   file: FilePreviewDialogFile;
-  fileContent: string | null;
   isContentLoading: boolean;
   mimeType: string;
   processedContent: ProcessedContent | null;
+  truncatedFileContent: string | null;
 }
 
 function FilePreviewDialogContent({
   category,
   file,
-  fileContent,
   isContentLoading,
   mimeType,
   processedContent,
+  truncatedFileContent,
 }: FilePreviewDialogContentProps) {
   if (isContentLoading) {
     return (
@@ -254,8 +254,13 @@ function FilePreviewDialogContent({
       );
 
     case "delimited":
-      if (fileContent) {
-        return <DelimitedPreview content={fileContent} mimeType={mimeType} />;
+      if (truncatedFileContent) {
+        return (
+          <DelimitedPreview
+            content={truncatedFileContent}
+            mimeType={mimeType}
+          />
+        );
       }
       return null;
 
@@ -272,7 +277,7 @@ function FilePreviewDialogContent({
 
     case "code": {
       const lang = getCodeLanguage(file.fileName);
-      const raw = fileContent ?? "";
+      const raw = truncatedFileContent ?? "";
       let displayContent = raw;
       if (lang === "json") {
         try {
@@ -352,11 +357,11 @@ export function FilePreviewDialog({
   const isContentLoading =
     isOpen && !!file && !hasError && isFileContentLoading;
 
-  const truncatedContent = fileContent?.slice(0, MAX_TEXT_CHARS) ?? null;
+  const truncatedFileContent = fileContent?.slice(0, MAX_TEXT_CHARS) ?? null;
 
   const processedContent =
-    (category === "markdown" || category === "text") && truncatedContent
-      ? processFileContent(truncatedContent, mimeType)
+    (category === "markdown" || category === "text") && truncatedFileContent
+      ? processFileContent(truncatedFileContent, mimeType)
       : null;
 
   const FileIcon = file
@@ -364,8 +369,8 @@ export function FilePreviewDialog({
     : null;
 
   const recordCounts =
-    category === "delimited" && truncatedContent
-      ? getDelimitedRecordCount({ content: truncatedContent })
+    category === "delimited" && truncatedFileContent
+      ? getDelimitedRecordCount({ content: truncatedFileContent })
       : null;
 
   return (
@@ -416,10 +421,10 @@ export function FilePreviewDialog({
               <FilePreviewDialogContent
                 category={category}
                 file={file}
-                fileContent={truncatedContent}
                 isContentLoading={isContentLoading}
                 mimeType={mimeType}
                 processedContent={processedContent}
+                truncatedFileContent={truncatedFileContent}
               />
             )}
           </div>
@@ -429,10 +434,10 @@ export function FilePreviewDialog({
               <FilePreviewDialogContent
                 category={category}
                 file={file}
-                fileContent={truncatedContent}
                 isContentLoading={isContentLoading}
                 mimeType={mimeType}
                 processedContent={processedContent}
+                truncatedFileContent={truncatedFileContent}
               />
             )}
           </div>
