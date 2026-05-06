@@ -185,6 +185,7 @@ export async function scrubSpaceActivity({
   // Delete all project todos for this space, before the conversations as it's linked to convo
   const projectTodos = await ProjectTaskResource.fetchBySpace(auth, {
     spaceId: space.id,
+    timeScope: "all",
   });
   await concurrentExecutor(
     projectTodos,
@@ -230,6 +231,7 @@ export async function scrubSpaceActivity({
 
     const projectTodos = await ProjectTaskResource.fetchBySpace(auth, {
       spaceId: space.id,
+      timeScope: "all",
     });
     await concurrentExecutor(
       projectTodos,

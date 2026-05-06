@@ -174,8 +174,7 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/project_tasks/bulk-actions", () => 
     expect(res._getStatusCode()).toBe(200);
     expect(res._getJSONData()).toEqual({ success: true, cleanedCount: 1 });
 
-    // Cleaning is implemented via a per-user cutoff timestamp (lastCleanedAt),
-    // so direct fetches still work, but list queries should hide older done todos.
+    // Done todos are filtered out of the active view; open todos remain.
     const state = await ProjectTaskStateResource.fetchBySpace(viewerAuth, {
       spaceId: project.id,
     });
@@ -183,7 +182,7 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/project_tasks/bulk-actions", () => 
 
     const visibleTodos = await ProjectTaskResource.fetchBySpace(viewerAuth, {
       spaceId: project.id,
-      lastCleanedAt: state?.lastCleanedAt ?? null,
+      timeScope: "active",
     });
     const visibleSIds = new Set(visibleTodos.map((t) => t.sId));
     expect(visibleSIds.has(doneTodo.sId)).toBe(false);

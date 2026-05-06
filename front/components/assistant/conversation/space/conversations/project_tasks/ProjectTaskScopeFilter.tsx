@@ -21,18 +21,27 @@ const PERIOD_OPTIONS: Array<{
   value: ProjectTaskPeriodScope;
   label: string;
 }> = [
-  { value: "active", label: "Active" },
-  { value: "last_24h", label: "Last 24h" },
-  { value: "last_7d", label: "Last 7 days" },
-  { value: "last_30d", label: "Last 30 days" },
+  { value: "active", label: "Open" },
+  { value: "last_24h", label: "Done today" },
+  { value: "last_7d", label: "Done in the last 7 days" },
+  { value: "last_30d", label: "Done in the last 30 days" },
 ];
 
 const PEOPLE_OPTIONS: Array<{
   value: ProjectTaskPeopleScope;
   label: string;
+  description: string;
 }> = [
-  { value: "all_project", label: "All project's" },
-  { value: "just_mine", label: "Just mine" },
+  {
+    value: "just_mine",
+    label: "Mine",
+    description: "Your to-dos only",
+  },
+  {
+    value: "all_project",
+    label: "Everyone",
+    description: "All to-dos in this project",
+  },
 ];
 
 export function ProjectTaskScopeFilter() {
@@ -67,7 +76,7 @@ export function ProjectTaskScopeFilter() {
         className="z-[1000] w-80 shadow-2xl ring-1 ring-border/60"
         align="start"
       >
-        <DropdownMenuLabel label="Historic" />
+        <DropdownMenuLabel label="Status" />
         <DropdownMenuRadioGroup
           value={taskOwnerFilter.periodScope}
           className="mb-2"
@@ -89,11 +98,12 @@ export function ProjectTaskScopeFilter() {
         <DropdownMenuSeparator />
         <DropdownMenuLabel label="People" />
         <DropdownMenuRadioGroup value={taskOwnerFilter.peopleScope}>
-          {PEOPLE_OPTIONS.map(({ value, label }) => (
+          {PEOPLE_OPTIONS.map(({ value, label, description }) => (
             <DropdownMenuRadioItem
               key={value}
               value={value}
               label={label}
+              description={description}
               onClick={() => {
                 onTaskOwnerFilterChange({
                   ...taskOwnerFilter,

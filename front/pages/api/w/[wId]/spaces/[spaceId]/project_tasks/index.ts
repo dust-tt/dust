@@ -103,12 +103,8 @@ async function handler(
         assigneeUserId = currentUser.id;
       }
 
-      const lastCleanedAtForFetch =
-        timeScope === "active" ? (state?.lastCleanedAt ?? null) : null;
-
       const todos = await ProjectTaskResource.fetchBySpace(auth, {
         spaceId: space.id,
-        lastCleanedAt: lastCleanedAtForFetch,
         timeScope,
         assigneeUserId,
       });

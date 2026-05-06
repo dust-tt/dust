@@ -21,6 +21,7 @@ import type {
 } from "@app/types/project_task";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Err, Ok, type Result } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WhereOptions } from "sequelize";
 import {
   type Attributes,
@@ -353,21 +354,17 @@ export class ProjectTaskResource extends BaseResource<ProjectTaskModel> {
     auth: Authenticator,
     {
       spaceId,
-      lastCleanedAt,
-      timeScope = "active",
+      timeScope,
       assigneeUserId = null,
     }: {
       spaceId: ModelId;
-      lastCleanedAt?: Date | null;
-      timeScope?: "active" | "last_24h" | "last_7d" | "last_30d";
+      timeScope: "active" | "last_24h" | "last_7d" | "last_30d" | "all";
       assigneeUserId?: ModelId | null;
     }
   ): Promise<ProjectTaskResource[]> {
     const MS_PER_HOUR = 60 * 60 * 1000;
 
-    const historicUpdatedSince = (
-      scope: "last_24h" | "last_7d" | "last_30d"
-    ): Date => {
+    const cutoffFor = (scope: "last_24h" | "last_7d" | "last_30d"): Date => {
       const now = Date.now();
       switch (scope) {
         case "last_24h":
@@ -376,6 +373,8 @@ export class ProjectTaskResource extends BaseResource<ProjectTaskModel> {
           return new Date(now - 7 * 24 * MS_PER_HOUR);
         case "last_30d":
           return new Date(now - 30 * 24 * MS_PER_HOUR);
+        default:
+          return assertNever(scope);
       }
     };
 
@@ -385,19 +384,19 @@ export class ProjectTaskResource extends BaseResource<ProjectTaskModel> {
       clauses.push({ userId: assigneeUserId });
     }
 
-    if (timeScope !== "active") {
-      clauses.push({
-        updatedAt: { [Op.gte]: historicUpdatedSince(timeScope) },
-      });
-    } else if (lastCleanedAt) {
-      clauses.push({
-        [Op.or]: [
-          { status: { [Op.ne]: "done" } },
-          { doneAt: null },
-          { doneAt: { [Op.gte]: lastCleanedAt } },
-          { agentSuggestionStatus: "pending" },
-        ],
-      });
+    switch (timeScope) {
+      case "active":
+        clauses.push({ status: { [Op.ne]: "done" } });
+        break;
+      case "last_24h":
+      case "last_7d":
+      case "last_30d":
+        clauses.push({ doneAt: { [Op.gte]: cutoffFor(timeScope) } });
+        break;
+      case "all":
+        break;
+      default:
+        assertNever(timeScope);
     }
 
     const where: WhereOptions<ProjectTaskModel> =
