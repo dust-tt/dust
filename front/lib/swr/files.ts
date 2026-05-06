@@ -3,7 +3,6 @@ import { usePeriodicRefresh } from "@app/hooks/usePeriodicRefresh";
 import config from "@app/lib/api/config";
 import { clientFetch } from "@app/lib/egress/client";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
-import { fetcherText } from "@app/lib/swr/fetcher";
 import {
   emptyArray,
   getErrorFromResponse,
@@ -247,7 +246,6 @@ export function useSkillAttachmentFileContent({
     disabled?: boolean;
   };
 }) {
-  const skillAttachmentContentFetcher: Fetcher<string> = fetcherText;
   const isDisabled = !fileId || config?.disabled;
   const swrKey = fileId
     ? `/api/w/${owner.sId}/skills/file_attachments/${fileId}/content`
@@ -255,7 +253,13 @@ export function useSkillAttachmentFileContent({
 
   const { data, error, mutate } = useSWRWithDefaults(
     swrKey,
-    skillAttachmentContentFetcher,
+    async (url: string) => {
+      const response = await clientFetch(url);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch file content: ${response.status}`);
+      }
+      return response.text();
+    },
     { disabled: isDisabled, ...config }
   );
 

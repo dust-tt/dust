@@ -17,14 +17,8 @@ const addClientVersionHeaders = (headers: HeadersInit = {}): HeadersInit => ({
 });
 
 const makeResHandler =
-  <T>({
-    parseResponse,
-    redirectOnUnauthenticated,
-  }: {
-    parseResponse: (res: Response) => Promise<T>;
-    redirectOnUnauthenticated: boolean;
-  }) =>
-  async (res: Response): Promise<T> => {
+  ({ redirectOnUnauthenticated }: { redirectOnUnauthenticated: boolean }) =>
+  async (res: Response) => {
     if (res.headers.get("X-Reload-Required") === "true") {
       const lastReloadMs = sessionStorage.getItem(FORCE_RELOAD_SESSION_KEY);
       const nowMs = Date.now();
@@ -45,7 +39,7 @@ const makeResHandler =
         sessionStorage.setItem(FORCE_RELOAD_SESSION_KEY, nowMs.toString());
         // TODO - reenable once clients cache are cleaned - window.location.reload();
         // Return a never-resolving promise to prevent SWR from processing.
-        return new Promise<T>(() => {});
+        return new Promise(() => {});
       }
     }
 
@@ -74,7 +68,7 @@ const makeResHandler =
                 : "";
             window.location.href = `${config.getApiBaseUrl()}/api/workos/login${returnTo}`;
             // Return a never-resolving promise to prevent SWR from processing.
-            return new Promise<T>(() => {});
+            return new Promise(() => {});
           }
           throw parseRes.value;
         }
@@ -82,28 +76,15 @@ const makeResHandler =
 
       throw new Error(errorText);
     }
-    return parseResponse(res);
+    return res.json();
   };
 
-const resHandler = makeResHandler<any>({
-  parseResponse: (res) => res.json(),
-  redirectOnUnauthenticated: true,
-});
-const textResHandler = makeResHandler<string>({
-  parseResponse: (res) => res.text(),
-  redirectOnUnauthenticated: true,
-});
-const nonRedirectingResHandler = makeResHandler<any>({
-  parseResponse: (res) => res.json(),
+const resHandler = makeResHandler({ redirectOnUnauthenticated: true });
+const nonRedirectingResHandler = makeResHandler({
   redirectOnUnauthenticated: false,
 });
 
 export type FetcherFn = (url: string, init?: RequestInit) => Promise<any>;
-
-export type FetcherTextFn = (
-  url: string,
-  init?: RequestInit
-) => Promise<string>;
 
 export type FetcherWithBodyFn = (
   args: [url: string, body: object, method: string],
@@ -116,14 +97,6 @@ export const fetcher: FetcherFn = async (url, init) => {
     headers: addClientVersionHeaders(init?.headers),
   });
   return resHandler(res);
-};
-
-export const fetcherText: FetcherTextFn = async (url, init) => {
-  const res = await clientFetch(url, {
-    ...init,
-    headers: addClientVersionHeaders(init?.headers),
-  });
-  return textResHandler(res);
 };
 
 // Throws on `not_authenticated` instead of redirecting to login. Use when a
