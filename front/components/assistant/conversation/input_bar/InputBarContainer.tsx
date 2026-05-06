@@ -22,6 +22,7 @@ import { useAuth } from "@app/lib/auth/AuthContext";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isNodeCandidate } from "@app/lib/connectors";
 import { useClientType } from "@app/lib/context/clientType";
+import { startsWithUserMention } from "@app/lib/mentions/format";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { classNames } from "@app/lib/utils";
@@ -668,11 +669,11 @@ const InputBarContainer = ({
       // Auto-save draft when content changes and track user mentions.
       // Include the selected single agent so the debounced save doesn't
       // overwrite the agent mention saved by the single-agent effect.
-      const { markdown, mentions } = editorService.getMarkdownAndMentions();
+      const { markdown } = editorService.getMarkdownAndMentions();
       saveDraft(editorIsEmpty ? "" : markdown, selectedSingleAgentRef.current);
-      const userMentioned = mentions.some((m) => m.type === "user");
-      setHasUserMention(userMentioned);
-      onEditorMentionsChangedRef.current(userMentioned);
+      const isLeadingUserMention = startsWithUserMention(markdown);
+      setHasUserMention(isLeadingUserMention);
+      onEditorMentionsChangedRef.current(isLeadingUserMention);
     };
 
     if (editorRef.current) {

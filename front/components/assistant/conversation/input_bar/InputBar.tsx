@@ -16,6 +16,7 @@ import {
 import { RUNNING_AGENT_SWITCH_BLOCK_MESSAGE } from "@app/lib/api/assistant/errors";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { DustError } from "@app/lib/error";
+import { startsWithUserMention } from "@app/lib/mentions/format";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { TRACKING_AREAS, trackEvent } from "@app/lib/tracking";
 import { classNames } from "@app/lib/utils";
@@ -258,10 +259,10 @@ export const InputBar = React.memo(function InputBar({
     const { mentions: rawMentions, markdown } = markdownAndMentions;
     // When single-agent input is enabled, inject the selected agent into mentions
     // since it's no longer in the editor as a mention node.
-    const hasUserMention = rawMentions.some((m) => m.type === "user");
+    const isLeadingUserMention = startsWithUserMention(markdown);
     const shouldInjectSelectedAgent =
       selectedSingleAgent &&
-      !hasUserMention &&
+      !isLeadingUserMention &&
       !rawMentions.some((m) => m.id === selectedSingleAgent.id);
 
     const allMentions = shouldInjectSelectedAgent
