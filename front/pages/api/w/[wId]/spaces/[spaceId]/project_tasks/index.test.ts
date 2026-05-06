@@ -1,6 +1,4 @@
 import { Authenticator } from "@app/lib/auth";
-import { ProjectTaskStateResource } from "@app/lib/resources/project_task_state_resource";
-import { frontSequelize } from "@app/lib/resources/storage";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { ProjectTaskFactory } from "@app/tests/utils/ProjectTaskFactory";
