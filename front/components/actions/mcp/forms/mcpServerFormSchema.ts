@@ -15,7 +15,7 @@ import {
   isInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import type { HeaderRow } from "@app/types/shared/utils/http_headers";
+import type { HeaderRow, MetaRow } from "@app/types/shared/utils/http_headers";
 import { sanitizeHeadersArray } from "@app/types/shared/utils/http_headers";
 import { z } from "zod";
 
@@ -64,6 +64,7 @@ export type ServerSettings = {
   icon?: string;
   sharedSecret?: string;
   customHeaders?: HeaderRow[] | null;
+  metaFields?: MetaRow[] | null;
 };
 
 // Complete form values including all tabs.
@@ -184,6 +185,9 @@ export function getMCPServerFormDefaults(
 
   if (isRemoteMCPServerType(view.server)) {
     defaults.icon = view.server.icon;
+    defaults.metaFields = Object.entries(view.server.meta ?? {}).map(
+      ([key, value]) => ({ key, value })
+    );
   }
 
   return defaults;
@@ -225,6 +229,10 @@ export function getMCPServerFormSchema(
   if (isRemoteMCPServerType(view.server)) {
     schema = schema.extend({
       icon: z.string().optional(),
+      metaFields: z
+        .array(z.object({ key: z.string(), value: z.string() }))
+        .nullable()
+        .optional(),
     });
   }
 
@@ -251,6 +259,7 @@ type FormDiffType = {
   icon?: string;
   authSharedSecret?: string;
   authCustomHeaders?: HeaderRow[] | null;
+  authMeta?: Record<string, string> | null;
   toolChanges?: Array<{
     toolName: string;
     enabled: boolean;
@@ -290,6 +299,15 @@ export function diffMCPServerForm(
   if (isRemote) {
     if (current.icon && current.icon !== initial.icon) {
       out.icon = current.icon;
+    }
+
+    const iMeta = sanitizeHeadersArray(initial.metaFields ?? []);
+    const cMeta = sanitizeHeadersArray(current.metaFields ?? []);
+    if (JSON.stringify(iMeta) !== JSON.stringify(cMeta)) {
+      out.authMeta =
+        cMeta.length > 0
+          ? Object.fromEntries(cMeta.map(({ key, value }) => [key, value]))
+          : null;
     }
   }
 
