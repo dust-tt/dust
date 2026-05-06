@@ -636,7 +636,10 @@ export async function startSkillConversationAnalysisBatchActivity({
         existingConversationId: existingReinforcementConvId,
         prompt: systemPrompt,
         specifications,
-        userContextOrigin: "reinforcement",
+        ...getReinforcedSkillsDefaultOptions(
+          "reinforcement_analyze_conversation",
+          skillIds
+        ),
       });
       orderedAnalysedConversationIds.push(conversationId);
     } else {
@@ -882,7 +885,10 @@ export async function startSkillAggregationBatchActivity({
         existingConversationId: existingReinforcementConversationId,
         prompt: systemPrompt,
         specifications,
-        userContextOrigin: "reinforcement",
+        ...getReinforcedSkillsDefaultOptions(
+          "reinforcement_aggregate_suggestions",
+          [skillId]
+        ),
       },
     ];
   } else {

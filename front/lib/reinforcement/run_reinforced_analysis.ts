@@ -225,13 +225,19 @@ export function classifySkillToolCalls(
 export function getReinforcedSkillsDefaultOptions(
   operationType: ReinforcedSkillsOperationType,
   skillIds: string[]
-) {
+): {
+  visibility: "test";
+  metadata: ReturnType<typeof getReinforcedSkillsMetadata>;
+  userContextUsername: string;
+  userContextOrigin: "reinforcement";
+  skills: SkillResource[];
+} {
   return {
     visibility: "test" as const,
     metadata: getReinforcedSkillsMetadata(operationType, skillIds),
     userContextUsername: "reinforcement",
     userContextOrigin: "reinforcement" as const,
-    agentConfigurationId: REINFORCEMENT_SKILLS_AGENT_ID,
+    skills: [],
   };
 }
 

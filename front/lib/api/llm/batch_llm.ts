@@ -45,6 +45,7 @@ export interface LlmConversationOptions
   extends LLMParametersWithoutConversation {
   newMessages: ModelMessageTypeMultiActionsWithoutContentFragment[];
   existingConversationId?: string;
+  skills?: SkillResource[];
   title?: string;
   visibility?: ConversationVisibility;
   metadata?: ConversationMetadata;
@@ -332,8 +333,10 @@ export async function sendBatchCallToLlm(
     let equippedSkills: SkillResource[] = [];
 
     if (renderSkillsAsUserMessages) {
-      ({ enabledSkills, equippedSkills } =
-        await listActiveSkillsForBatchRendering(auth));
+      ({ enabledSkills, equippedSkills } = await buildBatchSkillsForRendering(
+        auth,
+        input.skills ?? []
+      ));
     }
 
     const leadingMessages = renderSkillsAsUserMessages
@@ -387,13 +390,13 @@ export async function sendBatchCallToLlm(
   return new Ok({ batchId, conversationIds });
 }
 
-async function listActiveSkillsForBatchRendering(auth: Authenticator): Promise<{
+async function buildBatchSkillsForRendering(
+  auth: Authenticator,
+  activeSkills: SkillResource[]
+): Promise<{
   enabledSkills: EnabledSkill[];
   equippedSkills: SkillResource[];
 }> {
-  const activeSkills = await SkillResource.listByWorkspace(auth, {
-    status: "active",
-  });
   const nonSystemSkills = activeSkills.filter((skill) => !skill.isSystemSkill);
   const extendedSkillIds = [
     ...new Set(
