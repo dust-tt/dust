@@ -4257,6 +4257,11 @@ describe("conversation fetch forkingData", () => {
       agentConfigurationId: agent.sId,
       messagesCreatedAt: [new Date("2026-01-05T00:00:00.000Z")],
     });
+    const parentConversationTitle = "Parent fork source";
+    await ConversationModel.update(
+      { title: parentConversationTitle },
+      { where: { id: parentConversation.id, workspaceId: workspace.id } }
+    );
     const firstChildConversation = await ConversationFactory.create(auth, {
       agentConfigurationId: agent.sId,
       messagesCreatedAt: [],
@@ -4271,7 +4276,7 @@ describe("conversation fetch forkingData", () => {
       { where: { id: firstChildConversation.id, workspaceId: workspace.id } }
     );
     await ConversationModel.update(
-      { title: "Earlier fork" },
+      { title: null },
       { where: { id: secondChildConversation.id, workspaceId: workspace.id } }
     );
 
@@ -4329,7 +4334,7 @@ describe("conversation fetch forkingData", () => {
     const expectedForkedChildren = [
       {
         childConversationId: secondChildConversation.sId,
-        childConversationTitle: "Earlier fork",
+        childConversationTitle: `Branched from '${parentConversationTitle}'`,
         sourceMessageId: sourceMessage.sId,
         branchedAt: earlierBranchedAt.getTime(),
         user: auth.getNonNullableUser().toJSON(),
