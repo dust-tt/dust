@@ -14,12 +14,9 @@ import {
   listMetronomeContracts,
   updateMetronomeCreditSegmentAmount,
 } from "@app/lib/metronome/client";
-import {
-  getCreditTypeProgrammaticUsdId,
-  getProductFreeCreditId,
-  PLAN_CODE_CUSTOM_FIELD_KEY,
-} from "@app/lib/metronome/constants";
+import { PLAN_CODE_CUSTOM_FIELD_KEY } from "@app/lib/metronome/constants";
 import { invalidateContractCache } from "@app/lib/metronome/plan_type";
+import { isMetronomeFreeCredit } from "@app/lib/metronome/types";
 import {
   getCustomerIdFromEvent,
   MetronomeWebhookEventSchema,
@@ -226,11 +223,7 @@ async function handler(
             break;
           }
 
-          if (
-            credit.product.id !== getProductFreeCreditId() ||
-            credit.access_schedule?.credit_type?.id !==
-              getCreditTypeProgrammaticUsdId()
-          ) {
+          if (!isMetronomeFreeCredit(credit)) {
             logger.info(
               {
                 customerId,

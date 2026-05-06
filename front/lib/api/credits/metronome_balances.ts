@@ -5,7 +5,10 @@ import type {
   MetronomeCommit,
   MetronomeCredit,
 } from "@app/lib/metronome/types";
-import { METRONOME_PROGRAMMATIC_USAGE_CREDIT_TO_MICRO_USD } from "@app/lib/metronome/types";
+import {
+  isMetronomeExcessCredit,
+  METRONOME_PROGRAMMATIC_USAGE_CREDIT_TO_MICRO_USD,
+} from "@app/lib/metronome/types";
 import { apiError } from "@app/logger/withlogging";
 import type {
   CreditDisplayData,
@@ -140,7 +143,7 @@ export async function handleMetronomeBalancesRequest(
         .filter(
           (entry) =>
             entry.access_schedule?.credit_type?.id ===
-            programmaticUsdCreditTypeId
+              programmaticUsdCreditTypeId && !isMetronomeExcessCredit(entry)
         )
         .map(metronomeBalanceToDisplayData);
 

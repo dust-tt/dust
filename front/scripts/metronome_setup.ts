@@ -23,6 +23,11 @@ import {
   PROD_CREDIT_TYPE_PROG_USD_ID,
 } from "@app/lib/metronome/constants";
 import { TOOL_CATEGORIES } from "@app/lib/metronome/events";
+import {
+  FREE_ANNUAL_CREDIT_NAME,
+  FREE_EXCESS_CREDIT_NAME,
+  FREE_MONTHLY_CREDIT_NAME,
+} from "@app/lib/metronome/types";
 
 // Number of pricing tiers for any tiered seat-style product (MAU, Regular
 // Seat, future). Tier products and rates are derived from the prefix.
@@ -497,7 +502,7 @@ function getRateCards(): RateCardDef[] {
       credit_type_conversions: [
         {
           custom_credit_type_id: getCreditTypeProgrammaticUsdId(),
-          fiat_per_custom_credit: 0.01,
+          fiat_per_custom_credit: 100,
         },
       ],
       rates: [
@@ -528,7 +533,7 @@ function getRateCards(): RateCardDef[] {
       credit_type_conversions: [
         {
           custom_credit_type_id: getCreditTypeProgrammaticUsdId(),
-          fiat_per_custom_credit: 0.01,
+          fiat_per_custom_credit: 100,
         },
       ],
       rates: [
@@ -559,7 +564,7 @@ function getRateCards(): RateCardDef[] {
       credit_type_conversions: [
         {
           custom_credit_type_id: getCreditTypeProgrammaticUsdId(),
-          fiat_per_custom_credit: 0.01,
+          fiat_per_custom_credit: 100,
         },
       ],
       rates: [
@@ -594,7 +599,7 @@ function getRateCards(): RateCardDef[] {
       credit_type_conversions: [
         {
           custom_credit_type_id: getCreditTypeProgrammaticUsdId(),
-          fiat_per_custom_credit: 0.01,
+          fiat_per_custom_credit: 100,
         },
       ],
       rates: [
@@ -771,7 +776,7 @@ function getRateCards(): RateCardDef[] {
       credit_type_conversions: [
         {
           custom_credit_type_id: getCreditTypeAwuId(),
-          fiat_per_custom_credit: 0.01,
+          fiat_per_custom_credit: 100,
         },
       ],
       rates: [
@@ -885,7 +890,44 @@ function getFreeMonthlyRecurringCredits(): RecurringCreditDef {
     starting_at_offset: { unit: "DAYS", value: 0 }, // starts immediately
     applicable_product_tags: [USAGE_TAG],
     recurrence_frequency: "MONTHLY",
-    name: "Free Monthly Credits",
+    name: FREE_MONTHLY_CREDIT_NAME,
+  };
+}
+
+// Annual variant for annual packages. Same product, but the credit is granted
+// once per year. The credit.segment.start webhook detects ANNUAL recurrence
+// and multiplies the monthly bracket amount by 12.
+function getFreeAnnualRecurringCredits(): RecurringCreditDef {
+  return {
+    product_name: "Free Credits",
+    access_amount: {
+      credit_type_id: getCreditTypeProgrammaticUsdId(),
+      unit_price: 0,
+      quantity: 1,
+    },
+    commit_duration: { value: 1, unit: "PERIODS" },
+    priority: 1,
+    starting_at_offset: { unit: "DAYS", value: 0 }, // starts immediately
+    applicable_product_tags: [USAGE_TAG],
+    recurrence_frequency: "ANNUAL",
+    name: FREE_ANNUAL_CREDIT_NAME,
+  };
+}
+
+function getFreeExcessRecurringCredits(): RecurringCreditDef {
+  return {
+    product_name: "Free Credits",
+    access_amount: {
+      credit_type_id: getCreditTypeProgrammaticUsdId(),
+      unit_price: 0,
+      quantity: 1_000,
+    },
+    commit_duration: { value: 1, unit: "PERIODS" },
+    priority: 100,
+    starting_at_offset: { unit: "DAYS", value: 0 }, // starts immediately
+    applicable_product_tags: [USAGE_TAG],
+    recurrence_frequency: "MONTHLY",
+    name: FREE_EXCESS_CREDIT_NAME,
   };
 }
 
@@ -906,26 +948,6 @@ function getFreeUsageAwuRecurringCredits(): RecurringCreditDef {
     specifiers: [{ presentation_group_values: { is_free_usage: "true" } }],
     recurrence_frequency: "MONTHLY",
     name: "Free Usage Credits",
-  };
-}
-
-// Annual variant for annual packages. Same product, but the credit is granted
-// once per year. The credit.segment.start webhook detects ANNUAL recurrence
-// and multiplies the monthly bracket amount by 12.
-function getFreeAnnualRecurringCredits(): RecurringCreditDef {
-  return {
-    product_name: "Free Credits",
-    access_amount: {
-      credit_type_id: getCreditTypeProgrammaticUsdId(),
-      unit_price: 0,
-      quantity: 1,
-    },
-    commit_duration: { value: 1, unit: "PERIODS" },
-    priority: 1,
-    starting_at_offset: { unit: "DAYS", value: 0 }, // starts immediately
-    applicable_product_tags: [USAGE_TAG],
-    recurrence_frequency: "ANNUAL",
-    name: "Free Annual Credits",
   };
 }
 
@@ -997,7 +1019,10 @@ function getPackages(): PackageDef[] {
       aliases: [{ name: "legacy-pro-monthly" }],
       rate_card_name: "Legacy Pro USD",
       subscriptions: [LEGACY_SEAT_SUBSCRIPTION],
-      recurring_credits: [getFreeMonthlyRecurringCredits()],
+      recurring_credits: [
+        getFreeMonthlyRecurringCredits(),
+        getFreeExcessRecurringCredits(),
+      ],
       ...BILLING_CYCLE_CONFIG,
     },
     {
@@ -1005,7 +1030,10 @@ function getPackages(): PackageDef[] {
       aliases: [{ name: "legacy-business" }],
       rate_card_name: "Legacy Business USD",
       subscriptions: [LEGACY_SEAT_SUBSCRIPTION],
-      recurring_credits: [getFreeMonthlyRecurringCredits()],
+      recurring_credits: [
+        getFreeMonthlyRecurringCredits(),
+        getFreeExcessRecurringCredits(),
+      ],
       ...BILLING_CYCLE_CONFIG,
     },
     {
@@ -1013,7 +1041,10 @@ function getPackages(): PackageDef[] {
       aliases: [{ name: "legacy-pro-annual" }],
       rate_card_name: "Legacy Pro Annual USD",
       subscriptions: [LEGACY_SEAT_ANNUAL_SUBSCRIPTION],
-      recurring_credits: [getFreeAnnualRecurringCredits()],
+      recurring_credits: [
+        getFreeAnnualRecurringCredits(),
+        getFreeExcessRecurringCredits(),
+      ],
       ...BILLING_CYCLE_CONFIG,
     },
     // Enterprise: MAU-based billing, no seat subscriptions.
@@ -1022,7 +1053,10 @@ function getPackages(): PackageDef[] {
       aliases: [{ name: "legacy-enterprise" }],
       rate_card_name: "Legacy Enterprise MAU USD",
       scheduled_charges_on_usage_invoices: "ALL",
-      recurring_credits: [getFreeMonthlyRecurringCredits()],
+      recurring_credits: [
+        getFreeMonthlyRecurringCredits(),
+        getFreeExcessRecurringCredits(),
+      ],
       ...BILLING_CYCLE_CONFIG,
     },
     // EUR variants
@@ -1031,7 +1065,10 @@ function getPackages(): PackageDef[] {
       aliases: [{ name: "legacy-pro-monthly-eur" }],
       rate_card_name: "Legacy Pro EUR",
       subscriptions: [LEGACY_SEAT_SUBSCRIPTION],
-      recurring_credits: [getFreeMonthlyRecurringCredits()],
+      recurring_credits: [
+        getFreeMonthlyRecurringCredits(),
+        getFreeExcessRecurringCredits(),
+      ],
       ...BILLING_CYCLE_CONFIG,
     },
     {
@@ -1039,7 +1076,10 @@ function getPackages(): PackageDef[] {
       aliases: [{ name: "legacy-business-eur" }],
       rate_card_name: "Legacy Business EUR",
       subscriptions: [LEGACY_SEAT_SUBSCRIPTION],
-      recurring_credits: [getFreeMonthlyRecurringCredits()],
+      recurring_credits: [
+        getFreeMonthlyRecurringCredits(),
+        getFreeExcessRecurringCredits(),
+      ],
       ...BILLING_CYCLE_CONFIG,
     },
     {
@@ -1047,7 +1087,10 @@ function getPackages(): PackageDef[] {
       aliases: [{ name: "legacy-pro-annual-eur" }],
       rate_card_name: "Legacy Pro Annual EUR",
       subscriptions: [LEGACY_SEAT_ANNUAL_SUBSCRIPTION],
-      recurring_credits: [getFreeAnnualRecurringCredits()],
+      recurring_credits: [
+        getFreeAnnualRecurringCredits(),
+        getFreeExcessRecurringCredits(),
+      ],
       ...BILLING_CYCLE_CONFIG,
     },
     {
@@ -1055,7 +1098,10 @@ function getPackages(): PackageDef[] {
       aliases: [{ name: "legacy-enterprise-eur" }],
       rate_card_name: "Legacy Enterprise MAU EUR",
       scheduled_charges_on_usage_invoices: "ALL",
-      recurring_credits: [getFreeMonthlyRecurringCredits()],
+      recurring_credits: [
+        getFreeMonthlyRecurringCredits(),
+        getFreeExcessRecurringCredits(),
+      ],
       ...BILLING_CYCLE_CONFIG,
     },
     // New Enterprise EUR — per-seat billing (Regular Seat) + AWU AI/Tool usage.
@@ -2171,11 +2217,11 @@ async function main(): Promise<void> {
     `Credit types: USD=${CREDIT_TYPE_USD_ID}, AWU=${getCreditTypeAwuId()}, PROG_USD=${getCreditTypeProgrammaticUsdId()}`
   );
 
+  await syncCustomFields();
   await syncMetrics();
   await syncProducts();
   await syncRateCards();
   await syncPackages();
-  await syncCustomFields();
   await syncAlerts();
 
   if (!EXECUTE) {
