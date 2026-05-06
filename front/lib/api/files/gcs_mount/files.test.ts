@@ -8,6 +8,7 @@ import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import assert from "assert";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/file_storage", () => ({
@@ -69,13 +70,14 @@ describe("createGCSMountFile", () => {
   it("returns a correctly shaped GCSMountFileEntry", async () => {
     const content = Buffer.from("hello world");
 
-    const entry = await createGCSMountFile(
+    const entryRes = await createGCSMountFile(
       auth,
       { useCase: "conversation", conversationId },
       { relativeFilePath: "notes.txt", content, contentType: "text/plain" }
     );
 
-    expect(entry).toMatchObject<Partial<GCSMountFileEntry>>({
+    assert(entryRes.isOk());
+    expect(entryRes.value).toMatchObject<Partial<GCSMountFileEntry>>({
       fileName: "notes.txt",
       path: `conversation/notes.txt`,
       sizeBytes: content.length,
@@ -83,11 +85,11 @@ describe("createGCSMountFile", () => {
       fileId: null,
       thumbnailUrl: null,
     });
-    expect(entry.lastModifiedMs).toBeGreaterThan(0);
+    expect(entryRes.value.lastModifiedMs).toBeGreaterThan(0);
   });
 
   it("sets thumbnailUrl for image content types", async () => {
-    const entry = await createGCSMountFile(
+    const entryRes = await createGCSMountFile(
       auth,
       { useCase: "conversation", conversationId },
       {
@@ -97,13 +99,14 @@ describe("createGCSMountFile", () => {
       }
     );
 
-    expect(entry.thumbnailUrl).toBe(
+    assert(entryRes.isOk());
+    expect(entryRes.value.thumbnailUrl).toBe(
       `https://dust.tt/api/w/${workspaceId}/assistant/conversations/${conversationId}/files/thumbnail?filePath=${encodeURIComponent("conversation/photo.png")}`
     );
   });
 
   it("leaves thumbnailUrl null for non-image content types", async () => {
-    const entry = await createGCSMountFile(
+    const entryRes = await createGCSMountFile(
       auth,
       { useCase: "conversation", conversationId },
       {
@@ -113,7 +116,8 @@ describe("createGCSMountFile", () => {
       }
     );
 
-    expect(entry.thumbnailUrl).toBeNull();
+    assert(entryRes.isOk());
+    expect(entryRes.value.thumbnailUrl).toBeNull();
   });
 });
 
