@@ -488,7 +488,7 @@ Score 3 if no edit_skill suggestion is created AND reject_suggestion is not call
           sId: "sug-tool-1",
           skillConfigurationId: "skill_payment_resolver",
           analysis:
-            "User asked the skill to file an internal incident ticket for a flagged chargeback. The skill had no JIRA tool to do so.",
+            "User asked the skill to file an internal incident ticket for a flagged chargeback. The skill had no JIRA tool to do so, it's crucial to add it.",
           action: "add",
           toolId: "mcp_jira",
         }),
