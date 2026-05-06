@@ -246,6 +246,7 @@ export function useSkillAttachmentFileContent({
     disabled?: boolean;
   };
 }) {
+  const sendNotification = useSendNotification();
   const isDisabled = !fileId || config?.disabled;
   const swrKey = fileId
     ? `/api/w/${owner.sId}/skills/file_attachments/${fileId}/content`
@@ -257,7 +258,12 @@ export function useSkillAttachmentFileContent({
       const response = await clientFetch(url);
       if (!response.ok) {
         const errorData = await getErrorFromResponse(response);
-        throw new Error(errorData.message);
+        sendNotification({
+          type: "error",
+          title: "Failed to preview the file.",
+          description: `Error: ${errorData.message}`,
+        });
+        return null;
       }
       return response.text();
     },
