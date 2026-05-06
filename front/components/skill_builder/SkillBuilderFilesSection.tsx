@@ -10,7 +10,6 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import {
   getFileDownloadUrl,
   getFileViewUrl,
-  useFileMetadata,
   useSkillAttachmentFileContent,
 } from "@app/lib/swr/files";
 import {
@@ -131,14 +130,8 @@ export function SkillBuilderFilesSection() {
   };
 
   const isPreviewOpen = previewFileAttachment !== null;
-  const previewFileId = previewFileAttachment
-    ? (previewFileAttachment?.fileId ?? null)
-    : null;
-
-  const { fileMetadata, isFileMetadataError } = useFileMetadata({
-    fileId: previewFileId,
-    owner,
-  });
+  const previewFileId = previewFileAttachment?.fileId ?? null;
+  const previewContentType = previewFileAttachment?.contentType ?? "";
 
   const { fileContent, isFileContentLoading, fileContentError } =
     useSkillAttachmentFileContent({
@@ -146,9 +139,7 @@ export function SkillBuilderFilesSection() {
       owner,
       config: {
         disabled:
-          !isPreviewOpen ||
-          !fileMetadata ||
-          !needsFilePreviewTextContent(fileMetadata.contentType),
+          !isPreviewOpen || !needsFilePreviewTextContent(previewContentType),
       },
     });
 
@@ -176,7 +167,11 @@ export function SkillBuilderFilesSection() {
         if (uploaded) {
           for (const blob of uploaded) {
             if (blob.fileId) {
-              append({ fileId: blob.fileId, fileName: blob.filename });
+              append({
+                contentType: blob.contentType,
+                fileId: blob.fileId,
+                fileName: blob.filename,
+              });
             }
           }
         }
@@ -334,14 +329,14 @@ export function SkillBuilderFilesSection() {
         file={
           previewFileAttachment
             ? {
-                contentType: fileMetadata?.contentType ?? "",
+                contentType: previewFileAttachment.contentType,
                 fileName: previewFileAttachment.fileName,
                 viewUrl: getFileViewUrl(owner, previewFileAttachment.fileId),
               }
             : null
         }
         fileContent={fileContent}
-        fileContentError={isFileMetadataError || fileContentError}
+        fileContentError={fileContentError}
         isFileContentLoading={isFileContentLoading}
         isOpen={isPreviewOpen}
         onDownload={() => {
