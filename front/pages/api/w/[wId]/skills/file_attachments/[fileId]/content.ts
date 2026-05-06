@@ -14,14 +14,18 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<never>>,
   auth: Authenticator
 ): Promise<void> {
-  if (req.method !== "GET") {
-    return apiError(req, res, {
-      status_code: 405,
-      api_error: {
-        type: "method_not_supported_error",
-        message: "The method passed is not supported, GET is expected.",
-      },
-    });
+  switch (req.method) {
+    case "GET":
+      break;
+
+    default:
+      return apiError(req, res, {
+        status_code: 405,
+        api_error: {
+          type: "method_not_supported_error",
+          message: "The method passed is not supported, GET is expected.",
+        },
+      });
   }
 
   const { fileId } = req.query;
