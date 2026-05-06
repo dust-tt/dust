@@ -105,21 +105,44 @@ export const projectTodoDetailsPlugin = createPlugin({
             })
             .join("\n");
 
-    const doneAt = todo.doneAt ? new Date(todo.doneAt).toISOString() : "—";
-    const createdAt = new Date(todo.createdAt).toISOString();
+    const json = todo.toJSON();
+    const doneAt = json.doneAt ? new Date(json.doneAt).toISOString() : "—";
+    const createdAt = new Date(json.createdAt).toISOString();
+    const updatedAt = new Date(json.updatedAt).toISOString();
+
+    const assignee = json.user
+      ? `${json.user.fullName} (\`${json.user.sId}\`)`
+      : "_Unassigned_";
+
+    const creatorId =
+      json.createdByType === "agent"
+        ? (json.createdByAgentConfigurationId ?? "—")
+        : (json.createdByUserId ?? "—");
+
+    const markedDoneBy = json.markedAsDoneByType
+      ? json.markedAsDoneByType === "agent"
+        ? `agent \`${json.markedAsDoneByAgentConfigurationId ?? "unknown"}\``
+        : `user \`${json.markedAsDoneByUserId ?? "unknown"}\``
+      : "—";
 
     return new Ok({
       display: "markdown",
-      value: `## ${statusEmoji[todo.status] ?? "❓"} Project TODO \`${todo.id}\` \`${todo.sId}\` 
+      value: `## ${statusEmoji[json.status] ?? "❓"} Project TODO \`${todo.id}\` \`${todo.sId}\`
 
-**Text:** ${todo.text}
+**Text:** ${json.text}
 
 | Field | Value |
 |---|---|
-| Status | \`${todo.status}\` |
-| Created by | \`${todo.createdByType}\` |
+| Status | \`${json.status}\` |
+| Assignee | ${assignee} |
+| Created by | \`${json.createdByType}\` \`${creatorId}\` |
 | Created at | ${createdAt} |
+| Updated at | ${updatedAt} |
 | Done at | ${doneAt} |
+| Marked done by | ${markedDoneBy} |
+| Rationale | ${json.actorRationale ?? "—"} |
+| Agent suggestion | ${json.agentSuggestionStatus ?? "—"} |
+| Agent instructions | ${json.agentInstructions ? `\`\`\`\n${json.agentInstructions}\n\`\`\`` : "—"} |
 
 ## Sources (${sources.length})
 
