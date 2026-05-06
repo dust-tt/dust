@@ -2377,28 +2377,28 @@ export async function softDeleteAgentMessage(
   return new Ok({ success: true });
 }
 
-type ReachedMessageLimit = {
-  isLimitReached: true;
+interface MessageLimit {
+  isLimitReached: boolean;
   limitType:
     | "rate_limit_error"
     | "plan_message_limit_exceeded"
-    | "credits_exhausted";
+    | "credits_exhausted"
+    | null;
   message?: string;
-};
+}
 
-type MessageLimit =
-  | ReachedMessageLimit
-  | {
-      isLimitReached: false;
-      limitType: null;
-    };
-
-function getMessageLimitErrorMessage(limit: ReachedMessageLimit): string {
-  if (limit.message) {
-    return limit.message;
+function getMessageLimitErrorMessage({
+  limitType,
+  message,
+}: {
+  limitType: NonNullable<MessageLimit["limitType"]>;
+  message?: string;
+}): string {
+  if (message) {
+    return message;
   }
 
-  switch (limit.limitType) {
+  switch (limitType) {
     case "plan_message_limit_exceeded":
       return "The message limit for this plan has been exceeded.";
     case "credits_exhausted":
@@ -2454,12 +2454,15 @@ async function checkMessagesLimit(
     mentions,
     context,
   });
-  if (messageLimit.isLimitReached) {
+  if (messageLimit.isLimitReached && messageLimit.limitType) {
     return new Err({
       status_code: 403,
       api_error: {
         type: messageLimit.limitType,
-        message: getMessageLimitErrorMessage(messageLimit),
+        message: getMessageLimitErrorMessage({
+          limitType: messageLimit.limitType,
+          message: messageLimit.message,
+        }),
       },
     });
   }
@@ -2733,16 +2736,9 @@ async function isMessagesLimitReached(
   const isLimitReached =
     remainingMentions.length > 0 &&
     remainingMentions.filter((r) => r > 0).length === 0;
-  if (isLimitReached) {
-    return {
-      isLimitReached: true,
-      limitType: "plan_message_limit_exceeded",
-    };
-  }
-
   return {
-    isLimitReached: false,
-    limitType: null,
+    isLimitReached,
+    limitType: isLimitReached ? "plan_message_limit_exceeded" : null,
   };
 }
 
