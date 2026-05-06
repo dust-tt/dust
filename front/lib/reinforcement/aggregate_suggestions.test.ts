@@ -79,6 +79,29 @@ function makeToolSuggestion(
   } as SkillSuggestionType;
 }
 
+function makeAgentFacingDescriptionSuggestion(
+  overrides: Partial<SkillSuggestionType> = {}
+): SkillSuggestionType {
+  return {
+    sId: "sug-3",
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    skillConfigurationId: "skl_abc123",
+    analysis: "Description is misleading the agent on routing",
+    title: null,
+    state: "pending",
+    source: "synthetic",
+    sourceConversationsCount: 0,
+    kind: "edit",
+    suggestion: {
+      agentFacingDescriptionEdit: {
+        content: "Use this skill when answering pricing questions.",
+      },
+    },
+    ...overrides,
+  } as SkillSuggestionType;
+}
+
 describe("buildSkillAggregationPrompt", () => {
   it("includes the skill name in the user message", () => {
     const { userMessage } = buildSkillAggregationPrompt(
@@ -200,6 +223,51 @@ describe("buildSkillAggregationPrompt", () => {
     );
 
     expect(systemPrompt).toContain("edit_skill");
+  });
+
+  it("system prompt allows description edits and asks for them to be standalone", () => {
+    const { systemPrompt } = buildSkillAggregationPrompt(
+      makeSkill(),
+      [makeAgentFacingDescriptionSuggestion()],
+      { pending: [], rejected: [] }
+    );
+
+    // The previous prohibition must be gone.
+    expect(systemPrompt).not.toMatch(/MUST NOT use edit_skill to change it/i);
+    // Aggregation rules must mention description edits and steer toward
+    // one-per-skill, standalone suggestions.
+    expect(systemPrompt).toMatch(/agent-facing description/i);
+    expect(systemPrompt).toMatch(/standalone|its own/i);
+  });
+
+  it("formats agent-facing description edits with the new content", () => {
+    const suggestion = makeAgentFacingDescriptionSuggestion({
+      suggestion: {
+        agentFacingDescriptionEdit: {
+          content: "Use for pricing questions only.",
+        },
+      },
+    } as Partial<SkillSuggestionType>);
+
+    const { userMessage } = buildSkillAggregationPrompt(
+      makeSkill(),
+      [suggestion],
+      { pending: [], rejected: [] }
+    );
+
+    expect(userMessage).toContain("<agentFacingDescriptionEdit>");
+    expect(userMessage).toContain("Use for pricing questions only.");
+    expect(userMessage).toContain("</agentFacingDescriptionEdit>");
+  });
+
+  it("does not emit an empty agentFacingDescriptionEdit element for instruction-only suggestions", () => {
+    const { userMessage } = buildSkillAggregationPrompt(
+      makeSkill(),
+      [makeInstructionSuggestion()],
+      { pending: [], rejected: [] }
+    );
+
+    expect(userMessage).not.toContain("agentFacingDescriptionEdit");
   });
 
   it("system prompt requires the aggregator to author a title per suggestion", () => {

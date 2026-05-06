@@ -53,6 +53,7 @@ export class SkillSuggestionFactory {
           type: "replace";
         }[];
         toolEdits?: { action: "add" | "remove"; toolId: string }[];
+        agentFacingDescriptionEdit?: { content: string };
       };
       analysis: string | null;
       title: string | null;
