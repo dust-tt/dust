@@ -3,6 +3,7 @@ import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetCreditPurchaseInfoResponseBody } from "@app/pages/api/w/[wId]/credits/purchase";
 import type {
   GetCreditsResponseBody,
+  MetronomeBalanceCreditType,
   PendingCreditData,
 } from "@app/types/credits";
 import { useCallback, useSyncExternalStore } from "react";
@@ -52,17 +53,23 @@ function resetPostPurchaseRefreshCount(workspaceId: string): void {
 export function useCredits({
   workspaceId,
   metronomeCustomerId,
+  metronomeBalanceCreditType,
   disabled,
 }: {
   workspaceId: string;
   metronomeCustomerId?: string | null;
+  metronomeBalanceCreditType?: MetronomeBalanceCreditType;
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
   const creditsFetcher: Fetcher<GetCreditsResponseBody> = fetcher;
 
+  const metronomeEndpoint = `/api/w/${workspaceId}/credits/metronome-balances`;
+  const queryString = metronomeBalanceCreditType
+    ? `creditType=${metronomeBalanceCreditType}`
+    : "";
   const endpoint = metronomeCustomerId
-    ? `/api/w/${workspaceId}/credits/metronome-balances`
+    ? `${metronomeEndpoint}${queryString ? `?${queryString}` : ""}`
     : `/api/w/${workspaceId}/credits`;
 
   const { data, error, mutate, isValidating } = useSWRWithDefaults(

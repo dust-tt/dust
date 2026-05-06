@@ -120,7 +120,10 @@ async function handler(
             if (isMetronomeExcessCredit(entry)) {
               continue;
             }
-            metronomeBySId.set(entry.id, metronomeBalanceToDisplayData(entry));
+            metronomeBySId.set(
+              entry.id,
+              metronomeBalanceToDisplayData(entry, "programmatic_usage")
+            );
           }
         }
       }
