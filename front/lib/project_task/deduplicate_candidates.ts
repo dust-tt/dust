@@ -32,11 +32,11 @@ import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import type { Authenticator } from "@app/lib/auth";
 import type { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
-import logger from "@app/logger/logger";
 import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { ModelId } from "@app/types/shared/model_id";
 import { startActiveObservation } from "@langfuse/tracing";
+import type { Logger } from "pino";
 import { z } from "zod";
 
 // ── Public types ──────────────────────────────────────────────────────────────
@@ -47,18 +47,22 @@ export type DeduplicateCandidate = {
   text: string;
 };
 
-// One task that Phase 3 will touch.
+// One task that Phase 3 will touch. `scopedLogger` carries the langfuseSpanId
+// of the LLM call that produced the group (or the unscoped logger when no LLM
+// call was made).
 export type DeduplicatedGroup =
   | {
       kind: "existing";
       todo: ProjectTaskResource;
       candidates: DeduplicateCandidate[];
+      scopedLogger: Logger;
     }
   | {
       kind: "new";
       // Non-empty. candidates[0] drives the new todo's content; later entries
       // attach their sources to that todo.
       candidates: DeduplicateCandidate[];
+      scopedLogger: Logger;
     };
 
 // ── LLM tool ─────────────────────────────────────────────────────────────────
@@ -149,15 +153,17 @@ function buildDeduplicationPrompt(
 export async function runDeduplicationLLMCall(
   auth: Authenticator,
   {
+    localLogger,
     model,
     candidates,
     existingTodos,
   }: {
+    localLogger: Logger;
     model: ModelConfigurationType;
     candidates: DeduplicateCandidate[];
     existingTodos: ProjectTaskResource[];
   }
-): Promise<number[][]> {
+): Promise<{ groups: number[][]; scopedLogger: Logger }> {
   const owner = auth.getNonNullableWorkspace();
   const prompt = buildDeduplicationPrompt(existingTodos, candidates);
   const specification = buildDeduplicationSpec();
@@ -172,10 +178,17 @@ export async function runDeduplicationLLMCall(
     ],
   };
 
+  let scopedLogger = localLogger;
   const res = await startActiveObservation(
     "project-todo-deduplicate-candidates",
-    () =>
-      runMultiActionsAgent(
+    (span) => {
+      scopedLogger = localLogger.child({ langfuseSpanId: span.id });
+      scopedLogger.info(
+        { workspaceId: owner.sId },
+        "Project todo dedup: LLM call started"
+      );
+
+      return runMultiActionsAgent(
         auth,
         {
           providerId: model.providerId,
@@ -197,36 +210,37 @@ export async function runDeduplicationLLMCall(
             workspaceId: owner.sId,
           },
         }
-      )
+      );
+    }
   );
 
   if (res.isErr()) {
-    logger.warn(
+    scopedLogger.warn(
       { error: res.error, workspaceId: owner.sId },
       "Project todo dedup: LLM call failed, treating all candidates as new"
     );
-    return [];
+    return { groups: [], scopedLogger };
   }
 
   const action = res.value.actions?.[0];
   if (!action?.arguments) {
-    logger.warn(
+    scopedLogger.warn(
       { workspaceId: owner.sId },
       "Project todo dedup: no tool call in LLM response, treating all as new"
     );
-    return [];
+    return { groups: [], scopedLogger };
   }
 
   const parsed = DeduplicationResultSchema.safeParse(action.arguments);
   if (!parsed.success) {
-    logger.warn(
+    scopedLogger.warn(
       { error: parsed.error, workspaceId: owner.sId },
       "Project todo dedup: failed to parse LLM response, treating all as new"
     );
-    return [];
+    return { groups: [], scopedLogger };
   }
 
-  return parsed.data.groups;
+  return { groups: parsed.data.groups, scopedLogger };
 }
 
 // ── Group resolution ─────────────────────────────────────────────────────────
@@ -322,10 +336,12 @@ export function resolveDeduplicationGroups<TTodo>(
 export async function batchDeduplicateCandidates(
   auth: Authenticator,
   {
+    localLogger,
     model,
     candidates,
     existingTodos,
   }: {
+    localLogger: Logger;
     model: ModelConfigurationType;
     candidates: DeduplicateCandidate[];
     existingTodos: ProjectTaskResource[];
@@ -339,13 +355,13 @@ export async function batchDeduplicateCandidates(
 
   // Fast path: single candidate with no existing todos needs no LLM call.
   if (existingTodos.length === 0 && candidates.length === 1) {
-    return [{ kind: "new", candidates }];
+    return [{ kind: "new", candidates, scopedLogger: localLogger }];
   }
 
   const totalItems = existingTodos.length + candidates.length;
 
   if (totalItems > CONTEXT_PRESSURE_THRESHOLD) {
-    logger.warn(
+    localLogger.warn(
       {
         workspaceId: owner.sId,
         existingTodoCount: existingTodos.length,
@@ -356,7 +372,7 @@ export async function batchDeduplicateCandidates(
       "Project todo dedup: large combined item count may cause context pressure — proceeding with single LLM call"
     );
   } else {
-    logger.info(
+    localLogger.info(
       {
         workspaceId: owner.sId,
         existingTodoCount: existingTodos.length,
@@ -367,11 +383,17 @@ export async function batchDeduplicateCandidates(
     );
   }
 
-  const llmGroups = await runDeduplicationLLMCall(auth, {
-    model,
-    candidates,
-    existingTodos,
-  });
+  const { groups: llmGroups, scopedLogger } = await runDeduplicationLLMCall(
+    auth,
+    {
+      localLogger,
+      model,
+      candidates,
+      existingTodos,
+    }
+  );
 
-  return resolveDeduplicationGroups(candidates, existingTodos, llmGroups);
+  return resolveDeduplicationGroups(candidates, existingTodos, llmGroups).map(
+    (group) => ({ ...group, scopedLogger })
+  );
 }

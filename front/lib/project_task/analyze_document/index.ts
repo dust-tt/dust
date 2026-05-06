@@ -44,7 +44,8 @@ async function buildPromptProjectMembers(
 }
 
 // Calls the LLM with a forced extract_action_items tool call and parses the result.
-// Returns null if the call fails, produces no tool call, or the output fails parsing.
+// Returns extraction=null if the call fails, produces no tool call, or the output fails parsing.
+// Always returns the scoped logger (with langfuseSpanId bound) so callers can keep using it.
 async function callExtractActionItemsLLM(
   auth: Authenticator,
   {
@@ -60,12 +61,16 @@ async function callExtractActionItemsLLM(
     prompt: string;
     document: TakeawaySourceDocument;
   }
-): Promise<ExtractionResult | null> {
+): Promise<{ extraction: ExtractionResult | null; scopedLogger: Logger }> {
   const owner = auth.getNonNullableWorkspace();
+  let scopedLogger = localLogger;
   const res = await startActiveObservation(
     "project-todo-analyze-document",
-    () =>
-      runMultiActionsAgent(
+    (span) => {
+      scopedLogger = localLogger.child({ langfuseSpanId: span.id });
+      scopedLogger.info("Document takeaway: LLM call started");
+
+      return runMultiActionsAgent(
         auth,
         {
           providerId: model.providerId,
@@ -95,31 +100,32 @@ async function callExtractActionItemsLLM(
             workspaceId: owner.sId,
           },
         }
-      )
+      );
+    }
   );
   if (res.isErr()) {
-    localLogger.error(
+    scopedLogger.error(
       { error: res.error },
       "Document takeaway: LLM call failed"
     );
-    return null;
+    return { extraction: null, scopedLogger };
   }
 
   const action = res.value.actions?.[0];
   if (!action?.arguments) {
-    localLogger.warn("Document takeaway: no tool call in LLM response");
-    return null;
+    scopedLogger.warn("Document takeaway: no tool call in LLM response");
+    return { extraction: null, scopedLogger };
   }
 
   const parsed = ExtractTakeawaysInputSchema.safeParse(action.arguments);
   if (!parsed.success) {
-    localLogger.warn(
+    scopedLogger.warn(
       { error: parsed.error, arguments: action.arguments },
       "Document takeaway: failed to parse LLM response"
     );
-    return null;
+    return { extraction: null, scopedLogger };
   }
-  return parsed.data;
+  return { extraction: parsed.data, scopedLogger };
 }
 
 // Maps raw LLM-extracted items to typed action items, reusing sIds from the
@@ -195,7 +201,7 @@ export async function extractDocumentTakeaways(
     .join("\n\n");
   const specification = buildSpec();
 
-  const extraction = await callExtractActionItemsLLM(auth, {
+  const { extraction, scopedLogger } = await callExtractActionItemsLLM(auth, {
     localLogger,
     model,
     specification,
@@ -203,7 +209,7 @@ export async function extractDocumentTakeaways(
     document,
   });
   if (!extraction) {
-    localLogger.error("Document takeaway: no extraction result");
+    scopedLogger.error("Document takeaway: no extraction result");
     return null;
   }
 
@@ -226,7 +232,7 @@ export async function extractDocumentTakeaways(
     },
     previousActionItems,
     validAssigneesUserIds,
-    localLogger
+    scopedLogger
   );
 
   const stats: ExtractedTakeawayStats = {
@@ -234,7 +240,7 @@ export async function extractDocumentTakeaways(
   };
 
   if (stats.actionItems === 0) {
-    localLogger.info("Document takeaway: no takeaways extracted");
+    scopedLogger.info("Document takeaway: no takeaways extracted");
     return stats;
   }
 
@@ -244,7 +250,7 @@ export async function extractDocumentTakeaways(
     actionItems,
   });
 
-  localLogger.info(
+  scopedLogger.info(
     {
       ...stats,
     },
