@@ -1,5 +1,7 @@
 import {
+  editSkillCallCount,
   editSkillCallsWithSources,
+  editSkillWithAgentFacingDescription,
   editSkillWithInstructions,
   editSkillWithTool,
   mockTool,
@@ -71,6 +73,33 @@ function makeToolSuggestion(input: {
     kind: "edit",
     suggestion: {
       toolEdits: [{ action: input.action, toolId: input.toolId }],
+    },
+  };
+}
+
+function makeAgentFacingDescriptionSuggestion(input: {
+  sId: string;
+  analysis: string;
+  content: string;
+  skillConfigurationId?: string;
+  source?: "reinforcement" | "synthetic";
+}): SkillSuggestionType {
+  return {
+    sId: input.sId,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    skillConfigurationId: input.skillConfigurationId ?? SKILL_SID,
+    analysis: input.analysis,
+    title: null,
+    state: "pending",
+    source: input.source ?? "synthetic",
+    sourceConversationsCount: 0,
+    visibleSourceConversationIds: [],
+    notificationConversationId: null,
+    updatedBy: null,
+    kind: "edit",
+    suggestion: {
+      agentFacingDescriptionEdit: { content: input.content },
     },
   };
 }
@@ -427,6 +456,63 @@ Score 0 if it creates any edit_skill suggestion based on this single minor synth
 Score 1 if no edit_skill suggestion is created but reject_suggestion is not called for sug-1.
 Score 1 if reject_suggestion is called.
 Score 3 if no edit_skill suggestion is created AND reject_suggestion is not called.`,
+    },
+    {
+      scenarioId: "merge-description-edits-keep-tool-separate",
+      type: "aggregation",
+      skillConfig: {
+        name: "Payment Issue Resolver",
+        sId: "skill_payment_resolver",
+        description: "Helps customers with payment issues.",
+        instructions:
+          "When a payment fails, ask for the transaction ID and call payment-retry. For chargeback disputes, collect the dispute reason and call chargeback-open.",
+      },
+      syntheticSuggestions: [
+        makeAgentFacingDescriptionSuggestion({
+          sId: "sug-desc-1",
+          skillConfigurationId: "skill_payment_resolver",
+          analysis:
+            "Skill triggered for a billing address change. The description is too generic, the agent should not have selected this skill.",
+          content:
+            "Use this skill ONLY for failed payments and chargeback disputes. Do not use it for billing address updates, invoice questions, or other account-management tasks.",
+        }),
+        makeAgentFacingDescriptionSuggestion({
+          sId: "sug-desc-2",
+          skillConfigurationId: "skill_payment_resolver",
+          analysis:
+            "Skill triggered for an invoice download request. Description gives no signal that this skill is scoped to payment failures and chargebacks only.",
+          content:
+            "For payment failures and chargeback disputes only. Skip this skill for invoice or receipt requests — those are handled elsewhere.",
+        }),
+        makeToolSuggestion({
+          sId: "sug-tool-1",
+          skillConfigurationId: "skill_payment_resolver",
+          analysis:
+            "User asked the skill to file an internal incident ticket for a flagged chargeback. The skill had no JIRA tool to do so, it's crucial to add it.",
+          action: "add",
+          toolId: "mcp_jira",
+        }),
+      ],
+      workspaceContext: WORKSPACE_CONTEXT,
+      expectedToolCalls: [
+        editSkillCallCount(2),
+        editSkillWithAgentFacingDescription("skill_payment_resolver", [
+          "sug-desc-1",
+          "sug-desc-2",
+        ]),
+        editSkillWithTool("skill_payment_resolver", "mcp_jira", ["sug-tool-1"]),
+      ],
+      judgeCriteria: `Two of the three drafts target the agent-facing description (both about narrowing routing), and one is unrelated tooling work (adding JIRA). Aggregation rules require:
+- ONE description-edit suggestion per skill, merging both description drafts (sug-desc-1 + sug-desc-2). The merged description must explicitly limit the skill to payment failures + chargebacks AND steer the agent away from generic billing/invoice/account-management requests.
+- The description edit MUST be its own standalone edit_skill call. Do NOT bundle it with the tool addition (different topic, different fix).
+- A separate edit_skill call for the JIRA tool addition (sug-tool-1).
+
+Score 0 if no edit_skill call carries an agentFacingDescriptionEdit for skill_payment_resolver.
+Score 0 if the description edit and the tool addition are bundled into a single edit_skill call.
+Score 0 if more than 2 edit_skill calls are produced (failure to merge sug-desc-1 + sug-desc-2).
+Score 1 if 2 separate edit_skill calls are made but the merged description doesn't explicitly carve out billing/invoice routing (i.e. it stays vague).
+Score 2 if 2 separate edit_skill calls are made and the merged description narrows scope but does not reference both supporting drafts (sug-desc-1 + sug-desc-2 in sourceSuggestionIds).
+Score 3 if exactly 2 edit_skill calls are made: one with agentFacingDescriptionEdit consolidating sug-desc-1 + sug-desc-2 into a description that limits the skill to failures/chargebacks AND explicitly excludes generic billing/invoice/account-management requests; one with toolEdits adding mcp_jira referencing sug-tool-1.`,
     },
   ],
 };

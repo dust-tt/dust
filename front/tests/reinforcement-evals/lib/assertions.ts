@@ -87,8 +87,26 @@ function getToolEdits(args: Record<string, unknown>): ToolEditItem[] {
   return edits.filter(isToolEditItem);
 }
 
-function findEditSkillCall(toolCalls: ToolCall[]): ToolCall | undefined {
-  return toolCalls.find((tc) => tc.name === "edit_skill");
+function getAgentFacingDescriptionEditContent(
+  args: Record<string, unknown>
+): string | undefined {
+  const edit = args.agentFacingDescriptionEdit;
+  if (
+    typeof edit !== "object" ||
+    edit === null ||
+    !("content" in edit) ||
+    typeof edit.content !== "string"
+  ) {
+    return undefined;
+  }
+  return edit.content;
+}
+
+function findEditSkillCall(
+  toolCalls: ToolCall[],
+  predicate: (call: ToolCall) => boolean = () => true
+): ToolCall | undefined {
+  return toolCalls.find((tc) => tc.name === "edit_skill" && predicate(tc));
 }
 
 /**
@@ -100,25 +118,16 @@ export function validateToolCallAssertion(
 ): AssertionResult {
   switch (assertion.type) {
     case "editSkillWithInstructions": {
-      const call = findEditSkillCall(toolCalls);
+      const call = findEditSkillCall(
+        toolCalls,
+        (c) =>
+          getSkillId(c.arguments) === assertion.skillId &&
+          getInstructionEdits(c.arguments).length > 0
+      );
       if (!call) {
         return {
           success: false,
-          error: `Expected edit_skill to be called with instructionEdits for skillId "${assertion.skillId}", but edit_skill was not called`,
-        };
-      }
-      const skillId = getSkillId(call.arguments);
-      if (skillId !== assertion.skillId) {
-        return {
-          success: false,
-          error: `Expected edit_skill for skillId "${assertion.skillId}", but got skillId "${skillId}"`,
-        };
-      }
-      const instructionEdits = getInstructionEdits(call.arguments);
-      if (instructionEdits.length === 0) {
-        return {
-          success: false,
-          error: `Expected edit_skill to contain instructionEdits for skillId "${assertion.skillId}", but instructionEdits is empty or missing`,
+          error: `Expected an edit_skill call with instructionEdits for skillId "${assertion.skillId}", but no such call was made`,
         };
       }
       if (assertion.sourceSuggestionIds) {
@@ -133,25 +142,40 @@ export function validateToolCallAssertion(
       return { success: true };
     }
     case "editSkillWithTool": {
-      const call = findEditSkillCall(toolCalls);
+      const call = findEditSkillCall(
+        toolCalls,
+        (c) =>
+          getSkillId(c.arguments) === assertion.skillId &&
+          getToolEdits(c.arguments).some((t) => t.toolId === assertion.toolId)
+      );
       if (!call) {
         return {
           success: false,
-          error: `Expected edit_skill to be called with toolEdits for skillId "${assertion.skillId}" and toolId "${assertion.toolId}", but edit_skill was not called`,
+          error: `Expected an edit_skill call with toolEdit toolId "${assertion.toolId}" for skillId "${assertion.skillId}", but no such call was made`,
         };
       }
-      const skillId = getSkillId(call.arguments);
-      if (skillId !== assertion.skillId) {
-        return {
-          success: false,
-          error: `Expected edit_skill for skillId "${assertion.skillId}", but got skillId "${skillId}"`,
-        };
+      if (assertion.sourceSuggestionIds) {
+        const sourceResult = validateSourceSuggestionIds(
+          call,
+          assertion.sourceSuggestionIds
+        );
+        if (sourceResult) {
+          return sourceResult;
+        }
       }
-      const toolEdits = getToolEdits(call.arguments);
-      if (!toolEdits.some((t) => t.toolId === assertion.toolId)) {
+      return { success: true };
+    }
+    case "editSkillWithAgentFacingDescription": {
+      const call = findEditSkillCall(
+        toolCalls,
+        (c) =>
+          getSkillId(c.arguments) === assertion.skillId &&
+          getAgentFacingDescriptionEditContent(c.arguments) !== undefined
+      );
+      if (!call) {
         return {
           success: false,
-          error: `Expected edit_skill to contain toolEdit with toolId "${assertion.toolId}", but got: ${JSON.stringify(toolEdits)}`,
+          error: `Expected an edit_skill call with agentFacingDescriptionEdit for skillId "${assertion.skillId}", but no such call was made`,
         };
       }
       if (assertion.sourceSuggestionIds) {
@@ -166,18 +190,14 @@ export function validateToolCallAssertion(
       return { success: true };
     }
     case "editSkill": {
-      const call = findEditSkillCall(toolCalls);
+      const call = findEditSkillCall(
+        toolCalls,
+        (c) => getSkillId(c.arguments) === assertion.skillId
+      );
       if (!call) {
         return {
           success: false,
-          error: `Expected edit_skill to be called for skillId "${assertion.skillId}", but edit_skill was not called`,
-        };
-      }
-      const skillId = getSkillId(call.arguments);
-      if (skillId !== assertion.skillId) {
-        return {
-          success: false,
-          error: `Expected edit_skill for skillId "${assertion.skillId}", but got skillId "${skillId}"`,
+          error: `Expected an edit_skill call for skillId "${assertion.skillId}", but no such call was made`,
         };
       }
       if (assertion.sourceSuggestionIds) {
@@ -198,10 +218,16 @@ export function validateToolCallAssertion(
         }
         const instructionEdits = getInstructionEdits(tc.arguments);
         const toolEdits = getToolEdits(tc.arguments);
-        if (instructionEdits.length > 0 || toolEdits.length > 0) {
+        const hasDescriptionEdit =
+          getAgentFacingDescriptionEditContent(tc.arguments) !== undefined;
+        if (
+          instructionEdits.length > 0 ||
+          toolEdits.length > 0 ||
+          hasDescriptionEdit
+        ) {
           return {
             success: false,
-            error: `Expected no suggestions, but edit_skill was called with ${instructionEdits.length} instructionEdit(s) and ${toolEdits.length} toolEdit(s)`,
+            error: `Expected no suggestions, but edit_skill was called with ${instructionEdits.length} instructionEdit(s), ${toolEdits.length} toolEdit(s)${hasDescriptionEdit ? ", and an agentFacingDescriptionEdit" : ""}`,
           };
         }
       }
