@@ -2,7 +2,9 @@ import { removeDiacritics, subFilter } from "@app/lib/utils";
 import type {
   AgentMessageType,
   CompactionMessageType,
+  ConversationForkedFromType,
   ConversationListItemType,
+  ConversationWithoutContentType,
   LightAgentMessageType,
   UserMessageType,
   UserMessageTypeWithContentFragments,
@@ -12,9 +14,13 @@ import {
   isReinforcedSkillNotificationMetadata,
 } from "@app/types/assistant/conversation";
 import type { ContentFragmentType } from "@app/types/content_fragment";
+import { truncate } from "@app/types/shared/utils/string_utils";
 import moment from "moment";
 
 import type { VirtuosoMessage } from "./types";
+
+const MAX_SOURCE_CONVERSATION_TITLE_LENGTH = 50;
+const UNNAMED_PARENT_CONVERSATION_TITLE = "Unnamed parent conversation";
 
 function isReinforcedSkillConversation(
   conversation: ConversationListItemType
@@ -185,4 +191,94 @@ export function isMessageUnread(
     return true;
   }
   return false;
+}
+
+type CompactionConversationInput = Pick<
+  ConversationWithoutContentType,
+  "forkingData" | "sId"
+>;
+
+export function getParentConversationTitleLabel(
+  parentConversation: Pick<
+    ConversationForkedFromType,
+    "parentConversationTitle"
+  >
+): string {
+  return (
+    parentConversation.parentConversationTitle ??
+    UNNAMED_PARENT_CONVERSATION_TITLE
+  );
+}
+
+function getCompactionParentConversation(
+  message: CompactionMessageType,
+  conversation: CompactionConversationInput
+): ConversationForkedFromType | null {
+  if (
+    !message.sourceConversationId ||
+    message.sourceConversationId === conversation.sId
+  ) {
+    return null;
+  }
+
+  const parentConversation = conversation.forkingData?.forkedFrom;
+  if (
+    parentConversation?.parentConversationId !== message.sourceConversationId
+  ) {
+    return null;
+  }
+
+  return parentConversation;
+}
+
+export function getCompactionInProgressLabel(
+  message: CompactionMessageType,
+  conversation: CompactionConversationInput
+): string {
+  const parentConversation = getCompactionParentConversation(
+    message,
+    conversation
+  );
+
+  if (!parentConversation) {
+    return "Compacting context, this may take a moment…";
+  }
+
+  const parentConversationTitle =
+    getParentConversationTitleLabel(parentConversation);
+  const truncatedParentConversationTitle = truncate(
+    parentConversationTitle,
+    MAX_SOURCE_CONVERSATION_TITLE_LENGTH
+  );
+
+  return `Summarizing '${truncatedParentConversationTitle}', this may take a moment…`;
+}
+
+export function getCompactionSuccessLabel(
+  message: CompactionMessageType,
+  conversation: CompactionConversationInput
+): string {
+  if (
+    !message.sourceConversationId ||
+    message.sourceConversationId === conversation.sId
+  ) {
+    return "Context compacted";
+  }
+
+  const parentConversation = getCompactionParentConversation(
+    message,
+    conversation
+  );
+  if (parentConversation) {
+    const parentConversationTitle =
+      getParentConversationTitleLabel(parentConversation);
+    const truncatedParentConversationTitle = truncate(
+      parentConversationTitle,
+      MAX_SOURCE_CONVERSATION_TITLE_LENGTH
+    );
+
+    return `Summarized '${truncatedParentConversationTitle}' here`;
+  }
+
+  return "Summarized another conversation here";
 }

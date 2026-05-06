@@ -3,6 +3,8 @@ import {
   useConversationMenu,
 } from "@app/components/assistant/conversation/ConversationMenu";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import { EditConversationTitleDialog } from "@app/components/assistant/conversation/EditConversationTitleDialog";
+import { getParentConversationTitleLabel } from "@app/components/assistant/conversation/utils";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useConversation, useConversations } from "@app/hooks/conversations";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
@@ -25,8 +27,6 @@ import {
   Tooltip,
 } from "@dust-tt/sparkle";
 import { useCallback, useState } from "react";
-
-import { EditConversationTitleDialog } from "./EditConversationTitleDialog";
 
 export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
   const activeConversationId = useActiveConversationId();
@@ -95,8 +95,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
       return null;
     }
 
-    const chipLabel =
-      forkedFrom.parentConversationTitle ?? "Unnamed parent conversation";
+    const chipLabel = getParentConversationTitleLabel(forkedFrom);
 
     return (
       <div className="flex h-9 items-center">
