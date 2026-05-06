@@ -196,12 +196,11 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
         );
       }
 
-      const normalizedAllowedDomains =
-        this.normalizeAllowedDomainsForKind({
-          kind,
-          allowedDomains,
-          requiredForSecret: false,
-        });
+      const normalizedAllowedDomains = this.normalizeAllowedDomainsForKind({
+        kind,
+        allowedDomains,
+        requiredForSecret: false,
+      });
       if (normalizedAllowedDomains.isErr()) {
         return normalizedAllowedDomains;
       }
@@ -236,12 +235,11 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
         );
       }
 
-      const normalizedAllowedDomains =
-        this.normalizeAllowedDomainsForKind({
-          kind,
-          allowedDomains,
-          requiredForSecret: true,
-        });
+      const normalizedAllowedDomains = this.normalizeAllowedDomainsForKind({
+        kind,
+        allowedDomains,
+        requiredForSecret: true,
+      });
       if (normalizedAllowedDomains.isErr()) {
         return normalizedAllowedDomains;
       }
@@ -320,9 +318,7 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
     }
 
     if (!result.value.created) {
-      return new Err(
-        new Error("Sandbox environment variable already exists.")
-      );
+      return new Err(new Error("Sandbox environment variable already exists."));
     }
 
     return new Ok(result.value.resource);

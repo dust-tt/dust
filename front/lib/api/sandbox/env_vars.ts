@@ -4,14 +4,17 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export const SANDBOX_ENV_VAR_PREFIX = "DST_";
 export const SANDBOX_HTTPS_SECRET_ENV_VAR_PREFIX = "DSEC_";
-export const ENV_VAR_NAME_SUFFIX_REGEX = /^[A-Z][A-Z0-9_]{0,59}$/;
+// Suffix max length is 64 — the wire form is `<prefix><suffix>` (e.g. "DSEC_FOO"),
+// so the rendered name fits comfortably under typical 128-char env-var limits
+// even with our longest prefix.
+export const ENV_VAR_NAME_SUFFIX_REGEX = /^[A-Z][A-Z0-9_]{0,63}$/;
 export const ENV_VAR_NAME_REGEX = ENV_VAR_NAME_SUFFIX_REGEX;
 export const MAX_VALUE_BYTES = 32 * 1_024;
 // Tighter than MAX_VALUE_BYTES because https_secret values are substituted
 // into HTTP header lines on the wire — most upstreams cap header lines
-// around 8-16 KiB. We pick the low end to leave headroom for the rest of
-// the request line + other headers.
-export const MAX_HTTPS_SECRET_VALUE_BYTES = 8 * 1_024;
+// around 8-16 KiB. We pick well below the low end to leave headroom for the
+// rest of the request line + other headers.
+export const MAX_HTTPS_SECRET_VALUE_BYTES = 4 * 1_024;
 export const MAX_VARS_PER_WORKSPACE = 50;
 
 const ENV_VAR_PREFIX_BY_KIND: Record<WorkspaceSandboxEnvVarKind, string> = {
@@ -22,7 +25,7 @@ const ENV_VAR_PREFIX_BY_KIND: Record<WorkspaceSandboxEnvVarKind, string> = {
 export function validateEnvVarName(name: string): Result<void, string> {
   if (!ENV_VAR_NAME_REGEX.test(name)) {
     return new Err(
-      "Environment variable names must start with A-Z and contain only A-Z, digits or underscores (up to 60 characters)."
+      "Environment variable names must start with A-Z and contain only A-Z, digits or underscores (up to 64 characters)."
     );
   }
 
