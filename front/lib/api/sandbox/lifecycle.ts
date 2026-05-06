@@ -2,7 +2,10 @@ import {
   checkEgressForwarderHealth,
   setupEgressForwarder,
 } from "@app/lib/api/sandbox/egress";
-import { ensureConversationFilesMounted } from "@app/lib/api/sandbox/gcs/mount";
+import {
+  mountConversationFiles,
+  refreshGcsToken,
+} from "@app/lib/api/sandbox/gcs/mount";
 import { getSandboxImage } from "@app/lib/api/sandbox/image";
 import { startTelemetry } from "@app/lib/api/sandbox/telemetry";
 import type { Authenticator } from "@app/lib/auth";
@@ -52,18 +55,30 @@ export async function ensureSandboxReady(
     logger.error({ err }, "Telemetry start failed (fire-and-forget)")
   );
 
-  // ensureConversationFilesMounted is idempotent: it probes the mount and
-  // token server, refreshes the token if both are alive, and otherwise
-  // rebuilds local state and remounts. No need to branch on freshlyCreated
-  // / wokeFromSleep here.
-  const mountResult = await ensureConversationFilesMounted(
-    auth,
-    sandbox,
-    conversation,
-    image
-  );
-  if (mountResult.isErr()) {
-    return mountResult;
+  // Only mount on first creation. e2b preserves the FUSE mount and the
+  // token server across betaPause + connect (verified empirically), so on
+  // wake we just need a fresh GCS access token in /tmp/token.json — the
+  // running token server will hand it to gcsfuse on the next request.
+  if (freshlyCreated) {
+    const mountResult = await mountConversationFiles(
+      auth,
+      sandbox,
+      conversation,
+      image
+    );
+    if (mountResult.isErr()) {
+      return mountResult;
+    }
+  } else {
+    const refreshResult = await refreshGcsToken(
+      auth,
+      sandbox,
+      conversation,
+      image
+    );
+    if (refreshResult.isErr()) {
+      return refreshResult;
+    }
   }
 
   const healthResult = await checkEgressForwarderHealth(auth, sandbox);
