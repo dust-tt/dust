@@ -1,4 +1,5 @@
 import {
+  checkProgrammaticUsageLimits,
   compareCreditsForConsumption,
   computeCreditAlertThresholdKey,
   decreaseProgrammaticCredits,
@@ -160,6 +161,16 @@ describe("isProgrammaticUsage", () => {
     expect(isProgrammaticUsage(auth, { userMessageOrigin: "wakeup" })).toBe(
       false
     );
+  });
+
+  it("should return credits_exhausted when no active credits are available", async () => {
+    const result = await checkProgrammaticUsageLimits(auth);
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.type).toBe("credits_exhausted");
+      expect(result.error.message).toContain("programmatic usage credits");
+    }
   });
 });
 

@@ -25,6 +25,17 @@ import { Err, Ok } from "@app/types/shared/result";
 
 const CREDIT_ALERT_THRESHOLD_PERCENT = 80;
 
+type ProgrammaticUsageLimitErrorType = "credits_exhausted" | "rate_limit_error";
+
+export class ProgrammaticUsageLimitError extends Error {
+  type: ProgrammaticUsageLimitErrorType;
+
+  constructor(type: ProgrammaticUsageLimitErrorType, message: string) {
+    super(message);
+    this.type = type;
+  }
+}
+
 export function isProgrammaticUsage(
   auth: Authenticator,
   { userMessageOrigin }: { userMessageOrigin: UserMessageOrigin }
@@ -59,7 +70,7 @@ export async function hasReachedProgrammaticUsageLimits(
  */
 export async function checkProgrammaticUsageLimits(
   auth: Authenticator
-): Promise<Result<void, Error>> {
+): Promise<Result<void, ProgrammaticUsageLimitError>> {
   const isAdmin = auth.isAdmin();
 
   // First check workspace credits.
@@ -70,7 +81,9 @@ export async function checkProgrammaticUsageLimits(
         "Please purchase more credits in the Developers > Credits section of the Dust dashboard."
       : "Your workspace has run out of programmatic usage credits. " +
         "Please ask a Dust workspace admin to purchase more credits.";
-    return new Err(new Error(message));
+    return new Err(
+      new ProgrammaticUsageLimitError("credits_exhausted", message)
+    );
   }
 
   // Then check per-key cap.
@@ -81,7 +94,9 @@ export async function checkProgrammaticUsageLimits(
         "Please increase the cap in the Developers > API Keys section of the Dust dashboard."
       : "This API key has reached its monthly usage cap. " +
         "Please ask a Dust workspace admin to increase the cap.";
-    return new Err(new Error(message));
+    return new Err(
+      new ProgrammaticUsageLimitError("rate_limit_error", message)
+    );
   }
 
   // Finally check daily cap.
@@ -92,7 +107,9 @@ export async function checkProgrammaticUsageLimits(
         "The cap will reset at midnight UTC, or you can increase it in admin settings."
       : "Your workspace has reached its daily programmatic usage cap. " +
         "Please contact your Dust workspace admin.";
-    return new Err(new Error(message));
+    return new Err(
+      new ProgrammaticUsageLimitError("rate_limit_error", message)
+    );
   }
 
   return new Ok(undefined);

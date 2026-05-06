@@ -2636,19 +2636,21 @@ async function isMessagesLimitReached(
   }
 
   if (isProgrammaticUsage(auth, { userMessageOrigin: context.origin })) {
+    const limitsResult = await checkProgrammaticUsageLimits(auth);
+    if (limitsResult.isErr()) {
+      return {
+        isLimitReached: true,
+        limitType: limitsResult.error.type,
+        message: limitsResult.error.message,
+      };
+    }
+
     const programmaticUsageRateLimit =
       await checkProgrammaticUsageRateLimit(auth);
     if (programmaticUsageRateLimit.isLimitReached) {
       return programmaticUsageRateLimit;
     }
-    const limitsResult = await checkProgrammaticUsageLimits(auth);
-    if (limitsResult.isErr()) {
-      return {
-        isLimitReached: true,
-        limitType: "credits_exhausted",
-        message: limitsResult.error.message,
-      };
-    }
+
     return {
       isLimitReached: false,
       limitType: null,

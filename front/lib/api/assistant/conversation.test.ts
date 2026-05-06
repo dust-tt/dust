@@ -1497,6 +1497,7 @@ describe("postUserMessage", () => {
       throw new Error("Failed to fetch conversation");
     }
 
+    const noCreditWorkspace = noCreditAuth.getNonNullableWorkspace();
     const rateLimiterSpy = vi
       .spyOn(rateLimiterModule, "rateLimiter")
       .mockResolvedValue(100);
@@ -1526,6 +1527,11 @@ describe("postUserMessage", () => {
         "programmatic usage credits"
       );
     }
+    expect(rateLimiterSpy).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        key: `workspace:${noCreditWorkspace.sId}:programmatic_usage_rate_limit`,
+      })
+    );
 
     rateLimiterSpy.mockRestore();
   });
