@@ -47,7 +47,6 @@ import { useSubmitMessage } from "@app/hooks/useSubmitMessage";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import type { ConversationEvents } from "@app/lib/api/assistant/streaming/types";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { getUpdatedParticipantsFromEvent } from "@app/lib/client/conversation/event_handlers";
 import type { DustError } from "@app/lib/error";
 import {
@@ -253,8 +252,6 @@ export const ConversationViewer = ({
     >(null);
   const sendNotification = useSendNotification();
   const { incrementPendingSteeringCount } = useGenerationContext();
-  const { hasFeature } = useFeatureFlags();
-  const isCompactionEnabled = hasFeature("enable_compaction");
 
   const { mutateConversationAttachments } = useConversationAttachments({
     conversationId,
@@ -335,7 +332,7 @@ export const ConversationViewer = ({
   });
 
   const { mutateContextUsage } = useConversationContextUsage({
-    conversationId: isCompactionEnabled ? conversationId : null,
+    conversationId,
     workspaceId: owner.sId,
     options: { disabled: true },
   });

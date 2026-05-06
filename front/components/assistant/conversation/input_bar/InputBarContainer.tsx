@@ -18,7 +18,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { useVoiceTranscriberService } from "@app/hooks/useVoiceTranscriberService";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isNodeCandidate } from "@app/lib/connectors";
 import { useClientType } from "@app/lib/context/clientType";
@@ -191,8 +191,6 @@ const InputBarContainer = ({
   const isSubmitBlocked = submitBlockMessage !== null;
   const { subscription } = useAuth();
   const isMobile = useIsMobile();
-  const { hasFeature } = useFeatureFlags();
-  const isCompactionEnabled = hasFeature("enable_compaction");
   const { selectedSingleAgent, setSelectedSingleAgent } =
     useContext(InputBarContext);
 
@@ -1191,7 +1189,7 @@ const InputBarContainer = ({
             </>
           )}
           <div className="flex items-center">
-            {isCompactionEnabled && conversation && (
+            {conversation && (
               <ContextUsageIndicator
                 buttonSize={buttonSize}
                 owner={owner}

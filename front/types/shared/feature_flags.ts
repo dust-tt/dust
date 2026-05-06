@@ -297,11 +297,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Dummy feature flag used for testing feature flag behavior",
     stage: "dust_only",
   },
-  enable_compaction: {
-    description:
-      "Enable context compaction: summarize older messages to free up context window",
-    stage: "dust_only",
-  },
   browser_extension_mcp_tools: {
     description:
       "Show the browser extension MCP tools toggle in workspace access settings",
