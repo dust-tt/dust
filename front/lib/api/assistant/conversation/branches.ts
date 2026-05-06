@@ -247,8 +247,7 @@ export async function mergeConversationBranch(
     fullName: src.userContextFullName,
     email: src.userContextEmail,
     profilePictureUrl: src.userContextProfilePictureUrl,
-    // Merging a branch is a user action, even if the source branch message was programmatic.
-    origin: "web",
+    origin: src.userContextOrigin,
     clientSideMCPServerIds: src.clientSideMCPServerIds,
     lastTriggerRunAt: src.userContextLastTriggerRunAt
       ? src.userContextLastTriggerRunAt.getTime()
