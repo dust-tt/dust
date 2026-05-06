@@ -9,6 +9,7 @@ import { SalesforceOauthExtraConfig } from "@app/components/data_source/salesfor
 import { ZendeskConfigView } from "@app/components/data_source/ZendeskConfigView";
 import { ZendeskOAuthExtraConfig } from "@app/components/data_source/ZendeskOAuthExtraConfig";
 import { AdvancedLabelsOptions } from "@app/components/shared/labels/AdvancedLabelsOptions";
+import type { LabelsHandle } from "@app/components/shared/labels/types";
 import type { ConnectorPermission } from "@app/types/connectors/connectors_api";
 import type { ConnectorProvider, DataSourceType } from "@app/types/data_source";
 import type { PlanType } from "@app/types/plan";
@@ -41,6 +42,8 @@ export interface ConnectorOptionsProps {
   isAdmin: boolean;
   dataSource: DataSourceType;
   plan: PlanType;
+  onDirtyChange?: (dirty: boolean) => void;
+  labelsRef?: React.Ref<LabelsHandle>;
 }
 
 export interface ConnectorOauthExtraConfigProps {
@@ -298,11 +301,19 @@ export const CONNECTOR_UI_CONFIGURATIONS: Record<
     optionsComponent: createConnectorOptionsPdfEnabled(
       "When enabled, PDF documents from your Microsoft OneDrive and SharePoint will be synced and processed by Dust."
     ),
-    advancedOptionsComponent: ({ owner, readOnly, dataSource }) =>
+    advancedOptionsComponent: ({
+      owner,
+      readOnly,
+      dataSource,
+      onDirtyChange,
+      labelsRef,
+    }) =>
       React.createElement(AdvancedLabelsOptions, {
         owner,
         source: { dataSourceId: dataSource.sId },
         readOnly,
+        onDirtyChange,
+        labelsRef,
       }),
     isNested: true,
     isTitleFilterEnabled: true,

@@ -19,6 +19,9 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
+const MICROSOFT_SENSITIVITY_LABELS_CONFIG_KEY =
+  "microsoftSensitivityLabelsToInclude";
+
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 export type MicrosoftSensitivityLabel = {
@@ -50,6 +53,32 @@ const SourceSchema = z
 const PostBodySchema = z.object({
   allowedLabels: z.array(z.string()),
 });
+
+const AllowedLabelsConfigSchema = z.array(z.string());
+
+function parseAllowedLabelsConfig(
+  configValue: string
+):
+  | { isValid: true; allowedLabels: MicrosoftAllowedLabel[] }
+  | { isValid: false; error: unknown } {
+  if (configValue.trim() === "") {
+    return { isValid: true, allowedLabels: [] };
+  }
+
+  let parsedJson: unknown;
+  try {
+    parsedJson = JSON.parse(configValue);
+  } catch (error) {
+    return { isValid: false, error };
+  }
+
+  const parsed = AllowedLabelsConfigSchema.safeParse(parsedJson);
+  if (!parsed.success) {
+    return { isValid: false, error: fromError(parsed.error) };
+  }
+
+  return { isValid: true, allowedLabels: parsed.data };
+}
 
 // ─── Token helpers ───────────────────────────────────────────────────────────
 
@@ -178,6 +207,7 @@ async function handler(
   let sourceType: "connector" | "mcp_connection";
   let sourceId: string;
   let accessToken: string | null;
+  let resolvedConnectorId: string | null = null;
 
   if (dataSourceId) {
     // Connector path.
@@ -205,6 +235,7 @@ async function handler(
 
     sourceType = "connector";
     sourceId = dataSource.sId;
+    resolvedConnectorId = dataSource.connectorId ?? null;
     accessToken = await getConnectorAccessToken(dataSource);
 
     if (!accessToken) {
@@ -248,11 +279,58 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const savedConfig =
-        await WorkspaceSensitivityLabelConfigResource.fetchBySource(auth, {
-          sourceType,
-          sourceId,
-        });
+      let allowedLabels: MicrosoftAllowedLabel[] = [];
+      if (sourceType === "connector" && resolvedConnectorId) {
+        const connectorsAPI = new ConnectorsAPI(
+          config.getConnectorsAPIConfig(),
+          logger
+        );
+        const configRes = await connectorsAPI.getConnectorConfig(
+          resolvedConnectorId,
+          MICROSOFT_SENSITIVITY_LABELS_CONFIG_KEY
+        );
+        if (configRes.isErr()) {
+          logger.warn(
+            { error: configRes.error, connectorId: resolvedConnectorId },
+            "Error fetching Microsoft sensitivity labels connector config"
+          );
+          return apiError(req, res, {
+            status_code: 502,
+            api_error: {
+              type: "connector_update_error",
+              message:
+                "Failed to fetch Microsoft Purview sensitivity labels configuration.",
+            },
+          });
+        }
+
+        const parsedConfig = parseAllowedLabelsConfig(
+          configRes.value.configValue
+        );
+        if (!parsedConfig.isValid) {
+          logger.warn(
+            { error: parsedConfig.error, connectorId: resolvedConnectorId },
+            "Error parsing Microsoft sensitivity labels connector config"
+          );
+          return apiError(req, res, {
+            status_code: 502,
+            api_error: {
+              type: "connector_update_error",
+              message:
+                "Failed to fetch Microsoft Purview sensitivity labels configuration.",
+            },
+          });
+        }
+
+        allowedLabels = parsedConfig.allowedLabels;
+      } else if (sourceType === "mcp_connection") {
+        const savedConfig =
+          await WorkspaceSensitivityLabelConfigResource.fetchBySource(auth, {
+            sourceType,
+            sourceId,
+          });
+        allowedLabels = savedConfig?.allowedLabels ?? [];
+      }
 
       let labels: MicrosoftSensitivityLabel[] = [];
       if (accessToken) {
@@ -275,8 +353,7 @@ async function handler(
 
       return res.status(200).json({
         labels,
-        allowedLabels: (savedConfig?.allowedLabels ??
-          []) as MicrosoftAllowedLabel[],
+        allowedLabels,
       });
     }
 
@@ -292,6 +369,42 @@ async function handler(
         });
       }
       const { allowedLabels } = postValidation.data;
+
+      if (sourceType === "connector") {
+        if (!resolvedConnectorId) {
+          return apiError(req, res, {
+            status_code: 404,
+            api_error: {
+              type: "data_source_not_found",
+              message: "No connector found for the data source.",
+            },
+          });
+        }
+
+        const connectorsAPI = new ConnectorsAPI(
+          config.getConnectorsAPIConfig(),
+          logger
+        );
+        const setConfigRes = await connectorsAPI.setConnectorConfig(
+          resolvedConnectorId,
+          MICROSOFT_SENSITIVITY_LABELS_CONFIG_KEY,
+          allowedLabels.length > 0 ? JSON.stringify(allowedLabels) : ""
+        );
+        if (setConfigRes.isErr()) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "data_source_error",
+              message: "Failed to save Microsoft Purview sensitivity labels.",
+              connectors_error: setConfigRes.error,
+            },
+          });
+        }
+
+        return res.status(200).json({
+          config: { sourceType, sourceId, allowedLabels },
+        });
+      }
 
       const updated = await WorkspaceSensitivityLabelConfigResource.upsert(
         auth,
