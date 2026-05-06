@@ -295,11 +295,13 @@ async function handler(
         metadata,
       });
 
-      await ConversationResource.upsertParticipation(auth, {
-        conversation,
-        action: "subscribed",
-        user: user.toJSON(),
-      });
+      if (conversation.depth === 0) {
+        await ConversationResource.upsertParticipation(auth, {
+          conversation,
+          action: "subscribed",
+          user: user.toJSON(),
+        });
+      }
 
       const newContentFragments: ContentFragmentType[] = [];
       let newMessage: UserMessageType | null = null;
