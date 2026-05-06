@@ -1463,6 +1463,26 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return new Ok(undefined);
   }
 
+  static async clearAllEnabledByConversation(
+    auth: Authenticator,
+    {
+      conversation,
+    }: {
+      conversation: ConversationWithoutContentType;
+    },
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<void> {
+    const workspace = auth.getNonNullableWorkspace();
+
+    await ConversationSkillModel.destroy({
+      where: {
+        workspaceId: workspace.id,
+        conversationId: conversation.id,
+      },
+      transaction,
+    });
+  }
+
   private static async fromGlobalSkill(
     auth: Authenticator,
     def: SkillDefinition,

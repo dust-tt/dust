@@ -7,7 +7,7 @@ import { renderConversationAsText } from "@app/lib/api/assistant/conversation/re
 import { PREVIOUS_INTERACTIONS_TO_PRESERVE } from "@app/lib/api/assistant/conversation_rendering";
 import { publishConversationEvent } from "@app/lib/api/assistant/streaming/events";
 import { isProviderWhitelisted } from "@app/lib/assistant";
-import type { Authenticator } from "@app/lib/auth";
+import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import type { CompactionSourceConversation } from "@app/types/assistant/compaction";
@@ -37,6 +37,9 @@ While writing the summary make sure to consider for each messages so far:
 
 Double-check for accuracy and completeness.
 
+If skills were enabled during the conversation, briefly capture which skills were enabled, in what
+context they were useful, and any indication that they may need to be re-enabled later.
+
 Provide your detailed summary in <summary> tags with these sections:
 
 1. **Primary Request and Intent** — All explicit user requests and intents.
@@ -48,9 +51,11 @@ conversation that are useful to the current work.
 5. **Issues and Resolutions** — Problems encountered, how they were resolved, and user feedback.
 6. **Pending Tasks** — Explicitly requested work that is still pending.
 7. **Current State** — What was being discussed or worked on immediately before this summary.
+8. **Previously Enabled Skills** — Which skills were enabled before compaction, why they were
+useful, and any useful re-enable context.
 
 Only the content of the <summary> block will be used to continue the conversation. Anything \
-oustside is effectively a scratchpad and will be discarded. Make sure the summary is \
+outside is effectively a scratchpad and will be discarded. Make sure the summary is \
 self-contained and includes all the context needed to continue without access to the \
 original messages.
 
@@ -170,6 +175,11 @@ export async function runCompaction(
     conversationToSummarize = sourceConversationRes.value;
   }
 
+  const renderSkillsAsUserMessages = await hasFeatureFlag(
+    auth,
+    "skills_as_user_messages"
+  );
+
   const summaryRes = await generateCompactionSummary(auth, {
     sourceConversation: conversationToSummarize,
     sourceMessageRank: sourceConversation?.messageRank,
@@ -217,6 +227,7 @@ export async function runCompaction(
   const result = await updateCompactionMessageWithContentAndFinalStatus(auth, {
     conversation: targetConversation,
     compactionMessage,
+    clearEnabledSkillsOnSuccess: renderSkillsAsUserMessages,
     status,
     content,
   });
