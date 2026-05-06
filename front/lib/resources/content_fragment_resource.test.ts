@@ -1,6 +1,7 @@
 import type { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfigs } from "@app/lib/llms/model_configurations";
 import { renderLightContentFragmentForModel } from "@app/lib/resources/content_fragment_resource";
+import { FileResource } from "@app/lib/resources/file_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type {
@@ -8,7 +9,7 @@ import type {
   FileContentFragmentType,
   SupportedContentFragmentType,
 } from "@app/types/content_fragment";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const BASE_CONTEXT = {
   username: "user",
@@ -87,7 +88,10 @@ function makeContentNodeFragment(): ContentNodeContentFragmentType {
   };
 }
 
-const model = getSupportedModelConfigs().find((m) => m.supportsVision)!;
+const visionModel = getSupportedModelConfigs().find((m) => m.supportsVision)!;
+const nonVisionModel = getSupportedModelConfigs().find(
+  (m) => !m.supportsVision
+)!;
 
 describe("renderLightContentFragmentForModel", () => {
   let authenticator: Authenticator;
@@ -95,60 +99,91 @@ describe("renderLightContentFragmentForModel", () => {
   beforeEach(async () => {
     const { authenticator: auth } = await createResourceTest({});
     authenticator = auth;
+    vi.spyOn(
+      FileResource.prototype,
+      "getSignedUrlForDownload"
+    ).mockResolvedValue("https://signed.url/image.png");
   });
 
   describe("new_file_explorer FF off", () => {
-    it("renders a regular file attachment", async () => {
+    it("renders a regular file as <attachment>", async () => {
       const result = await renderLightContentFragmentForModel(
         authenticator,
         makeFileFragment("application/pdf"),
-        model,
+        visionModel,
         { excludeImages: false }
       );
-      expect(result).not.toBeNull();
+      expect(result?.content[0]).toMatchObject({ type: "text" });
+      expect((result?.content[0] as { text: string }).text).toContain(
+        "<attachment"
+      );
     });
 
-    it("renders a queryable file attachment (CSV)", async () => {
+    it("renders a queryable CSV as <attachment>", async () => {
       const result = await renderLightContentFragmentForModel(
         authenticator,
         makeFileFragment("text/csv", {
           generatedTables: ["table_1"],
           snippet: "",
         }),
-        model,
+        visionModel,
         { excludeImages: false }
       );
-      expect(result).not.toBeNull();
+      expect((result?.content[0] as { text: string }).text).toContain(
+        "<attachment"
+      );
     });
 
-    it("renders pasted content", async () => {
+    it("renders pasted content as large-paste XML", async () => {
       const result = await renderLightContentFragmentForModel(
         authenticator,
         makeFileFragment("text/vnd.dust.attachment.pasted"),
-        model,
+        visionModel,
         { excludeImages: false }
       );
-      expect(result).not.toBeNull();
+      expect((result?.content[0] as { text: string }).text).toContain(
+        "<pastedContent"
+      );
     });
 
-    it("renders an image", async () => {
+    it("renders an image with excludeImages as <attachment> with description", async () => {
       const result = await renderLightContentFragmentForModel(
         authenticator,
         makeFileFragment("image/png"),
-        model,
+        visionModel,
         { excludeImages: true }
       );
-      expect(result).not.toBeNull();
+      const text = (result?.content[0] as { text: string }).text;
+      expect(text).toContain("<attachment");
+      expect(text).toContain(
+        "Image content interpreted by a vision-enabled model"
+      );
     });
 
-    it("renders a content node", async () => {
+    it("renders an image with non-vision model as <attachment> with description", async () => {
+      const result = await renderLightContentFragmentForModel(
+        authenticator,
+        makeFileFragment("image/png"),
+        nonVisionModel,
+        { excludeImages: false }
+      );
+      const text = (result?.content[0] as { text: string }).text;
+      expect(text).toContain("<attachment");
+      expect(text).toContain(
+        "Image content interpreted by a vision-enabled model"
+      );
+    });
+
+    it("renders a content node as <attachment>", async () => {
       const result = await renderLightContentFragmentForModel(
         authenticator,
         makeContentNodeFragment(),
-        model,
+        visionModel,
         { excludeImages: false }
       );
-      expect(result).not.toBeNull();
+      expect((result?.content[0] as { text: string }).text).toContain(
+        "<attachment"
+      );
     });
   });
 
@@ -157,75 +192,112 @@ describe("renderLightContentFragmentForModel", () => {
       await FeatureFlagFactory.basic(authenticator, "new_file_explorer");
     });
 
-    it("renders a slim file reference without snippet", async () => {
+    it("renders a regular file as <file> without snippet", async () => {
       const result = await renderLightContentFragmentForModel(
         authenticator,
         makeFileFragment("application/pdf"),
-        model,
+        visionModel,
         { excludeImages: false }
       );
-      expect(result).not.toBeNull();
       expect(result?.content[0]).toMatchObject({
         type: "text",
         text: `<file name="file" path="conversation/file"/>`,
       });
     });
 
-    it("renders a slim file reference with snippet when available", async () => {
+    it("renders a regular file as <file> with snippet", async () => {
       const result = await renderLightContentFragmentForModel(
         authenticator,
         makeFileFragment("text/plain", { snippet: "First 256 chars..." }),
-        model,
+        visionModel,
         { excludeImages: false }
       );
-      expect(result).not.toBeNull();
       expect(result?.content[0]).toMatchObject({
         type: "text",
         text: `<file name="file" path="conversation/file">First 256 chars...\n</file>`,
       });
     });
 
-    it("still renders a queryable file attachment (CSV)", async () => {
+    it("renders a queryable CSV as <attachment> (bypasses new file explorer)", async () => {
       const result = await renderLightContentFragmentForModel(
         authenticator,
         makeFileFragment("text/csv", {
           generatedTables: ["table_1"],
           snippet: "",
         }),
-        model,
+        visionModel,
         { excludeImages: false }
       );
-      expect(result).not.toBeNull();
-    });
-
-    it("still renders pasted content", async () => {
-      const result = await renderLightContentFragmentForModel(
-        authenticator,
-        makeFileFragment("text/vnd.dust.attachment.pasted"),
-        model,
-        { excludeImages: false }
+      expect((result?.content[0] as { text: string }).text).toContain(
+        "<attachment"
       );
-      expect(result).not.toBeNull();
     });
 
-    it("still renders an image", async () => {
-      const result = await renderLightContentFragmentForModel(
-        authenticator,
-        makeFileFragment("image/png"),
-        model,
-        { excludeImages: true }
-      );
-      expect(result).not.toBeNull();
-    });
-
-    it("still renders a content node", async () => {
+    it("renders a content node as <attachment> (bypasses new file explorer)", async () => {
       const result = await renderLightContentFragmentForModel(
         authenticator,
         makeContentNodeFragment(),
-        model,
+        visionModel,
         { excludeImages: false }
       );
-      expect(result).not.toBeNull();
+      expect((result?.content[0] as { text: string }).text).toContain(
+        "<attachment"
+      );
+    });
+
+    it("renders pasted content as large-paste XML (bypasses new file explorer)", async () => {
+      const result = await renderLightContentFragmentForModel(
+        authenticator,
+        makeFileFragment("text/vnd.dust.attachment.pasted"),
+        visionModel,
+        { excludeImages: false }
+      );
+      expect((result?.content[0] as { text: string }).text).toContain(
+        "<pastedContent"
+      );
+    });
+
+    it("renders an image with excludeImages as <file> with description", async () => {
+      const result = await renderLightContentFragmentForModel(
+        authenticator,
+        makeFileFragment("image/png"),
+        visionModel,
+        { excludeImages: true }
+      );
+      const text = (result?.content[0] as { text: string }).text;
+      expect(text).toContain(`<file name="file" path="conversation/file">`);
+      expect(text).toContain(
+        "Image content interpreted by a vision-enabled model"
+      );
+    });
+
+    it("renders an image with non-vision model as <file> with description", async () => {
+      const result = await renderLightContentFragmentForModel(
+        authenticator,
+        makeFileFragment("image/png"),
+        nonVisionModel,
+        { excludeImages: false }
+      );
+      const text = (result?.content[0] as { text: string }).text;
+      expect(text).toContain(`<file name="file" path="conversation/file">`);
+      expect(text).toContain(
+        "Image content interpreted by a vision-enabled model"
+      );
+    });
+
+    it("renders an image with vision model as image_url + <file> tag", async () => {
+      const result = await renderLightContentFragmentForModel(
+        authenticator,
+        makeFileFragment("image/png"),
+        visionModel,
+        { excludeImages: false }
+      );
+      expect(result?.content).toHaveLength(2);
+      expect(result?.content[0]).toMatchObject({ type: "image_url" });
+      expect(result?.content[1]).toMatchObject({
+        type: "text",
+        text: `<file name="file" path="conversation/file"/>`,
+      });
     });
   });
 });
