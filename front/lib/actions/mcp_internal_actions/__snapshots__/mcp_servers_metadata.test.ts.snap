@@ -669,7 +669,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "list_vulnerabilities": "never_ask",
   },
   "wakeups": {
-    "cancel_wakeup": "low",
+    "cancel_wakeup": "never_ask",
     "list_wakeups": "never_ask",
     "schedule_wakeup": "never_ask",
   },
