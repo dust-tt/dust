@@ -310,9 +310,10 @@ describe("processToolResults", () => {
     const toolOutputWrite = uploadCalls.find((call) =>
       call[0].filePath.includes("results/")
     );
+
     expect(toolOutputWrite).toBeDefined();
     expect(toolOutputWrite?.[0].filePath).toMatch(
-      /results\/\d+_test_server\.txt$/
+      /results\/\d+_test_tool\.txt$/
     );
   });
 
@@ -347,7 +348,7 @@ describe("processToolResults", () => {
     );
     expect(toolOutputWrite).toBeDefined();
     expect(toolOutputWrite?.[0].filePath).toMatch(
-      /results\/\d+_test_server\.json$/
+      /results\/\d+_test_tool\.json$/
     );
   });
 });
