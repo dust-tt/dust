@@ -19,7 +19,10 @@ import {
   getMetricToolInvocationsProgrammaticId,
 } from "@app/lib/metronome/constants";
 import type { MetronomeBalance } from "@app/lib/metronome/types";
-import { METRONOME_PROGRAMMATIC_USAGE_CREDIT_TO_MICRO_USD } from "@app/lib/metronome/types";
+import {
+  isMetronomeExcessCredit,
+  METRONOME_PROGRAMMATIC_USAGE_CREDIT_TO_MICRO_USD,
+} from "@app/lib/metronome/types";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
@@ -407,7 +410,7 @@ export async function handleMetronomeUsageRequest(
         ? balancesResult.value.filter(
             (entry) =>
               entry.access_schedule?.credit_type?.id ===
-              programmaticUsdCreditTypeId
+                programmaticUsdCreditTypeId && !isMetronomeExcessCredit(entry)
           )
         : [];
       const creditTotalsMap = calculateCreditTotalsFromBalances(

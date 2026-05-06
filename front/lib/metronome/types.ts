@@ -5,6 +5,11 @@
  * MetronomeEvent is our own type — stricter than the SDK's UsageIngestParams
  * because we enforce `properties: Record<string, string | number>` (no unknown).
  */
+
+import {
+  getCreditTypeProgrammaticUsdId,
+  getProductFreeCreditId,
+} from "@app/lib/metronome/constants";
 import type { Commit, Credit } from "@metronome/sdk/resources/shared";
 
 // Metronome package aliases for contract provisioning.
@@ -39,6 +44,34 @@ export interface MetronomeEvent {
 
 export type MetronomeBalance = Commit | Credit;
 export type { Commit as MetronomeCommit, Credit as MetronomeCredit };
+
+// Names of the recurring credits provisioned by scripts/metronome_setup.ts.
+export const FREE_MONTHLY_CREDIT_NAME = "Free Monthly Credits";
+export const FREE_ANNUAL_CREDIT_NAME = "Free Annual Credits";
+// The "excess" recurring credit absorbs over-consumption (priority 100,
+// granted at the start of each billing period). Defined in
+// scripts/metronome_setup.ts -> getFreeExcessRecurringCredits().
+export const FREE_EXCESS_CREDIT_NAME = "Free Excess Credits";
+
+// Excess credits are an internal accounting mechanism — they should not be
+// surfaced to end users or in the Poke UI.
+export function isMetronomeExcessCredit(entry: MetronomeBalance): boolean {
+  return entry.name === FREE_EXCESS_CREDIT_NAME;
+}
+
+// True for the recurring free credits granted to programmatic-usage workspaces
+// (monthly or annual cadence). The "excess" credit is excluded — it is a
+// separate internal accounting mechanism. Checks the full identifying tuple
+// (name, priority, product, credit type) so callers don't have to.
+export function isMetronomeFreeCredit(entry: MetronomeBalance): boolean {
+  return (
+    (entry.name === FREE_MONTHLY_CREDIT_NAME ||
+      entry.name === FREE_ANNUAL_CREDIT_NAME) &&
+    entry.priority === 1 &&
+    entry.product.id === getProductFreeCreditId() &&
+    entry.access_schedule?.credit_type?.id === getCreditTypeProgrammaticUsdId()
+  );
+}
 
 // Programmatic Usage Credits is a custom Metronome credit type (1 PUC = 1 USD).
 // `amount` and `balance` fields on commits/credits of this type are denominated in PUC.
