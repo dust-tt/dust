@@ -26,7 +26,7 @@ export const ContextUsageWarningBanner = ({
   return (
     <ContentMessageInline
       icon={InformationCircleIcon}
-      variant="golden"
+      variant="info"
       className="mb-5 flex max-h-dvh w-full"
     >
       <div className="flex min-w-0 items-center gap-2">
