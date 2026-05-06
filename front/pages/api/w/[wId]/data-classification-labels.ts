@@ -57,11 +57,11 @@ const PostBodySchema = z.object({
 const AllowedLabelsConfigSchema = z.array(z.string());
 
 function parseAllowedLabelsConfig(
-  configValue: string
+  configValue: string | null
 ):
   | { isValid: true; allowedLabels: MicrosoftAllowedLabel[] }
   | { isValid: false; error: unknown } {
-  if (configValue.trim() === "") {
+  if (!configValue || configValue.trim() === "") {
     return { isValid: true, allowedLabels: [] };
   }
 

@@ -3,7 +3,8 @@ import {
   OAUTH_USE_CASE_TO_DESCRIPTION,
   OAUTH_USE_CASE_TO_LABEL,
 } from "@app/components/actions/mcp/MCPServerAuthConnection";
-import { AdvancedLabelsOptions } from "@app/components/shared/labels/AdvancedLabelsOptions";
+import { SensitivityLabelsConfig } from "@app/components/shared/labels/SensitivityLabelsConfig";
+import type { SensitivityLabelsController } from "@app/components/shared/labels/types";
 import { getSensitivityLabelProviderForServerId } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
@@ -19,11 +20,13 @@ import { useMemo, useState } from "react";
 interface MCPServerSettingsProps {
   mcpServerView: MCPServerViewType;
   owner: LightWorkspaceType;
+  sensitivityLabelsController?: SensitivityLabelsController;
 }
 
 export function MCPServerSettings({
   mcpServerView,
   owner,
+  sensitivityLabelsController,
 }: MCPServerSettingsProps) {
   const authorization = mcpServerView.server.authorization;
 
@@ -139,12 +142,14 @@ export function MCPServerSettings({
           </div>
         </div>
       )}
+
       {connection &&
         hasSensitivityLabels &&
-        sensitivityLabelProvider !== null && (
-          <AdvancedLabelsOptions
+        sensitivityLabelProvider !== null &&
+        sensitivityLabelsController && (
+          <SensitivityLabelsConfig
             owner={owner}
-            source={{ internalMCPServerId: mcpServerView.server.sId }}
+            controller={sensitivityLabelsController}
           />
         )}
 
