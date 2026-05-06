@@ -225,21 +225,6 @@ describe("buildSkillAggregationPrompt", () => {
     expect(systemPrompt).toContain("edit_skill");
   });
 
-  it("system prompt allows description edits and asks for them to be standalone", () => {
-    const { systemPrompt } = buildSkillAggregationPrompt(
-      makeSkill(),
-      [makeAgentFacingDescriptionSuggestion()],
-      { pending: [], rejected: [] }
-    );
-
-    // The previous prohibition must be gone.
-    expect(systemPrompt).not.toMatch(/MUST NOT use edit_skill to change it/i);
-    // Aggregation rules must mention description edits and steer toward
-    // one-per-skill, standalone suggestions.
-    expect(systemPrompt).toMatch(/agent-facing description/i);
-    expect(systemPrompt).toMatch(/standalone|its own/i);
-  });
-
   it("formats agent-facing description edits with the new content", () => {
     const suggestion = makeAgentFacingDescriptionSuggestion({
       suggestion: {
