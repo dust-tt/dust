@@ -275,7 +275,7 @@ export function SpaceConversationsTab({
                     <ButtonsSwitch
                       value="group"
                       label="Shared"
-                      tooltip="Show only threads where at least two people have sent messages."
+                      tooltip="Show conversations with multiple participants or multiple messages."
                       onClick={() => onConversationFilterChange("group")}
                     />
                     <ButtonsSwitch
