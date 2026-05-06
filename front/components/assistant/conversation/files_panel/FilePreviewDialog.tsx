@@ -35,6 +35,12 @@ import { useEffect } from "react";
 
 const MAX_CSV_ROWS = 200;
 const MAX_TEXT_CHARS = 100_000;
+const TEXT_CONTENT_PREVIEW_CATEGORIES: FilePreviewCategory[] = [
+  "code",
+  "markdown",
+  "text",
+  "delimited",
+];
 
 export interface FilePreviewDialogFile {
   contentType: string;
@@ -100,21 +106,10 @@ function getCodeLanguage(fileName: string): string {
   return EXTENSION_TO_LANGUAGE[ext] ?? "text";
 }
 
-function getPreviewCategory(contentType: string): FilePreviewCategory {
-  return getFilePreviewConfig(stripMimeParameters(contentType)).category;
-}
-
-function categoryNeedsTextContent(category: FilePreviewCategory): boolean {
-  return (
-    category === "code" ||
-    category === "markdown" ||
-    category === "text" ||
-    category === "delimited"
-  );
-}
-
 export function needsFilePreviewTextContent(contentType: string): boolean {
-  return categoryNeedsTextContent(getPreviewCategory(contentType));
+  const { category } = getFilePreviewConfig(stripMimeParameters(contentType));
+
+  return TEXT_CONTENT_PREVIEW_CATEGORIES.includes(category);
 }
 
 function getDelimitedRecordCount({
@@ -350,10 +345,10 @@ export function FilePreviewDialog({
   }, [isOpen, onPrev, onNext]);
 
   const mimeType = stripMimeParameters(file?.contentType ?? "");
-  const category = getPreviewCategory(mimeType);
-  const needsTextContent = categoryNeedsTextContent(category);
+  const { category } = getFilePreviewConfig(mimeType);
 
-  const hasError = needsTextContent && !!fileContentError;
+  const hasError =
+    TEXT_CONTENT_PREVIEW_CATEGORIES.includes(category) && !!fileContentError;
   const isContentLoading =
     isOpen && !!file && !hasError && isFileContentLoading;
 
