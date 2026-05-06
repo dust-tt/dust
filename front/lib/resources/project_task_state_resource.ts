@@ -77,43 +77,12 @@ export class ProjectTaskStateResource extends BaseResource<ProjectTaskStateModel
         spaceId,
         userId,
         lastReadAt,
-        lastCleanedAt: null,
       },
       transaction,
     });
 
     if (!created) {
       await row.update({ lastReadAt }, { transaction });
-    }
-
-    return new this(ProjectTaskStateModel, row.get());
-  }
-
-  // Creates or updates the last-cleaned timestamp for a (space, user) pair.
-  // Call this when the user clicks "clean done".
-  static async upsertLastCleanedAtBySpace(
-    auth: Authenticator,
-    { spaceId, lastCleanedAt }: { spaceId: ModelId; lastCleanedAt: Date },
-    transaction?: Transaction
-  ): Promise<ProjectTaskStateResource> {
-    const workspaceId = auth.getNonNullableWorkspace().id;
-    const userId = auth.getNonNullableUser().id;
-
-    const [row, created] = await ProjectTaskStateModel.findOrCreate({
-      where: { workspaceId, spaceId, userId },
-      defaults: {
-        workspaceId,
-        spaceId,
-        userId,
-        // If we haven't tracked reads yet, initialize to "now" to satisfy NOT NULL.
-        lastReadAt: new Date(),
-        lastCleanedAt,
-      },
-      transaction,
-    });
-
-    if (!created) {
-      await row.update({ lastCleanedAt }, { transaction });
     }
 
     return new this(ProjectTaskStateModel, row.get());
