@@ -14,20 +14,6 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<never>>,
   auth: Authenticator
 ): Promise<void> {
-  switch (req.method) {
-    case "GET":
-      break;
-
-    default:
-      return apiError(req, res, {
-        status_code: 405,
-        api_error: {
-          type: "method_not_supported_error",
-          message: "The method passed is not supported, GET is expected.",
-        },
-      });
-  }
-
   const { fileId } = req.query;
 
   if (!isString(fileId)) {
@@ -51,29 +37,42 @@ async function handler(
     });
   }
 
-  const skillId = file.useCaseMetadata?.skillId;
-  if (skillId) {
-    const skill = await SkillResource.fetchById(auth, skillId);
-    if (!skill || !skill.canWrite(auth)) {
+  switch (req.method) {
+    case "GET":
+      const skillId = file.useCaseMetadata?.skillId;
+      if (skillId) {
+        const skill = await SkillResource.fetchById(auth, skillId);
+        if (!skill || !skill.canWrite(auth)) {
+          return apiError(req, res, {
+            status_code: 403,
+            api_error: {
+              type: "app_auth_error",
+              message: "Only skill editors can preview this file.",
+            },
+          });
+        }
+      }
+
+      res.setHeader("Content-Type", file.contentType);
+
+      const readStream = file.getReadStream({ auth, version: "original" });
+      readStream.on("error", (err) => {
+        logger.error({ err, fileId }, "Error streaming skill attachment file");
+        readStream.destroy();
+        res.end();
+      });
+      readStream.pipe(res);
+      return;
+
+    default:
       return apiError(req, res, {
-        status_code: 403,
+        status_code: 405,
         api_error: {
-          type: "app_auth_error",
-          message: "Only skill editors can preview this file.",
+          type: "method_not_supported_error",
+          message: "The method passed is not supported, GET is expected.",
         },
       });
-    }
   }
-
-  res.setHeader("Content-Type", file.contentType);
-
-  const readStream = file.getReadStream({ auth, version: "original" });
-  readStream.on("error", (err) => {
-    logger.error({ err, fileId }, "Error streaming skill attachment file");
-    readStream.destroy();
-    res.end();
-  });
-  readStream.pipe(res);
 }
 
 export default withSessionAuthenticationForWorkspace(handler);
