@@ -2,7 +2,12 @@ import {
   buildAuditLogTarget,
   emitAuditLogEvent,
 } from "@app/lib/api/audit/workos_audit";
-import { MAX_VARS_PER_WORKSPACE } from "@app/lib/api/sandbox/env_vars";
+import {
+  MAX_VARS_PER_WORKSPACE,
+  renderWorkspaceSandboxEnvVarName,
+  validateEnvVarName,
+  validateEnvVarValueForKind,
+} from "@app/lib/api/sandbox/env_vars";
 import type { AuditLogContext } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -10,12 +15,18 @@ import { WorkspaceSandboxEnvVarModel } from "@app/lib/resources/storage/models/w
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { makeSId } from "@app/lib/resources/string_ids";
-import type { WorkspaceSandboxEnvVarType } from "@app/types/sandbox/env_var";
+import { normalizeEgressPolicyDomains } from "@app/types/sandbox/egress_policy";
+import type {
+  WorkspaceSandboxEnvVarKind,
+  WorkspaceSandboxEnvVarType,
+} from "@app/types/sandbox/env_var";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { decrypt, encrypt } from "@app/types/shared/utils/encryption";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { randomBytes } from "crypto";
 import type { Attributes, Includeable, Transaction } from "sequelize";
 
 const USER_JOIN_INCLUDES: Includeable[] = [
@@ -30,6 +41,8 @@ const USER_JOIN_INCLUDES: Includeable[] = [
     required: false,
   },
 ];
+
+type NormalizedAllowedDomains = string[] | null | undefined;
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface WorkspaceSandboxEnvVarResource
@@ -60,6 +73,15 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
     return makeSId("sandbox_env_var", {
       id: this.id,
       workspaceId: this.workspaceId,
+    });
+  }
+
+  // The wire-format name (composed prefix + suffix), e.g. `DST_FOO` or
+  // `DSEC_FOO`. The DB column `name` stores the suffix only.
+  get envName(): string {
+    return renderWorkspaceSandboxEnvVarName({
+      kind: this.kind,
+      name: this.name,
     });
   }
 
@@ -111,15 +133,22 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
     return rows[0] ?? null;
   }
 
+  // `kind` and `allowedDomains` are reachable in slice 2 once the API/admin
+  // UI accept them. Slice 1 callers stick to `kind = 'config'` defaults and
+  // never pass `allowedDomains`.
   static async upsert(
     auth: Authenticator,
     {
       name,
       value,
+      kind = "config",
+      allowedDomains,
       context,
     }: {
       name: string;
       value: string;
+      kind?: WorkspaceSandboxEnvVarKind;
+      allowedDomains?: string[] | null;
       context?: AuditLogContext;
     }
   ): Promise<
@@ -132,6 +161,17 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
     // Admin-only path today. If we ever seed env vars from a script or Temporal
     // activity, swap this for an optional `actor` parameter.
     const user = auth.getNonNullableUser();
+
+    const nameValidation = validateEnvVarName(name);
+    if (nameValidation.isErr()) {
+      return new Err(new Error(nameValidation.error));
+    }
+
+    const valueValidation = validateEnvVarValueForKind({ kind, value });
+    if (valueValidation.isErr()) {
+      return new Err(new Error(valueValidation.error));
+    }
+
     const encryptedValue = encrypt({
       text: value,
       key: owner.sId,
@@ -148,8 +188,34 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
     let row: WorkspaceSandboxEnvVarModel;
     let created: boolean;
     if (existing) {
+      if (existing.kind !== kind) {
+        return new Err(
+          new Error(
+            `Cannot change sandbox environment variable kind from ${existing.kind} to ${kind} through upsert.`
+          )
+        );
+      }
+
+      const normalizedAllowedDomains =
+        this.normalizeAllowedDomainsForKind({
+          kind,
+          allowedDomains,
+          requiredForSecret: false,
+        });
+      if (normalizedAllowedDomains.isErr()) {
+        return normalizedAllowedDomains;
+      }
+
+      // `existing` is a Sequelize model instance (we found it via `findOne`
+      // above), not a Resource — that's why we call its `update()` directly
+      // instead of `this.update()`. The Resource's `this.update()` is used
+      // in `updateValue` / `updateAllowedDomains` where we already hold a
+      // resource handle.
       row = await existing.update({
         encryptedValue,
+        ...(allowedDomains === undefined || allowedDomains === null
+          ? {}
+          : { allowedDomains: normalizedAllowedDomains.value }),
         lastUpdatedByUserId: user.id,
       });
       created = false;
@@ -170,9 +236,25 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
         );
       }
 
+      const normalizedAllowedDomains =
+        this.normalizeAllowedDomainsForKind({
+          kind,
+          allowedDomains,
+          requiredForSecret: true,
+        });
+      if (normalizedAllowedDomains.isErr()) {
+        return normalizedAllowedDomains;
+      }
+
       row = await this.model.create({
         workspaceId: owner.id,
         name,
+        kind,
+        // 16 bytes = 32 hex chars in the placeholder; matches the
+        // `__DSEC_<32hex>__` format from the design doc. Stable for the life
+        // of the row (rotations and allowedDomains edits don't touch it).
+        placeholderNonce: kind === "https_secret" ? randomBytes(16) : null,
+        allowedDomains: normalizedAllowedDomains.value,
         encryptedValue,
         createdByUserId: user.id,
         lastUpdatedByUserId: user.id,
@@ -193,14 +275,223 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
         buildAuditLogTarget("workspace", owner),
         buildAuditLogTarget("sandbox_env_var", {
           sId: resource.sId,
-          name,
+          name: resource.envName,
         }),
       ],
       context,
-      metadata: created ? { name } : { name, previously_existed: "true" },
+      metadata: created
+        ? { name: resource.envName }
+        : { name: resource.envName, previously_existed: "true" },
     });
 
     return new Ok({ resource, created });
+  }
+
+  // Slice-2-callable. Slice 1's API still routes through `upsert()`; this
+  // helper exists so future callers (admin promotion flow, scripts) get a
+  // create-only entry point without piggybacking on upsert's update branch.
+  // Implementation defers to upsert() and rejects when the row already
+  // existed — relies on the unique index to catch concurrent creates.
+  static async create(
+    auth: Authenticator,
+    {
+      name,
+      value,
+      kind = "config",
+      allowedDomains,
+      context,
+    }: {
+      name: string;
+      value: string;
+      kind?: WorkspaceSandboxEnvVarKind;
+      allowedDomains?: string[] | null;
+      context?: AuditLogContext;
+    }
+  ): Promise<Result<WorkspaceSandboxEnvVarResource, Error>> {
+    const result = await this.upsert(auth, {
+      name,
+      value,
+      kind,
+      allowedDomains,
+      context,
+    });
+    if (result.isErr()) {
+      return result;
+    }
+
+    if (!result.value.created) {
+      return new Err(
+        new Error("Sandbox environment variable already exists.")
+      );
+    }
+
+    return new Ok(result.value.resource);
+  }
+
+  async updateValue(
+    auth: Authenticator,
+    {
+      value,
+      context,
+    }: {
+      value: string;
+      context?: AuditLogContext;
+    }
+  ): Promise<Result<WorkspaceSandboxEnvVarResource, Error>> {
+    const owner = auth.getNonNullableWorkspace();
+    const user = auth.getNonNullableUser();
+
+    const valueValidation = validateEnvVarValueForKind({
+      kind: this.kind,
+      value,
+    });
+    if (valueValidation.isErr()) {
+      return new Err(new Error(valueValidation.error));
+    }
+
+    const encryptedValue = encrypt({
+      text: value,
+      key: owner.sId,
+      useCase: "developer_secret",
+    });
+
+    await this.update({
+      encryptedValue,
+      lastUpdatedByUserId: user.id,
+    });
+
+    const updated = await WorkspaceSandboxEnvVarResource.fetchById(
+      auth,
+      this.id
+    );
+    if (!updated) {
+      return new Err(new Error("Sandbox environment variable not found."));
+    }
+
+    void emitAuditLogEvent({
+      auth,
+      action: "sandbox_env_var.updated",
+      targets: [
+        buildAuditLogTarget("workspace", owner),
+        buildAuditLogTarget("sandbox_env_var", {
+          sId: updated.sId,
+          name: updated.envName,
+        }),
+      ],
+      context,
+      metadata: { name: updated.envName, previously_existed: "true" },
+    });
+
+    return new Ok(updated);
+  }
+
+  async updateAllowedDomains(
+    auth: Authenticator,
+    {
+      allowedDomains,
+      context,
+    }: {
+      allowedDomains: string[];
+      context?: AuditLogContext;
+    }
+  ): Promise<Result<WorkspaceSandboxEnvVarResource, Error>> {
+    const owner = auth.getNonNullableWorkspace();
+    const user = auth.getNonNullableUser();
+
+    const normalizedAllowedDomains =
+      WorkspaceSandboxEnvVarResource.normalizeAllowedDomainsForKind({
+        kind: this.kind,
+        allowedDomains,
+        requiredForSecret: true,
+      });
+    if (normalizedAllowedDomains.isErr()) {
+      return normalizedAllowedDomains;
+    }
+
+    await this.update({
+      allowedDomains: normalizedAllowedDomains.value,
+      lastUpdatedByUserId: user.id,
+    });
+
+    const updated = await WorkspaceSandboxEnvVarResource.fetchById(
+      auth,
+      this.id
+    );
+    if (!updated) {
+      return new Err(new Error("Sandbox environment variable not found."));
+    }
+
+    void emitAuditLogEvent({
+      auth,
+      action: "sandbox_env_var.updated",
+      targets: [
+        buildAuditLogTarget("workspace", owner),
+        buildAuditLogTarget("sandbox_env_var", {
+          sId: updated.sId,
+          name: updated.envName,
+        }),
+      ],
+      context,
+      metadata: { name: updated.envName, previously_existed: "true" },
+    });
+
+    return new Ok(updated);
+  }
+
+  private static normalizeAllowedDomainsForKind({
+    kind,
+    allowedDomains,
+    requiredForSecret,
+  }: {
+    kind: WorkspaceSandboxEnvVarKind;
+    allowedDomains: string[] | null | undefined;
+    requiredForSecret: boolean;
+  }): Result<NormalizedAllowedDomains, Error> {
+    switch (kind) {
+      case "config": {
+        if (allowedDomains && allowedDomains.length > 0) {
+          return new Err(
+            new Error("allowedDomains can only be set for HTTPS secrets.")
+          );
+        }
+
+        return new Ok(null);
+      }
+
+      case "https_secret": {
+        if (!allowedDomains) {
+          if (requiredForSecret) {
+            return new Err(
+              new Error("HTTPS secrets require at least one allowed domain.")
+            );
+          }
+
+          return new Ok(undefined);
+        }
+
+        if (allowedDomains.length === 0) {
+          return new Err(
+            new Error("HTTPS secrets require at least one allowed domain.")
+          );
+        }
+
+        const normalized = normalizeEgressPolicyDomains(allowedDomains);
+        if (normalized.isErr()) {
+          return normalized;
+        }
+
+        if (normalized.value.length === 0) {
+          return new Err(
+            new Error("HTTPS secrets require at least one allowed domain.")
+          );
+        }
+
+        return normalized;
+      }
+
+      default:
+        assertNever(kind);
+    }
   }
 
   async delete(
@@ -233,11 +524,11 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
         buildAuditLogTarget("workspace", owner),
         buildAuditLogTarget("sandbox_env_var", {
           sId: this.sId,
-          name: this.name,
+          name: this.envName,
         }),
       ],
       context,
-      metadata: { name: this.name },
+      metadata: { name: this.envName },
     });
 
     return new Ok(undefined);
@@ -257,14 +548,26 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
     const owner = auth.getNonNullableWorkspace();
     // Hot path on every sandbox mount — skip the user joins, we only need
     // name + encryptedValue here.
+    //
+    // TODO(2026-05-05 SLICE_2): skip `kind = 'https_secret'` rows here.
+    // Their real value must NOT land in the agent env as `DSEC_<name>`
+    // plaintext — substitution is supposed to happen on the wire from
+    // the secrets file. Slice 1 leaves them in for symmetry; the
+    // production-user gate (no admin promotes rows in prod until the
+    // last slice) keeps this safe in the meantime.
     const resources = await this.baseFetch(auth, undefined, {
       withUserJoins: false,
     });
 
     const env: Record<string, string> = {};
     for (const resource of resources) {
+      const envName = renderWorkspaceSandboxEnvVarName({
+        kind: resource.kind,
+        name: resource.name,
+      });
+
       try {
-        env[resource.name] = decrypt({
+        env[envName] = decrypt({
           encrypted: resource.encryptedValue,
           key: owner.sId,
           useCase: "developer_secret",
@@ -272,7 +575,7 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
       } catch (error) {
         return new Err(
           new Error(
-            `Failed to decrypt sandbox environment variable ${resource.name}: ${
+            `Failed to decrypt sandbox environment variable ${envName}: ${
               normalizeError(error).message
             }`
           )
@@ -286,7 +589,12 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
   toJSON(): WorkspaceSandboxEnvVarType {
     return {
       sId: this.sId,
-      name: this.name,
+      name: this.envName,
+      kind: this.kind,
+      placeholderNonce: this.placeholderNonce
+        ? this.placeholderNonce.toString("hex")
+        : null,
+      allowedDomains: this.allowedDomains ? [...this.allowedDomains] : null,
       createdAt: this.createdAt.getTime(),
       updatedAt: this.updatedAt.getTime(),
       createdByName: this.createdByName,
@@ -298,7 +606,7 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
     return {
       sId: this.sId,
       workspaceId: this.workspaceId,
-      name: this.name,
+      name: this.envName,
     };
   }
 }

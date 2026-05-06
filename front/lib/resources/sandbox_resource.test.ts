@@ -269,13 +269,13 @@ describe("SandboxResource.ensureActive", () => {
     const workspace = authenticator.getNonNullableWorkspace();
     const user = authenticator.getNonNullableUser();
 
-    // Bypass DST_ prefix validation via direct bulkCreate to verify
-    // defense-in-depth: image and system layers must win even if a row
-    // somehow lands in the table without the DST_ prefix.
+    // Bypass resource validation via direct bulkCreate to verify layer
+    // precedence: image and system layers must win over workspace rows after
+    // the runtime prefix is composed.
     await WorkspaceSandboxEnvVarModel.bulkCreate([
       {
         workspaceId: workspace.id,
-        name: "DST_API_TOKEN",
+        name: "API_TOKEN",
         encryptedValue: encrypt({
           text: "workspace-token",
           key: workspace.sId,

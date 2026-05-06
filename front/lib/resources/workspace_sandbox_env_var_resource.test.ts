@@ -11,7 +11,7 @@ describe("WorkspaceSandboxEnvVarResource", () => {
     const upsertResult = await WorkspaceSandboxEnvVarResource.upsert(
       authenticator,
       {
-        name: "DST_API_TOKEN",
+        name: "API_TOKEN",
         value: "super-secret-token",
       }
     );
@@ -25,7 +25,7 @@ describe("WorkspaceSandboxEnvVarResource", () => {
     const row = await WorkspaceSandboxEnvVarModel.findOne({
       where: {
         workspaceId: authenticator.getNonNullableWorkspace().id,
-        name: "DST_API_TOKEN",
+        name: "API_TOKEN",
       },
     });
     expect(row?.encryptedValue).toBeDefined();
@@ -46,6 +46,9 @@ describe("WorkspaceSandboxEnvVarResource", () => {
     expect(listed.map((envVar) => envVar.toJSON())).toEqual([
       expect.objectContaining({
         name: "DST_API_TOKEN",
+        kind: "config",
+        placeholderNonce: null,
+        allowedDomains: null,
         createdByName: user.name,
         lastUpdatedByName: user.name,
       }),
@@ -73,7 +76,7 @@ describe("WorkspaceSandboxEnvVarResource", () => {
 
     await WorkspaceSandboxEnvVarModel.create({
       workspaceId: authenticator.getNonNullableWorkspace().id,
-      name: "DST_API_TOKEN",
+      name: "API_TOKEN",
       encryptedValue: "not-valid-ciphertext",
       createdByUserId: user.id,
       lastUpdatedByUserId: user.id,
@@ -84,6 +87,114 @@ describe("WorkspaceSandboxEnvVarResource", () => {
     expect(envResult.isErr()).toBe(true);
     if (envResult.isErr()) {
       expect(envResult.error.message).toContain("DST_API_TOKEN");
+    }
+  });
+
+  it("creates HTTPS secrets with stable nonce and normalized allowed domains", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+
+    const createResult = await WorkspaceSandboxEnvVarResource.create(
+      authenticator,
+      {
+        name: "API_TOKEN",
+        kind: "https_secret",
+        value: "super-secret-token",
+        allowedDomains: [" API.GitHub.COM. ", "*.Example.com"],
+      }
+    );
+    expect(createResult.isOk()).toBe(true);
+    if (createResult.isErr()) {
+      throw createResult.error;
+    }
+
+    const created = createResult.value;
+    const createdJson = created.toJSON();
+    expect(createdJson).toMatchObject({
+      name: "DSEC_API_TOKEN",
+      kind: "https_secret",
+      allowedDomains: ["api.github.com", "*.example.com"],
+    });
+    expect(createdJson.placeholderNonce).toMatch(/^[0-9a-f]{32}$/);
+    const initialNonce = createdJson.placeholderNonce;
+
+    const updateValueResult = await created.updateValue(authenticator, {
+      value: "rotated-token",
+    });
+    expect(updateValueResult.isOk()).toBe(true);
+    if (updateValueResult.isErr()) {
+      throw updateValueResult.error;
+    }
+    expect(updateValueResult.value.toJSON().placeholderNonce).toBe(
+      initialNonce
+    );
+
+    const updateAllowedDomainsResult =
+      await updateValueResult.value.updateAllowedDomains(authenticator, {
+        allowedDomains: ["api.openai.com"],
+      });
+    expect(updateAllowedDomainsResult.isOk()).toBe(true);
+    if (updateAllowedDomainsResult.isErr()) {
+      throw updateAllowedDomainsResult.error;
+    }
+    expect(updateAllowedDomainsResult.value.toJSON()).toMatchObject({
+      placeholderNonce: initialNonce,
+      allowedDomains: ["api.openai.com"],
+    });
+
+    const envResult =
+      await WorkspaceSandboxEnvVarResource.loadEnv(authenticator);
+    expect(envResult.isOk()).toBe(true);
+    if (envResult.isErr()) {
+      throw envResult.error;
+    }
+    expect(envResult.value).toEqual({
+      DSEC_API_TOKEN: "rotated-token",
+    });
+  });
+
+  it("validates HTTPS secret values and allowed domains without changing config multiline values", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+
+    const multilineConfig = await WorkspaceSandboxEnvVarResource.create(
+      authenticator,
+      {
+        name: "MULTILINE_CONFIG",
+        value: "line one\nline two",
+      }
+    );
+    expect(multilineConfig.isOk()).toBe(true);
+
+    const invalidValues = [
+      "line one\nline two",
+      "carriage\rreturn",
+      "abc\u0000def",
+      "a".repeat(8 * 1024 + 1),
+    ];
+    for (const [index, value] of invalidValues.entries()) {
+      const result = await WorkspaceSandboxEnvVarResource.create(
+        authenticator,
+        {
+          name: `SECRET_VALUE_${index}`,
+          kind: "https_secret",
+          value,
+          allowedDomains: ["api.example.com"],
+        }
+      );
+      expect(result.isErr()).toBe(true);
+    }
+
+    const invalidAllowedDomains = [undefined, [], ["127.0.0.1"]];
+    for (const [index, allowedDomains] of invalidAllowedDomains.entries()) {
+      const result = await WorkspaceSandboxEnvVarResource.create(
+        authenticator,
+        {
+          name: `SECRET_DOMAIN_${index}`,
+          kind: "https_secret",
+          value: "super-secret-token",
+          allowedDomains,
+        }
+      );
+      expect(result.isErr()).toBe(true);
     }
   });
 });
