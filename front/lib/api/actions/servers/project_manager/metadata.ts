@@ -350,19 +350,19 @@ export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
 
   create_conversation: {
     description:
-      "Create a new conversation in the project and post a user message. Default: always pass an agentId to delegate the task to an agent running inside the project. Do NOT do the work yourself — if work needs to be done, delegate it via agentId. Omit agentId only when posting a simple message that requires no intellectual work (e.g. a status update, a comment, a note) or when explicitly asked to post the final output.",
+      "Create a new conversation in the project and post a user message. Default: always pass an agentName to delegate the task to an agent running inside the project. Do NOT do the work yourself — if work needs to be done, delegate it via agentName. Omit agentName only when posting a simple message that requires no intellectual work (e.g. a status update, a comment, a note) or when explicitly asked to post the final output.",
     schema: {
       message: z
         .string()
         .describe(
-          "When agentId is provided: the raw task description and context for the agent to act on. When agentId is omitted: the complete finished output to deposit as-is."
+          "When agentName is provided: the raw task description and context for the agent to act on. When agentName is omitted: the complete finished output to deposit as-is."
         ),
       title: z.string().describe("Title for the conversation"),
-      agentId: z
+      agentName: z
         .string()
         .optional()
         .describe(
-          "The agent to trigger in the new conversation. Use this whenever the user asks for work to be done in a project (research, analysis, drafting, etc.). When omitted, no agent is triggered and the message is posted as a static result — use this only to deposit a finished artifact you have already fully produced."
+          "The name of the agent to trigger in the new conversation. The tool searches matching agent configurations and uses the best match. Use this whenever the user asks for work to be done in a project (research, analysis, drafting, etc.). When omitted, no agent is triggered and the message is posted as a static result — use this only to deposit a finished artifact you have already fully produced."
         ),
       dustProject:
         ConfigurableToolInputSchemas[
@@ -432,7 +432,7 @@ export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
   },
   add_message_to_conversation: {
     description:
-      "Post a user message to an existing conversation in this project. Default: always pass an agentId to delegate the task to an agent running inside the conversation. Do NOT do the work yourself — if work needs to be done, delegate it via agentId. Omit agentId only when posting a simple message that requires no intellectual work (e.g. a status update, a comment, a note) or when explicitly asked to post the final output." +
+      "Post a user message to an existing conversation in this project. Default: always pass an agentName to delegate the task to an agent running inside the conversation. Do NOT do the work yourself — if work needs to be done, delegate it via agentName. Omit agentName only when posting a simple message that requires no intellectual work (e.g. a status update, a comment, a note) or when explicitly asked to post the final output." +
       "The conversation must belong to the same project. If conversationId is omitted, the current agent conversation is used (when available).",
     schema: {
       conversationId: z
@@ -444,13 +444,13 @@ export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
       message: z
         .string()
         .describe(
-          "When agentId is provided: the raw task description and context for the agent to act on. When agentId is omitted: the complete finished output to deposit as-is."
+          "When agentName is provided: the raw task description and context for the agent to act on. When agentName is omitted: the complete finished output to deposit as-is."
         ),
-      agentId: z
+      agentName: z
         .string()
         .optional()
         .describe(
-          "The agent to trigger in the conversation. Use this whenever the user asks for work to be done in a project (research, analysis, drafting, etc.). When omitted, no agent is triggered and the message is posted as a static result — use this only to deposit a finished artifact you have already fully produced."
+          "The name of the agent to trigger in the conversation. The tool searches matching agent configurations and uses the best match. Use this whenever the user asks for work to be done in a project (research, analysis, drafting, etc.). When omitted, no agent is triggered and the message is posted as a static result — use this only to deposit a finished artifact you have already fully produced."
         ),
       dustProject:
         ConfigurableToolInputSchemas[

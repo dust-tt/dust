@@ -10,46 +10,16 @@ import {
   withErrorHandling,
 } from "@app/lib/api/actions/servers/project_manager/helpers";
 import { PROJECT_TODOS_TOOLS_METADATA } from "@app/lib/api/actions/servers/project_todos/metadata";
-import { searchAgentConfigurationsByName } from "@app/lib/api/assistant/configuration/agent";
-import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
+import { resolveAgentConfigurationIdByName } from "@app/lib/api/assistant/configuration/agent";
 import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
 import { startAgentForProjectTodo } from "@app/lib/project_todo/start_agent";
 import { ProjectTodoResource } from "@app/lib/resources/project_todo_resource";
 import { getConversationRoute } from "@app/lib/utils/router";
-import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Err, Ok } from "@app/types/shared/result";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
-
-async function resolveAgentConfigurationIdByName(
-  auth: Authenticator,
-  agentName: string
-): Promise<string | null> {
-  const normalizedAgentName = agentName.trim().toLowerCase();
-  if (normalizedAgentName === "dust" || normalizedAgentName === "dust agent") {
-    return GLOBAL_AGENTS_SID.DUST;
-  }
-
-  const [workspaceMatches, globalAgents] = await Promise.all([
-    searchAgentConfigurationsByName(auth, agentName),
-    getGlobalAgents(auth, undefined, "light"),
-  ]);
-  const globalMatches = globalAgents.filter((a) =>
-    a.name.toLowerCase().includes(normalizedAgentName)
-  );
-  const matches = [...workspaceMatches, ...globalMatches];
-  if (matches.length === 0) {
-    return null;
-  }
-
-  // Prefer exact case-insensitive match, otherwise fallback to first result.
-  const exactMatch = matches.find(
-    (a) => a.name.trim().toLowerCase() === normalizedAgentName
-  );
-  return exactMatch?.sId ?? matches[0].sId;
-}
 
 function formatTodo(todo: ProjectTodoResource): string {
   const json = todo.toJSON();
