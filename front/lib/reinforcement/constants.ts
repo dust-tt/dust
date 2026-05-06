@@ -28,7 +28,7 @@ export const PENDING_SUGGESTION_MAX_AGE_DAYS = 30;
 // Max conversations analyzed per skill in a single run.
 export const PER_SKILL_CONVERSATION_CAP = 20;
 
-// Default monthly cap for reinforcement cost (in microUSD).
+// Default monthly cap for reinforcement cost for the whole workspace (in microUSD).
 // $100 = 100_000_000 microUSD.
 export const DEFAULT_REINFORCEMENT_CAP_MICRO_USD = 100_000_000;
 
