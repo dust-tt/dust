@@ -141,8 +141,6 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
       reminders,
       extendedProperties,
       eventType,
-      focusTimeProperties,
-      outOfOfficeProperties,
     },
     { authInfo, agentLoopContext }
   ) => {
@@ -171,18 +169,26 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
           ...(reminders && { reminders }),
           ...(extendedProperties && { extendedProperties }),
           ...(eventType && { eventType }),
-          ...(eventType === "focusTime" &&
-            focusTimeProperties && { focusTimeProperties }),
-          ...(eventType === "outOfOffice" &&
-            outOfOfficeProperties && { outOfOfficeProperties }),
-          ...(createConference && {
-            conferenceData: {
-              createRequest: {
-                requestId: `conference-${randomUUID()}`,
-                conferenceSolutionKey: { type: "hangoutsMeet" },
-              },
+          ...(eventType === "focusTime" && {
+            focusTimeProperties: {
+              autoDeclineMode: "declineAllConflictingInvitations",
             },
           }),
+          ...(eventType === "outOfOffice" && {
+            outOfOfficeProperties: {
+              autoDeclineMode: "declineAllConflictingInvitations",
+            },
+          }),
+          ...(createConference &&
+            eventType !== "focusTime" &&
+            eventType !== "outOfOffice" && {
+              conferenceData: {
+                createRequest: {
+                  requestId: `conference-${randomUUID()}`,
+                  conferenceSolutionKey: { type: "hangoutsMeet" },
+                },
+              },
+            }),
         },
       });
 
