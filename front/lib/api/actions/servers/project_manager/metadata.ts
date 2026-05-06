@@ -350,16 +350,20 @@ export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
 
   create_conversation: {
     description:
-      "Create a new conversation in the project and post a user message. The message will be sent on behalf of the user executing the tool.",
+      "Create a new conversation in the project and post a user message. Default: always pass an agentId to delegate the task to an agent running inside the project. Do NOT do the work yourself — if work needs to be done, delegate it via agentId. Omit agentId only when posting a simple message that requires no intellectual work (e.g. a status update, a comment, a note) or when explicitly asked to post the final output.",
     schema: {
       message: z
         .string()
-        .describe("The message content to post in the new conversation"),
+        .describe(
+          "When agentId is provided: the raw task description and context for the agent to act on. When agentId is omitted: the complete finished output to deposit as-is."
+        ),
       title: z.string().describe("Title for the conversation"),
       agentId: z
         .string()
         .optional()
-        .describe("Optional agent ID to mention in the conversation"),
+        .describe(
+          "The agent to trigger in the new conversation. Use this whenever the user asks for work to be done in a project (research, analysis, drafting, etc.). When omitted, no agent is triggered and the message is posted as a static result — use this only to deposit a finished artifact you have already fully produced."
+        ),
       dustProject:
         ConfigurableToolInputSchemas[
           INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
@@ -428,7 +432,7 @@ export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
   },
   add_message_to_conversation: {
     description:
-      "Post a user message to an existing conversation in this project. The message is sent on behalf of the user executing the tool. " +
+      "Post a user message to an existing conversation in this project. Default: always pass an agentId to delegate the task to an agent running inside the conversation. Do NOT do the work yourself — if work needs to be done, delegate it via agentId. Omit agentId only when posting a simple message that requires no intellectual work (e.g. a status update, a comment, a note) or when explicitly asked to post the final output." +
       "The conversation must belong to the same project. If conversationId is omitted, the current agent conversation is used (when available).",
     schema: {
       conversationId: z
@@ -437,11 +441,17 @@ export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
         .describe(
           "Conversation sId to post to; defaults to the conversation this agent run is in when omitted"
         ),
-      message: z.string().describe("The message content to post"),
+      message: z
+        .string()
+        .describe(
+          "When agentId is provided: the raw task description and context for the agent to act on. When agentId is omitted: the complete finished output to deposit as-is."
+        ),
       agentId: z
         .string()
         .optional()
-        .describe("Optional agent ID to mention in the message"),
+        .describe(
+          "The agent to trigger in the conversation. Use this whenever the user asks for work to be done in a project (research, analysis, drafting, etc.). When omitted, no agent is triggered and the message is posted as a static result — use this only to deposit a finished artifact you have already fully produced."
+        ),
       dustProject:
         ConfigurableToolInputSchemas[
           INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
