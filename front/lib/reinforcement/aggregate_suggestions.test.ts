@@ -232,7 +232,7 @@ describe("buildSkillAggregationPrompt", () => {
           content: "Use for pricing questions only.",
         },
       },
-    } as Partial<SkillSuggestionType>);
+    });
 
     const { userMessage } = buildSkillAggregationPrompt(
       makeSkill(),
