@@ -1,8 +1,13 @@
-import type { FetcherFn, FetcherWithBodyFn } from "@app/lib/swr/fetcher";
-import { createContext, useContext } from "react";
+import type {
+  FetcherFn,
+  FetcherTextFn,
+  FetcherWithBodyFn,
+} from "@app/lib/swr/fetcher";
+import { createContext, useContext, useMemo } from "react";
 
 interface FetcherContextType {
   fetcher: FetcherFn;
+  fetcherText: FetcherTextFn;
   fetcherWithBody: FetcherWithBodyFn;
 }
 
@@ -18,18 +23,23 @@ export function useFetcher(): FetcherContextType {
 
 interface FetcherProviderProps {
   fetcher: FetcherFn;
+  fetcherText: FetcherTextFn;
   fetcherWithBody: FetcherWithBodyFn;
   children: React.ReactNode;
 }
 
 export function FetcherProvider({
   fetcher,
+  fetcherText,
   fetcherWithBody,
   children,
 }: FetcherProviderProps) {
+  const value = useMemo(
+    () => ({ fetcher, fetcherText, fetcherWithBody }),
+    [fetcher, fetcherText, fetcherWithBody]
+  );
+
   return (
-    <FetcherContext.Provider value={{ fetcher, fetcherWithBody }}>
-      {children}
-    </FetcherContext.Provider>
+    <FetcherContext.Provider value={value}>{children}</FetcherContext.Provider>
   );
 }

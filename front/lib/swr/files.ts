@@ -246,6 +246,8 @@ export function useSkillAttachmentFileContent({
     disabled?: boolean;
   };
 }) {
+  const { fetcherText } = useFetcher();
+  const skillAttachmentContentFetcher: Fetcher<string> = fetcherText;
   const isDisabled = !fileId || config?.disabled;
   const swrKey = fileId
     ? `/api/w/${owner.sId}/skills/file_attachments/${fileId}/content`
@@ -253,14 +255,7 @@ export function useSkillAttachmentFileContent({
 
   const { data, error, mutate } = useSWRWithDefaults(
     swrKey,
-    async (url: string) => {
-      const response = await clientFetch(url);
-      if (!response.ok) {
-        const errorData = await getErrorFromResponse(response);
-        throw new Error(errorData.message);
-      }
-      return response.text();
-    },
+    skillAttachmentContentFetcher,
     { disabled: isDisabled, ...config }
   );
 
