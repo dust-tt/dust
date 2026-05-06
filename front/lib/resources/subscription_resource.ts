@@ -427,6 +427,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
           "id",
           "metronomeContractId",
           "paymentFailingSince",
+          "planId",
           "sId",
           "startDate",
           "status",
@@ -1014,23 +1015,19 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       }
     }
 
-    await withTransaction(async (t) => {
-      await this.markAsEnded("ended_backend_only", t);
-      await SubscriptionResource.makeNew(
-        {
-          sId: generateRandomModelSId(),
-          workspaceId: this.workspaceId,
+    const businessPlanType = renderPlanFromModel({ plan: businessPlan });
+
+    await SubscriptionResource.replaceActiveWorkspaceSubscriptionWithSuccessor({
+      workspaceModelId: this.workspaceId,
+      endedStatus: "ended_backend_only",
+      getSuccessor() {
+        return {
           planId: businessPlan.id,
-          status: "active",
-          trialing: false,
-          startDate: new Date(),
-          endDate: null,
+          plan: businessPlanType,
           stripeSubscriptionId: newStripeSubscriptionId,
           metronomeContractId: newMetronomeContractId,
-        },
-        renderPlanFromModel({ plan: businessPlan }),
-        t
-      );
+        };
+      },
     });
 
     // Cancel after DB flip so the webhook finds ended_backend_only and does not scrub.
@@ -1226,22 +1223,93 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
   }): Promise<void> {
     const newPlan = await SubscriptionResource.findPlanOrThrow(planCode);
 
-    await withTransaction(async (t) => {
-      await this.markAsEnded("ended_backend_only", t);
+    const newPlanType = renderPlanFromModel({ plan: newPlan });
 
+    await SubscriptionResource.replaceActiveWorkspaceSubscriptionWithSuccessor({
+      workspaceModelId: this.workspaceId,
+      endedStatus: "ended_backend_only",
+      getSuccessor(activeSubscription) {
+        return {
+          planId: newPlan.id,
+          plan: newPlanType,
+          stripeSubscriptionId: activeSubscription.stripeSubscriptionId,
+          metronomeContractId,
+        };
+      },
+    });
+  }
+
+  /**
+   * Switch a shadow-billed subscription to Metronome-only billing while
+   * preserving the current plan and Metronome contract.
+   *
+   * The current row is marked `ended_backend_only` so the later Stripe
+   * customer.subscription.deleted webhook can reconcile it to `ended`
+   * without scrubbing the workspace.
+   */
+  async switchToMetronomeOnlyBilling(): Promise<void> {
+    await SubscriptionResource.replaceActiveWorkspaceSubscriptionWithSuccessor({
+      workspaceModelId: this.workspaceId,
+      endedStatus: "ended_backend_only",
+      getSuccessor(activeSubscription) {
+        if (!activeSubscription.isMetronomeShadowBilled) {
+          throw new Error(
+            "Cannot switch to Metronome-only billing from a non shadow-billed subscription"
+          );
+        }
+
+        return {
+          planId: activeSubscription.planId,
+          plan: activeSubscription.getPlan(),
+          stripeSubscriptionId: null,
+          metronomeContractId: activeSubscription.metronomeContractId,
+        };
+      },
+    });
+  }
+
+  private static async replaceActiveWorkspaceSubscriptionWithSuccessor({
+    workspaceModelId,
+    endedStatus,
+    getSuccessor,
+  }: {
+    workspaceModelId: ModelId;
+    endedStatus: "ended" | "ended_backend_only";
+    getSuccessor: (activeSubscription: SubscriptionResource) => {
+      planId: ModelId;
+      plan: PlanType;
+      stripeSubscriptionId: string | null;
+      metronomeContractId: string | null;
+    };
+  }): Promise<void> {
+    await withTransaction(async (t) => {
+      const activeSubscription =
+        await SubscriptionResource.fetchActiveByWorkspaceModelId(
+          workspaceModelId,
+          t
+        );
+
+      if (!activeSubscription) {
+        throw new Error("Could not fetch active subscription resource.");
+      }
+
+      const successor = getSuccessor(activeSubscription);
+      const startDate = new Date();
+
+      await activeSubscription.markAsEnded(endedStatus, t);
       await SubscriptionResource.makeNew(
         {
           sId: generateRandomModelSId(),
-          workspaceId: this.workspaceId,
-          planId: newPlan.id,
+          workspaceId: activeSubscription.workspaceId,
+          planId: successor.planId,
           status: "active",
           trialing: false,
-          startDate: new Date(),
+          startDate,
           endDate: null,
-          stripeSubscriptionId: this.stripeSubscriptionId,
-          metronomeContractId,
+          stripeSubscriptionId: successor.stripeSubscriptionId,
+          metronomeContractId: successor.metronomeContractId,
         },
-        renderPlanFromModel({ plan: newPlan }),
+        successor.plan,
         t
       );
     });

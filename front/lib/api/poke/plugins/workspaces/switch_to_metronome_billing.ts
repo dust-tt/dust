@@ -5,9 +5,7 @@ import {
   cancelSubscriptionImmediatelyNoInvoice,
   getStripeSubscription,
 } from "@app/lib/plans/stripe";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
-import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -17,13 +15,20 @@ async function switchWorkspaceToMetronomeBilling(
   auth: Authenticator
 ): Promise<Result<{ display: "text"; value: string }, Error>> {
   const workspace = auth.getNonNullableWorkspace();
-  const subscription = auth.subscription();
+  const subscriptionResource =
+    await SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id);
 
-  if (!subscription?.metronomeContractId || !workspace.metronomeCustomerId) {
+  if (!subscriptionResource) {
+    return new Err(new Error("Could not fetch active subscription resource."));
+  }
+
+  const { metronomeContractId, stripeSubscriptionId } = subscriptionResource;
+
+  if (!metronomeContractId || !workspace.metronomeCustomerId) {
     return new Err(new Error("No Metronome contract found on this workspace"));
   }
 
-  if (!subscription.stripeSubscriptionId) {
+  if (!stripeSubscriptionId) {
     return new Err(
       new Error(
         "No Stripe subscription found, workspace may already be on Metronome billing."
@@ -31,48 +36,24 @@ async function switchWorkspaceToMetronomeBilling(
     );
   }
 
-  const stripeSubscription = await getStripeSubscription(
-    subscription.stripeSubscriptionId
-  );
+  const stripeSubscription = await getStripeSubscription(stripeSubscriptionId);
   if (!stripeSubscription) {
     return new Err(new Error("Could not retrieve Stripe subscription."));
   }
 
   const billingConfigResult = await addStripeMetronomeBillingConfig({
     metronomeCustomerId: workspace.metronomeCustomerId,
-    metronomeContractId: subscription.metronomeContractId,
+    metronomeContractId,
   });
   if (billingConfigResult.isErr()) {
     return new Err(billingConfigResult.error);
   }
 
-  await withTransaction(async (t) => {
-    const subscriptionResource =
-      await SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id, t);
-    if (!subscriptionResource) {
-      throw new Error("Could not fetch active subscription resource.");
-    }
-    await subscriptionResource.markAsEnded("ended_backend_only", t);
-    await SubscriptionResource.makeNew(
-      {
-        sId: generateRandomModelSId(),
-        workspaceId: workspace.id,
-        planId: subscriptionResource.planId,
-        status: "active",
-        trialing: false,
-        startDate: new Date(),
-        endDate: null,
-        stripeSubscriptionId: null,
-        metronomeContractId: subscription.metronomeContractId,
-      },
-      subscriptionResource.getPlan(),
-      t
-    );
-  });
+  await subscriptionResource.switchToMetronomeOnlyBilling();
 
   try {
     await cancelSubscriptionImmediatelyNoInvoice({
-      stripeSubscriptionId: subscription.stripeSubscriptionId,
+      stripeSubscriptionId,
     });
   } catch (err) {
     const error = normalizeError(err);
@@ -80,7 +61,7 @@ async function switchWorkspaceToMetronomeBilling(
       {
         error,
         workspaceSId: workspace.sId,
-        stripeSubscriptionId: subscription.stripeSubscriptionId,
+        stripeSubscriptionId,
       },
       "[SwitchToMetronomeBilling] MANUAL ACTION REQUIRED: DB and Metronome are already migrated " +
         "to Metronome billing but Stripe subscription cancellation failed. " +
@@ -90,7 +71,7 @@ async function switchWorkspaceToMetronomeBilling(
       display: "text",
       value:
         `WARNING: DB migrated and Metronome billing enabled, but failed to cancel Stripe ` +
-        `subscription ${subscription.stripeSubscriptionId}: ${error.message}. ` +
+        `subscription ${stripeSubscriptionId}: ${error.message}. ` +
         `Cancel the Stripe subscription manually (with invoice_now=false, prorate=false) to avoid extra invoicing.`,
     });
   }
@@ -98,8 +79,8 @@ async function switchWorkspaceToMetronomeBilling(
   return new Ok({
     display: "text",
     value:
-      `Stripe subscription ${subscription.stripeSubscriptionId} cancelled immediately (no proration invoice). ` +
-      `New Metronome contract ${subscription.metronomeContractId} is now the active billing provider.`,
+      `Stripe subscription ${stripeSubscriptionId} cancelled immediately (no proration invoice). ` +
+      `New Metronome contract ${metronomeContractId} is now the active billing provider.`,
   });
 }
 

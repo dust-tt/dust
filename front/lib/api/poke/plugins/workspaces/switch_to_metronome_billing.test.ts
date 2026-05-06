@@ -33,6 +33,7 @@ vi.mock("@app/lib/metronome/client", async () => {
 const METRONOME_CUSTOMER_ID = "metronome-customer-id";
 const STRIPE_SUBSCRIPTION_ID = "sub_test_xxx";
 const METRONOME_CONTRACT_ID = "contract_test_xxx";
+const UPDATED_METRONOME_CONTRACT_ID = "contract_test_updated";
 const PERIOD_END_SECONDS = Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60;
 
 function makeMockStripeSubscription(
@@ -247,6 +248,45 @@ describe("switchToMetronomeBillingPlugin", () => {
       expect(newSub!.stripeSubscriptionId).toBeNull();
       expect(newSub!.metronomeContractId).toBe(METRONOME_CONTRACT_ID);
       expect(newSub!.startDate.getTime()).toBeCloseTo(Date.now(), -3);
+    });
+
+    it("re-fetches the active subscription inside the transaction before flipping to Metronome-only", async () => {
+      const { workspace, auth } = await setupWorkspaceWithMetronomeAndStripe();
+      vi.mocked(getStripeSubscription).mockResolvedValue(
+        makeMockStripeSubscription()
+      );
+      vi.mocked(addStripeMetronomeBillingConfig).mockImplementation(
+        async () => {
+          const activeSubscription =
+            await SubscriptionResource.fetchActiveByWorkspaceModelId(
+              workspace.id
+            );
+
+          expect(activeSubscription).not.toBeNull();
+          await SubscriptionResource.updateMetronomeContractId(
+            activeSubscription!.id,
+            UPDATED_METRONOME_CONTRACT_ID
+          );
+
+          return new Ok(undefined);
+        }
+      );
+      vi.mocked(cancelSubscriptionImmediatelyNoInvoice).mockResolvedValue(true);
+
+      const result = await switchToMetronomeBillingPlugin.execute(
+        auth,
+        null,
+        {}
+      );
+
+      expect(result.isOk()).toBe(true);
+
+      const newSub = await SubscriptionResource.fetchActiveByWorkspaceModelId(
+        workspace.id
+      );
+      expect(newSub).not.toBeNull();
+      expect(newSub!.stripeSubscriptionId).toBeNull();
+      expect(newSub!.metronomeContractId).toBe(UPDATED_METRONOME_CONTRACT_ID);
     });
   });
 });
