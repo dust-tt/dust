@@ -702,17 +702,19 @@ export function AgentSidebarMenu({
           onOpenChange={(open) => setProjectsSectionCollapsed(!open)}
           action={
             <>
-              <Button
-                size="xs"
-                icon={PlusIcon}
-                label="New"
-                variant="ghost"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setIsCreateProjectModalOpen(true);
-                }}
-              />
+              {summary.length > 0 && (
+                <Button
+                  size="xs"
+                  icon={PlusIcon}
+                  label="New"
+                  variant="ghost"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIsCreateProjectModalOpen(true);
+                  }}
+                />
+              )}
               <ProjectsBrowsePopover owner={owner} />
             </>
           }
