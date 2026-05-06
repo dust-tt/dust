@@ -216,7 +216,10 @@ async function handler(
               },
             },
           };
-        } else if (event.data.type === "agent_action_success") {
+        } else if (
+          event.data.type === "agent_action_success" ||
+          event.data.type === "tool_params"
+        ) {
           publicEvent = {
             eventId: event.eventId,
             data: {
