@@ -341,10 +341,12 @@ async function buildDeduplicationGroups(
   await concurrentExecutor(
     uniqueUserIds,
     async (userId) => {
-      const todos = await ProjectTodoResource.fetchLatestBySpaceForUser(auth, {
-        spaceId: spaceModelId,
-        userId,
-      });
+      // we want deleted TODOs to match them
+      const todos =
+        await ProjectTodoResource.fetchLatestBySpaceForUserIncludingDeleted(
+          auth,
+          { spaceId: spaceModelId, userId }
+        );
       for (const todo of todos) {
         if (todo.userId === null) {
           continue;
@@ -368,7 +370,7 @@ async function buildDeduplicationGroups(
 
 // Executes one dedup group per call, atomically: groups don't share state, so
 // they run in parallel at concurrency 4.
-async function createOrLinkTodos(
+export async function createOrLinkTodos(
   auth: Authenticator,
   {
     localLogger,
@@ -403,6 +405,10 @@ async function createOrLinkTodos(
     dedupGroups,
     async (group) => {
       if (group.kind === "existing") {
+        if (group.todo.deletedAt !== null) {
+          // Candidate matched a deleted todo — do not re-create or re-link.
+          return;
+        }
         // Attach every candidate's source to the existing todo. The update
         // guard lives in updateTodoIfChanged — no-op when the target todo was
         // created by a user or already marked done by one.

@@ -1,7 +1,9 @@
 import type { Authenticator } from "@app/lib/auth";
+import type { DeduplicatedGroup } from "@app/lib/project_todo/deduplicate_candidates";
 import {
   actionItemBlob,
   collectDocumentCandidates,
+  createOrLinkTodos,
   updateTodoIfChanged,
 } from "@app/lib/project_todo/merge_into_project";
 import { ProjectTodoResource } from "@app/lib/resources/project_todo_resource";
@@ -14,7 +16,9 @@ import type {
   ProjectTodoSourceInfo,
   ProjectTodoStatus,
 } from "@app/types/project_todo";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { TodoVersionedActionItem } from "@app/types/takeaways";
+import type { Logger } from "pino";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // ── Shared fixtures ───────────────────────────────────────────────────────────
@@ -470,5 +474,107 @@ describe("updateTodoIfChanged", () => {
 
     expect(updated).toBe(false);
     expect(todo.updateWithVersion).not.toHaveBeenCalled();
+  });
+});
+
+// ── createOrLinkTodos ─────────────────────────────────────────────────────────
+
+const fakeLogger = {
+  info: vi.fn(),
+  warn: vi.fn(),
+  debug: vi.fn(),
+  error: vi.fn(),
+} as unknown as Logger;
+
+describe("createOrLinkTodos", () => {
+  it("skips candidates when the matched existing todo is soft-deleted", async () => {
+    const upsertSource = vi.fn();
+    const deletedTodo = {
+      deletedAt: new Date("2026-04-01T00:00:00.000Z"),
+      sId: "todo-deleted",
+      upsertSource,
+    } as unknown as ProjectTodoResource;
+
+    const group: DeduplicatedGroup = {
+      kind: "existing",
+      todo: deletedTodo,
+      candidates: [
+        { itemId: "item-x", userId: 1 as ModelId, text: "Do the thing" },
+      ],
+    };
+
+    const { deduplicated, createdNew } = await createOrLinkTodos(fakeAuth, {
+      localLogger: fakeLogger,
+      newCandidates: [
+        {
+          itemId: "item-x",
+          userId: 1 as ModelId,
+          blob: {
+            text: "Do the thing",
+            status: "todo",
+            doneAt: null,
+            reasoningDoneAt: null,
+            reasoningCreatedAt: null,
+          },
+          source: makeSource(),
+        },
+      ],
+      dedupGroups: [group],
+      spaceModelId: 1 as ModelId,
+    });
+
+    expect(upsertSource).not.toHaveBeenCalled();
+    expect(deduplicated).toBe(0);
+    expect(createdNew).toBe(0);
+  });
+
+  it("links source when the matched existing todo is not deleted", async () => {
+    const upsertSource = vi.fn().mockResolvedValue(undefined);
+    const updateWithVersion = vi.fn().mockResolvedValue(undefined);
+    const liveTodo = {
+      deletedAt: null,
+      sId: "todo-live",
+      status: "todo",
+      createdByType: "agent",
+      markedAsDoneByType: null,
+      text: "Do the thing",
+      doneAt: null,
+      actorRationale: null,
+      userId: 1 as ModelId,
+      upsertSource,
+      updateWithVersion,
+    } as unknown as ProjectTodoResource;
+
+    const group: DeduplicatedGroup = {
+      kind: "existing",
+      todo: liveTodo,
+      candidates: [
+        { itemId: "item-y", userId: 1 as ModelId, text: "Do the thing" },
+      ],
+    };
+
+    const { deduplicated, createdNew } = await createOrLinkTodos(fakeAuth, {
+      localLogger: fakeLogger,
+      newCandidates: [
+        {
+          itemId: "item-y",
+          userId: 1 as ModelId,
+          blob: {
+            text: "Do the thing",
+            status: "todo",
+            doneAt: null,
+            reasoningDoneAt: null,
+            reasoningCreatedAt: null,
+          },
+          source: makeSource(),
+        },
+      ],
+      dedupGroups: [group],
+      spaceModelId: 1 as ModelId,
+    });
+
+    expect(upsertSource).toHaveBeenCalledOnce();
+    expect(deduplicated).toBe(1);
+    expect(createdNew).toBe(0);
   });
 });
