@@ -840,7 +840,7 @@ export async function createMetronomeCommit({
 }): Promise<Result<{ id: string } | null, Error>> {
   // Metronome requires dates on hour boundaries — round down start, round up end.
   const roundedStartingAt = floorToHourISO(startingAt);
-  const roundedEndingBefore = ceilToHourISO(endingBefore);
+  const roundedEndingBefore = floorToHourISO(endingBefore);
   try {
     logger.info(
       {
@@ -1225,7 +1225,7 @@ export async function createMetronomeCredit({
 }): Promise<Result<{ id: string } | null, Error>> {
   // Metronome requires dates on hour boundaries — round down start, round up end.
   const roundedStartingAt = floorToHourISO(new Date(startingAt));
-  const roundedEndingBefore = ceilToHourISO(new Date(endingBefore));
+  const roundedEndingBefore = floorToHourISO(new Date(endingBefore));
 
   try {
     const response = await getMetronomeClient().v1.customers.credits.create({

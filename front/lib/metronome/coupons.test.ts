@@ -345,16 +345,16 @@ describe("createCouponCredit", () => {
     expect(mockCreateMetronomeCredit).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({
-        startingAt: "2026-04-01T10:00:00.000Z",
-        endingBefore: "2026-05-01T11:00:00.000Z",
+        startingAt: "2026-04-01T10:30:00.000Z",
+        endingBefore: "2026-05-01T10:30:00.000Z",
       })
     );
     // Month 1: May → Jun
     expect(mockCreateMetronomeCredit).toHaveBeenNthCalledWith(
       2,
       expect.objectContaining({
-        startingAt: "2026-05-01T10:00:00.000Z",
-        endingBefore: "2026-06-01T11:00:00.000Z",
+        startingAt: "2026-05-01T10:30:00.000Z",
+        endingBefore: "2026-06-01T10:30:00.000Z",
       })
     );
   });
@@ -373,8 +373,8 @@ describe("createCouponCredit", () => {
 
     expect(mockCreateMetronomeCredit).toHaveBeenCalledWith(
       expect.objectContaining({
-        startingAt: "2026-04-01T10:00:00.000Z",
-        endingBefore: "2026-05-01T11:00:00.000Z",
+        startingAt: "2026-04-01T10:30:00.000Z",
+        endingBefore: "2026-05-01T10:30:00.000Z",
       })
     );
   });
@@ -450,7 +450,7 @@ describe("endCouponCredit", () => {
     );
   });
 
-  it("uses a ceiled hour boundary for accessEndingBefore", async () => {
+  it("uses a floored hour boundary for accessEndingBefore", async () => {
     await endCouponCredit({
       metronomeCustomerId: "cust-1",
       metronomeCreditIds: ["cid-1"],
@@ -459,7 +459,7 @@ describe("endCouponCredit", () => {
 
     expect(mockUpdateMetronomeCreditEndDate).toHaveBeenCalledWith(
       expect.objectContaining({
-        accessEndingBefore: "2026-05-15T15:00:00.000Z",
+        accessEndingBefore: "2026-05-15T14:00:00.000Z",
       })
     );
   });
