@@ -1,4 +1,3 @@
-import { useSendNotification } from "@app/hooks/useNotification";
 import config from "@app/lib/api/config";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import {
@@ -13,6 +12,7 @@ import {
   useWorkspaceSeatsCount,
 } from "@app/lib/swr/workspaces";
 import type { BillingPeriod } from "@app/types/plan";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { Page, Spinner } from "@dust-tt/sparkle";
 import {
   EmbeddedCheckout,
@@ -39,7 +39,6 @@ function useBillingPeriodParam(): BillingPeriod {
 export function CheckoutPage() {
   const owner = useWorkspace();
   const router = useAppRouter();
-  const sendNotification = useSendNotification();
 
   const billingPeriod = useBillingPeriodParam();
 
@@ -64,24 +63,21 @@ export function CheckoutPage() {
         couponCode: couponCodeArg,
       });
       if (!result) {
-        sendNotification({
-          type: "error",
-          title: "Checkout failed",
-          description:
-            "Could not initialise the payment form. Please try again.",
-        });
         void router.back();
         return;
       }
-      if (result.mode !== "embedded") {
-        if (result.mode === "hosted") {
+      switch (result.mode) {
+        case "embedded":
+          setClientSecret(result.clientSecret);
+          return;
+        case "hosted":
           void router.push(result.checkoutUrl);
-        }
-        return;
+          return;
+        default:
+          assertNeverAndIgnore(result);
       }
-      setClientSecret(result.clientSecret);
     },
-    [billingPeriod, createSession, router, sendNotification]
+    [billingPeriod, createSession, router]
   );
 
   // On mount, create an initial checkout session.

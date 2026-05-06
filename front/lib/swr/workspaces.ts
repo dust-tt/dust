@@ -1,4 +1,5 @@
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
+import { useSendNotification } from "@app/hooks/useNotification";
 import type {
   GetMetronomeUsageResponse,
   MetronomeUsageGroupByType,
@@ -979,6 +980,7 @@ export function useCreateCheckoutSession({
 }: {
   workspaceId: string;
 }) {
+  const sendNotification = useSendNotification();
   const [isCreating, setIsCreating] = useState(false);
 
   const createSession = useCallback(
@@ -997,6 +999,12 @@ export function useCreateCheckoutSession({
           body: JSON.stringify({ billingPeriod, couponCode }),
         });
         if (!res.ok) {
+          sendNotification({
+            type: "error",
+            title: "Checkout failed",
+            description:
+              "Could not initialise the payment form. Please try again.",
+          });
           return null;
         }
         return res.json() as Promise<PostSubscriptionResponseBody>;
@@ -1004,7 +1012,7 @@ export function useCreateCheckoutSession({
         setIsCreating(false);
       }
     },
-    [workspaceId]
+    [workspaceId, sendNotification]
   );
 
   return { createSession, isCreating };
