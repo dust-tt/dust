@@ -45,6 +45,7 @@ import { PluginRunResource } from "@app/lib/resources/plugin_run_resource";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { ProjectTodoResource } from "@app/lib/resources/project_todo_resource";
+import { ProjectTodoStateResource } from "@app/lib/resources/project_todo_state_resource";
 import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
@@ -210,11 +211,21 @@ export async function scrubSpaceActivity({
         throw metadataRes.error;
       }
     }
-    const projectTodoStates = await ProjectTodoResource.fetchBySpace(auth, {
+    const projectTodoState = await ProjectTodoStateResource.fetchBySpace(auth, {
+      spaceId: space.id,
+    });
+    if (projectTodoState) {
+      const result = await projectTodoState.delete(auth, {});
+      if (result.isErr()) {
+        throw result.error;
+      }
+    }
+
+    const projectTodos = await ProjectTodoResource.fetchBySpace(auth, {
       spaceId: space.id,
     });
     await concurrentExecutor(
-      projectTodoStates,
+      projectTodos,
       async (todoState) => {
         const result = await todoState.delete(auth, {});
         if (result.isErr()) {
