@@ -253,38 +253,9 @@ export function SubscriptionPage() {
 
   const { submit: handleSubscribePlan, isSubmitting: isSubscribingPlan } =
     useSubmitFunction(async () => {
-      const res = await clientFetch(`/api/w/${owner.sId}/subscriptions`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          billingPeriod,
-        }),
-      });
-
-      if (!res.ok) {
-        sendNotification({
-          type: "error",
-          title: "Subscription failed",
-          description: "Failed to subscribe to a new plan.",
-        });
-        // Then we remove the query params to avoid going through this logic again.
-        void router.push(
-          { pathname: `/w/${owner.sId}/subscription` },
-          undefined,
-          {
-            shallow: true,
-          }
-        );
-      } else {
-        const content = await res.json();
-        if (content.checkoutUrl) {
-          await router.push(content.checkoutUrl);
-        } else if (content.success) {
-          router.reload(); // We cannot swr the plan so we just reload the page.
-        }
-      }
+      await router.push(
+        `/w/${owner.sId}/subscription/checkout?billingPeriod=${billingPeriod}`
+      );
     });
 
   const {

@@ -1,10 +1,8 @@
 import { ProPlansTable } from "@app/components/plans/ProPlansTable";
 import { UserMenu } from "@app/components/UserMenu";
 import WorkspacePicker from "@app/components/WorkspacePicker";
-import { useSendNotification } from "@app/hooks/useNotification";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { clientFetch } from "@app/lib/egress/client";
 import { isFreeTrialPhonePlan, isOldFreePlan } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
 import { useUser } from "@app/lib/swr/user";
@@ -22,7 +20,6 @@ import React, { useEffect } from "react";
 export function SubscribePage() {
   const { workspace, isAdmin } = useAuth();
   const router = useAppRouter();
-  const sendNotification = useSendNotification();
   const { user } = useUser();
 
   const { subscriptions } = useWorkspaceSubscriptions({
@@ -34,35 +31,9 @@ export function SubscribePage() {
 
   const { submit: handleSubscribePlan } = useSubmitFunction(
     async (billingPeriod) => {
-      const res = await clientFetch(`/api/w/${workspace.sId}/subscriptions`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          billingPeriod,
-        }),
-      });
-
-      if (!res.ok) {
-        sendNotification({
-          type: "error",
-          title: "Subscription failed",
-          description: "Failed to subscribe to a new plan.",
-        });
-      } else {
-        const content = await res.json();
-        if (content.checkoutUrl) {
-          await router.push(content.checkoutUrl);
-        } else if (content.success) {
-          sendNotification({
-            type: "error",
-            title: "Subscription failed",
-            description:
-              "Failed to subscribe to a new plan. Please try again in a few minutes.",
-          });
-        }
-      }
+      await router.push(
+        `/w/${workspace.sId}/subscription/checkout?billingPeriod=${billingPeriod}`
+      );
     }
   );
 

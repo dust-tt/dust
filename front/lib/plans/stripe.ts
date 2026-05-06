@@ -270,11 +270,11 @@ export const createStripeSubscriptionCheckoutSession = async ({
 };
 
 /**
- * Creates a Stripe Checkout session in "setup" mode for Metronome-billed workspaces.
+ * Creates an Embedded Stripe Checkout session in "setup" mode for Metronome-billed workspaces.
  * This captures the payment method without creating a Stripe subscription.
  * After checkout, the webhook provisions a Metronome customer + contract.
  */
-export const createMetronomeSetupCheckoutSession = async ({
+export const createEmbeddedMetronomeSetupCheckoutSession = async ({
   allowedPaymentMethods = ["card"],
   metronomePackageAlias,
   owner,
@@ -286,26 +286,28 @@ export const createMetronomeSetupCheckoutSession = async ({
   owner: WorkspaceType;
   planCode: string;
   user: UserType;
-}): Promise<string | null> => {
+}): Promise<{ clientSecret: string; sessionId: string }> => {
   const stripe = getStripeClient();
 
+  const metadata: Record<string, string> = {
+    planCode,
+    userId: `${user.id}`,
+    metronomePackageAlias,
+  };
+
   const session = await stripe.checkout.sessions.create({
+    ui_mode: "embedded",
     mode: "setup",
     client_reference_id: owner.sId,
     customer_email: user.email,
     customer_creation: "always",
     payment_method_types: allowedPaymentMethods,
-    metadata: {
-      planCode,
-      userId: `${user.id}`,
-      metronomePackageAlias,
-    },
+    metadata,
     billing_address_collection: "auto",
     tax_id_collection: {
       enabled: true,
     },
-    success_url: `${config.getAppUrl()}/w/${owner.sId}/subscription/payment_processing?type=succeeded&session_id={CHECKOUT_SESSION_ID}&plan_code=${planCode}`,
-    cancel_url: `${config.getAppUrl()}/w/${owner.sId}/subscription?type=cancelled`,
+    return_url: `${config.getAppUrl()}/w/${owner.sId}/subscription/payment_processing?type=succeeded&session_id={CHECKOUT_SESSION_ID}&plan_code=${planCode}`,
     consent_collection: {
       terms_of_service: "required",
     },
@@ -317,7 +319,11 @@ export const createMetronomeSetupCheckoutSession = async ({
     },
   });
 
-  return session.url;
+  if (!session.client_secret) {
+    throw new Error("Stripe embedded checkout session missing client_secret.");
+  }
+
+  return { clientSecret: session.client_secret, sessionId: session.id };
 };
 
 /**
