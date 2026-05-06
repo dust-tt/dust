@@ -1355,7 +1355,6 @@ function AgentMessageContent({
           />
         )}
 
-
         {agentMessage.content !== null &&
           agentMessage.content !== "" &&
           agentMessage.streaming.agentState === "done" && (

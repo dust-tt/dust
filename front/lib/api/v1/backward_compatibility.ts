@@ -1,7 +1,7 @@
+import type { ActionGeneratedDBFileType } from "@app/lib/actions/types";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { getConversationRoute } from "@app/lib/utils/router";
-import type { ActionGeneratedDBFileType } from "@app/lib/actions/types";
 import type { AgentsGetViewType } from "@app/types/assistant/agent";
 import type {
   AgentMessageType,
