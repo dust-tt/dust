@@ -386,7 +386,7 @@ export async function runModel(
     conversation,
   });
 
-  const isNewFileExplorer = await hasFeatureFlag(auth, "new_file_explorer");
+  const isNewFileExplorer = conversation.metadata?.useFileSystem === true;
 
   const prompt = constructPromptMultiActions(auth, {
     userMessage,

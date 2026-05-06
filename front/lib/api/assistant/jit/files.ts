@@ -14,6 +14,10 @@ export function getFilesServer(
   conversation: ConversationWithoutContentType,
   autoInternalViews: Map<AutoInternalMCPServerNameType, MCPServerViewResource>
 ): ServerSideMCPServerConfigurationType | null {
+  if (conversation.metadata?.useFileSystem !== true) {
+    return null;
+  }
+
   const filesView = autoInternalViews.get("files") ?? null;
 
   if (!filesView) {

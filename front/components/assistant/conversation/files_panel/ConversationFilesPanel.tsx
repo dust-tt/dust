@@ -15,7 +15,6 @@ import { useConversationSandboxFiles } from "@app/hooks/conversations/useConvers
 import { useConversationSandboxStatus } from "@app/hooks/conversations/useConversationSandboxStatus";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { isFileAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { downloadSandboxFile } from "@app/lib/swr/files";
 import type { GCSMountFileEntry } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/files";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
@@ -40,8 +39,7 @@ export function ConversationFilesPanel({
   conversation,
   owner,
 }: ConversationFilesPanelProps) {
-  const { hasFeature } = useFeatureFlags();
-  const isNewFileExplorer = hasFeature("new_file_explorer");
+  const isNewFileExplorer = conversation.metadata?.useFileSystem === true;
 
   const [activeTab, setActiveTab] = useState("files");
   const [previewFile, setPreviewFile] = useState<MinimalFileForPreview | null>(

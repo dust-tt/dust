@@ -263,7 +263,7 @@ async function handler(
         conversation,
       });
 
-      const isNewFileExplorer = await hasFeatureFlag(auth, "new_file_explorer");
+      const isNewFileExplorer = conversation.metadata?.useFileSystem === true;
 
       const promptSections = constructPromptMultiActions(auth, {
         userMessage,

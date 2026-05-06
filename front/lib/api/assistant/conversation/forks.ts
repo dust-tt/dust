@@ -608,7 +608,9 @@ export async function createConversationFork(
         triggerId: null,
         spaceId: parentConversation.space?.id ?? null,
         requestedSpaceIds: [...parentConversation.requestedSpaceIds],
-        metadata: {},
+        metadata: {
+          useFileSystem: parentConversation.metadata?.useFileSystem ?? false,
+        },
       },
       parentConversation.space,
       { transaction }
