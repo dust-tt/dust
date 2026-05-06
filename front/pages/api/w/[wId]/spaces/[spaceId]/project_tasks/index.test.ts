@@ -153,7 +153,7 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/project_tasks", () => {
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(200);
-    const texts = res._getJSONData().todos.map((t: { text: string }) => t.text);
+    const texts = res._getJSONData().tasks.map((t: { text: string }) => t.text);
     expect(texts).toContain("Recently done");
     expect(texts).not.toContain("Done long ago");
     expect(texts).not.toContain("Still open");
