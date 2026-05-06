@@ -44,6 +44,22 @@ export class ProjectTodoStateResource extends BaseResource<ProjectTodoStateModel
     return row ? new this(ProjectTodoStateModel, row.get()) : null;
   }
 
+  static async fetchAllBySpace(
+    auth: Authenticator,
+    { spaceId }: { spaceId: ModelId },
+    transaction?: Transaction
+  ): Promise<ProjectTodoStateResource[]> {
+    const models = await ProjectTodoStateModel.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        spaceId,
+      },
+      transaction,
+    });
+
+    return models.map((model) => new this(ProjectTodoStateModel, model.get()));
+  }
+
   // Creates or updates the last-read timestamp for a (space, user) pair. Call
   // this when the user opens or acknowledges the todos panel.
   static async upsertBySpace(

@@ -211,15 +211,22 @@ export async function scrubSpaceActivity({
         throw metadataRes.error;
       }
     }
-    const projectTodoState = await ProjectTodoStateResource.fetchBySpace(auth, {
-      spaceId: space.id,
-    });
-    if (projectTodoState) {
-      const result = await projectTodoState.delete(auth, {});
-      if (result.isErr()) {
-        throw result.error;
+    const projectTodoStates = await ProjectTodoStateResource.fetchAllBySpace(
+      auth,
+      {
+        spaceId: space.id,
       }
-    }
+    );
+    await concurrentExecutor(
+      projectTodoStates,
+      async (todoState) => {
+        const result = await todoState.delete(auth, {});
+        if (result.isErr()) {
+          throw result.error;
+        }
+      },
+      { concurrency: 8 }
+    );
 
     const projectTodos = await ProjectTodoResource.fetchBySpace(auth, {
       spaceId: space.id,
