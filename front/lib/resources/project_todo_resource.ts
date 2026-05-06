@@ -412,22 +412,28 @@ export class ProjectTodoResource extends BaseResource<ProjectTodoModel> {
     auth: Authenticator,
     { spaceId }: { spaceId: ModelId }
   ): Promise<ProjectTodoResource[]> {
-    return this.fetchLatestBySpaceForUser(auth, {
-      spaceId,
-      userId: auth.getNonNullableUser().id,
+    return this.baseFetch(auth, {
+      where: { spaceId, userId: auth.getNonNullableUser().id },
+      order: [["createdAt", "DESC"]],
     });
   }
 
-  // Returns all todos for an explicit target userId in the given space.
-  // Used by the merge workflow which acts on behalf of specific target users.
-  static async fetchLatestBySpaceForUser(
+  // Like fetchLatestBySpaceForUser but also includes soft-deleted rows. Used by
+  // the merge workflow to detect candidates that match a previously deleted todo
+  // so that the merge skips them rather than re-creating the todo.
+  static async fetchLatestBySpaceForUserIncludingDeleted(
     auth: Authenticator,
     { spaceId, userId }: { spaceId: ModelId; userId: ModelId }
   ): Promise<ProjectTodoResource[]> {
-    return this.baseFetch(auth, {
-      where: { spaceId, userId },
+    const todos = await ProjectTodoModel.findAll({
+      where: {
+        spaceId,
+        userId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
       order: [["createdAt", "DESC"]],
     });
+    return todos.map((todo) => new this(ProjectTodoModel, todo.get()));
   }
 
   // Batch variant: fetches the current todo row for each itemId in one pass.
