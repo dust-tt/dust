@@ -48,8 +48,8 @@ import {
   ShapesIcon,
   Spinner,
 } from "@dust-tt/sparkle";
-import type * as t from "io-ts";
 import React, { useEffect, useState } from "react";
+import type { z } from "zod";
 
 interface SkipFreeTrialDialogProps {
   show: boolean;
@@ -280,7 +280,7 @@ export function SubscriptionPage() {
       },
       body: JSON.stringify({
         action: "upgrade_to_business",
-      } satisfies t.TypeOf<typeof PatchSubscriptionRequestBody>),
+      } satisfies z.infer<typeof PatchSubscriptionRequestBody>),
     });
 
     if (!res.ok) {
@@ -310,7 +310,7 @@ export function SubscriptionPage() {
           },
           body: JSON.stringify({
             action: "pay_now",
-          } satisfies t.TypeOf<typeof PatchSubscriptionRequestBody>),
+          } satisfies z.infer<typeof PatchSubscriptionRequestBody>),
         });
         if (!res.ok) {
           sendNotification({
@@ -342,7 +342,7 @@ export function SubscriptionPage() {
           },
           body: JSON.stringify({
             action: "cancel_free_trial",
-          } satisfies t.TypeOf<typeof PatchSubscriptionRequestBody>),
+          } satisfies z.infer<typeof PatchSubscriptionRequestBody>),
         });
         if (!res.ok) {
           sendNotification({
