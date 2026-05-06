@@ -27,18 +27,12 @@ export const config = {
 
 const SupportedResourceTypeSchema = z.enum(supportedResourceTypes);
 
-const RunPluginParamsSchema = z.union([
-  z.object({
-    pluginId: z.string(),
-    resourceType: SupportedResourceTypeSchema,
-  }),
-  z.object({
-    pluginId: z.string(),
-    resourceId: z.string(),
-    resourceType: SupportedResourceTypeSchema,
-    workspaceId: z.string(),
-  }),
-]);
+const RunPluginParamsSchema = z.object({
+  pluginId: z.string(),
+  resourceType: SupportedResourceTypeSchema,
+  resourceId: z.string().optional(),
+  workspaceId: z.string().optional(),
+});
 
 export interface PokeRunPluginResponseBody {
   result: PluginResponse;
@@ -77,14 +71,8 @@ async function handler(
         });
       }
 
-      const { pluginId, resourceType } = pluginRunValidation.data;
-      const { resourceId, workspaceId } =
-        "resourceId" in pluginRunValidation.data
-          ? pluginRunValidation.data
-          : {
-              resourceId: undefined,
-              workspaceId: undefined,
-            };
+      const { pluginId, resourceType, resourceId, workspaceId } =
+        pluginRunValidation.data;
 
       // If the run targets a specific workspace, use a workspace-scoped authenticator.
       if (workspaceId) {
