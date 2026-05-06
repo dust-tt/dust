@@ -230,6 +230,7 @@ export function getReinforcedSkillsDefaultOptions(
   metadata: ReturnType<typeof getReinforcedSkillsMetadata>;
   userContextUsername: string;
   userContextOrigin: "reinforcement";
+  agentConfigurationId: string;
   skills: SkillResource[];
 } {
   return {
@@ -237,6 +238,7 @@ export function getReinforcedSkillsDefaultOptions(
     metadata: getReinforcedSkillsMetadata(operationType, skillIds),
     userContextUsername: "reinforcement",
     userContextOrigin: "reinforcement" as const,
+    agentConfigurationId: REINFORCEMENT_SKILLS_AGENT_ID,
     skills: [],
   };
 }

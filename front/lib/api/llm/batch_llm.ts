@@ -45,6 +45,7 @@ export interface LlmConversationOptions
   extends LLMParametersWithoutConversation {
   newMessages: ModelMessageTypeMultiActionsWithoutContentFragment[];
   existingConversationId?: string;
+  agentConfigurationId?: string;
   skills?: SkillResource[];
   title?: string;
   visibility?: ConversationVisibility;
