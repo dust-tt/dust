@@ -14,7 +14,6 @@ import type {
   UpsertFileToDataSourceResponseBody,
 } from "@app/pages/api/w/[wId]/data_sources/[dsId]/files";
 import type { ShareFileResponseBody } from "@app/pages/api/w/[wId]/files/[fileId]/share";
-import type { SkillAttachmentContentResponseBody } from "@app/pages/api/w/[wId]/skills/file_attachments/[fileId]/content";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import type {
   FileShareScope,
@@ -247,22 +246,27 @@ export function useSkillAttachmentFileContent({
     disabled?: boolean;
   };
 }) {
-  const { fetcher } = useFetcher();
-  const skillAttachmentContentFetcher: Fetcher<SkillAttachmentContentResponseBody> =
-    fetcher;
   const isDisabled = !fileId || config?.disabled;
+  const swrKey = fileId
+    ? `/api/w/${owner.sId}/skills/file_attachments/${fileId}/content`
+    : null;
 
   const { data, error, mutate } = useSWRWithDefaults(
-    fileId
-      ? `/api/w/${owner.sId}/skills/file_attachments/${fileId}/content`
-      : null,
-    skillAttachmentContentFetcher,
+    swrKey,
+    async (url: string) => {
+      const response = await clientFetch(url);
+      if (!response.ok) {
+        const errorData = await getErrorFromResponse(response);
+        throw new Error(errorData.message);
+      }
+      return response.text();
+    },
     { disabled: isDisabled, ...config }
   );
 
   return {
-    fileContent: data?.content,
-    isFileContentLoading: !error && !data && !isDisabled,
+    fileContent: data ?? null,
+    isFileContentLoading: !error && data === undefined && !isDisabled,
     fileContentError: error,
     mutateFileContent: mutate,
   };

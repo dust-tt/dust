@@ -2,24 +2,29 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
-import { Readable } from "stream";
+import { PassThrough } from "stream";
 import { describe, expect, it, vi } from "vitest";
 
 import handler from "./content";
 
-function mockFileContent(content: string) {
-  return vi
+function mockFileStream() {
+  const readStream = Object.assign(new PassThrough(), {
+    pipe: vi.fn(),
+  });
+  const getReadStreamSpy = vi
     .spyOn(FileResource.prototype, "getReadStream")
-    .mockReturnValue(Readable.from([content]));
+    .mockReturnValue(readStream);
+
+  return { getReadStreamSpy, pipeSpy: readStream.pipe };
 }
 
 describe("GET /api/w/[wId]/skills/file_attachments/[fileId]/content", () => {
-  it("allows builders to preview newly uploaded skill attachment files before the skill is saved", async () => {
+  it("streams newly uploaded skill attachment files for builders before the skill is saved", async () => {
     const { auth, req, res, user } = await createPrivateApiMockRequest({
       method: "GET",
       role: "builder",
     });
-    const getReadStreamSpy = mockFileContent("print('hello')");
+    const { getReadStreamSpy, pipeSpy } = mockFileStream();
 
     const file = await FileFactory.create(auth, user, {
       contentType: "text/x-python",
@@ -38,18 +43,19 @@ describe("GET /api/w/[wId]/skills/file_attachments/[fileId]/content", () => {
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(200);
-    expect(res._getJSONData()).toEqual({ content: "print('hello')" });
+    expect(res.getHeader("Content-Type")).toBe("text/x-python");
+    expect(pipeSpy).toHaveBeenCalledWith(res);
 
     getReadStreamSpy.mockRestore();
   });
 
-  it("returns skill attachment content for a skill editor", async () => {
+  it("streams skill attachment content for a skill editor", async () => {
     const { auth, req, res, user } = await createPrivateApiMockRequest({
       method: "GET",
       role: "user",
     });
     const skill = await SkillFactory.create(auth);
-    const getReadStreamSpy = mockFileContent("name: value");
+    const { getReadStreamSpy, pipeSpy } = mockFileStream();
 
     const file = await FileFactory.create(auth, user, {
       contentType: "text/yaml",
@@ -68,7 +74,8 @@ describe("GET /api/w/[wId]/skills/file_attachments/[fileId]/content", () => {
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(200);
-    expect(res._getJSONData()).toEqual({ content: "name: value" });
+    expect(res.getHeader("Content-Type")).toBe("text/yaml");
+    expect(pipeSpy).toHaveBeenCalledWith(res);
 
     getReadStreamSpy.mockRestore();
   });
