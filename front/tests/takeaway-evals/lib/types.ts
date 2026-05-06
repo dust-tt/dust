@@ -1,6 +1,6 @@
 import type { ExtractionResult } from "@app/lib/project_task/analyze_document/types";
 import type { ProjectTaskSourceType } from "@app/types/project_task";
-import type { TodoVersionedActionItem } from "@app/types/takeaways";
+import type { TaskVersionedActionItem } from "@app/types/takeaways";
 
 // ── Mock data types ─────────────────────────────────────────────────────────
 
@@ -19,7 +19,7 @@ export interface MockDocument {
 }
 
 export interface MockPreviousVersion {
-  actionItems: TodoVersionedActionItem[];
+  actionItems: TaskVersionedActionItem[];
 }
 
 // ── Assertions ──────────────────────────────────────────────────────────────
@@ -105,7 +105,7 @@ export interface TakeawayTestSuite {
 /** Result of one takeaway extraction LLM call. */
 export interface TakeawayExecutionResult {
   extraction: ExtractionResult | null;
-  actionItems: TodoVersionedActionItem[];
+  actionItems: TaskVersionedActionItem[];
 }
 
 // ── Display helpers ─────────────────────────────────────────────────────────

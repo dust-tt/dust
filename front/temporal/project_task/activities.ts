@@ -3,7 +3,7 @@ import { runIncludeDataRetrieval } from "@app/lib/api/actions/servers/include_da
 import { buildProjectRetrieveDataSources } from "@app/lib/api/actions/servers/project_manager/helpers";
 import { Authenticator } from "@app/lib/auth";
 import { extractDocumentTakeaways } from "@app/lib/project_task/analyze_document";
-import { isInitialTodoSyncLookback } from "@app/lib/project_task/analyze_document/types";
+import { isInitialTaskSyncLookback } from "@app/lib/project_task/analyze_document/types";
 import { mergeTakeawaysIntoProject } from "@app/lib/project_task/merge_into_project";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -186,7 +186,7 @@ export async function analyzeProjectTodosActivity({
     timeFrame = { duration: deltaMs / MS_PER_HOUR, unit: "hour" };
   } else if (
     metadata.initialTodoAnalysisLookback &&
-    isInitialTodoSyncLookback(metadata.initialTodoAnalysisLookback)
+    isInitialTaskSyncLookback(metadata.initialTodoAnalysisLookback)
   ) {
     switch (metadata.initialTodoAnalysisLookback) {
       case "now":

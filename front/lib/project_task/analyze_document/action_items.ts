@@ -3,7 +3,7 @@ import type {
   UpdatedActionItem,
 } from "@app/lib/project_task/analyze_document/types";
 import type { Logger } from "@app/logger/logger";
-import type { TodoVersionedActionItem } from "@app/types/takeaways";
+import type { TaskVersionedActionItem } from "@app/types/takeaways";
 import { v4 as uuidv4 } from "uuid";
 
 // Builds the next version of action items by:
@@ -21,13 +21,13 @@ export function buildActionItems(
     newItems: NewActionItem[];
     updatedItems: UpdatedActionItem[];
   },
-  previousItems: TodoVersionedActionItem[],
+  previousItems: TaskVersionedActionItem[],
   validUserIds: Set<string>,
   localLogger: Logger
-): TodoVersionedActionItem[] {
+): TaskVersionedActionItem[] {
   const updatesBySId = new Map(updatedItems.map((u) => [u.sId, u]));
 
-  const merged: TodoVersionedActionItem[] = previousItems.map((prev) => {
+  const merged: TaskVersionedActionItem[] = previousItems.map((prev) => {
     const update = updatesBySId.get(prev.sId);
     if (!update) {
       return prev;
@@ -82,7 +82,7 @@ export function buildActionItems(
 }
 
 export function buildPromptActionItems(
-  previousActionItems: TodoVersionedActionItem[]
+  previousActionItems: TaskVersionedActionItem[]
 ): string {
   let prompt =
     "Action item guidelines:\n" +

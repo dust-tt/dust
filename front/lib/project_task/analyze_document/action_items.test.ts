@@ -3,12 +3,12 @@ import {
   buildPromptActionItems,
 } from "@app/lib/project_task/analyze_document/action_items";
 import logger from "@app/logger/logger";
-import type { TodoVersionedActionItem } from "@app/types/takeaways";
+import type { TaskVersionedActionItem } from "@app/types/takeaways";
 import { describe, expect, it } from "vitest";
 
 function makePrev(
-  overrides: Partial<TodoVersionedActionItem> = {}
-): TodoVersionedActionItem {
+  overrides: Partial<TaskVersionedActionItem> = {}
+): TaskVersionedActionItem {
   return {
     sId: "prev-1",
     shortDescription: "Existing task",
@@ -205,7 +205,7 @@ describe("buildPromptActionItems", () => {
   });
 
   it("includes known items section when previous items exist", () => {
-    const items: TodoVersionedActionItem[] = [
+    const items: TaskVersionedActionItem[] = [
       {
         sId: "abc",
         shortDescription: "Refactor auth",

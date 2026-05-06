@@ -14,15 +14,15 @@
 //           not found → push to newCandidates[]
 //
 //   Phase 2 — Semantic deduplication.
-//     - Pre-fetch all existing todos for the space (all users, including deleted).
-//     - Run ONE LLM call with all candidates and all existing todos to detect
+//     - Pre-fetch all existing tasks for the space (all users, including deleted).
+//     - Run ONE LLM call with all candidates and all existing tasks to detect
 //       items that describe the same task despite different wording.
 //     - Build dedupMap: `${userId}:${itemId}` → matching ProjectTaskResource.
 //       Missing keys mean the candidate is genuinely new.
 //
 //   Phase 3 — Create or link.
 //     For each candidate in newCandidates:
-//       - Key in dedupMap → upsertSource on existing todo.
+//       - Key in dedupMap → upsertSource on existing task.
 //       - Not in dedupMap → makeNew + addSource.
 
 import { getSmallWhitelistedModel } from "@app/lib/assistant";
@@ -34,7 +34,7 @@ import {
 } from "@app/lib/project_task/deduplicate_candidates";
 import {
   ProjectTaskResource,
-  type TodosByItemId,
+  type TasksByItemId,
 } from "@app/lib/resources/project_task_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import {
@@ -45,11 +45,11 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { ProjectTaskSourceInfo } from "@app/types/project_task";
 import type { ModelId } from "@app/types/shared/model_id";
-import type { TodoVersionedActionItem } from "@app/types/takeaways";
+import type { TaskVersionedActionItem } from "@app/types/takeaways";
 import type { Logger } from "pino";
 
 // Stable identifier used when recording the creating actor for butler-created
-// project todos. This is not an actual agent configuration sId but a sentinel
+// project tasks. This is not an actual agent configuration sId but a sentinel
 // for the internal merge workflow.
 const BUTLER_AGENT_SID = "butler";
 
@@ -58,18 +58,18 @@ const BUTLER_AGENT_SID = "butler";
 // Outer key: userId (ModelId | null), inner key: itemId (action item sId).
 type PendingByUserId = Map<ModelId | null, Map<string, PendingCandidate>>;
 
-type TodoBlob = {
+type TaskBlob = {
   text: string;
   reasoningCreatedAt: string | null;
 };
 
-// A candidate todo that has no existing source link yet and therefore needs to
+// A candidate task that has no existing source link yet and therefore needs to
 // go through the deduplication check before being created or linked.
 // userId is null for unassigned action items.
 export type PendingCandidate = {
   itemId: string;
   userId: ModelId | null;
-  blob: TodoBlob;
+  blob: TaskBlob;
   source: ProjectTaskSourceInfo;
 };
 
@@ -106,7 +106,7 @@ export async function mergeTakeawaysIntoProject({
 
   const spaceModelId = getResourceIdFromSId(spaceId);
   if (spaceModelId === null) {
-    localLogger.error("Project todo merge: invalid space sId");
+    localLogger.error("Project task merge: invalid space sId");
     return stats;
   }
 
@@ -119,7 +119,7 @@ export async function mergeTakeawaysIntoProject({
   stats.takeawaysProcessed = latestTakeawaysWithSource.length;
 
   if (latestTakeawaysWithSource.length === 0) {
-    localLogger.info("Project todo merge: no takeaways found, skipping");
+    localLogger.info("Project task merge: no takeaways found, skipping");
     return stats;
   }
 
@@ -148,7 +148,7 @@ export async function mergeTakeawaysIntoProject({
   stats.candidatesCollected = newCandidates.length;
 
   if (newCandidates.length === 0) {
-    localLogger.info("Project todo merge: no new candidates found, skipping");
+    localLogger.info("Project task merge: no new candidates found, skipping");
     return stats;
   }
 
@@ -166,7 +166,7 @@ export async function mergeTakeawaysIntoProject({
 
   // ── Phase 3: create or link ───────────────────────────────────────────────
 
-  const { deduplicated, createdNew } = await createOrLinkTodos(adminAuth, {
+  const { deduplicated, createdNew } = await createOrLinkTasks(adminAuth, {
     localLogger,
     newCandidates: assignedCandidates,
     unassignedCandidates,
@@ -212,10 +212,8 @@ async function collectNewCandidates(
   return newCandidates;
 }
 
-// Processes one document's takeaway: returns items that have no existing
-// source link and need to go through dedup + creation. Items already linked
-// to a todo are skipped — the takeaway no longer carries any state that
-// could update them.
+// Processes one document's takeaway: updates tasks whose source link already
+// exists and returns items that need to go through dedup + creation.
 export async function collectDocumentCandidates(
   auth: Authenticator,
   {
@@ -237,7 +235,7 @@ export async function collectDocumentCandidates(
   const actionItems: Array<{
     itemId: string;
     targetUserIds: ModelId[];
-    blob: TodoBlob;
+    blob: TaskBlob;
   }> = takeawayWithSource.takeaway.actionItems.map((item) => ({
     itemId: item.sId,
     targetUserIds: resolveTargetUserIds(
@@ -246,10 +244,10 @@ export async function collectDocumentCandidates(
     blob: actionItemBlob(item),
   }));
 
-  // Batch-fetch existing todos by itemId. A hit means "this item is already
-  // linked to a todo — skip".
+  // Batch-fetch existing tasks by itemId. A hit means "this item is already
+  // linked to a task — update if status changed, skip dedup".
   const allActionItemIds = actionItems.map((t) => t.itemId);
-  const existingByItemId: TodosByItemId =
+  const existingByItemId: TasksByItemId =
     await ProjectTaskResource.fetchByItemIds(auth, {
       itemIds: allActionItemIds,
     });
@@ -269,7 +267,7 @@ export async function collectDocumentCandidates(
         }
       }
     } else {
-      // Unassigned item: create a candidate with null userId if no todo is
+      // Unassigned item: create a candidate with null userId if no task is
       // already linked for this itemId (any userId).
       const existingForItem = existingByItemId.get(itemId);
       const alreadyLinked =
@@ -290,9 +288,9 @@ export async function collectDocumentCandidates(
 
 // ── Phase 2 ───────────────────────────────────────────────────────────────────
 
-// Pre-fetches all existing todos for the space and runs semantic deduplication
+// Pre-fetches all existing tasks for the space and runs semantic deduplication
 // via a single LLM call across all users. Returns one singleton "new" group per
-// candidate if no model is available — Phase 3 then creates fresh todos for all.
+// candidate if no model is available — Phase 3 then creates fresh tasks for all.
 async function buildDeduplicationGroups(
   auth: Authenticator,
   {
@@ -314,7 +312,7 @@ async function buildDeduplicationGroups(
   const model = getSmallWhitelistedModel(auth);
   if (!model) {
     localLogger.warn(
-      "Project todo merge: no whitelisted model, skipping deduplication"
+      "Project task merge: no whitelisted model, skipping deduplication"
     );
     return dedupInput.map((c) => ({
       kind: "new",
@@ -325,7 +323,7 @@ async function buildDeduplicationGroups(
 
   // Fetch all existing tasks for the space in one pass (including deleted).
   // All tasks across all users are passed to a single LLM call.
-  const existingTodos =
+  const existingTasks =
     await ProjectTaskResource.fetchAllBySpaceIncludingDeleted(auth, {
       spaceId: spaceModelId,
     });
@@ -334,7 +332,7 @@ async function buildDeduplicationGroups(
     localLogger,
     model,
     candidates: dedupInput,
-    existingTodos,
+    existingTasks,
   });
 }
 
@@ -342,7 +340,7 @@ async function buildDeduplicationGroups(
 
 // Executes one dedup group per call, atomically: groups don't share state, so
 // they run in parallel at concurrency 4.
-export async function createOrLinkTodos(
+export async function createOrLinkTasks(
   auth: Authenticator,
   {
     localLogger,
@@ -379,17 +377,17 @@ export async function createOrLinkTodos(
     dedupGroups,
     async (group) => {
       if (group.kind === "existing") {
-        if (group.todo.deletedAt !== null) {
-          // Candidate matched a deleted todo — do not re-create or re-link.
+        if (group.task.deletedAt !== null) {
+          // Candidate matched a deleted task — do not re-create or re-link.
           return;
         }
-        // Attach every candidate's source to the existing todo.
+        // Attach every candidate's source to the existing task.
         for (const candidate of group.candidates) {
           const pending = lookupPending(candidate);
           if (!pending) {
             continue;
           }
-          await group.todo.upsertSource(auth, {
+          await group.task.upsertSource(auth, {
             itemId: pending.itemId,
             source: pending.source,
           });
@@ -397,26 +395,26 @@ export async function createOrLinkTodos(
 
           group.scopedLogger.info(
             {
-              existingTodoId: group.todo.sId,
+              existingTaskId: group.task.sId,
               itemId: pending.itemId,
               userId: pending.userId,
               source: pending.source,
-              createdByType: group.todo.createdByType,
+              createdByType: group.task.createdByType,
             },
-            "Project todo merge: linked source to existing todo (semantic duplicate)"
+            "Project task merge: linked source to existing task (semantic duplicate)"
           );
         }
         return;
       }
 
-      // kind === "new": create one todo from the first candidate, attach every
+      // kind === "new": create one task from the first candidate, attach every
       // other candidate's source to it.
       const primary = lookupPending(group.candidates[0]);
       if (!primary) {
         return;
       }
 
-      const todo = await ProjectTaskResource.makeNewWithSource(auth, {
+      const task = await ProjectTaskResource.makeNewWithSource(auth, {
         blob: {
           spaceId: spaceModelId,
           userId: primary.userId,
@@ -436,12 +434,12 @@ export async function createOrLinkTodos(
 
       group.scopedLogger.info(
         {
-          todoId: todo.sId,
+          taskId: task.sId,
           itemId: primary.itemId,
           userId: primary.userId,
           source: primary.source,
         },
-        "Project todo merge: created new todo"
+        "Project task merge: created new task"
       );
 
       for (let i = 1; i < group.candidates.length; i++) {
@@ -449,7 +447,7 @@ export async function createOrLinkTodos(
         if (!pending) {
           continue;
         }
-        await todo.upsertSource(auth, {
+        await task.upsertSource(auth, {
           itemId: pending.itemId,
           source: pending.source,
         });
@@ -457,12 +455,12 @@ export async function createOrLinkTodos(
 
         group.scopedLogger.info(
           {
-            todoId: todo.sId,
+            taskId: task.sId,
             itemId: pending.itemId,
             userId: pending.userId,
             source: pending.source,
           },
-          "Project todo merge: linked source to new todo (intra-batch duplicate)"
+          "Project task merge: linked source to new task (intra-batch duplicate)"
         );
       }
     },
@@ -509,7 +507,7 @@ export async function createOrLinkTodos(
 
 // ── Blob helpers ─────────────────────────────────────────────────────────────
 
-export function actionItemBlob(item: TodoVersionedActionItem): TodoBlob {
+export function actionItemBlob(item: TaskVersionedActionItem): TaskBlob {
   return {
     text: item.shortDescription,
     reasoningCreatedAt: item.detectedCreationRationale,
