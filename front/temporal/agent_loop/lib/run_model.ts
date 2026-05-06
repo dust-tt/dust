@@ -773,6 +773,26 @@ export async function runModel(
       );
     }
 
+    // On the last step, if the model produced no textual content, it effectively
+    // ran out of iterations without finalizing an answer. Surface a retryable
+    // empty_content error.
+    if (isLastStep && !processedContent.length) {
+      await publishAgentError(
+        {
+          code: "max_step_reached",
+          message:
+            "This agent took too many steps to answer your query. " +
+            "Try narrowing down your question or breaking it into smaller parts.",
+          metadata: {
+            category: "empty_content",
+            errorTitle: "Too many steps",
+          },
+        },
+        dustRunId
+      );
+      return null;
+    }
+
     const chainOfThought =
       (nativeChainOfThought || contentParser.getChainOfThought()) ?? "";
 

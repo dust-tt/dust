@@ -267,6 +267,7 @@ export function getMaxActionsPerStep(depth: number): number {
 export const AgentErrorCategories = [
   "retryable_model_error",
   "context_window_exceeded",
+  "empty_content",
   "provider_internal_error",
   "stream_error",
   "unknown_error",
