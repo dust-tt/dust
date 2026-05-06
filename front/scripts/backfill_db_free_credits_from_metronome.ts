@@ -29,6 +29,30 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { makeScript } from "./helpers";
 import { runOnAllWorkspaces } from "./workspace_helpers";
 
+type FreeCreditSubtype =
+  | "free-poke"
+  | "free-yearly-renewal"
+  | "free-renewal"
+  | "unknown";
+
+function getSubtypeFromDbCredit(
+  invoiceOrLineItemId: string | null
+): FreeCreditSubtype {
+  if (!invoiceOrLineItemId) {
+    return "unknown";
+  }
+  if (invoiceOrLineItemId.startsWith("free-poke-")) {
+    return "free-poke";
+  }
+  if (invoiceOrLineItemId.startsWith("free-renewal-yearly-")) {
+    return "free-yearly-renewal";
+  }
+  if (invoiceOrLineItemId.startsWith("free-renewal-")) {
+    return "free-renewal";
+  }
+  return "unknown";
+}
+
 function getScheduleTotals(entry: MetronomeBalance): {
   initialAmountMicroUsd: number;
   startDate: Date | null;
@@ -96,7 +120,7 @@ async function backfillFromMetronome(
     dbCredits
       .filter((c) => c.startDate !== null && c.expirationDate !== null)
       .map((c) => [
-        `${floorToHourISO(c.startDate!)}:${ceilToHourISO(c.expirationDate!)}`,
+        `${getSubtypeFromDbCredit(c.invoiceOrLineItemId)}:${floorToHourISO(c.startDate!)}:${ceilToHourISO(c.expirationDate!)}`,
         c,
       ])
   );
@@ -121,7 +145,21 @@ async function backfillFromMetronome(
       continue;
     }
 
-    const dateKey = `${floorToHourISO(startDate)}:${ceilToHourISO(expirationDate)}`;
+    const contractId = entry.contract?.id;
+    const isPokeCredit = entry.name?.toLowerCase().includes("poke") ?? false;
+    let subtype: FreeCreditSubtype;
+    if (isPokeCredit) {
+      subtype = "free-poke";
+    } else if (contractId) {
+      const periodDurationSeconds =
+        (expirationDate.getTime() - startDate.getTime()) / 1000;
+      const isAnnual = periodDurationSeconds >= 60 * 24 * 60 * 60; // every credit valid for more than 2 months is considered annual
+      subtype = isAnnual ? "free-yearly-renewal" : "free-renewal";
+    } else {
+      subtype = "unknown";
+    }
+
+    const dateKey = `${subtype}:${floorToHourISO(startDate)}:${ceilToHourISO(expirationDate)}`;
     const existingByDates = existingDateKeys.get(dateKey);
     if (existingByDates) {
       if (
@@ -163,20 +201,14 @@ async function backfillFromMetronome(
       continue;
     }
 
-    // Define invoiceOrLineItemId
-    const contractId = entry.contract?.id;
     const periodStartSeconds = Math.floor(startDate.getTime() / 1000);
-    const isPokeCredit = entry.name?.toLowerCase().includes("poke") ?? false;
     let invoiceOrLineItemId: string | null;
-    if (isPokeCredit) {
+    if (subtype === "free-poke") {
       invoiceOrLineItemId = `free-poke-${workspace.sId}-${periodStartSeconds * 1000}`;
-    } else if (contractId) {
-      const periodDurationSeconds =
-        (expirationDate.getTime() - startDate.getTime()) / 1000;
-      const isAnnual = periodDurationSeconds >= 60 * 24 * 60 * 60; // every credit valid for more than 2 months is considered annual
-      invoiceOrLineItemId = isAnnual
-        ? `free-renewal-yearly-${contractId}-${periodStartSeconds}`
-        : `free-renewal-${contractId}-${periodStartSeconds}`;
+    } else if (subtype === "free-yearly-renewal" && contractId) {
+      invoiceOrLineItemId = `free-renewal-yearly-${contractId}-${periodStartSeconds}`;
+    } else if (subtype === "free-renewal" && contractId) {
+      invoiceOrLineItemId = `free-renewal-${contractId}-${periodStartSeconds}`;
     } else {
       invoiceOrLineItemId = null;
     }
