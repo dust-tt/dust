@@ -11,11 +11,21 @@ import { isWhitelistedBusinessPlan } from "@app/lib/plans/plan_codes";
 import { useAppRouter, useSearchParam } from "@app/lib/platform";
 import {
   useCreateCheckoutSession,
+  useValidateCoupon,
   useWorkspaceSeatsCount,
 } from "@app/lib/swr/workspaces";
+import type { CouponType } from "@app/types/coupon";
 import type { BillingPeriod } from "@app/types/plan";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import { DustLogoSquare, Icon, Spinner } from "@dust-tt/sparkle";
+import {
+  Button,
+  DustLogoSquare,
+  Icon,
+  Input,
+  Spinner,
+  TagIcon,
+  XMarkIcon,
+} from "@dust-tt/sparkle";
 import {
   EmbeddedCheckout,
   EmbeddedCheckoutProvider,
@@ -51,8 +61,15 @@ export function CheckoutPage() {
   const { createSession, isCreating } = useCreateCheckoutSession({
     workspaceId: owner.sId,
   });
+  const { validateCoupon } = useValidateCoupon({ workspaceId: owner.sId });
 
   const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [isSessionRefreshing, setIsSessionRefreshing] = useState(false);
+  const [showCouponInput, setShowCouponInput] = useState(false);
+  const [couponCode, setCouponCode] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<CouponType | null>(null);
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
 
   const initSession = useCallback(
     async (couponCodeArg?: string) => {
@@ -113,6 +130,37 @@ export function CheckoutPage() {
     void initSession();
   }, [initSession]);
 
+  const handleRemoveCoupon = async () => {
+    setAppliedCoupon(null);
+    setCouponCode("");
+    setIsSessionRefreshing(true);
+    await initSession();
+    setIsSessionRefreshing(false);
+  };
+
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) {
+      return;
+    }
+    setIsApplyingCoupon(true);
+    setCouponError(null);
+    try {
+      const result = await validateCoupon(couponCode.trim());
+      if (!result.ok) {
+        setCouponError(result.message);
+        return;
+      }
+      setAppliedCoupon(result.coupon);
+      setShowCouponInput(false);
+      // Re-create session with the coupon code so it's stored in metadata.
+      setIsSessionRefreshing(true);
+      await initSession(couponCode.trim());
+      setIsSessionRefreshing(false);
+    } finally {
+      setIsApplyingCoupon(false);
+    }
+  };
+
   // Full-page spinner only on initial load; coupon re-creation keeps the left pane visible.
   const isInitialLoading = (isSeatsCountLoading || isCreating) && !clientSecret;
 
@@ -131,9 +179,13 @@ export function CheckoutPage() {
   const seatPriceCents = seatPricePerMonthCents * monthsInPeriod;
   const subtotalCents = seatPriceCents * seats;
 
-  const totalDueTodayCents = subtotalCents;
+  const couponDiscountCents =
+    appliedCoupon !== null
+      ? Math.min(appliedCoupon.amount * 100, subtotalCents)
+      : 0;
+  const totalDueTodayCents = subtotalCents - couponDiscountCents;
 
-  if (isInitialLoading || !clientSecret) {
+  if (!isSessionRefreshing && (isInitialLoading || !clientSecret)) {
     return (
       <main className="flex min-h-screen items-center justify-center">
         <Spinner size="xl" />
@@ -190,6 +242,80 @@ export function CheckoutPage() {
                 })}
               </span>
             </div>
+
+            {/* Promotion code: toggle button → input field */}
+            {!appliedCoupon &&
+              (showCouponInput ? (
+                <div className="mt-4 flex flex-col gap-2">
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Enter promotion code"
+                      value={couponCode}
+                      onChange={(e) => {
+                        setCouponCode(e.target.value);
+                        setCouponError(null);
+                      }}
+                      disabled={isApplyingCoupon}
+                      className="flex-1"
+                    />
+                    <Button
+                      label={isApplyingCoupon ? "Applying…" : "Apply"}
+                      disabled={isApplyingCoupon || !couponCode.trim()}
+                      onClick={handleApplyCoupon}
+                      size="sm"
+                      variant="outline"
+                    />
+                  </div>
+                  {couponError && (
+                    <p className="text-sm text-warning-500">{couponError}</p>
+                  )}
+                </div>
+              ) : (
+                <div className="mt-4 flex flex-col gap-2">
+                  <Button
+                    label="Add promotion code"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowCouponInput(true)}
+                    className="self-start bg-muted"
+                  />
+                </div>
+              ))}
+
+            {/* Applied coupon: pill + description */}
+            {appliedCoupon && (
+              <div className="mt-4 flex flex-col gap-1">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 rounded-md bg-muted px-2 py-1 text-sm text-muted-foreground">
+                    <Icon visual={TagIcon} size="xs" />
+                    <span className="font-medium">{appliedCoupon.code}</span>
+                    <button
+                      type="button"
+                      onClick={handleRemoveCoupon}
+                      className="ml-0.5 hover:text-foreground"
+                    >
+                      <Icon visual={XMarkIcon} size="xs" />
+                    </button>
+                  </div>
+                  <span className="text-sm text-success-500">
+                    −
+                    {getPriceAsString({
+                      currency,
+                      priceInCents: couponDiscountCents,
+                    })}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {getPriceAsString({
+                    currency,
+                    priceInCents: appliedCoupon.amount * 100,
+                  })}
+                  {appliedCoupon.durationMonths !== null
+                    ? ` for ${appliedCoupon.durationMonths} month${appliedCoupon.durationMonths > 1 ? "s" : ""}`
+                    : " valid once"}
+                </p>
+              </div>
+            )}
 
             {/* Total due today — always visible */}
             <div className="mt-6 flex justify-between border-t border-separator pt-3 text-base font-semibold">

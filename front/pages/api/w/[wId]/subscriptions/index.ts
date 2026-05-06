@@ -30,6 +30,7 @@ export type GetSubscriptionsResponseBody = {
 
 export const PostSubscriptionRequestBody = z.object({
   billingPeriod: z.enum(["monthly", "yearly"]),
+  couponCode: z.string().optional(),
 });
 
 export const PatchSubscriptionRequestBody = z.object({
@@ -99,7 +100,10 @@ async function handler(
           owner,
           user,
           bodyValidation.data.billingPeriod,
-          { useMetronomeBilling }
+          {
+            useMetronomeBilling,
+            couponCode: bodyValidation.data.couponCode,
+          }
         );
 
         return res.status(200).json(checkoutUrlResult);
