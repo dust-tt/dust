@@ -641,11 +641,14 @@ const InputBarContainer = ({
     }
   };
 
-  // When the selected agent changes, remove any @user mentions (which are
+  // When the selected agent changes, remove leading @user mentions (which are
   // incompatible with single-agent mode), notify the user, and persist the draft.
+  // Non-leading user mentions are allowed alongside an agent and are left intact.
   useEffect(() => {
     if (selectedSingleAgent) {
-      const hadUserMentions = editorService.removeUserMentions();
+      const { markdown } = editorService.getMarkdownAndMentions();
+      const hadUserMentions =
+        startsWithUserMention(markdown) && editorService.removeUserMentions();
       if (hadUserMentions) {
         sendNotification({
           type: "info",
@@ -655,8 +658,9 @@ const InputBarContainer = ({
         });
       }
       editorService.focusEnd();
-      const { markdown } = editorService.getMarkdownAndMentions();
-      saveDraft(markdown, selectedSingleAgent);
+      const { markdown: updatedMarkdown } =
+        editorService.getMarkdownAndMentions();
+      saveDraft(updatedMarkdown, selectedSingleAgent);
     }
   }, [selectedSingleAgent, editorService, saveDraft, sendNotification]);
 

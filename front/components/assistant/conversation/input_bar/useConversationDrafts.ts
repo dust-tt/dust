@@ -135,6 +135,10 @@ export function useConversationDrafts({
     );
   }, [getDraftsFromStorage, saveDraftsToStorage]);
 
+  const flushDraft = useCallback(() => {
+    debouncedSaveRef.current?.flush();
+  }, []);
+
   const clearDraft = useCallback(() => {
     if (!shouldUseDraft || !userId) {
       return;
@@ -202,5 +206,5 @@ export function useConversationDrafts({
     saveDraftsToStorage(drafts);
   }, [getDraftsFromStorage, userId, saveDraftsToStorage]);
 
-  return { saveDraft, getDraft, clearDraft, clearAllDraftsFromUser };
+  return { saveDraft, getDraft, clearDraft, clearAllDraftsFromUser, flushDraft };
 }

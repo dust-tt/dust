@@ -1,5 +1,6 @@
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import type { EditorService } from "@app/components/editor/input_bar/useCustomEditor";
+import { startsWithUserMention } from "@app/lib/mentions/format";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
@@ -9,6 +10,7 @@ import type {
 } from "@app/types/assistant/mentions";
 import {
   isRichAgentMention,
+  isRichUserMention,
   toRichAgentMentionType,
 } from "@app/types/assistant/mentions";
 import { useContext, useEffect, useRef } from "react";
@@ -31,6 +33,7 @@ interface UseHandleMentionsOptions {
 const useHandleMentions = ({
   allAgents,
   conversation,
+  disableAutoFocus,
   editorService,
   getDraft,
   isAgentBuilder,
@@ -55,6 +58,7 @@ const useHandleMentions = ({
     if (currentId !== prevConversationIdRef.current) {
       prevConversationIdRef.current = currentId;
       externalAgentSetRef.current = false;
+      stickyMentionsTextContent.current = null;
       setSelectedSingleAgent(null);
     }
 
@@ -78,6 +82,14 @@ const useHandleMentions = ({
       return;
     }
 
+    // 1b. Draft starts with a user mention → stay in user mention mode.
+    // Prevents sticky agent mentions (from conversation history) or the @dust fallback
+    // from overriding a draft that was typed in user mention mode.
+    if (draft?.text && startsWithUserMention(draft.text)) {
+      setSelectedSingleAgent(null);
+      return;
+    }
+
     // 2. Sticky mentions contain an agent (existing conversation / agent builder) → use it.
     // stickyMentions carries both the agent builder's draft agent
     // and the last agent mention resolved from conversation history (computed in AgentInputBar).
@@ -85,6 +97,23 @@ const useHandleMentions = ({
       const agentMention = stickyMentions.find(isRichAgentMention) ?? null;
       if (agentMention) {
         setSelectedSingleAgent(agentMention);
+        return;
+      }
+
+      // 2b. Last message was in user mention mode → pre-fill the editor with those mentions.
+      // Only pre-fill when the editor is empty and there is no draft, so we don't wipe content
+      // the user is actively editing. stickyMentionsTextContent is set to "" so the draft
+      // restore effect can detect and overwrite the pre-fill if a draft later takes priority
+      // (getTrimmedText returns "" for mention-only content).
+      const userMentions = stickyMentions.filter(isRichUserMention);
+      if (userMentions.length > 0) {
+        setSelectedSingleAgent(null);
+        if (editorService.isEmpty() && !draft?.text?.trim()) {
+          stickyMentionsTextContent.current = "";
+          queueMicrotask(() =>
+            editorService.resetWithMentions(userMentions, disableAutoFocus)
+          );
+        }
         return;
       }
     }
@@ -103,6 +132,8 @@ const useHandleMentions = ({
     allAgents,
     getDraft,
     setSelectedSingleAgent,
+    editorService,
+    disableAutoFocus,
   ]);
 
   useEffect(() => {

@@ -28,6 +28,7 @@ import { describeWakeUpSchedule } from "@app/lib/utils/wakeup_description";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import {
   isRichAgentMention,
+  isRichUserMention,
   toRichAgentMentionType,
 } from "@app/types/assistant/mentions";
 import { pluralize } from "@app/types/shared/utils/string_utils";
@@ -163,6 +164,13 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
       return [currentUserAgentMention];
     }
 
+    // Current user's last message was in user mention mode (user mentions, no agent mention) → restore them.
+    const lastMessageUserMentions =
+      lastUserMessage?.richMentions.filter(isRichUserMention) ?? [];
+    if (lastMessageUserMentions.length > 0 && !currentUserAgentMention) {
+      return lastMessageUserMentions;
+    }
+
     // @sidekick is not available in accessibleAgentIds so we need to skip it
     if (agentBuilderContext) {
       return lastAgentMentionInConversation
@@ -178,11 +186,16 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
     }
 
     // Ultimate fallback: select the "dust" agent if available.
-    const dustAgent = agentConfigurations.find(
-      (a) => a.sId === GLOBAL_AGENTS_SID.DUST
-    );
-    if (dustAgent) {
-      return [toRichAgentMentionType(dustAgent)];
+    // Only for new conversations; for existing conversations, return [] while messages are
+    // still loading to avoid a spurious @dust intermediate state that races with sticky
+    // user mentions being restored from conversation history.
+    if (!context.conversation) {
+      const dustAgent = agentConfigurations.find(
+        (a) => a.sId === GLOBAL_AGENTS_SID.DUST
+      );
+      if (dustAgent) {
+        return [toRichAgentMentionType(dustAgent)];
+      }
     }
 
     return [];
@@ -193,6 +206,7 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
     accessibleAgentIds,
     agentConfigurations,
     agentBuilderContext,
+    context.conversation,
   ]);
 
   // Calculate positions and determine which user messages are navigable.
