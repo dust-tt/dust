@@ -56,8 +56,8 @@ const BUTLER_AGENT_SID = "butler";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-// Outer key: userId (ModelId), inner key: itemId (action item sId).
-type PendingByUserId = Map<ModelId, Map<string, PendingCandidate>>;
+// Outer key: userId (ModelId | null), inner key: itemId (action item sId).
+type PendingByUserId = Map<ModelId | null, Map<string, PendingCandidate>>;
 
 type TodoBlob = {
   text: string;
@@ -66,9 +66,10 @@ type TodoBlob = {
 
 // A candidate todo that has no existing source link yet and therefore needs to
 // go through the deduplication check before being created or linked.
+// userId is null for unassigned action items.
 export type PendingCandidate = {
   itemId: string;
-  userId: ModelId;
+  userId: ModelId | null;
   blob: TodoBlob;
   source: ProjectTaskSourceInfo;
 };
@@ -152,11 +153,15 @@ export async function mergeTakeawaysIntoProject({
     return stats;
   }
 
-  // ── Phase 2: semantic deduplication ──────────────────────────────────────
+  // Separate unassigned candidates — they bypass dedup (no userId to group by).
+  const unassignedCandidates = newCandidates.filter((c) => c.userId === null);
+  const assignedCandidates = newCandidates.filter((c) => c.userId !== null);
+
+  // ── Phase 2: semantic deduplication (assigned only) ───────────────────────
 
   const dedupGroups = await buildDeduplicationGroups(adminAuth, {
     localLogger,
-    newCandidates,
+    newCandidates: assignedCandidates,
     spaceModelId,
   });
 
@@ -164,7 +169,8 @@ export async function mergeTakeawaysIntoProject({
 
   const { deduplicated, createdNew } = await createOrLinkTodos(adminAuth, {
     localLogger,
-    newCandidates,
+    newCandidates: assignedCandidates,
+    unassignedCandidates,
     dedupGroups,
     spaceModelId,
   });
@@ -251,12 +257,28 @@ export async function collectDocumentCandidates(
 
   const candidates: PendingCandidate[] = [];
   for (const { itemId, targetUserIds, blob } of actionItems) {
-    for (const userId of targetUserIds) {
-      const existing = existingByItemId.get(itemId)?.get(userId) ?? [];
-      if (existing.length === 0) {
+    if (targetUserIds.length > 0) {
+      for (const userId of targetUserIds) {
+        const existing = existingByItemId.get(itemId)?.get(userId) ?? [];
+        if (existing.length === 0) {
+          candidates.push({
+            itemId,
+            userId,
+            blob,
+            source: takeawayWithSource.source,
+          });
+        }
+      }
+    } else {
+      // Unassigned item: create a candidate with null userId if no todo is
+      // already linked for this itemId (any userId).
+      const existingForItem = existingByItemId.get(itemId);
+      const alreadyLinked =
+        existingForItem !== undefined && existingForItem.size > 0;
+      if (!alreadyLinked) {
         candidates.push({
           itemId,
-          userId,
+          userId: null,
           blob,
           source: takeawayWithSource.source,
         });
@@ -286,7 +308,7 @@ async function buildDeduplicationGroups(
 ): Promise<DeduplicatedGroup[]> {
   const dedupInput: DeduplicateCandidate[] = newCandidates.map((c) => ({
     itemId: c.itemId,
-    userId: c.userId,
+    userId: c.userId as ModelId,
     text: c.blob.text,
   }));
 
@@ -301,7 +323,9 @@ async function buildDeduplicationGroups(
   // Fetch all existing todos for each unique target user in a single pass,
   // then nest them under userId → category → todos for lookup by the LLM
   // calls.
-  const uniqueUserIds = [...new Set(newCandidates.map((c) => c.userId))];
+  const uniqueUserIds = [
+    ...new Set(newCandidates.map((c) => c.userId as ModelId)),
+  ];
   const existingTodosByUser: ExistingTodosByUser = new Map();
 
   await concurrentExecutor(
@@ -341,11 +365,13 @@ export async function createOrLinkTodos(
   {
     localLogger,
     newCandidates,
+    unassignedCandidates,
     dedupGroups,
     spaceModelId,
   }: {
     localLogger: Logger;
     newCandidates: PendingCandidate[];
+    unassignedCandidates: PendingCandidate[];
     dedupGroups: DeduplicatedGroup[];
     spaceModelId: ModelId;
   }
@@ -457,6 +483,41 @@ export async function createOrLinkTodos(
           "Project todo merge: linked source to new todo (intra-batch duplicate)"
         );
       }
+    },
+    { concurrency: 4 }
+  );
+
+  // Create unassigned todos directly — no dedup needed since there is no user
+  // to group them by.
+  await concurrentExecutor(
+    unassignedCandidates,
+    async (candidate) => {
+      const todo = await ProjectTaskResource.makeNewWithSource(auth, {
+        blob: {
+          spaceId: spaceModelId,
+          userId: null,
+          createdByType: "agent",
+          createdByUserId: null,
+          createdByAgentConfigurationId: BUTLER_AGENT_SID,
+          agentSuggestionStatus: "pending",
+          text: candidate.blob.text,
+          status: "todo",
+          doneAt: null,
+          actorRationale: candidate.blob.reasoningCreatedAt,
+        },
+        itemId: candidate.itemId,
+        source: candidate.source,
+      });
+      createdNew++;
+
+      localLogger.info(
+        {
+          todoId: todo.sId,
+          itemId: candidate.itemId,
+          source: candidate.source,
+        },
+        "Project todo merge: created new unassigned todo"
+      );
     },
     { concurrency: 4 }
   );

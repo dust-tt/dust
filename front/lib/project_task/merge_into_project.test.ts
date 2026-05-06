@@ -190,6 +190,7 @@ describe("createOrLinkTodos", () => {
           source: makeSource(),
         },
       ],
+      unassignedCandidates: [],
       dedupGroups: [group],
       spaceModelId: 1 as ModelId,
     });
@@ -235,6 +236,7 @@ describe("createOrLinkTodos", () => {
           source: makeSource(),
         },
       ],
+      unassignedCandidates: [],
       dedupGroups: [group],
       spaceModelId: 1 as ModelId,
     });

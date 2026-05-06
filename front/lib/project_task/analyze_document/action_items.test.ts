@@ -48,7 +48,7 @@ describe("buildActionItems — new items", () => {
     );
   });
 
-  it("drops new items whose assignee is not a project member", () => {
+  it("keeps new items whose assignee is not a project member, but clears the assignee", () => {
     const result = buildActionItems(
       {
         newItems: [
@@ -66,7 +66,32 @@ describe("buildActionItems — new items", () => {
       logger
     );
 
-    expect(result).toEqual([]);
+    expect(result).toHaveLength(1);
+    expect(result[0].shortDescription).toBe("Call client");
+    expect(result[0].assigneeUserId).toBeNull();
+    expect(result[0].assigneeName).toBeNull();
+  });
+
+  it("appends a new item with no assignee when assignee fields are absent", () => {
+    const result = buildActionItems(
+      {
+        newItems: [
+          {
+            short_description: "Update the deployment docs",
+            detected_creation_rationale: "Team agreed docs were out of date",
+          },
+        ],
+        updatedItems: [],
+      },
+      [],
+      new Set(["user-abc"]),
+      logger
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0].shortDescription).toBe("Update the deployment docs");
+    expect(result[0].assigneeUserId).toBeNull();
+    expect(result[0].assigneeName).toBeNull();
   });
 });
 

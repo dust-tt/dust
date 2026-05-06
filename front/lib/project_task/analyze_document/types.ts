@@ -6,10 +6,11 @@ export const EXTRACT_DOCUMENT_TAKEAWAYS_FUNCTION_NAME =
 export const MIN_SHORT_DESCRIPTION_LENGTH = 16;
 export const MAX_SHORT_DESCRIPTION_LENGTH = 256;
 
-// New items require an assignee_user_id matching a known project member. Items
-// whose assignee cannot be resolved to a project member are intentionally
-// dropped — we'd rather miss an item than track one we can't route to a real
-// user, since the assignee drives downstream notifications and ownership.
+// Assignee fields are optional: if the document does not name a clear project
+// member as owner, the item is still created without an assignee rather than
+// being dropped. When assignee_user_id is provided it must match a known
+// project member id — unresolvable ids are cleared and the item is kept
+// unassigned.
 const NewActionItemSchema = z.object({
   short_description: z
     .string()
@@ -18,11 +19,13 @@ const NewActionItemSchema = z.object({
     .describe("Short description of the action item."),
   assignee_name: z
     .string()
+    .optional()
     .describe("Name of the assignee, as it appears in the document."),
   assignee_user_id: z
     .string()
+    .optional()
     .describe(
-      "The participant id of the assigned person. Must be one of the participant ids listed in the prompt."
+      "The participant id of the assigned person. Must be one of the participant ids listed in the prompt. Omit if no project member can be identified as assignee."
     ),
   detected_creation_rationale: z
     .string()

@@ -54,22 +54,26 @@ export function buildActionItems(
   });
 
   for (const item of newItems) {
-    if (!validUserIds.has(item.assignee_user_id)) {
+    const hasValidAssignee =
+      item.assignee_user_id !== undefined &&
+      validUserIds.has(item.assignee_user_id);
+
+    if (item.assignee_user_id !== undefined && !hasValidAssignee) {
       localLogger.warn(
         {
           assigneeUserId: item.assignee_user_id,
           assigneeName: item.assignee_name,
           shortDescription: item.short_description,
         },
-        "Document takeaway: dropping new action item with unknown assignee"
+        "Document takeaway: new action item has unknown assignee, keeping as unassigned"
       );
-      continue;
     }
+
     merged.push({
       sId: uuidv4(),
       shortDescription: item.short_description,
-      assigneeUserId: item.assignee_user_id,
-      assigneeName: item.assignee_name,
+      assigneeUserId: hasValidAssignee ? (item.assignee_user_id ?? null) : null,
+      assigneeName: hasValidAssignee ? (item.assignee_name ?? null) : null,
       detectedCreationRationale: item.detected_creation_rationale,
     });
   }
@@ -97,8 +101,8 @@ export function buildPromptActionItems(
     "commits to arranging them.\n\n" +
     "Output rules:\n" +
     "- Place brand-new action items (not already in the tracked list below) in `new_action_items`. " +
-    "They MUST have a clear assignee matching one of the project members; if you cannot identify " +
-    "a project member as assignee, do not extract the item.\n" +
+    "Set `assignee_user_id` and `assignee_name` only when you can confidently identify a project " +
+    "member as the owner; leave both fields absent when the assignee is unclear or not a project member.\n" +
     "- **Never re-extract tracked items**: any item already listed under 'Previously tracked' below is " +
     "already recorded. Do NOT put it in `new_action_items` even if you see it in the document — " +
     "doing so creates a duplicate. If nothing changed, omit it entirely.\n" +
