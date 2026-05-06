@@ -2,7 +2,10 @@ import type {
   DriveItem,
   MicrosoftNode,
 } from "@connectors/connectors/microsoft/lib/types";
-import { DRIVE_ITEM_EXPANDS_AND_SELECTS } from "@connectors/connectors/microsoft/lib/types";
+import {
+  DRIVE_ITEM_EXPANDS_AND_SELECTS,
+  DRIVE_ITEM_EXPANDS_AND_SELECTS_WITH_LABELS,
+} from "@connectors/connectors/microsoft/lib/types";
 import {
   internalIdFromTypeAndPath,
   typeAndPathFromInternalId,
@@ -138,7 +141,8 @@ export async function getFilesAndFolders(
   logger: LoggerInterface,
   client: Client,
   parentInternalId: string,
-  nextLink?: string
+  nextLink?: string,
+  withLabels = false
 ): Promise<{ results: DriveItem[]; nextLink?: string }> {
   const { nodeType, itemAPIPath: parentResourcePath } =
     typeAndPathFromInternalId(parentInternalId);
@@ -149,10 +153,13 @@ export async function getFilesAndFolders(
     );
   }
 
+  const expandsAndSelects = withLabels
+    ? DRIVE_ITEM_EXPANDS_AND_SELECTS_WITH_LABELS
+    : DRIVE_ITEM_EXPANDS_AND_SELECTS;
   const endpoint =
     nodeType === "drive"
-      ? `${parentResourcePath}/root/children?${DRIVE_ITEM_EXPANDS_AND_SELECTS}`
-      : `${parentResourcePath}/children?${DRIVE_ITEM_EXPANDS_AND_SELECTS}`;
+      ? `${parentResourcePath}/root/children?${expandsAndSelects}`
+      : `${parentResourcePath}/children?${expandsAndSelects}`;
 
   const res = nextLink
     ? await clientApiGet(logger, client, nextLink)
@@ -178,10 +185,12 @@ export async function getDeltaResults({
   parentInternalId,
   nextLink,
   token,
+  withLabels = false,
 }: {
   logger: LoggerInterface;
   client: Client;
   parentInternalId: string;
+  withLabels?: boolean;
 } & (
   | { nextLink?: string; token?: never }
   | { nextLink?: never; token: string }
@@ -201,10 +210,13 @@ export async function getDeltaResults({
     { parentInternalId, itemAPIPath, nextLink, token },
     "Getting delta"
   );
+  const expandsAndSelects = withLabels
+    ? DRIVE_ITEM_EXPANDS_AND_SELECTS_WITH_LABELS
+    : DRIVE_ITEM_EXPANDS_AND_SELECTS;
   const deltaPath =
     (nodeType === "folder"
-      ? `${itemAPIPath}/delta?${DRIVE_ITEM_EXPANDS_AND_SELECTS}`
-      : `${itemAPIPath}/root/delta?${DRIVE_ITEM_EXPANDS_AND_SELECTS}`) +
+      ? `${itemAPIPath}/delta?${expandsAndSelects}`
+      : `${itemAPIPath}/root/delta?${expandsAndSelects}`) +
     (token ? `&token=${token}` : "");
 
   const res = nextLink

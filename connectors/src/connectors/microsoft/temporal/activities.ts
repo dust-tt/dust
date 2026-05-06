@@ -646,7 +646,8 @@ export async function syncFiles({
       logger,
       client,
       parent.internalId,
-      nextPageLink
+      nextPageLink,
+      (providerConfig.allowedSensitivityLabels ?? []).length > 0
     );
 
     const children = childrenResult.results;
@@ -837,7 +838,8 @@ export async function reconcileSensitivityLabelsForParent({
     logger,
     client,
     parentInternalId,
-    nextPageLink
+    nextPageLink,
+    allowedLabels.length > 0
   );
 
   const mimeTypesToSync = await getMimeTypesToSync({

@@ -7,6 +7,7 @@ import {
 import type { DriveItem } from "@connectors/connectors/microsoft/lib/types";
 import {
   DRIVE_ITEM_EXPANDS_AND_SELECTS,
+  DRIVE_ITEM_EXPANDS_AND_SELECTS_WITH_LABELS,
   MICROSOFT_SKIP_REASON_SENSITIVITY_LABEL_NOT_ALLOWED,
 } from "@connectors/connectors/microsoft/lib/types";
 import {
@@ -229,6 +230,7 @@ export async function syncOneFile({
 
   let url = file["@microsoft.graph.downloadUrl"];
   let fields = file.listItem?.fields;
+  const allowedLabels = providerConfig.allowedSensitivityLabels ?? [];
 
   if (!url || !fields) {
     if (!url) {
@@ -241,7 +243,7 @@ export async function syncOneFile({
     const item = (await getItem(
       localLogger,
       client,
-      `${itemAPIPath}?${DRIVE_ITEM_EXPANDS_AND_SELECTS}`
+      `${itemAPIPath}?${allowedLabels.length > 0 ? DRIVE_ITEM_EXPANDS_AND_SELECTS_WITH_LABELS : DRIVE_ITEM_EXPANDS_AND_SELECTS}`
     )) as DriveItem;
 
     url = item["@microsoft.graph.downloadUrl"];
@@ -256,8 +258,6 @@ export async function syncOneFile({
   if (!fields) {
     localLogger.warn("Unexpected missing fields for file");
   }
-
-  const allowedLabels = providerConfig.allowedSensitivityLabels ?? [];
   if (allowedLabels.length > 0) {
     const shouldSync = shouldSyncFileBasedOnSensitivityLabels({
       fields,
