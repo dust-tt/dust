@@ -1,10 +1,7 @@
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import {
-  ApprovalStateChip,
-  extractPlanTitle,
-  PlanTaskBullet,
-  splitPlanContent,
-} from "@app/components/assistant/conversation/plan_mode/utils";
+import { ApprovalStateChip } from "@app/components/assistant/conversation/plan_mode/ApprovalStateChip";
+import { PlanTaskBullet } from "@app/components/assistant/conversation/plan_mode/PlanTaskBullet";
+import { parsePlan } from "@app/components/assistant/conversation/plan_mode/utils";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { usePlanFile } from "@app/hooks/conversations/usePlanFile";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
@@ -26,8 +23,7 @@ export function ConversationPlanModePanel({
     workspaceId: owner.sId,
   });
 
-  const title = extractPlanTitle(content);
-  const { preamble, tasks } = splitPlanContent(content);
+  const { title, preamble, tasks } = parsePlan(content);
 
   return (
     <div className="flex h-full flex-col">
@@ -71,9 +67,12 @@ export function ConversationPlanModePanel({
                   )}
                 >
                   {tasks.map((task, idx) => (
-                    <li key={idx} className="flex items-start gap-2 py-1">
+                    <li
+                      key={`${idx}-${task}`}
+                      className="flex items-start gap-2 py-1"
+                    >
                       <PlanTaskBullet />
-                      <span>{task}</span>
+                      <Markdown content={task} compactSpacing />
                     </li>
                   ))}
                 </ul>
