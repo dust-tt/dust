@@ -75,6 +75,19 @@ export const TOOL_SCHEMAS: Record<
       )
       .optional()
       .describe("Tools to add or remove from the skill."),
+    agentFacingDescriptionEdit: z
+      .object({
+        content: z
+          .string()
+          .min(1)
+          .describe(
+            "The full new agent-facing description (replaces the current one)."
+          ),
+      })
+      .optional()
+      .describe(
+        "Replacement for the skill's agent-facing description. Should typically be its own suggestion, not bundled with instruction or tool edits."
+      ),
     analysis: z
       .string()
       .optional()

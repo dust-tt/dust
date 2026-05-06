@@ -37,7 +37,7 @@ const REINFORCED_SKILL_AGGREGATION_SECTIONS: Record<
 Your job is to produce a subset of the highest quality suggestions for the skill builder to review.
 
 You have access to the following tools:
-- edit_skill: For suggesting instruction edits and tool add/remove for one skill. The skill block above includes <agentFacingDescription> when set (for context only); you MUST NOT use edit_skill to change it.
+- edit_skill: For suggesting instruction edits, tool add/remove, and/or agent-facing description changes for one skill.
 - reject_suggestion: For discarding source suggestions that are invalid, not actionable, or too similar to already declined suggestions. Do NOT reject minor but valid suggestions, simply ignore them.
 
 Your goal is to keep the most impactful suggestions. NEVER create more than 5 suggestions.
@@ -53,6 +53,7 @@ It is ok to simply call no tool if all suggestions are minor.
 Start by grouping suggestions by skill, then within each skill group by topic:
 - For instruction edits, group by coherent theme within the skill (e.g. tone, tool usage, formatting). Suggestions that address different topics MUST be kept as separate suggestions — do NOT merge unrelated topics into one suggestion.
 - For tool changes, group by the target tool within each skill. NEVER create more than one suggestion per tool.
+- For agent-facing description edits, create AT MOST ONE description-edit suggestion per skill. When multiple drafts target the description, merge them into a single coherent replacement.
 NEVER create more than one suggestion per (skill, topic) pair.
 
 Rank the groups based on impact to the skill. Use these heuristics in priority order to determine highest impact:
@@ -108,6 +109,9 @@ function formatSuggestion(s: SkillSuggestionType): string {
           xml += `<toolEdit action="${escapeXml(t.action)}" toolId="${escapeXml(t.toolId)}"/>`;
         }
         xml += "</toolEdits>";
+      }
+      if (s.suggestion.agentFacingDescriptionEdit) {
+        xml += `<agentFacingDescriptionEdit><content>${escapeXml(s.suggestion.agentFacingDescriptionEdit.content)}</content></agentFacingDescriptionEdit>`;
       }
       xml += "</suggestion>";
       return xml;

@@ -46,6 +46,19 @@
     }
   },
   {
+    "skillName": "SearchInfoContactWithSuggestion",
+    "kind": "edit",
+    "title": "Improve agent-facing description",
+    "analysis": "The current description does not mention web search as a fallback source. Updating it to reflect the broader search capabilities makes the skill's scope clearer to the agent.",
+    "state": "pending",
+    "source": "reinforcement",
+    "suggestion": {
+      "agentFacingDescriptionEdit": {
+        "content": "Guidelines for searching and retrieving contact information from internal directories, databases, and the web."
+      }
+    }
+  },
+  {
     "skillName": "MeetingNotesFormatter",
     "kind": "edit",
     "title": "Flag confidential topics",

@@ -3,6 +3,7 @@ import { getBlockOuterHtml } from "@app/components/shared/utils";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { buildSkillInstructionsExtensions } from "@app/lib/editor/build_skill_instructions_extensions";
 import type {
+  SkillAgentFacingDescriptionEditType,
   SkillInstructionEditItemType,
   SkillSuggestionType,
   SkillToolEditItemType,
@@ -77,6 +78,36 @@ function ToolEditsSection({ toolEdits }: ToolEditsSectionProps) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+interface AgentFacingDescriptionEditSectionProps {
+  edit: SkillAgentFacingDescriptionEditType;
+  currentAgentFacingDescription: string;
+}
+
+function AgentFacingDescriptionEditSection({
+  edit,
+  currentAgentFacingDescription,
+}: AgentFacingDescriptionEditSectionProps) {
+  return (
+    <div className="flex flex-col gap-2">
+      <span className="text-sm font-medium text-foreground dark:text-foreground-night">
+        Description change
+      </span>
+      <DiffBlock>
+        <div className="flex flex-col gap-1 p-3 text-sm">
+          {currentAgentFacingDescription && (
+            <p className="text-muted-foreground line-through dark:text-muted-foreground-night">
+              {currentAgentFacingDescription}
+            </p>
+          )}
+          <p className="text-foreground dark:text-foreground-night">
+            {edit.content}
+          </p>
+        </div>
+      </DiffBlock>
     </div>
   );
 }
@@ -195,6 +226,7 @@ interface SkillSuggestionCardProps {
   onAccept?: (suggestion: SkillSuggestionType) => void;
   onDecline?: (suggestion: SkillSuggestionType) => void;
   getSkillInstructionsHtml: () => string;
+  getCurrentAgentFacingDescription: () => string;
   isSelected?: boolean;
   onSelect?: () => void;
   workspaceId: string;
@@ -205,11 +237,13 @@ export function SkillSuggestionCard({
   onAccept,
   onDecline,
   getSkillInstructionsHtml,
+  getCurrentAgentFacingDescription,
   isSelected = false,
   onSelect,
   workspaceId,
 }: SkillSuggestionCardProps) {
-  const { instructionEdits, toolEdits } = suggestion.suggestion;
+  const { instructionEdits, toolEdits, agentFacingDescriptionEdit } =
+    suggestion.suggestion;
   const isClickable = !!onSelect;
   const hasActions = !!onAccept && !!onDecline;
 
@@ -245,6 +279,13 @@ export function SkillSuggestionCard({
           <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
             {suggestion.analysis}
           </p>
+        )}
+
+        {agentFacingDescriptionEdit && (
+          <AgentFacingDescriptionEditSection
+            edit={agentFacingDescriptionEdit}
+            currentAgentFacingDescription={getCurrentAgentFacingDescription()}
+          />
         )}
 
         {toolEdits && toolEdits.length > 0 && (

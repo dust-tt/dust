@@ -104,6 +104,16 @@ describe("buildSkillAnalysisPrompt", () => {
     expect(systemPrompt).toContain("get_available_tools");
   });
 
+  it("system prompt has guidance for agent-facing description edits", () => {
+    const { systemPrompt } = buildSkillAnalysisPrompt("User: hello", [
+      makeSkill(),
+    ]);
+
+    expect(systemPrompt).toContain("<agent_facing_description_guidance>");
+    // Description edits are about routing (when to enable the skill), not behavior.
+    expect(systemPrompt).toMatch(/routing|when to enable/i);
+  });
+
   it("includes skill configured tools in user message", () => {
     const skill = makeSkill({
       tools: [

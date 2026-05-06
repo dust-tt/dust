@@ -134,7 +134,7 @@ describe("reinforcement seed script integration test", () => {
     // Verify skill suggestions: 2 for SearchInfoContactWithSuggestion + 2 for MeetingNotesFormatter + 1 for BookKeeper
     const skillSuggestions =
       await SkillSuggestionResource.listByWorkspace(authenticator);
-    expect(skillSuggestions).toHaveLength(5);
+    expect(skillSuggestions).toHaveLength(6);
 
     const allPending = skillSuggestions.every((s) => s.state === "pending");
     expect(allPending).toBe(true);

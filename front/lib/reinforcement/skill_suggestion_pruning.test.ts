@@ -2,6 +2,7 @@ import { buildDescendantMap } from "@app/lib/editor/instructions_block_conflict"
 import {
   hasSuggestionSelfConflict,
   instructionEditSetsConflict,
+  pruneConflictingSkillEditSuggestions,
   pruneOutdatedSkillEditSuggestions,
   toolEditSetsConflict,
 } from "@app/lib/reinforcement/skill_suggestion_pruning";
@@ -412,5 +413,120 @@ describe("pruneOutdatedSkillEditSuggestions", () => {
       );
       expect(fetched?.state).toBe("outdated");
     });
+  });
+});
+
+describe("pruneConflictingSkillEditSuggestions — agentFacingDescriptionEdit", () => {
+  let authenticator: Awaited<
+    ReturnType<typeof createResourceTest>
+  >["authenticator"];
+
+  beforeEach(async () => {
+    ({ authenticator } = await createResourceTest({ role: "admin" }));
+  });
+
+  it("a new description-edit suggestion outdates an older description-edit suggestion", async () => {
+    const skill = await SkillFactory.create(authenticator, {
+      instructionsHtml: '<p data-block-id="block-1">Content.</p>',
+    });
+    const older = await SkillSuggestionFactory.createEdit(
+      authenticator,
+      skill,
+      {
+        suggestion: {
+          agentFacingDescriptionEdit: {
+            content: "First proposed description.",
+          },
+        },
+      }
+    );
+    const newer = await SkillSuggestionFactory.createEdit(
+      authenticator,
+      skill,
+      {
+        suggestion: {
+          agentFacingDescriptionEdit: {
+            content: "Second proposed description.",
+          },
+        },
+      }
+    );
+
+    await pruneConflictingSkillEditSuggestions(authenticator, skill, newer);
+
+    const olderRefetched = await SkillSuggestionResource.fetchById(
+      authenticator,
+      older.sId
+    );
+    const newerRefetched = await SkillSuggestionResource.fetchById(
+      authenticator,
+      newer.sId
+    );
+    expect(olderRefetched?.state).toBe("outdated");
+    expect(newerRefetched?.state).toBe("pending");
+  });
+
+  it("a new description-edit suggestion does NOT outdate a tool-only suggestion", async () => {
+    const skill = await SkillFactory.create(authenticator, {
+      instructionsHtml: '<p data-block-id="block-1">Content.</p>',
+    });
+    const toolOnly = await SkillSuggestionFactory.createEdit(
+      authenticator,
+      skill,
+      {
+        suggestion: {
+          toolEdits: [{ action: "add", toolId: "tool-search" }],
+        },
+      }
+    );
+    const newer = await SkillSuggestionFactory.createEdit(
+      authenticator,
+      skill,
+      {
+        suggestion: {
+          agentFacingDescriptionEdit: { content: "New description." },
+        },
+      }
+    );
+
+    await pruneConflictingSkillEditSuggestions(authenticator, skill, newer);
+
+    const refetched = await SkillSuggestionResource.fetchById(
+      authenticator,
+      toolOnly.sId
+    );
+    expect(refetched?.state).toBe("pending");
+  });
+
+  it("a new instruction-only suggestion does NOT outdate an older description-edit suggestion", async () => {
+    const skill = await SkillFactory.create(authenticator, {
+      instructionsHtml: '<p data-block-id="block-1">Content.</p>',
+    });
+    const descriptionOnly = await SkillSuggestionFactory.createEdit(
+      authenticator,
+      skill,
+      {
+        suggestion: {
+          agentFacingDescriptionEdit: { content: "Existing description." },
+        },
+      }
+    );
+    const newer = await SkillSuggestionFactory.createEdit(
+      authenticator,
+      skill,
+      {
+        suggestion: {
+          instructionEdits: [makeInstructionEdit("block-1")],
+        },
+      }
+    );
+
+    await pruneConflictingSkillEditSuggestions(authenticator, skill, newer);
+
+    const refetched = await SkillSuggestionResource.fetchById(
+      authenticator,
+      descriptionOnly.sId
+    );
+    expect(refetched?.state).toBe("pending");
   });
 });
