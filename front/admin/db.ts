@@ -103,12 +103,12 @@ import { PluginRunModel } from "@app/lib/resources/storage/models/plugin_runs";
 import { ProgrammaticUsageConfigurationModel } from "@app/lib/resources/storage/models/programmatic_usage_configurations";
 import { ProjectMetadataModel } from "@app/lib/resources/storage/models/project_metadata";
 import {
-  ProjectTodoConversationModel,
-  ProjectTodoModel,
-  ProjectTodoSourceModel,
-  ProjectTodoVersionModel,
-} from "@app/lib/resources/storage/models/project_todo";
-import { ProjectTodoStateModel } from "@app/lib/resources/storage/models/project_todo_state";
+  ProjectTaskConversationModel,
+  ProjectTaskModel,
+  ProjectTaskSourceModel,
+  ProjectTaskVersionModel,
+} from "@app/lib/resources/storage/models/project_task";
+import { ProjectTaskStateModel } from "@app/lib/resources/storage/models/project_task_state";
 import {
   RunModel,
   RunUsageModel,
@@ -240,11 +240,11 @@ export function loadAllModels() {
     SandboxModel,
     ConversationBranchModel,
     ConversationForkModel,
-    ProjectTodoModel,
-    ProjectTodoConversationModel,
-    ProjectTodoSourceModel,
-    ProjectTodoStateModel,
-    ProjectTodoVersionModel,
+    ProjectTaskModel,
+    ProjectTaskConversationModel,
+    ProjectTaskSourceModel,
+    ProjectTaskStateModel,
+    ProjectTaskVersionModel,
     TakeawaysModel,
     TakeawaySourcesModel,
     TakeawaysVersionModel,

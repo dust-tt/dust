@@ -283,11 +283,11 @@ export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
         .describe(
           "Optional list of user ids to add as project members after project creation."
         ),
-      seedInitialTodos: z
+      seedInitialTasks: z
         .boolean()
         .optional()
         .describe(
-          "Whether to seed the project with a set of starter todos. Defaults to false when creating via the tool."
+          "Whether to seed the project with a set of starter tasks. Defaults to false when creating via the tool."
         ),
     },
     stake: "low",

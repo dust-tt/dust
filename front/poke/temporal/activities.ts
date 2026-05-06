@@ -44,8 +44,8 @@ import { OnboardingTaskResource } from "@app/lib/resources/onboarding_task_resou
 import { PluginRunResource } from "@app/lib/resources/plugin_run_resource";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
-import { ProjectTodoResource } from "@app/lib/resources/project_todo_resource";
-import { ProjectTodoStateResource } from "@app/lib/resources/project_todo_state_resource";
+import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
+import { ProjectTaskStateResource } from "@app/lib/resources/project_task_state_resource";
 import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
@@ -183,7 +183,7 @@ export async function scrubSpaceActivity({
   await TakeawaysResource.deleteAllForSpace(auth, { spaceModelId: space.id });
 
   // Delete all project todos for this space, before the conversations as it's linked to convo
-  const projectTodos = await ProjectTodoResource.fetchBySpace(auth, {
+  const projectTodos = await ProjectTaskResource.fetchBySpace(auth, {
     spaceId: space.id,
   });
   await concurrentExecutor(
@@ -210,7 +210,8 @@ export async function scrubSpaceActivity({
         throw metadataRes.error;
       }
     }
-    const projectTodoStates = await ProjectTodoStateResource.fetchAllBySpace(
+
+    const projectTodoStates = await ProjectTaskStateResource.fetchAllBySpace(
       auth,
       {
         spaceId: space.id,
@@ -227,7 +228,7 @@ export async function scrubSpaceActivity({
       { concurrency: 8 }
     );
 
-    const projectTodos = await ProjectTodoResource.fetchBySpace(auth, {
+    const projectTodos = await ProjectTaskResource.fetchBySpace(auth, {
       spaceId: space.id,
     });
     await concurrentExecutor(

@@ -2,10 +2,10 @@ import { hardDeleteApp } from "@app/lib/api/apps";
 import { updateAgentRequirements } from "@app/lib/api/assistant/configuration/agent_requirements";
 import { createDataSourceAndConnectorForProject } from "@app/lib/api/projects/connector";
 import { getWorkspaceAdministrationVersionLock } from "@app/lib/api/workspace";
-import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
-import { seedInitialProjectTodosForProjectCreator } from "@app/lib/project_todo/seed_initial_project_todos";
+import { seedInitialProjectTasksForProjectCreator } from "@app/lib/project_task/seed_initial_project_tasks";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -28,7 +28,7 @@ import { launchScrubSpaceWorkflow } from "@app/poke/temporal/client";
 import {
   launchOrSignalProjectTodoWorkflow,
   stopProjectTodoWorkflow,
-} from "@app/temporal/project_todo/client";
+} from "@app/temporal/project_task/client";
 import type { AgentsUsageType } from "@app/types/data_source";
 import {
   PROJECT_EDITOR_GROUP_PREFIX,
@@ -273,14 +273,11 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
   });
 
   if (space.isProject()) {
-    const featureFlags = await getFeatureFlags(auth);
-    if (featureFlags.includes("project_todo")) {
-      void stopProjectTodoWorkflow({
-        workspaceId: auth.getNonNullableWorkspace().sId,
-        spaceId: space.sId,
-        stopReason: "project deleted",
-      });
-    }
+    void stopProjectTodoWorkflow({
+      workspaceId: auth.getNonNullableWorkspace().sId,
+      spaceId: space.sId,
+      stopReason: "project deleted",
+    });
   }
 
   return new Ok(undefined);
@@ -369,14 +366,11 @@ export async function hardDeleteSpace(
   });
 
   if (space.isProject()) {
-    const featureFlags = await getFeatureFlags(auth);
-    if (featureFlags.includes("project_todo")) {
-      void stopProjectTodoWorkflow({
-        workspaceId: auth.getNonNullableWorkspace().sId,
-        spaceId: space.sId,
-        stopReason: "project hard deleted",
-      });
-    }
+    void stopProjectTodoWorkflow({
+      workspaceId: auth.getNonNullableWorkspace().sId,
+      spaceId: space.sId,
+      stopReason: "project hard deleted",
+    });
   }
 
   return new Ok(undefined);
@@ -394,10 +388,10 @@ export async function createSpaceAndGroup(
   ),
   {
     ignoreWorkspaceLimit = false,
-    seedInitialTodos = true,
+    seedInitialTasks = true,
   }: {
     ignoreWorkspaceLimit?: boolean;
-    seedInitialTodos?: boolean;
+    seedInitialTasks?: boolean;
   } = {}
 ): Promise<
   Result<
@@ -636,16 +630,13 @@ export async function createSpaceAndGroup(
         // The connector can be created later if needed
       }
 
-      const featureFlags = await getFeatureFlags(auth);
-      if (featureFlags.includes("project_todo")) {
-        if (seedInitialTodos) {
-          await seedInitialProjectTodosForProjectCreator(auth, space);
-        }
-        void launchOrSignalProjectTodoWorkflow({
-          workspaceId: owner.sId,
-          spaceId: space.sId,
-        });
+      if (seedInitialTasks) {
+        await seedInitialProjectTasksForProjectCreator(auth, space);
       }
+      void launchOrSignalProjectTodoWorkflow({
+        workspaceId: owner.sId,
+        spaceId: space.sId,
+      });
     }
   }
   return result;

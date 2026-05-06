@@ -13,9 +13,9 @@ import {
 } from "@app/components/markdown/CiteBlock";
 import type { MCPReferenceCitation } from "@app/components/markdown/MCPReferenceCitation";
 import {
-  getTodoDirectiveBlock,
-  todoDirective,
-} from "@app/components/markdown/TodoDirectiveBlock";
+  getTaskDirectiveBlock,
+  taskDirective,
+} from "@app/components/markdown/TaskDirectiveBlock";
 import { getIcon } from "@app/components/resources/resources_icons";
 import { useChildAgentStream } from "@app/hooks/useChildAgentStream";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
@@ -253,7 +253,7 @@ function MCPRunAgentActionDetailsDisplay({
   };
 
   const additionalMarkdownPlugins: PluggableList = useMemo(
-    () => [getCiteDirective(), agentMentionDirective, todoDirective],
+    () => [getCiteDirective(), agentMentionDirective, taskDirective],
     []
   );
 
@@ -262,7 +262,7 @@ function MCPRunAgentActionDetailsDisplay({
       sup: CiteBlock,
       // Warning: we can't rename easily `mention` to agent_mention, because the messages DB contains this name
       mention: getAgentMentionPlugin(owner),
-      todo: getTodoDirectiveBlock(owner),
+      project_task: getTaskDirectiveBlock(owner),
     }),
     [owner]
   );
@@ -303,6 +303,8 @@ function MCPRunAgentActionDetailsDisplay({
                     forcedTextSize="text-sm"
                     textColor="text-muted-foreground"
                     isLastMessage={false}
+                    additionalMarkdownPlugins={additionalMarkdownPlugins}
+                    additionalMarkdownComponents={additionalMarkdownComponents}
                   />
                 </ContentMessage>
               </div>
@@ -374,6 +376,12 @@ function MCPRunAgentActionDetailsDisplay({
                             forcedTextSize="text-sm"
                             textColor="text-muted-foreground"
                             isLastMessage={false}
+                            additionalMarkdownPlugins={
+                              additionalMarkdownPlugins
+                            }
+                            additionalMarkdownComponents={
+                              additionalMarkdownComponents
+                            }
                           />
                         </ContentMessage>
                       </div>
@@ -462,6 +470,12 @@ function MCPRunAgentActionDetailsDisplay({
                               forcedTextSize="text-sm"
                               textColor="text-muted-foreground"
                               isLastMessage={false}
+                              additionalMarkdownPlugins={
+                                additionalMarkdownPlugins
+                              }
+                              additionalMarkdownComponents={
+                                additionalMarkdownComponents
+                              }
                             />
                           </ContentMessage>
                         </div>
