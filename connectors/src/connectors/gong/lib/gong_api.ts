@@ -5,6 +5,7 @@ import {
   isNotFoundError,
 } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
+import { statsDClient } from "@connectors/logger/withlogging";
 import type { ModelId } from "@connectors/types";
 import { isLeft } from "fp-ts/Either";
 import * as t from "io-ts";
@@ -236,6 +237,20 @@ const GongPermissionProfilesResponseCodec = t.intersection([
   CatchAllCodec,
 ]);
 
+// Gong's documented Retry-After unit is seconds, we have observerd it to be in anything betwee 1 to 55k,
+// which indicates that it's in miliseconds, or in seconds, but with a bug
+// if you remove oultiers, the distribution is centered around 10 (which we treat a seconds)
+// so flooring the retry after to 10.
+const RETRY_AFTER_FLOOR_MS = 10_000;
+const RETRY_AFTER_CEILING_MS = 60 * 60_000;
+
+export function clampRetryAfterMs(raw: number | undefined): number | undefined {
+  if (raw === undefined || Number.isNaN(raw)) {
+    return undefined;
+  }
+  return Math.min(Math.max(raw, RETRY_AFTER_FLOOR_MS), RETRY_AFTER_CEILING_MS);
+}
+
 export class GongClient {
   private readonly baseUrl = "https://api.gong.io/v2";
 
@@ -296,6 +311,11 @@ export class GongClient {
           },
           "Rate limit hit on Gong API."
         );
+
+        statsDClient.increment("gong.api.rate_limit", 1, [
+          `endpoint:${endpoint}`,
+          `provider:gong`,
+        ]);
 
         // Don't attempt to parse the body in JSON.
         const body = await response.text();

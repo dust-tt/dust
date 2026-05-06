@@ -18,10 +18,10 @@ export class SlackCastKnownErrorsInterceptor
     } catch (err: unknown) {
       // Ensure rate limit errors with retryAfterMs are honored.
       if (err instanceof ProviderRateLimitError) {
-        if (err.retryAfter) {
+        if (err.retryAfterMs) {
           throw ApplicationFailure.create({
-            message: `${err.message}. Retry after ${err.retryAfter / 1000}s`,
-            nextRetryDelay: err.retryAfter,
+            message: `${err.message}. Retry after ${err.retryAfterMs / 1000}s`,
+            nextRetryDelay: err.retryAfterMs,
             cause: err,
           });
         }

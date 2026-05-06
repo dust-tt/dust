@@ -1,5 +1,9 @@
 import { GongAPIError } from "@connectors/connectors/gong/lib/errors";
-import { DustConnectorWorkflowError } from "@connectors/lib/error";
+import { clampRetryAfterMs } from "@connectors/connectors/gong/lib/gong_api";
+import {
+  DustConnectorWorkflowError,
+  ProviderRateLimitError,
+} from "@connectors/lib/error";
 import { ApplicationFailure } from "@temporalio/common";
 import type {
   ActivityExecuteInput,
@@ -19,21 +23,23 @@ export class GongCastKnownErrorsInterceptor
     } catch (err: unknown) {
       if (err instanceof GongAPIError) {
         switch (err.status) {
-          case 429:
-            if (err.retryAfterMs) {
+          case 429: {
+            const clampedMs = clampRetryAfterMs(err.retryAfterMs);
+            if (clampedMs !== undefined) {
               // Override the default retry delay of the activity policy.
               throw ApplicationFailure.create({
-                message: `${err.message}. Retry after ${err.retryAfterMs}ms`,
-                nextRetryDelay: err.retryAfterMs,
+                message: `${err.message}. Retry after ${clampedMs}ms`,
+                nextRetryDelay: clampedMs,
                 cause: err,
               });
             }
 
-            throw new DustConnectorWorkflowError(
-              "429 - Rate Limit Exceeded",
-              "rate_limit_error",
+            throw new ProviderRateLimitError(
+              "gong",
+              "429 - Rate Limit Exceeded (no Retry-After)",
               err
             );
+          }
 
           case 400: {
             const isExpiredCursorError =
