@@ -417,6 +417,17 @@ async function handler(
 
         // If tools are enabled, we need to add the MCP server views to the conversation before posting the message.
         if (message.context.selectedMCPServerViewIds) {
+          if (!auth.user()) {
+            return apiError(req, res, {
+              status_code: 401,
+              api_error: {
+                type: "invalid_request_error",
+                message:
+                  "Selecting MCP server views is only available to authenticated users.",
+              },
+            });
+          }
+
           const mcpServerViews = await MCPServerViewResource.fetchByIds(
             auth,
             message.context.selectedMCPServerViewIds
