@@ -206,7 +206,6 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
         .describe(
           "Whether to create a conference (Google Meet) for the event. If not provided, existing conference settings are preserved."
         ),
-      ...eventTypeSpecificFields,
       ...sharedEventFields,
     },
     stake: "medium",
