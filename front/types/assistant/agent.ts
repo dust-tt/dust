@@ -369,6 +369,7 @@ export type AgentGenerationCancelledEvent = {
   created: number;
   configurationId: string;
   messageId: string;
+  status: "cancelled" | "interrupted";
 };
 
 // Event sent when the agent loop was gracefully stopped (current step completed, then exited).

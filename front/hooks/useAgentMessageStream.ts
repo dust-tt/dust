@@ -629,6 +629,10 @@ export function useAgentMessageStream({
 
         case "agent_generation_cancelled": {
           updateMessageThrottled.cancel();
+          const cancelData = eventPayload.data;
+          if (cancelData.type !== "agent_generation_cancelled") {
+            break;
+          }
           methods.data.map((m) => {
             if (!isAgentMessageWithStreaming(m) || m.sId !== sId) {
               return m;
@@ -642,7 +646,7 @@ export function useAgentMessageStream({
             });
             return {
               ...m,
-              status: "cancelled",
+              status: cancelData.status,
               ...(contentCleared ? { content: null } : {}),
               streaming: {
                 ...m.streaming,

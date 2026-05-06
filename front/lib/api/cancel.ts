@@ -100,6 +100,7 @@ export async function terminateMessageGeneration(
         created: Date.now(),
         configurationId: agentMessage.configuration.sId,
         messageId: agentMessage.sId,
+        status,
       },
       conversationId: conversation.sId,
       step: agentMessage.contents.reduce((max, c) => Math.max(max, c.step), 0),

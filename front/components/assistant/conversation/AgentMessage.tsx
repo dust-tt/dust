@@ -1395,10 +1395,13 @@ function AgentMessageContent({
             })}
           </div>
         )}
-        {agentMessage.status === "cancelled" && (
+        {(agentMessage.status === "cancelled" ||
+          agentMessage.status === "interrupted") && (
           <div className="flex flex-col gap-2">
             <div className="text-sm text-faint dark:text-faint-night">
-              Message generation stopped by user
+              {agentMessage.status === "interrupted"
+                ? "Skipped. Running your next message."
+                : "Generation stopped."}
             </div>
             <div>
               <ButtonGroupDropdown
