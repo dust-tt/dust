@@ -1,26 +1,26 @@
-import type { LLMConfig } from "@app/lib/api/assistant/call_llm";
-import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
-import { updateCompactionMessageWithContentAndFinalStatus } from "@app/lib/api/assistant/conversation";
-import { replaceStandaloneAttachmentIds } from "@app/lib/api/assistant/conversation/compaction_attachment_id_replacements";
-import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
-import { renderConversationAsText } from "@app/lib/api/assistant/conversation/render_as_text";
-import { PREVIOUS_INTERACTIONS_TO_PRESERVE } from "@app/lib/api/assistant/conversation_rendering";
-import { publishConversationEvent } from "@app/lib/api/assistant/streaming/events";
-import { createGCSMountFile } from "@app/lib/api/files/gcs_mount/files";
-import { isProviderWhitelisted } from "@app/lib/assistant";
-import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import type {LLMConfig} from "@app/lib/api/assistant/call_llm";
+import {runMultiActionsAgent} from "@app/lib/api/assistant/call_llm";
+import {updateCompactionMessageWithContentAndFinalStatus} from "@app/lib/api/assistant/conversation";
+import {replaceStandaloneAttachmentIds} from "@app/lib/api/assistant/conversation/compaction_attachment_id_replacements";
+import {getConversation} from "@app/lib/api/assistant/conversation/fetch";
+import {renderConversationAsText} from "@app/lib/api/assistant/conversation/render_as_text";
+import {PREVIOUS_INTERACTIONS_TO_PRESERVE} from "@app/lib/api/assistant/conversation_rendering";
+import {publishConversationEvent} from "@app/lib/api/assistant/streaming/events";
+import {createGCSMountFile, GCSMountFileEntry} from "@app/lib/api/files/gcs_mount/files";
+import {isProviderWhitelisted} from "@app/lib/assistant";
+import {type Authenticator, hasFeatureFlag} from "@app/lib/auth";
+import {ConversationResource} from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
-import type { CompactionSourceConversation } from "@app/types/assistant/compaction";
+import type {CompactionSourceConversation} from "@app/types/assistant/compaction";
 import type {
   CompactionMessageType,
   ConversationType,
 } from "@app/types/assistant/conversation";
-import { isCompactionMessageType } from "@app/types/assistant/conversation";
-import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
-import type { SupportedModel } from "@app/types/assistant/models/types";
-import type { Result } from "@app/types/shared/result";
-import { Err, Ok } from "@app/types/shared/result";
+import {isCompactionMessageType} from "@app/types/assistant/conversation";
+import type {ModelConversationTypeMultiActions} from "@app/types/assistant/generation";
+import type {SupportedModel} from "@app/types/assistant/models/types";
+import type {Result} from "@app/types/shared/result";
+import {Err, Ok} from "@app/types/shared/result";
 
 const COMPACTION_PROMPT = `Your task is to create a detailed summary of the conversation so far, \
 paying close attention to the user's explicit requests and the agents' previous actions and \
@@ -131,7 +131,7 @@ async function createCompactionHistoryFile(
     compactionMessage: CompactionMessageType;
     renderedMessages: string;
   }
-): Promise<Result<string, Error>> {
+): Promise<Result<GCSMountFileEntry, Error>> {
   const generatedAt = new Date();
   const relativeFilePath = `history/${formatCompactionHistoryTimestamp(generatedAt)}-compaction-${compactionMessage.sId}.history`;
   const metadataLines = [
@@ -146,7 +146,7 @@ async function createCompactionHistoryFile(
 
   const entryRes = await createGCSMountFile(
     auth,
-    { useCase: "conversation", conversationId: targetConversation.sId },
+    {useCase: "conversation", conversationId: targetConversation.sId},
     {
       relativeFilePath,
       content: Buffer.from(
@@ -160,7 +160,7 @@ async function createCompactionHistoryFile(
   if (entryRes.isErr()) {
     return entryRes;
   }
-  return new Ok(entryRes.value.path);
+  return new Ok(entryRes.value);
 }
 
 export async function runCompaction(
@@ -264,7 +264,7 @@ export async function runCompaction(
     });
 
     if (historyFileRes.isOk()) {
-      content = `${summary}\n\n---\n\nFull conversation history before compaction: ${historyFileRes.value}`;
+      content = `${summary}\n\n---\n\nFull conversation history before compaction: ${historyFileRes.value.path}`;
       status = "succeeded";
 
       logger.info(
@@ -273,7 +273,7 @@ export async function runCompaction(
           conversationId,
           sourceConversationId: sourceConversation?.conversationId,
           compactionMessageId,
-          historyFilePath: historyFileRes.value,
+          historyFilePath: historyFileRes.value.path,
           status,
         },
         "Compaction generation succeeded"
@@ -327,7 +327,7 @@ export async function runCompaction(
       messageId: compactionMessage.sId,
       message: compactionMessage,
     },
-    { conversationId: targetConversation.sId }
+    {conversationId: targetConversation.sId}
   );
 
   return new Ok(undefined);
@@ -348,16 +348,16 @@ async function generateCompactionSummary(
     compactionMessage: CompactionMessageType;
     model: SupportedModel;
   }
-): Promise<Result<{ summary: string; renderedMessages: string }, Error>> {
+): Promise<Result<{summary: string; renderedMessages: string}, Error>> {
   const owner = auth.getNonNullableWorkspace();
 
   const conversationToSummarize =
     sourceMessageRank === undefined
       ? sourceConversation
       : filterConversationContentUpToRank(
-          sourceConversation,
-          sourceMessageRank
-        );
+        sourceConversation,
+        sourceMessageRank
+      );
 
   // renderConversationAsText stops at the last succeeded compaction boundary by default and skips
   // running agent messages, producing exactly the messages that need to be summarized.
@@ -433,5 +433,5 @@ async function generateCompactionSummary(
     return new Err(new Error("Compaction LLM returned empty summary"));
   }
 
-  return new Ok({ summary, renderedMessages });
+  return new Ok({summary, renderedMessages});
 }
