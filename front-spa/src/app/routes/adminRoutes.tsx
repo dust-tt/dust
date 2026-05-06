@@ -94,6 +94,7 @@ export const adminRoutes: RouteObject[] = [
       {
         path: "subscription/payment_processing",
         element: <PaymentProcessingPage />,
+        handle: { requireCanUseProduct: false },
       },
       { path: "developers/api-keys", element: <APIKeysPage /> },
       {
