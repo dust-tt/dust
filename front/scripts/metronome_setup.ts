@@ -1780,6 +1780,7 @@ interface ExistingPackage {
     starting_at_offset: { unit: string; value: number };
     applicable_product_tags?: string[];
     recurrence_frequency?: string;
+    name?: string;
   }>;
 }
 
@@ -1888,10 +1889,19 @@ function packageMatches(ex: ExistingPackage, desired: PackageDef): boolean {
   }
   for (const desiredCredit of desiredCredits) {
     const productId = ids.products[desiredCredit.product_name];
-    const match = existingCredits.find((c) => c.product.id === productId);
+    // Match by `name` — multiple recurring credits can share the same product
+    // (e.g. Free Monthly + Free Excess both reference the "Free Credits" product),
+    // so product_id alone is not a unique key.
+    const match = existingCredits.find((c) => c.name === desiredCredit.name);
     if (!match) {
       console.log(
-        `    [diff] ${desired.name}: recurring credit for product ${desiredCredit.product_name} (${productId}) not found`
+        `    [diff] ${desired.name}: recurring credit "${desiredCredit.name}" not found`
+      );
+      return false;
+    }
+    if (match.product.id !== productId) {
+      console.log(
+        `    [diff] ${desired.name}: recurring credit "${desiredCredit.name}" product_id ${match.product.id} → ${productId}`
       );
       return false;
     }
@@ -1900,13 +1910,13 @@ function packageMatches(ex: ExistingPackage, desired: PackageDef): boolean {
       desiredCredit.access_amount.credit_type_id
     ) {
       console.log(
-        `    [diff] ${desired.name}: recurring credit ${desiredCredit.product_name} credit_type_id ${match.access_amount.credit_type_id} → ${desiredCredit.access_amount.credit_type_id}`
+        `    [diff] ${desired.name}: recurring credit "${desiredCredit.name}" credit_type_id ${match.access_amount.credit_type_id} → ${desiredCredit.access_amount.credit_type_id}`
       );
       return false;
     }
     if (match.priority !== desiredCredit.priority) {
       console.log(
-        `    [diff] ${desired.name}: recurring credit ${desiredCredit.product_name} priority ${match.priority} → ${desiredCredit.priority}`
+        `    [diff] ${desired.name}: recurring credit "${desiredCredit.name}" priority ${match.priority} → ${desiredCredit.priority}`
       );
       return false;
     }
@@ -1915,7 +1925,7 @@ function packageMatches(ex: ExistingPackage, desired: PackageDef): boolean {
       (desiredCredit.recurrence_frequency ?? undefined)
     ) {
       console.log(
-        `    [diff] ${desired.name}: recurring credit ${desiredCredit.product_name} recurrence_frequency ${match.recurrence_frequency} → ${desiredCredit.recurrence_frequency}`
+        `    [diff] ${desired.name}: recurring credit "${desiredCredit.name}" recurrence_frequency ${match.recurrence_frequency} → ${desiredCredit.recurrence_frequency}`
       );
       return false;
     }
