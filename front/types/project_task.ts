@@ -42,6 +42,12 @@ export type ProjectTaskAssigneeType = {
   image: string | null;
 };
 
+/** Stable row / stable-order key when grouping tasks with no assignee. */
+export const PROJECT_TASK_UNASSIGNED_GROUP_KEY = "__unassigned__";
+
+/** Header and menu copy for tasks with no assignee. */
+export const PROJECT_TASK_NO_ASSIGNEE_LABEL = "No assignee";
+
 export type ProjectTaskType = {
   id: ModelId;
   sId: string;

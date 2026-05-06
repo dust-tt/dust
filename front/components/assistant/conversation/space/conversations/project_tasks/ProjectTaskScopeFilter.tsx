@@ -35,12 +35,17 @@ const PEOPLE_OPTIONS: Array<{
   {
     value: "just_mine",
     label: "Mine",
-    description: "Your to-dos only",
+    description: "Your tasks only",
+  },
+  {
+    value: "unassigned",
+    label: "Unassigned",
+    description: "Tasks with no assignee",
   },
   {
     value: "all_project",
     label: "Everyone",
-    description: "All to-dos in this project",
+    description: "All tasks in this project",
   },
 ];
 

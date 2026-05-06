@@ -16,7 +16,10 @@ import type { ConversationDotStatus } from "@app/lib/utils/conversation_dot_stat
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
-import type { ProjectTaskType } from "@app/types/project_task";
+import {
+  PROJECT_TASK_NO_ASSIGNEE_LABEL,
+  type ProjectTaskType,
+} from "@app/types/project_task";
 import type { LightWorkspaceType, SpaceUserType } from "@app/types/user";
 import {
   AnimatedText,
@@ -79,7 +82,7 @@ export interface EditableTaskItemProps {
   membersWithActiveTaskIds: Set<string>;
   onPatchTask: (
     taskId: string,
-    updates: { text?: string; assigneeUserId?: string }
+    updates: { text?: string; assigneeUserId?: string | null }
   ) => Promise<void>;
   allowAssigneeReassign?: boolean;
 }
@@ -177,6 +180,16 @@ export const EditableTaskItem = memo(function EditableTaskItem({
       return aActive - bActive;
     });
   }, [reassignSearch, projectMembers, membersWithActiveTaskIds]);
+
+  const showNoAssigneeReassignOption =
+    task.user !== null &&
+    (() => {
+      const q = removeDiacritics(reassignSearch.trim()).toLowerCase();
+      const labelNorm = removeDiacritics(
+        PROJECT_TASK_NO_ASSIGNEE_LABEL
+      ).toLowerCase();
+      return q === "" || labelNorm.includes(q);
+    })();
 
   useEffect(() => {
     if (!isNewlyDone) {
@@ -659,7 +672,9 @@ export const EditableTaskItem = memo(function EditableTaskItem({
                       <DropdownMenuSubTrigger
                         label="Reassign"
                         icon={UserIcon}
-                        disabled={projectMembers.length === 0}
+                        disabled={
+                          projectMembers.length === 0 && task.user === null
+                        }
                       />
                       <DropdownMenuPortal>
                         <DropdownMenuSubContent
@@ -675,37 +690,62 @@ export const EditableTaskItem = memo(function EditableTaskItem({
                           />
                           <DropdownMenuSeparator />
                           <div className="max-h-64 overflow-auto">
-                            {filteredReassignMembers.length > 0 ? (
-                              filteredReassignMembers.map((member) => (
-                                <DropdownMenuItem
-                                  key={`reassign-task-${task.sId}-${member.sId}`}
-                                  label={`${member.fullName}${viewerUserId === member.sId ? " (you)" : ""}`}
-                                  disabled={member.sId === task.user?.sId}
-                                  icon={() => (
-                                    <Avatar
-                                      size="xxs"
-                                      isRounded
-                                      visual={
-                                        member.image ??
-                                        "/static/humanavatar/anonymous.png"
-                                      }
+                            {showNoAssigneeReassignOption ||
+                            filteredReassignMembers.length > 0 ? (
+                              <>
+                                {showNoAssigneeReassignOption && (
+                                  <>
+                                    <DropdownMenuItem
+                                      key={`reassign-task-${task.sId}-none`}
+                                      label={PROJECT_TASK_NO_ASSIGNEE_LABEL}
+                                      onClick={() => {
+                                        void (async () => {
+                                          try {
+                                            await onPatchTask(task.sId, {
+                                              assigneeUserId: null,
+                                            });
+                                          } finally {
+                                            setOverflowMenuOpen(false);
+                                          }
+                                        })();
+                                      }}
                                     />
-                                  )}
-                                  onClick={() => {
-                                    void (async () => {
-                                      try {
-                                        if (member.sId !== task.user?.sId) {
-                                          await onPatchTask(task.sId, {
-                                            assigneeUserId: member.sId,
-                                          });
+                                    {filteredReassignMembers.length > 0 ? (
+                                      <DropdownMenuSeparator />
+                                    ) : null}
+                                  </>
+                                )}
+                                {filteredReassignMembers.map((member) => (
+                                  <DropdownMenuItem
+                                    key={`reassign-task-${task.sId}-${member.sId}`}
+                                    label={`${member.fullName}${viewerUserId === member.sId ? " (you)" : ""}`}
+                                    disabled={member.sId === task.user?.sId}
+                                    icon={() => (
+                                      <Avatar
+                                        size="xxs"
+                                        isRounded
+                                        visual={
+                                          member.image ??
+                                          "/static/humanavatar/anonymous.png"
                                         }
-                                      } finally {
-                                        setOverflowMenuOpen(false);
-                                      }
-                                    })();
-                                  }}
-                                />
-                              ))
+                                      />
+                                    )}
+                                    onClick={() => {
+                                      void (async () => {
+                                        try {
+                                          if (member.sId !== task.user?.sId) {
+                                            await onPatchTask(task.sId, {
+                                              assigneeUserId: member.sId,
+                                            });
+                                          }
+                                        } finally {
+                                          setOverflowMenuOpen(false);
+                                        }
+                                      })();
+                                    }}
+                                  />
+                                ))}
+                              </>
                             ) : (
                               <div className="px-3 py-2 text-sm text-muted-foreground">
                                 No members found

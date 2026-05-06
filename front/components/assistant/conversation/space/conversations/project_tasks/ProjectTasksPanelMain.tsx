@@ -21,7 +21,6 @@ export function ProjectTasksPanelMain() {
     filteredTasks,
     assigneeScopedTasks,
     debouncedTaskSearchQuery,
-    isSoleProjectMember,
     hideRegularTaskAssigneeHeaders,
   } = useProjectTasksPanel();
 
@@ -54,7 +53,6 @@ export function ProjectTasksPanelMain() {
               projectMembers={projectMembers}
               viewerUserId={viewerUserId}
               defaultAssigneeSId={defaultNewAssigneeSId!}
-              hideAssigneePicker={isSoleProjectMember}
               onAdd={handleAddTask}
             />
           ))}

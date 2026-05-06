@@ -49,11 +49,11 @@ export type ProjectTasksPanelData = {
   ) => Promise<void>;
   patchTaskItem: (
     taskId: string,
-    updates: { text?: string; assigneeUserId?: string }
+    updates: { text?: string; assigneeUserId?: string | null }
   ) => Promise<void>;
   isSpaceInfoLoading: boolean;
   defaultNewAssigneeSId: string | null;
-  handleAddTask: (text: string, assigneeSId: string) => Promise<boolean>;
+  handleAddTask: (text: string, assigneeSId: string | null) => Promise<boolean>;
   isTasksLoading: boolean;
   isTasksError: boolean;
   frozenLastReadAt: string | null | undefined;

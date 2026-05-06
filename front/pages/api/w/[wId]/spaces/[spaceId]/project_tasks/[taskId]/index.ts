@@ -22,7 +22,7 @@ const PatchProjectTaskBodySchema = z
       .max(256, "Text must be at most 256 characters.")
       .optional(),
     status: z.enum(PROJECT_TASK_STATUSES).optional(),
-    assigneeUserId: z.string().min(1).optional(),
+    assigneeUserId: z.union([z.string().min(1), z.null()]).optional(),
   })
   .refine(
     (data) =>
@@ -124,30 +124,34 @@ async function handler(
       }
 
       if (assigneeUserId !== undefined) {
-        const assigneeAuth = await Authenticator.fromUserIdAndWorkspaceId(
-          assigneeUserId,
-          workspace.sId
-        );
-        const assigneeUser = assigneeAuth.user();
-        if (!assigneeUser) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: "Assignee user not found.",
-            },
-          });
+        if (assigneeUserId === null) {
+          updates.userId = null;
+        } else {
+          const assigneeAuth = await Authenticator.fromUserIdAndWorkspaceId(
+            assigneeUserId,
+            workspace.sId
+          );
+          const assigneeUser = assigneeAuth.user();
+          if (!assigneeUser) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: "Assignee user not found.",
+              },
+            });
+          }
+          if (!space.isMember(assigneeAuth)) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: "Assignee must be a member of this project.",
+              },
+            });
+          }
+          updates.userId = assigneeUser.id;
         }
-        if (!space.isMember(assigneeAuth)) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: "Assignee must be a member of this project.",
-            },
-          });
-        }
-        updates.userId = assigneeUser.id;
       }
 
       const updatedTask = await task.updateWithVersion(auth, updates);

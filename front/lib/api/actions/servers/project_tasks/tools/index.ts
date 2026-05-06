@@ -16,6 +16,7 @@ import { Authenticator } from "@app/lib/auth";
 import { startAgentForProjectTask } from "@app/lib/project_task/start_agent";
 import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
 import { getConversationRoute } from "@app/lib/utils/router";
+import { PROJECT_TASK_NO_ASSIGNEE_LABEL } from "@app/types/project_task";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -23,9 +24,12 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 function formatTaskListingLine(row: ProjectTaskResource): string {
   const json = row.toJSON();
+  const assigneePart = json.user
+    ? `${json.user.fullName} (${json.user.sId})`
+    : PROJECT_TASK_NO_ASSIGNEE_LABEL;
   const lines = [
     `- [${json.sId}] ${json.text}`,
-    ` Assignee: ${json.user?.fullName} (${json.user?.sId}) | Status: ${json.status} | Created: ${json.createdAt.toISOString().slice(0, 10)}`,
+    ` Assignee: ${assigneePart} | Status: ${json.status} | Created: ${json.createdAt.toISOString().slice(0, 10)}`,
   ];
   if (row.doneAt) {
     lines.push(`  Done: ${row.doneAt.toISOString().slice(0, 10)}`);
@@ -134,8 +138,8 @@ export function createProjectTasksTools(
         const created: string[] = [];
         const errors: string[] = [];
         for (const item of tasks) {
-          let newUserId: ModelId | undefined = currentUser.id;
-          if (item.userId) {
+          let newUserId: ModelId | null = null;
+          if (typeof item.userId === "string") {
             const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
               item.userId,
               owner.sId
@@ -148,6 +152,7 @@ export function createProjectTasksTools(
             }
             newUserId = userAuth.getNonNullableUser().id;
           }
+          // Omit or null → unassigned (`newUserId` stays null).
 
           const row = await ProjectTaskResource.makeNew(auth, {
             spaceId: space.id,

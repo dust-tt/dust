@@ -3,9 +3,10 @@ import {
   ProjectTasksDataTableHeaderTitle,
   ProjectTasksDataTableUiProvider,
 } from "@app/components/assistant/conversation/space/conversations/project_tasks/ProjectTasksDataTableCell";
-import type {
-  ProjectTaskAssigneeType,
-  ProjectTaskType,
+import {
+  PROJECT_TASK_UNASSIGNED_GROUP_KEY,
+  type ProjectTaskAssigneeType,
+  type ProjectTaskType,
 } from "@app/types/project_task";
 import { DataTable, type MenuItem } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -46,8 +47,7 @@ function flattenGroupedTasks(
   let groupIndex = 0;
 
   for (const group of groups) {
-    const groupKey =
-      group.user?.sId ?? `unknown-${group.tasks[0]?.id ?? "empty"}`;
+    const groupKey = group.user?.sId ?? PROJECT_TASK_UNASSIGNED_GROUP_KEY;
     rows.push({
       kind: "assignee_header",
       groupKey,

@@ -355,10 +355,13 @@ export class ProjectTaskResource extends BaseResource<ProjectTaskModel> {
       spaceId,
       timeScope,
       assigneeUserId = null,
+      onlyUnassigned = false,
     }: {
       spaceId: ModelId;
       timeScope: "active" | "last_24h" | "last_7d" | "last_30d" | "all";
       assigneeUserId?: ModelId | null;
+      /** When true, returns only todos with no assignee (`userId` IS NULL). */
+      onlyUnassigned?: boolean;
     }
   ): Promise<ProjectTaskResource[]> {
     const MS_PER_HOUR = 60 * 60 * 1000;
@@ -379,7 +382,9 @@ export class ProjectTaskResource extends BaseResource<ProjectTaskModel> {
 
     const clauses: WhereOptions<ProjectTaskModel>[] = [{ spaceId }];
 
-    if (assigneeUserId != null) {
+    if (onlyUnassigned) {
+      clauses.push({ userId: null });
+    } else if (assigneeUserId != null) {
       clauses.push({ userId: assigneeUserId });
     }
 

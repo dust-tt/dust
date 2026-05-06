@@ -51,7 +51,8 @@ export const PROJECT_TASKS_TOOLS_METADATA = createToolsRecord({
     },
   },
   create_tasks: {
-    description: "Create one or more new tasks at once in the project.",
+    description:
+      "Create one or more new tasks at once in the project. Tasks are unassigned unless you pass userId — always set userId when a specific person should own the task.",
     schema: {
       creatorType: z
         .enum(["user", "agent"])
@@ -71,10 +72,10 @@ export const PROJECT_TASKS_TOOLS_METADATA = createToolsRecord({
                   "assignee with 'you'/'your' pronouns when needed."
               ),
             userId: z
-              .string()
+              .union([z.string(), z.null()])
               .optional()
               .describe(
-                "The sId of the user to assign the task to; must be a member of the project. Defaults to the current user."
+                "Project member's user sId to assign this task to. Omit userId entirely (or use null) to create an unassigned task. Never omit userId when the task must belong to someone — omitting defaults to unassigned, not the current user."
               ),
             doneRationale: z
               .string()

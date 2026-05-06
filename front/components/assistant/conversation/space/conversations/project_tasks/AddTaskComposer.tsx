@@ -10,6 +10,8 @@ import {
   stripNewlines,
 } from "@app/components/assistant/conversation/space/conversations/project_tasks/utils";
 import { removeDiacritics } from "@app/lib/utils";
+import { PROJECT_TASK_NO_ASSIGNEE_LABEL } from "@app/types/project_task";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { SpaceUserType } from "@app/types/user";
 import {
   Avatar,
@@ -24,43 +26,139 @@ import {
 } from "@dust-tt/sparkle";
 import { useCallback, useMemo, useRef, useState } from "react";
 
+export type AddTaskAssigneeChoice =
+  | { kind: "default" }
+  | { kind: "unassigned" }
+  | { kind: "member"; sId: string };
+
+export function resolveSubmitAssigneeSId(
+  choice: AddTaskAssigneeChoice,
+  defaultAssigneeSId: string
+): string | null {
+  switch (choice.kind) {
+    case "unassigned":
+      return null;
+    case "default":
+      return defaultAssigneeSId;
+    case "member":
+      return choice.sId;
+    default:
+      assertNeverAndIgnore(choice);
+      return null;
+  }
+}
+
+function memberRowAssigneeChecked(
+  choice: AddTaskAssigneeChoice,
+  memberSId: string,
+  defaultAssigneeSId: string
+): boolean {
+  switch (choice.kind) {
+    case "unassigned":
+      return false;
+    case "default":
+      return defaultAssigneeSId === memberSId;
+    case "member":
+      return choice.sId === memberSId;
+    default:
+      assertNeverAndIgnore(choice);
+      return false;
+  }
+}
+
+function assigneeTriggerTitleAndAria(
+  choice: AddTaskAssigneeChoice,
+  selectedUser: SpaceUserType | null | undefined,
+  viewerUserId: string | null
+): { title: string; ariaLabel: string } {
+  if (selectedUser) {
+    const youSuffix = viewerUserId === selectedUser.sId ? " (you)" : "";
+    return {
+      title: `Assign to ${selectedUser.fullName}${youSuffix} — click to change`,
+      ariaLabel: `Assign to ${selectedUser.fullName}${youSuffix}, open menu to change`,
+    };
+  }
+  switch (choice.kind) {
+    case "unassigned":
+      return {
+        title: `${PROJECT_TASK_NO_ASSIGNEE_LABEL} — click to change assignee`,
+        ariaLabel: `${PROJECT_TASK_NO_ASSIGNEE_LABEL}, open menu to change assignee`,
+      };
+    case "default":
+    case "member":
+      return {
+        title: "Choose assignee",
+        ariaLabel: "Choose assignee",
+      };
+    default:
+      assertNeverAndIgnore(choice);
+      return {
+        title: "Choose assignee",
+        ariaLabel: "Choose assignee",
+      };
+  }
+}
+
 function TodoRowAssigneeMenu({
   ariaNamePrefix,
   members,
   viewerUserId,
-  selectedSId,
-  onSelect,
+  defaultAssigneeSId,
+  choice,
+  onChoiceChange,
   onMenuOpenChange,
   disabled,
 }: {
   ariaNamePrefix: string;
   members: SpaceUserType[];
   viewerUserId: string | null;
-  selectedSId: string | null;
-  onSelect: (userSId: string) => void;
+  defaultAssigneeSId: string;
+  choice: AddTaskAssigneeChoice;
+  onChoiceChange: (next: AddTaskAssigneeChoice) => void;
   onMenuOpenChange?: (open: boolean) => void;
   disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const q = removeDiacritics(search.trim()).toLowerCase();
   const filteredMembers = useMemo(() => {
-    const q = removeDiacritics(search.trim()).toLowerCase();
     if (!q) {
       return [...members];
     }
     return members.filter((m) =>
       removeDiacritics(m.fullName).toLowerCase().includes(q)
     );
-  }, [search, members]);
-  const selectedUser = members.find((m) => m.sId === selectedSId);
-  const assigneeTriggerVisual =
-    selectedUser?.image ?? "/static/humanavatar/anonymous.png";
-  const title = selectedUser
-    ? `Assign to ${selectedUser.fullName}${viewerUserId === selectedUser.sId ? " (you)" : ""} — click to change`
-    : "Choose assignee";
-  const ariaLabel = selectedUser
-    ? `Assign to ${selectedUser.fullName}${viewerUserId === selectedUser.sId ? " (you)" : ""}, open menu to change`
-    : "Choose assignee";
+  }, [q, members]);
+
+  const assigneeSearchLabelNorm = removeDiacritics(
+    PROJECT_TASK_NO_ASSIGNEE_LABEL
+  ).toLowerCase();
+  const showNoAssigneeRow = q === "" || assigneeSearchLabelNorm.includes(q);
+
+  let effectiveMemberSId: string | null;
+  switch (choice.kind) {
+    case "unassigned":
+      effectiveMemberSId = null;
+      break;
+    case "default":
+      effectiveMemberSId = defaultAssigneeSId;
+      break;
+    case "member":
+      effectiveMemberSId = choice.sId;
+      break;
+    default:
+      assertNeverAndIgnore(choice);
+      effectiveMemberSId = null;
+  }
+  const selectedUser = effectiveMemberSId
+    ? members.find((m) => m.sId === effectiveMemberSId)
+    : null;
+
+  const { title, ariaLabel } = assigneeTriggerTitleAndAria(
+    choice,
+    selectedUser,
+    viewerUserId
+  );
 
   return (
     <DropdownMenu
@@ -88,7 +186,18 @@ function TodoRowAssigneeMenu({
             "disabled:pointer-events-none disabled:opacity-40"
           )}
         >
-          <Avatar size="xs" isRounded visual={assigneeTriggerVisual} />
+          {selectedUser ? (
+            <Avatar
+              size="xs"
+              isRounded
+              visual={selectedUser.image ?? "/static/humanavatar/anonymous.png"}
+            />
+          ) : (
+            <span
+              className="block size-[1.625rem] shrink-0 rounded-full ring-1 ring-inset ring-border/70 dark:ring-border-night/60"
+              aria-hidden
+            />
+          )}
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
@@ -104,29 +213,65 @@ function TodoRowAssigneeMenu({
         />
         <DropdownMenuSeparator />
         <div className="max-h-64 overflow-auto">
-          {filteredMembers.length > 0 ? (
-            filteredMembers.map((member) => (
-              <DropdownMenuCheckboxItem
-                key={`${ariaNamePrefix}-member-${member.sId}`}
-                icon={() => (
-                  <Avatar
-                    size="xxs"
-                    isRounded
-                    visual={member.image ?? "/static/humanavatar/anonymous.png"}
+          {showNoAssigneeRow || filteredMembers.length > 0 ? (
+            <>
+              {showNoAssigneeRow && (
+                <DropdownMenuCheckboxItem
+                  key={`${ariaNamePrefix}-no-assignee`}
+                  label={PROJECT_TASK_NO_ASSIGNEE_LABEL}
+                  checked={choice.kind === "unassigned"}
+                  onClick={() => {
+                    onChoiceChange({ kind: "unassigned" });
+                    setOpen(false);
+                    onMenuOpenChange?.(false);
+                  }}
+                  onSelect={(event) => {
+                    event.preventDefault();
+                  }}
+                />
+              )}
+              {showNoAssigneeRow && filteredMembers.length > 0 ? (
+                <DropdownMenuSeparator />
+              ) : null}
+              {filteredMembers.length > 0 ? (
+                filteredMembers.map((member) => (
+                  <DropdownMenuCheckboxItem
+                    key={`${ariaNamePrefix}-member-${member.sId}`}
+                    icon={() => (
+                      <Avatar
+                        size="xxs"
+                        isRounded
+                        visual={
+                          member.image ?? "/static/humanavatar/anonymous.png"
+                        }
+                      />
+                    )}
+                    label={`${member.fullName}${viewerUserId === member.sId ? " (you)" : ""}`}
+                    checked={memberRowAssigneeChecked(
+                      choice,
+                      member.sId,
+                      defaultAssigneeSId
+                    )}
+                    onClick={() => {
+                      onChoiceChange(
+                        member.sId === defaultAssigneeSId
+                          ? { kind: "default" }
+                          : { kind: "member", sId: member.sId }
+                      );
+                      setOpen(false);
+                      onMenuOpenChange?.(false);
+                    }}
+                    onSelect={(event) => {
+                      event.preventDefault();
+                    }}
                   />
-                )}
-                label={`${member.fullName}${viewerUserId === member.sId ? " (you)" : ""}`}
-                checked={selectedSId === member.sId}
-                onClick={() => {
-                  onSelect(member.sId);
-                  setOpen(false);
-                  onMenuOpenChange?.(false);
-                }}
-                onSelect={(event) => {
-                  event.preventDefault();
-                }}
-              />
-            ))
+                ))
+              ) : !showNoAssigneeRow ? (
+                <div className="px-3 py-2 text-sm text-muted-foreground">
+                  No members found
+                </div>
+              ) : null}
+            </>
           ) : (
             <div className="px-3 py-2 text-sm text-muted-foreground">
               No members found
@@ -148,19 +293,25 @@ export function AddTodoComposer({
   projectMembers: SpaceUserType[];
   viewerUserId: string | null;
   defaultAssigneeSId: string;
-  /** When true, assignee is implicit (e.g. sole project member); no avatar control. */
+  /** When true, always assigns to `defaultAssigneeSId` with no picker. */
   hideAssigneePicker?: boolean;
-  onAdd: (text: string, assigneeSId: string) => Promise<boolean>;
+  onAdd: (text: string, assigneeSId: string | null) => Promise<boolean>;
 }) {
   const [text, setText] = useState("");
-  const [assigneeSId, setAssigneeSId] = useState<string | null>(null);
+  const [assigneeChoice, setAssigneeChoice] = useState<AddTaskAssigneeChoice>(
+    () => ({
+      kind: "default",
+    })
+  );
   const [isAdding, setIsAdding] = useState(false);
   const [inputFocused, setInputFocused] = useState(false);
   const [assigneeMenuOpen, setAssigneeMenuOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const selectedSId = assigneeSId ?? defaultAssigneeSId;
+  const submitAssigneeSId = hideAssigneePicker
+    ? defaultAssigneeSId
+    : resolveSubmitAssigneeSId(assigneeChoice, defaultAssigneeSId);
 
   const isExpanded =
     inputFocused ||
@@ -169,11 +320,11 @@ export function AddTodoComposer({
 
   const handleSubmit = useCallback(async () => {
     const trimmed = stripNewlines(text).trim();
-    if (!trimmed || !selectedSId || isAdding) {
+    if (!trimmed || isAdding) {
       return;
     }
     setIsAdding(true);
-    const ok = await onAdd(trimmed, selectedSId);
+    const ok = await onAdd(trimmed, submitAssigneeSId);
     setIsAdding(false);
     if (ok) {
       setText("");
@@ -187,7 +338,7 @@ export function AddTodoComposer({
         }
       });
     }
-  }, [text, selectedSId, isAdding, onAdd]);
+  }, [text, submitAssigneeSId, isAdding, onAdd]);
 
   const sideChromeToneClass = cn(
     "transition-opacity duration-300 ease-in-out motion-reduce:transition-none motion-reduce:duration-75",
@@ -218,8 +369,9 @@ export function AddTodoComposer({
                 ariaNamePrefix="add-task"
                 members={projectMembers}
                 viewerUserId={viewerUserId}
-                selectedSId={selectedSId}
-                onSelect={setAssigneeSId}
+                defaultAssigneeSId={defaultAssigneeSId}
+                choice={assigneeChoice}
+                onChoiceChange={setAssigneeChoice}
                 onMenuOpenChange={setAssigneeMenuOpen}
                 disabled={isAdding}
               />
@@ -287,7 +439,7 @@ export function AddTodoComposer({
               variant="highlight"
               label="Add"
               isLoading={isAdding}
-              disabled={isAdding || !stripNewlines(text).trim() || !selectedSId}
+              disabled={isAdding || !stripNewlines(text).trim()}
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => void handleSubmit()}
             />
