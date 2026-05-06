@@ -83,16 +83,6 @@
       ]
     },
     {
-      "includes": [
-        "front/**/*.{js,jsx,ts,tsx}",
-        "connectors/src/**/*.{js,jsx,ts,tsx}"
-      ],
-      "plugins": [
-        "./.grit/patterns/noRawSql.grit",
-        "./.grit/patterns/noUnverifiedWorkspaceBypass.grit"
-      ]
-    },
-    {
       "includes": ["front/**/*.{js,jsx,ts,tsx}"],
       "plugins": [
         "./.grit/patterns/enforceClientTypesInPublicApi.grit",
@@ -112,6 +102,16 @@
         "!sparkle/playground/**"
       ],
       "plugins": ["./.grit/patterns/noCssImportant.grit"]
+    },
+    {
+      "includes": [
+        "front/**/*.{js,jsx,ts,tsx}",
+        "connectors/src/**/*.{js,jsx,ts,tsx}"
+      ],
+      "plugins": [
+        "./.grit/patterns/noRawSql.grit",
+        "./.grit/patterns/noUnverifiedWorkspaceBypass.grit"
+      ]
     },
     {
       "includes": [
