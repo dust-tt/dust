@@ -190,19 +190,19 @@ function DelimitedPreview({ content, mimeType }: DelimitedPreviewProps) {
 interface FilePreviewDialogContentProps {
   category: FilePreviewCategory;
   file: FilePreviewDialogFile;
+  fileContent: string | null;
   isContentLoading: boolean;
   mimeType: string;
   processedContent: ProcessedContent | null;
-  truncatedFileContent: string | null;
 }
 
 function FilePreviewDialogContent({
   category,
   file,
+  fileContent,
   isContentLoading,
   mimeType,
   processedContent,
-  truncatedFileContent,
 }: FilePreviewDialogContentProps) {
   if (isContentLoading) {
     return (
@@ -254,13 +254,8 @@ function FilePreviewDialogContent({
       );
 
     case "delimited":
-      if (truncatedFileContent) {
-        return (
-          <DelimitedPreview
-            content={truncatedFileContent}
-            mimeType={mimeType}
-          />
-        );
+      if (fileContent) {
+        return <DelimitedPreview content={fileContent} mimeType={mimeType} />;
       }
       return null;
 
@@ -277,7 +272,7 @@ function FilePreviewDialogContent({
 
     case "code": {
       const lang = getCodeLanguage(file.fileName);
-      const raw = truncatedFileContent ?? "";
+      const raw = fileContent ?? "";
       let displayContent = raw;
       if (lang === "json") {
         try {
@@ -308,14 +303,14 @@ interface FilePreviewDialogProps {
   isFileContentLoading?: boolean;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  onDownload: () => void;
+  onDownload: (file: FilePreviewDialogFile) => void;
   onNext?: () => void;
   onPrev?: () => void;
 }
 
 export function FilePreviewDialog({
   file,
-  fileContent,
+  fileContent: rawFileContent,
   fileContentError,
   isFileContentLoading = false,
   isOpen,
@@ -357,11 +352,11 @@ export function FilePreviewDialog({
   const isContentLoading =
     isOpen && !!file && !hasError && isFileContentLoading;
 
-  const truncatedFileContent = fileContent?.slice(0, MAX_TEXT_CHARS) ?? null;
+  const fileContent = rawFileContent?.slice(0, MAX_TEXT_CHARS) ?? null;
 
   const processedContent =
-    (category === "markdown" || category === "text") && truncatedFileContent
-      ? processFileContent(truncatedFileContent, mimeType)
+    (category === "markdown" || category === "text") && fileContent
+      ? processFileContent(fileContent, mimeType)
       : null;
 
   const FileIcon = file
@@ -369,8 +364,8 @@ export function FilePreviewDialog({
     : null;
 
   const recordCounts =
-    category === "delimited" && truncatedFileContent
-      ? getDelimitedRecordCount({ content: truncatedFileContent })
+    category === "delimited" && fileContent
+      ? getDelimitedRecordCount({ content: fileContent })
       : null;
 
   return (
@@ -421,10 +416,10 @@ export function FilePreviewDialog({
               <FilePreviewDialogContent
                 category={category}
                 file={file}
+                fileContent={fileContent}
                 isContentLoading={isContentLoading}
                 mimeType={mimeType}
                 processedContent={processedContent}
-                truncatedFileContent={truncatedFileContent}
               />
             )}
           </div>
@@ -434,10 +429,10 @@ export function FilePreviewDialog({
               <FilePreviewDialogContent
                 category={category}
                 file={file}
+                fileContent={fileContent}
                 isContentLoading={isContentLoading}
                 mimeType={mimeType}
                 processedContent={processedContent}
-                truncatedFileContent={truncatedFileContent}
               />
             )}
           </div>
@@ -467,7 +462,7 @@ export function FilePreviewDialog({
               size="sm"
               icon={ArrowDownOnSquareIcon}
               label="Download"
-              onClick={onDownload}
+              onClick={() => file && onDownload(file)}
               disabled={!file}
             />
           </div>
