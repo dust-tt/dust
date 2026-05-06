@@ -844,8 +844,9 @@ export function AgentMessage({
               variant="outline"
               size="xs"
               icon={isBranching ? <Spinner size="xs" /> : MoreIcon}
+              tooltip={isBranching ? "Branching..." : undefined}
+              aria-label={isBranching ? "Branching..." : "Message actions"}
               className="text-muted-foreground"
-              disabled={isBranching}
             />
           }
           items={dropdownItems}

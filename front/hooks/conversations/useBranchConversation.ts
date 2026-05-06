@@ -6,7 +6,38 @@ import { getConversationRoute } from "@app/lib/utils/router";
 import type { PostConversationForkResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/forks";
 import { isRecord, isString } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
-import { useCallback, useState } from "react";
+import { useCallback, useSyncExternalStore } from "react";
+
+const branchingConversationIds = new Set<string>();
+const branchingStoreListeners = new Set<() => void>();
+
+function subscribeToBranchingStore(listener: () => void) {
+  branchingStoreListeners.add(listener);
+
+  return () => {
+    branchingStoreListeners.delete(listener);
+  };
+}
+
+function emitBranchingStoreUpdate() {
+  for (const listener of branchingStoreListeners) {
+    listener();
+  }
+}
+
+function isConversationBranching(conversationId?: string | null) {
+  return conversationId ? branchingConversationIds.has(conversationId) : false;
+}
+
+function setConversationBranching(conversationId: string, branching: boolean) {
+  if (branching) {
+    branchingConversationIds.add(conversationId);
+  } else {
+    branchingConversationIds.delete(conversationId);
+  }
+
+  emitBranchingStoreUpdate();
+}
 
 function isPostConversationForkResponseBody(
   value: unknown
@@ -31,15 +62,19 @@ export function useBranchConversation({
   const sendNotification = useSendNotification();
   const router = useAppRouter();
 
-  const [isBranching, setIsBranching] = useState(false);
+  const isBranching = useSyncExternalStore(
+    subscribeToBranchingStore,
+    () => isConversationBranching(conversationId),
+    () => false
+  );
 
   const branchConversation = useCallback(
     async (sourceMessageId?: string): Promise<boolean> => {
-      if (!conversationId) {
+      if (!conversationId || isConversationBranching(conversationId)) {
         return false;
       }
 
-      setIsBranching(true);
+      setConversationBranching(conversationId, true);
 
       try {
         const requestBody = sourceMessageId ? { sourceMessageId } : {};
@@ -92,7 +127,7 @@ export function useBranchConversation({
 
         return false;
       } finally {
-        setIsBranching(false);
+        setConversationBranching(conversationId, false);
       }
     },
     [

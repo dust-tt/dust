@@ -12,6 +12,7 @@ import {
   type LinkWrapperProps,
 } from "@sparkle/components/LinkWrapper";
 import { ScrollArea, ScrollBar } from "@sparkle/components/ScrollArea";
+import { Spinner } from "@sparkle/components/Spinner";
 import { ChevronDownIcon, ChevronUpIcon, MoreIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
@@ -240,10 +241,10 @@ const NavigationListItemAction = React.forwardRef<
     >
       <Button
         size="xmini"
-        icon={MoreIcon}
+        icon={isLoading ? <Spinner size="xs" /> : MoreIcon}
         variant="ghost"
-        isLoading={isLoading}
-        disabled={isLoading}
+        tooltip={isLoading ? "Branching..." : undefined}
+        aria-label={isLoading ? "Branching..." : "Menu actions"}
       />
     </div>
   );
