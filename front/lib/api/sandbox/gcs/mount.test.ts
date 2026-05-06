@@ -203,7 +203,7 @@ describe("buildProbeAndSetupScript", () => {
     expect(script).toContain("timeout 1 stat /files/conversation");
     expect(script).toContain("curl -sf http://127.0.0.1:9876");
     expect(script).toContain("> /tmp/token.json");
-    expect(script).toContain("for _ in 1 2 3 4 5");
+    expect(script).toContain("for _ in 1 2 3 4 5 6 7 8 9 10");
     expect(script).toContain("token-server.sh");
     expect(script).toContain("echo READY");
     expect(script).toContain("echo NEEDS_MOUNT");

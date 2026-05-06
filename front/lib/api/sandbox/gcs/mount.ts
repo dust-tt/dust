@@ -121,9 +121,9 @@ export async function ensureConversationFilesMounted(
  *
  * The mount probe needs both `mountpoint -q` (kernel entry) AND a `stat`:
  * the kernel can show a path as mounted even when the gcsfuse daemon is
- * dead, in which case `stat` returns EIO. The token-server check is a
- * 5x250ms poll instead of a flat sleep+curl to avoid losing a wake-up
- * race when the snapshot resumes under load.
+ * dead, in which case `stat` returns EIO. The token-server check polls
+ * for up to 1s (10 x 100ms) so we catch a fast startup quickly without
+ * losing a wake-up race when the snapshot resumes under load.
  *
  * No `set -e` on purpose: the probe chain is meant to fall through on
  * failure to the rebuild branch. We use explicit `exit 1` for the only
@@ -146,8 +146,8 @@ else
   printf '%s' '${escapedTokenJson}' > /tmp/token.json
   bash /home/agent/.bin/token-server.sh > /tmp/server.log 2>&1 &
   ready=0
-  for _ in 1 2 3 4 5; do
-    sleep 0.25
+  for _ in 1 2 3 4 5 6 7 8 9 10; do
+    sleep 0.1
     if curl -sf ${TOKEN_SERVER_URL} >/dev/null 2>&1; then
       ready=1
       break
