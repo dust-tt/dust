@@ -96,17 +96,12 @@ async function backfillFromMetronome(
     dbCredits
       .filter((c) => c.startDate !== null && c.expirationDate !== null)
       .map((c) => [
-        `${c.type}:${floorToHourISO(c.startDate!)}:${ceilToHourISO(c.expirationDate!)}`,
+        `${floorToHourISO(c.startDate!)}:${ceilToHourISO(c.expirationDate!)}`,
         c,
       ])
   );
 
   for (const entry of metronomeEntries) {
-    if (entry.type !== "CREDIT") {
-      continue;
-    }
-    const creditType = "free";
-
     if (existingMetronomeIds.has(entry.id)) {
       logger.info(
         { workspaceId: workspace.sId, metronomeId: entry.id },
@@ -126,7 +121,7 @@ async function backfillFromMetronome(
       continue;
     }
 
-    const dateKey = `${creditType}:${floorToHourISO(startDate)}:${ceilToHourISO(expirationDate)}`;
+    const dateKey = `${floorToHourISO(startDate)}:${ceilToHourISO(expirationDate)}`;
     const existingByDates = existingDateKeys.get(dateKey);
     if (existingByDates) {
       if (
@@ -142,7 +137,6 @@ async function backfillFromMetronome(
             metronomeId: entry.id,
             existingMetronomeCreditId: existingByDates.metronomeCreditId,
             creditId: existingByDates.id,
-            creditType,
             startDate: startDate.toISOString(),
             expirationDate: expirationDate.toISOString(),
             reason,
@@ -160,7 +154,6 @@ async function backfillFromMetronome(
           {
             workspaceId: workspace.sId,
             metronomeId: entry.id,
-            creditType,
             startDate: startDate.toISOString(),
             expirationDate: expirationDate.toISOString(),
           },
@@ -203,7 +196,6 @@ async function backfillFromMetronome(
       {
         workspaceId: workspace.sId,
         metronomeId: entry.id,
-        creditType,
         initialUsd: initialAmountMicroUsd / 1_000_000,
         consumedUsd: consumedAmountMicroUsd / 1_000_000,
         startDate: startDate.toISOString(),
@@ -220,7 +212,7 @@ async function backfillFromMetronome(
 
     try {
       const credit = await CreditResource.makeNew(auth, {
-        type: creditType,
+        type: "free",
         startDate,
         expirationDate,
         initialAmountMicroUsd,
