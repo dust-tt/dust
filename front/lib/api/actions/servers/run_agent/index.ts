@@ -40,7 +40,7 @@ import {
   getRefs,
 } from "@app/lib/api/assistant/citations";
 import { getGlobalAgentMetadata } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
-import { cancelMessageGenerationEvent } from "@app/lib/api/assistant/pubsub";
+import { cancelAgentLoop } from "@app/lib/api/assistant/pubsub";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { getApiKeyNameHeader, prodAPICredentialsForOwner } from "@app/lib/auth";
@@ -257,7 +257,7 @@ const runAgent = async (
 
     /* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */
     if (!childCancellationPromise) {
-      childCancellationPromise = cancelMessageGenerationEvent(auth, {
+      childCancellationPromise = cancelAgentLoop(auth, {
         messageIds: [agentMessage.sId],
         conversationId: conversation.sId,
       }).catch((cancelError) => {

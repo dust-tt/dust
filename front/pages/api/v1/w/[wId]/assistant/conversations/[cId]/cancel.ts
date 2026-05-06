@@ -1,6 +1,6 @@
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
-import { cancelMessageGeneration } from "@app/lib/api/cancel";
+import { terminateMessageGeneration } from "@app/lib/api/cancel";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
@@ -103,9 +103,10 @@ async function handler(
         });
       }
 
-      await cancelMessageGeneration(auth, {
+      await terminateMessageGeneration(auth, {
         messageIds: r.data.messageIds,
         conversationId,
+        action: "cancel",
       });
       return res.status(200).json({ success: true });
 

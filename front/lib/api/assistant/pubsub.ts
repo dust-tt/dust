@@ -12,6 +12,7 @@ import { makeAgentLoopWorkflowId } from "@app/temporal/agent_loop/lib/workflow_i
 import {
   cancelAgentLoopSignal,
   gracefullyStopAgentLoopSignal,
+  interruptAgentLoopSignal,
 } from "@app/temporal/agent_loop/signals";
 import type {
   AgentActionSuccessEvent,
@@ -21,6 +22,7 @@ import type {
 } from "@app/types/assistant/agent";
 import type { GenerationTokensEvent } from "@app/types/assistant/generation";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { SignalDefinition } from "@temporalio/workflow";
 
 export async function* getConversationEvents({
   conversationId,
@@ -103,12 +105,17 @@ export async function* getConversationEvents({
   }
 }
 
-export async function cancelMessageGenerationEvent(
+async function signalAgentLoops(
   auth: Authenticator,
   {
     messageIds,
     conversationId,
-  }: { messageIds: string[]; conversationId: string }
+    signal,
+  }: {
+    messageIds: string[];
+    conversationId: string;
+    signal: SignalDefinition<[void]>;
+  }
 ): Promise<{ failedMessageIds: string[] }> {
   const client = await getTemporalClientForAgentNamespace();
   const workspaceId = auth.getNonNullableWorkspace().sId;
@@ -117,23 +124,19 @@ export async function cancelMessageGenerationEvent(
   await concurrentExecutor(
     messageIds,
     async (messageId) => {
-      // We use the message id provided by the caller as the agentMessageId.
-      const agentMessageId = messageId;
-
       const workflowId = makeAgentLoopWorkflowId({
         workspaceId,
         conversationId,
-        agentMessageId,
+        agentMessageId: messageId,
       });
       try {
         const handle = client.workflow.getHandle(workflowId);
-        await handle.signal(cancelAgentLoopSignal);
+        await handle.signal(signal);
       } catch (err) {
-        const signalError = normalizeError(err);
         // Swallow errors from signaling (workflow might not exist anymore)
         logger.warn(
-          { error: signalError, conversationId, messageId },
-          "Failed to signal agent loop workflow for cancellation"
+          { error: normalizeError(err), conversationId, messageId },
+          "Failed to signal agent loop workflow"
         );
         failedMessageIds.push(messageId);
       }
@@ -144,6 +147,20 @@ export async function cancelMessageGenerationEvent(
   return { failedMessageIds };
 }
 
+export async function cancelAgentLoop(
+  auth: Authenticator,
+  {
+    messageIds,
+    conversationId,
+  }: { messageIds: string[]; conversationId: string }
+): Promise<{ failedMessageIds: string[] }> {
+  return signalAgentLoops(auth, {
+    messageIds,
+    conversationId,
+    signal: cancelAgentLoopSignal,
+  });
+}
+
 export async function gracefullyStopAgentLoop(
   auth: Authenticator,
   {
@@ -151,32 +168,25 @@ export async function gracefullyStopAgentLoop(
     conversationId,
   }: { messageIds: string[]; conversationId: string }
 ): Promise<void> {
-  const client = await getTemporalClientForAgentNamespace();
-  const workspaceId = auth.getNonNullableWorkspace().sId;
-
-  await concurrentExecutor(
+  await signalAgentLoops(auth, {
     messageIds,
-    async (messageId) => {
-      const agentMessageId = messageId;
-      const workflowId = makeAgentLoopWorkflowId({
-        workspaceId,
-        conversationId,
-        agentMessageId,
-      });
-      try {
-        const handle = client.workflow.getHandle(workflowId);
-        await handle.signal(gracefullyStopAgentLoopSignal);
-      } catch (err) {
-        const signalError = normalizeError(err);
-        // Swallow errors from signaling (workflow might not exist anymore)
-        logger.warn(
-          { error: signalError, conversationId, messageId },
-          "Failed to signal agent loop workflow for graceful stop"
-        );
-      }
-    },
-    { concurrency: 8 }
-  );
+    conversationId,
+    signal: gracefullyStopAgentLoopSignal,
+  });
+}
+
+export async function interruptAgentLoop(
+  auth: Authenticator,
+  {
+    messageIds,
+    conversationId,
+  }: { messageIds: string[]; conversationId: string }
+): Promise<{ failedMessageIds: string[] }> {
+  return signalAgentLoops(auth, {
+    messageIds,
+    conversationId,
+    signal: interruptAgentLoopSignal,
+  });
 }
 
 export async function* getMessagesEvents(

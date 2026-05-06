@@ -33,7 +33,7 @@
  *             properties:
  *               action:
  *                 type: string
- *                 enum: [cancel, gracefully_stop]
+ *                 enum: [cancel, gracefully_stop, interrupt]
  *               messageIds:
  *                 type: array
  *                 items:
@@ -54,23 +54,23 @@
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { gracefullyStopAgentLoop } from "@app/lib/api/assistant/pubsub";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { cancelMessageGeneration } from "@app/lib/api/cancel";
+import { terminateMessageGeneration } from "@app/lib/api/cancel";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 export type PostMessageEventResponseBody = {
   success: true;
 };
-const PostMessageEventBodySchema = t.type({
-  action: t.union([t.literal("cancel"), t.literal("gracefully_stop")]),
-  messageIds: t.array(t.string),
+
+const PostMessageEventBodySchema = z.object({
+  action: z.enum(["cancel", "gracefully_stop", "interrupt"]),
+  messageIds: z.array(z.string()),
 });
 
 async function handler(
@@ -100,25 +100,25 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      const bodyValidation = PostMessageEventBodySchema.decode(req.body);
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
-
+      const bodyValidation = PostMessageEventBodySchema.safeParse(req.body);
+      if (!bodyValidation.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request body: ${pathError}`,
+            message: `Invalid request body: ${fromError(bodyValidation.error).toString()}`,
           },
         });
       }
-      const { action, messageIds } = bodyValidation.right;
+      const { action, messageIds } = bodyValidation.data;
 
       switch (action) {
         case "cancel":
-          await cancelMessageGeneration(auth, {
+        case "interrupt":
+          await terminateMessageGeneration(auth, {
             messageIds,
             conversationId,
+            action,
           });
           break;
         case "gracefully_stop":

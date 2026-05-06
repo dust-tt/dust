@@ -1,19 +1,24 @@
 import { updateAgentMessageWithFinalStatus } from "@app/lib/api/assistant/conversation";
 import { batchRenderAgentMessages } from "@app/lib/api/assistant/messages";
-import { cancelMessageGenerationEvent } from "@app/lib/api/assistant/pubsub";
+import {
+  cancelAgentLoop,
+  interruptAgentLoop,
+} from "@app/lib/api/assistant/pubsub";
 import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streaming/events";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 
-export async function cancelMessageGeneration(
+export async function terminateMessageGeneration(
   auth: Authenticator,
   {
     messageIds,
     conversationId,
+    action,
   }: {
     messageIds: string[];
     conversationId: string;
+    action: "cancel" | "interrupt";
   }
 ): Promise<void> {
   const conversationRes =
@@ -25,14 +30,17 @@ export async function cancelMessageGeneration(
   if (conversationRes.isErr()) {
     logger.warn(
       { conversationId, error: conversationRes.error },
-      "cancelMessageGeneration: conversation not found, skipping fallback"
+      "terminateMessageGeneration: conversation not found, skipping"
     );
     return;
   }
 
   const conversation = conversationRes.value;
+  const status = action === "interrupt" ? "interrupted" : "cancelled";
+  const signalFn =
+    action === "interrupt" ? interruptAgentLoop : cancelAgentLoop;
 
-  const { failedMessageIds } = await cancelMessageGenerationEvent(auth, {
+  const { failedMessageIds } = await signalFn(auth, {
     messageIds,
     conversationId,
   });
@@ -41,6 +49,8 @@ export async function cancelMessageGeneration(
     return;
   }
 
+  // Fallback for messages whose workflow couldn't be signalled: mark them directly
+  // so they don't stay stuck in "created" state.
   const messageRows = await ConversationResource.getMessageByIds(
     auth,
     conversation,
@@ -52,7 +62,7 @@ export async function cancelMessageGeneration(
     if (!foundMessageIds.has(messageId)) {
       logger.warn(
         { messageId, conversationId },
-        "cancelMessageGeneration: agent message not found for failed signal, skipping fallback"
+        "terminateMessageGeneration: agent message not found for failed signal, skipping fallback"
       );
     }
   }
@@ -68,7 +78,7 @@ export async function cancelMessageGeneration(
   if (agentMessagesRes.isErr()) {
     logger.error(
       { conversationId, error: agentMessagesRes.error },
-      "cancelMessageGeneration: failed to render agent messages"
+      "terminateMessageGeneration: failed to render agent messages"
     );
     return;
   }
@@ -81,7 +91,7 @@ export async function cancelMessageGeneration(
     await updateAgentMessageWithFinalStatus(auth, {
       conversation,
       agentMessage,
-      status: "cancelled",
+      status,
     });
 
     await publishConversationRelatedEvent({
@@ -90,6 +100,7 @@ export async function cancelMessageGeneration(
         created: Date.now(),
         configurationId: agentMessage.configuration.sId,
         messageId: agentMessage.sId,
+        status,
       },
       conversationId: conversation.sId,
       step: agentMessage.contents.reduce((max, c) => Math.max(max, c.step), 0),

@@ -114,6 +114,7 @@ import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { CompactionSourceConversation } from "@app/types/assistant/compaction";
 import type {
   AgenticMessageData,
+  AgentMessageStatus,
   AgentMessageType,
   AgentMessageTypeWithoutMentions,
   CitationType,
@@ -2961,12 +2962,12 @@ export async function updateAgentMessageWithFinalStatus(
   }: {
     conversation: ConversationWithoutContentType;
     agentMessage: AgentMessageType;
-    status: "succeeded" | "cancelled" | "failed" | "gracefully_stopped";
+    status: Exclude<AgentMessageStatus, "created">;
     error?: ToolErrorEvent["error"];
   }
 ): Promise<{
   completedTs: number;
-  status: "succeeded" | "cancelled" | "failed" | "gracefully_stopped";
+  status: Exclude<AgentMessageStatus, "created">;
 }> {
   const completedAt = new Date();
   const owner = auth.getNonNullableWorkspace();
@@ -3068,8 +3069,8 @@ export async function updateAgentMessageWithFinalStatus(
 
     if (status === "cancelled") {
       // When the agent message is cancelled it means the user pushed the "stop" button so the
-      // intent is to interrupt all work. We promot user messages but don't trigger a new agent
-      // message.
+      // intent is to abort all work. "interrupted" is NOT included here: the user chose to
+      // redirect rather than stop, so pending messages continue processing.
       return {
         promotedUserMessages,
         promotedAuth,

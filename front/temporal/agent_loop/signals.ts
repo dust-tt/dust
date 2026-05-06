@@ -11,3 +11,9 @@ export const cancelAgentLoopSignal = defineSignal<[void]>(
 export const gracefullyStopAgentLoopSignal = defineSignal<[void]>(
   "gracefully_stop_agent_loop_signal"
 );
+
+// Signal to immediately cancel in-flight activities (like cancelAgentLoopSignal) but continue
+// processing any pending queued messages afterwards, unlike a full cancel.
+export const interruptAgentLoopSignal = defineSignal<[void]>(
+  "interrupt_agent_loop_signal"
+);
