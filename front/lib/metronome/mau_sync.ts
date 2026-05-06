@@ -324,15 +324,13 @@ export async function syncMauCount({
     workspace,
   });
 
-  const totalMau = Math.max(mauCount, 1);
-
   // Get subscriptions that need updating (works for both simple and tiered).
   const subscriptions =
     mauInfo.type === "simple" ? [mauInfo.subscription] : mauInfo.subscriptions;
-  const toUpdate = distributeMauAcrossTiers(totalMau, subscriptions);
+  const toUpdate = distributeMauAcrossTiers(mauCount, subscriptions);
 
   logger.info(
-    { workspaceId: workspace.sId, contractId, toUpdate, totalMau },
+    { workspaceId: workspace.sId, contractId, toUpdate, mauCount },
     "[Metronome] Updating MAU quantities"
   );
 
