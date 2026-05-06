@@ -9,16 +9,15 @@ import { apiError } from "@app/logger/withlogging";
 import { isAgentMessageType } from "@app/types/assistant/conversation";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { RetryMessageResponseType } from "@dust-tt/client";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
-export const PostRetryRequestBodySchema = t.union([
-  t.null,
-  t.undefined,
-  t.literal(""),
-  t.type({}),
+export const PostRetryRequestBodySchema = z.union([
+  z.null(),
+  z.undefined(),
+  z.literal(""),
+  z.object({}),
 ]);
 
 /**
@@ -100,16 +99,14 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      const bodyValidation = PostRetryRequestBodySchema.decode(req.body);
+      const bodyValidation = PostRetryRequestBodySchema.safeParse(req.body);
 
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
-
+      if (!bodyValidation.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request body: ${pathError}`,
+            message: `Invalid request body: ${fromError(bodyValidation.error).toString()}`,
           },
         });
       }
