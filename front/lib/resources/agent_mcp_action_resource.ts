@@ -1298,13 +1298,20 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       where: {
         workspaceId: owner.id,
         agentMessageId,
-        status: "blocked_validation_required", // Only blocked validation required sandbox executions are surfaced to the FE.
+        status: { [Op.in]: TOOL_EXECUTION_BLOCKED_STATUSES },
       },
       order: [["createdAt", "ASC"]],
     });
 
     const result: BlockedToolExecution[] = [];
     for (const execution of blockedExecutions) {
+      // Sandbox tool executions can only ever be in `blocked_validation_required`
+      // today: the other blocked shapes (OAuth, file auth, user question, child
+      // action) don't apply to them.
+      assert(
+        execution.status === "blocked_validation_required",
+        `Unexpected sandbox tool execution status: ${execution.status}`
+      );
       result.push({
         messageId,
         userId,

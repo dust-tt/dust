@@ -583,10 +583,7 @@ export const createAgentMessages = async (
   return { agentMessages, richMentions };
 };
 
-export async function getUserMessageIdFromMessageId(
-  auth: Authenticator,
-  { messageId }: { messageId: string }
-): Promise<{
+export type UserMessageInfoForAgentMessage = {
   agentMessageId: string;
   agentMessageVersion: number;
   userMessageId: string;
@@ -594,7 +591,12 @@ export async function getUserMessageIdFromMessageId(
   userMessageUserId: number | null;
   userMessageOrigin: UserMessageOrigin;
   branchId: string | null;
-}> {
+};
+
+export async function getUserMessageIdFromMessageId(
+  auth: Authenticator,
+  { messageId }: { messageId: string }
+): Promise<UserMessageInfoForAgentMessage> {
   // Query 1: Get the message and its parentId.
   const agentMessage = await MessageModel.findOne({
     where: {

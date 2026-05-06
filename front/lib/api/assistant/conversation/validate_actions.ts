@@ -10,6 +10,7 @@ import {
   extractArgRequiringApprovalValues,
   setUserAlwaysApprovedTool,
 } from "@app/lib/actions/tool_status";
+import type { UserMessageInfoForAgentMessage } from "@app/lib/api/assistant/conversation/messages";
 import { getUserMessageIdFromMessageId } from "@app/lib/api/assistant/conversation/messages";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
@@ -94,10 +95,6 @@ async function handleAlwaysApproved(
   }
 }
 
-type UserMessageInfo = Awaited<
-  ReturnType<typeof getUserMessageIdFromMessageId>
->;
-
 export async function validateAction(
   auth: Authenticator,
   conversation: ConversationResource,
@@ -167,7 +164,7 @@ async function handleMCPAction(
     actionId: string;
     approvalState: ActionApprovalStateType;
     messageId: string;
-    userMessageInfo: UserMessageInfo;
+    userMessageInfo: UserMessageInfoForAgentMessage;
   }
 ): Promise<Result<void, DustError>> {
   const owner = auth.getNonNullableWorkspace();
