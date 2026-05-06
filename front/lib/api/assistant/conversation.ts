@@ -1,5 +1,5 @@
 // biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
-
+import { checkProgrammaticUsageLimits } from "@app/lib/api/programmatic_usage/tracking";
 import type { LightMCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { StepContext } from "@app/lib/actions/types";
 import {
@@ -2377,7 +2377,11 @@ export async function softDeleteAgentMessage(
 
 interface MessageLimit {
   isLimitReached: boolean;
-  limitType: "rate_limit_error" | "plan_message_limit_exceeded" | null;
+  limitType:
+    | "rate_limit_error"
+    | "plan_message_limit_exceeded"
+    | "credits_exhausted"
+    | null;
 }
 
 async function checkMessagesLimit(
@@ -2611,7 +2615,22 @@ async function isMessagesLimitReached(
   }
 
   if (isProgrammaticUsage(auth, { userMessageOrigin: context.origin })) {
-    return checkProgrammaticUsageRateLimit(auth);
+    const programmaticUsageRateLimit =
+      await checkProgrammaticUsageRateLimit(auth);
+    if (programmaticUsageRateLimit.isLimitReached) {
+      return programmaticUsageRateLimit;
+    }
+    const limitsResult = await checkProgrammaticUsageLimits(auth);
+    if (limitsResult.isErr()) {
+      return {
+        isLimitReached: true,
+        limitType: "credits_exhausted",
+      };
+    }
+    return {
+      isLimitReached: false,
+      limitType: null,
+    };
   }
 
   // Checking rate limit
