@@ -57,7 +57,7 @@ async function removeDuplicatedCredits(
   // Group by (subtype, startDate, expirationDate).
   const groups = new Map<string, typeof renewalCredits>();
   for (const credit of renewalCredits) {
-    const key = `${credit.startDate!.toISOString().split("T")[0]}:${credit.expirationDate!.toISOString().split("T")[0]}`;
+    const key = `${credit.startDate!.toISOString().split("T")[0]}`;
     const group = groups.get(key) ?? [];
     group.push(credit);
     groups.set(key, group);
@@ -85,8 +85,22 @@ async function removeDuplicatedCredits(
 
     const contractsResponse = await client.v2.contracts.list({
       customer_id: metronomeCustomerId,
-      covering_date: representativeStartDate.toISOString(),
+      covering_date: new Date().toISOString(),
     });
+    const contracts = contractsResponse.data;
+    if (contracts.length > 1) {
+      logger.warn(
+        {
+          workspaceId: workspace.sId,
+          groupKey,
+          metronomeCustomerId,
+          contractCount: contracts.length,
+          contractIds: contracts.map((c) => c.id),
+        },
+        "[Remove Duplicates] Multiple active Metronome contracts for one customer (should not happen), skipping group"
+      );
+      continue;
+    }
     const contract = contractsResponse.data[0];
 
     if (!contract) {
