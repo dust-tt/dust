@@ -19,7 +19,7 @@ import {
   EmbeddedCheckoutProvider,
 } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 // Lazily initialised at module level so Stripe.js is loaded only when the embedded
 // checkout is actually rendered, and never re-loaded on re-renders.
@@ -52,9 +52,6 @@ export function CheckoutPage() {
 
   const [clientSecret, setClientSecret] = useState<string | null>(null);
 
-  // Track whether the initial session has been requested to avoid duplicate calls.
-  const sessionInitialised = useRef(false);
-
   const initSession = useCallback(
     async (couponCodeArg?: string) => {
       setClientSecret(null);
@@ -81,14 +78,9 @@ export function CheckoutPage() {
   );
 
   // On mount, create an initial checkout session.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional once-on-mount
   useEffect(() => {
-    if (sessionInitialised.current) {
-      return;
-    }
-    sessionInitialised.current = true;
     void initSession();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [initSession]);
 
   // Full-page spinner only on initial load; coupon re-creation keeps the left pane visible.
   const isInitialLoading = (isSeatsCountLoading || isCreating) && !clientSecret;
