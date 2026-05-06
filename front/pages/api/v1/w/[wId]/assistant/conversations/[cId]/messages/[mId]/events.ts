@@ -2,6 +2,7 @@
 // via middleware. The /api/sse/ prefix allows the ingress to route SSE traffic to front-sse pods.
 
 import { isRunAgentQueryProgressOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import type { ActionGeneratedDBFileType } from "@app/lib/actions/types";
 import { getConversationMessageType } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { getMessagesEvents } from "@app/lib/api/assistant/pubsub";
@@ -199,6 +200,12 @@ async function handler(
             eventId: event.eventId,
             data: {
               ...event.data,
+              action: {
+                ...event.data.action,
+                generatedFiles: event.data.action.generatedFiles.filter(
+                  (f): f is ActionGeneratedDBFileType => f.fileId !== null
+                ),
+              },
               notification: {
                 ...event.data.notification,
                 // For backward compatibility, we need to move the _meta.data to the root level.
@@ -206,6 +213,22 @@ async function handler(
                   label,
                   output,
                 },
+              },
+            },
+          };
+        } else if (
+          event.data.type === "agent_action_success" ||
+          event.data.type === "tool_params"
+        ) {
+          publicEvent = {
+            eventId: event.eventId,
+            data: {
+              ...event.data,
+              action: {
+                ...event.data.action,
+                generatedFiles: event.data.action.generatedFiles.filter(
+                  (f): f is ActionGeneratedDBFileType => f.fileId !== null
+                ),
               },
             },
           };

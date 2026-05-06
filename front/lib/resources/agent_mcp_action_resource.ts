@@ -4,6 +4,7 @@ import {
   getInternalMCPServerNameFromSId,
   type InternalMCPServerNameType,
 } from "@app/lib/actions/mcp_internal_actions/constants";
+import { isToolGeneratedFilePath } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { hideFileFromActionOutput } from "@app/lib/actions/mcp_utils";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import {
@@ -987,25 +988,36 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
               outputItems.map((o) => {
                 const file = o.file;
 
-                if (!file) {
-                  return null;
+                if (file) {
+                  return {
+                    fileId: FileResource.modelIdToSId({
+                      id: file.id,
+                      workspaceId: file.workspaceId,
+                    }),
+                    contentType: file.contentType,
+                    title: file.fileName,
+                    snippet: file.snippet,
+                    createdAt: file.createdAt.getTime(),
+                    updatedAt: file.updatedAt.getTime(),
+                    isInProjectContext: file.useCase === "project_context",
+                    hidden: file.useCaseMetadata?.hideFromUser ?? false,
+                    skipDataSourceIndexing:
+                      file.useCaseMetadata?.skipDataSourceIndexing ?? false,
+                  };
                 }
 
-                return {
-                  fileId: FileResource.modelIdToSId({
-                    id: file.id,
-                    workspaceId: file.workspaceId,
-                  }),
-                  contentType: file.contentType,
-                  title: file.fileName,
-                  snippet: file.snippet,
-                  createdAt: file.createdAt.getTime(),
-                  updatedAt: file.updatedAt.getTime(),
-                  isInProjectContext: file.useCase === "project_context",
-                  hidden: file.useCaseMetadata?.hideFromUser ?? false,
-                  skipDataSourceIndexing:
-                    file.useCaseMetadata?.skipDataSourceIndexing ?? false,
-                };
+                if (isToolGeneratedFilePath(o.content)) {
+                  return {
+                    fileId: null,
+                    filePath: o.content.resource.path,
+                    title: o.content.resource.title,
+                    contentType: o.content.resource.contentType,
+                    snippet: null,
+                    hidden: false,
+                  };
+                }
+
+                return null;
               })
             ),
           };

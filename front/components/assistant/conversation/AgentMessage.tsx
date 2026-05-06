@@ -1300,21 +1300,22 @@ function AgentMessageContent({
   const filesFromMessage = agentMessage.generatedFiles.filter((f) => !f.hidden);
 
   // Combine both sources, preferring actions (more up-to-date during streaming).
-  // Dedupe by fileId.
-  const seenFileIds = new Set<string>();
+  // Dedupe by fileId (file resource) or filePath (file path).
+  const seenFileKeys = new Set<string>();
   const allGeneratedFiles = [...filesFromActions, ...filesFromMessage].filter(
     (file) => {
-      if (seenFileIds.has(file.fileId)) {
+      const key = file.fileId ?? file.filePath;
+      if (!key || seenFileKeys.has(key)) {
         return false;
       }
-      seenFileIds.add(file.fileId);
+      seenFileKeys.add(key);
       return true;
     }
   );
 
   const completedImages = allGeneratedFiles
     .filter((file) => isSupportedImageContentType(file.contentType))
-    .filter((file) => !referencedFileIds.has(file.fileId));
+    .filter((file) => file.fileId && !referencedFileIds.has(file.fileId));
 
   const generatedFiles = filesFromMessage.filter(
     (file) =>
@@ -1373,15 +1374,22 @@ function AgentMessageContent({
         {generatedFiles.length > 0 && (
           <div className="mt-2 grid grid-cols-5 gap-1">
             {getCitations({
-              activeReferences: generatedFiles.map((file) => ({
-                index: -1,
-                document: {
-                  fileId: file.fileId,
-                  contentType: file.contentType,
-                  href: `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${file.fileId}`,
-                  title: file.title,
-                },
-              })),
+              activeReferences: generatedFiles.map((file) => {
+                const href = file.fileId
+                  ? `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${file.fileId}`
+                  : file.filePath
+                    ? `${config.getClientFacingUrl()}/api/w/${owner.sId}/assistant/conversations/${conversationId}/files/${file.filePath.replace("conversation/", "")}`
+                    : undefined;
+                return {
+                  index: -1,
+                  document: {
+                    fileId: file.fileId ?? undefined,
+                    contentType: file.contentType,
+                    href,
+                    title: file.title,
+                  },
+                };
+              }),
               owner,
               conversationId,
             })}
