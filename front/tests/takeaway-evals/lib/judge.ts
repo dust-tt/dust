@@ -12,8 +12,7 @@ import {
 const JUDGE_PROMPT = `You are evaluating the quality of a document takeaway extraction system's output.
 
 The system receives a document and a list of project members, and extracts three categories of
-takeaways: action items (concrete tasks someone committed to), notable facts (significant
-information worth remembering), and key decisions (choices or resolutions explicitly made).
+takeaways: action items (concrete tasks someone committed to).
 
 ## Scoring Rubric
 
@@ -55,15 +54,8 @@ IMPORTANT: You must include both REASONING: and SCORE: labels. The score MUST ap
    - Vague aspirational items → should NOT be extracted
    - Correct assignee when identifiable from project members?
    - Correct status (open vs done)?
-2. **Notable facts**: Were significant pieces of information captured?
-   - Key constraints, context, or updates → should be extracted
-   - Trivial or widely known information → should NOT be extracted
-3. **Key decisions**: Were explicit choices or resolutions identified?
-   - Finalized decisions → status "decided"
-   - Open deliberations → status "open"
-   - Minor preferences → should NOT be extracted
-4. **No hallucinations**: Are all extracted items grounded in the document?
-5. **User ID correctness**: Are assignees and relevant users from the project members list?
+2. **No hallucinations**: Are all extracted items grounded in the document?
+3. **User ID correctness**: Are assignees and relevant users from the project members list?
 
 Provide your evaluation using the REASONING: and SCORE: format described above.`;
 

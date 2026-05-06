@@ -30,9 +30,6 @@
 // Category mapping:
 //   actionItems  (open)    → "to_do",   status: "todo"
 //   actionItems  (done)    → "to_do",   status: "done"
-//   keyDecisions (open)    → "to_know", status: "todo"
-//   keyDecisions (decided) → "to_know", status: "todo"
-//   notableFacts           → "to_know", status: "todo"
 
 import { getSmallWhitelistedModel } from "@app/lib/assistant";
 import { Authenticator } from "@app/lib/auth";

@@ -144,8 +144,6 @@ async function buildPromptProjectDescription(
 
 export type ExtractedTakeawayStats = {
   actionItems: number;
-  keyDecisions: number;
-  notableFacts: number;
 };
 
 // Returns counts of extracted takeaways, or null if extraction failed.
@@ -191,7 +189,7 @@ export async function extractDocumentTakeaways(
     projectDescription,
     buildPromptForSourceType(document.type),
     buildPromptActionItems(previousActionItems),
-    "You MUST call the tool. Always call it, even if there are no action items, notable facts, or key decisions (use empty arrays).",
+    "You MUST call the tool. Always call it, even if there are no action items (use empty arrays).",
   ]
     .filter(Boolean)
     .join("\n\n");
@@ -233,15 +231,9 @@ export async function extractDocumentTakeaways(
 
   const stats: ExtractedTakeawayStats = {
     actionItems: actionItems.length,
-    keyDecisions: 0,
-    notableFacts: 0,
   };
 
-  if (
-    stats.actionItems === 0 &&
-    stats.notableFacts === 0 &&
-    stats.keyDecisions === 0
-  ) {
+  if (stats.actionItems === 0) {
     localLogger.info("Document takeaway: no takeaways extracted");
     return stats;
   }

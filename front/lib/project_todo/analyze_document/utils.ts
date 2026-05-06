@@ -9,8 +9,7 @@ import zodToJsonSchema from "zod-to-json-schema";
 export function buildSpec(): AgentActionSpecification {
   return {
     name: EXTRACT_DOCUMENT_TAKEAWAYS_FUNCTION_NAME,
-    description:
-      "Extract action items, notable facts, key decisions, and the topic from the document.",
+    description: "Extract action items, and the topic from the document.",
     inputSchema: zodToJsonSchema(
       ExtractTakeawaysInputSchema
     ) as unknown as JSONSchema7,

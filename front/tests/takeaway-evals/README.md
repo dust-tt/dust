@@ -1,8 +1,7 @@
 # Document Takeaway Extraction Evaluation Tests
 
 End-to-end eval suite for the document takeaway extraction pipeline. Tests whether
-`extractDocumentTakeaways` correctly identifies action items, notable facts, and key decisions
-from various document types.
+`extractDocumentTakeaways` correctly identifies action items from various document types.
 
 Each test case checks two things:
 
@@ -46,11 +45,12 @@ involved.
 Assembles the prompt exactly as `extractDocumentTakeaways` does (using `buildPromptForSourceType`,
 `buildPromptActionItems`, etc.), but replaces the DB-dependent `buildPromptProjectMembers` with
 a mock that uses test data. Calls the real `runMultiActionsAgent` LLM pipeline and post-processes
-with the real `buildActionItems`, `buildNotableFacts`, and `buildKeyDecisions` functions.
+with the real `buildActionItems` functions.
 
 **Layer 3 — Scoring** (`lib/assertions.ts` + `lib/judge.ts`)
 
 Two independent scoring mechanisms:
+
 - Deterministic assertions: `shouldExtractActionItem`, `shouldNotExtractActionItem`,
   `shouldExtractNotableFact`, `shouldExtractKeyDecision`, `minActionItems`, `maxActionItems`,
   `shouldPreserveSId`, `shouldNotAssignTo` — structural checks on the extraction result.
@@ -71,12 +71,12 @@ member data in the same way. The LLM call and post-processing are fully real.
 
 ### Scenario types
 
-| Suite | Scenarios | What they test |
-|---|---|---|
-| `action-items` | 5 | Task extraction, agent filtering, done transitions, invalid assignees, vague items |
-| `notable-facts` | 2 | Constraint extraction, knowledge document facts |
-| `key-decisions` | 3 | Decided vs open status, minor preference exclusion |
-| `mixed-extraction` | 3 | Multi-category extraction, empty documents, re-analysis carry-forward |
+| Suite              | Scenarios | What they test                                                                     |
+|--------------------|-----------|------------------------------------------------------------------------------------|
+| `action-items`     | 5         | Task extraction, agent filtering, done transitions, invalid assignees, vague items |
+| `notable-facts`    | 2         | Constraint extraction, knowledge document facts                                    |
+| `key-decisions`    | 3         | Decided vs open status, minor preference exclusion                                 |
+| `mixed-extraction` | 3         | Multi-category extraction, empty documents, re-analysis carry-forward              |
 
 ## Quick start
 
@@ -90,16 +90,16 @@ NODE_ENV=test \
 
 ## Environment variables
 
-| Variable | Default | Description |
-|---|---|---|
-| `RUN_TAKEAWAY_EVAL` | `false` | Set to `true` to enable the tests (skipped otherwise). |
-| `TAKEAWAY_MODEL_ID` | `claude-haiku-4-5-20251001` | Model used for the extraction LLM calls. |
-| `JUDGE_RUNS` | `3` | Number of judge evaluations per test (majority vote). |
-| `PASS_THRESHOLD` | `2` | Minimum judge score (0–3) required to pass. |
-| `FILTER_SCENARIO` | _(all)_ | Run only the test with the given scenario ID. |
-| `VERBOSE` | `false` | Set to `true` to log extractions and judge responses. |
-| `DUST_MANAGED_ANTHROPIC_API_KEY` | — | Anthropic API key (required for Claude models). |
-| `DUST_MANAGED_OPENAI_API_KEY` | — | OpenAI API key (required for GPT judge model). |
+| Variable                         | Default                     | Description                                            |
+|----------------------------------|-----------------------------|--------------------------------------------------------|
+| `RUN_TAKEAWAY_EVAL`              | `false`                     | Set to `true` to enable the tests (skipped otherwise). |
+| `TAKEAWAY_MODEL_ID`              | `claude-haiku-4-5-20251001` | Model used for the extraction LLM calls.               |
+| `JUDGE_RUNS`                     | `3`                         | Number of judge evaluations per test (majority vote).  |
+| `PASS_THRESHOLD`                 | `2`                         | Minimum judge score (0–3) required to pass.            |
+| `FILTER_SCENARIO`                | _(all)_                     | Run only the test with the given scenario ID.          |
+| `VERBOSE`                        | `false`                     | Set to `true` to log extractions and judge responses.  |
+| `DUST_MANAGED_ANTHROPIC_API_KEY` | —                           | Anthropic API key (required for Claude models).        |
+| `DUST_MANAGED_OPENAI_API_KEY`    | —                           | OpenAI API key (required for GPT judge model).         |
 
 ## Adding a new scenario
 

@@ -83,10 +83,7 @@ export class TakeawaysResource extends BaseResource<TakeawaysModel> {
 
   static async makeNew(
     auth: Authenticator,
-    blob: Omit<
-      CreationAttributes<TakeawaysModel>,
-      "workspaceId" | "notableFacts" | "keyDecisions"
-    >,
+    blob: Omit<CreationAttributes<TakeawaysModel>, "workspaceId">,
     transaction?: Transaction
   ): Promise<TakeawaysResource> {
     return withTransaction(async (t) => {
@@ -94,8 +91,6 @@ export class TakeawaysResource extends BaseResource<TakeawaysModel> {
         {
           ...blob,
           workspaceId: auth.getNonNullableWorkspace().id,
-          notableFacts: [],
-          keyDecisions: [],
         },
         { transaction: t }
       );
@@ -142,8 +137,6 @@ export class TakeawaysResource extends BaseResource<TakeawaysModel> {
       version: existingCount + 1,
       spaceId: this.spaceId,
       actionItems: this.actionItems,
-      notableFacts: this.notableFacts,
-      keyDecisions: this.keyDecisions,
     };
     await TakeawaysVersionModel.create(versionData, { transaction });
   }

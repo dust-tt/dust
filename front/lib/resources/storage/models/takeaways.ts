@@ -34,18 +34,6 @@ const TAKEAWAY_MODEL_ATTRIBUTES = {
     comment:
       "Detected action items with assignee, status, and source message rank.",
   },
-  notableFacts: {
-    type: DataTypes.JSONB,
-    allowNull: false,
-    defaultValue: [],
-    comment: "Notable facts extracted from the conversation.",
-  },
-  keyDecisions: {
-    type: DataTypes.JSONB,
-    allowNull: false,
-    defaultValue: [],
-    comment: "Key decisions made during the conversation.",
-  },
 } as const;
 
 // ── Takeaways (main) ──────────────────────────────────────────────────────────
@@ -62,8 +50,6 @@ export class TakeawaysModel extends WorkspaceAwareModel<TakeawaysModel> {
 
   // Rolling state — full replacement on each butler run.
   declare actionItems: TodoVersionedActionItem[];
-  declare notableFacts: [];
-  declare keyDecisions: [];
 }
 
 TakeawaysModel.init(
