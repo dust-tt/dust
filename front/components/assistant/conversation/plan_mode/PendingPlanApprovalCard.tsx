@@ -3,6 +3,7 @@ import { useConversationSidePanelContext } from "@app/components/assistant/conve
 import {
   extractPlanTitle,
   extractTaskList,
+  PlanTaskBullet,
 } from "@app/components/assistant/conversation/plan_mode/utils";
 import { usePlanFile } from "@app/hooks/conversations/usePlanFile";
 import { useValidateAction } from "@app/hooks/useValidateAction";
@@ -117,18 +118,10 @@ export function PendingPlanApprovalCard({
         />
       </div>
       {visibleTasks.length > 0 && (
-        <ol className="copy-sm mt-6 flex flex-col gap-5 font-medium text-primary dark:text-primary-night">
+        <ul className="copy-sm mt-6 flex flex-col gap-5 font-medium text-primary dark:text-primary-night">
           {visibleTasks.map((task, idx) => (
             <li key={idx} className="flex items-start gap-2 py-2">
-              <span
-                aria-hidden
-                className={cn(
-                  // mt-0.5 vertically centers the 16px circle on the 20px first
-                  // line of `copy-sm`; without it the circle would top-align.
-                  "mt-0.5 h-4 w-4 shrink-0 rounded-full border-2",
-                  "border-faint dark:border-faint-night"
-                )}
-              />
+              <PlanTaskBullet />
               <span>{task}</span>
             </li>
           ))}
@@ -137,7 +130,7 @@ export function PendingPlanApprovalCard({
               +{hiddenTaskCount} more
             </li>
           )}
-        </ol>
+        </ul>
       )}
       {errorMessage && (
         <div className="copy-sm mt-3 text-warning-800 dark:text-warning-800-night">
