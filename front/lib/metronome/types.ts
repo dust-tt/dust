@@ -8,6 +8,7 @@
 
 import {
   getCreditTypeProgrammaticUsdId,
+  getProductExcessCreditsId,
   getProductFreeCreditId,
 } from "@app/lib/metronome/constants";
 import type { Commit, Credit } from "@metronome/sdk/resources/shared";
@@ -50,25 +51,24 @@ export const FREE_MONTHLY_CREDIT_NAME = "Free Monthly Credits";
 export const FREE_ANNUAL_CREDIT_NAME = "Free Annual Credits";
 // The "excess" recurring credit absorbs over-consumption (priority 100,
 // granted at the start of each billing period). Defined in
-// scripts/metronome_setup.ts -> getFreeExcessRecurringCredits().
-export const FREE_EXCESS_CREDIT_NAME = "Free Excess Credits";
+// scripts/metronome_setup.ts -> getFreeExcessRecurringCredits(). Has its own
+// FIXED product so it surfaces as a distinct invoice line item.
+export const EXCESS_CREDIT_NAME = "Excess Credits";
 
 // Excess credits are an internal accounting mechanism — they should not be
-// surfaced to end users or in the Poke UI.
+// surfaced to end users or in the Poke UI. Discriminated by product ID since
+// the excess recurring credit has its own dedicated FIXED product.
 export function isMetronomeExcessCredit(entry: MetronomeBalance): boolean {
-  return entry.name === FREE_EXCESS_CREDIT_NAME;
+  return entry.product.id === getProductExcessCreditsId();
 }
 
 // True for the recurring free credits granted to programmatic-usage workspaces
-// (monthly or annual cadence). The "excess" credit is excluded — it is a
-// separate internal accounting mechanism. Checks the full identifying tuple
-// (name, priority, product, credit type) so callers don't have to.
+// (monthly or annual cadence). The "excess" credit is excluded — it has its
+// own product. Checks product + priority + credit type so callers don't have to.
 export function isMetronomeFreeCredit(entry: MetronomeBalance): boolean {
   return (
-    (entry.name === FREE_MONTHLY_CREDIT_NAME ||
-      entry.name === FREE_ANNUAL_CREDIT_NAME) &&
-    entry.priority === 1 &&
     entry.product.id === getProductFreeCreditId() &&
+    entry.priority === 1 &&
     entry.access_schedule?.credit_type?.id === getCreditTypeProgrammaticUsdId()
   );
 }
