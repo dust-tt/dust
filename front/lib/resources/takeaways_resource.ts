@@ -1,6 +1,5 @@
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
-import { ProjectTodoTakeawaySourcesModel } from "@app/lib/resources/storage/models/project_todo_takeaway_sources";
 import {
   TakeawaySourcesModel,
   TakeawaysModel,
@@ -162,8 +161,7 @@ export class TakeawaysResource extends BaseResource<TakeawaysModel> {
 
   // Deletes all takeaway rows for a specific space, along with their source
   // entries, version snapshots, and the join-table rows that reference those
-  // sources. Must be called before deleting project todos for the same space
-  // because ProjectTodoTakeawaySourcesModel holds RESTRICT FKs on both sides.
+  // sources.
   static async deleteAllForSpace(
     auth: Authenticator,
     { spaceModelId }: { spaceModelId: ModelId }
@@ -179,22 +177,6 @@ export class TakeawaysResource extends BaseResource<TakeawaysModel> {
     ).map((r) => r.id);
 
     if (takeawayIds.length > 0) {
-      const takeawaySourceIds = (
-        await TakeawaySourcesModel.findAll({
-          attributes: ["id"],
-          where: { workspaceId, takeawaysId: { [Op.in]: takeawayIds } },
-        })
-      ).map((r) => r.id);
-
-      if (takeawaySourceIds.length > 0) {
-        await ProjectTodoTakeawaySourcesModel.destroy({
-          where: {
-            workspaceId,
-            takeawaySourceId: { [Op.in]: takeawaySourceIds },
-          },
-        });
-      }
-
       await TakeawaySourcesModel.destroy({
         where: { workspaceId, takeawaysId: { [Op.in]: takeawayIds } },
       });
@@ -214,20 +196,6 @@ export class TakeawaysResource extends BaseResource<TakeawaysModel> {
   static async deleteAllForWorkspace(auth: Authenticator): Promise<void> {
     const workspaceId = auth.getNonNullableWorkspace().id;
 
-    // Delete join-table rows first to avoid RESTRICT FK violations.
-    const takeawaySourceIds = (
-      await TakeawaySourcesModel.findAll({
-        attributes: ["id"],
-        where: { workspaceId },
-      })
-    ).map((r) => r.id);
-
-    if (takeawaySourceIds.length > 0) {
-      await ProjectTodoTakeawaySourcesModel.destroy({
-        where: { workspaceId, takeawaySourceId: takeawaySourceIds },
-      });
-    }
-
     await TakeawaySourcesModel.destroy({ where: { workspaceId } });
     await TakeawaysVersionModel.destroy({ where: { workspaceId } });
     await TakeawaysModel.destroy({ where: { workspaceId } });
@@ -238,24 +206,6 @@ export class TakeawaysResource extends BaseResource<TakeawaysModel> {
     { transaction }: { transaction?: Transaction }
   ): Promise<Result<undefined, Error>> {
     const workspaceId = auth.getNonNullableWorkspace().id;
-
-    const takeawaySourceIds = (
-      await TakeawaySourcesModel.findAll({
-        attributes: ["id"],
-        where: { workspaceId, takeawaysId: this.id },
-        transaction,
-      })
-    ).map((r) => r.id);
-
-    if (takeawaySourceIds.length > 0) {
-      await ProjectTodoTakeawaySourcesModel.destroy({
-        where: {
-          workspaceId,
-          takeawaySourceId: { [Op.in]: takeawaySourceIds },
-        },
-        transaction,
-      });
-    }
 
     await TakeawaySourcesModel.destroy({
       where: { workspaceId, takeawaysId: this.id },
