@@ -429,16 +429,28 @@ describe("pruneConflictingSkillEditSuggestions — agentFacingDescriptionEdit", 
     const skill = await SkillFactory.create(authenticator, {
       instructionsHtml: '<p data-block-id="block-1">Content.</p>',
     });
-    const older = await SkillSuggestionFactory.createEdit(authenticator, skill, {
-      suggestion: {
-        agentFacingDescriptionEdit: { content: "First proposed description." },
-      },
-    });
-    const newer = await SkillSuggestionFactory.createEdit(authenticator, skill, {
-      suggestion: {
-        agentFacingDescriptionEdit: { content: "Second proposed description." },
-      },
-    });
+    const older = await SkillSuggestionFactory.createEdit(
+      authenticator,
+      skill,
+      {
+        suggestion: {
+          agentFacingDescriptionEdit: {
+            content: "First proposed description.",
+          },
+        },
+      }
+    );
+    const newer = await SkillSuggestionFactory.createEdit(
+      authenticator,
+      skill,
+      {
+        suggestion: {
+          agentFacingDescriptionEdit: {
+            content: "Second proposed description.",
+          },
+        },
+      }
+    );
 
     await pruneConflictingSkillEditSuggestions(authenticator, skill, newer);
 
@@ -467,11 +479,15 @@ describe("pruneConflictingSkillEditSuggestions — agentFacingDescriptionEdit", 
         },
       }
     );
-    const newer = await SkillSuggestionFactory.createEdit(authenticator, skill, {
-      suggestion: {
-        agentFacingDescriptionEdit: { content: "New description." },
-      },
-    });
+    const newer = await SkillSuggestionFactory.createEdit(
+      authenticator,
+      skill,
+      {
+        suggestion: {
+          agentFacingDescriptionEdit: { content: "New description." },
+        },
+      }
+    );
 
     await pruneConflictingSkillEditSuggestions(authenticator, skill, newer);
 
@@ -495,11 +511,15 @@ describe("pruneConflictingSkillEditSuggestions — agentFacingDescriptionEdit", 
         },
       }
     );
-    const newer = await SkillSuggestionFactory.createEdit(authenticator, skill, {
-      suggestion: {
-        instructionEdits: [makeInstructionEdit("block-1")],
-      },
-    });
+    const newer = await SkillSuggestionFactory.createEdit(
+      authenticator,
+      skill,
+      {
+        suggestion: {
+          instructionEdits: [makeInstructionEdit("block-1")],
+        },
+      }
+    );
 
     await pruneConflictingSkillEditSuggestions(authenticator, skill, newer);
 
