@@ -1,4 +1,4 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { categorizeConversationRenderErrorMessage } from "@app/lib/api/assistant/errors";
@@ -43,7 +43,6 @@ export interface LlmConversationOptions
   extends LLMParametersWithoutConversation {
   newMessages: ModelMessageTypeMultiActionsWithoutContentFragment[];
   existingConversationId?: string;
-  agentConfigurationId?: string;
   title?: string;
   visibility?: ConversationVisibility;
   metadata?: ConversationMetadata;
@@ -327,20 +326,52 @@ export async function sendBatchCallToLlm(
       }))
     );
 
-    const agentConfiguration =
-      renderSkillsAsUserMessages && input.agentConfigurationId
-        ? await getAgentConfiguration(auth, {
-            agentId: input.agentConfigurationId,
-            variant: "full",
-          })
-        : null;
+    let enabledSkills: Awaited<
+      ReturnType<typeof SkillResource.listForAgentLoop>
+    >["enabledSkills"] = [];
+    let equippedSkills: SkillResource[] = [];
 
-    const { enabledSkills, equippedSkills } = agentConfiguration
-      ? await SkillResource.listForAgentLoop(auth, {
-          agentConfiguration,
-          conversation: conversationRes.value,
-        })
-      : { enabledSkills: [], equippedSkills: [] };
+    if (renderSkillsAsUserMessages) {
+      const { agentConfigurationIds } =
+        await conversationResource.fetchAgentConfigurationAndContentFragmentIds(
+          auth
+        );
+      const agentConfigurations = await getAgentConfigurations(auth, {
+        agentIds: agentConfigurationIds,
+        variant: "full",
+      });
+      const skillSets = await Promise.all(
+        agentConfigurations.map((agentConfiguration) =>
+          SkillResource.listForAgentLoop(auth, {
+            agentConfiguration,
+            conversation: conversationRes.value,
+          })
+        )
+      );
+
+      const enabledSkillsById = new Map<
+        string,
+        (typeof enabledSkills)[number]
+      >();
+      const equippedSkillsById = new Map<string, SkillResource>();
+
+      for (const skillSet of skillSets) {
+        for (const enabledSkill of skillSet.enabledSkills) {
+          enabledSkillsById.set(enabledSkill.sId, enabledSkill);
+        }
+        for (const equippedSkill of skillSet.equippedSkills) {
+          equippedSkillsById.set(equippedSkill.sId, equippedSkill);
+        }
+      }
+
+      enabledSkills = [...enabledSkillsById.values()].sort((a, b) =>
+        a.name.localeCompare(b.name)
+      );
+      equippedSkills = [...equippedSkillsById.values()].sort((a, b) =>
+        a.name.localeCompare(b.name)
+      );
+    }
+
     const leadingMessages = renderSkillsAsUserMessages
       ? removeNulls([renderEquippedSkillsUserMessage(equippedSkills)])
       : [];
@@ -348,7 +379,6 @@ export async function sendBatchCallToLlm(
     const modelConversationRes = await renderConversationForModel(auth, {
       conversation: conversationRes.value,
       model: modelConfig,
-      agentConfiguration: agentConfiguration ?? undefined,
       leadingMessages,
       enabledSkills,
       prompt: promptText,
