@@ -136,6 +136,13 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
       location,
       colorId,
       createConference = true,
+      transparency,
+      visibility,
+      reminders,
+      extendedProperties,
+      eventType,
+      focusTimeProperties,
+      outOfOfficeProperties,
     },
     { authInfo, agentLoopContext }
   ) => {
@@ -146,52 +153,35 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
     );
 
     try {
-      const event: {
-        summary: string;
-        description?: string;
-        start: { dateTime: string };
-        end: { dateTime: string };
-        attendees?: { email: string }[];
-        location?: string;
-        colorId?: string;
-        conferenceData?: {
-          createRequest: {
-            requestId: string;
-            conferenceSolutionKey: {
-              type: string;
-            };
-          };
-        };
-      } = {
-        summary,
-        description,
-        start,
-        end,
-      };
-      if (attendees) {
-        event.attendees = attendees.map((email: string) => ({ email }));
-      }
-      if (location) {
-        event.location = location;
-      }
-      if (colorId) {
-        event.colorId = colorId;
-      }
-      if (createConference) {
-        const requestId = `conference-${randomUUID()}`;
-        event.conferenceData = {
-          createRequest: {
-            requestId,
-            conferenceSolutionKey: {
-              type: "hangoutsMeet",
-            },
-          },
-        };
-      }
       const res = await calendar.events.insert({
         calendarId,
-        requestBody: event,
         conferenceDataVersion: 1,
+        requestBody: {
+          summary,
+          description,
+          start,
+          end,
+          ...(attendees && {
+            attendees: attendees.map((email) => ({ email })),
+          }),
+          ...(location && { location }),
+          ...(colorId && { colorId }),
+          ...(transparency && { transparency }),
+          ...(visibility && { visibility }),
+          ...(reminders && { reminders }),
+          ...(extendedProperties && { extendedProperties }),
+          ...(eventType && { eventType }),
+          ...(focusTimeProperties && { focusTimeProperties }),
+          ...(outOfOfficeProperties && { outOfOfficeProperties }),
+          ...(createConference && {
+            conferenceData: {
+              createRequest: {
+                requestId: `conference-${randomUUID()}`,
+                conferenceSolutionKey: { type: "hangoutsMeet" },
+              },
+            },
+          }),
+        },
       });
 
       const userTimezone = getUserTimezone(agentLoopContext);
@@ -230,6 +220,12 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
       location,
       colorId,
       createConference,
+      transparency,
+      visibility,
+      reminders,
+      extendedProperties,
+      focusTimeProperties,
+      outOfOfficeProperties,
     },
     { authInfo, agentLoopContext }
   ) => {
@@ -240,62 +236,35 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
     );
 
     try {
-      const event: {
-        summary?: string;
-        description?: string;
-        start?: { dateTime: string };
-        end?: { dateTime: string };
-        attendees?: { email: string }[];
-        location?: string;
-        colorId?: string;
-        conferenceData?: {
-          createRequest: {
-            requestId: string;
-            conferenceSolutionKey: {
-              type: string;
-            };
-          };
-        };
-      } = {};
-      if (summary) {
-        event.summary = summary;
-      }
-      if (description) {
-        event.description = description;
-      }
-      if (start) {
-        event.start = start;
-      }
-      if (end) {
-        event.end = end;
-      }
-      if (attendees) {
-        event.attendees = attendees.map((email: string) => ({ email }));
-      }
-      if (location) {
-        event.location = location;
-      }
-      if (colorId) {
-        event.colorId = colorId;
-      }
-      if (createConference !== undefined) {
-        if (createConference) {
-          const requestId = `conference-${randomUUID()}`;
-          event.conferenceData = {
-            createRequest: {
-              requestId,
-              conferenceSolutionKey: {
-                type: "hangoutsMeet",
-              },
-            },
-          };
-        }
-      }
       const res = await calendar.events.patch({
         calendarId,
         eventId,
-        requestBody: event,
         conferenceDataVersion: 1,
+        requestBody: {
+          ...(summary && { summary }),
+          ...(description && { description }),
+          ...(start && { start }),
+          ...(end && { end }),
+          ...(attendees && {
+            attendees: attendees.map((email) => ({ email })),
+          }),
+          ...(location && { location }),
+          ...(colorId && { colorId }),
+          ...(transparency && { transparency }),
+          ...(visibility && { visibility }),
+          ...(reminders && { reminders }),
+          ...(extendedProperties && { extendedProperties }),
+          ...(focusTimeProperties && { focusTimeProperties }),
+          ...(outOfOfficeProperties && { outOfOfficeProperties }),
+          ...(createConference && {
+            conferenceData: {
+              createRequest: {
+                requestId: `conference-${randomUUID()}`,
+                conferenceSolutionKey: { type: "hangoutsMeet" },
+              },
+            },
+          }),
+        },
       });
 
       const userTimezone = getUserTimezone(agentLoopContext);

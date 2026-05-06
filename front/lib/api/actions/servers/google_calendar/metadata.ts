@@ -4,6 +4,72 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
+const autoDeclineMode = z
+  .enum([
+    "declineNone",
+    "declineAllConflictingInvitations",
+    "declineOnlyNewConflictingInvitations",
+  ])
+  .optional();
+
+// Fields specific to eventType — grouped adjacent to eventType in both tools.
+const eventTypeSpecificFields = {
+  focusTimeProperties: z
+    .object({
+      autoDeclineMode,
+      chatStatus: z.enum(["available", "doNotDisturb"]).optional(),
+      declineMessage: z.string().max(500).optional(),
+    })
+    .optional()
+    .describe("Only applies when eventType is 'focusTime'."),
+  outOfOfficeProperties: z
+    .object({
+      autoDeclineMode,
+      declineMessage: z.string().max(500).optional(),
+    })
+    .optional()
+    .describe(
+      "Only applies when eventType is 'outOfOffice'. Controls auto-decline behavior for conflicting invitations."
+    ),
+};
+
+const sharedEventFields = {
+  transparency: z
+    .enum(["opaque", "transparent"])
+    .optional()
+    .describe(
+      "'transparent' = Free (won't block booking availability). Default 'opaque' = Busy."
+    ),
+  visibility: z
+    .enum(["default", "public", "private", "confidential"])
+    .optional()
+    .describe(
+      "'private' hides event details from other calendar viewers. Changing this on an existing event affects all viewers immediately."
+    ),
+  reminders: z
+    .object({
+      useDefault: z.boolean(),
+      overrides: z
+        .array(
+          z.object({
+            method: z.enum(["email", "popup"]),
+            minutes: z.number().int().min(0),
+          })
+        )
+        .optional(),
+    })
+    .optional()
+    .describe("Custom reminders. Set useDefault: false and provide overrides."),
+  extendedProperties: z
+    .object({
+      private: z.record(z.string(), z.string()).optional(),
+    })
+    .optional()
+    .describe(
+      "Private key-value metadata visible only to this application. Keys and values must be plain strings."
+    ),
+};
+
 export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
   list_calendars: {
     description:
@@ -95,6 +161,14 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
         .describe(
           "Whether to create a conference (Google Meet) for the event. Defaults to true."
         ),
+      eventType: z
+        .enum(["default", "focusTime", "outOfOffice"])
+        .optional()
+        .describe(
+          "'focusTime' creates a native Focus Time block (DND in Google Chat, auto-decline). 'outOfOffice' creates an OOO block. Primary calendar only. Cannot be changed after creation."
+        ),
+      ...eventTypeSpecificFields,
+      ...sharedEventFields,
     },
     stake: "medium",
     displayLabels: {
@@ -132,6 +206,8 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
         .describe(
           "Whether to create a conference (Google Meet) for the event. If not provided, existing conference settings are preserved."
         ),
+      ...eventTypeSpecificFields,
+      ...sharedEventFields,
     },
     stake: "medium",
     displayLabels: {

@@ -69,6 +69,18 @@ export interface GoogleCalendarEvent {
     title?: string;
   };
   eventType?: string;
+  focusTimeProperties?: {
+    autoDeclineMode?: string;
+    chatStatus?: string;
+    declineMessage?: string;
+  };
+  outOfOfficeProperties?: {
+    autoDeclineMode?: string;
+    declineMessage?: string;
+  };
+  extendedProperties?: {
+    private?: Record<string, string>;
+  };
   conferenceData?: {
     createRequest?: {
       requestId?: string;
@@ -307,6 +319,23 @@ export function formatEventAsText(event: EnrichedGoogleCalendarEvent): string {
       })
       .join(", ");
     lines.push(`Attendees: ${attendeeList}`);
+  }
+
+  if (event.transparency === "transparent") {
+    lines.push("Availability: Free");
+  }
+
+  if (event.visibility && event.visibility !== "default") {
+    lines.push(`Visibility: ${event.visibility}`);
+  }
+
+  if (event.reminders?.overrides && event.reminders.overrides.length > 0) {
+    const formatted = event.reminders.overrides
+      .filter((r) => r.method !== undefined && r.minutes !== undefined)
+      .map((r) => `${r.method} ${r.minutes} min before`);
+    if (formatted.length > 0) {
+      lines.push(`Reminders: ${formatted.join(", ")}`);
+    }
   }
 
   if (event.status) {
