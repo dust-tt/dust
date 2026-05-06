@@ -134,6 +134,11 @@ export default function BlogPost({
           <meta key={tag} property="article:tag" content={tag} />
         ))}
         <meta name="dust:is_seo_article" content={String(post.isSeoArticle)} />
+        <meta name="dust:is_geo_article" content={String(post.isGeoArticle)} />
+        <meta
+          name="dust:is_thought_leadership"
+          content={String(post.isThoughtLeadership)}
+        />
 
         <script
           type="application/ld+json"
