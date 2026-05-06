@@ -377,6 +377,7 @@ describe("mergeConversationBranch", () => {
     expect(mergedUserMessage?.userMessage?.content).toBe(
       "Original user content"
     );
+    expect(mergedUserMessage?.userMessage?.userContextOrigin).toBe("web");
 
     const mergedAgentMessages = await MessageModel.findAll({
       where: {

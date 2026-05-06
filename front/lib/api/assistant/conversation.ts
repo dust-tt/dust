@@ -576,7 +576,6 @@ export async function postUserMessage(
     agenticMessageData,
     skipToolsValidation,
     skipDustAutoMention,
-    skipMessageLimitCheck,
     doNotAssociateUser,
   }: {
     conversation: ConversationType;
@@ -587,7 +586,6 @@ export async function postUserMessage(
     skipToolsValidation: boolean;
     doNotAssociateUser?: boolean;
     skipDustAutoMention?: boolean;
-    skipMessageLimitCheck?: boolean;
   }
 ): Promise<
   Result<
@@ -671,11 +669,10 @@ export async function postUserMessage(
     }
   }
 
-  if (!skipMessageLimitCheck) {
-    const limitResult = await checkMessagesLimit(auth, { mentions, context });
-    if (limitResult.isErr()) {
-      return limitResult;
-    }
+  // Check plan and rate limit.
+  const limitResult = await checkMessagesLimit(auth, { mentions, context });
+  if (limitResult.isErr()) {
+    return limitResult;
   }
 
   // Block posting while compaction is in progress, for now. It's not too hard to add support for

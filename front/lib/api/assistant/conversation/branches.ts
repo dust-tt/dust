@@ -247,7 +247,8 @@ export async function mergeConversationBranch(
     fullName: src.userContextFullName,
     email: src.userContextEmail,
     profilePictureUrl: src.userContextProfilePictureUrl,
-    origin: src.userContextOrigin,
+    // Merging a branch is a user action, even if the source branch message was programmatic.
+    origin: "web",
     clientSideMCPServerIds: src.clientSideMCPServerIds,
     lastTriggerRunAt: src.userContextLastTriggerRunAt
       ? src.userContextLastTriggerRunAt.getTime()
@@ -283,8 +284,6 @@ export async function mergeConversationBranch(
     skipToolsValidation: true,
     // We do not want to auto-mention @dust for branches's merge.
     skipDustAutoMention: true,
-    // The branch message was already accepted when created. The merge only copies it.
-    skipMessageLimitCheck: true,
     // Ensure we don't accidentally attribute to someone else.
     doNotAssociateUser: false,
   });
