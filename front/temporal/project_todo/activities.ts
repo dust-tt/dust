@@ -14,10 +14,11 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { ConnectorProvider } from "@app/types/data_source";
 import type { ProjectTodoSourceType } from "@app/types/project_todo";
+import { Err, type Result } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { TimeFrame } from "@app/types/shared/utils/time_frame";
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import { INTERNAL_MIME_TYPES, Ok } from "@dust-tt/client";
 
 function resultToTakeawaySourceDocument(
   result: any
@@ -77,6 +78,49 @@ function resultToTakeawaySourceDocument(
   return null;
 }
 
+async function runChecksAndGetValues({
+  workspaceId,
+  spaceId,
+  localLogger,
+}: {
+  workspaceId: string;
+  spaceId: string;
+  runId: string;
+  localLogger: typeof logger;
+}): Promise<
+  Result<
+    {
+      space: SpaceResource;
+      adminAuth: Authenticator;
+      metadata: ProjectMetadataResource;
+    },
+    boolean
+  >
+> {
+  const workspace = await WorkspaceResource.fetchById(workspaceId);
+  if (!workspace) {
+    localLogger.error("Workspace not found");
+    return new Err(false);
+  }
+
+  const adminAuth = await Authenticator.internalAdminForWorkspace(workspaceId);
+  const space = await SpaceResource.fetchById(adminAuth, spaceId);
+  if (!space || !space.isProject()) {
+    localLogger.error("Space not found or not a project");
+    return new Err(false);
+  }
+
+  const metadata = await ProjectMetadataResource.fetchBySpace(adminAuth, space);
+  if (!metadata?.todoGenerationEnabled) {
+    localLogger.info(
+      "Todo generation is disabled or not configured for this project; skipping project todo merge"
+    );
+    return new Err(false);
+  }
+
+  return new Ok({ space, adminAuth, metadata });
+}
+
 export async function analyzeProjectTodosActivity({
   workspaceId,
   spaceId,
@@ -91,31 +135,17 @@ export async function analyzeProjectTodosActivity({
 
   localLogger.info("Starting project todo analysis");
 
-  if (!workspaceId) {
-    localLogger.error("Workspace ID is required");
+  const checkResult = await runChecksAndGetValues({
+    workspaceId,
+    spaceId,
+    runId,
+    localLogger,
+  });
+  if (checkResult.isErr()) {
     return;
   }
 
-  const workspace = await WorkspaceResource.fetchById(workspaceId);
-  if (!workspace) {
-    localLogger.error("Workspace not found");
-    return;
-  }
-  const adminAuth = await Authenticator.internalAdminForWorkspace(workspaceId);
-
-  const space = await SpaceResource.fetchById(adminAuth, spaceId);
-  if (!space || !space.isProject()) {
-    localLogger.error("Space not found or not a project");
-    return;
-  }
-
-  const metadata = await ProjectMetadataResource.fetchBySpace(adminAuth, space);
-  if (!metadata?.todoGenerationEnabled) {
-    localLogger.info(
-      "Todo generation is disabled or not configured for this project; skipping project todo analysis"
-    );
-    return;
-  }
+  const { space, adminAuth, metadata } = checkResult.value;
 
   const { groupsToProcess } =
     await space.fetchManualGroupsMemberships(adminAuth);
@@ -255,29 +285,13 @@ export async function mergeTodosForProjectActivity({
 
   localLogger.info("Starting merge of project todo takeaways");
 
-  if (!workspaceId) {
-    localLogger.error("Workspace ID is required");
-    return;
-  }
-
-  const workspace = await WorkspaceResource.fetchById(workspaceId);
-  if (!workspace) {
-    localLogger.error("Workspace not found");
-    return;
-  }
-
-  const adminAuth = await Authenticator.internalAdminForWorkspace(workspaceId);
-  const space = await SpaceResource.fetchById(adminAuth, spaceId);
-  if (!space || !space.isProject()) {
-    localLogger.error("Space not found or not a project");
-    return;
-  }
-
-  const metadata = await ProjectMetadataResource.fetchBySpace(adminAuth, space);
-  if (!metadata?.todoGenerationEnabled) {
-    localLogger.info(
-      "Todo generation is disabled or not configured for this project; skipping project todo merge"
-    );
+  const checkResult = await runChecksAndGetValues({
+    workspaceId,
+    spaceId,
+    runId,
+    localLogger,
+  });
+  if (checkResult.isErr()) {
     return;
   }
 
