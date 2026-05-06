@@ -212,49 +212,6 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/project_tasks", () => {
     expect(texts).toContain("My open");
   });
 
-  it("should still return done todos with pending agent suggestion in the active view", async () => {
-    const { user } = await setup();
-    const project = await SpaceFactory.project(workspace, user.id);
-    const adminAuth = await Authenticator.internalAdminForWorkspace(
-      workspace.sId
-    );
-
-    const pendingDone = await ProjectTaskFactory.create(workspace, project, {
-      userId: user.id,
-      text: "Pending approval but done",
-    });
-    await pendingDone.updateWithVersion(adminAuth, {
-      status: "done",
-      doneAt: new Date(),
-      markedAsDoneByType: "user",
-      markedAsDoneByUserId: user.id,
-      markedAsDoneByAgentConfigurationId: null,
-      agentSuggestionStatus: "pending",
-    });
-
-    const plainDone = await ProjectTaskFactory.create(workspace, project, {
-      userId: user.id,
-      text: "Plain done",
-    });
-    await plainDone.updateWithVersion(adminAuth, {
-      status: "done",
-      doneAt: new Date(),
-      markedAsDoneByType: "user",
-      markedAsDoneByUserId: user.id,
-      markedAsDoneByAgentConfigurationId: null,
-    });
-
-    req.query.spaceId = project.sId;
-    req.query.assignee = "all";
-    await handler(req, res);
-
-    expect(res._getStatusCode()).toBe(200);
-    const texts = res._getJSONData().tasks.map((t: { text: string }) => t.text);
-
-    expect(texts).toContain("Pending approval but done");
-    expect(texts).not.toContain("Plain done");
-  });
-
   it("should return 400 for non-project spaces", async () => {
     const { user } = await setup();
     const adminAuth = await Authenticator.internalAdminForWorkspace(

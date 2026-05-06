@@ -386,9 +386,7 @@ export class ProjectTaskResource extends BaseResource<ProjectTaskModel> {
 
     switch (timeScope) {
       case "active":
-        clauses.push({
-          [Op.or]: [{ status: { [Op.ne]: "done" } }],
-        });
+        clauses.push({ status: { [Op.ne]: "done" } });
         break;
       case "last_24h":
       case "last_7d":

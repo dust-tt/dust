@@ -467,9 +467,6 @@ describe("ProjectTaskResource", () => {
         makeTodoBlob(space.id, user.id, { text: "Pending suggestion" })
       );
       await pending.updateWithVersion(auth, {
-        markedAsDoneByType: "user",
-        markedAsDoneByUserId: user.id,
-        markedAsDoneByAgentConfigurationId: null,
         agentSuggestionStatus: "pending",
       });
 
