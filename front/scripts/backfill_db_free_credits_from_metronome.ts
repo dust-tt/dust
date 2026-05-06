@@ -10,7 +10,7 @@
  *
  * Idempotent: re-running will skip entries already present in DB.
  *
- * Run with: npx tsx scripts/backfill_db_credits_from_metronome.ts [--execute] [--workspaceId <sId>]
+ * Run with: npx tsx scripts/backfill_db_free_credits_from_metronome.ts [--execute] [--workspaceId <sId>]
  */
 
 import { Authenticator } from "@app/lib/auth";
