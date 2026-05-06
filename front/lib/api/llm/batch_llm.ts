@@ -1,8 +1,10 @@
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { categorizeConversationRenderErrorMessage } from "@app/lib/api/assistant/errors";
-import { renderEquippedSkillsUserMessage } from "@app/lib/api/assistant/skills_rendering";
+import {
+  type EnabledSkill,
+  renderEquippedSkillsUserMessage,
+} from "@app/lib/api/assistant/skills_rendering";
 import type { LLM } from "@app/lib/api/llm/llm";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import { EventError } from "@app/lib/api/llm/types/events";
@@ -36,7 +38,7 @@ import { isTextContent } from "@app/types/assistant/generation";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { removeNulls } from "@app/types/shared/utils/general";
+import { isString, removeNulls } from "@app/types/shared/utils/general";
 import type { Transaction } from "sequelize";
 
 export interface LlmConversationOptions
@@ -326,50 +328,12 @@ export async function sendBatchCallToLlm(
       }))
     );
 
-    let enabledSkills: Awaited<
-      ReturnType<typeof SkillResource.listForAgentLoop>
-    >["enabledSkills"] = [];
+    let enabledSkills: EnabledSkill[] = [];
     let equippedSkills: SkillResource[] = [];
 
     if (renderSkillsAsUserMessages) {
-      const { agentConfigurationIds } =
-        await conversationResource.fetchAgentConfigurationAndContentFragmentIds(
-          auth
-        );
-      const agentConfigurations = await getAgentConfigurations(auth, {
-        agentIds: agentConfigurationIds,
-        variant: "full",
-      });
-      const skillSets = await Promise.all(
-        agentConfigurations.map((agentConfiguration) =>
-          SkillResource.listForAgentLoop(auth, {
-            agentConfiguration,
-            conversation: conversationRes.value,
-          })
-        )
-      );
-
-      const enabledSkillsById = new Map<
-        string,
-        (typeof enabledSkills)[number]
-      >();
-      const equippedSkillsById = new Map<string, SkillResource>();
-
-      for (const skillSet of skillSets) {
-        for (const enabledSkill of skillSet.enabledSkills) {
-          enabledSkillsById.set(enabledSkill.sId, enabledSkill);
-        }
-        for (const equippedSkill of skillSet.equippedSkills) {
-          equippedSkillsById.set(equippedSkill.sId, equippedSkill);
-        }
-      }
-
-      enabledSkills = [...enabledSkillsById.values()].sort((a, b) =>
-        a.name.localeCompare(b.name)
-      );
-      equippedSkills = [...equippedSkillsById.values()].sort((a, b) =>
-        a.name.localeCompare(b.name)
-      );
+      ({ enabledSkills, equippedSkills } =
+        await listActiveSkillsForBatchRendering(auth));
     }
 
     const leadingMessages = renderSkillsAsUserMessages
@@ -421,6 +385,41 @@ export async function sendBatchCallToLlm(
 
   const batchId = await llm.sendBatchProcessing(batchMap);
   return new Ok({ batchId, conversationIds });
+}
+
+async function listActiveSkillsForBatchRendering(auth: Authenticator): Promise<{
+  enabledSkills: EnabledSkill[];
+  equippedSkills: SkillResource[];
+}> {
+  const activeSkills = await SkillResource.listByWorkspace(auth, {
+    status: "active",
+  });
+  const nonSystemSkills = activeSkills.filter((skill) => !skill.isSystemSkill);
+  const extendedSkillIds = [
+    ...new Set(
+      nonSystemSkills.map((skill) => skill.extendedSkillId).filter(isString)
+    ),
+  ];
+  const extendedSkills = await SkillResource.fetchByIds(auth, extendedSkillIds);
+  const extendedSkillById = new Map(
+    extendedSkills.map((skill) => [skill.sId, skill])
+  );
+
+  const enabledSkills = nonSystemSkills
+    .map<EnabledSkill>((skill) =>
+      Object.assign(Object.create(Object.getPrototypeOf(skill)), skill, {
+        extendedSkill: skill.extendedSkillId
+          ? (extendedSkillById.get(skill.extendedSkillId) ?? null)
+          : null,
+      })
+    )
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  const equippedSkills = [...nonSystemSkills].sort((a, b) =>
+    a.name.localeCompare(b.name)
+  );
+
+  return { enabledSkills, equippedSkills };
 }
 
 export interface BatchDownloadResult {
