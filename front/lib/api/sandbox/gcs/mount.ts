@@ -11,17 +11,21 @@ import { Err, Ok } from "@app/types/shared/result";
 
 const MOUNT_TIMEOUT_MS = 30_000;
 const MOUNT_POINT = "/files/conversation";
+const TOKEN_SERVER_PORT = 9876;
+const TOKEN_SERVER_URL = `http://127.0.0.1:${TOKEN_SERVER_PORT}`;
 
 /**
- * Mount GCS conversation files into a running sandbox via gcsfuse.
+ * Ensure GCS conversation files are mounted in the sandbox and the token
+ * server is running. Idempotent: safe to call on a fresh sandbox, on one
+ * that woke from a snapshot with the mount preserved, or on a long-running
+ * sandbox that just needs a token refresh.
  *
- * The mount sequence:
- *  1. Mint a downscoped token scoped to the conversation prefix.
- *  2. Write the token JSON to /tmp/token.json in the sandbox.
- *  3. Start the token HTTP server (netcat loop on :9876) and wait for it.
- *  4. Run gcsfuse with --token-url pointing to the local token server.
+ * Hot path is one sandbox exec (the STS mint always happens regardless):
+ * probe `/files/conversation` and the token server, and if both look good,
+ * refresh the token in place. Cold path adds one more exec to lazy-unmount
+ * any stale mount and run gcsfuse.
  */
-export async function mountConversationFiles(
+export async function ensureConversationFilesMounted(
   auth: Authenticator,
   sandbox: SandboxResource,
   conversation: ConversationType,
@@ -32,12 +36,11 @@ export async function mountConversationFiles(
   }
 
   const bucket = fileStorageConfig.getGcsPrivateUploadsBucket();
-
   const workspaceId = auth.getNonNullableWorkspace().sId;
   const prefix = getConversationFilesBasePath({
     workspaceId,
     conversationId: conversation.sId,
-  }).replace(/\/$/, ""); // Strip trailing slash for the token condition.
+  }).replace(/\/$/, "");
 
   const childLogger = logger.child({
     sandboxId: sandbox.sId,
@@ -47,7 +50,6 @@ export async function mountConversationFiles(
     prefix,
   });
 
-  // 1. Mint downscoped token.
   const tokenResult = await mintDownscopedGcsToken({ bucket, prefix });
   if (tokenResult.isErr()) {
     childLogger.error(
@@ -57,58 +59,43 @@ export async function mountConversationFiles(
     return tokenResult;
   }
 
-  const { accessToken, expiresInSeconds } = tokenResult.value;
-
   const tokenJson = JSON.stringify({
-    access_token: accessToken,
+    access_token: tokenResult.value.accessToken,
     token_type: "Bearer",
-    expires_in: expiresInSeconds,
+    expires_in: tokenResult.value.expiresInSeconds,
   });
 
-  // 2. Write token file into the sandbox.
-  const writeResult = await sandbox.exec(
+  const agentResult = await sandbox.exec(
     auth,
-    `printf '%s' '${escapeSingleQuotes(tokenJson)}' > /tmp/token.json`
+    buildProbeAndSetupScript({ tokenJson })
   );
-  if (writeResult.isErr()) {
+  if (agentResult.isErr()) {
     childLogger.error(
-      { err: writeResult.error },
-      "GCS mount: failed to write token file"
+      { err: agentResult.error },
+      "GCS mount: probe/setup exec failed"
     );
-    return writeResult;
+    return agentResult;
   }
-
-  // 3. Start token server and wait until it's listening.
-  // The server script is a netcat loop baked into the template.
-  // Start in background, then verify with a separate exec (matching PoC).
-  const startResult = await sandbox.exec(
-    auth,
-    "bash /home/agent/.bin/token-server.sh > /tmp/server.log 2>&1 &"
-  );
-  if (startResult.isErr()) {
-    childLogger.error(
-      { err: startResult.error },
-      "GCS mount: failed to start token server"
-    );
-    return startResult;
-  }
-
-  const checkResult = await sandbox.exec(
-    auth,
-    "sleep 1 && curl -sf http://127.0.0.1:9876 > /dev/null 2>&1"
-  );
-  if (checkResult.isErr() || checkResult.value.exitCode !== 0) {
-    const msg = "Token server not ready after 1s";
-    childLogger.error({}, msg);
+  if (agentResult.value.exitCode !== 0) {
+    const msg = `GCS mount: probe/setup failed: ${agentResult.value.stderr}`;
+    childLogger.error({ stderr: agentResult.value.stderr }, msg);
     return new Err(new Error(msg));
   }
 
-  // 4. Mount via gcsfuse (runs as root for FUSE permissions).
-  const mountCmd = buildMountCommand({ bucket, prefix });
-  const mountResult = await sandbox.exec(auth, mountCmd, {
-    timeoutMs: MOUNT_TIMEOUT_MS,
-    user: "root",
-  });
+  if (agentResult.value.stdout.includes("READY")) {
+    return new Ok(undefined);
+  }
+
+  // Cold path: lazy-unmount any stale entry (no-op if nothing's there) and
+  // mount via gcsfuse. fusermount and gcsfuse both require root.
+  const mountResult = await sandbox.exec(
+    auth,
+    buildUnmountAndMountScript({ bucket, prefix }),
+    {
+      timeoutMs: MOUNT_TIMEOUT_MS,
+      user: "root",
+    }
+  );
   if (mountResult.isErr()) {
     childLogger.error(
       { err: mountResult.error },
@@ -116,7 +103,6 @@ export async function mountConversationFiles(
     );
     return mountResult;
   }
-
   if (mountResult.value.exitCode !== 0) {
     const msg = `gcsfuse exited with code ${mountResult.value.exitCode}: ${mountResult.value.stderr}`;
     childLogger.error({ stderr: mountResult.value.stderr }, msg);
@@ -128,58 +114,62 @@ export async function mountConversationFiles(
 }
 
 /**
- * Refresh the GCS token in an already-mounted sandbox.
+ * Probe the mount + token server. If both look good, refresh the token
+ * in place and emit READY. Otherwise rebuild the local prereqs (kill any
+ * stale token server, rewrite the token, restart the server, verify it
+ * is listening) and emit NEEDS_MOUNT — caller takes the cold path.
  *
- * Overwrites /tmp/token.json. The token server picks it up on next request from gcsfuse.
- * No remount needed.
+ * The mount probe needs both `mountpoint -q` (kernel entry) AND a `stat`:
+ * the kernel can show a path as mounted even when the gcsfuse daemon is
+ * dead, in which case `stat` returns EIO. The token-server check is a
+ * 5x250ms poll instead of a flat sleep+curl to avoid losing a wake-up
+ * race when the snapshot resumes under load.
+ *
+ * No `set -e` on purpose: the probe chain is meant to fall through on
+ * failure to the rebuild branch. We use explicit `exit 1` for the only
+ * fatal case.
  */
-export async function refreshGcsToken(
-  auth: Authenticator,
-  sandbox: SandboxResource,
-  conversation: ConversationType,
-  image: SandboxImage
-): Promise<Result<void, Error>> {
-  if (!image.hasCapability("gcsfuse")) {
-    return new Ok(undefined);
-  }
+export function buildProbeAndSetupScript({
+  tokenJson,
+}: {
+  tokenJson: string;
+}): string {
+  const escapedTokenJson = escapeSingleQuotes(tokenJson);
+  return `set -u
+if mountpoint -q ${MOUNT_POINT} 2>/dev/null \\
+   && timeout 1 stat ${MOUNT_POINT} >/dev/null 2>&1 \\
+   && curl -sf ${TOKEN_SERVER_URL} >/dev/null 2>&1; then
+  printf '%s' '${escapedTokenJson}' > /tmp/token.json
+  echo READY
+else
+  pkill -f token-server.sh 2>/dev/null || true
+  printf '%s' '${escapedTokenJson}' > /tmp/token.json
+  bash /home/agent/.bin/token-server.sh > /tmp/server.log 2>&1 &
+  ready=0
+  for _ in 1 2 3 4 5; do
+    sleep 0.25
+    if curl -sf ${TOKEN_SERVER_URL} >/dev/null 2>&1; then
+      ready=1
+      break
+    fi
+  done
+  if [ "$ready" -ne 1 ]; then
+    echo "token server did not become ready" >&2
+    exit 1
+  fi
+  echo NEEDS_MOUNT
+fi`;
+}
 
-  const bucket = fileStorageConfig.getGcsPrivateUploadsBucket();
-
-  const workspaceId = auth.getNonNullableWorkspace().sId;
-  const prefix = getConversationFilesBasePath({
-    workspaceId,
-    conversationId: conversation.sId,
-  }).replace(/\/$/, "");
-
-  const tokenResult = await mintDownscopedGcsToken({ bucket, prefix });
-  if (tokenResult.isErr()) {
-    return tokenResult;
-  }
-
-  const tokenJson = JSON.stringify({
-    access_token: tokenResult.value.accessToken,
-    token_type: "Bearer",
-    expires_in: tokenResult.value.expiresInSeconds,
-  });
-
-  const writeResult = await sandbox.exec(
-    auth,
-    `printf '%s' '${escapeSingleQuotes(tokenJson)}' > /tmp/token.json`
-  );
-  if (writeResult.isErr()) {
-    return writeResult;
-  }
-
-  logger.info(
-    {
-      sandboxId: sandbox.sId,
-      workspaceId,
-      conversationId: conversation.sId,
-    },
-    "GCS token refreshed"
-  );
-
-  return new Ok(undefined);
+export function buildUnmountAndMountScript({
+  bucket,
+  prefix,
+}: {
+  bucket: string;
+  prefix: string;
+}): string {
+  return `fusermount -u -z ${MOUNT_POINT} 2>/dev/null || true
+${buildMountCommand({ bucket, prefix })}`;
 }
 
 function buildMountCommand({
@@ -190,7 +180,7 @@ function buildMountCommand({
   prefix: string;
 }): string {
   const flags = [
-    `--token-url http://127.0.0.1:9876`,
+    `--token-url ${TOKEN_SERVER_URL}`,
     // Disable token caching so gcsfuse fetches fresh token from server on every GCS API request.
     // This ensures gcsfuse never uses stale credentials, eliminating 401 errors after token expiry.
     `--reuse-token-from-url=false`,

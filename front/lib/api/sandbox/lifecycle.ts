@@ -2,10 +2,7 @@ import {
   checkEgressForwarderHealth,
   setupEgressForwarder,
 } from "@app/lib/api/sandbox/egress";
-import {
-  mountConversationFiles,
-  refreshGcsToken,
-} from "@app/lib/api/sandbox/gcs/mount";
+import { ensureConversationFilesMounted } from "@app/lib/api/sandbox/gcs/mount";
 import { getSandboxImage } from "@app/lib/api/sandbox/image";
 import { startTelemetry } from "@app/lib/api/sandbox/telemetry";
 import type { Authenticator } from "@app/lib/auth";
@@ -26,7 +23,7 @@ export async function ensureSandboxReady(
     return ensureResult;
   }
 
-  const { sandbox, freshlyCreated, wokeFromSleep } = ensureResult.value;
+  const { sandbox, freshlyCreated } = ensureResult.value;
 
   // Egress forwarder setup must run BEFORE GCS mounts. When the MITM
   // experiment is enabled, sandbox_resource.buildSandboxEnvVars exports
@@ -55,26 +52,18 @@ export async function ensureSandboxReady(
     logger.error({ err }, "Telemetry start failed (fire-and-forget)")
   );
 
-  if (freshlyCreated || wokeFromSleep) {
-    const mountResult = await mountConversationFiles(
-      auth,
-      sandbox,
-      conversation,
-      image
-    );
-    if (mountResult.isErr()) {
-      return mountResult;
-    }
-  } else {
-    const refreshResult = await refreshGcsToken(
-      auth,
-      sandbox,
-      conversation,
-      image
-    );
-    if (refreshResult.isErr()) {
-      return refreshResult;
-    }
+  // ensureConversationFilesMounted is idempotent: it probes the mount and
+  // token server, refreshes the token if both are alive, and otherwise
+  // rebuilds local state and remounts. No need to branch on freshlyCreated
+  // / wokeFromSleep here.
+  const mountResult = await ensureConversationFilesMounted(
+    auth,
+    sandbox,
+    conversation,
+    image
+  );
+  if (mountResult.isErr()) {
+    return mountResult;
   }
 
   const healthResult = await checkEgressForwarderHealth(auth, sandbox);
