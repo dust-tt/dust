@@ -97,12 +97,20 @@ export function injectColorStyles(overrides: ColorOverrides): void {
       const cssProperty = CSS_PROPERTY_MAP[prop];
       for (const suffix of variantSuffixes) {
         const className = `${prop}-${cssName}${suffix}`;
-        rules.push(`.${className} { ${cssProperty}: ${color} !important; }`);
         rules.push(
+          // biome-ignore lint/plugin/noCssImportant: dev-only overrides must win over app styles.
+          `.${className} { ${cssProperty}: ${color} !important; }`
+        );
+        rules.push(
+          // biome-ignore lint/plugin/noCssImportant: dev-only overrides must win over app styles.
           `.dark .${className}-night { ${cssProperty}: ${color} !important; }`
         );
-        rules.push(`.s-${className} { ${cssProperty}: ${color} !important; }`);
         rules.push(
+          // biome-ignore lint/plugin/noCssImportant: dev-only overrides must win over app styles.
+          `.s-${className} { ${cssProperty}: ${color} !important; }`
+        );
+        rules.push(
+          // biome-ignore lint/plugin/noCssImportant: dev-only overrides must win over app styles.
           `.dark .s-${className}-night { ${cssProperty}: ${color} !important; }`
         );
       }
@@ -178,6 +186,7 @@ export function injectTypoStyles(overrides: TypoOverrides): void {
     const declarations = Object.entries(props)
       .map(
         ([prop, value]) =>
+          // biome-ignore lint/plugin/noCssImportant: dev-only overrides must win over app styles.
           `${TYPO_PROP_CSS[prop as TypoProp]}: ${value} !important`
       )
       .join("; ");
@@ -265,19 +274,23 @@ export function injectFontFamilyStyles(overrides: FontFamilyOverrides): void {
   const rules: string[] = [];
   if (overrides.sans) {
     rules.push(
+      // biome-ignore lint/plugin/noCssImportant: dev-only overrides must win over app styles.
       `body { font-family: "${overrides.sans}", sans-serif !important; }`
     );
     rules.push(
+      // biome-ignore lint/plugin/noCssImportant: dev-only overrides must win over app styles.
       `body :not(.s-font-mono):not(code):not(pre):not(kbd):not(samp):not([class*="heading-mono"]):not([class*="icon"]):not([class*="Icon"]) { font-family: inherit !important; }`
     );
     if (!overrides.mono) {
       rules.push(
+        // biome-ignore lint/plugin/noCssImportant: dev-only overrides must win over app styles.
         `.s-font-mono, code, pre, kbd, samp, [class*="heading-mono"] { font-family: "Geist Mono", monospace !important; }`
       );
     }
   }
   if (overrides.mono) {
     rules.push(
+      // biome-ignore lint/plugin/noCssImportant: dev-only overrides must win over app styles.
       `.s-font-mono, code, pre, kbd, samp, [class*="heading-mono"] { font-family: "${overrides.mono}", monospace !important; }`
     );
   }

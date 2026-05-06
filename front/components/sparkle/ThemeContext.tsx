@@ -62,6 +62,7 @@ const disableAnimation = () => {
   const css = document.createElement("style");
   css.appendChild(
     document.createTextNode(
+      // biome-ignore lint/plugin/noCssImportant: theme changes intentionally disable transitions for one frame.
       `*,*::before,*::after{-webkit-transition:none!important;-moz-transition:none!important;-o-transition:none!important;-ms-transition:none!important;transition:none!important}`
     )
   );
