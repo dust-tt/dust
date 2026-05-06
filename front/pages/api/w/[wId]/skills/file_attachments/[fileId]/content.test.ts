@@ -19,10 +19,10 @@ function mockFileStream() {
 }
 
 describe("GET /api/w/[wId]/skills/file_attachments/[fileId]/content", () => {
-  it("streams newly uploaded skill attachment files for builders before the skill is saved", async () => {
+  it("streams newly uploaded skill attachment files before the skill is saved", async () => {
     const { auth, req, res, user } = await createPrivateApiMockRequest({
       method: "GET",
-      role: "builder",
+      role: "user",
     });
     const { getReadStreamSpy, pipeSpy } = mockFileStream();
 
@@ -78,37 +78,6 @@ describe("GET /api/w/[wId]/skills/file_attachments/[fileId]/content", () => {
     expect(pipeSpy).toHaveBeenCalledWith(res);
 
     getReadStreamSpy.mockRestore();
-  });
-
-  it("rejects unattached skill attachments for non-builders", async () => {
-    const { auth, req, res, user } = await createPrivateApiMockRequest({
-      method: "GET",
-      role: "user",
-    });
-
-    const file = await FileFactory.create(auth, user, {
-      contentType: "text/x-python",
-      fileName: "script.py",
-      fileSize: 14,
-      status: "ready",
-      useCase: "skill_attachment",
-      useCaseMetadata: null,
-    });
-
-    req.query = {
-      ...req.query,
-      fileId: file.sId,
-    };
-
-    await handler(req, res);
-
-    expect(res._getStatusCode()).toBe(403);
-    expect(res._getJSONData()).toEqual({
-      error: {
-        type: "app_auth_error",
-        message: "Only builders can preview unattached skill files.",
-      },
-    });
   });
 
   it("returns 404 for non-skill attachment files", async () => {

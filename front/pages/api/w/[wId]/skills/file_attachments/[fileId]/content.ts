@@ -63,14 +63,6 @@ async function handler(
         },
       });
     }
-  } else if (!auth.isBuilder()) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "app_auth_error",
-        message: "Only builders can preview unattached skill files.",
-      },
-    });
   }
 
   res.setHeader("Content-Type", file.contentType);
