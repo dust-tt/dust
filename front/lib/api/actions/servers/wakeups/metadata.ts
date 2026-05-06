@@ -68,7 +68,7 @@ export const WAKEUPS_TOOLS_METADATA = createToolsRecord({
           "The ID of the wake-up to cancel, as returned by `schedule_wakeup` or `list_wakeups`."
         ),
     },
-    stake: "low",
+    stake: "never_ask",
     displayLabels: {
       running: "Cancelling wake-up",
       done: "Cancel wake-up",
