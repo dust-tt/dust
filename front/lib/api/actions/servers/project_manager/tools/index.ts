@@ -18,6 +18,7 @@ import {
 } from "@app/lib/api/actions/servers/project_manager/helpers";
 import { PROJECT_MANAGER_TOOLS_METADATA } from "@app/lib/api/actions/servers/project_manager/metadata";
 import { searchFunction } from "@app/lib/api/actions/servers/search/tools";
+import { resolveAgentConfigurationIdByName } from "@app/lib/api/assistant/configuration/agent";
 import {
   createConversation,
   postUserMessage,
@@ -1079,10 +1080,22 @@ export function createProjectManagerTools(
         const agentProfilePictureUrl =
           agentLoopContext?.runContext?.agentConfiguration?.pictureUrl ?? null;
 
-        // Build mentions if agentId is provided
-        const mentions = params.agentId
-          ? [{ configurationId: params.agentId }]
-          : [];
+        let mentions: { configurationId: string }[] = [];
+        if (params.agentName) {
+          const matchedAgentId = await resolveAgentConfigurationIdByName(
+            auth,
+            params.agentName
+          );
+          if (!matchedAgentId) {
+            return new Err(
+              new MCPError(
+                `No agent found matching name: "${params.agentName}"`,
+                { tracked: false }
+              )
+            );
+          }
+          mentions = [{ configurationId: matchedAgentId }];
+        }
 
         // Create conversation in the project space
         const conversation = await createConversation(auth, {
@@ -1355,9 +1368,22 @@ export function createProjectManagerTools(
         const agentProfilePictureUrl =
           agentLoopContext?.runContext?.agentConfiguration?.pictureUrl ?? null;
 
-        const mentions = params.agentId
-          ? [{ configurationId: params.agentId }]
-          : [];
+        let mentions: { configurationId: string }[] = [];
+        if (params.agentName) {
+          const matchedAgentId = await resolveAgentConfigurationIdByName(
+            auth,
+            params.agentName
+          );
+          if (!matchedAgentId) {
+            return new Err(
+              new MCPError(
+                `No agent found matching name: "${params.agentName}"`,
+                { tracked: false }
+              )
+            );
+          }
+          mentions = [{ configurationId: matchedAgentId }];
+        }
 
         const messageRes = await postUserMessage(auth, {
           conversation,
