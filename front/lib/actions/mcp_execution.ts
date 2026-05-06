@@ -174,7 +174,8 @@ export async function processToolResults(
     toolCallResultContent,
     async (block, idx) => {
       await persistToolOutput(auth, conversation, block, {
-        toolName: toolConfiguration.mcpServerName,
+        toolName: toolConfiguration.name,
+        serverName: toolConfiguration.mcpServerName,
       });
 
       switch (block.type) {
