@@ -1,11 +1,13 @@
 import config from "@app/lib/api/config";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import {
+  BUSINESS_PLAN_COST_MONTHLY,
   getPriceAsString,
   PRO_PLAN_COST_MONTHLY,
   PRO_PLAN_COST_YEARLY,
   useUserBillingCurrency,
 } from "@app/lib/client/subscription";
+import { isWhitelistedBusinessPlan } from "@app/lib/plans/plan_codes";
 import { useAppRouter, useSearchParam } from "@app/lib/platform";
 import {
   useCreateCheckoutSession,
@@ -87,11 +89,14 @@ export function CheckoutPage() {
 
   const currency = useUserBillingCurrency();
   const seats = seatsCount ?? 1;
-  // PRO_PLAN_COST_* are per-seat per-month prices (in dollars).
+
+  const isBusiness = isWhitelistedBusinessPlan(owner);
   const seatPricePerMonthCents =
-    (billingPeriod === "monthly"
-      ? PRO_PLAN_COST_MONTHLY
-      : PRO_PLAN_COST_YEARLY) * 100;
+    (isBusiness
+      ? BUSINESS_PLAN_COST_MONTHLY
+      : billingPeriod === "monthly"
+        ? PRO_PLAN_COST_MONTHLY
+        : PRO_PLAN_COST_YEARLY) * 100;
   // Yearly billing charges 12 months upfront.
   const monthsInPeriod = billingPeriod === "yearly" ? 12 : 1;
   const seatPriceCents = seatPricePerMonthCents * monthsInPeriod;
