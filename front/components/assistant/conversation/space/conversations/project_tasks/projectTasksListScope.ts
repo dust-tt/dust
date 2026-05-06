@@ -20,15 +20,15 @@ export const DEFAULT_TASK_OWNER_FILTER: TaskOwnerFilter = {
 };
 
 const PERIOD_SCOPE_LABELS: Record<ProjectTaskPeriodScope, string> = {
-  active: "Active",
-  last_24h: "Last 24h",
-  last_7d: "Last 7 days",
-  last_30d: "Last 30 days",
+  active: "Open",
+  last_24h: "Done today",
+  last_7d: "Done in the last 7 days",
+  last_30d: "Done in the last 30 days",
 };
 
 const PEOPLE_SCOPE_LABELS: Record<ProjectTaskPeopleScope, string> = {
-  all_project: "All project's",
-  just_mine: "Just mine",
+  all_project: "Everyone",
+  just_mine: "Mine",
 };
 
 export function formatTaskScopeLabel(filter: TaskOwnerFilter): string {

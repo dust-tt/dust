@@ -64,6 +64,7 @@ export function createProjectTasksTools(
         } else if (assigneeFilter === "all") {
           rows = await ProjectTaskResource.fetchBySpace(auth, {
             spaceId: space.id,
+            timeScope: "all",
           });
         }
 
