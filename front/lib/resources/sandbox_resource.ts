@@ -343,7 +343,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     // Set at the system layer so workspace overrides cannot drop it. Points at
     // the merged bundle (system roots + dsbx ephemeral CA) installed by
     // setupEgressForwarder. Safe to inject unconditionally when the experiment
-    // is enabled because tools/index.ts now runs setupEgressForwarder before
+    // is enabled because ensureSandboxReady runs setupEgressForwarder before
     // any mounts that read SSL_CERT_FILE.
     //
     // PHASE0(remove with the experiment): DUST_EXPERIMENT_TOKEN is exposed to
