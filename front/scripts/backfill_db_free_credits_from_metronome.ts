@@ -2,7 +2,7 @@
  * Backfill DB credits from Metronome.
  *
  * For each workspace with a metronomeCustomerId:
- * - Lists all credits and commits from Metronome (with include_balance)
+ * - Lists all credits from Metronome (with include_balance)
  * - For each entry, checks if it already exists in DB by metronomeCreditId or
  *   by the (type, startDate, expirationDate) unique key
  * - If not found in DB, creates a new credit row with the right amounts, dates,
@@ -17,7 +17,6 @@ import { Authenticator } from "@app/lib/auth";
 import {
   ceilToHourISO,
   floorToHourISO,
-  listMetronomeCustomerCommits,
   listMetronomeCustomerCredits,
 } from "@app/lib/metronome/client";
 import { getCreditTypeProgrammaticUsdId } from "@app/lib/metronome/constants";
@@ -62,18 +61,11 @@ async function backfillFromMetronome(
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
   const programmaticUsdCreditTypeId = getCreditTypeProgrammaticUsdId();
 
-  const [creditsResult, commitsResult] = await Promise.all([
-    listMetronomeCustomerCredits({
-      metronomeCustomerId,
-      includeContractCredits: true,
-      includeBalance: true,
-    }),
-    listMetronomeCustomerCommits({
-      metronomeCustomerId,
-      includeContractCommits: true,
-      includeBalance: true,
-    }),
-  ]);
+  const creditsResult = await listMetronomeCustomerCredits({
+    metronomeCustomerId,
+    includeContractCredits: true,
+    includeBalance: true,
+  });
 
   if (creditsResult.isErr()) {
     logger.error(
@@ -82,18 +74,8 @@ async function backfillFromMetronome(
     );
     return;
   }
-  if (commitsResult.isErr()) {
-    logger.error(
-      { workspaceId: workspace.sId, error: commitsResult.error.message },
-      "[Backfill Metronome→DB] Failed to list commits from Metronome"
-    );
-    return;
-  }
 
-  const metronomeEntries: MetronomeBalance[] = [
-    ...creditsResult.value,
-    ...commitsResult.value,
-  ].filter(
+  const metronomeEntries: MetronomeBalance[] = creditsResult.value.filter(
     (entry) =>
       entry.access_schedule?.credit_type?.id === programmaticUsdCreditTypeId
   );
