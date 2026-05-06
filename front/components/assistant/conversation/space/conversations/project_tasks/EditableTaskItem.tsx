@@ -70,7 +70,6 @@ export interface EditableTaskItemProps {
   activeAgents: LightAgentConfigurationType[];
   agentsLoading: boolean;
   agentNameById: Map<string, string>;
-  isExiting: boolean;
   isNew: boolean;
   isNewlyDone: boolean;
   isStarting: boolean;
@@ -95,7 +94,6 @@ export const EditableTaskItem = memo(function EditableTaskItem({
   activeAgents,
   agentsLoading,
   agentNameById,
-  isExiting,
   isNew,
   isNewlyDone,
   isStarting,
@@ -338,8 +336,7 @@ export const EditableTaskItem = memo(function EditableTaskItem({
       className={cn(
         "group/task flex items-start gap-3 rounded-md px-1 py-1",
         "transition-all duration-200 hover:bg-muted-background dark:hover:bg-muted-background-night",
-        isExiting && "max-h-0 overflow-hidden opacity-0",
-        !isExiting && "max-h-[1000px] opacity-100"
+        "max-h-[1000px] opacity-100"
       )}
     >
       <div className="mt-0.5 shrink-0">

@@ -4,7 +4,6 @@ import { cn } from "@dust-tt/sparkle";
 import type React from "react";
 import { useCallback, useLayoutEffect } from "react";
 
-export const SUMMARY_ITEM_TRANSITION_MS = 240;
 export const DELETE_TASK_CONFIRM_PREVIEW_MAX_CHARS = 200;
 export const NEW_MANUAL_TASK_MAX_CHARS = 256;
 export const MANUAL_ADD_TASK_PLACEHOLDER = "Add a task...";
