@@ -283,6 +283,8 @@ export async function mergeConversationBranch(
     skipToolsValidation: true,
     // We do not want to auto-mention @dust for branches's merge.
     skipDustAutoMention: true,
+    // The branch message was already accepted when created. The merge only copies it.
+    skipMessageLimitCheck: true,
     // Ensure we don't accidentally attribute to someone else.
     doNotAssociateUser: false,
   });
