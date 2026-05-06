@@ -4,12 +4,14 @@ import config from "@app/lib/api/config";
 import { getWorkspaceCreationDate } from "@app/lib/api/workspace";
 import { Authenticator, hasFeatureFlag } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
-import { getStripeSubscription } from "@app/lib/plans/stripe";
+import { getMetronomeCustomerStripeCustomerId } from "@app/lib/metronome/client";
+import { getCustomerId, getStripeSubscription } from "@app/lib/plans/stripe";
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { ExtensionConfigurationType } from "@app/types/extension";
@@ -27,9 +29,11 @@ export type PokeGetWorkspaceInfo = {
   baseUrl: string;
   extensionConfig: ExtensionConfigurationType | null;
   hasDummyFeature: boolean;
+  hasMetronomeFeature: boolean;
   membersCount: number;
   metronomeCustomerId: string | null;
   programmaticUsageConfig: ProgrammaticUsageConfigurationType | null;
+  stripeCustomerId: string | null;
   stripeSubscription: Stripe.Subscription | null;
   subscriptions: SubscriptionType[];
   whitelistableFeatures: WhitelistableFeature[];
@@ -101,6 +105,11 @@ async function handler(
         "dummy_feature_for_flag_testing"
       );
 
+      const hasMetronomeFeature = await hasFeatureFlag(
+        auth,
+        "metronome_billing"
+      );
+
       const membersCount = await MembershipResource.getMembersCountForWorkspace(
         {
           workspace: owner,
@@ -115,11 +124,34 @@ async function handler(
         );
       }
 
+      let stripeCustomerId: string | null = null;
+      if (stripeSubscription) {
+        stripeCustomerId = getCustomerId(stripeSubscription);
+      } else if (workspaceResource.metronomeCustomerId) {
+        const lookup = await getMetronomeCustomerStripeCustomerId(
+          workspaceResource.metronomeCustomerId
+        );
+        if (lookup.isOk()) {
+          stripeCustomerId = lookup.value;
+        } else {
+          logger.warn(
+            {
+              workspaceId: owner.sId,
+              metronomeCustomerId: workspaceResource.metronomeCustomerId,
+              error: lookup.error.message,
+            },
+            "[Poke workspace-info] Failed to resolve Stripe customer ID from Metronome billing config"
+          );
+        }
+      }
+
       return res.status(200).json({
         activeSubscription,
         hasDummyFeature,
+        hasMetronomeFeature,
         membersCount,
         metronomeCustomerId: workspaceResource.metronomeCustomerId ?? null,
+        stripeCustomerId,
         stripeSubscription,
         subscriptions,
         whitelistableFeatures: WHITELISTABLE_FEATURES,

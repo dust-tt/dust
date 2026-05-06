@@ -199,6 +199,33 @@ export async function updateMetronomeCustomerName(
 }
 
 /**
+ * Resolves the Stripe customer ID linked to a Metronome customer's active
+ * Stripe billing configuration. Returns `null` when no active Stripe
+ * configuration is set on the customer. Mirrors the read used by
+ * `ensureMetronomeStripeBillingConfig`.
+ */
+export async function getMetronomeCustomerStripeCustomerId(
+  metronomeCustomerId: string
+): Promise<Result<string | null, Error>> {
+  try {
+    const configs =
+      await getMetronomeClient().v1.customers.retrieveBillingConfigurations({
+        customer_id: metronomeCustomerId,
+      });
+    const activeStripeConfig = configs.data.find(
+      (c) => c.billing_provider === "stripe" && !c.archived_at
+    );
+    const stripeCustomerId =
+      activeStripeConfig?.configuration?.stripe_customer_id;
+    return new Ok(
+      typeof stripeCustomerId === "string" ? stripeCustomerId : null
+    );
+  } catch (err) {
+    return new Err(normalizeError(err));
+  }
+}
+
+/**
  * Idempotently ensure a Metronome customer has a Stripe billing
  * configuration pointing to the given `stripeCustomerId`.
  *

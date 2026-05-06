@@ -81,6 +81,7 @@ export function InputField<T extends FieldValues>({
   placeholder,
   min,
   step,
+  readOnly,
   transformValue,
 }: {
   control: Control<T>;
@@ -92,6 +93,7 @@ export function InputField<T extends FieldValues>({
   min?: string;
   /** Native `step` attribute, useful for `number` and `datetime-local`. */
   step?: number | string;
+  readOnly?: boolean;
   /** Optional transform applied to the raw string value before updating the form. */
   transformValue?: (value: string) => string | number;
 }) {
@@ -126,6 +128,7 @@ export function InputField<T extends FieldValues>({
 
                 field.onChange(e.target.value);
               }}
+              readOnly={readOnly}
             />
           </PokeFormControl>
           <PokeFormMessage />
