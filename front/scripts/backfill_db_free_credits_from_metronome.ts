@@ -15,7 +15,6 @@
 
 import { Authenticator } from "@app/lib/auth";
 import {
-  ceilToHourISO,
   floorToHourISO,
   listMetronomeCustomerCredits,
 } from "@app/lib/metronome/client";
@@ -120,7 +119,7 @@ async function backfillFromMetronome(
     dbCredits
       .filter((c) => c.startDate !== null && c.expirationDate !== null)
       .map((c) => [
-        `${getSubtypeFromDbCredit(c.invoiceOrLineItemId)}:${floorToHourISO(c.startDate!)}:${ceilToHourISO(c.expirationDate!)}`,
+        `${getSubtypeFromDbCredit(c.invoiceOrLineItemId)}:${floorToHourISO(c.startDate!)}:${floorToHourISO(c.expirationDate!)}`,
         c,
       ])
   );
@@ -159,7 +158,7 @@ async function backfillFromMetronome(
       subtype = "unknown";
     }
 
-    const dateKey = `${subtype}:${floorToHourISO(startDate)}:${ceilToHourISO(expirationDate)}`;
+    const dateKey = `${subtype}:${floorToHourISO(startDate)}:${floorToHourISO(expirationDate)}`;
     const existingByDates = existingDateKeys.get(dateKey);
     if (existingByDates) {
       if (

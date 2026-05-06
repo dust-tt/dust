@@ -5,7 +5,6 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { metronomeAmount } from "@app/lib/metronome/amounts";
 import {
-  ceilToHourISO,
   createMetronomeCredit,
   floorToHourISO,
   getMetronomeRateCardById,
@@ -110,8 +109,8 @@ export async function createCouponCredit({
       productId: getProductSeatSubscriptionCreditsId(),
       creditTypeId,
       amount: metronomeAmount(coupon.amount * 100, currency),
-      startingAt: floorToHourISO(item.startingAt),
-      endingBefore: ceilToHourISO(item.endingBefore),
+      startingAt: item.startingAt.toISOString(),
+      endingBefore: item.endingBefore.toISOString(),
       name: `Coupon: ${coupon.code}`,
       idempotencyKey: `coupon-${redemptionId}-${i}`,
       priority: 0,
@@ -141,7 +140,7 @@ export async function endCouponCredit({
   metronomeCreditIds: string[];
   endAt: Date;
 }): Promise<Result<void, Error>> {
-  const accessEndingBefore = ceilToHourISO(endAt);
+  const accessEndingBefore = floorToHourISO(endAt);
 
   for (const creditId of metronomeCreditIds) {
     const result = await updateMetronomeCreditEndDate({
