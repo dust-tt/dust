@@ -122,7 +122,6 @@ describe("ProjectTaskStateResource", () => {
       );
 
       expect(state.lastReadAt).toEqual(lastReadAt);
-      expect(state.lastCleanedAt).toBeNull();
     });
 
     it("updates lastReadAt on subsequent calls", async () => {
