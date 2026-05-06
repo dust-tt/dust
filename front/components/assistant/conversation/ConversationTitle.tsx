@@ -3,6 +3,8 @@ import {
   useConversationMenu,
 } from "@app/components/assistant/conversation/ConversationMenu";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import { EditConversationTitleDialog } from "@app/components/assistant/conversation/EditConversationTitleDialog";
+import { getParentConversationTitleLabel } from "@app/components/assistant/conversation/utils";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useConversation, useConversations } from "@app/hooks/conversations";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
@@ -25,9 +27,6 @@ import {
   Tooltip,
 } from "@dust-tt/sparkle";
 import { useCallback, useState } from "react";
-
-import { EditConversationTitleDialog } from "./EditConversationTitleDialog";
-import { getParentConversationTitleLabel } from "./utils";
 
 export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
   const activeConversationId = useActiveConversationId();

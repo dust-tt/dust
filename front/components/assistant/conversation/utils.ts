@@ -231,15 +231,6 @@ function getCompactionParentConversation(
   return parentConversation;
 }
 
-function getTruncatedParentConversationTitleLabel(
-  parentConversation: ConversationForkedFromType
-): string {
-  return truncate(
-    getParentConversationTitleLabel(parentConversation),
-    MAX_SOURCE_CONVERSATION_TITLE_LENGTH
-  );
-}
-
 export function getCompactionInProgressLabel(
   message: CompactionMessageType,
   conversation: CompactionConversationInput
@@ -254,9 +245,13 @@ export function getCompactionInProgressLabel(
   }
 
   const parentConversationTitle =
-    getTruncatedParentConversationTitleLabel(parentConversation);
+    getParentConversationTitleLabel(parentConversation);
+  const truncatedParentConversationTitle = truncate(
+    parentConversationTitle,
+    MAX_SOURCE_CONVERSATION_TITLE_LENGTH
+  );
 
-  return `Summarizing '${parentConversationTitle}', this may take a moment…`;
+  return `Summarizing '${truncatedParentConversationTitle}', this may take a moment…`;
 }
 
 export function getCompactionSuccessLabel(
@@ -276,9 +271,13 @@ export function getCompactionSuccessLabel(
   );
   if (parentConversation) {
     const parentConversationTitle =
-      getTruncatedParentConversationTitleLabel(parentConversation);
+      getParentConversationTitleLabel(parentConversation);
+    const truncatedParentConversationTitle = truncate(
+      parentConversationTitle,
+      MAX_SOURCE_CONVERSATION_TITLE_LENGTH
+    );
 
-    return `Summarized '${parentConversationTitle}' here`;
+    return `Summarized '${truncatedParentConversationTitle}' here`;
   }
 
   return "Summarized another conversation here";

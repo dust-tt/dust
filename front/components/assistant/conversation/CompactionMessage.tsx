@@ -1,3 +1,7 @@
+import {
+  getCompactionInProgressLabel,
+  getCompactionSuccessLabel,
+} from "@app/components/assistant/conversation/utils";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import type {
   CompactionMessageType,
@@ -10,11 +14,6 @@ import {
   ExclamationCircleIcon,
   Spinner,
 } from "@dust-tt/sparkle";
-
-import {
-  getCompactionInProgressLabel,
-  getCompactionSuccessLabel,
-} from "./utils";
 
 interface CompactionMessageProps {
   message: CompactionMessageType;
