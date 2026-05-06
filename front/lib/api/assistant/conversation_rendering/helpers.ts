@@ -497,7 +497,13 @@ export async function renderContentFragment(
   auth: Authenticator,
   m: any, // ContentFragmentType
   model: ModelConfigurationType,
-  excludeImages: boolean
+  {
+    excludeImages,
+    useFileSystem,
+  }: {
+    excludeImages: boolean;
+    useFileSystem: boolean;
+  }
 ): Promise<ModelMessageTypeMultiActions | null> {
   const renderedContentFragment = await renderLightContentFragmentForModel(
     auth,
@@ -505,6 +511,7 @@ export async function renderContentFragment(
     model,
     {
       excludeImages: Boolean(excludeImages),
+      useFileSystem,
     }
   );
   return renderedContentFragment;

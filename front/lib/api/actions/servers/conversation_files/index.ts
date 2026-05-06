@@ -8,7 +8,6 @@ import {
 } from "@app/lib/api/actions/servers/conversation_files/metadata";
 import { TOOLS } from "@app/lib/api/actions/servers/conversation_files/tools";
 import type { Authenticator } from "@app/lib/auth";
-import { hasFeatureFlag } from "@app/lib/auth";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 const NEW_FILE_EXPLORER_HIDDEN_TOOLS = new Set([
@@ -22,10 +21,12 @@ async function createServer(
 ): Promise<McpServer> {
   const server = makeInternalMCPServer("conversation_files");
 
-  const isNewFileExplorer = await hasFeatureFlag(auth, "new_file_explorer");
+  const useFileSystem =
+    agentLoopContext?.runContext?.conversation.metadata?.useFileSystem ===
+    true;
 
   for (const tool of TOOLS) {
-    if (isNewFileExplorer && NEW_FILE_EXPLORER_HIDDEN_TOOLS.has(tool.name)) {
+    if (useFileSystem && NEW_FILE_EXPLORER_HIDDEN_TOOLS.has(tool.name)) {
       continue;
     }
 

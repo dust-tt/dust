@@ -222,7 +222,10 @@ export async function renderAllMessages(
           auth,
           m,
           model,
-          !!excludeImages
+          {
+            excludeImages: !!excludeImages,
+            useFileSystem: conversation.metadata?.useFileSystem === true,
+          }
         );
         if (renderedContentFragment) {
           messages.push(renderedContentFragment);

@@ -448,9 +448,18 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         ? [...blob.requestedSpaceIds, space.id]
         : blob.requestedSpaceIds;
 
+    // Default `useFileSystem` from the workspace feature flag when the caller hasn't pinned a
+    // value. Pinning the flag on the conversation gives stable behavior across its lifetime:
+    // existing conversations (no flag set) keep the legacy behavior even after the FF flips on.
+    const metadata: ConversationMetadata = blob.metadata ?? {};
+    if (metadata.useFileSystem === undefined) {
+      metadata.useFileSystem = await hasFeatureFlag(auth, "new_file_explorer");
+    }
+
     const conversation = await this.model.create(
       {
         ...blob,
+        metadata,
         requestedSpaceIds,
         workspaceId: workspace.id,
       },

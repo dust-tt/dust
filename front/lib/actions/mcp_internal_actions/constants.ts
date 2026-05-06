@@ -1141,8 +1141,7 @@ export const INTERNAL_MCP_SERVERS = {
     id: 1033,
     availability: "auto_hidden_builder",
     allowMultipleInstances: false,
-    isRestricted: ({ featureFlags }) =>
-      !featureFlags.includes("new_file_explorer"),
+    isRestricted: undefined,
     isPreview: false,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,

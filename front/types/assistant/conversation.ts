@@ -446,6 +446,7 @@ export const CONVERSATION_METADATA_URL_ACCESS_MODE_KEY = "urlAccessMode";
 export type ConversationMetadata = Record<string, unknown> & {
   urlAccessMode?: ConversationUrlAccessMode;
   projectTodoId?: string;
+  useFileSystem?: boolean;
 };
 
 export function isConversationUrlAccessMode(
