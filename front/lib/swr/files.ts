@@ -3,6 +3,7 @@ import { usePeriodicRefresh } from "@app/hooks/usePeriodicRefresh";
 import config from "@app/lib/api/config";
 import { clientFetch } from "@app/lib/egress/client";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
+import { fetcherText } from "@app/lib/swr/fetcher";
 import {
   emptyArray,
   getErrorFromResponse,
@@ -246,7 +247,6 @@ export function useSkillAttachmentFileContent({
     disabled?: boolean;
   };
 }) {
-  const { fetcherText } = useFetcher();
   const skillAttachmentContentFetcher: Fetcher<string> = fetcherText;
   const isDisabled = !fileId || config?.disabled;
   const swrKey = fileId

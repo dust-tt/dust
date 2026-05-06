@@ -23,7 +23,7 @@ const CONSOLE_MESSAGE_SHOWN_KEY = "dust_console_message_shown";
 import { PostHogTracker } from "@app/components/app/PostHogTracker";
 import { NextLinkWrapper } from "@app/lib/platform/NextLinkWrapper";
 import { FetcherProvider } from "@app/lib/swr/FetcherContext";
-import { fetcher, fetcherText, fetcherWithBody } from "@app/lib/swr/fetcher";
+import { fetcher, fetcherWithBody } from "@app/lib/swr/fetcher";
 import { initDatadogLogs } from "@app/logger/datadogLogger";
 import { SparkleContext } from "@dust-tt/sparkle";
 
@@ -109,11 +109,7 @@ export default function App({ Component, pageProps }: AppPropsWithLayout) {
   const getLayout = Component.getLayout ?? ((page) => page);
 
   return (
-    <FetcherProvider
-      fetcher={fetcher}
-      fetcherText={fetcherText}
-      fetcherWithBody={fetcherWithBody}
-    >
+    <FetcherProvider fetcher={fetcher} fetcherWithBody={fetcherWithBody}>
       <PostHogTracker>
         <SparkleContext.Provider
           value={{ components: { link: NextLinkWrapper } }}
