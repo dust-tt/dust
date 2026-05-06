@@ -18,6 +18,7 @@ import { startAgentForProjectTodo } from "@app/lib/project_todo/start_agent";
 import { ProjectTodoResource } from "@app/lib/resources/project_todo_resource";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import type { ProjectTodoSourceInfo } from "@app/types/project_todo";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -51,15 +52,52 @@ async function resolveAgentConfigurationIdByName(
   return exactMatch?.sId ?? matches[0].sId;
 }
 
-function formatTodo(todo: ProjectTodoResource): string {
+function formatTodo(
+  todo: ProjectTodoResource,
+  sources?: ProjectTodoSourceInfo[]
+): string {
   const json = todo.toJSON();
-  const lines = [
+  const assignee = json.user
+    ? `${json.user.fullName} (${json.user.sId})`
+    : "Unassigned";
+  const createdBy =
+    json.createdByType === "agent"
+      ? `agent:${json.createdByAgentConfigurationId ?? "unknown"}`
+      : `user:${json.createdByUserId ?? "unknown"}`;
+
+  const lines: string[] = [
     `- [${json.sId}] ${json.text}`,
-    ` Assignee: ${json.user?.fullName} (${json.user?.sId}) | Status: ${json.status} | Created: ${json.createdAt.toISOString().slice(0, 10)}`,
+    `  Assignee: ${assignee} | Status: ${json.status} | Created: ${json.createdAt.toISOString().slice(0, 10)} | Updated: ${json.updatedAt.toISOString().slice(0, 10)}`,
+    `  Created by: ${createdBy}`,
   ];
-  if (todo.doneAt) {
-    lines.push(`  Done: ${todo.doneAt.toISOString().slice(0, 10)}`);
+
+  if (json.doneAt) {
+    const markedBy =
+      json.markedAsDoneByType === "agent"
+        ? `agent:${json.markedAsDoneByAgentConfigurationId ?? "unknown"}`
+        : `user:${json.markedAsDoneByUserId ?? "unknown"}`;
+    lines.push(
+      `  Done: ${json.doneAt.toISOString().slice(0, 10)} | Marked done by: ${markedBy}`
+    );
   }
+  if (json.actorRationale) {
+    lines.push(`  Rationale: ${json.actorRationale}`);
+  }
+  if (json.agentSuggestionStatus) {
+    lines.push(`  Agent suggestion status: ${json.agentSuggestionStatus}`);
+  }
+  if (json.conversationId) {
+    lines.push(`  Conversation: ${json.conversationId}`);
+  }
+  if (sources && sources.length > 0) {
+    const sourceList = sources
+      .map((s) =>
+        s.sourceTitle ? `${s.sourceTitle} [${s.sourceType}]` : s.sourceType
+      )
+      .join(", ");
+    lines.push(`  Sources: ${sourceList}`);
+  }
+
   return lines.join("\n");
 }
 
@@ -118,6 +156,11 @@ export function createProjectTodosTools(
           return new Ok([{ type: "text" as const, text: "No TODOs found." }]);
         }
 
+        const sourcesMap = await ProjectTodoResource.fetchSourcesForTodoIds(
+          auth,
+          { sIds: todos.map((t) => t.sId) }
+        );
+
         if (statusFilter === "done") {
           todos.sort(
             (a, b) => (b.doneAt?.getTime() ?? 0) - (a.doneAt?.getTime() ?? 0)
@@ -126,7 +169,7 @@ export function createProjectTodosTools(
             `Found ${todos.length} completed TODO(s) in the last ${daysAgo} day(s):\n`,
           ];
           for (const todo of todos) {
-            lines.push(formatTodo(todo));
+            lines.push(formatTodo(todo, sourcesMap.get(todo.sId)));
           }
           return new Ok([{ type: "text" as const, text: lines.join("\n") }]);
         }
@@ -138,7 +181,7 @@ export function createProjectTodosTools(
 
         const lines: string[] = [label];
         for (const todo of todos) {
-          lines.push(formatTodo(todo));
+          lines.push(formatTodo(todo, sourcesMap.get(todo.sId)));
         }
 
         return new Ok([{ type: "text" as const, text: lines.join("\n") }]);
@@ -160,7 +203,7 @@ export function createProjectTodosTools(
         const agentConfigId =
           agentLoopContext?.runContext?.agentConfiguration?.sId ?? null;
 
-        const created: string[] = [];
+        const createdTodos: ProjectTodoResource[] = [];
         const errors: string[] = [];
         for (const item of todos) {
           let newUserId: ModelId | undefined = currentUser.id;
@@ -207,8 +250,16 @@ export function createProjectTodosTools(
             });
           }
 
-          created.push(formatTodo(todo));
+          createdTodos.push(todo);
         }
+
+        const sourcesMap = await ProjectTodoResource.fetchSourcesForTodoIds(
+          auth,
+          { sIds: createdTodos.map((t) => t.sId) }
+        );
+        const created = createdTodos.map((todo) =>
+          formatTodo(todo, sourcesMap.get(todo.sId))
+        );
 
         return new Ok([
           {
