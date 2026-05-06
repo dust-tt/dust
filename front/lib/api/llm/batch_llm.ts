@@ -332,7 +332,9 @@ export async function sendBatchCallToLlm(
 
     const { enabledSkills, equippedSkills } = input;
 
-    const leadingMessages = equippedSkills ? removeNulls([renderEquippedSkillsUserMessage(equippedSkills)]) : [];
+    const leadingMessages = equippedSkills
+      ? removeNulls([renderEquippedSkillsUserMessage(equippedSkills)])
+      : [];
 
     const modelConversationRes = await renderConversationForModel(auth, {
       conversation: conversationRes.value,
