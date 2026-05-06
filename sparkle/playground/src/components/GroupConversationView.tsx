@@ -1103,7 +1103,7 @@ export function GroupConversationView({
   const [todoItemTextByKey, setTodoItemTextByKey] = useState<
     Record<string, string>
   >({});
-  const [todoDraftItemsByParentKey, setTodoDraftItemsByParentKey] = useState<
+  const [todoDraftItemsByUserId, setTodoDraftItemsByUserId] = useState<
     Record<string, ChecklistItem[]>
   >({});
   const [editingTodoItemKey, setEditingTodoItemKey] = useState<string | null>(
@@ -2104,11 +2104,11 @@ export function GroupConversationView({
         (previousHiddenFakeTodoItemKeys) =>
           new Set([...previousHiddenFakeTodoItemKeys, ...checkedFakeTodoKeys])
       );
-      setTodoDraftItemsByParentKey((previousDraftItemsByParentKey) => {
-        const nextDraftItemsByParentKey = Object.fromEntries(
-          Object.entries(previousDraftItemsByParentKey)
-            .map(([parentKey, draftItems]) => [
-              parentKey,
+      setTodoDraftItemsByUserId((previousDraftItemsByUserId) => {
+        const nextDraftItemsByUserId = Object.fromEntries(
+          Object.entries(previousDraftItemsByUserId)
+            .map(([userId, draftItems]) => [
+              userId,
               draftItems.filter(
                 (item) =>
                   !checkedKeys.has(getSummaryItemKey("needAttention", item))
@@ -2116,7 +2116,7 @@ export function GroupConversationView({
             ])
             .filter(([, draftItems]) => draftItems.length > 0)
         );
-        return nextDraftItemsByParentKey;
+        return nextDraftItemsByUserId;
       });
       setTypingItemKeys((previousTypingItemKeys) => {
         const nextTypingItemKeys = new Set(previousTypingItemKeys);
@@ -2162,39 +2162,53 @@ export function GroupConversationView({
       delete nextTextByKey[itemKey];
       return nextTextByKey;
     });
-    setTodoDraftItemsByParentKey((previousDraftItemsByParentKey) => {
-      const nextDraftItemsByParentKey = Object.fromEntries(
-        Object.entries(previousDraftItemsByParentKey)
-          .map(([parentKey, draftItems]) => [
-            parentKey,
+    setTodoDraftItemsByUserId((previousDraftItemsByUserId) => {
+      const nextDraftItemsByUserId = Object.fromEntries(
+        Object.entries(previousDraftItemsByUserId)
+          .map(([userId, draftItems]) => [
+            userId,
             draftItems.filter(
               (item) => getSummaryItemKey("needAttention", item) !== itemKey
             ),
           ])
           .filter(([, draftItems]) => draftItems.length > 0)
       );
-      return nextDraftItemsByParentKey;
+      return nextDraftItemsByUserId;
     });
   }, []);
 
-  const addDraftTodoItemAfter = useCallback((parentItemKey: string) => {
-    const draftItem: ChecklistItem = {
-      id: `draft-todo-${todoDraftItemCounterRef.current}`,
-      text: "",
-    };
-    todoDraftItemCounterRef.current += 1;
+  const addDraftTodoItemAfter = useCallback(
+    (userId: string, previousItemKey: string) => {
+      const draftItem: ChecklistItem = {
+        id: `draft-todo-${todoDraftItemCounterRef.current}`,
+        text: "",
+      };
+      todoDraftItemCounterRef.current += 1;
 
-    const draftItemKey = getSummaryItemKey("needAttention", draftItem);
-    pendingFocusTodoItemKeyRef.current = draftItemKey;
+      const draftItemKey = getSummaryItemKey("needAttention", draftItem);
+      pendingFocusTodoItemKeyRef.current = draftItemKey;
 
-    setTodoDraftItemsByParentKey((previousDraftItemsByParentKey) => ({
-      ...previousDraftItemsByParentKey,
-      [parentItemKey]: [
-        ...(previousDraftItemsByParentKey[parentItemKey] ?? []),
-        draftItem,
-      ],
-    }));
-  }, []);
+      setTodoDraftItemsByUserId((previousDraftItemsByUserId) => {
+        const previousDraftItems = previousDraftItemsByUserId[userId] ?? [];
+        const previousDraftItemIndex = previousDraftItems.findIndex(
+          (item) => getSummaryItemKey("needAttention", item) === previousItemKey
+        );
+        const nextDraftItems = [...previousDraftItems];
+
+        if (previousDraftItemIndex === -1) {
+          nextDraftItems.push(draftItem);
+        } else {
+          nextDraftItems.splice(previousDraftItemIndex + 1, 0, draftItem);
+        }
+
+        return {
+          ...previousDraftItemsByUserId,
+          [userId]: nextDraftItems,
+        };
+      });
+    },
+    []
+  );
 
   useEffect(() => {
     const hasCheckedTodoItems = Object.entries(checkedSummaryItems).some(
@@ -2498,11 +2512,7 @@ export function GroupConversationView({
                 icon={ChatBubbleLeftRightIcon}
               />
               <TabsTrigger value="todos" label="To-dos" icon={CheckIcon} />
-              <TabsTrigger
-                value="knowledge"
-                label="Files"
-                icon={ArrowDownOnSquareIcon}
-              />
+              <TabsTrigger value="knowledge" label="Files" icon={FolderIcon} />
               {showToolsAndAboutTabs && (
                 <>
                   <TabsTrigger value="Tools" label="Tools" icon={ToolsIcon} />
@@ -3052,23 +3062,15 @@ export function GroupConversationView({
                         if (visibleItems.length === 0) {
                           return null;
                         }
-                        const visibleItemsWithDrafts = visibleItems
-                          .flatMap((item) => {
-                            const itemKey = getSummaryItemKey(
-                              "needAttention",
-                              item
-                            );
-                            return [
-                              item,
-                              ...(todoDraftItemsByParentKey[itemKey] ?? []),
-                            ];
-                          })
-                          .filter(
-                            (item) =>
-                              !deletedTodoItemKeys.has(
-                                getSummaryItemKey("needAttention", item)
-                              )
-                          );
+                        const visibleItemsWithDrafts = [
+                          ...visibleItems,
+                          ...(todoDraftItemsByUserId[list.user.id] ?? []),
+                        ].filter(
+                          (item) =>
+                            !deletedTodoItemKeys.has(
+                              getSummaryItemKey("needAttention", item)
+                            )
+                        );
 
                         return (
                           <div
@@ -3236,7 +3238,10 @@ export function GroupConversationView({
                                               event.currentTarget.textContent ??
                                                 ""
                                             );
-                                            addDraftTodoItemAfter(itemKey);
+                                            addDraftTodoItemAfter(
+                                              list.user.id,
+                                              itemKey
+                                            );
                                           }
                                         }}
                                       >
@@ -3408,7 +3413,7 @@ export function GroupConversationView({
                 </h3>
                 <Button
                   variant="outline"
-                  icon={ArrowUpOnSquareIcon}
+                  icon={ArrowDownOnSquareIcon}
                   label="Add files"
                 />
               </div>
@@ -3417,7 +3422,7 @@ export function GroupConversationView({
                   message="No files in this room yet."
                   action={
                     <EmptyCTAButton
-                      icon={ArrowUpOnSquareIcon}
+                      icon={ArrowDownOnSquareIcon}
                       label="Add files"
                     />
                   }
