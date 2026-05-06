@@ -1,5 +1,4 @@
 // biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
-import { checkProgrammaticUsageLimits } from "@app/lib/api/programmatic_usage/tracking";
 import type { LightMCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { StepContext } from "@app/lib/actions/types";
 import {
@@ -50,7 +49,10 @@ import {
 } from "@app/lib/api/audit/workos_audit";
 import { maybeUpsertFileAttachment } from "@app/lib/api/files/attachments";
 import { getRemainingKeyCapMicroUsd } from "@app/lib/api/programmatic_usage/key_cap";
-import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage/tracking";
+import {
+  checkProgrammaticUsageLimits,
+  isProgrammaticUsage,
+} from "@app/lib/api/programmatic_usage/tracking";
 import { fetchLatestProjectContextFileContentFragment } from "@app/lib/api/projects/context";
 import { isModelAvailable, isProviderWhitelisted } from "@app/lib/assistant";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
@@ -2375,13 +2377,35 @@ export async function softDeleteAgentMessage(
   return new Ok({ success: true });
 }
 
-interface MessageLimit {
-  isLimitReached: boolean;
+type ReachedMessageLimit = {
+  isLimitReached: true;
   limitType:
     | "rate_limit_error"
     | "plan_message_limit_exceeded"
-    | "credits_exhausted"
-    | null;
+    | "credits_exhausted";
+  message?: string;
+};
+
+type MessageLimit =
+  | ReachedMessageLimit
+  | {
+      isLimitReached: false;
+      limitType: null;
+    };
+
+function getMessageLimitErrorMessage(limit: ReachedMessageLimit): string {
+  if (limit.message) {
+    return limit.message;
+  }
+
+  switch (limit.limitType) {
+    case "plan_message_limit_exceeded":
+      return "The message limit for this plan has been exceeded.";
+    case "credits_exhausted":
+      return "Your workspace has run out of credits. Please purchase more credits to continue.";
+    case "rate_limit_error":
+      return "Rate limit exceeded. Please retry later.";
+  }
 }
 
 async function checkMessagesLimit(
@@ -2430,15 +2454,12 @@ async function checkMessagesLimit(
     mentions,
     context,
   });
-  if (messageLimit.isLimitReached && messageLimit.limitType) {
+  if (messageLimit.isLimitReached) {
     return new Err({
       status_code: 403,
       api_error: {
         type: messageLimit.limitType,
-        message:
-          messageLimit.limitType === "plan_message_limit_exceeded"
-            ? "The message limit for this plan has been exceeded."
-            : "Rate limit exceeded. Please retry later.",
+        message: getMessageLimitErrorMessage(messageLimit),
       },
     });
   }
@@ -2625,6 +2646,7 @@ async function isMessagesLimitReached(
       return {
         isLimitReached: true,
         limitType: "credits_exhausted",
+        message: limitsResult.error.message,
       };
     }
     return {
@@ -2709,9 +2731,16 @@ async function isMessagesLimitReached(
   const isLimitReached =
     remainingMentions.length > 0 &&
     remainingMentions.filter((r) => r > 0).length === 0;
+  if (isLimitReached) {
+    return {
+      isLimitReached: true,
+      limitType: "plan_message_limit_exceeded",
+    };
+  }
+
   return {
-    isLimitReached,
-    limitType: isLimitReached ? "plan_message_limit_exceeded" : null,
+    isLimitReached: false,
+    limitType: null,
   };
 }
 

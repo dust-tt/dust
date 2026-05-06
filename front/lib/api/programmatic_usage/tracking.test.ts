@@ -2,6 +2,7 @@ import {
   compareCreditsForConsumption,
   computeCreditAlertThresholdKey,
   decreaseProgrammaticCredits,
+  isProgrammaticUsage,
 } from "@app/lib/api/programmatic_usage/tracking";
 import { Authenticator } from "@app/lib/auth";
 import { CreditResource } from "@app/lib/resources/credit_resource";
@@ -138,6 +139,27 @@ describe("compareCreditsForConsumption", () => {
       expect(sorted[4].expirationDate).toEqual(NOW);
       expect(sorted[5].type).toBe("payg");
     });
+  });
+});
+
+describe("isProgrammaticUsage", () => {
+  let auth: Authenticator;
+
+  beforeEach(async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const user = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user, { role: "admin" });
+    await GroupFactory.defaults(workspace);
+    auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+  });
+
+  it("should treat wake-up messages as user usage", () => {
+    expect(isProgrammaticUsage(auth, { userMessageOrigin: "wakeup" })).toBe(
+      false
+    );
   });
 });
 
