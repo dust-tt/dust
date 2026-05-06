@@ -333,7 +333,7 @@ export async function countMauForWorkspace(
     since: thirtyDaysAgo,
     workspace,
   });
-  return Math.max(count, 1);
+  return count;
 }
 
 /**

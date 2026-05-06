@@ -119,7 +119,7 @@ export async function syncSeatCount({
     metronomeCustomerId,
     contractId,
     subscriptionId,
-    quantity: Math.max(memberCount, 1),
+    quantity: memberCount,
     startingAt,
   });
 }
