@@ -752,7 +752,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "anthropic_reasoning_token_count"
   | "collapsible_messages"
   | "use_dust_keys"
-  | "enable_compaction"
   | "browser_extension_mcp_tools"
   | "sensitivity_labels"
   | "conversation_search_indexing"

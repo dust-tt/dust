@@ -21,7 +21,6 @@ import {
   useConversationContextUsage,
 } from "@app/hooks/conversations";
 import { CONTEXT_USAGE_PERCENT_THRESHOLDS } from "@app/hooks/conversations/useConversationContextUsage";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { useConversationWakeUps } from "@app/lib/swr/wakeups";
@@ -114,9 +113,6 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
 
   const draftAgent = agentBuilderContext?.draftAgent;
 
-  const { hasFeature } = useFeatureFlags();
-  const isCompactionEnabled = hasFeature("enable_compaction");
-
   const { contextUsage, contextUsagePercentage } = useConversationContextUsage({
     conversationId: context.conversation?.sId ?? "",
     workspaceId: context.owner.sId,
@@ -127,14 +123,12 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
     (message) => isCompactionMessage(message) && message.status === "created"
   )
     ? "Wait for compaction to finish."
-    : isCompactionEnabled &&
-        contextUsagePercentage &&
+    : contextUsagePercentage &&
         contextUsagePercentage >=
           CONTEXT_USAGE_PERCENT_THRESHOLDS["force_compaction"]
       ? "Context is full, compact to continue."
       : null;
   const showContextUsageBanner =
-    isCompactionEnabled &&
     contextUsage &&
     !!contextUsagePercentage &&
     contextUsagePercentage >= CONTEXT_USAGE_PERCENT_THRESHOLDS["show_warning"];
