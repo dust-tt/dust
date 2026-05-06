@@ -516,12 +516,12 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "semantic_search": "never_ask",
     "update_file": "medium",
   },
-  "project_todos": {
-    "create_todos": "low",
-    "list_todos": "never_ask",
-    "mark_todo_done": "low",
-    "start_todo_agent": "low",
-    "update_todo": "low",
+  "project_tasks": {
+    "create_tasks": "low",
+    "list_tasks": "never_ask",
+    "mark_task_done": "low",
+    "start_task_agent": "low",
+    "update_task": "low",
   },
   "query_tables_v2": {
     "execute_database_query": "never_ask",

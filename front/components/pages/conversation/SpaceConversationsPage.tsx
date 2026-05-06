@@ -1,11 +1,11 @@
 import { SpaceAboutTab } from "@app/components/assistant/conversation/space/about/SpaceAboutTab";
-import type { TodoOwnerFilter } from "@app/components/assistant/conversation/space/conversations/project_todos/projectTodosListScope";
+import type { TaskOwnerFilter } from "@app/components/assistant/conversation/space/conversations/project_tasks/projectTasksListScope";
 import { SpaceConversationsTab } from "@app/components/assistant/conversation/space/conversations/SpaceConversationsTab";
 import { ManageUsersPanel } from "@app/components/assistant/conversation/space/ManageUsersPanel";
 import { ProjectHeaderActions } from "@app/components/assistant/conversation/space/ProjectHeaderActions";
 import { SpaceAlphaTab } from "@app/components/assistant/conversation/space/SpaceAlphaTab";
 import { SpaceKnowledgeTab } from "@app/components/assistant/conversation/space/SpaceKnowledgeTab";
-import { SpaceTodosTab } from "@app/components/assistant/conversation/space/SpaceTodosTab";
+import { SpaceTasksTab } from "@app/components/assistant/conversation/space/SpaceTasksTab";
 
 import { useSpaceConversations } from "@app/hooks/conversations";
 import type { SpaceConversationListFilter } from "@app/hooks/conversations/useSpaceConversations";
@@ -19,11 +19,7 @@ import {
   useSpaceProjectTabs,
 } from "@app/hooks/useSpaceProjectTabs";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
-import {
-  useAuth,
-  useFeatureFlags,
-  useWorkspace,
-} from "@app/lib/auth/AuthContext";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useClientType } from "@app/lib/context/clientType";
 import type { DustError } from "@app/lib/error";
 import { useAppRouter } from "@app/lib/platform";
@@ -58,7 +54,6 @@ import { useCallback, useState } from "react";
 export function SpaceConversationsPage() {
   const owner = useWorkspace();
   const { user } = useAuth();
-  const { hasFeature } = useFeatureFlags();
   const clientType = useClientType();
   const router = useAppRouter();
   const spaceId = useActiveSpaceId();
@@ -105,14 +100,12 @@ export function SpaceConversationsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [_planLimitReached, setPlanLimitReached] = useState(false);
   const [isInvitePanelOpen, setIsInvitePanelOpen] = useState(false);
-  const canShowTodosTab = hasFeature("project_todo");
   const compactProjectTabs = useIsMobile();
 
   const { currentTab, handleTabChange } = useSpaceProjectTabs({
     spaceId,
     projectUIPreferences,
     setProjectUIPreferences,
-    canShowTodosTab,
   });
 
   const handleConversationFilterChange = useCallback(
@@ -125,11 +118,11 @@ export function SpaceConversationsPage() {
     [projectUIPreferences, setProjectUIPreferences]
   );
 
-  const handleTodoOwnerFilterChange = useCallback(
-    (todosOwnerFilter: TodoOwnerFilter) => {
+  const handleTaskOwnerFilterChange = useCallback(
+    (tasksOwnerFilter: TaskOwnerFilter) => {
       setProjectUIPreferences({
         ...projectUIPreferences,
-        todosOwnerFilter,
+        tasksOwnerFilter,
       });
     },
     [projectUIPreferences, setProjectUIPreferences]
@@ -311,14 +304,12 @@ export function SpaceConversationsPage() {
               tooltip={compactProjectTabs ? "Conversations" : undefined}
               icon={ChatBubbleLeftRightIcon}
             />
-            {canShowTodosTab && (
-              <TabsTrigger
-                value="todos"
-                label={compactProjectTabs ? undefined : "To-dos"}
-                tooltip={compactProjectTabs ? "To-dos" : undefined}
-                icon={ListCheckIcon}
-              />
-            )}
+            <TabsTrigger
+              value="tasks"
+              label={compactProjectTabs ? undefined : "Tasks"}
+              tooltip={compactProjectTabs ? "Tasks" : undefined}
+              icon={ListCheckIcon}
+            />
             <TabsTrigger
               value="knowledge"
               label={compactProjectTabs ? undefined : "Knowledge"}
@@ -375,16 +366,14 @@ export function SpaceConversationsPage() {
           <SpaceKnowledgeTab owner={owner} space={spaceInfo} />
         </TabsContent>
 
-        {canShowTodosTab && (
-          <TabsContent value="todos">
-            <SpaceTodosTab
-              owner={owner}
-              spaceInfo={spaceInfo}
-              todoOwnerFilter={projectUIPreferences.todosOwnerFilter}
-              onTodoOwnerFilterChange={handleTodoOwnerFilterChange}
-            />
-          </TabsContent>
-        )}
+        <TabsContent value="tasks">
+          <SpaceTasksTab
+            owner={owner}
+            spaceInfo={spaceInfo}
+            taskOwnerFilter={projectUIPreferences.tasksOwnerFilter}
+            onTaskOwnerFilterChange={handleTaskOwnerFilterChange}
+          />
+        </TabsContent>
 
         <TabsContent value="settings">
           <SpaceAboutTab

@@ -1,12 +1,12 @@
 import {
-  buildProjectTodosListSwrKey,
-  isProjectTodosListSwrKey,
-  type TodoOwnerFilter,
-} from "@app/components/assistant/conversation/space/conversations/project_todos/projectTodosListScope";
+  buildProjectTasksListSwrKey,
+  isProjectTasksListSwrKey,
+  type TaskOwnerFilter,
+} from "@app/components/assistant/conversation/space/conversations/project_tasks/projectTasksListScope";
 import { useDebounce } from "@app/hooks/useDebounce";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
-import { flattenProjectTodosWithStableAssigneeOrder } from "@app/lib/project_todo/display_order";
+import { flattenProjectTasksWithStableAssigneeOrder } from "@app/lib/project_task/display_order";
 import {
   emptyArray,
   getErrorFromResponse,
@@ -17,20 +17,20 @@ import type {
   GetProjectContextResponseBody,
   PostProjectContextContentNodeResponseBody,
 } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_context";
-import type { PatchProjectTodoResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_todos/[todoId]/index";
-import type { PostStartProjectTodoResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_todos/[todoId]/start";
-import type { BulkActionsResponse } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_todos/bulk-actions";
+import type { PatchProjectTaskResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_tasks/[taskId]/index";
+import type { PostStartProjectTaskResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_tasks/[taskId]/start";
+import type { BulkActionsResponse } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_tasks/bulk-actions";
 import type {
-  GetProjectTodosResponseBody,
-  PostProjectTodoResponseBody,
-} from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_todos/index";
+  GetProjectTasksResponseBody,
+  PostProjectTaskResponseBody,
+} from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_tasks/index";
 import type { CheckNameResponseBody } from "@app/pages/api/w/[wId]/spaces/check-name";
 import type { ContentFragmentInputWithContentNode } from "@app/types/api/internal/assistant";
 import type {
-  ProjectTodoAssigneeType,
-  ProjectTodoStatus,
-  ProjectTodoType,
-} from "@app/types/project_todo";
+  ProjectTaskAssigneeType,
+  ProjectTaskStatus,
+  ProjectTaskType,
+} from "@app/types/project_task";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -329,59 +329,59 @@ export function useCheckProjectName({
   };
 }
 
-export function useProjectTodos({
+export function useProjectTasks({
   owner,
   spaceId,
   disabled,
-  todoOwnerFilter,
+  taskOwnerFilter,
 }: {
   owner: LightWorkspaceType;
   spaceId: string;
   disabled?: boolean;
-  todoOwnerFilter: TodoOwnerFilter;
+  taskOwnerFilter: TaskOwnerFilter;
 }) {
   const { fetcher } = useFetcher();
-  const todosFetcher: Fetcher<GetProjectTodosResponseBody> = fetcher;
-  const todosUrl = useMemo(
+  const tasksFetcher: Fetcher<GetProjectTasksResponseBody> = fetcher;
+  const tasksUrl = useMemo(
     () =>
       disabled
         ? null
-        : buildProjectTodosListSwrKey(owner.sId, spaceId, todoOwnerFilter),
-    [disabled, owner.sId, spaceId, todoOwnerFilter]
+        : buildProjectTasksListSwrKey(owner.sId, spaceId, taskOwnerFilter),
+    [disabled, owner.sId, spaceId, taskOwnerFilter]
   );
 
   const { data, error, mutate } = useSWRWithDefaults(
-    disabled ? null : todosUrl,
-    todosFetcher
+    disabled ? null : tasksUrl,
+    tasksFetcher
   );
 
-  const stableTodoOrderByAssigneeKeyRef = useRef<Map<string, string[]>>(
+  const stableTaskOrderByAssigneeKeyRef = useRef<Map<string, string[]>>(
     new Map()
   );
   const stableOrderScopeKeyRef = useRef(`${owner.sId}:${spaceId}`);
   if (stableOrderScopeKeyRef.current !== `${owner.sId}:${spaceId}`) {
     stableOrderScopeKeyRef.current = `${owner.sId}:${spaceId}`;
-    stableTodoOrderByAssigneeKeyRef.current = new Map();
+    stableTaskOrderByAssigneeKeyRef.current = new Map();
   }
 
-  const todos = useMemo(() => {
-    const raw = data?.todos ?? emptyArray<ProjectTodoType>();
+  const tasks = useMemo(() => {
+    const raw = data?.tasks ?? emptyArray<ProjectTaskType>();
     const viewerUserId = data?.viewerUserId ?? null;
     if (raw.length === 0) {
       return raw;
     }
-    return flattenProjectTodosWithStableAssigneeOrder(
+    return flattenProjectTasksWithStableAssigneeOrder(
       raw,
       viewerUserId,
-      stableTodoOrderByAssigneeKeyRef.current
+      stableTaskOrderByAssigneeKeyRef.current
     );
-  }, [data?.todos, data?.viewerUserId]);
+  }, [data?.tasks, data?.viewerUserId]);
 
   const sortedUsers = useMemo(() => {
-    const usersById = new Map<string, ProjectTodoAssigneeType>();
-    for (const todo of data?.todos ?? emptyArray<ProjectTodoType>()) {
-      if (todo.user) {
-        usersById.set(todo.user.sId, todo.user);
+    const usersById = new Map<string, ProjectTaskAssigneeType>();
+    for (const task of data?.tasks ?? emptyArray<ProjectTaskType>()) {
+      if (task.user) {
+        usersById.set(task.user.sId, task.user);
       }
     }
     const users = [...usersById.values()];
@@ -397,20 +397,20 @@ export function useProjectTodos({
         sensitivity: "base",
       });
     });
-  }, [data?.todos, data?.viewerUserId]);
+  }, [data?.tasks, data?.viewerUserId]);
 
   return {
-    todos,
+    tasks,
     lastReadAt: data?.lastReadAt ?? null,
     viewerUserId: data?.viewerUserId ?? null,
     users: sortedUsers,
-    isTodosLoading: !disabled && !error && !data,
-    isTodosError: !!error,
-    mutateTodos: mutate,
+    isTasksLoading: !disabled && !error && !data,
+    isTasksError: !!error,
+    mutateTasks: mutate,
   };
 }
 
-export function useMarkProjectTodosRead({
+export function useMarkProjectTasksRead({
   owner,
   spaceId,
 }: {
@@ -425,9 +425,9 @@ export function useMarkProjectTodosRead({
     // Keep local UI state in sync immediately to avoid replaying new-item
     // animations when navigating away/back before the network round-trip ends.
     await mutate(
-      (key) => isProjectTodosListSwrKey(key, owner.sId, spaceId),
-      (prev: GetProjectTodosResponseBody | undefined) => ({
-        todos: prev?.todos ?? [],
+      (key) => isProjectTasksListSwrKey(key, owner.sId, spaceId),
+      (prev: GetProjectTasksResponseBody | undefined) => ({
+        tasks: prev?.tasks ?? [],
         viewerUserId: prev?.viewerUserId ?? null,
         lastReadAt: immediateReadAt,
       }),
@@ -436,7 +436,7 @@ export function useMarkProjectTodosRead({
 
     try {
       await clientFetch(
-        `/api/w/${owner.sId}/spaces/${spaceId}/project_todos/mark_read`,
+        `/api/w/${owner.sId}/spaces/${spaceId}/project_tasks/mark_read`,
         { method: "POST" }
       );
     } catch {
@@ -445,7 +445,7 @@ export function useMarkProjectTodosRead({
   }, [mutate, owner.sId, spaceId]);
 }
 
-export function useCreateProjectTodo({
+export function useCreateProjectTask({
   owner,
   spaceId,
 }: {
@@ -460,10 +460,10 @@ export function useCreateProjectTodo({
   }: {
     text: string;
     assigneeUserId: string;
-  }): Promise<Result<ProjectTodoType, Error>> => {
+  }): Promise<Result<ProjectTaskType, Error>> => {
     try {
       const res = await clientFetch(
-        `/api/w/${owner.sId}/spaces/${spaceId}/project_todos`,
+        `/api/w/${owner.sId}/spaces/${spaceId}/project_tasks`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -475,19 +475,19 @@ export function useCreateProjectTodo({
         const errorData = await getErrorFromResponse(res);
         sendNotification({
           type: "error",
-          title: "Failed to add to-do",
+          title: "Failed to add task",
           description: errorData.message,
         });
         return new Err(new Error(errorData.message));
       }
 
-      const responseData: PostProjectTodoResponseBody = await res.json();
-      return new Ok(responseData.todo);
+      const responseData: PostProjectTaskResponseBody = await res.json();
+      return new Ok(responseData.task);
     } catch (e) {
       const errorMessage = normalizeError(e).message;
       sendNotification({
         type: "error",
-        title: "Failed to add to-do",
+        title: "Failed to add task",
         description: errorMessage,
       });
       return new Err(new Error(errorMessage));
@@ -495,7 +495,7 @@ export function useCreateProjectTodo({
   };
 }
 
-export function useUpdateProjectTodo({
+export function useUpdateProjectTask({
   owner,
   spaceId,
 }: {
@@ -505,16 +505,16 @@ export function useUpdateProjectTodo({
   const sendNotification = useSendNotification();
 
   return async (
-    todoId: string,
+    taskId: string,
     updates: {
       text?: string;
-      status?: ProjectTodoStatus;
+      status?: ProjectTaskStatus;
       assigneeUserId?: string;
     }
-  ): Promise<Result<ProjectTodoType, Error>> => {
+  ): Promise<Result<ProjectTaskType, Error>> => {
     try {
       const res = await clientFetch(
-        `/api/w/${owner.sId}/spaces/${spaceId}/project_todos/${todoId}`,
+        `/api/w/${owner.sId}/spaces/${spaceId}/project_tasks/${taskId}`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -526,19 +526,19 @@ export function useUpdateProjectTodo({
         const errorData = await getErrorFromResponse(res);
         sendNotification({
           type: "error",
-          title: "Failed to update todo",
+          title: "Failed to update task",
           description: errorData.message,
         });
         return new Err(new Error(errorData.message));
       }
 
-      const responseData: PatchProjectTodoResponseBody = await res.json();
-      return new Ok(responseData.todo);
+      const responseData: PatchProjectTaskResponseBody = await res.json();
+      return new Ok(responseData.task);
     } catch (e) {
       const errorMessage = normalizeError(e).message;
       sendNotification({
         type: "error",
-        title: "Failed to update todo",
+        title: "Failed to update task",
         description: errorMessage,
       });
       return new Err(new Error(errorMessage));
@@ -546,7 +546,7 @@ export function useUpdateProjectTodo({
   };
 }
 
-export function useBulkUpdateProjectTodoStatus({
+export function useBulkUpdateProjectTaskStatus({
   owner,
   spaceId,
 }: {
@@ -556,16 +556,16 @@ export function useBulkUpdateProjectTodoStatus({
   const sendNotification = useSendNotification();
 
   return async (
-    todoIds: string[],
-    status: ProjectTodoStatus
+    taskIds: string[],
+    status: ProjectTaskStatus
   ): Promise<Result<void, Error>> => {
     try {
       const res = await clientFetch(
-        `/api/w/${owner.sId}/spaces/${spaceId}/project_todos/bulk-actions`,
+        `/api/w/${owner.sId}/spaces/${spaceId}/project_tasks/bulk-actions`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "set_status", todoIds, status }),
+          body: JSON.stringify({ action: "set_status", taskIds, status }),
         }
       );
 
@@ -573,7 +573,7 @@ export function useBulkUpdateProjectTodoStatus({
         const errorData = await getErrorFromResponse(res);
         sendNotification({
           type: "error",
-          title: "Failed to update todos",
+          title: "Failed to update tasks",
           description: errorData.message,
         });
         return new Err(new Error(errorData.message));
@@ -581,14 +581,14 @@ export function useBulkUpdateProjectTodoStatus({
 
       const data: BulkActionsResponse = await res.json();
       if (!data.success) {
-        return new Err(new Error("Failed to update todos"));
+        return new Err(new Error("Failed to update tasks"));
       }
       return new Ok(undefined);
     } catch (e) {
       const errorMessage = normalizeError(e).message;
       sendNotification({
         type: "error",
-        title: "Failed to update todos",
+        title: "Failed to update tasks",
         description: errorMessage,
       });
       return new Err(new Error(errorMessage));
@@ -596,7 +596,7 @@ export function useBulkUpdateProjectTodoStatus({
   };
 }
 
-export function useDeleteProjectTodo({
+export function useDeleteProjectTask({
   owner,
   spaceId,
 }: {
@@ -605,10 +605,10 @@ export function useDeleteProjectTodo({
 }) {
   const sendNotification = useSendNotification();
 
-  return async (todoId: string): Promise<Result<void, Error>> => {
+  return async (taskId: string): Promise<Result<void, Error>> => {
     try {
       const res = await clientFetch(
-        `/api/w/${owner.sId}/spaces/${spaceId}/project_todos/${todoId}`,
+        `/api/w/${owner.sId}/spaces/${spaceId}/project_tasks/${taskId}`,
         { method: "DELETE" }
       );
 
@@ -616,7 +616,7 @@ export function useDeleteProjectTodo({
         const errorData = await getErrorFromResponse(res);
         sendNotification({
           type: "error",
-          title: "Failed to delete todo",
+          title: "Failed to delete task",
           description: errorData.message,
         });
         return new Err(new Error(errorData.message));
@@ -627,7 +627,7 @@ export function useDeleteProjectTodo({
       const errorMessage = normalizeError(e).message;
       sendNotification({
         type: "error",
-        title: "Failed to delete todo",
+        title: "Failed to delete task",
         description: errorMessage,
       });
       return new Err(new Error(errorMessage));
@@ -635,7 +635,7 @@ export function useDeleteProjectTodo({
   };
 }
 
-export function useStartProjectTodoConversation({
+export function useStartProjectTaskConversation({
   owner,
   spaceId,
 }: {
@@ -645,12 +645,12 @@ export function useStartProjectTodoConversation({
   const sendNotification = useSendNotification();
 
   return async (
-    todoId: string,
+    taskId: string,
     options?: { customMessage?: string; agentConfigurationId?: string }
-  ): Promise<Result<ProjectTodoType, Error>> => {
+  ): Promise<Result<ProjectTaskType, Error>> => {
     try {
       const res = await clientFetch(
-        `/api/w/${owner.sId}/spaces/${spaceId}/project_todos/${todoId}/start`,
+        `/api/w/${owner.sId}/spaces/${spaceId}/project_tasks/${taskId}/start`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -665,19 +665,19 @@ export function useStartProjectTodoConversation({
         const errorData = await getErrorFromResponse(res);
         sendNotification({
           type: "error",
-          title: "Failed to start todo work",
+          title: "Failed to start task work",
           description: errorData.message,
         });
         return new Err(new Error(errorData.message));
       }
 
-      const responseData: PostStartProjectTodoResponseBody = await res.json();
-      return new Ok(responseData.todo);
+      const responseData: PostStartProjectTaskResponseBody = await res.json();
+      return new Ok(responseData.task);
     } catch (e) {
       const errorMessage = normalizeError(e).message;
       sendNotification({
         type: "error",
-        title: "Failed to start todo work",
+        title: "Failed to start task work",
         description: errorMessage,
       });
       return new Err(new Error(errorMessage));
@@ -685,7 +685,7 @@ export function useStartProjectTodoConversation({
   };
 }
 
-export function useCleanDoneProjectTodos({
+export function useCleanDoneProjectTasks({
   owner,
   spaceId,
 }: {
@@ -697,7 +697,7 @@ export function useCleanDoneProjectTodos({
   return async (): Promise<Result<{ cleanedCount: number }, Error>> => {
     try {
       const res = await clientFetch(
-        `/api/w/${owner.sId}/spaces/${spaceId}/project_todos/bulk-actions`,
+        `/api/w/${owner.sId}/spaces/${spaceId}/project_tasks/bulk-actions`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -709,7 +709,7 @@ export function useCleanDoneProjectTodos({
         const errorData = await getErrorFromResponse(res);
         sendNotification({
           type: "error",
-          title: "Failed to clean done todos",
+          title: "Failed to clean done tasks",
           description: errorData.message,
         });
         return new Err(new Error(errorData.message));
@@ -721,7 +721,7 @@ export function useCleanDoneProjectTodos({
       const errorMessage = normalizeError(e).message;
       sendNotification({
         type: "error",
-        title: "Failed to clean done todos",
+        title: "Failed to clean done tasks",
         description: errorMessage,
       });
       return new Err(new Error(errorMessage));

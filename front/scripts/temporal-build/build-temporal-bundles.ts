@@ -40,8 +40,8 @@ function getWorkerDirectory(workerName: WorkerName): string | null {
       return path.join(baseDir, "temporal/triggers_garbage_collect");
     case "analytics_queue":
       return path.join(baseDir, "temporal/analytics_queue");
-    case "project_todo":
-      return path.join(baseDir, "temporal/project_todo");
+    case "project_task":
+      return path.join(baseDir, "temporal/project_task");
     case "credit_alerts":
       return path.join(baseDir, "temporal/credit_alerts");
     case "data_retention":

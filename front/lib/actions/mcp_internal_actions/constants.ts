@@ -55,7 +55,7 @@ import { POKE_SERVER } from "@app/lib/api/actions/servers/poke/metadata";
 import { PRIMITIVE_TYPES_DEBUGGER_SERVER } from "@app/lib/api/actions/servers/primitive_types_debugger/metadata";
 import { PRODUCTBOARD_SERVER } from "@app/lib/api/actions/servers/productboard/metadata";
 import { PROJECT_MANAGER_SERVER } from "@app/lib/api/actions/servers/project_manager/metadata";
-import { PROJECT_TODOS_SERVER } from "@app/lib/api/actions/servers/project_todos/metadata";
+import { PROJECT_TASKS_SERVER } from "@app/lib/api/actions/servers/project_tasks/metadata";
 import {
   QUERY_TABLES_V2_SERVER,
   TABLE_QUERY_V2_SERVER_NAME,
@@ -209,7 +209,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "skill_management",
   "schedules_management",
   "project_manager",
-  "project_todos",
+  "project_tasks",
   "poke",
   "sandbox",
   "ask_user_question",
@@ -1021,7 +1021,7 @@ export const INTERNAL_MCP_SERVERS = {
     timeoutMs: undefined,
     metadata: PROJECT_MANAGER_SERVER,
   },
-  project_todos: {
+  project_tasks: {
     id: 1029,
     availability: "auto_hidden_builder",
     allowMultipleInstances: false,
@@ -1032,7 +1032,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    metadata: PROJECT_TODOS_SERVER,
+    metadata: PROJECT_TASKS_SERVER,
   },
   agent_sidekick_context: {
     id: 1022,

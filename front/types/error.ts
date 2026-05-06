@@ -118,7 +118,7 @@ const API_ERROR_TYPES = [
   "space_already_exists",
   "space_not_found",
   // Project todos:
-  "project_todo_not_found",
+  "project_task_not_found",
   // Groups:
   "group_not_found",
   // Coupons:

@@ -852,7 +852,7 @@ export function createProjectManagerTools(
             managementMode: "manual",
             memberIds: [],
           },
-          { seedInitialTodos: params.seedInitialTodos ?? false }
+          { seedInitialTasks: params.seedInitialTasks ?? false }
         );
 
         if (createSpaceRes.isErr()) {

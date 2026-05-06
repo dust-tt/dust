@@ -1036,8 +1036,8 @@ export function useUpdateProjectMetadata({
           : "Project unarchived"
         : updates.todoGenerationEnabled !== undefined
           ? updates.todoGenerationEnabled
-            ? "Automatic to-do suggestions turned on"
-            : "Automatic to-do suggestions turned off"
+            ? "Automatic task suggestions turned on"
+            : "Automatic task suggestions turned off"
           : "Project updated";
 
     sendNotification({

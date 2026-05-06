@@ -1,4 +1,4 @@
-import { DEFAULT_TODO_OWNER_FILTER } from "@app/components/assistant/conversation/space/conversations/project_todos/projectTodosListScope";
+import { DEFAULT_TASK_OWNER_FILTER } from "@app/components/assistant/conversation/space/conversations/project_tasks/projectTasksListScope";
 import {
   type ProjectUIScopedPreferences,
   readScopedUIPreferencesValue,
@@ -11,7 +11,7 @@ export const DEFAULT_SPACE_PROJECT_UI_PREFERENCES: ProjectUIScopedPreferences =
   {
     tab: "conversations",
     conversationsFilter: "all",
-    todosOwnerFilter: DEFAULT_TODO_OWNER_FILTER,
+    tasksOwnerFilter: DEFAULT_TASK_OWNER_FILTER,
   };
 
 /** Hash segment → tab when the user navigates with the hash (same space). */
@@ -29,7 +29,7 @@ export function parseSpaceTabFromLocationHash(
     hash === "knowledge" ||
     hash === "settings" ||
     hash === "conversations" ||
-    hash === "todos" ||
+    hash === "tasks" ||
     hash === "alpha"
   ) {
     return hash;
@@ -49,7 +49,6 @@ interface UseSpaceProjectTabsParams {
   spaceId: string | null;
   projectUIPreferences: ProjectUIScopedPreferences;
   setProjectUIPreferences: (value: ProjectUIScopedPreferences) => void;
-  canShowTodosTab: boolean;
 }
 
 /**
@@ -62,7 +61,6 @@ export function useSpaceProjectTabs({
   spaceId,
   projectUIPreferences,
   setProjectUIPreferences,
-  canShowTodosTab,
 }: UseSpaceProjectTabsParams): {
   currentTab: SpaceProjectTab;
   handleTabChange: (tab: SpaceProjectTab) => void;
@@ -124,22 +122,6 @@ export function useSpaceProjectTabs({
       return () => window.clearTimeout(timeoutId);
     }
   }, [spaceId]);
-
-  useEffect(() => {
-    if (currentTab === "todos" && !canShowTodosTab) {
-      setCurrentTab("conversations");
-      setProjectUIPreferences({
-        ...projectUIPreferences,
-        tab: "conversations",
-      });
-      replaceUrlHashWithTab("conversations");
-    }
-  }, [
-    canShowTodosTab,
-    currentTab,
-    projectUIPreferences,
-    setProjectUIPreferences,
-  ]);
 
   const handleTabChange = useCallback(
     (tab: SpaceProjectTab) => {

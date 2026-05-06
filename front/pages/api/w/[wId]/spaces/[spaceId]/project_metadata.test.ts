@@ -15,7 +15,7 @@ const {
   mockStopProjectTodoWorkflow: vi.fn(),
 }));
 
-vi.mock("@app/temporal/project_todo/client", () => ({
+vi.mock("@app/temporal/project_task/client", () => ({
   launchOrSignalProjectTodoWorkflow: mockLaunchOrSignalProjectTodoWorkflow,
   startImmediateProjectTodoWorkflowOnce:
     mockStartImmediateProjectTodoWorkflowOnce,
@@ -109,13 +109,13 @@ describe("PATCH /api/w/[wId]/spaces/[spaceId]/project_metadata", () => {
     expect(res._getStatusCode()).toBe(403);
   });
 
-  it("stops project todo workflow when archiving a project", async () => {
+  it("stops project tasks workflow when archiving a project", async () => {
     const { req, res, workspace, auth } = await createPrivateApiMockRequest({
       method: "PATCH",
       role: "admin",
     });
 
-    await FeatureFlagFactory.basic(auth, "project_todo");
+    await FeatureFlagFactory.basic(auth, "projects");
 
     const projectSpace = await SpaceFactory.project(workspace);
     await ProjectMetadataResource.makeNew(auth, projectSpace, {
@@ -138,13 +138,13 @@ describe("PATCH /api/w/[wId]/spaces/[spaceId]/project_metadata", () => {
     expect(mockLaunchOrSignalProjectTodoWorkflow).not.toHaveBeenCalled();
   });
 
-  it("updates todo generation opt-in", async () => {
+  it("updates tasks generation opt-in", async () => {
     const { req, res, workspace, auth } = await createPrivateApiMockRequest({
       method: "PATCH",
       role: "admin",
     });
 
-    await FeatureFlagFactory.basic(auth, "project_todo");
+    await FeatureFlagFactory.basic(auth, "projects");
 
     const projectSpace = await SpaceFactory.project(workspace);
     await ProjectMetadataResource.makeNew(auth, projectSpace, {
@@ -165,13 +165,13 @@ describe("PATCH /api/w/[wId]/spaces/[spaceId]/project_metadata", () => {
     expect(mockStartImmediateProjectTodoWorkflowOnce).toHaveBeenCalledTimes(1);
   });
 
-  it("restarts project todo workflow when unarchiving a project", async () => {
+  it("restarts project tasks workflow when unarchiving a project", async () => {
     const { req, res, workspace, auth } = await createPrivateApiMockRequest({
       method: "PATCH",
       role: "admin",
     });
 
-    await FeatureFlagFactory.basic(auth, "project_todo");
+    await FeatureFlagFactory.basic(auth, "projects");
 
     const projectSpace = await SpaceFactory.project(workspace);
     await ProjectMetadataResource.makeNew(auth, projectSpace, {

@@ -16,9 +16,9 @@ import {
   skillDirective,
 } from "@app/components/markdown/SkillBlock";
 import {
-  getTodoDirectiveBlock,
-  todoDirective,
-} from "@app/components/markdown/TodoDirectiveBlock";
+  getTaskDirectiveBlock,
+  taskDirective,
+} from "@app/components/markdown/TaskDirectiveBlock";
 import {
   agentMentionDirective,
   getAgentMentionPlugin,
@@ -60,7 +60,7 @@ export const UserMessageMarkdown = ({
           skillName={skillName}
         />
       ),
-      todo: getTodoDirectiveBlock(owner),
+      project_task: getTaskDirectiveBlock(owner),
     }),
     [owner]
   );
@@ -70,10 +70,10 @@ export const UserMessageMarkdown = ({
       getCiteDirective(),
       agentMentionDirective,
       userMentionDirective,
+      taskDirective,
       contentNodeMentionDirective,
       pastedAttachmentDirective,
       skillDirective,
-      todoDirective,
     ],
     []
   );
