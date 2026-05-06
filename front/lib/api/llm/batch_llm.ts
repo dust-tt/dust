@@ -21,7 +21,7 @@ import {
 } from "@app/lib/models/agent/conversation";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
@@ -38,7 +38,7 @@ import { isTextContent } from "@app/types/assistant/generation";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { isString, removeNulls } from "@app/types/shared/utils/general";
+import { removeNulls } from "@app/types/shared/utils/general";
 import type { Transaction } from "sequelize";
 
 export interface LlmConversationOptions
@@ -46,7 +46,8 @@ export interface LlmConversationOptions
   newMessages: ModelMessageTypeMultiActionsWithoutContentFragment[];
   existingConversationId?: string;
   agentConfigurationId?: string;
-  skills?: SkillResource[];
+  enabledSkills?: EnabledSkill[];
+  equippedSkills?: SkillResource[];
   title?: string;
   visibility?: ConversationVisibility;
   metadata?: ConversationMetadata;
@@ -330,15 +331,12 @@ export async function sendBatchCallToLlm(
       }))
     );
 
-    let enabledSkills: EnabledSkill[] = [];
-    let equippedSkills: SkillResource[] = [];
-
-    if (renderSkillsAsUserMessages) {
-      ({ enabledSkills, equippedSkills } = await buildBatchSkillsForRendering(
-        auth,
-        input.skills ?? []
-      ));
-    }
+    const enabledSkills = renderSkillsAsUserMessages
+      ? (input.enabledSkills ?? [])
+      : [];
+    const equippedSkills = renderSkillsAsUserMessages
+      ? (input.equippedSkills ?? [])
+      : [];
 
     const leadingMessages = renderSkillsAsUserMessages
       ? removeNulls([renderEquippedSkillsUserMessage(equippedSkills)])
@@ -390,42 +388,6 @@ export async function sendBatchCallToLlm(
   const batchId = await llm.sendBatchProcessing(batchMap);
   return new Ok({ batchId, conversationIds });
 }
-
-async function buildBatchSkillsForRendering(
-  auth: Authenticator,
-  activeSkills: SkillResource[]
-): Promise<{
-  enabledSkills: EnabledSkill[];
-  equippedSkills: SkillResource[];
-}> {
-  const nonSystemSkills = activeSkills.filter((skill) => !skill.isSystemSkill);
-  const extendedSkillIds = [
-    ...new Set(
-      nonSystemSkills.map((skill) => skill.extendedSkillId).filter(isString)
-    ),
-  ];
-  const extendedSkills = await SkillResource.fetchByIds(auth, extendedSkillIds);
-  const extendedSkillById = new Map(
-    extendedSkills.map((skill) => [skill.sId, skill])
-  );
-
-  const enabledSkills = nonSystemSkills
-    .map<EnabledSkill>((skill) =>
-      Object.assign(Object.create(Object.getPrototypeOf(skill)), skill, {
-        extendedSkill: skill.extendedSkillId
-          ? (extendedSkillById.get(skill.extendedSkillId) ?? null)
-          : null,
-      })
-    )
-    .sort((a, b) => a.name.localeCompare(b.name));
-
-  const equippedSkills = [...nonSystemSkills].sort((a, b) =>
-    a.name.localeCompare(b.name)
-  );
-
-  return { enabledSkills, equippedSkills };
-}
-
 export interface BatchDownloadResult {
   events: Map<string, LLMEvent[]>;
   storedResultInfo: Map<string, StoreLlmResultInfo>;

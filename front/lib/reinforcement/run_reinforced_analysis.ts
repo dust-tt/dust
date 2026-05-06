@@ -1,4 +1,5 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import type { EnabledSkill } from "@app/lib/api/assistant/skills_rendering";
 import { getLLM } from "@app/lib/api/llm";
 import { writeBatchUserMessages } from "@app/lib/api/llm/batch_llm";
 import type { LLM } from "@app/lib/api/llm/llm";
@@ -231,7 +232,8 @@ export function getReinforcedSkillsDefaultOptions(
   userContextUsername: string;
   userContextOrigin: "reinforcement";
   agentConfigurationId: string;
-  skills: SkillResource[];
+  enabledSkills: EnabledSkill[];
+  equippedSkills: SkillResource[];
 } {
   return {
     visibility: "test" as const,
@@ -239,7 +241,8 @@ export function getReinforcedSkillsDefaultOptions(
     userContextUsername: "reinforcement",
     userContextOrigin: "reinforcement" as const,
     agentConfigurationId: REINFORCEMENT_SKILLS_AGENT_ID,
-    skills: [],
+    enabledSkills: [],
+    equippedSkills: [],
   };
 }
 
