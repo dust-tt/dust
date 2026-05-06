@@ -2,8 +2,8 @@
 import { getAuditLogContext } from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import {
-  validateEnvVarName,
-  validateEnvVarValue,
+  parseWorkspaceSandboxEnvVarNameForKind,
+  validateEnvVarValueForKind,
 } from "@app/lib/api/sandbox/env_vars";
 import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
@@ -14,19 +14,14 @@ import type { WorkspaceSandboxEnvVarType } from "@app/types/sandbox/env_var";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 
+// TODO(2026-05-05 SLICE_2): accept optional `kind` ("config" | "https_secret")
+// and `allowedDomains` here, plumb them through to the resource layer, and
+// emit dedicated audit actions (`sandbox_env_var.promoted_to_https_secret`,
+// `sandbox_env_var.allowed_domains_updated`). Slice 1 keeps the schema
+// strictly config-only so the API contract stays unchanged on this slice.
 const PostWorkspaceSandboxEnvVarBodySchema = z.object({
-  name: z.string().superRefine((name, ctx) => {
-    const result = validateEnvVarName(name);
-    if (result.isErr()) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: result.error });
-    }
-  }),
-  value: z.string().superRefine((value, ctx) => {
-    const result = validateEnvVarValue(value);
-    if (result.isErr()) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: result.error });
-    }
-  }),
+  name: z.string(),
+  value: z.string(),
 });
 
 export type GetWorkspaceSandboxEnvVarsResponseBody = {
@@ -104,8 +99,31 @@ async function handler(
         });
       }
 
-      const result = await WorkspaceSandboxEnvVarResource.upsert(auth, {
+      const parsedName = parseWorkspaceSandboxEnvVarNameForKind({
+        kind: "config",
         name: parsed.data.name,
+      });
+      const parsedValue = validateEnvVarValueForKind({
+        kind: "config",
+        value: parsed.data.value,
+      });
+      if (parsedName.isErr() || parsedValue.isErr()) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: [
+              parsedName.isErr() ? `name: ${parsedName.error}` : null,
+              parsedValue.isErr() ? `value: ${parsedValue.error}` : null,
+            ]
+              .filter((message) => message !== null)
+              .join("; "),
+          },
+        });
+      }
+
+      const result = await WorkspaceSandboxEnvVarResource.upsert(auth, {
+        name: parsedName.value,
         value: parsed.data.value,
         context: getAuditLogContext(auth, req),
       });

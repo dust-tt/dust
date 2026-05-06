@@ -41,7 +41,7 @@ import { useController, useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
 const NAME_HELPER_TEXT =
-  "Uppercase letters, digits and underscores. Up to 60 characters after the DST_ prefix.";
+  "Uppercase letters, digits and underscores. Up to 64 characters after the DST_ prefix.";
 
 const formSchema = z.object({
   name: z
@@ -49,7 +49,7 @@ const formSchema = z.object({
     .min(1, NAME_HELPER_TEXT)
     .regex(
       ENV_VAR_NAME_SUFFIX_REGEX,
-      "Suffix must start with A-Z and then use only A-Z, 0-9, or underscore, up to 60 characters."
+      "Suffix must start with A-Z and then use only A-Z, 0-9, or underscore, up to 64 characters."
     ),
   value: z
     .string()
