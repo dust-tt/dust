@@ -106,9 +106,11 @@ const config = {
     );
   },
   getStripePublishableKey: (): string => {
-    return EnvironmentConfig.getEnvVariable(
-      "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY"
-    );
+    // Using process.env here to make sure the function is usable on the client side.
+    if (!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) {
+      throw new Error("NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is not set");
+    }
+    return process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
   },
   getStripeSecretKey: (): string => {
     return EnvironmentConfig.getEnvVariable("STRIPE_SECRET_KEY");
