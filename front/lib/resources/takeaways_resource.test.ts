@@ -47,9 +47,6 @@ describe("TakeawaysResource", () => {
         shortDescription: "Follow up with customer",
         assigneeUserId: null,
         assigneeName: null,
-        status: "open" as const,
-        detectedDoneAt: null,
-        detectedDoneRationale: null,
         detectedCreationRationale: null,
       };
       const updated = await takeaway.updateWithVersion(auth, {
@@ -75,9 +72,6 @@ describe("TakeawaysResource", () => {
               shortDescription: "Cross-tenant action item",
               assigneeUserId: null,
               assigneeName: null,
-              status: "open",
-              detectedDoneAt: null,
-              detectedDoneRationale: null,
               detectedCreationRationale: null,
             },
           ],
@@ -93,9 +87,6 @@ describe("TakeawaysResource", () => {
         shortDescription: "First action item",
         assigneeUserId: null,
         assigneeName: null,
-        status: "open" as const,
-        detectedDoneAt: null,
-        detectedDoneRationale: null,
         detectedCreationRationale: null,
       };
       const actionItem2 = {
@@ -103,9 +94,6 @@ describe("TakeawaysResource", () => {
         shortDescription: "Second action item",
         assigneeUserId: null,
         assigneeName: null,
-        status: "done" as const,
-        detectedDoneAt: "2026-04-24T00:00:00.000Z",
-        detectedDoneRationale: "Mentioned as completed in summary",
         detectedCreationRationale: null,
       };
 
@@ -142,9 +130,6 @@ describe("TakeawaysResource", () => {
         shortDescription: "Updated action item",
         assigneeUserId: null,
         assigneeName: null,
-        status: "open" as const,
-        detectedDoneAt: null,
-        detectedDoneRationale: null,
         detectedCreationRationale: null,
       };
 
@@ -244,9 +229,6 @@ describe("TakeawaysResource", () => {
         shortDescription: "A versioned action item",
         assigneeUserId: null,
         assigneeName: null,
-        status: "open" as const,
-        detectedDoneAt: null,
-        detectedDoneRationale: null,
         detectedCreationRationale: null,
       };
 

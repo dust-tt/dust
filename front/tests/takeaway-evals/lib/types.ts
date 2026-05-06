@@ -29,7 +29,6 @@ export type TakeawayAssertion =
       type: "shouldExtractActionItem";
       descriptionContains: string;
       assigneeUserId?: string;
-      status?: "open" | "done";
     }
   | { type: "shouldNotExtractActionItem"; descriptionContains: string }
   | { type: "minActionItems"; count: number }
@@ -45,7 +44,7 @@ export type TakeawayAssertion =
 
 export function shouldExtractActionItem(
   descriptionContains: string,
-  opts?: { assigneeUserId?: string; status?: "open" | "done" }
+  opts?: { assigneeUserId?: string }
 ): TakeawayAssertion {
   return {
     type: "shouldExtractActionItem",
@@ -144,7 +143,7 @@ export function formatExtractionResult(
     const items = result.actionItems
       .map(
         (a) =>
-          `  - [${a.status}] ${a.shortDescription}${a.assigneeUserId ? ` (assignee: ${a.assigneeUserId})` : ""}`
+          `  - ${a.shortDescription}${a.assigneeUserId ? ` (assignee: ${a.assigneeUserId})` : ""}`
       )
       .join("\n");
     parts.push(`Action items:\n${items}`);

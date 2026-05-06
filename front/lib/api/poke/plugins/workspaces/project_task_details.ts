@@ -98,7 +98,7 @@ export const projectTodoDetailsPlugin = createPlugin({
                 (item) => item.sId === src.itemId
               );
               const itemDetail = actionItem
-                ? `\n  - _"${actionItem.shortDescription}"_ (status: \`${actionItem.status}\`)`
+                ? `\n  - _"${actionItem.shortDescription}"_`
                 : `\n  - _item \`${src.itemId}\` not found in takeaway_`;
 
               return `- ${label}${itemDetail}`;

@@ -61,16 +61,6 @@ const UpdatedActionItemSchema = z.object({
     .describe(
       "Set together when the assignee changes. Both fields are required when present; omit otherwise."
     ),
-  done: z
-    .object({
-      detected_done_rationale: z
-        .string()
-        .describe("Brief explanation of why the item is considered done."),
-    })
-    .optional()
-    .describe(
-      "Set only when the item was explicitly resolved in the document. Items can only transition to done; never back to open."
-    ),
 });
 
 export type UpdatedActionItem = z.infer<typeof UpdatedActionItemSchema>;

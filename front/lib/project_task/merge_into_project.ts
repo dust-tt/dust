@@ -8,8 +8,9 @@
 //   Phase 1 — Collect new candidates.
 //     For every (takeaway, item, targetUser) triple:
 //       - fetchByItemId(itemId):
-//           found     → update status/doneAt if changed (no new row, text
-//                       always preserved from the first version)
+//           found     → skip (the item is already linked to a todo; the
+//                       takeaway no longer carries any status that could
+//                       update it)
 //           not found → push to newCandidates[]
 //
 //   Phase 2 — Semantic deduplication.
@@ -21,15 +22,8 @@
 //
 //   Phase 3 — Create or link.
 //     For each candidate in newCandidates:
-//       - Key in dedupMap → addSource on existing todo.
-//           If existing todo is user-created: preserve text/status (user wins).
-//           If existing todo is agent-created: update status/doneAt if
-//           changed (text is always preserved from the first version).
-//       - Not in dedupMap → makeNew + addSource (current behaviour).
-//
-// Category mapping:
-//   actionItems  (open)    → "to_do",   status: "todo"
-//   actionItems  (done)    → "to_do",   status: "done"
+//       - Key in dedupMap → upsertSource on existing todo.
+//       - Not in dedupMap → makeNew + addSource.
 
 import { getSmallWhitelistedModel } from "@app/lib/assistant";
 import { Authenticator } from "@app/lib/auth";
@@ -50,7 +44,6 @@ import {
 } from "@app/lib/resources/takeaways_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import logger from "@app/logger/logger";
 import type { ProjectTaskSourceInfo } from "@app/types/project_task";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { TodoVersionedActionItem } from "@app/types/takeaways";
@@ -68,9 +61,6 @@ type PendingByUserId = Map<ModelId, Map<string, PendingCandidate>>;
 
 type TodoBlob = {
   text: string;
-  status: "todo" | "done";
-  doneAt: Date | null;
-  reasoningDoneAt: string | null;
   reasoningCreatedAt: string | null;
 };
 
@@ -88,7 +78,6 @@ export type PendingCandidate = {
 export type MergeStats = {
   takeawaysProcessed: number;
   candidatesCollected: number;
-  existingUpdated: number;
   deduplicated: number;
   createdNew: number;
 };
@@ -97,7 +86,6 @@ function emptyMergeStats(): MergeStats {
   return {
     takeawaysProcessed: 0,
     candidatesCollected: 0,
-    existingUpdated: 0,
     deduplicated: 0,
     createdNew: 0,
   };
@@ -150,16 +138,14 @@ export async function mergeTakeawaysIntoProject({
     allUserIds.size > 0 ? await UserResource.fetchByIds([...allUserIds]) : [];
   const usersById = new Map<string, UserResource>(users.map((u) => [u.sId, u]));
 
-  // ── Phase 1: collect new candidates, update already-linked items ──────────
+  // ── Phase 1: collect new candidates ──────────────────────────────────────
 
-  const { candidates: newCandidates, existingUpdated } =
-    await collectNewCandidates(adminAuth, {
-      latestTakeawaysWithSource,
-      usersById,
-    });
+  const newCandidates = await collectNewCandidates(adminAuth, {
+    latestTakeawaysWithSource,
+    usersById,
+  });
 
   stats.candidatesCollected = newCandidates.length;
-  stats.existingUpdated = existingUpdated;
 
   if (newCandidates.length === 0) {
     localLogger.info("Project todo merge: no new candidates found, skipping");
@@ -191,9 +177,9 @@ export async function mergeTakeawaysIntoProject({
 
 // ── Phase 1 ───────────────────────────────────────────────────────────────────
 
-// For each (takeaway, item, targetUser) triple: if a source link already exists,
-// update the todo's content if it has changed. Otherwise, push the item to the
-// returned candidates list for semantic dedup in phase 2.
+// For each (takeaway, item, targetUser) triple: skip if a source link already
+// exists, otherwise push the item to the returned candidates list for semantic
+// dedup in phase 2.
 async function collectNewCandidates(
   auth: Authenticator,
   {
@@ -203,28 +189,28 @@ async function collectNewCandidates(
     latestTakeawaysWithSource: TakeawaysWithSource[];
     usersById: Map<string, UserResource>;
   }
-): Promise<{ candidates: PendingCandidate[]; existingUpdated: number }> {
+): Promise<PendingCandidate[]> {
   const newCandidates: PendingCandidate[] = [];
-  let existingUpdated = 0;
 
   await concurrentExecutor(
     latestTakeawaysWithSource,
     async (takeawayWithSource) => {
-      const result = await collectDocumentCandidates(auth, {
+      const candidates = await collectDocumentCandidates(auth, {
         takeawayWithSource,
         usersById,
       });
-      newCandidates.push(...result.candidates);
-      existingUpdated += result.existingUpdated;
+      newCandidates.push(...candidates);
     },
     { concurrency: 4 }
   );
 
-  return { candidates: newCandidates, existingUpdated };
+  return newCandidates;
 }
 
-// Processes one document's takeaway: updates todos whose source link already
-// exists and returns items that need to go through dedup + creation.
+// Processes one document's takeaway: returns items that have no existing
+// source link and need to go through dedup + creation. Items already linked
+// to a todo are skipped — the takeaway no longer carries any state that
+// could update them.
 export async function collectDocumentCandidates(
   auth: Authenticator,
   {
@@ -234,7 +220,7 @@ export async function collectDocumentCandidates(
     takeawayWithSource: TakeawaysWithSource;
     usersById: Map<string, UserResource>;
   }
-): Promise<{ candidates: PendingCandidate[]; existingUpdated: number }> {
+): Promise<PendingCandidate[]> {
   function resolveTargetUserIds(userSIds: string[]): ModelId[] {
     return userSIds
       .map((sId) => usersById.get(sId)?.id)
@@ -256,7 +242,7 @@ export async function collectDocumentCandidates(
   }));
 
   // Batch-fetch existing todos by itemId. A hit means "this item is already
-  // linked to a todo — skip dedup".
+  // linked to a todo — skip".
   const allActionItemIds = actionItems.map((t) => t.itemId);
   const existingByItemId: TodosByItemId =
     await ProjectTaskResource.fetchByItemIds(auth, {
@@ -264,41 +250,21 @@ export async function collectDocumentCandidates(
     });
 
   const candidates: PendingCandidate[] = [];
-  let existingUpdated = 0;
-  for (const { itemId, targetUserIds, blob: actionItemBlob } of actionItems) {
+  for (const { itemId, targetUserIds, blob } of actionItems) {
     for (const userId of targetUserIds) {
       const existing = existingByItemId.get(itemId)?.get(userId) ?? [];
       if (existing.length === 0) {
         candidates.push({
           itemId,
           userId,
-          blob: actionItemBlob,
+          blob,
           source: takeawayWithSource.source,
         });
-      } else if (
-        existing.length > 1 &&
-        existing.some((t) => t.status === "done")
-      ) {
-        // Multiple existing todos with at least one done — skip.
-      } else {
-        // Source link exists — update content if it has changed. When there
-        // are multiple undone todos, prefer the most recently created one.
-        const targetTodo = existing.reduce((a, b) =>
-          a.createdAt >= b.createdAt ? a : b
-        );
-        const updated = await updateTodoIfChanged(
-          targetTodo,
-          auth,
-          actionItemBlob
-        );
-        if (updated) {
-          existingUpdated++;
-        }
       }
     }
   }
 
-  return { candidates, existingUpdated };
+  return candidates;
 }
 
 // ── Phase 2 ───────────────────────────────────────────────────────────────────
@@ -409,13 +375,7 @@ export async function createOrLinkTodos(
           // Candidate matched a deleted todo — do not re-create or re-link.
           return;
         }
-        // Attach every candidate's source to the existing todo. The update
-        // guard lives in updateTodoIfChanged — no-op when the target todo was
-        // created by a user or already marked done by one.
-        const primary = lookupPending(group.candidates[0]);
-        if (primary) {
-          await updateTodoIfChanged(group.todo, auth, primary.blob);
-        }
+        // Attach every candidate's source to the existing todo.
         for (const candidate of group.candidates) {
           const pending = lookupPending(candidate);
           if (!pending) {
@@ -457,8 +417,8 @@ export async function createOrLinkTodos(
           createdByAgentConfigurationId: BUTLER_AGENT_SID,
           agentSuggestionStatus: "pending",
           text: primary.blob.text,
-          status: primary.blob.status,
-          doneAt: primary.blob.doneAt,
+          status: "todo",
+          doneAt: null,
           actorRationale: primary.blob.reasoningCreatedAt,
         },
         itemId: primary.itemId,
@@ -504,63 +464,11 @@ export async function createOrLinkTodos(
   return { deduplicated, createdNew };
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-// Creates a new version of a todo only when status or doneAt has changed, AND
-// the todo's state is not user-owned. Returns true if an update was performed.
-// Text is intentionally never updated: the first version's wording is
-// preserved across re-extractions.
-//
-// The agent path must never overwrite user-owned state:
-//   - If the todo was created by a user, the user's phrasing and status win.
-//   - If an agent-created todo was then marked done by a user, the user's
-//     completion sticks — even if the next extraction still reports the item
-//     as open.
-export async function updateTodoIfChanged(
-  todo: ProjectTaskResource,
-  auth: Authenticator,
-  blob: TodoBlob
-): Promise<boolean> {
-  if (todo.createdByType !== "agent") {
-    return false;
-  }
-  if (todo.markedAsDoneByType === "user") {
-    return false;
-  }
-
-  if (todo.status === "done" && blob.status === "todo") {
-    logger.debug(
-      { todoId: todo.sId, userId: todo.userId },
-      "Project todo merge: system attempted to reopen a done todo — ignored"
-    );
-    return false;
-  }
-
-  const statusChanged = todo.status !== blob.status;
-
-  if (statusChanged) {
-    await todo.updateWithVersion(auth, {
-      text: todo.text,
-      status: blob.status,
-      doneAt: blob.doneAt,
-      actorRationale: blob.reasoningDoneAt,
-    });
-    return true;
-  }
-  return false;
-}
-
 // ── Blob helpers ─────────────────────────────────────────────────────────────
 
 export function actionItemBlob(item: TodoVersionedActionItem): TodoBlob {
-  const isDone = item.status === "done";
   return {
     text: item.shortDescription,
-    status: isDone ? "done" : "todo",
-    doneAt:
-      isDone && item.detectedDoneAt ? new Date(item.detectedDoneAt) : null,
-    reasoningDoneAt:
-      isDone && item.detectedDoneRationale ? item.detectedDoneRationale : null,
     reasoningCreatedAt: item.detectedCreationRationale,
   };
 }
