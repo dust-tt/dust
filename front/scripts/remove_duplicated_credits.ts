@@ -30,14 +30,6 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { makeScript } from "./helpers";
 import { runOnAllWorkspaces } from "./workspace_helpers";
 
-type FreeRenewalSubtype = "free-renewal" | "free-yearly-renewal";
-
-function getRenewalSubtype(invoiceOrLineItemId: string): FreeRenewalSubtype {
-  return invoiceOrLineItemId.startsWith("free-renewal-yearly-")
-    ? "free-yearly-renewal"
-    : "free-renewal";
-}
-
 async function removeDuplicatedCredits(
   workspace: LightWorkspaceType,
   execute: boolean,
@@ -65,12 +57,7 @@ async function removeDuplicatedCredits(
   // Group by (subtype, startDate, expirationDate).
   const groups = new Map<string, typeof renewalCredits>();
   for (const credit of renewalCredits) {
-    const subtype = credit.invoiceOrLineItemId?.startsWith(
-      "free-renewal-yearly-"
-    )
-      ? "free-yearly-renewal"
-      : "free-renewal";
-    const key = `${subtype}:${credit.startDate!.toISOString().split("T")[0]}:${credit.expirationDate!.toISOString().split("T")[0]}`;
+    const key = `${credit.startDate!.toISOString().split("T")[0]}:${credit.expirationDate!.toISOString().split("T")[0]}`;
     const group = groups.get(key) ?? [];
     group.push(credit);
     groups.set(key, group);
@@ -123,21 +110,6 @@ async function removeDuplicatedCredits(
       continue;
     }
 
-    const isYearly = recurringCredit.recurrence_frequency === "ANNUAL";
-    const subtype = getRenewalSubtype(duplicates[0].invoiceOrLineItemId!);
-    const isAnnualCredit = subtype === "free-yearly-renewal";
-    if (isYearly !== isAnnualCredit) {
-      logger.warn(
-        {
-          workspaceId: workspace.sId,
-          groupKey,
-          recurrenceFrequency: recurringCredit.recurrence_frequency,
-        },
-        "[Remove Duplicates] Recurrence frequency mismatch between DB subtype and Metronome, skipping group"
-      );
-      continue;
-    }
-
     // Find the current credit instance generated from the recurring credit.
     const creditsResponse = await client.v1.customers.credits.list({
       customer_id: metronomeCustomerId,
@@ -171,6 +143,7 @@ async function removeDuplicatedCredits(
     );
 
     const periodStartSeconds = Math.floor(metronomeStartDate.getTime() / 1000);
+    const isYearly = recurringCredit.recurrence_frequency === "ANNUAL";
     const correctInvoiceOrLineItemId = isYearly
       ? `free-renewal-yearly-${contractId}-${periodStartSeconds}`
       : `free-renewal-${contractId}-${periodStartSeconds}`;
