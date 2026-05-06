@@ -4275,6 +4275,10 @@ describe("conversation fetch forkingData", () => {
       { title: "Later fork" },
       { where: { id: firstChildConversation.id, workspaceId: workspace.id } }
     );
+    await ConversationModel.update(
+      { title: null },
+      { where: { id: secondChildConversation.id, workspaceId: workspace.id } }
+    );
 
     const parentConversationResource = await ConversationResource.fetchById(
       auth,
