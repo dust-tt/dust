@@ -331,22 +331,15 @@ export async function sendBatchCallToLlm(
       }))
     );
 
-    const enabledSkills = renderSkillsAsUserMessages
-      ? (input.enabledSkills ?? [])
-      : [];
-    const equippedSkills = renderSkillsAsUserMessages
-      ? (input.equippedSkills ?? [])
-      : [];
+    const { enabledSkills, equippedSkills } = input;
 
-    const leadingMessages = renderSkillsAsUserMessages
-      ? removeNulls([renderEquippedSkillsUserMessage(equippedSkills)])
-      : [];
+    const leadingMessages = equippedSkills ? removeNulls([renderEquippedSkillsUserMessage(equippedSkills)]) : [];
 
     const modelConversationRes = await renderConversationForModel(auth, {
       conversation: conversationRes.value,
       model: modelConfig,
       leadingMessages,
-      enabledSkills,
+      enabledSkills: enabledSkills ?? [],
       prompt: promptText,
       renderSkillsAsUserMessages,
       tools,
