@@ -121,9 +121,13 @@ export async function ensureConversationFilesMounted(
  *
  * The mount probe needs both `mountpoint -q` (kernel entry) AND a `stat`:
  * the kernel can show a path as mounted even when the gcsfuse daemon is
- * dead, in which case `stat` returns EIO. The token-server check polls
- * for up to 1s (10 x 100ms) so we catch a fast startup quickly without
- * losing a wake-up race when the snapshot resumes under load.
+ * dead, in which case `stat` returns EIO. The token-server check has to
+ * retry briefly: token-server.sh is a `while true; do nc -l -p 9876 -q 1`
+ * loop, so after every served request there's a window (up to ~1s) where
+ * no listener is bound and a single curl will fail. We retry up to 5x
+ * 100ms on the hot-path probe so we don't false-negative into an
+ * unnecessary remount, and up to 10x100ms on the cold-path startup so
+ * we catch a fresh launch quickly without losing a wake-up race.
  *
  * No `set -e` on purpose: the probe chain is meant to fall through on
  * failure to the rebuild branch. We use explicit `exit 1` for the only
@@ -136,13 +140,25 @@ export function buildProbeAndSetupScript({
 }): string {
   const escapedTokenJson = escapeSingleQuotes(tokenJson);
   return `set -u
+token_server_alive() {
+  for _ in 1 2 3 4 5; do
+    if curl -sf ${TOKEN_SERVER_URL} >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 0.1
+  done
+  return 1
+}
 if mountpoint -q ${MOUNT_POINT} 2>/dev/null \\
    && timeout 1 stat ${MOUNT_POINT} >/dev/null 2>&1 \\
-   && curl -sf ${TOKEN_SERVER_URL} >/dev/null 2>&1; then
+   && token_server_alive; then
   printf '%s' '${escapedTokenJson}' > /tmp/token.json
   echo READY
 else
-  pkill -f token-server.sh 2>/dev/null || true
+  # fuser -k targets the listener by port, not by process name. Avoids
+  # the trap of pkill -f matching the current shell's own argv (which
+  # carries the entire script source, including "token-server.sh").
+  fuser -k ${TOKEN_SERVER_PORT}/tcp 2>/dev/null || true
   printf '%s' '${escapedTokenJson}' > /tmp/token.json
   bash /home/agent/.bin/token-server.sh > /tmp/server.log 2>&1 &
   ready=0
