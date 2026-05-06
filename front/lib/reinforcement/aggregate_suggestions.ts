@@ -53,7 +53,7 @@ It is ok to simply call no tool if all suggestions are minor.
 Start by grouping suggestions by skill, then within each skill group by topic:
 - For instruction edits, group by coherent theme within the skill (e.g. tone, tool usage, formatting). Suggestions that address different topics MUST be kept as separate suggestions — do NOT merge unrelated topics into one suggestion.
 - For tool changes, group by the target tool within each skill. NEVER create more than one suggestion per tool.
-- For agent-facing description edits, create AT MOST ONE description-edit suggestion per skill. The description edit SHOULD be its own standalone suggestion — do NOT bundle it with instructionEdits or toolEdits unless they are tightly coupled to the same routing fix. When multiple drafts target the description, merge them into a single coherent replacement.
+- For agent-facing description edits, create AT MOST ONE description-edit suggestion per skill. When multiple drafts target the description, merge them into a single coherent replacement.
 NEVER create more than one suggestion per (skill, topic) pair.
 
 Rank the groups based on impact to the skill. Use these heuristics in priority order to determine highest impact:

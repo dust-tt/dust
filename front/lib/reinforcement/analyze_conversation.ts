@@ -72,7 +72,7 @@ Consider the following improvements to a skill:
 - If the skill references or requires external actions or knowledge, then tools may need to be added or removed. See <tools_guidance>.
 - If the conversation reveals that the agent enabled the skill in the wrong situation, or failed to enable it when it should have, the agent-facing description may need to be improved. See <agent_facing_description_guidance>.
 All improvements that should be treated as a single atomic unit should be grouped together in a single suggestion.
-NEVER group things that are not related to each other. In particular, an agent-facing description change should almost always be its own suggestion.
+NEVER group things that are not related to each other.
 
 Step 5: For each skill, look for agent behavior that is directly aligned with the skill's purpose, but the behavior was not defined in the skill instructions.
 This is an opportunity to improve the skill instructions for all future agents and conversations.
@@ -124,8 +124,7 @@ When suggesting a description edit:
 - Provide the FULL replacement text in \`agentFacingDescriptionEdit.content\` — it overwrites the existing description.
 - Preserve the skill's actual purpose. Sharpen the trigger conditions; do not redefine the skill.
 - Keep it focused on routing signals (when to use, what scenarios). Do not duplicate the instructions.
-- Use the same language as the existing description.
-- Make the description edit its OWN edit_skill call. Do NOT bundle it with instructionEdits or toolEdits unless they are tightly coupled to the same routing fix.`,
+- Use the same language as the existing description.`,
 };
 
 export function buildSkillAnalysisSystemPrompt(): string {
