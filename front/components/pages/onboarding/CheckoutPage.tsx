@@ -79,6 +79,35 @@ export function CheckoutPage() {
     [billingPeriod, createSession, router]
   );
 
+  // We have to enforce light mode to fit with stripe embedded checkout session
+  // as there is not appearance selection field in EmbeddedCheckoutProvider
+  useEffect(() => {
+    const htmlEl = document.documentElement;
+    const bodyEl = document.body;
+    const hadDark = htmlEl.classList.contains("dark");
+    // biome-ignore lint/plugin/noSparkleClassInFront: s-dark is needed for Sparkle dark mode
+    const hadSDark = htmlEl.classList.contains("s-dark");
+    const hadNight = bodyEl.classList.contains("bg-background-night");
+
+    htmlEl.classList.remove("dark");
+    // biome-ignore lint/plugin/noSparkleClassInFront: s-dark is needed for Sparkle dark mode
+    htmlEl.classList.remove("s-dark");
+    bodyEl.classList.remove("bg-background-night");
+
+    return () => {
+      if (hadDark) {
+        htmlEl.classList.add("dark");
+      }
+      if (hadSDark) {
+        // biome-ignore lint/plugin/noSparkleClassInFront: s-dark is needed for Sparkle dark mode
+        htmlEl.classList.add("s-dark");
+      }
+      if (hadNight) {
+        bodyEl.classList.add("bg-background-night");
+      }
+    };
+  }, []);
+
   // On mount, create an initial checkout session.
   useEffect(() => {
     void initSession();
