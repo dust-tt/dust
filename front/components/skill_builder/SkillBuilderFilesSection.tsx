@@ -1,6 +1,5 @@
 import {
   FilePreviewDialog,
-  type FilePreviewDialogFile,
   needsFilePreviewTextContent,
 } from "@app/components/assistant/conversation/files_panel/FilePreviewDialog";
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
@@ -131,35 +130,27 @@ export function SkillBuilderFilesSection() {
     setPreviewFileAttachment(fileAttachment);
   };
 
-  const isPreviewOpen = !!previewFileAttachment;
-  const previewFileId = isPreviewOpen
+  const isPreviewOpen = previewFileAttachment !== null;
+  const previewFileId = previewFileAttachment
     ? (previewFileAttachment?.fileId ?? null)
     : null;
-  const { fileMetadata, isFileMetadataLoading, isFileMetadataError } =
-    useFileMetadata({
-      fileId: previewFileId,
-      owner,
-    });
-  const previewContentType = fileMetadata?.contentType ?? "";
-  const needsPreviewTextContent =
-    needsFilePreviewTextContent(previewContentType);
+
+  const { fileMetadata, isFileMetadataError } = useFileMetadata({
+    fileId: previewFileId,
+    owner,
+  });
+
   const { fileContent, isFileContentLoading, fileContentError } =
     useSkillAttachmentFileContent({
       fileId: previewFileId,
       owner,
       config: {
-        disabled: !isPreviewOpen || !fileMetadata || !needsPreviewTextContent,
+        disabled:
+          !isPreviewOpen ||
+          !fileMetadata ||
+          !needsFilePreviewTextContent(fileMetadata.contentType),
       },
     });
-  const previewFile: FilePreviewDialogFile | null = previewFileAttachment
-    ? {
-        contentType: previewContentType,
-        fileName: fileMetadata?.fileName ?? previewFileAttachment.fileName,
-        viewUrl: getFileViewUrl(owner, previewFileAttachment.fileId),
-      }
-    : null;
-  const isPreviewMetadataLoading =
-    isPreviewOpen && !!previewFileAttachment && isFileMetadataLoading;
 
   const onFileInputChange = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -340,10 +331,18 @@ export function SkillBuilderFilesSection() {
         </div>
       )}
       <FilePreviewDialog
-        file={previewFile}
+        file={
+          previewFileAttachment
+            ? {
+                contentType: fileMetadata?.contentType ?? "",
+                fileName: previewFileAttachment.fileName,
+                viewUrl: getFileViewUrl(owner, previewFileAttachment.fileId),
+              }
+            : null
+        }
         fileContent={fileContent}
         fileContentError={isFileMetadataError || fileContentError}
-        isFileContentLoading={isPreviewMetadataLoading || isFileContentLoading}
+        isFileContentLoading={isFileContentLoading}
         isOpen={isPreviewOpen}
         onDownload={() => {
           if (previewFileAttachment) {
