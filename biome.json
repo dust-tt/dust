@@ -101,19 +101,6 @@
     },
     {
       "includes": [
-        "extension/**/*.{js,jsx,ts,tsx}",
-        "front-spa/**/*.{js,jsx,ts,tsx}",
-        "front/**/*.{js,jsx,ts,tsx}",
-        "sparkle/**/*.{js,jsx,ts,tsx}",
-        "!front/pages/**",
-        "!front/lib/api/sse.ts",
-        "!sparkle/.storybook/**",
-        "!sparkle/playground/**"
-      ],
-      "plugins": ["./.grit/patterns/noNextImports.grit"]
-    },
-    {
-      "includes": [
         "front/components/**/*.{js,jsx,ts,tsx}",
         "front/lib/**/*.tsx",
         "front/pages/**/*.{jsx,tsx}",
@@ -125,6 +112,19 @@
         "!sparkle/playground/**"
       ],
       "plugins": ["./.grit/patterns/noCssImportant.grit"]
+    },
+    {
+      "includes": [
+        "extension/**/*.{js,jsx,ts,tsx}",
+        "front-spa/**/*.{js,jsx,ts,tsx}",
+        "front/**/*.{js,jsx,ts,tsx}",
+        "sparkle/**/*.{js,jsx,ts,tsx}",
+        "!front/pages/**",
+        "!front/lib/api/sse.ts",
+        "!sparkle/.storybook/**",
+        "!sparkle/playground/**"
+      ],
+      "plugins": ["./.grit/patterns/noNextImports.grit"]
     },
     {
       "includes": ["front/**/*.tsx", "front-spa/**/*.tsx"],
