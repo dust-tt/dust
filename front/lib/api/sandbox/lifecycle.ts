@@ -14,8 +14,9 @@ import logger from "@app/logger/logger";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import { Ok, type Result } from "@app/types/shared/result";
 
-// /!\ All sandbox-touching tools must use this helper. Direct
-// SandboxResource.ensureActive calls are blocked by lint:sandbox-ensure.
+// /!\ All sandbox-touching tools must use this helper rather than calling
+// SandboxResource.ensureActive directly, otherwise the GCS FUSE mount and
+// egress forwarder bring-up will be skipped.
 export async function ensureSandboxReady(
   auth: Authenticator,
   conversation: ConversationType
