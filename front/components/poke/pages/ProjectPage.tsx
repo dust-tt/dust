@@ -1,60 +1,36 @@
 import { DataSourceViewsDataTable } from "@app/components/poke/data_source_views/table";
-import { MCPServerViewsDataTable } from "@app/components/poke/mcp_server_views/table";
 import { MembersDataTable } from "@app/components/poke/members/table";
-import { ProjectPage } from "@app/components/poke/pages/ProjectPage";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
+import { ProjectTasksDataTable } from "@app/components/poke/projects/tasks/table";
 import { ViewSpaceViewTable } from "@app/components/poke/spaces/view";
 import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
-import { useRequiredPathParam } from "@app/lib/platform";
-import { usePokeSpaceDetails } from "@app/poke/swr/space_details";
-import { LinkWrapper, Spinner } from "@dust-tt/sparkle";
+import type { PokeGetSpaceDetails } from "@app/pages/api/poke/workspaces/[wId]/spaces/[spaceId]/details";
+import { LinkWrapper } from "@dust-tt/sparkle";
 
-export function SpacePage() {
+interface ProjectPageProps {
+  details: PokeGetSpaceDetails;
+}
+
+export function ProjectPage({ details }: ProjectPageProps) {
   const owner = useWorkspace();
-  useDocumentTitle(`Poke - ${owner.name} - Space`);
+  useDocumentTitle(`Poke - ${owner.name} - Project`);
 
-  const spaceId = useRequiredPathParam("spaceId");
-  const {
-    data: spaceDetails,
-    isLoading,
-    isError,
-  } = usePokeSpaceDetails({
-    owner,
-    spaceId,
-    disabled: false,
-  });
-
-  if (isLoading) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <Spinner />
-      </div>
-    );
-  }
-
-  if (isError || !spaceDetails) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <p>Error loading space details.</p>
-      </div>
-    );
-  }
-
-  const { members, space } = spaceDetails;
-
-  if (spaceDetails.space.kind === "project") {
-    return <ProjectPage details={spaceDetails} />;
-  }
+  const { members, metadata, space } = details;
 
   return (
     <>
       <h3 className="text-xl font-bold">
-        Space {space.name} ({space.kind}) within workspace{" "}
+        Project {space.name} within workspace{" "}
         <LinkWrapper href={`/poke/${owner.sId}`} className="text-highlight-500">
           {owner.name}
         </LinkWrapper>
       </h3>
+      {metadata?.description && (
+        <p className="mt-2 text-sm text-muted-foreground">
+          {metadata.description}
+        </p>
+      )}
       <div className="flex flex-row gap-x-6">
         <ViewSpaceViewTable space={space} />
         <div className="mt-4 flex grow flex-col">
@@ -74,8 +50,8 @@ export function SpacePage() {
               workspace: owner,
             }}
           />
+          <ProjectTasksDataTable owner={owner} projectId={space.sId} />
           <DataSourceViewsDataTable owner={owner} spaceId={space.sId} />
-          <MCPServerViewsDataTable owner={owner} spaceId={space.sId} />
         </div>
       </div>
     </>
