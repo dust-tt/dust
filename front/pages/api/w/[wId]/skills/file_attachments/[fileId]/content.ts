@@ -37,22 +37,22 @@ async function handler(
     });
   }
 
+  const skillId = file.useCaseMetadata?.skillId;
+  if (skillId) {
+    const skill = await SkillResource.fetchById(auth, skillId);
+    if (!skill) {
+      return apiError(req, res, {
+        status_code: 404,
+        api_error: {
+          type: "file_not_found",
+          message: "File not found.",
+        },
+      });
+    }
+  }
+
   switch (req.method) {
     case "GET":
-      const skillId = file.useCaseMetadata?.skillId;
-      if (skillId) {
-        const skill = await SkillResource.fetchById(auth, skillId);
-        if (!skill) {
-          return apiError(req, res, {
-            status_code: 404,
-            api_error: {
-              type: "file_not_found",
-              message: "File not found.",
-            },
-          });
-        }
-      }
-
       res.setHeader("Content-Type", file.contentType);
 
       const readStream = file.getReadStream({ auth, version: "original" });
