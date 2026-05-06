@@ -19,6 +19,7 @@ import {
   LockIcon,
   PlanetIcon,
   ShapesIcon,
+  SparklesIcon,
   UserIcon,
 } from "@dust-tt/sparkle";
 
@@ -83,7 +84,8 @@ export type SubNavigationAdminId =
   | "dev_secrets"
   | "sandbox"
   | "analytics"
-  | "credits_usage";
+  | "credits_usage"
+  | "reinforcement";
 
 export const ADMIN_ROUTE_PATTERNS: Record<SubNavigationAdminId, string[]> = {
   members: ["/w/[wId]/members"],
@@ -96,6 +98,7 @@ export const ADMIN_ROUTE_PATTERNS: Record<SubNavigationAdminId, string[]> = {
   providers: ["/w/[wId]/developers/providers"],
   dev_secrets: ["/w/[wId]/developers/dev-secrets"],
   sandbox: ["/w/[wId]/developers/sandbox"],
+  reinforcement: ["/w/[wId]/developers/reinforcement"],
 };
 
 export type SubNavigationAppId =
@@ -205,6 +208,7 @@ export const getTopNavigationTabs = (
           "/w/[wId]/developers/api-keys",
           "/w/[wId]/developers/dev-secrets",
           "/w/[wId]/developers/sandbox",
+          "/w/[wId]/developers/reinforcement",
         ]),
       sizing: "hug",
     });
@@ -324,6 +328,14 @@ export const subNavigationAdmin = ({
           href: `/w/${owner.sId}/developers/sandbox`,
           current: isCurrent("sandbox"),
           featureFlag: "sandbox_workspace_admin",
+        },
+        {
+          id: "reinforcement",
+          label: "Reinforcement",
+          icon: SparklesIcon,
+          href: `/w/${owner.sId}/developers/reinforcement`,
+          current: isCurrent("reinforcement"),
+          featureFlag: "reinforcement_ui",
         },
       ],
     });
