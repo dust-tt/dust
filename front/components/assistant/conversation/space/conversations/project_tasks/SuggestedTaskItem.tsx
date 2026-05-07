@@ -2,25 +2,23 @@ import {
   TaskMetadataTooltip,
   TaskSources,
 } from "@app/components/assistant/conversation/space/conversations/project_tasks/TaskSubComponents";
+import { useTypingAnimation } from "@app/components/assistant/conversation/space/conversations/project_tasks/useTypingAnimation";
 import { stripNewlines } from "@app/components/assistant/conversation/space/conversations/project_tasks/utils";
 import type { ProjectTaskType } from "@app/types/project_task";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   AnimatedText,
   Button,
-  CheckIcon,
+  Checkbox,
   cn,
-  SparklesIcon,
   TypingAnimation,
-  XMarkIcon,
 } from "@dust-tt/sparkle";
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useState } from "react";
 
 export interface SuggestedTaskItemProps {
   task: ProjectTaskType;
   viewerUserId: string | null;
   onApproveAgentSuggestion: (task: ProjectTaskType) => void | Promise<void>;
-  onRejectAgentSuggestion: (task: ProjectTaskType) => void | Promise<void>;
   owner: LightWorkspaceType;
   agentNameById: Map<string, string>;
   isNew: boolean;
@@ -31,152 +29,97 @@ export const SuggestedTaskItem = memo(function SuggestedTaskItem({
   task,
   viewerUserId,
   onApproveAgentSuggestion,
-  onRejectAgentSuggestion,
   owner,
   agentNameById,
   isNew,
   isReadOnly,
 }: SuggestedTaskItemProps) {
-  const [typingDismissed, setTypingDismissed] = useState(false);
-  const [pendingSuggestionAction, setPendingSuggestionAction] = useState<
-    "approve" | "reject" | null
-  >(null);
-  const measureRef = useRef<HTMLSpanElement>(null);
-  const typingAnimationLockedTextRef = useRef<string | null>(null);
+  const [isApproving, setIsApproving] = useState(false);
 
   const displayText = stripNewlines(task.text);
-  const showTypingAnimation = isNew && !typingDismissed;
-
-  useEffect(() => {
-    if (!isNew) {
-      typingAnimationLockedTextRef.current = null;
-    }
-  }, [isNew]);
-
-  useEffect(() => {
-    if (!showTypingAnimation) {
-      typingAnimationLockedTextRef.current = null;
-    }
-  }, [showTypingAnimation]);
-
-  let typingAnimationSourceText = displayText;
-  if (showTypingAnimation) {
-    if (typingAnimationLockedTextRef.current === null) {
-      typingAnimationLockedTextRef.current = displayText;
-    }
-    typingAnimationSourceText = typingAnimationLockedTextRef.current;
-  }
-
+  const typing = useTypingAnimation({ enabled: isNew, text: displayText });
   const showInProgressTextAnimation = task.status === "in_progress";
 
   const canAct = viewerUserId !== null && !isReadOnly;
-
   const rationaleText =
     task.actorRationale?.trim() || "Suggested from your project takeaways.";
 
   return (
-    <div className="group/task flex items-start gap-3 rounded-md p-1 transition-colors duration-200 hover:bg-muted-background dark:hover:bg-muted-background-night">
-      <div className="mt-0.5 shrink-0">
-        <span className="flex size-4 items-center justify-center text-muted-foreground dark:text-muted-foreground-night">
-          <SparklesIcon className="h-3.5 w-3.5" />
-        </span>
+    <div className="group/suggestion-item flex items-start gap-3 py-1 pl-6">
+      <div className="mt-1 shrink-0">
+        <Checkbox size="xs" checked={false} disabled />
       </div>
-      <div className="flex min-w-0 flex-1 items-start gap-2">
-        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <div className="relative min-w-0 text-left">
-            {showTypingAnimation && (
-              <span
-                ref={measureRef}
-                aria-hidden
-                className="invisible block w-full min-w-0 break-words text-pretty text-base leading-6"
-              >
-                {typingAnimationSourceText}
-              </span>
-            )}
-            <TaskMetadataTooltip task={task} agentNameById={agentNameById}>
-              <div
-                className={cn(
-                  "min-h-6 w-full min-w-0 break-words text-pretty text-base leading-6 text-foreground dark:text-foreground-night",
-                  showTypingAnimation && "absolute inset-0"
-                )}
-              >
-                {showTypingAnimation ? (
-                  <TypingAnimation
-                    text={typingAnimationSourceText}
-                    duration={16}
-                    onComplete={() => setTypingDismissed(true)}
-                  />
-                ) : showInProgressTextAnimation ? (
-                  <AnimatedText variant="muted">{displayText}</AnimatedText>
-                ) : (
-                  displayText
-                )}
-              </div>
-            </TaskMetadataTooltip>
-          </div>
-          {!showTypingAnimation && (
-            <p className="min-w-0 text-pretty text-xs leading-relaxed text-muted-foreground dark:text-muted-foreground-night">
-              {rationaleText}
-            </p>
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <div className="relative min-w-0 text-left">
+          {typing.isAnimating && (
+            <span
+              aria-hidden
+              className="invisible block w-full min-w-0 break-words text-pretty text-base leading-6"
+            >
+              {typing.sourceText}
+            </span>
           )}
-          {!showTypingAnimation && (
-            <div>
-              <TaskSources
-                sources={task.sources}
-                owner={owner}
-                isDone={task.status === "done"}
-              />
-            </div>
-          )}
-        </div>
-        {canAct && (
-          <div className="mt-0.5 flex shrink-0 items-center gap-1">
+          <TaskMetadataTooltip task={task} agentNameById={agentNameById}>
             <div
               className={cn(
-                "flex items-center gap-1 transition-opacity",
-                "opacity-100 md:opacity-0 md:group-hover/task:opacity-100 md:focus-within:opacity-100"
+                "min-h-6 w-full min-w-0 break-words text-pretty text-base leading-6 text-foreground dark:text-foreground-night",
+                typing.isAnimating && "absolute inset-0"
               )}
             >
-              <Button
-                icon={CheckIcon}
-                size="xmini"
-                variant="outline"
-                tooltip="Keep this suggestion"
-                isLoading={pendingSuggestionAction === "approve"}
-                disabled={pendingSuggestionAction !== null}
-                className="text-success-500 hover:text-success-600 dark:text-success-500-night dark:hover:text-success-600-night"
-                onClick={async (e) => {
-                  e.stopPropagation();
-                  setPendingSuggestionAction("approve");
-                  try {
-                    await onApproveAgentSuggestion(task);
-                  } finally {
-                    setPendingSuggestionAction(null);
-                  }
-                }}
-              />
-              <Button
-                icon={XMarkIcon}
-                size="xmini"
-                variant="outline"
-                tooltip="Reject suggestion"
-                isLoading={pendingSuggestionAction === "reject"}
-                disabled={pendingSuggestionAction !== null}
-                className="text-warning-500 hover:text-warning-600 dark:text-warning-500-night dark:hover:text-warning-600-night"
-                onClick={async (e) => {
-                  e.stopPropagation();
-                  setPendingSuggestionAction("reject");
-                  try {
-                    await onRejectAgentSuggestion(task);
-                  } finally {
-                    setPendingSuggestionAction(null);
-                  }
-                }}
-              />
+              {typing.isAnimating ? (
+                <TypingAnimation
+                  text={typing.sourceText}
+                  duration={16}
+                  onComplete={typing.dismiss}
+                />
+              ) : showInProgressTextAnimation ? (
+                <AnimatedText variant="muted">{displayText}</AnimatedText>
+              ) : (
+                displayText
+              )}
             </div>
+          </TaskMetadataTooltip>
+        </div>
+        {!typing.isAnimating && (
+          <p className="min-w-0 text-pretty text-xs leading-relaxed text-muted-foreground dark:text-muted-foreground-night">
+            {rationaleText}
+          </p>
+        )}
+        {!typing.isAnimating && (
+          <div>
+            <TaskSources
+              sources={task.sources}
+              owner={owner}
+              isDone={task.status === "done"}
+            />
           </div>
         )}
       </div>
+      {canAct && (
+        <div
+          className={cn(
+            "shrink-0 transition-opacity",
+            "opacity-0 group-hover/suggestion-item:opacity-100 group-focus-within/suggestion-item:opacity-100"
+          )}
+        >
+          <Button
+            label="Accept"
+            size="sm"
+            variant="outline"
+            isLoading={isApproving}
+            disabled={isApproving}
+            onClick={async (e) => {
+              e.stopPropagation();
+              setIsApproving(true);
+              try {
+                await onApproveAgentSuggestion(task);
+              } finally {
+                setIsApproving(false);
+              }
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 });

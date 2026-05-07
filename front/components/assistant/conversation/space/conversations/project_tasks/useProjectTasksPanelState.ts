@@ -1,7 +1,3 @@
-import {
-  groupedTasksNonPendingSuggestions,
-  groupedTasksPendingSuggestionsOnly,
-} from "@app/components/assistant/conversation/space/conversations/project_tasks/projectTasksGrouping";
 import { formatTaskScopeLabel } from "@app/components/assistant/conversation/space/conversations/project_tasks/projectTasksListScope";
 import type {
   ProjectTasksPanelData,
@@ -22,7 +18,7 @@ import {
 import { useTaskDiffAnimations } from "@app/hooks/useTaskDiffAnimations";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
-import { compareProjectTaskAssigneeGroups } from "@app/lib/project_task/display_order";
+import { compareProjectTaskAssignees } from "@app/lib/project_task/display_order";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
   useBulkUpdateProjectTaskStatus,
@@ -191,50 +187,47 @@ export function useProjectTasksPanelState({
   };
   const firstOnboardingTaskId = getFirstOnboardingTaskId(filteredTasks);
 
-  const groupedTasksForAll = useMemo(() => {
+  const combinedGroupedTasksByUser = useMemo(() => {
     const groups = new Map<
       string,
-      { user: ProjectTaskAssigneeType | null; tasks: ProjectTaskType[] }
+      {
+        user: ProjectTaskAssigneeType | null;
+        suggestedTasks: ProjectTaskType[];
+        regularTasks: ProjectTaskType[];
+      }
     >();
 
     for (const task of filteredTasks) {
       const user = task.user ?? null;
       const key = user?.sId ?? PROJECT_TASK_UNASSIGNED_GROUP_KEY;
-      const existing = groups.get(key);
-      if (existing) {
-        existing.tasks.push(task);
+      let group = groups.get(key);
+      if (!group) {
+        group = { user, suggestedTasks: [], regularTasks: [] };
+        groups.set(key, group);
+      }
+      if (task.agentSuggestionStatus === "pending") {
+        group.suggestedTasks.push(task);
       } else {
-        groups.set(key, { user, tasks: [task] });
+        group.regularTasks.push(task);
       }
     }
 
     return [...groups.values()].sort((a, b) =>
-      compareProjectTaskAssigneeGroups(a, b, viewerUserId)
+      compareProjectTaskAssignees(a.user, b.user, viewerUserId)
     );
   }, [filteredTasks, viewerUserId]);
 
-  const groupedSuggestedTasksOnly = useMemo(
-    () => groupedTasksPendingSuggestionsOnly(groupedTasksForAll),
-    [groupedTasksForAll]
-  );
-
-  const groupedRegularTasksOnly = useMemo(
-    () => groupedTasksNonPendingSuggestions(groupedTasksForAll),
-    [groupedTasksForAll]
-  );
-
   const isSoleProjectMember = projectMembers.length === 1;
 
-  const hideRegularTaskAssigneeHeaders = useMemo(() => {
+  const hideAssigneeHeaders = useMemo(() => {
     if (!isSoleProjectMember || viewerUserId === null) {
       return false;
     }
-    const regularTasks = groupedRegularTasksOnly.flatMap((g) => g.tasks);
-    if (regularTasks.length === 0) {
+    if (filteredTasks.length === 0) {
       return false;
     }
-    return regularTasks.every((t) => t.user?.sId === viewerUserId);
-  }, [groupedRegularTasksOnly, isSoleProjectMember, viewerUserId]);
+    return filteredTasks.every((t) => t.user?.sId === viewerUserId);
+  }, [filteredTasks, isSoleProjectMember, viewerUserId]);
 
   // Optimistically update a task's status in the SWR cache and send the PATCH.
   // On failure the cache is revalidated from the server.
@@ -280,25 +273,6 @@ export function useProjectTasksPanelState({
             action: "approve_agent_suggestion",
             taskIds: [task.sId],
           }),
-        }
-      );
-      await mutateTasks();
-    },
-    [owner.sId, spaceId, mutateTasks]
-  );
-
-  const onRejectAgentSuggestion = useCallback(
-    async (task: ProjectTaskType) => {
-      const body: BulkActionsBody = {
-        action: "reject_agent_suggestion",
-        taskIds: [task.sId],
-      };
-      await clientFetch(
-        `/api/w/${owner.sId}/spaces/${spaceId}/project_tasks/bulk-actions`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
         }
       );
       await mutateTasks();
@@ -538,52 +512,44 @@ export function useProjectTasksPanelState({
     ]
   );
 
-  const showSuggestedTasksTable =
-    !isTasksLoading &&
-    frozenLastReadAt !== undefined &&
-    groupedSuggestedTasksOnly.length > 0;
-
   return {
-    isScopeMenuOpen,
-    setIsScopeMenuOpen,
-    taskOwnerFilter,
-    onTaskOwnerFilterChange,
-    viewerUserId,
-    taskScopeLabel,
-    isReadOnly,
-    showSuggestedTasksTable,
-    owner,
-    groupedSuggestedTasksOnly,
-    groupedRegularTasksOnly,
     activeAgents,
-    isAgentsLoading,
     agentNameById,
-    newItemKeys,
+    assigneeScopedTasks,
+    combinedGroupedTasksByUser,
+    debouncedTaskSearchQuery,
+    defaultNewAssigneeSId,
     doneFlashKeys,
-    startingTaskIds,
+    filteredTasks,
     firstOnboardingTaskId,
-    projectMembers,
-    membersWithActiveTaskIds,
+    frozenLastReadAt,
+    handleAddTask,
+    handleStartWorking,
     handleToggleDone,
-    requestDelete,
+    hideAssigneeHeaders,
+    isAgentsLoading,
+    isReadOnly,
+    isScopeMenuOpen,
+    isSoleProjectMember,
+    isSpaceInfoLoading,
+    isTasksError,
+    isTasksLoading,
+    membersWithActiveTaskIds,
+    newItemKeys,
     onApproveAgentSuggestion,
-    onRejectAgentSuggestion,
     onApproveAllSuggestedForAssignee,
     onRejectAllSuggestedForAssignee,
-    handleStartWorking,
+    onTaskOwnerFilterChange,
+    owner,
     patchTaskItem,
-    isSpaceInfoLoading,
-    defaultNewAssigneeSId,
-    handleAddTask,
-    isTasksLoading,
-    isTasksError,
-    frozenLastReadAt,
-    tasks,
-    filteredTasks,
-    assigneeScopedTasks,
-    debouncedTaskSearchQuery,
+    projectMembers,
+    requestDelete,
     setDebouncedTaskSearchQuery,
-    isSoleProjectMember,
-    hideRegularTaskAssigneeHeaders,
+    setIsScopeMenuOpen,
+    startingTaskIds,
+    taskOwnerFilter,
+    tasks,
+    taskScopeLabel,
+    viewerUserId,
   };
 }
