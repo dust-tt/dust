@@ -81,6 +81,7 @@ export async function* runToolWithStreaming(
     conversation,
     stepContext: action.stepContext,
     toolConfiguration,
+    actionId: action.sId,
   };
 
   await action.updateStatus("running");

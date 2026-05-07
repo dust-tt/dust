@@ -7,6 +7,7 @@ import {
   extractArgRequiringApprovalValues,
   setUserAlwaysApprovedTool,
 } from "@app/lib/actions/tool_status";
+import { isSandboxChildResumeState } from "@app/lib/actions/types";
 import { getUserMessageIdFromMessageId } from "@app/lib/api/assistant/conversation/messages";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
@@ -16,7 +17,10 @@ import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
-import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
+import {
+  launchAgentLoopWorkflow,
+  launchSandboxChildToolWorkflow,
+} from "@app/temporal/agent_loop/client";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -150,6 +154,48 @@ export async function validateAction(
       ? payload.actionId === actionId
       : false;
   }, getMessageChannelId(messageId));
+
+  // Sandbox children: a tool call issued from inside the bash exec. They
+  // share the parent bash's `agent_step_contents` row, so relaunching the
+  // agent loop at that step would re-pick the bash action and clobber it.
+  // Launch the dedicated single-action workflow instead — only on approval;
+  // rejected actions are already in `denied` and must not be executed.
+  // (The non-sandbox path's `launchAgentLoopWorkflow` is safe on denial
+  // because `getExistingActionsAndBlobs` filters out final statuses; our
+  // dedicated workflow has no such guard.)
+  if (isSandboxChildResumeState(action.stepContext.resumeState)) {
+    if (approvalState !== "rejected") {
+      await launchSandboxChildToolWorkflow({
+        auth,
+        agentLoopArgs: {
+          agentMessageId,
+          agentMessageVersion,
+          conversationId,
+          conversationTitle,
+          conversationBranchId: branchId,
+          userMessageId,
+          userMessageVersion,
+          userMessageOrigin,
+          initialStartTime: Date.now(),
+        },
+        actionModelId: action.id,
+        step: agentStepContent.step,
+      });
+    }
+
+    logger.info(
+      {
+        workspaceId: owner.id,
+        conversationId,
+        messageId,
+        actionId,
+        approvalState,
+      },
+      "Sandbox child action validated by user"
+    );
+
+    return new Ok(undefined);
+  }
 
   // We only launch the agent loop if there are no remaining blocked actions.
   const blockedActions =

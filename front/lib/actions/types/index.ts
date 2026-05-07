@@ -75,6 +75,25 @@ export function isUserQuestionResumeState(
   return UserQuestionResumeStateSchema.safeParse(value).success;
 }
 
+// Carried by sandbox-spawned MCP actions (children of a bash tool exec).
+// Lets `validateAction` recognize them and dispatch to the dedicated child
+// workflow on approval, instead of relaunching the full agent loop (which
+// would re-run the parent bash and clobber it).
+const SandboxChildResumeStateSchema = z.object({
+  type: z.literal("sandbox_child"),
+  parentActionId: z.string(),
+});
+
+export type SandboxChildResumeState = z.infer<
+  typeof SandboxChildResumeStateSchema
+>;
+
+export function isSandboxChildResumeState(
+  value: unknown
+): value is SandboxChildResumeState {
+  return SandboxChildResumeStateSchema.safeParse(value).success;
+}
+
 export type StepContext = {
   citationsCount: number;
   citationsOffset: number;
@@ -120,6 +139,10 @@ export type AgentLoopRunContextType = {
   conversation: ConversationType;
   stepContext: StepContext;
   toolConfiguration: LightMCPToolConfigurationType;
+  // sId of the AgentMCPAction this tool call is running under. Populated by
+  // the agent loop's tool invocation path; tool handlers can read it instead
+  // of querying for their own action by message id.
+  actionId?: string;
 };
 
 export type AgentLoopListToolsContextType = {

@@ -228,6 +228,11 @@ export async function runSandboxBashTool(
   const conversation = agentLoopContext?.runContext?.conversation;
   const agentConfiguration = agentLoopContext?.runContext?.agentConfiguration;
   const agentMessage = agentLoopContext?.runContext?.agentMessage;
+  // The Rust client inside the sandbox echoes this sId back in the URL of
+  // every call_tool request, pinning each token to its specific bash exec.
+  // Plumbed by the agent loop's tool invocation path
+  // (`executeToolStreaming` populates it on `agentLoopRunContext`).
+  const bashActionId = agentLoopContext?.runContext?.actionId;
   if (!conversation || !agentConfiguration || !agentMessage) {
     return new Err(new MCPError("No conversation context available."));
   }
@@ -246,6 +251,7 @@ export async function runSandboxBashTool(
     conversation,
     sandbox,
     execId,
+    parentAgentActionId: bashActionId,
     expiryMs: DEFAULT_EXEC_TIMEOUT_MS,
   });
 

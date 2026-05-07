@@ -7,16 +7,25 @@ import { logAgentLoopStart } from "@app/temporal/agent_loop/activities/instrumen
 import {
   makeAgentLoopWorkflowId,
   makeCompactionWorkflowId,
+  makeSandboxChildToolWorkflowId,
 } from "@app/temporal/agent_loop/lib/workflow_ids";
-import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
+import type {
+  AgentLoopArgs,
+  AgentLoopArgsWithTiming,
+} from "@app/types/assistant/agent_run";
 import type { CompactionSourceConversation } from "@app/types/assistant/compaction";
 import type { SupportedModel } from "@app/types/assistant/models/types";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { WorkflowExecutionAlreadyStartedError } from "@temporalio/client";
 
 import { QUEUE_NAME } from "./config";
-import { agentLoopWorkflow, compactionWorkflow } from "./workflows";
+import {
+  agentLoopWorkflow,
+  compactionWorkflow,
+  runSandboxChildToolWorkflow,
+} from "./workflows";
 
 export async function launchAgentLoopWorkflow({
   auth,
@@ -109,6 +118,56 @@ export async function launchAgentLoopWorkflow({
         "Agent loop already running for this message."
       )
     );
+  }
+
+  return new Ok(undefined);
+}
+
+/**
+ * Launches the dedicated workflow that runs a single sandbox-spawned MCP
+ * action. Workflow id is keyed on the action's model id, so a duplicate
+ * launch (e.g. the user clicks approve twice, or a Rust client retry) is a
+ * no-op via `WorkflowExecutionAlreadyStartedError`.
+ */
+export async function launchSandboxChildToolWorkflow({
+  auth,
+  agentLoopArgs,
+  actionModelId,
+  step,
+}: {
+  auth: Authenticator;
+  agentLoopArgs: AgentLoopArgsWithTiming;
+  actionModelId: ModelId;
+  step: number;
+}): Promise<Result<undefined, Error>> {
+  const authType = auth.toJSON();
+  const { workspaceId } = authType;
+  const client = await getTemporalClientForAgentNamespace();
+
+  const workflowId = makeSandboxChildToolWorkflowId({
+    workspaceId,
+    actionModelId,
+  });
+  try {
+    await client.workflow.start(runSandboxChildToolWorkflow, {
+      args: [{ authType, agentLoopArgs, actionModelId, step }],
+      taskQueue: QUEUE_NAME,
+      workflowId,
+      searchAttributes: {
+        conversationId: [agentLoopArgs.conversationId],
+        workspaceId: [workspaceId],
+      },
+      memo: {
+        conversationId: agentLoopArgs.conversationId,
+        workspaceId,
+      },
+    });
+  } catch (error) {
+    if (error instanceof WorkflowExecutionAlreadyStartedError) {
+      // Idempotent: another caller already kicked it off for this action.
+      return new Ok(undefined);
+    }
+    throw error;
   }
 
   return new Ok(undefined);

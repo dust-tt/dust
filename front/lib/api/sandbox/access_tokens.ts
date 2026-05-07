@@ -25,6 +25,11 @@ const SandboxExecTokenPayloadSchema = z.object({
   mId: z.string(),
   sbId: z.string(),
   execId: z.string(),
+  // Parent AgentMCPAction sId. The Rust client embeds it in the URL path of
+  // every call_tool request so the server can verify the token<>URL pairing
+  // without trusting body-level fields. Optional during the rollout window;
+  // tokens minted before the rollout can omit it.
+  aaId: z.string().optional(),
 });
 
 export type SandboxExecTokenPayload = z.infer<
@@ -100,6 +105,7 @@ export async function generateSandboxExecToken(
     conversation,
     sandbox,
     execId,
+    parentAgentActionId,
     expiryMs = 2 * 60 * 1000, // Default to 2 minutes
   }: {
     agentConfiguration: AgentConfigurationType;
@@ -107,6 +113,10 @@ export async function generateSandboxExecToken(
     conversation: ConversationType;
     sandbox: SandboxResource;
     execId: string;
+    // sId of the parent AgentMCPAction (the bash tool action this sandbox is
+    // running under). Embedded in the JWT and required to match the URL on
+    // every call_tool request, pinning each token to its specific bash exec.
+    parentAgentActionId?: string;
     expiryMs?: number;
   }
 ): Promise<string> {
@@ -118,6 +128,7 @@ export async function generateSandboxExecToken(
     mId: agentMessage.sId,
     sbId: sandbox.sId,
     execId,
+    aaId: parentAgentActionId,
   };
 
   await registerExecToken(payload);

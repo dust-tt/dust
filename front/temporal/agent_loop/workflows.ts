@@ -138,6 +138,33 @@ export async function agentLoopConversationTitleWorkflow({
   await ensureConversationTitleActivity(authType, agentLoopArgs);
 }
 
+/**
+ * Runs a single sandbox-spawned MCP action as a one-off temporal activity.
+ *
+ * Used for tool calls issued by the bash tool's sandboxed exec. Those actions
+ * share their parent bash's `agent_step_contents` row, so re-using the agent
+ * loop's resume path (`launchAgentLoopWorkflow({ startStep })`) would also
+ * pick up the parent bash and re-run it. This dedicated workflow runs only
+ * the specified child action.
+ */
+export async function runSandboxChildToolWorkflow({
+  authType,
+  agentLoopArgs,
+  actionModelId,
+  step,
+}: {
+  authType: AuthenticatorType;
+  agentLoopArgs: AgentLoopArgsWithTiming;
+  actionModelId: number;
+  step: number;
+}) {
+  await runRetryableToolActivity(authType, {
+    actionId: actionModelId,
+    runAgentArgs: agentLoopArgs,
+    step,
+  });
+}
+
 export async function compactionWorkflow({
   authType,
   conversationId,
