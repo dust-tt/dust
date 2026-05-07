@@ -72,7 +72,7 @@ describe("getSelfImprovementCapPerSkillMicroUsd", () => {
     expect(
       getSelfImprovementCapPerSkillMicroUsd(
         makeWorkspace({ selfImprovementCapPerSkillMicroUsd: 0 })
-      )``
+      )
     ).toBe(0);
   });
 });
