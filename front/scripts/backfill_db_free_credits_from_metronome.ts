@@ -29,9 +29,9 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { makeScript } from "./helpers";
 import { runOnAllWorkspaces } from "./workspace_helpers";
 
-// Metronome publishes a 55 RPS API limit. Cap the script at 40 RPS to leave
+// Metronome publishes a 11 RPS API limit. Cap the script at 10 RPS to leave
 // headroom for concurrent production traffic on the same API key.
-const METRONOME_MAX_RPS = 40;
+const METRONOME_MAX_RPS = 10;
 const METRONOME_MIN_INTERVAL_MS = 1000 / METRONOME_MAX_RPS;
 let metronomeNextSlotAt = 0;
 
