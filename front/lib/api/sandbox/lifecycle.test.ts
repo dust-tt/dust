@@ -2,32 +2,32 @@ import { Err, Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
-  mockCheckEgressForwarderHealth,
   mockEnsureActive,
+  mockEnsureSandboxEgressOnExec,
   mockGetSandboxImage,
   mockLoggerError,
   mockLoggerInfo,
   mockLoggerWarn,
   mockMountConversationFiles,
+  mockPrepareSandboxEgressBeforeMount,
   mockRefreshGcsToken,
-  mockSetupEgressForwarder,
   mockStartTelemetry,
 } = vi.hoisted(() => ({
-  mockCheckEgressForwarderHealth: vi.fn(),
   mockEnsureActive: vi.fn(),
+  mockEnsureSandboxEgressOnExec: vi.fn(),
   mockGetSandboxImage: vi.fn(),
   mockLoggerError: vi.fn(),
   mockLoggerInfo: vi.fn(),
   mockLoggerWarn: vi.fn(),
   mockMountConversationFiles: vi.fn(),
+  mockPrepareSandboxEgressBeforeMount: vi.fn(),
   mockRefreshGcsToken: vi.fn(),
-  mockSetupEgressForwarder: vi.fn(),
   mockStartTelemetry: vi.fn(),
 }));
 
 vi.mock("@app/lib/api/sandbox/egress", () => ({
-  checkEgressForwarderHealth: mockCheckEgressForwarderHealth,
-  setupEgressForwarder: mockSetupEgressForwarder,
+  ensureSandboxEgressOnExec: mockEnsureSandboxEgressOnExec,
+  prepareSandboxEgressBeforeMount: mockPrepareSandboxEgressBeforeMount,
 }));
 
 vi.mock("@app/lib/api/sandbox/gcs/mount", () => ({
@@ -78,15 +78,15 @@ describe("ensureSandboxReady", () => {
         wokeFromSleep: false,
       })
     );
-    mockSetupEgressForwarder.mockResolvedValue(new Ok(undefined));
+    mockPrepareSandboxEgressBeforeMount.mockResolvedValue(new Ok(undefined));
+    mockEnsureSandboxEgressOnExec.mockResolvedValue(new Ok(undefined));
     mockGetSandboxImage.mockReturnValue(new Ok(image));
     mockStartTelemetry.mockResolvedValue(new Ok(undefined));
     mockMountConversationFiles.mockResolvedValue(new Ok(undefined));
     mockRefreshGcsToken.mockResolvedValue(new Ok(undefined));
-    mockCheckEgressForwarderHealth.mockResolvedValue(new Ok(true));
   });
 
-  it("sets up egress, mounts files, and checks health for freshly-created sandboxes", async () => {
+  it("preps egress, mounts files, and ensures egress on exec for freshly-created sandboxes", async () => {
     mockEnsureActive.mockResolvedValue(
       new Ok({
         freshlyCreated: true,
@@ -101,7 +101,11 @@ describe("ensureSandboxReady", () => {
     );
 
     expect(result.isOk()).toBe(true);
-    expect(mockSetupEgressForwarder).toHaveBeenCalledTimes(1);
+    expect(mockPrepareSandboxEgressBeforeMount).toHaveBeenCalledTimes(1);
+    expect(mockPrepareSandboxEgressBeforeMount).toHaveBeenCalledWith(
+      auth,
+      sandbox
+    );
     expect(mockMountConversationFiles).toHaveBeenCalledWith(
       auth,
       sandbox,
@@ -109,19 +113,21 @@ describe("ensureSandboxReady", () => {
       image
     );
     expect(mockRefreshGcsToken).not.toHaveBeenCalled();
-    expect(mockCheckEgressForwarderHealth).toHaveBeenCalledWith(auth, sandbox);
+    expect(mockEnsureSandboxEgressOnExec).toHaveBeenCalledWith(auth, sandbox, {
+      wokeFromSleep: false,
+    });
 
-    expect(mockSetupEgressForwarder.mock.invocationCallOrder[0]).toBeLessThan(
-      mockMountConversationFiles.mock.invocationCallOrder[0]
-    );
+    expect(
+      mockPrepareSandboxEgressBeforeMount.mock.invocationCallOrder[0]
+    ).toBeLessThan(mockMountConversationFiles.mock.invocationCallOrder[0]);
     expect(mockMountConversationFiles.mock.invocationCallOrder[0]).toBeLessThan(
-      mockCheckEgressForwarderHealth.mock.invocationCallOrder[0]
+      mockEnsureSandboxEgressOnExec.mock.invocationCallOrder[0]
     );
   });
 
   it("only refreshes the token (no remount) when the sandbox woke from sleep", async () => {
     // e2b preserves the FUSE mount and the token server across betaPause +
-    // connect, so on wake we must NOT remount — that would fail with EBUSY.
+    // connect, so on wake we must NOT remount, that would fail with EBUSY.
     mockEnsureActive.mockResolvedValue(
       new Ok({
         freshlyCreated: false,
@@ -136,7 +142,7 @@ describe("ensureSandboxReady", () => {
     );
 
     expect(result.isOk()).toBe(true);
-    expect(mockSetupEgressForwarder).not.toHaveBeenCalled();
+    expect(mockPrepareSandboxEgressBeforeMount).not.toHaveBeenCalled();
     expect(mockMountConversationFiles).not.toHaveBeenCalled();
     expect(mockRefreshGcsToken).toHaveBeenCalledWith(
       auth,
@@ -144,6 +150,9 @@ describe("ensureSandboxReady", () => {
       conversation,
       image
     );
+    expect(mockEnsureSandboxEgressOnExec).toHaveBeenCalledWith(auth, sandbox, {
+      wokeFromSleep: true,
+    });
   });
 
   it("refreshes the GCS token for already-running sandboxes", async () => {
@@ -153,7 +162,7 @@ describe("ensureSandboxReady", () => {
     );
 
     expect(result.isOk()).toBe(true);
-    expect(mockSetupEgressForwarder).not.toHaveBeenCalled();
+    expect(mockPrepareSandboxEgressBeforeMount).not.toHaveBeenCalled();
     expect(mockMountConversationFiles).not.toHaveBeenCalled();
     expect(mockRefreshGcsToken).toHaveBeenCalledWith(
       auth,
@@ -162,38 +171,8 @@ describe("ensureSandboxReady", () => {
       image
     );
     expect(mockRefreshGcsToken.mock.invocationCallOrder[0]).toBeLessThan(
-      mockCheckEgressForwarderHealth.mock.invocationCallOrder[0]
+      mockEnsureSandboxEgressOnExec.mock.invocationCallOrder[0]
     );
-  });
-
-  it("restarts egress when the post-setup health check fails", async () => {
-    mockEnsureActive.mockResolvedValue(
-      new Ok({
-        freshlyCreated: true,
-        sandbox,
-        wokeFromSleep: false,
-      })
-    );
-    mockCheckEgressForwarderHealth.mockResolvedValue(new Ok(false));
-
-    const result = await ensureSandboxReady(
-      auth as never,
-      conversation as never
-    );
-
-    expect(result.isOk()).toBe(true);
-    expect(mockSetupEgressForwarder).toHaveBeenCalledTimes(2);
-    expect(mockLoggerWarn).toHaveBeenCalledWith(
-      {
-        event: "egress.health_fail",
-        providerId: "provider-id",
-        sandboxId: "sandbox-id",
-      },
-      "Sandbox egress forwarder health check failed, restarting"
-    );
-    expect(
-      mockCheckEgressForwarderHealth.mock.invocationCallOrder[0]
-    ).toBeLessThan(mockSetupEgressForwarder.mock.invocationCallOrder[1]);
   });
 
   it("short-circuits when the sandbox image lookup fails", async () => {
@@ -209,7 +188,7 @@ describe("ensureSandboxReady", () => {
     expect(mockStartTelemetry).not.toHaveBeenCalled();
     expect(mockMountConversationFiles).not.toHaveBeenCalled();
     expect(mockRefreshGcsToken).not.toHaveBeenCalled();
-    expect(mockCheckEgressForwarderHealth).not.toHaveBeenCalled();
+    expect(mockEnsureSandboxEgressOnExec).not.toHaveBeenCalled();
     expect(mockLoggerError).toHaveBeenCalledWith(
       { err: imageError },
       "Failed to get sandbox image for GCS mount"
@@ -225,11 +204,11 @@ describe("ensureSandboxReady", () => {
     );
 
     expect(result.isErr()).toBe(true);
-    expect(mockSetupEgressForwarder).not.toHaveBeenCalled();
+    expect(mockPrepareSandboxEgressBeforeMount).not.toHaveBeenCalled();
     expect(mockGetSandboxImage).not.toHaveBeenCalled();
   });
 
-  it("short-circuits when initial egress setup fails", async () => {
+  it("short-circuits when initial egress prep fails", async () => {
     mockEnsureActive.mockResolvedValue(
       new Ok({
         freshlyCreated: true,
@@ -237,7 +216,7 @@ describe("ensureSandboxReady", () => {
         wokeFromSleep: false,
       })
     );
-    mockSetupEgressForwarder.mockResolvedValue(
+    mockPrepareSandboxEgressBeforeMount.mockResolvedValue(
       new Err(new Error("setup failed"))
     );
 
@@ -269,7 +248,7 @@ describe("ensureSandboxReady", () => {
     );
 
     expect(result.isErr()).toBe(true);
-    expect(mockCheckEgressForwarderHealth).not.toHaveBeenCalled();
+    expect(mockEnsureSandboxEgressOnExec).not.toHaveBeenCalled();
   });
 
   it("short-circuits when refreshing the GCS token fails", async () => {
@@ -281,12 +260,12 @@ describe("ensureSandboxReady", () => {
     );
 
     expect(result.isErr()).toBe(true);
-    expect(mockCheckEgressForwarderHealth).not.toHaveBeenCalled();
+    expect(mockEnsureSandboxEgressOnExec).not.toHaveBeenCalled();
   });
 
-  it("short-circuits when the egress health check fails", async () => {
-    mockCheckEgressForwarderHealth.mockResolvedValue(
-      new Err(new Error("health failed"))
+  it("short-circuits when ensure-on-exec fails", async () => {
+    mockEnsureSandboxEgressOnExec.mockResolvedValue(
+      new Err(new Error("ensure-egress failed"))
     );
 
     const result = await ensureSandboxReady(
@@ -295,21 +274,6 @@ describe("ensureSandboxReady", () => {
     );
 
     expect(result.isErr()).toBe(true);
-    expect(mockSetupEgressForwarder).not.toHaveBeenCalled();
-  });
-
-  it("short-circuits when egress restart fails after an unhealthy check", async () => {
-    mockCheckEgressForwarderHealth.mockResolvedValue(new Ok(false));
-    mockSetupEgressForwarder.mockResolvedValue(
-      new Err(new Error("restart failed"))
-    );
-
-    const result = await ensureSandboxReady(
-      auth as never,
-      conversation as never
-    );
-
-    expect(result.isErr()).toBe(true);
-    expect(mockSetupEgressForwarder).toHaveBeenCalledTimes(1);
+    expect(mockEnsureSandboxEgressOnExec).toHaveBeenCalledTimes(1);
   });
 });
