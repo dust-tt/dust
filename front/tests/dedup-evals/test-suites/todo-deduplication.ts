@@ -354,6 +354,67 @@ Score 0 if the model attempts to report one candidate as a duplicate of the othe
 Score 3 if both candidates are correctly reported as new.`,
     },
 
+    // ── Soft-deleted existing todo: LLM must still match ──────────────────
+    //
+    // fetchAllBySpaceIncludingDeleted now passes deleted todos into
+    // existingTodosByUser. The LLM never sees deletedAt — it only sees text.
+    // createOrLinkTodos is responsible for skipping a candidate that matched a
+    // deleted todo. These scenarios validate that the LLM correctly recognises
+    // the match even when the existing todo is logically deleted.
+
+    {
+      scenarioId: "deleted-todo-exact-match",
+      // existing-1 is soft-deleted in production (deletedAt is set).
+      // The LLM only sees the text, so it must match as usual.
+      existingTodos: [
+        {
+          sId: "existing-deleted-1",
+          text: "Migrate the database from MySQL to PostgreSQL",
+        },
+        {
+          sId: "existing-2",
+          text: "Add unit tests for the authentication module",
+        },
+      ],
+      candidates: [
+        {
+          itemId: "c-0",
+          text: "Move all data from MySQL over to the new PostgreSQL database",
+        },
+      ],
+      expectedMatches: [shouldMatchExisting(0, "existing-deleted-1")],
+      judgeCriteria: `existing-deleted-1 is soft-deleted in production, but the LLM only sees its
+text. The candidate is a semantic duplicate of that deleted todo and must be matched to it.
+createOrLinkTodos will then skip re-creating it.
+
+Score 0 if the candidate is treated as new or matched to existing-2.
+Score 3 if correctly matched to existing-deleted-1.`,
+    },
+
+    {
+      scenarioId: "deleted-todo-genuinely-new",
+      // Same soft-deleted existing setup, but the candidate is unrelated.
+      // The LLM must NOT match just because there is a deleted todo around.
+      existingTodos: [
+        {
+          sId: "existing-deleted-1",
+          text: "Migrate the database from MySQL to PostgreSQL",
+        },
+      ],
+      candidates: [
+        {
+          itemId: "c-0",
+          text: "Add dark mode support to the settings page",
+        },
+      ],
+      expectedMatches: [shouldBeNew(0)],
+      judgeCriteria: `The existing todo (database migration, soft-deleted) is entirely unrelated to
+the candidate (dark mode). The candidate must be identified as new.
+
+Score 0 if the candidate is matched to existing-deleted-1.
+Score 3 if correctly identified as new.`,
+    },
+
     // ── Large candidate batch: index tracking ──────────────────────────────
 
     {

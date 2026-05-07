@@ -424,19 +424,14 @@ export class ProjectTaskResource extends BaseResource<ProjectTaskModel> {
     });
   }
 
-  // Like fetchLatestBySpaceForUser but also includes soft-deleted rows. Used by
-  // the merge workflow to detect candidates that match a previously deleted todo
-  // so that the merge skips them rather than re-creating the todo.
-  static async fetchLatestBySpaceForUserIncludingDeleted(
+  // Fetches all todos for the given space across all users, including
+  // soft-deleted rows. Used by the merge workflow for space-wide dedup.
+  static async fetchAllBySpaceIncludingDeleted(
     auth: Authenticator,
-    { spaceId, userId }: { spaceId: ModelId; userId: ModelId }
+    { spaceId }: { spaceId: ModelId }
   ): Promise<ProjectTaskResource[]> {
     const todos = await ProjectTaskModel.findAll({
-      where: {
-        spaceId,
-        userId,
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
+      where: { workspaceId: auth.getNonNullableWorkspace().id, spaceId },
       order: [["createdAt", "DESC"]],
     });
     return todos.map((todo) => new this(ProjectTaskModel, todo.get()));
