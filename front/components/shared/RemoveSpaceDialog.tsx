@@ -6,7 +6,7 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { getSpaceName } from "@app/lib/spaces";
 import type { SpaceType } from "@app/types/space";
-import { DocumentIcon, Icon } from "@dust-tt/sparkle";
+import { Chip, DocumentIcon, Icon, ToolsIcon } from "@dust-tt/sparkle";
 import React, { useContext } from "react";
 
 function getActionDisplayName(
@@ -66,6 +66,12 @@ interface ConfirmRemoveSpaceParams {
   actions: BuilderAction[];
   knowledgeInInstructions?: KnowledgeToRemove[];
   skills?: SkillToRemove[];
+}
+
+interface ConfirmBlockedSkillSpaceRemovalParams {
+  space: SpaceType;
+  actions: BuilderAction[];
+  knowledgeInInstructions: KnowledgeToRemove[];
 }
 
 export function useRemoveSpaceConfirm({
@@ -135,6 +141,62 @@ export function useRemoveSpaceConfirm({
       validateLabel: "OK",
       validateVariant: "warning",
       validateDisabled: hasKnowledge,
+    });
+  };
+}
+
+export function useBlockedSkillSpaceRemovalConfirm({
+  mcpServerViews,
+}: {
+  mcpServerViews: MCPServerViewType[];
+}) {
+  const confirm = useContext(ConfirmContext);
+
+  return async ({
+    space,
+    actions,
+    knowledgeInInstructions,
+  }: ConfirmBlockedSkillSpaceRemovalParams): Promise<void> => {
+    const spaceKind = space.kind === "project" ? "project" : "space";
+
+    await confirm({
+      title: `${getSpaceName(space)} can't be removed`,
+      message: (
+        <div className="space-y-3">
+          <p className="text-sm">
+            This {spaceKind} can't be removed from the skill because the skill
+            uses knowledge or tools that belong to it.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {knowledgeInInstructions.map((knowledge) => (
+              <Chip
+                key={`knowledge-${knowledge.nodeId}`}
+                size="xs"
+                color="info"
+                icon={DocumentIcon}
+                label={knowledge.title}
+              />
+            ))}
+            {actions.map((action) => (
+              <Chip
+                key={`action-${action.id}`}
+                size="xs"
+                color="warning"
+                icon={ToolsIcon}
+                label={getActionDisplayName(action, mcpServerViews)}
+              />
+            ))}
+          </div>
+          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            Update the skill to stop relying on these items, then remove the{" "}
+            {spaceKind}.
+          </p>
+        </div>
+      ),
+      cancelLabel: "Close",
+      validateLabel: "Remove",
+      validateVariant: "warning",
+      validateDisabled: true,
     });
   };
 }

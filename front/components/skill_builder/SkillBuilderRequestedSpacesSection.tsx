@@ -1,12 +1,12 @@
 import { SpaceSelectionSheet } from "@app/components/agent_builder/capabilities/capabilities_sheet/SpaceSelectionPage";
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { getSpaceIdToActionsMap } from "@app/components/shared/getSpaceIdToActionsMap";
+import { useBlockedSkillSpaceRemovalConfirm } from "@app/components/shared/RemoveSpaceDialog";
 import { SpaceChips } from "@app/components/shared/SpaceChips";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { useSpaceProjectsLookup } from "@app/lib/swr/spaces";
 import { removeNulls } from "@app/types/shared/utils/general";
-import type { SpaceType } from "@app/types/space";
 import { Button, ContentMessage, PlanetIcon } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useState } from "react";
 import { useController, useFormContext, useWatch } from "react-hook-form";
@@ -38,6 +38,9 @@ export function SkillBuilderRequestedSpacesSection({
   const { mcpServerViews, isMCPServerViewsLoading } =
     useMCPServerViewsContext();
   const { spaces, owner, isSpacesLoading } = useSpacesContext();
+  const confirmBlockedSpaceRemoval = useBlockedSkillSpaceRemovalConfirm({
+    mcpServerViews,
+  });
 
   const missingSpaceIds = useMemo(() => {
     if (isSpacesLoading || !initialRequestedSpaceIds?.length) {
@@ -81,6 +84,21 @@ export function SkillBuilderRequestedSpacesSection({
   const areSpaceRequirementsReady =
     !isMCPServerViewsLoading &&
     (!initialRequestedSpaceIds || attachedKnowledge !== undefined);
+
+  const knowledgeBySpaceId = useMemo(() => {
+    const knowledgeBySpace: Record<
+      string,
+      NonNullable<typeof attachedKnowledge>
+    > = {};
+
+    for (const knowledge of attachedKnowledge ?? []) {
+      knowledgeBySpace[knowledge.spaceId] = (
+        knowledgeBySpace[knowledge.spaceId] ?? []
+      ).concat(knowledge);
+    }
+
+    return knowledgeBySpace;
+  }, [attachedKnowledge]);
 
   const initialAdditionalSpaces = useMemo(() => {
     if (!areSpaceRequirementsReady || !initialRequestedSpaceIds?.length) {
@@ -128,20 +146,6 @@ export function SkillBuilderRequestedSpacesSection({
           additionalSpaceIds.has(space.sId))
     );
   }, [additionalSpaceIds, allSpaces, spaceIdsUsedBySkill]);
-
-  const handleRemoveSpace = (space: SpaceType) => {
-    additionalSpacesField.onChange(
-      selectedAdditionalSpaces.filter((spaceId) => spaceId !== space.sId)
-    );
-  };
-
-  const canRemoveSpace = (space: SpaceType) => {
-    return (
-      areSpaceRequirementsReady &&
-      additionalSpaceIds.has(space.sId) &&
-      !spaceIdsUsedBySkill.has(space.sId)
-    );
-  };
 
   const handleOpenSheet = () => {
     if (!areSpaceRequirementsReady) {
@@ -209,8 +213,29 @@ export function SkillBuilderRequestedSpacesSection({
       )}
       <SpaceChips
         spaces={spacesToDisplay}
-        onRemoveSpace={handleRemoveSpace}
-        canRemoveSpace={canRemoveSpace}
+        onRemoveSpace={async (space) => {
+          if (!areSpaceRequirementsReady) {
+            return;
+          }
+
+          if (spaceIdsUsedBySkill.has(space.sId)) {
+            await confirmBlockedSpaceRemoval({
+              space,
+              actions: spaceIdToActions[space.sId] ?? [],
+              knowledgeInInstructions: knowledgeBySpaceId[space.sId] ?? [],
+            });
+            return;
+          }
+
+          additionalSpacesField.onChange(
+            selectedAdditionalSpaces.filter((spaceId) => spaceId !== space.sId)
+          );
+        }}
+        canRemoveSpace={(space) =>
+          areSpaceRequirementsReady &&
+          (additionalSpaceIds.has(space.sId) ||
+            spaceIdsUsedBySkill.has(space.sId))
+        }
       />
 
       <SpaceSelectionSheet
