@@ -75,13 +75,7 @@ export const SuggestedTaskItem = memo(function SuggestedTaskItem({
     task.actorRationale?.trim() || "Suggested from your project takeaways.";
 
   return (
-    <div
-      className={cn(
-        "group/task flex items-start gap-3 rounded-md px-1 py-1",
-        "transition-all duration-200 hover:bg-muted-background dark:hover:bg-muted-background-night",
-        "max-h-[1000px] opacity-100"
-      )}
-    >
+    <div className="group/task flex items-start gap-3 rounded-md p-1 transition-colors duration-200 hover:bg-muted-background dark:hover:bg-muted-background-night">
       <div className="mt-0.5 shrink-0">
         <span className="flex size-4 items-center justify-center text-muted-foreground dark:text-muted-foreground-night">
           <SparklesIcon className="h-3.5 w-3.5" />
@@ -100,11 +94,10 @@ export const SuggestedTaskItem = memo(function SuggestedTaskItem({
               </span>
             )}
             <TaskMetadataTooltip task={task} agentNameById={agentNameById}>
-              <span
+              <div
                 className={cn(
-                  "block min-h-6 w-full min-w-0 select-text break-words text-pretty text-left align-top text-base leading-6 transition-all duration-300",
-                  showTypingAnimation && "absolute inset-0",
-                  "text-foreground dark:text-foreground-night"
+                  "min-h-6 w-full min-w-0 break-words text-pretty text-base leading-6 text-foreground dark:text-foreground-night",
+                  showTypingAnimation && "absolute inset-0"
                 )}
               >
                 {showTypingAnimation ? (
@@ -118,7 +111,7 @@ export const SuggestedTaskItem = memo(function SuggestedTaskItem({
                 ) : (
                   displayText
                 )}
-              </span>
+              </div>
             </TaskMetadataTooltip>
           </div>
           {!showTypingAnimation && (
