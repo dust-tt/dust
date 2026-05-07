@@ -187,9 +187,11 @@ export async function handleMetronomeSetupCheckout({
   if (couponCode) {
     const coupon = await CouponResource.findByCode(couponCode);
     if (!coupon) {
-      logger.warn(
-        { couponCode, workspaceId },
-        "Coupon not found during checkout; skipping redemption."
+      return new Err(
+        new DustError(
+          "coupon_redemption_error",
+          `Coupon ${couponCode} not found.`
+        )
       );
     } else {
       const redeemResult = await redeemCoupon(authUser ?? authAdmin, {
@@ -197,9 +199,11 @@ export async function handleMetronomeSetupCheckout({
         metronomePackageAlias: resolvedPackageAlias,
       });
       if (redeemResult.isErr()) {
-        logger.warn(
-          { couponCode, workspaceId, error: redeemResult.error },
-          "Failed to redeem coupon during checkout; skipping."
+        return new Err(
+          new DustError(
+            "coupon_redemption_error",
+            `Could not apply coupon ${couponCode}.`
+          )
         );
       }
     }
