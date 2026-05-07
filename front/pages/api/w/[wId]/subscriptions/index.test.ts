@@ -1,7 +1,8 @@
+import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import type { Stripe } from "stripe";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import handler from "./index";
 
@@ -32,6 +33,12 @@ describe("POST /api/w/[wId]/subscriptions", () => {
     vi.clearAllMocks();
   });
 
+  afterEach(async () => {
+    await KillSwitchResource.disableKillSwitch(
+      "global_disable_metronome_billing"
+    );
+  });
+
   it("returns 400 on invalid request body", async () => {
     const { req, res } = await createPrivateApiMockRequest({
       method: "POST",
@@ -48,11 +55,15 @@ describe("POST /api/w/[wId]/subscriptions", () => {
     expect(res._getJSONData().error.type).toBe("invalid_request_error");
   });
 
-  it("returns hosted checkoutUrl and plan details for legacy subscription", async () => {
+  it("returns hosted checkoutUrl and plan details for legacy subscription when metronome billing is killed", async () => {
     const { req, res } = await createPrivateApiMockRequest({
       method: "POST",
       role: "admin",
     });
+
+    await KillSwitchResource.enableKillSwitch(
+      "global_disable_metronome_billing"
+    );
 
     req.body = {
       billingPeriod: "monthly",
@@ -78,11 +89,15 @@ describe("POST /api/w/[wId]/subscriptions", () => {
     );
   });
 
-  it("handles yearly billing period", async () => {
+  it("handles yearly billing period for legacy subscription when metronome billing is killed", async () => {
     const { req, res } = await createPrivateApiMockRequest({
       method: "POST",
       role: "admin",
     });
+
+    await KillSwitchResource.enableKillSwitch(
+      "global_disable_metronome_billing"
+    );
 
     req.body = {
       billingPeriod: "yearly",
@@ -97,13 +112,11 @@ describe("POST /api/w/[wId]/subscriptions", () => {
     expect(data.plan).toBeDefined();
   });
 
-  it("returns embedded clientSecret and sessionId when metronome_billing flag is enabled", async () => {
-    const { req, res, auth } = await createPrivateApiMockRequest({
+  it("returns embedded clientSecret and sessionId by default", async () => {
+    const { req, res } = await createPrivateApiMockRequest({
       method: "POST",
       role: "admin",
     });
-
-    await FeatureFlagFactory.basic(auth, "metronome_billing");
 
     req.body = {
       billingPeriod: "monthly",
@@ -122,6 +135,30 @@ describe("POST /api/w/[wId]/subscriptions", () => {
         name: expect.any(String),
       })
     );
+  });
+
+  it("returns embedded clientSecret when metronome_billing flag overrides the kill switch", async () => {
+    const { req, res, auth } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
+
+    await KillSwitchResource.enableKillSwitch(
+      "global_disable_metronome_billing"
+    );
+    await FeatureFlagFactory.basic(auth, "metronome_billing");
+
+    req.body = {
+      billingPeriod: "monthly",
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const data = res._getJSONData();
+    expect(data.mode).toEqual("embedded");
+    expect(data.clientSecret).toEqual(TEST_CLIENT_SECRET);
+    expect(data.sessionId).toEqual(TEST_SESSION_ID);
   });
 
   it("returns 403 when user is not admin", async () => {
