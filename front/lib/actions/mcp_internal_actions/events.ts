@@ -3,6 +3,7 @@ import type {
   MCPValidationMetadataType,
 } from "@app/lib/actions/constants";
 import type { UserQuestion } from "@app/lib/actions/types";
+import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import type { OAuthProvider } from "@app/types/oauth/lib";
 
 export interface ToolExecution<
@@ -73,6 +74,44 @@ export interface ToolFileAuthRequiredEvent
 
 export interface MCPApproveExecutionEvent extends ToolExecution {
   type: "tool_approve_execution";
+}
+
+export function buildMCPApproveExecutionEvent(
+  child: AgentMCPActionResource,
+  {
+    agentName,
+    conversationId,
+    messageId,
+    userId,
+    isLastBlockingEventForStep,
+  }: {
+    agentName: string;
+    conversationId: string;
+    messageId: string;
+    userId: string | undefined;
+    isLastBlockingEventForStep: boolean;
+  }
+): MCPApproveExecutionEvent {
+  return {
+    type: "tool_approve_execution",
+    actionId: child.sId,
+    configurationId: child.toolConfiguration.sId,
+    conversationId,
+    created: Date.now(),
+    inputs: child.augmentedInputs,
+    messageId,
+    stake: child.toolConfiguration.permission,
+    userId,
+    isLastBlockingEventForStep,
+    metadata: {
+      toolName: child.toolConfiguration.originalName,
+      mcpServerName: child.toolConfiguration.mcpServerName,
+      agentName,
+      icon: child.toolConfiguration.icon,
+    },
+    argumentsRequiringApproval:
+      child.toolConfiguration.argumentsRequiringApproval,
+  };
 }
 
 export interface ToolAskUserQuestionEvent extends ToolExecution {

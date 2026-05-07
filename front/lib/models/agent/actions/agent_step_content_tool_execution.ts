@@ -45,11 +45,12 @@ AgentStepContentToolExecutionModel.init(
     tableName: "agent_step_content_tool_executions",
     sequelize: frontSequelize,
     indexes: [
+      // N:1 from action's side: each action has at most one stepContent.
       {
         unique: true,
-        fields: ["agentMCPActionId", "stepContentId"],
+        fields: ["agentMCPActionId"],
         concurrently: true,
-        name: "agent_step_content_tool_executions_action_step_content",
+        name: "agent_step_content_tool_executions_action",
       },
       { fields: ["stepContentId"], concurrently: true },
       { fields: ["workspaceId"], concurrently: true },
@@ -59,33 +60,10 @@ AgentStepContentToolExecutionModel.init(
 
 AgentStepContentToolExecutionModel.belongsTo(AgentMCPActionModel, {
   foreignKey: { name: "agentMCPActionId", allowNull: false },
-  onDelete: "CASCADE",
-});
-AgentMCPActionModel.hasMany(AgentStepContentToolExecutionModel, {
-  foreignKey: { name: "agentMCPActionId", allowNull: false },
-  as: "stepContentLinks",
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 
 AgentStepContentToolExecutionModel.belongsTo(AgentStepContentModel, {
   foreignKey: { name: "stepContentId", allowNull: false },
   onDelete: "RESTRICT",
-});
-AgentStepContentModel.hasMany(AgentStepContentToolExecutionModel, {
-  foreignKey: { name: "stepContentId", allowNull: false },
-  as: "toolExecutionLinks",
-  onDelete: "RESTRICT",
-});
-
-AgentMCPActionModel.belongsToMany(AgentStepContentModel, {
-  through: AgentStepContentToolExecutionModel,
-  foreignKey: "agentMCPActionId",
-  otherKey: "stepContentId",
-  as: "stepContents",
-});
-AgentStepContentModel.belongsToMany(AgentMCPActionModel, {
-  through: AgentStepContentToolExecutionModel,
-  foreignKey: "stepContentId",
-  otherKey: "agentMCPActionId",
-  as: "agentMCPActions",
 });

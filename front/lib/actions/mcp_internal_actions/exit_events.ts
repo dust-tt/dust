@@ -4,9 +4,10 @@ import type {
   ToolFileAuthRequiredEvent,
   ToolPersonalAuthRequiredEvent,
 } from "@app/lib/actions/mcp_internal_actions/events";
+import { buildMCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMCPActionOutputItemModel } from "@app/lib/models/agent/actions/mcp";
-import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgentMessageType,
@@ -198,6 +199,37 @@ export async function getExitOrPauseEvents(
       default: {
         assertNever(exitOutputItem);
       }
+    }
+  }
+
+  // Sandbox bash exited without writing a pause resource itself, but it may
+  // have spawned child tool calls that are now blocked awaiting approval.
+  // The bash tool can't surface those from inside (they live as separate
+  // AgentMCPActions, not in its own output_items), so we detect them here.
+  if (
+    action.toolConfiguration.mcpServerName === "sandbox" &&
+    action.toolConfiguration.originalName === "bash"
+  ) {
+    const blockedChildren =
+      await AgentMCPActionResource.listBlockedSandboxChildren(auth, {
+        agentMessageId: action.agentMessageId,
+        parentActionId: action.sId,
+      });
+    if (blockedChildren.length > 0) {
+      await action.updateStatus("blocked_child_action_input_required");
+      await action.updateStepContext({
+        ...action.stepContext,
+        resumeState: { type: "sandbox" },
+      });
+      return blockedChildren.map((child, index) =>
+        buildMCPApproveExecutionEvent(child, {
+          agentName: agentConfiguration.name,
+          conversationId: conversation.sId,
+          messageId: agentMessage.sId,
+          userId: auth.user()?.sId,
+          isLastBlockingEventForStep: index === blockedChildren.length - 1,
+        })
+      );
     }
   }
 

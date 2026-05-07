@@ -3,6 +3,7 @@ import { getRetryPolicyFromToolConfiguration } from "@app/lib/api/mcp";
 import type { Authenticator, AuthenticatorType } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { DurationRecorder } from "@app/lib/duration_recorder";
+import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";
 import { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -20,7 +21,6 @@ import { createToolActionsActivity } from "@app/temporal/agent_loop/lib/create_t
 import { handlePromptCommand } from "@app/temporal/agent_loop/lib/prompt_commands";
 import { runModel } from "@app/temporal/agent_loop/lib/run_model";
 import { getMaxActionsPerStep } from "@app/types/assistant/agent";
-import { isAgentFunctionCallContent } from "@app/types/assistant/agent_message_content";
 import type {
   AgentLoopArgsWithTiming,
   AgentLoopExecutionData,
@@ -32,7 +32,7 @@ import {
 import type { ModelId } from "@app/types/shared/model_id";
 import { startActiveObservation } from "@langfuse/tracing";
 import { Context } from "@temporalio/activity";
-import assert from "assert";
+import { Op } from "sequelize";
 
 export type RunModelAndCreateActionsResult = {
   actionBlobs: ActionBlob[];
@@ -351,51 +351,53 @@ async function getExistingActionsAndBlobs(
   // TODO(DURABLE_AGENTS 2025-08-12): Create a proper resource for the agent step content.
   const { agentMessage } = runAgentArgs;
 
-  // Find function_call step contents for this step.
+  const workspaceId = auth.getNonNullableWorkspace().id;
+
+  // Find function_call step contents for this step, then resolve the linked
+  // MCP actions through the join table. Three small queries (step contents,
+  // join rows, actions) instead of a nested include — keeps the join model
+  // free of typed Sequelize-include relations.
   const stepContents = await AgentStepContentModel.findAll({
     where: {
-      workspaceId: auth.getNonNullableWorkspace().id,
+      workspaceId,
       agentMessageId: agentMessage.agentMessageId,
       step,
       type: "function_call",
     },
-    include: [
-      {
-        model: AgentMCPActionModel,
-        as: "agentMCPActions",
-        required: true,
-      },
-    ],
   });
 
   if (stepContents.length === 0) {
-    return null; // No existing actions.
+    return null;
   }
 
-  const actionBlobs: ActionBlob[] = [];
+  const links = await AgentStepContentToolExecutionModel.findAll({
+    where: {
+      workspaceId,
+      stepContentId: { [Op.in]: stepContents.map((sc) => sc.id) },
+    },
+  });
 
-  for (const stepContent of stepContents) {
-    if (stepContent.agentMCPActions && stepContent.agentMCPActions.length > 0) {
-      const [mcpAction] = stepContent.agentMCPActions;
-
-      assert(
-        isAgentFunctionCallContent(stepContent.value),
-        "Unexpected: step content is not a function call"
-      );
-
-      // If the tool is not already in a final state we must add it to the list of actions to run.
-      if (!isToolExecutionStatusFinal(mcpAction.status)) {
-        actionBlobs.push({
-          actionId: mcpAction.id,
-          actionStatus: mcpAction.status,
-          needsApproval: mcpAction.status === "blocked_validation_required",
-          retryPolicy: getRetryPolicyFromToolConfiguration(
-            mcpAction.toolConfiguration
-          ),
-        });
-      }
-    }
+  if (links.length === 0) {
+    return null;
   }
+
+  const actions = await AgentMCPActionModel.findAll({
+    where: {
+      workspaceId,
+      id: { [Op.in]: links.map((l) => l.agentMCPActionId) },
+    },
+  });
+
+  const actionBlobs: ActionBlob[] = actions
+    .filter((action) => !isToolExecutionStatusFinal(action.status))
+    .map((action) => ({
+      actionId: action.id,
+      actionStatus: action.status,
+      needsApproval: action.status === "blocked_validation_required",
+      retryPolicy: getRetryPolicyFromToolConfiguration(
+        action.toolConfiguration
+      ),
+    }));
 
   return { actionBlobs };
 }

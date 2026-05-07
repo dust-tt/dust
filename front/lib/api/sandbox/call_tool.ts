@@ -2,6 +2,7 @@ import { FALLBACK_MCP_TOOL_STAKE_LEVEL } from "@app/lib/actions/constants";
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { makeServerSideMCPToolConfigurations } from "@app/lib/actions/mcp_actions";
 import type { AgentLoopRunContextType } from "@app/lib/actions/types";
+import { isSandboxChildResumeState } from "@app/lib/actions/types";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
@@ -12,9 +13,10 @@ import {
   verifySandboxExecToken,
 } from "@app/lib/api/sandbox/access_tokens";
 import { type Authenticator, isSandboxTokenPrefix } from "@app/lib/auth";
-import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { AgentMessageType } from "@app/types/assistant/conversation";
+import isEqual from "lodash/isEqual";
 
 export async function extractSandboxClaims(
   token: string | undefined
@@ -141,4 +143,41 @@ export async function buildSandboxCallContext(
     },
     fullToolConfiguration,
   };
+}
+
+/**
+ * Looks up an existing sandbox-child action that matches the parent + tool +
+ * inputs. Used by the initial-invoke endpoint to make Rust-client retries (and
+ * post-pause re-runs of the parent bash) idempotent — duplicate POSTs return
+ * the existing child id without creating a new row or re-emitting an approval
+ * event.
+ */
+export async function findExistingSandboxChild(
+  auth: Authenticator,
+  {
+    parent,
+    toolName,
+    augmentedInputs,
+  }: {
+    parent: AgentMCPActionResource;
+    toolName: string;
+    augmentedInputs: Record<string, unknown>;
+  }
+): Promise<AgentMCPActionResource | null> {
+  const siblings = await AgentMCPActionResource.listByAgentMessageIds(auth, [
+    parent.agentMessageId,
+  ]);
+
+  const match = siblings.find((s) => {
+    const rs = s.stepContext.resumeState;
+    if (!isSandboxChildResumeState(rs) || rs.parentActionId !== parent.sId) {
+      return false;
+    }
+    if (s.toolConfiguration.originalName !== toolName) {
+      return false;
+    }
+    return isEqual(s.augmentedInputs, augmentedInputs);
+  });
+
+  return match ?? null;
 }

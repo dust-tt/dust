@@ -155,32 +155,51 @@ export async function validateAction(
       : false;
   }, getMessageChannelId(messageId));
 
-  // Sandbox children: a tool call issued from inside the bash exec. They
-  // share the parent bash's `agent_step_contents` row, so relaunching the
-  // agent loop at that step would re-pick the bash action and clobber it.
-  // Launch the dedicated single-action workflow instead — only on approval;
-  // rejected actions are already in `denied` and must not be executed.
-  // (The non-sandbox path's `launchAgentLoopWorkflow` is safe on denial
-  // because `getExistingActionsAndBlobs` filters out final statuses; our
-  // dedicated workflow has no such guard.)
+  // Sandbox children share the parent bash's `agent_step_contents` row, so
+  // they bypass the standard `launchAgentLoopWorkflow` (which would re-pick
+  // the parent bash and clobber it). On approval, the dedicated single-action
+  // workflow handles parent relaunch via its continuation activity. On
+  // rejection there's no workflow to chain, so we trigger relaunch inline
+  // gated on remaining blocked siblings — same gate the workflow uses.
   if (isSandboxChildResumeState(action.stepContext.resumeState)) {
+    const parentActionId = action.stepContext.resumeState.parentActionId;
+    const sharedAgentLoopArgs = {
+      agentMessageId,
+      agentMessageVersion,
+      conversationId,
+      conversationTitle,
+      conversationBranchId: branchId,
+      userMessageId,
+      userMessageVersion,
+      userMessageOrigin,
+    };
+
     if (approvalState !== "rejected") {
       await launchSandboxChildToolWorkflow({
         auth,
-        agentLoopArgs: {
-          agentMessageId,
-          agentMessageVersion,
-          conversationId,
-          conversationTitle,
-          conversationBranchId: branchId,
-          userMessageId,
-          userMessageVersion,
-          userMessageOrigin,
-          initialStartTime: Date.now(),
-        },
+        agentLoopArgs: { ...sharedAgentLoopArgs, initialStartTime: Date.now() },
         actionModelId: action.id,
         step: agentStepContent.step,
       });
+    } else {
+      const [parent, remaining] = await Promise.all([
+        AgentMCPActionResource.fetchById(auth, parentActionId),
+        AgentMCPActionResource.listBlockedSandboxChildren(auth, {
+          agentMessageId: action.agentMessageId,
+          parentActionId,
+        }),
+      ]);
+      if (
+        parent?.status === "blocked_child_action_input_required" &&
+        remaining.length === 0
+      ) {
+        await launchAgentLoopWorkflow({
+          auth,
+          agentLoopArgs: sharedAgentLoopArgs,
+          startStep: parent.stepContent.step,
+          waitForCompletion: true,
+        });
+      }
     }
 
     logger.info(

@@ -94,6 +94,20 @@ export function isSandboxChildResumeState(
   return SandboxChildResumeStateSchema.safeParse(value).success;
 }
 
+// Carried by a parent bash AgentMCPAction once it has been paused waiting
+// for one or more sandbox children to be approved/executed.
+const SandboxResumeStateSchema = z.object({
+  type: z.literal("sandbox"),
+});
+
+export type SandboxResumeState = z.infer<typeof SandboxResumeStateSchema>;
+
+export function isSandboxResumeState(
+  value: unknown
+): value is SandboxResumeState {
+  return SandboxResumeStateSchema.safeParse(value).success;
+}
+
 export type StepContext = {
   citationsCount: number;
   citationsOffset: number;

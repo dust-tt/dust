@@ -19,6 +19,7 @@ import {
 import type { StepContext } from "@app/lib/actions/types";
 import {
   isFileAuthorizationInfo,
+  isSandboxChildResumeState,
   isUserQuestionResumeState,
 } from "@app/lib/actions/types";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
@@ -693,6 +694,35 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     );
 
     return actions;
+  }
+
+  /**
+   * Returns the blocked sandbox-child actions on a given agent message that
+   * point back at the supplied parent bash action via their
+   * `stepContext.resumeState.parentActionId`. Used both by the bash tool
+   * watcher (to detect that it should pause) and by the workflow continuation
+   * (to gate the parent agent-loop relaunch on remaining blocked siblings).
+   */
+  static async listBlockedSandboxChildren(
+    auth: Authenticator,
+    {
+      agentMessageId,
+      parentActionId,
+    }: {
+      agentMessageId: ModelId;
+      parentActionId: string;
+    }
+  ): Promise<AgentMCPActionResource[]> {
+    const blocked = await this.listBlockedActionsForAgentMessage(auth, {
+      agentMessageId,
+    });
+
+    return blocked.filter((a) => {
+      const rs = a.stepContext.resumeState;
+      return (
+        isSandboxChildResumeState(rs) && rs.parentActionId === parentActionId
+      );
+    });
   }
 
   /**

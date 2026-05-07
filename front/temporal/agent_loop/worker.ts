@@ -18,6 +18,7 @@ import {
 import { publishDeferredEventsActivity } from "@app/temporal/agent_loop/activities/publish_deferred_events";
 import { runModelAndCreateActionsActivity } from "@app/temporal/agent_loop/activities/run_model_and_create_actions_wrapper";
 import { runToolActivity } from "@app/temporal/agent_loop/activities/run_tool";
+import { maybeRelaunchParentAfterSandboxChildActivity } from "@app/temporal/agent_loop/activities/sandbox_child_continuation";
 import { QUEUE_NAME } from "@app/temporal/agent_loop/config";
 import { instrumentationSinks } from "@app/temporal/agent_loop/sinks";
 import { getWorkflowConfig } from "@app/temporal/bundle_helper";
@@ -59,6 +60,7 @@ export async function runAgentLoopWorker() {
       publishDeferredEventsActivity,
       runModelAndCreateActionsActivity,
       runToolActivity,
+      maybeRelaunchParentAfterSandboxChildActivity,
     },
     taskQueue: QUEUE_NAME,
     connection,

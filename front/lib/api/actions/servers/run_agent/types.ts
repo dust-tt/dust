@@ -47,7 +47,7 @@ export type RunAgentBlockingEvent =
  */
 export function makeToolBlockedAwaitingInputResponse(
   blockingEvents: RunAgentBlockingEvent[],
-  state: RunAgentResumeState
+  state: Record<string, unknown>
 ): SingleResourceToolOutput<BlockedAwaitingInputOutputResourceType> {
   const agentPauseToolOutputResource = {
     mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_PAUSE_TOOL_OUTPUT,

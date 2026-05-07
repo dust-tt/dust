@@ -1,6 +1,5 @@
-import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
+import { buildMCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import { getExecutionStatusFromConfig } from "@app/lib/actions/tool_status";
-import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { getUserMessageIdFromMessageId } from "@app/lib/api/assistant/conversation/messages";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
@@ -10,6 +9,7 @@ import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import {
   buildSandboxCallContext,
   extractSandboxClaims,
+  findExistingSandboxChild,
 } from "@app/lib/api/sandbox/call_tool";
 import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
@@ -146,6 +146,20 @@ async function handler(
   const { toolName } = bodyRes.data;
   const toolArgs = bodyRes.data.arguments ?? {};
 
+  // Idempotency: if the parent re-runs (post-pause-resume) or the Rust client
+  // retries, we must not create a duplicate child row or re-emit an approval
+  // event. Match on (parent, toolName, augmentedInputs) and surface the
+  // existing child id for the Rust client to poll.
+  const existing = await findExistingSandboxChild(auth, {
+    parent,
+    toolName,
+    augmentedInputs: toolArgs,
+  });
+  if (existing) {
+    res.status(202).json({ status: "pending", childActionId: existing.sId });
+    return;
+  }
+
   const callContext = await buildSandboxCallContext(auth, sandboxClaims, {
     parent,
     toolName,
@@ -194,37 +208,13 @@ async function handler(
   });
 
   if (stakeStatus === "blocked_validation_required") {
-    if (!isLightServerSideMCPToolConfiguration(fullToolConfiguration)) {
-      // Sandbox tools are server-side MCP — this should never trip.
-      return apiError(req, res, {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message: "Sandbox tool configuration is not server-side MCP.",
-        },
-      });
-    }
-
-    const approvalEvent: MCPApproveExecutionEvent = {
-      type: "tool_approve_execution",
-      actionId: child.sId,
-      configurationId: fullToolConfiguration.sId,
+    const approvalEvent = buildMCPApproveExecutionEvent(child, {
+      agentName: runContext.agentConfiguration.name,
       conversationId: runContext.conversation.sId,
-      created: Date.now(),
-      inputs: toolArgs,
       messageId: runContext.agentMessage.sId,
-      stake: fullToolConfiguration.permission,
       userId: auth.user()?.sId,
       isLastBlockingEventForStep: true,
-      metadata: {
-        toolName: fullToolConfiguration.originalName,
-        mcpServerName: fullToolConfiguration.mcpServerName,
-        agentName: runContext.agentConfiguration.name,
-        icon: fullToolConfiguration.icon,
-      },
-      argumentsRequiringApproval:
-        fullToolConfiguration.argumentsRequiringApproval,
-    };
+    });
 
     await getRedisHybridManager().publish(
       getMessageChannelId(runContext.agentMessage.sId),

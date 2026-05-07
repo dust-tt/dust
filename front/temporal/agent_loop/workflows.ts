@@ -10,6 +10,7 @@ import type * as finalizeActivities from "@app/temporal/agent_loop/activities/fi
 import type * as publishDeferredEventsActivities from "@app/temporal/agent_loop/activities/publish_deferred_events";
 import type * as runModelAndCreateWrapperActivities from "@app/temporal/agent_loop/activities/run_model_and_create_actions_wrapper";
 import type * as runToolActivities from "@app/temporal/agent_loop/activities/run_tool";
+import type * as sandboxChildContinuationActivities from "@app/temporal/agent_loop/activities/sandbox_child_continuation";
 import { RUN_MODEL_MAX_RETRIES } from "@app/temporal/agent_loop/config";
 import { isTerminalRunModelAndCreateActionsTimeout } from "@app/temporal/agent_loop/lib/workflow_failures";
 import { makeAgentLoopConversationTitleWorkflowId } from "@app/temporal/agent_loop/lib/workflow_ids";
@@ -97,6 +98,15 @@ const { publishDeferredEventsActivity } = proxyActivities<
   startToCloseTimeout: "2 minutes",
 });
 
+const { maybeRelaunchParentAfterSandboxChildActivity } = proxyActivities<
+  typeof sandboxChildContinuationActivities
+>({
+  startToCloseTimeout: "2 minutes",
+  retry: {
+    maximumAttempts: 3,
+  },
+});
+
 const { metrics } = proxySinks<AgentLoopInstrumentationSinks>();
 
 const { ensureConversationTitleActivity } = proxyActivities<
@@ -162,6 +172,15 @@ export async function runSandboxChildToolWorkflow({
     actionId: actionModelId,
     runAgentArgs: agentLoopArgs,
     step,
+  });
+
+  // After the child tool finishes, the parent bash is still paused in
+  // `blocked_child_action_input_required`. Try to relaunch its agent loop —
+  // the activity gates on remaining blocked siblings so only the last child
+  // to settle actually triggers the relaunch.
+  await maybeRelaunchParentAfterSandboxChildActivity(authType, {
+    childActionModelId: actionModelId,
+    runAgentArgs: agentLoopArgs,
   });
 }
 
