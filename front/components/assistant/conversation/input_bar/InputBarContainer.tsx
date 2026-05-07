@@ -1235,8 +1235,8 @@ const InputBarContainer = ({
                 />
               )}
           </div>
-          <TooltipProvider delayDuration={0}>
-            <TooltipRoot open={isBlockTooltipOpen}>
+          <TooltipProvider>
+            <TooltipRoot open={isBlockTooltipOpen && submitBlockMessage !== null}>
               <TooltipTrigger asChild>
                 <Button
                   size={buttonSize}
@@ -1247,10 +1247,6 @@ const InputBarContainer = ({
                   icon={ArrowUpIcon}
                   variant={isSubmitBlocked ? "ghost-secondary" : "highlight"}
                   disabled={isSubmitDisabled}
-                  className={cn(
-                    isSubmitBlocked &&
-                      "hover:s-bg-transparent dark:hover:s-bg-transparent hover:s-text-muted-foreground dark:hover:s-text-muted-foreground-night"
-                  )}
                   onClick={async (e: React.MouseEvent<HTMLButtonElement>) => {
                     e.preventDefault();
                     e.stopPropagation();
