@@ -104,20 +104,12 @@ export const InputBar = React.memo(function InputBar({
 
   const { droppedFiles, setDroppedFiles } = useFileDrop();
 
-  const { saveDraft, getDraft, clearDraft, flushDraft } = useConversationDrafts({
+  const { saveDraft, getDraft, clearDraft } = useConversationDrafts({
     workspaceId: owner.sId,
     userId: user?.sId ?? null,
     draftKey,
     shouldUseDraft: !isAgentBuilder,
   });
-
-  // Flush any pending debounced draft save when switching conversations so that
-  // content typed just before the switch is not lost.
-  useEffect(() => {
-    return () => {
-      flushDraft();
-    };
-  }, [draftKey, flushDraft]);
 
   useEffect(() => {
     if (droppedFiles.length > 0) {

@@ -619,7 +619,19 @@ const InputBarContainer = ({
   // Ref to expose the current selectedSingleAgent to the editor update listener
   // without re-registering it on every selection change.
   const selectedSingleAgentRef = useRef(selectedSingleAgent);
+
+  // Set to "" by useHandleMentions when it programmatically pre-fills the editor
+  // with sticky user mentions. Used by handleUpdate to skip saving that pre-fill
+  // content as a draft (it's not user-typed content).
+  const stickyMentionsTextContent = useRef<string | null>(null);
   selectedSingleAgentRef.current = selectedSingleAgent;
+
+  // Stable ref so the selectedSingleAgent effect can call saveDraft without
+  // listing it as a dependency. Without this, changing draftKey (conversation
+  // switch) recreates saveDraft, re-runs the effect with the stale agent from
+  // the previous conversation, and overwrites the current draft with an empty sentinel.
+  const saveDraftRef = useRef(saveDraft);
+  saveDraftRef.current = saveDraft;
 
   // When a user mention is *newly added* in single-agent mode, deselect the agent
   // and clear side-channel capabilities. Only triggers on the transition from no-user-mention to
@@ -660,9 +672,12 @@ const InputBarContainer = ({
       editorService.focusEnd();
       const { markdown: updatedMarkdown } =
         editorService.getMarkdownAndMentions();
-      saveDraft(updatedMarkdown, selectedSingleAgent);
+      saveDraftRef.current(updatedMarkdown, selectedSingleAgent);
     }
-  }, [selectedSingleAgent, editorService, saveDraft, sendNotification]);
+    // saveDraft is accessed via ref so this effect does not re-run when draftKey
+    // changes (which recreates saveDraft and would overwrite the current draft).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSingleAgent, editorService, sendNotification]);
 
   // Update the editor ref when the editor is created and listen for updates to the editor.
   useEffect(() => {
@@ -673,8 +688,20 @@ const InputBarContainer = ({
       // Auto-save draft when content changes and track user mentions.
       // Include the selected single agent so the debounced save doesn't
       // overwrite the agent mention saved by the single-agent effect.
+      // Skip saving when the editor holds only pre-fill mention nodes (no typed
+      // text): stickyMentionsTextContent is "" in that mode and getTrimmedText()
+      // is "" for mention-only content. Saving this would persist the programmatic
+      // pre-fill as a draft that later gets incorrectly restored as user content.
       const { markdown } = editorService.getMarkdownAndMentions();
-      saveDraft(editorIsEmpty ? "" : markdown, selectedSingleAgentRef.current);
+      const isOnlyPrefillContent =
+        stickyMentionsTextContent.current === "" &&
+        editorService.getTrimmedText() === "";
+      if (!isOnlyPrefillContent) {
+        saveDraft(
+          editorIsEmpty ? "" : markdown,
+          selectedSingleAgentRef.current
+        );
+      }
       const isLeadingUserMention = startsWithUserMention(markdown);
       setHasUserMention(isLeadingUserMention);
       onEditorMentionsChangedRef.current(isLeadingUserMention);
@@ -919,7 +946,7 @@ const InputBarContainer = ({
     getDraft,
   ]);
 
-  const { stickyMentionsTextContent } = useHandleMentions({
+  useHandleMentions({
     allAgents,
     conversation,
     disableAutoFocus,
@@ -929,6 +956,7 @@ const InputBarContainer = ({
     pendingInputText,
     selectedAgent,
     stickyMentions,
+    stickyMentionsTextContent,
   });
 
   const buttonSize = useMemo(() => {

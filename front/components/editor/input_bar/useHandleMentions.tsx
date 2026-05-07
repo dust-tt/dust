@@ -13,7 +13,7 @@ import {
   isRichUserMention,
   toRichAgentMentionType,
 } from "@app/types/assistant/mentions";
-import { useContext, useEffect, useRef } from "react";
+import { type MutableRefObject, useContext, useEffect, useRef } from "react";
 
 interface UseHandleMentionsOptions {
   allAgents: LightAgentConfigurationType[];
@@ -28,6 +28,7 @@ interface UseHandleMentionsOptions {
   pendingInputText?: string | null;
   selectedAgent: RichAgentMention | null;
   stickyMentions?: RichMention[];
+  stickyMentionsTextContent: MutableRefObject<string | null>;
 }
 
 const useHandleMentions = ({
@@ -40,8 +41,8 @@ const useHandleMentions = ({
   pendingInputText,
   selectedAgent,
   stickyMentions,
+  stickyMentionsTextContent,
 }: UseHandleMentionsOptions) => {
-  const stickyMentionsTextContent = useRef<string | null>(null);
   const { setSelectedSingleAgent } = useContext(InputBarContext);
 
   // Priority: draft > sticky mentions > @dust fallback.
@@ -53,6 +54,7 @@ const useHandleMentions = ({
   // stickyMentions or the @Dust fallback.
   const externalAgentSetRef = useRef(false);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: stickyMentionsTextContent is a ref and doesn't need to be in the dependency array
   useEffect(() => {
     const currentId = conversation?.sId ?? null;
     if (currentId !== prevConversationIdRef.current) {
@@ -108,7 +110,7 @@ const useHandleMentions = ({
       const userMentions = stickyMentions.filter(isRichUserMention);
       if (userMentions.length > 0) {
         setSelectedSingleAgent(null);
-        if (editorService.isEmpty() && !draft?.text?.trim()) {
+        if (editorService.isEmpty() && draft === null) {
           stickyMentionsTextContent.current = "";
           queueMicrotask(() =>
             editorService.resetWithMentions(userMentions, disableAutoFocus)
@@ -146,7 +148,7 @@ const useHandleMentions = ({
     }
   }, [selectedAgent, pendingInputText, editorService, setSelectedSingleAgent]);
 
-  return { stickyMentionsTextContent };
+  return {};
 };
 
 export default useHandleMentions;

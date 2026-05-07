@@ -135,9 +135,14 @@ export function useConversationDrafts({
     );
   }, [getDraftsFromStorage, saveDraftsToStorage]);
 
-  const flushDraft = useCallback(() => {
-    debouncedSaveRef.current?.flush();
-  }, []);
+  // Flush any pending debounced save when draftKey changes (conversation switch)
+  // so that content typed within the debounce window is not lost on navigation.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: draftKey is listed to trigger the cleanup on conversation switch; it is not used in the effect body
+  useEffect(() => {
+    return () => {
+      debouncedSaveRef.current?.flush();
+    };
+  }, [draftKey]);
 
   const clearDraft = useCallback(() => {
     if (!shouldUseDraft || !userId) {
@@ -166,7 +171,19 @@ export function useConversationDrafts({
       }
 
       if (text.trim().length === 0) {
-        clearDraft();
+        // Cancel any pending debounced save. If there is already a saved draft
+        // for this conversation, overwrite it with an empty sentinel so that the
+        // sticky-mention pre-fill does not fire on the next visit (the user
+        // intentionally cleared content). If there is no draft (e.g. right after
+        // clearDraft() is called on message send), leave storage as-is so the
+        // pre-fill can still fire on return.
+        debouncedSaveRef.current?.cancel();
+        const drafts = getDraftsFromStorage();
+        const key = getKeyId(workspaceId, userId, draftKey);
+        if (drafts[key] !== undefined) {
+          drafts[key] = { text: "", timestamp: Date.now() };
+          saveDraftsToStorage(drafts);
+        }
         return;
       }
 
@@ -179,7 +196,14 @@ export function useConversationDrafts({
         agentMention,
       });
     },
-    [workspaceId, userId, shouldUseDraft, draftKey, clearDraft]
+    [
+      workspaceId,
+      userId,
+      shouldUseDraft,
+      draftKey,
+      getDraftsFromStorage,
+      saveDraftsToStorage,
+    ]
   );
 
   const getDraft = useCallback((): ConversationDraft | null => {
@@ -206,5 +230,5 @@ export function useConversationDrafts({
     saveDraftsToStorage(drafts);
   }, [getDraftsFromStorage, userId, saveDraftsToStorage]);
 
-  return { saveDraft, getDraft, clearDraft, clearAllDraftsFromUser, flushDraft };
+  return { saveDraft, getDraft, clearDraft, clearAllDraftsFromUser };
 }
