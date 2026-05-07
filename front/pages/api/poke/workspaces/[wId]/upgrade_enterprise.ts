@@ -321,6 +321,12 @@ async function handler(
         const createResult = await createMetronomeContract({
           metronomeCustomerId,
           packageId: pkg.id,
+          // Composite of the inputs that define this specific upgrade intent
+          // — retries of the same Poke call dedup against the existing contract,
+          // so a partial failure (e.g. PLAN_CODE stamp) can be recovered by
+          // simply retrying. A different upgrade (different package, plan, or
+          // start date) hashes to a different key and gets its own contract.
+          uniquenessKey: `upgrade-enterprise:${metronomeCustomerId}:${pkg.id}:${body.planCode}:${startingAtDate.toISOString()}`,
           startingAt: startingAtDate,
           enableStripeBilling: true,
           planCode: body.planCode,

@@ -671,6 +671,7 @@ describe("provisionMetronomeContract", () => {
       packageAlias: "legacy-pro-monthly",
       uniquenessKey: "uniq_123",
       startingAt: new Date(START_DATE),
+      planCode: "PRO_PLAN_SEAT_29",
     });
 
     expect(result.isOk()).toBe(true);
@@ -709,6 +710,7 @@ describe("provisionMetronomeContract", () => {
       packageAlias: "legacy-enterprise",
       uniquenessKey: "uniq_123",
       startingAt: new Date(START_DATE),
+      planCode: "PRO_PLAN_SEAT_29",
     });
 
     expect(result.isOk()).toBe(true);
@@ -725,6 +727,7 @@ describe("provisionMetronomeContract", () => {
       packageAlias: "legacy-pro-monthly",
       uniquenessKey: "uniq_123",
       startingAt: new Date(START_DATE),
+      planCode: "PRO_PLAN_SEAT_29",
     });
 
     expect(result.isOk()).toBe(true);
@@ -741,6 +744,7 @@ describe("switchMetronomeContractPackage", () => {
       workspace: WORKSPACE,
       packageAlias: "legacy-business",
       enableStripeBilling: false,
+      planCode: "PRO_PLAN_SEAT_39",
     });
 
     expect(result.isOk()).toBe(true);
@@ -765,6 +769,7 @@ describe("switchMetronomeContractPackage", () => {
       workspace: WORKSPACE,
       packageAlias: "legacy-enterprise-eur",
       enableStripeBilling: false,
+      planCode: "PRO_PLAN_SEAT_39",
     });
 
     expect(result.isOk()).toBe(true);
@@ -781,6 +786,7 @@ describe("switchMetronomeContractPackage", () => {
       workspace: WORKSPACE,
       packageAlias: "legacy-business",
       enableStripeBilling: false,
+      planCode: "PRO_PLAN_SEAT_39",
     });
 
     expect(result.isOk()).toBe(true);
