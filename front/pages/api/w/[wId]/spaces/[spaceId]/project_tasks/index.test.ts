@@ -280,4 +280,51 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/project_tasks", () => {
     expect(res._getStatusCode()).toBe(400);
     expect(res._getJSONData().error.message).toContain("member");
   });
+
+  it("should assign the sole assignable member when assigneeUserId is null", async () => {
+    const { user, req, res, workspace } = await setup("POST");
+    const project = await SpaceFactory.project(workspace, user.id);
+
+    req.query.spaceId = project.sId;
+    req.body = {
+      text: "Sole assignable member default",
+      assigneeUserId: null,
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(201);
+    const data = res._getJSONData();
+    expect(data.task.user?.sId).toBe(user.sId);
+  });
+
+  it("should leave task unassigned when assigneeUserId is null with multiple assignable members", async () => {
+    const { user, req, res, workspace } = await setup("POST");
+    const project = await SpaceFactory.project(workspace, user.id);
+
+    const secondUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, secondUser, { role: "user" });
+
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const memberGroup = project.groups.find((g) => g.kind === "regular");
+    expect(memberGroup).toBeDefined();
+
+    const addRes = await memberGroup!.dangerouslyAddMember(adminAuth, {
+      user: secondUser.toJSON(),
+    });
+    expect(addRes.isOk()).toBe(true);
+
+    req.query.spaceId = project.sId;
+    req.body = {
+      text: "Null assignee stays unassigned with two members",
+      assigneeUserId: null,
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(201);
+    expect(res._getJSONData().task.user).toBeNull();
+  });
 });

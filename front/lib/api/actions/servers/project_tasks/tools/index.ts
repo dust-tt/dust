@@ -131,6 +131,11 @@ export function createProjectTasksTools(
         }
         const { space } = contextRes.value;
 
+        const assignmentPool =
+          await space.fetchDistinctActiveManualGroupMembers(auth);
+        const soleAssigneeModelId =
+          assignmentPool.length === 1 ? assignmentPool[0]!.id : null;
+
         const currentUser = auth.getNonNullableUser();
         const agentConfigId =
           agentLoopContext?.runContext?.agentConfiguration?.sId ?? null;
@@ -151,8 +156,12 @@ export function createProjectTasksTools(
               continue;
             }
             newUserId = userAuth.getNonNullableUser().id;
+          } else if (
+            soleAssigneeModelId !== null &&
+            (item.userId === undefined || item.userId === null)
+          ) {
+            newUserId = soleAssigneeModelId;
           }
-          // Omit or null → unassigned (`newUserId` stays null).
 
           const row = await ProjectTaskResource.makeNew(auth, {
             spaceId: space.id,

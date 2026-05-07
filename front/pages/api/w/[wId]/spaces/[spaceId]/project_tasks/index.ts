@@ -73,7 +73,7 @@ const PostProjectTaskBodySchema = z.object({
     .trim()
     .min(1, "Text is required.")
     .max(256, "Text must be at most 256 characters."),
-  /** Omit to assign to the current user; pass `null` to leave the task unassigned. */
+  /** Omit to assign to the current user; pass `null` for unassigned (or the sole assignable member if the project has exactly one). */
   assigneeUserId: z.union([z.string().min(1), z.null()]).optional(),
 });
 
@@ -200,7 +200,10 @@ async function handler(
       if (assigneeUserId === undefined) {
         taskUserModelId = currentUser.id;
       } else if (assigneeUserId === null) {
-        taskUserModelId = null;
+        const assignable =
+          await space.fetchDistinctActiveManualGroupMembers(auth);
+        const soleModelId = assignable.length === 1 ? assignable[0]!.id : null;
+        taskUserModelId = soleModelId;
       } else {
         const assigneeAuth = await Authenticator.fromUserIdAndWorkspaceId(
           assigneeUserId,
