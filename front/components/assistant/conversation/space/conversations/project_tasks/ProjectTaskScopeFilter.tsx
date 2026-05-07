@@ -77,10 +77,7 @@ export function ProjectTaskScopeFilter() {
           className={cn(!isMobile && "max-w-[min(100vw-3rem,24rem)]")}
         />
       </DropdownMenuTrigger>
-      <DropdownMenuContent
-        className="z-[1000] w-80 shadow-2xl ring-1 ring-border/60"
-        align="start"
-      >
+      <DropdownMenuContent className="w-80" align="start">
         <DropdownMenuLabel label="Status" />
         <DropdownMenuRadioGroup
           value={taskOwnerFilter.periodScope}

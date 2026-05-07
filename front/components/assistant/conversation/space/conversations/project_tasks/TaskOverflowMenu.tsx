@@ -1,5 +1,8 @@
 import { useProjectTasksPanel } from "@app/components/assistant/conversation/space/conversations/project_tasks/ProjectTasksPanelContext";
-import { normalizeProjectTaskSearchNeedle } from "@app/components/assistant/conversation/space/conversations/project_tasks/utils";
+import {
+  normalizeProjectTaskSearchNeedle,
+  TASK_DESKTOP_HOVER_REVEAL_CLASS,
+} from "@app/components/assistant/conversation/space/conversations/project_tasks/utils";
 import {
   PROJECT_TASK_NO_ASSIGNEE_LABEL,
   type ProjectTaskType,
@@ -75,9 +78,7 @@ export function TaskOverflowMenu({ task }: TaskOverflowMenuProps) {
     <div
       className={cn(
         "transition-opacity",
-        open
-          ? "opacity-100"
-          : "md:opacity-0 md:group-hover/task:opacity-100 md:focus-within:opacity-100"
+        !open && TASK_DESKTOP_HOVER_REVEAL_CLASS
       )}
     >
       <DropdownMenu
@@ -101,10 +102,7 @@ export function TaskOverflowMenu({ task }: TaskOverflowMenuProps) {
             }}
           />
         </DropdownMenuTrigger>
-        <DropdownMenuContent
-          align="end"
-          className="z-[1000] w-56 shadow-2xl ring-1 ring-border/60"
-        >
+        <DropdownMenuContent align="end" className="w-56">
           {allowAssigneeReassign && (
             <DropdownMenuSub
               onOpenChange={(subOpen) => {
@@ -119,10 +117,7 @@ export function TaskOverflowMenu({ task }: TaskOverflowMenuProps) {
                 disabled={projectMembers.length === 0 && task.user === null}
               />
               <DropdownMenuPortal>
-                <DropdownMenuSubContent
-                  alignOffset={-4}
-                  className="z-[1000] w-80 shadow-2xl ring-1 ring-border/60"
-                >
+                <DropdownMenuSubContent alignOffset={-4} className="w-80">
                   <DropdownMenuSearchbar
                     autoFocus
                     name={`reassign-task-${task.sId}`}

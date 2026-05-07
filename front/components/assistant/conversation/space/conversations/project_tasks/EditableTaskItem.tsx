@@ -11,6 +11,7 @@ import { useTypingAnimation } from "@app/components/assistant/conversation/space
 import {
   NEW_MANUAL_TASK_MAX_CHARS,
   stripNewlines,
+  TASK_DESKTOP_HOVER_REVEAL_CLASS,
   TODO_TEXTAREA_FIELD_CLASS,
   useAutosizeTextArea,
 } from "@app/components/assistant/conversation/space/conversations/project_tasks/utils";
@@ -96,13 +97,7 @@ export function EditableTaskItem({ task }: EditableTaskItemProps) {
     isStarting;
 
   return (
-    <div
-      className={cn(
-        "group/task flex items-start gap-3 rounded-md px-1 py-1",
-        "transition-all duration-200 hover:bg-muted-background dark:hover:bg-muted-background-night",
-        "max-h-[1000px] opacity-100"
-      )}
-    >
+    <div className="group/task flex items-start gap-3 rounded-md px-1 py-1 transition-colors duration-200 hover:bg-muted-background dark:hover:bg-muted-background-night">
       <div className="mt-0.5 shrink-0">
         <Checkbox
           size="xs"
@@ -148,7 +143,7 @@ export function EditableTaskItem({ task }: EditableTaskItemProps) {
               <TaskMetadataTooltip task={task} agentNameById={agentNameById}>
                 <span
                   className={cn(
-                    "block min-h-6 w-full min-w-0 select-text break-words text-pretty text-left align-top text-base leading-6 transition-all duration-300",
+                    "block min-h-6 w-full min-w-0 select-text break-words text-pretty text-base leading-6 transition-all duration-300",
                     typing.isAnimating && "absolute inset-0",
                     isDone
                       ? "text-faint dark:text-faint-night line-through"
@@ -233,10 +228,8 @@ export function EditableTaskItem({ task }: EditableTaskItemProps) {
           {!hasConversationLink && canEdit && (
             <div
               className={cn(
-                "flex shrink-0 items-center gap-1 transition-opacity",
-                startMenuKeepsActionsVisible
-                  ? "opacity-100"
-                  : "opacity-100 md:opacity-0 md:group-hover/task:opacity-100 md:focus-within:opacity-100"
+                "shrink-0 transition-opacity",
+                !startMenuKeepsActionsVisible && TASK_DESKTOP_HOVER_REVEAL_CLASS
               )}
             >
               <ProjectTaskStartWorkingDropdown
