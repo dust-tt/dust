@@ -96,7 +96,7 @@ describe("PATCH /api/w/[wId]/skills/[sId]/reinforcement", () => {
       requestUserRole: "admin",
     });
 
-    expect(skill.reinforcement).toBe("auto");
+    expect(skill.reinforcement).toBe("on");
 
     req.body = { reinforcement: "off" };
 
