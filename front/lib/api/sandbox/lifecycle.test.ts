@@ -120,9 +120,9 @@ describe("ensureSandboxReady", () => {
     expect(
       mockPrepareSandboxEgressBeforeMount.mock.invocationCallOrder[0]
     ).toBeLessThan(mockMountConversationFiles.mock.invocationCallOrder[0]);
-    expect(
-      mockMountConversationFiles.mock.invocationCallOrder[0]
-    ).toBeLessThan(mockEnsureSandboxEgressOnExec.mock.invocationCallOrder[0]);
+    expect(mockMountConversationFiles.mock.invocationCallOrder[0]).toBeLessThan(
+      mockEnsureSandboxEgressOnExec.mock.invocationCallOrder[0]
+    );
   });
 
   it("only refreshes the token (no remount) when the sandbox woke from sleep", async () => {
