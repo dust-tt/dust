@@ -100,7 +100,6 @@ async function runReinforcedSkillsStep({
   isTerminal: boolean;
   suggestionsCreated: number;
   approvedSourceSuggestionIds: string[];
-  reinforcementConversationId?: string;
   toolActionInfo?: ReinforcedToolActionInfo;
 }> {
   const llm = await getReinforcedSkillsLLM(auth, operationType);
@@ -212,7 +211,6 @@ async function runReinforcedSkillsStep({
         isTerminal: false,
         suggestionsCreated: result.suggestionsCreated,
         approvedSourceSuggestionIds: result.approvedSourceSuggestionIds,
-        reinforcementConversationId,
       };
     }
 
@@ -220,7 +218,6 @@ async function runReinforcedSkillsStep({
       isTerminal: true,
       suggestionsCreated: result.suggestionsCreated,
       approvedSourceSuggestionIds: result.approvedSourceSuggestionIds,
-      reinforcementConversationId,
     };
   }
 
@@ -237,7 +234,6 @@ async function runReinforcedSkillsStep({
     isTerminal: false,
     suggestionsCreated: 0,
     approvedSourceSuggestionIds: [],
-    reinforcementConversationId,
     toolActionInfo,
   };
 }
@@ -346,7 +342,7 @@ export async function recordSelfImprovingSkillsUsageActivity({
     ],
   });
 
-  const dustRunIdsByConversationModelId = new Map<number, Set<string>>();
+  const runIdsByConversationModelId = new Map<number, Set<string>>();
   for (const message of messages) {
     const runIds = message.agentMessage?.runIds ?? [];
     if (runIds.length === 0) {
@@ -354,12 +350,12 @@ export async function recordSelfImprovingSkillsUsageActivity({
     }
 
     const runIdsForConversation =
-      dustRunIdsByConversationModelId.get(message.conversationId) ??
+      runIdsByConversationModelId.get(message.conversationId) ??
       new Set<string>();
     for (const runId of runIds) {
       runIdsForConversation.add(runId);
     }
-    dustRunIdsByConversationModelId.set(
+    runIdsByConversationModelId.set(
       message.conversationId,
       runIdsForConversation
     );
@@ -367,7 +363,7 @@ export async function recordSelfImprovingSkillsUsageActivity({
 
   const allDustRunIds = [
     ...new Set(
-      [...dustRunIdsByConversationModelId.values()].flatMap((runIds) => [
+      [...runIdsByConversationModelId.values()].flatMap((runIds) => [
         ...runIds,
       ])
     ),
@@ -408,7 +404,7 @@ export async function recordSelfImprovingSkillsUsageActivity({
 
   for (const { conversation, skillIds } of conversationsWithSkills) {
     const dustRunIds =
-      dustRunIdsByConversationModelId.get(conversation.id) ?? new Set<string>();
+      runIdsByConversationModelId.get(conversation.id) ?? new Set<string>();
     const conversationPriceMicroUsd = [...dustRunIds].reduce(
       (sum, dustRunId) =>
         sum + (runCostMicroUsdByDustRunId.get(dustRunId) ?? 0),
@@ -662,7 +658,6 @@ export async function aggregateSuggestionsForSkillStepActivity({
   isTerminal: boolean;
   suggestionsCreated: number;
   approvedSourceSuggestionIds: string[];
-  reinforcementConversationId?: string;
   toolActionInfo?: ReinforcedToolActionInfo;
 }> {
   const auth = await getAuthForWorkspace(workspaceId);
