@@ -98,6 +98,7 @@ async function handler(
           },
         });
       case "internal_error":
+      case "failed_to_copy_files":
         return apiError(req, res, {
           status_code: 500,
           api_error: {
