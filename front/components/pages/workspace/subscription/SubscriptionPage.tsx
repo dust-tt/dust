@@ -16,6 +16,7 @@ import {
   isWhitelistedBusinessPlan,
 } from "@app/lib/plans/plan_codes";
 import { LinkWrapper, useAppRouter, useSearchParam } from "@app/lib/platform";
+import { useKillSwitches } from "@app/lib/swr/kill";
 import {
   usePerSeatPricing,
   useSubscriptionTrialInfo,
@@ -196,9 +197,12 @@ export function SubscriptionPage() {
   const owner = useWorkspace();
   const { subscription } = useAuth();
   const { hasFeature } = useFeatureFlags();
+  const { killSwitches } = useKillSwitches();
+  const isMetronomeBillingEnabled =
+    hasFeature("metronome_billing") ||
+    !killSwitches?.includes("global_disable_metronome_billing");
   const useMetronomePanel =
-    hasFeature("metronome_billing") &&
-    !isSubscriptionStripeBilled(subscription);
+    isMetronomeBillingEnabled && !isSubscriptionStripeBilled(subscription);
   const router = useAppRouter();
   const sendNotification = useSendNotification();
   const type = useSearchParam("type");
