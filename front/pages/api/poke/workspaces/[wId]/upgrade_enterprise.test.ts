@@ -4,9 +4,7 @@ import {
   listMetronomeContracts,
   listMetronomePackages,
   scheduleMetronomeContractEnd,
-  setMetronomeContractCustomFields,
 } from "@app/lib/metronome/client";
-import { PLAN_CODE_CUSTOM_FIELD_KEY } from "@app/lib/metronome/constants";
 import { ensureMetronomeCustomerForWorkspace } from "@app/lib/metronome/contracts";
 import { PlanModel } from "@app/lib/models/plan";
 import { getStripeCustomer } from "@app/lib/plans/stripe";
@@ -30,7 +28,6 @@ vi.mock("@app/lib/metronome/client", async () => {
     ...actual,
     listMetronomePackages: vi.fn(),
     createMetronomeContract: vi.fn(),
-    setMetronomeContractCustomFields: vi.fn(),
     listMetronomeContracts: vi.fn(),
     scheduleMetronomeContractEnd: vi.fn(),
   };
@@ -160,9 +157,6 @@ beforeEach(() => {
   );
   vi.mocked(createMetronomeContract).mockResolvedValue(
     new Ok({ contractId: NEW_CONTRACT_ID })
-  );
-  vi.mocked(setMetronomeContractCustomFields).mockResolvedValue(
-    new Ok(undefined)
   );
   // After creation, both contracts coexist on the customer.
   vi.mocked(listMetronomeContracts).mockResolvedValue(
@@ -325,13 +319,9 @@ describe("POST /api/poke/workspaces/[wId]/upgrade_enterprise — Metronome path"
       expect.objectContaining({
         metronomeCustomerId: METRONOME_CUSTOMER_ID,
         packageId: PACKAGE_ID,
+        planCode: ENT_PLAN_CODE,
       })
     );
-
-    expect(setMetronomeContractCustomFields).toHaveBeenCalledWith({
-      contractId: NEW_CONTRACT_ID,
-      customFields: { [PLAN_CODE_CUSTOM_FIELD_KEY]: ENT_PLAN_CODE },
-    });
 
     // Old contract is sunset, new one is skipped by id.
     expect(scheduleMetronomeContractEnd).toHaveBeenCalledTimes(1);
@@ -419,11 +409,8 @@ describe("POST /api/poke/workspaces/[wId]/upgrade_enterprise — Metronome path"
         metronomeCustomerId: METRONOME_CUSTOMER_ID,
         packageId: PACKAGE_ID,
         enableStripeBilling: true,
+        planCode: ENT_PLAN_CODE,
       })
     );
-    expect(setMetronomeContractCustomFields).toHaveBeenCalledWith({
-      contractId: NEW_CONTRACT_ID,
-      customFields: { [PLAN_CODE_CUSTOM_FIELD_KEY]: ENT_PLAN_CODE },
-    });
   });
 });

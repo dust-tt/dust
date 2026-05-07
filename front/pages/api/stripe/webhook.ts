@@ -98,6 +98,7 @@ async function provisionShadowMetronome({
   sessionId,
   subscriptionModelId,
   periodStart,
+  planCode,
 }: {
   workspace: WorkspaceResource;
   stripeCustomerId: string;
@@ -105,6 +106,7 @@ async function provisionShadowMetronome({
   sessionId: string;
   subscriptionModelId: ModelId;
   periodStart: Date;
+  planCode: string;
 }): Promise<void> {
   try {
     const lightWorkspace = renderLightWorkspaceType({ workspace });
@@ -129,6 +131,7 @@ async function provisionShadowMetronome({
       uniquenessKey: sessionId,
       startingAt: periodStart,
       enableStripeBilling: false,
+      planCode,
     });
     if (contractResult.isErr()) {
       logger.error(
@@ -695,6 +698,7 @@ async function handleStripeCheckoutCompleted({
         sessionId: session.id,
         subscriptionModelId: newSubscription.id,
         periodStart: new Date(floorToHourISO(currentPeriodStart)),
+        planCode,
       });
     }
 

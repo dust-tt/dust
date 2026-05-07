@@ -1,4 +1,5 @@
 import config from "@app/lib/api/config";
+import { PLAN_CODE_CUSTOM_FIELD_KEY } from "@app/lib/metronome/constants";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -477,6 +478,7 @@ export async function createMetronomeContract({
   uniquenessKey,
   startingAt,
   enableStripeBilling,
+  planCode,
 }: {
   metronomeCustomerId: string;
   /** Mutually exclusive with `packageId`. */
@@ -487,6 +489,11 @@ export async function createMetronomeContract({
   // Must already be on an hour boundary (Metronome requirement).
   startingAt: Date;
   enableStripeBilling: boolean;
+  // When provided, stamps PLAN_CODE_CUSTOM_FIELD_KEY on the contract so the
+  // contract.start webhook can swap the workspace's subscription onto this
+  // plan when the contract becomes active. Optional during the rollout —
+  // will become required once all callers pass it.
+  planCode?: string;
 }): Promise<Result<{ contractId: string }, Error>> {
   if (!packageAlias === !packageId) {
     return new Err(
@@ -514,11 +521,22 @@ export async function createMetronomeContract({
       });
     }
 
+    if (planCode) {
+      const customFieldsResult = await setMetronomeContractCustomFields({
+        contractId: response.data.id,
+        customFields: { [PLAN_CODE_CUSTOM_FIELD_KEY]: planCode },
+      });
+      if (customFieldsResult.isErr()) {
+        return new Err(customFieldsResult.error);
+      }
+    }
+
     logger.info(
       {
         metronomeCustomerId,
         package: packageLabel,
         metronomeContractId: response.data.id,
+        planCode,
       },
       "[Metronome] Contract created"
     );
