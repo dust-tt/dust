@@ -40,9 +40,9 @@ const TEXT_CONTENT_PREVIEW_CATEGORIES: FilePreviewCategory[] = [
 export interface FilePreviewDialogFile {
   content: string | null;
   contentError: Error | null;
+  isContentLoading: boolean;
   contentType: string;
   fileName: string;
-  isContentLoading: boolean;
   thumbnailUrl?: string | null;
   viewUrl: string;
 }
