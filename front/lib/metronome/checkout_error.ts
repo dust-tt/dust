@@ -1,7 +1,9 @@
 import { getRedisCacheClient } from "@app/lib/api/redis";
+import { z } from "zod";
 
-const CHECKOUT_ERROR_TTL_SECONDS = 3600;
+const CHECKOUT_ERROR_TTL_SECONDS = 60;
 const CHECKOUT_ERROR_KEY_PREFIX = "metronome:checkout:error:";
+const CheckoutErrorSchema = z.object({ message: z.string() });
 
 export async function storeMetronomeCheckoutError({
   sessionId,
@@ -26,9 +28,12 @@ export async function getMetronomeCheckoutError(
   const redis = await getRedisCacheClient({
     origin: "metronome_checkout_error",
   });
-  const raw = await redis.get(`${CHECKOUT_ERROR_KEY_PREFIX}${sessionId}`);
+  const key = `${CHECKOUT_ERROR_KEY_PREFIX}${sessionId}`;
+  const raw = await redis.get(key);
   if (!raw) {
     return null;
   }
-  return JSON.parse(raw) as { message: string };
+  await redis.del(key);
+  const parsed = CheckoutErrorSchema.safeParse(JSON.parse(raw));
+  return parsed.success ? parsed.data : null;
 }
