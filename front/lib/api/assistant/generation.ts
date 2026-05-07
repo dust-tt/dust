@@ -231,9 +231,7 @@ function constructSkillsSectionForUserMessageRendering({
     `You can enable them using the \`${toolDisplayName}\` tool when they become relevant to the conversation.\n` +
     "- **Enabled**: Fully active with instructions loaded.\n\n" +
     "Enable skills proactively when a user's request matches a skill's purpose.\n" +
-    `If a user message contains a \`<skill id=\"...\" name=\"...\" />\` tag, treat it as a strong hint that the ` +
-    "referenced skill is relevant: it means the user specifically mentioned this skill. If the skill is not already " +
-    `enabled, and it would help, enable it with \`${toolDisplayName}\`.\n` +
+    constructInlineSkillTagGuidance(toolDisplayName) +
     "Only enable skills you actually need, enabling a skill loads its full instructions into context.\n" +
     "If you need to enable multiple skills, enable them in parallel.\n\n" +
     "When in doubt about enabling a skill, prefer enabling it as it may give you a new " +
@@ -263,6 +261,7 @@ function constructSkillsSection({
   enabledSkills: EnabledSkill[];
   equippedSkills: SkillResource[];
 }): string {
+  const toolDisplayName = `${SKILL_MANAGEMENT_SERVER_NAME}${TOOL_NAME_SEPARATOR}${ENABLE_SKILL_TOOL_NAME}`;
   let skillsSection =
     "\n## SKILLS\n" +
     "Skills are modular capabilities that extend your abilities for specific tasks. " +
@@ -271,11 +270,12 @@ function constructSkillsSection({
     // We do not use the wording `equipped` with the model as `available` is more meaningful in context.
     // `equipped` is the backend term.
     "- **Available**: Listed below but not active. Their instructions are not loaded yet. " +
-    `You can enable them using the \`${SKILL_MANAGEMENT_SERVER_NAME}${TOOL_NAME_SEPARATOR}${ENABLE_SKILL_TOOL_NAME}\` ` +
+    `You can enable them using the \`${toolDisplayName}\` ` +
     "tool when they become relevant to the conversation.\n" +
     "- **Enabled**: Fully active with instructions loaded. Once enabled, a skill remains active " +
     "for the rest of the conversation.\n\n" +
     "Enable skills proactively when a user's request matches a skill's purpose.\n" +
+    constructInlineSkillTagGuidance(toolDisplayName) +
     "Only enable skills you actually need—enabling a skill loads its full instructions into context.\n" +
     "If you need to enable multiple skills, enable them in parallel.\n\n" +
     "When in doubt about enabling a skill, prefer enabling it as it may give you a new " +
@@ -336,6 +336,14 @@ function constructSkillsSection({
   }
 
   return skillsSection;
+}
+
+function constructInlineSkillTagGuidance(toolDisplayName: string): string {
+  return (
+    "If a user message contains a `<skill ... />` tag, treat it as a strong hint that the " +
+    "referenced skill is relevant: it means the user specifically mentioned this skill. If " +
+    `the skill is not already enabled, and it would help, enable it with \`${toolDisplayName}\`.\n`
+  );
 }
 
 // TODO(20260504 FILE SYSTEM): Remove in favor of constructAttachmentsSectionNewFileExplorer.

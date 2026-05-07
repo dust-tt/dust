@@ -557,6 +557,9 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     expect(text).toContain(
       "- **commit**: Create a git commit with a descriptive message."
     );
+    expect(text).toContain(
+      "If a user message contains a `<skill ... />` tag, treat it as a strong hint"
+    );
   });
 
   it("should not show enabled skills in available skills on the legacy path", async () => {
