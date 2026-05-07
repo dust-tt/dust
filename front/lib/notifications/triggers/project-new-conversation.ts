@@ -95,7 +95,7 @@ const triggerProjectNewConversationNotifications = async (
   }
 
   // Skip notification for conversations created from a todo.
-  if (conversation.metadata?.projectTodoId) {
+  if (conversation.metadata?.projectTaskId) {
     return new Ok(undefined);
   }
 
