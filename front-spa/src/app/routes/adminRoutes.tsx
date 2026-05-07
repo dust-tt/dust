@@ -57,13 +57,6 @@ const ManageSubscriptionPage = withSuspense(
     ),
   "ManageSubscriptionPage"
 );
-const PaymentProcessingPage = withSuspense(
-  () =>
-    import(
-      "@dust-tt/front/components/pages/workspace/subscription/PaymentProcessingPage"
-    ),
-  "PaymentProcessingPage"
-);
 const SubscriptionPage = withSuspense(
   () =>
     import(
@@ -102,11 +95,6 @@ export const adminRoutes: RouteObject[] = [
       {
         path: "subscription/manage",
         element: <ManageSubscriptionPage />,
-      },
-      {
-        path: "subscription/payment_processing",
-        element: <PaymentProcessingPage />,
-        handle: { requireCanUseProduct: false },
       },
       { path: "developers/api-keys", element: <APIKeysPage /> },
       {
