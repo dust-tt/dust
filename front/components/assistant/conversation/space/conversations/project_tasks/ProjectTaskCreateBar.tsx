@@ -8,7 +8,7 @@ export function ProjectTaskCreateBar() {
     projectMembers,
     isReadOnly,
     isSpaceInfoLoading,
-    defaultNewAssigneeSId,
+    defaultNewAssigneeId,
     handleAddTask,
   } = useProjectTasksPanel();
 
@@ -24,7 +24,7 @@ export function ProjectTaskCreateBar() {
     );
   }
 
-  if (projectMembers.length === 0) {
+  if (projectMembers.length === 0 || !defaultNewAssigneeId) {
     return (
       <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
         No project members available to assign.
@@ -36,7 +36,7 @@ export function ProjectTaskCreateBar() {
     <AddTaskComposer
       projectMembers={projectMembers}
       viewerUserId={viewerUserId}
-      defaultAssigneeSId={defaultNewAssigneeSId!}
+      defaultAssigneeId={defaultNewAssigneeId}
       onAdd={handleAddTask}
     />
   );
