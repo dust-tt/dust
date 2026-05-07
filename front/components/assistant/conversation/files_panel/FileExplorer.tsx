@@ -1,11 +1,11 @@
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import { ConversationFilePreviewDialog } from "@app/components/assistant/conversation/files_panel/ConversationFilePreviewDialog";
 import {
   FileExplorerEmptyState,
   FileExplorerFileCard,
   FileExplorerFolderCard,
   type ViewMode,
 } from "@app/components/assistant/conversation/files_panel/FileExplorerItem";
-import { ConversationFilePreviewDialog } from "@app/components/assistant/conversation/files_panel/FilePreviewDialog";
 import { SandboxStatusChip } from "@app/components/assistant/conversation/files_panel/SandboxStatusChip";
 import type { SandboxTreeNode } from "@app/components/assistant/conversation/files_panel/types";
 import { buildSandboxTree } from "@app/components/assistant/conversation/files_panel/utils";

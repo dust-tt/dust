@@ -2,16 +2,11 @@ import {
   type FilePreviewCategory,
   getFilePreviewConfig,
 } from "@app/components/spaces/FilePreviewSheet";
-import { useConversationFileContent } from "@app/hooks/conversations/useConversationFileContent";
-import config from "@app/lib/api/config";
-import { parseScopedFilePath } from "@app/lib/api/files/mount_path";
 import type { ProcessedContent } from "@app/lib/file_content_utils";
 import { processFileContent } from "@app/lib/file_content_utils";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
-import type { GCSMountFileEntry } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/files";
 import { stripMimeParameters } from "@app/types/files";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import type { LightWorkspaceType } from "@app/types/user";
 import {
   ArrowDownOnSquareIcon,
   Button,
@@ -47,27 +42,6 @@ export interface FilePreviewDialogFile {
   fileName: string;
   thumbnailUrl?: string | null;
   viewUrl: string;
-}
-
-function getConversationFileUrl(
-  owner: LightWorkspaceType,
-  {
-    conversationId,
-    filePath,
-  }: {
-    conversationId: string;
-    filePath: string;
-  }
-): string {
-  // TODO(20260504 FILE SYSTEM): Align endpoint so it accepts the scoped version.
-  // entry.path is scoped (e.g. "conversation/notes.txt") but [...rel].ts
-  // expects the path relative to the conversation's /files/ base, so strip the scope prefix.
-  // Use an absolute URL so iframe/audio src attributes resolve against the API origin, not the
-  // browser's current origin.
-  const scoped = parseScopedFilePath(filePath);
-  const rel = scoped ? scoped.rel : filePath;
-
-  return `${config.getClientFacingUrl()}/api/w/${owner.sId}/assistant/conversations/${conversationId}/files/${rel}`;
 }
 
 const EXTENSION_TO_LANGUAGE: Record<string, string> = {
@@ -469,63 +443,5 @@ export function FilePreviewDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  );
-}
-
-interface ConversationFilePreviewDialogProps {
-  conversationId: string;
-  entry: GCSMountFileEntry | null;
-  isOpen: boolean;
-  onDownload: (entry: GCSMountFileEntry) => void;
-  onOpenChange: (open: boolean) => void;
-  owner: LightWorkspaceType;
-}
-
-export function ConversationFilePreviewDialog({
-  conversationId,
-  entry,
-  isOpen,
-  onDownload,
-  onOpenChange,
-  owner,
-}: ConversationFilePreviewDialogProps) {
-  const needsTextContent = entry
-    ? needsFilePreviewTextContent(entry.contentType)
-    : false;
-
-  const { fileContent, isFileContentLoading, fileContentError } =
-    useConversationFileContent({
-      owner,
-      conversationId,
-      filePath: entry?.path ?? null,
-      disabled: !isOpen || !entry || !needsTextContent,
-    });
-
-  const file = entry
-    ? {
-        contentType: entry.contentType,
-        fileName: entry.fileName,
-        thumbnailUrl: entry.thumbnailUrl,
-        viewUrl: getConversationFileUrl(owner, {
-          conversationId,
-          filePath: entry.path,
-        }),
-      }
-    : null;
-
-  return (
-    <FilePreviewDialog
-      file={file}
-      fileContent={fileContent}
-      fileContentError={fileContentError}
-      isFileContentLoading={isFileContentLoading}
-      isOpen={isOpen}
-      onDownload={() => {
-        if (entry) {
-          onDownload(entry);
-        }
-      }}
-      onOpenChange={onOpenChange}
-    />
   );
 }
