@@ -30,7 +30,10 @@ import {
   provisionMetronomeContract,
 } from "@app/lib/metronome/contracts";
 import { PlanModel } from "@app/lib/models/plan";
-import { resolvePackageAliasForCurrency } from "@app/lib/plans/billing_currency";
+import {
+  resolveCurrencyFromStripe,
+  resolvePackageAliasForCurrency,
+} from "@app/lib/plans/billing_currency";
 import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import {
@@ -415,12 +418,12 @@ async function handler(
                 checkoutStripeSubscription.current_period_start * 1000
               );
 
-              // Resolve EUR variant based on Stripe subscription currency.
-              const subscriptionCurrency =
-                checkoutStripeSubscription.currency === "eur" ? "eur" : "usd";
+              const billingCurrency = resolveCurrencyFromStripe({
+                stripeSubscription: checkoutStripeSubscription,
+              });
               const resolvedAlias = resolvePackageAliasForCurrency(
                 metronomePackageAlias,
-                subscriptionCurrency
+                billingCurrency
               );
               void provisionShadowMetronome({
                 workspace,

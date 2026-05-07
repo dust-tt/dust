@@ -1,4 +1,8 @@
-import type { SupportedCurrency } from "@app/types/currency";
+import {
+  isSupportedCurrency,
+  type SupportedCurrency,
+} from "@app/types/currency";
+import type Stripe from "stripe";
 
 /**
  * ISO 3166-1 alpha-2 country codes that map to EUR billing.
@@ -92,4 +96,50 @@ export function resolvePackageAliasForCurrency(
   };
 
   return eurAliases[baseAlias] ?? baseAlias;
+}
+
+type StripeSubscriptionCurrencySource = Pick<Stripe.Subscription, "currency">;
+type StripeCustomerCurrencySource = {
+  currency?: Stripe.Customer["currency"];
+  address?: Pick<Stripe.Address, "country"> | null;
+};
+
+/**
+ * Resolve the billing currency for a new Metronome contract from Stripe.
+ *
+ * Order of precedence:
+ * 1. Stripe subscription currency (set as soon as the sub exists).
+ * 2. Stripe customer currency (set on first invoice; may be null on a fresh
+ *    customer).
+ * 3. Country code via getBillingCurrencyForCountry(_, true) — either the
+ *    explicit fallback, or the customer's billing address country.
+ * 4. Default "usd".
+ *
+ * Stripe is the only billing source of truth: every prior Metronome
+ * contract's currency was itself derived from Stripe, so re-reading it
+ * adds no new signal.
+ */
+export function resolveCurrencyFromStripe({
+  stripeSubscription,
+  stripeCustomer,
+  countryFallback,
+}: {
+  stripeSubscription?: StripeSubscriptionCurrencySource | null;
+  stripeCustomer?: StripeCustomerCurrencySource | null;
+  countryFallback?: string | null;
+}): SupportedCurrency {
+  if (stripeSubscription && isSupportedCurrency(stripeSubscription.currency)) {
+    return stripeSubscription.currency;
+  }
+  if (
+    stripeCustomer?.currency &&
+    isSupportedCurrency(stripeCustomer.currency)
+  ) {
+    return stripeCustomer.currency;
+  }
+  const country = stripeCustomer?.address?.country ?? countryFallback ?? null;
+  if (country) {
+    return getBillingCurrencyForCountry(country, true);
+  }
+  return "usd";
 }

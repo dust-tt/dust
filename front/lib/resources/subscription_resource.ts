@@ -8,6 +8,7 @@ import { scheduleMetronomeContractEnd } from "@app/lib/metronome/client";
 import {
   ensureMetronomeCustomerForWorkspace,
   provisionShadowEnterpriseMetronomeContract,
+  resolveCurrencyForExistingMetronomeCustomer,
   switchMetronomeContractPackage,
   syncContractQuantities,
 } from "@app/lib/metronome/contracts";
@@ -20,6 +21,7 @@ import {
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
+import { resolvePackageAliasForCurrency } from "@app/lib/plans/billing_currency";
 import type { PlanAttributes } from "@app/lib/plans/free_plans";
 import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
 import {
@@ -999,11 +1001,24 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     // Switch Metronome contract to Business package.
     let newMetronomeContractId: string | null = null;
     if (this.metronomeContractId && owner.metronomeCustomerId) {
+      const billingCurrencyResult =
+        await resolveCurrencyForExistingMetronomeCustomer({
+          metronomeCustomerId: owner.metronomeCustomerId,
+          stripeSubscriptionId: newStripeSubscriptionId,
+        });
+      if (billingCurrencyResult.isErr()) {
+        return new Err(billingCurrencyResult.error);
+      }
+
+      const packageAlias = resolvePackageAliasForCurrency(
+        LEGACY_BUSINESS_PACKAGE_ALIAS,
+        billingCurrencyResult.value
+      );
       const result = await switchMetronomeContractPackage({
         metronomeCustomerId: owner.metronomeCustomerId,
         oldContractId: this.metronomeContractId,
         workspace: owner,
-        packageAlias: LEGACY_BUSINESS_PACKAGE_ALIAS,
+        packageAlias,
         enableStripeBilling: isSubscriptionMetronomeBilled(this.toJSON()),
       });
       if (result.isErr() && !this.isMetronomeShadowBilled) {

@@ -8,10 +8,10 @@ import {
 } from "@app/lib/metronome/contracts";
 import { PlanModel } from "@app/lib/models/plan";
 import {
-  getBillingCurrencyForCountry,
+  resolveCurrencyFromStripe,
   resolvePackageAliasForCurrency,
 } from "@app/lib/plans/billing_currency";
-import { getStripeClient } from "@app/lib/plans/stripe";
+import { getStripeClient, getStripeCustomer } from "@app/lib/plans/stripe";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -105,9 +105,11 @@ export async function handleMetronomeSetupCheckout({
     customerCountry: customerDetails?.address?.country,
   });
 
-  const billingCurrency = customerCountry
-    ? getBillingCurrencyForCountry(customerCountry, true)
-    : "usd";
+  const stripeCustomer = await getStripeCustomer(stripeCustomerId);
+  const billingCurrency = resolveCurrencyFromStripe({
+    stripeCustomer,
+    countryFallback: customerCountry,
+  });
   const resolvedPackageAlias = resolvePackageAliasForCurrency(
     metronomePackageAlias,
     billingCurrency
