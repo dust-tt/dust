@@ -1,6 +1,10 @@
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { ContextUsageWarningBanner } from "@app/components/assistant/conversation/ContextUsageWarningBanner";
 import { useGenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
+import {
+  getCompactionBlockMessage,
+  getInputBarBlockState,
+} from "@app/components/assistant/conversation/input_bar/block_state";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import type {
   VirtuosoMessage,
@@ -119,15 +123,14 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
     options: { disabled: !context.conversation },
   });
 
-  const compactionBlockMessage = allMessages.some(
-    (message) => isCompactionMessage(message) && message.status === "created"
-  )
-    ? "Wait for compaction to finish."
-    : contextUsagePercentage &&
-        contextUsagePercentage >=
-          CONTEXT_USAGE_PERCENT_THRESHOLDS["force_compaction"]
-      ? "Context is full, compact to continue."
-      : null;
+  const compactionBlockMessage = getCompactionBlockMessage({
+    contextUsagePercentage,
+    forceCompactionThreshold:
+      CONTEXT_USAGE_PERCENT_THRESHOLDS["force_compaction"],
+    isCompactionInProgress: allMessages.some(
+      (message) => isCompactionMessage(message) && message.status === "created"
+    ),
+  });
   const showContextUsageBanner =
     contextUsage &&
     !!contextUsagePercentage &&
@@ -144,6 +147,10 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
     activeWakeUp && !isActiveWakeUpOwner
       ? `Conversation paused - a wake-up is scheduled ${describeWakeUpSchedule(activeWakeUp)}`
       : null;
+  const inputBarBlockState = getInputBarBlockState({
+    compactionBlockMessage,
+    wakeUpBlockMessage,
+  });
 
   const autoMentions = useMemo(() => {
     // If we are in the agent builder, we show the draft agent as the sticky mention, all the time.
@@ -561,7 +568,8 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
         actions={agentBuilderContext?.actionsToShow}
         isSubmitting={agentBuilderContext?.isSubmitting === true}
         isAgentBuilder={!!agentBuilderContext}
-        submitBlockMessage={wakeUpBlockMessage ?? compactionBlockMessage}
+        disableInput={inputBarBlockState.disableInput}
+        submitBlockMessage={inputBarBlockState.submitBlockMessage}
       />
     </div>
   );

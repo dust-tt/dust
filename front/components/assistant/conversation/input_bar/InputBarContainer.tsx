@@ -132,8 +132,8 @@ export interface InputBarContainerProps {
   // When true, the editor is made non-editable and every picker (agent,
   // tools, attachment, voice) is disabled. Reserved for states where the user
   // cannot interact at all (e.g. non-owner viewing a conversation with an
-  // active wake-up, or compaction in progress). `submitBlockMessage` on its
-  // own only mutes the send button.
+  // active wake-up). `submitBlockMessage` on its own only mutes the send
+  // button.
   disableInput: boolean;
   submitBlockMessage: string | null;
   onShake: () => void;
