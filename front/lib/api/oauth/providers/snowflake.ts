@@ -10,6 +10,7 @@ import {
   getStringFromQuery,
 } from "@app/lib/api/oauth/utils";
 import type { Authenticator } from "@app/lib/auth";
+import { parseOptionalInt } from "@app/lib/utils/parseOptionalInt";
 import { escapeSnowflakeIdentifier } from "@app/lib/utils/snowflake";
 import logger from "@app/logger/logger";
 import type {
@@ -44,17 +45,6 @@ import snowflake from "snowflake-sdk";
  * - Authorization: https://<account>.snowflakecomputing.com/oauth/authorize
  * - Token: https://<account>.snowflakecomputing.com/oauth/token-request
  */
-
-/**
- * Parse an optional string to an integer, returning undefined if not set or invalid.
- */
-function parseOptionalInt(value: string | undefined): number | undefined {
-  if (!value) {
-    return undefined;
-  }
-  const parsed = parseInt(value, 10);
-  return Number.isNaN(parsed) ? undefined : parsed;
-}
 
 /**
  * Helper to fetch the workspace OAuth connection for an MCP server.
