@@ -33,6 +33,7 @@ import {
   publishMessageEventsOnMessagePostOrEdit,
 } from "@app/lib/api/assistant/streaming/events";
 import { Authenticator } from "@app/lib/auth";
+import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";
 import { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import {
@@ -809,7 +810,6 @@ describe("validateAction", () => {
     const action = await AgentMCPActionModel.create({
       workspaceId: workspace.id,
       agentMessageId,
-      stepContentId: stepContent.id,
       mcpServerConfigurationId: generateRandomModelSId(),
       version: 0,
       status,
@@ -823,6 +823,12 @@ describe("validateAction", () => {
         retrievalTopK: 10,
         websearchResultCount: 5,
       },
+    });
+
+    await AgentStepContentToolExecutionModel.create({
+      workspaceId: workspace.id,
+      agentMCPActionId: action.id,
+      stepContentId: stepContent.id,
     });
 
     const actionId = AgentMCPActionResource.modelIdToSId({

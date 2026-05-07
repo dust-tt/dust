@@ -5,6 +5,7 @@ import type {
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import { getRedisCacheClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";
 import {
   AgentMCPActionModel,
   AgentMCPActionOutputItemModel,
@@ -142,7 +143,6 @@ describe("listBlockedActionsForConversation", () => {
     const action = await AgentMCPActionModel.create({
       workspaceId: workspace.id,
       agentMessageId,
-      stepContentId: stepContent.id,
       mcpServerConfigurationId: generateRandomModelSId(),
       version: 0,
       status,
@@ -156,6 +156,12 @@ describe("listBlockedActionsForConversation", () => {
         retrievalTopK: 10,
         websearchResultCount: 5,
       },
+    });
+
+    await AgentStepContentToolExecutionModel.create({
+      workspaceId: workspace.id,
+      agentMCPActionId: action.id,
+      stepContentId: stepContent.id,
     });
 
     return { action, stepContent };

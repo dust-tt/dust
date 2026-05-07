@@ -58,6 +58,7 @@ import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { extractFromString, serializeMention } from "@app/lib/mentions/format";
 import { hasCredits } from "@app/lib/metronome/credit_balance";
 import { isLegacyPlan } from "@app/lib/metronome/plan_type";
+import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";
 import {
   AgentMCPActionModel,
   AgentMCPActionOutputItemModel,
@@ -1582,13 +1583,21 @@ export async function createAgentMessageFromText(
           mcpServerConfigurationId: "",
           version: 0,
           agentMessageId: agentMessageRow.id,
-          stepContentId: functionCallStepContent.id,
           status: "succeeded",
           citationsAllocated,
           augmentedInputs: {},
           toolConfiguration: {} as LightMCPToolConfigurationType,
           stepContext: {} as StepContext,
           executionDurationMs: null,
+        },
+        { transaction: t }
+      );
+
+      await AgentStepContentToolExecutionModel.create(
+        {
+          workspaceId: owner.id,
+          agentMCPActionId: createdAction.id,
+          stepContentId: functionCallStepContent.id,
         },
         { transaction: t }
       );

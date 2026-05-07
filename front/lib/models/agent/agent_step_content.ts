@@ -18,6 +18,8 @@ export class AgentStepContentModel extends WorkspaceAwareModel<AgentStepContentM
   declare value: AgentContentItemType;
 
   declare agentMessage?: NonAttribute<AgentMessageModel>;
+  // Populated by belongsToMany alias declared in
+  // `front/lib/models/agent/actions/agent_step_content_tool_execution.ts`.
   declare agentMCPActions?: NonAttribute<AgentMCPActionModel[]>;
 }
 

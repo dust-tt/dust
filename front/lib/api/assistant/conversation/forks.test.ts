@@ -14,6 +14,7 @@ import * as dataSourcesModule from "@app/lib/api/data_sources";
 import * as fileUpsertModule from "@app/lib/api/files/upsert";
 import * as fileUtilsModule from "@app/lib/api/files/utils";
 import { Authenticator } from "@app/lib/auth";
+import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";
 import {
   AgentMCPActionModel,
   AgentMCPActionOutputItemModel,
@@ -169,7 +170,6 @@ async function createAgentMessage(
   const action = await AgentMCPActionModel.create({
     workspaceId: workspace.id,
     agentMessageId: agentMessage.id,
-    stepContentId: stepContent.id,
     mcpServerConfigurationId: generateRandomModelSId(),
     version: 0,
     status: "succeeded",
@@ -205,6 +205,12 @@ async function createAgentMessage(
       retrievalTopK: 10,
       websearchResultCount: 0,
     },
+  });
+
+  await AgentStepContentToolExecutionModel.create({
+    workspaceId: workspace.id,
+    agentMCPActionId: action.id,
+    stepContentId: stepContent.id,
   });
 
   await AgentMCPActionOutputItemModel.create({

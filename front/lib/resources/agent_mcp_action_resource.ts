@@ -26,11 +26,11 @@ import { getCitationsFromToolOutput } from "@app/lib/api/assistant/citations";
 import { getAgentConfigurationsWithVersion } from "@app/lib/api/assistant/configuration/agent";
 import type { ToolDisplayLabels } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";
 import {
   AgentMCPActionModel,
   AgentMCPActionOutputItemModel,
 } from "@app/lib/models/agent/actions/mcp";
-import { SandboxToolExecutionModel } from "@app/lib/models/agent/actions/sandbox_tool_execution";
 import {
   AgentMessageModel,
   MessageModel,
@@ -129,15 +129,14 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       transaction,
     });
 
-    const stepContents = await AgentStepContentResource.fetchByModelIds(
+    const stepContentByActionId = await fetchStepContentByActionId(
       auth,
-      actions.map((a) => a.stepContentId)
+      actions.map((a) => a.id),
+      transaction
     );
 
-    const stepContentsMap = new Map(stepContents.map((s) => [s.id, s]));
-
     return actions.map((a) => {
-      const stepContent = stepContentsMap.get(a.stepContentId);
+      const stepContent = stepContentByActionId.get(a.id);
 
       // Each action must have a function call step content.
       assert(stepContent, "Step content not found.");
@@ -159,7 +158,9 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
   static async makeNew(
     auth: Authenticator,
-    blob: Omit<CreationAttributes<AgentMCPActionModel>, "workspaceId">,
+    blob: Omit<CreationAttributes<AgentMCPActionModel>, "workspaceId"> & {
+      stepContentId: ModelId;
+    },
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<AgentMCPActionResource> {
     const workspace = auth.getNonNullableWorkspace();
@@ -167,17 +168,28 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       blob.toolConfiguration.toolServerId
     );
 
+    const { stepContentId, ...actionBlob } = blob;
+
     const action = await AgentMCPActionModel.create(
       {
-        ...blob,
+        ...actionBlob,
         workspaceId: workspace.id,
+      },
+      { transaction }
+    );
+
+    await AgentStepContentToolExecutionModel.create(
+      {
+        workspaceId: workspace.id,
+        agentMCPActionId: action.id,
+        stepContentId,
       },
       { transaction }
     );
 
     const stepContent = await AgentStepContentResource.fetchByModelIdWithAuth(
       auth,
-      action.stepContentId
+      stepContentId
     );
     assert(stepContent, "Step content not found.");
     assert(
@@ -584,19 +596,34 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
     const workspaceId = auth.getNonNullableWorkspace().id;
 
-    // Not using the baseFetch because we already have the step contents.
+    const stepContentIds = stepContents.map((content) => content.id);
+
+    const links = await AgentStepContentToolExecutionModel.findAll({
+      where: {
+        workspaceId,
+        stepContentId: { [Op.in]: stepContentIds },
+      },
+    });
+
+    if (links.length === 0) {
+      return [];
+    }
+
+    const stepContentByActionId = new Map<ModelId, ModelId>();
+    for (const link of links) {
+      stepContentByActionId.set(link.agentMCPActionId, link.stepContentId);
+    }
+
     let actions = await AgentMCPActionModel.findAll({
       where: {
         workspaceId,
-        stepContentId: {
-          [Op.in]: stepContents.map((content) => content.id),
-        },
+        id: { [Op.in]: Array.from(stepContentByActionId.keys()) },
       },
     });
 
     if (latestVersionsOnly) {
       const actionsByStepContentId = _.groupBy(actions, (action) =>
-        action.stepContentId.toString()
+        (stepContentByActionId.get(action.id) ?? action.id).toString()
       );
       actions = removeNulls(
         Object.values(actionsByStepContentId).map(
@@ -608,7 +635,10 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     const stepContentsMap = new Map(stepContents.map((s) => [s.id, s]));
 
     return actions.map((a) => {
-      const stepContent = stepContentsMap.get(a.stepContentId);
+      const stepContentId = stepContentByActionId.get(a.id);
+      const stepContent = stepContentId
+        ? stepContentsMap.get(stepContentId)
+        : undefined;
 
       // Each action must have a function call step content.
       assert(stepContent, "Step content not found.");
@@ -1187,27 +1217,56 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
   get functionCallName(): string {
     return this.stepContent.value.value.name;
   }
+}
 
-  // Spawns a child sandbox tool execution under this agent action. The child
-  // lives in `sandbox_tool_executions` (separate table to dodge the
-  // `agent_step_contents` unique-index race) but is parented by this row, so
-  // the spawner is an instance method that fills in the FK from `this.id`.
-  // Returns the new execution's sId — read paths land with the approval flow.
-  async spawnChildSandboxToolExecution(
-    blob: Omit<
-      CreationAttributes<SandboxToolExecutionModel>,
-      "workspaceId" | "agentMessageId" | "agentMCPActionId"
-    >
-  ): Promise<string> {
-    const model = await SandboxToolExecutionModel.create({
-      ...blob,
-      workspaceId: this.workspaceId,
-      agentMessageId: this.agentMessageId,
-      agentMCPActionId: this.id,
-    });
-    return makeSId("sandbox_tool_execution", {
-      id: model.id,
-      workspaceId: model.workspaceId,
-    });
+async function fetchStepContentByActionId(
+  auth: Authenticator,
+  actionIds: ModelId[],
+  transaction?: Transaction
+): Promise<
+  Map<
+    ModelId,
+    AgentStepContentResource & { value: AgentFunctionCallContentType }
+  >
+> {
+  if (actionIds.length === 0) {
+    return new Map();
   }
+
+  const workspaceId = auth.getNonNullableWorkspace().id;
+
+  const links = await AgentStepContentToolExecutionModel.findAll({
+    where: {
+      workspaceId,
+      agentMCPActionId: { [Op.in]: actionIds },
+    },
+    transaction,
+  });
+
+  const stepContentIds = [...new Set(links.map((l) => l.stepContentId))];
+
+  const stepContents = await AgentStepContentResource.fetchByModelIds(
+    auth,
+    stepContentIds
+  );
+
+  const stepContentById = new Map(stepContents.map((s) => [s.id, s]));
+
+  const result = new Map<
+    ModelId,
+    AgentStepContentResource & { value: AgentFunctionCallContentType }
+  >();
+  for (const link of links) {
+    const stepContent = stepContentById.get(link.stepContentId);
+    if (!stepContent) {
+      continue;
+    }
+    assert(
+      stepContent.isFunctionCallContent(),
+      "Step content is not a function call."
+    );
+    result.set(link.agentMCPActionId, stepContent);
+  }
+
+  return result;
 }
