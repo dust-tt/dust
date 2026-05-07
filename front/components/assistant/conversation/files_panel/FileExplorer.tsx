@@ -1,9 +1,9 @@
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import { ConversationFilePreviewDialog } from "@app/components/assistant/conversation/files_panel/ConversationFilePreviewDialog";
 import { FileExplorerContent } from "@app/components/assistant/conversation/files_panel/FileExplorerContent";
 import { FileExplorerFilters } from "@app/components/assistant/conversation/files_panel/FileExplorerFilters";
 import type { ViewMode } from "@app/components/assistant/conversation/files_panel/FileExplorerItem";
 import { FileExplorerToolbar } from "@app/components/assistant/conversation/files_panel/FileExplorerToolbar";
-import { FilePreviewDialog } from "@app/components/assistant/conversation/files_panel/FilePreviewDialog";
 import { getFileExplorerPipeline } from "@app/components/assistant/conversation/files_panel/fileExplorerPipeline";
 import { SandboxStatusChip } from "@app/components/assistant/conversation/files_panel/SandboxStatusChip";
 import type {
@@ -185,7 +185,7 @@ export function NewFileExplorer({
         </div>
       </div>
 
-      <FilePreviewDialog
+      <ConversationFilePreviewDialog
         owner={owner}
         entry={previewFile}
         conversationId={conversation.sId}

@@ -44,6 +44,13 @@ export const getFileViewUrl = (
   fileId: string | null | undefined
 ) => `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${fileId}?action=view`;
 
+export const getSkillFileContentUrl = (
+  owner: LightWorkspaceType,
+  skillId: string,
+  fileId: string
+) =>
+  `${config.getApiBaseUrl()}/api/w/${owner.sId}/skills/${skillId}/files/${fileId}/content`;
+
 export async function downloadSandboxFile(
   owner: LightWorkspaceType,
   conversationId: string,
@@ -247,9 +254,7 @@ export function useSkillFileContent({
   disabled?: boolean;
 }) {
   const { data, error, mutate, isLoading } = useSWRWithDefaults(
-    skillId && fileId
-      ? `/api/w/${owner.sId}/skills/${skillId}/files/${fileId}/content`
-      : null,
+    skillId && fileId ? getSkillFileContentUrl(owner, skillId, fileId) : null,
     async (url: string) => {
       const response = await clientFetch(url);
       if (!response.ok) {

@@ -1,8 +1,17 @@
+import {
+  FilePreviewDialog,
+  needsFilePreviewTextContent,
+} from "@app/components/files/FilePreviewDialog";
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { useSkillVersionComparisonContext } from "@app/components/skill_builder/SkillBuilderVersionContext";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  getFileDownloadUrl,
+  getSkillFileContentUrl,
+  useSkillFileContent,
+} from "@app/lib/swr/files";
 import {
   ArrowGoBackIcon,
   Button,
@@ -10,6 +19,7 @@ import {
   cn,
   DocumentIcon,
   EmptyCTA,
+  EyeIcon,
   PlusIcon,
   Spinner,
   XMarkIcon,
@@ -17,12 +27,17 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
+type SkillBuilderFileAttachment =
+  SkillBuilderFormData["fileAttachments"][number];
+
 export function SkillBuilderFilesSection() {
   const { owner, skillId } = useSkillBuilderContext();
   const sendNotification = useSendNotification();
   const { setValue } = useFormContext<SkillBuilderFormData>();
   const { compareVersion, isDiffMode } = useSkillVersionComparisonContext();
   const [canScrollFilesDown, setCanScrollFilesDown] = useState(false);
+  const [previewFileAttachment, setPreviewFileAttachment] =
+    useState<SkillBuilderFileAttachment | null>(null);
 
   const { fields, append, remove } = useFieldArray<
     SkillBuilderFormData,
@@ -111,6 +126,28 @@ export function SkillBuilderFilesSection() {
     fileInputRef.current?.click();
   };
 
+  const canPreviewFiles = !!skillId;
+  const isPreviewOpen = canPreviewFiles && previewFileAttachment !== null;
+
+  const { fileContent, isFileContentLoading, fileContentError } =
+    useSkillFileContent({
+      fileId: previewFileAttachment?.fileId ?? null,
+      owner,
+      skillId,
+      disabled:
+        !isPreviewOpen ||
+        !skillId ||
+        !needsFilePreviewTextContent(previewFileAttachment?.contentType ?? ""),
+    });
+
+  const openPreviewDialog = (fileAttachment: SkillBuilderFileAttachment) => {
+    if (!canPreviewFiles) {
+      return;
+    }
+
+    setPreviewFileAttachment(fileAttachment);
+  };
+
   const onFileInputChange = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
       const files = e.target.files;
@@ -135,7 +172,11 @@ export function SkillBuilderFilesSection() {
         if (uploaded) {
           for (const blob of uploaded) {
             if (blob.fileId) {
-              append({ fileId: blob.fileId, fileName: blob.filename });
+              append({
+                contentType: blob.contentType,
+                fileId: blob.fileId,
+                fileName: blob.filename,
+              });
             }
           }
         }
@@ -237,17 +278,48 @@ export function SkillBuilderFilesSection() {
                       </span>
                     }
                     visual={<ContextItem.Visual visual={DocumentIcon} />}
-                    hoverAction={!isDiffMode}
+                    hoverAction={canPreviewFiles || !isDiffMode}
                     action={
-                      !isDiffMode ? (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          icon={XMarkIcon}
-                          size="xs"
-                          onClick={() => remove(originalIndex)}
-                        />
+                      canPreviewFiles || !isDiffMode ? (
+                        <div className="flex items-center gap-1">
+                          {canPreviewFiles && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              icon={EyeIcon}
+                              size="xs"
+                              tooltip="Preview"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openPreviewDialog(field);
+                              }}
+                            />
+                          )}
+                          {!isDiffMode && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              icon={XMarkIcon}
+                              size="xs"
+                              tooltip="Remove"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                remove(originalIndex);
+                                if (
+                                  previewFileAttachment?.fileId === field.fileId
+                                ) {
+                                  setPreviewFileAttachment(null);
+                                }
+                              }}
+                            />
+                          )}
+                        </div>
                       ) : undefined
+                    }
+                    onClick={
+                      canPreviewFiles
+                        ? () => openPreviewDialog(field)
+                        : undefined
                     }
                   />
                 );
@@ -266,6 +338,38 @@ export function SkillBuilderFilesSection() {
           />
         </div>
       )}
+      <FilePreviewDialog
+        file={
+          previewFileAttachment && skillId
+            ? {
+                content: fileContent,
+                contentError: fileContentError,
+                contentType: previewFileAttachment.contentType,
+                fileName: previewFileAttachment.fileName,
+                isContentLoading: isFileContentLoading,
+                viewUrl: getSkillFileContentUrl(
+                  owner,
+                  skillId,
+                  previewFileAttachment.fileId
+                ),
+              }
+            : null
+        }
+        isOpen={isPreviewOpen}
+        onDownload={() => {
+          if (previewFileAttachment) {
+            window.open(
+              getFileDownloadUrl(owner, previewFileAttachment.fileId),
+              "_blank"
+            );
+          }
+        }}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPreviewFileAttachment(null);
+          }
+        }}
+      />
     </div>
   );
 }

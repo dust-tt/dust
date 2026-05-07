@@ -939,6 +939,18 @@ describe("POST /api/w/[wId]/skills - file attachments", () => {
     );
     expect(fileNames).toContain("template.txt");
     expect(fileNames).toContain("schema.json");
+    expect(data.skill.fileAttachments).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          contentType: "text/plain",
+          fileName: "template.txt",
+        }),
+        expect.objectContaining({
+          contentType: "application/json",
+          fileName: "schema.json",
+        }),
+      ])
+    );
 
     // Verify persistence.
     const createdSkill = await SkillResource.fetchById(auth, data.skill.sId);
