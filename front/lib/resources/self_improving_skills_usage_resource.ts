@@ -1,0 +1,184 @@
+import type { Authenticator } from "@app/lib/auth";
+import { SelfImprovingSkillsUsageModel } from "@app/lib/models/skill/self_improving_skills_usage";
+import { BaseResource } from "@app/lib/resources/base_resource";
+import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
+import { withTransaction } from "@app/lib/utils/sql_utils";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Ok } from "@app/types/shared/result";
+import assert from "assert";
+import type { Attributes, CreationAttributes, Transaction } from "sequelize";
+import { Op, Sequelize } from "sequelize";
+
+export type SelfImprovingSkillsUsageCreateBlob = Omit<
+  CreationAttributes<SelfImprovingSkillsUsageModel>,
+  "workspaceId"
+>;
+
+function safeAggregateSumToNumber(sum: number | string | null): number {
+  const value = Number(sum ?? 0);
+  assert(
+    Number.isSafeInteger(value),
+    `Found an unsafe self-improving skills usage sum: ${sum}`
+  );
+  return value;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+export interface SelfImprovingSkillsUsageResource
+  extends ReadonlyAttributesType<SelfImprovingSkillsUsageModel> {}
+
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+export class SelfImprovingSkillsUsageResource extends BaseResource<SelfImprovingSkillsUsageModel> {
+  static model: ModelStaticWorkspaceAware<SelfImprovingSkillsUsageModel> =
+    SelfImprovingSkillsUsageModel;
+
+  constructor(
+    _model: ModelStaticWorkspaceAware<SelfImprovingSkillsUsageModel>,
+    blob: Attributes<SelfImprovingSkillsUsageModel>
+  ) {
+    super(SelfImprovingSkillsUsageModel, blob);
+  }
+
+  static async bulkCreate(
+    auth: Authenticator,
+    blobs: SelfImprovingSkillsUsageCreateBlob[],
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<SelfImprovingSkillsUsageResource[]> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    const usages = await this.model.bulkCreate(
+      blobs.map((blob) => ({
+        ...blob,
+        workspaceId,
+      })),
+      { returning: true, transaction }
+    );
+
+    return usages.map((usage) => new this(this.model, usage.get()));
+  }
+
+  /**
+   * Replace all usage rows for a known set of conversations.
+   *
+   * This is intended for idempotent recomputation: Temporal activities can be
+   * retried, and using append-only bulkCreate would double-count costs. The
+   * conversation IDs are passed separately from `usages` so callers can clear
+   * stale rows even when the recomputed usage set is empty.
+   */
+  static async replaceForConversations(
+    auth: Authenticator,
+    {
+      conversationModelIds,
+      usages,
+    }: {
+      conversationModelIds: ModelId[];
+      usages: SelfImprovingSkillsUsageCreateBlob[];
+    }
+  ): Promise<SelfImprovingSkillsUsageResource[]> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    const uniqueConversationModelIds = [...new Set(conversationModelIds)];
+
+    return withTransaction(async (transaction: Transaction) => {
+      if (uniqueConversationModelIds.length > 0) {
+        await this.model.destroy({
+          where: {
+            workspaceId,
+            conversationId: { [Op.in]: uniqueConversationModelIds },
+          },
+          transaction,
+        });
+      }
+
+      if (usages.length === 0) {
+        return [];
+      }
+
+      return this.bulkCreate(auth, usages, { transaction });
+    });
+  }
+
+  static async getSumPriceMicroUsdAfterDate(
+    auth: Authenticator,
+    createdAfter: Date
+  ): Promise<number> {
+    const sum = await this.model.sum("priceMicroUsd", {
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        createdAt: { [Op.gt]: createdAfter },
+      },
+    });
+
+    return safeAggregateSumToNumber(sum);
+  }
+
+  static async getSumPriceMicroUsdAfterDateForSkills(
+    auth: Authenticator,
+    {
+      createdAfter,
+      skillIds,
+    }: {
+      createdAfter: Date;
+      skillIds: ModelId[];
+    }
+  ): Promise<Map<ModelId, number>> {
+    const uniqueSkillIds = [...new Set(skillIds)];
+    if (uniqueSkillIds.length === 0) {
+      return new Map();
+    }
+
+    const rows = await this.model.findAll({
+      attributes: [
+        "skillId",
+        [Sequelize.fn("SUM", Sequelize.col("priceMicroUsd")), "priceMicroUsd"],
+      ],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        skillId: { [Op.in]: uniqueSkillIds },
+        createdAt: { [Op.gt]: createdAfter },
+      },
+      group: ["skillId"],
+    });
+
+    return new Map(
+      rows.map((row) => [
+        row.skillId as ModelId,
+        safeAggregateSumToNumber(row.priceMicroUsd),
+      ])
+    );
+  }
+
+  async delete(
+    auth: Authenticator,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<Result<undefined, Error>> {
+    await this.model.destroy({
+      where: {
+        id: this.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      transaction,
+    });
+
+    return new Ok(undefined);
+  }
+
+  static async deleteAllForWorkspace(auth: Authenticator): Promise<void> {
+    await this.model.destroy({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+  }
+
+  toLogJSON() {
+    return {
+      id: this.id,
+      workspaceId: this.workspaceId,
+      skillId: this.skillId,
+      conversationId: this.conversationId,
+      priceMicroUsd: this.priceMicroUsd,
+    };
+  }
+}
