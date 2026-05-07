@@ -1,5 +1,5 @@
 import { getMetronomeClient } from "@app/lib/metronome/client";
-import { getProductAiUsageUserId } from "@app/lib/metronome/constants";
+import { getProductRegularSeatId } from "@app/lib/metronome/constants";
 import { SubscriptionModel } from "@app/lib/models/plan";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { cacheWithRedis, invalidateCacheWithRedis } from "@app/lib/utils/cache";
@@ -86,8 +86,10 @@ export async function getActiveContract(
 
 /**
  * Returns true if the workspace is on a legacy Metronome plan.
- * Legacy plans are billed by seat and do not enforce AWU credit limits.
- * Fails open (returns true) when the plan cannot be determined.
+ * Non-legacy plans use the `Regular Seat` SUBSCRIPTION product on the contract;
+ * legacy plans use `Workspace Seat` (or no subscription at all for MAU-billed
+ * legacy enterprise contracts). Fails open (returns true) when the plan cannot
+ * be determined.
  */
 export async function isLegacyPlan(workspaceId: string): Promise<boolean> {
   const contract = await getActiveContract(workspaceId);
@@ -95,9 +97,9 @@ export async function isLegacyPlan(workspaceId: string): Promise<boolean> {
     return true;
   }
   const subscriptions = contract.subscriptions ?? [];
-  const aiUsageUserId = getProductAiUsageUserId();
+  const regularSeatId = getProductRegularSeatId();
   return !subscriptions.some(
-    (s) => s.subscription_rate.product.id === aiUsageUserId
+    (s) => s.subscription_rate.product.id === regularSeatId
   );
 }
 
