@@ -5,7 +5,7 @@ import {
   getWorkspaceDefaultSelfImprovementCapPerSkillMicroUsd,
 } from "@app/lib/reinforcement/consumption";
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { GetSkillsSpendResponseBody } from "@app/pages/api/w/[wId]/reinforcement/skills_spend";
+import type { GetSkillsSpendResponseBody } from "@app/pages/api/w/[wId]/skills/reinforcement_spend";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useState } from "react";
@@ -168,7 +168,7 @@ export function useSkillsReinforcementSpend({
   const spendFetcher: Fetcher<GetSkillsSpendResponseBody> = fetcher;
 
   const { data, error, isLoading, mutate } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/reinforcement/skills_spend`,
+    `/api/w/${owner.sId}/skills/reinforcement_spend`,
     spendFetcher,
     { disabled }
   );
