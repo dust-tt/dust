@@ -28,6 +28,17 @@ async function handler(
     });
   }
 
+  if (!auth.isAdmin()) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "workspace_auth_error",
+        message:
+          "Only users that are `admins` for the current workspace can access this endpoint.",
+      },
+    });
+  }
+
   const { code } = req.query;
   if (!isString(code)) {
     return apiError(req, res, {
