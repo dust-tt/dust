@@ -235,7 +235,7 @@ export function useFileContent({
   };
 }
 
-export function useSkillAttachmentFileContent({
+export function useSkillFileContent({
   skillId,
   fileId,
   owner,
@@ -248,7 +248,7 @@ export function useSkillAttachmentFileContent({
 }) {
   const { data, error, mutate, isLoading } = useSWRWithDefaults(
     skillId && fileId
-      ? `/api/w/${owner.sId}/skills/${skillId}/file_attachments/${fileId}/content`
+      ? `/api/w/${owner.sId}/skills/${skillId}/files/${fileId}/content`
       : null,
     async (url: string) => {
       const response = await clientFetch(url);

@@ -19,7 +19,7 @@ function mockFileStream() {
   return { getReadStreamSpy, pipeSpy: readStream.pipe };
 }
 
-describe("GET /api/w/[wId]/skills/[sId]/file_attachments/[fileId]/content", () => {
+describe("GET /api/w/[wId]/skills/[sId]/files/[fileId]/content", () => {
   it("streams newly uploaded skill attachment files before the skill is saved", async () => {
     const { auth, req, res, user } = await createPrivateApiMockRequest({
       method: "GET",
