@@ -26,12 +26,15 @@ import {
   TagIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
+import { zodResolver } from "@hookform/resolvers/zod";
 import {
   EmbeddedCheckout,
   EmbeddedCheckoutProvider,
 } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
 import { useCallback, useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 
 // Lazily initialised at module level so Stripe.js is loaded only when the embedded
 // checkout is actually rendered, and never re-loaded on re-renders.
@@ -42,6 +45,12 @@ function getStripePromise() {
   }
   return stripePromise;
 }
+
+const couponFormSchema = z.object({
+  couponCode: z.string().min(1, "Please enter a promotion code"),
+});
+
+type CouponFormValues = z.infer<typeof couponFormSchema>;
 
 function useBillingPeriodParam(): BillingPeriod {
   const raw = useSearchParam("billingPeriod");
@@ -66,10 +75,21 @@ export function CheckoutPage() {
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [isSessionRefreshing, setIsSessionRefreshing] = useState(false);
   const [showCouponInput, setShowCouponInput] = useState(false);
-  const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<CouponType | null>(null);
-  const [couponError, setCouponError] = useState<string | null>(null);
-  const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
+
+  const {
+    register: registerCoupon,
+    handleSubmit: handleCouponSubmit,
+    watch: watchCoupon,
+    reset: resetCoupon,
+    setError: setCouponError,
+    formState: { errors: couponErrors, isSubmitting: isApplyingCoupon },
+  } = useForm<CouponFormValues>({
+    resolver: zodResolver(couponFormSchema),
+    defaultValues: { couponCode: "" },
+  });
+
+  const couponCodeValue = watchCoupon("couponCode");
 
   const initSession = useCallback(
     async (couponCodeArg?: string) => {
@@ -132,34 +152,25 @@ export function CheckoutPage() {
 
   const handleRemoveCoupon = async () => {
     setAppliedCoupon(null);
-    setCouponCode("");
+    resetCoupon();
     setIsSessionRefreshing(true);
     await initSession();
     setIsSessionRefreshing(false);
   };
 
-  const handleApplyCoupon = async () => {
-    if (!couponCode.trim()) {
+  const handleApplyCoupon = handleCouponSubmit(async ({ couponCode }) => {
+    const result = await validateCoupon(couponCode.trim());
+    if (!result.ok) {
+      setCouponError("couponCode", { message: result.message });
       return;
     }
-    setIsApplyingCoupon(true);
-    setCouponError(null);
-    try {
-      const result = await validateCoupon(couponCode.trim());
-      if (!result.ok) {
-        setCouponError(result.message);
-        return;
-      }
-      setAppliedCoupon(result.coupon);
-      setShowCouponInput(false);
-      // Re-create session with the coupon code so it's stored in metadata.
-      setIsSessionRefreshing(true);
-      await initSession(couponCode.trim());
-      setIsSessionRefreshing(false);
-    } finally {
-      setIsApplyingCoupon(false);
-    }
-  };
+    setAppliedCoupon(result.coupon);
+    setShowCouponInput(false);
+    // Re-create session with the coupon code so it's stored in metadata.
+    setIsSessionRefreshing(true);
+    await initSession(couponCode.trim());
+    setIsSessionRefreshing(false);
+  });
 
   // Full-page spinner only on initial load; coupon re-creation keeps the left pane visible.
   const isInitialLoading = (isSeatsCountLoading || isCreating) && !clientSecret;
@@ -250,24 +261,22 @@ export function CheckoutPage() {
                   <div className="flex gap-2">
                     <Input
                       placeholder="Enter promotion code"
-                      value={couponCode}
-                      onChange={(e) => {
-                        setCouponCode(e.target.value);
-                        setCouponError(null);
-                      }}
+                      {...registerCoupon("couponCode")}
                       disabled={isApplyingCoupon}
                       className="flex-1"
                     />
                     <Button
                       label={isApplyingCoupon ? "Applying…" : "Apply"}
-                      disabled={isApplyingCoupon || !couponCode.trim()}
+                      disabled={isApplyingCoupon || !couponCodeValue.trim()}
                       onClick={handleApplyCoupon}
                       size="sm"
                       variant="outline"
                     />
                   </div>
-                  {couponError && (
-                    <p className="text-sm text-warning-500">{couponError}</p>
+                  {couponErrors.couponCode && (
+                    <p className="text-sm text-warning-500">
+                      {couponErrors.couponCode.message}
+                    </p>
                   )}
                 </div>
               ) : (
