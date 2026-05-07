@@ -1,4 +1,5 @@
 import { getOrCreateConversationDataSourceFromFile } from "@app/lib/api/data_sources";
+import { isSandboxRawDelimitedConversationFile } from "@app/lib/api/files/sandbox_raw";
 import {
   isFileTypeUpsertableForUseCase,
   processAndUpsertToDataSource,
@@ -51,7 +52,10 @@ export async function maybeUpsertFileAttachment(
           });
 
           // Only upsert if the file is upsertable.
-          if (isFileTypeUpsertableForUseCase(fileResource)) {
+          if (
+            !isSandboxRawDelimitedConversationFile(fileResource) &&
+            isFileTypeUpsertableForUseCase(fileResource)
+          ) {
             const jitDataSource =
               await getOrCreateConversationDataSourceFromFile(
                 auth,

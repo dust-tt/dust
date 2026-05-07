@@ -13,6 +13,7 @@ import {
 import appConfig from "@app/lib/api/config";
 import config from "@app/lib/api/config";
 
+import { getConversationFilesBasePath } from "@app/lib/api/files/mount_path";
 import { getFileContent } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
@@ -75,6 +76,31 @@ export type RenderContentFragmentToTypeSource =
 
 export const CONTENT_OUTDATED_MSG =
   "Content is outdated. Please refer to the latest version of this content.";
+
+function getConversationFilePath({
+  conversationId,
+  mountFilePath,
+  workspaceId,
+}: {
+  conversationId: string | null | undefined;
+  mountFilePath: string | null;
+  workspaceId: string;
+}): string | null {
+  if (!mountFilePath || !conversationId) {
+    return null;
+  }
+
+  const prefix = getConversationFilesBasePath({
+    workspaceId,
+    conversationId,
+  });
+
+  if (!mountFilePath.startsWith(prefix)) {
+    return null;
+  }
+
+  return `conversation/${mountFilePath.slice(prefix.length)}`;
+}
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -778,6 +804,8 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
           ...baseContentFragment,
           contentFragmentType: "file",
           expiredReason: fr.expiredReason,
+          path: null,
+          skipFileProcessing: false,
           fileId: null,
           snippet: null,
           generatedTables: [],
@@ -834,6 +862,8 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       let sourceIcon: string | null = null;
       let isInProjectContext = false;
       let hidden = true;
+      let path: string | null = null;
+      let skipFileProcessing = false;
 
       if (fileResource) {
         title = fileResource.fileName;
@@ -844,6 +874,13 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
         sourceIcon = fileResource.useCaseMetadata?.sourceIcon ?? null;
         isInProjectContext = !!fileResource.useCaseMetadata?.spaceId;
         hidden = !!fileResource.useCaseMetadata?.hideFromUser;
+        skipFileProcessing =
+          fileResource.useCaseMetadata?.skipFileProcessing === true;
+        path = getConversationFilePath({
+          workspaceId: workspace.sId,
+          conversationId: fileResource.useCaseMetadata?.conversationId,
+          mountFilePath: fileResource.mountFilePath,
+        });
       }
 
       if (source.kind === "project_context") {
@@ -858,6 +895,8 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
         title,
         contentFragmentType: "file",
         expiredReason: null,
+        path,
+        skipFileProcessing,
         fileId: fileStringId,
         snippet,
         generatedTables,
@@ -1171,7 +1210,17 @@ function renderFileOrAttachmentXml(
   }
 ): string {
   if (isNewFileExplorer) {
-    const path = `conversation/${attachment.title}`;
+    const explicitPath = "path" in attachment ? attachment.path : null;
+    const path = explicitPath ?? `conversation/${attachment.title}`;
+    if (!explicitPath) {
+      logger.warn(
+        {
+          fileId: "fileId" in attachment ? attachment.fileId : null,
+          title: attachment.title,
+        },
+        "Falling back to file title for new file explorer path."
+      );
+    }
     return content
       ? `<file name="${attachment.title}" path="${path}">${content}\n</file>`
       : `<file name="${attachment.title}" path="${path}"/>`;

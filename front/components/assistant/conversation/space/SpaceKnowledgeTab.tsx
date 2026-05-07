@@ -231,6 +231,7 @@ function SpaceKnowledgeTabContent({ owner, space }: SpaceKnowledgeTabProps) {
   });
 
   const projectFileUpload = useFileUploaderService({
+    hasSandboxTools: false,
     owner,
     useCase: "project_context",
     useCaseMetadata: {

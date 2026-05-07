@@ -591,6 +591,10 @@ export class FileResource extends BaseResource<FileModel> {
    * Returns the file version to read for "best available" content.
    */
   private getContentVersion(): FileVersion {
+    if (this.useCaseMetadata?.skipFileProcessing === true) {
+      return "original";
+    }
+
     return hasProcessedVersion(this.contentType) ? "processed" : "original";
   }
 
@@ -1050,6 +1054,13 @@ export class FileResource extends BaseResource<FileModel> {
 
     const bucket = getPrivateUploadBucket();
     await bucket.delete(this.mountFilePath, { ignoreNotFound: true });
+
+    if (
+      this.useCaseMetadata?.skipFileProcessing === true ||
+      !hasProcessedVersion(this.contentType)
+    ) {
+      return;
+    }
 
     // Only delete processed mount file if this file type has real processing.
     const processedMountPath = makeProcessedMountFileName({
