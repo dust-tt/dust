@@ -9,12 +9,7 @@ import {
   isReadableAsText,
   resolveConversationFile,
 } from "@app/lib/api/actions/servers/files/tools/utils";
-import { makeProcessedMountFileName } from "@app/lib/api/files/mount_path";
-import { getPrivateUploadBucket } from "@app/lib/file_storage";
-import {
-  isLLMVisionSupportedImageContentType,
-  isSupportedAudioContentType,
-} from "@app/types/files";
+import { isLLMVisionSupportedImageContentType } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
@@ -53,30 +48,6 @@ function catImage(
         imageContentType: mimeType,
       },
     },
-  ]);
-}
-
-async function catAudio(
-  file: GCSFile,
-  path: string,
-  startLine: number,
-  maxLines: number
-): Promise<ToolHandlerResult> {
-  const processedGcsPath = makeProcessedMountFileName({
-    mountFilePath: file.name,
-    processedContentType: "text/plain",
-  });
-  const processedFile = getPrivateUploadBucket().file(processedGcsPath);
-  try {
-    const [exists] = await processedFile.exists();
-    if (exists) {
-      return catText(processedFile, path, startLine, maxLines);
-    }
-  } catch {
-    // Fall through to the empty transcript message.
-  }
-  return new Ok([
-    { type: "text", text: `\`${path}\` has no transcript available.` },
   ]);
 }
 
@@ -173,10 +144,6 @@ export async function catHandler(
 
   if (isLLMVisionSupportedImageContentType(mimeType)) {
     return catImage(file, { path, mimeType, sizeBytes });
-  }
-
-  if (isSupportedAudioContentType(mimeType)) {
-    return catAudio(file, path, offset ?? 1, limit ?? CAT_LINES_DEFAULT);
   }
 
   if (!isReadableAsText(mimeType)) {
