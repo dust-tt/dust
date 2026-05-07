@@ -61,6 +61,10 @@ import {
   PlusIcon,
   TextIcon,
   Toolbar,
+  TooltipContent,
+  TooltipProvider,
+  TooltipRoot,
+  TooltipTrigger,
   VoicePicker,
 } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
@@ -197,6 +201,17 @@ const InputBarContainer = ({
 
   const [hasUserMention, setHasUserMention] = useState(false);
   const canSubmitEmpty = !!selectedSingleAgent;
+  const [isBlockTooltipOpen, setIsBlockTooltipOpen] = useState(false);
+  const blockTooltipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  );
+  useEffect(() => {
+    return () => {
+      if (blockTooltipTimerRef.current) {
+        clearTimeout(blockTooltipTimerRef.current);
+      }
+    };
+  }, []);
 
   const agentsById = useMemo(
     () => new Map(allAgents.map((a) => [a.sId, a])),
@@ -407,6 +422,14 @@ const InputBarContainer = ({
     (isEmpty, markdownAndMentions, resetEditorText, setLoading) => {
       if (isSubmitBlocked) {
         onShake();
+        if (blockTooltipTimerRef.current) {
+          clearTimeout(blockTooltipTimerRef.current);
+        }
+        setIsBlockTooltipOpen(true);
+        blockTooltipTimerRef.current = setTimeout(
+          () => setIsBlockTooltipOpen(false),
+          2000
+        );
         return;
       }
       onEnterKeyDown(
@@ -1212,41 +1235,52 @@ const InputBarContainer = ({
                 />
               )}
           </div>
-          <Button
-            size={buttonSize}
-            isLoading={
-              isSubmitting && voiceTranscriberService.status !== "transcribing"
-            }
-            icon={ArrowUpIcon}
-            variant={isSubmitBlocked ? "ghost-secondary" : "highlight"}
-            disabled={isSubmitDisabled}
-            tooltip={submitBlockMessage ?? undefined}
-            className={cn(
-              isSubmitBlocked &&
-                "hover:s-bg-transparent dark:hover:s-bg-transparent hover:s-text-muted-foreground dark:hover:s-text-muted-foreground-night"
-            )}
-            onClick={async (e: React.MouseEvent<HTMLButtonElement>) => {
-              e.preventDefault();
-              e.stopPropagation();
-              if (disableAutoFocus) {
-                editorService.blur();
-                // wait a bit for the keyboard to be closed on mobile
-                if (isMobile) {
-                  editorService.setLoading(true);
-                  await new Promise((resolve) => setTimeout(resolve, 500));
-                  editorService.setLoading(false);
-                }
-              }
-              onEnterKeyDown(
-                editorService.isEmpty() && !canSubmitEmpty,
-                editorService.getMarkdownAndMentions(),
-                () => {
-                  editorService.clearEditor();
-                },
-                editorService.setLoading
-              );
-            }}
-          />
+          <TooltipProvider delayDuration={0}>
+            <TooltipRoot open={isBlockTooltipOpen}>
+              <TooltipTrigger asChild>
+                <Button
+                  size={buttonSize}
+                  isLoading={
+                    isSubmitting &&
+                    voiceTranscriberService.status !== "transcribing"
+                  }
+                  icon={ArrowUpIcon}
+                  variant={isSubmitBlocked ? "ghost-secondary" : "highlight"}
+                  disabled={isSubmitDisabled}
+                  className={cn(
+                    isSubmitBlocked &&
+                      "hover:s-bg-transparent dark:hover:s-bg-transparent hover:s-text-muted-foreground dark:hover:s-text-muted-foreground-night"
+                  )}
+                  onClick={async (e: React.MouseEvent<HTMLButtonElement>) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (disableAutoFocus) {
+                      editorService.blur();
+                      // wait a bit for the keyboard to be closed on mobile
+                      if (isMobile) {
+                        editorService.setLoading(true);
+                        await new Promise((resolve) =>
+                          setTimeout(resolve, 500)
+                        );
+                        editorService.setLoading(false);
+                      }
+                    }
+                    onEnterKeyDown(
+                      editorService.isEmpty() && !canSubmitEmpty,
+                      editorService.getMarkdownAndMentions(),
+                      () => {
+                        editorService.clearEditor();
+                      },
+                      editorService.setLoading
+                    );
+                  }}
+                />
+              </TooltipTrigger>
+              {submitBlockMessage && (
+                <TooltipContent>{submitBlockMessage}</TooltipContent>
+              )}
+            </TooltipRoot>
+          </TooltipProvider>
         </div>
       </div>
     </div>
