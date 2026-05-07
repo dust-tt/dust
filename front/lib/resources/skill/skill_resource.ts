@@ -2029,6 +2029,16 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     await this.update({ reinforcement });
   }
 
+  async updateSelfImprovementLock(selfImprovementLock: boolean): Promise<void> {
+    await this.update({ selfImprovementLock });
+  }
+
+  async updateSelfImprovementCostsCap(
+    selfImprovementCostsCapMicroUsd: number
+  ): Promise<void> {
+    await this.update({ selfImprovementCostsCapMicroUsd });
+  }
+
   async recordReinforcementAnalysisCompletion(): Promise<void> {
     await this.update({ lastReinforcementAnalysisAt: new Date() });
   }
@@ -2666,6 +2676,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       reinforcement: this.reinforcement,
       lastReinforcementAnalysisAt:
         this.lastReinforcementAnalysisAt?.toISOString() ?? null,
+      selfImprovementLock: this.selfImprovementLock,
+      selfImprovementCostsCapMicroUsd: this.selfImprovementCostsCapMicroUsd,
       source: this.source,
       sourceMetadata: this.sourceMetadata,
       tools: this.mcpServerViews.map((view) => {
