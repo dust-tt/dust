@@ -122,8 +122,11 @@ export function ReinforcementSkillsSection({
   owner,
 }: ReinforcementSkillsSectionProps) {
   const { skillsWithRelations, isSkillsWithRelationsLoading } =
-    useSkillsWithRelations({ owner, status: "active" });
-  const { updateReinforcement } = useUpdateSkillReinforcement({ owner });
+    useSkillsWithRelations({ owner, status: "active", onlyCustom: true });
+  const { updateReinforcement } = useUpdateSkillReinforcement({
+    owner,
+    onlyCustom: true,
+  });
 
   // Per-skill optimistic state while a toggle is in flight.
   const [pendingBySkillId, setPendingBySkillId] = useState<

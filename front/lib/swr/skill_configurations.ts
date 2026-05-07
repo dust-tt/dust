@@ -161,16 +161,26 @@ export function useSkillsWithRelations({
   owner,
   disabled,
   status,
+  onlyCustom,
 }: {
   owner: LightWorkspaceType;
   disabled?: boolean;
   status: SkillStatus;
+  onlyCustom?: boolean;
 }) {
   const { fetcher } = useFetcher();
   const skillsFetcher: Fetcher<GetSkillsWithRelationsResponseBody> = fetcher;
 
+  const queryParams = new URLSearchParams({
+    withRelations: "true",
+    status,
+  });
+  if (onlyCustom) {
+    queryParams.set("onlyCustom", "true");
+  }
+
   const { data, isLoading, mutate } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/skills?withRelations=true&status=${status}`,
+    `/api/w/${owner.sId}/skills?${queryParams.toString()}`,
     skillsFetcher,
     { disabled }
   );
@@ -277,8 +287,10 @@ export function useArchiveSkill({
 
 export function useUpdateSkillReinforcement({
   owner,
+  onlyCustom,
 }: {
   owner: LightWorkspaceType;
+  onlyCustom?: boolean;
 }) {
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
@@ -287,6 +299,7 @@ export function useUpdateSkillReinforcement({
     useSkillsWithRelations({
       owner,
       status: "active",
+      onlyCustom,
       disabled: true,
     });
 
