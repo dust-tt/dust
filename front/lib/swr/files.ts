@@ -236,17 +236,19 @@ export function useFileContent({
 }
 
 export function useSkillAttachmentFileContent({
+  skillId,
   fileId,
   owner,
   disabled,
 }: {
+  skillId: string | null;
   fileId: string | null;
   owner: LightWorkspaceType;
   disabled?: boolean;
 }) {
   const { data, error, mutate, isLoading } = useSWRWithDefaults(
-    fileId
-      ? `/api/w/${owner.sId}/skills/file_attachments/${fileId}/content`
+    (skillId && fileId)
+      ? `/api/w/${owner.sId}/skills/${skillId}/file_attachments/${fileId}/content`
       : null,
     async (url: string) => {
       const response = await clientFetch(url);
