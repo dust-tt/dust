@@ -4,9 +4,12 @@ import {
   getReinforcementMonthlyCapMicroUsd,
   getSelfImprovementCapPerSkillMicroUsd,
 } from "@app/lib/reinforcement/consumption";
+import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import type { GetSkillsSpendResponseBody } from "@app/pages/api/w/[wId]/reinforcement/skills_spend";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useState } from "react";
+import type { Fetcher } from "swr";
 
 interface UseReinforcementToggleProps {
   owner: LightWorkspaceType;
@@ -151,6 +154,30 @@ export function useReinforcementCapSetting({
     capDollars,
     isSaving,
     saveCapDollars,
+  };
+}
+
+export function useSkillsReinforcementSpend({
+  owner,
+  disabled,
+}: {
+  owner: LightWorkspaceType;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const spendFetcher: Fetcher<GetSkillsSpendResponseBody> = fetcher;
+
+  const { data, error, isLoading, mutate } = useSWRWithDefaults(
+    `/api/w/${owner.sId}/reinforcement/skills_spend`,
+    spendFetcher,
+    { disabled }
+  );
+
+  return {
+    spentMicroUsdBySkillId: data?.spentMicroUsdBySkillId ?? {},
+    isSpendLoading: isLoading,
+    isSpendError: !!error,
+    mutateSpend: mutate,
   };
 }
 

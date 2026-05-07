@@ -3,6 +3,7 @@ import {
   useSkillsWithRelations,
   useUpdateSkillReinforcement,
 } from "@app/lib/swr/skill_configurations";
+import { useSkillsReinforcementSpend } from "@app/lib/swr/useReinforcementToggle";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import type {
   SkillReinforcementMode,
@@ -123,6 +124,7 @@ export function ReinforcementSkillsSection({
 }: ReinforcementSkillsSectionProps) {
   const { skillsWithRelations, isSkillsWithRelationsLoading } =
     useSkillsWithRelations({ owner, status: "active", onlyCustom: true });
+  const { spentMicroUsdBySkillId } = useSkillsReinforcementSpend({ owner });
   const { updateReinforcement } = useUpdateSkillReinforcement({
     owner,
     onlyCustom: true,
@@ -180,14 +182,20 @@ export function ReinforcementSkillsSection({
           pendingEnabled: pending ?? null,
           isUpdating,
           currentSpentDollars: microUsdToDollars(
-            skill.relations.currentSpentMicroUsd
+            spentMicroUsdBySkillId[skill.sId] ?? 0
           ),
           onToggle: () => {
             void onToggle();
           },
         };
       }),
-    [sortedSkills, pendingBySkillId, updatingBySkillId, updateReinforcement]
+    [
+      sortedSkills,
+      pendingBySkillId,
+      updatingBySkillId,
+      updateReinforcement,
+      spentMicroUsdBySkillId,
+    ]
   );
 
   return (

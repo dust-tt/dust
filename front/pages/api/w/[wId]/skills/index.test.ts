@@ -4,7 +4,6 @@ import {
   SkillMCPServerConfigurationModel,
 } from "@app/lib/models/skill";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { SelfImprovingSkillsUsageResource } from "@app/lib/resources/self_improving_skills_usage_resource";
 import { discoverToolsSkill } from "@app/lib/resources/skill/code_defined/discover_tools";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -529,92 +528,6 @@ describe("GET /api/w/[wId]/skills?withRelations=true", () => {
         },
       },
     });
-  });
-
-  it("should return currentSpentMicroUsd summed since the start of the current month", async () => {
-    const { req, res, workspace, user } = await setupTest();
-
-    const auth = await Authenticator.fromUserIdAndWorkspaceId(
-      user.sId,
-      workspace.sId
-    );
-
-    const skill = await SkillFactory.create(auth, { name: "Spent Skill" });
-    const otherSkill = await SkillFactory.create(auth, {
-      name: "Other Spent Skill",
-    });
-
-    const now = new Date();
-    const currentMonthStart = new Date(
-      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)
-    );
-    const inCurrentMonth = new Date(currentMonthStart.getTime() + 60_000);
-    const beforeCurrentMonth = new Date(currentMonthStart.getTime() - 60_000);
-
-    await SelfImprovingSkillsUsageResource.bulkCreate(auth, [
-      {
-        createdAt: inCurrentMonth,
-        skillId: skill.id,
-        conversationId: null,
-        priceMicroUsd: 1_500_000,
-      },
-      {
-        createdAt: inCurrentMonth,
-        skillId: skill.id,
-        conversationId: null,
-        priceMicroUsd: 500_000,
-      },
-      // Excluded: before the current month start.
-      {
-        createdAt: beforeCurrentMonth,
-        skillId: skill.id,
-        conversationId: null,
-        priceMicroUsd: 999_000_000,
-      },
-      // Belongs to a different skill — must not contribute.
-      {
-        createdAt: inCurrentMonth,
-        skillId: otherSkill.id,
-        conversationId: null,
-        priceMicroUsd: 7_000_000,
-      },
-    ]);
-
-    req.query = { ...req.query, wId: workspace.sId, withRelations: "true" };
-
-    await handler(req, res);
-
-    expect(res._getStatusCode()).toBe(200);
-
-    const skills = res._getJSONData().skills as SkillWithRelationsType[];
-    const skillResult = skills.find((s) => s.sId === skill.sId);
-    const otherSkillResult = skills.find((s) => s.sId === otherSkill.sId);
-
-    expect(skillResult?.relations.currentSpentMicroUsd).toBe(2_000_000);
-    expect(otherSkillResult?.relations.currentSpentMicroUsd).toBe(7_000_000);
-  });
-
-  it("should return currentSpentMicroUsd of 0 when the skill has no usage", async () => {
-    const { req, res, workspace, user } = await setupTest();
-
-    const auth = await Authenticator.fromUserIdAndWorkspaceId(
-      user.sId,
-      workspace.sId
-    );
-
-    const skill = await SkillFactory.create(auth, { name: "Idle Skill" });
-
-    req.query = { ...req.query, wId: workspace.sId, withRelations: "true" };
-
-    await handler(req, res);
-
-    expect(res._getStatusCode()).toBe(200);
-
-    const skillResult = (
-      res._getJSONData().skills as SkillWithRelationsType[]
-    ).find((s) => s.sId === skill.sId);
-
-    expect(skillResult?.relations.currentSpentMicroUsd).toBe(0);
   });
 });
 

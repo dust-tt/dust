@@ -1,12 +1,10 @@
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
-import { getCurrentPeriodStart } from "@app/lib/reinforcement/consumption";
 import { pruneOutdatedSkillEditSuggestions } from "@app/lib/reinforcement/skill_suggestion_pruning";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { SelfImprovingSkillsUsageResource } from "@app/lib/resources/self_improving_skills_usage_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { isResourceSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
@@ -126,14 +124,6 @@ async function handler(
         const extendedSkill = serializedSkill.extendedSkillId
           ? await SkillResource.fetchById(auth, serializedSkill.extendedSkillId)
           : null;
-        const spentBySkillModelId =
-          await SelfImprovingSkillsUsageResource.getSumPriceMicroUsdAfterDateForSkills(
-            auth,
-            {
-              createdAfter: getCurrentPeriodStart(),
-              skillModelIds: [skill.id],
-            }
-          );
 
         const skillWithRelations: SkillWithRelationsType = {
           ...serializedSkill,
@@ -142,7 +132,6 @@ async function handler(
             editors: editors ? editors.map((e) => e.toJSON()) : null,
             editedByUser: editedByUser ? editedByUser.toJSON() : null,
             extendedSkill: extendedSkill ? extendedSkill.toJSON(auth) : null,
-            currentSpentMicroUsd: spentBySkillModelId.get(skill.id) ?? 0,
           },
         };
 
