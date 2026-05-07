@@ -2,7 +2,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   getReinforcementMonthlyCapMicroUsd,
-  getSelfImprovementCapPerSkillMicroUsd,
+  getWorkspaceDefaultSelfImprovementCapPerSkillMicroUsd,
 } from "@app/lib/reinforcement/consumption";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -164,7 +164,7 @@ export function useSelfImprovementCapPerSkillSetting({
   const sendNotification = useSendNotification();
   const [isSaving, setIsSaving] = useState(false);
 
-  const capDollars = getSelfImprovementCapPerSkillMicroUsd(owner) / 1_000_000;
+  const capDollars = getWorkspaceDefaultSelfImprovementCapPerSkillMicroUsd(owner) / 1_000_000;
 
   const saveCapDollars = async (dollars: number): Promise<boolean> => {
     setIsSaving(true);

@@ -21,7 +21,7 @@ import {
 } from "@app/lib/models/skill/conversation_skill";
 import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import { SkillSuggestionModel } from "@app/lib/models/skill/skill_suggestion";
-import { getSelfImprovementCapPerSkillMicroUsd } from "@app/lib/reinforcement/consumption";
+import { getWorkspaceDefaultSelfImprovementCapPerSkillMicroUsd } from "@app/lib/reinforcement/consumption";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -372,7 +372,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         {
           ...blob,
           selfImprovementCostsCapMicroUsd:
-            getSelfImprovementCapPerSkillMicroUsd(owner),
+            getWorkspaceDefaultSelfImprovementCapPerSkillMicroUsd(owner),
           workspaceId: owner.id,
         },
         {
