@@ -698,9 +698,11 @@ export async function createConversationFork(
       "Failed to launch conversation fork workflow."
     );
 
-    return new DustError(
-      "failed_to_copy_files",
-      "Failed to copy files from source conversation."
+    return new Err(
+      new DustError(
+        "failed_to_copy_files",
+        "Failed to copy files from source conversation."
+      )
     );
   }
 
