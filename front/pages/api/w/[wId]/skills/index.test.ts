@@ -21,7 +21,9 @@ import type {
   SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 import type { MembershipRoleType } from "@app/types/memberships";
+import type { NextApiRequest, NextApiResponse } from "next";
 import type { RequestMethod } from "node-mocks-http";
+import { createMocks } from "node-mocks-http";
 import { describe, expect, it, vi } from "vitest";
 
 import handler from "./index";
@@ -100,6 +102,44 @@ describe("GET /api/w/[wId]/skills", () => {
     const skillNames = data.skills.map((s: SkillType) => s.name);
     expect(skillNames).toContain("Active Skill");
     expect(skillNames).not.toContain("Archived Skill");
+  });
+
+  it("should include global skills by default and exclude them when onlyCustom=true", async () => {
+    const { req, res, workspace, user } = await setupTest();
+
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+
+    const customSkill = await SkillFactory.create(auth, {
+      name: "Custom Skill",
+    });
+
+    // Default: global skills (e.g. "frames") and custom skills both present.
+    req.query = { wId: workspace.sId };
+    await handler(req, res);
+    expect(res._getStatusCode()).toBe(200);
+    const allSkillIds = res._getJSONData().skills.map((s: SkillType) => s.sId);
+    expect(allSkillIds).toContain("frames");
+    expect(allSkillIds).toContain(customSkill.sId);
+
+    // With onlyCustom=true: global skills excluded, custom skill remains.
+    const { req: req2, res: res2 } = createMocks<
+      NextApiRequest,
+      NextApiResponse
+    >({
+      method: "GET",
+      headers: req.headers,
+      query: { wId: workspace.sId, onlyCustom: "true" },
+    });
+    await handler(req2, res2);
+    expect(res2._getStatusCode()).toBe(200);
+    const customOnlySIds = res2
+      ._getJSONData()
+      .skills.map((s: SkillType) => s.sId);
+    expect(customOnlySIds).not.toContain("frames");
+    expect(customOnlySIds).toContain(customSkill.sId);
   });
 
   it("should return suggested skills when status=suggested", async () => {

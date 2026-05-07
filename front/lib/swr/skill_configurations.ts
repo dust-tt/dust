@@ -17,6 +17,7 @@ import type { DetectSkillsResponseBody } from "@app/pages/api/w/[wId]/skills/det
 import type { ImportSkillsResponseBody } from "@app/pages/api/w/[wId]/skills/import";
 import type { GetSimilarSkillsResponseBody } from "@app/pages/api/w/[wId]/skills/similar";
 import type {
+  SkillReinforcementMode,
   SkillStatus,
   SkillType,
   SkillViewType,
@@ -160,16 +161,26 @@ export function useSkillsWithRelations({
   owner,
   disabled,
   status,
+  onlyCustom,
 }: {
   owner: LightWorkspaceType;
   disabled?: boolean;
   status: SkillStatus;
+  onlyCustom?: boolean;
 }) {
   const { fetcher } = useFetcher();
   const skillsFetcher: Fetcher<GetSkillsWithRelationsResponseBody> = fetcher;
 
+  const queryParams = new URLSearchParams({
+    withRelations: "true",
+    status,
+  });
+  if (onlyCustom) {
+    queryParams.set("onlyCustom", "true");
+  }
+
   const { data, isLoading, mutate } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/skills?withRelations=true&status=${status}`,
+    `/api/w/${owner.sId}/skills?${queryParams.toString()}`,
     skillsFetcher,
     { disabled }
   );
@@ -272,6 +283,51 @@ export function useArchiveSkill({
   };
 
   return doArchive;
+}
+
+export function useUpdateSkillReinforcement({
+  owner,
+  onlyCustom,
+}: {
+  owner: LightWorkspaceType;
+  onlyCustom?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const sendNotification = useSendNotification();
+
+  const { mutateSkillsWithRelations: mutateActiveSkills } =
+    useSkillsWithRelations({
+      owner,
+      status: "active",
+      onlyCustom,
+      disabled: true,
+    });
+
+  const updateReinforcement = useCallback(
+    async (skillId: string, reinforcement: SkillReinforcementMode) => {
+      try {
+        await fetcher(`/api/w/${owner.sId}/skills/${skillId}/reinforcement`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reinforcement }),
+        });
+        void mutateActiveSkills();
+        return true;
+      } catch (err) {
+        sendNotification({
+          type: "error",
+          title: "Failed to update reinforcement",
+          description: isAPIErrorResponse(err)
+            ? err.error.message
+            : "An unexpected error occurred.",
+        });
+        return false;
+      }
+    },
+    [owner.sId, fetcher, mutateActiveSkills, sendNotification]
+  );
+
+  return { updateReinforcement };
 }
 
 export function useRestoreSkill({

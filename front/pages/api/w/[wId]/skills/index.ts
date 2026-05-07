@@ -115,8 +115,14 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const { withRelations, status, globalSpaceOnly, isDefault, viewType } =
-        req.query;
+      const {
+        withRelations,
+        status,
+        globalSpaceOnly,
+        onlyCustom,
+        isDefault,
+        viewType,
+      } = req.query;
 
       let skillView: SkillViewType = "full";
       if (viewType !== undefined) {
@@ -159,6 +165,7 @@ async function handler(
       const skills = await SkillResource.listByWorkspace(auth, {
         status: skillStatus,
         globalSpaceOnly: globalSpaceOnly === "true",
+        onlyCustom: onlyCustom === "true",
         isDefault: isDefault === "true" ? true : undefined,
         withInstructions: skillView !== "summary",
         withTools: skillView === "full",

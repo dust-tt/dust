@@ -3,11 +3,12 @@ import {
   DEFAULT_SELF_IMPROVEMENT_CAP_PER_SKILL_MICRO_USD,
 } from "@app/lib/reinforcement/constants";
 import {
+  getCurrentPeriodStart,
   getReinforcementMonthlyCapMicroUsd,
   getSelfImprovementCapPerSkillMicroUsd,
 } from "@app/lib/reinforcement/consumption";
 import type { LightWorkspaceType } from "@app/types/user";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 function makeWorkspace(metadata?: {
   reinforcementCapMicroUsd?: number;
@@ -73,5 +74,71 @@ describe("getSelfImprovementCapPerSkillMicroUsd", () => {
         makeWorkspace({ selfImprovementCapPerSkillMicroUsd: 0 })
       )
     ).toBe(0);
+  });
+});
+
+describe("getCurrentPeriodStart", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("returns the first day of the current month at 00:00 UTC", () => {
+    vi.setSystemTime(new Date("2026-03-15T13:45:30.123Z"));
+    expect(getCurrentPeriodStart().toISOString()).toBe(
+      "2026-03-01T00:00:00.000Z"
+    );
+  });
+
+  it("returns the same instant when invoked at the start of a month", () => {
+    vi.setSystemTime(new Date("2026-04-01T00:00:00.000Z"));
+    expect(getCurrentPeriodStart().toISOString()).toBe(
+      "2026-04-01T00:00:00.000Z"
+    );
+  });
+
+  it("uses UTC, not local time, when computing the month boundary", () => {
+    // 2026-04-01T01:30 in a UTC+2 zone is still 2026-03-31T23:30 UTC, so the
+    // current period must be March, not April.
+    vi.setSystemTime(new Date("2026-03-31T23:30:00.000Z"));
+    expect(getCurrentPeriodStart().toISOString()).toBe(
+      "2026-03-01T00:00:00.000Z"
+    );
+  });
+});
+
+describe("getCurrentPeriodStart", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("returns the first day of the current month at 00:00 UTC", () => {
+    vi.setSystemTime(new Date("2026-03-15T13:45:30.123Z"));
+    expect(getCurrentPeriodStart().toISOString()).toBe(
+      "2026-03-01T00:00:00.000Z"
+    );
+  });
+
+  it("returns the same instant when invoked at the start of a month", () => {
+    vi.setSystemTime(new Date("2026-04-01T00:00:00.000Z"));
+    expect(getCurrentPeriodStart().toISOString()).toBe(
+      "2026-04-01T00:00:00.000Z"
+    );
+  });
+
+  it("uses UTC, not local time, when computing the month boundary", () => {
+    // 2026-04-01T01:30 in a UTC+2 zone is still 2026-03-31T23:30 UTC, so the
+    // current period must be March, not April.
+    vi.setSystemTime(new Date("2026-03-31T23:30:00.000Z"));
+    expect(getCurrentPeriodStart().toISOString()).toBe(
+      "2026-03-01T00:00:00.000Z"
+    );
   });
 });
