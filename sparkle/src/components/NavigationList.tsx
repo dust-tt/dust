@@ -220,12 +220,13 @@ interface NavigationListItemActionProps
   extends React.HTMLAttributes<HTMLDivElement> {
   showOnHover?: boolean;
   isLoading?: boolean;
+  loadingLabel?: string;
 }
 
 const NavigationListItemAction = React.forwardRef<
   HTMLDivElement,
   NavigationListItemActionProps
->(({ className, isLoading = false, ...props }, ref) => {
+>(({ className, isLoading = false, loadingLabel, ...props }, ref) => {
   return (
     <div
       ref={ref}
@@ -243,8 +244,8 @@ const NavigationListItemAction = React.forwardRef<
         size="xmini"
         icon={isLoading ? <Spinner size="xs" /> : MoreIcon}
         variant="ghost"
-        tooltip={isLoading ? "Branching..." : undefined}
-        aria-label={isLoading ? "Branching..." : "Menu actions"}
+        tooltip={isLoading ? loadingLabel : undefined}
+        aria-label={isLoading && loadingLabel ? loadingLabel : "Menu actions"}
       />
     </div>
   );

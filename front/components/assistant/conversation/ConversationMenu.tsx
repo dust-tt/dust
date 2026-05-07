@@ -1,3 +1,4 @@
+import { CONVERSATION_BRANCHING_COPY } from "@app/components/assistant/conversation/branching";
 import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
 import { EditConversationTitleDialog } from "@app/components/assistant/conversation/EditConversationTitleDialog";
 import { LeaveConversationDialog } from "@app/components/assistant/conversation/LeaveConversationDialog";
@@ -411,7 +412,11 @@ export function ConversationMenu({
           {hasFeature("sessions_branching") && (
             <>
               <DropdownMenuItem
-                label={isBranching ? "Branching..." : "Branch conversation"}
+                label={
+                  isBranching
+                    ? CONVERSATION_BRANCHING_COPY.branching
+                    : CONVERSATION_BRANCHING_COPY.branchConversation
+                }
                 onClick={() => {
                   void branchConversation();
                 }}

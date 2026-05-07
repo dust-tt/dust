@@ -1,3 +1,4 @@
+import { useConversationBranchingContext } from "@app/components/assistant/conversation/ConversationBranchingContext";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
@@ -6,38 +7,7 @@ import { getConversationRoute } from "@app/lib/utils/router";
 import type { PostConversationForkResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/forks";
 import { isRecord, isString } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
-import { useCallback, useSyncExternalStore } from "react";
-
-const branchingConversationIds = new Set<string>();
-const branchingStoreListeners = new Set<() => void>();
-
-function subscribeToBranchingStore(listener: () => void) {
-  branchingStoreListeners.add(listener);
-
-  return () => {
-    branchingStoreListeners.delete(listener);
-  };
-}
-
-function emitBranchingStoreUpdate() {
-  for (const listener of branchingStoreListeners) {
-    listener();
-  }
-}
-
-function isConversationBranching(conversationId?: string | null) {
-  return conversationId ? branchingConversationIds.has(conversationId) : false;
-}
-
-function setConversationBranching(conversationId: string, branching: boolean) {
-  if (branching) {
-    branchingConversationIds.add(conversationId);
-  } else {
-    branchingConversationIds.delete(conversationId);
-  }
-
-  emitBranchingStoreUpdate();
-}
+import { useCallback } from "react";
 
 function isPostConversationForkResponseBody(
   value: unknown
@@ -61,16 +31,16 @@ export function useBranchConversation({
 }) {
   const sendNotification = useSendNotification();
   const router = useAppRouter();
+  const { branchingConversationIds, setConversationBranching } =
+    useConversationBranchingContext();
 
-  const isBranching = useSyncExternalStore(
-    subscribeToBranchingStore,
-    () => isConversationBranching(conversationId),
-    () => false
-  );
+  const isBranching = conversationId
+    ? branchingConversationIds.has(conversationId)
+    : false;
 
   const branchConversation = useCallback(
     async (sourceMessageId?: string): Promise<boolean> => {
-      if (!conversationId || isConversationBranching(conversationId)) {
+      if (!conversationId || branchingConversationIds.has(conversationId)) {
         return false;
       }
 
@@ -132,10 +102,12 @@ export function useBranchConversation({
     },
     [
       conversationId,
+      branchingConversationIds,
       onConversationBranched,
       owner.sId,
       router,
       sendNotification,
+      setConversationBranching,
     ]
   );
 

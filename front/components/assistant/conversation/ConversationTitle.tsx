@@ -1,3 +1,4 @@
+import { CONVERSATION_BRANCHING_COPY } from "@app/components/assistant/conversation/branching";
 import {
   ConversationMenu,
   useConversationMenu,
@@ -166,9 +167,15 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
                 variant="ghost"
                 icon={isPendingAction ? <Spinner size="xs" /> : MoreIcon}
                 aria-label={
-                  isPendingAction ? "Branching..." : "Conversation menu"
+                  isPendingAction
+                    ? CONVERSATION_BRANCHING_COPY.branching
+                    : "Conversation menu"
                 }
-                tooltip={isPendingAction ? "Branching..." : undefined}
+                tooltip={
+                  isPendingAction
+                    ? CONVERSATION_BRANCHING_COPY.branching
+                    : undefined
+                }
                 disabled={
                   activeConversationId === null ||
                   conversation === null ||

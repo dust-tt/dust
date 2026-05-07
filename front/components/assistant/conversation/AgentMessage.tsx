@@ -6,6 +6,7 @@ import { AttachmentCitation } from "@app/components/assistant/conversation/attac
 import { markdownCitationToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
 import { BlockedAction } from "@app/components/assistant/conversation/BlockedAction";
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
+import { CONVERSATION_BRANCHING_COPY } from "@app/components/assistant/conversation/branching";
 import { DeletedMessage } from "@app/components/assistant/conversation/DeletedMessage";
 import { ErrorMessage } from "@app/components/assistant/conversation/ErrorMessage";
 import type { FeedbackSelectorBaseProps } from "@app/components/assistant/conversation/FeedbackSelector";
@@ -795,7 +796,9 @@ export function AgentMessage({
 
     if (canBranchConversation) {
       dropdownItems.push({
-        label: isBranching ? "Branching..." : "Branch from here",
+        label: isBranching
+          ? CONVERSATION_BRANCHING_COPY.branching
+          : CONVERSATION_BRANCHING_COPY.branchFromHere,
         icon: isBranching ? <Spinner size="xs" /> : ActionGitBranchIcon,
         onSelect: () => {
           void branchConversation(agentMessage.sId);
@@ -844,8 +847,14 @@ export function AgentMessage({
               variant="outline"
               size="xs"
               icon={isBranching ? <Spinner size="xs" /> : MoreIcon}
-              tooltip={isBranching ? "Branching..." : undefined}
-              aria-label={isBranching ? "Branching..." : "Message actions"}
+              tooltip={
+                isBranching ? CONVERSATION_BRANCHING_COPY.branching : undefined
+              }
+              aria-label={
+                isBranching
+                  ? CONVERSATION_BRANCHING_COPY.branching
+                  : "Message actions"
+              }
               className="text-muted-foreground"
             />
           }
