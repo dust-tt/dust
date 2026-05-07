@@ -130,10 +130,16 @@ function makeFileEntry(
 
 /**
  * List files from a GCS mount point (mounted bucket as source of truth).
+ *
+ * `.processed.<ext>` siblings are filtered out by default — they are
+ * auto-generated artifacts (resized images, transcripts, extracted text) and
+ * the UI file panel should not surface them. The MCP `files__list` tool opts
+ * in via `includeProcessed: true` so the agent can read them directly.
  */
 export async function listGCSMountFiles(
   auth: Authenticator,
-  scope: GCSMountPoint
+  scope: GCSMountPoint,
+  { includeProcessed = false }: { includeProcessed?: boolean } = {}
 ): Promise<GCSMountEntry[]> {
   const owner = auth.getNonNullableWorkspace();
   const prefix = resolvePrefix(owner, scope);
@@ -147,6 +153,11 @@ export async function listGCSMountFiles(
     if (f.name.endsWith("/")) {
       return false;
     }
+
+    if (includeProcessed) {
+      return true;
+    }
+
     const name = f.name.split("/").pop() ?? "";
     return !name.includes(".processed.");
   });
