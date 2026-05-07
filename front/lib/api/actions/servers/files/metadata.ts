@@ -23,7 +23,11 @@ export const FILES_TOOLS_METADATA = createToolsRecord({
       "Returns one entry per file with its scoped path (e.g. `conversation/chart.png`), " +
       "content type, and size in KB. " +
       "Scoped paths can be used to reference or display a file in a response, " +
-      "or passed to other tools that accept a file path.",
+      "or passed to other tools that accept a file path. " +
+      "Some files have an auto-generated `*.processed.<ext>` sibling carrying a " +
+      "model-friendly representation of their source: a resized version for images, " +
+      "a transcript for audio, or extracted text for PDFs and other documents. " +
+      `Read the sibling with \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_CAT_ACTION_NAME)}\` to access the content of binary sources.`,
     schema: {},
     stake: "never_ask",
     displayLabels: {
@@ -37,7 +41,9 @@ export const FILES_TOOLS_METADATA = createToolsRecord({
       "For text files, returns lines with their line numbers." +
       "Use `offset` to start at a specific line and `limit` to control how many lines to return. " +
       "When the output is truncated, a footer indicates the next offset to use. " +
-      "For images (JPEG, PNG, GIF), returns a vision block the model can inspect directly.",
+      "For images (JPEG, PNG, GIF), returns a vision block the model can inspect directly. " +
+      "For binary sources such as PDFs, scanned documents, or audio files, prefer the " +
+      `\`*.processed.<ext>\` sibling listed in \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_LIST_ACTION_NAME)}\` — it carries the extracted text or transcript.`,
     schema: {
       path: z
         .string()
@@ -129,7 +135,11 @@ export const FILES_SERVER = {
       "exports, processed data produced by code run in the sandbox), and files produced " +
       "as results of tool use. " +
       "Files are identified by scoped paths such as `conversation/chart.png` that can " +
-      "be used to reference, display, or link files in agent responses.",
+      "be used to reference, display, or link files in agent responses. " +
+      "Files whose name follows the `*.processed.<ext>` pattern are auto-generated " +
+      "model-friendly representations of their source (resized image, audio transcript, " +
+      "or text extracted from a document). Read those siblings to access the content " +
+      "of binary uploads.",
     authorization: null,
     icon: "ActionDocumentTextIcon" as const,
     documentationUrl: null,

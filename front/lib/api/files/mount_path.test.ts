@@ -4,6 +4,7 @@ import {
   getConversationFilePath,
   getConversationFilesBasePath,
   makeProcessedMountFileName,
+  parseProcessedFilename,
 } from "@app/lib/api/files/mount_path";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -84,6 +85,66 @@ describe("mount_path helpers", () => {
           processedContentType: "image/png",
         })
       ).toBe("dir/photo.processed.png");
+    });
+  });
+
+  describe("parseProcessedFilename", () => {
+    it("recognizes a processed file with a swapped extension (PDF → text)", () => {
+      expect(parseProcessedFilename("report.processed.txt")).toEqual({
+        isProcessed: true,
+        sourceBaseName: "report",
+      });
+    });
+
+    it("recognizes a processed image (same content type)", () => {
+      expect(parseProcessedFilename("photo.processed.jpg")).toEqual({
+        isProcessed: true,
+        sourceBaseName: "photo",
+      });
+    });
+
+    it("recognizes a processed file without an original extension", () => {
+      expect(parseProcessedFilename("Makefile.processed")).toEqual({
+        isProcessed: true,
+        sourceBaseName: "Makefile",
+      });
+    });
+
+    it("recognizes a processed file when the source name itself contains dots", () => {
+      expect(parseProcessedFilename("my.file.name.processed.txt")).toEqual({
+        isProcessed: true,
+        sourceBaseName: "my.file.name",
+      });
+    });
+
+    it("does not flag regular user files", () => {
+      expect(parseProcessedFilename("report.pdf")).toEqual({
+        isProcessed: false,
+      });
+      expect(parseProcessedFilename("notes.txt")).toEqual({
+        isProcessed: false,
+      });
+    });
+
+    it("does not flag user files that merely contain '.processed.' mid-name", () => {
+      // ".processed." is not the final segment-before-extension here.
+      expect(parseProcessedFilename("my.processed.report.pdf")).toEqual({
+        isProcessed: false,
+      });
+      // Multi-segment extension after ".processed." is not produced by our writer.
+      expect(parseProcessedFilename("data.processed.tar.gz")).toEqual({
+        isProcessed: false,
+      });
+    });
+
+    it("does not flag .processed-only or empty inputs", () => {
+      expect(parseProcessedFilename(".processed")).toEqual({
+        isProcessed: false,
+      });
+      expect(parseProcessedFilename(".processed.txt")).toEqual({
+        isProcessed: false,
+      });
+      expect(parseProcessedFilename("")).toEqual({ isProcessed: false });
     });
   });
 
