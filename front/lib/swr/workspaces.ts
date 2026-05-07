@@ -828,11 +828,13 @@ export function useCheckoutStatus({
   sessionId,
   planCode,
   disabled,
+  pollIntervalMs = 0,
 }: {
   workspaceId: string;
   sessionId: string;
   planCode: string;
   disabled?: boolean;
+  pollIntervalMs?: number;
 }) {
   const { fetcher } = useFetcher();
   const checkoutFetcher: Fetcher<GetCheckoutStatusResponseBody> = fetcher;
@@ -841,7 +843,8 @@ export function useCheckoutStatus({
     disabled
       ? null
       : `/api/w/${workspaceId}/subscriptions/checkout-status?session_id=${sessionId}&plan_code=${planCode}`,
-    checkoutFetcher
+    checkoutFetcher,
+    { refreshInterval: pollIntervalMs }
   );
 
   return {

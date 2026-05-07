@@ -16,31 +16,18 @@ export function PaymentProcessingPage() {
   const sessionId = useSearchParam("session_id");
   const planCode = useSearchParam("plan_code");
   const [error, setError] = useState<string | null>(null);
+  const [shouldPoll, setShouldPoll] = useState(true);
   const pollCountRef = useRef(0);
 
   const { mutateAuthContext } = useAuthContext({ workspaceId: owner.sId });
 
-  const { checkoutStatus, mutateCheckoutStatus } = useCheckoutStatus({
+  const { checkoutStatus } = useCheckoutStatus({
     workspaceId: owner.sId,
     sessionId: sessionId ?? "",
     planCode: planCode ?? "",
     disabled: type !== "succeeded" || !sessionId || !planCode,
+    pollIntervalMs: shouldPoll ? CHECKOUT_POLL_INTERVAL_MS : 0,
   });
-
-  useEffect(() => {
-    if (checkoutStatus?.status !== "pending") {
-      return;
-    }
-    if (pollCountRef.current >= MAX_CHECKOUT_POLL_ATTEMPTS) {
-      setError("Payment processing timed out.");
-      return;
-    }
-    pollCountRef.current += 1;
-    const timeoutId = setTimeout(() => {
-      void mutateCheckoutStatus();
-    }, CHECKOUT_POLL_INTERVAL_MS);
-    return () => clearTimeout(timeoutId);
-  }, [checkoutStatus, mutateCheckoutStatus]);
 
   useEffect(() => {
     if (!checkoutStatus) {
@@ -48,6 +35,7 @@ export function PaymentProcessingPage() {
     }
     switch (checkoutStatus.status) {
       case "success":
+        setShouldPoll(false);
         void (async () => {
           await mutateAuthContext();
           void router.replace(
@@ -56,9 +44,15 @@ export function PaymentProcessingPage() {
         })();
         break;
       case "error":
+        setShouldPoll(false);
         setError(checkoutStatus.message);
         break;
       case "pending":
+        pollCountRef.current += 1;
+        if (pollCountRef.current >= MAX_CHECKOUT_POLL_ATTEMPTS) {
+          setShouldPoll(false);
+          setError("Payment processing timed out.");
+        }
         break;
       default:
         assertNeverAndIgnore(checkoutStatus);
