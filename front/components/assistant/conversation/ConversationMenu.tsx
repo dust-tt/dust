@@ -138,7 +138,6 @@ export function useConversationMenu() {
 interface ConversationMenuProps {
   activeConversationId: string | null;
   conversation?: ConversationListItemType;
-  onConversationBranched?: () => Promise<void> | void;
   owner: WorkspaceType;
   trigger:
     | ReactElement
@@ -154,7 +153,6 @@ interface ConversationMenuProps {
 export function ConversationMenu({
   activeConversationId,
   conversation,
-  onConversationBranched,
   owner,
   trigger,
   isConversationDisplayed,
@@ -275,9 +273,7 @@ export function ConversationMenu({
     if (isConversationDisplayed) {
       void mutateConversation();
     }
-
-    void onConversationBranched?.();
-  }, [isConversationDisplayed, mutateConversation, onConversationBranched]);
+  }, [isConversationDisplayed, mutateConversation]);
   const { branchConversation, isBranching } = useBranchConversation({
     owner,
     conversationId: activeConversationId,
