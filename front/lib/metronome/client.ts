@@ -1017,7 +1017,8 @@ export async function listMetronomeDraftInvoices(
 }
 
 export async function listMetronomeBalances(
-  metronomeCustomerId: string
+  metronomeCustomerId: string,
+  { includeExpired = false }: { includeExpired?: boolean } = {}
 ): Promise<Result<MetronomeBalance[], Error>> {
   if (!config.getMetronomeApiKey()) {
     return new Ok([]);
@@ -1031,7 +1032,9 @@ export async function listMetronomeBalances(
       customer_id: metronomeCustomerId,
       include_balance: true,
       include_contract_balances: true,
-      covering_date: new Date().toISOString(),
+      ...(includeExpired
+        ? { include_archived: true }
+        : { covering_date: new Date().toISOString() }),
     })) {
       balances.push(entry);
     }
