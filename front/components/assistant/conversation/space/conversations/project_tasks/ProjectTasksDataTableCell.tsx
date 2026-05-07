@@ -150,7 +150,7 @@ export function ProjectTasksDataTableCell({
   const task = original.task;
 
   return (
-    <div className="py-0.5 pl-4 pr-0">
+    <>
       {variant === "suggested" ? (
         <SuggestedTaskItem
           key={task.sId}
@@ -186,7 +186,7 @@ export function ProjectTasksDataTableCell({
           allowAssigneeReassign={allowAssigneeReassign}
         />
       )}
-    </div>
+    </>
   );
 }
 
