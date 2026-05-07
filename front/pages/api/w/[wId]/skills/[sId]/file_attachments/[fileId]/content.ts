@@ -14,7 +14,17 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<never>>,
   auth: Authenticator
 ): Promise<void> {
-  const { fileId } = req.query;
+  const { sId: skillId, fileId } = req.query;
+
+  if (!isString(skillId)) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid skill ID.",
+      },
+    });
+  }
 
   if (!isString(fileId)) {
     return apiError(req, res, {
@@ -22,6 +32,17 @@ async function handler(
       api_error: {
         type: "invalid_request_error",
         message: "Invalid file ID.",
+      },
+    });
+  }
+
+  const skill = await SkillResource.fetchById(auth, skillId);
+  if (!skill) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "file_not_found",
+        message: "File not found.",
       },
     });
   }
@@ -35,20 +56,6 @@ async function handler(
         message: "File not found.",
       },
     });
-  }
-
-  const skillId = file.useCaseMetadata?.skillId;
-  if (skillId) {
-    const skill = await SkillResource.fetchById(auth, skillId);
-    if (!skill) {
-      return apiError(req, res, {
-        status_code: 404,
-        api_error: {
-          type: "file_not_found",
-          message: "File not found.",
-        },
-      });
-    }
   }
 
   switch (req.method) {
