@@ -4,6 +4,7 @@ import {
   runDeduplicationLLMCall,
 } from "@app/lib/project_task/deduplicate_candidates";
 import type { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
+import logger from "@app/logger/logger";
 import { MODEL_ID } from "@app/tests/dedup-evals/lib/config";
 import type {
   DedupExecutionResult,
@@ -52,7 +53,8 @@ export async function executeDedup(
   const existingTodos = buildMockExistingTodos(testCase);
   const candidates = buildCandidates(testCase);
 
-  const llmGroups = await runDeduplicationLLMCall(auth, {
+  const { groups: llmGroups } = await runDeduplicationLLMCall(auth, {
+    localLogger: logger,
     model,
     candidates,
     existingTodos,

@@ -316,7 +316,11 @@ async function buildDeduplicationGroups(
     localLogger.warn(
       "Project todo merge: no whitelisted model, skipping deduplication"
     );
-    return dedupInput.map((c) => ({ kind: "new", candidates: [c] }));
+    return dedupInput.map((c) => ({
+      kind: "new",
+      candidates: [c],
+      scopedLogger: localLogger,
+    }));
   }
 
   // Fetch all existing tasks for the space in one pass (including deleted).
@@ -327,6 +331,7 @@ async function buildDeduplicationGroups(
     });
 
   return batchDeduplicateCandidates(auth, {
+    localLogger,
     model,
     candidates: dedupInput,
     existingTodos,
@@ -390,7 +395,7 @@ export async function createOrLinkTodos(
           });
           deduplicated++;
 
-          localLogger.info(
+          group.scopedLogger.info(
             {
               existingTodoId: group.todo.sId,
               itemId: pending.itemId,
@@ -429,7 +434,7 @@ export async function createOrLinkTodos(
       });
       createdNew++;
 
-      localLogger.info(
+      group.scopedLogger.info(
         {
           todoId: todo.sId,
           itemId: primary.itemId,
@@ -450,7 +455,7 @@ export async function createOrLinkTodos(
         });
         deduplicated++;
 
-        localLogger.info(
+        group.scopedLogger.info(
           {
             todoId: todo.sId,
             itemId: pending.itemId,

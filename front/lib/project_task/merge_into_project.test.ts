@@ -175,6 +175,7 @@ describe("createOrLinkTodos", () => {
       candidates: [
         { itemId: "item-x", userId: 1 as ModelId, text: "Do the thing" },
       ],
+      scopedLogger: fakeLogger,
     };
 
     const { deduplicated, createdNew } = await createOrLinkTodos(fakeAuth, {
@@ -221,6 +222,7 @@ describe("createOrLinkTodos", () => {
       candidates: [
         { itemId: "item-y", userId: 1 as ModelId, text: "Do the thing" },
       ],
+      scopedLogger: fakeLogger,
     };
 
     const { deduplicated, createdNew } = await createOrLinkTodos(fakeAuth, {
