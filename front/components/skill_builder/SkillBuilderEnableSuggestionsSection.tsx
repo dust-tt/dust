@@ -13,7 +13,7 @@ export function SkillBuilderEnableSuggestionsSection() {
   const enabled = reinforcement !== "off";
 
   const handleToggle = () => {
-    setValue("reinforcement", enabled ? "off" : "auto", { shouldDirty: true });
+    setValue("reinforcement", enabled ? "off" : "on", { shouldDirty: true });
   };
 
   return (

@@ -48,15 +48,15 @@ describe("getReinforcementMonthlyCapMicroUsd", () => {
 
 describe("getSelfImprovementCapPerSkillMicroUsd", () => {
   it("returns default cap when workspace has no metadata", () => {
-    expect(getWorkspaceDefaultSelfImprovementCapPerSkillMicroUsd(makeWorkspace())).toBe(
-      DEFAULT_SELF_IMPROVEMENT_CAP_PER_SKILL_MICRO_USD
-    );
+    expect(
+      getWorkspaceDefaultSelfImprovementCapPerSkillMicroUsd(makeWorkspace())
+    ).toBe(DEFAULT_SELF_IMPROVEMENT_CAP_PER_SKILL_MICRO_USD);
   });
 
   it("returns default cap when metadata has no selfImprovementCapPerSkillMicroUsd", () => {
-    expect(getWorkspaceDefaultSelfImprovementCapPerSkillMicroUsd(makeWorkspace({}))).toBe(
-      DEFAULT_SELF_IMPROVEMENT_CAP_PER_SKILL_MICRO_USD
-    );
+    expect(
+      getWorkspaceDefaultSelfImprovementCapPerSkillMicroUsd(makeWorkspace({}))
+    ).toBe(DEFAULT_SELF_IMPROVEMENT_CAP_PER_SKILL_MICRO_USD);
   });
 
   it("returns workspace override when set", () => {

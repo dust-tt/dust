@@ -164,7 +164,8 @@ export function useSelfImprovementCapPerSkillSetting({
   const sendNotification = useSendNotification();
   const [isSaving, setIsSaving] = useState(false);
 
-  const capDollars = getWorkspaceDefaultSelfImprovementCapPerSkillMicroUsd(owner) / 1_000_000;
+  const capDollars =
+    getWorkspaceDefaultSelfImprovementCapPerSkillMicroUsd(owner) / 1_000_000;
 
   const saveCapDollars = async (dollars: number): Promise<boolean> => {
     setIsSaving(true);
