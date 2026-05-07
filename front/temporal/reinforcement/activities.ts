@@ -363,9 +363,7 @@ export async function recordSelfImprovingSkillsUsageActivity({
 
   const allDustRunIds = [
     ...new Set(
-      [...runIdsByConversationModelId.values()].flatMap((runIds) => [
-        ...runIds,
-      ])
+      [...runIdsByConversationModelId.values()].flatMap((runIds) => [...runIds])
     ),
   ];
 
@@ -417,7 +415,7 @@ export async function recordSelfImprovingSkillsUsageActivity({
 
     totalPriceMicroUsd += conversationPriceMicroUsd;
     // A single conversation being analysed can have several skill enabled it it
-    // In that case we split the cost of analysis evenly per skill. 
+    // In that case we split the cost of analysis evenly per skill.
     const prices = splitPriceMicroUsdAcrossSkills(
       conversationPriceMicroUsd,
       skillIds.length

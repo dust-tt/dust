@@ -132,7 +132,7 @@ export class SelfImprovingSkillsUsageResource extends BaseResource<SelfImproving
     });
 
     return new Map(
-      rows.map((row) => [row.skillId as ModelId, row.priceMicroUsd])
+      rows.map((row) => [row.skillId as ModelId, Number(row.priceMicroUsd)])
     );
   }
 
