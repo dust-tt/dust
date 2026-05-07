@@ -11,9 +11,19 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
-const PatchSkillReinforcementBodySchema = z.object({
-  reinforcement: z.enum(SKILL_REINFORCEMENT_MODES),
-});
+const PatchSkillReinforcementBodySchema = z
+  .object({
+    reinforcement: z.enum(SKILL_REINFORCEMENT_MODES).optional(),
+    selfImprovementLock: z.boolean().optional(),
+    selfImprovementCostsCapMicroUsd: z.number().int().nonnegative().optional(),
+  })
+  .refine(
+    (b) =>
+      b.reinforcement !== undefined ||
+      b.selfImprovementLock !== undefined ||
+      b.selfImprovementCostsCapMicroUsd !== undefined,
+    { message: "At least one field must be provided." }
+  );
 
 export type PatchSkillReinforcementResponseBody = {
   skill: SkillType;
@@ -50,16 +60,6 @@ async function handler(
 
   switch (req.method) {
     case "PATCH": {
-      if (!skill.canWrite(auth)) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "app_auth_error",
-            message: "Only editors can modify this skill.",
-          },
-        });
-      }
-
       const validation = PatchSkillReinforcementBodySchema.safeParse(req.body);
       if (!validation.success) {
         return apiError(req, res, {
@@ -71,7 +71,62 @@ async function handler(
         });
       }
 
-      await skill.updateReinforcement(validation.data.reinforcement);
+      const {
+        reinforcement,
+        selfImprovementLock,
+        selfImprovementCostsCapMicroUsd,
+      } = validation.data;
+
+      // The lock and per-skill cap are admin-only controls.
+      const requiresAdmin =
+        selfImprovementLock !== undefined ||
+        selfImprovementCostsCapMicroUsd !== undefined;
+      if (requiresAdmin && !auth.isAdmin()) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message:
+              "Only admins can change the lock state or per-skill cost cap.",
+          },
+        });
+      }
+
+      // Toggling reinforcement requires editor access; if the skill is locked,
+      // only admins can flip it.
+      if (reinforcement !== undefined) {
+        if (!skill.canWrite(auth)) {
+          return apiError(req, res, {
+            status_code: 403,
+            api_error: {
+              type: "app_auth_error",
+              message: "Only editors can modify this skill.",
+            },
+          });
+        }
+        if (skill.selfImprovementLock && !auth.isAdmin()) {
+          return apiError(req, res, {
+            status_code: 403,
+            api_error: {
+              type: "workspace_auth_error",
+              message:
+                "This skill's reinforcement is locked; only admins can change it.",
+            },
+          });
+        }
+      }
+
+      if (reinforcement !== undefined) {
+        await skill.updateReinforcement(reinforcement);
+      }
+      if (selfImprovementLock !== undefined) {
+        await skill.updateSelfImprovementLock(selfImprovementLock);
+      }
+      if (selfImprovementCostsCapMicroUsd !== undefined) {
+        await skill.updateSelfImprovementCostsCap(
+          selfImprovementCostsCapMicroUsd
+        );
+      }
 
       return res.status(200).json({ skill: skill.toJSON(auth) });
     }
