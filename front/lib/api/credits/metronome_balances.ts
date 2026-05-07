@@ -1,9 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
 import { listMetronomeBalances } from "@app/lib/metronome/client";
-import {
-  getCreditTypeAwuId,
-  getCreditTypeProgrammaticUsdId,
-} from "@app/lib/metronome/constants";
+import { getCreditTypeProgrammaticUsdId } from "@app/lib/metronome/constants";
 import type {
   MetronomeCommit,
   MetronomeCredit,
@@ -11,56 +8,16 @@ import type {
 import {
   isMetronomeExcessCredit,
   METRONOME_PROGRAMMATIC_USAGE_CREDIT_TO_MICRO_USD,
-  METRONOME_USER_CREDIT_TO_MICRO_USD,
 } from "@app/lib/metronome/types";
 import { apiError } from "@app/logger/withlogging";
 import type {
   CreditDisplayData,
   CreditType,
   GetCreditsResponseBody,
-  MetronomeBalanceCreditType,
 } from "@app/types/credits";
-import { METRONOME_BALANCE_CREDIT_TYPES } from "@app/types/credits";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import {
-  assertNever,
-  assertNeverAndIgnore,
-} from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
-import { fromError } from "zod-validation-error";
-
-const MetronomeBalanceCreditTypeSchema = z.enum(METRONOME_BALANCE_CREDIT_TYPES);
-
-const QuerySchema = z.object({
-  creditType: MetronomeBalanceCreditTypeSchema,
-});
-
-export function getMetronomeCreditTypeId(
-  creditType: MetronomeBalanceCreditType
-): string {
-  switch (creditType) {
-    case "programmatic_usage":
-      return getCreditTypeProgrammaticUsdId();
-    case "users":
-      return getCreditTypeAwuId();
-    default:
-      return assertNever(creditType);
-  }
-}
-
-function getMetronomeCreditToMicroUsdFactor(
-  creditType: MetronomeBalanceCreditType
-): number {
-  switch (creditType) {
-    case "programmatic_usage":
-      return METRONOME_PROGRAMMATIC_USAGE_CREDIT_TO_MICRO_USD;
-    case "users":
-      return METRONOME_USER_CREDIT_TO_MICRO_USD;
-    default:
-      return assertNever(creditType);
-  }
-}
 
 function mapMetronomeType(
   entry: MetronomeCommit | MetronomeCredit
@@ -112,17 +69,17 @@ function getScheduleTotals(entry: MetronomeCommit | MetronomeCredit): {
 }
 
 export function metronomeBalanceToDisplayData(
-  entry: MetronomeCommit | MetronomeCredit,
-  creditType: MetronomeBalanceCreditType
+  entry: MetronomeCommit | MetronomeCredit
 ): CreditDisplayData {
   const type = mapMetronomeType(entry);
   const { initialAmountCredits, startDateMs, expirationDateMs } =
     getScheduleTotals(entry);
-  const creditToMicroUsdFactor = getMetronomeCreditToMicroUsdFactor(creditType);
 
-  const initialAmountMicroUsd = initialAmountCredits * creditToMicroUsdFactor;
+  const initialAmountMicroUsd =
+    initialAmountCredits * METRONOME_PROGRAMMATIC_USAGE_CREDIT_TO_MICRO_USD;
   const balanceCredits = entry.balance ?? 0;
-  const remainingAmountMicroUsd = balanceCredits * creditToMicroUsdFactor;
+  const remainingAmountMicroUsd =
+    balanceCredits * METRONOME_PROGRAMMATIC_USAGE_CREDIT_TO_MICRO_USD;
   const consumedAmountMicroUsd = Math.max(
     0,
     initialAmountMicroUsd - remainingAmountMicroUsd
@@ -158,17 +115,6 @@ export async function handleMetronomeBalancesRequest(
 
   switch (req.method) {
     case "GET": {
-      const q = QuerySchema.safeParse(req.query);
-      if (!q.success) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: `Invalid query parameters: ${fromError(q.error).toString()}`,
-          },
-        });
-      }
-
       const workspace = auth.getNonNullableWorkspace();
       const { metronomeCustomerId } = workspace;
       if (!metronomeCustomerId) {
@@ -192,15 +138,14 @@ export async function handleMetronomeBalancesRequest(
         });
       }
 
-      const { creditType } = q.data;
-      const creditTypeId = getMetronomeCreditTypeId(creditType);
+      const programmaticUsdCreditTypeId = getCreditTypeProgrammaticUsdId();
       const credits: CreditDisplayData[] = result.value
         .filter(
           (entry) =>
-            !isMetronomeExcessCredit(entry) &&
-            entry.access_schedule?.credit_type?.id === creditTypeId
+            entry.access_schedule?.credit_type?.id ===
+              programmaticUsdCreditTypeId && !isMetronomeExcessCredit(entry)
         )
-        .map((entry) => metronomeBalanceToDisplayData(entry, creditType));
+        .map(metronomeBalanceToDisplayData);
 
       return res.status(200).json({ credits });
     }

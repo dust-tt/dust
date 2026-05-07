@@ -4,14 +4,6 @@ export const CREDIT_TYPES = ["free", "payg", "committed", "excess"] as const;
 
 export type CreditType = (typeof CREDIT_TYPES)[number];
 
-export const METRONOME_BALANCE_CREDIT_TYPES = [
-  "programmatic_usage",
-  "users",
-] as const;
-
-export type MetronomeBalanceCreditType =
-  (typeof METRONOME_BALANCE_CREDIT_TYPES)[number];
-
 // Consumption priority: free credits first, then committed, then pay-as-you-go.
 // Excess credits are never active and should not be consumed.
 export const CREDIT_TYPE_SORT_ORDER: Record<CreditType, number> = {
