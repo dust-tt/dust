@@ -20,11 +20,12 @@ function mockFileStream() {
 }
 
 describe("GET /api/w/[wId]/skills/[sId]/files/[fileId]/content", () => {
-  it("streams newly uploaded skill attachment files before the skill is saved", async () => {
+  it("streams newly uploaded skill attachment files for the scoped skill", async () => {
     const { auth, req, res, user } = await createPrivateApiMockRequest({
       method: "GET",
       role: "user",
     });
+    const skill = await SkillFactory.create(auth);
     const { getReadStreamSpy, pipeSpy } = mockFileStream();
 
     const file = await FileFactory.create(auth, user, {
@@ -33,11 +34,12 @@ describe("GET /api/w/[wId]/skills/[sId]/files/[fileId]/content", () => {
       fileSize: 14,
       status: "ready",
       useCase: "skill_attachment",
-      useCaseMetadata: null,
+      useCaseMetadata: { skillId: skill.sId },
     });
 
     req.query = {
       ...req.query,
+      sId: skill.sId,
       fileId: file.sId,
     };
 
@@ -73,6 +75,7 @@ describe("GET /api/w/[wId]/skills/[sId]/files/[fileId]/content", () => {
 
     req.query = {
       ...req.query,
+      sId: skill.sId,
       fileId: file.sId,
     };
 
@@ -108,6 +111,7 @@ describe("GET /api/w/[wId]/skills/[sId]/files/[fileId]/content", () => {
 
     req.query = {
       ...req.query,
+      sId: skill.sId,
       fileId: file.sId,
     };
 
@@ -130,6 +134,7 @@ describe("GET /api/w/[wId]/skills/[sId]/files/[fileId]/content", () => {
       method: "GET",
       role: "builder",
     });
+    const skill = await SkillFactory.create(auth);
 
     const file = await FileFactory.create(auth, user, {
       contentType: "text/plain",
@@ -142,6 +147,7 @@ describe("GET /api/w/[wId]/skills/[sId]/files/[fileId]/content", () => {
 
     req.query = {
       ...req.query,
+      sId: skill.sId,
       fileId: file.sId,
     };
 
@@ -154,5 +160,47 @@ describe("GET /api/w/[wId]/skills/[sId]/files/[fileId]/content", () => {
         message: "File not found.",
       },
     });
+  });
+
+  it("returns 404 when the file belongs to another skill", async () => {
+    const { auth, req, res, user } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "user",
+    });
+    const sourceSkill = await SkillFactory.create(auth, {
+      name: "Source Skill",
+    });
+    const requestedSkill = await SkillFactory.create(auth, {
+      name: "Requested Skill",
+    });
+    const { getReadStreamSpy } = mockFileStream();
+
+    const file = await FileFactory.create(auth, user, {
+      contentType: "text/plain",
+      fileName: "source-skill-only.txt",
+      fileSize: 11,
+      status: "ready",
+      useCase: "skill_attachment",
+      useCaseMetadata: { skillId: sourceSkill.sId },
+    });
+
+    req.query = {
+      ...req.query,
+      sId: requestedSkill.sId,
+      fileId: file.sId,
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(404);
+    expect(res._getJSONData()).toEqual({
+      error: {
+        type: "file_not_found",
+        message: "File not found.",
+      },
+    });
+    expect(getReadStreamSpy).not.toHaveBeenCalled();
+
+    getReadStreamSpy.mockRestore();
   });
 });
