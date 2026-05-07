@@ -74,6 +74,7 @@ import {
 } from "@connectors/types";
 import type { LoggerInterface } from "@dust-tt/client";
 import { removeNulls } from "@dust-tt/client";
+import type { Bucket } from "@google-cloud/storage";
 import { Storage } from "@google-cloud/storage";
 import type { Client } from "@microsoft/microsoft-graph-client";
 import { GraphError } from "@microsoft/microsoft-graph-client";
@@ -91,6 +92,21 @@ interface DeltaDataInGCS {
   rootNodeIds: string[];
   sortedChangedItems: DriveItem[];
   totalItems: number;
+}
+
+let _deltaSyncBucket: Bucket | null = null;
+function getDeltaSyncBucket(): Bucket {
+  if (!_deltaSyncBucket) {
+    const storage = new Storage({
+      keyFilename: isDevelopment()
+        ? connectorsConfig.getServiceAccount()
+        : undefined,
+    });
+    _deltaSyncBucket = storage.bucket(
+      connectorsConfig.getDustTmpSyncBucketName()
+    );
+  }
+  return _deltaSyncBucket;
 }
 
 // Creates a readable stream that yields JSON chunks for DeltaDataInGCS.
@@ -146,22 +162,31 @@ function createDeltaJsonStream(
 // for very large files (JavaScript string limit ~512MB).
 // Uses stream-json's Assembler to reconstruct the object from a token stream.
 async function readDeltaFromGCSStream(
-  file: ReturnType<ReturnType<Storage["bucket"]>["file"]>
+  file: ReturnType<Bucket["file"]>
 ): Promise<DeltaDataInGCS> {
-  return new Promise((resolve, reject) => {
-    const readStream = file.createReadStream();
-    const jsonParser = parser();
-    const assembler = Assembler.connectTo(jsonParser);
+  const readStream = file.createReadStream();
+  const jsonParser = parser();
 
-    assembler.on("done", (asm: Assembler) => {
-      resolve(asm.current as DeltaDataInGCS);
+  try {
+    const assembler = Assembler.connectTo(jsonParser);
+    const done = new Promise<DeltaDataInGCS>((resolve, reject) => {
+      assembler.on("done", (asm: Assembler) =>
+        resolve(asm.current as DeltaDataInGCS)
+      );
+      jsonParser.on("error", reject);
     });
 
-    readStream.on("error", reject);
-    jsonParser.on("error", reject);
-
-    readStream.pipe(jsonParser);
-  });
+    // `pipeline()` ensures both streams are torn down on error or completion, releasing the
+    // underlying TLS socket back to the agent pool.
+    const [, result] = await Promise.all([
+      pipeline(readStream, jsonParser),
+      done,
+    ]);
+    return result;
+  } finally {
+    readStream.destroy();
+    jsonParser.destroy();
+  }
 }
 
 const FILES_SYNC_CONCURRENCY = 10;
@@ -1409,13 +1434,7 @@ export async function fetchDeltaForRootNodesInDrive({
   const gcsFilePath = `microsoft-delta-sync/${connectorId}/${driveId}/${timestamp}_delta.json`;
 
   // Upload the delta data to GCS
-  const storage = new Storage({
-    keyFilename: isDevelopment()
-      ? connectorsConfig.getServiceAccount()
-      : undefined,
-  });
-  const bucket = storage.bucket(connectorsConfig.getDustTmpSyncBucketName());
-  const file = bucket.file(gcsFilePath);
+  const file = getDeltaSyncBucket().file(gcsFilePath);
 
   // Process changes in batches of 1000
   const uniqueChangedItems = removeAllButLastOccurences(results);
@@ -1550,13 +1569,7 @@ export async function cleanupDeltaGCSFile({
   const logger = getActivityLogger(connector);
 
   try {
-    const storage = new Storage({
-      keyFilename: isDevelopment()
-        ? connectorsConfig.getServiceAccount()
-        : undefined,
-    });
-    const bucket = storage.bucket(connectorsConfig.getDustTmpSyncBucketName());
-    const file = bucket.file(gcsFilePath);
+    const file = getDeltaSyncBucket().file(gcsFilePath);
 
     await file.delete();
     logger.info(
@@ -2277,13 +2290,7 @@ export async function processDeltaChangesFromGCS({
   const logger = getActivityLogger(connector);
 
   // Read the GCS file to get the list of changed items
-  const storage = new Storage({
-    keyFilename: isDevelopment()
-      ? connectorsConfig.getServiceAccount()
-      : undefined,
-  });
-  const bucket = storage.bucket(connectorsConfig.getDustTmpSyncBucketName());
-  const file = bucket.file(gcsFilePath);
+  const file = getDeltaSyncBucket().file(gcsFilePath);
 
   // Use streaming JSON parse to avoid "Invalid string length" error
   // when the file is too large to convert to a string.
