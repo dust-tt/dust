@@ -1,5 +1,6 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
+import { ConversationsUpdatedEvent } from "@app/lib/notifications/events";
 import { useAppRouter } from "@app/lib/platform";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import { getConversationRoute } from "@app/lib/utils/router";
@@ -78,6 +79,7 @@ export function useBranchConversation({
           return false;
         }
 
+        window.dispatchEvent(new ConversationsUpdatedEvent());
         void onConversationBranched?.();
         void router.push(
           getConversationRoute(owner.sId, responseBody.conversationId)
