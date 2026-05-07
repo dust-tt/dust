@@ -7,6 +7,7 @@ import {
   floorToHourISO,
   getMetronomeClient,
   getMetronomeContractById,
+  getMetronomeCustomerStripeCustomerId,
   scheduleMetronomeContractEnd,
 } from "@app/lib/metronome/client";
 import {
@@ -27,8 +28,15 @@ import {
   syncSeatCount,
 } from "@app/lib/metronome/seats";
 import { LEGACY_ENTERPRISE_PACKAGE_ALIAS } from "@app/lib/metronome/types";
-import { resolvePackageAliasForCurrency } from "@app/lib/plans/billing_currency";
-import { getStripeClient } from "@app/lib/plans/stripe";
+import {
+  resolveCurrencyFromStripe,
+  resolvePackageAliasForCurrency,
+} from "@app/lib/plans/billing_currency";
+import {
+  getStripeClient,
+  getStripeCustomer,
+  getStripeSubscription,
+} from "@app/lib/plans/stripe";
 import { countActiveUsersForPeriodInWorkspace } from "@app/lib/plans/usage/mau";
 import {
   isEnterpriseReportUsage,
@@ -167,6 +175,69 @@ export async function ensureMetronomeCustomerForWorkspace({
   }
 
   return new Ok({ metronomeCustomerId });
+}
+
+/**
+ * Resolve the billing currency for a workspace whose Metronome customer
+ * already exists. Tries the Stripe subscription first (when the workspace
+ * is Stripe-billed); falls back to the Stripe customer that's wired into
+ * the Metronome billing configuration (Metronome-only billing path).
+ *
+ * Returns an error when neither path yields a usable signal — existing
+ * customers are expected to have either a Stripe subscription or a linked
+ * Stripe billing config on the Metronome customer.
+ */
+export async function resolveCurrencyForExistingMetronomeCustomer({
+  metronomeCustomerId,
+  stripeSubscriptionId,
+}: {
+  metronomeCustomerId: string;
+  stripeSubscriptionId: string | null;
+}): Promise<Result<SupportedCurrency, Error>> {
+  const stripeSubscription = stripeSubscriptionId
+    ? await getStripeSubscription(stripeSubscriptionId)
+    : null;
+  if (stripeSubscription) {
+    return new Ok(resolveCurrencyFromStripe({ stripeSubscription }));
+  }
+
+  // Metronome-only billing path: no Stripe sub. Read the Stripe customer
+  // through the Metronome billing config, then derive currency from its
+  // currency / address.country.
+  const stripeCustomerIdResult =
+    await getMetronomeCustomerStripeCustomerId(metronomeCustomerId);
+  if (stripeCustomerIdResult.isErr()) {
+    return new Err(
+      new Error(
+        "Failed to resolve billing currency for Metronome customer " +
+          `${metronomeCustomerId}: could not read Stripe billing config: ` +
+          stripeCustomerIdResult.error.message
+      )
+    );
+  }
+
+  const stripeCustomerId = stripeCustomerIdResult.value;
+  if (!stripeCustomerId) {
+    return new Err(
+      new Error(
+        "Failed to resolve billing currency for Metronome customer " +
+          `${metronomeCustomerId}: no Stripe billing config found.`
+      )
+    );
+  }
+
+  const stripeCustomer = await getStripeCustomer(stripeCustomerId);
+  if (!stripeCustomer) {
+    return new Err(
+      new Error(
+        "Failed to resolve billing currency for Metronome customer " +
+          `${metronomeCustomerId}: Stripe customer ${stripeCustomerId} could ` +
+          "not be retrieved."
+      )
+    );
+  }
+
+  return new Ok(resolveCurrencyFromStripe({ stripeCustomer }));
 }
 
 /**
