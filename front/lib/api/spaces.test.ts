@@ -7,7 +7,6 @@ import {
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
-import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_member_resource";
@@ -1164,15 +1163,69 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
       );
       expect(deleteResult.isOk()).toBe(true);
 
-      // Verify the skill's requestedSpaceIds no longer contains the deleted space
-      // Note: We query the model directly because the MCP server views are cleaned up
-      // asynchronously by the scrub workflow and would fail permission checks
-      const skillAfter = await SkillConfigurationModel.findOne({
-        where: { id: skill.id, workspaceId: workspace.id },
-      });
+      const skillAfter = await SkillResource.fetchById(adminAuth, skill.sId);
       expect(skillAfter).not.toBeNull();
       expect(skillAfter!.requestedSpaceIds).not.toContain(space!.id);
       expect(skillAfter!.requestedSpaceIds).toHaveLength(0);
+    });
+
+    it("should preserve additional skill requestedSpaceIds when deleting a dependency space", async () => {
+      const toolSpaceResult = await createSpaceAndGroup(
+        adminAuth,
+        {
+          name: "Test Space With Tool",
+          isRestricted: false,
+          spaceKind: "regular",
+          managementMode: "manual",
+          memberIds: [],
+        },
+        { ignoreWorkspaceLimit: true }
+      );
+      expect(toolSpaceResult.isOk()).toBe(true);
+      const toolSpace = toolSpaceResult.isOk() ? toolSpaceResult.value : null;
+
+      const additionalSpaceResult = await createSpaceAndGroup(
+        adminAuth,
+        {
+          name: "Test Additional Skill Space",
+          isRestricted: false,
+          spaceKind: "regular",
+          managementMode: "manual",
+          memberIds: [],
+        },
+        { ignoreWorkspaceLimit: true }
+      );
+      expect(additionalSpaceResult.isOk()).toBe(true);
+      const additionalSpace = additionalSpaceResult.isOk()
+        ? additionalSpaceResult.value
+        : null;
+
+      const server = await RemoteMCPServerFactory.create(workspace, {
+        name: "Test Server",
+      });
+      const serverView = await MCPServerViewFactory.create(
+        workspace,
+        server.sId,
+        toolSpace!
+      );
+
+      const skill = await SkillFactory.create(adminAuth, {
+        name: "Test Skill With Tool And Additional Space",
+        requestedSpaceIds: [toolSpace!.id, additionalSpace!.id],
+        mcpServerViews: [serverView],
+      });
+
+      const deleteResult = await softDeleteSpaceAndLaunchScrubWorkflow(
+        adminAuth,
+        toolSpace!,
+        true
+      );
+      expect(deleteResult.isOk()).toBe(true);
+
+      const skillAfter = await SkillResource.fetchById(adminAuth, skill.sId);
+      expect(skillAfter).not.toBeNull();
+      expect(skillAfter!.requestedSpaceIds).not.toContain(toolSpace!.id);
+      expect(skillAfter!.requestedSpaceIds).toEqual([additionalSpace!.id]);
     });
 
     it("should only remove deleted space from agent requestedSpaceIds, keeping other spaces", async () => {
