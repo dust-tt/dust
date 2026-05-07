@@ -37,12 +37,22 @@ function parseProjectTaskTimeScope(
   return "active";
 }
 
-function parsePeopleMineOnly(req: NextApiRequest): boolean {
+type ProjectTasksPeopleFetchMode = "all" | "mine" | "unassigned";
+
+function parseProjectTasksPeopleMode(
+  req: NextApiRequest
+): ProjectTasksPeopleFetchMode {
   const legacy = parseSingleQueryValue(req.query.assignee)?.toLowerCase();
   const explicit = parseSingleQueryValue(req.query.people)?.toLowerCase();
 
   const token = explicit ?? legacy ?? "all";
-  return token === "mine";
+  if (token === "mine") {
+    return "mine";
+  }
+  if (token === "unassigned") {
+    return "unassigned";
+  }
+  return "all";
 }
 
 import { apiError } from "@app/logger/withlogging";
@@ -63,7 +73,8 @@ const PostProjectTaskBodySchema = z.object({
     .trim()
     .min(1, "Text is required.")
     .max(256, "Text must be at most 256 characters."),
-  assigneeUserId: z.string().min(1, "Assignee is required."),
+  /** Omit to assign to the current user; pass `null` to leave the task unassigned. */
+  assigneeUserId: z.union([z.string().min(1), z.null()]).optional(),
 });
 
 export interface PostProjectTaskResponseBody {
@@ -97,16 +108,20 @@ async function handler(
         spaceId: space.id,
       });
       const timeScope = parseProjectTaskTimeScope(req);
-      const viewerOnlyMine = parsePeopleMineOnly(req);
+      const peopleMode = parseProjectTasksPeopleMode(req);
       let assigneeUserId: ModelId | null = null;
-      if (viewerOnlyMine) {
+      let onlyUnassigned = false;
+      if (peopleMode === "mine") {
         assigneeUserId = currentUser.id;
+      } else if (peopleMode === "unassigned") {
+        onlyUnassigned = true;
       }
 
       const todos = await ProjectTaskResource.fetchBySpace(auth, {
         spaceId: space.id,
         timeScope,
         assigneeUserId,
+        onlyUnassigned,
       });
 
       const todoIds = todos.map((t) => t.sId);
@@ -181,34 +196,43 @@ async function handler(
       const workspace = auth.getNonNullableWorkspace();
       const currentUser = auth.getNonNullableUser();
 
-      const assigneeAuth = await Authenticator.fromUserIdAndWorkspaceId(
-        assigneeUserId,
-        workspace.sId
-      );
-      const assigneeUser = assigneeAuth.user();
-      if (!assigneeUser) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Assignee user not found.",
-          },
-        });
-      }
+      let taskUserModelId: ModelId | null;
+      if (assigneeUserId === undefined) {
+        taskUserModelId = currentUser.id;
+      } else if (assigneeUserId === null) {
+        taskUserModelId = null;
+      } else {
+        const assigneeAuth = await Authenticator.fromUserIdAndWorkspaceId(
+          assigneeUserId,
+          workspace.sId
+        );
+        const assigneeUser = assigneeAuth.user();
+        if (!assigneeUser) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "Assignee user not found.",
+            },
+          });
+        }
 
-      if (!space.isMember(assigneeAuth)) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Assignee must be a member of this project.",
-          },
-        });
+        if (!space.isMember(assigneeAuth)) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "Assignee must be a member of this project.",
+            },
+          });
+        }
+
+        taskUserModelId = assigneeUser.id;
       }
 
       const newTodo = await ProjectTaskResource.makeNew(auth, {
         spaceId: space.id,
-        userId: assigneeUser.id,
+        userId: taskUserModelId,
         createdByType: "user",
         createdByUserId: currentUser.id,
         createdByAgentConfigurationId: null,

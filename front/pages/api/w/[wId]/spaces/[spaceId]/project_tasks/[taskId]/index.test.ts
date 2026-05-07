@@ -177,6 +177,26 @@ describe("PATCH /api/w/[wId]/spaces/[spaceId]/project_tasks/[taskId]", () => {
     expect(updated.text).toBe("Hand off this");
   });
 
+  it("should clear a todo assignee when assigneeUserId is null", async () => {
+    const { user } = await setup();
+    const project = await SpaceFactory.project(workspace, user.id);
+    const todo = await ProjectTaskFactory.create(workspace, project, {
+      userId: user.id,
+      text: "Unassign me",
+    });
+
+    req.query.spaceId = project.sId;
+    req.query.taskId = todo.sId;
+    req.body = { assigneeUserId: null };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const { task: updated } = res._getJSONData();
+    expect(updated.user).toBeNull();
+    expect(updated.text).toBe("Unassign me");
+  });
+
   it("should return 400 when no update fields are provided", async () => {
     const { user } = await setup();
     const project = await SpaceFactory.project(workspace, user.id);

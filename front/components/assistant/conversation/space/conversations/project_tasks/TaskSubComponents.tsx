@@ -2,10 +2,11 @@ import { useAppRouter } from "@app/lib/platform";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useUser } from "@app/lib/swr/user";
 import { timeAgoFrom } from "@app/lib/utils";
-import type {
-  ProjectTaskActorType,
-  ProjectTaskAssigneeType,
-  ProjectTaskType,
+import {
+  PROJECT_TASK_NO_ASSIGNEE_LABEL,
+  type ProjectTaskActorType,
+  type ProjectTaskAssigneeType,
+  type ProjectTaskType,
 } from "@app/types/project_task";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type {
@@ -280,22 +281,35 @@ export function TaskAssigneeHeader({
   className?: string;
 }) {
   const isYou = viewerUserId !== null && user?.sId === viewerUserId;
+  const displayName =
+    user === null ? PROJECT_TASK_NO_ASSIGNEE_LABEL : user.fullName;
 
   return (
     <div className={cn("mb-1 mt-2 flex items-center gap-2", className)}>
       <Tooltip
-        label={user?.fullName ?? "Unknown user"}
+        label={displayName}
         trigger={
-          <Avatar
-            size="xxs"
-            isRounded
-            visual={user?.image ?? "/static/humanavatar/anonymous.png"}
-          />
+          <span className="inline-flex shrink-0 items-center justify-center">
+            {user !== null ? (
+              <Avatar
+                size="xxs"
+                isRounded
+                visual={user.image ?? "/static/humanavatar/anonymous.png"}
+              />
+            ) : (
+              <Avatar
+                size="xxs"
+                isRounded
+                visual={null}
+                className="bg-background dark:bg-background-night"
+              />
+            )}
+          </span>
         }
       />
       <span className="text-sm font-medium text-muted-foreground dark:text-muted-foreground-night">
-        {user?.fullName ?? "Unknown user"}
-        {isYou ? " (you)" : ""}
+        {displayName}
+        {user !== null && isYou ? " (you)" : ""}
       </span>
     </div>
   );

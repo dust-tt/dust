@@ -459,7 +459,7 @@ export function useCreateProjectTask({
     assigneeUserId,
   }: {
     text: string;
-    assigneeUserId: string;
+    assigneeUserId: string | null;
   }): Promise<Result<ProjectTaskType, Error>> => {
     try {
       const res = await clientFetch(
@@ -509,7 +509,7 @@ export function useUpdateProjectTask({
     updates: {
       text?: string;
       status?: ProjectTaskStatus;
-      assigneeUserId?: string;
+      assigneeUserId?: string | null;
     }
   ): Promise<Result<ProjectTaskType, Error>> => {
     try {

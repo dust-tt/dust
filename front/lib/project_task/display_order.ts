@@ -1,7 +1,9 @@
-import type {
-  ProjectTaskAssigneeType,
-  ProjectTaskStatus,
-  ProjectTaskType,
+import {
+  PROJECT_TASK_NO_ASSIGNEE_LABEL,
+  PROJECT_TASK_UNASSIGNED_GROUP_KEY,
+  type ProjectTaskAssigneeType,
+  type ProjectTaskStatus,
+  type ProjectTaskType,
 } from "@app/types/project_task";
 
 const PROJECT_TODO_STATUS_SORT_RANK: Record<ProjectTaskStatus, number> = {
@@ -71,13 +73,18 @@ export function compareProjectTaskAssigneeGroups(
   b: { user: ProjectTaskAssigneeType | null },
   viewerUserId: string | null
 ): number {
+  const aUnassigned = a.user === null;
+  const bUnassigned = b.user === null;
+  if (aUnassigned !== bUnassigned) {
+    return aUnassigned ? -1 : 1;
+  }
   const aIsViewer = viewerUserId !== null && a.user?.sId === viewerUserId;
   const bIsViewer = viewerUserId !== null && b.user?.sId === viewerUserId;
   if (aIsViewer !== bIsViewer) {
     return aIsViewer ? -1 : 1;
   }
-  const aName = a.user?.fullName ?? "";
-  const bName = b.user?.fullName ?? "";
+  const aName = a.user?.fullName ?? PROJECT_TASK_NO_ASSIGNEE_LABEL;
+  const bName = b.user?.fullName ?? PROJECT_TASK_NO_ASSIGNEE_LABEL;
   return aName.localeCompare(bName, undefined, { sensitivity: "base" });
 }
 
@@ -97,7 +104,7 @@ export function flattenProjectTasksWithStableAssigneeOrder(
 
   for (const task of rawTasks) {
     const user = task.user ?? null;
-    const key = user?.sId ?? `unknown-${task.id}`;
+    const key = user?.sId ?? PROJECT_TASK_UNASSIGNED_GROUP_KEY;
     const existing = groups.get(key);
     if (existing) {
       existing.todos.push(task);
@@ -112,7 +119,7 @@ export function flattenProjectTasksWithStableAssigneeOrder(
 
   const flattened: ProjectTaskType[] = [];
   for (const group of sortedGroups) {
-    const key = group.user?.sId ?? `unknown-${group.todos[0]?.id}`;
+    const key = group.user?.sId ?? PROJECT_TASK_UNASSIGNED_GROUP_KEY;
     const prev = stableOrderByAssigneeKey.get(key);
     const mergedIds = mergeProjectTodoStableOrder(prev, group.todos);
     stableOrderByAssigneeKey.set(key, mergedIds);

@@ -38,10 +38,11 @@ import { getConversationRoute } from "@app/lib/utils/router";
 import type { BulkActionsBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_tasks/bulk-actions";
 import type { GetProjectTasksResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_tasks/index";
 import { compareAgentsForSort } from "@app/types/assistant/assistant";
-import type {
-  ProjectTaskAssigneeType,
-  ProjectTaskStatus,
-  ProjectTaskType,
+import {
+  PROJECT_TASK_UNASSIGNED_GROUP_KEY,
+  type ProjectTaskAssigneeType,
+  type ProjectTaskStatus,
+  type ProjectTaskType,
 } from "@app/types/project_task";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 
@@ -198,7 +199,7 @@ export function useProjectTasksPanelState({
 
     for (const task of filteredTasks) {
       const user = task.user ?? null;
-      const key = user?.sId ?? `unknown-${task.id}`;
+      const key = user?.sId ?? PROJECT_TASK_UNASSIGNED_GROUP_KEY;
       const existing = groups.get(key);
       if (existing) {
         existing.tasks.push(task);
@@ -353,7 +354,7 @@ export function useProjectTasksPanelState({
   const patchTaskItem = useCallback(
     async (
       taskId: string,
-      updates: { text?: string; assigneeUserId?: string }
+      updates: { text?: string; assigneeUserId?: string | null }
     ) => {
       const result = await doUpdate(taskId, updates);
       if (result.isErr()) {
@@ -444,7 +445,7 @@ export function useProjectTasksPanelState({
   );
 
   const handleAddTask = useCallback(
-    async (text: string, assigneeSId: string): Promise<boolean> => {
+    async (text: string, assigneeSId: string | null): Promise<boolean> => {
       const result = await doCreateTask({
         text,
         assigneeUserId: assigneeSId,
