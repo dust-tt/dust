@@ -96,21 +96,26 @@ export function useWorkspace({
 
 export function useWorkspaceSubscriptions({
   owner,
+  disabled,
 }: {
   owner: LightWorkspaceType;
+  disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
-  const workspaceSubscrptionsFetcher: Fetcher<GetSubscriptionsResponseBody> =
+  const workspaceSubscriptionsFetcher: Fetcher<GetSubscriptionsResponseBody> =
     fetcher;
 
   const { data, error } = useSWRWithDefaults(
     `/api/w/${owner.sId}/subscriptions`,
-    workspaceSubscrptionsFetcher
+    workspaceSubscriptionsFetcher,
+    {
+      disabled,
+    }
   );
 
   return {
     subscriptions: data?.subscriptions ?? emptyArray(),
-    isSubscriptionsLoading: !error && !data,
+    isSubscriptionsLoading: !error && !data && !disabled,
     isSubscriptionsError: error,
   };
 }

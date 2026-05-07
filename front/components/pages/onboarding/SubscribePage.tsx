@@ -24,6 +24,7 @@ export function SubscribePage() {
 
   const { subscriptions } = useWorkspaceSubscriptions({
     owner: workspace,
+    disabled: !isAdmin,
   });
 
   const [billingPeriod, setBillingPeriod] =
