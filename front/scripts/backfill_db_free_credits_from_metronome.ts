@@ -94,6 +94,7 @@ async function backfillFromMetronome(
   execute: boolean,
   logger: Logger
 ): Promise<void> {
+  logger.info({ workspaceId: workspace.sId }, "---- Starting ----");
   const { metronomeCustomerId } = workspace;
   if (!metronomeCustomerId) {
     return;
