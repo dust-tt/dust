@@ -20,6 +20,7 @@ import {
   isPAYGEnabled,
 } from "@app/lib/credits/payg";
 import { handleMetronomeSetupCheckout } from "@app/lib/metronome/checkout";
+import { storeMetronomeCheckoutError } from "@app/lib/metronome/checkout_error";
 import {
   floorToHourISO,
   reactivateMetronomeContract,
@@ -260,6 +261,11 @@ async function handler(
               return res.status(200).json({ success: true });
             }
 
+            await storeMetronomeCheckoutError({
+              sessionId: session.id,
+              message: result.error.message,
+            });
+
             switch (result.error.code) {
               case "subscription_already_exists":
               case "workspace_not_found":
@@ -267,24 +273,19 @@ async function handler(
                   { error: result.error, workspaceId, planCode },
                   `[Stripe Webhook] Metronome setup: ${result.error.message}`
                 );
-                return res
-                  .status(200)
-                  .json({ success: false, message: result.error.message });
+                break;
 
               default:
                 logger.error(
                   { error: result.error, workspaceId, planCode },
                   `[Stripe Webhook] Metronome setup: ${result.error.message}`
                 );
-                return apiError(req, res, {
-                  status_code: 500,
-                  api_error: {
-                    type: "internal_server_error",
-                    message:
-                      "Stripe Webhook: error handling Metronome setup checkout.session.completed.",
-                  },
-                });
+                break;
             }
+
+            return res
+              .status(200)
+              .json({ success: false, message: result.error.message });
           }
 
           try {
