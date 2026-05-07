@@ -11,7 +11,6 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_member_resource";
-import { KeyResource } from "@app/lib/resources/key_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -95,20 +94,6 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
     return new Err(
       new Error(
         `Cannot delete space with data source or app in use by agent(s): ${agentNames.join(", ")}. If you'd like to continue set the force query parameter to true.`
-      )
-    );
-  }
-
-  const groupHasKeys = await KeyResource.countActiveForGroups(
-    auth,
-    space.groups.filter(
-      (g) => (!space.isRegular() && !space.isProject()) || !g.isGlobal()
-    )
-  );
-  if (groupHasKeys > 0) {
-    return new Err(
-      new Error(
-        "Cannot delete group with active API Keys. Please revoke all keys before."
       )
     );
   }

@@ -50,7 +50,7 @@ import type {
   Transaction,
   WhereOptions,
 } from "sequelize";
-import { Op, QueryTypes } from "sequelize";
+import { col, fn, Op, QueryTypes } from "sequelize";
 
 export const ADMIN_GROUP_NAME = "dust-admins";
 export const BUILDER_GROUP_NAME = "dust-builders";
@@ -1961,13 +1961,18 @@ export class GroupResource extends BaseResource<GroupModel> {
       });
       const memberUserIds = activeMemberships.map((m) => m.userId);
 
-      await KeyModel.destroy({
-        where: {
-          groupIds: { [Op.contains]: [this.id] },
-          workspaceId: owner.id,
+      await KeyModel.update(
+        {
+          groupIds: fn("array_remove", col("groupIds"), this.id),
         },
-        transaction,
-      });
+        {
+          where: {
+            groupIds: { [Op.contains]: [this.id] },
+            workspaceId: owner.id,
+          },
+          transaction,
+        }
+      );
 
       await GroupSpaceModel.destroy({
         where: {
