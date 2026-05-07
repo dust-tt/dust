@@ -217,12 +217,14 @@ export function CheckoutPage() {
             <Spinner size="lg" />
           </div>
         ) : (
-          <EmbeddedCheckoutProvider
-            stripe={getStripePromise()}
-            options={{ clientSecret }}
-          >
-            <EmbeddedCheckout />
-          </EmbeddedCheckoutProvider>
+          <div className="pb-24">
+            <EmbeddedCheckoutProvider
+              stripe={getStripePromise()}
+              options={{ clientSecret }}
+            >
+              <EmbeddedCheckout />
+            </EmbeddedCheckoutProvider>
+          </div>
         )}
       </div>
     </main>
