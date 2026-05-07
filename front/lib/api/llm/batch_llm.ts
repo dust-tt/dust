@@ -299,7 +299,6 @@ export async function sendBatchCallToLlm(
   const batchMap = new Map<string, LLMStreamParameters>();
 
   const modelConfig = llm.getModelConfig();
-  const renderSkillsAsUserMessages = true;
 
   for (const input of conversations) {
     // Store new messages in DB.
@@ -339,7 +338,7 @@ export async function sendBatchCallToLlm(
       leadingMessages,
       enabledSkills: enabledSkills ?? [],
       prompt: promptText,
-      renderSkillsAsUserMessages,
+      renderSkillsAsUserMessages: true,
       tools,
       allowedTokenCount:
         modelConfig.contextSize - modelConfig.generationTokensCount,

@@ -179,7 +179,6 @@ async function handler(
         attachments,
       });
 
-      const renderSkillsAsUserMessages = true;
       const skillsEnabledSinceLastCompaction = hasSucceededCompactionMessage(
         conversation
       )
@@ -304,18 +303,14 @@ async function handler(
         enabledSkills,
         systemSkills,
         equippedSkills,
-        renderSkillsAsUserMessages,
+        renderSkillsAsUserMessages: true,
         projectContext,
         isNewFileExplorer,
       });
       const prompt = systemPromptToText(promptSections);
       const leadingMessages = [
         ...renderEnabledSkillUserMessages(legacyEnabledSkills),
-        ...removeNulls(
-          renderSkillsAsUserMessages
-            ? [renderEquippedSkillsUserMessage(equippedSkills)]
-            : []
-        ),
+        ...removeNulls([renderEquippedSkillsUserMessage(equippedSkills)]),
       ];
 
       // Build tool specifications to estimate tokens for tool definitions (names + schemas only).
@@ -352,7 +347,7 @@ async function handler(
         agentConfiguration,
         leadingMessages,
         enabledSkills,
-        renderSkillsAsUserMessages,
+        renderSkillsAsUserMessages: true,
       });
 
       if (convoRes.isErr()) {
