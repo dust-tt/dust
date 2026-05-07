@@ -331,7 +331,7 @@ export const subNavigationAdmin = ({
         },
         {
           id: "reinforcement",
-          label: "Reinforcement",
+          label: "Self-Improving Skills",
           icon: SparklesIcon,
           href: `/w/${owner.sId}/developers/reinforcement`,
           current: isCurrent("reinforcement"),

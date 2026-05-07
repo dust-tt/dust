@@ -228,7 +228,7 @@ export function WorkspaceInfoTable({
               </>
             )}
             <PokeTableRow>
-              <PokeTableCell>Reinforcement</PokeTableCell>
+              <PokeTableCell>Self-Improving Skills</PokeTableCell>
               <PokeTableCell>
                 <LinkWrapper
                   href={`https://cloud.temporal.io/namespaces/${temporalFrontNamespace}/schedules?query=%60ScheduleId%60%3D%22reinforcement-workspace-${owner.sId}%22`}

@@ -22,14 +22,14 @@ export function ReinforcementPage() {
     if (!isAdmin) {
       return (
         <ContentMessage variant="info" icon={InformationCircleIcon} size="lg">
-          Only workspace admins can manage reinforcement settings.
+          Only workspace admins can manage Self-Improving Skills settings.
         </ContentMessage>
       );
     }
     if (!hasReinforcement) {
       return (
         <ContentMessage variant="info" icon={InformationCircleIcon} size="lg">
-          Reinforcement is not enabled for this workspace.
+          Self-Improving Skills is not enabled for this workspace.
         </ContentMessage>
       );
     }
@@ -51,14 +51,14 @@ export function ReinforcementPage() {
       <Page.Header
         title={
           <span className="flex items-center gap-2">
-            Reinforcement
+            Self-Improving Skills
             <Chip size="xs" color="golden" label="Beta" />
           </span>
         }
         icon={SparklesIcon}
         description={
           <span>
-            Configure skill reinforcement settings for this workspace.{" "}
+            Configure Self-Improving Skills settings for this workspace.{" "}
             <a
               href="https://docs.dust.tt/docs/reinforcement"
               target="_blank"

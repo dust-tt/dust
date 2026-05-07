@@ -580,7 +580,7 @@ export function ConversationPage() {
               disabled={isRendering}
             />
             <Button
-              label="Reinforcement test"
+              label="Self-Improving Skills test"
               variant="primary"
               size="xs"
               onClick={() => void copyTestCase()}

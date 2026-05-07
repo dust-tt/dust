@@ -30,14 +30,14 @@ export function useReinforcementToggle({ owner }: UseReinforcementToggleProps) {
       });
 
       if (!res.ok) {
-        throw new Error("Failed to update agent reinforcement setting");
+        throw new Error("Failed to update Self-Improving Skills setting");
       }
       setIsEnabled(!isEnabled);
       return true;
     } catch (error) {
       sendNotification({
         type: "error",
-        title: "Failed to update agent reinforcement setting",
+        title: "Failed to update Self-Improving Skills setting",
         description: normalizeError(error).message,
       });
       return false;
@@ -80,14 +80,14 @@ export function useReinforcementBatchModeToggle({
       });
 
       if (!res.ok) {
-        throw new Error("Failed to update reinforcement batch mode setting");
+        throw new Error("Failed to update Self-Improving Skills batch mode setting");
       }
       setIsEnabled(!isEnabled);
       return true;
     } catch (error) {
       sendNotification({
         type: "error",
-        title: "Failed to update reinforcement batch mode setting",
+        title: "Failed to update Self-Improving Skills batch mode setting",
         description: normalizeError(error).message,
       });
       return false;
@@ -134,13 +134,13 @@ export function useReinforcementCapSetting({
       });
 
       if (!res.ok) {
-        throw new Error("Failed to update reinforcement spending cap");
+        throw new Error("Failed to update Self-Improving Skills spending cap");
       }
       return true;
     } catch (error) {
       sendNotification({
         type: "error",
-        title: "Failed to update reinforcement spending cap",
+        title: "Failed to update Self-Improving Skills spending cap",
         description: normalizeError(error).message,
       });
       return false;
