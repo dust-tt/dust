@@ -293,7 +293,7 @@ export function useUpdateSkillReinforcement({
   const updateReinforcement = useCallback(
     async (skillId: string, reinforcement: SkillReinforcementMode) => {
       try {
-        await fetcher(`/api/w/${owner.sId}/skills/${skillId}`, {
+        await fetcher(`/api/w/${owner.sId}/skills/${skillId}/reinforcement`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ reinforcement }),

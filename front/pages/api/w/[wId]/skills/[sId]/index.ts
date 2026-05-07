@@ -48,8 +48,8 @@ export type DeleteSkillResponseBody = {
   success: boolean;
 };
 
-// Request body schema for a full PATCH (skill edit).
-const PatchSkillFullRequestBodySchema = t.intersection([
+// Request body schema for PATCH.
+const PatchSkillRequestBodySchema = t.intersection([
   t.type({
     name: t.string,
     agentFacingDescription: t.string,
@@ -75,18 +75,7 @@ const PatchSkillFullRequestBodySchema = t.intersection([
   }),
 ]);
 
-type PatchSkillFullRequestBody = t.TypeOf<
-  typeof PatchSkillFullRequestBodySchema
->;
-
-// Request body schema for a reinforcement-only PATCH.
-const PatchSkillReinforcementOnlyRequestBodySchema = t.type({
-  reinforcement: t.union([
-    t.literal("auto"),
-    t.literal("on"),
-    t.literal("off"),
-  ]),
-});
+type PatchSkillRequestBody = t.TypeOf<typeof PatchSkillRequestBodySchema>;
 
 async function handler(
   req: NextApiRequest,
@@ -165,35 +154,7 @@ async function handler(
     }
 
     case "PATCH": {
-      // Reinforcement-only update: a body with just `reinforcement` is
-      // accepted as a partial PATCH that only flips the reinforcement field.
-      const reinforcementOnlyValidation =
-        PatchSkillReinforcementOnlyRequestBodySchema.decode(req.body);
-      const isReinforcementOnly =
-        !isLeft(reinforcementOnlyValidation) &&
-        Object.keys(req.body ?? {}).length === 1;
-
-      if (isReinforcementOnly && !isLeft(reinforcementOnlyValidation)) {
-        if (!skill.canWrite(auth)) {
-          return apiError(req, res, {
-            status_code: 403,
-            api_error: {
-              type: "app_auth_error",
-              message: "Only editors can modify this skill.",
-            },
-          });
-        }
-
-        await skill.updateReinforcement(
-          reinforcementOnlyValidation.right.reinforcement
-        );
-
-        return res.status(200).json({
-          skill: skill.toJSON(auth),
-        });
-      }
-
-      const bodyValidation = PatchSkillFullRequestBodySchema.decode(req.body);
+      const bodyValidation = PatchSkillRequestBodySchema.decode(req.body);
 
       if (isLeft(bodyValidation)) {
         const pathError = reporter.formatValidationErrors(bodyValidation.left);
@@ -206,7 +167,7 @@ async function handler(
         });
       }
 
-      const body: PatchSkillFullRequestBody = bodyValidation.right;
+      const body: PatchSkillRequestBody = bodyValidation.right;
       const name = body.name.trim();
 
       if (!name) {
