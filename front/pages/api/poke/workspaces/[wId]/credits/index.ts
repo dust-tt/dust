@@ -86,7 +86,9 @@ async function handler(
             periodEnd: now,
           }),
           metronomeCustomerId
-            ? listMetronomeBalances(metronomeCustomerId)
+            ? listMetronomeBalances(metronomeCustomerId, {
+                includeExpired: true,
+              })
             : null,
         ]);
 
@@ -136,14 +138,25 @@ async function handler(
         });
       }
 
+      const nowMs = Date.now();
       for (const [sId, metronome] of metronomeBySId) {
-        if (!matchedSIds.has(sId)) {
-          rows.push({
-            rowKey: `m-${sId}`,
-            internal: null,
-            metronome,
-          });
+        if (matchedSIds.has(sId)) {
+          continue;
         }
+        // Expired credits are fetched only to surface matches against internal
+        // records; unmatched expired entries should not show up as
+        // "Metronome only" noise.
+        if (
+          metronome.expirationDate !== null &&
+          metronome.expirationDate < nowMs
+        ) {
+          continue;
+        }
+        rows.push({
+          rowKey: `m-${sId}`,
+          internal: null,
+          metronome,
+        });
       }
 
       return res.status(200).json({
