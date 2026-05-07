@@ -19,8 +19,11 @@
 import {
   ceilToHourISO,
   epochSecondsToFloorHourISO,
+  floorToHourISO,
   getMetronomeClient,
+  getMetronomeContractById,
 } from "@app/lib/metronome/client";
+import { getProductWorkspaceSeatId } from "@app/lib/metronome/constants";
 import {
   applyEnterpriseOverrides,
   buildEnterpriseOverrides,
@@ -29,7 +32,6 @@ import {
   extractEnterprisePricing,
 } from "@app/lib/metronome/contracts";
 import { syncMauCount } from "@app/lib/metronome/mau_sync";
-import { syncSeatCount } from "@app/lib/metronome/seats";
 import {
   LEGACY_BUSINESS_PACKAGE_ALIAS,
   LEGACY_ENTERPRISE_EUR_PACKAGE_ALIAS,
@@ -44,12 +46,14 @@ import {
   PRO_PLAN_SEAT_39_CODE,
 } from "@app/lib/plans/plan_codes";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
+import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import { isSupportedCurrency } from "@app/types/currency";
 import type { LightWorkspaceType } from "@app/types/user";
+import { Op } from "sequelize";
 import { makeScript } from "./helpers";
 import { runOnAllWorkspaces } from "./workspace_helpers";
 
@@ -508,20 +512,129 @@ async function migrateWorkspace(
       );
     }
   } else {
-    const seatResult = await syncSeatCount({
-      metronomeCustomerId,
-      contractId: newContractId,
-      workspace,
-      startingAt: subInfo.startDate,
+    // Backfill seat counts across the current billing period: start with the
+    // member count at periodStart, then push every change since then.
+    const periodStart = new Date(subInfo.startDate);
+    const now = new Date();
+
+    const initialCount = await MembershipModel.count({
+      where: {
+        workspaceId: workspace.id,
+        startAt: { [Op.lte]: periodStart },
+        [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: periodStart } }],
+      },
     });
-    if (seatResult.isErr()) {
+
+    const memberships = await MembershipModel.findAll({
+      attributes: ["startAt", "endAt"],
+      where: {
+        workspaceId: workspace.id,
+        [Op.or]: [
+          { startAt: { [Op.gt]: periodStart, [Op.lte]: now } },
+          { endAt: { [Op.gt]: periodStart, [Op.lte]: now } },
+        ],
+      },
+    });
+
+    const events: Array<{ at: Date; delta: number }> = [];
+    for (const m of memberships) {
+      if (m.startAt > periodStart && m.startAt <= now) {
+        events.push({ at: m.startAt, delta: 1 });
+      }
+      if (m.endAt && m.endAt > periodStart && m.endAt <= now) {
+        events.push({ at: m.endAt, delta: -1 });
+      }
+    }
+    events.sort((a, b) => a.at.getTime() - b.at.getTime());
+
+    const timeline: Array<{ startingAt: string; quantity: number }> = [
+      {
+        startingAt: floorToHourISO(periodStart),
+        quantity: initialCount,
+      },
+    ];
+    let runningCount = initialCount;
+    let lastEmittedQuantity = timeline[0].quantity;
+    let pendingHour: string | null = null;
+    for (const ev of events) {
+      const hourIso = floorToHourISO(ev.at);
+      if (pendingHour !== null && hourIso !== pendingHour) {
+        if (runningCount !== lastEmittedQuantity) {
+          timeline.push({ startingAt: pendingHour, quantity: runningCount });
+          lastEmittedQuantity = runningCount;
+        }
+        pendingHour = null;
+      }
+      runningCount += ev.delta;
+      pendingHour = hourIso;
+    }
+    if (pendingHour !== null && runningCount !== lastEmittedQuantity) {
+      timeline.push({ startingAt: pendingHour, quantity: runningCount });
+    }
+
+    // Find the seat subscription id on the freshly-created contract.
+    const contractResult = await getMetronomeContractById({
+      metronomeCustomerId,
+      metronomeContractId: newContractId,
+    });
+    if (contractResult.isErr()) {
       logger.error(
         {
           workspaceId: workspace.sId,
           contractId: newContractId,
-          error: seatResult.error.message,
+          error: contractResult.error.message,
         },
-        "Failed to provision seats on new contract"
+        "Failed to fetch new contract for seat backfill"
+      );
+      return;
+    }
+    const seatProductId = getProductWorkspaceSeatId();
+    const seatSubscription = contractResult.value.subscriptions?.find(
+      (s) => s.subscription_rate.product.id === seatProductId
+    );
+    if (!seatSubscription?.id) {
+      logger.error(
+        { workspaceId: workspace.sId, contractId: newContractId },
+        "No Workspace Seat subscription on new contract — cannot backfill seats"
+      );
+      return;
+    }
+
+    logger.info(
+      {
+        workspaceId: workspace.sId,
+        contractId: newContractId,
+        subscriptionId: seatSubscription.id,
+        periodStart: periodStart.toISOString(),
+        changes: timeline.length,
+        first: timeline[0],
+        last: timeline[timeline.length - 1],
+      },
+      `Applying ${timeline.length} seat quantity update(s) to new contract`
+    );
+
+    try {
+      await client.v2.contracts.edit({
+        customer_id: metronomeCustomerId,
+        contract_id: newContractId,
+        update_subscriptions: [
+          {
+            subscription_id: seatSubscription.id,
+            quantity_updates: timeline.map((e) => ({
+              starting_at: e.startingAt,
+              quantity: e.quantity,
+            })),
+          },
+        ],
+      });
+    } catch (err) {
+      logger.error(
+        {
+          workspaceId: workspace.sId,
+          contractId: newContractId,
+          error: err instanceof Error ? err.message : String(err),
+        },
+        "Failed to apply seat quantity updates on new contract"
       );
     }
   }

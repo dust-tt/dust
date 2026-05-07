@@ -6,6 +6,7 @@ import { CreateOrUpdateConnectionBigQueryModal } from "@app/components/data_sour
 import { CreateOrUpdateConnectionSnowflakeModal } from "@app/components/data_source/CreateOrUpdateConnectionSnowflakeModal";
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
 import { SetupNotionPrivateIntegrationModal } from "@app/components/data_source/SetupNotionPrivateIntegrationModal";
+import type { LabelsHandle } from "@app/components/shared/labels/types";
 import { setupConnection } from "@app/components/spaces/AddConnectionMenu";
 import { AdvancedNotionManagement } from "@app/components/spaces/AdvancedNotionManagement";
 import { ConnectorDataUpdatedModal } from "@app/components/spaces/ConnectorDataUpdatedModal";
@@ -82,7 +83,14 @@ import {
 } from "@dust-tt/sparkle";
 import { InformationCircleIcon } from "@heroicons/react/20/solid";
 import type React from "react";
-import { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import ReactMarkdown from "react-markdown";
 import { useSWRConfig } from "swr";
 
@@ -813,31 +821,39 @@ export function ConnectorPermissionsModal({
   const plan = activeSubscription ? activeSubscription.plan : null;
 
   const [saving, setSaving] = useState(false);
+  const [advancedOptionsHasChanges, setAdvancedOptionsHasChanges] =
+    useState(false);
+  const labelsRef = useRef<LabelsHandle>(null);
   const sendNotification = useSendNotification();
   const { user } = useAuth();
 
   function closeModal(save: boolean) {
     setModalToShow(null);
     onClose(save);
+    setAdvancedOptionsHasChanges(false);
     setTimeout(() => {
       setSelectedNodes({});
     }, 300);
   }
 
   async function save() {
-    if (
-      !(await confirmPrivateNodesSync({
-        selectedNodes: Object.values(selectedNodes)
-          .filter((sn) => sn.isSelected)
-          .map((sn) => sn.node),
-        confirm,
-      }))
-    ) {
-      return;
+    if (!isUnchanged) {
+      if (
+        !(await confirmPrivateNodesSync({
+          selectedNodes: Object.values(selectedNodes)
+            .filter((sn) => sn.isSelected)
+            .map((sn) => sn.node),
+          confirm,
+        }))
+      ) {
+        return;
+      }
     }
     setSaving(true);
     try {
-      if (Object.keys(selectedNodes).length) {
+      let didSave = false;
+
+      if (!isUnchanged && Object.keys(selectedNodes).length) {
         const r = await clientFetch(
           `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/permissions`,
           {
@@ -870,6 +886,7 @@ export function ConnectorPermissionsModal({
             title: error.error.message,
             description: error.error.connectors_error.message,
           });
+          return;
         } else {
           void mutate(
             (key) =>
@@ -878,22 +895,35 @@ export function ConnectorPermissionsModal({
                 `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/permissions`
               )
           );
-
-          // Display the data updated modal.
-          setModalToShow("data_updated");
+          didSave = true;
         }
+      }
+
+      if (advancedOptionsHasChanges) {
+        const advancedSaveSucceeded = (await labelsRef.current?.save()) ?? true;
+        if (!advancedSaveSucceeded) {
+          return;
+        }
+        setAdvancedOptionsHasChanges(false);
+        didSave = true;
+      }
+
+      if (didSave) {
+        setModalToShow("data_updated");
       } else {
         closeModal(false);
       }
     } catch (e) {
       sendNotification({
         type: "error",
-        title: "Error saving permissions",
-        description: "An unexpected error occurred while saving permissions.",
+        title: "Error saving connector configuration",
+        description:
+          "An unexpected error occurred while saving connector configuration.",
       });
       console.error(e);
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   }
 
   const isUnchanged = useMemo(
@@ -1061,7 +1091,15 @@ export function ConnectorPermissionsModal({
                         </CollapsibleTrigger>
                         <CollapsibleContent>
                           <AdvancedOptionsComponent
-                            {...{ owner, readOnly, isAdmin, dataSource, plan }}
+                            {...{
+                              owner,
+                              readOnly,
+                              isAdmin,
+                              dataSource,
+                              plan,
+                              onDirtyChange: setAdvancedOptionsHasChanges,
+                              labelsRef,
+                            }}
                           />
                         </CollapsibleContent>
                       </Collapsible>
@@ -1086,7 +1124,8 @@ export function ConnectorPermissionsModal({
                   rightButtonProps={{
                     label: saving ? "Saving..." : "Save",
                     variant: "primary",
-                    disabled: isUnchanged || saving,
+                    disabled:
+                      (isUnchanged && !advancedOptionsHasChanges) || saving,
                     onClick: save,
                   }}
                 />

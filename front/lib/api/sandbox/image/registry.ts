@@ -70,7 +70,7 @@ const PYTHON_LIBRARIES: PythonLibrary[] = [
   },
   {
     name: "duckdb",
-    version: "1.4.0",
+    version: "1.4.4",
     description: "In-process OLAP / SQL on dataframes",
   },
 ];

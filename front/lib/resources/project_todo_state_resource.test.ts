@@ -150,47 +150,4 @@ describe("ProjectTaskStateResource", () => {
       expect(result!.lastReadAt).toEqual(updatedAt);
     });
   });
-
-  describe("upsertLastCleanedAtBySpace", () => {
-    it("creates a state with lastCleanedAt when none exists", async () => {
-      const { workspace, authenticator } = await createResourceTest({
-        role: "user",
-      });
-      const space = await SpaceFactory.project(workspace);
-      const lastCleanedAt = new Date("2025-06-01T00:00:00Z");
-
-      const state = await ProjectTaskStateResource.upsertLastCleanedAtBySpace(
-        authenticator,
-        { spaceId: space.id, lastCleanedAt }
-      );
-
-      expect(state.lastCleanedAt).toEqual(lastCleanedAt);
-      expect(state.lastReadAt).toBeDefined();
-    });
-
-    it("updates lastCleanedAt on subsequent calls", async () => {
-      const { workspace, authenticator } = await createResourceTest({
-        role: "user",
-      });
-      const space = await SpaceFactory.project(workspace);
-
-      await ProjectTaskStateResource.upsertLastCleanedAtBySpace(authenticator, {
-        spaceId: space.id,
-        lastCleanedAt: new Date("2025-01-01T00:00:00Z"),
-      });
-
-      const newCleanedAt = new Date("2025-06-01T00:00:00Z");
-      await ProjectTaskStateResource.upsertLastCleanedAtBySpace(authenticator, {
-        spaceId: space.id,
-        lastCleanedAt: newCleanedAt,
-      });
-
-      const result = await ProjectTaskStateResource.fetchBySpace(
-        authenticator,
-        { spaceId: space.id }
-      );
-
-      expect(result!.lastCleanedAt).toEqual(newCleanedAt);
-    });
-  });
 });

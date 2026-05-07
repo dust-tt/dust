@@ -20,6 +20,7 @@ const {
   populateDeltas,
   groupRootItemsByDriveId,
   isMicrosoftFullSyncRunning,
+  reconcileSensitivityLabelsForParent,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "30 minutes",
 });
@@ -308,6 +309,69 @@ export async function microsoftGarbageCollectionWorkflow({
   }
 }
 
+export async function microsoftSensitivityLabelsReconciliationWorkflow({
+  connectorId,
+  startSyncTs,
+  nodeIdsToReconcile = [],
+}: {
+  connectorId: ModelId;
+  startSyncTs?: number;
+  nodeIdsToReconcile?: string[];
+}) {
+  await syncStarted(connectorId);
+
+  if (startSyncTs === undefined) {
+    startSyncTs = new Date().getTime();
+  }
+
+  let pendingNodeIds =
+    nodeIdsToReconcile.length === 0
+      ? await getRootNodesToSync(connectorId)
+      : nodeIdsToReconcile;
+  pendingNodeIds = uniq(pendingNodeIds);
+
+  while (pendingNodeIds.length > 0) {
+    const nodeId = pendingNodeIds.pop();
+
+    if (!nodeId) {
+      break;
+    }
+
+    let nextPageLink: string | undefined = undefined;
+
+    do {
+      const res: Awaited<
+        ReturnType<typeof activities.reconcileSensitivityLabelsForParent>
+      > = await reconcileSensitivityLabelsForParent({
+        connectorId,
+        parentInternalId: nodeId,
+        startSyncTs,
+        nextPageLink,
+      });
+
+      pendingNodeIds = uniq(pendingNodeIds.concat(res.childNodes));
+      nextPageLink = res.nextLink;
+    } while (nextPageLink);
+
+    if (workflowInfo().historyLength > 4000) {
+      await continueAsNew<
+        typeof microsoftSensitivityLabelsReconciliationWorkflow
+      >({
+        connectorId,
+        startSyncTs,
+        nodeIdsToReconcile: pendingNodeIds,
+      });
+    }
+  }
+
+  await syncSucceeded(connectorId);
+
+  await sleep("1 hour");
+  await continueAsNew<typeof microsoftSensitivityLabelsReconciliationWorkflow>({
+    connectorId,
+  });
+}
+
 export function microsoftFullSyncWorkflowId(connectorId: ModelId) {
   return `microsoft-fullSync-${connectorId}`;
 }
@@ -322,4 +386,10 @@ export function microsoftIncrementalSyncWorkflowId(connectorId: ModelId) {
 
 export function microsoftGarbageCollectionWorkflowId(connectorId: ModelId) {
   return `microsoft-garbageCollection-${connectorId}`;
+}
+
+export function microsoftSensitivityLabelsReconciliationWorkflowId(
+  connectorId: ModelId
+) {
+  return `microsoft-sensitivityLabelsReconciliation-${connectorId}`;
 }

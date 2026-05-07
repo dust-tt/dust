@@ -3,7 +3,6 @@ import { ProjectTasksPanelMain } from "@app/components/assistant/conversation/sp
 import { ProjectTasksToolbar } from "@app/components/assistant/conversation/space/conversations/project_tasks/ProjectTasksToolbar";
 import type { UseProjectTasksPanelArgs } from "@app/components/assistant/conversation/space/conversations/project_tasks/projectTasksPanelTypes";
 
-export { ProjectTaskCleanButton } from "@app/components/assistant/conversation/space/conversations/project_tasks/ProjectTaskCleanButton";
 export { ProjectTaskLocalSearch } from "@app/components/assistant/conversation/space/conversations/project_tasks/ProjectTaskLocalSearch";
 export { ProjectTaskScopeFilter } from "@app/components/assistant/conversation/space/conversations/project_tasks/ProjectTaskScopeFilter";
 export {

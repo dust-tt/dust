@@ -5,6 +5,7 @@ import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { listMetronomeBalances } from "@app/lib/metronome/client";
 import { getCreditTypeProgrammaticUsdId } from "@app/lib/metronome/constants";
+import { isMetronomeExcessCredit } from "@app/lib/metronome/types";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
@@ -106,6 +107,9 @@ async function handler(
               entry.access_schedule?.credit_type?.id !==
               programmaticUsdCreditTypeId
             ) {
+              continue;
+            }
+            if (isMetronomeExcessCredit(entry)) {
               continue;
             }
             metronomeBySId.set(entry.id, metronomeBalanceToDisplayData(entry));

@@ -57,7 +57,6 @@ export function ProjectTasksDataTableCell({
     activeAgents,
     isAgentsLoading,
     agentNameById,
-    pendingRemovalIds,
     newItemKeys,
     doneFlashKeys,
     startingTaskIds,
@@ -161,7 +160,6 @@ export function ProjectTasksDataTableCell({
           onRejectAgentSuggestion={onRejectAgentSuggestion}
           owner={owner}
           agentNameById={agentNameById}
-          isExiting={pendingRemovalIds.has(task.sId)}
           isNew={newItemKeys.has(task.sId)}
           isReadOnly={isReadOnly}
         />
@@ -177,7 +175,6 @@ export function ProjectTasksDataTableCell({
           activeAgents={activeAgents}
           agentsLoading={isAgentsLoading}
           agentNameById={agentNameById}
-          isExiting={pendingRemovalIds.has(task.sId)}
           isNew={newItemKeys.has(task.sId)}
           isNewlyDone={doneFlashKeys.has(task.sId)}
           isStarting={startingTaskIds.has(task.sId)}

@@ -13,7 +13,6 @@ import {
   isOnboardingTask,
   normalizeProjectTaskSearchNeedle,
   projectTaskMatchesLocalSearch,
-  SUMMARY_ITEM_TRANSITION_MS,
 } from "@app/components/assistant/conversation/space/conversations/project_tasks/utils";
 import { ConfirmContext } from "@app/components/Confirm";
 import {
@@ -27,7 +26,6 @@ import { compareProjectTaskAssigneeGroups } from "@app/lib/project_task/display_
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
   useBulkUpdateProjectTaskStatus,
-  useCleanDoneProjectTasks,
   useCreateProjectTask,
   useDeleteProjectTask,
   useMarkProjectTasksRead,
@@ -76,7 +74,6 @@ export function useProjectTasksPanelState({
     owner,
     spaceId,
   });
-  const doCleanDone = useCleanDoneProjectTasks({ owner, spaceId });
   const markRead = useMarkProjectTasksRead({ owner, spaceId });
   const doCreateTask = useCreateProjectTask({ owner, spaceId });
   const { spaceInfo, isSpaceInfoLoading } = useSpaceInfo({
@@ -97,10 +94,6 @@ export function useProjectTasksPanelState({
     options: { disabled: true },
   });
 
-  const [pendingRemovalIds, setPendingRemovalIds] = useState<Set<string>>(
-    new Set()
-  );
-  const [isCleaning, setIsCleaning] = useState(false);
   const [startingTaskIds, setStartingTaskIds] = useState<Set<string>>(
     new Set()
   );
@@ -184,10 +177,6 @@ export function useProjectTasksPanelState({
       projectTaskMatchesLocalSearch(task, normalizedTaskSearchNeedle)
     );
   }, [assigneeScopedTasks, normalizedTaskSearchNeedle]);
-
-  const hasDoneItems = assigneeScopedTasks.some(
-    (task) => task.status === "done"
-  );
 
   const getFirstOnboardingTaskId = (
     tasks: ProjectTaskType[]
@@ -424,32 +413,6 @@ export function useProjectTasksPanelState({
     [doBulkUpdateStatus, mutateTasks, tasks, viewerUserId]
   );
 
-  const handleClean = useCallback(async () => {
-    setIsCleaning(true);
-
-    const doneSIds = new Set(
-      tasks.filter((t) => t.status === "done").map((t) => t.sId)
-    );
-    setPendingRemovalIds(doneSIds);
-
-    const result = await doCleanDone();
-
-    if (result.isOk()) {
-      // Wait for exit animations to finish, then refresh the server data.
-      // pendingRemovalIds is cleared only after mutateTasks resolves so items
-      // don't briefly reappear from the stale SWR cache and re-trigger the
-      // exit animation.
-      setTimeout(async () => {
-        await mutateTasks();
-        setPendingRemovalIds(new Set());
-        setIsCleaning(false);
-      }, SUMMARY_ITEM_TRANSITION_MS);
-    } else {
-      setPendingRemovalIds(new Set());
-      setIsCleaning(false);
-    }
-  }, [doCleanDone, tasks, mutateTasks]);
-
   const handleDelete = useCallback(
     async (task: ProjectTaskType) => {
       const result = await doDelete(task.sId);
@@ -587,9 +550,6 @@ export function useProjectTasksPanelState({
     viewerUserId,
     taskScopeLabel,
     isReadOnly,
-    hasDoneItems,
-    handleClean,
-    isCleaning,
     showSuggestedTasksTable,
     owner,
     groupedSuggestedTasksOnly,
@@ -597,7 +557,6 @@ export function useProjectTasksPanelState({
     activeAgents,
     isAgentsLoading,
     agentNameById,
-    pendingRemovalIds,
     newItemKeys,
     doneFlashKeys,
     startingTaskIds,

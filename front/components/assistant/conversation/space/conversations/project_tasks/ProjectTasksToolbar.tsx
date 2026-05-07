@@ -1,8 +1,7 @@
-import { ProjectTaskCleanButton } from "@app/components/assistant/conversation/space/conversations/project_tasks/ProjectTaskCleanButton";
 import { ProjectTaskLocalSearch } from "@app/components/assistant/conversation/space/conversations/project_tasks/ProjectTaskLocalSearch";
 import { ProjectTaskScopeFilter } from "@app/components/assistant/conversation/space/conversations/project_tasks/ProjectTaskScopeFilter";
 
-/** Single row: scope filter · search · clean (within `ProjectTasksPanelProvider`). */
+/** Single row: scope filter · search. */
 export function ProjectTasksToolbar() {
   return (
     <div className="flex items-center gap-2">
@@ -11,9 +10,6 @@ export function ProjectTasksToolbar() {
       </div>
       <div className="min-w-0 flex-1">
         <ProjectTaskLocalSearch />
-      </div>
-      <div className="shrink-0">
-        <ProjectTaskCleanButton />
       </div>
     </div>
   );

@@ -20,9 +20,6 @@ export type ProjectTasksPanelData = {
   viewerUserId: string | null;
   taskScopeLabel: string;
   isReadOnly?: boolean;
-  hasDoneItems: boolean;
-  handleClean: () => Promise<void>;
-  isCleaning: boolean;
   showSuggestedTasksTable: boolean;
   owner: LightWorkspaceType;
   groupedSuggestedTasksOnly: GroupedTasksByAssignee;
@@ -30,7 +27,6 @@ export type ProjectTasksPanelData = {
   activeAgents: LightAgentConfigurationType[];
   isAgentsLoading: boolean;
   agentNameById: Map<string, string>;
-  pendingRemovalIds: Set<string>;
   newItemKeys: Set<string>;
   doneFlashKeys: Set<string>;
   startingTaskIds: Set<string>;

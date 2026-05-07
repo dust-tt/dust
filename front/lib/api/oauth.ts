@@ -37,6 +37,7 @@ import { VantaOAuthProvider } from "@app/lib/api/oauth/providers/vanta";
 import { ZendeskOAuthProvider } from "@app/lib/api/oauth/providers/zendesk";
 import { finalizeUriForProvider } from "@app/lib/api/oauth/utils";
 import type { Authenticator } from "@app/lib/auth";
+import { hasFeatureFlag } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import type {
   ExtraConfigType,
@@ -230,6 +231,11 @@ export async function createConnectionAndGetSetupUrl(
     },
   });
 
+  const forceLabelsScope =
+    provider === "microsoft"
+      ? await hasFeatureFlag(auth, "sensitivity_labels")
+      : false;
+
   return new Ok(
     providerStrategy.setupUri({
       connection,
@@ -237,6 +243,7 @@ export async function createConnectionAndGetSetupUrl(
       relatedCredential,
       useCase,
       clientId,
+      forceLabelsScope,
     })
   );
 }

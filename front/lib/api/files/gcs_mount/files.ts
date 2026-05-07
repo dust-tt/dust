@@ -4,7 +4,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { isSupportedImageContentType } from "@app/types/files";
-import { Err, Ok } from "@app/types/shared/result";
+import { Err, Ok, type Result } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
@@ -256,25 +256,31 @@ export async function createGCSMountFile(
     content: Buffer;
     contentType: string;
   }
-): Promise<GCSMountFileEntry> {
+): Promise<Result<GCSMountFileEntry, Error>> {
   const owner = auth.getNonNullableWorkspace();
   const prefix = resolvePrefix(owner, scope);
 
   const gcsPath = `${prefix}${relativeFilePath}`;
   const bucket = getPrivateUploadBucket();
-  await bucket.file(gcsPath).save(content, { contentType });
+  try {
+    await bucket.file(gcsPath).save(content, { contentType });
+  } catch (error) {
+    return new Err(normalizeError(error));
+  }
 
   const fileName = relativeFilePath.split("/").pop() ?? relativeFilePath;
-  return makeFileEntry(
-    {
-      fileName,
-      relativeFilePath,
-      sizeBytes: content.length,
-      contentType,
-      lastModifiedMs: Date.now(),
-      fileId: null,
-    },
-    scope,
-    owner.sId
+  return new Ok(
+    makeFileEntry(
+      {
+        fileName,
+        relativeFilePath,
+        sizeBytes: content.length,
+        contentType,
+        lastModifiedMs: Date.now(),
+        fileId: null,
+      },
+      scope,
+      owner.sId
+    )
   );
 }

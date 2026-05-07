@@ -643,6 +643,12 @@ function contentfulEntryToBlogPost(
   const isSeoArticleField = fields.isSeoArticle;
   const isSeoArticle =
     typeof isSeoArticleField === "boolean" && isSeoArticleField;
+  const isGeoArticleField = fields.isGeoArticle;
+  const isGeoArticle =
+    typeof isGeoArticleField === "boolean" && isGeoArticleField;
+  const isThoughtLeadershipField = fields.isThoughtLeadership;
+  const isThoughtLeadership =
+    typeof isThoughtLeadershipField === "boolean" && isThoughtLeadershipField;
 
   return {
     id: sys.id,
@@ -656,6 +662,8 @@ function contentfulEntryToBlogPost(
     createdAt: publishedAt,
     updatedAt: sys.updatedAt,
     isSeoArticle,
+    isGeoArticle,
+    isThoughtLeadership,
   };
 }
 
@@ -669,6 +677,8 @@ function contentfulEntryToBlogPostSummary(post: BlogPost): BlogPostSummary {
     image: post.image,
     createdAt: post.createdAt,
     isSeoArticle: post.isSeoArticle,
+    isGeoArticle: post.isGeoArticle,
+    isThoughtLeadership: post.isThoughtLeadership,
   };
 }
 

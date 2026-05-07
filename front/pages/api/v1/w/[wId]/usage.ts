@@ -7,25 +7,18 @@ import { getWorkspaceUsageRetentionErrorMessage } from "@app/lib/workspace_usage
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { GetWorkspaceUsageResponseType } from "@dust-tt/client";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
-const DateString = t.refinement(
-  t.string,
-  (s): s is string => /^\d{4}-\d{2}-\d{2}$/.test(s),
-  "YYYY-MM-DD"
-);
+const DateString = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, { message: "YYYY-MM-DD" });
 
-const GetWorkspaceUsageSchema = t.intersection([
-  t.type({
-    start_date: DateString,
-  }),
-  t.partial({
-    end_date: t.union([DateString, t.undefined, t.null]),
-  }),
-]);
+const GetWorkspaceUsageSchema = z.object({
+  start_date: DateString,
+  end_date: DateString.nullish(),
+});
 
 /**
  * @ignoreswagger
@@ -52,19 +45,18 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const queryValidation = GetWorkspaceUsageSchema.decode(req.query);
-      if (isLeft(queryValidation)) {
-        const pathError = reporter.formatValidationErrors(queryValidation.left);
+      const queryValidation = GetWorkspaceUsageSchema.safeParse(req.query);
+      if (!queryValidation.success) {
         return apiError(req, res, {
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request query: ${pathError}`,
+            message: `Invalid request query: ${fromError(queryValidation.error).toString()}`,
           },
           status_code: 400,
         });
       }
 
-      const query = queryValidation.right;
+      const query = queryValidation.data;
       const startDate = new Date(query.start_date);
       const endDate = query.end_date ? new Date(query.end_date) : new Date();
       const conversationsRetentionDays =

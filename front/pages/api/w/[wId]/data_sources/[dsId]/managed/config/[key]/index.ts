@@ -98,6 +98,7 @@ async function handler(
       "gongPermissionProfiles",
       "gongExcludeTitleKeywords",
       "privateIntegrationCredentialId",
+      "microsoftSensitivityLabelsToInclude",
     ].includes(configKey)
   ) {
     return apiError(req, res, {
