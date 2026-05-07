@@ -1,12 +1,10 @@
+import {
+  isProjectTaskPeriodScope,
+  type ProjectTaskPeopleScope,
+  type ProjectTaskPeriodScope,
+} from "@app/types/project_task";
+import { isString } from "@app/types/shared/utils/general";
 import { z } from "zod";
-
-export type ProjectTaskPeriodScope =
-  | "active"
-  | "last_24h"
-  | "last_7d"
-  | "last_30d";
-
-export type ProjectTaskPeopleScope = "all_project" | "just_mine" | "unassigned";
 
 /** Filter for project task list fetching + persisted project UI prefs. */
 export interface TaskOwnerFilter {
@@ -29,26 +27,19 @@ const PERIOD_SCOPE_LABELS: Record<ProjectTaskPeriodScope, string> = {
 const PEOPLE_SCOPE_LABELS: Record<ProjectTaskPeopleScope, string> = {
   all_project: "Everyone",
   just_mine: "Mine",
-  unassigned: "Unassigned",
 };
 
-export function formatTaskScopeLabel(filter: TaskOwnerFilter): string {
-  return `${PERIOD_SCOPE_LABELS[filter.periodScope]} · ${PEOPLE_SCOPE_LABELS[filter.peopleScope]}`;
+export function periodScopeLabel(scope: ProjectTaskPeriodScope): string {
+  return PERIOD_SCOPE_LABELS[scope];
 }
 
-const PERIOD_SCOPES: ProjectTaskPeriodScope[] = [
-  "active",
-  "last_24h",
-  "last_7d",
-  "last_30d",
-];
+export function peopleScopeLabel(scope: ProjectTaskPeopleScope): string {
+  return PEOPLE_SCOPE_LABELS[scope];
+}
 
 function coercePeriodScope(raw: unknown): ProjectTaskPeriodScope {
-  if (
-    typeof raw === "string" &&
-    PERIOD_SCOPES.includes(raw as ProjectTaskPeriodScope)
-  ) {
-    return raw as ProjectTaskPeriodScope;
+  if (isString(raw) && isProjectTaskPeriodScope(raw)) {
+    return raw;
   }
   return "active";
 }
@@ -56,9 +47,7 @@ function coercePeriodScope(raw: unknown): ProjectTaskPeriodScope {
 const tasksOwnerFilterPersistedBlobSchema = z
   .object({
     periodScope: z.string().optional(),
-    peopleScope: z.enum(["all_project", "just_mine", "unassigned"]).optional(),
-    assigneeScope: z.enum(["mine", "all", "users"]).optional(),
-    selectedUserSIds: z.array(z.string()).optional(),
+    peopleScope: z.enum(["all_project", "just_mine"]).optional(),
   })
   .passthrough();
 
@@ -71,20 +60,9 @@ export function normalizeTasksOwnerFilterFromPersistedBlob(
   }
   const blob = parsed.data;
 
-  let peopleScope: ProjectTaskPeopleScope = "all_project";
-  if (
-    blob.peopleScope === "just_mine" ||
-    blob.peopleScope === "unassigned" ||
-    blob.peopleScope === "all_project"
-  ) {
-    peopleScope = blob.peopleScope;
-  } else if (blob.assigneeScope === "mine") {
-    peopleScope = "just_mine";
-  }
-
   return {
     periodScope: coercePeriodScope(blob.periodScope),
-    peopleScope,
+    peopleScope: blob.peopleScope ?? "all_project",
   };
 }
 
@@ -94,14 +72,7 @@ export function taskOwnerFilterToSearchParams(
 ): URLSearchParams {
   const params = new URLSearchParams();
   params.set("period", filter.periodScope);
-  params.set(
-    "people",
-    filter.peopleScope === "just_mine"
-      ? "mine"
-      : filter.peopleScope === "unassigned"
-        ? "unassigned"
-        : "all"
-  );
+  params.set("people", filter.peopleScope === "just_mine" ? "mine" : "all");
   return params;
 }
 
