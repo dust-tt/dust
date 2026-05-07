@@ -25,7 +25,6 @@ export function buildActionItems(
   validUserIds: Set<string>,
   localLogger: Logger
 ): TodoVersionedActionItem[] {
-  const now = new Date().toISOString();
   const updatesBySId = new Map(updatedItems.map((u) => [u.sId, u]));
 
   const merged: TodoVersionedActionItem[] = previousItems.map((prev) => {
@@ -41,8 +40,6 @@ export function buildActionItems(
         ? update.assignee
         : null;
 
-    const transitioningToDone = update.done && prev.status !== "done";
-
     return {
       sId: prev.sId,
       shortDescription: update.short_description ?? prev.shortDescription,
@@ -52,34 +49,31 @@ export function buildActionItems(
       assigneeName: validAssigneeChange
         ? validAssigneeChange.name
         : prev.assigneeName,
-      status: update.done ? "done" : prev.status,
-      detectedDoneAt: transitioningToDone ? now : prev.detectedDoneAt,
-      detectedDoneRationale:
-        update.done?.detected_done_rationale ?? prev.detectedDoneRationale,
       detectedCreationRationale: prev.detectedCreationRationale,
     };
   });
 
   for (const item of newItems) {
-    if (!validUserIds.has(item.assignee_user_id)) {
+    const hasValidAssignee =
+      item.assignee_user_id !== undefined &&
+      validUserIds.has(item.assignee_user_id);
+
+    if (item.assignee_user_id !== undefined && !hasValidAssignee) {
       localLogger.warn(
         {
           assigneeUserId: item.assignee_user_id,
           assigneeName: item.assignee_name,
           shortDescription: item.short_description,
         },
-        "Document takeaway: dropping new action item with unknown assignee"
+        "Document takeaway: new action item has unknown assignee, keeping as unassigned"
       );
-      continue;
     }
+
     merged.push({
       sId: uuidv4(),
       shortDescription: item.short_description,
-      assigneeUserId: item.assignee_user_id,
-      assigneeName: item.assignee_name,
-      status: "open",
-      detectedDoneAt: null,
-      detectedDoneRationale: null,
+      assigneeUserId: hasValidAssignee ? (item.assignee_user_id ?? null) : null,
+      assigneeName: hasValidAssignee ? (item.assignee_name ?? null) : null,
       detectedCreationRationale: item.detected_creation_rationale,
     });
   }
@@ -99,8 +93,7 @@ export function buildPromptActionItems(
     "2. **Commitment**: someone explicitly committed to doing a concrete task, or was " +
     "clearly asked to do one. Only extract tasks with a clear deliverable — 'I'll fix X' " +
     "qualifies, 'I'll think about it' does not.\n" +
-    "3. **Durability**: the task is still relevant — if it was already resolved within " +
-    "the same conversation, mark it done; if the request was immediately " +
+    "3. **Durability**: the task is still relevant — if the request was immediately " +
     "fulfilled inline (e.g., answering a question), do not extract it at all.\n" +
     "4. **Distinctness**: it is not a duplicate of another action item or a rephrasing " +
     "5. **Relevance**: the task is work-related and project-relevant. Purely social plans " +
@@ -108,16 +101,14 @@ export function buildPromptActionItems(
     "commits to arranging them.\n\n" +
     "Output rules:\n" +
     "- Place brand-new action items (not already in the tracked list below) in `new_action_items`. " +
-    "They MUST have a clear assignee matching one of the project members; if you cannot identify " +
-    "a project member as assignee, do not extract the item.\n" +
+    "Set `assignee_user_id` and `assignee_name` only when you can confidently identify a project " +
+    "member as the owner; leave both fields absent when the assignee is unclear or not a project member.\n" +
     "- **Never re-extract tracked items**: any item already listed under 'Previously tracked' below is " +
     "already recorded. Do NOT put it in `new_action_items` even if you see it in the document — " +
     "doing so creates a duplicate. If nothing changed, omit it entirely.\n" +
     "- Place changes to previously tracked items in `updated_action_items`, keyed by their sId. " +
     "Only include fields that materially changed in this document; omit unchanged fields. " +
     "Do not include items that have not changed at all.\n" +
-    "- Mark an item as done by setting the `done` object with a brief rationale. Items can only " +
-    "transition to done; never back to open.\n" +
     "- Be concise: one action item per distinct task.\n" +
     "- Make descriptions self-sufficient: include both the action AND its subject so the item is understandable without opening the source document. Prefer specific over vague — not 'Fix the bug' but 'Fix crash in batchRenderMessages when agent config is unavailable'; not 'Review PR' but 'Review PR #24679 — improves takeaway extraction prompts'.\n" +
     "- In the description, mention other users and agents by their name, NOT via their id or via a generic term like User, Agent or Bot.\n" +
@@ -127,7 +118,7 @@ export function buildPromptActionItems(
       "Previously tracked action items — ALREADY RECORDED, do NOT re-add to `new_action_items`. " +
       "Only reference in `updated_action_items` if this document explicitly changes them:\n";
     for (const item of previousActionItems) {
-      prompt += `<action_item sId="${item.sId}" status="${item.status}">`;
+      prompt += `<action_item sId="${item.sId}">`;
       prompt += `<short_description>${item.shortDescription}</short_description>`;
       if (item.assigneeName) {
         prompt += `<assignee name="${item.assigneeName}"`;

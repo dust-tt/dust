@@ -31,8 +31,11 @@ import {
 } from "sequelize";
 
 // Return type of fetchByItemIds: outer key is itemId (action item sId), inner
-// key is userId (ModelId).
-export type TodosByItemId = Map<string, Map<ModelId, ProjectTaskResource[]>>;
+// key is userId (ModelId | null, where null represents unassigned todos).
+export type TodosByItemId = Map<
+  string,
+  Map<ModelId | null, ProjectTaskResource[]>
+>;
 
 type ProjectTaskVersionCreationAttributes =
   CreationAttributes<ProjectTaskModel> & {
@@ -440,7 +443,7 @@ export class ProjectTaskResource extends BaseResource<ProjectTaskModel> {
   static async fetchByItemIds(
     auth: Authenticator,
     { itemIds }: { itemIds: string[] }
-  ): Promise<Map<string, Map<ModelId, ProjectTaskResource[]>>> {
+  ): Promise<TodosByItemId> {
     if (itemIds.length === 0) {
       return new Map();
     }
@@ -473,11 +476,10 @@ export class ProjectTaskResource extends BaseResource<ProjectTaskModel> {
         continue;
       }
       const byUser =
-        result.get(source.itemId) ?? new Map<ModelId, ProjectTaskResource[]>();
+        result.get(source.itemId) ??
+        new Map<ModelId | null, ProjectTaskResource[]>();
       const userId = todo.userId;
-      if (userId !== null) {
-        byUser.set(userId, [...(byUser.get(userId) ?? []), todo]);
-      }
+      byUser.set(userId, [...(byUser.get(userId) ?? []), todo]);
       result.set(source.itemId, byUser);
     }
 
