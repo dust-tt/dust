@@ -1,5 +1,6 @@
 import { AgentPicker } from "@app/components/assistant/AgentPicker";
 import { ConversationSidebarStatusDot } from "@app/components/assistant/conversation/ConversationSidebarStatusDot";
+import { useProjectTasksPanel } from "@app/components/assistant/conversation/space/conversations/project_tasks/ProjectTasksPanelContext";
 import {
   TaskMetadataTooltip,
   TaskSources,
@@ -20,7 +21,6 @@ import {
   PROJECT_TASK_NO_ASSIGNEE_LABEL,
   type ProjectTaskType,
 } from "@app/types/project_task";
-import type { LightWorkspaceType, SpaceUserType } from "@app/types/user";
 import {
   AnimatedText,
   Avatar,
@@ -35,7 +35,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  type DropdownMenuItemProps,
   DropdownMenuPortal,
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
@@ -54,59 +53,39 @@ import {
   UserIcon,
 } from "@dust-tt/sparkle";
 import type React from "react";
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-export interface EditableTaskItemProps {
+interface EditableTaskItemProps {
   task: ProjectTaskType;
-  viewerUserId: string | null;
-  onToggleDone: (task: ProjectTaskType) => void;
-  onDelete: (task: ProjectTaskType) => void | Promise<void>;
-  onStartWorking: (
-    task: ProjectTaskType,
-    options?: {
-      customMessage?: string;
-      agentConfigurationId?: string;
-      goToConversation?: boolean;
-    }
-  ) => Promise<void>;
-  owner: LightWorkspaceType;
-  activeAgents: LightAgentConfigurationType[];
-  agentsLoading: boolean;
-  agentNameById: Map<string, string>;
-  isNew: boolean;
-  isNewlyDone: boolean;
-  isStarting: boolean;
-  isReadOnly?: boolean;
-  isFirstOnboardingTask: boolean;
-  projectMembers: SpaceUserType[];
-  membersWithActiveTaskIds: Set<string>;
-  onPatchTask: (
-    taskId: string,
-    updates: { text?: string; assigneeUserId?: string | null }
-  ) => Promise<void>;
-  allowAssigneeReassign?: boolean;
 }
 
-export const EditableTaskItem = memo(function EditableTaskItem({
-  task,
-  viewerUserId,
-  onToggleDone,
-  onDelete,
-  onStartWorking,
-  owner,
-  activeAgents,
-  agentsLoading,
-  agentNameById,
-  isNew,
-  isNewlyDone,
-  isStarting,
-  isReadOnly,
-  isFirstOnboardingTask,
-  projectMembers,
-  membersWithActiveTaskIds,
-  onPatchTask,
-  allowAssigneeReassign = true,
-}: EditableTaskItemProps) {
+export function EditableTaskItem({ task }: EditableTaskItemProps) {
+  const {
+    viewerUserId,
+    owner,
+    activeAgents,
+    isAgentsLoading,
+    agentNameById,
+    newItemKeys,
+    doneFlashKeys,
+    startingTaskIds,
+    isReadOnly,
+    firstOnboardingTaskId,
+    projectMembers,
+    membersWithActiveTaskIds,
+    handleToggleDone,
+    requestDelete,
+    handleStartWorking,
+    patchTaskItem,
+    isSoleProjectMember,
+  } = useProjectTasksPanel();
+
+  const isNew = newItemKeys.has(task.sId);
+  const isNewlyDone = doneFlashKeys.has(task.sId);
+  const isStarting = startingTaskIds.has(task.sId);
+  const isFirstOnboardingTask = task.sId === firstOnboardingTaskId;
+  const allowAssigneeReassign = !isSoleProjectMember;
+
   const router = useAppRouter();
   const [startMenuOpen, setStartMenuOpen] = useState(false);
   const [startCustomMessage, setStartCustomMessage] = useState("");
@@ -123,10 +102,8 @@ export const EditableTaskItem = memo(function EditableTaskItem({
   const conversationDotStatus: ConversationDotStatus =
     task.conversationSidebarStatus ?? "idle";
   const isDoneWithoutConversation = isDone && !hasConversationLink;
-  const canAct = viewerUserId !== null && !isReadOnly;
-  const canEdit = canAct;
+  const canEdit = viewerUserId !== null && !isReadOnly;
   const showInProgressTextAnimation = task.status === "in_progress";
-  const [isFlashing, setIsFlashing] = useState(isNewlyDone);
   const [showSavedPulse, setShowSavedPulse] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [draftText, setDraftText] = useState(task.text);
@@ -165,11 +142,16 @@ export const EditableTaskItem = memo(function EditableTaskItem({
 
   useAutosizeTextArea(editInputRef, draftText, isEditing);
 
+  const reassignSearchNorm = removeDiacritics(
+    reassignSearch.trim()
+  ).toLowerCase();
+
   const filteredReassignMembers = useMemo(() => {
-    const q = removeDiacritics(reassignSearch.trim()).toLowerCase();
-    const filtered = q
+    const filtered = reassignSearchNorm
       ? projectMembers.filter((m) =>
-          removeDiacritics(m.fullName).toLowerCase().includes(q)
+          removeDiacritics(m.fullName)
+            .toLowerCase()
+            .includes(reassignSearchNorm)
         )
       : [...projectMembers];
     // Sort: members with at least one active (non-done) task come first,
@@ -179,25 +161,15 @@ export const EditableTaskItem = memo(function EditableTaskItem({
       const bActive = membersWithActiveTaskIds.has(b.sId) ? 0 : 1;
       return aActive - bActive;
     });
-  }, [reassignSearch, projectMembers, membersWithActiveTaskIds]);
+  }, [reassignSearchNorm, projectMembers, membersWithActiveTaskIds]);
 
+  const noAssigneeLabelNorm = removeDiacritics(
+    PROJECT_TASK_NO_ASSIGNEE_LABEL
+  ).toLowerCase();
   const showNoAssigneeReassignOption =
     task.user !== null &&
-    (() => {
-      const q = removeDiacritics(reassignSearch.trim()).toLowerCase();
-      const labelNorm = removeDiacritics(
-        PROJECT_TASK_NO_ASSIGNEE_LABEL
-      ).toLowerCase();
-      return q === "" || labelNorm.includes(q);
-    })();
-
-  useEffect(() => {
-    if (!isNewlyDone) {
-      return;
-    }
-    const timeout = setTimeout(() => setIsFlashing(false), 1000);
-    return () => clearTimeout(timeout);
-  }, [isNewlyDone]);
+    (reassignSearchNorm === "" ||
+      noAssigneeLabelNorm.includes(reassignSearchNorm));
 
   useEffect(() => {
     if (!isEditing) {
@@ -261,13 +233,13 @@ export const EditableTaskItem = memo(function EditableTaskItem({
     }
     isCommittingRef.current = true;
     try {
-      await onPatchTask(task.sId, { text: textTrim });
+      await patchTaskItem(task.sId, { text: textTrim });
       setIsEditing(false);
       setShowSavedPulse(true);
     } finally {
       isCommittingRef.current = false;
     }
-  }, [cancelEdit, draftText, isEditing, onPatchTask, task.sId, task.text]);
+  }, [cancelEdit, draftText, isEditing, patchTaskItem, task.sId, task.text]);
 
   const startEdit = useCallback(
     (charOffset?: number) => {
@@ -281,10 +253,6 @@ export const EditableTaskItem = memo(function EditableTaskItem({
     },
     [canEdit, task.text]
   );
-
-  const handleToggle = () => {
-    onToggleDone(task);
-  };
 
   const handleStartMenuOpenChange = (open: boolean) => {
     setStartMenuOpen(open);
@@ -304,40 +272,20 @@ export const EditableTaskItem = memo(function EditableTaskItem({
       selectedStartAgent && selectedStartAgent.sId !== GLOBAL_AGENTS_SID.DUST
         ? selectedStartAgent.sId
         : undefined;
-    await onStartWorking(task, {
+    await handleStartWorking(task, {
       customMessage: startCustomMessage.trim() || undefined,
       agentConfigurationId,
       goToConversation: goToConversationAfterStart,
     });
   };
 
-  const startRedirectMenuItems = useMemo((): DropdownMenuItemProps[] => {
-    const check = (
-      <Icon
-        size="xs"
-        visual={CheckIcon}
-        className="text-muted-foreground dark:text-muted-foreground-night"
-      />
-    );
-    return [
-      {
-        label: "Redirect to conversation",
-        onSelect: (e) => {
-          e.preventDefault();
-          setGoToConversationAfterStart(true);
-        },
-        endComponent: goToConversationAfterStart ? check : undefined,
-      },
-      {
-        label: "Stay on tasks",
-        onSelect: (e) => {
-          e.preventDefault();
-          setGoToConversationAfterStart(false);
-        },
-        endComponent: !goToConversationAfterStart ? check : undefined,
-      },
-    ];
-  }, [goToConversationAfterStart]);
+  const checkIcon = (
+    <Icon
+      size="xs"
+      visual={CheckIcon}
+      className="text-muted-foreground dark:text-muted-foreground-night"
+    />
+  );
 
   const startMenuKeepsActionsVisible =
     startMenuOpen ||
@@ -358,7 +306,7 @@ export const EditableTaskItem = memo(function EditableTaskItem({
           checked={isDone}
           disabled={!canEdit}
           isMutedAfterCheck
-          onCheckedChange={() => handleToggle()}
+          onCheckedChange={() => handleToggleDone(task)}
         />
       </div>
       <div className="flex min-w-0 flex-1 items-start gap-2">
@@ -375,7 +323,7 @@ export const EditableTaskItem = memo(function EditableTaskItem({
               className={cn(
                 TODO_TEXTAREA_FIELD_CLASS,
                 isDone && "text-faint line-through dark:text-faint-night",
-                isFlashing &&
+                isNewlyDone &&
                   "rounded bg-warning-100/40 dark:bg-warning-100-night/30"
               )}
               onChange={(e) => setDraftText(stripNewlines(e.target.value))}
@@ -402,13 +350,7 @@ export const EditableTaskItem = memo(function EditableTaskItem({
                 }
               }}
             />
-            <div>
-              <TaskSources
-                sources={task.sources}
-                owner={owner}
-                isDone={isDone}
-              />
-            </div>
+            <TaskSources sources={task.sources} owner={owner} isDone={isDone} />
           </div>
         ) : (
           <div className="flex min-w-0 flex-1 flex-col gap-0.5">
@@ -430,7 +372,7 @@ export const EditableTaskItem = memo(function EditableTaskItem({
                     isDone
                       ? "text-faint dark:text-faint-night line-through"
                       : "text-foreground dark:text-foreground-night",
-                    isFlashing &&
+                    isNewlyDone &&
                       "rounded bg-warning-100/40 dark:bg-warning-100-night/30",
                     showSavedPulse && "animate-saved-pulse",
                     canEdit && "cursor-pointer"
@@ -470,13 +412,11 @@ export const EditableTaskItem = memo(function EditableTaskItem({
               </TaskMetadataTooltip>
             </div>
             {!showTypingAnimation && (
-              <div>
-                <TaskSources
-                  sources={task.sources}
-                  owner={owner}
-                  isDone={isDone}
-                />
-              </div>
+              <TaskSources
+                sources={task.sources}
+                owner={owner}
+                isDone={isDone}
+              />
             )}
           </div>
         )}
@@ -513,7 +453,7 @@ export const EditableTaskItem = memo(function EditableTaskItem({
             <div
               className={cn(
                 "flex shrink-0 items-center gap-1 transition-opacity",
-                startMenuKeepsActionsVisible || isFirstOnboardingTask
+                startMenuKeepsActionsVisible
                   ? "opacity-100"
                   : "opacity-100 md:opacity-0 md:group-hover/task:opacity-100 md:focus-within:opacity-100"
               )}
@@ -564,8 +504,8 @@ export const EditableTaskItem = memo(function EditableTaskItem({
                           <AgentPicker
                             owner={owner}
                             agents={activeAgents}
-                            disabled={agentsLoading}
-                            isLoading={agentsLoading}
+                            disabled={isAgentsLoading}
+                            isLoading={isAgentsLoading}
                             mountPortal
                             showDropdownArrow
                             showFooterButtons={false}
@@ -608,7 +548,28 @@ export const EditableTaskItem = memo(function EditableTaskItem({
                           />
                           <ButtonGroupDropdown
                             align="end"
-                            items={startRedirectMenuItems}
+                            items={[
+                              {
+                                label: "Redirect to conversation",
+                                onSelect: (e) => {
+                                  e.preventDefault();
+                                  setGoToConversationAfterStart(true);
+                                },
+                                endComponent: goToConversationAfterStart
+                                  ? checkIcon
+                                  : undefined,
+                              },
+                              {
+                                label: "Stay on tasks",
+                                onSelect: (e) => {
+                                  e.preventDefault();
+                                  setGoToConversationAfterStart(false);
+                                },
+                                endComponent: !goToConversationAfterStart
+                                  ? checkIcon
+                                  : undefined,
+                              },
+                            ]}
                             trigger={
                               <Button
                                 variant="outline"
@@ -701,7 +662,7 @@ export const EditableTaskItem = memo(function EditableTaskItem({
                                       onClick={() => {
                                         void (async () => {
                                           try {
-                                            await onPatchTask(task.sId, {
+                                            await patchTaskItem(task.sId, {
                                               assigneeUserId: null,
                                             });
                                           } finally {
@@ -734,7 +695,7 @@ export const EditableTaskItem = memo(function EditableTaskItem({
                                       void (async () => {
                                         try {
                                           if (member.sId !== task.user?.sId) {
-                                            await onPatchTask(task.sId, {
+                                            await patchTaskItem(task.sId, {
                                               assigneeUserId: member.sId,
                                             });
                                           }
@@ -762,7 +723,7 @@ export const EditableTaskItem = memo(function EditableTaskItem({
                     variant="warning"
                     onClick={() => {
                       setOverflowMenuOpen(false);
-                      void onDelete(task);
+                      void requestDelete(task);
                     }}
                   />
                 </DropdownMenuContent>
@@ -773,4 +734,4 @@ export const EditableTaskItem = memo(function EditableTaskItem({
       </div>
     </div>
   );
-});
+}
