@@ -18,6 +18,8 @@ const PostConversationForkBodySchema = t.partial({
 
 export type PostConversationForkResponseBody = {
   conversationId: string;
+  parentConversationTitle: string | null;
+  spaceId: string | null;
 };
 
 async function handler(
@@ -111,7 +113,9 @@ async function handler(
   }
 
   return res.status(200).json({
-    conversationId: createRes.value,
+    conversationId: createRes.value.conversationId,
+    parentConversationTitle: createRes.value.parentConversationTitle,
+    spaceId: createRes.value.spaceId,
   });
 }
 

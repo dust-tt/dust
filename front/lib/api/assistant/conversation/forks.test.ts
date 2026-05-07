@@ -494,7 +494,7 @@ describe("createConversationFork", () => {
 
     const childConversation = await fetchConversationOrThrow(
       auth,
-      result.value
+      result.value.conversationId
     );
 
     expect(childConversation.title).toBeNull();
@@ -689,7 +689,7 @@ describe("createConversationFork", () => {
 
     const childConversation = await fetchConversationOrThrow(
       auth,
-      result.value
+      result.value.conversationId
     );
 
     expect(childConversation.forkingData?.forkedFrom?.sourceMessageId).toBe(
@@ -798,7 +798,7 @@ describe("createConversationFork", () => {
 
     const childConversation = await fetchConversationOrThrow(
       auth,
-      result.value
+      result.value.conversationId
     );
 
     const childMCPServerViews = await ConversationResource.fetchMCPServerViews(
@@ -861,7 +861,7 @@ describe("createConversationFork", () => {
 
     const childConversation = await fetchConversationOrThrow(
       auth,
-      result.value
+      result.value.conversationId
     );
 
     const childSkills = await SkillResource.listEnabledByConversation(auth, {
@@ -938,7 +938,7 @@ describe("createConversationFork", () => {
 
     const childConversation = await fetchConversationOrThrow(
       auth,
-      result.value
+      result.value.conversationId
     );
 
     const childAttachments = await listAttachments(auth, {
@@ -1072,7 +1072,7 @@ const untouched = "prefix${referencedFile.sId}suffix";`
 
     const childConversation = await fetchConversationOrThrow(
       auth,
-      result.value
+      result.value.conversationId
     );
 
     const childAttachments = await listAttachments(auth, {
@@ -1226,7 +1226,7 @@ const untouched = "prefix${referencedFile.sId}suffix";`
 
     const childConversation = await fetchConversationOrThrow(
       auth,
-      result.value
+      result.value.conversationId
     );
 
     const childAttachments = await listAttachments(auth, {
@@ -1310,7 +1310,7 @@ const untouched = "prefix${referencedFile.sId}suffix";`
 
     const childConversation = await fetchConversationOrThrow(
       auth,
-      result.value
+      result.value.conversationId
     );
 
     const childAttachments = await listAttachments(auth, {
@@ -1408,7 +1408,7 @@ const untouched = "prefix${referencedFile.sId}suffix";`
 
     const childConversation = await fetchConversationOrThrow(
       auth,
-      result.value
+      result.value.conversationId
     );
 
     const childAttachments = await listAttachments(auth, {
@@ -1476,7 +1476,7 @@ const untouched = "prefix${referencedFile.sId}suffix";`
 
     const childConversation = await fetchConversationOrThrow(
       auth,
-      result.value
+      result.value.conversationId
     );
 
     const childAttachments = await listAttachments(auth, {
@@ -1580,7 +1580,7 @@ const untouched = "prefix${referencedFile.sId}suffix";`
 
     const childConversation = await fetchConversationOrThrow(
       auth,
-      result.value
+      result.value.conversationId
     );
 
     const childAttachments = await listAttachments(auth, {
@@ -1682,7 +1682,7 @@ const untouched = "prefix${referencedFile.sId}suffix";`
 
     const childConversation = await fetchConversationOrThrow(
       auth,
-      result.value
+      result.value.conversationId
     );
 
     expect(childConversation.requestedSpaceIds).toEqual([
