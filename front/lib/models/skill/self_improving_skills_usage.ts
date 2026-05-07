@@ -60,6 +60,11 @@ SelfImprovingSkillsUsageModel.init(
         fields: ["workspaceId", "skillId", "createdAt"],
         name: "self_imp_skills_usage_workspace_skill_created_at_idx",
       },
+      {
+        fields: ["conversationId"],
+        name: "self_improving_skills_usage_conversation_id_idx",
+        concurrently: true,
+      },
     ],
   }
 );
