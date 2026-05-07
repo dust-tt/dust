@@ -24,8 +24,8 @@ import {
 } from "@app/lib/metronome/constants";
 import { TOOL_CATEGORIES } from "@app/lib/metronome/events";
 import {
+  EXCESS_CREDIT_NAME,
   FREE_ANNUAL_CREDIT_NAME,
-  FREE_EXCESS_CREDIT_NAME,
   FREE_MONTHLY_CREDIT_NAME,
 } from "@app/lib/metronome/types";
 
@@ -403,6 +403,10 @@ const PRODUCTS: ProductDef[] = [
   // FIXED products for credit grants — separate products for distinct invoice line items.
   {
     name: "Free Credits",
+    type: "FIXED",
+  },
+  {
+    name: "Excess Credits",
     type: "FIXED",
   },
   {
@@ -916,7 +920,7 @@ function getFreeAnnualRecurringCredits(): RecurringCreditDef {
 
 function getFreeExcessRecurringCredits(): RecurringCreditDef {
   return {
-    product_name: "Free Credits",
+    product_name: "Excess Credits",
     access_amount: {
       credit_type_id: getCreditTypeProgrammaticUsdId(),
       unit_price: 0,
@@ -927,7 +931,7 @@ function getFreeExcessRecurringCredits(): RecurringCreditDef {
     starting_at_offset: { unit: "DAYS", value: 0 }, // starts immediately
     applicable_product_tags: [USAGE_TAG],
     recurrence_frequency: "MONTHLY",
-    name: FREE_EXCESS_CREDIT_NAME,
+    name: EXCESS_CREDIT_NAME,
   };
 }
 
