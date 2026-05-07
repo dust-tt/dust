@@ -53,7 +53,7 @@ export function useWorkspaceEgressPolicy({
   const { data, error, mutate, isLoading } = useSWRWithDefaults(
     workspaceEgressPolicyUrl(owner.sId),
     policyFetcher,
-    { disabled },
+    { disabled }
   );
 
   return {
@@ -77,7 +77,7 @@ export function useWorkspaceSandboxEnvVars({
   const { data, error, mutate, isLoading } = useSWRWithDefaults(
     workspaceSandboxEnvVarsUrl(owner.sId),
     envVarsFetcher,
-    { disabled },
+    { disabled }
   );
 
   return {
@@ -116,7 +116,7 @@ export function useUpsertWorkspaceSandboxEnvVar({
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ allowedDomains, kind, name, value }),
-        },
+        }
       );
 
       if (!response.ok) {
@@ -189,7 +189,7 @@ export function usePatchWorkspaceSandboxEnvVar({
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ allowedDomains, kind }),
-        },
+        }
       );
 
       if (!response.ok) {
@@ -245,7 +245,7 @@ export function useDeleteWorkspaceSandboxEnvVar({
   });
 
   const deleteWorkspaceSandboxEnvVar = async (
-    envVar: WorkspaceSandboxEnvVarType,
+    envVar: WorkspaceSandboxEnvVarType
   ): Promise<boolean> => {
     setIsDeleting(true);
     try {
@@ -253,7 +253,7 @@ export function useDeleteWorkspaceSandboxEnvVar({
         `${workspaceSandboxEnvVarsUrl(owner.sId)}/${envVar.sId}`,
         {
           method: "DELETE",
-        },
+        }
       );
 
       if (!response.ok) {
@@ -299,11 +299,11 @@ export function useUpdateWorkspaceSandboxAgentEgressRequests({
   const sendNotification = useSendNotification();
   const [isUpdating, setIsUpdating] = useState(false);
   const [isEnabled, setIsEnabled] = useState(
-    owner.metadata?.sandboxAllowAgentEgressRequests === true,
+    owner.metadata?.sandboxAllowAgentEgressRequests === true
   );
 
   const updateWorkspaceSandboxAgentEgressRequests = async (
-    enabled: boolean,
+    enabled: boolean
   ): Promise<boolean> => {
     setIsUpdating(true);
     try {
@@ -357,7 +357,7 @@ export function useUpdateWorkspaceEgressPolicy({
   });
 
   const updateWorkspaceEgressPolicy = async (
-    policy: EgressPolicy,
+    policy: EgressPolicy
   ): Promise<boolean> => {
     setIsUpdating(true);
     try {

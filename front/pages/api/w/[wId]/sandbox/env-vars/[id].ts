@@ -39,7 +39,7 @@ async function handler(
       | PatchWorkspaceSandboxEnvVarResponseBody
     >
   >,
-  auth: Authenticator,
+  auth: Authenticator
 ): Promise<void> {
   if (!auth.isAdmin()) {
     return apiError(req, res, {
@@ -117,7 +117,7 @@ async function handler(
 
       const envVar = await WorkspaceSandboxEnvVarResource.fetchById(
         auth,
-        envVarModelId,
+        envVarModelId
       );
       if (!envVar) {
         return apiError(req, res, {
@@ -195,7 +195,7 @@ async function handler(
     case "DELETE": {
       const envVar = await WorkspaceSandboxEnvVarResource.fetchById(
         auth,
-        envVarModelId,
+        envVarModelId
       );
       if (!envVar) {
         return apiError(req, res, {

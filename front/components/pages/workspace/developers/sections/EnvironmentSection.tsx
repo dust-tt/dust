@@ -26,6 +26,7 @@ import {
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
   Button,
+  Chip,
   ContentMessage,
   cn,
   Dialog,
@@ -38,6 +39,8 @@ import {
   InformationCircleIcon,
   Input,
   Label,
+  ListGroup,
+  ListItem,
   LockIcon,
   Page,
   PencilSquareIcon,
@@ -492,17 +495,18 @@ export function EnvironmentSection() {
             No environment variables yet.
           </ContentMessage>
         ) : (
-          <div className="flex w-full flex-col divide-y divide-separator dark:divide-separator-night">
+          <ListGroup>
             {envVars.map((envVar) => {
               const updatedBy =
                 envVar.lastUpdatedByName ?? envVar.createdByName ?? "Unknown";
+              const isAnyMutationPending =
+                isUpsertingWorkspaceSandboxEnvVar ||
+                isDeletingWorkspaceSandboxEnvVar ||
+                isPatchingWorkspaceSandboxEnvVar;
 
               return (
-                <div
-                  key={envVar.name}
-                  className="flex items-center justify-between gap-3 py-3"
-                >
-                  <div className="flex min-w-0 flex-col gap-1">
+                <ListItem key={envVar.name} itemsAlignment="center">
+                  <div className="flex min-w-0 flex-1 flex-col gap-1">
                     <pre
                       title={envVar.name}
                       className="min-w-0 self-start overflow-x-auto whitespace-nowrap rounded bg-muted-background p-2 text-sm text-foreground dark:bg-muted-background-night dark:text-foreground-night"
@@ -514,12 +518,23 @@ export function EnvironmentSection() {
                       {timeAgoFrom(envVar.updatedAt, { useLongFormat: true })}{" "}
                       ago by {updatedBy}
                     </div>
-                    <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-                      {labelForKind(envVar.kind)}
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <Chip
+                        size="xs"
+                        color={
+                          envVar.kind === "https_secret" ? "warning" : "info"
+                        }
+                        label={labelForKind(envVar.kind)}
+                      />
                       {envVar.kind === "https_secret" &&
-                      envVar.allowedDomains?.length
-                        ? ` - ${envVar.allowedDomains.join(", ")}`
-                        : ""}
+                        envVar.allowedDomains?.map((domain) => (
+                          <Chip
+                            key={domain}
+                            size="xs"
+                            color="white"
+                            label={domain}
+                          />
+                        ))}
                     </div>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
@@ -532,11 +547,7 @@ export function EnvironmentSection() {
                           ? `Promote ${envVar.name} to HTTPS secret`
                           : `Edit allowed domains for ${envVar.name}`
                       }
-                      disabled={
-                        isUpsertingWorkspaceSandboxEnvVar ||
-                        isDeletingWorkspaceSandboxEnvVar ||
-                        isPatchingWorkspaceSandboxEnvVar
-                      }
+                      disabled={isAnyMutationPending}
                       onClick={() => openConfigureDomainsDialog(envVar)}
                     />
                     <Button
@@ -544,11 +555,7 @@ export function EnvironmentSection() {
                       size="mini"
                       icon={PencilSquareIcon}
                       tooltip={`Replace value of ${envVar.name}`}
-                      disabled={
-                        isUpsertingWorkspaceSandboxEnvVar ||
-                        isDeletingWorkspaceSandboxEnvVar ||
-                        isPatchingWorkspaceSandboxEnvVar
-                      }
+                      disabled={isAnyMutationPending}
                       onClick={() => openReplaceDialog(envVar)}
                     />
                     <Button
@@ -556,18 +563,14 @@ export function EnvironmentSection() {
                       size="mini"
                       icon={TrashIcon}
                       tooltip={`Delete ${envVar.name}`}
-                      disabled={
-                        isDeletingWorkspaceSandboxEnvVar ||
-                        isUpsertingWorkspaceSandboxEnvVar ||
-                        isPatchingWorkspaceSandboxEnvVar
-                      }
+                      disabled={isAnyMutationPending}
                       onClick={() => setEnvVarToDelete(envVar)}
                     />
                   </div>
-                </div>
+                </ListItem>
               );
             })}
-          </div>
+          </ListGroup>
         )}
       </Page.Vertical>
     );
