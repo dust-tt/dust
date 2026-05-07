@@ -12,7 +12,6 @@ import {
   upsertTable,
 } from "@app/lib/api/data_sources";
 import { processAndStoreFile } from "@app/lib/api/files/processing";
-import { isSandboxRawDelimitedConversationFile } from "@app/lib/api/files/sandbox_raw";
 import { generateSnippet } from "@app/lib/api/files/snippet";
 import { getFileContent } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
@@ -572,10 +571,6 @@ export async function processAndUpsertToDataSource(
       code: "file_not_ready",
       message: "File is not ready for post processing.",
     });
-  }
-
-  if (isSandboxRawDelimitedConversationFile(file)) {
-    return new Ok(file);
   }
 
   if (!isFileTypeUpsertableForUseCase(file)) {
