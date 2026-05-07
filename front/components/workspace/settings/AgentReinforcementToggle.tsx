@@ -84,20 +84,20 @@ function SelfImprovementCapPerSkillItem({ owner }: ReinforcementSectionProps) {
     String(capDollars)
   );
 
-  const parsedInput = Number(inputValue);
-  const isInputValid =
+  const parsedInputDollars = Number(inputValue);
+  const isInputDollarsValid =
     inputValue.trim() !== "" &&
-    Number.isFinite(parsedInput) &&
-    parsedInput >= 0;
+    Number.isFinite(parsedInputDollars) &&
+    parsedInputDollars >= 0;
 
   const defaultDollars =
     DEFAULT_SELF_IMPROVEMENT_CAP_PER_SKILL_MICRO_USD / 1_000_000;
 
   const handleSave = async () => {
-    if (!isInputValid) {
+    if (!isInputDollarsValid) {
       return;
     }
-    await saveCapDollars(parsedInput);
+    await saveCapDollars(parsedInputDollars);
   };
 
   return (
@@ -119,12 +119,12 @@ function SelfImprovementCapPerSkillItem({ owner }: ReinforcementSectionProps) {
               placeholder={String(defaultDollars)}
               value={inputValue}
               message={
-                !isInputValid && inputValue !== ""
+                !isInputDollarsValid && inputValue !== ""
                   ? "Enter a non-negative number."
                   : undefined
               }
               messageStatus={
-                !isInputValid && inputValue !== "" ? "error" : undefined
+                !isInputDollarsValid && inputValue !== "" ? "error" : undefined
               }
               onChange={(event) => setInputValue(event.target.value)}
               disabled={isSaving}
@@ -133,7 +133,7 @@ function SelfImprovementCapPerSkillItem({ owner }: ReinforcementSectionProps) {
           <Button
             type="submit"
             label="Save"
-            disabled={!isInputValid}
+            disabled={!isInputDollarsValid}
             isLoading={isSaving}
           />
         </form>
