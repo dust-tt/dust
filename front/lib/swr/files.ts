@@ -240,7 +240,7 @@ export function useSkillAttachmentFileContent({
   owner,
   config,
 }: {
-  fileId: string | null | undefined;
+  fileId: string | null;
   owner: LightWorkspaceType;
   config?: SWRConfiguration & {
     disabled?: boolean;
@@ -248,15 +248,12 @@ export function useSkillAttachmentFileContent({
 }) {
   const sendNotification = useSendNotification();
   const isDisabled = !fileId || config?.disabled;
-  const swrKey = fileId
-    ? `/api/w/${owner.sId}/skills/file_attachments/${fileId}/content`
-    : null;
 
   const { data, error, mutate } = useSWRWithDefaults<
-    string | null,
+    string,
     string | null
   >(
-    swrKey,
+    `/api/w/${owner.sId}/skills/file_attachments/${fileId}/content`,
     async (url: string) => {
       const response = await clientFetch(url);
       if (!response.ok) {
