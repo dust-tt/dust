@@ -40,8 +40,8 @@ import { removeNulls } from "@app/types/shared/utils/general";
 import {
   BookOpenIcon,
   ChatBubbleLeftRightIcon,
+  CheckIcon,
   Cog6ToothIcon,
-  ListCheckIcon,
   Spinner,
   Tabs,
   TabsContent,
@@ -308,7 +308,7 @@ export function SpaceConversationsPage() {
               value="tasks"
               label={compactProjectTabs ? undefined : "Tasks"}
               tooltip={compactProjectTabs ? "Tasks" : undefined}
-              icon={ListCheckIcon}
+              icon={CheckIcon}
             />
             <TabsTrigger
               value="knowledge"
