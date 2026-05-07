@@ -941,7 +941,7 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
   });
 
   describe("API key validation", () => {
-    it("should fail to delete a regular space with active API keys in non-global groups", async () => {
+    it("should be able to delete a regular space with active API keys in non-global groups", async () => {
       const result = await createSpaceAndGroup(adminAuth, {
         name: "Test Regular Space With Keys",
         isRestricted: true,
@@ -966,17 +966,12 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
             space,
             false
           );
-          expect(deleteResult.isErr()).toBe(true);
-          if (deleteResult.isErr()) {
-            expect(deleteResult.error.message).toContain(
-              "Cannot delete group with active API Keys"
-            );
-          }
+          expect(deleteResult.isOk()).toBe(true);
         }
       }
     });
 
-    it("should fail to delete a project space with active API keys in non-global groups", async () => {
+    it("should be able to delete a project space with active API keys in non-global groups", async () => {
       vi.spyOn(
         await import("@app/lib/api/projects/connector"),
         "createDataSourceAndConnectorForProject"
@@ -1006,12 +1001,7 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
             space,
             false
           );
-          expect(deleteResult.isErr()).toBe(true);
-          if (deleteResult.isErr()) {
-            expect(deleteResult.error.message).toContain(
-              "Cannot delete group with active API Keys"
-            );
-          }
+          expect(deleteResult.isOk()).toBe(true);
         }
       }
     });
