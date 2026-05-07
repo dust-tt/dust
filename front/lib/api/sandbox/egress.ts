@@ -292,19 +292,6 @@ export async function setupEgressForwarder(
     }
   }
 
-  // PHASE0(remove with the experiment): env-var-driven gating of the MITM
-  // stage. Both env vars must be set for the experiment to engage; setting
-  // only the host without the token would turn on dsbx MITM and trust-bundle
-  // injection while the smoke endpoint stays 404, which is a half-on state we
-  // don't want. Phase 1 replaces this conditional with always-on MITM driven
-  // by the configured set of secrets and their allowedDomains.
-  const mitmHost = config.getEgressMitmExperimentHost();
-  const mitmToken = config.getEgressMitmExperimentToken();
-  const mitmExperimentHost = mitmHost && mitmToken ? mitmHost : null;
-  const mitmFlags = mitmExperimentHost
-    ? `--mitm-experiment-host ${shellEscape(mitmExperimentHost)} `
-    : "";
-
   // Strip trust-bundle env vars from dsbx's own env. These are for agent
   // clients, not for dsbx validating the central proxy certificate.
   const startForwarderCommand =
@@ -318,7 +305,6 @@ export async function setupEgressForwarder(
     `--proxy-tls-name ${shellEscape(getProxyTlsName())} ` +
     `--listen ${shellEscape(EGRESS_FORWARDER_LISTEN_ADDR)} ` +
     `--deny-log ${shellEscape(EGRESS_DENY_LOG_PATH)} ` +
-    mitmFlags +
     `>${shellEscape(EGRESS_FORWARDER_LOG_PATH)} 2>&1 &`;
 
   const startResult = await runSuccessfulSandboxCommand(

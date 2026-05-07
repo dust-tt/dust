@@ -122,6 +122,9 @@ impl MitmCa {
         Ok(())
     }
 
+    // Held for the next slice's per-secret swap path; no caller wires it up
+    // yet, so silence the dead-code warning rather than carry a stub.
+    #[allow(dead_code)]
     pub async fn server_config_for(self: &Arc<Self>, sni: &str) -> Result<Arc<ServerConfig>> {
         let certified = self.get_or_mint_leaf(sni).await?;
         let resolver = SingleCertResolver { key: certified };
