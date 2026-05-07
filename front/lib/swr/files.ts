@@ -24,32 +24,34 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Fetcher, SWRConfiguration } from "swr";
 
-export const getFileProcessedUrl = (
+export function getFileProcessedUrl(
   owner: LightWorkspaceType,
   fileId: string | null | undefined
-) =>
-  `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${fileId}?action=view&version=processed`;
+) {
+return   `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${fileId}?action=view&version=processed`;
+}
 
-export const getProcessedFileDownloadUrl = (
+export function getProcessedFileDownloadUrl(
   owner: LightWorkspaceType,
   fileId: string
-) =>
-  `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${fileId}?action=download&version=processed`;
+) {
+  return `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${fileId}?action=download&version=processed`;}
 
-export const getFileDownloadUrl = (owner: LightWorkspaceType, fileId: string) =>
-  `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${fileId}?action=download`;
+export function getFileDownloadUrl(owner: LightWorkspaceType, fileId: string)
+  {return `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${fileId}?action=download`;}
 
-export const getFileViewUrl = (
+export function getFileViewUrl(
   owner: LightWorkspaceType,
   fileId: string | null | undefined
-) => `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${fileId}?action=view`;
+) {return `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${fileId}?action=view`;}
 
-export const getSkillFileContentUrl = (
+export function getSkillFileContentUrl(
   owner: LightWorkspaceType,
   skillId: string,
   fileId: string
-) =>
-  `${config.getApiBaseUrl()}/api/w/${owner.sId}/skills/${skillId}/files/${fileId}/content`;
+) {
+  return `${config.getApiBaseUrl()}/api/w/${owner.sId}/skills/${skillId}/files/${fileId}/content`;
+}
 
 export async function downloadSandboxFile(
   owner: LightWorkspaceType,
