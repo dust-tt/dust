@@ -18,7 +18,7 @@ export function ProjectTaskLocalSearch() {
   return (
     <SearchInput
       name="project-tasks-filter"
-      placeholder="Search tasks..."
+      placeholder="Filter tasks..."
       value={inputValue}
       onChange={setValue}
       className="w-full"
