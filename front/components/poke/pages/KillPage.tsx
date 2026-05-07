@@ -10,6 +10,7 @@ import {
   AnthropicLogo,
   ArrowPathIcon,
   BoltIcon,
+  CardIcon,
   CloudArrowLeftRightIcon,
   Cog6ToothIcon,
   OpenaiLogo,
@@ -59,6 +60,13 @@ const KILL_SWITCH_DEFINITIONS: Record<KillSwitchType, KillSwitchDefinition> = {
       "Force Dust and Deep Dive agents to use non-Anthropic providers.",
     note: "Use only when the latest Sonnet or Opus models are down.",
     icon: ArrowPathIcon,
+  },
+  global_disable_metronome_billing: {
+    title: "Metronome Billing",
+    description:
+      "Disable Metronome billing globally and fall back to legacy Stripe subscriptions.",
+    note: "Workspaces with the `metronome_billing` feature flag bypass this kill switch.",
+    icon: CardIcon,
   },
 };
 
