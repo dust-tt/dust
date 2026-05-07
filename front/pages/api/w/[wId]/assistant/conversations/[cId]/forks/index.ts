@@ -2,7 +2,6 @@
 import { createConversationFork } from "@app/lib/api/assistant/conversation/forks";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -46,17 +45,6 @@ async function handler(
       api_error: {
         type: "method_not_supported_error",
         message: "The method passed is not supported, POST is expected.",
-      },
-    });
-  }
-
-  const featureFlags = await getFeatureFlags(auth);
-  if (!featureFlags.includes("sessions_branching")) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "feature_flag_not_found",
-        message: "The feature is not enabled for this workspace.",
       },
     });
   }
