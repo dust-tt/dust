@@ -1236,8 +1236,24 @@ const InputBarContainer = ({
               )}
           </div>
           <TooltipProvider>
-            <TooltipRoot open={isBlockTooltipOpen && submitBlockMessage !== null}>
-              <TooltipTrigger asChild>
+            <TooltipRoot
+              open={isBlockTooltipOpen && submitBlockMessage !== null}
+            >
+              <TooltipTrigger
+                asChild
+                onPointerEnter={() => {
+                  if (submitBlockMessage) {
+                    setIsBlockTooltipOpen(true);
+                  }
+                }}
+                onPointerLeave={() => {
+                  if (blockTooltipTimerRef.current) {
+                    clearTimeout(blockTooltipTimerRef.current);
+                    blockTooltipTimerRef.current = null;
+                  }
+                  setIsBlockTooltipOpen(false);
+                }}
+              >
                 <Button
                   size={buttonSize}
                   isLoading={
@@ -1261,7 +1277,7 @@ const InputBarContainer = ({
                         editorService.setLoading(false);
                       }
                     }
-                    onEnterKeyDown(
+                    onEnterKeyDownWithShake(
                       editorService.isEmpty() && !canSubmitEmpty,
                       editorService.getMarkdownAndMentions(),
                       () => {
