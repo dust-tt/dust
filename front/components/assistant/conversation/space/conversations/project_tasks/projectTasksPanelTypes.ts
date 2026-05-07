@@ -12,6 +12,12 @@ export type GroupedTasksByAssignee = Array<{
   tasks: ProjectTaskType[];
 }>;
 
+export type CombinedGroupedTasksByUser = Array<{
+  user: ProjectTaskAssigneeType | null;
+  suggestedTasks: ProjectTaskType[];
+  regularTasks: ProjectTaskType[];
+}>;
+
 export type ProjectTasksPanelData = {
   isScopeMenuOpen: boolean;
   setIsScopeMenuOpen: Dispatch<SetStateAction<boolean>>;
@@ -20,10 +26,8 @@ export type ProjectTasksPanelData = {
   viewerUserId: string | null;
   taskScopeLabel: string;
   isReadOnly?: boolean;
-  showSuggestedTasksTable: boolean;
   owner: LightWorkspaceType;
-  groupedSuggestedTasksOnly: GroupedTasksByAssignee;
-  groupedRegularTasksOnly: GroupedTasksByAssignee;
+  combinedGroupedTasksByUser: CombinedGroupedTasksByUser;
   activeAgents: LightAgentConfigurationType[];
   isAgentsLoading: boolean;
   agentNameById: Map<string, string>;
@@ -36,7 +40,6 @@ export type ProjectTasksPanelData = {
   handleToggleDone: (task: ProjectTaskType) => void;
   requestDelete: (task: ProjectTaskType) => Promise<void>;
   onApproveAgentSuggestion: (task: ProjectTaskType) => Promise<void>;
-  onRejectAgentSuggestion: (task: ProjectTaskType) => Promise<void>;
   onApproveAllSuggestedForAssignee: (taskIds: string[]) => Promise<void>;
   onRejectAllSuggestedForAssignee: (taskIds: string[]) => Promise<void>;
   handleStartWorking: (
@@ -67,8 +70,8 @@ export type ProjectTasksPanelData = {
   setDebouncedTaskSearchQuery: (value: string) => void;
   /** Single project member — hide member lists, reassign, and add-row assignee picker. */
   isSoleProjectMember: boolean;
-  /** Solo project + every visible regular task is assigned to the viewer — flat list, no assignee headers. */
-  hideRegularTaskAssigneeHeaders: boolean;
+  /** Solo project + every visible task is assigned to the viewer — flat list, no assignee headers. */
+  hideAssigneeHeaders: boolean;
 };
 
 export type UseProjectTasksPanelArgs = {

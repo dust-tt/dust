@@ -68,23 +68,23 @@ export function orderProjectTasksBySIdList(
     .filter((t): t is ProjectTaskType => t !== undefined);
 }
 
-export function compareProjectTaskAssigneeGroups(
-  a: { user: ProjectTaskAssigneeType | null },
-  b: { user: ProjectTaskAssigneeType | null },
+export function compareProjectTaskAssignees(
+  a: ProjectTaskAssigneeType | null,
+  b: ProjectTaskAssigneeType | null,
   viewerUserId: string | null
 ): number {
-  const aUnassigned = a.user === null;
-  const bUnassigned = b.user === null;
+  const aUnassigned = a === null;
+  const bUnassigned = b === null;
   if (aUnassigned !== bUnassigned) {
     return aUnassigned ? -1 : 1;
   }
-  const aIsViewer = viewerUserId !== null && a.user?.sId === viewerUserId;
-  const bIsViewer = viewerUserId !== null && b.user?.sId === viewerUserId;
+  const aIsViewer = viewerUserId !== null && a?.sId === viewerUserId;
+  const bIsViewer = viewerUserId !== null && b?.sId === viewerUserId;
   if (aIsViewer !== bIsViewer) {
     return aIsViewer ? -1 : 1;
   }
-  const aName = a.user?.fullName ?? PROJECT_TASK_NO_ASSIGNEE_LABEL;
-  const bName = b.user?.fullName ?? PROJECT_TASK_NO_ASSIGNEE_LABEL;
+  const aName = a?.fullName ?? PROJECT_TASK_NO_ASSIGNEE_LABEL;
+  const bName = b?.fullName ?? PROJECT_TASK_NO_ASSIGNEE_LABEL;
   return aName.localeCompare(bName, undefined, { sensitivity: "base" });
 }
 
@@ -114,7 +114,7 @@ export function flattenProjectTasksWithStableAssigneeOrder(
   }
 
   const sortedGroups = [...groups.values()].sort((a, b) =>
-    compareProjectTaskAssigneeGroups(a, b, viewerUserId)
+    compareProjectTaskAssignees(a.user, b.user, viewerUserId)
   );
 
   const flattened: ProjectTaskType[] = [];
