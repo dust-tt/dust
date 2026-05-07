@@ -365,11 +365,17 @@ async function runFrontDbInit(env: Environment): Promise<boolean> {
   // Commands and their expected completion markers
   // Both init_db.sh and init_plans.sh print "Done" when they complete successfully
   const commands = [
-    { cmd: "./admin/init_db.sh --unsafe", name: "init_db", expectDone: true },
-    { cmd: "./admin/init_plans.sh", name: "init_plans", expectDone: true },
+    { cmd: "./admin/init_db.sh --unsafe", name: "init_db", expectDone: true, env: {} },
+    {
+      cmd: "./admin/init_plans.sh",
+      name: "init_plans",
+      expectDone: true,
+      // pro plans are empty if not in development/test mode
+      env: { NODE_ENV: "development" },
+    },
   ];
 
-  for (const { cmd, name, expectDone } of commands) {
+  for (const { cmd, name, expectDone, env } of commands) {
     const command = buildShell({
       sourceEnv: envShPath,
       sourceNvm: true,
@@ -378,6 +384,7 @@ async function runFrontDbInit(env: Environment): Promise<boolean> {
 
     const proc = Bun.spawn(["bash", "-c", command], {
       cwd: `${worktreePath}/front`,
+      env: { ...process.env, ...env },
       stdout: "pipe",
       stderr: "pipe",
     });
