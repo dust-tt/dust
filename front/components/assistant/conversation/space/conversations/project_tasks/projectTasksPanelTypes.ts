@@ -51,7 +51,7 @@ export type ProjectTasksPanelData = {
     updates: { text?: string; assigneeUserId?: string | null }
   ) => Promise<void>;
   isSpaceInfoLoading: boolean;
-  defaultNewAssigneeSId: string | null;
+  defaultNewAssigneeId: string | null;
   handleAddTask: (text: string, assigneeSId: string | null) => Promise<boolean>;
   isTasksLoading: boolean;
   isTasksError: boolean;

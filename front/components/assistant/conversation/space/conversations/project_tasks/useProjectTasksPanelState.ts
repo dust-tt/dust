@@ -120,7 +120,7 @@ export function useProjectTasksPanelState({
     return ids;
   }, [tasks]);
 
-  const defaultNewAssigneeSId = useMemo(() => {
+  const defaultNewAssigneeId = useMemo(() => {
     if (projectMembers.length === 0) {
       return null;
     }
@@ -514,7 +514,7 @@ export function useProjectTasksPanelState({
     assigneeScopedTasks,
     combinedGroupedTasksByUser,
     debouncedTaskSearchQuery,
-    defaultNewAssigneeSId,
+    defaultNewAssigneeId,
     doneFlashKeys,
     filteredTasks,
     firstOnboardingTaskId,

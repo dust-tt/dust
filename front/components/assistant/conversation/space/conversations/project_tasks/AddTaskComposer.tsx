@@ -27,13 +27,13 @@ export type AddTaskAssigneeChoice =
 
 export function resolveSubmitAssigneeSId(
   choice: AddTaskAssigneeChoice,
-  defaultAssigneeSId: string
+  defaultAssigneeId: string
 ): string | null {
   switch (choice.kind) {
     case "unassigned":
       return null;
     case "default":
-      return defaultAssigneeSId;
+      return defaultAssigneeId;
     case "member":
       return choice.sId;
     default:
@@ -45,13 +45,13 @@ export function resolveSubmitAssigneeSId(
 function memberRowAssigneeChecked(
   choice: AddTaskAssigneeChoice,
   memberSId: string,
-  defaultAssigneeSId: string
+  defaultAssigneeId: string
 ): boolean {
   switch (choice.kind) {
     case "unassigned":
       return false;
     case "default":
-      return defaultAssigneeSId === memberSId;
+      return defaultAssigneeId === memberSId;
     case "member":
       return choice.sId === memberSId;
     default:
@@ -63,7 +63,7 @@ function memberRowAssigneeChecked(
 interface TaskRowAssigneeMenuProps {
   members: SpaceUserType[];
   viewerUserId: string | null;
-  defaultAssigneeSId: string;
+  defaultAssigneeId: string;
   choice: AddTaskAssigneeChoice;
   onChoiceChange: (next: AddTaskAssigneeChoice) => void;
   disabled?: boolean;
@@ -72,7 +72,7 @@ interface TaskRowAssigneeMenuProps {
 function TaskRowAssigneeMenu({
   members,
   viewerUserId,
-  defaultAssigneeSId,
+  defaultAssigneeId,
   choice,
   onChoiceChange,
   disabled,
@@ -97,7 +97,7 @@ function TaskRowAssigneeMenu({
 
   const effectiveMemberSId = resolveSubmitAssigneeSId(
     choice,
-    defaultAssigneeSId
+    defaultAssigneeId
   );
   const selectedUser = effectiveMemberSId
     ? members.find((m) => m.sId === effectiveMemberSId)
@@ -177,11 +177,11 @@ function TaskRowAssigneeMenu({
                   checked={memberRowAssigneeChecked(
                     choice,
                     member.sId,
-                    defaultAssigneeSId
+                    defaultAssigneeId
                   )}
                   onClick={() =>
                     onChoiceChange(
-                      member.sId === defaultAssigneeSId
+                      member.sId === defaultAssigneeId
                         ? { kind: "default" }
                         : { kind: "member", sId: member.sId }
                     )
@@ -203,8 +203,8 @@ function TaskRowAssigneeMenu({
 interface AddTaskComposerProps {
   projectMembers: SpaceUserType[];
   viewerUserId: string | null;
-  defaultAssigneeSId: string;
-  /** When true, always assigns to `defaultAssigneeSId` with no picker. */
+  defaultAssigneeId: string;
+  /** When true, always assigns to `defaultAssigneeId` with no picker. */
   hideAssigneePicker?: boolean;
   onAdd: (text: string, assigneeSId: string | null) => Promise<boolean>;
 }
@@ -212,7 +212,7 @@ interface AddTaskComposerProps {
 export function AddTaskComposer({
   projectMembers,
   viewerUserId,
-  defaultAssigneeSId,
+  defaultAssigneeId,
   hideAssigneePicker = false,
   onAdd,
 }: AddTaskComposerProps) {
@@ -233,8 +233,8 @@ export function AddTaskComposer({
   }, [hideAssigneePicker, projectMembers.length]);
 
   const submitAssigneeSId = hideAssigneePicker
-    ? defaultAssigneeSId
-    : resolveSubmitAssigneeSId(assigneeChoice, defaultAssigneeSId);
+    ? defaultAssigneeId
+    : resolveSubmitAssigneeSId(assigneeChoice, defaultAssigneeId);
 
   const handleSubmit = async () => {
     const trimmed = text.trim();
@@ -256,7 +256,7 @@ export function AddTaskComposer({
         <TaskRowAssigneeMenu
           members={projectMembers}
           viewerUserId={viewerUserId}
-          defaultAssigneeSId={defaultAssigneeSId}
+          defaultAssigneeId={defaultAssigneeId}
           choice={assigneeChoice}
           onChoiceChange={setAssigneeChoice}
           disabled={isAdding}
