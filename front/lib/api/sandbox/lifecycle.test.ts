@@ -119,7 +119,9 @@ describe("ensureSandboxReady", () => {
     );
   });
 
-  it("mounts files without initial egress setup when the sandbox woke from sleep", async () => {
+  it("only refreshes the token (no remount) when the sandbox woke from sleep", async () => {
+    // e2b preserves the FUSE mount and the token server across betaPause +
+    // connect, so on wake we must NOT remount — that would fail with EBUSY.
     mockEnsureActive.mockResolvedValue(
       new Ok({
         freshlyCreated: false,
@@ -135,15 +137,12 @@ describe("ensureSandboxReady", () => {
 
     expect(result.isOk()).toBe(true);
     expect(mockSetupEgressForwarder).not.toHaveBeenCalled();
-    expect(mockMountConversationFiles).toHaveBeenCalledWith(
+    expect(mockMountConversationFiles).not.toHaveBeenCalled();
+    expect(mockRefreshGcsToken).toHaveBeenCalledWith(
       auth,
       sandbox,
       conversation,
       image
-    );
-    expect(mockRefreshGcsToken).not.toHaveBeenCalled();
-    expect(mockMountConversationFiles.mock.invocationCallOrder[0]).toBeLessThan(
-      mockCheckEgressForwarderHealth.mock.invocationCallOrder[0]
     );
   });
 

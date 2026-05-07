@@ -26,7 +26,7 @@ export async function ensureSandboxReady(
     return ensureResult;
   }
 
-  const { sandbox, freshlyCreated, wokeFromSleep } = ensureResult.value;
+  const { sandbox, freshlyCreated } = ensureResult.value;
 
   // Egress forwarder setup must run BEFORE GCS mounts. When the MITM
   // experiment is enabled, sandbox_resource.buildSandboxEnvVars exports
@@ -55,7 +55,11 @@ export async function ensureSandboxReady(
     logger.error({ err }, "Telemetry start failed (fire-and-forget)")
   );
 
-  if (freshlyCreated || wokeFromSleep) {
+  // Only mount on first creation. e2b preserves the FUSE mount and the
+  // token server across betaPause + connect (verified empirically), so on
+  // wake we just need a fresh GCS access token in /tmp/token.json — the
+  // running token server will hand it to gcsfuse on the next request.
+  if (freshlyCreated) {
     const mountResult = await mountConversationFiles(
       auth,
       sandbox,
