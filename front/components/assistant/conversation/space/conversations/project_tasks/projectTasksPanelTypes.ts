@@ -5,7 +5,6 @@ import type {
   ProjectTaskType,
 } from "@app/types/project_task";
 import type { LightWorkspaceType, SpaceUserType } from "@app/types/user";
-import type { Dispatch, SetStateAction } from "react";
 
 export type GroupedTasksByAssignee = Array<{
   user: ProjectTaskAssigneeType | null;
@@ -19,12 +18,9 @@ export type CombinedGroupedTasksByUser = Array<{
 }>;
 
 export type ProjectTasksPanelData = {
-  isScopeMenuOpen: boolean;
-  setIsScopeMenuOpen: Dispatch<SetStateAction<boolean>>;
   taskOwnerFilter: TaskOwnerFilter;
   onTaskOwnerFilterChange: (value: TaskOwnerFilter) => void;
   viewerUserId: string | null;
-  taskScopeLabel: string;
   isReadOnly?: boolean;
   owner: LightWorkspaceType;
   combinedGroupedTasksByUser: CombinedGroupedTasksByUser;

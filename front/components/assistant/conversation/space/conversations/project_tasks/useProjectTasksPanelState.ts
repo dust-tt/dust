@@ -1,4 +1,3 @@
-import { formatTaskScopeLabel } from "@app/components/assistant/conversation/space/conversations/project_tasks/projectTasksListScope";
 import type {
   ProjectTasksPanelData,
   UseProjectTasksPanelArgs,
@@ -50,7 +49,6 @@ export function useProjectTasksPanelState({
   onTaskOwnerFilterChange,
 }: UseProjectTasksPanelArgs): ProjectTasksPanelData {
   const [debouncedTaskSearchQuery, setDebouncedTaskSearchQuery] = useState("");
-  const [isScopeMenuOpen, setIsScopeMenuOpen] = useState(false);
   const {
     tasks,
     viewerUserId,
@@ -156,8 +154,6 @@ export function useProjectTasksPanelState({
     isTasksLoading,
     markRead,
   });
-
-  const taskScopeLabel = formatTaskScopeLabel(taskOwnerFilter);
 
   const assigneeScopedTasks = tasks;
 
@@ -529,7 +525,6 @@ export function useProjectTasksPanelState({
     hideAssigneeHeaders,
     isAgentsLoading,
     isReadOnly,
-    isScopeMenuOpen,
     isSoleProjectMember,
     isSpaceInfoLoading,
     isTasksError,
@@ -545,11 +540,9 @@ export function useProjectTasksPanelState({
     projectMembers,
     requestDelete,
     setDebouncedTaskSearchQuery,
-    setIsScopeMenuOpen,
     startingTaskIds,
     taskOwnerFilter,
     tasks,
-    taskScopeLabel,
     viewerUserId,
   };
 }
