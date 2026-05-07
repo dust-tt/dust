@@ -30,7 +30,6 @@ import {
   AgentMCPActionModel,
   AgentMCPActionOutputItemModel,
 } from "@app/lib/models/agent/actions/mcp";
-import { SandboxToolExecutionModel } from "@app/lib/models/agent/actions/sandbox_tool_execution";
 import {
   AgentMessageModel,
   MessageModel,
@@ -1186,28 +1185,5 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
   get functionCallName(): string {
     return this.stepContent.value.value.name;
-  }
-
-  // Spawns a child sandbox tool execution under this agent action. The child
-  // lives in `sandbox_tool_executions` (separate table to dodge the
-  // `agent_step_contents` unique-index race) but is parented by this row, so
-  // the spawner is an instance method that fills in the FK from `this.id`.
-  // Returns the new execution's sId — read paths land with the approval flow.
-  async spawnChildSandboxToolExecution(
-    blob: Omit<
-      CreationAttributes<SandboxToolExecutionModel>,
-      "workspaceId" | "agentMessageId" | "agentMCPActionId"
-    >
-  ): Promise<string> {
-    const model = await SandboxToolExecutionModel.create({
-      ...blob,
-      workspaceId: this.workspaceId,
-      agentMessageId: this.agentMessageId,
-      agentMCPActionId: this.id,
-    });
-    return makeSId("sandbox_tool_execution", {
-      id: model.id,
-      workspaceId: model.workspaceId,
-    });
   }
 }
