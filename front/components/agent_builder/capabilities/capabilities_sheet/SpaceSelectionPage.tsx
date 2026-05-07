@@ -10,10 +10,18 @@ import {
   ListGroup,
   ListItem,
   ListItemSection,
+  SearchInput,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
   Tooltip,
 } from "@dust-tt/sparkle";
 import type React from "react";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 type SpaceRowData = {
   sId: string;
@@ -32,6 +40,93 @@ interface SpaceSelectionPageProps {
   setSelectedSpaces: React.Dispatch<React.SetStateAction<string[]>>;
   searchQuery?: string;
   missingSpaceIds?: string[];
+}
+
+interface SpaceSelectionSheetProps
+  extends Omit<SpaceSelectionPageProps, "searchQuery"> {
+  entityName: "agent" | "skill";
+  onClose: () => void;
+  onSave: () => void;
+  open: boolean;
+}
+
+export function SpaceSelectionSheet({
+  alreadyRequestedSpaceIds,
+  entityName,
+  missingSpaceIds,
+  onClose,
+  onSave,
+  open,
+  selectedSpaces,
+  setSelectedSpaces,
+}: SpaceSelectionSheetProps) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const { hasFeature } = useFeatureFlags();
+  const isProjectsEnabled = hasFeature("projects");
+
+  const handleClose = () => {
+    setSearchQuery("");
+    onClose();
+  };
+
+  const handleSave = () => {
+    setSearchQuery("");
+    onSave();
+  };
+
+  return (
+    <Sheet
+      open={open}
+      onOpenChange={(isOpen) => {
+        if (!isOpen) {
+          handleClose();
+        }
+      }}
+    >
+      <SheetContent>
+        <SheetHeader>
+          <SheetTitle>
+            {isProjectsEnabled ? "Add Spaces and Projects" : "Add Spaces"}
+          </SheetTitle>
+          <SheetDescription>
+            {isProjectsEnabled
+              ? `Choose the spaces and projects you want the ${entityName} to have access to.`
+              : `Choose the spaces you want the ${entityName} to have access to.`}
+          </SheetDescription>
+          <SearchInput
+            name="space"
+            onChange={(query) => setSearchQuery(query)}
+            value={searchQuery}
+            placeholder={
+              isProjectsEnabled ? "Search spaces and projects" : "Search spaces"
+            }
+            className="mt-4"
+          />
+        </SheetHeader>
+        <SheetContainer isListSelector>
+          <SpaceSelectionPageContent
+            alreadyRequestedSpaceIds={alreadyRequestedSpaceIds}
+            selectedSpaces={selectedSpaces}
+            setSelectedSpaces={setSelectedSpaces}
+            searchQuery={searchQuery}
+            missingSpaceIds={missingSpaceIds}
+          />
+        </SheetContainer>
+        <SheetFooter
+          leftButtonProps={{
+            label: "Cancel",
+            variant: "outline",
+            onClick: handleClose,
+          }}
+          rightButtonProps={{
+            label: "Save",
+            variant: "primary",
+            onClick: handleSave,
+          }}
+        />
+      </SheetContent>
+    </Sheet>
+  );
 }
 
 export function SpaceSelectionPageContent({

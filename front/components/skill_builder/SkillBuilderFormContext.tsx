@@ -42,6 +42,7 @@ export const skillBuilderFormSchema = z.object({
   reinforcement: z.enum(SKILL_REINFORCEMENT_MODES),
   fileAttachments: z.array(fileAttachmentSchema),
   attachedKnowledge: z.array(attachedKnowledgeSchema).optional(),
+  additionalSpaces: z.array(z.string()),
 });
 
 export type SkillBuilderFormData = z.infer<typeof skillBuilderFormSchema>;
