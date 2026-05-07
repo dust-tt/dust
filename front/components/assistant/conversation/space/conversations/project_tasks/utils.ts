@@ -84,8 +84,7 @@ export function useAutosizeTextArea(
   }, [active, adjustHeight]);
 }
 
-/** Desktop-only hover/focus reveal: hidden by default on `md+`, shown when the
- * `group/task` ancestor is hovered or contains focus. Mobile is always visible. */
+/** Hidden on `md+` until the `group/task` ancestor is hovered or focus-within. */
 export const TASK_DESKTOP_HOVER_REVEAL_CLASS =
   "md:opacity-0 md:group-hover/task:opacity-100 md:focus-within:opacity-100";
 

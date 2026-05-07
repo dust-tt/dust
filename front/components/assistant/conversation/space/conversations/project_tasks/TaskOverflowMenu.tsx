@@ -60,8 +60,7 @@ export function TaskOverflowMenu({ task }: TaskOverflowMenuProps) {
           )
         )
       : [...projectMembers];
-    // Members with at least one active (non-done) task come first; alphabetical
-    // order is preserved within each group.
+    // Members with active (non-done) tasks come first.
     return filtered.sort((a, b) => {
       const aActive = membersWithActiveTaskIds.has(a.sId) ? 0 : 1;
       const bActive = membersWithActiveTaskIds.has(b.sId) ? 0 : 1;

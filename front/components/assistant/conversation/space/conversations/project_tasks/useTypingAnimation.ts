@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface UseTypingAnimationArgs {
   enabled: boolean;
@@ -11,10 +11,6 @@ interface TypingAnimationApi {
   dismiss: () => void;
 }
 
-/**
- * Locks the source text once the animation starts so a re-render with a new
- * `text` value mid-animation doesn't make `<TypingAnimation>` jump.
- */
 export function useTypingAnimation({
   enabled,
   text,
@@ -38,7 +34,9 @@ export function useTypingAnimation({
     sourceText = lockedTextRef.current;
   }
 
-  const dismiss = useCallback(() => setDismissed(true), []);
-
-  return { isAnimating, sourceText, dismiss };
+  return {
+    isAnimating,
+    sourceText,
+    dismiss: () => setDismissed(true),
+  };
 }
