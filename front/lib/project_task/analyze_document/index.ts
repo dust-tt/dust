@@ -20,7 +20,7 @@ import {
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import { removeNulls } from "@app/types/shared/utils/general";
-import { startActiveObservation } from "@langfuse/tracing";
+import { startActiveObservation, updateActiveTrace } from "@langfuse/tracing";
 import type { Logger } from "pino";
 import { buildPromptForSourceType } from "./prompts";
 
@@ -50,25 +50,29 @@ async function callExtractActionItemsLLM(
   auth: Authenticator,
   {
     localLogger,
+    runId,
     model,
     specification,
     prompt,
     document,
   }: {
     localLogger: Logger;
+    runId: string;
     model: ModelConfigurationType;
     specification: AgentActionSpecification;
     prompt: string;
     document: TakeawaySourceDocument;
   }
-): Promise<{ extraction: ExtractionResult | null; scopedLogger: Logger }> {
+): Promise<ExtractionResult | null> {
   const owner = auth.getNonNullableWorkspace();
-  let scopedLogger = localLogger;
   const res = await startActiveObservation(
     "project-task-analyze-document",
     (span) => {
-      scopedLogger = localLogger.child({ langfuseSpanId: span.id });
-      scopedLogger.info("Document takeaway: LLM call started");
+      updateActiveTrace({ sessionId: runId });
+      localLogger.info(
+        { langfuseSpanId: span.id },
+        "Document takeaway: LLM call started"
+      );
 
       return runMultiActionsAgent(
         auth,
@@ -104,28 +108,28 @@ async function callExtractActionItemsLLM(
     }
   );
   if (res.isErr()) {
-    scopedLogger.error(
+    localLogger.error(
       { error: res.error },
       "Document takeaway: LLM call failed"
     );
-    return { extraction: null, scopedLogger };
+    return null;
   }
 
   const action = res.value.actions?.[0];
   if (!action?.arguments) {
-    scopedLogger.warn("Document takeaway: no tool call in LLM response");
-    return { extraction: null, scopedLogger };
+    localLogger.warn("Document takeaway: no tool call in LLM response");
+    return null;
   }
 
   const parsed = ExtractTakeawaysInputSchema.safeParse(action.arguments);
   if (!parsed.success) {
-    scopedLogger.warn(
+    localLogger.warn(
       { error: parsed.error, arguments: action.arguments },
       "Document takeaway: failed to parse LLM response"
     );
-    return { extraction: null, scopedLogger };
+    return null;
   }
-  return { extraction: parsed.data, scopedLogger };
+  return parsed.data;
 }
 
 // Maps raw LLM-extracted items to typed action items, reusing sIds from the
@@ -157,10 +161,12 @@ export async function extractDocumentTakeaways(
   auth: Authenticator,
   {
     localLogger: parentLogger,
+    runId,
     spaceId,
     document,
   }: {
     localLogger: Logger;
+    runId: string;
     spaceId: string;
     document: TakeawaySourceDocument;
   }
@@ -201,15 +207,16 @@ export async function extractDocumentTakeaways(
     .join("\n\n");
   const specification = buildSpec();
 
-  const { extraction, scopedLogger } = await callExtractActionItemsLLM(auth, {
+  const extraction = await callExtractActionItemsLLM(auth, {
     localLogger,
+    runId,
     model,
     specification,
     prompt,
     document,
   });
   if (!extraction) {
-    scopedLogger.error("Document takeaway: no extraction result");
+    localLogger.error("Document takeaway: no extraction result");
     return null;
   }
 
@@ -232,7 +239,7 @@ export async function extractDocumentTakeaways(
     },
     previousActionItems,
     validAssigneesUserIds,
-    scopedLogger
+    localLogger
   );
 
   const stats: ExtractedTakeawayStats = {
@@ -240,7 +247,7 @@ export async function extractDocumentTakeaways(
   };
 
   if (stats.actionItems === 0) {
-    scopedLogger.info("Document takeaway: no takeaways extracted");
+    localLogger.info("Document takeaway: no takeaways extracted");
     return stats;
   }
 
@@ -250,7 +257,7 @@ export async function extractDocumentTakeaways(
     actionItems,
   });
 
-  scopedLogger.info(
+  localLogger.info(
     {
       ...stats,
     },
