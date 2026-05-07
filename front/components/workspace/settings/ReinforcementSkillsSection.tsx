@@ -183,6 +183,15 @@ function dollarsToMicroUsd(dollars: number): number {
   return Math.round(dollars * 1_000_000);
 }
 
+// Returns a copy of `bySkillId` with the entry for `skillId` removed.
+function withoutSkill<T>(
+  bySkillId: Record<string, T>,
+  skillId: string
+): Record<string, T> {
+  const { [skillId]: _omit, ...rest } = bySkillId;
+  return rest;
+}
+
 export function ReinforcementSkillsSection({
   owner,
 }: ReinforcementSkillsSectionProps) {
@@ -215,91 +224,74 @@ export function ReinforcementSkillsSection({
   >({});
 
   const handleToggleEnabled = useCallback(
-    async (sId: string, currentEnabled: boolean) => {
-      const next = !currentEnabled;
-      setPendingEnabledBySkillId((p) => ({ ...p, [sId]: next }));
-      setEnabledUpdatingBySkillId((p) => ({ ...p, [sId]: true }));
-      const ok = await updateSkillReinforcement(sId, {
-        reinforcement: next ? "on" : "off",
+    async (skillId: string, currentEnabled: boolean) => {
+      const nextEnabled = !currentEnabled;
+
+      // Optimistically reflect the new value while the request is in flight.
+      setPendingEnabledBySkillId((prev) => ({
+        ...prev,
+        [skillId]: nextEnabled,
+      }));
+      setEnabledUpdatingBySkillId((prev) => ({ ...prev, [skillId]: true }));
+
+      const ok = await updateSkillReinforcement(skillId, {
+        reinforcement: nextEnabled ? "on" : "off",
       });
-      setEnabledUpdatingBySkillId((p) => {
-        const n = { ...p };
-        delete n[sId];
-        return n;
-      });
+
+      setEnabledUpdatingBySkillId((prev) => withoutSkill(prev, skillId));
       if (!ok) {
-        setPendingEnabledBySkillId((p) => {
-          const n = { ...p };
-          delete n[sId];
-          return n;
-        });
+        // Roll back the optimistic value so the row falls back to the server state.
+        setPendingEnabledBySkillId((prev) => withoutSkill(prev, skillId));
       }
     },
     [updateSkillReinforcement]
   );
 
   const handleToggleLock = useCallback(
-    async (sId: string, currentLock: boolean) => {
-      const next = !currentLock;
-      setPendingLockBySkillId((p) => ({ ...p, [sId]: next }));
-      setLockUpdatingBySkillId((p) => ({ ...p, [sId]: true }));
-      const ok = await updateSkillReinforcement(sId, {
-        selfImprovementLock: next,
+    async (skillId: string, currentLock: boolean) => {
+      const nextLock = !currentLock;
+
+      setPendingLockBySkillId((prev) => ({ ...prev, [skillId]: nextLock }));
+      setLockUpdatingBySkillId((prev) => ({ ...prev, [skillId]: true }));
+
+      const ok = await updateSkillReinforcement(skillId, {
+        selfImprovementLock: nextLock,
       });
-      setLockUpdatingBySkillId((p) => {
-        const n = { ...p };
-        delete n[sId];
-        return n;
-      });
+
+      setLockUpdatingBySkillId((prev) => withoutSkill(prev, skillId));
       if (!ok) {
-        setPendingLockBySkillId((p) => {
-          const n = { ...p };
-          delete n[sId];
-          return n;
-        });
+        setPendingLockBySkillId((prev) => withoutSkill(prev, skillId));
       }
     },
     [updateSkillReinforcement]
   );
 
   const handleCapCommit = useCallback(
-    async (sId: string, savedDollars: number) => {
-      const inputValue = capInputBySkillId[sId];
+    async (skillId: string, savedDollars: number) => {
+      const inputValue = capInputBySkillId[skillId];
       if (inputValue === undefined) {
         return;
       }
+
       const parsed = Number(inputValue);
-      if (
-        inputValue.trim() === "" ||
-        !Number.isFinite(parsed) ||
-        parsed < 0 ||
-        parsed === savedDollars
-      ) {
-        // Reset to saved on invalid/no-change so the field isn't left dirty.
-        setCapInputBySkillId((p) => {
-          const n = { ...p };
-          delete n[sId];
-          return n;
-        });
+      const isInvalid =
+        inputValue.trim() === "" || !Number.isFinite(parsed) || parsed < 0;
+      const isUnchanged = parsed === savedDollars;
+      if (isInvalid || isUnchanged) {
+        // Drop the local input override so the field falls back to the server value.
+        setCapInputBySkillId((prev) => withoutSkill(prev, skillId));
         return;
       }
-      setCapUpdatingBySkillId((p) => ({ ...p, [sId]: true }));
-      const ok = await updateSkillReinforcement(sId, {
+
+      setCapUpdatingBySkillId((prev) => ({ ...prev, [skillId]: true }));
+      const ok = await updateSkillReinforcement(skillId, {
         selfImprovementCostsCapMicroUsd: dollarsToMicroUsd(parsed),
       });
-      setCapUpdatingBySkillId((p) => {
-        const n = { ...p };
-        delete n[sId];
-        return n;
-      });
-      // After a successful save, drop the local input override so the row
-      // reflects the freshly-mutated value from the server.
+      setCapUpdatingBySkillId((prev) => withoutSkill(prev, skillId));
+
       if (ok) {
-        setCapInputBySkillId((p) => {
-          const n = { ...p };
-          delete n[sId];
-          return n;
-        });
+        // Drop the local override so the row reflects the freshly-mutated server value.
+        setCapInputBySkillId((prev) => withoutSkill(prev, skillId));
       }
     },
     [capInputBySkillId, updateSkillReinforcement]
@@ -344,7 +336,7 @@ export function ReinforcementSkillsSection({
             void handleToggleLock(skill.sId, lock);
           },
           onCapChange: (value: string) => {
-            setCapInputBySkillId((p) => ({ ...p, [skill.sId]: value }));
+            setCapInputBySkillId((prev) => ({ ...prev, [skill.sId]: value }));
           },
           onCapCommit: () => {
             void handleCapCommit(skill.sId, savedCapDollars);
