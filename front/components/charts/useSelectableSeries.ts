@@ -3,11 +3,24 @@ import type {
   LegendItem,
 } from "@app/components/charts/ChartLegend";
 import { useHoveredSeries } from "@app/components/charts/useHoveredSeries";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
-export function useSelectableSeries() {
+export function useSelectableSeries(visibleKeys?: readonly string[]) {
   const { hoveredKey, hoverHandlers } = useHoveredSeries();
   const [selectedKey, setSelectedKey] = useState<string | undefined>(undefined);
+
+  // Clear the selection when the selected series is no longer visible (e.g. the
+  // user removed it from a series picker), otherwise every remaining line would
+  // be dimmed.
+  useEffect(() => {
+    if (
+      selectedKey !== undefined &&
+      visibleKeys !== undefined &&
+      !visibleKeys.includes(selectedKey)
+    ) {
+      setSelectedKey(undefined);
+    }
+  }, [selectedKey, visibleKeys]);
 
   const activeKey = hoveredKey ?? selectedKey;
 

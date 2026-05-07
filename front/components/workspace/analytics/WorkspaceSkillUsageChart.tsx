@@ -264,7 +264,7 @@ export function WorkspaceSkillUsageChart({
     lineActiveDot,
     decorate,
     hoverHandlers,
-  } = useSelectableSeries();
+  } = useSelectableSeries(skillsWithData);
 
   const legendItems = decorate(
     skillsWithData.map((skill) => ({
