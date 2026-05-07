@@ -4,15 +4,18 @@ import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { spaceToPokeJSON } from "@app/lib/poke/utils";
+import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { PokeSpaceType } from "@app/types/poke";
+import type { ProjectMetadataType } from "@app/types/project_metadata";
 import type { UserTypeWithWorkspaces } from "@app/types/user";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 export type PokeGetSpaceDetails = {
   members: Record<string, UserTypeWithWorkspaces[]>;
+  metadata: ProjectMetadataType | null;
   space: PokeSpaceType;
 };
 
@@ -77,8 +80,13 @@ async function handler(
         });
       }
 
+      const metadata = space.isProject()
+        ? await ProjectMetadataResource.fetchBySpace(auth, space)
+        : null;
+
       return res.status(200).json({
         members,
+        metadata: metadata ? metadata.toJSON() : null,
         space: spaceToPokeJSON(space),
       });
 
