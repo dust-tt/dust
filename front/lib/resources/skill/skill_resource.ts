@@ -21,6 +21,7 @@ import {
 } from "@app/lib/models/skill/conversation_skill";
 import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import { SkillSuggestionModel } from "@app/lib/models/skill/skill_suggestion";
+import { getSelfImprovementCapPerSkillMicroUsd } from "@app/lib/reinforcement/consumption";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -370,6 +371,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       const skill = await this.model.create(
         {
           ...blob,
+          selfImprovementCostsCapMicroUsd:
+            getSelfImprovementCapPerSkillMicroUsd(owner),
           workspaceId: owner.id,
         },
         {
@@ -1551,6 +1554,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         isDefault: !SystemSkillsRegistry.isSystemSkill(def.sId),
         reinforcement: "auto",
         lastReinforcementAnalysisAt: null,
+        selfImprovementCostsCapMicroUsd: 0,
+        selfImprovementLock: false,
       },
       {
         // Global skills do not have data source configurations.
@@ -1810,6 +1815,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           isDefault: versionModel.isDefault,
           reinforcement: "auto",
           lastReinforcementAnalysisAt: null,
+          selfImprovementCostsCapMicroUsd:
+            versionModel.selfImprovementCostsCapMicroUsd,
+          selfImprovementLock: versionModel.selfImprovementLock,
         },
         {
           // We ignore data source configurations for historical versions.
