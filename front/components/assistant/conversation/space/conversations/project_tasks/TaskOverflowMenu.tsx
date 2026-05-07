@@ -25,7 +25,6 @@ import {
   TrashIcon,
   UserIcon,
 } from "@dust-tt/sparkle";
-import type React from "react";
 import { useMemo, useState } from "react";
 
 const NO_ASSIGNEE_LABEL_NEEDLE = normalizeProjectTaskSearchNeedle(
@@ -90,9 +89,6 @@ export function TaskOverflowMenu({ task }: TaskOverflowMenuProps) {
             TASK_DESKTOP_HOVER_REVEAL_CLASS,
             "data-[state=open]:opacity-100"
           )}
-          onClick={(e: React.MouseEvent) => {
-            e.stopPropagation();
-          }}
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
