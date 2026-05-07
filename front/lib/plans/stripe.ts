@@ -236,7 +236,7 @@ export const createStripeSubscriptionCheckoutSession = async ({
     },
     metadata: {
       planCode: planCode,
-      userId: `${user.id}`,
+      userId: user.sId,
       ...(metronomePackageAlias ? { metronomePackageAlias } : {}),
     },
     line_items: [
@@ -295,7 +295,7 @@ export const createEmbeddedMetronomeSetupCheckoutSession = async ({
 
   const metadata: Record<string, string> = {
     planCode,
-    userId: `${user.id}`,
+    userId: user.sId,
     metronomePackageAlias,
   };
   if (couponCode) {
