@@ -583,7 +583,7 @@ export async function analyzeConversationStepActivity({
   const conversation =
     (await ConversationResource.fetchById(auth, conversationId)) ?? undefined;
 
-  return runReinforcedSkillsStep({
+  const result = await runReinforcedSkillsStep({
     auth,
     reinforcementConversationId,
     operationType: "reinforcement_analyze_conversation",
@@ -593,6 +593,7 @@ export async function analyzeConversationStepActivity({
     conversation,
     eligibleSkillIds: skillIds,
   });
+  return { ...result, reinforcementConversationId };
 }
 
 /**
@@ -656,6 +657,7 @@ export async function aggregateSuggestionsForSkillStepActivity({
   isTerminal: boolean;
   suggestionsCreated: number;
   approvedSourceSuggestionIds: string[];
+  reinforcementConversationId?: string;
   toolActionInfo?: ReinforcedToolActionInfo;
 }> {
   const auth = await getAuthForWorkspace(workspaceId);
@@ -682,7 +684,7 @@ export async function aggregateSuggestionsForSkillStepActivity({
     );
   }
 
-  return runReinforcedSkillsStep({
+  const result = await runReinforcedSkillsStep({
     auth,
     reinforcementConversationId,
     operationType: "reinforcement_aggregate_suggestions",
@@ -691,6 +693,7 @@ export async function aggregateSuggestionsForSkillStepActivity({
     source: "reinforcement",
     eligibleSkillIds: [skillId],
   });
+  return { ...result, reinforcementConversationId };
 }
 
 /**
