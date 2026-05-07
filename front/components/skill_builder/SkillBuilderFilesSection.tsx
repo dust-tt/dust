@@ -126,25 +126,16 @@ export function SkillBuilderFilesSection() {
     fileInputRef.current?.click();
   };
 
-  const canPreviewFiles = !!skillId;
-  const isPreviewOpen = canPreviewFiles && previewFileAttachment !== null;
-
   const { fileContent, isFileContentLoading, fileContentError } =
     useSkillFileContent({
       fileId: previewFileAttachment?.fileId ?? null,
       owner,
       skillId,
       disabled:
-        !isPreviewOpen ||
-        !skillId ||
         !needsFilePreviewTextContent(previewFileAttachment?.contentType ?? ""),
     });
 
   const openPreviewDialog = (fileAttachment: SkillBuilderFileAttachment) => {
-    if (!canPreviewFiles) {
-      return;
-    }
-
     setPreviewFileAttachment(fileAttachment);
   };
 
@@ -278,11 +269,11 @@ export function SkillBuilderFilesSection() {
                       </span>
                     }
                     visual={<ContextItem.Visual visual={DocumentIcon} />}
-                    hoverAction={canPreviewFiles || !isDiffMode}
+                    hoverAction={!!skillId || !isDiffMode}
                     action={
-                      canPreviewFiles || !isDiffMode ? (
+                      skillId || !isDiffMode ? (
                         <div className="flex items-center gap-1">
-                          {canPreviewFiles && (
+                          {skillId && (
                             <Button
                               type="button"
                               variant="ghost"
@@ -291,7 +282,7 @@ export function SkillBuilderFilesSection() {
                               tooltip="Preview"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                openPreviewDialog(field);
+                                setPreviewFileAttachment(field);
                               }}
                             />
                           )}
@@ -317,7 +308,7 @@ export function SkillBuilderFilesSection() {
                       ) : undefined
                     }
                     onClick={
-                      canPreviewFiles
+                      skillId
                         ? () => openPreviewDialog(field)
                         : undefined
                     }
@@ -355,7 +346,7 @@ export function SkillBuilderFilesSection() {
               }
             : null
         }
-        isOpen={isPreviewOpen}
+        isOpen={skillId !== null && previewFileAttachment !== null}
         onDownload={() => {
           if (previewFileAttachment) {
             window.open(
