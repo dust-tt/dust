@@ -1,8 +1,12 @@
-import { DEFAULT_REINFORCEMENT_CAP_MICRO_USD } from "@app/lib/reinforcement/constants";
+import {
+  DEFAULT_REINFORCEMENT_CAP_MICRO_USD,
+  DEFAULT_SELF_IMPROVEMENT_CAP_PER_SKILL_MICRO_USD,
+} from "@app/lib/reinforcement/constants";
 import {
   useReinforcementBatchModeToggle,
   useReinforcementCapSetting,
   useReinforcementToggle,
+  useSelfImprovementCapPerSkillSetting,
 } from "@app/lib/swr/useReinforcementToggle";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -45,6 +49,7 @@ export function ReinforcementSection({ owner }: ReinforcementSectionProps) {
         </ContextItem>
         <ReinforcementBatchModeToggle owner={owner} />
         <ReinforcementCapItem owner={owner} />
+        <SelfImprovementCapPerSkillItem owner={owner} />
       </ContextItem.List>
     </Page.Vertical>
   );
@@ -68,6 +73,73 @@ function ReinforcementBatchModeToggle({ owner }: ReinforcementSectionProps) {
       }
     >
       <ContextItem.Description description="Conversations are sent in batches to reduce costs. Data may remain on LLM provider servers for up to several hours before processing. Disable to ensure immediate data deletion (ZDR-compatible). This will increase your plan's pricing." />
+    </ContextItem>
+  );
+}
+
+function SelfImprovementCapPerSkillItem({ owner }: ReinforcementSectionProps) {
+  const { capDollars, isSaving, saveCapDollars } =
+    useSelfImprovementCapPerSkillSetting({ owner });
+  const [inputValue, setInputValue] = useState<string>(() =>
+    String(capDollars)
+  );
+
+  const parsedInput = Number(inputValue);
+  const isInputValid =
+    inputValue.trim() !== "" &&
+    Number.isFinite(parsedInput) &&
+    parsedInput >= 0;
+
+  const defaultDollars =
+    DEFAULT_SELF_IMPROVEMENT_CAP_PER_SKILL_MICRO_USD / 1_000_000;
+
+  const handleSave = async () => {
+    if (!isInputValid) {
+      return;
+    }
+    await saveCapDollars(parsedInput);
+  };
+
+  return (
+    <ContextItem
+      title="Default cost cap per skill"
+      visual={<CardIcon className="h-6 w-6 shrink-0" />}
+      hasSeparatorIfLast={true}
+      action={
+        <form
+          className="flex items-center gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void handleSave();
+          }}
+        >
+          <div className="w-32">
+            <Input
+              name="selfImprovementCapPerSkill"
+              placeholder={String(defaultDollars)}
+              value={inputValue}
+              message={
+                !isInputValid && inputValue !== ""
+                  ? "Enter a non-negative number."
+                  : undefined
+              }
+              messageStatus={
+                !isInputValid && inputValue !== "" ? "error" : undefined
+              }
+              onChange={(event) => setInputValue(event.target.value)}
+              disabled={isSaving}
+            />
+          </div>
+          <Button
+            type="submit"
+            label="Save"
+            disabled={!isInputValid}
+            isLoading={isSaving}
+          />
+        </form>
+      }
+    >
+      <ContextItem.Description description="Maximum cost per skill per self-improvement run (in USD). Once reached, no further self-improvement runs are started for that skill." />
     </ContextItem>
   );
 }

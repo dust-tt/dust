@@ -112,6 +112,10 @@ const WorkspaceReinforcementCapUpdateBodySchema = t.type({
   reinforcementCapMicroUsd: t.number,
 });
 
+const WorkspaceSelfImprovementCapPerSkillUpdateBodySchema = t.type({
+  selfImprovementCapPerSkillMicroUsd: t.number,
+});
+
 const PostWorkspaceRequestBodySchema = t.union([
   WorkspaceAllowedDomainUpdateBodySchema,
   WorkspaceBatchDomainUpdateBodySchema,
@@ -131,6 +135,7 @@ const PostWorkspaceRequestBodySchema = t.union([
   WorkspaceManualProjectKnowledgeManagementUpdateBodySchema,
   WorkspaceSandboxAgentEgressRequestsUpdateBodySchema,
   WorkspaceReinforcementCapUpdateBodySchema,
+  WorkspaceSelfImprovementCapPerSkillUpdateBodySchema,
 ]);
 
 async function handler(
@@ -314,6 +319,15 @@ async function handler(
         const newMetadata = {
           ...previousMetadata,
           reinforcementCapMicroUsd: body.reinforcementCapMicroUsd,
+        };
+        await workspace.updateWorkspaceSettings({ metadata: newMetadata });
+        owner.metadata = newMetadata;
+      } else if ("selfImprovementCapPerSkillMicroUsd" in body) {
+        const previousMetadata = owner.metadata ?? {};
+        const newMetadata = {
+          ...previousMetadata,
+          selfImprovementCapPerSkillMicroUsd:
+            body.selfImprovementCapPerSkillMicroUsd,
         };
         await workspace.updateWorkspaceSettings({ metadata: newMetadata });
         owner.metadata = newMetadata;
