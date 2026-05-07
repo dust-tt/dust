@@ -173,7 +173,6 @@ describe("createOrLinkTasks", () => {
       candidates: [
         { itemId: "item-x", userId: 1 as ModelId, text: "Do the thing" },
       ],
-      scopedLogger: fakeLogger,
     };
 
     const { deduplicated, createdNew } = await createOrLinkTasks(fakeAuth, {
@@ -220,7 +219,6 @@ describe("createOrLinkTasks", () => {
       candidates: [
         { itemId: "item-y", userId: 1 as ModelId, text: "Do the thing" },
       ],
-      scopedLogger: fakeLogger,
     };
 
     const { deduplicated, createdNew } = await createOrLinkTasks(fakeAuth, {

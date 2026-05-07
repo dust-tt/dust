@@ -53,8 +53,9 @@ export async function executeDedup(
   const existingTodos = buildMockExistingTodos(testCase);
   const candidates = buildCandidates(testCase);
 
-  const { groups: llmGroups } = await runDeduplicationLLMCall(auth, {
+  const llmGroups = await runDeduplicationLLMCall(auth, {
     localLogger: logger,
+    runId: "eval-run",
     model,
     candidates,
     existingTasks: existingTodos,

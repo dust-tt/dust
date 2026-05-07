@@ -95,10 +95,12 @@ function emptyMergeStats(): MergeStats {
 
 export async function mergeTakeawaysIntoProject({
   localLogger,
+  runId,
   workspaceId,
   spaceId,
 }: {
   localLogger: Logger;
+  runId: string;
   workspaceId: string;
   spaceId: string;
 }): Promise<MergeStats> {
@@ -160,6 +162,7 @@ export async function mergeTakeawaysIntoProject({
 
   const dedupGroups = await buildDeduplicationGroups(adminAuth, {
     localLogger,
+    runId,
     newCandidates: assignedCandidates,
     spaceModelId,
   });
@@ -295,10 +298,12 @@ async function buildDeduplicationGroups(
   auth: Authenticator,
   {
     localLogger,
+    runId,
     newCandidates,
     spaceModelId,
   }: {
     localLogger: Logger;
+    runId: string;
     newCandidates: PendingCandidate[];
     spaceModelId: ModelId;
   }
@@ -314,11 +319,7 @@ async function buildDeduplicationGroups(
     localLogger.warn(
       "Project task merge: no whitelisted model, skipping deduplication"
     );
-    return dedupInput.map((c) => ({
-      kind: "new",
-      candidates: [c],
-      scopedLogger: localLogger,
-    }));
+    return dedupInput.map((c) => ({ kind: "new", candidates: [c] }));
   }
 
   // Fetch all existing tasks for the space in one pass (including deleted).
@@ -330,6 +331,7 @@ async function buildDeduplicationGroups(
 
   return batchDeduplicateCandidates(auth, {
     localLogger,
+    runId,
     model,
     candidates: dedupInput,
     existingTasks,
@@ -393,7 +395,7 @@ export async function createOrLinkTasks(
           });
           deduplicated++;
 
-          group.scopedLogger.info(
+          localLogger.info(
             {
               existingTaskId: group.task.sId,
               itemId: pending.itemId,
@@ -432,7 +434,7 @@ export async function createOrLinkTasks(
       });
       createdNew++;
 
-      group.scopedLogger.info(
+      localLogger.info(
         {
           taskId: task.sId,
           itemId: primary.itemId,
@@ -453,7 +455,7 @@ export async function createOrLinkTasks(
         });
         deduplicated++;
 
-        group.scopedLogger.info(
+        localLogger.info(
           {
             taskId: task.sId,
             itemId: pending.itemId,

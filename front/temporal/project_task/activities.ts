@@ -78,14 +78,13 @@ function resultToTakeawaySourceDocument(
   return null;
 }
 
-async function runChecksAndGetValues({
+async function resolveProjectTaskContext({
   workspaceId,
   spaceId,
   localLogger,
 }: {
   workspaceId: string;
   spaceId: string;
-  runId: string;
   localLogger: typeof logger;
 }): Promise<
   Result<
@@ -135,10 +134,9 @@ export async function analyzeProjectTodosActivity({
 
   localLogger.info("Starting project todo analysis");
 
-  const checkResult = await runChecksAndGetValues({
+  const checkResult = await resolveProjectTaskContext({
     workspaceId,
     spaceId,
-    runId,
     localLogger,
   });
   if (checkResult.isErr()) {
@@ -243,6 +241,7 @@ export async function analyzeProjectTodosActivity({
     async (document) => {
       const result = await extractDocumentTakeaways(auth, {
         localLogger,
+        runId,
         spaceId,
         document,
       });
@@ -285,10 +284,9 @@ export async function mergeTasksForProjectActivity({
 
   localLogger.info("Starting merge of project todo takeaways");
 
-  const checkResult = await runChecksAndGetValues({
+  const checkResult = await resolveProjectTaskContext({
     workspaceId,
     spaceId,
-    runId,
     localLogger,
   });
   if (checkResult.isErr()) {
@@ -297,6 +295,7 @@ export async function mergeTasksForProjectActivity({
 
   const stats = await mergeTakeawaysIntoProject({
     localLogger,
+    runId,
     workspaceId,
     spaceId,
   });

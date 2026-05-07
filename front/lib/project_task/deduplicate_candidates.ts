@@ -35,7 +35,7 @@ import type { ProjectTaskResource } from "@app/lib/resources/project_task_resour
 import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { ModelId } from "@app/types/shared/model_id";
-import { startActiveObservation } from "@langfuse/tracing";
+import { startActiveObservation, updateActiveTrace } from "@langfuse/tracing";
 import type { Logger } from "pino";
 import { z } from "zod";
 
@@ -47,22 +47,18 @@ export type DeduplicateCandidate = {
   text: string;
 };
 
-// One task that Phase 3 will touch. `scopedLogger` carries the langfuseSpanId
-// of the LLM call that produced the group (or the unscoped logger when no LLM
-// call was made).
+// One task that Phase 3 will touch.
 export type DeduplicatedGroup =
   | {
       kind: "existing";
       task: ProjectTaskResource;
       candidates: DeduplicateCandidate[];
-      scopedLogger: Logger;
     }
   | {
       kind: "new";
       // Non-empty. candidates[0] drives the new task's content; later entries
       // attach their sources to that task.
       candidates: DeduplicateCandidate[];
-      scopedLogger: Logger;
     };
 
 // ── LLM tool ─────────────────────────────────────────────────────────────────
@@ -154,16 +150,18 @@ export async function runDeduplicationLLMCall(
   auth: Authenticator,
   {
     localLogger,
+    runId,
     model,
     candidates,
     existingTasks,
   }: {
     localLogger: Logger;
+    runId: string;
     model: ModelConfigurationType;
     candidates: DeduplicateCandidate[];
     existingTasks: ProjectTaskResource[];
   }
-): Promise<{ groups: number[][]; scopedLogger: Logger }> {
+): Promise<number[][]> {
   const owner = auth.getNonNullableWorkspace();
   const prompt = buildDeduplicationPrompt(existingTasks, candidates);
   const specification = buildDeduplicationSpec();
@@ -178,13 +176,12 @@ export async function runDeduplicationLLMCall(
     ],
   };
 
-  let scopedLogger = localLogger;
   const res = await startActiveObservation(
     "project-task-deduplicate-candidates",
     (span) => {
-      scopedLogger = localLogger.child({ langfuseSpanId: span.id });
-      scopedLogger.info(
-        { workspaceId: owner.sId },
+      updateActiveTrace({ sessionId: runId });
+      localLogger.info(
+        { langfuseSpanId: span.id },
         "Project task dedup: LLM call started"
       );
 
@@ -215,32 +212,32 @@ export async function runDeduplicationLLMCall(
   );
 
   if (res.isErr()) {
-    scopedLogger.warn(
+    localLogger.warn(
       { error: res.error, workspaceId: owner.sId },
       "Project task dedup: LLM call failed, treating all candidates as new"
     );
-    return { groups: [], scopedLogger };
+    return [];
   }
 
   const action = res.value.actions?.[0];
   if (!action?.arguments) {
-    scopedLogger.warn(
+    localLogger.warn(
       { workspaceId: owner.sId },
       "Project task dedup: no tool call in LLM response, treating all as new"
     );
-    return { groups: [], scopedLogger };
+    return [];
   }
 
   const parsed = DeduplicationResultSchema.safeParse(action.arguments);
   if (!parsed.success) {
-    scopedLogger.warn(
+    localLogger.warn(
       { error: parsed.error, workspaceId: owner.sId },
       "Project task dedup: failed to parse LLM response, treating all as new"
     );
-    return { groups: [], scopedLogger };
+    return [];
   }
 
-  return { groups: parsed.data.groups, scopedLogger };
+  return parsed.data.groups;
 }
 
 // ── Group resolution ─────────────────────────────────────────────────────────
@@ -337,11 +334,13 @@ export async function batchDeduplicateCandidates(
   auth: Authenticator,
   {
     localLogger,
+    runId,
     model,
     candidates,
     existingTasks,
   }: {
     localLogger: Logger;
+    runId: string;
     model: ModelConfigurationType;
     candidates: DeduplicateCandidate[];
     existingTasks: ProjectTaskResource[];
@@ -355,7 +354,7 @@ export async function batchDeduplicateCandidates(
 
   // Fast path: single candidate with no existing tasks needs no LLM call.
   if (existingTasks.length === 0 && candidates.length === 1) {
-    return [{ kind: "new", candidates, scopedLogger: localLogger }];
+    return [{ kind: "new", candidates }];
   }
 
   const totalItems = existingTasks.length + candidates.length;
@@ -383,17 +382,13 @@ export async function batchDeduplicateCandidates(
     );
   }
 
-  const { groups: llmGroups, scopedLogger } = await runDeduplicationLLMCall(
-    auth,
-    {
-      localLogger,
-      model,
-      candidates,
-      existingTasks,
-    }
-  );
+  const llmGroups = await runDeduplicationLLMCall(auth, {
+    localLogger,
+    runId,
+    model,
+    candidates,
+    existingTasks,
+  });
 
-  return resolveDeduplicationGroups(candidates, existingTasks, llmGroups).map(
-    (group) => ({ ...group, scopedLogger })
-  );
+  return resolveDeduplicationGroups(candidates, existingTasks, llmGroups);
 }
