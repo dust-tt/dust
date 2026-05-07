@@ -651,9 +651,6 @@
  *           items:
  *             type: object
  *             properties:
- *               contentType:
- *                 type: string
- *                 description: MIME type of the attached file
  *               fileId:
  *                 type: string
  *                 description: Unique string identifier for the attached file
