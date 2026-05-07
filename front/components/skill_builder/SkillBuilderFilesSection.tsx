@@ -329,15 +329,15 @@ export function SkillBuilderFilesSection() {
         file={
           previewFileAttachment
             ? {
+                content: fileContent,
+                contentError: fileContentError,
                 contentType: previewFileAttachment.contentType,
                 fileName: previewFileAttachment.fileName,
+                isContentLoading: isFileContentLoading,
                 viewUrl: getFileViewUrl(owner, previewFileAttachment.fileId),
               }
             : null
         }
-        fileContent={fileContent}
-        fileContentError={fileContentError}
-        isFileContentLoading={isFileContentLoading}
         isOpen={isPreviewOpen}
         onDownload={() => {
           if (previewFileAttachment) {

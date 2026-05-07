@@ -64,8 +64,11 @@ export function ConversationFilePreviewDialog({
 
   const file = entry
     ? {
+        content: fileContent,
+        contentError: fileContentError,
         contentType: entry.contentType,
         fileName: entry.fileName,
+        isContentLoading: isFileContentLoading,
         thumbnailUrl: entry.thumbnailUrl,
         viewUrl: getConversationFileUrl(owner, {
           conversationId,
@@ -77,9 +80,6 @@ export function ConversationFilePreviewDialog({
   return (
     <FilePreviewDialog
       file={file}
-      fileContent={fileContent}
-      fileContentError={fileContentError}
-      isFileContentLoading={isFileContentLoading}
       isOpen={isOpen}
       onDownload={() => {
         if (entry) {

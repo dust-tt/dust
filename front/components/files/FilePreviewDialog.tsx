@@ -38,8 +38,11 @@ const TEXT_CONTENT_PREVIEW_CATEGORIES: FilePreviewCategory[] = [
 ];
 
 export interface FilePreviewDialogFile {
+  content: string | null;
+  contentError: Error | null;
   contentType: string;
   fileName: string;
+  isContentLoading: boolean;
   thumbnailUrl?: string | null;
   viewUrl: string;
 }
@@ -272,9 +275,6 @@ function FilePreviewDialogContent({
 
 interface FilePreviewDialogProps {
   file: FilePreviewDialogFile | null;
-  fileContent?: string | null;
-  fileContentError?: unknown;
-  isFileContentLoading?: boolean;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   onDownload: (file: FilePreviewDialogFile) => void;
@@ -284,9 +284,6 @@ interface FilePreviewDialogProps {
 
 export function FilePreviewDialog({
   file,
-  fileContent: rawFileContent,
-  fileContentError,
-  isFileContentLoading = false,
   isOpen,
   onOpenChange,
   onDownload,
@@ -322,11 +319,11 @@ export function FilePreviewDialog({
   const { category } = getFilePreviewConfig(mimeType);
 
   const hasError =
-    TEXT_CONTENT_PREVIEW_CATEGORIES.includes(category) && !!fileContentError;
+    TEXT_CONTENT_PREVIEW_CATEGORIES.includes(category) && !!file?.contentError;
   const isContentLoading =
-    isOpen && !!file && !hasError && isFileContentLoading;
+    isOpen && !!file && !hasError && file.isContentLoading;
 
-  const fileContent = rawFileContent?.slice(0, MAX_TEXT_CHARS) ?? null;
+  const fileContent = file?.content?.slice(0, MAX_TEXT_CHARS) ?? null;
 
   const processedContent =
     (category === "markdown" || category === "text") && fileContent

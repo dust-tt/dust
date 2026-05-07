@@ -252,7 +252,10 @@ export function useSkillAttachmentFileContent({
     ? `/api/w/${owner.sId}/skills/file_attachments/${fileId}/content`
     : null;
 
-  const { data, error, mutate } = useSWRWithDefaults(
+  const { data, error, mutate } = useSWRWithDefaults<
+    string | null,
+    string | null
+  >(
     swrKey,
     async (url: string) => {
       const response = await clientFetch(url);
@@ -270,10 +273,12 @@ export function useSkillAttachmentFileContent({
     { disabled: isDisabled, ...config }
   );
 
+  const fileContentError: Error | null = error ? normalizeError(error) : null;
+
   return {
     fileContent: data ?? null,
     isFileContentLoading: !error && data === undefined && !isDisabled,
-    fileContentError: error,
+    fileContentError,
     mutateFileContent: mutate,
   };
 }
