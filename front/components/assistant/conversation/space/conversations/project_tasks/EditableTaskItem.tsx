@@ -1,5 +1,5 @@
-import { AgentPicker } from "@app/components/assistant/AgentPicker";
 import { ConversationSidebarStatusDot } from "@app/components/assistant/conversation/ConversationSidebarStatusDot";
+import { ProjectTaskStartWorkingDropdown } from "@app/components/assistant/conversation/space/conversations/project_tasks/ProjectTaskStartWorkingDropdown";
 import { useProjectTasksPanel } from "@app/components/assistant/conversation/space/conversations/project_tasks/ProjectTasksPanelContext";
 import {
   TaskMetadataTooltip,
@@ -15,8 +15,6 @@ import { useAppRouter } from "@app/lib/platform";
 import { removeDiacritics } from "@app/lib/utils";
 import type { ConversationDotStatus } from "@app/lib/utils/conversation_dot_status";
 import { getConversationRoute } from "@app/lib/utils/router";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
-import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import {
   PROJECT_TASK_NO_ASSIGNEE_LABEL,
   type ProjectTaskType,
@@ -25,12 +23,8 @@ import {
   AnimatedText,
   Avatar,
   Button,
-  ButtonGroup,
-  ButtonGroupDropdown,
   ChatBubbleLeftRightIcon,
   Checkbox,
-  CheckIcon,
-  ChevronDownIcon,
   cn,
   DropdownMenu,
   DropdownMenuContent,
@@ -42,11 +36,7 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-  Icon,
   MoreIcon,
-  PlayIcon,
-  RobotIcon,
-  TextArea,
   Tooltip,
   TrashIcon,
   TypingAnimation,
@@ -88,12 +78,6 @@ export function EditableTaskItem({ task }: EditableTaskItemProps) {
 
   const router = useAppRouter();
   const [startMenuOpen, setStartMenuOpen] = useState(false);
-  const [startCustomMessage, setStartCustomMessage] = useState("");
-  const [goToConversationAfterStart, setGoToConversationAfterStart] = useState(
-    () => !!task.agentInstructions?.trim()
-  );
-  const [selectedStartAgent, setSelectedStartAgent] =
-    useState<LightAgentConfigurationType | null>(null);
 
   const isDone = task.status === "done";
   const hasConversationLink =
@@ -252,39 +236,6 @@ export function EditableTaskItem({ task }: EditableTaskItemProps) {
       setIsEditing(true);
     },
     [canEdit, task.text]
-  );
-
-  const handleStartMenuOpenChange = (open: boolean) => {
-    setStartMenuOpen(open);
-    if (open) {
-      setStartCustomMessage("");
-      const defaultAgent =
-        activeAgents.find((a) => a.sId === GLOBAL_AGENTS_SID.DUST) ??
-        activeAgents[0] ??
-        null;
-      setSelectedStartAgent(defaultAgent);
-    }
-  };
-
-  const handleConfirmStart = async () => {
-    setStartMenuOpen(false);
-    const agentConfigurationId =
-      selectedStartAgent && selectedStartAgent.sId !== GLOBAL_AGENTS_SID.DUST
-        ? selectedStartAgent.sId
-        : undefined;
-    await handleStartWorking(task, {
-      customMessage: startCustomMessage.trim() || undefined,
-      agentConfigurationId,
-      goToConversation: goToConversationAfterStart,
-    });
-  };
-
-  const checkIcon = (
-    <Icon
-      size="xs"
-      visual={CheckIcon}
-      className="text-muted-foreground dark:text-muted-foreground-night"
-    />
   );
 
   const startMenuKeepsActionsVisible =
@@ -458,134 +409,21 @@ export function EditableTaskItem({ task }: EditableTaskItemProps) {
                   : "opacity-100 md:opacity-0 md:group-hover/task:opacity-100 md:focus-within:opacity-100"
               )}
             >
-              {isDoneWithoutConversation ? (
-                <Tooltip
-                  label="Reopen this task before starting work."
-                  trigger={
-                    <Button
-                      icon={PlayIcon}
-                      size="xs"
-                      variant="outline"
-                      disabled
-                    />
-                  }
-                />
-              ) : (
-                <DropdownMenu
-                  modal={false}
-                  open={startMenuOpen}
-                  onOpenChange={handleStartMenuOpenChange}
-                >
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      icon={PlayIcon}
-                      size="xs"
-                      variant="outline"
-                      isLoading={isStarting}
-                      disabled={isStarting}
-                      isPulsing={isFirstOnboardingTask && !startMenuOpen}
-                      tooltip="Start working on task"
-                    />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-96">
-                    <div className="flex flex-col gap-3 p-3">
-                      <TextArea
-                        id={`task-start-msg-${task.sId}`}
-                        aria-label="Additional instructions for the agent"
-                        placeholder="(optional) Add a custom message for the agent..."
-                        value={startCustomMessage}
-                        rows={4}
-                        onChange={(
-                          event: React.ChangeEvent<HTMLTextAreaElement>
-                        ) => setStartCustomMessage(event.target.value)}
-                      />
-                      <div className="flex items-end justify-between gap-2">
-                        <div className="min-w-0 flex-1">
-                          <AgentPicker
-                            owner={owner}
-                            agents={activeAgents}
-                            disabled={isAgentsLoading}
-                            isLoading={isAgentsLoading}
-                            mountPortal
-                            showDropdownArrow
-                            showFooterButtons={false}
-                            side="bottom"
-                            size="xs"
-                            onItemClick={(agent) =>
-                              setSelectedStartAgent(agent)
-                            }
-                            pickerButton={
-                              <Button
-                                variant="ghost-secondary"
-                                size="xs"
-                                isSelect
-                                icon={
-                                  selectedStartAgent
-                                    ? () => (
-                                        <Avatar
-                                          size="xxs"
-                                          visual={selectedStartAgent.pictureUrl}
-                                        />
-                                      )
-                                    : RobotIcon
-                                }
-                                label={selectedStartAgent?.name ?? "Agent"}
-                                className="max-w-full min-w-0"
-                              />
-                            }
-                          />
-                        </div>
-                        <ButtonGroup className="shrink-0">
-                          <Button
-                            label="Start working"
-                            variant="outline"
-                            size="sm"
-                            className={isFirstOnboardingTask ? "z-10" : ""}
-                            isLoading={isStarting}
-                            isPulsing={isFirstOnboardingTask}
-                            disabled={isStarting || !selectedStartAgent}
-                            onClick={() => void handleConfirmStart()}
-                          />
-                          <ButtonGroupDropdown
-                            align="end"
-                            items={[
-                              {
-                                label: "Redirect to conversation",
-                                onSelect: (e) => {
-                                  e.preventDefault();
-                                  setGoToConversationAfterStart(true);
-                                },
-                                endComponent: goToConversationAfterStart
-                                  ? checkIcon
-                                  : undefined,
-                              },
-                              {
-                                label: "Stay on tasks",
-                                onSelect: (e) => {
-                                  e.preventDefault();
-                                  setGoToConversationAfterStart(false);
-                                },
-                                endComponent: !goToConversationAfterStart
-                                  ? checkIcon
-                                  : undefined,
-                              },
-                            ]}
-                            trigger={
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                icon={ChevronDownIcon}
-                                disabled={isStarting || !selectedStartAgent}
-                                aria-label="After start: open conversation or stay on tasks"
-                              />
-                            }
-                          />
-                        </ButtonGroup>
-                      </div>
-                    </div>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
+              <ProjectTaskStartWorkingDropdown
+                owner={owner}
+                taskSId={task.sId}
+                activeAgents={activeAgents}
+                agentsLoading={isAgentsLoading}
+                disabled={isDoneWithoutConversation}
+                disabledReason="Reopen this task before starting work."
+                isStarting={isStarting}
+                isFirstOnboardingTask={isFirstOnboardingTask}
+                defaultGoToConversation={!!task.agentInstructions?.trim()}
+                onOpenChange={setStartMenuOpen}
+                onStart={async (opts) => {
+                  await handleStartWorking(task, opts);
+                }}
+              />
             </div>
           )}
           {canEdit && (

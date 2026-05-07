@@ -1,4 +1,4 @@
-import { Card, CardGrid, Icon, ListCheckIcon } from "@dust-tt/sparkle";
+import { Card, CardGrid, CheckIcon, Icon } from "@dust-tt/sparkle";
 
 interface SpaceConversationsActionsProps {
   isEditor: boolean;
@@ -13,7 +13,7 @@ export function SpaceConversationsActions({
     {
       id: "onboarding-tasks",
       label: "Get your project off the ground",
-      icon: ListCheckIcon,
+      icon: CheckIcon,
       description:
         "Add context, connect your knowledge, and bring the right people in. Flying solo? It still keeps everything in one place.",
       variant: "highlight" as const,
