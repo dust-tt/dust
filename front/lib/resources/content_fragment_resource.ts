@@ -1210,8 +1210,7 @@ function renderFileOrAttachmentXml(
   }
 ): string {
   if (isNewFileExplorer) {
-    const explicitPath =
-      "path" in attachment ? attachment.path : null;
+    const explicitPath = "path" in attachment ? attachment.path : null;
     const path = explicitPath ?? `conversation/${attachment.title}`;
     if (!explicitPath) {
       logger.warn(
