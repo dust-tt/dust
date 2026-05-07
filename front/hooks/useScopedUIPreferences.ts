@@ -1,5 +1,5 @@
 import { normalizeTasksOwnerFilterFromPersistedBlob } from "@app/components/assistant/conversation/space/conversations/project_tasks/projectTasksListScope";
-import { useCallback, useLayoutEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { z } from "zod";
 
 const SCOPED_UI_PREFERENCES_KEY_PREFIX = "scopedUIPreferences";
@@ -103,22 +103,24 @@ export function useScopedUIPreferences<
     return `${SCOPED_UI_PREFERENCES_KEY_PREFIX}:${scope}:${resourceId}`;
   }, [resourceId, scope]);
 
-  const readValue = useCallback((): ScopeValue<TScope> => {
+  const readValue = (): ScopeValue<TScope> => {
     if (!storageKey) {
       return defaultValue;
     }
     const candidateValue = readPersistedValue(storageKey);
     const parsedValue = schema.safeParse(candidateValue);
     return parsedValue.success ? parsedValue.data : defaultValue;
-  }, [defaultValue, schema, storageKey]);
+  };
 
   const [value, setValueState] = useState<ScopeValue<TScope>>(() =>
     readValue()
   );
+  const [seenStorageKey, setSeenStorageKey] = useState(storageKey);
 
-  useLayoutEffect(() => {
+  if (seenStorageKey !== storageKey) {
+    setSeenStorageKey(storageKey);
     setValueState(readValue());
-  }, [readValue]);
+  }
 
   const setValue = useCallback(
     (newValue: ScopeValue<TScope>) => {
