@@ -73,6 +73,7 @@ export type SkillRelations = {
   editors: UserType[] | null;
   editedByUser: UserType | null;
   extendedSkill: SkillType | null;
+  currentSpentMicroUsd: number;
 };
 
 export type SkillWithRelationsType = SkillType & {

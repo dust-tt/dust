@@ -1,10 +1,12 @@
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
+import { getCurrentPeriodStart } from "@app/lib/reinforcement/consumption";
 import { pruneOutdatedSkillEditSuggestions } from "@app/lib/reinforcement/skill_suggestion_pruning";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { SelfImprovingSkillsUsageResource } from "@app/lib/resources/self_improving_skills_usage_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { isResourceSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
@@ -46,8 +48,8 @@ export type DeleteSkillResponseBody = {
   success: boolean;
 };
 
-// Request body schema for PATCH.
-const PatchSkillRequestBodySchema = t.intersection([
+// Request body schema for a full PATCH (skill edit).
+const PatchSkillFullRequestBodySchema = t.intersection([
   t.type({
     name: t.string,
     agentFacingDescription: t.string,
@@ -73,7 +75,18 @@ const PatchSkillRequestBodySchema = t.intersection([
   }),
 ]);
 
-type PatchSkillRequestBody = t.TypeOf<typeof PatchSkillRequestBodySchema>;
+type PatchSkillFullRequestBody = t.TypeOf<
+  typeof PatchSkillFullRequestBodySchema
+>;
+
+// Request body schema for a reinforcement-only PATCH.
+const PatchSkillReinforcementOnlyRequestBodySchema = t.type({
+  reinforcement: t.union([
+    t.literal("auto"),
+    t.literal("on"),
+    t.literal("off"),
+  ]),
+});
 
 async function handler(
   req: NextApiRequest,
@@ -124,6 +137,14 @@ async function handler(
         const extendedSkill = serializedSkill.extendedSkillId
           ? await SkillResource.fetchById(auth, serializedSkill.extendedSkillId)
           : null;
+        const spentBySkillModelId =
+          await SelfImprovingSkillsUsageResource.getSumPriceMicroUsdAfterDateForSkills(
+            auth,
+            {
+              createdAfter: getCurrentPeriodStart(),
+              skillModelIds: [skill.id],
+            }
+          );
 
         const skillWithRelations: SkillWithRelationsType = {
           ...serializedSkill,
@@ -132,6 +153,7 @@ async function handler(
             editors: editors ? editors.map((e) => e.toJSON()) : null,
             editedByUser: editedByUser ? editedByUser.toJSON() : null,
             extendedSkill: extendedSkill ? extendedSkill.toJSON(auth) : null,
+            currentSpentMicroUsd: spentBySkillModelId.get(skill.id) ?? 0,
           },
         };
 
@@ -143,7 +165,35 @@ async function handler(
     }
 
     case "PATCH": {
-      const bodyValidation = PatchSkillRequestBodySchema.decode(req.body);
+      // Reinforcement-only update: a body with just `reinforcement` is
+      // accepted as a partial PATCH that only flips the reinforcement field.
+      const reinforcementOnlyValidation =
+        PatchSkillReinforcementOnlyRequestBodySchema.decode(req.body);
+      const isReinforcementOnly =
+        !isLeft(reinforcementOnlyValidation) &&
+        Object.keys(req.body ?? {}).length === 1;
+
+      if (isReinforcementOnly && !isLeft(reinforcementOnlyValidation)) {
+        if (!skill.canWrite(auth)) {
+          return apiError(req, res, {
+            status_code: 403,
+            api_error: {
+              type: "app_auth_error",
+              message: "Only editors can modify this skill.",
+            },
+          });
+        }
+
+        await skill.updateReinforcement(
+          reinforcementOnlyValidation.right.reinforcement
+        );
+
+        return res.status(200).json({
+          skill: skill.toJSON(auth),
+        });
+      }
+
+      const bodyValidation = PatchSkillFullRequestBodySchema.decode(req.body);
 
       if (isLeft(bodyValidation)) {
         const pathError = reporter.formatValidationErrors(bodyValidation.left);
@@ -156,7 +206,7 @@ async function handler(
         });
       }
 
-      const body: PatchSkillRequestBody = bodyValidation.right;
+      const body: PatchSkillFullRequestBody = bodyValidation.right;
       const name = body.name.trim();
 
       if (!name) {

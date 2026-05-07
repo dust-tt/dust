@@ -1,4 +1,5 @@
 import { ReinforcementSection } from "@app/components/workspace/settings/AgentReinforcementToggle";
+import { ReinforcementSkillsSection } from "@app/components/workspace/settings/ReinforcementSkillsSection";
 import {
   useAuth,
   useFeatureFlags,
@@ -42,6 +43,7 @@ export function ReinforcementPage() {
           testing but will generate additional costs upon release.
         </ContentMessage>
         <ReinforcementSection owner={owner} />
+        <ReinforcementSkillsSection owner={owner} />
       </>
     );
   };

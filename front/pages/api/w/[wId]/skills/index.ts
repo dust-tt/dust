@@ -2,9 +2,11 @@
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
 import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
+import { getCurrentPeriodStart } from "@app/lib/reinforcement/consumption";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { SelfImprovingSkillsUsageResource } from "@app/lib/resources/self_improving_skills_usage_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -173,6 +175,15 @@ async function handler(
           extendedSkills.map((skill) => [skill.sId, skill])
         );
 
+        const spentBySkillModelId =
+          await SelfImprovingSkillsUsageResource.getSumPriceMicroUsdAfterDateForSkills(
+            auth,
+            {
+              createdAfter: getCurrentPeriodStart(),
+              skillModelIds: skills.map((sc) => sc.id),
+            }
+          );
+
         const skillsWithRelations = await concurrentExecutor(
           skills,
           async (sc) => {
@@ -190,6 +201,7 @@ async function handler(
                   ? (extendedSkillsMap.get(sc.extendedSkillId)?.toJSON(auth) ??
                     null)
                   : null,
+                currentSpentMicroUsd: spentBySkillModelId.get(sc.id) ?? 0,
               },
             } satisfies SkillWithRelationsType;
           },
