@@ -4,6 +4,7 @@ import { config as regionConfig } from "@app/lib/api/regions/config";
 import type { Authenticator } from "@app/lib/auth";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import logger from "@app/logger/logger";
+import { isDevelopment } from "@app/types/shared/env";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import jwt from "jsonwebtoken";
 
@@ -140,6 +141,84 @@ export async function checkEgressForwarderHealth(
   }
 
   return new Ok(healthResult.value.exitCode === 0);
+}
+
+// Egress prep that runs before GCS mounts: in prod, starts the forwarder; in
+// dev-unrestricted mode, tears down the in-sandbox nftables redirect so
+// traffic flows direct out of the (now permissive) E2B network. Pairs with
+// the network policy chosen in getSandboxImage().
+export async function prepareSandboxEgressBeforeMount(
+  auth: Authenticator,
+  sandbox: SandboxResource
+): Promise<Result<void, Error>> {
+  if (config.getSandboxDevUnrestrictedEgress()) {
+    return teardownInSandboxEgressRedirect(auth, sandbox);
+  }
+  return setupEgressForwarder(auth, sandbox);
+}
+
+// Egress check that runs after GCS mounts on every exec: in prod, verifies
+// the forwarder is still healthy and restarts it if not. In dev-unrestricted
+// mode, re-runs the teardown when resuming from sleep (where systemd may have
+// re-enabled the unit on the next boot); otherwise no-op.
+export async function ensureSandboxEgressOnExec(
+  auth: Authenticator,
+  sandbox: SandboxResource,
+  { wokeFromSleep }: { wokeFromSleep: boolean }
+): Promise<Result<void, Error>> {
+  if (config.getSandboxDevUnrestrictedEgress()) {
+    if (wokeFromSleep) {
+      return teardownInSandboxEgressRedirect(auth, sandbox);
+    }
+    return new Ok(undefined);
+  }
+
+  const healthResult = await checkEgressForwarderHealth(auth, sandbox);
+  if (healthResult.isErr()) {
+    return healthResult;
+  }
+
+  const logContext = {
+    event: healthResult.value ? "egress.health_ok" : "egress.health_fail",
+    providerId: sandbox.providerId,
+    sandboxId: sandbox.sId,
+  };
+
+  if (healthResult.value) {
+    logger.info(logContext, "Sandbox egress forwarder health check succeeded");
+    return new Ok(undefined);
+  }
+
+  logger.warn(
+    logContext,
+    "Sandbox egress forwarder health check failed, restarting"
+  );
+  return setupEgressForwarder(auth, sandbox);
+}
+
+// Dev-only: tear down the in-sandbox nftables redirect baked into the image
+// (see egress-nftables.sh in the image registry) so agent-proxied traffic
+// flows direct out of the (now permissive) E2B network, instead of being
+// redirected to the local forwarder port that has no listener in this mode.
+// Idempotent: safe to call on every fresh sandbox.
+export async function teardownInSandboxEgressRedirect(
+  auth: Authenticator,
+  sandbox: SandboxResource
+): Promise<Result<void, Error>> {
+  if (!isDevelopment()) {
+    return new Err(
+      new Error(
+        "teardownInSandboxEgressRedirect is dev-only and must not be called in production"
+      )
+    );
+  }
+
+  const command =
+    "systemctl disable --now dust-egress-nftables.service >/dev/null 2>&1 || true; " +
+    "nft delete table ip dust-egress >/dev/null 2>&1 || true; " +
+    "nft delete table ip6 dust-egress >/dev/null 2>&1 || true";
+
+  return runSuccessfulSandboxCommand(auth, sandbox, command, "root");
 }
 
 export async function setupEgressForwarder(

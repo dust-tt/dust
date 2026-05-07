@@ -1,6 +1,6 @@
 import { Err, Ok } from "@app/types/shared/result";
 import jwt from "jsonwebtoken";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   mockGetEgressProxyHost,
@@ -58,6 +58,7 @@ import {
   mintEgressJwt,
   readNewDenyLogEntries,
   setupEgressForwarder,
+  teardownInSandboxEgressRedirect,
 } from "./egress";
 
 describe("sandbox egress helpers", () => {
@@ -306,5 +307,89 @@ describe("sandbox egress helpers", () => {
     const startCall = sandbox.exec.mock.calls[1][1] as string;
     expect(startCall).not.toContain("--mitm-experiment-host");
     expect(startCall).not.toContain("--mitm-ca-path");
+  });
+
+  describe("teardownInSandboxEgressRedirect", () => {
+    const originalIsDev = process.env.IS_DEVELOPMENT;
+
+    beforeEach(() => {
+      process.env.IS_DEVELOPMENT = "true";
+    });
+
+    afterEach(() => {
+      if (originalIsDev === undefined) {
+        delete process.env.IS_DEVELOPMENT;
+      } else {
+        process.env.IS_DEVELOPMENT = originalIsDev;
+      }
+    });
+
+    it("tears down the in-sandbox nftables redirect", async () => {
+      const sandbox = {
+        providerId: "provider-sandbox-id",
+        sId: "sandbox-id",
+        exec: vi
+          .fn()
+          .mockResolvedValue(new Ok({ exitCode: 0, stdout: "", stderr: "" })),
+      };
+
+      const result = await teardownInSandboxEgressRedirect(
+        auth,
+        sandbox as never
+      );
+
+      expect(result).toEqual(new Ok(undefined));
+      expect(sandbox.exec).toHaveBeenCalledTimes(1);
+      const command = sandbox.exec.mock.calls[0][1] as string;
+      expect(command).toContain(
+        "systemctl disable --now dust-egress-nftables.service"
+      );
+      expect(command).toContain("nft delete table ip dust-egress");
+      expect(command).toContain("nft delete table ip6 dust-egress");
+      expect(sandbox.exec).toHaveBeenCalledWith(auth, expect.any(String), {
+        user: "root",
+      });
+    });
+
+    it("propagates exec failures as Err", async () => {
+      const sandbox = {
+        providerId: "provider-sandbox-id",
+        sId: "sandbox-id",
+        exec: vi
+          .fn()
+          .mockResolvedValue(new Err(new Error("sandbox command failed"))),
+      };
+
+      const result = await teardownInSandboxEgressRedirect(
+        auth,
+        sandbox as never
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain("sandbox command failed");
+      }
+    });
+
+    it("refuses to run outside dev mode", async () => {
+      delete process.env.IS_DEVELOPMENT;
+
+      const sandbox = {
+        providerId: "provider-sandbox-id",
+        sId: "sandbox-id",
+        exec: vi.fn(),
+      };
+
+      const result = await teardownInSandboxEgressRedirect(
+        auth,
+        sandbox as never
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain("dev-only");
+      }
+      expect(sandbox.exec).not.toHaveBeenCalled();
+    });
   });
 });
