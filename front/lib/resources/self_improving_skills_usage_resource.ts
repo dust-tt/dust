@@ -7,7 +7,6 @@ import { withTransaction } from "@app/lib/utils/sql_utils";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
-import assert from "assert";
 import type { Attributes, CreationAttributes, Transaction } from "sequelize";
 import { Op, Sequelize } from "sequelize";
 
@@ -15,15 +14,6 @@ export type SelfImprovingSkillsUsageCreateBlob = Omit<
   CreationAttributes<SelfImprovingSkillsUsageModel>,
   "workspaceId"
 >;
-
-function safeAggregateSumToNumber(sum: number | string | null): number {
-  const value = Number(sum ?? 0);
-  assert(
-    Number.isSafeInteger(value),
-    `Found an unsafe self-improving skills usage sum: ${sum}`
-  );
-  return value;
-}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface SelfImprovingSkillsUsageResource
@@ -110,20 +100,20 @@ export class SelfImprovingSkillsUsageResource extends BaseResource<SelfImproving
       },
     });
 
-    return safeAggregateSumToNumber(sum);
+    return sum ?? 0;
   }
 
   static async getSumPriceMicroUsdAfterDateForSkills(
     auth: Authenticator,
     {
       createdAfter,
-      skillIds,
+      skillModelIds,
     }: {
       createdAfter: Date;
-      skillIds: ModelId[];
+      skillModelIds: ModelId[];
     }
   ): Promise<Map<ModelId, number>> {
-    const uniqueSkillIds = [...new Set(skillIds)];
+    const uniqueSkillIds = [...new Set(skillModelIds)];
     if (uniqueSkillIds.length === 0) {
       return new Map();
     }
@@ -142,10 +132,7 @@ export class SelfImprovingSkillsUsageResource extends BaseResource<SelfImproving
     });
 
     return new Map(
-      rows.map((row) => [
-        row.skillId as ModelId,
-        safeAggregateSumToNumber(row.priceMicroUsd),
-      ])
+      rows.map((row) => [row.skillId as ModelId, row.priceMicroUsd])
     );
   }
 

@@ -420,6 +420,8 @@ export async function recordSelfImprovingSkillsUsageActivity({
     }
 
     totalPriceMicroUsd += conversationPriceMicroUsd;
+    // A single conversation being analysed can have several skill enabled it it
+    // In that case we split the cost of analysis evenly per skill. 
     const prices = splitPriceMicroUsdAcrossSkills(
       conversationPriceMicroUsd,
       skillIds.length

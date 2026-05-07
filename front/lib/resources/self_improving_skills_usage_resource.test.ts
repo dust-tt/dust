@@ -100,7 +100,7 @@ describe("SelfImprovingSkillsUsageResource", () => {
     const sums =
       await SelfImprovingSkillsUsageResource.getSumPriceMicroUsdAfterDateForSkills(
         authenticator,
-        { createdAfter: cutoff, skillIds: [skill.id, otherSkill.id] }
+        { createdAfter: cutoff, skillModelIds: [skill.id, otherSkill.id] }
       );
 
     expect(sums.get(skill.id)).toBe(100);
