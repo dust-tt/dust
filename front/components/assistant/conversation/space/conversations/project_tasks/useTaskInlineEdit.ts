@@ -3,7 +3,7 @@ import {
   useAutosizeTextArea,
 } from "@app/components/assistant/conversation/space/conversations/project_tasks/utils";
 import type { ProjectTaskType } from "@app/types/project_task";
-import type { KeyboardEvent, RefObject } from "react";
+import type { KeyboardEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 
 const BLUR_COMMIT_DELAY_MS = 150;
@@ -14,24 +14,11 @@ interface UseTaskInlineEditArgs {
   onCommitText: (text: string) => Promise<void>;
 }
 
-interface TaskInlineEditApi {
-  isEditing: boolean;
-  inputRef: RefObject<HTMLTextAreaElement>;
-  showSavedPulse: boolean;
-  startEdit: (charOffset?: number) => void;
-  dismissSavedPulse: () => void;
-  textareaHandlers: {
-    onFocus: () => void;
-    onBlur: () => void;
-    onKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
-  };
-}
-
 export function useTaskInlineEdit({
   task,
   canEdit,
   onCommitText,
-}: UseTaskInlineEditArgs): TaskInlineEditApi {
+}: UseTaskInlineEditArgs) {
   const [isEditing, setIsEditing] = useState(false);
   const [showSavedPulse, setShowSavedPulse] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);

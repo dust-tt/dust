@@ -46,7 +46,6 @@ export function TaskOverflowMenu({ task }: TaskOverflowMenuProps) {
     isSoleProjectMember,
   } = useProjectTasksPanel();
 
-  const [open, setOpen] = useState(false);
   const [reassignSearch, setReassignSearch] = useState("");
 
   const allowAssigneeReassign = !isSoleProjectMember;
@@ -75,10 +74,8 @@ export function TaskOverflowMenu({ task }: TaskOverflowMenuProps) {
 
   return (
     <DropdownMenu
-      open={open}
-      onOpenChange={(nextOpen) => {
-        setOpen(nextOpen);
-        if (nextOpen) {
+      onOpenChange={(open) => {
+        if (open) {
           setReassignSearch("");
         }
       }}
@@ -90,8 +87,8 @@ export function TaskOverflowMenu({ task }: TaskOverflowMenuProps) {
           size="xs"
           variant="ghost"
           className={cn(
-            "transition-opacity",
-            !open && TASK_DESKTOP_HOVER_REVEAL_CLASS
+            TASK_DESKTOP_HOVER_REVEAL_CLASS,
+            "data-[state=open]:opacity-100"
           )}
           onClick={(e: React.MouseEvent) => {
             e.stopPropagation();
@@ -132,15 +129,9 @@ export function TaskOverflowMenu({ task }: TaskOverflowMenuProps) {
                             key={`reassign-task-${task.sId}-none`}
                             label={PROJECT_TASK_NO_ASSIGNEE_LABEL}
                             onClick={() => {
-                              void (async () => {
-                                try {
-                                  await patchTaskItem(task.sId, {
-                                    assigneeUserId: null,
-                                  });
-                                } finally {
-                                  setOpen(false);
-                                }
-                              })();
+                              void patchTaskItem(task.sId, {
+                                assigneeUserId: null,
+                              });
                             }}
                           />
                           {filteredReassignMembers.length > 0 ? (
@@ -164,17 +155,9 @@ export function TaskOverflowMenu({ task }: TaskOverflowMenuProps) {
                             />
                           )}
                           onClick={() => {
-                            void (async () => {
-                              try {
-                                if (member.sId !== task.user?.sId) {
-                                  await patchTaskItem(task.sId, {
-                                    assigneeUserId: member.sId,
-                                  });
-                                }
-                              } finally {
-                                setOpen(false);
-                              }
-                            })();
+                            void patchTaskItem(task.sId, {
+                              assigneeUserId: member.sId,
+                            });
                           }}
                         />
                       ))}
@@ -194,7 +177,6 @@ export function TaskOverflowMenu({ task }: TaskOverflowMenuProps) {
           icon={TrashIcon}
           variant="warning"
           onClick={() => {
-            setOpen(false);
             void requestDelete(task);
           }}
         />

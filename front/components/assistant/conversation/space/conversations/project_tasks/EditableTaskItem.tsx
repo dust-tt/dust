@@ -90,7 +90,7 @@ export function EditableTaskItem({ task }: EditableTaskItemProps) {
     isStarting;
 
   return (
-    <div className="group/task flex items-start gap-3 rounded-md px-1 py-1 transition-colors duration-200 hover:bg-muted-background dark:hover:bg-muted-background-night">
+    <div className="group/task flex items-start gap-3 rounded-md p-1 transition-colors duration-200 hover:bg-muted-background dark:hover:bg-muted-background-night">
       <div className="mt-0.5 shrink-0">
         <Checkbox
           size="xs"
@@ -134,9 +134,9 @@ export function EditableTaskItem({ task }: EditableTaskItemProps) {
                 </span>
               )}
               <TaskMetadataTooltip task={task} agentNameById={agentNameById}>
-                <span
+                <div
                   className={cn(
-                    "block min-h-6 w-full min-w-0 select-text break-words text-pretty text-base leading-6 transition-all duration-300",
+                    "min-h-6 w-full min-w-0 break-words text-pretty text-base leading-6 transition-colors duration-300",
                     typing.isAnimating && "absolute inset-0",
                     isDone
                       ? "text-faint dark:text-faint-night line-through"
@@ -177,7 +177,7 @@ export function EditableTaskItem({ task }: EditableTaskItemProps) {
                   ) : (
                     displayText
                   )}
-                </span>
+                </div>
               </TaskMetadataTooltip>
             </div>
             {!typing.isAnimating && (
@@ -194,7 +194,7 @@ export function EditableTaskItem({ task }: EditableTaskItemProps) {
             <Tooltip
               label="Open task conversation"
               trigger={
-                <span className="relative inline-flex shrink-0">
+                <div className="relative shrink-0">
                   <Button
                     icon={ChatBubbleLeftRightIcon}
                     size="xs"
@@ -214,14 +214,14 @@ export function EditableTaskItem({ task }: EditableTaskItemProps) {
                     status={conversationDotStatus}
                     className="pointer-events-none absolute -right-0.5 -top-0.5 m-0 ring-2 ring-background dark:ring-background-night"
                   />
-                </span>
+                </div>
               }
             />
           )}
           {!hasConversationLink && canEdit && (
             <div
               className={cn(
-                "shrink-0 transition-opacity",
+                "shrink-0",
                 !startMenuKeepsActionsVisible && TASK_DESKTOP_HOVER_REVEAL_CLASS
               )}
             >

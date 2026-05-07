@@ -5,16 +5,7 @@ interface UseTypingAnimationArgs {
   text: string;
 }
 
-interface TypingAnimationApi {
-  isAnimating: boolean;
-  sourceText: string;
-  dismiss: () => void;
-}
-
-export function useTypingAnimation({
-  enabled,
-  text,
-}: UseTypingAnimationArgs): TypingAnimationApi {
+export function useTypingAnimation({ enabled, text }: UseTypingAnimationArgs) {
   const [dismissed, setDismissed] = useState(false);
   const lockedTextRef = useRef<string | null>(null);
 
