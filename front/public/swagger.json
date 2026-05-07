@@ -10671,10 +10671,10 @@
             "nullable": true,
             "description": "Present for file content fragments"
           },
-          "mountRelativePath": {
+          "path": {
             "type": "string",
             "nullable": true,
-            "description": "Scoped path for mounted conversation files."
+            "description": "Path of this file inside the sandbox conversation mount."
           },
           "skipFileProcessing": {
             "type": "boolean",
@@ -13144,10 +13144,10 @@
             "description": "The id of the previously uploaded file (optional if `content` and `contentType` are set)",
             "example": "fil_123456"
           },
-          "mountRelativePath": {
+          "path": {
             "type": "string",
             "nullable": true,
-            "description": "Scoped path for mounted conversation files.",
+            "description": "Path of this file inside the sandbox conversation mount.",
             "example": "conversation/report.csv"
           },
           "skipFileProcessing": {

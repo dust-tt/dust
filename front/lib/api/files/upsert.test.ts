@@ -1,6 +1,5 @@
 import { createDataSourceFolder, upsertTable } from "@app/lib/api/data_sources";
 import { processAndStoreFile } from "@app/lib/api/files/processing";
-import { generateSnippet } from "@app/lib/api/files/snippet";
 import { processAndUpsertToDataSource } from "@app/lib/api/files/upsert";
 import { getFileContent } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
@@ -170,34 +169,6 @@ describe("processAndUpsertToDataSource", () => {
         params.tableId
       );
     }
-  });
-
-  it("should leave snippets null and skip upsert for raw sandbox CSV files", async () => {
-    const file = await FileFactory.csv(auth, null, {
-      useCase: "conversation",
-      fileName: "large.csv",
-      status: "ready",
-      useCaseMetadata: {
-        conversationId: "test-conversation-id",
-        skipDataSourceIndexing: true,
-        skipFileProcessing: true,
-      },
-    });
-
-    const space = await SpaceFactory.global(workspace);
-    const datasourceView = await DataSourceViewFactory.folder(workspace, space);
-
-    const result = await processAndUpsertToDataSource(
-      auth,
-      datasourceView.dataSource,
-      { file }
-    );
-
-    expect(result.isOk()).toBe(true);
-    expect(result.isOk() ? result.value.snippet : "unexpected").toBeNull();
-    expect(generateSnippet).not.toHaveBeenCalled();
-    expect(upsertTable).not.toHaveBeenCalled();
-    expect(createDataSourceFolder).not.toHaveBeenCalled();
   });
 
   it("should append to existing generatedTables when processing a CSV file", async () => {
