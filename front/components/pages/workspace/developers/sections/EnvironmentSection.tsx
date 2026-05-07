@@ -28,7 +28,6 @@ import {
   Button,
   Chip,
   ContentMessage,
-  cn,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -45,8 +44,7 @@ import {
   Page,
   PencilSquareIcon,
   PlusIcon,
-  RadioGroup,
-  RadioGroupItem,
+  SliderToggle,
   Spinner,
   TextArea,
   TrashIcon,
@@ -60,7 +58,7 @@ const NAME_HELPER_TEXT =
   "Uppercase letters, digits and underscores. Up to 64 characters after the prefix.";
 
 const ALLOWED_DOMAINS_HELPER_TEXT =
-  "Use exact domains such as api.github.com or wildcards such as *.github.com.";
+  "Use exact domains such as api.openai.com or wildcards such as *.mistral.ai.";
 
 function parseAllowedDomainsText(value: string): string[] {
   return value
@@ -216,6 +214,7 @@ export function EnvironmentSection() {
     handleSubmit,
     register,
     reset,
+    trigger,
   } = form;
   const { field: nameField } = useController({ control, name: "name" });
   const { field: kindField } = useController({ control, name: "kind" });
@@ -456,29 +455,35 @@ export function EnvironmentSection() {
         />
 
         <ContentMessage
-          variant="warning"
-          icon={InformationCircleIcon}
-          size="lg"
-          title="Handle as write-only secrets"
-        >
-          These values are mounted on every future sandbox in this workspace.
-          The agent is instructed not to print or echo them, and bash output is
-          redacted on a best-effort basis. This is defense-in-depth, not a
-          guarantee: encoded output, network calls from sandbox code, and short
-          or dictionary-like values may still leak. Use least-privilege,
-          high-entropy credentials and rotate often. Values cannot be viewed
-          after saving, only overwritten or deleted.
-        </ContentMessage>
-
-        <ContentMessage
           variant="info"
           icon={InformationCircleIcon}
           size="lg"
-          title="Changes apply to new sandboxes only"
+          title="Choose the right kind for each value"
         >
-          Env vars are snapshotted at sandbox boot. Running sandboxes keep their
-          original values; new sandboxes (new conversations, restarts) pick up
-          the latest.
+          <div className="flex flex-col gap-2">
+            <div>
+              <strong>HTTPS secrets (DSEC_)</strong> — for credentials and
+              anything sensitive. Stored encrypted on the host. The dsbx
+              forwarder injects the value only into outbound HTTPS requests to
+              the domains you whitelist; sandbox code never sees the raw value.
+              Safe for API keys, tokens, and other secrets bound to a known
+              external service.
+            </div>
+            <div>
+              <strong>Config ({SANDBOX_ENV_VAR_PREFIX})</strong> — for
+              non-sensitive configuration: feature flags, identifiers, public
+              endpoints, model names. Mounted as plain env vars on every new
+              sandbox and read directly by the agent and the code it runs.
+              Anything you put here should be safe to log; do not use for
+              credentials.
+            </div>
+            <div>
+              Values are write-only: they cannot be viewed after saving, only
+              overwritten or deleted. Env vars are snapshotted at sandbox boot,
+              so running sandboxes keep their original values; new sandboxes
+              (new conversations, restarts) pick up the latest.
+            </div>
+          </div>
         </ContentMessage>
 
         <div className="flex justify-end">
@@ -596,60 +601,68 @@ export function EnvironmentSection() {
             <Page.Vertical align="stretch" gap="md">
               {!isNameLocked ? (
                 <div className="flex flex-col gap-2">
-                  <Label>Type</Label>
-                  <RadioGroup
-                    value={kindField.value}
-                    onValueChange={(value) => {
-                      switch (value) {
-                        case "config":
-                        case "https_secret":
-                          kindField.onChange(value);
-                          return;
-                      }
-                    }}
-                    className="grid grid-cols-1 gap-2 sm:grid-cols-2"
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex flex-col">
+                      <Label>HTTPS secret</Label>
+                      <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+                        Keep the value out of the sandbox environment.
+                      </span>
+                    </div>
+                    <SliderToggle
+                      size="sm"
+                      selected={kindField.value === "https_secret"}
+                      disabled={isUpsertingWorkspaceSandboxEnvVar}
+                      onClick={() => {
+                        kindField.onChange(
+                          kindField.value === "https_secret"
+                            ? "config"
+                            : "https_secret"
+                        );
+                        void trigger(["value", "allowedDomainsText"]);
+                      }}
+                    />
+                  </div>
+                  <ContentMessage
+                    variant={kindValue === "https_secret" ? "info" : "warning"}
+                    icon={
+                      kindValue === "https_secret" ? LockIcon : GlobeAltIcon
+                    }
+                    size="sm"
                   >
-                    <RadioGroupItem
-                      id="sandbox-env-var-kind-config"
-                      value="config"
-                      label="Config"
-                      disabled={isUpsertingWorkspaceSandboxEnvVar}
-                    />
-                    <RadioGroupItem
-                      id="sandbox-env-var-kind-https-secret"
-                      value="https_secret"
-                      label="HTTPS secret"
-                      disabled={isUpsertingWorkspaceSandboxEnvVar}
-                    />
-                  </RadioGroup>
+                    {kindValue === "https_secret" ? (
+                      <>
+                        Stored securely. The dsbx forwarder injects it only into
+                        outbound HTTPS requests to whitelisted domains; sandbox
+                        code never reads it.
+                      </>
+                    ) : (
+                      <>
+                        Mounted as a prefixed env var on every new sandbox and
+                        read directly by the agent and any code it runs. Use for
+                        non-sensitive values.
+                      </>
+                    )}
+                  </ContentMessage>
                 </div>
               ) : null}
               <div className="flex flex-col gap-1">
                 <Label htmlFor="sandbox-env-var-name">Name</Label>
-                <div
-                  aria-disabled={
-                    isUpsertingWorkspaceSandboxEnvVar || isNameLocked
-                  }
-                  className={cn(
-                    "flex h-9 w-full items-center rounded-xl border bg-muted-background pl-3 text-sm focus-within:ring focus-within:ring-inset dark:bg-muted-background-night",
-                    nameMessage.isError &&
-                      "border-border-warning dark:border-border-warning-night",
-                    (isUpsertingWorkspaceSandboxEnvVar || isNameLocked) &&
-                      "cursor-not-allowed opacity-50"
-                  )}
-                >
+                <div className="relative">
                   <span
-                    className="select-none text-muted-foreground dark:text-muted-foreground-night"
+                    className="pointer-events-none absolute left-3 top-0 flex h-9 select-none items-center text-sm text-muted-foreground dark:text-muted-foreground-night"
                     aria-hidden="true"
                     title={`The ${namePrefix} prefix is reserved and cannot be removed.`}
                   >
                     {namePrefix}
                   </span>
-                  <input
+                  <Input
                     id="sandbox-env-var-name"
                     type="text"
                     placeholder="API_TOKEN"
-                    className="h-full w-full flex-1 border-0 bg-transparent pl-1 pr-3 text-foreground outline-none placeholder:text-muted-foreground dark:text-foreground-night dark:placeholder:text-muted-foreground-night"
+                    className={namePrefix === "DSEC_" ? "pl-14" : "pl-11"}
+                    isError={nameMessage.isError}
+                    message={nameMessage.message}
+                    messageStatus={nameMessage.isError ? "error" : "info"}
                     disabled={isUpsertingWorkspaceSandboxEnvVar || isNameLocked}
                     ref={nameField.ref}
                     name={nameField.name}
@@ -660,27 +673,37 @@ export function EnvironmentSection() {
                     }
                   />
                 </div>
+              </div>
+              {envVarToReplace === null ? (
                 <div
                   className={
-                    nameMessage.isError
-                      ? "text-xs text-foreground-warning dark:text-foreground-warning-night"
-                      : "text-xs text-muted-foreground dark:text-muted-foreground-night"
+                    kindValue === "https_secret"
+                      ? undefined
+                      : "pointer-events-none opacity-40"
                   }
+                  aria-disabled={kindValue !== "https_secret"}
                 >
-                  {nameMessage.message}
+                  <Input
+                    label="Allowed domains"
+                    placeholder="e.g. api.openai.com, *.mistral.ai"
+                    message={
+                      kindValue === "https_secret"
+                        ? allowedDomainsMessage?.message
+                        : "Only used when HTTPS secret is on."
+                    }
+                    messageStatus={
+                      kindValue === "https_secret" &&
+                      allowedDomainsMessage?.isError
+                        ? "error"
+                        : "info"
+                    }
+                    disabled={
+                      isUpsertingWorkspaceSandboxEnvVar ||
+                      kindValue !== "https_secret"
+                    }
+                    {...register("allowedDomainsText")}
+                  />
                 </div>
-              </div>
-              {kindValue === "https_secret" && envVarToReplace === null ? (
-                <Input
-                  label="Allowed domains"
-                  placeholder="api.github.com, *.github.com"
-                  message={allowedDomainsMessage?.message}
-                  messageStatus={
-                    allowedDomainsMessage?.isError ? "error" : "info"
-                  }
-                  disabled={isUpsertingWorkspaceSandboxEnvVar}
-                  {...register("allowedDomainsText")}
-                />
               ) : null}
               <div className="flex flex-col gap-1">
                 <Label htmlFor="sandbox-env-var-value">Value</Label>
@@ -758,16 +781,15 @@ export function EnvironmentSection() {
                     title="Promotion only takes effect on next wake"
                   >
                     Running sandboxes keep the previous {SANDBOX_ENV_VAR_PREFIX}
-                    -prefixed value until they are restarted, and the
-                    secrets-file substitution path is not live yet, so promoted
-                    variables will not be available to new sandboxes either
-                    until that ships.
+                    -prefixed value in their env until they are restarted. New
+                    sandboxes will receive the promoted secret only via
+                    egress-time substitution to the allowed domains.
                   </ContentMessage>
                 ) : null}
                 <Input
                   label="Allowed domains"
                   name="sandbox-env-var-allowed-domains"
-                  placeholder="api.github.com, *.github.com"
+                  placeholder="e.g. api.openai.com, *.mistral.ai"
                   value={domainsText}
                   message={domainsDialogMessage}
                   messageStatus={isDomainsDialogInvalid ? "error" : "info"}
