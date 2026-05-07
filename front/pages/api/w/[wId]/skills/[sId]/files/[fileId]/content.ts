@@ -48,7 +48,11 @@ async function handler(
   }
 
   const file = await FileResource.fetchById(auth, fileId);
-  if (!file || file.useCase !== "skill_attachment" || file.useCaseMetadata?.skillId !== skillId) {
+  if (
+    !file ||
+    file.useCase !== "skill_attachment" ||
+    file.useCaseMetadata?.skillId !== skillId
+  ) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
