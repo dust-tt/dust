@@ -306,6 +306,20 @@ describe("SandboxResource.ensureActive", () => {
         createdByUserId: user.id,
         lastUpdatedByUserId: user.id,
       },
+      {
+        workspaceId: workspace.id,
+        name: "SECRET_TOKEN",
+        kind: "https_secret",
+        placeholderNonce: Buffer.alloc(16, 1),
+        allowedDomains: ["api.example.com"],
+        encryptedValue: encrypt({
+          text: "workspace-secret-token",
+          key: workspace.sId,
+          useCase: "developer_secret",
+        }),
+        createdByUserId: user.id,
+        lastUpdatedByUserId: user.id,
+      },
     ]);
 
     const result = await SandboxResource.ensureActive(
@@ -324,6 +338,9 @@ describe("SandboxResource.ensureActive", () => {
         }),
       }),
       { workspaceId: workspace.sId }
+    );
+    expect(mockProviderCreate.mock.calls[0]?.[0].envVars).not.toHaveProperty(
+      "DSEC_SECRET_TOKEN"
     );
   });
 });

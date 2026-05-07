@@ -141,6 +141,15 @@ describe("WorkspaceSandboxEnvVarResource", () => {
       allowedDomains: ["api.openai.com"],
     });
 
+    const configResult = await WorkspaceSandboxEnvVarResource.create(
+      authenticator,
+      {
+        name: "CONFIG_TOKEN",
+        value: "config-token",
+      }
+    );
+    expect(configResult.isOk()).toBe(true);
+
     const envResult =
       await WorkspaceSandboxEnvVarResource.loadEnv(authenticator);
     expect(envResult.isOk()).toBe(true);
@@ -148,7 +157,90 @@ describe("WorkspaceSandboxEnvVarResource", () => {
       throw envResult.error;
     }
     expect(envResult.value).toEqual({
-      DSEC_API_TOKEN: "rotated-token",
+      DST_CONFIG_TOKEN: "config-token",
+    });
+  });
+
+  it("promotes config vars to HTTPS secrets without injecting plaintext env", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+
+    const createResult = await WorkspaceSandboxEnvVarResource.create(
+      authenticator,
+      {
+        name: "API_TOKEN",
+        value: "super-secret-token",
+      }
+    );
+    expect(createResult.isOk()).toBe(true);
+    if (createResult.isErr()) {
+      throw createResult.error;
+    }
+
+    const promotedResult = await createResult.value.promoteToHttpsSecret(
+      authenticator,
+      {
+        allowedDomains: [" API.GitHub.COM. "],
+      }
+    );
+    expect(promotedResult.isOk()).toBe(true);
+    if (promotedResult.isErr()) {
+      throw promotedResult.error;
+    }
+    expect(promotedResult.value.toJSON()).toMatchObject({
+      name: "DSEC_API_TOKEN",
+      kind: "https_secret",
+      allowedDomains: ["api.github.com"],
+    });
+    expect(promotedResult.value.toJSON().placeholderNonce).toMatch(
+      /^[0-9a-f]{32}$/
+    );
+
+    const envResult =
+      await WorkspaceSandboxEnvVarResource.loadEnv(authenticator);
+    expect(envResult.isOk()).toBe(true);
+    if (envResult.isErr()) {
+      throw envResult.error;
+    }
+    expect(envResult.value).toEqual({});
+  });
+
+  it("rotates HTTPS secret value and allowed domains in a single upsert", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+
+    const createResult = await WorkspaceSandboxEnvVarResource.create(
+      authenticator,
+      {
+        name: "API_TOKEN",
+        kind: "https_secret",
+        value: "super-secret-token",
+        allowedDomains: ["api.github.com"],
+      }
+    );
+    expect(createResult.isOk()).toBe(true);
+    if (createResult.isErr()) {
+      throw createResult.error;
+    }
+    const initialNonce = createResult.value.toJSON().placeholderNonce;
+
+    const upsertResult = await WorkspaceSandboxEnvVarResource.upsert(
+      authenticator,
+      {
+        name: "API_TOKEN",
+        kind: "https_secret",
+        value: "rotated-token",
+        allowedDomains: ["api.openai.com"],
+      }
+    );
+    expect(upsertResult.isOk()).toBe(true);
+    if (upsertResult.isErr()) {
+      throw upsertResult.error;
+    }
+    expect(upsertResult.value.created).toBe(false);
+    expect(upsertResult.value.resource.toJSON()).toMatchObject({
+      name: "DSEC_API_TOKEN",
+      kind: "https_secret",
+      allowedDomains: ["api.openai.com"],
+      placeholderNonce: initialNonce,
     });
   });
 

@@ -10,18 +10,18 @@ import { hasFeatureFlag } from "@app/lib/auth";
 import { WorkspaceSandboxEnvVarResource } from "@app/lib/resources/workspace_sandbox_env_var_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import type { WorkspaceSandboxEnvVarType } from "@app/types/sandbox/env_var";
+import {
+  WORKSPACE_SANDBOX_ENV_VAR_KINDS,
+  type WorkspaceSandboxEnvVarType,
+} from "@app/types/sandbox/env_var";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 
-// TODO(2026-05-05 SLICE_2): accept optional `kind` ("config" | "https_secret")
-// and `allowedDomains` here, plumb them through to the resource layer, and
-// emit dedicated audit actions (`sandbox_env_var.promoted_to_https_secret`,
-// `sandbox_env_var.allowed_domains_updated`). Slice 1 keeps the schema
-// strictly config-only so the API contract stays unchanged on this slice.
 const PostWorkspaceSandboxEnvVarBodySchema = z.object({
   name: z.string(),
   value: z.string(),
+  kind: z.enum(WORKSPACE_SANDBOX_ENV_VAR_KINDS).optional(),
+  allowedDomains: z.array(z.string()).nullable().optional(),
 });
 
 export type GetWorkspaceSandboxEnvVarsResponseBody = {
@@ -99,12 +99,13 @@ async function handler(
         });
       }
 
+      const kind = parsed.data.kind ?? "config";
       const parsedName = parseWorkspaceSandboxEnvVarNameForKind({
-        kind: "config",
+        kind,
         name: parsed.data.name,
       });
       const parsedValue = validateEnvVarValueForKind({
-        kind: "config",
+        kind,
         value: parsed.data.value,
       });
       if (parsedName.isErr() || parsedValue.isErr()) {
@@ -125,6 +126,8 @@ async function handler(
       const result = await WorkspaceSandboxEnvVarResource.upsert(auth, {
         name: parsedName.value,
         value: parsed.data.value,
+        kind,
+        allowedDomains: parsed.data.allowedDomains,
         context: getAuditLogContext(auth, req),
       });
       if (result.isErr()) {

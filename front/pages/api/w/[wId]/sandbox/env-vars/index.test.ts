@@ -85,6 +85,24 @@ describe("GET/POST /api/w/[wId]/sandbox/env-vars", () => {
       { name: "_API_TOKEN", value: "super-secret-token" },
       { name: "API-TOKEN", value: "super-secret-token" },
       { name: "DSEC_API_TOKEN", value: "super-secret-token" },
+      {
+        name: "DST_API_TOKEN",
+        value: "super-secret-token",
+        kind: "https_secret",
+        allowedDomains: ["api.example.com"],
+      },
+      {
+        name: "DSEC_API_TOKEN",
+        value: "line one\nline two",
+        kind: "https_secret",
+        allowedDomains: ["api.example.com"],
+      },
+      {
+        name: "DSEC_API_TOKEN",
+        value: "super-secret-token",
+        kind: "https_secret",
+        allowedDomains: [],
+      },
       { name: "DST_API_TOKEN", value: "" },
       { name: "DST_API_TOKEN", value: "abc\u0000def" },
       { name: "DST_API_TOKEN", value: "a".repeat(32 * 1024 + 1) },
@@ -243,20 +261,69 @@ describe("GET/POST /api/w/[wId]/sandbox/env-vars", () => {
     expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         action: "sandbox_env_var.created",
-        metadata: { name: "DST_API_TOKEN" },
+        metadata: expect.objectContaining({ name: "DST_API_TOKEN" }),
       })
     );
     expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         action: "sandbox_env_var.updated",
-        metadata: {
+        metadata: expect.objectContaining({
           name: "DST_API_TOKEN",
           previously_existed: "true",
-        },
+        }),
       })
     );
     expect(JSON.stringify(mockEmitAuditLogEvent.mock.calls)).not.toContain(
       "rotated-secret-token"
+    );
+  });
+
+  it("creates HTTPS secrets with allowed domains and omits them from loadEnv", async () => {
+    const request = await createEnvVarRequest({
+      method: "POST",
+      body: {
+        name: "DSEC_API_TOKEN",
+        value: "super-secret-token",
+        kind: "https_secret",
+        allowedDomains: [" API.GitHub.COM. ", "*.Example.com"],
+      },
+    });
+
+    await handler(request.req, request.res);
+
+    expect(request.res._getStatusCode()).toBe(201);
+    const responseBody = JSON.parse(request.res._getData());
+    expect(responseBody).toEqual({
+      envVar: expect.objectContaining({
+        name: "DSEC_API_TOKEN",
+        kind: "https_secret",
+        allowedDomains: ["api.github.com", "*.example.com"],
+      }),
+      created: true,
+    });
+    expect(responseBody.envVar.placeholderNonce).toMatch(/^[0-9a-f]{32}$/);
+
+    const envResult = await WorkspaceSandboxEnvVarResource.loadEnv(
+      request.auth
+    );
+    expect(envResult.isOk()).toBe(true);
+    if (envResult.isErr()) {
+      throw envResult.error;
+    }
+    expect(envResult.value).toEqual({});
+
+    expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "sandbox_env_var.created",
+        metadata: expect.objectContaining({
+          name: "DSEC_API_TOKEN",
+          kind: "https_secret",
+          allowed_domains: JSON.stringify(["api.github.com", "*.example.com"]),
+        }),
+      })
+    );
+    expect(JSON.stringify(mockEmitAuditLogEvent.mock.calls)).not.toContain(
+      "super-secret-token"
     );
   });
 });
