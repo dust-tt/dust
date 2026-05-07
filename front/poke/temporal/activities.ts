@@ -49,6 +49,7 @@ import { ProjectTaskStateResource } from "@app/lib/resources/project_task_state_
 import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
+import { SelfImprovingSkillsUsageResource } from "@app/lib/resources/self_improving_skills_usage_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { AgentMemoryModel } from "@app/lib/resources/storage/models/agent_memories";
@@ -800,6 +801,7 @@ export async function deleteWorkspaceActivity({
   });
   await CreditResource.deleteAllForWorkspace(auth);
   await ProgrammaticUsageConfigurationResource.deleteAllForWorkspace(auth);
+  await SelfImprovingSkillsUsageResource.deleteAllForWorkspace(auth);
   await WorkspaceVerificationAttemptResource.deleteAllForWorkspace(auth);
 
   hardDeleteLogger.info({ workspaceId }, "Deleting Workspace");

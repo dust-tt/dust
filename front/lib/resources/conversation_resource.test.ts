@@ -6441,6 +6441,9 @@ const KNOWN_CONVERSATION_RELATED_MODELS = [
   // skill_suggestion.notificationConversationId is ON DELETE SET NULL, so no
   // explicit cleanup is needed in destroyConversation — the DB clears it.
   "skill_suggestion",
+  // self_improving_skills_usage.conversationId is ON DELETE SET NULL, so no
+  // explicit cleanup is needed in destroyConversation — the DB clears it.
+  "self_improving_skills_usage",
   "user_conversation_reads",
   "wake_up",
 ];

@@ -63,6 +63,12 @@ const { finalizeSkillAggregationActivity } = proxyActivities<typeof activities>(
   }
 );
 
+const { recordSelfImprovingSkillsUsageActivity } = proxyActivities<
+  typeof activities
+>({
+  startToCloseTimeout: "10 minutes",
+});
+
 const { checkBatchStatusActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "5 minutes",
 });
@@ -185,6 +191,7 @@ async function runMultiStepStreamingLoop(
 ): Promise<{
   suggestionsCreated: number;
   approvedSourceSuggestionIds: string[];
+  reinforcementConversationId?: string;
 }> {
   let reinforcementConversationId: string | undefined;
   let totalSuggestionsCreated = 0;
@@ -209,6 +216,7 @@ async function runMultiStepStreamingLoop(
   return {
     suggestionsCreated: totalSuggestionsCreated,
     approvedSourceSuggestionIds: allApprovedSourceSuggestionIds,
+    reinforcementConversationId,
   };
 }
 
@@ -223,8 +231,9 @@ async function aggregateSkillWithMultiStepBatch({
   workspaceId: string;
   skillId: string;
   disableNotifications: boolean;
-}): Promise<void> {
+}): Promise<string[]> {
   let reinforcementConversationId: string | undefined;
+  const reinforcementConversationIds: string[] = [];
   let totalSuggestionsCreated = 0;
   const allApprovedSourceSuggestionIds: string[] = [];
 
@@ -238,6 +247,10 @@ async function aggregateSkillWithMultiStepBatch({
     if (!batchResult) {
       break;
     }
+
+    reinforcementConversationIds.push(
+      ...batchResult.reinforcementConversationIds
+    );
 
     await waitForBatch({ workspaceId, batchId: batchResult.batchId });
 
@@ -269,6 +282,8 @@ async function aggregateSkillWithMultiStepBatch({
     approvedSourceSuggestionIds: allApprovedSourceSuggestionIds,
     disableNotifications,
   });
+
+  return [...new Set(reinforcementConversationIds)];
 }
 
 /**
@@ -326,6 +341,8 @@ export async function reinforcementWorkspaceWorkflow({
     return;
   }
 
+  const usageConversationIds: string[] = [];
+
   if (effectiveBatchMode) {
     // Phase 2: Batch-analyze conversations with multi-step loop.
     let pendingConversations = conversationsWithSkills;
@@ -349,6 +366,7 @@ export async function reinforcementWorkspaceWorkflow({
       await waitForBatch({ workspaceId, batchId: batchResult.batchId });
 
       reinforcementConversationMap = batchResult.reinforcementConversationMap;
+      usageConversationIds.push(...Object.values(reinforcementConversationMap));
 
       const continuations =
         await processSkillConversationAnalysisBatchResultActivity({
@@ -389,11 +407,15 @@ export async function reinforcementWorkspaceWorkflow({
       });
 
     if (skillIdsWithSuggestions.length === 0) {
+      await recordSelfImprovingSkillsUsageActivity({
+        workspaceId,
+        conversationIds: [...new Set(usageConversationIds)],
+      });
       return;
     }
 
     // Phase 4-5: Per-skill batch aggregation + finalize.
-    await concurrentExecutor(
+    const aggregationConversationIds = await concurrentExecutor(
       skillIdsWithSuggestions,
       (currentSkillId) =>
         aggregateSkillWithMultiStepBatch({
@@ -403,9 +425,10 @@ export async function reinforcementWorkspaceWorkflow({
         }),
       { concurrency: SKILL_AGGREGATION_CONCURRENCY }
     );
+    usageConversationIds.push(...aggregationConversationIds.flat());
   } else {
     // Phase 2: Analyze conversations concurrently via streaming multi-step.
-    await concurrentExecutor(
+    const analysisResults = await concurrentExecutor(
       conversationsWithSkills,
       ({ conversationId, skillIds }) =>
         runMultiStepStreamingLoop((reinforcementConversationId) =>
@@ -418,6 +441,13 @@ export async function reinforcementWorkspaceWorkflow({
         ),
       { concurrency: CONVERSATION_ANALYSIS_CONCURRENCY }
     );
+    usageConversationIds.push(
+      ...analysisResults.flatMap((result) =>
+        result.reinforcementConversationId
+          ? [result.reinforcementConversationId]
+          : []
+      )
+    );
 
     // Phase 3: Find skills with synthetic suggestions.
     const skillIdsWithSuggestions =
@@ -427,6 +457,10 @@ export async function reinforcementWorkspaceWorkflow({
       });
 
     if (skillIdsWithSuggestions.length === 0) {
+      await recordSelfImprovingSkillsUsageActivity({
+        workspaceId,
+        conversationIds: [...new Set(usageConversationIds)],
+      });
       return;
     }
 
@@ -434,21 +468,32 @@ export async function reinforcementWorkspaceWorkflow({
     const aggregationResults = await concurrentExecutor(
       skillIdsWithSuggestions,
       async (currentSkillId) => {
-        const { suggestionsCreated, approvedSourceSuggestionIds } =
-          await runMultiStepStreamingLoop((reinforcementConversationId) =>
-            aggregateSuggestionsForSkillStepActivity({
-              workspaceId,
-              skillId: currentSkillId,
-              reinforcementConversationId,
-            })
-          );
+        const {
+          suggestionsCreated,
+          approvedSourceSuggestionIds,
+          reinforcementConversationId,
+        } = await runMultiStepStreamingLoop((reinforcementConversationId) =>
+          aggregateSuggestionsForSkillStepActivity({
+            workspaceId,
+            skillId: currentSkillId,
+            reinforcementConversationId,
+          })
+        );
         return {
           skillId: currentSkillId,
           suggestionsCreated,
           approvedSourceSuggestionIds,
+          reinforcementConversationId,
         };
       },
       { concurrency: SKILL_AGGREGATION_CONCURRENCY }
+    );
+    usageConversationIds.push(
+      ...aggregationResults.flatMap((result) =>
+        result.reinforcementConversationId
+          ? [result.reinforcementConversationId]
+          : []
+      )
     );
 
     // Phase 5: Finalize per skill.
@@ -466,4 +511,9 @@ export async function reinforcementWorkspaceWorkflow({
       });
     }
   }
+
+  await recordSelfImprovingSkillsUsageActivity({
+    workspaceId,
+    conversationIds: [...new Set(usageConversationIds)],
+  });
 }
