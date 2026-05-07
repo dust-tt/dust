@@ -25,6 +25,7 @@ import {
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useEffect } from "react";
+import {type ProcessedContent, processFileContent} from "@app/lib/file_content_utils";
 
 const MAX_CSV_ROWS = 200;
 const MAX_TEXT_CHARS = 100_000;
@@ -248,7 +249,7 @@ function FilePreviewDialogContent({
 
     case "code": {
       const lang = getCodeLanguage(file.fileName);
-      const raw = fileContent?.slice(0, MAX_TEXT_CHARS) ?? "";
+      const raw = file.content?.slice(0, MAX_TEXT_CHARS) ?? "";
       let displayContent = raw;
       if (lang === "json") {
         try {
