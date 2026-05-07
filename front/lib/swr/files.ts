@@ -238,22 +238,16 @@ export function useFileContent({
 export function useSkillAttachmentFileContent({
   fileId,
   owner,
-  config,
+  disabled,
 }: {
   fileId: string | null;
   owner: LightWorkspaceType;
-  config?: SWRConfiguration & {
-    disabled?: boolean;
-  };
+  disabled?: boolean;
 }) {
   const sendNotification = useSendNotification();
-  const isDisabled = !fileId || config?.disabled;
 
-  const { data, error, mutate } = useSWRWithDefaults<
-    string,
-    string | null
-  >(
-    `/api/w/${owner.sId}/skills/file_attachments/${fileId}/content`,
+  const { data, error, mutate, isLoading } = useSWRWithDefaults(
+    fileId ? `/api/w/${owner.sId}/skills/file_attachments/${fileId}/content` : null,
     async (url: string) => {
       const response = await clientFetch(url);
       if (!response.ok) {
@@ -267,12 +261,12 @@ export function useSkillAttachmentFileContent({
       }
       return response.text();
     },
-    { disabled: isDisabled, ...config }
+    { disabled }
   );
 
   return {
     fileContent: data ?? null,
-    isFileContentLoading: !error && data === undefined && !isDisabled,
+    isFileContentLoading: isLoading,
     fileContentError: error ? normalizeError(error) : null,
     mutateFileContent: mutate,
   };
