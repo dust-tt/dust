@@ -2397,8 +2397,7 @@ async function checkMessagesLimit(
 
   // Check Metronome credits.
   const owner = auth.getNonNullableWorkspace();
-  const featureFlags = await getFeatureFlags(auth);
-  if (featureFlags.includes("metronome_billing") && owner.metronomeCustomerId) {
+  if (owner.metronomeCustomerId) {
     const onLegacyPlan = await isLegacyPlan(owner.sId);
     if (!onLegacyPlan) {
       const user = auth.user();

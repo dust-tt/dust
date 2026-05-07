@@ -29,10 +29,9 @@ export function UsagePage() {
     }
   }, [hasFeature, router, owner.sId]);
 
-  const isMetronome = hasFeature("metronome_billing");
   const { credits, isCreditsLoading } = useCredits({
     workspaceId: owner.sId,
-    metronomeCustomerId: isMetronome ? owner.metronomeCustomerId : null,
+    metronomeCustomerId: owner.metronomeCustomerId ?? null,
   });
 
   const { totalConsumedMicroUsd, totalAmountMicroUsd } = useMemo(() => {
