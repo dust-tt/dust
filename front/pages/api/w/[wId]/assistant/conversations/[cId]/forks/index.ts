@@ -89,6 +89,14 @@ async function handler(
             message: createRes.error.message,
           },
         });
+      case "unauthorized":
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message: createRes.error.message,
+          },
+        });
       case "invalid_request_error":
         return apiError(req, res, {
           status_code: 400,
