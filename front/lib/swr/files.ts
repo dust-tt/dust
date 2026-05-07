@@ -235,52 +235,6 @@ export function useFileContent({
   };
 }
 
-export function useSkillAttachmentFileContent({
-  fileId,
-  owner,
-  config,
-}: {
-  fileId: string | null | undefined;
-  owner: LightWorkspaceType;
-  config?: SWRConfiguration & {
-    disabled?: boolean;
-  };
-}) {
-  const sendNotification = useSendNotification();
-  const isDisabled = !fileId || config?.disabled;
-  const swrKey = fileId
-    ? `/api/w/${owner.sId}/skills/file_attachments/${fileId}/content`
-    : null;
-
-  const { data, error, mutate } = useSWRWithDefaults<
-    string | null,
-    string | null
-  >(
-    swrKey,
-    async (url: string) => {
-      const response = await clientFetch(url);
-      if (!response.ok) {
-        const errorData = await getErrorFromResponse(response);
-        sendNotification({
-          type: "error",
-          title: "Failed to preview the file.",
-          description: `Error: ${errorData.message}`,
-        });
-        return null;
-      }
-      return response.text();
-    },
-    { disabled: isDisabled, ...config }
-  );
-
-  return {
-    fileContent: data ?? null,
-    isFileContentLoading: !error && data === undefined && !isDisabled,
-    fileContentError: error ? normalizeError(error) : null,
-    mutateFileContent: mutate,
-  };
-}
-
 export function useFileSignedUrl({
   fileId,
   owner,

@@ -15,7 +15,6 @@ export const attachedKnowledgeSchema = z.object({
 });
 
 const fileAttachmentSchema = z.object({
-  contentType: z.string(),
   fileId: z.string(),
   fileName: z.string(),
 });

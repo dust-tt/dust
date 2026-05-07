@@ -66,7 +66,7 @@ function isViewerCompatible(contentType: string): boolean {
   );
 }
 
-export type FilePreviewCategory =
+type FilePreviewCategory =
   | "frame"
   | "code"
   | "pdf"

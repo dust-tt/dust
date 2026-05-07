@@ -46,7 +46,6 @@ export const SkillWithoutInstructionsAndToolsSchema = z.object({
   requestedSpaceIds: z.array(z.string()),
   fileAttachments: z.array(
     z.object({
-      contentType: z.string(),
       fileId: z.string(),
       fileName: z.string(),
     })
