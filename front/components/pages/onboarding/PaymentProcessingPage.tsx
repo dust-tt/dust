@@ -1,9 +1,13 @@
 import { useWorkspace } from "@app/lib/auth/AuthContext";
-import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter, useSearchParam } from "@app/lib/platform";
+import { useAuthContext, useCheckoutStatus } from "@app/lib/swr/workspaces";
 import { getConversationRoute } from "@app/lib/utils/router";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { BarHeader, Button, Page, Spinner } from "@dust-tt/sparkle";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+
+const MAX_CHECKOUT_POLL_ATTEMPTS = 15;
+const CHECKOUT_POLL_INTERVAL_MS = 2000;
 
 export function PaymentProcessingPage() {
   const owner = useWorkspace();
@@ -12,37 +16,54 @@ export function PaymentProcessingPage() {
   const sessionId = useSearchParam("session_id");
   const planCode = useSearchParam("plan_code");
   const [error, setError] = useState<string | null>(null);
+  const pollCountRef = useRef(0);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: intentionally runs once
+  const { mutateAuthContext } = useAuthContext({ workspaceId: owner.sId });
+
+  const { checkoutStatus, mutateCheckoutStatus } = useCheckoutStatus({
+    workspaceId: owner.sId,
+    sessionId: sessionId ?? "",
+    planCode: planCode ?? "",
+    disabled: type !== "succeeded" || !sessionId || !planCode,
+  });
+
   useEffect(() => {
-    if (type !== "succeeded") {
+    if (checkoutStatus?.status !== "pending") {
       return;
     }
+    if (pollCountRef.current >= MAX_CHECKOUT_POLL_ATTEMPTS) {
+      setError("Payment processing timed out.");
+      return;
+    }
+    pollCountRef.current += 1;
+    const timeoutId = setTimeout(() => {
+      void mutateCheckoutStatus();
+    }, CHECKOUT_POLL_INTERVAL_MS);
+    return () => clearTimeout(timeoutId);
+  }, [checkoutStatus, mutateCheckoutStatus]);
 
-    const checkStatus = async () => {
-      const res = await clientFetch(
-        `/api/w/${owner.sId}/subscriptions/checkout-status?session_id=${sessionId}&plan_code=${planCode}`
-      );
-      const data = (await res.json()) as
-        | { status: "success" }
-        | { status: "error"; message: string }
-        | { status: "pending" };
-
-      if (data.status === "success") {
-        void router.replace(
-          getConversationRoute(owner.sId, "new", "welcome=true")
-        );
-      } else if (data.status === "error") {
-        setError(data.message);
-      } else {
-        setTimeout(() => {
-          void router.reload();
-        }, 5000);
-      }
-    };
-
-    void checkStatus();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!checkoutStatus) {
+      return;
+    }
+    switch (checkoutStatus.status) {
+      case "success":
+        void (async () => {
+          await mutateAuthContext();
+          void router.replace(
+            getConversationRoute(owner.sId, "new", "welcome=true")
+          );
+        })();
+        break;
+      case "error":
+        setError(checkoutStatus.message);
+        break;
+      case "pending":
+        break;
+      default:
+        assertNeverAndIgnore(checkoutStatus);
+    }
+  }, [checkoutStatus, mutateAuthContext, owner.sId, router]);
 
   return (
     <>

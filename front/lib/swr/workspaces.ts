@@ -34,6 +34,7 @@ import type {
   GetSubscriptionsResponseBody,
   PostSubscriptionResponseBody,
 } from "@app/pages/api/w/[wId]/subscriptions";
+import type { GetCheckoutStatusResponseBody } from "@app/pages/api/w/[wId]/subscriptions/checkout-status";
 import type { GetSubscriptionPricingResponseBody } from "@app/pages/api/w/[wId]/subscriptions/pricing";
 import type { GetSubscriptionStatusResponseBody } from "@app/pages/api/w/[wId]/subscriptions/status";
 import type { GetSubscriptionTrialInfoResponseBody } from "@app/pages/api/w/[wId]/subscriptions/trial-info";
@@ -819,6 +820,35 @@ export function useAuthContext(
     isAuthContextLoading: isFetching || !!isRegionRedirectResponse,
     authContextError: error,
     mutateAuthContext: mutate,
+  };
+}
+
+export function useCheckoutStatus({
+  workspaceId,
+  sessionId,
+  planCode,
+  disabled,
+}: {
+  workspaceId: string;
+  sessionId: string;
+  planCode: string;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const checkoutFetcher: Fetcher<GetCheckoutStatusResponseBody> = fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    disabled
+      ? null
+      : `/api/w/${workspaceId}/subscriptions/checkout-status?session_id=${sessionId}&plan_code=${planCode}`,
+    checkoutFetcher
+  );
+
+  return {
+    checkoutStatus: data ?? null,
+    isCheckoutStatusLoading: !error && !data && !disabled,
+    isCheckoutStatusError: error,
+    mutateCheckoutStatus: mutate,
   };
 }
 
