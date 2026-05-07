@@ -5,7 +5,7 @@ import {
 import {
   getCurrentPeriodStart,
   getReinforcementMonthlyCapMicroUsd,
-  getSelfImprovementCapPerSkillMicroUsd,
+  getWorkspaceDefaultSelfImprovementCapPerSkillMicroUsd,
 } from "@app/lib/reinforcement/consumption";
 import type { LightWorkspaceType } from "@app/types/user";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -49,20 +49,20 @@ describe("getReinforcementMonthlyCapMicroUsd", () => {
 
 describe("getSelfImprovementCapPerSkillMicroUsd", () => {
   it("returns default cap when workspace has no metadata", () => {
-    expect(getSelfImprovementCapPerSkillMicroUsd(makeWorkspace())).toBe(
-      DEFAULT_SELF_IMPROVEMENT_CAP_PER_SKILL_MICRO_USD
-    );
+    expect(
+      getWorkspaceDefaultSelfImprovementCapPerSkillMicroUsd(makeWorkspace())
+    ).toBe(DEFAULT_SELF_IMPROVEMENT_CAP_PER_SKILL_MICRO_USD);
   });
 
   it("returns default cap when metadata has no selfImprovementCapPerSkillMicroUsd", () => {
-    expect(getSelfImprovementCapPerSkillMicroUsd(makeWorkspace({}))).toBe(
-      DEFAULT_SELF_IMPROVEMENT_CAP_PER_SKILL_MICRO_USD
-    );
+    expect(
+      getWorkspaceDefaultSelfImprovementCapPerSkillMicroUsd(makeWorkspace({}))
+    ).toBe(DEFAULT_SELF_IMPROVEMENT_CAP_PER_SKILL_MICRO_USD);
   });
 
   it("returns workspace override when set", () => {
     expect(
-      getSelfImprovementCapPerSkillMicroUsd(
+      getWorkspaceDefaultSelfImprovementCapPerSkillMicroUsd(
         makeWorkspace({ selfImprovementCapPerSkillMicroUsd: 10_000_000 })
       )
     ).toBe(10_000_000);
@@ -70,7 +70,7 @@ describe("getSelfImprovementCapPerSkillMicroUsd", () => {
 
   it("allows cap of 0", () => {
     expect(
-      getSelfImprovementCapPerSkillMicroUsd(
+      getWorkspaceDefaultSelfImprovementCapPerSkillMicroUsd(
         makeWorkspace({ selfImprovementCapPerSkillMicroUsd: 0 })
       )
     ).toBe(0);

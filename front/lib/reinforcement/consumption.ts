@@ -20,7 +20,7 @@ export function getReinforcementMonthlyCapMicroUsd(
  * Return the workspace's self-improvement cost cap per skill in microUSD.
  * Uses the workspace metadata override if set, otherwise the default ($20).
  */
-export function getSelfImprovementCapPerSkillMicroUsd(
+export function getWorkspaceDefaultSelfImprovementCapPerSkillMicroUsd(
   workspace: LightWorkspaceType
 ): number {
   return typeof workspace.metadata?.selfImprovementCapPerSkillMicroUsd ===

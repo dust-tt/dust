@@ -2,7 +2,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   getReinforcementMonthlyCapMicroUsd,
-  getSelfImprovementCapPerSkillMicroUsd,
+  getWorkspaceDefaultSelfImprovementCapPerSkillMicroUsd,
 } from "@app/lib/reinforcement/consumption";
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetSkillsSpendResponseBody } from "@app/pages/api/w/[wId]/reinforcement/skills_spend";
@@ -191,7 +191,8 @@ export function useSelfImprovementCapPerSkillSetting({
   const sendNotification = useSendNotification();
   const [isSaving, setIsSaving] = useState(false);
 
-  const capDollars = getSelfImprovementCapPerSkillMicroUsd(owner) / 1_000_000;
+  const capDollars =
+    getWorkspaceDefaultSelfImprovementCapPerSkillMicroUsd(owner) / 1_000_000;
 
   const saveCapDollars = async (dollars: number): Promise<boolean> => {
     setIsSaving(true);
