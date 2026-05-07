@@ -130,16 +130,17 @@ export function SkillBuilderFilesSection() {
   };
 
   const isPreviewOpen = previewFileAttachment !== null;
-  const previewFileId = previewFileAttachment?.fileId ?? null;
-  const previewContentType = previewFileAttachment?.contentType ?? "";
 
   const { fileContent, isFileContentLoading, fileContentError } =
     useSkillAttachmentFileContent({
-      fileId: previewFileId,
+      fileId: previewFileAttachment?.fileId ?? null,
       owner,
       config: {
         disabled:
-          !isPreviewOpen || !needsFilePreviewTextContent(previewContentType),
+          !isPreviewOpen ||
+          !needsFilePreviewTextContent(
+            previewFileAttachment?.contentType ?? ""
+          ),
       },
     });
 
