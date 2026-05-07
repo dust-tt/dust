@@ -11,11 +11,15 @@ import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { getSkillServers } from "@app/lib/api/assistant/skill_actions";
-import { renderEquippedSkillsUserMessage } from "@app/lib/api/assistant/skills_rendering";
+import { getSkillNamesEnabledSinceLastCompaction } from "@app/lib/api/assistant/skills_compatibility";
+import {
+  renderEnabledSkillUserMessages,
+  renderEquippedSkillsUserMessage,
+} from "@app/lib/api/assistant/skills_rendering";
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
-import { Authenticator, hasFeatureFlag } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { constructProjectContext } from "@app/lib/resources/skill/code_defined/projects";
@@ -28,7 +32,10 @@ import type {
   ConversationType,
   UserMessageType,
 } from "@app/types/assistant/conversation";
-import { isUserMessageType } from "@app/types/assistant/conversation";
+import {
+  hasSucceededCompactionMessage,
+  isUserMessageType,
+} from "@app/types/assistant/conversation";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString, removeNulls } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -172,16 +179,34 @@ async function handler(
         attachments,
       });
 
-      const renderSkillsAsUserMessages = await hasFeatureFlag(
-        auth,
-        "skills_as_user_messages"
-      );
+      const renderSkillsAsUserMessages = true;
+      const skillsEnabledSinceLastCompaction = hasSucceededCompactionMessage(
+        conversation
+      )
+        ? getSkillNamesEnabledSinceLastCompaction(conversation, {
+            agentConfigurationId: agentConfiguration.sId,
+          })
+        : new Set<string>();
 
       const { enabledSkills, systemSkills, equippedSkills } =
         await SkillResource.listForAgentLoop(auth, {
           agentConfiguration,
           conversation,
         });
+      // Temporary compatibility while removing the feature flag: conversations that enabled
+      // skills before the user-role rendering rollout may still carry agent-enabled skills across
+      // an older compaction boundary, without any visible enable_skill action in the current window.
+      const legacyEnabledSkills =
+        enabledSkills.length > 0 && hasSucceededCompactionMessage(conversation)
+          ? (
+              await SkillResource.listAgentEnabledByConversation(auth, {
+                conversation,
+                agentConfiguration,
+              })
+            ).filter(
+              (skill) => !skillsEnabledSinceLastCompaction.has(skill.name)
+            )
+          : [];
 
       const skillServers = await getSkillServers(auth, {
         agentConfiguration,
@@ -284,9 +309,14 @@ async function handler(
         isNewFileExplorer,
       });
       const prompt = systemPromptToText(promptSections);
-      const leadingMessages = renderSkillsAsUserMessages
-        ? removeNulls([renderEquippedSkillsUserMessage(equippedSkills)])
-        : [];
+      const leadingMessages = [
+        ...renderEnabledSkillUserMessages(legacyEnabledSkills),
+        ...removeNulls(
+          renderSkillsAsUserMessages
+            ? [renderEquippedSkillsUserMessage(equippedSkills)]
+            : []
+        ),
+      ];
 
       // Build tool specifications to estimate tokens for tool definitions (names + schemas only).
       const specifications = availableActions.map((t) =>

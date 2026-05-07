@@ -3,6 +3,7 @@
  * These functions are used by both legacy and enhanced implementations
  */
 
+import { ENABLE_SKILL_TOOL_NAME } from "@app/lib/actions/constants";
 import {
   isModelVisionImage,
   isTextContent,
@@ -43,7 +44,7 @@ import type {
   UserMessageTypeModel,
 } from "@app/types/assistant/generation";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
-import { removeNulls } from "@app/types/shared/utils/general";
+import { isString, removeNulls } from "@app/types/shared/utils/general";
 
 const RENDER_ACTIONS_CONCURRENCY = 5;
 
@@ -63,9 +64,11 @@ function renderEnabledSkillMessagesForAction(
   action: AgentMCPActionWithOutputType,
   {
     enabledSkillById,
+    enabledSkillByName,
     renderSkillsAsUserMessages,
   }: {
     enabledSkillById: ReadonlyMap<string, EnabledSkill>;
+    enabledSkillByName: ReadonlyMap<string, EnabledSkill>;
     renderSkillsAsUserMessages: boolean;
   }
 ): UserMessageTypeModel[] {
@@ -92,6 +95,34 @@ function renderEnabledSkillMessagesForAction(
       })
     );
   }
+
+  if (enabledSkillMessages.length > 0) {
+    return enabledSkillMessages;
+  }
+
+  const skillName = action.params.skillName;
+  if (action.toolName !== ENABLE_SKILL_TOOL_NAME || !isString(skillName)) {
+    return enabledSkillMessages;
+  }
+
+  const outputTexts = (action.output ?? [])
+    .filter(isTextContent)
+    .map((outputBlock) => outputBlock.text);
+
+  if (!outputTexts.some((text) => text.includes("has been enabled"))) {
+    return enabledSkillMessages;
+  }
+
+  const skill = enabledSkillByName.get(skillName);
+  if (!skill) {
+    return enabledSkillMessages;
+  }
+
+  enabledSkillMessages.push(
+    renderEnabledSkillUserMessageFromInstructions({
+      skill,
+    })
+  );
 
   return enabledSkillMessages;
 }
@@ -200,6 +231,7 @@ export async function getSteps(
     conversationId,
     onMissingAction,
     enabledSkillById,
+    enabledSkillByName,
     renderSkillsAsUserMessages = false,
   }: {
     model: ModelConfigurationType;
@@ -208,6 +240,7 @@ export async function getSteps(
     conversationId: string;
     onMissingAction: "inject-placeholder" | "skip";
     enabledSkillById: ReadonlyMap<string, EnabledSkill>;
+    enabledSkillByName: ReadonlyMap<string, EnabledSkill>;
     renderSkillsAsUserMessages?: boolean;
   }
 ): Promise<Step[]> {
@@ -236,6 +269,7 @@ export async function getSteps(
       }),
       enabledSkillMessages: renderEnabledSkillMessagesForAction(action, {
         enabledSkillById,
+        enabledSkillByName,
         renderSkillsAsUserMessages,
       }),
     }),

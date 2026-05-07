@@ -312,6 +312,7 @@ The following skills are available for use with the skill_management__enable_ski
 
     const steps = await getSteps(authenticator, {
       enabledSkillById: new Map([[enabledSkill.sId, enabledSkill]]),
+      enabledSkillByName: new Map([[enabledSkill.name, enabledSkill]]),
       model,
       message,
       workspaceId: "workspace_123",
@@ -322,6 +323,117 @@ The following skills are available for use with the skill_management__enable_ski
 
     expect(steps).toHaveLength(1);
     expect(steps[0].actions).toHaveLength(1);
+    expect(steps[0].actions[0].enabledSkillMessages).toEqual([
+      {
+        role: "user",
+        name: "system",
+        content: [
+          {
+            type: "text",
+            text:
+              "<dust_system>\n<commit>\n" +
+              "Create a git commit with a descriptive message.\n" +
+              "</commit>\n</dust_system>",
+          },
+        ],
+      },
+    ]);
+  });
+
+  it("renders enabled skill messages for legacy text-only enable_skill outputs", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(
+      authenticator,
+      {
+        name: "Test Agent",
+        description: "A test agent for prompt stability",
+      }
+    );
+    const commitSkill = await SkillFactory.create(authenticator, {
+      name: "commit",
+      instructions: "Create a git commit with a descriptive message.",
+    });
+    const enabledSkill = SkillFactory.withExtendedSkill(commitSkill);
+    const model = getSupportedModelConfig(agentConfig.model);
+    assert(model, "Expected a supported model configuration.");
+
+    const message = {
+      id: 1,
+      agentMessageId: 1,
+      type: "agent_message",
+      sId: "agent_msg_1",
+      version: 1,
+      rank: 1,
+      branchId: null,
+      created: Date.now(),
+      completedTs: null,
+      parentMessageId: "user_msg_1",
+      parentAgentMessageId: null,
+      status: "succeeded",
+      content: null,
+      chainOfThought: null,
+      error: null,
+      visibility: "visible",
+      configuration: agentConfig,
+      skipToolsValidation: false,
+      actions: [
+        {
+          id: 1,
+          sId: "action_1",
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          agentMessageId: 1,
+          internalMCPServerName: "skill_management",
+          toolName: "enable_skill",
+          mcpServerId: null,
+          functionCallName: "skill_management__enable_skill",
+          functionCallId: "toolu_enable_skill",
+          params: { skillName: commitSkill.name },
+          citationsAllocated: 0,
+          status: "succeeded",
+          step: 0,
+          executionDurationMs: null,
+          displayLabels: null,
+          generatedFiles: [],
+          output: [
+            {
+              type: "text",
+              text: `Skill "${commitSkill.name}" has been enabled.`,
+            },
+          ],
+          citations: null,
+        },
+      ],
+      contents: [
+        {
+          step: 0,
+          content: {
+            type: "function_call",
+            value: {
+              id: "toolu_enable_skill",
+              name: "skill_management__enable_skill",
+              arguments: '{"skillName":"commit"}',
+            },
+          },
+        },
+      ],
+      modelInteractionDurationMs: null,
+      richMentions: [],
+      completionDurationMs: null,
+      reactions: [],
+    } satisfies AgentMessageType;
+
+    const steps = await getSteps(authenticator, {
+      enabledSkillById: new Map([[enabledSkill.sId, enabledSkill]]),
+      enabledSkillByName: new Map([[enabledSkill.name, enabledSkill]]),
+      model,
+      message,
+      workspaceId: "workspace_123",
+      conversationId: "conv_1",
+      onMissingAction: "skip",
+      renderSkillsAsUserMessages: true,
+    });
+
     expect(steps[0].actions[0].enabledSkillMessages).toEqual([
       {
         role: "user",
@@ -453,6 +565,7 @@ describe("vision image rendering in getSteps", () => {
       workspaceId,
       conversationId,
       enabledSkillById: new Map(),
+      enabledSkillByName: new Map(),
       onMissingAction: "skip",
     });
 
@@ -481,6 +594,7 @@ describe("vision image rendering in getSteps", () => {
       workspaceId,
       conversationId,
       enabledSkillById: new Map(),
+      enabledSkillByName: new Map(),
       onMissingAction: "skip",
     });
 
@@ -499,6 +613,7 @@ describe("vision image rendering in getSteps", () => {
       workspaceId,
       conversationId,
       enabledSkillById: new Map(),
+      enabledSkillByName: new Map(),
       onMissingAction: "skip",
     });
 
