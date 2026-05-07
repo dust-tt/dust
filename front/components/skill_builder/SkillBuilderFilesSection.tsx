@@ -131,8 +131,9 @@ export function SkillBuilderFilesSection() {
       fileId: previewFileAttachment?.fileId ?? null,
       owner,
       skillId,
-      disabled:
-        !needsFilePreviewTextContent(previewFileAttachment?.contentType ?? ""),
+      disabled: !needsFilePreviewTextContent(
+        previewFileAttachment?.contentType ?? ""
+      ),
     });
 
   const openPreviewDialog = (fileAttachment: SkillBuilderFileAttachment) => {
@@ -308,9 +309,7 @@ export function SkillBuilderFilesSection() {
                       ) : undefined
                     }
                     onClick={
-                      skillId
-                        ? () => openPreviewDialog(field)
-                        : undefined
+                      skillId ? () => openPreviewDialog(field) : undefined
                     }
                   />
                 );
