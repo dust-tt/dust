@@ -2,7 +2,6 @@ import {
   type FilePreviewCategory,
   getFilePreviewConfig,
 } from "@app/components/spaces/FilePreviewSheet";
-import type { ProcessedContent } from "@app/lib/file_content_utils";
 import { processFileContent } from "@app/lib/file_content_utils";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import { stripMimeParameters } from "@app/types/files";
@@ -167,19 +166,15 @@ function DelimitedPreview({ content, mimeType }: DelimitedPreviewProps) {
 interface FilePreviewDialogContentProps {
   category: FilePreviewCategory;
   file: FilePreviewDialogFile;
-  fileContent: string | null;
   isContentLoading: boolean;
   mimeType: string;
-  processedContent: ProcessedContent | null;
 }
 
 function FilePreviewDialogContent({
   category,
   file,
-  fileContent,
   isContentLoading,
   mimeType,
-  processedContent,
 }: FilePreviewDialogContentProps) {
   if (isContentLoading) {
     return (
@@ -188,6 +183,12 @@ function FilePreviewDialogContent({
       </div>
     );
   }
+
+  const fileContent = file.content?.slice(0, MAX_TEXT_CHARS) ?? null;
+  const processedContent =
+    (category === "markdown" || category === "text") && fileContent
+      ? processFileContent(fileContent, mimeType)
+      : null;
 
   switch (category) {
     case "frame":
@@ -325,11 +326,6 @@ export function FilePreviewDialog({
 
   const fileContent = file?.content?.slice(0, MAX_TEXT_CHARS) ?? null;
 
-  const processedContent =
-    (category === "markdown" || category === "text") && fileContent
-      ? processFileContent(fileContent, mimeType)
-      : null;
-
   const FileIcon = file
     ? getFileTypeIcon(file.contentType, file.fileName)
     : null;
@@ -387,10 +383,8 @@ export function FilePreviewDialog({
               <FilePreviewDialogContent
                 category={category}
                 file={file}
-                fileContent={fileContent}
                 isContentLoading={isContentLoading}
                 mimeType={mimeType}
-                processedContent={processedContent}
               />
             )}
           </div>
@@ -400,10 +394,8 @@ export function FilePreviewDialog({
               <FilePreviewDialogContent
                 category={category}
                 file={file}
-                fileContent={fileContent}
                 isContentLoading={isContentLoading}
                 mimeType={mimeType}
-                processedContent={processedContent}
               />
             )}
           </div>
