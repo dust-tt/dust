@@ -1,6 +1,7 @@
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
+import { resolveAdditionalRequestedSpaceModelIds } from "@app/lib/api/skills/space_requirements";
 import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -78,6 +79,7 @@ const PostSkillRequestBodySchema = t.intersection([
     instructionsHtml: t.union([t.string, t.null]),
   }),
   t.partial({
+    additionalRequestedSpaceIds: t.array(t.string),
     fileAttachments: t.array(t.type({ fileId: t.string })),
     isDefault: t.boolean,
   }),
@@ -326,19 +328,31 @@ async function handler(
         })
       );
 
-      const spaceIdsFromMcpServerViews =
-        await MCPServerViewResource.listSpaceRequirementsByIds(
+      const computedRequestedSpaceIds =
+        await SkillResource.computeRequestedSpaceIds(auth, {
+          mcpServerViews,
+          attachedKnowledge: attachedKnowledgeWithDataSourceViews,
+        });
+
+      const additionalRequestedSpaceIdsRes =
+        await resolveAdditionalRequestedSpaceModelIds(
           auth,
-          mcpServerViewIds
+          body.additionalRequestedSpaceIds
         );
 
-      const spaceIdsFromAttachedKnowledge = dataSourceViews.map(
-        (dsv) => dsv.space.id
-      );
+      if (additionalRequestedSpaceIdsRes.isErr()) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: additionalRequestedSpaceIdsRes.error.message,
+          },
+        });
+      }
 
       const requestedSpaceIds = uniq([
-        ...spaceIdsFromMcpServerViews,
-        ...spaceIdsFromAttachedKnowledge,
+        ...computedRequestedSpaceIds,
+        ...additionalRequestedSpaceIdsRes.value,
       ]);
 
       const extendedSkill = body.extendedSkillId

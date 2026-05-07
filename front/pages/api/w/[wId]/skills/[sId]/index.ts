@@ -1,5 +1,6 @@
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { resolveAdditionalRequestedSpaceModelIds } from "@app/lib/api/skills/space_requirements";
 import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { pruneOutdatedSkillEditSuggestions } from "@app/lib/reinforcement/skill_suggestion_pruning";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -15,6 +16,7 @@ import type {
   SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import type { ModelId } from "@app/types/shared/model_id";
 import { isString } from "@app/types/shared/utils/general";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
@@ -63,6 +65,7 @@ const PatchSkillRequestBodySchema = t.intersection([
     instructionsHtml: t.union([t.string, t.null]),
   }),
   t.partial({
+    additionalRequestedSpaceIds: t.array(t.string),
     fileAttachments: t.array(t.type({ fileId: t.string })),
     isDefault: t.boolean,
     reinforcement: t.union([
@@ -255,13 +258,53 @@ async function handler(
         })
       );
 
-      const requestedSpaceIds = await SkillResource.computeRequestedSpaceIds(
-        auth,
-        {
+      const computedRequestedSpaceIds =
+        await SkillResource.computeRequestedSpaceIds(auth, {
           mcpServerViews,
           attachedKnowledge: attachedKnowledgeWithDataSourceViews,
+        });
+
+      let additionalRequestedSpaceIds: ModelId[];
+
+      if (body.additionalRequestedSpaceIds !== undefined) {
+        const additionalRequestedSpaceIdsRes =
+          await resolveAdditionalRequestedSpaceModelIds(
+            auth,
+            body.additionalRequestedSpaceIds
+          );
+
+        if (additionalRequestedSpaceIdsRes.isErr()) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: additionalRequestedSpaceIdsRes.error.message,
+            },
+          });
         }
-      );
+
+        additionalRequestedSpaceIds = additionalRequestedSpaceIdsRes.value;
+      } else {
+        const previousAttachedKnowledge =
+          await skill.getAttachedKnowledge(auth);
+        const previousComputedRequestedSpaceIds =
+          await SkillResource.computeRequestedSpaceIds(auth, {
+            mcpServerViews: skill.mcpServerViews,
+            attachedKnowledge: previousAttachedKnowledge,
+          });
+        const previousComputedRequestedSpaceIdsSet = new Set(
+          previousComputedRequestedSpaceIds
+        );
+
+        additionalRequestedSpaceIds = skill.requestedSpaceIds.filter(
+          (spaceId) => !previousComputedRequestedSpaceIdsSet.has(spaceId)
+        );
+      }
+
+      const requestedSpaceIds = uniq([
+        ...computedRequestedSpaceIds,
+        ...additionalRequestedSpaceIds,
+      ]);
 
       // Validate file attachments if provided (gated behind sandbox_tools).
       let files: FileResource[] | undefined;

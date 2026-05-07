@@ -181,14 +181,30 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
         (k) => !dataSourceViewIdSet.has(k.dataSourceView.id)
       );
 
+      const previousComputedRequestedSpaceIds =
+        await SkillResource.computeRequestedSpaceIds(auth, {
+          mcpServerViews: skill.mcpServerViews,
+          attachedKnowledge,
+        });
+      const previousComputedRequestedSpaceIdSet = new Set(
+        previousComputedRequestedSpaceIds
+      );
+      const additionalRequestedSpaceIds = skill.requestedSpaceIds.filter(
+        (spaceId) =>
+          spaceId !== space.id &&
+          !previousComputedRequestedSpaceIdSet.has(spaceId)
+      );
+
       // Compute the new requestedSpaceIds from the filtered tools and knowledge.
-      const requestedSpaceIds = await SkillResource.computeRequestedSpaceIds(
-        auth,
-        {
+      const computedRequestedSpaceIds =
+        await SkillResource.computeRequestedSpaceIds(auth, {
           mcpServerViews: filteredMCPServerViews,
           attachedKnowledge: filteredAttachedKnowledge,
-        }
-      );
+        });
+      const requestedSpaceIds = uniq([
+        ...computedRequestedSpaceIds,
+        ...additionalRequestedSpaceIds,
+      ]);
 
       // Log an error if the deleted space is still in requestedSpaceIds.
       if (requestedSpaceIds.includes(space.id)) {
