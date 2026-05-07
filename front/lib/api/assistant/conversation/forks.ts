@@ -30,14 +30,15 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
+import { launchConversationForkWorkflow } from "@app/temporal/conversation_fork_queue/client";
 import type {
   ContentFragmentInputWithContentNode,
   ContentFragmentInputWithFileIdType,
 } from "@app/types/api/internal/assistant";
 import type { CompactionAttachmentIdReplacements } from "@app/types/assistant/compaction";
-import type {
-  ConversationType,
-  ConversationWithoutContentType,
+import {
+  type ConversationType,
+  type ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
 import type { SupportedModel } from "@app/types/assistant/models/types";
 import type { ContentFragmentType } from "@app/types/content_fragment";
@@ -50,6 +51,7 @@ import type { Transaction } from "sequelize";
 
 export type CreateConversationForkErrorCode =
   | "conversation_not_found"
+  | "failed_to_copy_files"
   | "invalid_request_error"
   | "internal_error";
 
@@ -679,6 +681,28 @@ export async function createConversationFork(
     auth,
     childConversationId.value.childConversationId
   );
+
+  const launchForkWorkflowResult = await launchConversationForkWorkflow({
+    workspaceId: auth.getNonNullableWorkspace().sId,
+    sourceConversationId: parentConversation.sId,
+    destConversationId: childConversationId.value.childConversationId,
+  });
+  if (launchForkWorkflowResult.isErr()) {
+    logger.error(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        parentConversationId: parentConversation.sId,
+        childConversationId: childConversationId.value.childConversationId,
+        error: launchForkWorkflowResult.error,
+      },
+      "Failed to launch conversation fork workflow."
+    );
+
+    return new DustError(
+      "failed_to_copy_files",
+      "Failed to copy files from source conversation."
+    );
+  }
 
   const childConversation = await getConversation(
     auth,
