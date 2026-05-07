@@ -2,7 +2,7 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { ProjectTaskSourceType } from "@app/types/project_task";
-import type { TodoVersionedActionItem } from "@app/types/takeaways";
+import type { TaskVersionedActionItem } from "@app/types/takeaways";
 import type { CreationOptional, ForeignKey } from "sequelize";
 import { DataTypes } from "sequelize";
 
@@ -49,7 +49,7 @@ export class TakeawaysModel extends WorkspaceAwareModel<TakeawaysModel> {
   declare spaceId: ForeignKey<SpaceModel["id"]>;
 
   // Rolling state — full replacement on each butler run.
-  declare actionItems: TodoVersionedActionItem[];
+  declare actionItems: TaskVersionedActionItem[];
 }
 
 TakeawaysModel.init(

@@ -207,7 +207,7 @@ export async function startAgentForProjectTask(
       visibility: "unlisted",
       spaceId: space.id,
       metadata: {
-        projectTodoId: task.sId,
+        projectTaskId: task.sId,
       },
     });
 

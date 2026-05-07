@@ -86,7 +86,7 @@ async function callLLMForExtraction(
     },
     {
       context: {
-        operationType: "project_todo_analyze_document",
+        operationType: "project_task_analyze_document",
         sourceId: document.id,
         sourceType: document.type,
         workspaceId: "eval-test",

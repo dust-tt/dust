@@ -57,7 +57,7 @@ export async function executeDedup(
     localLogger: logger,
     model,
     candidates,
-    existingTodos,
+    existingTasks: existingTodos,
   });
 
   // Current eval assertions only cover candidate→existing matches. The LLM

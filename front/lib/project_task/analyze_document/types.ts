@@ -30,7 +30,7 @@ const NewActionItemSchema = z.object({
   detected_creation_rationale: z
     .string()
     .describe(
-      "Brief explanation of why this item qualifies as a TODO — what commitment or request makes it worth tracking."
+      "Brief explanation of why this item qualifies as a task — what commitment or request makes it worth tracking."
     ),
 });
 
@@ -88,7 +88,7 @@ export const INITIAL_TASKS_SYNC_LOOKBACK_VALUES = [
 export type InitialTasksSyncLookbackValue =
   (typeof INITIAL_TASKS_SYNC_LOOKBACK_VALUES)[number];
 
-export function isInitialTodoSyncLookback(
+export function isInitialTaskSyncLookback(
   value: string | null | undefined
 ): value is InitialTasksSyncLookbackValue {
   return (

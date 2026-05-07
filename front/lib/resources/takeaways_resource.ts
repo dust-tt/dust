@@ -15,7 +15,7 @@ import type {
 } from "@app/types/project_task";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Ok, type Result } from "@app/types/shared/result";
-import type { TodoVersionedActionItem } from "@app/types/takeaways";
+import type { TaskVersionedActionItem } from "@app/types/takeaways";
 import type {
   Attributes,
   CreationAttributes,
@@ -337,7 +337,7 @@ export class TakeawaysResource extends BaseResource<TakeawaysModel> {
         title: string | null;
         uri: string | null;
       };
-      actionItems: TodoVersionedActionItem[];
+      actionItems: TaskVersionedActionItem[];
     },
     transaction?: Transaction
   ): Promise<TakeawaysResource> {
@@ -406,7 +406,7 @@ export class TakeawaysResource extends BaseResource<TakeawaysModel> {
     }: {
       conversationId: string;
       spaceId: string;
-      actionItems: TodoVersionedActionItem[];
+      actionItems: TaskVersionedActionItem[];
     },
     transaction?: Transaction
   ): Promise<TakeawaysResource> {

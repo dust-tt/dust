@@ -65,7 +65,7 @@ async function callExtractActionItemsLLM(
   const owner = auth.getNonNullableWorkspace();
   let scopedLogger = localLogger;
   const res = await startActiveObservation(
-    "project-todo-analyze-document",
+    "project-task-analyze-document",
     (span) => {
       scopedLogger = localLogger.child({ langfuseSpanId: span.id });
       scopedLogger.info("Document takeaway: LLM call started");
@@ -94,7 +94,7 @@ async function callExtractActionItemsLLM(
         },
         {
           context: {
-            operationType: "project_todo_analyze_document",
+            operationType: "project_task_analyze_document",
             sourceId: document.id,
             sourceType: document.type,
             workspaceId: owner.sId,

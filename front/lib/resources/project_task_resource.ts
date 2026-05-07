@@ -31,11 +31,12 @@ import {
 } from "sequelize";
 
 // Return type of fetchByItemIds: outer key is itemId (action item sId), inner
-// key is userId (ModelId | null, where null represents unassigned todos).
+// key is userId (ModelId | null, where null represents unassigned tasks).
 export type TodosByItemId = Map<
   string,
   Map<ModelId | null, ProjectTaskResource[]>
 >;
+export type TasksByItemId = TodosByItemId;
 
 type ProjectTaskVersionCreationAttributes =
   CreationAttributes<ProjectTaskModel> & {
@@ -469,7 +470,7 @@ export class ProjectTaskResource extends BaseResource<ProjectTaskModel> {
       linkedRows.map((t) => [t.id, t])
     );
 
-    const result: TodosByItemId = new Map();
+    const result: TasksByItemId = new Map();
     for (const source of sources) {
       const todo = rowById.get(source.projectTodoId);
       if (!todo) {

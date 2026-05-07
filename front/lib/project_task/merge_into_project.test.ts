@@ -3,7 +3,7 @@ import type { DeduplicatedGroup } from "@app/lib/project_task/deduplicate_candid
 import {
   actionItemBlob,
   collectDocumentCandidates,
-  createOrLinkTodos,
+  createOrLinkTasks,
 } from "@app/lib/project_task/merge_into_project";
 import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
 import type { TakeawaysWithSource } from "@app/lib/resources/takeaways_resource";
@@ -12,15 +12,15 @@ import type { UserResource } from "@app/lib/resources/user_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type { ProjectTaskSourceInfo } from "@app/types/project_task";
 import type { ModelId } from "@app/types/shared/model_id";
-import type { TodoVersionedActionItem } from "@app/types/takeaways";
+import type { TaskVersionedActionItem } from "@app/types/takeaways";
 import type { Logger } from "pino";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // ── Shared fixtures ───────────────────────────────────────────────────────────
 
 function makeActionItem(
-  overrides: Partial<TodoVersionedActionItem> = {}
-): TodoVersionedActionItem {
+  overrides: Partial<TaskVersionedActionItem> = {}
+): TaskVersionedActionItem {
   return {
     sId: "action-1",
     shortDescription: "Write the report",
@@ -83,7 +83,7 @@ describe("collectDocumentCandidates", () => {
   });
 
   function makeTakeawayWithSource(
-    actionItems: TodoVersionedActionItem[]
+    actionItems: TaskVersionedActionItem[]
   ): TakeawaysWithSource {
     // Reuse takeawayBase with a fresh actionItems list by spreading into a
     // plain wrapper. collectDocumentCandidates reads `.takeaway.actionItems`
@@ -96,7 +96,7 @@ describe("collectDocumentCandidates", () => {
     };
   }
 
-  it("returns the action item as a new candidate when no existing todo is linked", async () => {
+  it("returns the action item as a new candidate when no existing task is linked", async () => {
     const tws = makeTakeawayWithSource([
       makeActionItem({
         sId: "item-new",
@@ -113,8 +113,8 @@ describe("collectDocumentCandidates", () => {
     expect(candidates[0].itemId).toBe("item-new");
   });
 
-  it("skips items already linked to a todo and returns no candidate", async () => {
-    const todo = await ProjectTaskResource.makeNew(auth, {
+  it("updates the existing agent-created task and returns no candidate when status changed", async () => {
+    const task = await ProjectTaskResource.makeNew(auth, {
       spaceId: takeawayBase.spaceId,
       userId: user.id,
       createdByType: "agent",
@@ -129,7 +129,7 @@ describe("collectDocumentCandidates", () => {
       actorRationale: null,
       agentInstructions: null,
     });
-    await todo.upsertSource(auth, { itemId: "item-existing", source });
+    await task.upsertSource(auth, { itemId: "item-existing", source });
 
     const tws = makeTakeawayWithSource([
       makeActionItem({
@@ -144,12 +144,10 @@ describe("collectDocumentCandidates", () => {
     });
 
     expect(candidates).toHaveLength(0);
-    const refreshed = await ProjectTaskResource.fetchBySId(auth, todo.sId);
+    const refreshed = await ProjectTaskResource.fetchBySId(auth, task.sId);
     expect(refreshed?.status).toBe("todo");
   });
 });
-
-// ── createOrLinkTodos ─────────────────────────────────────────────────────────
 
 const fakeAuth = {} as Authenticator;
 
@@ -160,25 +158,25 @@ const fakeLogger = {
   error: vi.fn(),
 } as unknown as Logger;
 
-describe("createOrLinkTodos", () => {
-  it("skips candidates when the matched existing todo is soft-deleted", async () => {
+describe("createOrLinkTasks", () => {
+  it("skips candidates when the matched existing task is soft-deleted", async () => {
     const upsertSource = vi.fn();
-    const deletedTodo = {
+    const deletedTask = {
       deletedAt: new Date("2026-04-01T00:00:00.000Z"),
-      sId: "todo-deleted",
+      sId: "task-deleted",
       upsertSource,
     } as unknown as ProjectTaskResource;
 
     const group: DeduplicatedGroup = {
       kind: "existing",
-      todo: deletedTodo,
+      task: deletedTask,
       candidates: [
         { itemId: "item-x", userId: 1 as ModelId, text: "Do the thing" },
       ],
       scopedLogger: fakeLogger,
     };
 
-    const { deduplicated, createdNew } = await createOrLinkTodos(fakeAuth, {
+    const { deduplicated, createdNew } = await createOrLinkTasks(fakeAuth, {
       localLogger: fakeLogger,
       newCandidates: [
         {
@@ -201,11 +199,11 @@ describe("createOrLinkTodos", () => {
     expect(createdNew).toBe(0);
   });
 
-  it("links source when the matched existing todo is not deleted", async () => {
+  it("links source when the matched existing task is not deleted", async () => {
     const upsertSource = vi.fn().mockResolvedValue(undefined);
-    const liveTodo = {
+    const liveTask = {
       deletedAt: null,
-      sId: "todo-live",
+      sId: "task-live",
       status: "todo",
       createdByType: "agent",
       markedAsDoneByType: null,
@@ -218,14 +216,14 @@ describe("createOrLinkTodos", () => {
 
     const group: DeduplicatedGroup = {
       kind: "existing",
-      todo: liveTodo,
+      task: liveTask,
       candidates: [
         { itemId: "item-y", userId: 1 as ModelId, text: "Do the thing" },
       ],
       scopedLogger: fakeLogger,
     };
 
-    const { deduplicated, createdNew } = await createOrLinkTodos(fakeAuth, {
+    const { deduplicated, createdNew } = await createOrLinkTasks(fakeAuth, {
       localLogger: fakeLogger,
       newCandidates: [
         {
