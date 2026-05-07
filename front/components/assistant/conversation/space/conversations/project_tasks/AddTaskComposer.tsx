@@ -24,7 +24,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 export type AddTaskAssigneeChoice =
   | { kind: "default" }
@@ -133,7 +133,8 @@ function TodoRowAssigneeMenu({
   const assigneeSearchLabelNorm = removeDiacritics(
     PROJECT_TASK_NO_ASSIGNEE_LABEL
   ).toLowerCase();
-  const showNoAssigneeRow = q === "" || assigneeSearchLabelNorm.includes(q);
+  const showNoAssigneeRow =
+    members.length !== 1 && (q === "" || assigneeSearchLabelNorm.includes(q));
 
   let effectiveMemberSId: string | null;
   switch (choice.kind) {
@@ -303,6 +304,14 @@ export function AddTodoComposer({
       kind: "default",
     })
   );
+  useEffect(() => {
+    if (hideAssigneePicker || projectMembers.length !== 1) {
+      return;
+    }
+    setAssigneeChoice((c) =>
+      c.kind === "unassigned" ? { kind: "default" } : c
+    );
+  }, [hideAssigneePicker, projectMembers.length]);
   const [isAdding, setIsAdding] = useState(false);
   const [inputFocused, setInputFocused] = useState(false);
   const [assigneeMenuOpen, setAssigneeMenuOpen] = useState(false);
