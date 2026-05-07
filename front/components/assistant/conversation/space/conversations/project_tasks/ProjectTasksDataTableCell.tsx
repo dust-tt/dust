@@ -16,19 +16,19 @@ import type {
   ProjectTaskTableRow,
 } from "./ProjectTasksDataTable";
 
-export type BulkAssigneeActionState = {
+type BulkAssigneeActionState = {
   groupKey: string;
   kind: "approve" | "reject";
 } | null;
 
-type ProjectTasksDataTableUiContextValue = {
+interface ProjectTasksDataTableUiContextValue {
   variant: ProjectTasksDataTableVariant;
   bulkAssigneeAction: BulkAssigneeActionState;
   runBulkApproveForGroup: (groupKey: string, taskIds: string[]) => void;
   runBulkRejectForGroup: (groupKey: string, taskIds: string[]) => void;
-};
+}
 
-export const ProjectTasksDataTableUiContext =
+const ProjectTasksDataTableUiContext =
   createContext<ProjectTasksDataTableUiContextValue | null>(null);
 
 function useProjectTasksDataTableUi(): ProjectTasksDataTableUiContextValue {
@@ -46,31 +46,21 @@ export function ProjectTasksDataTableHeaderTitle() {
   return <>{variant === "suggested" ? "Suggested" : "Task"}</>;
 }
 
+interface ProjectTasksDataTableCellProps {
+  original: ProjectTaskTableRow;
+}
+
 export function ProjectTasksDataTableCell({
   original,
-}: {
-  original: ProjectTaskTableRow;
-}) {
+}: ProjectTasksDataTableCellProps) {
   const {
     viewerUserId,
     owner,
-    activeAgents,
-    isAgentsLoading,
     agentNameById,
     newItemKeys,
-    doneFlashKeys,
-    startingTaskIds,
     isReadOnly,
-    firstOnboardingTaskId,
-    projectMembers,
-    membersWithActiveTaskIds,
-    handleToggleDone,
-    requestDelete,
     onApproveAgentSuggestion,
     onRejectAgentSuggestion,
-    handleStartWorking,
-    patchTaskItem,
-    isSoleProjectMember,
   } = useProjectTasksPanel();
 
   const {
@@ -79,8 +69,6 @@ export function ProjectTasksDataTableCell({
     runBulkApproveForGroup,
     runBulkRejectForGroup,
   } = useProjectTasksDataTableUi();
-
-  const allowAssigneeReassign = !isSoleProjectMember;
 
   if (original.kind === "assignee_header") {
     const bulkIds = original.pendingSuggestionTaskIds ?? [];
@@ -149,54 +137,33 @@ export function ProjectTasksDataTableCell({
 
   const task = original.task;
 
-  return (
-    <>
-      {variant === "suggested" ? (
-        <SuggestedTaskItem
-          key={task.sId}
-          task={task}
-          viewerUserId={viewerUserId}
-          onApproveAgentSuggestion={onApproveAgentSuggestion}
-          onRejectAgentSuggestion={onRejectAgentSuggestion}
-          owner={owner}
-          agentNameById={agentNameById}
-          isNew={newItemKeys.has(task.sId)}
-          isReadOnly={isReadOnly}
-        />
-      ) : (
-        <EditableTaskItem
-          key={task.sId}
-          task={task}
-          viewerUserId={viewerUserId}
-          onToggleDone={handleToggleDone}
-          onDelete={requestDelete}
-          onStartWorking={handleStartWorking}
-          owner={owner}
-          activeAgents={activeAgents}
-          agentsLoading={isAgentsLoading}
-          agentNameById={agentNameById}
-          isNew={newItemKeys.has(task.sId)}
-          isNewlyDone={doneFlashKeys.has(task.sId)}
-          isStarting={startingTaskIds.has(task.sId)}
-          isReadOnly={isReadOnly}
-          isFirstOnboardingTask={task.sId === firstOnboardingTaskId}
-          projectMembers={projectMembers}
-          membersWithActiveTaskIds={membersWithActiveTaskIds}
-          onPatchTask={patchTaskItem}
-          allowAssigneeReassign={allowAssigneeReassign}
-        />
-      )}
-    </>
-  );
+  if (variant === "suggested") {
+    return (
+      <SuggestedTaskItem
+        task={task}
+        viewerUserId={viewerUserId}
+        onApproveAgentSuggestion={onApproveAgentSuggestion}
+        onRejectAgentSuggestion={onRejectAgentSuggestion}
+        owner={owner}
+        agentNameById={agentNameById}
+        isNew={newItemKeys.has(task.sId)}
+        isReadOnly={isReadOnly}
+      />
+    );
+  }
+
+  return <EditableTaskItem task={task} />;
+}
+
+interface ProjectTasksDataTableUiProviderProps {
+  variant: ProjectTasksDataTableVariant;
+  children: ReactNode;
 }
 
 export function ProjectTasksDataTableUiProvider({
   variant,
   children,
-}: {
-  variant: ProjectTasksDataTableVariant;
-  children: ReactNode;
-}) {
+}: ProjectTasksDataTableUiProviderProps) {
   const { onApproveAllSuggestedForAssignee, onRejectAllSuggestedForAssignee } =
     useProjectTasksPanel();
 
