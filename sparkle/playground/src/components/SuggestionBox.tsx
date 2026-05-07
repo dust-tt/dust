@@ -119,17 +119,17 @@ export function SuggestionBox({
         </div>
       ) : (
         <div className="s-group/suggestion-card s-flex s-w-full s-flex-col s-gap-4">
-          <div className="s-heading-sm s-text-muted-foreground s-flex s-items-center s-justify-between">
-            <div className="s-flex s-items-center s-gap-2">
+          {title && (
+            <div className="s-heading-sm s-text-muted-foreground s-flex s-justify-start s-gap-2">
               <Icon visual={HeaderIcon} size="sm" />
-              {title && title}
+              {title}
             </div>
-          </div>
-          <div className="s-flex s-w-full s-flex-col s-gap-4">
+          )}
+          <div className="s-flex s-w-full s-items-center s-flex-col">
             {suggestionGroups.map((group, groupIndex) => (
               <div
                 key={group.title ?? `suggestion-group-${groupIndex}`}
-                className="s-flex s-w-full s-flex-col s-gap-2"
+                className="s-flex s-w-full s-flex-col"
               >
                 {(group.title || group.visual) && (
                   <div className="s-flex s-items-center s-gap-3">
@@ -147,7 +147,7 @@ export function SuggestionBox({
                   return (
                     <div
                       key={item.id}
-                      className="s-group/suggestion-item s-flex s-items-start s-gap-3 s-pl-6"
+                      className="s-group/suggestion-item s-flex s-items-start s-gap-3 s-items-center s-pl-6"
                     >
                       {showDisabledCheckbox && (
                         <Checkbox

@@ -47,7 +47,6 @@ import {
   MagicIcon,
   MoreIcon,
   PlayIcon,
-  PlusIcon,
   ReplySection,
   SearchInput,
   SearchInputWithPopover,
@@ -3249,9 +3248,7 @@ export function GroupConversationView({
               {todoSuggestionStatus !== "idle" && (
                 <SuggestionBox
                   status={todoSuggestionStatus}
-                  title="Create tasks"
                   workingLabel="Creating suggested to-dos..."
-                  headerIcon={PlusIcon}
                   items={todoSuggestions.map((suggestion) => {
                     const participant = todoParticipants.find(
                       (user) => user.id === suggestion.userId
@@ -3298,15 +3295,26 @@ export function GroupConversationView({
                 <div className="s-flex s-flex-col s-gap-6">
                   <div className="s-flex s-w-full s-items-center s-justify-between s-gap-2">
                     <div className="s-flex s-items-center s-gap-2">
+                      <ButtonsSwitchList
+                        defaultValue={todoScopeFilter}
+                        onValueChange={(value) => {
+                          if (value === "all" || value === "mine") {
+                            setTodoScopeFilter(value);
+                          }
+                        }}
+                      >
+                        <ButtonsSwitch value="mine" label="Mine" />
+                        <ButtonsSwitch value="all" label="Everyone" />
+                      </ButtonsSwitchList>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
                             size="sm"
                             variant="outline"
                             icon={EyeIcon}
-                            label={`${TODO_HISTORY_FILTER_LABELS[todoHistoryFilter]} · ${
-                              todoScopeFilter === "mine" ? "Mine" : "Everyone"
-                            }`}
+                            label={
+                              TODO_HISTORY_FILTER_LABELS[todoHistoryFilter]
+                            }
                             isSelect
                           />
                         </DropdownMenuTrigger>
@@ -3334,29 +3342,6 @@ export function GroupConversationView({
                                 label={TODO_HISTORY_FILTER_LABELS[option]}
                               />
                             ))}
-                          </DropdownMenuRadioGroup>
-                          <Separator className="s-my-1" />
-                          <div className="s-px-2 s-py-1.5 s-text-xs s-font-medium s-text-muted-foreground dark:s-text-muted-foreground-night">
-                            People
-                          </div>
-                          <DropdownMenuRadioGroup
-                            value={todoScopeFilter}
-                            onValueChange={(value) => {
-                              if (value === "all" || value === "mine") {
-                                setTodoScopeFilter(value);
-                              }
-                            }}
-                          >
-                            <DropdownMenuRadioItem
-                              value="mine"
-                              label="Mine"
-                              description="Your to-dos only"
-                            />
-                            <DropdownMenuRadioItem
-                              value="all"
-                              label="Everyone"
-                              description="All to-dos in this project"
-                            />
                           </DropdownMenuRadioGroup>
                         </DropdownMenuContent>
                       </DropdownMenu>
