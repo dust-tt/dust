@@ -29,6 +29,7 @@ export class SkillFactory {
       status: SkillStatus;
       version: number;
       requestedSpaceIds: ModelId[];
+      addCurrentUserAsEditor: boolean;
       attachedKnowledge: SkillAttachedKnowledge[];
       mcpServerViews: MCPServerViewResource[];
     }> = {}
@@ -64,6 +65,7 @@ export class SkillFactory {
       },
       {
         mcpServerViews,
+        addCurrentUserAsEditor: overrides.addCurrentUserAsEditor,
         attachedKnowledge,
       }
     );
