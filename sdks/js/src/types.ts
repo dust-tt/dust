@@ -230,6 +230,8 @@ export const supportedAudioFileFormats = {
   "audio/wav": [".wav"],
   "audio/x-wav": [".wav"],
   "audio/webm": [".webm"],
+  // Chrome sometimes uses video/webm for audio files, and we can still process them as audio only files
+  "video/webm": [".webm"],
 } as const;
 
 // Webhook trigger endpoint (skeleton) response type
