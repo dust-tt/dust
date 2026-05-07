@@ -6,6 +6,7 @@ import { SkillBuilderUserFacingDescriptionSection } from "@app/components/skill_
 import { SkillEditorsSheet } from "@app/components/skill_builder/SkillEditorsSheet";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 import {
+  Chip,
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
@@ -14,12 +15,12 @@ import {
 
 interface SkillBuilderSettingsSectionProps {
   skill?: SkillType;
-  hasReinforcedAgents: boolean;
+  hasSelfImprovingSkills: boolean;
 }
 
 export function SkillBuilderSettingsSection({
   skill,
-  hasReinforcedAgents,
+  hasSelfImprovingSkills,
 }: SkillBuilderSettingsSectionProps) {
   return (
     <div className="space-y-5">
@@ -42,15 +43,31 @@ export function SkillBuilderSettingsSection({
         </div>
       </div>
       {skill && (
-        <Collapsible defaultOpen>
-          <CollapsibleTrigger variant="secondary">Advanced</CollapsibleTrigger>
-          <CollapsibleContent>
-            <div className="space-y-3 pt-3">
-              <SkillBuilderIsDefaultSection />
-              {hasReinforcedAgents && <SkillBuilderEnableSuggestionsSection />}
+        <>
+          {hasSelfImprovingSkills && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Label className="text-base font-semibold text-foreground dark:text-foreground-night">
+                  Self Improvement
+                </Label>
+                <Chip size="xs" color="golden" label="Beta" />
+              </div>
+              <SkillBuilderEnableSuggestionsSection
+                selfImprovementLock={skill.selfImprovementLock}
+              />
             </div>
-          </CollapsibleContent>
-        </Collapsible>
+          )}
+          <Collapsible defaultOpen>
+            <CollapsibleTrigger variant="secondary">
+              Advanced
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="space-y-3 pt-3">
+                <SkillBuilderIsDefaultSection />
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        </>
       )}
     </div>
   );
