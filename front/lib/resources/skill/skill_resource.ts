@@ -1,4 +1,5 @@
 import { fetchMCPServerActionConfigurations } from "@app/lib/actions/configuration/mcp";
+import { getSelfImprovementCapPerSkillMicroUsd } from "@app/lib/reinforcement/consumption";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import { updateAgentRequirements } from "@app/lib/api/assistant/configuration/agent_requirements";
@@ -370,6 +371,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       const skill = await this.model.create(
         {
           ...blob,
+          selfImprovementCostsCapMicroUsd:
+            getSelfImprovementCapPerSkillMicroUsd(owner),
           workspaceId: owner.id,
         },
         {
@@ -1551,6 +1554,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         isDefault: !SystemSkillsRegistry.isSystemSkill(def.sId),
         reinforcement: "auto",
         lastReinforcementAnalysisAt: null,
+        selfImprovementCostsCapMicroUsd: 0,
+        selfImprovementLock: false,
       },
       {
         // Global skills do not have data source configurations.
@@ -1810,6 +1815,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           isDefault: versionModel.isDefault,
           reinforcement: "auto",
           lastReinforcementAnalysisAt: null,
+          selfImprovementCostsCapMicroUsd: versionModel.selfImprovementCostsCapMicroUsd,
+          selfImprovementLock: versionModel.selfImprovementLock,
         },
         {
           // We ignore data source configurations for historical versions.
