@@ -485,6 +485,7 @@ export interface WorkspaceMetadata {
   phoneCountry?: string;
   sandboxAllowAgentEgressRequests?: boolean;
   reinforcementCapMicroUsd?: number;
+  selfImprovementCapPerSkillMicroUsd?: number;
 }
 
 export async function updateWorkspaceMetadata(

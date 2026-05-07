@@ -1,6 +1,9 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
-import { DEFAULT_REINFORCEMENT_CAP_MICRO_USD } from "@app/lib/reinforcement/constants";
+import {
+  getReinforcementMonthlyCapMicroUsd,
+  getSelfImprovementCapPerSkillMicroUsd,
+} from "@app/lib/reinforcement/consumption";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useState } from "react";
@@ -113,12 +116,7 @@ export function useReinforcementCapSetting({
   const sendNotification = useSendNotification();
   const [isSaving, setIsSaving] = useState(false);
 
-  const storedMicroUsd =
-    typeof owner.metadata?.reinforcementCapMicroUsd === "number"
-      ? owner.metadata.reinforcementCapMicroUsd
-      : DEFAULT_REINFORCEMENT_CAP_MICRO_USD;
-
-  const capDollars = storedMicroUsd / 1_000_000;
+  const capDollars = getReinforcementMonthlyCapMicroUsd(owner) / 1_000_000;
 
   const saveCapDollars = async (dollars: number): Promise<boolean> => {
     setIsSaving(true);
@@ -141,6 +139,54 @@ export function useReinforcementCapSetting({
       sendNotification({
         type: "error",
         title: "Failed to update reinforcement spending cap",
+        description: normalizeError(error).message,
+      });
+      return false;
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return {
+    capDollars,
+    isSaving,
+    saveCapDollars,
+  };
+}
+
+interface UseSelfImprovementCapPerSkillSettingProps {
+  owner: LightWorkspaceType;
+}
+
+export function useSelfImprovementCapPerSkillSetting({
+  owner,
+}: UseSelfImprovementCapPerSkillSettingProps) {
+  const sendNotification = useSendNotification();
+  const [isSaving, setIsSaving] = useState(false);
+
+  const capDollars = getSelfImprovementCapPerSkillMicroUsd(owner) / 1_000_000;
+
+  const saveCapDollars = async (dollars: number): Promise<boolean> => {
+    setIsSaving(true);
+    try {
+      const res = await clientFetch(`/api/w/${owner.sId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          selfImprovementCapPerSkillMicroUsd: Math.round(dollars * 1_000_000),
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to update self-improvement cost cap per skill");
+      }
+      return true;
+    } catch (error) {
+      sendNotification({
+        type: "error",
+        title: "Failed to update self-improvement cost cap per skill",
         description: normalizeError(error).message,
       });
       return false;
