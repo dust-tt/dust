@@ -6,6 +6,7 @@ import {
 import type { LightServerSideMCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { processToolResults } from "@app/lib/actions/mcp_execution";
 import type { DataSourceNodeContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/lib/api/files/mount_path";
 import { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -227,7 +228,7 @@ describe("processToolResults", () => {
     }
   });
 
-  it("should persist DATA_SOURCE_NODE_CONTENT block to results/", async () => {
+  it(`should persist DATA_SOURCE_NODE_CONTENT block to ${TOOL_OUTPUTS_FOLDER_NAME}/`, async () => {
     const { auth, conversation, action, toolConfiguration } = await setupTest();
     await FeatureFlagFactory.basic(auth, "sandbox_tools");
 
@@ -272,18 +273,18 @@ describe("processToolResults", () => {
       );
 
     const toolOutputWrite = uploadCalls.find((call) =>
-      call[0].filePath.includes("results/")
+      call[0].filePath.includes(`${TOOL_OUTPUTS_FOLDER_NAME}/`)
     );
     expect(toolOutputWrite).toBeDefined();
     expect(toolOutputWrite?.[0].filePath).toMatch(
-      /results\/\d+_my_notion_page\.md$/
+      new RegExp(`${TOOL_OUTPUTS_FOLDER_NAME}/\\d+_my_notion_page\\.md$`)
     );
     expect(toolOutputWrite?.[0].content).toBe(
       "# My Notion Page\n\nSome content here."
     );
   });
 
-  it("should persist large plain text block to results/ as .txt", async () => {
+  it(`should persist large plain text block to ${TOOL_OUTPUTS_FOLDER_NAME}/ as .txt`, async () => {
     const { auth, conversation, action, toolConfiguration } = await setupTest();
     await FeatureFlagFactory.basic(auth, "sandbox_tools");
 
@@ -308,16 +309,16 @@ describe("processToolResults", () => {
       );
 
     const toolOutputWrite = uploadCalls.find((call) =>
-      call[0].filePath.includes("results/")
+      call[0].filePath.includes(`${TOOL_OUTPUTS_FOLDER_NAME}/`)
     );
 
     expect(toolOutputWrite).toBeDefined();
     expect(toolOutputWrite?.[0].filePath).toMatch(
-      /results\/\d+_test_tool\.txt$/
+      new RegExp(`${TOOL_OUTPUTS_FOLDER_NAME}/\\d+_test_tool\\.txt$`)
     );
   });
 
-  it("should persist large JSON text block to results/ as .json", async () => {
+  it(`should persist large JSON text block to ${TOOL_OUTPUTS_FOLDER_NAME}/ as .json`, async () => {
     const { auth, conversation, action, toolConfiguration } = await setupTest();
     await FeatureFlagFactory.basic(auth, "sandbox_tools");
 
@@ -344,11 +345,11 @@ describe("processToolResults", () => {
       );
 
     const toolOutputWrite = uploadCalls.find((call) =>
-      call[0].filePath.includes("results/")
+      call[0].filePath.includes(`${TOOL_OUTPUTS_FOLDER_NAME}/`)
     );
     expect(toolOutputWrite).toBeDefined();
     expect(toolOutputWrite?.[0].filePath).toMatch(
-      /results\/\d+_test_tool\.json$/
+      new RegExp(`${TOOL_OUTPUTS_FOLDER_NAME}/\\d+_test_tool\\.json$`)
     );
   });
 });

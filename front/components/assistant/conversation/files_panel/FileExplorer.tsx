@@ -12,6 +12,7 @@ import { buildSandboxTree } from "@app/components/assistant/conversation/files_p
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useConversationSandboxStatus } from "@app/hooks/conversations/useConversationSandboxStatus";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/lib/api/files/mount_path";
 import { downloadSandboxFile } from "@app/lib/swr/files";
 import logger from "@app/logger/logger";
 import type {
@@ -149,7 +150,7 @@ export function NewFileExplorer({
     const filesAtLevel: GCSMountFileEntry[] = [];
 
     for (const node of currentNodes) {
-      if (node.name.startsWith(".")) {
+      if (node.name.startsWith(".") && node.name !== TOOL_OUTPUTS_FOLDER_NAME) {
         continue;
       }
       if (node.isDirectory) {

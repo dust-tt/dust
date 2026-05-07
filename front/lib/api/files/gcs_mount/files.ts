@@ -1,5 +1,8 @@
 import config from "@app/lib/api/config";
-import { getConversationFilesBasePath } from "@app/lib/api/files/mount_path";
+import {
+  getConversationFilesBasePath,
+  TOOL_OUTPUTS_FOLDER_NAME,
+} from "@app/lib/api/files/mount_path";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -167,8 +170,12 @@ export async function listGCSMountFiles(
     (f) => {
       const trimmed = f.name.replace(/\/$/, "");
       const name = trimmed.split("/").pop() ?? "";
-      // Skip hidden folders (name starting with ".").
-      if (!name || name.startsWith(".")) {
+      // Skip hidden folders (name starting with "."), except the tool outputs folder which is
+      // surfaced to users despite its dot prefix.
+      if (
+        !name ||
+        (name.startsWith(".") && name !== TOOL_OUTPUTS_FOLDER_NAME)
+      ) {
         return [];
       }
 
