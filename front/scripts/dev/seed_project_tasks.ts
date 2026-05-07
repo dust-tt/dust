@@ -2,66 +2,86 @@ import { Authenticator } from "@app/lib/auth";
 import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { makeScript } from "@app/scripts/helpers";
+import type { AgentSuggestionStatus } from "@app/types/project_task";
+import uniqBy from "lodash/uniqBy";
 
-// Mirrors the sentinel used by the butler merge workflow.
 const BUTLER_AGENT_SID = "butler";
 
-const SEED_TODOS = [
-  // Current version, in progress.
-  {
-    text: "Review the Q3 roadmap document and add comments",
-    status: "in_progress" as const,
-  },
-  {
-    text: "Update the onboarding checklist for new hires",
-    status: "in_progress" as const,
-  },
-  // Current version, done — marked done by agent.
-  {
-    text: "Send weekly status report to stakeholders",
-    status: "done" as const,
-    agentMarkedDone: true,
-    agentRationale:
-      "Detected in the #weekly-updates Slack thread: report was shared and acknowledged by the team.",
-  },
-  // Will be set to done with an older version (simulates a todo created, then marked done).
-  // Marked done by agent.
-  {
-    text: "Fix broken link in the FAQ page",
-    status: "done" as const,
-    withOlderVersion: true,
-    agentMarkedDone: true,
-    agentRationale:
-      "The broken link was replaced with the correct URL in the FAQ document.",
-  },
-  // Marked done by user.
-  {
-    text: "Archive completed sprint tickets",
-    status: "done" as const,
-    withOlderVersion: true,
-  },
-  // Will be set to in_progress with an older version (simulates a todo created, then moved to in_progress).
-  {
-    text: "Draft the API migration guide",
-    status: "in_progress" as const,
-    withOlderVersion: true,
-  },
-  {
-    text: "Set up monitoring alerts for the new service",
-    status: "in_progress" as const,
-    withOlderVersion: true,
-  },
-  // Will be soft-deleted.
-  {
-    text: "Clean up unused feature flags",
-    deleted: true,
-  },
-  {
-    text: "Remove deprecated endpoint /v1/legacy",
-    deleted: true,
-  },
+// Pool of todo texts to draw from randomly.
+const TODO_POOL = [
+  "Review the Q3 roadmap document and add comments",
+  "Update the onboarding checklist for new hires",
+  "Send weekly status report to stakeholders",
+  "Fix broken link in the FAQ page",
+  "Archive completed sprint tickets",
+  "Draft the API migration guide",
+  "Set up monitoring alerts for the new service",
+  "Clean up unused feature flags",
+  "Remove deprecated endpoint /v1/legacy",
+  "Schedule a retrospective for the last sprint",
+  "Write unit tests for the new authentication module",
+  "Update the README with latest setup instructions",
+  "Review open pull requests older than 7 days",
+  "Audit user permissions in the staging environment",
+  "Prepare the demo script for the upcoming client call",
+  "Summarize last week's incident report",
+  "Migrate remaining config values to environment variables",
+  "Add error handling to the file upload endpoint",
+  "Document the new data model changes",
+  "Follow up with design on the updated mockups",
+  "Triage the 10 oldest open bug reports",
+  "Sync with legal on the updated privacy policy draft",
+  "Profile and optimize the slowest database query",
+  "Update dependencies to latest patch versions",
+  "Create a runbook for the nightly batch job",
 ];
+
+type SeedTodo = {
+  text: string;
+  isAgentSuggestion: boolean;
+  agentSuggestionStatus: AgentSuggestionStatus | null;
+  agentRationale?: string;
+  status?: "todo" | "in_progress" | "done";
+  agentMarkedDone?: boolean;
+  deleted?: boolean;
+};
+
+function randomTodos(count: number): SeedTodo[] {
+  return Array.from({ length: count }, () => {
+    const text = TODO_POOL[Math.floor(Math.random() * TODO_POOL.length)];
+    const isAgentSuggestion = Math.random() < 0.4;
+    const roll = Math.random();
+
+    if (roll < 0.15) {
+      return {
+        text,
+        isAgentSuggestion,
+        agentSuggestionStatus: isAgentSuggestion ? "rejected" : null,
+        deleted: true,
+      };
+    } else if (roll < 0.5) {
+      return {
+        text,
+        isAgentSuggestion,
+        agentSuggestionStatus: isAgentSuggestion ? "approved" : null,
+        status: "done" as const,
+        agentMarkedDone: Math.random() < 0.5,
+        agentRationale: isAgentSuggestion
+          ? "Identified as a priority action based on recent project activity."
+          : undefined,
+      };
+    } else {
+      return {
+        text,
+        isAgentSuggestion,
+        agentSuggestionStatus: isAgentSuggestion ? "pending" : null,
+        status: "todo" as const,
+      };
+    }
+  });
+}
 
 makeScript(
   {
@@ -80,11 +100,19 @@ makeScript(
     userId: {
       alias: "uId",
       type: "string" as const,
-      demandOption: true,
-      description: "User sId (used only to resolve the target space/user).",
+      demandOption: false,
+      description:
+        "User sId. If omitted, todos are distributed randomly across all project members.",
+    },
+    count: {
+      alias: "n",
+      type: "number" as const,
+      demandOption: false,
+      default: 10,
+      description: "Number of todos to seed.",
     },
   },
-  async ({ execute, workspaceId, spaceId, userId }, logger) => {
+  async ({ execute, workspaceId, spaceId, userId, count }, logger) => {
     const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
 
     const space = await SpaceResource.fetchById(auth, spaceId);
@@ -95,17 +123,48 @@ makeScript(
       throw new Error(`Space ${spaceId} is not a project.`);
     }
 
-    const [user] = await UserResource.fetchByIds([userId]);
-    if (!user) {
-      throw new Error(`User not found: ${userId}`);
+    // Resolve target users.
+    let users: Awaited<ReturnType<typeof UserResource.fetchByModelIds>>;
+
+    if (userId) {
+      const [user] = await UserResource.fetchByIds([userId]);
+      if (!user) {
+        throw new Error(`User not found: ${userId}`);
+      }
+      users = [user];
+    } else {
+      const { groupsToProcess } = await space.fetchManualGroupsMemberships(
+        auth,
+        {
+          shouldIncludeAllMembers: false,
+        }
+      );
+
+      users = uniqBy(
+        (
+          await concurrentExecutor(
+            groupsToProcess,
+            (group) => group.getActiveMembers(auth),
+            { concurrency: 2 }
+          )
+        ).flat(),
+        "sId"
+      );
+
+      if (users.length === 0) {
+        throw new Error(`No active members found for space: ${spaceId}.`);
+      }
     }
+
+    const todos = randomTodos(count);
 
     logger.info(
       {
         workspaceId,
         spaceId,
-        userId,
-        todoCount: SEED_TODOS.length,
+        userCount: users.length,
+        todoCount: todos.length,
+        agentSuggestionCount: todos.filter((t) => t.isAgentSuggestion).length,
       },
       execute
         ? "Seeding project todos."
@@ -113,15 +172,16 @@ makeScript(
     );
 
     if (!execute) {
-      for (const seed of SEED_TODOS) {
-        logger.info({ seed }, "Would create todo.");
+      for (const todo of todos) {
+        logger.info({ todo }, "Would create todo.");
       }
       return;
     }
 
-    for (const seed of SEED_TODOS) {
-      // All todos are created by the butler agent, mirroring merge_into_project.ts.
-      const todo = await ProjectTaskResource.makeNew(auth, {
+    for (const todo of todos) {
+      const user = users[Math.floor(Math.random() * users.length)];
+
+      const created = await ProjectTaskResource.makeNew(auth, {
         spaceId: space.id,
         userId: user.id,
         createdByType: "agent",
@@ -130,48 +190,48 @@ makeScript(
         markedAsDoneByType: null,
         markedAsDoneByUserId: null,
         markedAsDoneByAgentConfigurationId: null,
-        text: seed.text,
+        text: todo.text,
         status: "todo",
         doneAt: null,
         actorRationale: null,
         agentInstructions: null,
+        agentSuggestionStatus: todo.agentSuggestionStatus,
+        agentSuggestionReviewedAt: null,
+        agentSuggestionReviewedByUserId: null,
       });
 
-      if (seed.deleted) {
-        await todo.softDelete(auth);
-        logger.info({ text: seed.text }, "Created and soft-deleted todo.");
-      } else if (seed.status) {
-        const doneUpdates =
-          seed.status === "done"
+      if (todo.deleted) {
+        await created.softDelete(auth);
+      } else if (todo.status && todo.status !== "todo") {
+        await created.updateWithVersion(auth, {
+          status: todo.status,
+          ...(todo.status === "done"
             ? {
                 doneAt: new Date(),
-                markedAsDoneByType: seed.agentMarkedDone
+                markedAsDoneByType: todo.agentMarkedDone
                   ? ("agent" as const)
                   : ("user" as const),
-                markedAsDoneByUserId: seed.agentMarkedDone ? null : user.id,
-                markedAsDoneByAgentConfigurationId: seed.agentMarkedDone
+                markedAsDoneByUserId: todo.agentMarkedDone ? null : user.id,
+                markedAsDoneByAgentConfigurationId: todo.agentMarkedDone
                   ? BUTLER_AGENT_SID
                   : null,
-                actorRationale: seed.agentRationale ?? null,
+                actorRationale: todo.agentRationale ?? null,
               }
-            : {};
-
-        await todo.updateWithVersion(auth, {
-          status: seed.status,
-          ...doneUpdates,
+            : {}),
         });
-
-        logger.info(
-          { text: seed.text, status: seed.status },
-          seed.withOlderVersion
-            ? "Created todo with older version."
-            : "Created todo with status update."
-        );
-      } else {
-        logger.info({ text: seed.text }, "Created todo.");
       }
+
+      logger.info(
+        {
+          text: todo.text,
+          assignedTo: user.sId,
+          status: todo.deleted ? "deleted" : (todo.status ?? "todo"),
+          isAgentSuggestion: todo.isAgentSuggestion,
+        },
+        "Created todo."
+      );
     }
 
-    logger.info({ count: SEED_TODOS.length }, "Done seeding project todos.");
+    logger.info({ count: todos.length }, "Done seeding project todos.");
   }
 );
