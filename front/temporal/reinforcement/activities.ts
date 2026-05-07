@@ -882,7 +882,10 @@ export async function startSkillAggregationBatchActivity({
         existingConversationId: existingReinforcementConversationId,
         prompt: systemPrompt,
         specifications,
-        userContextOrigin: "reinforcement",
+        ...getReinforcedSkillsDefaultOptions(
+          "reinforcement_aggregate_suggestions",
+          [skillId]
+        ),
       },
     ];
   } else {
