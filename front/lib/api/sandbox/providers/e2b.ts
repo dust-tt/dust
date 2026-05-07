@@ -48,9 +48,12 @@ function toE2BNetworkOpts(policy: NetworkPolicy): E2BNetworkOpts {
       return {
         allowOut: policy.allowlist ? [...policy.allowlist] : [],
         denyOut: [ALL_TRAFFIC],
+        allowPublicTraffic: false,
       };
     case "allow_all":
-      return {};
+      // Fully unrestricted: lift the public-traffic block too. Only reachable
+      // in dev via SBX_DEV_UNRESTRICTED_EGRESS.
+      return { allowPublicTraffic: true };
     default:
       assertNever(policy.mode);
   }
@@ -113,10 +116,9 @@ export class E2BSandboxProvider implements SandboxProvider {
             envs: hasEnvVars ? envVars : undefined,
             timeoutMs: SANDBOX_LIFETIME_MS,
             requestTimeoutMs: REQUEST_TIMEOUT_MS,
-            network: {
-              ...(config.network ? toE2BNetworkOpts(config.network) : {}),
-              allowPublicTraffic: false,
-            },
+            network: config.network
+              ? toE2BNetworkOpts(config.network)
+              : { allowPublicTraffic: false },
           });
         } catch (err) {
           return new Err(normalizeError(err));

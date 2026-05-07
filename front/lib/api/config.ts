@@ -552,6 +552,20 @@ const config = {
       "SBX_DEV_FRONT_URL"
     )?.replace(/^https?:\/\//, "");
   },
+  // Dev-only switch to fully unrestrict sandbox network egress: skips the
+  // dsbx forwarder, tears down in-sandbox nftables redirect, and lets E2B
+  // allow all outbound traffic. Only honored when isDevelopment() to avoid
+  // accidental enablement in production.
+  getSandboxDevUnrestrictedEgress: (): boolean => {
+    if (!isDevelopment()) {
+      return false;
+    }
+    return (
+      EnvironmentConfig.getOptionalEnvVariable(
+        "SBX_DEV_UNRESTRICTED_EGRESS"
+      ) === "true"
+    );
+  },
   getSandboxGcpArtifactServiceAccountPath: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable(
       "SBX_GCP_ARTIFACT_SERVICE_ACCOUNT"

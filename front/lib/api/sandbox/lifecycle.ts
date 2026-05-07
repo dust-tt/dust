@@ -1,6 +1,6 @@
 import {
-  checkEgressForwarderHealth,
-  setupEgressForwarder,
+  ensureSandboxEgressOnExec,
+  prepareSandboxEgressBeforeMount,
 } from "@app/lib/api/sandbox/egress";
 import {
   mountConversationFiles,
@@ -26,18 +26,18 @@ export async function ensureSandboxReady(
     return ensureResult;
   }
 
-  const { sandbox, freshlyCreated } = ensureResult.value;
+  const { sandbox, freshlyCreated, wokeFromSleep } = ensureResult.value;
 
-  // Egress forwarder setup must run BEFORE GCS mounts. When the MITM
-  // experiment is enabled, sandbox_resource.buildSandboxEnvVars exports
-  // SSL_CERT_FILE / CURL_CA_BUNDLE pointing at /etc/dust/ca-bundle.pem, which
-  // setupEgressForwarder is responsible for creating. Mounting (gcsfuse and
-  // friends) makes HTTPS calls that read the trust bundle via those env vars,
-  // so the bundle has to exist first.
+  // Egress prep must run BEFORE GCS mounts. When the MITM experiment is
+  // enabled, sandbox_resource.buildSandboxEnvVars exports SSL_CERT_FILE /
+  // CURL_CA_BUNDLE pointing at /etc/dust/ca-bundle.pem, which the forwarder
+  // setup is responsible for creating. Mounting (gcsfuse and friends) makes
+  // HTTPS calls that read the trust bundle via those env vars, so the bundle
+  // has to exist first.
   if (freshlyCreated) {
-    const setupResult = await setupEgressForwarder(auth, sandbox);
-    if (setupResult.isErr()) {
-      return setupResult;
+    const prepResult = await prepareSandboxEgressBeforeMount(auth, sandbox);
+    if (prepResult.isErr()) {
+      return prepResult;
     }
   }
 
@@ -57,8 +57,8 @@ export async function ensureSandboxReady(
 
   // Only mount on first creation. e2b preserves the FUSE mount and the
   // token server across betaPause + connect (verified empirically), so on
-  // wake we just need a fresh GCS access token in /tmp/token.json — the
-  // running token server will hand it to gcsfuse on the next request.
+  // wake we just need a fresh GCS access token in /tmp/token.json (the
+  // running token server will hand it to gcsfuse on the next request).
   if (freshlyCreated) {
     const mountResult = await mountConversationFiles(
       auth,
@@ -81,33 +81,11 @@ export async function ensureSandboxReady(
     }
   }
 
-  const healthResult = await checkEgressForwarderHealth(auth, sandbox);
-  if (healthResult.isErr()) {
-    return healthResult;
-  }
-
-  if (!healthResult.value) {
-    logger.warn(
-      {
-        event: "egress.health_fail",
-        providerId: sandbox.providerId,
-        sandboxId: sandbox.sId,
-      },
-      "Sandbox egress forwarder health check failed, restarting"
-    );
-    const setupResult = await setupEgressForwarder(auth, sandbox);
-    if (setupResult.isErr()) {
-      return setupResult;
-    }
-  } else {
-    logger.info(
-      {
-        event: "egress.health_ok",
-        providerId: sandbox.providerId,
-        sandboxId: sandbox.sId,
-      },
-      "Sandbox egress forwarder health check succeeded"
-    );
+  const ensureEgressResult = await ensureSandboxEgressOnExec(auth, sandbox, {
+    wokeFromSleep,
+  });
+  if (ensureEgressResult.isErr()) {
+    return ensureEgressResult;
   }
 
   return new Ok(sandbox);
