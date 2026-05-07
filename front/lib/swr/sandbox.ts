@@ -14,9 +14,13 @@ import type {
   GetWorkspaceSandboxEnvVarsResponseBody,
   PostWorkspaceSandboxEnvVarsResponseBody,
 } from "@app/pages/api/w/[wId]/sandbox/env-vars";
+import type { PatchWorkspaceSandboxEnvVarResponseBody } from "@app/pages/api/w/[wId]/sandbox/env-vars/[id]";
 import type { EgressPolicy } from "@app/types/sandbox/egress_policy";
 import { EMPTY_EGRESS_POLICY } from "@app/types/sandbox/egress_policy";
-import type { WorkspaceSandboxEnvVarType } from "@app/types/sandbox/env_var";
+import type {
+  WorkspaceSandboxEnvVarKind,
+  WorkspaceSandboxEnvVarType,
+} from "@app/types/sandbox/env_var";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useState } from "react";
@@ -29,6 +33,13 @@ function workspaceEgressPolicyUrl(workspaceId: string) {
 function workspaceSandboxEnvVarsUrl(workspaceId: string) {
   return `/api/w/${workspaceId}/sandbox/env-vars`;
 }
+
+type WorkspaceSandboxEnvVarWritePayload = {
+  name: string;
+  value: string;
+  kind?: WorkspaceSandboxEnvVarKind;
+  allowedDomains?: string[] | null;
+};
 
 export function useWorkspaceEgressPolicy({
   owner,
@@ -90,12 +101,11 @@ export function useUpsertWorkspaceSandboxEnvVar({
   });
 
   const upsertWorkspaceSandboxEnvVar = async ({
+    allowedDomains,
+    kind,
     name,
     value,
-  }: {
-    name: string;
-    value: string;
-  }): Promise<boolean> => {
+  }: WorkspaceSandboxEnvVarWritePayload): Promise<boolean> => {
     setIsUpserting(true);
     try {
       const response = await clientFetch(
@@ -105,7 +115,7 @@ export function useUpsertWorkspaceSandboxEnvVar({
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ name, value }),
+          body: JSON.stringify({ allowedDomains, kind, name, value }),
         }
       );
 
@@ -145,6 +155,80 @@ export function useUpsertWorkspaceSandboxEnvVar({
   return {
     upsertWorkspaceSandboxEnvVar,
     isUpsertingWorkspaceSandboxEnvVar: isUpserting,
+  };
+}
+
+export function usePatchWorkspaceSandboxEnvVar({
+  owner,
+}: {
+  owner: LightWorkspaceType;
+}) {
+  const sendNotification = useSendNotification();
+  const [isPatching, setIsPatching] = useState(false);
+  const { mutateWorkspaceSandboxEnvVars } = useWorkspaceSandboxEnvVars({
+    owner,
+    disabled: true,
+  });
+
+  const patchWorkspaceSandboxEnvVar = async ({
+    allowedDomains,
+    envVar,
+    kind,
+  }: {
+    envVar: WorkspaceSandboxEnvVarType;
+    kind?: WorkspaceSandboxEnvVarKind;
+    allowedDomains?: string[] | null;
+  }): Promise<boolean> => {
+    setIsPatching(true);
+    try {
+      const response = await clientFetch(
+        `${workspaceSandboxEnvVarsUrl(owner.sId)}/${envVar.sId}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ allowedDomains, kind }),
+        }
+      );
+
+      if (!response.ok) {
+        const error = await getErrorFromResponse(response);
+        sendNotification({
+          type: "error",
+          title: "Failed to update environment variable",
+          description: error.message,
+        });
+        return false;
+      }
+
+      const data: PatchWorkspaceSandboxEnvVarResponseBody =
+        await response.json();
+      await mutateWorkspaceSandboxEnvVars();
+      sendNotification({
+        type: "success",
+        title:
+          data.envVar.kind === "https_secret"
+            ? "Environment variable secured"
+            : "Environment variable updated",
+        description: `${data.envVar.name} has been updated.`,
+      });
+      return true;
+    } catch (error) {
+      sendNotification({
+        type: "error",
+        title: "Failed to update environment variable",
+        description: normalizeError(error).message,
+      });
+      return false;
+    } finally {
+      setIsPatching(false);
+    }
+  };
+
+  return {
+    patchWorkspaceSandboxEnvVar,
+    isPatchingWorkspaceSandboxEnvVar: isPatching,
   };
 }
 
