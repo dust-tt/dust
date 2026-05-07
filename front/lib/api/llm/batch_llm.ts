@@ -3,7 +3,7 @@ import { renderConversationForModel } from "@app/lib/api/assistant/conversation_
 import { categorizeConversationRenderErrorMessage } from "@app/lib/api/assistant/errors";
 import {
   type EnabledSkill,
-  renderEquippedSkillsUserMessage,
+  renderLeadingSkillMessages,
 } from "@app/lib/api/assistant/skills_rendering";
 import type { LLM } from "@app/lib/api/llm/llm";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
@@ -38,7 +38,6 @@ import { isTextContent } from "@app/types/assistant/generation";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { removeNulls } from "@app/types/shared/utils/general";
 import type { Transaction } from "sequelize";
 
 export interface LlmConversationOptions
@@ -332,9 +331,10 @@ export async function sendBatchCallToLlm(
 
     const { enabledSkills, equippedSkills } = input;
 
-    const leadingMessages = equippedSkills
-      ? removeNulls([renderEquippedSkillsUserMessage(equippedSkills)])
-      : [];
+    const leadingMessages = renderLeadingSkillMessages({
+      equippedSkills: equippedSkills ?? [],
+      renderSkillsAsUserMessages,
+    });
 
     const modelConversationRes = await renderConversationForModel(auth, {
       conversation: conversationRes.value,

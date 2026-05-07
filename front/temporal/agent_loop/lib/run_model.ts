@@ -31,7 +31,7 @@ import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent";
 import { getCompletionDuration } from "@app/lib/api/assistant/messages";
 import { getSkillServers } from "@app/lib/api/assistant/skill_actions";
-import { renderEquippedSkillsUserMessage } from "@app/lib/api/assistant/skills_rendering";
+import { renderLeadingSkillMessages } from "@app/lib/api/assistant/skills_rendering";
 import {
   buildAuditLogTarget,
   emitAuditLogEventDirect,
@@ -409,9 +409,10 @@ export async function runModel(
     projectContext,
     isNewFileExplorer,
   });
-  const leadingMessages = renderSkillsAsUserMessages
-    ? removeNulls([renderEquippedSkillsUserMessage(equippedSkills)])
-    : [];
+  const leadingMessages = renderLeadingSkillMessages({
+    equippedSkills,
+    renderSkillsAsUserMessages,
+  });
 
   const specifications: AgentActionSpecification[] = [];
   for (const a of availableActions) {

@@ -18,6 +18,21 @@ function renderSystemSkillMessage(text: string): UserMessageTypeModel {
   };
 }
 
+export function renderLeadingSkillMessages({
+  equippedSkills,
+  renderSkillsAsUserMessages,
+}: {
+  equippedSkills: SkillResource[];
+  renderSkillsAsUserMessages: boolean;
+}): UserMessageTypeModel[] {
+  if (!renderSkillsAsUserMessages) {
+    return [];
+  }
+
+  const equippedSkillsMessage = renderEquippedSkillsUserMessage(equippedSkills);
+  return equippedSkillsMessage ? [equippedSkillsMessage] : [];
+}
+
 export function getEnabledSkillInstructions(skill: EnabledSkill): string {
   const { name, instructions, extendedSkill } = skill;
 
