@@ -87,7 +87,13 @@ async function handler(
           }),
           metronomeCustomerId
             ? listMetronomeBalances(metronomeCustomerId, {
-                includeExpired: true,
+                // Drop the `covering_date` filter so we still see expired
+                // balances (needed to cross-check against DB credits), but cap
+                // with `effective_before: now` to hide future-dated ones.
+                // `includeArchived` stays false so balances on archived
+                // contracts are excluded by Metronome itself.
+                coveringDate: null,
+                effectiveBefore: now,
               })
             : null,
         ]);
