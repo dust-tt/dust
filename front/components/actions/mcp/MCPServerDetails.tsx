@@ -5,6 +5,7 @@ import {
   getMCPServerFormSchema,
 } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
 import { MCPServerDetailsSheet } from "@app/components/actions/mcp/MCPServerDetailsSheet";
+import { useSensitivityLabelsController } from "@app/components/shared/labels/useSensitivityLabelsController";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useSendNotification } from "@app/hooks/useNotification";
 import {
@@ -12,7 +13,9 @@ import {
   isRemoteMCPServerType,
   requiresBearerTokenConfiguration,
 } from "@app/lib/actions/mcp_helper";
+import { getSensitivityLabelProviderForServerId } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   useMCPServer,
@@ -63,6 +66,22 @@ export function MCPServerDetails({
     owner,
     serverId: mcpServerView?.server.sId ?? "",
     disabled: !isOpen || !mcpServerView,
+  });
+
+  const { featureFlags } = useFeatureFlags();
+  const hasSensitivityLabels = featureFlags.includes("sensitivity_labels");
+  const sensitivityLabelProvider = getSensitivityLabelProviderForServerId(
+    mcpServerView?.server.sId ?? ""
+  );
+
+  const sensitivityLabelsController = useSensitivityLabelsController({
+    owner,
+    source: { internalMCPServerId: mcpServerView?.server.sId ?? "" },
+    disabled:
+      !isOpen ||
+      !mcpServerView ||
+      sensitivityLabelProvider === null ||
+      !hasSensitivityLabels,
   });
 
   const { mcpServers } = useMCPServers({
@@ -278,6 +297,9 @@ export function MCPServerDetails({
           // Apply info changes if any.
           await applyInfoChanges(diff);
 
+          // Save sensitivity labels if dirty (manages its own error notification).
+          await sensitivityLabelsController.save();
+
           // Revalidate caches.
           await mutateMCPServersViewsForAdmin();
           await mutateMCPServer();
@@ -351,6 +373,7 @@ export function MCPServerDetails({
 
   const onCancel = () => {
     form.reset(defaults);
+    sensitivityLabelsController.reset();
   };
 
   return (
@@ -364,6 +387,7 @@ export function MCPServerDetails({
         onCancel={onCancel}
         spaces={spaces}
         readOnly={readOnly}
+        sensitivityLabelsController={sensitivityLabelsController}
       />
     </FormProvider>
   );
