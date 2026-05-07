@@ -2,6 +2,7 @@ import { DataSourceViewsDataTable } from "@app/components/poke/data_source_views
 import { MembersDataTable } from "@app/components/poke/members/table";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { ProjectTasksDataTable } from "@app/components/poke/projects/tasks/table";
+import { ViewProjectWorkflowTable } from "@app/components/poke/projects/workflow/view";
 import { ViewSpaceViewTable } from "@app/components/poke/spaces/view";
 import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
@@ -50,6 +51,7 @@ export function ProjectPage({ details }: ProjectPageProps) {
               workspace: owner,
             }}
           />
+          <ViewProjectWorkflowTable owner={owner} projectId={space.sId} />
           <ProjectTasksDataTable owner={owner} projectId={space.sId} />
           <DataSourceViewsDataTable owner={owner} spaceId={space.sId} />
         </div>
