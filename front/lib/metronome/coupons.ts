@@ -35,21 +35,15 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { addMonths } from "date-fns";
 
-export async function getCreditTypeFromContract(
-  contract: CachedContract
+async function getCreditTypeFromRateCardId(
+  rateCardId: string
 ): Promise<
   Result<{ creditTypeId: string; currency: SupportedCurrency }, Error>
 > {
-  if (!contract.rate_card_id) {
-    return new Err(new Error("Contract has no rate_card_id"));
-  }
-  const result = await getMetronomeRateCardById({
-    rateCardId: contract.rate_card_id,
-  });
+  const result = await getMetronomeRateCardById({ rateCardId });
   if (result.isErr()) {
     return result;
   }
-
   const fiat_credit_type_id = result.value.fiat_credit_type?.id;
   if (!fiat_credit_type_id) {
     return new Err(new Error("Rate card has no fiat_credit_type_id"));
@@ -66,6 +60,17 @@ export async function getCreditTypeFromContract(
     );
   }
   return new Ok({ creditTypeId: fiat_credit_type_id, currency });
+}
+
+export async function getCreditTypeFromContract(
+  contract: CachedContract
+): Promise<
+  Result<{ creditTypeId: string; currency: SupportedCurrency }, Error>
+> {
+  if (!contract.rate_card_id) {
+    return new Err(new Error("Contract has no rate_card_id"));
+  }
+  return getCreditTypeFromRateCardId(contract.rate_card_id);
 }
 
 export async function getCreditTypeFromPackage(
@@ -86,26 +91,7 @@ export async function getCreditTypeFromPackage(
   if (!pkg.rateCardId) {
     return new Err(new Error(`Package ${packageAlias} has no rate_card_id`));
   }
-  const result = await getMetronomeRateCardById({ rateCardId: pkg.rateCardId });
-  if (result.isErr()) {
-    return result;
-  }
-  const fiat_credit_type_id = result.value.fiat_credit_type?.id;
-  if (!fiat_credit_type_id) {
-    return new Err(new Error("Rate card has no fiat_credit_type_id"));
-  }
-  const creditTypeIdToCurrency = Object.fromEntries(
-    Object.entries(CURRENCY_TO_CREDIT_TYPE_ID).map(([c, id]) => [id, c])
-  );
-  const currency = creditTypeIdToCurrency[fiat_credit_type_id];
-  if (!isSupportedCurrency(currency)) {
-    return new Err(
-      new Error(
-        `Unsupported currency for credit type id: ${fiat_credit_type_id}`
-      )
-    );
-  }
-  return new Ok({ creditTypeId: fiat_credit_type_id, currency });
+  return getCreditTypeFromRateCardId(pkg.rateCardId);
 }
 
 function getApplicableProductIdsForDiscountType(
