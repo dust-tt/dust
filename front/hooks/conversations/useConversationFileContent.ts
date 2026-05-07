@@ -34,11 +34,9 @@ export function useConversationFileContent({
     { disabled: isDisabled }
   );
 
-  const fileContentError: Error | null = error ? normalizeError(error) : null;
-
   return {
     fileContent: data ?? null,
     isFileContentLoading: !error && data === undefined && !isDisabled,
-    fileContentError,
+    fileContentError: error ? normalizeError(error) : null,
   };
 }
