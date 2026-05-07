@@ -240,8 +240,6 @@ describe("POST /api/w/[wId]/assistant/conversations/[cId]/forks", () => {
         method: "POST",
       });
 
-    await FeatureFlagFactory.basic(auth, "sessions_branching");
-
     const projectSpace = await SpaceFactory.project(workspace);
     const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId

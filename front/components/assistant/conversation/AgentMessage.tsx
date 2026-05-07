@@ -680,8 +680,7 @@ export function AgentMessage({
     !isAgentMessageHandingOver &&
     !isProjectArchived;
 
-  const canBranchConversation =
-    SHOW_BRANCH_FROM_HERE_ACTION && shouldShowCopy;
+  const canBranchConversation = SHOW_BRANCH_FROM_HERE_ACTION && shouldShowCopy;
 
   const shouldShowFeedback =
     !isDeleted &&
