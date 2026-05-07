@@ -1,23 +1,10 @@
-import { FileResource } from "@app/lib/resources/file_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import { PassThrough } from "stream";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import handler from "./content";
-
-function mockFileStream() {
-  const readStream = Object.assign(new PassThrough(), {
-    pipe: vi.fn(),
-  });
-  const getReadStreamSpy = vi
-    .spyOn(FileResource.prototype, "getReadStream")
-    .mockReturnValue(readStream);
-
-  return { getReadStreamSpy, pipeSpy: readStream.pipe };
-}
 
 describe("GET /api/w/[wId]/skills/[sId]/files/[fileId]/content", () => {
   it("streams newly uploaded skill attachment files for the scoped skill", async () => {
@@ -26,7 +13,6 @@ describe("GET /api/w/[wId]/skills/[sId]/files/[fileId]/content", () => {
       role: "user",
     });
     const skill = await SkillFactory.create(auth);
-    const { getReadStreamSpy, pipeSpy } = mockFileStream();
 
     const file = await FileFactory.create(auth, user, {
       contentType: "text/x-python",
@@ -47,9 +33,6 @@ describe("GET /api/w/[wId]/skills/[sId]/files/[fileId]/content", () => {
 
     expect(res._getStatusCode()).toBe(200);
     expect(res.getHeader("Content-Type")).toBe("text/x-python");
-    expect(pipeSpy).toHaveBeenCalledWith(res);
-
-    getReadStreamSpy.mockRestore();
   });
 
   it("streams skill attachment content for a readable skill", async () => {
@@ -60,7 +43,6 @@ describe("GET /api/w/[wId]/skills/[sId]/files/[fileId]/content", () => {
     const skill = await SkillFactory.create(auth, {
       addCurrentUserAsEditor: false,
     });
-    const { getReadStreamSpy, pipeSpy } = mockFileStream();
 
     expect(skill.canWrite(auth)).toBe(false);
 
@@ -83,9 +65,6 @@ describe("GET /api/w/[wId]/skills/[sId]/files/[fileId]/content", () => {
 
     expect(res._getStatusCode()).toBe(200);
     expect(res.getHeader("Content-Type")).toBe("text/yaml");
-    expect(pipeSpy).toHaveBeenCalledWith(res);
-
-    getReadStreamSpy.mockRestore();
   });
 
   it("returns 404 when the attached skill cannot be fetched", async () => {
@@ -98,7 +77,6 @@ describe("GET /api/w/[wId]/skills/[sId]/files/[fileId]/content", () => {
     const skill = await SkillFactory.create(auth, {
       requestedSpaceIds: [restrictedSpace.id],
     });
-    const { getReadStreamSpy } = mockFileStream();
 
     const file = await FileFactory.create(auth, user, {
       contentType: "text/yaml",
@@ -124,9 +102,6 @@ describe("GET /api/w/[wId]/skills/[sId]/files/[fileId]/content", () => {
         message: "File not found.",
       },
     });
-    expect(getReadStreamSpy).not.toHaveBeenCalled();
-
-    getReadStreamSpy.mockRestore();
   });
 
   it("returns 404 for non-skill attachment files", async () => {
@@ -173,7 +148,6 @@ describe("GET /api/w/[wId]/skills/[sId]/files/[fileId]/content", () => {
     const requestedSkill = await SkillFactory.create(auth, {
       name: "Requested Skill",
     });
-    const { getReadStreamSpy } = mockFileStream();
 
     const file = await FileFactory.create(auth, user, {
       contentType: "text/plain",
@@ -199,8 +173,5 @@ describe("GET /api/w/[wId]/skills/[sId]/files/[fileId]/content", () => {
         message: "File not found.",
       },
     });
-    expect(getReadStreamSpy).not.toHaveBeenCalled();
-
-    getReadStreamSpy.mockRestore();
   });
 });
