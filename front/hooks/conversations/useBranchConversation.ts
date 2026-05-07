@@ -19,7 +19,8 @@ function isPostConversationForkResponseBody(
     isRecord(value) &&
     isString(value.conversationId) &&
     (value.parentConversationTitle === null ||
-      isString(value.parentConversationTitle))
+      isString(value.parentConversationTitle)) &&
+    (value.spaceId === null || isString(value.spaceId))
   );
 }
 
@@ -105,7 +106,9 @@ export function useBranchConversation({
           nextWakeupAt: null,
           requestedSpaceIds: [],
           sId: responseBody.conversationId,
-          spaceId: null, // unknown at branch time; only affects sidebar draggability which is corrected on next SWR revalidation
+          // Inherited from the parent conversation — safe to return via the fork API
+          // because the caller already has access to the parent (they just branched it).
+          spaceId: responseBody.spaceId,
           title: displayTitle,
           triggerId: null,
           unread: false,
