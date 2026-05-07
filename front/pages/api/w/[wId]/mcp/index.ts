@@ -31,9 +31,8 @@ import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import { getOverridablePersonalAuthInputs } from "@app/types/oauth/lib";
 import { headersArrayToRecord } from "@app/types/shared/utils/http_headers";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 
 export type GetMCPServersResponseBody = {
   success: true;
@@ -49,41 +48,35 @@ const MAX_URL_LENGTH = 2048;
 
 const MAX_NAME_LENGTH = 2048;
 
-const PostQueryParamsSchema = t.union([
-  t.type({
-    serverType: t.literal("remote"),
-    url: t.string,
-    defaultServerId: t.union([t.number, t.undefined]),
-    includeGlobal: t.union([t.boolean, t.undefined]),
-    sharedSecret: t.union([t.string, t.undefined]),
-    useCase: t.union([
-      t.literal("platform_actions"),
-      t.literal("personal_actions"),
-      t.undefined,
-    ]),
-    connectionId: t.union([t.string, t.undefined]),
-    customHeaders: t.union([
-      t.array(t.type({ key: t.string, value: t.string })),
-      t.undefined,
-    ]),
+const CustomHeadersSchema = z
+  .array(z.object({ key: z.string(), value: z.string() }))
+  .optional();
+
+const UseCaseSchema = z
+  .enum(["platform_actions", "personal_actions"])
+  .optional();
+
+const PostBodySchema = z.discriminatedUnion("serverType", [
+  z.object({
+    serverType: z.literal("remote"),
+    url: z.string(),
+    defaultServerId: z.number().optional(),
+    includeGlobal: z.boolean().optional(),
+    sharedSecret: z.string().optional(),
+    useCase: UseCaseSchema,
+    connectionId: z.string().optional(),
+    customHeaders: CustomHeadersSchema,
   }),
-  t.type({
-    serverType: t.literal("internal"),
-    name: t.string,
-    useCase: t.union([
-      t.literal("platform_actions"),
-      t.literal("personal_actions"),
-      t.undefined,
-    ]),
-    connectionId: t.union([t.string, t.undefined]),
-    includeGlobal: t.union([t.boolean, t.undefined]),
-    sharedSecret: t.union([t.string, t.undefined]),
-    customHeaders: t.union([
-      t.array(t.type({ key: t.string, value: t.string })),
-      t.undefined,
-    ]),
-    viewName: t.union([t.string, t.undefined]),
-    oauthScope: t.union([t.string, t.undefined]),
+  z.object({
+    serverType: z.literal("internal"),
+    name: z.string(),
+    useCase: UseCaseSchema,
+    connectionId: z.string().optional(),
+    includeGlobal: z.boolean().optional(),
+    sharedSecret: z.string().optional(),
+    customHeaders: CustomHeadersSchema,
+    viewName: z.string().optional(),
+    oauthScope: z.string().optional(),
   }),
 ]);
 
@@ -136,9 +129,9 @@ async function handler(
       });
     }
     case "POST": {
-      const r = PostQueryParamsSchema.decode(req.body);
+      const r = PostBodySchema.safeParse(req.body);
 
-      if (isLeft(r)) {
+      if (!r.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -148,7 +141,7 @@ async function handler(
         });
       }
 
-      const body = r.right;
+      const body = r.data;
       switch (body.serverType) {
         case "remote": {
           const { url, sharedSecret } = body;

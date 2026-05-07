@@ -9,9 +9,8 @@ import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_r
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { headersArrayToRecord } from "@app/types/shared/utils/http_headers";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 
 export type DiscoverOAuthMetadataResponseBody =
   | {
@@ -22,12 +21,11 @@ export type DiscoverOAuthMetadataResponseBody =
       oauthRequired: false;
     };
 
-const PostQueryParamsSchema = t.type({
-  url: t.string,
-  customHeaders: t.union([
-    t.array(t.type({ key: t.string, value: t.string })),
-    t.undefined,
-  ]),
+const PostBodySchema = z.object({
+  url: z.string(),
+  customHeaders: z
+    .array(z.object({ key: z.string(), value: z.string() }))
+    .optional(),
 });
 
 /**
@@ -47,9 +45,9 @@ async function handler(
 
   switch (method) {
     case "POST": {
-      const r = PostQueryParamsSchema.decode(req.body);
+      const r = PostBodySchema.safeParse(req.body);
 
-      if (isLeft(r)) {
+      if (!r.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -59,7 +57,7 @@ async function handler(
         });
       }
 
-      const { url, customHeaders } = r.right;
+      const { url, customHeaders } = r.data;
 
       // Validate URL format
       try {

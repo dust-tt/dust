@@ -18,27 +18,26 @@ import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { OAuthAPI } from "@app/types/oauth/oauth_api";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
-const PostConnectionOAuthBodySchema = t.type({
-  connectionId: t.string,
-  mcpServerId: t.string,
+const PostConnectionOAuthBodySchema = z.object({
+  connectionId: z.string(),
+  mcpServerId: z.string(),
 });
 
-const PostConnectionCredentialsBodySchema = t.type({
-  credentialId: t.string,
-  mcpServerId: t.string,
+const PostConnectionCredentialsBodySchema = z.object({
+  credentialId: z.string(),
+  mcpServerId: z.string(),
 });
 
-const PostConnectionBodySchema = t.union([
+const PostConnectionBodySchema = z.union([
   PostConnectionOAuthBodySchema,
   PostConnectionCredentialsBodySchema,
 ]);
 
-export type PostConnectionBodyType = t.TypeOf<typeof PostConnectionBodySchema>;
+export type PostConnectionBodyType = z.infer<typeof PostConnectionBodySchema>;
 
 export type PostConnectionResponseBody = {
   success: boolean;
@@ -241,20 +240,18 @@ async function handler(
         connections: connections.map((c) => c.toJSON()),
       });
     case "POST":
-      const bodyValidation = PostConnectionBodySchema.decode(req.body);
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
-
+      const bodyValidation = PostConnectionBodySchema.safeParse(req.body);
+      if (!bodyValidation.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request body: ${pathError}`,
+            message: `Invalid request body: ${fromError(bodyValidation.error).toString()}`,
           },
         });
       }
 
-      const validatedBody = bodyValidation.right;
+      const validatedBody = bodyValidation.data;
       const mcpServerId = validatedBody.mcpServerId;
       const authReference = getAuthReferenceFromBody(validatedBody);
 
