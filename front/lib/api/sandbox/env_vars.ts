@@ -92,6 +92,13 @@ export function envVarPrefixForKind(kind: WorkspaceSandboxEnvVarKind): string {
   return ENV_VAR_PREFIX_BY_KIND[kind];
 }
 
+// Format used both as the agent-visible env var (DSEC_*) for HTTPS secrets
+// and as the placeholder field of /run/dust/egress-secrets.json that dsbx
+// scans for at MITM time. Both call sites must agree byte-for-byte.
+export function renderEgressSecretPlaceholder(nonce: Buffer): string {
+  return `__DSEC_${nonce.toString("hex")}__`;
+}
+
 export function renderWorkspaceSandboxEnvVarName({
   kind,
   name,

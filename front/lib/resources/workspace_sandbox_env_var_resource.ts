@@ -4,6 +4,7 @@ import {
 } from "@app/lib/api/audit/workos_audit";
 import {
   MAX_VARS_PER_WORKSPACE,
+  renderEgressSecretPlaceholder,
   renderWorkspaceSandboxEnvVarName,
   validateEnvVarName,
   validateEnvVarValueForKind,
@@ -743,9 +744,9 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
   ): Promise<Result<Record<string, string>, Error>> {
     const owner = auth.getNonNullableWorkspace();
     // Hot path on every sandbox mount — skip the user joins, we only need
-    // name + encryptedValue here. HTTPS secrets are intentionally absent from
-    // the agent env until Slice 3 injects placeholders backed by the secrets
-    // file; injecting their real value here would defeat the MITM swap.
+    // name + encryptedValue here. HTTPS secrets are handled separately by
+    // loadHttpsSecretPlaceholderEnv; injecting their real value here would
+    // defeat the MITM swap.
     const resources = await this.baseFetch(
       auth,
       { kind: "config" },
@@ -776,6 +777,44 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
           )
         );
       }
+    }
+
+    return new Ok(env);
+  }
+
+  static async listHttpsSecretsForEgress(
+    auth: Authenticator
+  ): Promise<WorkspaceSandboxEnvVarResource[]> {
+    return this.baseFetch(
+      auth,
+      { kind: "https_secret" },
+      {
+        withUserJoins: false,
+      }
+    );
+  }
+
+  static async loadHttpsSecretPlaceholderEnv(
+    auth: Authenticator
+  ): Promise<Result<Record<string, string>, Error>> {
+    const resources = await this.listHttpsSecretsForEgress(auth);
+    const env: Record<string, string> = {};
+
+    for (const resource of resources) {
+      const envName = renderWorkspaceSandboxEnvVarName({
+        kind: resource.kind,
+        name: resource.name,
+      });
+
+      if (!resource.placeholderNonce) {
+        return new Err(
+          new Error(
+            `HTTPS secret sandbox environment variable ${envName} is missing its placeholder nonce.`
+          )
+        );
+      }
+
+      env[envName] = renderEgressSecretPlaceholder(resource.placeholderNonce);
     }
 
     return new Ok(env);

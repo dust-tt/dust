@@ -339,6 +339,11 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     if (workspaceEnvResult.isErr()) {
       return workspaceEnvResult;
     }
+    const httpsSecretEnvResult =
+      await WorkspaceSandboxEnvVarResource.loadHttpsSecretPlaceholderEnv(auth);
+    if (httpsSecretEnvResult.isErr()) {
+      return httpsSecretEnvResult;
+    }
 
     // Set at the system layer so workspace overrides cannot drop it. Points at
     // the merged bundle (system roots + dsbx ephemeral CA) installed by
@@ -372,6 +377,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
 
     return new Ok({
       ...workspaceEnvResult.value,
+      ...httpsSecretEnvResult.value,
       ...imageEnvVars,
       ...mitmEnv,
       DD_API_KEY: config.getDatadogApiKey() ?? "",

@@ -9,9 +9,12 @@ const {
   mockGetEgressProxyTlsName,
   mockGetEgressMitmExperimentHost,
   mockGetEgressMitmExperimentToken,
+  mockGetSandboxDevUnrestrictedEgress,
   mockGetCurrentRegion,
   mockLoggerInfo,
+  mockLoggerWarn,
   mockLookup,
+  mockWriteEgressSecretsFile,
 } = vi.hoisted(() => ({
   mockGetEgressProxyHost: vi.fn(),
   mockGetEgressProxyJwtSecret: vi.fn(),
@@ -19,9 +22,12 @@ const {
   mockGetEgressProxyTlsName: vi.fn(),
   mockGetEgressMitmExperimentHost: vi.fn(),
   mockGetEgressMitmExperimentToken: vi.fn(),
+  mockGetSandboxDevUnrestrictedEgress: vi.fn(),
   mockGetCurrentRegion: vi.fn(),
   mockLoggerInfo: vi.fn(),
+  mockLoggerWarn: vi.fn(),
   mockLookup: vi.fn(),
+  mockWriteEgressSecretsFile: vi.fn(),
 }));
 
 vi.mock("@app/lib/api/config", () => ({
@@ -32,6 +38,7 @@ vi.mock("@app/lib/api/config", () => ({
     getEgressProxyTlsName: mockGetEgressProxyTlsName,
     getEgressMitmExperimentHost: mockGetEgressMitmExperimentHost,
     getEgressMitmExperimentToken: mockGetEgressMitmExperimentToken,
+    getSandboxDevUnrestrictedEgress: mockGetSandboxDevUnrestrictedEgress,
   },
 }));
 
@@ -41,9 +48,14 @@ vi.mock("@app/lib/api/regions/config", () => ({
   },
 }));
 
+vi.mock("@app/lib/api/sandbox/egress_secrets", () => ({
+  writeEgressSecretsFile: mockWriteEgressSecretsFile,
+}));
+
 vi.mock("@app/logger/logger", () => ({
   default: {
     info: mockLoggerInfo,
+    warn: mockLoggerWarn,
   },
 }));
 
@@ -56,6 +68,7 @@ vi.mock("node:dns/promises", () => ({
 
 import {
   mintEgressJwt,
+  ensureSandboxEgressOnExec,
   readNewDenyLogEntries,
   setupEgressForwarder,
   teardownInSandboxEgressRedirect,
@@ -75,8 +88,10 @@ describe("sandbox egress helpers", () => {
     mockGetEgressProxyTlsName.mockReturnValue(undefined);
     mockGetEgressMitmExperimentHost.mockReturnValue(undefined);
     mockGetEgressMitmExperimentToken.mockReturnValue(undefined);
+    mockGetSandboxDevUnrestrictedEgress.mockReturnValue(false);
     mockGetCurrentRegion.mockReturnValue("europe-west1");
     mockLookup.mockResolvedValue({ address: "203.0.113.10", family: 4 });
+    mockWriteEgressSecretsFile.mockResolvedValue(new Ok(undefined));
   });
 
   it("mints a proxy JWT bound to the provider sandbox id", () => {
@@ -102,6 +117,7 @@ describe("sandbox egress helpers", () => {
         .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
         .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
         .mockResolvedValueOnce(new Ok({ exitCode: 1, stdout: "", stderr: "" }))
+        .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
         .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" })),
     };
 
@@ -122,6 +138,7 @@ describe("sandbox egress helpers", () => {
       expect.stringContaining("chmod 600 '/etc/dust/egress-token'"),
       { user: "root" }
     );
+    expect(mockWriteEgressSecretsFile).toHaveBeenCalledWith(auth, sandbox);
     expect(sandbox.exec).toHaveBeenNthCalledWith(
       2,
       auth,
@@ -132,6 +149,12 @@ describe("sandbox egress helpers", () => {
       2,
       auth,
       expect.stringContaining("--proxy-tls-name 'eu.sandbox-egress.dust.tt'"),
+      { user: "root" }
+    );
+    expect(sandbox.exec).toHaveBeenNthCalledWith(
+      5,
+      auth,
+      expect.stringContaining("/run/dust/egress-ca.pem"),
       { user: "root" }
     );
     expect(mockLoggerInfo).toHaveBeenCalledWith(
@@ -204,6 +227,29 @@ describe("sandbox egress helpers", () => {
     }
   });
 
+  it("surfaces failures from writing the egress secrets file", async () => {
+    mockWriteEgressSecretsFile.mockResolvedValue(
+      new Err(new Error("secrets write failed"))
+    );
+
+    const sandbox = {
+      providerId: "provider-sandbox-id",
+      sId: "sandbox-id",
+      writeFile: vi.fn().mockResolvedValue(new Ok(undefined)),
+      exec: vi
+        .fn()
+        .mockResolvedValue(new Ok({ exitCode: 0, stdout: "", stderr: "" })),
+    };
+
+    const result = await setupEgressForwarder(auth, sandbox as never);
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain("secrets write failed");
+    }
+    expect(sandbox.exec).toHaveBeenCalledTimes(1);
+  });
+
   it("passes MITM flags and installs trust bundle when experiment host is set", async () => {
     mockGetEgressMitmExperimentHost.mockReturnValue("dust.example.com");
     mockGetEgressMitmExperimentToken.mockReturnValue("test-token");
@@ -229,12 +275,7 @@ describe("sandbox egress helpers", () => {
       expect.stringContaining("--mitm-experiment-host 'dust.example.com'"),
       { user: "root" }
     );
-    expect(sandbox.exec).toHaveBeenNthCalledWith(
-      2,
-      auth,
-      expect.stringContaining("--mitm-ca-path '/etc/dust/egress-ca.pem'"),
-      { user: "root" }
-    );
+    expect(sandbox.exec.mock.calls[1][1]).not.toContain("--mitm-ca-path");
     // installMitmTrustBundle is the 4th exec (after chmod, start, health).
     expect(sandbox.exec).toHaveBeenNthCalledWith(
       4,
@@ -307,6 +348,40 @@ describe("sandbox egress helpers", () => {
     const startCall = sandbox.exec.mock.calls[1][1] as string;
     expect(startCall).not.toContain("--mitm-experiment-host");
     expect(startCall).not.toContain("--mitm-ca-path");
+  });
+
+  it("rewrites secrets and restarts dsbx after wake even if health would be ok", async () => {
+    const sandbox = {
+      providerId: "provider-sandbox-id",
+      sId: "sandbox-id",
+      writeFile: vi.fn().mockResolvedValue(new Ok(undefined)),
+      exec: vi
+        .fn()
+        .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
+        .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
+        .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
+        .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
+        .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" })),
+    };
+
+    const result = await ensureSandboxEgressOnExec(auth, sandbox as never, {
+      wokeFromSleep: true,
+    });
+
+    expect(result).toEqual(new Ok(undefined));
+    expect(mockWriteEgressSecretsFile).toHaveBeenCalledWith(auth, sandbox);
+    expect(sandbox.exec).toHaveBeenNthCalledWith(
+      2,
+      auth,
+      expect.stringContaining("pkill -TERM dsbx"),
+      { user: "root" }
+    );
+    expect(sandbox.exec).toHaveBeenNthCalledWith(
+      3,
+      auth,
+      expect.stringContaining("/opt/bin/dsbx forward"),
+      { user: "root" }
+    );
   });
 
   describe("teardownInSandboxEgressRedirect", () => {

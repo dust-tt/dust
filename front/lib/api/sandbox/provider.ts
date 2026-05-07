@@ -59,6 +59,8 @@ export interface ExecOptions {
   timeoutMs?: number;
   /** Additional environment variables for this execution only. */
   envVars?: Record<string, string>;
+  /** Data to send to the command over stdin. Never encoded into argv. */
+  stdin?: string | Uint8Array;
   /** User to run the command as (e.g., "root" for privileged tasks). */
   user?: string;
 }

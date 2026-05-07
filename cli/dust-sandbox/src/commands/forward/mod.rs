@@ -35,6 +35,8 @@ const DOMAIN_PEEK_BUFFER_SIZE: usize = 16 * 1024;
 
 const MITM_HEADER_PEEK_BUFFER_SIZE: usize = 32 * 1024;
 const MITM_HEADER_READ_TIMEOUT: Duration = Duration::from_secs(5);
+const MITM_CA_CERT_PATH: &str = "/run/dust/egress-ca.pem";
+const MITM_CA_KEY_PATH: &str = "/run/dust/egress-ca.key";
 
 #[derive(clap::Args, Debug, Clone)]
 pub struct ForwardArgs {
@@ -58,14 +60,11 @@ pub struct ForwardArgs {
     /// entirely. Replaced in Phase 1 by per-secret allowedDomains policy.
     #[arg(long, default_value = "")]
     mitm_experiment_host: String,
-    /// Where to write the ephemeral MITM CA cert (PEM). Stays in Phase 1+ as
-    /// the location the sandbox image reads to install the CA into the trust
-    /// store. TODO(phase 1): move the default to /run/dust/egress-ca.pem
-    /// (RAM-backed tmpfs) and persist the key alongside at
-    /// /run/dust/egress-ca.key (root 0600), per design_docs/SECRET_SWAP_DESIGN.md
-    /// "CA lifetime and dsbx restarts".
-    #[arg(long, default_value = "/etc/dust/egress-ca.pem")]
-    mitm_ca_path: PathBuf,
+    /// Deprecated and ignored. The MITM CA path is hardcoded to
+    /// /run/dust/egress-ca.pem so front can rebuild the same trust bundle on
+    /// every dsbx restart.
+    #[arg(long, hide = true)]
+    mitm_ca_path: Option<PathBuf>,
 }
 
 #[derive(Clone)]
@@ -75,7 +74,7 @@ struct ForwardRuntime {
     proxy_tls_name: Arc<str>,
     deny_log: Arc<PathBuf>,
     tls_connector: TlsConnector,
-    mitm_ca: Option<Arc<MitmCa>>,
+    mitm_ca: Arc<MitmCa>,
     mitm_experiment_host: Arc<str>,
 }
 
@@ -96,26 +95,32 @@ pub async fn cmd_forward(args: ForwardArgs) -> Result<()> {
     let token = load_token(&args.token_file).await?;
     let tls_connector = build_tls_connector()?;
 
-    // The CA must be generated and written to disk BEFORE we bind the
-    // listener. Front uses "port 9990 is LISTEN" as the readiness signal and,
-    // the moment that's true, reads /etc/dust/egress-ca.pem to build the
-    // sandbox trust bundle. Bind-then-write would race: front could see a
-    // missing or stale CA file. Same goes for restarts (stale CA from a
-    // previous boot). Keep this ordering intact.
-    let mitm_ca = if args.mitm_experiment_host.is_empty() {
-        None
-    } else {
-        let ca = Arc::new(MitmCa::generate().context("failed to generate ephemeral MITM CA")?);
-        ca.write_ca_pem(&args.mitm_ca_path).await.with_context(|| {
-            format!("failed to write MITM CA to {}", args.mitm_ca_path.display())
-        })?;
+    if args.mitm_ca_path.is_some() {
+        warn!(
+            cert_path = MITM_CA_CERT_PATH,
+            "deprecated --mitm-ca-path argument ignored"
+        );
+    }
+
+    // The CA must be loaded/generated BEFORE we bind the listener. Front uses
+    // "port 9990 is LISTEN" as the readiness signal and, the moment that's
+    // true, reads /run/dust/egress-ca.pem to build the sandbox trust bundle.
+    // Bind-then-write would race: front could see a missing or stale CA file.
+    // Keep this ordering intact on restarts too.
+    let mitm_ca = Arc::new(
+        MitmCa::load_or_generate(
+            std::path::Path::new(MITM_CA_CERT_PATH),
+            std::path::Path::new(MITM_CA_KEY_PATH),
+        )
+        .context("failed to load or generate persistent MITM CA")?,
+    );
+    if !args.mitm_experiment_host.is_empty() {
         info!(
-            ca_path = %args.mitm_ca_path.display(),
+            ca_path = MITM_CA_CERT_PATH,
             mitm_experiment_host = %args.mitm_experiment_host,
             "dsbx MITM mode enabled for experiment host"
         );
-        Some(ca)
-    };
+    }
 
     let listener = TcpListener::bind(args.listen)
         .await
@@ -305,11 +310,13 @@ fn mitm_target_for(
     if original_port != 443 {
         return None;
     }
-    let ca = runtime.mitm_ca.as_ref()?;
+    if runtime.mitm_experiment_host.is_empty() {
+        return None;
+    }
     if !domain.eq_ignore_ascii_case(&runtime.mitm_experiment_host) {
         return None;
     }
-    Some((domain.to_string(), Arc::clone(ca)))
+    Some((domain.to_string(), Arc::clone(&runtime.mitm_ca)))
 }
 
 async fn run_mitm_session<S>(
