@@ -397,10 +397,10 @@
  *           type: string
  *           description: The id of the previously uploaded file (optional if `content` and `contentType` are set)
  *           example: fil_123456
- *         mountRelativePath:
+ *         path:
  *           type: string
  *           nullable: true
- *           description: Scoped path for mounted conversation files.
+ *           description: Path of this file inside the sandbox conversation mount.
  *           example: conversation/report.csv
  *         skipFileProcessing:
  *           type: boolean

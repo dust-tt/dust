@@ -77,7 +77,7 @@ export type RenderContentFragmentToTypeSource =
 export const CONTENT_OUTDATED_MSG =
   "Content is outdated. Please refer to the latest version of this content.";
 
-function getConversationMountRelativePath({
+function getConversationFilePath({
   conversationId,
   mountFilePath,
   workspaceId,
@@ -804,7 +804,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
           ...baseContentFragment,
           contentFragmentType: "file",
           expiredReason: fr.expiredReason,
-          mountRelativePath: null,
+          path: null,
           skipFileProcessing: false,
           fileId: null,
           snippet: null,
@@ -862,7 +862,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       let sourceIcon: string | null = null;
       let isInProjectContext = false;
       let hidden = true;
-      let mountRelativePath: string | null = null;
+      let path: string | null = null;
       let skipFileProcessing = false;
 
       if (fileResource) {
@@ -876,7 +876,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
         hidden = !!fileResource.useCaseMetadata?.hideFromUser;
         skipFileProcessing =
           fileResource.useCaseMetadata?.skipFileProcessing === true;
-        mountRelativePath = getConversationMountRelativePath({
+        path = getConversationFilePath({
           workspaceId: workspace.sId,
           conversationId: fileResource.useCaseMetadata?.conversationId,
           mountFilePath: fileResource.mountFilePath,
@@ -895,7 +895,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
         title,
         contentFragmentType: "file",
         expiredReason: null,
-        mountRelativePath,
+        path,
         skipFileProcessing,
         fileId: fileStringId,
         snippet,
@@ -1210,10 +1210,10 @@ function renderFileOrAttachmentXml(
   }
 ): string {
   if (isNewFileExplorer) {
-    const mountRelativePath =
-      "mountRelativePath" in attachment ? attachment.mountRelativePath : null;
-    const path = mountRelativePath ?? `conversation/${attachment.title}`;
-    if (!mountRelativePath) {
+    const explicitPath =
+      "path" in attachment ? attachment.path : null;
+    const path = explicitPath ?? `conversation/${attachment.title}`;
+    if (!explicitPath) {
       logger.warn(
         {
           fileId: "fileId" in attachment ? attachment.fileId : null,

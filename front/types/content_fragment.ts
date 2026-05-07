@@ -79,7 +79,7 @@ export type ContentNodeContentFragmentType = BaseContentFragmentType & {
 
 export type FileContentFragmentType = BaseContentFragmentType & {
   contentFragmentType: "file";
-  mountRelativePath?: string | null;
+  path?: string | null;
   skipFileProcessing?: boolean;
 } & (
     | {

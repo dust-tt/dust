@@ -87,7 +87,7 @@ function makeFileContentFragment({
     contentFragmentVersion: "latest",
     expiredReason: null,
     contentFragmentType: "file",
-    mountRelativePath: "conversation/data.csv",
+    path: "conversation/data.csv",
     skipFileProcessing,
     fileId: "fil_123",
     snippet,
@@ -110,7 +110,7 @@ describe("getAttachmentFromFileContentFragment", () => {
     expect(attachment?.isQueryable).toBe(false);
     expect(attachment?.isIncludable).toBe(false);
     expect(attachment?.generatedTables).toEqual([]);
-    expect(attachment?.mountRelativePath).toBe("conversation/data.csv");
+    expect(attachment?.path).toBe("conversation/data.csv");
   });
 
   it("keeps old-style CSV files queryable when skipFileProcessing is false", () => {

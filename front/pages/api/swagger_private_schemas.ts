@@ -586,10 +586,10 @@
  *           type: string
  *           nullable: true
  *           description: Present for file content fragments
- *         mountRelativePath:
+ *         path:
  *           type: string
  *           nullable: true
- *           description: Scoped path for mounted conversation files.
+ *           description: Path of this file inside the sandbox conversation mount.
  *         skipFileProcessing:
  *           type: boolean
  *           description: Whether upload-time file processing was skipped.

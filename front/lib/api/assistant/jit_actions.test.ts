@@ -78,7 +78,7 @@ describe("getJITServers", () => {
       const attachments: ConversationAttachmentType[] = [
         {
           fileId: file.sId,
-          mountRelativePath: null,
+          path: null,
           source: "user",
           title: "test.csv",
           contentType: "text/csv",
@@ -338,7 +338,7 @@ describe("getJITServers", () => {
       const attachments: ConversationAttachmentType[] = [
         {
           fileId: file.sId,
-          mountRelativePath: null,
+          path: null,
           source: "user",
           title: "test.csv",
           contentType: "text/csv",
@@ -394,7 +394,7 @@ describe("getJITServers", () => {
       const attachments: ConversationAttachmentType[] = [
         {
           fileId: file.sId,
-          mountRelativePath: null,
+          path: null,
           source: "user",
           title: "test.txt",
           contentType: "text/plain",
@@ -446,7 +446,7 @@ describe("getJITServers", () => {
       const attachments: ConversationAttachmentType[] = [
         {
           fileId: file.sId,
-          mountRelativePath: null,
+          path: null,
           source: "user",
           title: "test.txt",
           contentType: "text/plain",
@@ -489,7 +489,7 @@ describe("getJITServers", () => {
       const attachments: ConversationAttachmentType[] = [
         {
           fileId: file.sId,
-          mountRelativePath: null,
+          path: null,
           source: "user",
           title: "test.csv",
           contentType: "text/csv",
@@ -535,7 +535,7 @@ describe("getJITServers", () => {
       const attachments: ConversationAttachmentType[] = [
         {
           fileId: file.sId,
-          mountRelativePath: null,
+          path: null,
           source: "user",
           title: "test.csv",
           contentType: "text/csv",
@@ -589,7 +589,7 @@ describe("getJITServers", () => {
       const attachments: ConversationAttachmentType[] = [
         {
           fileId: file.sId,
-          mountRelativePath: null,
+          path: null,
           source: "user",
           title: "test.csv",
           contentType: "text/csv",
@@ -671,7 +671,7 @@ describe("getJITServers", () => {
       const attachments: ConversationAttachmentType[] = [
         {
           fileId: file.sId,
-          mountRelativePath: null,
+          path: null,
           source: "user",
           title: "test.csv",
           contentType: "text/csv",

@@ -17,7 +17,7 @@ function makeFileAttachment(
     isQueryable: false,
     creator: null,
     source: null,
-    mountRelativePath: null,
+    path: null,
     hidden: false,
     ...partial,
   };

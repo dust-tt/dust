@@ -49,7 +49,7 @@ export type BaseConversationAttachmentType = {
 
 export type FileAttachmentType = BaseConversationAttachmentType & {
   fileId: string;
-  mountRelativePath: string | null;
+  path: string | null;
   source: "agent" | "user" | null;
   createdAt?: number;
   updatedAt?: number;
@@ -256,7 +256,7 @@ export function getAttachmentFromFileContentFragment(
   return {
     ...baseAttachment,
     fileId,
-    mountRelativePath: cf.mountRelativePath ?? null,
+    path: cf.path ?? null,
     source: "user",
     createdAt: cf.created,
   };
@@ -273,7 +273,7 @@ export function makeFileAttachment({
   isInProjectContext,
   hideFromUser,
   skipDataSourceIndexing = false,
-  mountRelativePath = null,
+  path = null,
   creator = null,
 }: {
   fileId: string;
@@ -286,7 +286,7 @@ export function makeFileAttachment({
   isInProjectContext: boolean;
   hideFromUser: boolean;
   skipDataSourceIndexing?: boolean;
-  mountRelativePath?: string | null;
+  path?: string | null;
   creator?: AttachmentCreator | null;
 }): FileAttachmentType {
   const canDoJIT = snippet !== null;
@@ -299,7 +299,7 @@ export function makeFileAttachment({
 
   return {
     fileId,
-    mountRelativePath,
+    path,
     source,
     createdAt,
     updatedAt,

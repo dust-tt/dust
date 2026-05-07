@@ -21,12 +21,12 @@ function makeFileFragment(
   contentType: SupportedContentFragmentType,
   {
     generatedTables = [],
-    mountRelativePath = null,
+    path = null,
     snippet = null,
     skipFileProcessing = false,
   }: {
     generatedTables?: string[];
-    mountRelativePath?: string | null;
+    path?: string | null;
     snippet?: string | null;
     skipFileProcessing?: boolean;
   } = {}
@@ -48,7 +48,7 @@ function makeFileFragment(
     contentFragmentVersion: "latest",
     expiredReason: null,
     contentFragmentType: "file",
-    mountRelativePath,
+    path,
     skipFileProcessing,
     fileId: "fil_abc123",
     snippet,
@@ -223,7 +223,7 @@ describe("renderLightContentFragmentForModel", () => {
       const result = await renderLightContentFragmentForModel(
         authenticator,
         makeFileFragment("application/pdf", {
-          mountRelativePath: "conversation/report_fil_abc123.pdf",
+          path: "conversation/report_fil_abc123.pdf",
         }),
         visionModel,
         { excludeImages: false, useFileSystem: true }
