@@ -82,7 +82,6 @@ export const TableUploadOrEditModal = ({
 
   // Get the processed file content from the file API
   const fileUploaderService = useFileUploaderService({
-    hasNewFileExplorer: false,
     hasSandboxTools: false,
     owner,
     useCase: "upsert_table",

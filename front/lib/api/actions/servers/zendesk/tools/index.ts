@@ -145,7 +145,6 @@ const handlers: ToolHandlers<typeof ZENDESK_TOOLS_METADATA> = {
 
         if (
           !ensureFileSize(contentType, attachment.size, {
-            hasNewFileExplorer: false,
             hasSandboxTools: false,
             useCase: "conversation",
           })

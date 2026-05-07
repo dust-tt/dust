@@ -143,16 +143,13 @@ export const MAX_FILE_SIZES_LARGE_DELIMITED: Record<
 export const MAX_FILE_SIZES = MAX_FILE_SIZES_DEFAULT;
 
 export function resolveMaxFileSizes({
-  hasNewFileExplorer,
   hasSandboxTools,
   useCase,
 }: {
-  hasNewFileExplorer: boolean;
   hasSandboxTools: boolean;
   useCase: FileUseCase;
 }): Record<FileFormatCategory, number> {
-  const eligible =
-    hasSandboxTools && hasNewFileExplorer && useCase === "conversation";
+  const eligible = hasSandboxTools && useCase === "conversation";
 
   return eligible ? MAX_FILE_SIZES_LARGE_DELIMITED : MAX_FILE_SIZES_DEFAULT;
 }
@@ -184,7 +181,6 @@ export function ensureFileSize(
   contentType: AllSupportedFileContentType,
   fileSize: number,
   opts: {
-    hasNewFileExplorer: boolean;
     hasSandboxTools: boolean;
     useCase: FileUseCase;
   }
@@ -202,7 +198,6 @@ export function ensureFileSizeByFormatCategory(
   category: FileFormatCategory,
   fileSize: number,
   opts: {
-    hasNewFileExplorer: boolean;
     hasSandboxTools: boolean;
     useCase: FileUseCase;
   }

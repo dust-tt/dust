@@ -6,10 +6,9 @@ import {
 import { describe, expect, it } from "vitest";
 
 describe("resolveMaxFileSizes", () => {
-  it("raises the delimited limit only for sandbox conversations with new file explorer", () => {
+  it("raises the delimited limit only for sandbox conversations", () => {
     expect(
       resolveMaxFileSizes({
-        hasNewFileExplorer: true,
         hasSandboxTools: true,
         useCase: "conversation",
       }).delimited
@@ -17,15 +16,13 @@ describe("resolveMaxFileSizes", () => {
 
     expect(
       resolveMaxFileSizes({
-        hasNewFileExplorer: false,
-        hasSandboxTools: true,
+        hasSandboxTools: false,
         useCase: "conversation",
       }).delimited
     ).toBe(50 * 1024 * 1024);
 
     expect(
       resolveMaxFileSizes({
-        hasNewFileExplorer: true,
         hasSandboxTools: true,
         useCase: "upsert_table",
       }).delimited
@@ -35,7 +32,6 @@ describe("resolveMaxFileSizes", () => {
   it("enforces the resolved per-file limit", () => {
     expect(
       ensureFileSize("text/csv", 60 * 1024 * 1024, {
-        hasNewFileExplorer: true,
         hasSandboxTools: true,
         useCase: "conversation",
       })
@@ -43,7 +39,6 @@ describe("resolveMaxFileSizes", () => {
 
     expect(
       ensureFileSize("text/csv", 60 * 1024 * 1024, {
-        hasNewFileExplorer: true,
         hasSandboxTools: true,
         useCase: "upsert_table",
       })

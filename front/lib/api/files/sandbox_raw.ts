@@ -23,12 +23,11 @@ export function shouldStampSandboxRawDelimited({
   useCase,
 }: {
   contentType: AllSupportedFileContentType;
-  flags: { hasNewFileExplorer: boolean; hasSandboxTools: boolean };
+  flags: { hasSandboxTools: boolean };
   useCase: FileUseCase;
 }): boolean {
   return (
     flags.hasSandboxTools &&
-    flags.hasNewFileExplorer &&
     useCase === "conversation" &&
     isSupportedDelimitedTextContentType(contentType)
   );
@@ -43,7 +42,7 @@ export function buildEffectiveUseCaseMetadata({
 }: {
   contentType: AllSupportedFileContentType;
   fileName: string;
-  flags: { hasNewFileExplorer: boolean; hasSandboxTools: boolean };
+  flags: { hasSandboxTools: boolean };
   providedMetadata: FileUseCaseMetadata | undefined;
   useCase: FileUseCase;
 }): FileUseCaseMetadata | undefined {

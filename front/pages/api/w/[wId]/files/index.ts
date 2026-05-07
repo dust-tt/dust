@@ -199,11 +199,9 @@ async function handler(
 
       const flags = await getFeatureFlags(auth);
       const hasSandboxTools = flags.includes("sandbox_tools");
-      const hasNewFileExplorer = flags.includes("new_file_explorer");
 
       if (
         !ensureFileSize(contentType, fileSize, {
-          hasNewFileExplorer,
           hasSandboxTools,
           useCase,
         })
@@ -227,7 +225,7 @@ async function handler(
         useCaseMetadata: buildEffectiveUseCaseMetadata({
           contentType,
           fileName,
-          flags: { hasNewFileExplorer, hasSandboxTools },
+          flags: { hasSandboxTools },
           providedMetadata: useCaseMetadata,
           useCase,
         }),

@@ -89,7 +89,6 @@ export const DocumentUploadOrEditModal = ({
     mimeType: null,
   });
   const fileUploaderService = useFileUploaderService({
-    hasNewFileExplorer: false,
     hasSandboxTools: false,
     owner,
     useCase: "folders_document",

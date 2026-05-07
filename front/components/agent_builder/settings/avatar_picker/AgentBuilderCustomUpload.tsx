@@ -37,7 +37,6 @@ const AgentBuilderCustomUpload = forwardRef<
   const imageRef = useRef<HTMLImageElement | null>(null);
 
   const fileUploaderService = useFileUploaderService({
-    hasNewFileExplorer: false,
     hasSandboxTools: false,
     owner,
     useCase: "avatar",

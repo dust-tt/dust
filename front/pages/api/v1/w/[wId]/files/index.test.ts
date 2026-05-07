@@ -100,12 +100,11 @@ describe("POST /api/w/[wId]/files", () => {
     expect(res._getStatusCode()).toBe(200);
   });
 
-  it("accepts and stamps raw sandbox CSV uploads when both required flags are enabled", async () => {
+  it("accepts and stamps raw sandbox CSV uploads when sandbox_tools is enabled", async () => {
     const { req, res, auth } = await createPublicApiMockRequest({
       method: "POST",
     });
     await FeatureFlagFactory.basic(auth, "sandbox_tools");
-    await FeatureFlagFactory.basic(auth, "new_file_explorer");
 
     req.body = {
       contentType: "text/csv",
@@ -123,11 +122,10 @@ describe("POST /api/w/[wId]/files", () => {
     expect(file?.useCaseMetadata?.skipDataSourceIndexing).toBe(true);
   });
 
-  it("keeps the 50 MB CSV limit when new_file_explorer is not enabled", async () => {
-    const { req, res, auth } = await createPublicApiMockRequest({
+  it("keeps the 50 MB CSV limit when sandbox_tools is not enabled", async () => {
+    const { req, res } = await createPublicApiMockRequest({
       method: "POST",
     });
-    await FeatureFlagFactory.basic(auth, "sandbox_tools");
 
     req.body = {
       contentType: "text/csv",
@@ -147,7 +145,6 @@ describe("POST /api/w/[wId]/files", () => {
       systemKey: true,
     });
     await FeatureFlagFactory.basic(auth, "sandbox_tools");
-    await FeatureFlagFactory.basic(auth, "new_file_explorer");
 
     req.body = {
       contentType: "text/csv",

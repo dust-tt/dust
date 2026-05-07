@@ -50,13 +50,11 @@ class FileBlobUploadError extends Error {
 }
 
 export function useFileUploaderService({
-  hasNewFileExplorer,
   hasSandboxTools,
   owner,
   useCase,
   useCaseMetadata,
 }: {
-  hasNewFileExplorer: boolean;
   hasSandboxTools: boolean;
   owner: LightWorkspaceType;
   useCase: FileUseCase;
@@ -71,11 +69,10 @@ export function useFileUploaderService({
 
   const sizeResolverOpts = useMemo(
     () => ({
-      hasNewFileExplorer,
       hasSandboxTools,
       useCase,
     }),
-    [hasNewFileExplorer, hasSandboxTools, useCase]
+    [hasSandboxTools, useCase]
   );
 
   const maxFileSizes = useMemo(

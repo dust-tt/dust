@@ -161,7 +161,6 @@ export function InputBarProvider({ children }: InputBarProviderProps) {
   }, [conversationId]);
 
   const fileUploaderService = useFileUploaderService({
-    hasNewFileExplorer: hasFeature("new_file_explorer"),
     hasSandboxTools: hasFeature("sandbox_tools"),
     owner: workspace,
     useCase: "conversation",
