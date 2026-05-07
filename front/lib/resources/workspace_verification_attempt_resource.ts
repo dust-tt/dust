@@ -202,4 +202,24 @@ export class WorkspaceVerificationAttemptResource extends BaseResource<Workspace
       },
     });
   }
+
+  static async deleteByPhoneHash(phoneNumberHash: string): Promise<number> {
+    const rows = await this.model.findAll({
+      // Match the partial unique index (phoneNumberHash WHERE verifiedAt IS NOT NULL):
+      // unverified rows don't block reuse, so leave them alone.
+      where: { phoneNumberHash, verifiedAt: { [Op.ne]: null } },
+      // WORKSPACE_ISOLATION_BYPASS: A verified phone is globally unique across workspaces;
+      // resetting it for reuse must clear rows in any workspace that previously claimed it.
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
+    });
+
+    let deletedCount = 0;
+    for (const row of rows) {
+      deletedCount += await WorkspaceVerificationAttemptModel.destroy({
+        where: { id: row.id, workspaceId: row.workspaceId },
+      });
+    }
+    return deletedCount;
+  }
 }
