@@ -244,20 +244,13 @@ export function useSkillAttachmentFileContent({
   owner: LightWorkspaceType;
   disabled?: boolean;
 }) {
-  const sendNotification = useSendNotification();
-
   const { data, error, mutate, isLoading } = useSWRWithDefaults(
     fileId ? `/api/w/${owner.sId}/skills/file_attachments/${fileId}/content` : null,
     async (url: string) => {
       const response = await clientFetch(url);
       if (!response.ok) {
         const errorData = await getErrorFromResponse(response);
-        sendNotification({
-          type: "error",
-          title: "Failed to preview the file.",
-          description: `Error: ${errorData.message}`,
-        });
-        return null;
+        throw new Error(errorData.message);
       }
       return response.text();
     },
