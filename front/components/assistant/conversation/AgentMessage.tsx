@@ -6,7 +6,6 @@ import { AttachmentCitation } from "@app/components/assistant/conversation/attac
 import { markdownCitationToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
 import { BlockedAction } from "@app/components/assistant/conversation/BlockedAction";
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
-import { CONVERSATION_BRANCHING_COPY } from "@app/components/assistant/conversation/branching";
 import { DeletedMessage } from "@app/components/assistant/conversation/DeletedMessage";
 import { ErrorMessage } from "@app/components/assistant/conversation/ErrorMessage";
 import type { FeedbackSelectorBaseProps } from "@app/components/assistant/conversation/FeedbackSelector";
@@ -103,7 +102,6 @@ import {
   InteractiveImageGrid,
   LinkIcon,
   MoreIcon,
-  Spinner,
   StopIcon,
   Tooltip,
   TrashIcon,
@@ -796,10 +794,8 @@ export function AgentMessage({
 
     if (canBranchConversation) {
       dropdownItems.push({
-        label: isBranching
-          ? CONVERSATION_BRANCHING_COPY.branching
-          : CONVERSATION_BRANCHING_COPY.branchFromHere,
-        icon: isBranching ? <Spinner size="xs" /> : ActionGitBranchIcon,
+        label: "Branch from here",
+        icon: ActionGitBranchIcon,
         onSelect: () => {
           void branchConversation(agentMessage.sId);
         },
@@ -846,15 +842,7 @@ export function AgentMessage({
             <Button
               variant="outline"
               size="xs"
-              icon={isBranching ? <Spinner size="xs" /> : MoreIcon}
-              tooltip={
-                isBranching ? CONVERSATION_BRANCHING_COPY.branching : undefined
-              }
-              aria-label={
-                isBranching
-                  ? CONVERSATION_BRANCHING_COPY.branching
-                  : "Message actions"
-              }
+              icon={MoreIcon}
               className="text-muted-foreground"
             />
           }
