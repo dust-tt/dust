@@ -28,22 +28,26 @@ export function getFileProcessedUrl(
   owner: LightWorkspaceType,
   fileId: string | null | undefined
 ) {
-return   `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${fileId}?action=view&version=processed`;
+  return `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${fileId}?action=view&version=processed`;
 }
 
 export function getProcessedFileDownloadUrl(
   owner: LightWorkspaceType,
   fileId: string
 ) {
-  return `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${fileId}?action=download&version=processed`;}
+  return `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${fileId}?action=download&version=processed`;
+}
 
-export function getFileDownloadUrl(owner: LightWorkspaceType, fileId: string)
-  {return `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${fileId}?action=download`;}
+export function getFileDownloadUrl(owner: LightWorkspaceType, fileId: string) {
+  return `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${fileId}?action=download`;
+}
 
 export function getFileViewUrl(
   owner: LightWorkspaceType,
   fileId: string | null | undefined
-) {return `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${fileId}?action=view`;}
+) {
+  return `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${fileId}?action=view`;
+}
 
 export function getSkillFileContentUrl(
   owner: LightWorkspaceType,
