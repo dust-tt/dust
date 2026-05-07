@@ -2,7 +2,7 @@ import { removeDiacritics } from "@app/lib/utils";
 import type { ProjectTaskType } from "@app/types/project_task";
 import { cn } from "@dust-tt/sparkle";
 import type React from "react";
-import { useCallback, useLayoutEffect } from "react";
+import { useLayoutEffect } from "react";
 
 export const DELETE_TASK_CONFIRM_PREVIEW_MAX_CHARS = 200;
 export const NEW_MANUAL_TASK_MAX_CHARS = 256;
@@ -64,24 +64,19 @@ export function projectTaskMatchesLocalSearch(
 
 export function useAutosizeTextArea(
   textAreaRef: React.RefObject<HTMLTextAreaElement | null>,
-  value: string,
   active: boolean
 ) {
-  const adjustHeight = useCallback(() => {
+  useLayoutEffect(() => {
+    if (!active) {
+      return;
+    }
     const el = textAreaRef.current;
     if (!el) {
       return;
     }
     el.style.height = "0px";
     el.style.height = `${el.scrollHeight}px`;
-  }, [textAreaRef]);
-
-  useLayoutEffect(() => {
-    if (!active) {
-      return;
-    }
-    adjustHeight();
-  }, [active, adjustHeight]);
+  }, [active, textAreaRef]);
 }
 
 /** Hidden on `md+` until the `group/task` ancestor is hovered or focus-within. */

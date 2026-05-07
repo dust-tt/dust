@@ -13,7 +13,6 @@ import {
   stripNewlines,
   TASK_DESKTOP_HOVER_REVEAL_CLASS,
   TODO_TEXTAREA_FIELD_CLASS,
-  useAutosizeTextArea,
 } from "@app/components/assistant/conversation/space/conversations/project_tasks/utils";
 import { useAppRouter } from "@app/lib/platform";
 import type { ConversationDotStatus } from "@app/lib/utils/conversation_dot_status";
@@ -80,12 +79,6 @@ export function EditableTaskItem({ task }: EditableTaskItemProps) {
     text: displayText,
   });
 
-  useAutosizeTextArea(
-    inlineEdit.inputRef,
-    inlineEdit.draftText,
-    inlineEdit.isEditing
-  );
-
   const startEdit = (offset?: number) => {
     typing.dismiss();
     inlineEdit.startEdit(offset);
@@ -114,9 +107,10 @@ export function EditableTaskItem({ task }: EditableTaskItemProps) {
               ref={inlineEdit.inputRef}
               aria-label="Edit task text"
               autoComplete="off"
+              autoFocus
               rows={1}
               maxLength={NEW_MANUAL_TASK_MAX_CHARS}
-              value={inlineEdit.draftText}
+              defaultValue={stripNewlines(task.text)}
               disabled={isStarting}
               className={cn(
                 TODO_TEXTAREA_FIELD_CLASS,
@@ -124,7 +118,6 @@ export function EditableTaskItem({ task }: EditableTaskItemProps) {
                 isNewlyDone &&
                   "rounded bg-warning-100/40 dark:bg-warning-100-night/30"
               )}
-              onChange={(e) => inlineEdit.setDraftText(e.target.value)}
               {...inlineEdit.textareaHandlers}
             />
             <TaskSources sources={task.sources} owner={owner} isDone={isDone} />
