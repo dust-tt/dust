@@ -1,4 +1,3 @@
-import { useConversationBranchingContext } from "@app/components/assistant/conversation/ConversationBranchingContext";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { ConversationsUpdatedEvent } from "@app/lib/notifications/events";
@@ -8,7 +7,7 @@ import { getConversationRoute } from "@app/lib/utils/router";
 import type { PostConversationForkResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/forks";
 import { isRecord, isString } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 
 function isPostConversationForkResponseBody(
   value: unknown
@@ -32,20 +31,16 @@ export function useBranchConversation({
 }) {
   const sendNotification = useSendNotification();
   const router = useAppRouter();
-  const { branchingConversationIds, setConversationBranching } =
-    useConversationBranchingContext();
 
-  const isBranching = conversationId
-    ? branchingConversationIds.has(conversationId)
-    : false;
+  const [isBranching, setIsBranching] = useState(false);
 
   const branchConversation = useCallback(
     async (sourceMessageId?: string): Promise<boolean> => {
-      if (!conversationId || branchingConversationIds.has(conversationId)) {
+      if (!conversationId) {
         return false;
       }
 
-      setConversationBranching(conversationId, true);
+      setIsBranching(true);
 
       try {
         const requestBody = sourceMessageId ? { sourceMessageId } : {};
@@ -86,7 +81,7 @@ export function useBranchConversation({
 
         window.dispatchEvent(new ConversationsUpdatedEvent());
         void onConversationBranched?.();
-        await router.push(
+        void router.push(
           getConversationRoute(owner.sId, responseBody.conversationId)
         );
 
@@ -99,17 +94,15 @@ export function useBranchConversation({
 
         return false;
       } finally {
-        setConversationBranching(conversationId, false);
+        setIsBranching(false);
       }
     },
     [
       conversationId,
-      branchingConversationIds,
       onConversationBranched,
       owner.sId,
       router,
       sendNotification,
-      setConversationBranching,
     ]
   );
 

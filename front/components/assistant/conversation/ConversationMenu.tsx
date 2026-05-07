@@ -1,4 +1,3 @@
-import { CONVERSATION_BRANCHING_COPY } from "@app/components/assistant/conversation/branching";
 import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
 import { EditConversationTitleDialog } from "@app/components/assistant/conversation/EditConversationTitleDialog";
 import { LeaveConversationDialog } from "@app/components/assistant/conversation/LeaveConversationDialog";
@@ -61,7 +60,6 @@ import {
   PencilSquareIcon,
   PlusCircleIcon,
   SidekickIcon,
-  Spinner,
   TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
@@ -412,15 +410,11 @@ export function ConversationMenu({
           {hasFeature("sessions_branching") && (
             <>
               <DropdownMenuItem
-                label={
-                  isBranching
-                    ? CONVERSATION_BRANCHING_COPY.branching
-                    : CONVERSATION_BRANCHING_COPY.branchConversation
-                }
+                label="Branch conversation"
                 onClick={() => {
                   void branchConversation();
                 }}
-                icon={isBranching ? <Spinner size="xs" /> : ActionGitBranchIcon}
+                icon={ActionGitBranchIcon}
                 disabled={isBranching}
               />
               <DropdownMenuSeparator />

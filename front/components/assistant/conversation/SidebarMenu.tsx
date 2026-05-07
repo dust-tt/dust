@@ -1,4 +1,3 @@
-import { CONVERSATION_BRANCHING_COPY } from "@app/components/assistant/conversation/branching";
 import {
   ConversationMenu,
   useConversationMenu,
@@ -1317,12 +1316,7 @@ const ConversationListItem = memo(
             conversation={conversation}
             onConversationBranched={onConversationBranched}
             owner={owner}
-            trigger={({ isPendingAction }) => (
-              <NavigationListItemAction
-                isLoading={isPendingAction}
-                loadingLabel={CONVERSATION_BRANCHING_COPY.branching}
-              />
-            )}
+            trigger={() => <NavigationListItemAction />}
             isConversationDisplayed={activeConversationId === conversation.sId}
             isOpen={isMenuOpen}
             onOpenChange={handleMenuOpenChange}
