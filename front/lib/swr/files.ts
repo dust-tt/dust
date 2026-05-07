@@ -245,7 +245,9 @@ export function useSkillAttachmentFileContent({
   disabled?: boolean;
 }) {
   const { data, error, mutate, isLoading } = useSWRWithDefaults(
-    fileId ? `/api/w/${owner.sId}/skills/file_attachments/${fileId}/content` : null,
+    fileId
+      ? `/api/w/${owner.sId}/skills/file_attachments/${fileId}/content`
+      : null,
     async (url: string) => {
       const response = await clientFetch(url);
       if (!response.ok) {
