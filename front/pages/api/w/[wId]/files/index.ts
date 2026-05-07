@@ -55,7 +55,7 @@
  */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { isUploadSupportedForContentType } from "@app/lib/api/files/processing";
-import { buildEffectiveUseCaseMetadata } from "@app/lib/api/files/sandbox_raw";
+import { buildEffectiveUseCaseMetadata } from "@app/lib/api/files/upload_metadata";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
