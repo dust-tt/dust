@@ -1,7 +1,7 @@
 import {
   FilePreviewDialog,
   needsFilePreviewTextContent,
-} from "@app/components/assistant/conversation/files_panel/FilePreviewDialog";
+} from "@app/components/files/FilePreviewDialog";
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { useSkillVersionComparisonContext } from "@app/components/skill_builder/SkillBuilderVersionContext";

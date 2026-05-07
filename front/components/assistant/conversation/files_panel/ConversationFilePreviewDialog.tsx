@@ -1,7 +1,7 @@
 import {
   FilePreviewDialog,
   needsFilePreviewTextContent,
-} from "@app/components/assistant/conversation/files_panel/FilePreviewDialog";
+} from "@app/components/files/FilePreviewDialog";
 import { useConversationFileContent } from "@app/hooks/conversations/useConversationFileContent";
 import config from "@app/lib/api/config";
 import { parseScopedFilePath } from "@app/lib/api/files/mount_path";
