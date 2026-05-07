@@ -14,13 +14,16 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import { WorkspaceSandboxEnvVarModel } from "@app/lib/resources/storage/models/workspace_sandbox_env_var";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
-import { makeSId } from "@app/lib/resources/string_ids";
+import {
+  getResourceIdFromSId,
+  isResourceSId,
+  makeSId,
+} from "@app/lib/resources/string_ids";
 import { normalizeEgressPolicyDomains } from "@app/types/sandbox/egress_policy";
 import type {
   WorkspaceSandboxEnvVarKind,
   WorkspaceSandboxEnvVarType,
 } from "@app/types/sandbox/env_var";
-import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -155,8 +158,15 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
 
   static async fetchById(
     auth: Authenticator,
-    id: ModelId
+    sId: string
   ): Promise<WorkspaceSandboxEnvVarResource | null> {
+    if (!isResourceSId("sandbox_env_var", sId)) {
+      return null;
+    }
+    const id = getResourceIdFromSId(sId);
+    if (id === null) {
+      return null;
+    }
     const rows = await this.baseFetch(auth, { id });
     return rows[0] ?? null;
   }
@@ -366,7 +376,7 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
   // Create-only entry point for callers that must not replace an existing
   // value. Implementation defers to upsert() and rejects when the row already
   // existed — relies on the unique index to catch concurrent creates.
-  static async create(
+  static async makeNew(
     auth: Authenticator,
     {
       name,
@@ -470,34 +480,26 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
       lastUpdatedByUserId: user.id,
     });
 
-    const updated = await WorkspaceSandboxEnvVarResource.fetchById(
-      auth,
-      this.id
-    );
-    if (!updated) {
-      return new Err(new Error("Sandbox environment variable not found."));
-    }
-
     void emitAuditLogEvent({
       auth,
       action: "sandbox_env_var.promoted_to_https_secret",
       targets: [
         buildAuditLogTarget("workspace", owner),
         buildAuditLogTarget("sandbox_env_var", {
-          sId: updated.sId,
-          name: updated.envName,
+          sId: this.sId,
+          name: this.envName,
         }),
       ],
       context,
       metadata: {
-        name: updated.envName,
+        name: this.envName,
         previous_name: previousEnvName,
-        kind: updated.kind,
-        allowed_domains: formatAllowedDomainsForAudit(updated.allowedDomains),
+        kind: this.kind,
+        allowed_domains: formatAllowedDomainsForAudit(this.allowedDomains),
       },
     });
 
-    return new Ok(updated);
+    return new Ok(this);
   }
 
   async updateValue(
@@ -532,34 +534,26 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
       lastUpdatedByUserId: user.id,
     });
 
-    const updated = await WorkspaceSandboxEnvVarResource.fetchById(
-      auth,
-      this.id
-    );
-    if (!updated) {
-      return new Err(new Error("Sandbox environment variable not found."));
-    }
-
     void emitAuditLogEvent({
       auth,
       action: "sandbox_env_var.updated",
       targets: [
         buildAuditLogTarget("workspace", owner),
         buildAuditLogTarget("sandbox_env_var", {
-          sId: updated.sId,
-          name: updated.envName,
+          sId: this.sId,
+          name: this.envName,
         }),
       ],
       context,
       metadata: {
-        name: updated.envName,
-        kind: updated.kind,
-        allowed_domains: formatAllowedDomainsForAudit(updated.allowedDomains),
+        name: this.envName,
+        kind: this.kind,
+        allowed_domains: formatAllowedDomainsForAudit(this.allowedDomains),
         previously_existed: "true",
       },
     });
 
-    return new Ok(updated);
+    return new Ok(this);
   }
 
   async updateAllowedDomains(
@@ -612,36 +606,28 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
       lastUpdatedByUserId: user.id,
     });
 
-    const updated = await WorkspaceSandboxEnvVarResource.fetchById(
-      auth,
-      this.id
-    );
-    if (!updated) {
-      return new Err(new Error("Sandbox environment variable not found."));
-    }
-
     void emitAuditLogEvent({
       auth,
       action: "sandbox_env_var.allowed_domains_updated",
       targets: [
         buildAuditLogTarget("workspace", owner),
         buildAuditLogTarget("sandbox_env_var", {
-          sId: updated.sId,
-          name: updated.envName,
+          sId: this.sId,
+          name: this.envName,
         }),
       ],
       context,
       metadata: {
-        name: updated.envName,
-        kind: updated.kind,
-        allowed_domains: formatAllowedDomainsForAudit(updated.allowedDomains),
+        name: this.envName,
+        kind: this.kind,
+        allowed_domains: formatAllowedDomainsForAudit(this.allowedDomains),
         previous_allowed_domains: formatAllowedDomainsForAudit(
           previousAllowedDomains
         ),
       },
     });
 
-    return new Ok(updated);
+    return new Ok(this);
   }
 
   private static normalizeAllowedDomainsForKind({

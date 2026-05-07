@@ -114,7 +114,7 @@ describe("PATCH/DELETE /api/w/[wId]/sandbox/env-vars/[id]", () => {
       },
     });
 
-    const createResult = await WorkspaceSandboxEnvVarResource.create(auth, {
+    const createResult = await WorkspaceSandboxEnvVarResource.makeNew(auth, {
       name: "API_TOKEN",
       value: "super-secret-token",
     });
@@ -164,7 +164,7 @@ describe("PATCH/DELETE /api/w/[wId]/sandbox/env-vars/[id]", () => {
       },
     });
 
-    const createResult = await WorkspaceSandboxEnvVarResource.create(
+    const createResult = await WorkspaceSandboxEnvVarResource.makeNew(
       setup.auth,
       {
         name: "API_TOKEN",
@@ -206,7 +206,7 @@ describe("PATCH/DELETE /api/w/[wId]/sandbox/env-vars/[id]", () => {
       body: { kind: "config" },
     });
 
-    const createResult = await WorkspaceSandboxEnvVarResource.create(auth, {
+    const createResult = await WorkspaceSandboxEnvVarResource.makeNew(auth, {
       name: "API_TOKEN",
       kind: "https_secret",
       value: "super-secret-token",

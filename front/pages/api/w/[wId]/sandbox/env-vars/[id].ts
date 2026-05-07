@@ -3,10 +3,6 @@ import { getAuditLogContext } from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
-import {
-  getResourceIdFromSId,
-  isResourceSId,
-} from "@app/lib/resources/string_ids";
 import { WorkspaceSandboxEnvVarResource } from "@app/lib/resources/workspace_sandbox_env_var_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
@@ -74,12 +70,7 @@ async function handler(
   }
 
   const { id } = req.query;
-
-  const envVarModelId =
-    isString(id) && isResourceSId("sandbox_env_var", id)
-      ? getResourceIdFromSId(id)
-      : null;
-  if (envVarModelId === null) {
+  if (!isString(id)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -115,10 +106,7 @@ async function handler(
         });
       }
 
-      const envVar = await WorkspaceSandboxEnvVarResource.fetchById(
-        auth,
-        envVarModelId
-      );
+      const envVar = await WorkspaceSandboxEnvVarResource.fetchById(auth, id);
       if (!envVar) {
         return apiError(req, res, {
           status_code: 404,
@@ -193,10 +181,7 @@ async function handler(
     }
 
     case "DELETE": {
-      const envVar = await WorkspaceSandboxEnvVarResource.fetchById(
-        auth,
-        envVarModelId
-      );
+      const envVar = await WorkspaceSandboxEnvVarResource.fetchById(auth, id);
       if (!envVar) {
         return apiError(req, res, {
           status_code: 404,

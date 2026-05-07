@@ -93,7 +93,7 @@ describe("WorkspaceSandboxEnvVarResource", () => {
   it("creates HTTPS secrets with stable nonce and normalized allowed domains", async () => {
     const { authenticator } = await createResourceTest({ role: "admin" });
 
-    const createResult = await WorkspaceSandboxEnvVarResource.create(
+    const createResult = await WorkspaceSandboxEnvVarResource.makeNew(
       authenticator,
       {
         name: "API_TOKEN",
@@ -141,7 +141,7 @@ describe("WorkspaceSandboxEnvVarResource", () => {
       allowedDomains: ["api.openai.com"],
     });
 
-    const configResult = await WorkspaceSandboxEnvVarResource.create(
+    const configResult = await WorkspaceSandboxEnvVarResource.makeNew(
       authenticator,
       {
         name: "CONFIG_TOKEN",
@@ -164,7 +164,7 @@ describe("WorkspaceSandboxEnvVarResource", () => {
   it("promotes config vars to HTTPS secrets without injecting plaintext env", async () => {
     const { authenticator } = await createResourceTest({ role: "admin" });
 
-    const createResult = await WorkspaceSandboxEnvVarResource.create(
+    const createResult = await WorkspaceSandboxEnvVarResource.makeNew(
       authenticator,
       {
         name: "API_TOKEN",
@@ -207,7 +207,7 @@ describe("WorkspaceSandboxEnvVarResource", () => {
   it("rotates HTTPS secret value and allowed domains in a single upsert", async () => {
     const { authenticator } = await createResourceTest({ role: "admin" });
 
-    const createResult = await WorkspaceSandboxEnvVarResource.create(
+    const createResult = await WorkspaceSandboxEnvVarResource.makeNew(
       authenticator,
       {
         name: "API_TOKEN",
@@ -247,7 +247,7 @@ describe("WorkspaceSandboxEnvVarResource", () => {
   it("validates HTTPS secret values and allowed domains without changing config multiline values", async () => {
     const { authenticator } = await createResourceTest({ role: "admin" });
 
-    const multilineConfig = await WorkspaceSandboxEnvVarResource.create(
+    const multilineConfig = await WorkspaceSandboxEnvVarResource.makeNew(
       authenticator,
       {
         name: "MULTILINE_CONFIG",
@@ -263,7 +263,7 @@ describe("WorkspaceSandboxEnvVarResource", () => {
       "a".repeat(8 * 1024 + 1),
     ];
     for (const [index, value] of invalidValues.entries()) {
-      const result = await WorkspaceSandboxEnvVarResource.create(
+      const result = await WorkspaceSandboxEnvVarResource.makeNew(
         authenticator,
         {
           name: `SECRET_VALUE_${index}`,
@@ -277,7 +277,7 @@ describe("WorkspaceSandboxEnvVarResource", () => {
 
     const invalidAllowedDomains = [undefined, [], ["127.0.0.1"]];
     for (const [index, allowedDomains] of invalidAllowedDomains.entries()) {
-      const result = await WorkspaceSandboxEnvVarResource.create(
+      const result = await WorkspaceSandboxEnvVarResource.makeNew(
         authenticator,
         {
           name: `SECRET_DOMAIN_${index}`,
