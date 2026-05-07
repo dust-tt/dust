@@ -5,6 +5,9 @@ export type SubscriptionsDisplayType = {
   id: string;
   name: string;
   status: string;
+  stripeSubscriptionId: string | null;
+  metronomeContractId: string | null;
+  metronomeContractUrl: string | null;
   startDate: string | null;
   endDate: string | null;
   startDateValue: number | null; // timestamp for sorting
@@ -65,6 +68,25 @@ export function makeColumnsForSubscriptions(): ColumnDef<SubscriptionsDisplayTyp
         );
       },
       header: "stripeSubscriptionId",
+    },
+    {
+      accessorKey: "metronomeContractId",
+      cell: ({ row }) => {
+        const contractId = row.original.metronomeContractId;
+        const url = row.original.metronomeContractUrl;
+        if (!contractId) {
+          return null;
+        }
+        if (!url) {
+          return contractId;
+        }
+        return (
+          <a className="font-bold hover:underline" target="_blank" href={url}>
+            {contractId}
+          </a>
+        );
+      },
+      header: "metronomeContractId",
     },
     {
       accessorKey: "startDate",
