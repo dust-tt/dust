@@ -2,6 +2,10 @@ import {
   type FilePreviewCategory,
   getFilePreviewConfig,
 } from "@app/components/spaces/FilePreviewSheet";
+import {
+  type ProcessedContent,
+  processFileContent,
+} from "@app/lib/file_content_utils";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import { stripMimeParameters } from "@app/types/files";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
@@ -25,7 +29,6 @@ import {
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useEffect } from "react";
-import {type ProcessedContent, processFileContent} from "@app/lib/file_content_utils";
 
 const MAX_CSV_ROWS = 200;
 const MAX_TEXT_CHARS = 100_000;
