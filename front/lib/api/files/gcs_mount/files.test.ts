@@ -184,7 +184,10 @@ describe("listGCSMountFiles", () => {
 
     const paths = entries.filter((e) => !e.isDirectory).map((e) => e.path);
     expect(paths).toEqual(
-      expect.arrayContaining(["conversation/report.pdf", "conversation/photo.jpg"])
+      expect.arrayContaining([
+        "conversation/report.pdf",
+        "conversation/photo.jpg",
+      ])
     );
     expect(paths).not.toEqual(
       expect.arrayContaining([
