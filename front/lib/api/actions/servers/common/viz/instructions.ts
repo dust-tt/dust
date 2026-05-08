@@ -1,4 +1,3 @@
-import { FILES_SERVER_NAME } from "@app/lib/api/actions/servers/files/metadata";
 import { frameContentType, frameSlideshowContentType } from "@app/types/files";
 
 export const VIZ_REACT_COMPONENT_GUIDELINES = `
@@ -61,7 +60,7 @@ export const VIZ_FILE_HANDLING_GUIDELINES = `
   - Files from the conversation as returned by \`conversation_files__list_files\` can be accessed using the \`useFile()\` React hook (all files can be accessed by the hook irrespective of their status).
   - \`useFile\` has to be imported from \`"@dust/react-hooks"\`.
   - Like any React hook, \`useFile\` must be called inside a React component at the top level (not in event handlers, loops, or conditions).
-  - \`useFile()\` accepts either a file ID (e.g. \`"fil_abc123"\`, as found in \`<attachment id="fil_..." ...>\` tags) or a scoped file path (e.g. \`"conversation/report.csv"\`, as returned by the \`${FILES_SERVER_NAME}\` MCP server). Both resolve to the same \`File\` object — pass whichever identifier is most convenient.
+  - \`useFile()\` accepts either a file ID (e.g. \`"fil_abc123"\`, as found in \`<attachment id="fil_..." ...>\` tags) or a scoped file path (e.g. \`"conversation/report.csv"\`). Pass whichever you already have.
   - Once/if the file is available, \`useFile()\` will return a non-null \`File\` object. The \`File\` object is a browser File object. Examples of using \`useFile\` are available below.
   - \`file.text()\` is ASYNC - Always use await \`file.text()\` inside useEffect with async function. Never call \`file.text()\` directly in render logic as it returns a Promise, not a string.
   - Always use \`papaparse\` to parse CSV files.
@@ -176,7 +175,7 @@ function DataChartComponent() {
 export default DataChartComponent;
 \`\`\`
 
-The argument to \`useFile\` is either a file ID (extracted from the \`<attachment id="\${FILE_ID}" type... name...>\` tags returned by the \`conversation_files__list_files\` action) or a scoped file path (e.g. \`conversation/data.csv\`, as returned by the \`${FILES_SERVER_NAME}\` MCP server).
+The argument to \`useFile\` is either a file ID (from \`<attachment id="\${FILE_ID}" ...>\` tags) or a scoped file path (e.g. \`conversation/data.csv\`).
 
 Example using the \`triggerUserFileDownload\` hook:
 
@@ -211,8 +210,6 @@ export default function Dashboard() {
   );
 }
 \`\`\`
-
-The file ID (e.g. "fil_abc123") comes from the \`<attachment id="\${FILE_ID}" ...>\` tag of the frame file. The scoped file path (e.g. "conversation/RegionMap.tsx") comes from the \`${FILES_SERVER_NAME}\` MCP server.
 `;
 
 export const VIZ_CHART_EXAMPLES = `
