@@ -237,18 +237,23 @@ const GongPermissionProfilesResponseCodec = t.intersection([
   CatchAllCodec,
 ]);
 
-// Gong's documented Retry-After unit is seconds, we have observerd it to be in anything betwee 1 to 55k,
-// which indicates that it's in miliseconds, or in seconds, but with a bug
-// if you remove oultiers, the distribution is centered around 10 (which we treat a seconds)
-// so flooring the retry after to 10.
-const RETRY_AFTER_FLOOR_MS = 10_000;
-const RETRY_AFTER_CEILING_MS = 60 * 60_000;
+// Gong's documented Retry-After unit is seconds, we have observerd it to be in anything betwee 1 to
+// 55k.  We thought before that it was milliseconds but we've observed in the while a decrease of
+// that value with following a second pattern (spolu). We floor at 10s and ceil at 1h to avoid
+// outliers.
+const RETRY_AFTER_FLOOR_SECONDS = 10;
+const RETRY_AFTER_CEILING_SECONDS = 3600;
 
-export function clampRetryAfterMs(raw: number | undefined): number | undefined {
+export function clampRetryAfterSeconds(
+  raw: number | undefined
+): number | undefined {
   if (raw === undefined || Number.isNaN(raw)) {
     return undefined;
   }
-  return Math.min(Math.max(raw, RETRY_AFTER_FLOOR_MS), RETRY_AFTER_CEILING_MS);
+  return Math.min(
+    Math.max(raw, RETRY_AFTER_FLOOR_SECONDS),
+    RETRY_AFTER_CEILING_SECONDS
+  );
 }
 
 export class GongClient {
@@ -295,9 +300,8 @@ export class GongClient {
           )
         );
 
-        // Gong docs says the Retry-After header is in seconds, our findings show it is actually
-        // in milliseconds.
-        const retryAfterMs = response.headers.get("Retry-After")
+        // Gong docs says the Retry-After header is in seconds. It is indeed seconds
+        const retryAfterSeconds = response.headers.get("Retry-After")
           ? parseInt(response.headers.get("Retry-After")!, 10)
           : undefined;
 
@@ -307,7 +311,7 @@ export class GongClient {
             endpoint,
             headers,
             provider: "gong",
-            retryAfterMs,
+            retryAfterSeconds,
           },
           "Rate limit hit on Gong API."
         );
@@ -324,7 +328,7 @@ export class GongClient {
           body,
           connectorId: this.connectorId,
           endpoint,
-          retryAfterMs,
+          retryAfterSeconds,
         });
       }
 
