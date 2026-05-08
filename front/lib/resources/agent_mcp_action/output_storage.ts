@@ -11,21 +11,21 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
-const GCS_PREFIX = "mcp_output_items";
+const MCP_OUTPUT_ITEMS_PREFIX = "mcp_output_items";
 const GCS_CONCURRENCY = 4;
+
 export const GCS_CONTENT_CACHE_TTL_MS = 15 * 60 * 1000;
 
 type OutputContent = CallToolResult["content"][number];
 
+// Writes live under the workspace prefix `w/<wsId>/...` so they are included by the
+// workspace-relocation file transfer.
 function getGcsPath(
   auth: Authenticator,
   action: AgentMCPActionResource,
   itemId: ModelId
 ): string {
-  const workspaceId = auth.getNonNullableWorkspace().sId;
-  const actionId = action.sId;
-
-  return `${GCS_PREFIX}/w/${workspaceId}/${actionId}/${itemId}.json`;
+  return `w/${auth.getNonNullableWorkspace().sId}/${MCP_OUTPUT_ITEMS_PREFIX}/${action.sId}/${itemId}.json`;
 }
 
 /**
