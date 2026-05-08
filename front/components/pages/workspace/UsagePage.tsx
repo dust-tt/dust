@@ -114,8 +114,6 @@ export function UsagePage() {
     }
   }, [hasFeature, router, owner.sId]);
 
-  const isMetronome = hasFeature("metronome_billing");
-
   const {
     totalAmountMicroUsd,
     consumedByUsersMicroUsd,
@@ -125,7 +123,6 @@ export function UsagePage() {
     isAwuPoolSummaryError,
   } = useAwuPoolSummary({
     workspaceId: owner.sId,
-    disabled: !isMetronome,
   });
 
   const totalConsumedMicroUsd =
