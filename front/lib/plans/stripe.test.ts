@@ -7,7 +7,7 @@ import {
   isCreditPurchaseInvoice,
   isEnterpriseSubscription,
   makeAndFinalizeCreditsPAYGInvoice,
-  makeCreditPurchaseOneOffInvoice,
+  makeCreditPurchaseOneOffInvoiceForSubscription,
   payInvoice,
   voidInvoiceWithReason,
 } from "@app/lib/plans/stripe";
@@ -347,7 +347,7 @@ describe("makeOneOffInvoice - Pro credit purchase", () => {
     mockInvoices.create.mockResolvedValue({ id: "in_pro" });
     mockInvoiceItems.create.mockResolvedValue({ id: "ii_1" });
 
-    const result = await makeCreditPurchaseOneOffInvoice({
+    const result = await makeCreditPurchaseOneOffInvoiceForSubscription({
       stripeSubscriptionId: "sub_pro",
       amountMicroUsd: 100_000_000,
       collectionMethod: "charge_automatically",
@@ -390,7 +390,7 @@ describe("makeOneOffInvoice - Pro credit purchase", () => {
     mockInvoices.create.mockResolvedValue({ id: "in_pro" });
     mockInvoiceItems.create.mockResolvedValue({ id: "ii_1" });
 
-    await makeCreditPurchaseOneOffInvoice({
+    await makeCreditPurchaseOneOffInvoiceForSubscription({
       stripeSubscriptionId: "sub_pro",
       amountMicroUsd: 100_000_000,
       couponId: "programmatic-usage-credits-once-20",
@@ -407,7 +407,7 @@ describe("makeOneOffInvoice - Pro credit purchase", () => {
   it("should return Err when subscription not found", async () => {
     mockSubscriptions.retrieve.mockResolvedValue(null);
 
-    const result = await makeCreditPurchaseOneOffInvoice({
+    const result = await makeCreditPurchaseOneOffInvoiceForSubscription({
       stripeSubscriptionId: "sub_invalid",
       amountMicroUsd: 100_000_000,
       collectionMethod: "charge_automatically",
@@ -427,7 +427,7 @@ describe("makeOneOffInvoice - Pro credit purchase", () => {
     mockInvoices.create.mockResolvedValue({ id: "in_pro" });
     mockInvoiceItems.create.mockResolvedValue({ id: "ii_1" });
 
-    const result = await makeCreditPurchaseOneOffInvoice({
+    const result = await makeCreditPurchaseOneOffInvoiceForSubscription({
       stripeSubscriptionId: "sub_pro",
       amountMicroUsd: 100_000_000,
       collectionMethod: "charge_automatically",
@@ -461,7 +461,7 @@ describe("makeOneOffInvoice - Enterprise credit purchase", () => {
     mockInvoices.create.mockResolvedValue({ id: "in_enterprise" });
     mockInvoiceItems.create.mockResolvedValue({ id: "ii_1" });
 
-    const result = await makeCreditPurchaseOneOffInvoice({
+    const result = await makeCreditPurchaseOneOffInvoiceForSubscription({
       stripeSubscriptionId: "sub_enterprise",
       amountMicroUsd: 5_000_000_000,
       collectionMethod: "send_invoice",

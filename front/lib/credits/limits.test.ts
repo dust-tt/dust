@@ -92,7 +92,10 @@ describe("getCreditPurchaseLimits", () => {
     it("should allow purchase with $1000 minimum limit when no payg cap", async () => {
       fetchProgrammaticConfigSpy.mockResolvedValue(null);
 
-      const result = await getCreditPurchaseLimits(auth, makeSubscription());
+      const result = await getCreditPurchaseLimits(auth, {
+        type: "stripe-subscription",
+        stripeSubscription: makeSubscription(),
+      });
 
       expect(result).toEqual({
         canPurchase: true,
@@ -105,7 +108,10 @@ describe("getCreditPurchaseLimits", () => {
         paygCapMicroUsd: 1_000_000_000, // $1000 payg cap -> $500 half
       });
 
-      const result = await getCreditPurchaseLimits(auth, makeSubscription());
+      const result = await getCreditPurchaseLimits(auth, {
+        type: "stripe-subscription",
+        stripeSubscription: makeSubscription(),
+      });
 
       expect(result).toEqual({
         canPurchase: true,
@@ -118,7 +124,10 @@ describe("getCreditPurchaseLimits", () => {
         paygCapMicroUsd: 10_000_000_000, // $10,000 payg cap -> $5,000 half
       });
 
-      const result = await getCreditPurchaseLimits(auth, makeSubscription());
+      const result = await getCreditPurchaseLimits(auth, {
+        type: "stripe-subscription",
+        stripeSubscription: makeSubscription(),
+      });
 
       expect(result).toEqual({
         canPurchase: true,
@@ -127,7 +136,10 @@ describe("getCreditPurchaseLimits", () => {
     });
 
     it("should not call getCustomerPaymentStatus for enterprise", async () => {
-      await getCreditPurchaseLimits(auth, makeSubscription());
+      await getCreditPurchaseLimits(auth, {
+        type: "stripe-subscription",
+        stripeSubscription: makeSubscription(),
+      });
 
       expect(getCustomerPaymentStatus).not.toHaveBeenCalled();
     });
@@ -136,7 +148,10 @@ describe("getCreditPurchaseLimits", () => {
       fetchProgrammaticConfigSpy.mockResolvedValue(null);
       sumCommittedCreditsSpy.mockResolvedValue(300_000_000); // $300 already purchased
 
-      const result = await getCreditPurchaseLimits(auth, makeSubscription());
+      const result = await getCreditPurchaseLimits(auth, {
+        type: "stripe-subscription",
+        stripeSubscription: makeSubscription(),
+      });
 
       expect(result).toEqual({
         canPurchase: true,
@@ -150,7 +165,10 @@ describe("getCreditPurchaseLimits", () => {
       });
       sumCommittedCreditsSpy.mockResolvedValue(2_000_000_000); // $2000 already purchased
 
-      const result = await getCreditPurchaseLimits(auth, makeSubscription());
+      const result = await getCreditPurchaseLimits(auth, {
+        type: "stripe-subscription",
+        stripeSubscription: makeSubscription(),
+      });
 
       expect(result).toEqual({
         canPurchase: true,
@@ -162,7 +180,10 @@ describe("getCreditPurchaseLimits", () => {
       fetchProgrammaticConfigSpy.mockResolvedValue(null);
       sumCommittedCreditsSpy.mockResolvedValue(1_000_000_000); // $1000 already purchased
 
-      const result = await getCreditPurchaseLimits(auth, makeSubscription());
+      const result = await getCreditPurchaseLimits(auth, {
+        type: "stripe-subscription",
+        stripeSubscription: makeSubscription(),
+      });
 
       expect(result).toEqual({
         canPurchase: true,
@@ -176,7 +197,10 @@ describe("getCreditPurchaseLimits", () => {
       vi.mocked(isEnterpriseSubscription).mockReturnValue(false);
       vi.mocked(getCustomerPaymentStatus).mockResolvedValue("trialing");
 
-      const result = await getCreditPurchaseLimits(auth, makeSubscription());
+      const result = await getCreditPurchaseLimits(auth, {
+        type: "stripe-subscription",
+        stripeSubscription: makeSubscription(),
+      });
 
       expect(result).toEqual({
         canPurchase: false,
@@ -190,7 +214,10 @@ describe("getCreditPurchaseLimits", () => {
       vi.mocked(isEnterpriseSubscription).mockReturnValue(false);
       vi.mocked(getCustomerPaymentStatus).mockResolvedValue("not_paying");
 
-      const result = await getCreditPurchaseLimits(auth, makeSubscription());
+      const result = await getCreditPurchaseLimits(auth, {
+        type: "stripe-subscription",
+        stripeSubscription: makeSubscription(),
+      });
 
       expect(result).toEqual({
         canPurchase: false,
@@ -208,7 +235,10 @@ describe("getCreditPurchaseLimits", () => {
     it("should calculate limit based on user count ($50/user)", async () => {
       countEligibleUsersSpy.mockResolvedValue(10);
 
-      const result = await getCreditPurchaseLimits(auth, makeSubscription());
+      const result = await getCreditPurchaseLimits(auth, {
+        type: "stripe-subscription",
+        stripeSubscription: makeSubscription(),
+      });
 
       expect(result).toEqual({
         canPurchase: true,
@@ -219,7 +249,10 @@ describe("getCreditPurchaseLimits", () => {
     it("should cap at $1000 for large teams", async () => {
       countEligibleUsersSpy.mockResolvedValue(100);
 
-      const result = await getCreditPurchaseLimits(auth, makeSubscription());
+      const result = await getCreditPurchaseLimits(auth, {
+        type: "stripe-subscription",
+        stripeSubscription: makeSubscription(),
+      });
 
       expect(result).toEqual({
         canPurchase: true,
@@ -230,7 +263,10 @@ describe("getCreditPurchaseLimits", () => {
     it("should allow $50 for single user", async () => {
       countEligibleUsersSpy.mockResolvedValue(1);
 
-      const result = await getCreditPurchaseLimits(auth, makeSubscription());
+      const result = await getCreditPurchaseLimits(auth, {
+        type: "stripe-subscription",
+        stripeSubscription: makeSubscription(),
+      });
 
       expect(result).toEqual({
         canPurchase: true,
@@ -241,7 +277,10 @@ describe("getCreditPurchaseLimits", () => {
     it("should allow $250 for 5 users", async () => {
       countEligibleUsersSpy.mockResolvedValue(5);
 
-      const result = await getCreditPurchaseLimits(auth, makeSubscription());
+      const result = await getCreditPurchaseLimits(auth, {
+        type: "stripe-subscription",
+        stripeSubscription: makeSubscription(),
+      });
 
       expect(result).toEqual({
         canPurchase: true,
@@ -252,7 +291,10 @@ describe("getCreditPurchaseLimits", () => {
     it("should cap exactly at $1000 for 20 users", async () => {
       countEligibleUsersSpy.mockResolvedValue(20);
 
-      const result = await getCreditPurchaseLimits(auth, makeSubscription());
+      const result = await getCreditPurchaseLimits(auth, {
+        type: "stripe-subscription",
+        stripeSubscription: makeSubscription(),
+      });
 
       expect(result).toEqual({
         canPurchase: true,
@@ -263,7 +305,10 @@ describe("getCreditPurchaseLimits", () => {
     it("should cap at $1000 for more than 20 users", async () => {
       countEligibleUsersSpy.mockResolvedValue(25);
 
-      const result = await getCreditPurchaseLimits(auth, makeSubscription());
+      const result = await getCreditPurchaseLimits(auth, {
+        type: "stripe-subscription",
+        stripeSubscription: makeSubscription(),
+      });
 
       expect(result).toEqual({
         canPurchase: true,
@@ -275,7 +320,10 @@ describe("getCreditPurchaseLimits", () => {
       countEligibleUsersSpy.mockResolvedValue(10); // $500 limit
       sumCommittedCreditsSpy.mockResolvedValue(200_000_000); // $200 already purchased
 
-      const result = await getCreditPurchaseLimits(auth, makeSubscription());
+      const result = await getCreditPurchaseLimits(auth, {
+        type: "stripe-subscription",
+        stripeSubscription: makeSubscription(),
+      });
 
       expect(result).toEqual({
         canPurchase: true,
@@ -287,7 +335,10 @@ describe("getCreditPurchaseLimits", () => {
       countEligibleUsersSpy.mockResolvedValue(5); // $250 limit
       sumCommittedCreditsSpy.mockResolvedValue(250_000_000); // $250 already purchased
 
-      const result = await getCreditPurchaseLimits(auth, makeSubscription());
+      const result = await getCreditPurchaseLimits(auth, {
+        type: "stripe-subscription",
+        stripeSubscription: makeSubscription(),
+      });
 
       expect(result).toEqual({
         canPurchase: true,
@@ -298,7 +349,10 @@ describe("getCreditPurchaseLimits", () => {
     it("should not allow purchase when pending committed credits exist", async () => {
       listPendingCommittedSpy.mockResolvedValue([{ id: 1 } as CreditResource]);
 
-      const result = await getCreditPurchaseLimits(auth, makeSubscription());
+      const result = await getCreditPurchaseLimits(auth, {
+        type: "stripe-subscription",
+        stripeSubscription: makeSubscription(),
+      });
 
       expect(result).toEqual({
         canPurchase: false,
