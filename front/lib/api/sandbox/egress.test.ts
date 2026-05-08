@@ -108,8 +108,12 @@ describe("sandbox egress helpers", () => {
         .fn()
         .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
         .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
-        .mockResolvedValueOnce(new Ok({ exitCode: 1, stdout: "", stderr: "" }))
-        .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
+        .mockResolvedValueOnce(
+          new Ok({ exitCode: 0, stdout: "0 0", stderr: "" })
+        )
+        .mockResolvedValueOnce(
+          new Ok({ exitCode: 0, stdout: "1 0", stderr: "" })
+        )
         .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" })),
     };
 
@@ -249,7 +253,12 @@ describe("sandbox egress helpers", () => {
       writeFile: vi.fn().mockResolvedValue(new Ok(undefined)),
       exec: vi
         .fn()
-        .mockResolvedValue(new Ok({ exitCode: 0, stdout: "", stderr: "" })),
+        .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
+        .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
+        .mockResolvedValueOnce(
+          new Ok({ exitCode: 0, stdout: "1 0", stderr: "" })
+        )
+        .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" })),
     };
 
     const result = await setupEgressForwarder(auth, sandbox as never);
@@ -269,7 +278,9 @@ describe("sandbox egress helpers", () => {
         .fn()
         .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
         .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
-        .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
+        .mockResolvedValueOnce(
+          new Ok({ exitCode: 0, stdout: "1 0", stderr: "" })
+        )
         .mockResolvedValueOnce(
           new Ok({ exitCode: 1, stdout: "", stderr: "trust install failed" })
         ),
@@ -293,7 +304,9 @@ describe("sandbox egress helpers", () => {
         .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
         .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
         .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
-        .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
+        .mockResolvedValueOnce(
+          new Ok({ exitCode: 0, stdout: "1 0", stderr: "" })
+        )
         .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" })),
     };
 
@@ -306,7 +319,7 @@ describe("sandbox egress helpers", () => {
     expect(sandbox.exec).toHaveBeenNthCalledWith(
       2,
       auth,
-      expect.stringContaining("pkill -TERM dsbx"),
+      expect.stringContaining("pkill -KILL dsbx"),
       { user: "root" }
     );
     expect(sandbox.exec).toHaveBeenNthCalledWith(
@@ -314,6 +327,93 @@ describe("sandbox egress helpers", () => {
       auth,
       expect.stringContaining("/opt/bin/dsbx forward"),
       { user: "root" }
+    );
+  });
+
+  it("reinstalls only the trust bundle when the port is up but the bundle is missing", async () => {
+    const sandbox = {
+      providerId: "provider-sandbox-id",
+      sId: "sandbox-id",
+      exec: vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Ok({ exitCode: 0, stdout: "1 0", stderr: "" })
+        )
+        .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" })),
+    };
+
+    const result = await ensureSandboxEgressOnExec(auth, sandbox as never, {
+      wokeFromSleep: false,
+    });
+
+    expect(result).toEqual(new Ok(undefined));
+    expect(sandbox.exec).toHaveBeenCalledTimes(2);
+    const installCall = sandbox.exec.mock.calls[1][1] as string;
+    expect(installCall).toContain("/etc/dust/ca-bundle.pem");
+    expect(installCall).not.toContain("pkill");
+    expect(installCall).not.toContain("/opt/bin/dsbx forward");
+    expect(mockLoggerWarn).toHaveBeenCalledWith(
+      expect.objectContaining({ event: "egress.bundle_missing" }),
+      expect.any(String)
+    );
+  });
+
+  it("does a full restart when the port is not listening", async () => {
+    const sandbox = {
+      providerId: "provider-sandbox-id",
+      sId: "sandbox-id",
+      writeFile: vi.fn().mockResolvedValue(new Ok(undefined)),
+      exec: vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Ok({ exitCode: 0, stdout: "0 0", stderr: "" })
+        )
+        .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
+        .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
+        .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
+        .mockResolvedValueOnce(
+          new Ok({ exitCode: 0, stdout: "1 0", stderr: "" })
+        )
+        .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" })),
+    };
+
+    const result = await ensureSandboxEgressOnExec(auth, sandbox as never, {
+      wokeFromSleep: false,
+    });
+
+    expect(result).toEqual(new Ok(undefined));
+    expect(sandbox.exec).toHaveBeenNthCalledWith(
+      3,
+      auth,
+      expect.stringContaining("pkill -KILL dsbx"),
+      { user: "root" }
+    );
+    expect(mockLoggerWarn).toHaveBeenCalledWith(
+      expect.objectContaining({ event: "egress.health_fail" }),
+      expect.any(String)
+    );
+  });
+
+  it("returns ok without remediation when both port and bundle are healthy", async () => {
+    const sandbox = {
+      providerId: "provider-sandbox-id",
+      sId: "sandbox-id",
+      exec: vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Ok({ exitCode: 0, stdout: "1 1", stderr: "" })
+        ),
+    };
+
+    const result = await ensureSandboxEgressOnExec(auth, sandbox as never, {
+      wokeFromSleep: false,
+    });
+
+    expect(result).toEqual(new Ok(undefined));
+    expect(sandbox.exec).toHaveBeenCalledTimes(1);
+    expect(mockLoggerInfo).toHaveBeenCalledWith(
+      expect.objectContaining({ event: "egress.health_ok" }),
+      expect.any(String)
     );
   });
 
