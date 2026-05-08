@@ -332,6 +332,7 @@ describe("SandboxResource.ensureActive", () => {
       expect.objectContaining({
         envVars: expect.objectContaining({
           DST_API_TOKEN: "image-token",
+          DSEC_SECRET_TOKEN: "__DSEC_01010101010101010101010101010101__",
           DD_API_KEY: config.getDatadogApiKey() ?? "",
           CONVERSATION_ID: conversation.sId,
           WORKSPACE_ID: workspace.sId,
@@ -340,7 +341,7 @@ describe("SandboxResource.ensureActive", () => {
       { workspaceId: workspace.sId }
     );
     expect(mockProviderCreate.mock.calls[0]?.[0].envVars).not.toHaveProperty(
-      "DSEC_SECRET_TOKEN"
+      "DST_SECRET_TOKEN"
     );
   });
 });
