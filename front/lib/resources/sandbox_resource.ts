@@ -345,14 +345,14 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       return httpsSecretEnvResult;
     }
 
-    // Point curl-family clients at the merged bundle installed by
-    // installMitmTrustBundle (system roots + dsbx persistent CA). Safe to set
-    // unconditionally because ensureSandboxReady runs setupEgressForwarder
-    // before any mounts that read SSL_CERT_FILE.
+    // Point curl-family clients at /etc/dust/ca-bundle.pem. The image seeds
+    // this path with the system roots at build time, and installMitmTrustBundle
+    // atomically replaces it with (system roots + dsbx CA) once the forwarder
+    // is up. Safe to set unconditionally: the file always exists, even before
+    // egress setup runs and in dev-unrestricted mode where it never runs.
     //
-    // TODO(phase 1): cover non-curl runtimes (NODE_EXTRA_CA_CERTS, DENO_CERT,
-    // etc.) per design_docs/SECRET_SWAP_DESIGN.md, "Client-language
-    // agnosticism" under "Proposal" (per-runtime trust env-var matrix).
+    // TODO: cover non-curl runtimes (NODE_EXTRA_CA_CERTS, DENO_CERT, etc.) per
+    // design_docs/SECRET_SWAP_DESIGN.md, "Client-language agnosticism".
     const trustBundleEnv: Record<string, string> = {
       SSL_CERT_FILE: "/etc/dust/ca-bundle.pem",
       CURL_CA_BUNDLE: "/etc/dust/ca-bundle.pem",

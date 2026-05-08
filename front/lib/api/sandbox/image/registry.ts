@@ -271,6 +271,16 @@ SHELLEOF`,
     "/etc/systemd/system/fluent-bit.service",
     { user: "root" }
   )
+  // Seed /etc/dust/ca-bundle.pem with the system roots so the SSL_CERT_FILE /
+  // CURL_CA_BUNDLE env vars (set unconditionally on the sandbox process) point
+  // at a valid file from the moment the sandbox boots. installMitmTrustBundle
+  // overwrites this atomically with (system roots + dsbx CA) once the egress
+  // forwarder is up; in dev-unrestricted mode it stays the system-only copy.
+  .runCmd(
+    "mkdir -p /etc/dust && " +
+      "install -m 644 /etc/ssl/certs/ca-certificates.crt /etc/dust/ca-bundle.pem",
+    { user: "root" }
+  )
   .copy(
     getLocalContent(EGRESS_LOCAL_DIR, "egress-nftables.sh"),
     "/etc/dust/egress-nftables.sh",
