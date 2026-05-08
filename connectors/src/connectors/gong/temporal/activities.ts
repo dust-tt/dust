@@ -226,7 +226,6 @@ export async function gongSyncTranscriptsActivity({
     totalRecords: number;
   };
   try {
-
     logger.info(
       { ...loggerArgs, pageCursor },
       "[Gong] Fetching transcripts page."
