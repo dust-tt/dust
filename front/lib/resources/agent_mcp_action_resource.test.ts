@@ -676,12 +676,10 @@ describe("Output items with GCS storage", () => {
 });
 
 describe("warmGcsContentCache", () => {
-  let workspace: WorkspaceType;
   let auth: Authenticator;
 
   beforeEach(async () => {
     const setup = await createResourceTest({});
-    workspace = setup.workspace;
     auth = setup.authenticator;
 
     const redis = await getRedisCacheClient({ origin: "cache_with_redis" });
