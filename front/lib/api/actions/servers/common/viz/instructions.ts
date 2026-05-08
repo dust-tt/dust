@@ -1,3 +1,4 @@
+import { FILES_SERVER_NAME } from "@app/lib/api/actions/servers/files/metadata";
 import { frameContentType, frameSlideshowContentType } from "@app/types/files";
 
 export const VIZ_REACT_COMPONENT_GUIDELINES = `
@@ -55,13 +56,12 @@ export const VIZ_STYLING_GUIDELINES = `
   - If you need to generate a legend for a chart, ensure it uses relative positioning or follows the natural flow of the layout, avoiding \`position: absolute\`, to maintain responsiveness and adaptability.
 `;
 
-// TODO(20260428 FILE_SYSTEM): Use other set of instructions once GCS files are exposed to models if new file system FF is on.
 export const VIZ_FILE_HANDLING_GUIDELINES = `
 - Using any file from the \`conversation_files__list_files\` action when available:
   - Files from the conversation as returned by \`conversation_files__list_files\` can be accessed using the \`useFile()\` React hook (all files can be accessed by the hook irrespective of their status).
   - \`useFile\` has to be imported from \`"@dust/react-hooks"\`.
   - Like any React hook, \`useFile\` must be called inside a React component at the top level (not in event handlers, loops, or conditions).
-  - File IDs must always start with "fil_" prefix.
+  - \`useFile()\` accepts either a file ID (e.g. \`"fil_abc123"\`, as found in \`<attachment id="fil_..." ...>\` tags) or a scoped file path (e.g. \`"conversation/report.csv"\`, as returned by the \`${FILES_SERVER_NAME}\` MCP server). Both resolve to the same \`File\` object — pass whichever identifier is most convenient.
   - Once/if the file is available, \`useFile()\` will return a non-null \`File\` object. The \`File\` object is a browser File object. Examples of using \`useFile\` are available below.
   - \`file.text()\` is ASYNC - Always use await \`file.text()\` inside useEffect with async function. Never call \`file.text()\` directly in render logic as it returns a Promise, not a string.
   - Always use \`papaparse\` to parse CSV files.
@@ -78,9 +78,9 @@ export const VIZ_FILE_HANDLING_GUIDELINES = `
   - Always load images via \`useFile()\` to obtain a \`File\` object — never reference images directly by URL/path or by copying the \`<attachment/>\` tag contents.
   - Create a local object URL from the \`File\` when rendering (e.g. \`const src = URL.createObjectURL(file)\`).
   - Use the resulting object URL for \`<img src={src} alt="..." />\` or as a background image; do not attempt to fetch remote images (no internet access).
-  - When creating custom components that render files, always use \`fileId\` as the prop name for file identifiers (e.g., \`<EventPhoto fileId="fil_abc123" caption="..." />\`). This naming convention ensures proper file prefetching during server-side rendering.
+  - When creating custom components that render files, always use \`fileId\` as the prop name for file identifiers (e.g., \`<EventPhoto fileId="fil_abc123" caption="..." />\` or \`<EventPhoto fileId="conversation/photo.jpg" caption="..." />\`). This naming convention ensures proper file prefetching during server-side rendering. The prop accepts either a file ID or a scoped file path.
 - Importing other frames as React components:
-  - A frame whose file ID starts with "fil_" can be imported directly as a React component using a standard ES import: \`import MyComponent from "fil_abc123"\`.
+  - Another frame can be imported directly as a React component using a standard ES import, with either its file ID (\`import MyComponent from "fil_abc123"\`) or its scoped file path (\`import MyComponent from "conversation/MyFrame.tsx"\`).
   - The default export of the imported frame is available as a fully functional React component that can be rendered like any other component.
   - This enables frame composition: a parent frame can assemble multiple child frames into a single layout without duplicating code.
   - Transitive imports are supported — an imported frame may itself import other frames.
@@ -129,7 +129,6 @@ export const VIZ_MISCELLANEOUS_GUIDELINES = `
   - If needed, the application must contain buttons or other navigation elements to allow the user to scroll/cycle through the content.
 `;
 
-// TODO(20260428 FILE_SYSTEM): Use other examples once GCS files are exposed to models if new file system FF is on.
 export const VIZ_USE_FILE_EXAMPLES = `
 Example using the \`useFile\` hook:
 
@@ -140,7 +139,10 @@ import { useFile } from "@dust/react-hooks";
 import Papa from "papaparse";
 
 function DataChartComponent() {
-  const file = useFile("fil_abc123");
+  // Either form works:
+  //   const file = useFile("fil_abc123");
+  //   const file = useFile("conversation/data.csv");
+  const file = useFile("conversation/data.csv");
   const [data, setData] = useState([]);
   const [fileContent, setFileContent] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -174,7 +176,7 @@ function DataChartComponent() {
 export default DataChartComponent;
 \`\`\`
 
-\`fileId\` can be extracted from the \`<attachment id="\${FILE_ID}" type... name...>\` tags returned by the \`conversation_files__list_files\` action.
+The argument to \`useFile\` is either a file ID (extracted from the \`<attachment id="\${FILE_ID}" type... name...>\` tags returned by the \`conversation_files__list_files\` action) or a scoped file path (e.g. \`conversation/data.csv\`, as returned by the \`${FILES_SERVER_NAME}\` MCP server).
 
 Example using the \`triggerUserFileDownload\` hook:
 
@@ -197,8 +199,8 @@ Example importing another frame as a React component:
 \`\`\`
 // Parent frame that composes two child frames side by side.
 import React from "react";
-import SalesChart from "fil_abc123";   // another frame
-import RegionMap from "fil_def456";    // another frame
+import SalesChart from "fil_abc123";              // by file ID
+import RegionMap from "conversation/RegionMap.tsx"; // by scoped file path
 
 export default function Dashboard() {
   return (
@@ -210,7 +212,7 @@ export default function Dashboard() {
 }
 \`\`\`
 
-The file ID (e.g. "fil_abc123") comes from the \`<attachment id="\${FILE_ID}" ...>\` tag of the frame file.
+The file ID (e.g. "fil_abc123") comes from the \`<attachment id="\${FILE_ID}" ...>\` tag of the frame file. The scoped file path (e.g. "conversation/RegionMap.tsx") comes from the \`${FILES_SERVER_NAME}\` MCP server.
 `;
 
 export const VIZ_CHART_EXAMPLES = `
