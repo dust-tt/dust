@@ -67,22 +67,22 @@ async function handler(
   }
 
   const subscription = auth.subscription();
-  if (!subscription) {
+  if (!subscription || !subscription.stripeSubscriptionId) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "subscription_not_found",
         message:
-          "No active subscription found. Please subscribe to a plan first.",
+          "No active Stripe subscription found. Please subscribe to a plan first.",
       },
     });
   }
 
   switch (req.method) {
     case "GET": {
-      const stripeSubscription = subscription.stripeSubscriptionId
-        ? await getStripeSubscription(subscription.stripeSubscriptionId)
-        : null;
+      const stripeSubscription = await getStripeSubscription(
+        subscription.stripeSubscriptionId
+      );
 
       let isEnterprise = false;
       let currency = "usd";
@@ -114,9 +114,9 @@ async function handler(
         await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
       const discountPercent = programmaticConfig?.defaultDiscountPercent ?? 0;
 
-      const creditPricing = stripeSubscription
-        ? await getStripePricingData(getCreditPurchasePriceId())
-        : null;
+      const creditPricing = await getStripePricingData(
+        getCreditPurchasePriceId()
+      );
 
       return res.status(200).json({
         isEnterprise,
@@ -129,15 +129,6 @@ async function handler(
     }
 
     case "POST": {
-      if (!subscription.stripeSubscriptionId) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "subscription_not_found",
-            message: "Credit purchases require an active Stripe subscription.",
-          },
-        });
-      }
       const workspace = auth.getNonNullableWorkspace();
       const bodyValidation = PostCreditPurchaseRequestBody.decode(req.body);
       if (isLeft(bodyValidation)) {
