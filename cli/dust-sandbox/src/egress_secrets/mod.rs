@@ -51,8 +51,7 @@ impl SecretTable {
                 return Ok(Self::default());
             }
             Err(error) => {
-                return Err(error)
-                    .with_context(|| format!("failed to read {}", path.display()));
+                return Err(error).with_context(|| format!("failed to read {}", path.display()));
             }
         };
 
