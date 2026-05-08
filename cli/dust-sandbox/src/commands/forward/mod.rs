@@ -20,6 +20,8 @@ use tokio::time::{sleep, timeout, timeout_at, Instant};
 use tokio_rustls::TlsConnector;
 use tracing::{debug, info, warn};
 
+use crate::egress_secrets::SecretTable;
+
 use self::deny_log::{append_deny_log, DenyReason};
 use self::handshake::{build_handshake_frame, ALLOW_RESPONSE, DENY_RESPONSE};
 use self::http_host::parse_http_host;
@@ -34,6 +36,8 @@ const DOMAIN_PEEK_BUFFER_SIZE: usize = 16 * 1024;
 
 const MITM_CA_CERT_PATH: &str = "/run/dust/egress-ca.pem";
 const MITM_CA_KEY_PATH: &str = "/run/dust/egress-ca.key";
+// Must match `front/lib/api/sandbox/egress_secrets.ts:EGRESS_SECRETS_PATH`.
+const EGRESS_SECRETS_PATH: &str = "/run/dust/egress-secrets.json";
 
 #[derive(clap::Args, Debug, Clone)]
 pub struct ForwardArgs {
@@ -52,6 +56,9 @@ pub struct ForwardArgs {
     /// Path to the deny log file
     #[arg(long, default_value = "/tmp/dust-egress-denied.log")]
     deny_log: PathBuf,
+    /// Path to the one-shot egress secrets file loaded at startup
+    #[arg(long, default_value = EGRESS_SECRETS_PATH)]
+    secrets_file: PathBuf,
 }
 
 #[derive(Clone)]
@@ -60,6 +67,10 @@ struct ForwardRuntime {
     proxy_addr: std::net::SocketAddr,
     proxy_tls_name: Arc<str>,
     deny_log: Arc<PathBuf>,
+    // Plumbed in Slice 4; consumed by SNI-scoped MITM in Slice 5 and the
+    // request rewriter in Slice 6.
+    #[allow(dead_code)]
+    secret_table: Arc<SecretTable>,
     tls_connector: TlsConnector,
 }
 
@@ -93,6 +104,12 @@ pub async fn cmd_forward(args: ForwardArgs) -> Result<()> {
     )
     .context("failed to load or generate persistent MITM CA")?;
 
+    // The secrets file is intentionally loaded once at dsbx startup. Front
+    // propagates changes in Phase 1 by rewriting the file and restarting dsbx
+    // on sandbox wake; live reload/inotify is deferred to a later phase.
+    let secret_table =
+        SecretTable::load(&args.secrets_file).context("failed to load egress secrets table")?;
+
     let listener = TcpListener::bind(args.listen)
         .await
         .with_context(|| format!("failed to bind forward listener on {}", args.listen))?;
@@ -102,6 +119,9 @@ pub async fn cmd_forward(args: ForwardArgs) -> Result<()> {
         proxy_addr = %args.proxy_addr,
         proxy_tls_name = %args.proxy_tls_name,
         deny_log = %args.deny_log.display(),
+        secrets_file = %args.secrets_file.display(),
+        secret_count = secret_table.len(),
+        domain_pattern_count = secret_table.sni_match_set.pattern_count(),
         "starting dsbx forwarder"
     );
 
@@ -110,6 +130,7 @@ pub async fn cmd_forward(args: ForwardArgs) -> Result<()> {
         proxy_addr: args.proxy_addr,
         proxy_tls_name: Arc::<str>::from(args.proxy_tls_name),
         deny_log: Arc::new(args.deny_log),
+        secret_table: Arc::new(secret_table),
         tls_connector,
     };
 

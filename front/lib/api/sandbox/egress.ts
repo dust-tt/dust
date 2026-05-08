@@ -1,7 +1,10 @@
 import { lookup } from "node:dns/promises";
 import config from "@app/lib/api/config";
 import { config as regionConfig } from "@app/lib/api/regions/config";
-import { writeEgressSecretsFile } from "@app/lib/api/sandbox/egress_secrets";
+import {
+  EGRESS_SECRETS_PATH,
+  writeEgressSecretsFile,
+} from "@app/lib/api/sandbox/egress_secrets";
 import { shellEscape } from "@app/lib/api/sandbox/shell";
 import type { Authenticator } from "@app/lib/auth";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
@@ -339,6 +342,7 @@ export async function setupEgressForwarder(
     `--proxy-tls-name ${shellEscape(getProxyTlsName())} ` +
     `--listen ${shellEscape(EGRESS_FORWARDER_LISTEN_ADDR)} ` +
     `--deny-log ${shellEscape(EGRESS_DENY_LOG_PATH)} ` +
+    `--secrets-file ${shellEscape(EGRESS_SECRETS_PATH)} ` +
     `>${shellEscape(EGRESS_FORWARDER_LOG_PATH)} 2>&1 &`;
 
   const startResult = await runSuccessfulSandboxCommand(
