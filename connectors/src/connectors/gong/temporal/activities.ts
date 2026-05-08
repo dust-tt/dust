@@ -226,10 +226,19 @@ export async function gongSyncTranscriptsActivity({
     totalRecords: number;
   };
   try {
+
+    logger.info(
+      { ...loggerArgs, pageCursor },
+      "[Gong] Fetching transcripts page."
+    );
     transcriptsResp = await gongClient.getTranscripts({
       startTimestamp: configuration.getSyncStartTimestamp(),
       pageCursor,
     });
+    logger.info(
+      { ...loggerArgs, pageCursor },
+      "[Gong] Success transcripts page."
+    );
   } catch (err) {
     const isExpiredCursorError =
       err instanceof GongAPIError &&
