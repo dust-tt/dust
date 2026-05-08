@@ -47,28 +47,26 @@ const StripeSetupSessionSchema = z.object({
     .optional(),
 });
 
-async function resolveCheckoutCountry({
+async function getSetupIntentDetails({
   setupIntentId,
-  customerCountry,
 }: {
-  setupIntentId: string | null | undefined;
-  customerCountry: string | null | undefined;
-}): Promise<string | null> {
-  if (customerCountry) {
-    return customerCountry;
-  }
-  if (!setupIntentId) {
-    return null;
-  }
+  setupIntentId: string;
+}): Promise<{ paymentMethodId: string | null; country: string | null }> {
   const stripe = getStripeClient();
   const setupIntent = await stripe.setupIntents.retrieve(setupIntentId, {
     expand: ["payment_method"],
   });
   const pm = setupIntent.payment_method;
   if (pm && typeof pm !== "string") {
-    return pm.billing_details.address?.country ?? null;
+    return {
+      paymentMethodId: pm.id,
+      country: pm.billing_details.address?.country ?? null,
+    };
   }
-  return null;
+  if (typeof pm === "string") {
+    return { paymentMethodId: pm, country: null };
+  }
+  return { paymentMethodId: null, country: null };
 }
 
 export async function handleMetronomeSetupCheckout({
@@ -109,14 +107,40 @@ export async function handleMetronomeSetupCheckout({
     "[Metronome] Handle metronome checkout"
   );
 
-  // Resolve the package alias based on the customer's billing country.
-  // With billing_address_collection: "auto", Stripe may not populate
-  // customer_details.address — fall back to the SetupIntent's payment method
-  // billing details, which is reliably set for card sessions.
-  const customerCountry = await resolveCheckoutCountry({
-    setupIntentId,
-    customerCountry: customerDetails?.address?.country,
+  // Stripe setup mode attaches the saved PaymentMethod to the customer but
+  // does NOT set it as the default for invoicing. Without setting it here,
+  // Metronome-generated invoices stay "Incomplete: customer hasn't attempted
+  // to pay yet" because Stripe has no default PM to charge off-session.
+  // We also reuse the SetupIntent's billing country as a fallback when
+  // billing_address_collection: "auto" leaves customer_details.address empty.
+  const setupIntentDetails = setupIntentId
+    ? await getSetupIntentDetails({ setupIntentId })
+    : { paymentMethodId: null, country: null };
+
+  // Stamp workspace_id on the Stripe customer so Stripe webhooks for
+  // Metronome-pushed invoices (which carry no Stripe subscription id) can
+  // resolve the invoice back to a workspace.
+  const stripe = getStripeClient();
+  await stripe.customers.update(stripeCustomerId, {
+    metadata: { workspace_id: workspaceId },
+    ...(setupIntentDetails.paymentMethodId
+      ? {
+          invoice_settings: {
+            default_payment_method: setupIntentDetails.paymentMethodId,
+          },
+        }
+      : {}),
   });
+
+  if (!setupIntentDetails.paymentMethodId) {
+    logger.warn(
+      { sessionId, workspaceId, stripeCustomerId, setupIntentId },
+      "[Metronome] No payment method on setup intent; default payment method not set. Future invoices may fail to auto-charge."
+    );
+  }
+
+  const customerCountry =
+    customerDetails?.address?.country ?? setupIntentDetails.country;
 
   const stripeCustomer = await getStripeCustomer(stripeCustomerId);
   const billingCurrency = resolveCurrencyFromStripe({
