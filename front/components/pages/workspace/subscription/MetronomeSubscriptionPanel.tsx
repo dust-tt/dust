@@ -26,6 +26,7 @@ import {
   Button,
   ButtonsSwitch,
   ButtonsSwitchList,
+  CardIcon,
   Chip,
   Dialog,
   DialogContainer,
@@ -365,6 +366,36 @@ export function MetronomeSubscriptionPanel({
         <div>
           <Page.Horizontal gap="sm">
             <Chip size="sm" color={chipColor} label={plan.name} />
+            {!isEnterprise &&
+              (isCancellationScheduled ? (
+                <Button
+                  size="sm"
+                  label="Resume subscription"
+                  variant="highlight"
+                  disabled={isReactivating}
+                  onClick={withTracking(
+                    TRACKING_AREAS.AUTH,
+                    "subscription_reactivate",
+                    () => {
+                      void reactivateSubscription();
+                    }
+                  )}
+                />
+              ) : (
+                <Button
+                  size="sm"
+                  label="Cancel subscription"
+                  variant="warning"
+                  disabled={isCancelling}
+                  onClick={withTracking(
+                    TRACKING_AREAS.AUTH,
+                    "subscription_cancel",
+                    () => {
+                      setShowCancelDialog(true);
+                    }
+                  )}
+                />
+              ))}
           </Page.Horizontal>
         </div>
 
@@ -411,35 +442,19 @@ export function MetronomeSubscriptionPanel({
               No billing information available for this period yet.
             </Page.P>
           )}
-          <div className="my-5 flex flex-row gap-2">
-            {!isEnterprise &&
-              (isCancellationScheduled ? (
-                <Button
-                  label="Resume subscription"
-                  variant="highlight"
-                  disabled={isReactivating}
-                  onClick={withTracking(
-                    TRACKING_AREAS.AUTH,
-                    "subscription_reactivate",
-                    () => {
-                      void reactivateSubscription();
-                    }
-                  )}
-                />
-              ) : (
-                <Button
-                  label="Cancel subscription"
-                  variant="warning"
-                  disabled={isCancelling}
-                  onClick={withTracking(
-                    TRACKING_AREAS.AUTH,
-                    "subscription_cancel",
-                    () => {
-                      setShowCancelDialog(true);
-                    }
-                  )}
-                />
-              ))}
+          <div className="my-5">
+            <Button
+              icon={CardIcon}
+              label="Your billing dashboard on Stripe"
+              variant="ghost"
+              onClick={withTracking(
+                TRACKING_AREAS.AUTH,
+                "subscription_stripe_portal",
+                () => {
+                  window.open(`/w/${owner.sId}/subscription/manage`, "_blank");
+                }
+              )}
+            />
           </div>
         </Page.Vertical>
 

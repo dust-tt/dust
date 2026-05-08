@@ -458,7 +458,10 @@ describe("createEnterpriseCreditPurchase", () => {
 
     await createEnterpriseCreditPurchase({
       auth,
-      stripeSubscriptionId: subscriptionId,
+      billingTarget: {
+        type: "stripe-subscription",
+        stripeSubscriptionId: subscriptionId,
+      },
       amountMicroUsd: 5_000_000_000,
     });
 
@@ -482,7 +485,10 @@ describe("createEnterpriseCreditPurchase", () => {
 
     await createEnterpriseCreditPurchase({
       auth,
-      stripeSubscriptionId: subscriptionId,
+      billingTarget: {
+        type: "stripe-subscription",
+        stripeSubscriptionId: subscriptionId,
+      },
       amountMicroUsd: 5_000_000_000,
       discountPercent: 15,
     });
@@ -503,7 +509,10 @@ describe("createEnterpriseCreditPurchase", () => {
 
     const result = await createEnterpriseCreditPurchase({
       auth,
-      stripeSubscriptionId: subscriptionId,
+      billingTarget: {
+        type: "stripe-subscription",
+        stripeSubscriptionId: subscriptionId,
+      },
       amountMicroUsd: 5_000_000_000,
       discountPercent: 10,
     });
@@ -526,7 +535,10 @@ describe("createEnterpriseCreditPurchase", () => {
 
     await createEnterpriseCreditPurchase({
       auth,
-      stripeSubscriptionId: subscriptionId,
+      billingTarget: {
+        type: "stripe-subscription",
+        stripeSubscriptionId: subscriptionId,
+      },
       amountMicroUsd: 5_000_000_000,
     });
 
@@ -546,7 +558,10 @@ describe("createEnterpriseCreditPurchase", () => {
 
     const result = await createEnterpriseCreditPurchase({
       auth,
-      stripeSubscriptionId: subscriptionId,
+      billingTarget: {
+        type: "stripe-subscription",
+        stripeSubscriptionId: subscriptionId,
+      },
       amountMicroUsd: 5_000_000_000,
       startDate,
       expirationDate,
@@ -565,7 +580,10 @@ describe("createEnterpriseCreditPurchase", () => {
 
     const result = await createEnterpriseCreditPurchase({
       auth,
-      stripeSubscriptionId: subscriptionId,
+      billingTarget: {
+        type: "stripe-subscription",
+        stripeSubscriptionId: subscriptionId,
+      },
       amountMicroUsd: 5_000_000_000,
       discountPercent: 15,
     });
@@ -584,7 +602,10 @@ describe("createEnterpriseCreditPurchase", () => {
 
     const result = await createEnterpriseCreditPurchase({
       auth,
-      stripeSubscriptionId: subscriptionId,
+      billingTarget: {
+        type: "stripe-subscription",
+        stripeSubscriptionId: subscriptionId,
+      },
       amountMicroUsd: 5_000_000_000,
     });
 
@@ -604,7 +625,10 @@ describe("createEnterpriseCreditPurchase", () => {
 
     const result = await createEnterpriseCreditPurchase({
       auth,
-      stripeSubscriptionId: subscriptionId,
+      billingTarget: {
+        type: "stripe-subscription",
+        stripeSubscriptionId: subscriptionId,
+      },
       amountMicroUsd: 5_000_000_000,
     });
 
@@ -637,7 +661,10 @@ describe("createProCreditPurchase", () => {
 
     await createProCreditPurchase({
       auth,
-      stripeSubscriptionId: subscriptionId,
+      billingTarget: {
+        type: "stripe-subscription",
+        stripeSubscriptionId: subscriptionId,
+      },
       amountMicroUsd: 100_000_000,
     });
 
@@ -662,7 +689,10 @@ describe("createProCreditPurchase", () => {
 
     await createProCreditPurchase({
       auth,
-      stripeSubscriptionId: subscriptionId,
+      billingTarget: {
+        type: "stripe-subscription",
+        stripeSubscriptionId: subscriptionId,
+      },
       amountMicroUsd: 100_000_000,
       discountPercent: 20,
     });
@@ -684,7 +714,10 @@ describe("createProCreditPurchase", () => {
 
     await createProCreditPurchase({
       auth,
-      stripeSubscriptionId: subscriptionId,
+      billingTarget: {
+        type: "stripe-subscription",
+        stripeSubscriptionId: subscriptionId,
+      },
       amountMicroUsd: 100_000_000,
     });
 
@@ -709,7 +742,10 @@ describe("createProCreditPurchase", () => {
 
     await createProCreditPurchase({
       auth,
-      stripeSubscriptionId: subscriptionId,
+      billingTarget: {
+        type: "stripe-subscription",
+        stripeSubscriptionId: subscriptionId,
+      },
       amountMicroUsd: 100_000_000,
     });
 
@@ -728,7 +764,10 @@ describe("createProCreditPurchase", () => {
 
     const result = await createProCreditPurchase({
       auth,
-      stripeSubscriptionId: subscriptionId,
+      billingTarget: {
+        type: "stripe-subscription",
+        stripeSubscriptionId: subscriptionId,
+      },
       amountMicroUsd: 100_000_000,
     });
 
@@ -752,7 +791,10 @@ describe("createProCreditPurchase", () => {
 
     const result = await createProCreditPurchase({
       auth,
-      stripeSubscriptionId: subscriptionId,
+      billingTarget: {
+        type: "stripe-subscription",
+        stripeSubscriptionId: subscriptionId,
+      },
       amountMicroUsd: 100_000_000,
     });
 
@@ -769,7 +811,10 @@ describe("createProCreditPurchase", () => {
 
     const result = await createProCreditPurchase({
       auth,
-      stripeSubscriptionId: subscriptionId,
+      billingTarget: {
+        type: "stripe-subscription",
+        stripeSubscriptionId: subscriptionId,
+      },
       amountMicroUsd: 100_000_000,
       discountPercent: 20,
     });
@@ -788,7 +833,10 @@ describe("createProCreditPurchase", () => {
 
     const result = await createProCreditPurchase({
       auth,
-      stripeSubscriptionId: subscriptionId,
+      billingTarget: {
+        type: "stripe-subscription",
+        stripeSubscriptionId: subscriptionId,
+      },
       amountMicroUsd: 100_000_000,
     });
 
@@ -808,7 +856,10 @@ describe("createProCreditPurchase", () => {
 
     const result = await createProCreditPurchase({
       auth,
-      stripeSubscriptionId: subscriptionId,
+      billingTarget: {
+        type: "stripe-subscription",
+        stripeSubscriptionId: subscriptionId,
+      },
       amountMicroUsd: 100_000_000,
     });
 
@@ -831,7 +882,10 @@ describe("createProCreditPurchase", () => {
 
     const result = await createProCreditPurchase({
       auth,
-      stripeSubscriptionId: subscriptionId,
+      billingTarget: {
+        type: "stripe-subscription",
+        stripeSubscriptionId: subscriptionId,
+      },
       amountMicroUsd: 100_000_000,
     });
 
