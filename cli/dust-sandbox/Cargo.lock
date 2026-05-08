@@ -324,6 +324,7 @@ dependencies = [
  "tokio-rustls",
  "tracing",
  "tracing-subscriber",
+ "x509-parser",
 ]
 
 [[package]]

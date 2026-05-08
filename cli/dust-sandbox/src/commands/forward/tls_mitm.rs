@@ -84,6 +84,23 @@ impl MitmCa {
             .with_context(|| format!("failed to parse CA cert file {}", cert_path.display()))?;
         let ca_key_pair = KeyPair::from_pem(&ca_key_pem)
             .with_context(|| format!("failed to parse CA key file {}", key_path.display()))?;
+
+        // The on-disk cert and key must agree on the public key. Without this
+        // check, a stray cert-from-A + key-from-B pair would happily load:
+        // leaves we sign would validate against B's public key, but front
+        // installs the on-disk (A's) cert in the trust bundle, so clients
+        // would reject every forged leaf. The current write path never
+        // overwrites an existing pair, so this can't happen today, but the
+        // check makes the invariant explicit against future re-key paths or
+        // external tampering.
+        verify_cert_key_match(&ca_cert_pem, &ca_key_pair).with_context(|| {
+            format!(
+                "CA cert/key pair on disk is inconsistent (cert={}, key={})",
+                cert_path.display(),
+                key_path.display()
+            )
+        })?;
+
         let ca_cert = params
             .self_signed(&ca_key_pair)
             .context("failed to reconstruct persisted CA certificate")?;
@@ -179,6 +196,20 @@ impl ResolvesServerCert for SingleCertResolver {
     fn resolve(&self, _client_hello: rustls::server::ClientHello<'_>) -> Option<Arc<CertifiedKey>> {
         Some(Arc::clone(&self.key))
     }
+}
+
+fn verify_cert_key_match(cert_pem: &str, key_pair: &KeyPair) -> Result<()> {
+    use x509_parser::prelude::FromDer;
+    let (_, pem_block) = x509_parser::pem::parse_x509_pem(cert_pem.as_bytes())
+        .map_err(|err| anyhow::anyhow!("failed to parse cert PEM: {err}"))?;
+    let (_, cert) = x509_parser::certificate::X509Certificate::from_der(&pem_block.contents)
+        .map_err(|err| anyhow::anyhow!("failed to parse cert DER: {err}"))?;
+    let cert_spki = cert.public_key().raw;
+    let key_spki = key_pair.public_key_der();
+    if cert_spki != key_spki.as_slice() {
+        bail!("CA cert SubjectPublicKeyInfo does not match key pair public key");
+    }
+    Ok(())
 }
 
 fn write_file_atomically(path: &Path, contents: &[u8], mode: u32) -> Result<()> {
@@ -313,6 +344,44 @@ mod tests {
             Ok(_) => anyhow::bail!("partial CA unexpectedly loaded"),
             Err(error) => {
                 assert!(error.to_string().contains("incomplete MITM CA state"));
+            }
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn mismatched_cert_and_key_fails_closed() -> Result<()> {
+        let dir_a = tempfile::tempdir().context("failed to create tempdir A")?;
+        let dir_b = tempfile::tempdir().context("failed to create tempdir B")?;
+        let cert_a = dir_a.path().join("egress-ca.pem");
+        let key_a = dir_a.path().join("egress-ca.key");
+        let cert_b = dir_b.path().join("egress-ca.pem");
+        let key_b = dir_b.path().join("egress-ca.key");
+
+        // Generate two independent CAs.
+        let _ = MitmCa::load_or_generate(&cert_a, &key_a)?;
+        let _ = MitmCa::load_or_generate(&cert_b, &key_b)?;
+
+        // Cross the cert from CA A with the key from CA B in a third dir.
+        let dir_mixed = tempfile::tempdir().context("failed to create tempdir mixed")?;
+        let cert_mixed = dir_mixed.path().join("egress-ca.pem");
+        let key_mixed = dir_mixed.path().join("egress-ca.key");
+        fs::copy(&cert_a, &cert_mixed).context("failed to copy cert A")?;
+        fs::copy(&key_b, &key_mixed).context("failed to copy key B")?;
+
+        match MitmCa::load_or_generate(&cert_mixed, &key_mixed) {
+            Ok(_) => anyhow::bail!("mismatched cert/key unexpectedly loaded"),
+            Err(error) => {
+                let msg = format!("{:#}", error);
+                assert!(
+                    msg.contains("CA cert/key pair on disk is inconsistent"),
+                    "unexpected error: {msg}"
+                );
+                assert!(
+                    msg.contains("SubjectPublicKeyInfo"),
+                    "unexpected error: {msg}"
+                );
             }
         }
 
