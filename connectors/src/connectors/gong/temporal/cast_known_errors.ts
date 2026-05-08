@@ -1,5 +1,5 @@
 import { GongAPIError } from "@connectors/connectors/gong/lib/errors";
-import { clampRetryAfterMs } from "@connectors/connectors/gong/lib/gong_api";
+import { clampRetryAfterSeconds } from "@connectors/connectors/gong/lib/gong_api";
 import {
   DustConnectorWorkflowError,
   ProviderRateLimitError,
@@ -24,12 +24,14 @@ export class GongCastKnownErrorsInterceptor
       if (err instanceof GongAPIError) {
         switch (err.status) {
           case 429: {
-            const clampedMs = clampRetryAfterMs(err.retryAfterMs);
-            if (clampedMs !== undefined) {
+            const clampedSeconds = clampRetryAfterSeconds(
+              err.retryAfterSeconds
+            );
+            if (clampedSeconds !== undefined) {
               // Override the default retry delay of the activity policy.
               throw ApplicationFailure.create({
-                message: `${err.message}. Retry after ${clampedMs}ms`,
-                nextRetryDelay: clampedMs,
+                message: `${err.message}. Retry after ${clampedSeconds * 1000}ms`,
+                nextRetryDelay: 1000 * clampedSeconds,
                 cause: err,
               });
             }
