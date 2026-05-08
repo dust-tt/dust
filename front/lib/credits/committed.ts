@@ -14,7 +14,7 @@ import {
   isCreditPurchaseInvoice,
   isEnterpriseSubscription,
   MAX_PRO_INVOICE_ATTEMPTS_BEFORE_VOIDED,
-  makeCreditPurchaseOneOffInvoice,
+  makeCreditPurchaseOneOffInvoiceForSubscription,
   makeCreditPurchaseOneOffInvoiceForCustomer,
   payInvoice,
   voidInvoiceWithReason,
@@ -372,7 +372,7 @@ export async function createEnterpriseCreditPurchase({
 
   const invoiceResult =
     billingTarget.type === "stripe-subscription"
-      ? await makeCreditPurchaseOneOffInvoice({
+      ? await makeCreditPurchaseOneOffInvoiceForSubscription({
           stripeSubscriptionId: billingTarget.stripeSubscriptionId,
           amountMicroUsd,
           couponId,
@@ -645,7 +645,7 @@ export async function createProCreditPurchase({
 
   const invoiceResult =
     billingTarget.type === "stripe-subscription"
-      ? await makeCreditPurchaseOneOffInvoice({
+      ? await makeCreditPurchaseOneOffInvoiceForSubscription({
           stripeSubscriptionId: billingTarget.stripeSubscriptionId,
           amountMicroUsd,
           couponId,

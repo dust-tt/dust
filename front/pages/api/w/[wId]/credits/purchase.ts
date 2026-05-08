@@ -8,10 +8,7 @@ import {
   createProCreditPurchase,
 } from "@app/lib/credits/committed";
 import type { CreditPurchaseLimits } from "@app/lib/credits/limits";
-import {
-  getCreditPurchaseLimits,
-  getCreditPurchaseLimitsMetronome,
-} from "@app/lib/credits/limits";
+import { getCreditPurchaseLimits } from "@app/lib/credits/limits";
 import { getMetronomeCustomerStripeCustomerId } from "@app/lib/metronome/client";
 import { resolveCurrencyForExistingMetronomeCustomer } from "@app/lib/metronome/contracts";
 import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
@@ -84,7 +81,7 @@ async function handler(
       api_error: {
         type: "subscription_not_found",
         message:
-          "No active xsubscription found. Please subscribe to a plan first.",
+          "No active subscription found. Please subscribe to a plan first.",
       },
     });
   }
@@ -100,10 +97,10 @@ async function handler(
 
       if (isMetronomeOnly) {
         isEnterprise = isEntreprisePlanPrefix(subscription.getPlan().code);
-        creditPurchaseLimits = await getCreditPurchaseLimitsMetronome(
-          auth,
-          subscription
-        );
+        creditPurchaseLimits = await getCreditPurchaseLimits(auth, {
+          type: "metronome",
+          subscription,
+        });
 
         // Bill in the same currency as the contract / Stripe customer.
         const workspace = auth.getNonNullableWorkspace();
@@ -113,9 +110,7 @@ async function handler(
               metronomeCustomerId: workspace.metronomeCustomerId,
               stripeSubscriptionId: null,
             });
-          if (currencyResult.isOk()) {
-            currency = currencyResult.value;
-          } else {
+          if (currencyResult.isErr()) {
             logger.warn(
               {
                 workspaceId: workspace.sId,
@@ -123,7 +118,16 @@ async function handler(
               },
               "[Credit Purchase] Failed to resolve currency for Metronome-only workspace, defaulting to usd"
             );
+            return apiError(req, res, {
+              status_code: 500,
+              api_error: {
+                type: "internal_server_error",
+                message:
+                  "Failed to resolve billing currency for this workspace.",
+              },
+            });
           }
+          currency = currencyResult.value;
         }
 
         if (subscription.startDate) {
@@ -139,10 +143,10 @@ async function handler(
           currency = isSupportedCurrency(stripeSubscription.currency)
             ? stripeSubscription.currency
             : "usd";
-          creditPurchaseLimits = await getCreditPurchaseLimits(
-            auth,
-            stripeSubscription
-          );
+          creditPurchaseLimits = await getCreditPurchaseLimits(auth, {
+            type: "stripe-subscription",
+            stripeSubscription,
+          });
         }
 
         // Get billingCycleStartDay from subscription start date (use UTC to match client-side).
@@ -212,7 +216,10 @@ async function handler(
 
       if (isMetronomeOnly) {
         isEnterprise = isEntreprisePlanPrefix(subscription.getPlan().code);
-        limits = await getCreditPurchaseLimitsMetronome(auth, subscription);
+        limits = await getCreditPurchaseLimits(auth, {
+          type: "metronome",
+          subscription,
+        });
 
         // Resolve the Stripe customer linked to the Metronome customer's
         // billing config — this is where we'll issue the one-off invoice.
@@ -300,7 +307,10 @@ async function handler(
           });
         }
         isEnterprise = isEnterpriseSubscription(stripeSubscription);
-        limits = await getCreditPurchaseLimits(auth, stripeSubscription);
+        limits = await getCreditPurchaseLimits(auth, {
+          type: "stripe-subscription",
+          stripeSubscription,
+        });
       }
 
       if (!limits.canPurchase) {

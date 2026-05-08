@@ -1036,7 +1036,7 @@ export async function reportActiveSeats(
   );
 }
 
-export async function makeCreditPurchaseOneOffInvoice({
+export async function makeCreditPurchaseOneOffInvoiceForSubscription({
   stripeSubscriptionId,
   amountMicroUsd,
   couponId,
@@ -1160,6 +1160,11 @@ async function makeInvoiceForCustomer({
   }
 }
 
+/**
+ * Variant for Metronome-only billed customers: no Stripe subscription, just a
+ * Stripe customer (linked via the Metronome billing config). Issues a one-off
+ * invoice directly on the customer in the requested currency.
+ */
 export async function makeCreditPurchaseOneOffInvoiceForCustomer({
   stripeCustomerId,
   workspaceId,
