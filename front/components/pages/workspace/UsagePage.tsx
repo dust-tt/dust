@@ -1,15 +1,31 @@
-import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
+import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
+import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
+import { InviteEmailButtonWithModal } from "@app/components/members/InviteEmailButtonWithModal";
+import { MembersUsageTable } from "@app/components/workspace/MembersUsageTable";
+import {
+  useAuth,
+  useFeatureFlags,
+  useWorkspace,
+} from "@app/lib/auth/AuthContext";
+import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
 import { useAwuPoolSummary } from "@app/lib/swr/credits";
+import { useMembersUsage } from "@app/lib/swr/memberships";
+import {
+  usePerSeatPricing,
+  useWorkspaceSeatAvailability,
+} from "@app/lib/swr/workspaces";
+import { isAdmin } from "@app/types/user";
 import {
   ActionPieChartIcon,
   ContentMessage,
   ExclamationCircleIcon,
   Icon,
   Page,
+  SearchInput,
   Spinner,
 } from "@dust-tt/sparkle";
-import { useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 function formatAmount(amountMicroUsd: number): string {
   const amountDollars = amountMicroUsd / 1_000_000;
@@ -105,8 +121,12 @@ function CreditPoolUsageBar({
 
 export function UsagePage() {
   const owner = useWorkspace();
+  const { subscription } = useAuth();
   const { hasFeature } = useFeatureFlags();
   const router = useAppRouter();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [inviteBlockedPopupReason, setInviteBlockedPopupReason] =
+    useState<WorkspaceLimit | null>(null);
 
   useEffect(() => {
     if (!hasFeature("metronome_billing_usage_page")) {
@@ -124,6 +144,38 @@ export function UsagePage() {
   } = useAwuPoolSummary({
     workspaceId: owner.sId,
   });
+
+  const { membersUsage, isMembersUsageLoading } = useMembersUsage({
+    workspaceId: owner.sId,
+  });
+
+  const { hasAvailableSeats } = useWorkspaceSeatAvailability({
+    workspaceId: owner.sId,
+  });
+
+  const { perSeatPricing } = usePerSeatPricing({
+    workspaceId: owner.sId,
+  });
+
+  const plan = subscription.plan;
+  const isManualInvitationsEnabled =
+    owner.metadata?.disableManualInvitations !== true;
+
+  const onInviteClick = useCallback(
+    (event: React.MouseEvent<HTMLButtonElement>) => {
+      if (!isUpgraded(plan)) {
+        setInviteBlockedPopupReason("cant_invite_free_plan");
+        event.preventDefault();
+      } else if (subscription.paymentFailingSince) {
+        setInviteBlockedPopupReason("cant_invite_payment_failure");
+        event.preventDefault();
+      } else if (!hasAvailableSeats) {
+        setInviteBlockedPopupReason("cant_invite_no_seats_available");
+        event.preventDefault();
+      }
+    },
+    [plan, subscription.paymentFailingSince, hasAvailableSeats]
+  );
 
   const totalConsumedMicroUsd =
     consumedByUsersMicroUsd + consumedByProgrammaticMicroUsd;
@@ -193,13 +245,49 @@ export function UsagePage() {
         )}
       </Page.Vertical>
 
+      <Page.Vertical gap="sm" align="stretch">
+        <span className="text-[16px] font-medium leading-[24px] tracking-[-0.32px] text-foreground dark:text-foreground-night">
+          Members
+        </span>
+        <div className="flex flex-row gap-2">
+          <SearchInput
+            placeholder="Search members (email)"
+            value={searchTerm}
+            name="search"
+            onChange={setSearchTerm}
+            className="w-full"
+          />
+          {isManualInvitationsEnabled && (
+            <InviteEmailButtonWithModal
+              owner={owner}
+              prefillText=""
+              perSeatPricing={perSeatPricing}
+              onInviteClick={onInviteClick}
+            />
+          )}
+        </div>
+        <MembersUsageTable
+          members={membersUsage}
+          isLoading={isMembersUsageLoading}
+          searchTerm={searchTerm}
+        />
+      </Page.Vertical>
+
+      {inviteBlockedPopupReason && (
+        <ReachedLimitPopup
+          isAdmin={isAdmin(owner)}
+          isOpened={!!inviteBlockedPopupReason}
+          onClose={() => setInviteBlockedPopupReason(null)}
+          subscription={subscription}
+          owner={owner}
+          code={inviteBlockedPopupReason}
+        />
+      )}
+
       {/* TODO: Settings section*/}
       <div />
 
       {/* TODO: Notifications section */}
-      <div />
-
-      {/* TODO: Members section */}
       <div />
     </Page.Vertical>
   );
