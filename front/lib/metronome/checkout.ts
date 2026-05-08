@@ -17,6 +17,7 @@ import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
+import logger from "@app/logger/logger";
 import { launchWorkOSWorkspaceSubscriptionCreatedWorkflow } from "@app/temporal/workos_events_queue/client";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -95,6 +96,18 @@ export async function handleMetronomeSetupCheckout({
     customer_details: customerDetails,
     setup_intent: setupIntentId,
   } = parsed.data;
+
+  logger.info(
+    {
+      sessionId,
+      workspaceId,
+      planCode,
+      userId,
+      metronomePackageAlias,
+      stripeCustomerId,
+    },
+    "[Metronome] Handle metronome checkout"
+  );
 
   // Resolve the package alias based on the customer's billing country.
   // With billing_address_collection: "auto", Stripe may not populate
@@ -188,6 +201,11 @@ export async function handleMetronomeSetupCheckout({
   await restoreWorkspaceAfterSubscription(auth);
 
   await launchWorkOSWorkspaceSubscriptionCreatedWorkflow({ workspaceId });
+
+  logger.info(
+    { workspaceId, metronomeContractId },
+    "[Metronome] Checkout completed"
+  );
 
   return new Ok(undefined);
 }

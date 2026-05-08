@@ -264,6 +264,15 @@ export async function provisionMetronomeContract({
   startingAt: Date;
   enableStripeBilling?: boolean;
 }): Promise<Result<{ metronomeContractId: string }, Error>> {
+  logger.info(
+    {
+      metronomeCustomerId,
+      workspaceId: workspace.sId,
+      packageAlias,
+      enableStripeBilling,
+    },
+    "[Metronome] Provisioning contract"
+  );
   const contractResult = await createMetronomeContract({
     metronomeCustomerId,
     packageAlias,
