@@ -25,6 +25,11 @@ const MAX_DENY_LOG_LINES_PER_EXEC = 20;
 // it's present; load_or_generate handles a missing file by minting a new CA.
 const MITM_CA_PATH = "/run/dust/egress-ca.pem";
 const MITM_CA_BUNDLE_PATH = "/etc/dust/ca-bundle.pem";
+// Sentinel written atomically alongside the merged bundle so the health probe
+// can distinguish "installMitmTrustBundle ran successfully" from "image-seeded
+// system-only placeholder". Without it, [ -s ca-bundle.pem ] is true the
+// moment the sandbox boots and the bundle self-heal never fires.
+const MITM_CA_BUNDLE_MARKER_PATH = "/etc/dust/.ca-bundle.merged";
 const MITM_SYSTEM_CA_DEST = "/usr/local/share/ca-certificates/dust-egress.crt";
 const MITM_SYSTEM_CA_BUNDLE = "/etc/ssl/certs/ca-certificates.crt";
 
@@ -130,15 +135,18 @@ export async function checkEgressForwarderHealth(
 ): Promise<Result<EgressHealthState, Error>> {
   // Probe both signals in one exec. ss avoids opening a real TCP connection
   // through the forwarder (nc -z would trigger a proxy round-trip and a noisy
-  // <unknown> deny log entry on every check). The bundle stat confirms
-  // installMitmTrustBundle ran successfully; the two are reported separately
-  // so callers can remediate them independently (a missing bundle does not
-  // require a dsbx restart).
+  // <unknown> deny log entry on every check). The bundle check looks for the
+  // merge sentinel rather than just the bundle file, because the image seeds
+  // a system-only ca-bundle.pem at build time so SSL_CERT_FILE always points
+  // at a valid file; bare `-s` would be true even before installMitmTrustBundle
+  // ever ran. The two signals are reported separately so callers can remediate
+  // them independently (a missing bundle does not require a dsbx restart).
   const result = await sandbox.exec(
     auth,
     `p=0; b=0; ` +
       `ss -tln sport = :9990 | grep -q LISTEN && p=1; ` +
-      `[ -s ${shellEscape(MITM_CA_BUNDLE_PATH)} ] && b=1; ` +
+      `[ -s ${shellEscape(MITM_CA_BUNDLE_PATH)} ] && ` +
+      `[ -f ${shellEscape(MITM_CA_BUNDLE_MARKER_PATH)} ] && b=1; ` +
       `echo "$p $b"`,
     { timeoutMs: 1_000 }
   );
@@ -191,7 +199,7 @@ export async function ensureSandboxEgressOnExec(
         providerId: sandbox.providerId,
         sandboxId: sandbox.sId,
       },
-      "Sandbox woke from sleep, rewriting egress secrets and restarting forwarder"
+      "Sandbox woke from sleep, re-running full egress setup"
     );
     return setupEgressForwarder(auth, sandbox, { restartExisting: true });
   }
@@ -313,8 +321,13 @@ export async function setupEgressForwarder(
     }
   }
 
-  // Strip trust-bundle env vars from dsbx's own env. These are for agent
-  // clients, not for dsbx validating the central proxy certificate.
+  // Strip every trust-bundle env var we (or any agent runtime) might set on
+  // the sandbox process from dsbx's own environment. dsbx talks to the
+  // central proxy with a vendored TLS root and must NOT be reconfigured to
+  // trust the merged ca-bundle.pem (which contains its own CA, opening a
+  // forge-and-tunnel loop). The list intentionally overshoots
+  // buildSandboxEnvVars (-u on an unset var is a harmless no-op) so this
+  // stays correct if a future env var gets added there.
   const startForwarderCommand =
     "nohup env " +
     "-u SSL_CERT_FILE -u SSL_CERT_DIR -u CURL_CA_BUNDLE " +
@@ -374,21 +387,26 @@ async function killEgressForwarder(
 }
 
 // Produces a merged bundle (system roots + dsbx persistent CA) so replace-style
-// trust env vars can point at one file without breaking public HTTPS. Best
-// effort: no-op when dsbx hasn't written a CA, and the system-store install
-// is allowed to fail on images without update-ca-certificates.
+// trust env vars can point at one file without breaking public HTTPS. Callers
+// must only invoke this once dsbx is up; if the CA file is missing we fail
+// rather than silently leaving the sandbox with system-roots-only trust.
+// The system-store install is allowed to fail on images without
+// update-ca-certificates. The marker file is written last so the bundle and
+// its "merged" status flip atomically from the health-probe's point of view.
 async function installMitmTrustBundle(
   auth: Authenticator,
   sandbox: SandboxResource
 ): Promise<Result<void, Error>> {
   const command =
-    `[ -s ${shellEscape(MITM_CA_PATH)} ] || exit 0; ` +
+    `[ -s ${shellEscape(MITM_CA_PATH)} ] || ` +
+    `{ echo "dsbx CA file ${MITM_CA_PATH} missing or empty" >&2; exit 1; }; ` +
     `mkdir -p ${shellEscape("/etc/dust")} ${shellEscape("/usr/local/share/ca-certificates")} && ` +
     `((cp ${shellEscape(MITM_CA_PATH)} ${shellEscape(MITM_SYSTEM_CA_DEST)} && update-ca-certificates >/dev/null 2>&1) || true) && ` +
     `_bundle_tmp=${shellEscape("/etc/dust/.ca-bundle.pem.tmp")} && ` +
     `cat ${shellEscape(MITM_SYSTEM_CA_BUNDLE)} ${shellEscape(MITM_CA_PATH)} > "$_bundle_tmp" && ` +
     `chmod 644 "$_bundle_tmp" && ` +
-    `mv "$_bundle_tmp" ${shellEscape(MITM_CA_BUNDLE_PATH)}`;
+    `mv "$_bundle_tmp" ${shellEscape(MITM_CA_BUNDLE_PATH)} && ` +
+    `: > ${shellEscape(MITM_CA_BUNDLE_MARKER_PATH)}`;
 
   return runSuccessfulSandboxCommand(auth, sandbox, command, "root");
 }

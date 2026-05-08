@@ -83,10 +83,14 @@ export async function writeEgressSecretsFile(
     return entriesResult;
   }
 
+  // /run/dust is created by dsbx (for egress-ca.{pem,key}) before front ever
+  // writes here in a healthy sandbox; the mkdir -p covers cold-start ordering
+  // (front beats dsbx) without changing perms on a directory dsbx may have
+  // hardened. install -m 600 sets the file's perms; the directory's perms are
+  // dsbx's call.
   const tmpPath = `${EGRESS_SECRETS_DIR}/.egress-secrets.json.${randomBytes(8).toString("hex")}.tmp`;
   const command =
     `mkdir -p ${shellEscape(EGRESS_SECRETS_DIR)} && ` +
-    `chmod 0755 ${shellEscape(EGRESS_SECRETS_DIR)} && ` +
     `install -o root -g root -m 600 /dev/stdin ${shellEscape(tmpPath)} && ` +
     `mv ${shellEscape(tmpPath)} ${shellEscape(EGRESS_SECRETS_PATH)}`;
 

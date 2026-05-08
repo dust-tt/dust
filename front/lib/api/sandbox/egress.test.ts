@@ -153,6 +153,8 @@ describe("sandbox egress helpers", () => {
       expect.stringContaining("/run/dust/egress-ca.pem"),
       { user: "root" }
     );
+    const installCall = sandbox.exec.mock.calls[4][1] as string;
+    expect(installCall).toContain("/etc/dust/.ca-bundle.merged");
     expect(mockLoggerInfo).toHaveBeenCalledWith(
       expect.objectContaining({
         event: "egress.setup",
@@ -160,6 +162,40 @@ describe("sandbox egress helpers", () => {
         sandboxId: "sandbox-id",
       }),
       "Sandbox egress forwarder is healthy"
+    );
+  });
+
+  it("treats an empty health-probe stdout as fail-closed and restarts dsbx", async () => {
+    // Defends the contract that an unparseable health probe (timeout-then-empty,
+    // exotic shell, etc.) routes through the same path as "port not listening"
+    // rather than silently passing.
+    const sandbox = {
+      providerId: "provider-sandbox-id",
+      sId: "sandbox-id",
+      writeFile: vi.fn().mockResolvedValue(new Ok(undefined)),
+      exec: vi
+        .fn()
+        // First call: health probe with empty stdout.
+        .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
+        // Restart path: chmod token, start dsbx, kill old dsbx, then health
+        // returns 1 0, then install bundle.
+        .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
+        .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
+        .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
+        .mockResolvedValueOnce(
+          new Ok({ exitCode: 0, stdout: "1 0", stderr: "" })
+        )
+        .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" })),
+    };
+
+    const result = await ensureSandboxEgressOnExec(auth, sandbox as never, {
+      wokeFromSleep: false,
+    });
+
+    expect(result).toEqual(new Ok(undefined));
+    expect(mockLoggerWarn).toHaveBeenCalledWith(
+      expect.objectContaining({ event: "egress.health_fail" }),
+      expect.any(String)
     );
   });
 

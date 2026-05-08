@@ -61,9 +61,6 @@ struct ForwardRuntime {
     proxy_tls_name: Arc<str>,
     deny_log: Arc<PathBuf>,
     tls_connector: TlsConnector,
-    // Held but not yet wired: Phase 1 will use this CA to mint per-domain
-    // leaves once the secrets-file driven swap lands.
-    _mitm_ca: Arc<MitmCa>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -87,14 +84,14 @@ pub async fn cmd_forward(args: ForwardArgs) -> Result<()> {
     // "port 9990 is LISTEN" as the readiness signal and, the moment that's
     // true, reads /run/dust/egress-ca.pem to build the sandbox trust bundle.
     // Bind-then-write would race: front could see a missing or stale CA file.
-    // Keep this ordering intact on restarts too.
-    let mitm_ca = Arc::new(
-        MitmCa::load_or_generate(
-            std::path::Path::new(MITM_CA_CERT_PATH),
-            std::path::Path::new(MITM_CA_KEY_PATH),
-        )
-        .context("failed to load or generate persistent MITM CA")?,
-    );
+    // Keep this ordering intact on restarts too. The slice that wires up TLS
+    // termination will reintroduce the CA into ForwardRuntime; today only its
+    // on-disk side effect matters, so we drop the in-memory handle.
+    let _ = MitmCa::load_or_generate(
+        std::path::Path::new(MITM_CA_CERT_PATH),
+        std::path::Path::new(MITM_CA_KEY_PATH),
+    )
+    .context("failed to load or generate persistent MITM CA")?;
 
     let listener = TcpListener::bind(args.listen)
         .await
@@ -114,7 +111,6 @@ pub async fn cmd_forward(args: ForwardArgs) -> Result<()> {
         proxy_tls_name: Arc::<str>::from(args.proxy_tls_name),
         deny_log: Arc::new(args.deny_log),
         tls_connector,
-        _mitm_ca: mitm_ca,
     };
 
     loop {

@@ -1,33 +1,26 @@
-use std::collections::HashMap;
 use std::fs::{self, OpenOptions};
 use std::io::Write;
 use std::os::unix::fs::OpenOptionsExt;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use anyhow::{bail, Context, Result};
 use rcgen::{
     BasicConstraints, Certificate, CertificateParams, DistinguishedName, DnType, IsCa, KeyPair,
-    KeyUsagePurpose, SanType,
+    KeyUsagePurpose,
 };
-use rustls::pki_types::{CertificateDer, PrivateKeyDer, PrivatePkcs8KeyDer};
-use rustls::server::ResolvesServerCert;
-use rustls::sign::CertifiedKey;
-use rustls::ServerConfig;
-use tokio::sync::Mutex;
 
 const CA_COMMON_NAME: &str = "Dust Sandbox Egress MITM CA";
 
+// Slice 3 only persists the CA on disk so front can install it in the sandbox
+// trust bundle. Per-host leaf signing + an LRU-bounded cache land in the slice
+// that wires up TLS termination, alongside the per-request placeholder swap.
 pub struct MitmCa {
+    #[allow(dead_code)]
     ca_cert: Certificate,
+    #[allow(dead_code)]
     ca_key_pair: KeyPair,
     ca_cert_pem: String,
-    // TODO: bound this with an LRU eviction policy once leaf signing is wired
-    // up. Today there is no caller, but the cache will grow with the union of
-    // allowed domains across all secrets, which is unbounded over the
-    // sandbox's lifetime.
-    leaf_cache: Mutex<HashMap<String, Arc<CertifiedKey>>>,
 }
 
 impl MitmCa {
@@ -71,7 +64,6 @@ impl MitmCa {
             ca_cert,
             ca_key_pair,
             ca_cert_pem,
-            leaf_cache: Mutex::new(HashMap::new()),
         })
     }
 
@@ -109,7 +101,6 @@ impl MitmCa {
             ca_cert,
             ca_key_pair,
             ca_cert_pem,
-            leaf_cache: Mutex::new(HashMap::new()),
         })
     }
 
@@ -135,66 +126,6 @@ impl MitmCa {
         write_file_atomically(key_path, self.ca_key_pair.serialize_pem().as_bytes(), 0o600)
             .with_context(|| format!("failed to write CA key file {}", key_path.display()))?;
         Ok(())
-    }
-
-    // Held for the next slice's per-secret swap path; no caller wires it up
-    // yet, so silence the dead-code warning rather than carry a stub.
-    #[allow(dead_code)]
-    pub async fn server_config_for(self: &Arc<Self>, sni: &str) -> Result<Arc<ServerConfig>> {
-        let certified = self.get_or_mint_leaf(sni).await?;
-        let resolver = SingleCertResolver { key: certified };
-        let config = ServerConfig::builder()
-            .with_no_client_auth()
-            .with_cert_resolver(Arc::new(resolver));
-        Ok(Arc::new(config))
-    }
-
-    async fn get_or_mint_leaf(&self, sni: &str) -> Result<Arc<CertifiedKey>> {
-        if let Some(existing) = self.leaf_cache.lock().await.get(sni).cloned() {
-            return Ok(existing);
-        }
-        let minted = self.mint_leaf(sni)?;
-        self.leaf_cache
-            .lock()
-            .await
-            .insert(sni.to_string(), Arc::clone(&minted));
-        Ok(minted)
-    }
-
-    fn mint_leaf(&self, sni: &str) -> Result<Arc<CertifiedKey>> {
-        let mut params =
-            CertificateParams::new(Vec::<String>::new()).context("invalid leaf params")?;
-        let mut dn = DistinguishedName::new();
-        dn.push(DnType::CommonName, sni);
-        params.distinguished_name = dn;
-        params.subject_alt_names = vec![SanType::DnsName(
-            sni.to_string()
-                .try_into()
-                .context("invalid SNI for leaf cert")?,
-        )];
-
-        let leaf_key = KeyPair::generate().context("failed to generate leaf key pair")?;
-        let leaf = params
-            .signed_by(&leaf_key, &self.ca_cert, &self.ca_key_pair)
-            .context("failed to sign leaf certificate")?;
-
-        let leaf_der = CertificateDer::from(leaf.der().to_vec());
-        let key_der = PrivateKeyDer::from(PrivatePkcs8KeyDer::from(leaf_key.serialize_der()));
-        let signing_key = rustls::crypto::ring::sign::any_supported_type(&key_der)
-            .context("failed to load leaf signing key")?;
-
-        Ok(Arc::new(CertifiedKey::new(vec![leaf_der], signing_key)))
-    }
-}
-
-#[derive(Debug)]
-struct SingleCertResolver {
-    key: Arc<CertifiedKey>,
-}
-
-impl ResolvesServerCert for SingleCertResolver {
-    fn resolve(&self, _client_hello: rustls::server::ClientHello<'_>) -> Option<Arc<CertifiedKey>> {
-        Some(Arc::clone(&self.key))
     }
 }
 
