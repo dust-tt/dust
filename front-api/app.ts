@@ -16,6 +16,7 @@ interface HonoRoute {
 const HONO_ROUTES: HonoRoute[] = [
   { method: "GET", pattern: "/api/healthz" },
   { method: "GET", pattern: "/api/w/:wId/spaces" },
+  { method: "POST", pattern: "/api/w/:wId/spaces" },
   { method: "OPTIONS", pattern: "/api/w/:wId/spaces" },
 ];
 

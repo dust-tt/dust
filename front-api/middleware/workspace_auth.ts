@@ -6,6 +6,7 @@ import {
   getSession,
   getSessionFromBearerToken,
 } from "@app/lib/auth";
+import { getClientIp } from "@app/lib/utils/request";
 
 declare module "hono" {
   interface ContextVariableMap {
@@ -134,6 +135,12 @@ export const workspaceAuth: MiddlewareHandler = async (c, next) => {
   }
 
   const auth = await Authenticator.fromSession(session, wId);
+
+  const ip = getClientIp(req);
+  if (ip !== "internal") {
+    auth.setClientIp(ip);
+  }
+
   const owner = auth.workspace();
   const plan = auth.plan();
   if (!owner || !plan) {
