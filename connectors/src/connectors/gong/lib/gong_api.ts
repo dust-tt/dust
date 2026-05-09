@@ -4,6 +4,7 @@ import {
   HTTPError,
   isNotFoundError,
 } from "@connectors/lib/error";
+import { setTimeoutAsync } from "@connectors/lib/async_utils";
 import logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
 import type { ModelId } from "@connectors/types";
@@ -243,6 +244,8 @@ const GongPermissionProfilesResponseCodec = t.intersection([
 // outliers.
 const RETRY_AFTER_FLOOR_SECONDS = 10;
 const RETRY_AFTER_CEILING_SECONDS = 3600;
+const GET_TRANSCRIPTS_RATE_LIMIT_MAX_LOCAL_RETRIES = 3;
+const GET_TRANSCRIPTS_MAX_LOCAL_RETRY_AFTER_SECONDS = 60;
 
 export function clampRetryAfterSeconds(
   raw: number | undefined
@@ -408,6 +411,63 @@ export class GongClient {
     return this.handleResponse(response, endpoint, codec);
   }
 
+  private async withLocalRateLimitRetries<T>({
+    operation,
+    run,
+  }: {
+    operation: string;
+    run: () => Promise<T>;
+  }): Promise<T> {
+    const maxAttempts = GET_TRANSCRIPTS_RATE_LIMIT_MAX_LOCAL_RETRIES + 1;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        return await run();
+      } catch (err) {
+        if (
+          !(err instanceof GongAPIError) ||
+          err.status !== 429 ||
+          attempt >= maxAttempts
+        ) {
+          throw err;
+        }
+
+        const retryAfterSeconds = clampRetryAfterSeconds(
+          err.retryAfterSeconds
+        );
+        if (
+          retryAfterSeconds === undefined ||
+          retryAfterSeconds > GET_TRANSCRIPTS_MAX_LOCAL_RETRY_AFTER_SECONDS
+        ) {
+          throw err;
+        }
+
+        logger.info(
+          {
+            attempt,
+            connectorId: this.connectorId,
+            endpoint: err.endpoint,
+            maxAttempts,
+            operation,
+            provider: "gong",
+            requestId: err.requestId,
+            retryAfterSeconds,
+          },
+          "[Gong] Rate limit hit, waiting before retrying locally."
+        );
+
+        statsDClient.increment("gong.api.local_rate_limit_retry", 1, [
+          `endpoint:${err.endpoint}`,
+          "provider:gong",
+        ]);
+
+        await setTimeoutAsync(retryAfterSeconds * 1000);
+      }
+    }
+
+    throw new Error("Unreachable: local Gong rate limit retry loop exhausted.");
+  }
+
   // https://gong.app.gong.io/settings/api/documentation#post-/v2/calls/transcript
   async getTranscripts({
     startTimestamp,
@@ -417,18 +477,22 @@ export class GongClient {
     pageCursor: string | null;
   }) {
     try {
-      const transcripts = await this.postRequest(
-        "/calls/transcript",
-        {
-          cursor: pageCursor,
-          filter: {
-            fromDateTime: startTimestamp
-              ? new Date(startTimestamp).toISOString()
-              : undefined,
-          },
-        },
-        GongPaginatedResults("callTranscripts", GongCallTranscriptCodec)
-      );
+      const transcripts = await this.withLocalRateLimitRetries({
+        operation: "getTranscripts",
+        run: async () =>
+          this.postRequest(
+            "/calls/transcript",
+            {
+              cursor: pageCursor,
+              filter: {
+                fromDateTime: startTimestamp
+                  ? new Date(startTimestamp).toISOString()
+                  : undefined,
+              },
+            },
+            GongPaginatedResults("callTranscripts", GongCallTranscriptCodec)
+          ),
+      });
       return {
         transcripts: transcripts.callTranscripts,
         nextPageCursor: transcripts.records.cursor ?? null,
