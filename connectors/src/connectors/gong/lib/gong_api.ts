@@ -1,10 +1,10 @@
 import { GongAPIError } from "@connectors/connectors/gong/lib/errors";
+import { setTimeoutAsync } from "@connectors/lib/async_utils";
 import {
   ExternalOAuthTokenError,
   HTTPError,
   isNotFoundError,
 } from "@connectors/lib/error";
-import { setTimeoutAsync } from "@connectors/lib/async_utils";
 import logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
 import type { ModelId } from "@connectors/types";
@@ -432,9 +432,7 @@ export class GongClient {
           throw err;
         }
 
-        const retryAfterSeconds = clampRetryAfterSeconds(
-          err.retryAfterSeconds
-        );
+        const retryAfterSeconds = clampRetryAfterSeconds(err.retryAfterSeconds);
         if (
           retryAfterSeconds === undefined ||
           retryAfterSeconds > GET_TRANSCRIPTS_MAX_LOCAL_RETRY_AFTER_SECONDS
