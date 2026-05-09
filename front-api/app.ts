@@ -6,24 +6,29 @@ import { workspaceApp } from "./routes/w";
 
 // Single source of truth for which routes are served natively by Hono.
 // Anything not listed here is delegated to the Next.js handler. OPTIONS is
-// listed alongside GET/POST/etc. so CORS preflights for Hono-served routes
-// are handled by the Hono CORS middleware rather than Next.js.
+// auto-added for every pattern with any other method so CORS preflights for
+// Hono-served routes are handled by the Hono CORS middleware rather than
+// Next.js.
+type HonoMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS";
+
 interface HonoRoute {
-  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS";
   pattern: string;
+  methods: HonoMethod[];
 }
 
 const HONO_ROUTES: HonoRoute[] = [
-  { method: "GET", pattern: "/api/healthz" },
-  { method: "GET", pattern: "/api/w/:wId/spaces" },
-  { method: "POST", pattern: "/api/w/:wId/spaces" },
-  { method: "OPTIONS", pattern: "/api/w/:wId/spaces" },
+  { pattern: "/api/healthz", methods: ["GET"] },
+  { pattern: "/api/w/:wId/spaces", methods: ["GET", "POST"] },
 ];
 
-const HONO_ROUTE_REGEXES = HONO_ROUTES.map((r) => ({
-  method: r.method,
-  regex: new RegExp(`^${r.pattern.replace(/:[^/]+/g, "[^/]+")}$`),
-}));
+const HONO_ROUTE_REGEXES = HONO_ROUTES.map((r) => {
+  const methods = new Set<HonoMethod>(r.methods);
+  methods.add("OPTIONS");
+  return {
+    methods,
+    regex: new RegExp(`^${r.pattern.replace(/:[^/]+/g, "[^/]+")}$`),
+  };
+});
 
 const apiApp = new Hono();
 apiApp.route("/healthz", healthzApp);
@@ -45,6 +50,6 @@ export function isHonoRoute(
   const path = queryStart === -1 ? url : url.slice(0, queryStart);
 
   return HONO_ROUTE_REGEXES.some(
-    (r) => r.method === method && r.regex.test(path)
+    (r) => r.methods.has(method as HonoMethod) && r.regex.test(path)
   );
 }
