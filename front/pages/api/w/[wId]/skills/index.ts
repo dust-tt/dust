@@ -1,14 +1,9 @@
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
-import { resolveAdditionalRequestedSpaceModelIds } from "@app/lib/api/skills/space_requirements";
-import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
-import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { FileResource } from "@app/lib/resources/file_resource";
-import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { createSkill } from "@app/lib/api/skills/create_skill";
+import type { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import {
   SKILL_VIEWS,
@@ -95,8 +90,6 @@ const PostSkillRequestBodySchema = z.intersection(
     }),
   ])
 );
-
-type PostSkillRequestBody = z.infer<typeof PostSkillRequestBodySchema>;
 
 async function handler(
   req: NextApiRequest,
@@ -236,10 +229,7 @@ async function handler(
         });
       }
 
-      const user = auth.getNonNullableUser();
-
       const bodyValidation = PostSkillRequestBodySchema.safeParse(req.body);
-
       if (!bodyValidation.success) {
         const pathError = fromError(bodyValidation.error).toString();
         return apiError(req, res, {
@@ -251,216 +241,18 @@ async function handler(
         });
       }
 
-      const body: PostSkillRequestBody = bodyValidation.data;
-      const name = body.name.trim();
-
-      if (!name) {
+      const result = await createSkill(auth, bodyValidation.data);
+      if (result.isErr()) {
         return apiError(req, res, {
-          status_code: 400,
+          status_code: result.error.statusCode,
           api_error: {
             type: "invalid_request_error",
-            message: "Skill name cannot be empty.",
+            message: result.error.message,
           },
         });
       }
 
-      const existingSkill = await SkillResource.fetchActiveByName(auth, name);
-
-      if (existingSkill) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: `A skill with the name "${name}" already exists.`,
-          },
-        });
-      }
-
-      // Validate all MCP server views exist before creating anything
-      const mcpServerViewIds = uniq(body.tools.map((t) => t.mcpServerViewId));
-      const mcpServerViews = await MCPServerViewResource.fetchByIds(
-        auth,
-        mcpServerViewIds
-      );
-
-      if (mcpServerViewIds.length !== mcpServerViews.length) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "invalid_request_error",
-            message: `MCP server views not all found, ${mcpServerViews.length} found, ${mcpServerViewIds.length} requested`,
-          },
-        });
-      }
-
-      const { attachedKnowledge, fileAttachments } = body;
-
-      // Validate all data source views from attached knowledge exist and user has access.
-      const dataSourceViewIds = uniq(
-        attachedKnowledge.map((attachment) => attachment.dataSourceViewId)
-      );
-
-      const dataSourceViews = await DataSourceViewResource.fetchByIds(
-        auth,
-        dataSourceViewIds
-      );
-      if (dataSourceViews.length !== dataSourceViewIds.length) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "invalid_request_error",
-            message: `Data source views not all found, ${dataSourceViews.length} found, ${dataSourceViewIds.length} requested`,
-          },
-        });
-      }
-
-      const dataSourceViewIdMap = new Map(
-        dataSourceViews.map((dsv) => [dsv.sId, dsv])
-      );
-
-      const attachedKnowledgeWithDataSourceViews = attachedKnowledge.map(
-        (attachment) => ({
-          dataSourceView: dataSourceViewIdMap.get(attachment.dataSourceViewId)!,
-          nodeId: attachment.nodeId,
-        })
-      );
-
-      const computedRequestedSpaceIds =
-        await SkillResource.computeRequestedSpaceIds(auth, {
-          mcpServerViews,
-          attachedKnowledge: attachedKnowledgeWithDataSourceViews,
-        });
-
-      const additionalRequestedSpaceIdsRes =
-        await resolveAdditionalRequestedSpaceModelIds(
-          auth,
-          body.additionalRequestedSpaceIds
-        );
-
-      if (additionalRequestedSpaceIdsRes.isErr()) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: additionalRequestedSpaceIdsRes.error.message,
-          },
-        });
-      }
-
-      const requestedSpaceIds = uniq([
-        ...computedRequestedSpaceIds,
-        ...additionalRequestedSpaceIdsRes.value,
-      ]);
-
-      const extendedSkill = body.extendedSkillId
-        ? await SkillResource.fetchById(auth, body.extendedSkillId)
-        : null;
-
-      // Only global skills can be extended.
-      if (extendedSkill !== null && !extendedSkill.isExtendable) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: `The extended skill with id "${body.extendedSkillId}" cannot be extended.`,
-          },
-        });
-      }
-
-      // Validate file attachments if provided (gated behind sandbox_tools).
-      let files: FileResource[] | undefined;
-      if (fileAttachments) {
-        const featureFlags = await getFeatureFlags(auth);
-        if (
-          !featureFlags.includes("sandbox_tools") &&
-          fileAttachments.length > 0
-        ) {
-          return apiError(req, res, {
-            status_code: 403,
-            api_error: {
-              type: "invalid_request_error",
-              message: "File attachments are not supported.",
-            },
-          });
-        }
-
-        const fileAttachmentIds = uniq(fileAttachments.map((f) => f.fileId));
-        files = await FileResource.fetchByIds(auth, fileAttachmentIds);
-        if (files.length !== fileAttachmentIds.length) {
-          return apiError(req, res, {
-            status_code: 404,
-            api_error: {
-              type: "invalid_request_error",
-              message: `File attachments not all found, ${files.length} found, ${fileAttachmentIds.length} requested`,
-            },
-          });
-        }
-
-        for (const file of files) {
-          if (!file.isReady || file.useCase !== "skill_attachment") {
-            return apiError(req, res, {
-              status_code: 400,
-              api_error: {
-                type: "invalid_request_error",
-                message: `File ${file.sId} is not ready or not a skill_attachment.`,
-              },
-            });
-          }
-        }
-      }
-
-      // Generate icon suggestion if not provided.
-      let icon = body.icon;
-      if (!icon) {
-        const iconResult = await getSkillIconSuggestion(auth, {
-          name,
-          instructions: body.instructions,
-          agentFacingDescription: body.agentFacingDescription,
-        });
-        if (iconResult.isOk()) {
-          icon = iconResult.value;
-        } else {
-          logger.warn(
-            { error: iconResult.error },
-            "Failed to generate icon suggestion for skill"
-          );
-        }
-      }
-
-      const skill = await SkillResource.makeNew(
-        auth,
-        {
-          status: "active",
-          name,
-          agentFacingDescription: body.agentFacingDescription,
-          userFacingDescription: body.userFacingDescription,
-          instructions: body.instructions,
-          instructionsHtml: body.instructionsHtml,
-          editedBy: user.id,
-          requestedSpaceIds,
-          extendedSkillId: body.extendedSkillId,
-          icon,
-          source: body.source ?? "web_app",
-          sourceMetadata: body.sourceMetadata ?? null,
-          isDefault: body.isDefault ?? false,
-        },
-        {
-          mcpServerViews,
-          attachedKnowledge: attachedKnowledgeWithDataSourceViews,
-          fileAttachments: files,
-        }
-      );
-
-      // Update file useCaseMetadata with the newly created skill's sId.
-      if (files) {
-        await FileResource.bulkSetUseCaseMetadata(auth, files, {
-          skillId: skill.sId,
-        });
-      }
-
-      return res.status(200).json({
-        skill: skill.toJSON(auth),
-      });
+      return res.status(200).json({ skill: result.value });
     }
 
     default:
