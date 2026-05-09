@@ -1,9 +1,9 @@
-// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import type { NextApiRequest } from "next";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
+
+type QueryRecord = Record<string, string | string[] | undefined>;
 
 class InvalidPaginationParamsError extends Error {
   constructor(
@@ -54,16 +54,16 @@ interface PaginationOptions {
 }
 
 export function getPaginationParams(
-  req: NextApiRequest,
+  query: QueryRecord,
   defaults: PaginationOptions
 ): Result<PaginationParams, InvalidPaginationParamsError> {
   const rawParams = {
     // Don't support a default order column.
-    orderColumn: req.query.orderColumn ?? defaults.defaultOrderColumn,
-    orderDirection: req.query.orderDirection ?? defaults.defaultOrderDirection,
-    lastValue: req.query.lastValue,
-    limit: req.query.limit
-      ? parseInt(req.query.limit as string)
+    orderColumn: query.orderColumn ?? defaults.defaultOrderColumn,
+    orderDirection: query.orderDirection ?? defaults.defaultOrderDirection,
+    lastValue: query.lastValue,
+    limit: query.limit
+      ? parseInt(query.limit as string)
       : defaults.defaultLimit,
   };
 
@@ -107,15 +107,15 @@ export interface CursorPaginationParams {
 }
 
 export function getCursorPaginationParams(
-  req: NextApiRequest
+  query: QueryRecord
 ): Result<CursorPaginationParams | undefined, InvalidPaginationParamsError> {
-  if (!req.query.limit) {
+  if (!query.limit) {
     return new Ok(undefined);
   }
 
   const rawParams = {
-    cursor: req.query.cursor ?? null,
-    limit: parseInt(req.query.limit as string, 10),
+    cursor: query.cursor ?? null,
+    limit: parseInt(query.limit as string, 10),
   };
 
   const queryValidation = CursorPaginationParamsSchema.safeParse(rawParams);

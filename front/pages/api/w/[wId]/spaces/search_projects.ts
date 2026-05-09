@@ -32,7 +32,7 @@ async function handler(
     });
   }
 
-  const paginationRes = getPaginationParams(req, {
+  const paginationRes = getPaginationParams(req.query, {
     defaultLimit: 20,
     defaultOrderColumn: "name",
     defaultOrderDirection: "asc",

@@ -251,7 +251,7 @@ export async function handleSearch(
 
   const searchFilter = searchFilterRes.value;
 
-  const paginationRes = getCursorPaginationParams(req);
+  const paginationRes = getCursorPaginationParams(req.query);
   if (paginationRes.isErr()) {
     return new Err({
       status: 400,

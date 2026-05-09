@@ -19,6 +19,7 @@ interface HonoRoute {
 const HONO_ROUTES: HonoRoute[] = [
   { pattern: "/api/healthz", methods: ["GET"] },
   { pattern: "/api/w/:wId/spaces", methods: ["GET", "POST"] },
+  { pattern: "/api/w/:wId/spaces/search_projects", methods: ["GET"] },
 ];
 
 const HONO_ROUTE_REGEXES = HONO_ROUTES.map((r) => {

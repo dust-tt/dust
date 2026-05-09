@@ -180,7 +180,7 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const paginationRes = getPaginationParams(req, {
+      const paginationRes = getPaginationParams(req.query, {
         defaultLimit: 100,
         defaultOrderColumn: "updatedAt",
         defaultOrderDirection: "desc",

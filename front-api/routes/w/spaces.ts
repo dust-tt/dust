@@ -6,10 +6,12 @@ import {
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
+import { getPaginationParams } from "@app/lib/api/pagination";
 import { enrichProjectsWithMetadata } from "@app/lib/api/projects/list";
 import { createSpaceAndGroup } from "@app/lib/api/spaces";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { areOpenProjectsAllowed } from "@app/lib/workspace_policies";
+import logger from "@app/logger/logger";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { ProjectType, SpaceType } from "@app/types/space";
 
@@ -43,6 +45,12 @@ export type GetSpacesResponseBody = {
 
 export type PostSpacesResponseBody = {
   space: SpaceType;
+};
+
+export type SearchProjectsResponseBody = {
+  spaces: Array<ProjectType & { isMember: boolean }>;
+  hasMore: boolean;
+  lastValue: string | null;
 };
 
 export const spacesApp = new Hono();
@@ -174,4 +182,67 @@ spacesApp.post("/", validate("json", PostSpaceRequestBodySchema), async (c) => {
 
   const responseBody: PostSpacesResponseBody = { space: space.toJSON() };
   return c.json(responseBody, 201);
+});
+
+spacesApp.get("/search_projects", async (c) => {
+  const auth = c.get("auth");
+
+  const paginationRes = getPaginationParams(c.req.query(), {
+    defaultLimit: 20,
+    defaultOrderColumn: "name",
+    defaultOrderDirection: "asc",
+    supportedOrderColumn: ["name"],
+    maxLimit: 100,
+  });
+
+  if (paginationRes.isErr()) {
+    return c.json(
+      {
+        error: {
+          type: "invalid_request_error",
+          message: paginationRes.error.reason,
+        },
+      },
+      400
+    );
+  }
+
+  const queryString = c.req.query("query");
+  const pagination = paginationRes.value;
+
+  const {
+    spaces: projectSpaces,
+    hasMore,
+    lastValue,
+  } = await SpaceResource.searchProjectsByNamePaginated(auth, {
+    query: queryString,
+    pagination: {
+      limit: pagination.limit,
+      lastValue: pagination.lastValue,
+      orderDirection: pagination.orderDirection,
+    },
+  });
+
+  const projectsWithMetadata = await enrichProjectsWithMetadata(
+    auth,
+    projectSpaces
+  );
+  const metadataMap = new Map(projectsWithMetadata.map((p) => [p.sId, p]));
+
+  const results: SearchProjectsResponseBody["spaces"] = [];
+  for (const space of projectSpaces) {
+    const metadata = metadataMap.get(space.sId);
+    if (!metadata) {
+      logger.warn({ spaceId: space.sId }, "Missing metadata for project");
+      continue;
+    }
+    results.push({ ...metadata, isMember: space.isMember(auth) });
+  }
+
+  const body: SearchProjectsResponseBody = {
+    spaces: results,
+    hasMore,
+    lastValue,
+  };
+  return c.json(body);
 });
