@@ -121,21 +121,16 @@ import type {
   ServerSideMCPServerConfigurationType,
 } from "@app/lib/actions/mcp";
 import { pruneSuggestionsForAgent } from "@app/lib/api/assistant/agent_suggestion_pruning";
-import { getAgentsUsage } from "@app/lib/api/assistant/agent_usage";
 import { createAgentActionConfiguration } from "@app/lib/api/assistant/configuration/actions";
 import {
   createAgentConfiguration,
   restoreAgentConfiguration,
   unsafeHardDeleteAgentConfiguration,
 } from "@app/lib/api/assistant/configuration/agent";
-import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
-import { getAgentsEditors } from "@app/lib/api/assistant/editors";
+import { listAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/list_for_view";
 import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
-import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { runOnRedis } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -157,8 +152,6 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
-import keyBy from "lodash/keyBy";
-import omit from "lodash/omit";
 import uniq from "lodash/uniq";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
@@ -188,11 +181,8 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  const owner = auth.getNonNullableWorkspace();
-
   switch (req.method) {
     case "GET":
-      // extract the view from the query parameters
       const queryValidation = GetAgentConfigurationsQuerySchema.safeParse({
         ...req.query,
         limit:
@@ -232,90 +222,17 @@ async function handler(
           },
         });
       }
-      let agentConfigurations = await getAgentConfigurationsForView({
-        auth,
-        agentsGetView:
-          viewParam === "workspace"
-            ? "published" // workspace is deprecated, return all visible agents
-            : viewParam,
-        variant: "light",
+
+      const agentConfigurations = await listAgentConfigurationsForView(auth, {
+        // workspace is deprecated, return all visible agents
+        view: viewParam === "workspace" ? "published" : viewParam,
         limit,
         sort,
+        withUsage: withUsage === "true",
+        withAuthors: withAuthors === "true",
+        withEditors: withEditors === "true",
+        withFeedbacks: withFeedbacks === "true",
       });
-      if (withUsage === "true") {
-        const mentionCounts = await runOnRedis(
-          { origin: "agent_usage" },
-          async (redis) => {
-            return getAgentsUsage({
-              providedRedis: redis,
-              workspaceId: owner.sId,
-              limit:
-                typeof req.query.limit === "string"
-                  ? parseInt(req.query.limit, 10)
-                  : -1,
-            });
-          }
-        );
-        const usageMap = keyBy(mentionCounts, "agentId");
-        agentConfigurations = agentConfigurations.map((agentConfiguration) =>
-          usageMap[agentConfiguration.sId]
-            ? {
-                ...agentConfiguration,
-                usage: omit(usageMap[agentConfiguration.sId], ["agentId"]),
-              }
-            : agentConfiguration
-        );
-      }
-      if (withAuthors === "true") {
-        const recentAuthors = await getAgentsRecentAuthors({
-          auth,
-          agents: agentConfigurations,
-        });
-        agentConfigurations = agentConfigurations.map(
-          (agentConfiguration, index) => {
-            return {
-              ...agentConfiguration,
-              lastAuthors: recentAuthors[index],
-            };
-          }
-        );
-      }
-
-      if (withEditors === "true") {
-        const editors = await getAgentsEditors(auth, agentConfigurations);
-        agentConfigurations = agentConfigurations.map((agentConfiguration) => ({
-          ...agentConfiguration,
-          editors: editors[agentConfiguration.sId],
-        }));
-      }
-
-      if (withFeedbacks === "true") {
-        const feedbacks =
-          await AgentMessageFeedbackResource.getFeedbackCountForAssistants(
-            auth,
-            agentConfigurations
-              .filter((agent) => agent.scope !== "global")
-              .map((agent) => agent.sId),
-            30
-          );
-        agentConfigurations = agentConfigurations.map((agentConfiguration) => ({
-          ...agentConfiguration,
-          feedbacks: {
-            up:
-              feedbacks.find(
-                (f) =>
-                  f.agentConfigurationId === agentConfiguration.sId &&
-                  f.thumbDirection === "up"
-              )?.count ?? 0,
-            down:
-              feedbacks.find(
-                (f) =>
-                  f.agentConfigurationId === agentConfiguration.sId &&
-                  f.thumbDirection === "down"
-              )?.count ?? 0,
-          },
-        }));
-      }
 
       return res.status(200).json({
         agentConfigurations,
