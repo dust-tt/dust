@@ -1,3 +1,4 @@
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { createServer } from "node:http";
 import { parse } from "node:url";
 import logger from "@app/logger/logger";
