@@ -2,9 +2,9 @@ import { Hono } from "hono";
 
 import { getStatsDClient } from "@app/lib/utils/statsd";
 
-export const healthApp = new Hono();
+export const healthzApp = new Hono();
 
-healthApp.get("/api/healthz", (c) => {
+healthzApp.get("/", (c) => {
   const startMs = performance.now();
   const response = c.text("ok", 200);
   const elapsedMs = performance.now() - startMs;

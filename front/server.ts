@@ -21,10 +21,12 @@ async function main() {
 
   const server = createServer((req, res) => {
     if (isHonoRoute(req.method, req.url)) {
+      logger.info(`Handling ${req.method} ${req.url} with Hono`);
       void honoListener(req, res);
       return;
     }
 
+    logger.info(`Handling ${req.method} ${req.url} with Next.js`);
     const parsedUrl = parse(req.url ?? "/", true);
     void nextHandler(req, res, parsedUrl);
   });
