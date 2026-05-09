@@ -398,6 +398,14 @@ export async function gongListAndSaveUsersActivity({
   const connector = await fetchGongConnector({ connectorId });
   const configuration = await fetchGongConfiguration(connector);
 
+  const loggerArgs = {
+    connectorId: connector.id,
+    dataSourceId: connector.dataSourceId,
+    provider: "gong",
+    startTimestamp: configuration.lastSyncTimestamp,
+    workspaceId: connector.workspaceId,
+  };
+
   // Skip the full sync of users if we are not on the initial full sync.
   // The call to /users is costly (many users usually) and heavily rate-limited:
   // we have seen retry-after of ~20 minutes.
@@ -409,9 +417,11 @@ export async function gongListAndSaveUsersActivity({
 
   let pageCursor = null;
   do {
+    logger.info({ ...loggerArgs, pageCursor }, "[Gong] Fetching users page.");
     const { users, nextPageCursor } = await gongClient.getUsers({
       pageCursor,
     });
+    logger.info({ ...loggerArgs, pageCursor }, "[Gong] Success users page.");
 
     await GongUserResource.batchCreate(
       connector,
