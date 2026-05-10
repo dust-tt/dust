@@ -1,5 +1,4 @@
 import { GongAPIError } from "@connectors/connectors/gong/lib/errors";
-import { setTimeoutAsync } from "@connectors/lib/async_utils";
 import {
   ExternalOAuthTokenError,
   HTTPError,
@@ -244,8 +243,6 @@ const GongPermissionProfilesResponseCodec = t.intersection([
 // outliers.
 const RETRY_AFTER_FLOOR_SECONDS = 10;
 const RETRY_AFTER_CEILING_SECONDS = 3600;
-const GET_TRANSCRIPTS_RATE_LIMIT_MAX_LOCAL_RETRIES = 3;
-const GET_TRANSCRIPTS_MAX_LOCAL_RETRY_AFTER_SECONDS = 60;
 
 export function clampRetryAfterSeconds(
   raw: number | undefined
