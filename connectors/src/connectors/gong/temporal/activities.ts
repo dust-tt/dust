@@ -316,9 +316,13 @@ export async function gongSyncTranscriptsActivity({
   );
 
   const participants = await getGongUsers(connector, {
-    gongUserIds: [...new Set(callsMetadataToSync.flatMap(({ parties = [] }) =>
-      removeNulls(parties.map((p) => p.userId))
-    ))],
+    gongUserIds: [
+      ...new Set(
+        callsMetadataToSync.flatMap(({ parties = [] }) =>
+          removeNulls(parties.map((p) => p.userId))
+        )
+      ),
+    ],
   });
   const participantsByGongId = new Map(
     participants.map((participant) => [participant.gongId, participant])
