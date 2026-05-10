@@ -314,19 +314,15 @@ export async function gongSyncTranscriptsActivity({
     configuration
   );
 
-  await heartbeat();
-
-  await concurrentExecutor(
-    transcriptsToSync,
-    async (transcript) => {
-      await heartbeat();
+  const callsMetadataToSync = removeNulls(
+    transcriptsToSync.map((transcript) => {
       const transcriptMetadata = callsMetadataMap.get(transcript.callId);
       if (!transcriptMetadata) {
         logger.warn(
           { ...loggerArgs, callId: transcript.callId },
           "[Gong] Transcript metadata not found."
         );
-        return;
+        return null;
       }
 
       const { shouldSync, reason } = shouldSyncTranscript(
@@ -339,22 +335,41 @@ export async function gongSyncTranscriptsActivity({
           { ...loggerArgs, callId: transcript.callId, reason },
           `[Gong] Skipping transcript.`
         );
-        return;
+        return null;
       }
 
-      const { parties = [] } = transcriptMetadata;
+      return { transcript, transcriptMetadata };
+    })
+  );
 
-      const participants = await getGongUsers(connector, {
-        gongUserIds: parties
-          .map((p) => p.userId)
-          .filter((id): id is string => Boolean(id)),
-      });
+  const participants = await getGongUsers(connector, {
+    gongUserIds: [
+      ...new Set(
+        callsMetadataToSync.flatMap(({ transcriptMetadata }) =>
+          removeNulls(transcriptMetadata.parties?.map((p) => p.userId) ?? [])
+        )
+      ),
+    ],
+  });
+  const participantsByGongId = new Map(
+    participants.map((participant) => [participant.gongId, participant])
+  );
+
+  await heartbeat();
+
+  await concurrentExecutor(
+    callsMetadataToSync,
+    async ({ transcript, transcriptMetadata }) => {
+      await heartbeat();
+
+      const { parties = [] } = transcriptMetadata;
 
       const participantEmails = parties
         .map(
           (party) =>
-            participants.find((p) => party.userId === p.gongId)?.email ||
-            party.emailAddress
+            (party.userId
+              ? participantsByGongId.get(party.userId)?.email
+              : null) ?? party.emailAddress
         )
         .filter((email): email is string => Boolean(email));
 
@@ -362,9 +377,9 @@ export async function gongSyncTranscriptsActivity({
         parties.map((party) => [
           party.speakerId,
           // Prefer gong_users table, fallback to metadata email
-          participants.find(
-            (participant) => participant.gongId === party.userId
-          )?.email || party.emailAddress,
+          (party.userId
+            ? participantsByGongId.get(party.userId)?.email
+            : null) ?? party.emailAddress,
         ])
       );
 
