@@ -307,40 +307,14 @@ export async function gongSyncTranscriptsActivity({
   );
 
   const callsMetadataToSync = removeNulls(
-    transcriptsToSync.map((transcript) =>
-      callsMetadataMap.get(transcript.callId)
-    )
-  ).filter(
-    (metadata) =>
-      shouldSyncTranscript(metadata, permissionFilter, configuration).shouldSync
-  );
-
-  const participants = await getGongUsers(connector, {
-    gongUserIds: [
-      ...new Set(
-        callsMetadataToSync.flatMap(({ parties = [] }) =>
-          removeNulls(parties.map((p) => p.userId))
-        )
-      ),
-    ],
-  });
-  const participantsByGongId = new Map(
-    participants.map((participant) => [participant.gongId, participant])
-  );
-
-  await heartbeat();
-
-  await concurrentExecutor(
-    transcriptsToSync,
-    async (transcript) => {
-      await heartbeat();
+    transcriptsToSync.map((transcript) => {
       const transcriptMetadata = callsMetadataMap.get(transcript.callId);
       if (!transcriptMetadata) {
         logger.warn(
           { ...loggerArgs, callId: transcript.callId },
           "[Gong] Transcript metadata not found."
         );
-        return;
+        return null;
       }
 
       const { shouldSync, reason } = shouldSyncTranscript(
@@ -353,8 +327,32 @@ export async function gongSyncTranscriptsActivity({
           { ...loggerArgs, callId: transcript.callId, reason },
           `[Gong] Skipping transcript.`
         );
-        return;
+        return null;
       }
+
+      return { transcript, transcriptMetadata };
+    })
+  );
+
+  const participants = await getGongUsers(connector, {
+    gongUserIds: [
+      ...new Set(
+        callsMetadataToSync.flatMap(({ transcriptMetadata }) =>
+          removeNulls(transcriptMetadata.parties?.map((p) => p.userId) ?? [])
+        )
+      ),
+    ],
+  });
+  const participantsByGongId = new Map(
+    participants.map((participant) => [participant.gongId, participant])
+  );
+
+  await heartbeat();
+
+  await concurrentExecutor(
+    callsMetadataToSync,
+    async ({ transcript, transcriptMetadata }) => {
+      await heartbeat();
 
       const { parties = [] } = transcriptMetadata;
 
