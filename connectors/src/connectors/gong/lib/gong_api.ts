@@ -467,6 +467,42 @@ export class GongClient {
     }
   }
 
+  // https://gong.app.gong.io/settings/api/documentation#post-/v2/users/extensive
+  async getUsersByIds({
+    userIds,
+    pageCursor = null,
+  }: {
+    userIds: string[];
+    pageCursor?: string | null;
+  }) {
+    try {
+      const users = await this.postRequest(
+        "/users/extensive",
+        {
+          cursor: pageCursor,
+          filter: {
+            userIds,
+          },
+        },
+        GongPaginatedResults("users", GongUserCodec)
+      );
+
+      return {
+        users: users.users,
+        nextPageCursor: users.records.cursor ?? null,
+      };
+    } catch (err) {
+      if (isNotFoundError(err)) {
+        return {
+          users: [],
+          nextPageCursor: null,
+        };
+      }
+
+      throw err;
+    }
+  }
+
   async getUser({ userId }: { userId: string }) {
     try {
       return await this.getRequest(`/users/${userId}`, {}, GongUserCodec);
