@@ -306,6 +306,24 @@ export async function gongSyncTranscriptsActivity({
     configuration
   );
 
+  const callsMetadataToSync = removeNulls(
+    transcriptsToSync.map((transcript) =>
+      callsMetadataMap.get(transcript.callId)
+    )
+  ).filter(
+    (metadata) =>
+      shouldSyncTranscript(metadata, permissionFilter, configuration).shouldSync
+  );
+
+  const participants = await getGongUsers(connector, {
+    gongUserIds: callsMetadataToSync.flatMap(({ parties = [] }) =>
+      removeNulls(parties.map((p) => p.userId))
+    ),
+  });
+  const participantsByGongId = new Map(
+    participants.map((participant) => [participant.gongId, participant])
+  );
+
   await heartbeat();
 
   await concurrentExecutor(
@@ -336,17 +354,12 @@ export async function gongSyncTranscriptsActivity({
 
       const { parties = [] } = transcriptMetadata;
 
-      const participants = await getGongUsers(connector, {
-        gongUserIds: parties
-          .map((p) => p.userId)
-          .filter((id): id is string => Boolean(id)),
-      });
-
       const participantEmails = parties
         .map(
           (party) =>
-            participants.find((p) => party.userId === p.gongId)?.email ||
-            party.emailAddress
+            (party.userId
+              ? participantsByGongId.get(party.userId)?.email
+              : null) ?? party.emailAddress
         )
         .filter((email): email is string => Boolean(email));
 
@@ -354,9 +367,9 @@ export async function gongSyncTranscriptsActivity({
         parties.map((party) => [
           party.speakerId,
           // Prefer gong_users table, fallback to metadata email
-          participants.find(
-            (participant) => participant.gongId === party.userId
-          )?.email || party.emailAddress,
+          (party.userId
+            ? participantsByGongId.get(party.userId)?.email
+            : null) ?? party.emailAddress,
         ])
       );
 
