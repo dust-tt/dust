@@ -117,22 +117,14 @@ export async function handleMetronomeSetupCheckout({
     ? await getSetupIntentDetails({ setupIntentId })
     : { paymentMethodId: null, country: null };
 
-  // Stamp workspace_id on the Stripe customer so Stripe webhooks for
-  // Metronome-pushed invoices (which carry no Stripe subscription id) can
-  // resolve the invoice back to a workspace.
-  const stripe = getStripeClient();
-  await stripe.customers.update(stripeCustomerId, {
-    metadata: { workspace_id: workspaceId },
-    ...(setupIntentDetails.paymentMethodId
-      ? {
-          invoice_settings: {
-            default_payment_method: setupIntentDetails.paymentMethodId,
-          },
-        }
-      : {}),
-  });
-
-  if (!setupIntentDetails.paymentMethodId) {
+  if (setupIntentDetails.paymentMethodId) {
+    const stripe = getStripeClient();
+    await stripe.customers.update(stripeCustomerId, {
+      invoice_settings: {
+        default_payment_method: setupIntentDetails.paymentMethodId,
+      },
+    });
+  } else {
     logger.warn(
       { sessionId, workspaceId, stripeCustomerId, setupIntentId },
       "[Metronome] No payment method on setup intent; default payment method not set. Future invoices may fail to auto-charge."

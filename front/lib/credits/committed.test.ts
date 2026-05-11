@@ -13,7 +13,6 @@ import {
   getCreditAmountFromInvoice,
   getCreditPurchaseCouponId,
   isCreditPurchaseInvoice,
-  isEnterpriseSubscription,
   MAX_PRO_INVOICE_ATTEMPTS_BEFORE_VOIDED,
   makeCreditPurchaseOneOffInvoiceForSubscription,
   payInvoice,
@@ -25,14 +24,10 @@ import { Err, Ok } from "@app/types/shared/result";
 import type Stripe from "stripe";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const MONTH_SECONDS = 30 * 24 * 60 * 60;
-const NOW = 1700000000; // Fixed timestamp for tests
-
 vi.mock("@app/lib/plans/stripe", async () => {
   const actual = await vi.importActual("@app/lib/plans/stripe");
   return {
     ...actual,
-    isEnterpriseSubscription: vi.fn(),
     isCreditPurchaseInvoice: vi.fn(),
     getCreditAmountFromInvoice: vi.fn(),
     voidInvoiceWithReason: vi.fn(),
@@ -42,21 +37,6 @@ vi.mock("@app/lib/plans/stripe", async () => {
     payInvoice: vi.fn(),
   };
 });
-
-function makeProSubscription(
-  overrides: Partial<Stripe.Subscription> = {}
-): Stripe.Subscription {
-  return {
-    id: "sub_pro",
-    current_period_start: NOW,
-    current_period_end: NOW + MONTH_SECONDS,
-    start_date: NOW - MONTH_SECONDS * 3,
-    status: "active",
-    customer: "cus_123",
-    items: { data: [], has_more: false, object: "list", url: "" },
-    ...overrides,
-  } as Stripe.Subscription;
-}
 
 function makeCreditPurchaseInvoice(
   overrides: Partial<Stripe.Invoice> = {}
@@ -85,53 +65,23 @@ describe("startCreditFromProOneOffInvoice", () => {
 
   it("should throw when invoice is not a credit purchase invoice", async () => {
     vi.mocked(isCreditPurchaseInvoice).mockReturnValue(false);
-    vi.mocked(isEnterpriseSubscription).mockReturnValue(false);
 
     const invoice = makeCreditPurchaseInvoice();
-    const subscription = makeProSubscription();
 
     await expect(
-      startCreditFromProOneOffInvoice({
-        auth,
-        invoice,
-        stripeSubscription: subscription,
-      })
+      startCreditFromProOneOffInvoice({ auth, invoice })
     ).rejects.toThrow("Cannot process this invoice for credit purchase");
 
     expect(isCreditPurchaseInvoice).toHaveBeenCalledWith(invoice);
   });
 
-  it("should throw when subscription is enterprise", async () => {
-    vi.mocked(isCreditPurchaseInvoice).mockReturnValue(true);
-    vi.mocked(isEnterpriseSubscription).mockReturnValue(true);
-
-    const invoice = makeCreditPurchaseInvoice();
-    const subscription = makeProSubscription();
-
-    await expect(
-      startCreditFromProOneOffInvoice({
-        auth,
-        invoice,
-        stripeSubscription: subscription,
-      })
-    ).rejects.toThrow("Cannot process this invoice for credit purchase");
-
-    expect(isEnterpriseSubscription).toHaveBeenCalledWith(subscription);
-  });
-
   it("should return error when credit amount metadata is invalid", async () => {
     vi.mocked(isCreditPurchaseInvoice).mockReturnValue(true);
-    vi.mocked(isEnterpriseSubscription).mockReturnValue(false);
     vi.mocked(getCreditAmountFromInvoice).mockReturnValue(null);
 
     const invoice = makeCreditPurchaseInvoice();
-    const subscription = makeProSubscription();
 
-    const result = await startCreditFromProOneOffInvoice({
-      auth,
-      invoice,
-      stripeSubscription: subscription,
-    });
+    const result = await startCreditFromProOneOffInvoice({ auth, invoice });
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
@@ -143,17 +93,11 @@ describe("startCreditFromProOneOffInvoice", () => {
 
   it("should return error when credit not found for invoice", async () => {
     vi.mocked(isCreditPurchaseInvoice).mockReturnValue(true);
-    vi.mocked(isEnterpriseSubscription).mockReturnValue(false);
     vi.mocked(getCreditAmountFromInvoice).mockReturnValue(10000);
 
     const invoice = makeCreditPurchaseInvoice();
-    const subscription = makeProSubscription();
 
-    const result = await startCreditFromProOneOffInvoice({
-      auth,
-      invoice,
-      stripeSubscription: subscription,
-    });
+    const result = await startCreditFromProOneOffInvoice({ auth, invoice });
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
@@ -163,11 +107,9 @@ describe("startCreditFromProOneOffInvoice", () => {
 
   it("should start credit successfully when all conditions met", async () => {
     vi.mocked(isCreditPurchaseInvoice).mockReturnValue(true);
-    vi.mocked(isEnterpriseSubscription).mockReturnValue(false);
     vi.mocked(getCreditAmountFromInvoice).mockReturnValue(10000);
 
     const invoice = makeCreditPurchaseInvoice();
-    const subscription = makeProSubscription();
 
     await CreditResource.makeNew(auth, {
       type: "committed",
@@ -176,11 +118,7 @@ describe("startCreditFromProOneOffInvoice", () => {
       invoiceOrLineItemId: invoice.id,
     });
 
-    const result = await startCreditFromProOneOffInvoice({
-      auth,
-      invoice,
-      stripeSubscription: subscription,
-    });
+    const result = await startCreditFromProOneOffInvoice({ auth, invoice });
 
     expect(result.isOk()).toBe(true);
     const credits = await CreditResource.listAll(auth);
@@ -200,35 +138,11 @@ describe("startCreditFromEnterpriseOneOffInvoice", () => {
 
   it("should throw when invoice is not a credit purchase invoice", async () => {
     vi.mocked(isCreditPurchaseInvoice).mockReturnValue(false);
-    vi.mocked(isEnterpriseSubscription).mockReturnValue(true);
 
     const invoice = makeCreditPurchaseInvoice();
-    const subscription = makeProSubscription();
 
     await expect(
-      startCreditFromEnterpriseOneOffInvoice({
-        auth,
-        invoice,
-        stripeSubscription: subscription,
-      })
-    ).rejects.toThrow(
-      "Cannot process this invoice for enterprise credit purchase"
-    );
-  });
-
-  it("should throw when subscription is not enterprise", async () => {
-    vi.mocked(isCreditPurchaseInvoice).mockReturnValue(true);
-    vi.mocked(isEnterpriseSubscription).mockReturnValue(false);
-
-    const invoice = makeCreditPurchaseInvoice();
-    const subscription = makeProSubscription();
-
-    await expect(
-      startCreditFromEnterpriseOneOffInvoice({
-        auth,
-        invoice,
-        stripeSubscription: subscription,
-      })
+      startCreditFromEnterpriseOneOffInvoice({ auth, invoice })
     ).rejects.toThrow(
       "Cannot process this invoice for enterprise credit purchase"
     );
@@ -236,16 +150,13 @@ describe("startCreditFromEnterpriseOneOffInvoice", () => {
 
   it("should return error when credit amount metadata is invalid", async () => {
     vi.mocked(isCreditPurchaseInvoice).mockReturnValue(true);
-    vi.mocked(isEnterpriseSubscription).mockReturnValue(true);
     vi.mocked(getCreditAmountFromInvoice).mockReturnValue(null);
 
     const invoice = makeCreditPurchaseInvoice();
-    const subscription = makeProSubscription();
 
     const result = await startCreditFromEnterpriseOneOffInvoice({
       auth,
       invoice,
-      stripeSubscription: subscription,
     });
 
     expect(result.isErr()).toBe(true);
@@ -258,16 +169,13 @@ describe("startCreditFromEnterpriseOneOffInvoice", () => {
 
   it("should return error when credit not found for invoice", async () => {
     vi.mocked(isCreditPurchaseInvoice).mockReturnValue(true);
-    vi.mocked(isEnterpriseSubscription).mockReturnValue(true);
     vi.mocked(getCreditAmountFromInvoice).mockReturnValue(10000);
 
     const invoice = makeCreditPurchaseInvoice();
-    const subscription = makeProSubscription();
 
     const result = await startCreditFromEnterpriseOneOffInvoice({
       auth,
       invoice,
-      stripeSubscription: subscription,
     });
 
     expect(result.isErr()).toBe(true);
@@ -278,11 +186,9 @@ describe("startCreditFromEnterpriseOneOffInvoice", () => {
 
   it("should be idempotent and return alreadyStarted:true when credit was started optimistically", async () => {
     vi.mocked(isCreditPurchaseInvoice).mockReturnValue(true);
-    vi.mocked(isEnterpriseSubscription).mockReturnValue(true);
     vi.mocked(getCreditAmountFromInvoice).mockReturnValue(10000);
 
     const invoice = makeCreditPurchaseInvoice();
-    const subscription = makeProSubscription();
 
     const credit = await CreditResource.makeNew(auth, {
       type: "committed",
@@ -299,7 +205,6 @@ describe("startCreditFromEnterpriseOneOffInvoice", () => {
     const result = await startCreditFromEnterpriseOneOffInvoice({
       auth,
       invoice,
-      stripeSubscription: subscription,
     });
 
     expect(result.isOk()).toBe(true);
@@ -312,11 +217,9 @@ describe("startCreditFromEnterpriseOneOffInvoice", () => {
 
   it("should start credit and return alreadyStarted:false when credit was not started optimistically", async () => {
     vi.mocked(isCreditPurchaseInvoice).mockReturnValue(true);
-    vi.mocked(isEnterpriseSubscription).mockReturnValue(true);
     vi.mocked(getCreditAmountFromInvoice).mockReturnValue(10000);
 
     const invoice = makeCreditPurchaseInvoice();
-    const subscription = makeProSubscription();
 
     await CreditResource.makeNew(auth, {
       type: "committed",
@@ -328,7 +231,6 @@ describe("startCreditFromEnterpriseOneOffInvoice", () => {
     const result = await startCreditFromEnterpriseOneOffInvoice({
       auth,
       invoice,
-      stripeSubscription: subscription,
     });
 
     expect(result.isOk()).toBe(true);

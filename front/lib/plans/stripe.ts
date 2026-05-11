@@ -840,15 +840,29 @@ export type CustomerFacingInvoiceInfo = {
   purchaseOrderId?: string;
 };
 
+/**
+ * Target of an invoice: either an existing Stripe subscription (the invoice
+ * gets attached to it and inherits its currency) or a Stripe customer
+ * directly (used for Metronome-only billed workspaces with no Stripe
+ * subscription, where the currency must be passed explicitly).
+ */
+type InvoiceTarget =
+  | { kind: "subscription"; stripeSubscription: Stripe.Subscription }
+  | {
+      kind: "customer";
+      stripeCustomerId: string;
+      currency: SupportedCurrency;
+    };
+
 async function makeInvoice({
-  stripeSubscription,
+  target,
   metadata,
   lineItem,
   idempotencyKey,
   customerFacingInfo,
   ...collectionParams
 }: {
-  stripeSubscription: Stripe.Subscription;
+  target: InvoiceTarget;
   metadata: Record<string, string>;
   lineItem: InvoiceLineItem;
   idempotencyKey?: string;
@@ -860,11 +874,16 @@ async function makeInvoice({
   >
 > {
   const stripe = getStripeClient();
-  const customerId = getCustomerId(stripeSubscription);
+  const customerId =
+    target.kind === "subscription"
+      ? getCustomerId(target.stripeSubscription)
+      : target.stripeCustomerId;
 
   const invoiceParams: Stripe.InvoiceCreateParams = {
     customer: customerId,
-    subscription: stripeSubscription.id,
+    ...(target.kind === "subscription"
+      ? { subscription: target.stripeSubscription.id }
+      : { currency: target.currency }),
     collection_method: collectionParams.collectionMethod,
     metadata,
     auto_advance: true,
@@ -904,6 +923,7 @@ async function makeInvoice({
     await stripe.invoiceItems.create({
       customer: customerId,
       price: lineItem.priceId,
+      ...(target.kind === "customer" ? { currency: target.currency } : {}),
       quantity: lineItem.quantity,
       description: lineItem.description,
       invoice: invoice.id,
@@ -925,8 +945,10 @@ async function makeInvoice({
 
     logger.error(
       {
-        stripeSubscriptionId: stripeSubscription.id,
         stripeError: true,
+        ...(target.kind === "subscription"
+          ? { stripeSubscriptionId: target.stripeSubscription.id }
+          : { stripeCustomerId: target.stripeCustomerId }),
       },
       "[Stripe] Failed to create invoice"
     );
@@ -1061,7 +1083,7 @@ export async function makeCreditPurchaseOneOffInvoiceForSubscription({
   const amountDollars = amountCents / 100;
 
   return makeInvoice({
-    stripeSubscription: subscription,
+    target: { kind: "subscription", stripeSubscription: subscription },
     metadata: {
       credit_purchase: "true",
       credit_amount_cents: amountCents.toString(),
@@ -1075,89 +1097,6 @@ export async function makeCreditPurchaseOneOffInvoiceForSubscription({
     customerFacingInfo,
     ...collectionParams,
   });
-}
-
-// Variant for Metronome-only billed customers: no Stripe subscription, just a
-// Stripe customer (linked via the Metronome billing config). Issues a one-off
-// invoice directly on the customer in the requested currency.
-async function makeInvoiceForCustomer({
-  stripeCustomerId,
-  currency,
-  metadata,
-  lineItem,
-  customerFacingInfo,
-  ...collectionParams
-}: {
-  stripeCustomerId: string;
-  // Required for the customer-only path: prices are multi-currency, but with
-  // no subscription Stripe has no anchor to pick from — pass it explicitly so
-  // the issued invoice matches the contract / customer's billing currency.
-  currency: SupportedCurrency;
-  metadata: Record<string, string>;
-  lineItem: InvoiceLineItem;
-  customerFacingInfo?: CustomerFacingInvoiceInfo;
-} & InvoiceCollectionParams): Promise<
-  Result<Stripe.Invoice, { error_message: string }>
-> {
-  const stripe = getStripeClient();
-
-  const invoiceParams: Stripe.InvoiceCreateParams = {
-    customer: stripeCustomerId,
-    currency,
-    collection_method: collectionParams.collectionMethod,
-    metadata,
-    auto_advance: true,
-    automatic_tax: { enabled: true },
-    custom_fields: customerFacingInfo?.purchaseOrderId
-      ? [{ name: "Purchase Order", value: customerFacingInfo.purchaseOrderId }]
-      : undefined,
-  };
-
-  switch (collectionParams.collectionMethod) {
-    case "charge_automatically":
-      invoiceParams.payment_settings = {
-        payment_method_options: {
-          card: {
-            request_three_d_secure: (collectionParams.requestThreeDSecure ??
-              "automatic") as Stripe.InvoiceCreateParams.PaymentSettings.PaymentMethodOptions.Card.RequestThreeDSecure,
-          },
-        },
-      };
-      break;
-    case "send_invoice":
-      invoiceParams.days_until_due = collectionParams.daysUntilDue;
-      break;
-    default:
-      assertNever(collectionParams);
-  }
-
-  try {
-    const invoice = await stripe.invoices.create(invoiceParams);
-
-    await stripe.invoiceItems.create({
-      customer: stripeCustomerId,
-      price: lineItem.priceId,
-      currency,
-      quantity: lineItem.quantity,
-      description: lineItem.description,
-      invoice: invoice.id,
-      ...(lineItem.couponId && { discounts: [{ coupon: lineItem.couponId }] }),
-    });
-
-    return new Ok(invoice);
-  } catch (error) {
-    logger.error(
-      {
-        stripeCustomerId,
-        stripeError: true,
-        error: normalizeError(error).message,
-      },
-      "[Stripe] Failed to create invoice for customer"
-    );
-    return new Err({
-      error_message: `Failed to create invoice: ${normalizeError(error).message}`,
-    });
-  }
 }
 
 /**
@@ -1190,9 +1129,8 @@ export async function makeCreditPurchaseOneOffInvoiceForCustomer({
   const amountCents = Math.ceil(amountMicroUsd / 10_000);
   const amountDollars = amountCents / 100;
 
-  return makeInvoiceForCustomer({
-    stripeCustomerId,
-    currency,
+  return makeInvoice({
+    target: { kind: "customer", stripeCustomerId, currency },
     metadata: {
       credit_purchase: "true",
       credit_amount_cents: amountCents.toString(),
@@ -1321,7 +1259,7 @@ export async function makeAndFinalizeCreditsPAYGInvoice({
   const amountDollars = amountCents / 100;
 
   const invoiceResult = await makeInvoice({
-    stripeSubscription,
+    target: { kind: "subscription", stripeSubscription },
     metadata: {
       credits_payg: "true",
       arrears_invoice: "true",
