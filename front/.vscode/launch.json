@@ -14,14 +14,6 @@
     },
     {
       "type": "node-terminal",
-      "name": "Debug front hono server",
-      "request": "launch",
-      "command": "npm run dev",
-      "cwd": "${workspaceFolder}/../front-api",
-      "envFile": "${workspaceFolder}/.env.local"
-    },
-    {
-      "type": "node-terminal",
       "name": "Debug front worker",
       "request": "launch",
       "command": "npm run dev:worker",
