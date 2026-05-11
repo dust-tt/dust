@@ -752,12 +752,16 @@ export async function executePostMessage(
     message,
     threadTs,
     fileId,
+    unfurlLinks,
+    unfurlMedia,
   }: {
     accessToken: string;
     to: string | string[];
     message: string;
     threadTs: string | undefined;
     fileId: string | undefined;
+    unfurlLinks: boolean | undefined;
+    unfurlMedia: boolean | undefined;
   }
 ) {
   const slackClient = await getSlackClient(accessToken);
@@ -859,6 +863,8 @@ export async function executePostMessage(
     text: message,
     mrkdwn: true,
     thread_ts: threadTs,
+    unfurl_links: unfurlLinks,
+    unfurl_media: unfurlMedia,
   });
 
   if (!response.ok) {
@@ -912,12 +918,16 @@ export async function executeScheduleMessage(
     message,
     post_at,
     threadTs,
+    unfurlLinks,
+    unfurlMedia,
   }: {
     accessToken: string;
     to: string;
     message: string;
     post_at: number | string;
     threadTs: string | undefined;
+    unfurlLinks: boolean | undefined;
+    unfurlMedia: boolean | undefined;
   }
 ) {
   const slackClient = await getSlackClient(accessToken);
@@ -976,6 +986,8 @@ export async function executeScheduleMessage(
     text: message,
     post_at: timestampSeconds.toString(),
     thread_ts: threadTs,
+    unfurl_links: unfurlLinks,
+    unfurl_media: unfurlMedia,
   });
 
   if (!response.ok) {

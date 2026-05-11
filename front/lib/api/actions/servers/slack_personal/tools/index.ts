@@ -550,7 +550,10 @@ export function createSlackPersonalTools(
       }
     },
 
-    post_message: async ({ to, message, threadTs, fileId }, { authInfo }) => {
+    post_message: async (
+      { to, message, threadTs, fileId, unfurlLinks, unfurlMedia },
+      { authInfo }
+    ) => {
       const accessToken = authInfo?.token;
       if (!accessToken) {
         return new Err(new MCPError("Access token not found"));
@@ -568,6 +571,8 @@ export function createSlackPersonalTools(
           message,
           threadTs,
           fileId,
+          unfurlLinks,
+          unfurlMedia,
           accessToken,
         });
       } catch (error) {
@@ -582,7 +587,7 @@ export function createSlackPersonalTools(
     },
 
     schedule_message: async (
-      { to, message, post_at, threadTs },
+      { to, message, post_at, threadTs, unfurlLinks, unfurlMedia },
       { authInfo }
     ) => {
       const accessToken = authInfo?.token;
@@ -602,6 +607,8 @@ export function createSlackPersonalTools(
           message,
           post_at,
           threadTs,
+          unfurlLinks,
+          unfurlMedia,
           accessToken,
         });
       } catch (error) {
