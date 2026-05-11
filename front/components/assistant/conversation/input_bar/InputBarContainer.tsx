@@ -79,18 +79,6 @@ const COLLAPSE_TRANSITION = "200ms cubic-bezier(0.34, 1.15, 0.64, 1)";
 const FADE_OUT_TRANSITION = "50ms ease-out";
 const FADE_IN_TRANSITION = "150ms ease-out";
 
-function getButtonsTransitionStyle(hideButtons: boolean): React.CSSProperties {
-  const opacityTransition = hideButtons
-    ? FADE_OUT_TRANSITION
-    : FADE_IN_TRANSITION;
-  return {
-    maxWidth: hideButtons ? 0 : 500,
-    opacity: hideButtons ? 0 : 1,
-    overflow: "hidden",
-    transition: `max-width ${COLLAPSE_TRANSITION}, opacity ${opacityTransition}`,
-  };
-}
-
 function getToolbarRowTransitionStyle(
   hideButtons: boolean
 ): React.CSSProperties {
@@ -945,13 +933,11 @@ const InputBarContainer = ({
     "inline-block w-full",
     "border-0 outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0",
     "whitespace-pre-wrap font-normal",
-    "px-3 sm:pl-4 pt-3",
-    !hideButtons && "sm:pt-3.5"
+    "px-3 sm:pl-4 pt-3 sm:pt-3.5"
   );
 
   const isRecording = voiceTranscriberService.status === "recording";
 
-  const buttonsTransitionStyle = getButtonsTransitionStyle(hideButtons);
   const toolbarRowTransitionStyle = getToolbarRowTransitionStyle(hideButtons);
 
   return (
@@ -973,9 +959,8 @@ const InputBarContainer = ({
               contentEditableClasses,
               "scrollbar-hide",
               "overflow-y-auto",
-              hideButtons
-                ? "max-h-[40vh] pr-20"
-                : "max-h-[40vh] min-h-14 sm:min-h-16"
+              "max-h-[40vh] min-h-14 sm:min-h-16",
+              hideButtons && "pr-20"
             )}
           />
         </div>
@@ -992,7 +977,7 @@ const InputBarContainer = ({
         <div
           className={cn(
             "flex w-full flex-col",
-            !hideButtons && "py-1.5 sm:pb-2"
+            "py-1.5 sm:pb-2"
           )}
           style={{
             transition: `padding ${COLLAPSE_TRANSITION}`,
@@ -1027,7 +1012,6 @@ const InputBarContainer = ({
           </div>
           <div
             className="relative flex w-full items-center justify-between"
-            style={toolbarRowTransitionStyle}
           >
             {!isRecording && editor && (
               <Toolbar
@@ -1053,10 +1037,7 @@ const InputBarContainer = ({
               )}
             >
               {!isRecording && (
-                <div
-                  className="flex items-center"
-                  style={buttonsTransitionStyle}
-                >
+                <div className="flex items-center">
                   <Button
                     variant="ghost-secondary"
                     icon={TextIcon}
@@ -1090,10 +1071,7 @@ const InputBarContainer = ({
                 </div>
               )}
               <div className="grow" />
-              <div
-                className="flex items-center gap-2 md:gap-1"
-                style={buttonsTransitionStyle}
-              />
+              <div className="flex items-center gap-2 md:gap-1" />
             </div>
           </div>
         </div>
