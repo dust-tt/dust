@@ -95,8 +95,8 @@ export function MicrosoftLabelsSelector({
             <div className="max-h-48 overflow-auto rounded-md border border-border bg-background shadow-md dark:border-border-night dark:bg-background-night">
               {hasError ? (
                 <p className="px-3 py-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
-                  Labels could not be retrieved. You must reconnect your Microsoft
-                  connection to grant the necessary permissions.
+                  Labels could not be retrieved. You must reconnect your
+                  Microsoft connection to grant the necessary permissions.
                 </p>
               ) : filteredLabels.length === 0 ? (
                 <p className="px-3 py-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
