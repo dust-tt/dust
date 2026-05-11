@@ -1,3 +1,4 @@
+import { CONVERSATION_BRANCHING_COPY } from "@app/components/assistant/conversation/branching";
 import {
   ConversationMenu,
   useConversationMenu,
@@ -24,6 +25,7 @@ import {
   Button,
   Chip,
   MoreIcon,
+  Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
 import { useCallback, useState } from "react";
@@ -189,14 +191,21 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
               <Button
                 size="sm"
                 variant="ghost"
-                icon={MoreIcon}
-                aria-label="Conversation menu"
-                isLoading={isPendingAction}
+                icon={isPendingAction ? <Spinner size="xs" /> : MoreIcon}
+                aria-label={
+                  isPendingAction
+                    ? CONVERSATION_BRANCHING_COPY.branching
+                    : "Conversation menu"
+                }
+                tooltip={
+                  isPendingAction
+                    ? CONVERSATION_BRANCHING_COPY.branching
+                    : undefined
+                }
                 disabled={
                   activeConversationId === null ||
                   conversation === null ||
-                  user === null ||
-                  isPendingAction
+                  user === null
                 }
               />
             )}
