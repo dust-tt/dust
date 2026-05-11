@@ -368,7 +368,7 @@ export function createProjectManagerTools(
         }
 
         // Verify it's a project context file for this space.
-        const metadata = file.useCaseMetadata as { spaceId?: string };
+        const metadata = file.useCaseMetadata;
         if (
           file.useCase !== "project_context" ||
           metadata?.spaceId !== space.sId

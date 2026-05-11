@@ -6,13 +6,19 @@ import {
 } from "@app/lib/api/files/mount_path";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
+import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import logger from "@app/logger/logger";
 import { isSupportedImageContentType } from "@app/types/files";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
+
+const GCS_MOUNT_COPY_CONCURRENCY = 4;
+const GCS_MOUNT_COPY_MAX_FILES = 5000;
 
 type GCSMountEntryBase = {
   fileName: string;
@@ -336,4 +342,68 @@ export async function createGCSMountFile(
       owner.sId
     )
   );
+}
+
+export async function copyConversationGCSMount(
+  auth: Authenticator,
+  {
+    source,
+    dest,
+  }: {
+    source: ConversationResource;
+    dest: ConversationResource;
+  }
+): Promise<Result<{ copiedCount: number }, Error>> {
+  const owner = auth.getNonNullableWorkspace();
+
+  const sourcePrefix = resolvePrefix(owner, {
+    useCase: "conversation",
+    conversationId: source.sId,
+  });
+  const destPrefix = resolvePrefix(owner, {
+    useCase: "conversation",
+    conversationId: dest.sId,
+  });
+
+  if (sourcePrefix === destPrefix) {
+    return new Ok({ copiedCount: 0 });
+  }
+
+  const bucket = getPrivateUploadBucket();
+
+  try {
+    const gcsFiles = await bucket.getFiles({
+      prefix: sourcePrefix,
+      maxResults: GCS_MOUNT_COPY_MAX_FILES,
+    });
+
+    if (gcsFiles.length >= GCS_MOUNT_COPY_MAX_FILES) {
+      logger.warn(
+        {
+          workspaceId: owner.sId,
+          sourceConversationId: source.sId,
+          destConversationId: dest.sId,
+          maxFiles: GCS_MOUNT_COPY_MAX_FILES,
+        },
+        "GCS mount copy hit the max files cap; some files may not be copied."
+      );
+
+      // TODO(2026-05-11 CONVERSATION BRANCHING): Flag error state on the conversation.
+      throw new Error("GCS mount copy hit the max files cap");
+    }
+
+    await concurrentExecutor(
+      gcsFiles,
+      async (gcsFile) => {
+        const relativePath = gcsFile.name.slice(sourcePrefix.length);
+        const destPath = `${destPrefix}${relativePath}`;
+        await bucket.copyFile(gcsFile.name, destPath);
+      },
+      { concurrency: GCS_MOUNT_COPY_CONCURRENCY }
+    );
+
+    return new Ok({ copiedCount: gcsFiles.length });
+  } catch (err) {
+    return new Err(normalizeError(err));
+  }
 }
