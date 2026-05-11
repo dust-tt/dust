@@ -872,6 +872,7 @@ const InputBarContainer = ({
   useHandleMentions({
     allAgents,
     conversation,
+    disableAutoFocus,
     editorService,
     getDraft,
     isAgentBuilder,
