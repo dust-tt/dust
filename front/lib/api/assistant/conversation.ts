@@ -1,4 +1,3 @@
-// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import type { LightMCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { StepContext } from "@app/lib/actions/types";
 import {
@@ -158,8 +157,8 @@ import { md5 } from "@app/types/shared/utils/encryption";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
+import type { IncomingHttpHeaders } from "http";
 import uniq from "lodash/uniq";
-import type { NextApiRequest } from "next";
 import type { Transaction } from "sequelize";
 import { col } from "sequelize";
 
@@ -506,7 +505,7 @@ async function getNextConversationMessageRank(
 
 export function isUserMessageContextValid(
   auth: Authenticator,
-  req: NextApiRequest,
+  headers: IncomingHttpHeaders,
   context: UserMessageContext
 ): boolean {
   const authMethod = auth.authMethod();
@@ -519,7 +518,7 @@ export function isUserMessageContextValid(
     "user-agent": userAgent,
     "x-dust-extension-version": extensionVersion,
     "x-zendesk-user-id": zendeskUserId,
-  } = req.headers;
+  } = headers;
 
   switch (context.origin) {
     case "api":
