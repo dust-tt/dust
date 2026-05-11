@@ -2,7 +2,10 @@ import { REDIS_CACHE_CONCURRENCY } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import {
+  concurrentExecutor,
+  setTimeoutAsync,
+} from "@app/lib/utils/async_utils";
 import { cacheWithRedis, warmCacheWithRedis } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -14,7 +17,35 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 const MCP_OUTPUT_ITEMS_PREFIX = "mcp_output_items";
 const GCS_CONCURRENCY = 4;
 
+// Retries for transient GCS failures on write. Total attempts = 1 + retries.
+const GCS_WRITE_MAX_RETRIES = 2;
+// TODO(2026-05-08 FLAV) Create proper withRetry helper to abstract this.
+const GCS_WRITE_RETRY_DELAYS_MS = [100, 500];
+
 export const GCS_CONTENT_CACHE_TTL_MS = 15 * 60 * 1000;
+
+async function writeOneToGcsWithRetry(
+  file: ReturnType<ReturnType<typeof getPrivateUploadBucket>["file"]>,
+  content: string
+): Promise<void> {
+  let lastErr: unknown;
+  for (let attempt = 0; attempt <= GCS_WRITE_MAX_RETRIES; attempt++) {
+    try {
+      await file.save(Buffer.from(content, "utf-8"), {
+        contentType: "application/json",
+      });
+      return;
+    } catch (err) {
+      lastErr = err;
+      if (attempt === GCS_WRITE_MAX_RETRIES) {
+        break;
+      }
+
+      await setTimeoutAsync(GCS_WRITE_RETRY_DELAYS_MS[attempt]);
+    }
+  }
+  throw lastErr;
+}
 
 type OutputContent = CallToolResult["content"][number];
 
@@ -30,10 +61,7 @@ function getGcsPath(
 
 /**
  * Writes multiple output items to GCS concurrently.
- * Returns Ok with a map of itemId → gcsPath, or Err on failure.
- *
- * TODO(2026-03-15): Add retry with exponential backoff to handle transient
- * GCS failures.
+ * Returns Ok with a map of itemId -> gcsPath, or Err on failure.
  */
 export async function batchWriteContentsToGcs(
   auth: Authenticator,
@@ -53,9 +81,9 @@ export async function batchWriteContentsToGcs(
         const bucket = getPrivateUploadBucket();
         const file = bucket.file(gcsPath);
         const json = JSON.stringify(content);
-        await file.save(Buffer.from(json, "utf-8"), {
-          contentType: "application/json",
-        });
+
+        await writeOneToGcsWithRetry(file, json);
+
         results.set(itemId, gcsPath);
       },
       { concurrency: GCS_CONCURRENCY }

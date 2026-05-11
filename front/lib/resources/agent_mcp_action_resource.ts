@@ -696,10 +696,11 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       }))
     );
 
-    // On GCS failure during migration period, items remain as legacy rows (content read from DB).
-    // Once content column is dropped, this must become a hard error.
+    // GCS write is retried internally. If it still fails we surface the error rather than leaving
+    // rows with no `contentGcsPath`. There is no acceptable degraded state.
     if (gcsResult.isErr()) {
-      return outputItems;
+      // TODO(2026-05-08 FLAV) Return a result and refactor all call sites.
+      throw gcsResult.error;
     }
 
     await warmGcsContentCache(
