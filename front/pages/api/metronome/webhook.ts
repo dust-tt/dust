@@ -23,7 +23,6 @@ import {
   MetronomeWebhookEventSchema,
 } from "@app/lib/metronome/webhook_events";
 import { PlanModel } from "@app/lib/models/plan";
-import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -412,10 +411,12 @@ async function handler(
         case "contract.start": {
           const { contract_id: contractId, customer_id: customerId } = event;
 
-          // Read the PLAN_CODE custom field to determine whether this is a
-          // Poke-scheduled Enterprise upgrade. Only Enterprise plan codes
-          // should trigger a subscription swap; other plan contract starts
-          // are handled by their own creation/update flows.
+          // Read the PLAN_CODE custom field to know which plan to swap the
+          // workspace subscription onto. The actual swap is gated below on
+          // `isMetronomeOnlyBilled` — other billing paths (shadow, pure
+          // Stripe) handle their own state transitions, and contracts whose
+          // start aligns with a synchronous DB flip get caught by the
+          // idempotency check.
           const contractResult = await getMetronomeContractById({
             metronomeCustomerId: customerId,
             metronomeContractId: contractId,
@@ -460,14 +461,6 @@ async function handler(
             break;
           }
 
-          if (!isEntreprisePlanPrefix(targetPlan.code)) {
-            logger.info(
-              { contractId, targetPlanCode, workspaceId: workspace.sId },
-              `[Metronome Webhook] contract.start: non-enterprise ${PLAN_CODE_CUSTOM_FIELD_KEY}, leaving subscription alone`
-            );
-            break;
-          }
-
           const activeSubscription =
             await SubscriptionResource.fetchActiveByWorkspaceModelId(
               workspace.id
@@ -476,6 +469,24 @@ async function handler(
             logger.warn(
               { contractId, customerId, workspaceId: workspace.sId },
               "[Metronome Webhook] contract.start: no active subscription"
+            );
+            break;
+          }
+
+          // Only swap when the workspace is Metronome-only billed. Shadow
+          // billed subscriptions (Stripe + Metronome) follow Stripe's signal,
+          // and pure Stripe subs have no Metronome contract at all. Pro and
+          // Business swaps are synchronous, so this branch effectively only
+          // fires for Enterprise upgrades scheduled in the future via Poke —
+          // the idempotency check below catches the sync cases.
+          if (!activeSubscription.isMetronomeOnlyBilled) {
+            logger.info(
+              {
+                contractId,
+                targetPlanCode,
+                workspaceId: workspace.sId,
+              },
+              "[Metronome Webhook] contract.start: subscription is not Metronome-only billed, leaving subscription alone"
             );
             break;
           }

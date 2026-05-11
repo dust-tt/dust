@@ -47,6 +47,7 @@ const {
 
 vi.mock("@app/lib/metronome/client", () => ({
   ceilToHourISO: (date: Date) => date.toISOString(),
+  floorToHourISO: (date: Date) => date.toISOString(),
   createMetronomeContract: mockCreateMetronomeContract,
   createMetronomeCustomer: mockCreateMetronomeCustomer,
   epochSecondsToFloorHourISO: vi.fn(),
@@ -745,6 +746,7 @@ describe("switchMetronomeContractPackage", () => {
       packageAlias: "legacy-business",
       enableStripeBilling: false,
       planCode: "PRO_PLAN_SEAT_39",
+      swapAt: "current-hour",
     });
 
     expect(result.isOk()).toBe(true);
@@ -770,6 +772,7 @@ describe("switchMetronomeContractPackage", () => {
       packageAlias: "legacy-enterprise-eur",
       enableStripeBilling: false,
       planCode: "PRO_PLAN_SEAT_39",
+      swapAt: "current-hour",
     });
 
     expect(result.isOk()).toBe(true);
@@ -787,6 +790,7 @@ describe("switchMetronomeContractPackage", () => {
       packageAlias: "legacy-business",
       enableStripeBilling: false,
       planCode: "PRO_PLAN_SEAT_39",
+      swapAt: "current-hour",
     });
 
     expect(result.isOk()).toBe(true);
