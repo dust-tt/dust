@@ -352,6 +352,9 @@ export async function copyConversationGCSMount(
         },
         "GCS mount copy hit the max files cap; some files may not be copied."
       );
+
+      // TODO(2026-05-11 CONVERSATION BRANCHING): Flag error state on the conversation.
+      throw new Error("GCS mount copy hit the max files cap");
     }
 
     await concurrentExecutor(
