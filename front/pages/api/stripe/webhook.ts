@@ -42,6 +42,7 @@ import {
   assertStripeSubscriptionIsValid,
   createCustomerPortalSession,
   getStripeClient,
+  getStripeCustomer,
   getStripeSubscription,
   isCreditPurchaseInvoice,
   isEnterpriseSubscription,
@@ -158,6 +159,64 @@ async function provisionShadowMetronome({
       { workspaceId: workspace.sId, error: normalizeError(err) },
       "[Stripe Webhook] Failed to shadow-provision Metronome"
     );
+  }
+}
+
+/**
+ * Shared payment-failure handling for a workspace subscription. Skips
+ * enterprise plans (paid by wire on 30-day terms), flags the subscription as
+ * payment-failing, and emails admins + the Stripe customer email.
+ * Used by both the Stripe-subscription and Metronome-subscription paths.
+ */
+async function notifyAdminsOfPaymentFailure({
+  auth,
+  subscription,
+  invoice,
+  now,
+}: {
+  auth: Authenticator;
+  subscription: SubscriptionResource;
+  invoice: Stripe.Invoice;
+  now: Date;
+}): Promise<void> {
+  const owner = auth.workspace();
+  const subscriptionType = auth.subscription();
+  if (!owner || !subscriptionType) {
+    throw new Error(
+      "notifyAdminsOfPaymentFailure: missing owner or subscription on auth"
+    );
+  }
+  if (isEntreprisePlanPrefix(subscriptionType.plan.code)) {
+    logger.info(
+      {
+        workspaceId: owner.sId,
+        invoiceId: invoice.id,
+        planCode: subscriptionType.plan.code,
+      },
+      "[Stripe Webhook] Skipping payment_failed handling for enterprise workspace."
+    );
+    return;
+  }
+  if (subscription.paymentFailingSince === null) {
+    await subscription.setPaymentFailingStatus({
+      paymentFailingSince: now,
+    });
+  }
+  const { members } = await getMembers(auth, {
+    roles: ["admin"],
+    activeOnly: true,
+  });
+  const adminEmails = members.map((u) => u.email);
+  const customerEmail = invoice.customer_email;
+  if (customerEmail && !adminEmails.includes(customerEmail)) {
+    adminEmails.push(customerEmail);
+  }
+  const portalUrl = await createCustomerPortalSession({
+    owner,
+    subscription: subscriptionType,
+  });
+  for (const adminEmail of adminEmails) {
+    await sendAdminSubscriptionPaymentFailedEmail(adminEmail, portalUrl);
   }
 }
 
@@ -502,12 +561,16 @@ async function handler(
               }
               return res.status(200).json({ success: true });
             }
-            return _returnStripeApiError(
-              req,
-              res,
-              "invoice.paid",
-              "Subscription in event is not a string."
+            // Metronome subscription invoices are pushed to Stripe via
+            // direct_to_billing_provider delivery and have no Stripe
+            // subscription attached. Subscription/credit state is driven
+            // by Metronome's own credit_segment events, so we just
+            // acknowledge the payment here.
+            logger.info(
+              { invoiceId: invoice.id, customer: invoice.customer },
+              "[Stripe Webhook] Metronome subscription invoice paid"
             );
+            return res.status(200).json({ success: true });
           }
           // Setting subscription payment status to succeeded.
           const subscription = await SubscriptionResource.fetchByStripeId(
@@ -602,6 +665,52 @@ async function handler(
           break;
         }
 
+        case "invoice.finalized": {
+          // Metronome-billed subscription invoices are pushed to Stripe via
+          // direct_to_billing_provider delivery. They sometimes finalize with
+          // the PaymentIntent in "incomplete" state (no payment method on the
+          // PI), so Stripe never auto-charges. Force a charge here using the
+          // customer's default payment method. Stripe-subscription invoices
+          // and credit-purchase invoices are charged through their own flows.
+          const finalizedInvoice = event.data.object as Stripe.Invoice;
+          if (typeof finalizedInvoice.subscription === "string") {
+            return res.status(200).json({ success: true });
+          }
+          if (isCreditPurchaseInvoice(finalizedInvoice)) {
+            return res.status(200).json({ success: true });
+          }
+          if (
+            finalizedInvoice.status !== "open" ||
+            finalizedInvoice.amount_due <= 0 ||
+            finalizedInvoice.collection_method !== "charge_automatically"
+          ) {
+            return res.status(200).json({ success: true });
+          }
+          if (!finalizedInvoice.id) {
+            return res.status(200).json({ success: true });
+          }
+          try {
+            await stripe.invoices.pay(finalizedInvoice.id);
+            logger.info(
+              {
+                invoiceId: finalizedInvoice.id,
+                customer: finalizedInvoice.customer,
+              },
+              "[Stripe Webhook] Charged Metronome subscription invoice on finalize"
+            );
+          } catch (err) {
+            logger.warn(
+              {
+                error: normalizeError(err),
+                invoiceId: finalizedInvoice.id,
+                customer: finalizedInvoice.customer,
+              },
+              "[Stripe Webhook] Failed to charge Metronome subscription invoice on finalize; Stripe dunning will retry"
+            );
+          }
+          return res.status(200).json({ success: true });
+        }
+
         case "invoice.payment_failed":
           // Occurs when payment failed or the user does not have a valid payment method.
           // The stripe subscription becomes "past_due".
@@ -655,12 +764,76 @@ async function handler(
               }
               return res.status(200).json({ success: true });
             }
-            return _returnStripeApiError(
-              req,
-              res,
-              "invoice.payment_failed",
-              "Subscription in event is not a string."
+            // Metronome subscription invoice failure (no Stripe subscription,
+            // not a credit purchase). Resolve workspace via the Stripe
+            // customer's `workspace_id` metadata, then mirror the Stripe
+            // subscription failure path: set payment failing status and email
+            // admins.
+            const customerId = isString(invoice.customer)
+              ? invoice.customer
+              : invoice.customer?.id;
+            if (!customerId) {
+              logger.error(
+                { invoiceId: invoice.id },
+                "[Stripe Webhook] Metronome subscription invoice missing customer"
+              );
+              return res.status(200).json({ success: true });
+            }
+            const stripeCustomer = await getStripeCustomer(customerId);
+            if (!stripeCustomer) {
+              return apiError(req, res, {
+                status_code: 500,
+                api_error: {
+                  type: "internal_server_error",
+                  message: "Failed to fetch customer from Stripe.",
+                },
+              });
+            }
+            const metronomeWorkspaceId =
+              stripeCustomer?.metadata?.workspace_id ?? null;
+            if (!metronomeWorkspaceId) {
+              logger.error(
+                {
+                  invoiceId: invoice.id,
+                  stripeCustomerId: customerId,
+                  stripeError: true,
+                },
+                "[Stripe Webhook] Metronome subscription invoice: Stripe customer missing workspace_id metadata"
+              );
+              return res.status(200).json({ success: true });
+            }
+            const metronomeWorkspace =
+              await WorkspaceResource.fetchById(metronomeWorkspaceId);
+            if (!metronomeWorkspace) {
+              logger.warn(
+                {
+                  invoiceId: invoice.id,
+                  workspaceId: metronomeWorkspaceId,
+                },
+                "[Stripe Webhook] Metronome subscription invoice: workspace not found"
+              );
+              return res.status(200).json({ success: true });
+            }
+            const metronomeSubscription =
+              await SubscriptionResource.fetchActiveByWorkspaceModelId(
+                metronomeWorkspace.id
+              );
+            if (
+              !metronomeSubscription ||
+              metronomeSubscription.status === "ended"
+            ) {
+              return res.status(200).json({ success: true });
+            }
+            const metronomeAuth = await Authenticator.internalAdminForWorkspace(
+              metronomeWorkspace.sId
             );
+            await notifyAdminsOfPaymentFailure({
+              auth: metronomeAuth,
+              subscription: metronomeSubscription,
+              invoice,
+              now,
+            });
+            return res.status(200).json({ success: true });
           }
 
           // Logging that we have a failed payment
@@ -753,61 +926,12 @@ async function handler(
               }
             }
           } else {
-            const owner = auth.workspace();
-            const subscriptionType = auth.subscription();
-
-            if (!owner || !subscriptionType) {
-              return _returnStripeApiError(
-                req,
-                res,
-                "invoice.payment_failed",
-                "Couldn't get owner or subscription from `auth`."
-              );
-            }
-
-            // Enterprise workspaces are paid by wire on 30-day invoice terms,
-            // so a Stripe payment_failed event does not reflect an actual
-            // billing problem. We also use the workspace's current active
-            // plan (not the plan attached to the failing invoice) so that a
-            // legacy non-enterprise subscription still tied to the same
-            // Stripe customer cannot trigger the past-due flow.
-            if (isEntreprisePlanPrefix(subscriptionType.plan.code)) {
-              logger.info(
-                {
-                  workspaceId: owner.sId,
-                  stripeSubscriptionId: invoice.subscription,
-                  planCode: subscriptionType.plan.code,
-                },
-                "[Stripe Webhook] Skipping payment_failed handling for enterprise workspace."
-              );
-              return res.status(200).json({ success: true });
-            }
-
-            if (subscription.paymentFailingSince === null) {
-              await subscription.setPaymentFailingStatus({
-                paymentFailingSince: now,
-              });
-            }
-
-            const { members } = await getMembers(auth, {
-              roles: ["admin"],
-              activeOnly: true,
+            await notifyAdminsOfPaymentFailure({
+              auth,
+              subscription,
+              invoice,
+              now,
             });
-            const adminEmails = members.map((u) => u.email);
-            const customerEmail = invoice.customer_email;
-            if (customerEmail && !adminEmails.includes(customerEmail)) {
-              adminEmails.push(customerEmail);
-            }
-            const portalUrl = await createCustomerPortalSession({
-              owner,
-              subscription: subscriptionType,
-            });
-            for (const adminEmail of adminEmails) {
-              await sendAdminSubscriptionPaymentFailedEmail(
-                adminEmail,
-                portalUrl
-              );
-            }
           }
           break;
 

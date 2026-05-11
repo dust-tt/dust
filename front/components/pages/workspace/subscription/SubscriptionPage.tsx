@@ -1,11 +1,7 @@
 import { MetronomeSubscriptionPanel } from "@app/components/pages/workspace/subscription/MetronomeSubscriptionPanel";
 import { SubscriptionPlanCards } from "@app/components/plans/SubscriptionPlanCards";
 import { useSendNotification } from "@app/hooks/useNotification";
-import {
-  useAuth,
-  useFeatureFlags,
-  useWorkspace,
-} from "@app/lib/auth/AuthContext";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { getPriceAsString } from "@app/lib/client/subscription";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
@@ -16,7 +12,6 @@ import {
   isWhitelistedBusinessPlan,
 } from "@app/lib/plans/plan_codes";
 import { LinkWrapper, useAppRouter, useSearchParam } from "@app/lib/platform";
-import { useKillSwitches } from "@app/lib/swr/kill";
 import {
   usePerSeatPricing,
   useSubscriptionTrialInfo,
@@ -29,7 +24,7 @@ import type {
   SubscriptionPerSeatPricing,
   SubscriptionType,
 } from "@app/types/plan";
-import { isSubscriptionStripeBilled } from "@app/types/plan";
+import { isSubscriptionMetronomeBilled } from "@app/types/plan";
 import {
   Button,
   ButtonsSwitch,
@@ -196,13 +191,7 @@ function CancelFreeTrialDialog({
 export function SubscriptionPage() {
   const owner = useWorkspace();
   const { subscription } = useAuth();
-  const { hasFeature } = useFeatureFlags();
-  const { killSwitches } = useKillSwitches();
-  const isMetronomeBillingEnabled =
-    hasFeature("metronome_billing") ||
-    !killSwitches?.includes("global_disable_metronome_billing");
-  const useMetronomePanel =
-    isMetronomeBillingEnabled && !isSubscriptionStripeBilled(subscription);
+  const useMetronomePanel = isSubscriptionMetronomeBilled(subscription);
   const router = useAppRouter();
   const sendNotification = useSendNotification();
   const type = useSearchParam("type");
