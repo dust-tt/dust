@@ -75,24 +75,6 @@ import React, {
 import { InputBarContext } from "./InputBarContext";
 
 const COLLAPSE_TRANSITION = "200ms cubic-bezier(0.34, 1.15, 0.64, 1)";
-const FADE_OUT_TRANSITION = "50ms ease-out";
-const FADE_IN_TRANSITION = "150ms ease-out";
-
-function getToolbarRowTransitionStyle(
-  hideCapabilities: boolean
-): React.CSSProperties {
-  const opacityTransition = hideCapabilities
-    ? FADE_OUT_TRANSITION
-    : FADE_IN_TRANSITION;
-  return {
-    maxHeight: hideCapabilities ? 0 : 100,
-    opacity: hideCapabilities ? 0 : 1,
-    overflow: "hidden",
-    paddingTop: hideCapabilities ? 0 : undefined,
-    paddingBottom: hideCapabilities ? 0 : undefined,
-    transition: `max-height ${COLLAPSE_TRANSITION}, opacity ${opacityTransition}, padding ${COLLAPSE_TRANSITION}`,
-  };
-}
 
 export const INPUT_BAR_ACTIONS = [
   "capabilities",
@@ -894,8 +876,6 @@ const InputBarContainer = ({
 
   const isRecording = voiceTranscriberService.status === "recording";
 
-  const toolbarRowTransitionStyle =
-    getToolbarRowTransitionStyle(hideCapabilities);
 
   return (
     <div
@@ -939,7 +919,6 @@ const InputBarContainer = ({
         >
           <div
             className="mb-1 flex flex-wrap items-center px-2"
-            style={toolbarRowTransitionStyle}
           >
             {selectedMCPServerViews.map((msv) => (
               <React.Fragment key={msv.sId}>
