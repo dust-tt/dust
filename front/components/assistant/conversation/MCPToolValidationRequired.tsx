@@ -122,7 +122,6 @@ export function MCPToolValidationRequired({
       for (const cascadeAction of cascadable) {
         const cascadeResult = await validateAction({
           validationRequest: cascadeAction,
-          messageId,
           approved: "approved",
         });
         if (cascadeResult.success) {
