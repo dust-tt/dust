@@ -62,12 +62,20 @@ function makeForkResponse(conversationId: string) {
 }
 
 function makeDeferredFetch() {
-  const { promise: fetchPromise, resolve: resolveFetch } =
-    Promise.withResolvers<Response>();
+  let resolveFetch: ((response: Response) => void) | null = null;
+  const fetchPromise = new Promise<Response>((resolve) => {
+    resolveFetch = resolve;
+  });
 
   return {
     fetchPromise,
-    resolveFetch,
+    resolveFetch: (response: Response) => {
+      if (!resolveFetch) {
+        throw new Error("Unexpected missing deferred fetch resolver.");
+      }
+
+      resolveFetch(response);
+    },
   };
 }
 
