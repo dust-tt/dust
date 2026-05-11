@@ -32,6 +32,10 @@ import {
   DEFAULT_REINFORCEMENT_LOOKBACK_WINDOW_DAYS,
 } from "@app/lib/reinforcement/constants";
 import {
+  getCurrentPeriodStart,
+  getReinforcementMonthlyCapMicroUsd,
+} from "@app/lib/reinforcement/consumption";
+import {
   buildReinforcedSkillsSpecifications,
   classifySkillToolCalls,
   createReinforcedSkillsConversation,
@@ -464,11 +468,45 @@ export async function getReinforcementSettingsActivity({
   workspaceId,
 }: {
   workspaceId: string;
-}): Promise<{ reinforcementEnabled: boolean; batchModeAllowed: boolean }> {
+}): Promise<
+  | { reinforcementEnabled: false }
+  | {
+      reinforcementEnabled: true;
+      batchModeAllowed: boolean;
+      globalConsumptionMicroUsd: number;
+      globalCapMicroUsd: number;
+    }
+> {
   const auth = await getAuthForWorkspace(workspaceId);
+  const reinforcementEnabled = await hasReinforcementEnabled(auth);
+  if (!reinforcementEnabled) {
+    return { reinforcementEnabled: false };
+  }
+
+  const workspace = auth.getNonNullableWorkspace();
+  const periodStart = getCurrentPeriodStart();
+  const globalConsumptionMicroUsd =
+    await SelfImprovingSkillsUsageResource.getSumPriceMicroUsdAfterDate(
+      auth,
+      periodStart
+    );
+  const globalCapMicroUsd = getReinforcementMonthlyCapMicroUsd(workspace);
+
+  logger.info(
+    {
+      workspaceId,
+      globalConsumptionMicroUsd,
+      globalCapMicroUsd,
+      capReached: globalConsumptionMicroUsd >= globalCapMicroUsd,
+    },
+    "ReinforcedSkills: workspace consumption check"
+  );
+
   return {
-    reinforcementEnabled: await hasReinforcementEnabled(auth),
+    reinforcementEnabled: true,
     batchModeAllowed: isReinforcementBatchModeAllowed(auth),
+    globalConsumptionMicroUsd,
+    globalCapMicroUsd,
   };
 }
 
