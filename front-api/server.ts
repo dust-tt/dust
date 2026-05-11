@@ -1,11 +1,12 @@
 // biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { createServer } from "node:http";
+import path from "node:path";
 import { parse } from "node:url";
 import logger from "@app/logger/logger";
 import { isDevelopment } from "@app/types/shared/env";
 import { getRequestListener } from "@hono/node-server";
 import next from "next";
-import { honoApp, isHonoRoute } from "../front-api/app";
+import { honoApp, isHonoRoute } from "./app";
 
 const KEEP_ALIVE_TIMEOUT_MS = 5000;
 
@@ -13,7 +14,11 @@ const dev = isDevelopment();
 const port = parseInt(process.env.PORT ?? "3000", 10);
 const hostname = process.env.HOSTNAME ?? "localhost";
 
-const nextApp = next({ dev, hostname, port });
+// Next's project root (where pages/ lives) is the sibling `front` directory.
+// npm runs the script from this package's directory, so cwd is front-api/.
+const nextProjectDir = path.resolve(process.cwd(), "../front");
+
+const nextApp = next({ dev, hostname, port, dir: nextProjectDir });
 const nextHandler = nextApp.getRequestHandler();
 
 const honoListener = getRequestListener(honoApp.fetch);

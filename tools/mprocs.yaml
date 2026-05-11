@@ -61,7 +61,7 @@ procs:
       ./admin/dev.sh
 
   front-hono:
-    cwd: "<CONFIG_DIR>/../front"
+    cwd: "<CONFIG_DIR>/../front-api"
     shell: |
       set -euo pipefail
       export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
@@ -72,8 +72,8 @@ procs:
       echo "Waiting for sdks-js to compile..."
       echo "Expecting file: $READY_FILE"
       while [ ! -f "$READY_FILE" ]; do sleep 1; done
-      echo "sdks-js ready. Starting front (Hono strangler)."
-      NODE_ENV=development npm run dev:hono
+      echo "sdks-js ready. Starting front-api (Hono strangler)."
+      NODE_ENV=development npm run dev
     autostart: false
 
   front-workers:
