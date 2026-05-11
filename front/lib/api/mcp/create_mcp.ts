@@ -7,7 +7,10 @@ import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import type { StepContext } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
-import type { AgentMessageType } from "@app/types/assistant/conversation";
+import type {
+  AgentMessageType,
+  ConversationWithoutContentType,
+} from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import omit from "lodash/omit";
 
@@ -20,6 +23,7 @@ export async function createMCPAction(
     actionConfiguration,
     agentMessage,
     augmentedInputs,
+    conversation,
     status,
     stepContentId,
     stepContext,
@@ -27,6 +31,7 @@ export async function createMCPAction(
     actionConfiguration: MCPToolConfigurationType;
     agentMessage: AgentMessageType;
     augmentedInputs: Record<string, unknown>;
+    conversation: ConversationWithoutContentType;
     status: ToolExecutionStatus;
     stepContentId: ModelId;
     stepContext: StepContext;
@@ -37,7 +42,7 @@ export async function createMCPAction(
     MCP_TOOL_CONFIGURATION_FIELDS_TO_OMIT
   ) as LightMCPToolConfigurationType;
 
-  return AgentMCPActionResource.makeNew(auth, {
+  return AgentMCPActionResource.makeNew(auth, conversation, {
     agentMessageId: agentMessage.agentMessageId,
     augmentedInputs,
     citationsAllocated: stepContext.citationsCount,

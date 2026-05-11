@@ -204,6 +204,7 @@ async function runReinforcedSkillsStep({
 
     // Store results for all terminal tool calls so the conversation is complete.
     await storeTerminalToolCallResults(auth, {
+      conversation: reinforcementConv.toJSON(),
       successfulToolCalls: result.successfulToolCalls,
       failedToolCalls: result.failedToolCalls,
       agentMessageModelId: storedResult.agentMessageModelId,
@@ -227,11 +228,11 @@ async function runReinforcedSkillsStep({
 
   // Prepare tool actions for the workflow to execute via runRetryableToolActivity.
   const toolActionInfo = await prepareReinforcedToolActions(auth, {
+    conversation: reinforcementConv.toJSON(),
     exploratoryToolCalls,
     agentMessageModelId: storedResult.agentMessageModelId,
     agentMessageId: storedResult.agentMessageId,
     userMessageId: storedResult.userMessageId,
-    conversationId: reinforcementConversationId,
   });
 
   return {
@@ -1021,12 +1022,29 @@ export async function processSkillConversationAnalysisBatchResultActivity({
     analysedConversations.map((c) => [c.sId, c])
   );
 
+  const reinforcementConversations = await ConversationResource.fetchByIds(
+    auth,
+    reinforcementConversationIds
+  );
+  const reinforcementConvBySId = new Map(
+    reinforcementConversations.map((c) => [c.sId, c])
+  );
+
   let totalCreated = 0;
   const continuations: ConversationContinuationInfo[] = [];
 
   for (const [reinforcementConvId, events] of batchEvents) {
     const analysedConvId =
       reinforcementToAnalysed.get(reinforcementConvId) ?? reinforcementConvId;
+
+    const reinforcementConv = reinforcementConvBySId.get(reinforcementConvId);
+    if (!reinforcementConv) {
+      logger.warn(
+        { reinforcementConvId, batchId },
+        "ReinforcedSkills: reinforcement conversation not found, skipping"
+      );
+      continue;
+    }
 
     const { exploratoryToolCalls, terminalToolCalls } =
       classifySkillToolCalls(events);
@@ -1048,6 +1066,7 @@ export async function processSkillConversationAnalysisBatchResultActivity({
       const storedInfo = storedResultInfo.get(reinforcementConvId);
       if (storedInfo) {
         await storeTerminalToolCallResults(auth, {
+          conversation: reinforcementConv.toJSON(),
           successfulToolCalls: result.successfulToolCalls,
           failedToolCalls: result.failedToolCalls,
           agentMessageModelId: storedInfo.agentMessageModelId,
@@ -1066,11 +1085,11 @@ export async function processSkillConversationAnalysisBatchResultActivity({
       const storedInfo = storedResultInfo.get(reinforcementConvId);
       if (storedInfo) {
         const toolActionInfo = await prepareReinforcedToolActions(auth, {
+          conversation: reinforcementConv.toJSON(),
           exploratoryToolCalls,
           agentMessageModelId: storedInfo.agentMessageModelId,
           agentMessageId: storedInfo.agentMessageId,
           userMessageId: storedInfo.userMessageId,
-          conversationId: reinforcementConvId,
         });
 
         continuations.push({
@@ -1258,6 +1277,16 @@ export async function processSkillAggregationBatchResultActivity({
     };
   }
 
+  // Hydrate the reinforcement conversation from its sId so we can pass
+  // ConversationWithoutContentType to action helpers (activity inputs are frozen).
+  const reinforcementConv = await ConversationResource.fetchById(
+    auth,
+    firstConvId
+  );
+  if (!reinforcementConv) {
+    throw new Error(`Reinforcement conversation not found: ${firstConvId}`);
+  }
+
   const { exploratoryToolCalls, terminalToolCalls } =
     classifySkillToolCalls(events);
 
@@ -1276,6 +1305,7 @@ export async function processSkillAggregationBatchResultActivity({
     const storedInfo = storedResultInfo.get(firstConvId);
     if (storedInfo) {
       await storeTerminalToolCallResults(auth, {
+        conversation: reinforcementConv.toJSON(),
         successfulToolCalls: result.successfulToolCalls,
         failedToolCalls: result.failedToolCalls,
         agentMessageModelId: storedInfo.agentMessageModelId,
@@ -1319,11 +1349,11 @@ export async function processSkillAggregationBatchResultActivity({
   }
 
   const toolActionInfo = await prepareReinforcedToolActions(auth, {
+    conversation: reinforcementConv.toJSON(),
     exploratoryToolCalls,
     agentMessageModelId: storedInfo.agentMessageModelId,
     agentMessageId: storedInfo.agentMessageId,
     userMessageId: storedInfo.userMessageId,
-    conversationId: firstConvId,
   });
 
   return {

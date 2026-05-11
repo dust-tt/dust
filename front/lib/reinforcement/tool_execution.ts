@@ -11,6 +11,7 @@ import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import type { AgentFunctionCallContentType } from "@app/types/assistant/agent_message_content";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 
 /**
@@ -76,18 +77,20 @@ async function getAgentSidekickContextViewId(
 async function createReinforcedAction(
   auth: Authenticator,
   {
-    toolCall,
     agentMessageModelId,
-    stepContentId,
+    conversation,
     mcpServerViewId,
+    stepContentId,
+    toolCall,
   }: {
-    toolCall: ReinforcedSkillsToolCallInfo;
     agentMessageModelId: ModelId;
-    stepContentId: ModelId;
+    conversation: ConversationWithoutContentType;
     mcpServerViewId: string;
+    stepContentId: ModelId;
+    toolCall: ReinforcedSkillsToolCallInfo;
   }
 ): Promise<AgentMCPActionResource> {
-  return AgentMCPActionResource.makeNew(auth, {
+  return AgentMCPActionResource.makeNew(auth, conversation, {
     agentMessageId: agentMessageModelId,
     augmentedInputs: toolCall.arguments,
     citationsAllocated: 0,
@@ -135,17 +138,17 @@ async function createReinforcedAction(
 export async function prepareReinforcedToolActions(
   auth: Authenticator,
   {
-    exploratoryToolCalls,
-    agentMessageModelId,
     agentMessageId,
+    agentMessageModelId,
+    conversation,
+    exploratoryToolCalls,
     userMessageId,
-    conversationId,
   }: {
-    exploratoryToolCalls: ExploratoryToolCallInfo[];
-    agentMessageModelId: ModelId;
     agentMessageId: string;
+    agentMessageModelId: ModelId;
+    conversation: ConversationWithoutContentType;
+    exploratoryToolCalls: ExploratoryToolCallInfo[];
     userMessageId: string;
-    conversationId: string;
   }
 ): Promise<ReinforcedToolActionInfo> {
   const [stepContentByCallId, mcpServerViewId] = await Promise.all([
@@ -164,6 +167,7 @@ export async function prepareReinforcedToolActions(
 
     const action = await createReinforcedAction(auth, {
       toolCall: tc,
+      conversation,
       agentMessageModelId,
       stepContentId: stepContent.id,
       mcpServerViewId,
@@ -177,7 +181,7 @@ export async function prepareReinforcedToolActions(
     agentLoopArgs: {
       agentMessageId: agentMessageId,
       agentMessageVersion: 0,
-      conversationId,
+      conversationId: conversation.sId,
       conversationTitle: null,
       conversationBranchId: null,
       userMessageId: userMessageId,
@@ -201,10 +205,12 @@ export async function storeTerminalToolCallResults(
     successfulToolCalls,
     failedToolCalls,
     agentMessageModelId,
+    conversation,
   }: {
     successfulToolCalls: TerminalToolCallSuccess[];
     failedToolCalls: TerminalToolCallFailure[];
     agentMessageModelId: ModelId;
+    conversation: ConversationWithoutContentType;
   }
 ): Promise<void> {
   const [stepContentByCallId, mcpServerViewId] = await Promise.all([
@@ -219,6 +225,7 @@ export async function storeTerminalToolCallResults(
     }
 
     const action = await createReinforcedAction(auth, {
+      conversation,
       toolCall,
       agentMessageModelId,
       stepContentId: stepContent.id,
@@ -238,6 +245,7 @@ export async function storeTerminalToolCallResults(
     }
 
     const action = await createReinforcedAction(auth, {
+      conversation,
       toolCall,
       agentMessageModelId,
       stepContentId: stepContent.id,
@@ -247,6 +255,7 @@ export async function storeTerminalToolCallResults(
     await action.createOutputItems(auth, [
       { content: { type: "text", text: errorMessage } },
     ]);
+
     await action.markAsErrored({ executionDurationMs: 0 });
   }
 }
