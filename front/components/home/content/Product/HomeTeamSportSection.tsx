@@ -77,7 +77,6 @@ export function HomeTeamSportSection() {
             className="flex w-full justify-center self-stretch lg:w-1/2"
           >
             <div className="relative w-full max-w-[520px] self-stretch overflow-hidden rounded-3xl">
-              {/* biome-ignore lint/performance/noImgElement: SVG cannot use next/image fill */}
               <img
                 src="/static/landing/home/team-sport-collab.svg"
                 alt="Dust collaboration: shared agent in a chat with named teammates and live cursors"

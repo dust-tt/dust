@@ -383,9 +383,7 @@ export function HomeTeamUsageSection() {
           aria-labelledby={`team-tab-${activeTab.id}`}
           className="grid animate-in grid-cols-1 gap-10 fade-in-0 duration-200 lg:grid-cols-2 lg:gap-16"
         >
-          <div
-            className="relative flex aspect-[4/3] w-full self-stretch overflow-hidden rounded-2xl lg:aspect-auto lg:min-h-[480px]"
-          >
+          <div className="relative flex aspect-[4/3] w-full self-stretch overflow-hidden rounded-2xl lg:aspect-auto lg:min-h-[480px]">
             <Image
               src={activeTab.imageSrc}
               alt={activeTab.imageAlt}
