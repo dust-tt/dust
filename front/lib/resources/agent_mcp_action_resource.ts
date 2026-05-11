@@ -26,6 +26,7 @@ import { getCitationsFromToolOutput } from "@app/lib/api/assistant/citations";
 import { getAgentConfigurationsWithVersion } from "@app/lib/api/assistant/configuration/agent";
 import type { ToolDisplayLabels } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";
 import {
   AgentMCPActionModel,
   AgentMCPActionOutputItemModel,
@@ -186,6 +187,12 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       stepContent.isFunctionCallContent(),
       "Step content is not a function call."
     );
+
+    await AgentStepContentToolExecutionModel.create({
+      workspaceId: workspace.id,
+      agentMCPActionId: action.id,
+      stepContentId: stepContent.id,
+    });
 
     return new this(this.model, action.get(), stepContent, {
       internalMCPServerName,

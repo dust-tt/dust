@@ -59,6 +59,7 @@ import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { extractFromString, serializeMention } from "@app/lib/mentions/format";
 import { isLegacyPlan } from "@app/lib/metronome/plan_type";
 import { isUserBlocked } from "@app/lib/metronome/user_block";
+import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";
 import {
   AgentMCPActionModel,
   AgentMCPActionOutputItemModel,
@@ -1590,6 +1591,15 @@ export async function createAgentMessageFromText(
           toolConfiguration: {} as LightMCPToolConfigurationType,
           stepContext: {} as StepContext,
           executionDurationMs: null,
+        },
+        { transaction: t }
+      );
+
+      await AgentStepContentToolExecutionModel.create(
+        {
+          workspaceId: owner.id,
+          agentMCPActionId: createdAction.id,
+          stepContentId: functionCallStepContent.id,
         },
         { transaction: t }
       );

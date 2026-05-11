@@ -1,3 +1,4 @@
+import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";
 import { ConversationMCPServerViewModel } from "@app/lib/models/agent/actions/conversation_mcp_server_view";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import { InternalMCPServerCredentialModel } from "@app/lib/models/agent/actions/internal_mcp_server_credentials";
@@ -212,6 +213,7 @@ export function loadAllModels() {
     AgentStepContentModel,
     AgentMCPActionModel,
     AgentMCPActionOutputItemModel,
+    AgentStepContentToolExecutionModel,
     AgentChildAgentConfigurationModel,
     FeatureFlagModel,
     GlobalFeatureFlagModel,
