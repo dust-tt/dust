@@ -106,7 +106,7 @@ describe("GET /api/w/[wId]/skills/reinforcement_spend", () => {
       expect(res._getJSONData()).toEqual({
         error: {
           type: "workspace_auth_error",
-          message: "Only admins can view reinforcement spend.",
+          message: "Only admins can view self-improving skills spend.",
         },
       });
     }

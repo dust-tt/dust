@@ -5,13 +5,51 @@ import {
   useFeatureFlags,
   useWorkspace,
 } from "@app/lib/auth/AuthContext";
+import { getReinforcementMonthlyCapMicroUsd } from "@app/lib/reinforcement/consumption";
+import { useSkillsReinforcementSpend } from "@app/lib/swr/useReinforcementToggle";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Chip,
   ContentMessage,
   InformationCircleIcon,
   Page,
   SparklesIcon,
+  Spinner,
 } from "@dust-tt/sparkle";
+
+interface ReinforcementTotalConsumptionSectionProps {
+  owner: LightWorkspaceType;
+}
+
+function ReinforcementTotalConsumptionSection({
+  owner,
+}: ReinforcementTotalConsumptionSectionProps) {
+  const { spentMicroUsdBySkillId, isSpendLoading } =
+    useSkillsReinforcementSpend({ owner });
+
+  const totalSpentDollars =
+    Object.values(spentMicroUsdBySkillId).reduce((sum, v) => sum + v, 0) /
+    1_000_000;
+  const capDollars = getReinforcementMonthlyCapMicroUsd(owner) / 1_000_000;
+
+  return (
+    <Page.Vertical align="stretch" gap="md">
+      <Page.SectionHeader title="Current period consumption" />
+      {isSpendLoading ? (
+        <div className="flex justify-center py-4">
+          <Spinner />
+        </div>
+      ) : (
+        <div className="text-sm text-foreground dark:text-foreground-night">
+          <span className="font-semibold">${totalSpentDollars.toFixed(2)}</span>{" "}
+          spent out of{" "}
+          <span className="font-semibold">${capDollars.toFixed(2)}</span>{" "}
+          monthly cap
+        </div>
+      )}
+    </Page.Vertical>
+  );
+}
 
 export function ReinforcementPage() {
   const owner = useWorkspace();
@@ -23,14 +61,14 @@ export function ReinforcementPage() {
     if (!isAdmin) {
       return (
         <ContentMessage variant="info" icon={InformationCircleIcon} size="lg">
-          Only workspace admins can manage reinforcement settings.
+          Only workspace admins can manage self-improving skills settings.
         </ContentMessage>
       );
     }
     if (!hasReinforcement) {
       return (
         <ContentMessage variant="info" icon={InformationCircleIcon} size="lg">
-          Reinforcement is not enabled for this workspace.
+          Self-improving skills are not enabled for this workspace.
         </ContentMessage>
       );
     }
@@ -43,6 +81,7 @@ export function ReinforcementPage() {
           testing but will generate additional costs upon release.
         </ContentMessage>
         <ReinforcementSection owner={owner} />
+        <ReinforcementTotalConsumptionSection owner={owner} />
         <ReinforcementSkillsSection owner={owner} />
       </>
     );
@@ -53,14 +92,14 @@ export function ReinforcementPage() {
       <Page.Header
         title={
           <span className="flex items-center gap-2">
-            Reinforcement
+            Self-Improving Skills
             <Chip size="xs" color="golden" label="Beta" />
           </span>
         }
         icon={SparklesIcon}
         description={
           <span>
-            Configure skill reinforcement settings for this workspace.{" "}
+            Configure self-improving skills settings for this workspace.{" "}
             <a
               href="https://docs.dust.tt/docs/reinforcement"
               target="_blank"

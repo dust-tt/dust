@@ -12,7 +12,9 @@ import type { ActionLink, CheckFunction } from "@app/types/production_checks";
 import { QueryTypes } from "sequelize";
 
 const EXCESS_ABSOLUTE_THRESHOLD_MICRO_USD = 10_000_000;
-const DAYS_30_MS = 30 * 24 * 60 * 60 * 1000;
+const EXCESS_CREDITS_LOOKBACK_DAYS = 15;
+const EXCESS_CREDITS_LOOKBACK_MS =
+  EXCESS_CREDITS_LOOKBACK_DAYS * 24 * 60 * 60 * 1000;
 const EXCESS_SUBSCRIPTION_PERCENTAGE_THRESHOLD = 5; // 5% of annual subscription
 const EXCESS_ACTIVE_CREDITS_PERCENTAGE_THRESHOLD = 2; // 2% of active credits (fallback)
 
@@ -35,9 +37,9 @@ export const checkExcessCredits: CheckFunction = async (
   reportFailure
 ) => {
   const frontDb = getFrontReplicaDbConnection();
-  const thirtyDaysAgo = new Date(Date.now() - DAYS_30_MS);
+  const lookbackStart = new Date(Date.now() - EXCESS_CREDITS_LOOKBACK_MS);
 
-  // Query for workspaces with excess credits above the absolute threshold in the last 30 days.
+  // Query for workspaces with excess credits above the absolute threshold in the lookback period.
   const workspacesWithExcessCredits: WorkspaceExcessCredits[] =
     // biome-ignore lint/plugin/noRawSql: Production check using read replica
     await frontDb.query(
@@ -50,7 +52,7 @@ export const checkExcessCredits: CheckFunction = async (
       FROM credits c
       JOIN workspaces w ON c."workspaceId" = w.id
       WHERE c."type" = 'excess'
-        AND c."startDate" >= :thirtyDaysAgo
+        AND c."startDate" >= :lookbackStart
       GROUP BY c."workspaceId", w."sId", w."name"
       HAVING SUM(c."consumedAmountMicroUsd") > :threshold
       ORDER BY SUM(c."consumedAmountMicroUsd") DESC
@@ -58,7 +60,7 @@ export const checkExcessCredits: CheckFunction = async (
       {
         type: QueryTypes.SELECT,
         replacements: {
-          thirtyDaysAgo: thirtyDaysAgo.toISOString(),
+          lookbackStart: lookbackStart.toISOString(),
           threshold: EXCESS_ABSOLUTE_THRESHOLD_MICRO_USD,
         },
       }
@@ -159,7 +161,7 @@ export const checkExcessCredits: CheckFunction = async (
     const thresholdDollars = EXCESS_ABSOLUTE_THRESHOLD_MICRO_USD / 1_000_000;
     const message =
       `${significantExcessWorkspaces.length} workspace(s) have excess credits > $${thresholdDollars} ` +
-      `(and > ${EXCESS_SUBSCRIPTION_PERCENTAGE_THRESHOLD}% of annual subscription or ${EXCESS_ACTIVE_CREDITS_PERCENTAGE_THRESHOLD}% of active credits) in the last 30 days`;
+      `(and > ${EXCESS_SUBSCRIPTION_PERCENTAGE_THRESHOLD}% of annual subscription or ${EXCESS_ACTIVE_CREDITS_PERCENTAGE_THRESHOLD}% of active credits) in the last ${EXCESS_CREDITS_LOOKBACK_DAYS} days`;
 
     logger.warn({ workspaces: formattedWorkspaces }, message);
 

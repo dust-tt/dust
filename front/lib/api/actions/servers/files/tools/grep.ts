@@ -11,7 +11,7 @@ import {
 } from "@app/lib/api/actions/servers/files/metadata";
 import {
   isReadableAsText,
-  resolveConversationFile,
+  resolveFile,
 } from "@app/lib/api/actions/servers/files/tools/utils";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -21,11 +21,14 @@ export async function grepHandler(
   { path, pattern }: { path: string; pattern: string },
   { auth, agentLoopContext }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
-  const resolvedRes = await resolveConversationFile(
-    auth,
-    agentLoopContext?.runContext?.conversation,
-    path
-  );
+  const conversation = agentLoopContext?.runContext?.conversation;
+  if (!conversation) {
+    return new Err(
+      new MCPError("No conversation context available.", { tracked: false })
+    );
+  }
+
+  const resolvedRes = await resolveFile(auth, conversation, path);
   if (resolvedRes.isErr()) {
     return resolvedRes;
   }

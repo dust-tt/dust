@@ -1,4 +1,5 @@
 import config from "@app/lib/api/config";
+import { PLAN_CODE_CUSTOM_FIELD_KEY } from "@app/lib/metronome/constants";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -477,6 +478,7 @@ export async function createMetronomeContract({
   uniquenessKey,
   startingAt,
   enableStripeBilling,
+  planCode,
 }: {
   metronomeCustomerId: string;
   /** Mutually exclusive with `packageId`. */
@@ -487,6 +489,10 @@ export async function createMetronomeContract({
   // Must already be on an hour boundary (Metronome requirement).
   startingAt: Date;
   enableStripeBilling: boolean;
+  // Stamps PLAN_CODE_CUSTOM_FIELD_KEY on the contract so the contract.start
+  // webhook can swap the workspace's subscription onto this plan when the
+  // contract becomes active.
+  planCode: string;
 }): Promise<Result<{ contractId: string }, Error>> {
   if (!packageAlias === !packageId) {
     return new Err(
@@ -498,6 +504,12 @@ export async function createMetronomeContract({
   const startingAtISO = startingAt.toISOString();
   const packageLabel = packageAlias ?? packageId!;
 
+  // Resolve the contract id from either a fresh create or a 409 recovery.
+  // We split this from the post-create steps (Stripe billing config, PLAN_CODE
+  // stamp) so those steps run on retry too — they're idempotent on Metronome's
+  // side, and re-running them is what makes the overall function recoverable.
+  let contractId: string;
+  let recovered = false;
   try {
     const response = await getMetronomeClient().v1.contracts.create({
       customer_id: metronomeCustomerId,
@@ -506,41 +518,73 @@ export async function createMetronomeContract({
       starting_at: startingAtISO,
       ...(uniquenessKey ? { uniqueness_key: uniquenessKey } : {}),
     });
-
-    if (enableStripeBilling) {
-      addStripeMetronomeBillingConfig({
-        metronomeCustomerId,
-        metronomeContractId: response.data.id,
-      });
-    }
-
-    logger.info(
-      {
-        metronomeCustomerId,
-        package: packageLabel,
-        metronomeContractId: response.data.id,
-      },
-      "[Metronome] Contract created"
-    );
-    return new Ok({ contractId: response.data.id });
+    contractId = response.data.id;
   } catch (err) {
-    // Conflict-by-uniqueness-key recovery only applies when creating by alias.
-    // When creating by package_id we surface the error.
-    if (err instanceof ConflictError && packageAlias) {
-      const existingContract =
-        await getMetronomeActiveContract(metronomeCustomerId);
-      if (existingContract.isOk() && existingContract.value) {
-        return new Ok({ contractId: existingContract.value.contractId });
+    if (err instanceof ConflictError) {
+      // Prefer uniqueness_key lookup when the caller provided one — this is
+      // the only safe recovery path when creating by package_id (multiple
+      // contracts may coexist on the customer). Falls back to "most recent
+      // active" for legacy alias-only callers without a uniqueness_key.
+      if (uniquenessKey) {
+        const existing = await findMetronomeContractByUniquenessKey({
+          metronomeCustomerId,
+          uniquenessKey,
+        });
+        if (existing.isOk() && existing.value) {
+          contractId = existing.value.contractId;
+          recovered = true;
+        } else {
+          return new Err(normalizeError(err));
+        }
+      } else if (packageAlias) {
+        const existing = await getMetronomeActiveContract(metronomeCustomerId);
+        if (existing.isOk() && existing.value) {
+          contractId = existing.value.contractId;
+          recovered = true;
+        } else {
+          return new Err(normalizeError(err));
+        }
+      } else {
+        return new Err(normalizeError(err));
       }
+    } else {
+      const error = normalizeError(err);
+      logger.error(
+        { error, metronomeCustomerId, package: packageLabel },
+        "[Metronome] Failed to create contract"
+      );
+      return new Err(error);
     }
-
-    const error = normalizeError(err);
-    logger.error(
-      { error, metronomeCustomerId, package: packageLabel },
-      "[Metronome] Failed to create contract"
-    );
-    return new Err(error);
   }
+
+  if (enableStripeBilling) {
+    addStripeMetronomeBillingConfig({
+      metronomeCustomerId,
+      metronomeContractId: contractId,
+    });
+  }
+
+  const customFieldsResult = await setMetronomeContractCustomFields({
+    contractId,
+    customFields: { [PLAN_CODE_CUSTOM_FIELD_KEY]: planCode },
+  });
+  if (customFieldsResult.isErr()) {
+    return new Err(customFieldsResult.error);
+  }
+
+  logger.info(
+    {
+      metronomeCustomerId,
+      package: packageLabel,
+      metronomeContractId: contractId,
+      planCode,
+      recovered,
+    },
+    recovered
+      ? "[Metronome] Contract recovered"
+      : "[Metronome] Contract created"
+  );
+  return new Ok({ contractId });
 }
 
 /**
@@ -623,6 +667,26 @@ export async function listMetronomeContracts(
     );
     return new Err(error);
   }
+}
+
+/**
+ * Find a contract on a Metronome customer by its uniqueness_key. Used to
+ * recover the id after a 409 conflict on creation, regardless of whether
+ * the create call used package_alias or package_id.
+ */
+export async function findMetronomeContractByUniquenessKey({
+  metronomeCustomerId,
+  uniquenessKey,
+}: {
+  metronomeCustomerId: string;
+  uniquenessKey: string;
+}): Promise<Result<{ contractId: string } | null, Error>> {
+  const result = await listMetronomeContracts(metronomeCustomerId);
+  if (result.isErr()) {
+    return result;
+  }
+  const match = result.value.find((c) => c.uniqueness_key === uniquenessKey);
+  return new Ok(match ? { contractId: match.id } : null);
 }
 
 /**

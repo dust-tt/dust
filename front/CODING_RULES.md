@@ -266,6 +266,35 @@ endpoint handlers.
 
 The Type interface is not to be used in the backend.
 
+### [BACK16] Keep API handlers thin — business logic belongs in `lib/api/*`
+
+API handlers (under `pages/api/`) should be limited to:
+
+- Authentication and authorization checks
+- HTTP method dispatch
+- Request payload and query parameter validation (use `zod` per [GEN13])
+- A single call into the business layer (typically `lib/api/*`) to perform the work
+- Mapping the business layer result to an HTTP response
+
+Non-trivial business logic must live in `lib/api/*` (or the appropriate Resource), not in the
+handler. This keeps handlers consistent and short, and lets the underlying logic be reused
+from other contexts (other handlers, Temporal activities, scripts, tests).
+
+Signs that logic belongs in the business layer rather than the handler:
+
+- Multiple sequential database reads/writes that form a coherent operation
+- Conditional branching based on resource state
+- Fan-out/fan-in over collections
+- Coordination across multiple Resources or external services
+- Anything you would want to test independently of the HTTP layer
+
+Trivial transformations directly tied to the HTTP shape (assembling a response body from a
+single resource fetch, flattening a serialized result) may stay in the handler.
+
+Reviewer: If you detect a handler with non-trivial business logic, request the author to extract
+it into a `lib/api/*` function (creating one if needed). The handler should ideally read as:
+authorize → validate → call business function → respond.
+
 ## AUDIT LOGGING
 
 ### [AUDIT1] Every state-changing operation on a security-sensitive resource MUST emit an audit log event

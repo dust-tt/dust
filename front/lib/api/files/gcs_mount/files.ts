@@ -1,6 +1,7 @@
 import config from "@app/lib/api/config";
 import {
   getConversationFilesBasePath,
+  getProjectFilesBasePath,
   TOOL_OUTPUTS_FOLDER_NAME,
 } from "@app/lib/api/files/mount_path";
 import type { Authenticator } from "@app/lib/auth";
@@ -39,10 +40,9 @@ export type GCSMountFileEntry = GCSMountEntryBase & {
 
 export type GCSMountEntry = GCSMountDirectoryEntry | GCSMountFileEntry;
 
-export type GCSMountPoint = {
-  useCase: "conversation";
-  conversationId: string;
-};
+export type GCSMountPoint =
+  | { useCase: "conversation"; conversationId: string }
+  | { useCase: "project"; projectId: string };
 
 function resolvePrefix(
   owner: LightWorkspaceType,
@@ -55,8 +55,14 @@ function resolvePrefix(
         conversationId: scope.conversationId,
       });
 
+    case "project":
+      return getProjectFilesBasePath({
+        workspaceId: owner.sId,
+        projectId: scope.projectId,
+      });
+
     default:
-      assertNever(scope.useCase);
+      assertNever(scope);
   }
 }
 
@@ -131,10 +137,41 @@ function makeFileEntry(
     contentType,
     lastModifiedMs,
     fileId,
-    thumbnailUrl: isSupportedImageContentType(contentType)
-      ? `${config.getClientFacingUrl()}/api/w/${workspaceId}/assistant/conversations/${scope.conversationId}/files/thumbnail?filePath=${encodeURIComponent(`${scope.useCase}/${relativeFilePath}`)}`
-      : null,
+    thumbnailUrl: makeThumbnailUrl({
+      contentType,
+      relativeFilePath,
+      scope,
+      workspaceId,
+    }),
   };
+}
+
+function makeThumbnailUrl({
+  contentType,
+  relativeFilePath,
+  scope,
+  workspaceId,
+}: {
+  contentType: string;
+  relativeFilePath: string;
+  scope: GCSMountPoint;
+  workspaceId: string;
+}): string | null {
+  if (!isSupportedImageContentType(contentType)) {
+    return null;
+  }
+
+  switch (scope.useCase) {
+    case "conversation":
+      return `${config.getClientFacingUrl()}/api/w/${workspaceId}/assistant/conversations/${scope.conversationId}/files/thumbnail?filePath=${encodeURIComponent(`${scope.useCase}/${relativeFilePath}`)}`;
+
+    case "project":
+      // TODO(2026-05-10: FILE SYSTEM) Expose a project files thumbnail endpoint.
+      return null;
+
+    default:
+      assertNever(scope);
+  }
 }
 
 /**
@@ -251,9 +288,7 @@ export async function getConversationFileMountSignedUrl(
   const prefix = resolvePrefix(owner, scope);
   if (!gcsPath.startsWith(prefix)) {
     return new Err(
-      new Error(
-        `GCS path does not belong to the expected conversation file system.`
-      )
+      new Error(`GCS path does not belong to the expected mount point.`)
     );
   }
   try {

@@ -1,9 +1,6 @@
 import { DEFAULT_TASK_OWNER_FILTER } from "@app/components/assistant/conversation/space/conversations/project_tasks/projectTasksListScope";
-import {
-  type ProjectUIScopedPreferences,
-  readScopedUIPreferencesValue,
-} from "@app/hooks/useScopedUIPreferences";
-import { useCallback, useEffect, useLayoutEffect, useState } from "react";
+import type { ProjectUIScopedPreferences } from "@app/hooks/useScopedUIPreferences";
+import { useCallback, useEffect, useRef } from "react";
 
 export type SpaceProjectTab = ProjectUIScopedPreferences["tab"];
 
@@ -52,10 +49,16 @@ interface UseSpaceProjectTabsParams {
 }
 
 /**
- * Space page tabs: URL hash + `projectUI` scoped preferences (per space).
- * - On `spaceId` change: restore persisted tab and sync the hash.
- * - On `hashchange`: follow hash and persist.
- * - Empty hash: deferred `replaceState` so other layout hooks can observe an empty hash first.
+ * Space page tabs: URL hash mirrors `projectUIPreferences.tab` (per space).
+ *
+ * One sync function runs on mount, `spaceId` change, and `hashchange`. If
+ * the URL hash names a valid tab, state adopts it (so deep links like
+ * `/space/X#tasks` win over the persisted tab); otherwise the persisted
+ * tab is written back into the URL asynchronously, so other layout hooks
+ * (e.g. side panel) observe the previous hash first.
+ *
+ * Tab clicks go through `handleTabChange`, which writes URL + state
+ * synchronously and bypasses the sync function.
  */
 export function useSpaceProjectTabs({
   spaceId,
@@ -65,75 +68,37 @@ export function useSpaceProjectTabs({
   currentTab: SpaceProjectTab;
   handleTabChange: (tab: SpaceProjectTab) => void;
 } {
-  const [currentTab, setCurrentTab] =
-    useState<SpaceProjectTab>("conversations");
+  const onHashChangeRef = useRef<() => void>(() => {});
 
-  useLayoutEffect(() => {
-    if (!spaceId || typeof window === "undefined") {
-      return;
+  onHashChangeRef.current = () => {
+    const tabFromHash = parseSpaceTabFromLocationHash(projectUIPreferences.tab);
+    if (tabFromHash !== projectUIPreferences.tab) {
+      setProjectUIPreferences({ ...projectUIPreferences, tab: tabFromHash });
+    } else if (window.location.hash !== `#${projectUIPreferences.tab}`) {
+      const newTab = projectUIPreferences.tab;
+      window.setTimeout(() => replaceUrlHashWithTab(newTab), 0);
     }
-    const persisted = readScopedUIPreferencesValue(
-      "projectUI",
-      spaceId,
-      DEFAULT_SPACE_PROJECT_UI_PREFERENCES
-    );
-    const newTab = persisted.tab;
-    setCurrentTab(newTab);
-    replaceUrlHashWithTab(newTab);
-  }, [spaceId]);
-
-  useEffect(() => {
-    if (!spaceId) {
-      return;
-    }
-    const onHashChange = () => {
-      const persisted = readScopedUIPreferencesValue(
-        "projectUI",
-        spaceId,
-        DEFAULT_SPACE_PROJECT_UI_PREFERENCES
-      );
-      const tab = parseSpaceTabFromLocationHash(persisted.tab);
-      setCurrentTab(tab);
-      setProjectUIPreferences({
-        ...persisted,
-        tab,
-      });
-    };
-    window.addEventListener("hashchange", onHashChange);
-    return () => window.removeEventListener("hashchange", onHashChange);
-  }, [setProjectUIPreferences, spaceId]);
+  };
 
   useEffect(() => {
     if (typeof window === "undefined" || !spaceId) {
       return;
     }
-    if (!window.location.hash) {
-      const persisted = readScopedUIPreferencesValue(
-        "projectUI",
-        spaceId,
-        DEFAULT_SPACE_PROJECT_UI_PREFERENCES
-      );
-      const newTab = persisted.tab;
-      const timeoutId = window.setTimeout(() => {
-        if (!window.location.hash) {
-          replaceUrlHashWithTab(newTab);
-        }
-      }, 0);
-      return () => window.clearTimeout(timeoutId);
-    }
+    const listener = () => onHashChangeRef.current();
+    listener();
+    window.addEventListener("hashchange", listener);
+    return () => {
+      window.removeEventListener("hashchange", listener);
+    };
   }, [spaceId]);
 
   const handleTabChange = useCallback(
-    (tab: SpaceProjectTab) => {
-      replaceUrlHashWithTab(tab);
-      setCurrentTab(tab);
-      setProjectUIPreferences({
-        ...projectUIPreferences,
-        tab,
-      });
+    (newTab: SpaceProjectTab) => {
+      replaceUrlHashWithTab(newTab);
+      setProjectUIPreferences({ ...projectUIPreferences, tab: newTab });
     },
     [projectUIPreferences, setProjectUIPreferences]
   );
 
-  return { currentTab, handleTabChange };
+  return { currentTab: projectUIPreferences.tab, handleTabChange };
 }

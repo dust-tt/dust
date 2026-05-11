@@ -15,8 +15,8 @@ import {
   resolveConversationFileRef,
 } from "./file_utils";
 
-const { mockResolveConversationFile } = vi.hoisted(() => ({
-  mockResolveConversationFile: vi.fn(),
+const { mockResolveFile } = vi.hoisted(() => ({
+  mockResolveFile: vi.fn(),
 }));
 
 vi.mock(
@@ -28,7 +28,7 @@ vi.mock(
       >();
     return {
       ...actual,
-      resolveConversationFile: mockResolveConversationFile,
+      resolveFile: mockResolveFile,
     };
   }
 );
@@ -145,7 +145,7 @@ describe("getFileFromConversationAttachment", () => {
   });
 
   describe("scoped path (conversation/...)", () => {
-    it("reads the file content from GCS via resolveConversationFile", async () => {
+    it("reads the file content from GCS via resolveFile", async () => {
       const { authenticator: auth } = await createResourceTest({
         role: "admin",
       });
@@ -157,7 +157,7 @@ describe("getFileFromConversationAttachment", () => {
       });
 
       const expectedContent = "gcs bytes";
-      mockResolveConversationFile.mockResolvedValue(
+      mockResolveFile.mockResolvedValue(
         new Ok({
           file: { createReadStream: () => makeReadableStream(expectedContent) },
           mimeType: "text/plain",
@@ -180,7 +180,7 @@ describe("getFileFromConversationAttachment", () => {
       expect(result.value.filename).toBe("notes.txt");
     });
 
-    it("returns Err when resolveConversationFile fails", async () => {
+    it("returns Err when resolveFile fails", async () => {
       const { authenticator: auth } = await createResourceTest({
         role: "admin",
       });
@@ -191,7 +191,7 @@ describe("getFileFromConversationAttachment", () => {
         spaceId: null,
       });
 
-      mockResolveConversationFile.mockResolvedValue(
+      mockResolveFile.mockResolvedValue(
         new Err({ message: "GCS object not found" })
       );
 

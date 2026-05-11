@@ -119,13 +119,13 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
     options: { disabled: !context.conversation },
   });
 
-  const compactionBlockMessage = allMessages.some(
+  const isCompactionInProgress = allMessages.some(
     (message) => isCompactionMessage(message) && message.status === "created"
-  )
+  );
+  const compactionBlockMessage = isCompactionInProgress
     ? "Wait for compaction to finish."
-    : contextUsagePercentage &&
-        contextUsagePercentage >=
-          CONTEXT_USAGE_PERCENT_THRESHOLDS["force_compaction"]
+    : contextUsagePercentage >=
+        CONTEXT_USAGE_PERCENT_THRESHOLDS["force_compaction"]
       ? "Context is full, compact to continue."
       : null;
   const showContextUsageBanner =
@@ -561,6 +561,7 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
         actions={agentBuilderContext?.actionsToShow}
         isSubmitting={agentBuilderContext?.isSubmitting === true}
         isAgentBuilder={!!agentBuilderContext}
+        disableInput={wakeUpBlockMessage !== null}
         submitBlockMessage={wakeUpBlockMessage ?? compactionBlockMessage}
       />
     </div>

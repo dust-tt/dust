@@ -24,7 +24,7 @@ async function handler(
       status_code: 403,
       api_error: {
         type: "workspace_auth_error",
-        message: "Only admins can view reinforcement spend.",
+        message: "Only admins can view self-improving skills spend.",
       },
     });
   }

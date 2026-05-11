@@ -1,4 +1,10 @@
-// Pure path helpers for conversation file mount paths (gcsfuse sandbox mounting).
+// Pure path helpers for sandbox mount paths (gcsfuse mounting).
+//
+// Two scoped mounts are supported:
+//   - "conversation": files scoped to a single conversation, mounted at /files/conversation
+//   - "project":      files scoped to a project (space), mounted at /files/project when the
+//                     conversation belongs to a project. Persistent across conversations within
+//                     the same project.
 
 import type { FileResource } from "@app/lib/resources/file_resource";
 import type { AllSupportedFileContentType } from "@app/types/files";
@@ -45,6 +51,16 @@ export function getConversationFilePath({
   fileName: string;
 }): string {
   return `${getConversationFilesBasePath({ workspaceId, conversationId })}${fileName}`;
+}
+
+export function getProjectFilesBasePath({
+  workspaceId,
+  projectId,
+}: {
+  workspaceId: string;
+  projectId: string;
+}): string {
+  return `${getBaseMountPathForWorkspace({ workspaceId })}projects/${projectId}/files/`;
 }
 
 /**
@@ -127,11 +143,7 @@ export function parseProcessedFilename(
   return { isProcessed: true, sourceBaseName: fileName.slice(0, idx) };
 }
 
-export const scopedFilePathPrefixSchema = z.enum([
-  "conversation",
-  // TODO(20260428 FILE SYSTEM) Add support for project.
-  // "project"
-]);
+export const scopedFilePathPrefixSchema = z.enum(["conversation", "project"]);
 export type ScopedFilePathPrefix = z.infer<typeof scopedFilePathPrefixSchema>;
 
 export type ScopedFilePath = {

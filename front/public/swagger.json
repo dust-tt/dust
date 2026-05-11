@@ -2358,6 +2358,9 @@
           "401": {
             "description": "Unauthorized. Invalid or missing authentication token."
           },
+          "403": {
+            "description": "Forbidden. Workspace or usage limits exceeded, or access denied."
+          },
           "429": {
             "description": "Rate limit exceeded."
           },

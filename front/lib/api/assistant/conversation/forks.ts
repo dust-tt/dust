@@ -52,8 +52,9 @@ import type { Transaction } from "sequelize";
 export type CreateConversationForkErrorCode =
   | "conversation_not_found"
   | "failed_to_copy_files"
+  | "internal_error"
   | "invalid_request_error"
-  | "internal_error";
+  | "unauthorized";
 
 type CarriedAttachment = {
   carriedAttachment:
@@ -579,6 +580,13 @@ export async function createConversationFork(
   if (!parentConversation) {
     return new Err(
       new DustError("conversation_not_found", "Conversation not found.")
+    );
+  }
+
+  const parentSpace = parentConversation.space;
+  if (parentSpace?.isProject() && !parentSpace.isMember(auth)) {
+    return new Err(
+      new DustError("unauthorized", "You are not a member of the project.")
     );
   }
 

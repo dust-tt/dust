@@ -12,7 +12,6 @@ import {
   getCreditAmountFromInvoice,
   getCreditPurchaseCouponId,
   isCreditPurchaseInvoice,
-  isEnterpriseSubscription,
   MAX_PRO_INVOICE_ATTEMPTS_BEFORE_VOIDED,
   makeCreditPurchaseOneOffInvoiceForCustomer,
   makeCreditPurchaseOneOffInvoiceForSubscription,
@@ -31,20 +30,13 @@ import type Stripe from "stripe";
 export async function startCreditFromProOneOffInvoice({
   auth,
   invoice,
-  stripeSubscription,
 }: {
   auth: Authenticator;
   invoice: Stripe.Invoice;
-  stripeSubscription: Stripe.Subscription;
 }): Promise<Result<undefined, Error>> {
-  if (
-    !isCreditPurchaseInvoice(invoice) ||
-    isEnterpriseSubscription(stripeSubscription)
-  ) {
+  if (!isCreditPurchaseInvoice(invoice)) {
     throw new Error(
-      `Cannot process this invoice for credit purchase: ${invoice.id}\n` +
-        `isCreditPurchaseInvoice: ${isCreditPurchaseInvoice(invoice)}\n` +
-        `isEntrepriseSubscription: ${isEnterpriseSubscription(stripeSubscription)}`
+      `Cannot process this invoice for credit purchase: ${invoice.id}`
     );
   }
 
@@ -145,20 +137,13 @@ export async function startCreditFromProOneOffInvoice({
 export async function startCreditFromEnterpriseOneOffInvoice({
   auth,
   invoice,
-  stripeSubscription,
 }: {
   auth: Authenticator;
   invoice: Stripe.Invoice;
-  stripeSubscription: Stripe.Subscription;
 }): Promise<Result<{ alreadyStarted: boolean }, Error>> {
-  if (
-    !isCreditPurchaseInvoice(invoice) ||
-    !isEnterpriseSubscription(stripeSubscription)
-  ) {
+  if (!isCreditPurchaseInvoice(invoice)) {
     throw new Error(
-      `Cannot process this invoice for enterprise credit purchase: ${invoice.id}\n` +
-        `isCreditPurchaseInvoice: ${isCreditPurchaseInvoice(invoice)}\n` +
-        `isEntrepriseSubscription: ${isEnterpriseSubscription(stripeSubscription)}`
+      `Cannot process this invoice for enterprise credit purchase: ${invoice.id}`
     );
   }
 
@@ -480,114 +465,6 @@ export async function createEnterpriseCreditPurchase({
   );
 
   return new Ok({ credit, invoiceOrLineItemId: invoice.id });
-}
-
-/**
- * Webhook-side credit activation for Metronome-only Pro purchases. Mirrors
- * `startCreditFromProOneOffInvoice` but doesn't take a Stripe subscription —
- * the workspace is resolved upstream from the invoice metadata.
- */
-export async function startCreditFromMetronomeOneOffInvoice({
-  auth,
-  invoice,
-}: {
-  auth: Authenticator;
-  invoice: Stripe.Invoice;
-}): Promise<Result<undefined, Error>> {
-  if (!isCreditPurchaseInvoice(invoice)) {
-    throw new Error(
-      `Cannot process this invoice for credit purchase: ${invoice.id}`
-    );
-  }
-
-  const workspace = auth.getNonNullableWorkspace();
-  const creditAmountCents = getCreditAmountFromInvoice(invoice);
-
-  if (creditAmountCents === null) {
-    logger.error(
-      {
-        workspaceId: workspace.sId,
-        invoiceId: invoice.id,
-        creditAmountCents: invoice.metadata?.credit_amount_cents,
-      },
-      "[Credit Purchase] Invalid credit amount in invoice metadata"
-    );
-    getStatsDClient().increment("credits.top_up.error", 1, [
-      `workspace_id:${workspace.sId}`,
-      "type:committed",
-      "customer:metronome",
-    ]);
-    return new Err(new Error("Invalid credit amount in invoice metadata"));
-  }
-
-  const credit = await CreditResource.fetchByInvoiceOrLineItemId(
-    auth,
-    invoice.id
-  );
-
-  if (!credit) {
-    logger.error(
-      {
-        workspaceId: workspace.sId,
-        invoiceId: invoice.id,
-      },
-      "[Credit Purchase] Credit not found for invoice"
-    );
-    getStatsDClient().increment("credits.top_up.error", 1, [
-      `workspace_id:${workspace.sId}`,
-      "type:committed",
-      "customer:metronome",
-    ]);
-    return new Err(new Error("Credit not found for invoice"));
-  }
-
-  const startResult = await credit.start(auth);
-  if (startResult.isErr()) {
-    logger.error(
-      {
-        workspaceId: workspace.sId,
-        creditAmountCents,
-        invoiceId: invoice.id,
-        creditId: credit.id,
-        expirationDate: credit.expirationDate,
-      },
-      "[Credit Purchase] Error starting credit"
-    );
-    getStatsDClient().increment("credits.top_up.error", 1, [
-      `workspace_id:${workspace.sId}`,
-      "type:committed",
-      "customer:metronome",
-    ]);
-    return new Err(startResult.error);
-  }
-
-  getStatsDClient().increment("credits.top_up.success", 1, [
-    `workspace_id:${workspace.sId}`,
-    "type:committed",
-    "customer:metronome",
-  ]);
-
-  const metronomeResult = await addMetronomeCommitsForWorkspace({
-    auth,
-    credit,
-    amountCredits: creditAmountCents / 100,
-    startDate: startResult.value.startDate,
-    expirationDate: startResult.value.expirationDate,
-  });
-  if (metronomeResult.isErr()) {
-    return new Err(metronomeResult.error);
-  }
-
-  logger.info(
-    {
-      workspaceId: workspace.sId,
-      creditAmountCents,
-      invoiceId: invoice.id,
-      creditId: credit.id,
-    },
-    "[Credit Purchase] Successfully activated credit for Metronome-only subscription"
-  );
-  return new Ok(undefined);
 }
 
 // Where the Stripe one-off credit-purchase invoice lives:

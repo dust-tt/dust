@@ -7,7 +7,7 @@ import type {
 import { CAT_LINES_DEFAULT } from "@app/lib/api/actions/servers/files/metadata";
 import {
   isReadableAsText,
-  resolveConversationFile,
+  resolveFile,
 } from "@app/lib/api/actions/servers/files/tools/utils";
 import { isLLMVisionSupportedImageContentType } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
@@ -132,11 +132,14 @@ export async function catHandler(
   { path, offset, limit }: { path: string; offset?: number; limit?: number },
   { auth, agentLoopContext }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
-  const resolvedRes = await resolveConversationFile(
-    auth,
-    agentLoopContext?.runContext?.conversation,
-    path
-  );
+  const conversation = agentLoopContext?.runContext?.conversation;
+  if (!conversation) {
+    return new Err(
+      new MCPError("No conversation context available.", { tracked: false })
+    );
+  }
+
+  const resolvedRes = await resolveFile(auth, conversation, path);
   if (resolvedRes.isErr()) {
     return resolvedRes;
   }

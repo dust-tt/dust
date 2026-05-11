@@ -57,6 +57,16 @@ import { metronomeAmount } from "./amounts";
 /**
  * Switch a Metronome contract to a different package (end old + create new).
  * Customer must already exist.
+ *
+ * `swapAt` controls when the swap happens:
+ *  - `"current-hour"`: floor to the current hour boundary (in the past). Use
+ *    for seat-based plans (Pro, Business) where the current partial hour has
+ *    no usage to attribute. The new contract is effectively active "now", so
+ *    callers can flip the DB subscription synchronously.
+ *  - `"next-hour"`: ceil to the next hour boundary (in the future, by up to
+ *    one hour). Preserves the current partial hour's usage on the old
+ *    contract — required for MAU-based Enterprise plans. Callers should
+ *    defer the DB flip until `contract.start` fires.
  */
 export async function switchMetronomeContractPackage({
   metronomeCustomerId,
@@ -64,16 +74,22 @@ export async function switchMetronomeContractPackage({
   workspace,
   packageAlias,
   enableStripeBilling,
+  planCode,
+  swapAt,
 }: {
   metronomeCustomerId: string;
   oldContractId: string;
   workspace: LightWorkspaceType;
   packageAlias: string;
   enableStripeBilling: boolean;
+  planCode: string;
+  swapAt: "current-hour" | "next-hour";
 }): Promise<Result<{ metronomeContractId: string }, Error>> {
-  // Round up to the next hour boundary (Metronome requires hour-aligned dates)
-  // so the new contract starts exactly when the old one ends.
-  const switchAt = new Date(ceilToHourISO(new Date()));
+  const switchAt = new Date(
+    swapAt === "current-hour"
+      ? floorToHourISO(new Date())
+      : ceilToHourISO(new Date())
+  );
 
   const endResult = await scheduleMetronomeContractEnd({
     metronomeCustomerId,
@@ -87,8 +103,11 @@ export async function switchMetronomeContractPackage({
   const contractResult = await createMetronomeContract({
     metronomeCustomerId,
     packageAlias,
+    // One switch per old contract — retries dedup against the same successor.
+    uniquenessKey: `switch:${oldContractId}`,
     startingAt: switchAt,
     enableStripeBilling,
+    planCode,
   });
   if (contractResult.isErr()) {
     return new Err(contractResult.error);
@@ -255,6 +274,7 @@ export async function provisionMetronomeContract({
   uniquenessKey,
   startingAt,
   enableStripeBilling = true,
+  planCode,
 }: {
   metronomeCustomerId: string;
   workspace: LightWorkspaceType;
@@ -263,6 +283,7 @@ export async function provisionMetronomeContract({
   // Must already be on an hour boundary (Metronome requirement).
   startingAt: Date;
   enableStripeBilling?: boolean;
+  planCode: string;
 }): Promise<Result<{ metronomeContractId: string }, Error>> {
   logger.info(
     {
@@ -279,6 +300,7 @@ export async function provisionMetronomeContract({
     uniquenessKey,
     startingAt,
     enableStripeBilling,
+    planCode,
   });
   if (contractResult.isErr()) {
     return new Err(contractResult.error);
@@ -986,9 +1008,11 @@ export async function applyEnterpriseOverrides({
 export async function provisionShadowEnterpriseMetronomeContract({
   workspace,
   stripeSubscription,
+  planCode,
 }: {
   workspace: LightWorkspaceType;
   stripeSubscription: Stripe.Subscription;
+  planCode: string;
 }): Promise<
   Result<{ metronomeCustomerId: string; metronomeContractId: string }, Error>
 > {
@@ -1046,6 +1070,7 @@ export async function provisionShadowEnterpriseMetronomeContract({
     uniquenessKey: stripeSubscription.id,
     startingAt: new Date(startDate),
     enableStripeBilling: false,
+    planCode,
   });
   if (contractResult.isErr()) {
     return new Err(contractResult.error);

@@ -842,6 +842,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       const metronomeResult = await provisionShadowEnterpriseMetronomeContract({
         workspace: renderLightWorkspaceType({ workspace: workspaceResource }),
         stripeSubscription,
+        planCode: plan.code,
       });
 
       if (metronomeResult.isErr()) {
@@ -1020,6 +1021,11 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
         workspace: owner,
         packageAlias,
         enableStripeBilling: isSubscriptionMetronomeBilled(this.toJSON()),
+        planCode: PRO_PLAN_SEAT_39_CODE,
+        // Business is seat-based — swap at the current hour boundary so the
+        // new contract is active immediately and the sync DB flip below is
+        // consistent with Metronome.
+        swapAt: "current-hour",
       });
       if (result.isErr() && !this.isMetronomeShadowBilled) {
         return new Err(result.error);

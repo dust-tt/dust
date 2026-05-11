@@ -56,7 +56,6 @@ const METRONOME_CUSTOMER_ID = "cust_test_xxx";
 const OLD_CONTRACT_ID = "contract_old_xxx";
 const NEW_CONTRACT_ID = "contract_new_yyy";
 const ENT_PLAN_CODE = "ENT_TEST_PLAN";
-const NON_ENTERPRISE_PLAN_CODE = "PRO_PLAN_SEAT_29";
 
 async function ensureEnterprisePlan(): Promise<void> {
   await PlanModel.upsert({
@@ -128,7 +127,8 @@ function makeWebhookRequest(eventBody: Record<string, unknown>) {
 }
 
 async function setupMetronomeWorkspace(
-  contractId: string
+  contractId: string,
+  { stripeSubscriptionId = null }: { stripeSubscriptionId?: string | null } = {}
 ): Promise<WorkspaceType> {
   const workspace = await WorkspaceFactory.basic();
   const workspaceModelId = (await WorkspaceResource.fetchById(workspace.sId))!
@@ -148,7 +148,7 @@ async function setupMetronomeWorkspace(
       status: "active",
       startDate: new Date(),
       endDate: null,
-      stripeSubscriptionId: null,
+      stripeSubscriptionId,
       metronomeContractId: contractId,
     },
     sub!.getPlan()
@@ -201,8 +201,14 @@ describe("Metronome webhook — contract.start", () => {
     expect(restoreWorkspaceAfterSubscription).not.toHaveBeenCalled();
   });
 
-  it("does nothing when PLAN_CODE refers to a non-enterprise plan", async () => {
-    const workspace = await setupMetronomeWorkspace(OLD_CONTRACT_ID);
+  it("does nothing when the active subscription is shadow-billed (Stripe + Metronome)", async () => {
+    // Shadow-billed: Stripe is the source of truth, Metronome runs in
+    // parallel. The webhook must not flip the subscription on contract.start
+    // — Stripe drives that transition on its own webhook.
+    await ensureEnterprisePlan();
+    const workspace = await setupMetronomeWorkspace(OLD_CONTRACT_ID, {
+      stripeSubscriptionId: "sub_shadow_xxx",
+    });
     const event = contractEvent("contract.start", NEW_CONTRACT_ID);
     mockUnwrap(event);
     vi.mocked(getMetronomeContractById).mockResolvedValue(
@@ -211,7 +217,7 @@ describe("Metronome webhook — contract.start", () => {
         customer_id: METRONOME_CUSTOMER_ID,
         starting_at: new Date().toISOString(),
         custom_fields: {
-          [PLAN_CODE_CUSTOM_FIELD_KEY]: NON_ENTERPRISE_PLAN_CODE,
+          [PLAN_CODE_CUSTOM_FIELD_KEY]: ENT_PLAN_CODE,
         },
       } as never)
     );

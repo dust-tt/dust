@@ -43,6 +43,7 @@ vi.mock("@app/lib/api/regions/config", () => ({
 }));
 
 vi.mock("@app/lib/api/sandbox/egress_secrets", () => ({
+  EGRESS_SECRETS_PATH: "/run/dust/egress-secrets.json",
   writeEgressSecretsFile: mockWriteEgressSecretsFile,
 }));
 
@@ -145,6 +146,12 @@ describe("sandbox egress helpers", () => {
       2,
       auth,
       expect.stringContaining("--proxy-tls-name 'eu.sandbox-egress.dust.tt'"),
+      { user: "root" }
+    );
+    expect(sandbox.exec).toHaveBeenNthCalledWith(
+      2,
+      auth,
+      expect.stringContaining("--secrets-file '/run/dust/egress-secrets.json'"),
       { user: "root" }
     );
     expect(sandbox.exec).toHaveBeenNthCalledWith(
