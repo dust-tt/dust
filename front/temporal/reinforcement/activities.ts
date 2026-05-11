@@ -32,7 +32,7 @@ import {
   DEFAULT_REINFORCEMENT_LOOKBACK_WINDOW_DAYS,
 } from "@app/lib/reinforcement/constants";
 import {
-  getCurrentPeriodStart,
+  getCurrentPeriod,
   getReinforcementMonthlyCapMicroUsd,
 } from "@app/lib/reinforcement/consumption";
 import {
@@ -484,7 +484,7 @@ export async function getReinforcementSettingsActivity({
   }
 
   const workspace = auth.getNonNullableWorkspace();
-  const periodStart = getCurrentPeriodStart();
+  const { cycleStart: periodStart } = await getCurrentPeriod(auth);
   const globalConsumptionMicroUsd =
     await SelfImprovingSkillsUsageResource.getSumPriceMicroUsdAfterDate(
       auth,
