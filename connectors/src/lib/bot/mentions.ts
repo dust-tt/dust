@@ -10,8 +10,7 @@ export type MentionMatch = {
 const EXACT_MATCH_MENTION_PREFIX = "=";
 
 // Pattern to match @mention, +mention, ~mention, and =mention.
-const MENTION_PATTERN =
-  /(?<!\S)[@+~=]([a-zA-Z0-9_\.-]{1,40})(?=\s|,|$)/g;
+const MENTION_PATTERN = /(?<!\S)[@+~=]([a-zA-Z0-9_\.-]{1,40})(?=\s|,|$)/g;
 
 export function processMentions({
   message,

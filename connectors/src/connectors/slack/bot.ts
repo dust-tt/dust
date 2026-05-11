@@ -101,8 +101,7 @@ function getMaxFileSizeToUpload(contentType: SupportedFileContentType): number {
 }
 
 // Pattern to match +mention, ~mention, or =mention at the beginning of the string.
-const SLACK_MENTION_PATTERN =
-  /^\s*([+~=][a-zA-Z0-9_\.-]{1,40})(?=\s|,|$)/;
+const SLACK_MENTION_PATTERN = /^\s*([+~=][a-zA-Z0-9_\.-]{1,40})(?=\s|,|$)/;
 
 type BotAnswerParams = {
   responseUrl?: string;
