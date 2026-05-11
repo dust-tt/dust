@@ -158,14 +158,11 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
     // prefill with just those human mentions.
     const lastMsgAllMentions = lastUserMessage?.richMentions ?? [];
     const lastMsgHasAgent = lastMsgAllMentions.some(isRichAgentMention);
-    if (
-      lastMessageUserMentions.length > 0 &&
-      !lastMsgHasAgent
-    ) {
+    if (lastMessageUserMentions.length > 0 && !lastMsgHasAgent) {
       return lastMessageUserMentions;
     }
 
-        // If we are in the agent builder, we show the draft agent as the sticky mention, all the time.
+    // If we are in the agent builder, we show the draft agent as the sticky mention, all the time.
     // Especially since the draft agent have a new sId every time it is updated.
     if (draftAgent) {
       return [toRichAgentMentionType(draftAgent)];
@@ -185,8 +182,8 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
     // @sidekick is not available in accessibleAgentIds so we need to skip it
     if (agentBuilderContext) {
       return lastAgentMentionInConversation
-          ? [lastAgentMentionInConversation]
-          : [];
+        ? [lastAgentMentionInConversation]
+        : [];
     }
 
     if (

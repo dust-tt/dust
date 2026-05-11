@@ -827,7 +827,7 @@ const InputBarContainer = ({
 
   // Restore draft text when switching conversations (including new conversations).
   // Agent selection is handled by useHandleMention.
-    // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
+  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (
       !editor ||
@@ -846,11 +846,11 @@ const InputBarContainer = ({
     const draft = getDraft();
 
     if (draft) {
-        // Schedule content restoration to avoid flushing during render lifecycle.
-        queueMicrotask(() =>
-          editorService.setContent(draft.text, { focus: !disableAutoFocus })
-        );
-        return;
+      // Schedule content restoration to avoid flushing during render lifecycle.
+      queueMicrotask(() =>
+        editorService.setContent(draft.text, { focus: !disableAutoFocus })
+      );
+      return;
     }
 
     // No draft — insert sticky user mentions into the editor
