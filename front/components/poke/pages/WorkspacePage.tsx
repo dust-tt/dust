@@ -214,6 +214,7 @@ export function WorkspacePage() {
                   owner={owner}
                   membersCount={membersCount}
                   metronomeCustomerId={metronomeCustomerId}
+                  stripeCustomerId={stripeCustomerId}
                   workspaceVerifiedDomains={workspaceVerifiedDomains}
                   workspaceCreationDay={workspaceCreationDay}
                   extensionConfig={extensionConfig}

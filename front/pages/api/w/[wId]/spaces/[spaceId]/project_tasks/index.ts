@@ -7,49 +7,50 @@ import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
 import { ProjectTaskStateResource } from "@app/lib/resources/project_task_state_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { getConversationDotStatus } from "@app/lib/utils/conversation_dot_status";
+import { apiError } from "@app/logger/withlogging";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import {
+  isProjectTaskPeriodScope,
+  type ProjectTaskPeriodScope,
+  type ProjectTaskType,
+} from "@app/types/project_task";
 import type { ModelId } from "@app/types/shared/model_id";
+import { isString } from "@app/types/shared/utils/general";
+import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 
 function parseSingleQueryValue(
   value: NextApiRequest["query"][string] | undefined
 ): string | undefined {
   const v = Array.isArray(value) ? value[0] : value;
-  return typeof v === "string" && v.trim().length > 0 ? v.trim() : undefined;
+  return isString(v) && v.trim().length > 0 ? v.trim() : undefined;
 }
-
-const PROJECT_TODO_TIME_SCOPE_VALUES = [
-  "active",
-  "last_24h",
-  "last_7d",
-  "last_30d",
-] as const;
-
-type ProjectTaskFetchTimeScope =
-  (typeof PROJECT_TODO_TIME_SCOPE_VALUES)[number];
 
 function parseProjectTaskTimeScope(
   req: NextApiRequest
-): ProjectTaskFetchTimeScope {
+): ProjectTaskPeriodScope {
   const raw =
     parseSingleQueryValue(req.query.period)?.toLowerCase() ?? "active";
-  if ((PROJECT_TODO_TIME_SCOPE_VALUES as readonly string[]).includes(raw)) {
-    return raw as ProjectTaskFetchTimeScope;
+  if (isProjectTaskPeriodScope(raw)) {
+    return raw;
   }
   return "active";
 }
 
-function parsePeopleMineOnly(req: NextApiRequest): boolean {
+type ProjectTasksPeopleFetchMode = "all" | "mine";
+
+function parseProjectTasksPeopleMode(
+  req: NextApiRequest
+): ProjectTasksPeopleFetchMode {
   const legacy = parseSingleQueryValue(req.query.assignee)?.toLowerCase();
   const explicit = parseSingleQueryValue(req.query.people)?.toLowerCase();
 
   const token = explicit ?? legacy ?? "all";
-  return token === "mine";
+  if (token === "mine") {
+    return "mine";
+  }
+  return "all";
 }
-
-import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types/error";
-import type { ProjectTaskType } from "@app/types/project_task";
-import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
 
 export interface GetProjectTasksResponseBody {
   tasks: ProjectTaskType[];
@@ -63,7 +64,8 @@ const PostProjectTaskBodySchema = z.object({
     .trim()
     .min(1, "Text is required.")
     .max(256, "Text must be at most 256 characters."),
-  assigneeUserId: z.string().min(1, "Assignee is required."),
+  /** Omit to assign to the current user; pass `null` for unassigned (or the sole assignable member if the project has exactly one). */
+  assigneeUserId: z.union([z.string().min(1), z.null()]).optional(),
 });
 
 export interface PostProjectTaskResponseBody {
@@ -97,18 +99,12 @@ async function handler(
         spaceId: space.id,
       });
       const timeScope = parseProjectTaskTimeScope(req);
-      const viewerOnlyMine = parsePeopleMineOnly(req);
-      let assigneeUserId: ModelId | null = null;
-      if (viewerOnlyMine) {
-        assigneeUserId = currentUser.id;
-      }
-
-      const lastCleanedAtForFetch =
-        timeScope === "active" ? (state?.lastCleanedAt ?? null) : null;
+      const peopleMode = parseProjectTasksPeopleMode(req);
+      const assigneeUserId: ModelId | null =
+        peopleMode === "mine" ? currentUser.id : null;
 
       const todos = await ProjectTaskResource.fetchBySpace(auth, {
         spaceId: space.id,
-        lastCleanedAt: lastCleanedAtForFetch,
         timeScope,
         assigneeUserId,
       });
@@ -185,34 +181,46 @@ async function handler(
       const workspace = auth.getNonNullableWorkspace();
       const currentUser = auth.getNonNullableUser();
 
-      const assigneeAuth = await Authenticator.fromUserIdAndWorkspaceId(
-        assigneeUserId,
-        workspace.sId
-      );
-      const assigneeUser = assigneeAuth.user();
-      if (!assigneeUser) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Assignee user not found.",
-          },
-        });
-      }
+      let taskUserModelId: ModelId | null;
+      if (assigneeUserId === undefined) {
+        taskUserModelId = currentUser.id;
+      } else if (assigneeUserId === null) {
+        const assignable =
+          await space.fetchDistinctActiveManualGroupMembers(auth);
+        const soleModelId = assignable.length === 1 ? assignable[0]!.id : null;
+        taskUserModelId = soleModelId;
+      } else {
+        const assigneeAuth = await Authenticator.fromUserIdAndWorkspaceId(
+          assigneeUserId,
+          workspace.sId
+        );
+        const assigneeUser = assigneeAuth.user();
+        if (!assigneeUser) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "Assignee user not found.",
+            },
+          });
+        }
 
-      if (!space.isMember(assigneeAuth)) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Assignee must be a member of this project.",
-          },
-        });
+        if (!space.isMember(assigneeAuth)) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "Assignee must be a member of this project.",
+            },
+          });
+        }
+
+        taskUserModelId = assigneeUser.id;
       }
 
       const newTodo = await ProjectTaskResource.makeNew(auth, {
         spaceId: space.id,
-        userId: assigneeUser.id,
+        userId: taskUserModelId,
         createdByType: "user",
         createdByUserId: currentUser.id,
         createdByAgentConfigurationId: null,

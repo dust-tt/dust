@@ -21,8 +21,10 @@ async function createServer(
 ): Promise<McpServer> {
   const server = makeInternalMCPServer("conversation_files");
 
-  const useFileSystem =
-    agentLoopContext?.runContext?.conversation.metadata?.useFileSystem === true;
+  const conversation =
+    agentLoopContext?.runContext?.conversation ??
+    agentLoopContext?.listToolsContext?.conversation;
+  const useFileSystem = conversation?.metadata?.useFileSystem === true;
 
   for (const tool of TOOLS) {
     if (useFileSystem && NEW_FILE_EXPLORER_HIDDEN_TOOLS.has(tool.name)) {

@@ -464,12 +464,14 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         ? [...blob.requestedSpaceIds, space.id]
         : blob.requestedSpaceIds;
 
-    // Default `useFileSystem` from the workspace feature flag when the caller hasn't pinned a
-    // value. Pinning the flag on the conversation gives stable behavior across its lifetime:
-    // existing conversations (no flag set) keep the legacy behavior even after the FF flips on.
-    const metadata: ConversationMetadata = blob.metadata ?? {};
+    // Default `useFileSystem` to true when the caller hasn't pinned a value. Pinning the flag on
+    // the conversation gives stable behavior across its lifetime:
+    // existing conversations (no flag set) keep the legacy behavior.
+    const metadata: ConversationMetadata = blob.metadata
+      ? { ...blob.metadata }
+      : {};
     if (metadata.useFileSystem === undefined) {
-      metadata.useFileSystem = await hasFeatureFlag(auth, "new_file_explorer");
+      metadata.useFileSystem = true;
     }
 
     const conversation = await this.model.create(
@@ -534,6 +536,55 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const result = new Map<ModelId, number>();
     for (const row of rows) {
       result.set(row.conversationId, parseInt(row.get("count") as string, 10));
+    }
+    return result;
+  }
+
+  /**
+   * Returns counts of distinct workspace users who authored a user message (non-null
+   * {@link UserMessageModel.userId}) per conversation.
+   */
+  static async getDistinctUserCountsByConversationIds(
+    workspaceId: ModelId,
+    conversationIds: ModelId[]
+  ): Promise<Map<ModelId, number>> {
+    const result = new Map<ModelId, number>();
+    if (conversationIds.length === 0) {
+      return result;
+    }
+
+    const rows = await MessageModel.findAll({
+      attributes: [
+        "conversationId",
+        [
+          fn("COUNT", fn("DISTINCT", col("userMessage.userId"))),
+          "distinctUserCount",
+        ],
+      ],
+      include: [
+        {
+          model: UserMessageModel,
+          as: "userMessage",
+          attributes: [],
+          required: true,
+          where: {
+            userId: { [Op.ne]: null },
+          },
+        },
+      ],
+      where: {
+        workspaceId,
+        conversationId: { [Op.in]: conversationIds },
+        userMessageId: { [Op.ne]: null },
+      },
+      group: ["message.conversationId"],
+    });
+
+    for (const row of rows) {
+      result.set(
+        row.conversationId,
+        parseInt(row.get("distinctUserCount") as string, 10)
+      );
     }
     return result;
   }
@@ -2055,13 +2106,18 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       }
 
       if (filter === "group") {
+        const workspaceId = auth.getNonNullableWorkspace().id;
+        const batchConversationIds = conversationsBatch.map((c) => c.id);
+
         const participants = await ConversationParticipantModel.findAll({
           where: {
-            workspaceId: auth.getNonNullableWorkspace().id,
+            workspaceId,
             conversationId: {
-              [Op.in]: conversationsBatch.map((c) => c.id),
+              [Op.in]: batchConversationIds,
             },
-            action: "posted",
+            action: {
+              [Op.in]: ["posted", "subscribed"],
+            },
           },
           attributes: ["conversationId", "userId"],
         });
@@ -2081,12 +2137,33 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           );
         }
 
-        const groupConversationIds = new Set<ModelId>(
+        const groupConversationIdsFromParticipants = new Set<ModelId>(
           [...participantUserIdsByConversation.entries()].flatMap(
             ([conversationId, participantUserIds]) =>
               participantUserIds.size >= 2 ? [conversationId] : []
           )
         );
+
+        const candidateIdsForMessagePass = batchConversationIds.filter(
+          (id) => !groupConversationIdsFromParticipants.has(id)
+        );
+
+        const distinctAuthorsByConversation =
+          candidateIdsForMessagePass.length === 0
+            ? new Map<ModelId, number>()
+            : await this.getDistinctUserCountsByConversationIds(
+                workspaceId,
+                candidateIdsForMessagePass
+              );
+
+        const groupConversationIds = new Set<ModelId>(
+          groupConversationIdsFromParticipants
+        );
+        for (const [conversationId, count] of distinctAuthorsByConversation) {
+          if (count > 1) {
+            groupConversationIds.add(conversationId);
+          }
+        }
 
         matchingConversations = conversationsBatch.filter((conversation) =>
           groupConversationIds.has(conversation.id)

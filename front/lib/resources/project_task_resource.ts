@@ -1,7 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
-import { ProjectTaskStateResource } from "@app/lib/resources/project_task_state_resource";
 import {
   ProjectTaskConversationModel,
   ProjectTaskModel,
@@ -21,6 +20,7 @@ import type {
 } from "@app/types/project_task";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Err, Ok, type Result } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WhereOptions } from "sequelize";
 import {
   type Attributes,
@@ -31,8 +31,12 @@ import {
 } from "sequelize";
 
 // Return type of fetchByItemIds: outer key is itemId (action item sId), inner
-// key is userId (ModelId).
-export type TodosByItemId = Map<string, Map<ModelId, ProjectTaskResource[]>>;
+// key is userId (ModelId | null, where null represents unassigned tasks).
+export type TodosByItemId = Map<
+  string,
+  Map<ModelId | null, ProjectTaskResource[]>
+>;
+export type TasksByItemId = TodosByItemId;
 
 type ProjectTaskVersionCreationAttributes =
   CreationAttributes<ProjectTaskModel> & {
@@ -353,21 +357,17 @@ export class ProjectTaskResource extends BaseResource<ProjectTaskModel> {
     auth: Authenticator,
     {
       spaceId,
-      lastCleanedAt,
-      timeScope = "active",
+      timeScope,
       assigneeUserId = null,
     }: {
       spaceId: ModelId;
-      lastCleanedAt?: Date | null;
-      timeScope?: "active" | "last_24h" | "last_7d" | "last_30d";
+      timeScope: "active" | "last_24h" | "last_7d" | "last_30d" | "all";
       assigneeUserId?: ModelId | null;
     }
   ): Promise<ProjectTaskResource[]> {
     const MS_PER_HOUR = 60 * 60 * 1000;
 
-    const historicUpdatedSince = (
-      scope: "last_24h" | "last_7d" | "last_30d"
-    ): Date => {
+    const cutoffFor = (scope: "last_24h" | "last_7d" | "last_30d"): Date => {
       const now = Date.now();
       switch (scope) {
         case "last_24h":
@@ -376,6 +376,8 @@ export class ProjectTaskResource extends BaseResource<ProjectTaskModel> {
           return new Date(now - 7 * 24 * MS_PER_HOUR);
         case "last_30d":
           return new Date(now - 30 * 24 * MS_PER_HOUR);
+        default:
+          return assertNever(scope);
       }
     };
 
@@ -385,19 +387,19 @@ export class ProjectTaskResource extends BaseResource<ProjectTaskModel> {
       clauses.push({ userId: assigneeUserId });
     }
 
-    if (timeScope !== "active") {
-      clauses.push({
-        updatedAt: { [Op.gte]: historicUpdatedSince(timeScope) },
-      });
-    } else if (lastCleanedAt) {
-      clauses.push({
-        [Op.or]: [
-          { status: { [Op.ne]: "done" } },
-          { doneAt: null },
-          { doneAt: { [Op.gte]: lastCleanedAt } },
-          { agentSuggestionStatus: "pending" },
-        ],
-      });
+    switch (timeScope) {
+      case "active":
+        clauses.push({ status: { [Op.ne]: "done" } });
+        break;
+      case "last_24h":
+      case "last_7d":
+      case "last_30d":
+        clauses.push({ doneAt: { [Op.gte]: cutoffFor(timeScope) } });
+        break;
+      case "all":
+        break;
+      default:
+        assertNever(timeScope);
     }
 
     const where: WhereOptions<ProjectTaskModel> =
@@ -418,19 +420,14 @@ export class ProjectTaskResource extends BaseResource<ProjectTaskModel> {
     });
   }
 
-  // Like fetchLatestBySpaceForUser but also includes soft-deleted rows. Used by
-  // the merge workflow to detect candidates that match a previously deleted todo
-  // so that the merge skips them rather than re-creating the todo.
-  static async fetchLatestBySpaceForUserIncludingDeleted(
+  // Fetches all todos for the given space across all users, including
+  // soft-deleted rows. Used by the merge workflow for space-wide dedup.
+  static async fetchAllBySpaceIncludingDeleted(
     auth: Authenticator,
-    { spaceId, userId }: { spaceId: ModelId; userId: ModelId }
+    { spaceId }: { spaceId: ModelId }
   ): Promise<ProjectTaskResource[]> {
     const todos = await ProjectTaskModel.findAll({
-      where: {
-        spaceId,
-        userId,
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
+      where: { workspaceId: auth.getNonNullableWorkspace().id, spaceId },
       order: [["createdAt", "DESC"]],
     });
     return todos.map((todo) => new this(ProjectTaskModel, todo.get()));
@@ -442,7 +439,7 @@ export class ProjectTaskResource extends BaseResource<ProjectTaskModel> {
   static async fetchByItemIds(
     auth: Authenticator,
     { itemIds }: { itemIds: string[] }
-  ): Promise<Map<string, Map<ModelId, ProjectTaskResource[]>>> {
+  ): Promise<TodosByItemId> {
     if (itemIds.length === 0) {
       return new Map();
     }
@@ -468,18 +465,17 @@ export class ProjectTaskResource extends BaseResource<ProjectTaskModel> {
       linkedRows.map((t) => [t.id, t])
     );
 
-    const result: TodosByItemId = new Map();
+    const result: TasksByItemId = new Map();
     for (const source of sources) {
       const todo = rowById.get(source.projectTodoId);
       if (!todo) {
         continue;
       }
       const byUser =
-        result.get(source.itemId) ?? new Map<ModelId, ProjectTaskResource[]>();
+        result.get(source.itemId) ??
+        new Map<ModelId | null, ProjectTaskResource[]>();
       const userId = todo.userId;
-      if (userId !== null) {
-        byUser.set(userId, [...(byUser.get(userId) ?? []), todo]);
-      }
+      byUser.set(userId, [...(byUser.get(userId) ?? []), todo]);
       result.set(source.itemId, byUser);
     }
 
@@ -716,37 +712,6 @@ export class ProjectTaskResource extends BaseResource<ProjectTaskModel> {
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
     };
-  }
-
-  // ── Lifecycle ──────────────────────────────────────────────────────────────
-
-  // Marks all done todos as "cleaned" for the authenticated user in the given
-  // space by updating the per-user cutoff timestamp stored in project_todo_state.
-  static async cleanDoneBySpace(
-    auth: Authenticator,
-    { spaceId }: { spaceId: ModelId }
-  ): Promise<Result<{ cleanedCount: number }, Error>> {
-    const cleanedAt = new Date();
-    const workspaceId = auth.getNonNullableWorkspace().id;
-    const userId = auth.getNonNullableUser().id;
-
-    const cleanedCount = await ProjectTaskModel.count({
-      where: {
-        workspaceId,
-        spaceId,
-        userId,
-        deletedAt: null,
-        status: "done",
-        doneAt: { [Op.lte]: cleanedAt },
-      },
-    });
-
-    await ProjectTaskStateResource.upsertLastCleanedAtBySpace(auth, {
-      spaceId,
-      lastCleanedAt: cleanedAt,
-    });
-
-    return new Ok({ cleanedCount });
   }
 
   // Applies the same updates to a batch of todos in a single transaction.

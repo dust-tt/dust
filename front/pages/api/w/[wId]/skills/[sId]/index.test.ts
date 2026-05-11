@@ -8,6 +8,7 @@ import type { UserResource } from "@app/lib/resources/user_resource";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
+import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -37,6 +38,7 @@ async function setupTest(
     auth,
     req,
     res,
+    globalGroup,
     workspace,
     globalSpace,
     user: requestUser,
@@ -120,6 +122,7 @@ async function setupTest(
     skillOwner,
     skillOwnerAuth,
     globalSpace,
+    globalGroup,
     workspace,
   };
 }
@@ -380,6 +383,84 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
     );
     expect(updatedSkill).not.toBeNull();
     expect(updatedSkill?.requestedSpaceIds).toHaveLength(2);
+  });
+
+  it("should include additionalRequestedSpaceIds when updating a skill", async () => {
+    const { req, res, skill, workspace, requestUserAuth, globalGroup } =
+      await setupTest({
+        requestUserRole: "admin",
+        method: "PATCH",
+      });
+
+    const openSpace = await SpaceFactory.regular(workspace);
+    await GroupSpaceFactory.associate(openSpace, globalGroup);
+
+    req.body = {
+      name: skill.name,
+      agentFacingDescription: skill.agentFacingDescription,
+      userFacingDescription: skill.userFacingDescription,
+      instructions: skill.instructions,
+      icon: null,
+      tools: [],
+      attachedKnowledge: [],
+      instructionsHtml: null,
+      additionalRequestedSpaceIds: [openSpace.sId],
+    };
+
+    await handler(req, res);
+
+    const data = res._getJSONData();
+    expect(data).not.toHaveProperty("error");
+    expect(res._getStatusCode()).toBe(200);
+    expect(data.skill.requestedSpaceIds).toContain(openSpace.sId);
+
+    const updatedSkill = await SkillResource.fetchById(
+      requestUserAuth,
+      skill.sId
+    );
+    expect(updatedSkill).not.toBeNull();
+    expect(updatedSkill?.requestedSpaceIds).toContain(openSpace.id);
+  });
+
+  it("should preserve existing additional requested spaces when omitted", async () => {
+    const { req, res, skill, workspace, requestUserAuth, globalGroup } =
+      await setupTest({
+        requestUserRole: "admin",
+        method: "PATCH",
+      });
+
+    const openSpace = await SpaceFactory.regular(workspace);
+    await GroupSpaceFactory.associate(openSpace, globalGroup);
+
+    await skill.updateSkill(requestUserAuth, {
+      agentFacingDescription: skill.agentFacingDescription,
+      attachedKnowledge: [],
+      icon: skill.icon,
+      instructions: skill.instructions,
+      instructionsHtml: skill.instructionsHtml,
+      mcpServerViews: [],
+      name: skill.name,
+      requestedSpaceIds: [openSpace.id],
+      userFacingDescription: skill.userFacingDescription,
+    });
+
+    req.body = {
+      name: skill.name,
+      agentFacingDescription: skill.agentFacingDescription,
+      userFacingDescription: skill.userFacingDescription,
+      instructions: skill.instructions,
+      icon: null,
+      tools: [],
+      attachedKnowledge: [],
+      instructionsHtml: null,
+    };
+
+    await handler(req, res);
+
+    const data = res._getJSONData();
+    expect(data).not.toHaveProperty("error");
+    expect(res._getStatusCode()).toBe(200);
+    expect(data.skill.requestedSpaceIds).toContain(openSpace.sId);
   });
 
   it("should correctly reflect updated tools in the response", async () => {

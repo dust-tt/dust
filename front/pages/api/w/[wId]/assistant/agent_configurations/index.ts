@@ -241,6 +241,8 @@ async function handler(
         variant: "light",
         limit,
         sort,
+        // Stripped to stay under Next.js' 4MB API response limit.
+        omitInstructions: true,
       });
       if (withUsage === "true") {
         const mentionCounts = await runOnRedis(

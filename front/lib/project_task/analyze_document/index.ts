@@ -20,7 +20,7 @@ import {
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import { removeNulls } from "@app/types/shared/utils/general";
-import { startActiveObservation } from "@langfuse/tracing";
+import { startActiveObservation, updateActiveTrace } from "@langfuse/tracing";
 import type { Logger } from "pino";
 import { buildPromptForSourceType } from "./prompts";
 
@@ -44,17 +44,20 @@ async function buildPromptProjectMembers(
 }
 
 // Calls the LLM with a forced extract_action_items tool call and parses the result.
-// Returns null if the call fails, produces no tool call, or the output fails parsing.
+// Returns extraction=null if the call fails, produces no tool call, or the output fails parsing.
+// Always returns the scoped logger (with langfuseSpanId bound) so callers can keep using it.
 async function callExtractActionItemsLLM(
   auth: Authenticator,
   {
     localLogger,
+    runId,
     model,
     specification,
     prompt,
     document,
   }: {
     localLogger: Logger;
+    runId: string;
     model: ModelConfigurationType;
     specification: AgentActionSpecification;
     prompt: string;
@@ -63,9 +66,15 @@ async function callExtractActionItemsLLM(
 ): Promise<ExtractionResult | null> {
   const owner = auth.getNonNullableWorkspace();
   const res = await startActiveObservation(
-    "project-todo-analyze-document",
-    () =>
-      runMultiActionsAgent(
+    "project-task-analyze-document",
+    (span) => {
+      updateActiveTrace({ sessionId: runId });
+      localLogger.info(
+        { langfuseSpanId: span.id },
+        "Document takeaway: LLM call started"
+      );
+
+      return runMultiActionsAgent(
         auth,
         {
           providerId: model.providerId,
@@ -89,13 +98,14 @@ async function callExtractActionItemsLLM(
         },
         {
           context: {
-            operationType: "project_todo_analyze_document",
+            operationType: "project_task_analyze_document",
             sourceId: document.id,
             sourceType: document.type,
             workspaceId: owner.sId,
           },
         }
-      )
+      );
+    }
   );
   if (res.isErr()) {
     localLogger.error(
@@ -151,10 +161,12 @@ export async function extractDocumentTakeaways(
   auth: Authenticator,
   {
     localLogger: parentLogger,
+    runId,
     spaceId,
     document,
   }: {
     localLogger: Logger;
+    runId: string;
     spaceId: string;
     document: TakeawaySourceDocument;
   }
@@ -197,6 +209,7 @@ export async function extractDocumentTakeaways(
 
   const extraction = await callExtractActionItemsLLM(auth, {
     localLogger,
+    runId,
     model,
     specification,
     prompt,

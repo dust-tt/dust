@@ -11,7 +11,6 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_member_resource";
-import { KeyResource } from "@app/lib/resources/key_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -99,20 +98,6 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
     );
   }
 
-  const groupHasKeys = await KeyResource.countActiveForGroups(
-    auth,
-    space.groups.filter(
-      (g) => (!space.isRegular() && !space.isProject()) || !g.isGlobal()
-    )
-  );
-  if (groupHasKeys > 0) {
-    return new Err(
-      new Error(
-        "Cannot delete group with active API Keys. Please revoke all keys before."
-      )
-    );
-  }
-
   await withTransaction(async (t) => {
     // Soft delete all data source views.
     await concurrentExecutor(
@@ -196,14 +181,30 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
         (k) => !dataSourceViewIdSet.has(k.dataSourceView.id)
       );
 
+      const previousComputedRequestedSpaceIds =
+        await SkillResource.computeRequestedSpaceIds(auth, {
+          mcpServerViews: skill.mcpServerViews,
+          attachedKnowledge,
+        });
+      const previousComputedRequestedSpaceIdSet = new Set(
+        previousComputedRequestedSpaceIds
+      );
+      const additionalRequestedSpaceIds = skill.requestedSpaceIds.filter(
+        (spaceId) =>
+          spaceId !== space.id &&
+          !previousComputedRequestedSpaceIdSet.has(spaceId)
+      );
+
       // Compute the new requestedSpaceIds from the filtered tools and knowledge.
-      const requestedSpaceIds = await SkillResource.computeRequestedSpaceIds(
-        auth,
-        {
+      const computedRequestedSpaceIds =
+        await SkillResource.computeRequestedSpaceIds(auth, {
           mcpServerViews: filteredMCPServerViews,
           attachedKnowledge: filteredAttachedKnowledge,
-        }
-      );
+        });
+      const requestedSpaceIds = uniq([
+        ...computedRequestedSpaceIds,
+        ...additionalRequestedSpaceIds,
+      ]);
 
       // Log an error if the deleted space is still in requestedSpaceIds.
       if (requestedSpaceIds.includes(space.id)) {

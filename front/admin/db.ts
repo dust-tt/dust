@@ -12,7 +12,6 @@ import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_vie
 import { AgentProjectConfigurationModel } from "@app/lib/models/agent/actions/projects";
 import { RemoteMCPServerModel } from "@app/lib/models/agent/actions/remote_mcp_server";
 import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/agent/actions/remote_mcp_server_tool_metadata";
-import { SandboxToolExecutionModel } from "@app/lib/models/agent/actions/sandbox_tool_execution";
 import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
 import {
   AgentConfigurationModel,
@@ -63,6 +62,7 @@ import {
   ConversationSkillModel,
 } from "@app/lib/models/skill/conversation_skill";
 import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
+import { SelfImprovingSkillsUsageModel } from "@app/lib/models/skill/self_improving_skills_usage";
 import { SkillSuggestionModel } from "@app/lib/models/skill/skill_suggestion";
 import { TagModel } from "@app/lib/models/tags";
 import { WorkspaceSensitivityLabelConfigModel } from "@app/lib/models/workspace_sensitivity_label_config";
@@ -212,7 +212,6 @@ export function loadAllModels() {
     AgentStepContentModel,
     AgentMCPActionModel,
     AgentMCPActionOutputItemModel,
-    SandboxToolExecutionModel,
     AgentChildAgentConfigurationModel,
     FeatureFlagModel,
     GlobalFeatureFlagModel,
@@ -233,6 +232,7 @@ export function loadAllModels() {
     SkillMCPServerConfigurationModel,
     SkillFileAttachmentModel,
     SkillSuggestionModel,
+    SelfImprovingSkillsUsageModel,
     WorkspaceVerificationAttemptModel,
     AgentSuggestionModel,
     AcademyQuizAttemptModel,

@@ -586,6 +586,13 @@
  *           type: string
  *           nullable: true
  *           description: Present for file content fragments
+ *         path:
+ *           type: string
+ *           nullable: true
+ *           description: Path of this file inside the sandbox conversation mount.
+ *         skipFileProcessing:
+ *           type: boolean
+ *           description: Whether upload-time file processing was skipped.
  *         snippet:
  *           type: string
  *           nullable: true

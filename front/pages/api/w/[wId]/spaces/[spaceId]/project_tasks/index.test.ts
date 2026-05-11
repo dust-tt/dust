@@ -1,6 +1,4 @@
 import { Authenticator } from "@app/lib/auth";
-import { ProjectTaskStateResource } from "@app/lib/resources/project_task_state_resource";
-import { frontSequelize } from "@app/lib/resources/storage";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { ProjectTaskFactory } from "@app/tests/utils/ProjectTaskFactory";
@@ -114,30 +112,41 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/project_tasks", () => {
     expect(texts.sort()).toEqual(["Mine only"]);
   });
 
-  it("should omit todos stale by updatedAt when period=last_24h", async () => {
+  it("should return only todos completed within the window when period=last_24h", async () => {
     const { user } = await setup();
     const project = await SpaceFactory.project(workspace, user.id);
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+
+    const recentlyDone = await ProjectTaskFactory.create(workspace, project, {
+      userId: user.id,
+      text: "Recently done",
+    });
+    await recentlyDone.updateWithVersion(adminAuth, {
+      status: "done",
+      doneAt: new Date(Date.now() - 60 * 60 * 1000),
+      markedAsDoneByType: "user",
+      markedAsDoneByUserId: user.id,
+      markedAsDoneByAgentConfigurationId: null,
+    });
+
+    const oldDone = await ProjectTaskFactory.create(workspace, project, {
+      userId: user.id,
+      text: "Done long ago",
+    });
+    await oldDone.updateWithVersion(adminAuth, {
+      status: "done",
+      doneAt: new Date(Date.now() - 48 * 60 * 60 * 1000),
+      markedAsDoneByType: "user",
+      markedAsDoneByUserId: user.id,
+      markedAsDoneByAgentConfigurationId: null,
+    });
 
     await ProjectTaskFactory.create(workspace, project, {
       userId: user.id,
-      text: "Recent-ish",
+      text: "Still open",
     });
-    const staleTodo = await ProjectTaskFactory.create(workspace, project, {
-      userId: user.id,
-      text: "Stale update",
-    });
-    const stalePast = new Date(Date.now() - 48 * 60 * 60 * 1000);
-    // biome-ignore lint/plugin/noRawSql: Sequelize/workspace hooks block reliable updatedAt backdating for this row
-    await frontSequelize.query(
-      `UPDATE project_todos SET "updatedAt" = :updatedAt WHERE id = :id AND "workspaceId" = :wid`,
-      {
-        replacements: {
-          updatedAt: stalePast,
-          id: staleTodo.id,
-          wid: staleTodo.workspaceId,
-        },
-      }
-    );
 
     req.query.spaceId = project.sId;
     req.query.period = "last_24h";
@@ -145,12 +154,13 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/project_tasks", () => {
 
     expect(res._getStatusCode()).toBe(200);
     const texts = res._getJSONData().tasks.map((t: { text: string }) => t.text);
-    expect(texts).toContain("Recent-ish");
-    expect(texts).not.toContain("Stale update");
+    expect(texts).toContain("Recently done");
+    expect(texts).not.toContain("Done long ago");
+    expect(texts).not.toContain("Still open");
   });
 
-  it("should hide cleaned done todos for all users", async () => {
-    const { user, auth } = await setup();
+  it("should hide done todos in the active view for all users", async () => {
+    const { user } = await setup();
     const project = await SpaceFactory.project(workspace, user.id);
     const secondUser = await UserFactory.basic();
     await MembershipFactory.associate(workspace, secondUser, { role: "user" });
@@ -159,51 +169,32 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/project_tasks", () => {
       workspace.sId
     );
 
-    // Viewer has two done todos: one "old" (should be hidden) and one "new" (should remain).
-    const oldDone = await ProjectTaskFactory.create(workspace, project, {
+    const myDone = await ProjectTaskFactory.create(workspace, project, {
       userId: user.id,
-      text: "Old done",
+      text: "My done",
     });
-    const newDone = await ProjectTaskFactory.create(workspace, project, {
-      userId: user.id,
-      text: "New done",
-    });
-
-    // Another user's done todo should also be hidden by the viewer's cleaning.
     const otherDone = await ProjectTaskFactory.create(workspace, project, {
       userId: secondUser.id,
       text: "Other user's done",
     });
-
-    const cutoff = new Date();
-    const beforeCutoff = new Date(cutoff.getTime() - 60_000);
-    const afterCutoff = new Date(cutoff.getTime() + 60_000);
-
-    await oldDone.updateWithVersion(adminAuth, {
-      status: "done",
-      doneAt: beforeCutoff,
-      markedAsDoneByType: "user",
-      markedAsDoneByUserId: user.id,
-      markedAsDoneByAgentConfigurationId: null,
+    await ProjectTaskFactory.create(workspace, project, {
+      userId: user.id,
+      text: "My open",
     });
-    await newDone.updateWithVersion(adminAuth, {
+
+    await myDone.updateWithVersion(adminAuth, {
       status: "done",
-      doneAt: afterCutoff,
+      doneAt: new Date(),
       markedAsDoneByType: "user",
       markedAsDoneByUserId: user.id,
       markedAsDoneByAgentConfigurationId: null,
     });
     await otherDone.updateWithVersion(adminAuth, {
       status: "done",
-      doneAt: beforeCutoff,
+      doneAt: new Date(),
       markedAsDoneByType: "user",
       markedAsDoneByUserId: secondUser.id,
       markedAsDoneByAgentConfigurationId: null,
-    });
-
-    await ProjectTaskStateResource.upsertLastCleanedAtBySpace(auth, {
-      spaceId: project.id,
-      lastCleanedAt: cutoff,
     });
 
     req.query.spaceId = project.sId;
@@ -214,64 +205,9 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/project_tasks", () => {
     const data = res._getJSONData();
     const texts = data.tasks.map((t: any) => t.text);
 
-    expect(texts).not.toContain("Old done");
-    expect(texts).toContain("New done");
+    expect(texts).not.toContain("My done");
     expect(texts).not.toContain("Other user's done");
-  });
-
-  it("should still return pending agent suggestion todos completed before lastCleanedAt", async () => {
-    const { user, auth } = await setup();
-    const project = await SpaceFactory.project(workspace, user.id);
-    const adminAuth = await Authenticator.internalAdminForWorkspace(
-      workspace.sId
-    );
-
-    const cutoff = new Date();
-    const beforeCutoff = new Date(cutoff.getTime() - 60_000);
-
-    const pendingDone = await ProjectTaskFactory.create(workspace, project, {
-      userId: user.id,
-      text: "Pending approval but done before clean",
-    });
-    await pendingDone.updateWithVersion(adminAuth, {
-      status: "done",
-      doneAt: beforeCutoff,
-      markedAsDoneByType: "user",
-      markedAsDoneByUserId: user.id,
-      markedAsDoneByAgentConfigurationId: null,
-      agentSuggestionStatus: "pending",
-    });
-
-    const normallyHiddenDone = await ProjectTaskFactory.create(
-      workspace,
-      project,
-      {
-        userId: user.id,
-        text: "Plain old done before clean",
-      }
-    );
-    await normallyHiddenDone.updateWithVersion(adminAuth, {
-      status: "done",
-      doneAt: beforeCutoff,
-      markedAsDoneByType: "user",
-      markedAsDoneByUserId: user.id,
-      markedAsDoneByAgentConfigurationId: null,
-    });
-
-    await ProjectTaskStateResource.upsertLastCleanedAtBySpace(auth, {
-      spaceId: project.id,
-      lastCleanedAt: cutoff,
-    });
-
-    req.query.spaceId = project.sId;
-    req.query.assignee = "all";
-    await handler(req, res);
-
-    expect(res._getStatusCode()).toBe(200);
-    const texts = res._getJSONData().tasks.map((t: { text: string }) => t.text);
-
-    expect(texts).toContain("Pending approval but done before clean");
-    expect(texts).not.toContain("Plain old done before clean");
+    expect(texts).toContain("My open");
   });
 
   it("should return 400 for non-project spaces", async () => {
@@ -343,5 +279,52 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/project_tasks", () => {
 
     expect(res._getStatusCode()).toBe(400);
     expect(res._getJSONData().error.message).toContain("member");
+  });
+
+  it("should assign the sole assignable member when assigneeUserId is null", async () => {
+    const { user, req, res, workspace } = await setup("POST");
+    const project = await SpaceFactory.project(workspace, user.id);
+
+    req.query.spaceId = project.sId;
+    req.body = {
+      text: "Sole assignable member default",
+      assigneeUserId: null,
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(201);
+    const data = res._getJSONData();
+    expect(data.task.user?.sId).toBe(user.sId);
+  });
+
+  it("should leave task unassigned when assigneeUserId is null with multiple assignable members", async () => {
+    const { user, req, res, workspace } = await setup("POST");
+    const project = await SpaceFactory.project(workspace, user.id);
+
+    const secondUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, secondUser, { role: "user" });
+
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const memberGroup = project.groups.find((g) => g.kind === "regular");
+    expect(memberGroup).toBeDefined();
+
+    const addRes = await memberGroup!.dangerouslyAddMember(adminAuth, {
+      user: secondUser.toJSON(),
+    });
+    expect(addRes.isOk()).toBe(true);
+
+    req.query.spaceId = project.sId;
+    req.body = {
+      text: "Null assignee stays unassigned with two members",
+      assigneeUserId: null,
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(201);
+    expect(res._getJSONData().task.user).toBeNull();
   });
 });

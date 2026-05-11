@@ -459,7 +459,7 @@ export function useCreateProjectTask({
     assigneeUserId,
   }: {
     text: string;
-    assigneeUserId: string;
+    assigneeUserId: string | null;
   }): Promise<Result<ProjectTaskType, Error>> => {
     try {
       const res = await clientFetch(
@@ -509,7 +509,7 @@ export function useUpdateProjectTask({
     updates: {
       text?: string;
       status?: ProjectTaskStatus;
-      assigneeUserId?: string;
+      assigneeUserId?: string | null;
     }
   ): Promise<Result<ProjectTaskType, Error>> => {
     try {
@@ -678,50 +678,6 @@ export function useStartProjectTaskConversation({
       sendNotification({
         type: "error",
         title: "Failed to start task work",
-        description: errorMessage,
-      });
-      return new Err(new Error(errorMessage));
-    }
-  };
-}
-
-export function useCleanDoneProjectTasks({
-  owner,
-  spaceId,
-}: {
-  owner: LightWorkspaceType;
-  spaceId: string;
-}) {
-  const sendNotification = useSendNotification();
-
-  return async (): Promise<Result<{ cleanedCount: number }, Error>> => {
-    try {
-      const res = await clientFetch(
-        `/api/w/${owner.sId}/spaces/${spaceId}/project_tasks/bulk-actions`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "clean_done" }),
-        }
-      );
-
-      if (!res.ok) {
-        const errorData = await getErrorFromResponse(res);
-        sendNotification({
-          type: "error",
-          title: "Failed to clean done tasks",
-          description: errorData.message,
-        });
-        return new Err(new Error(errorData.message));
-      }
-
-      const data: BulkActionsResponse = await res.json();
-      return new Ok({ cleanedCount: data.cleanedCount ?? 0 });
-    } catch (e) {
-      const errorMessage = normalizeError(e).message;
-      sendNotification({
-        type: "error",
-        title: "Failed to clean done tasks",
         description: errorMessage,
       });
       return new Err(new Error(errorMessage));

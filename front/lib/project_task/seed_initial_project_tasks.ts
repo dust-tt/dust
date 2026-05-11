@@ -1,6 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
 import {
-  INITIAL_PROJECT_TODOS,
+  INITIAL_PROJECT_TASKS,
   PROJECT_MANAGER_AGENT_SID,
 } from "@app/lib/project_task/initial_project_tasks";
 import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
@@ -9,7 +9,7 @@ import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 /**
- * Inserts starter todos for the user who created the project. No-ops when the
+ * Inserts starter tasks for the user who created the project. No-ops when the
  * space is not a project.
  */
 export async function seedInitialProjectTasksForProjectCreator(
@@ -22,9 +22,9 @@ export async function seedInitialProjectTasksForProjectCreator(
 
   const creator = auth.getNonNullableUser();
   try {
-    // Insert in reverse array order so the first-defined todo is saved last and sorts
+    // Insert in reverse array order so the first-defined task is saved last and sorts
     // to the top under default client ordering (`updatedAt` desc).
-    for (const seed of INITIAL_PROJECT_TODOS.slice().reverse()) {
+    for (const seed of INITIAL_PROJECT_TASKS.slice().reverse()) {
       await ProjectTaskResource.makeNew(auth, {
         spaceId: space.id,
         userId: creator.id,

@@ -8,7 +8,7 @@ import { SlackStreamHandler } from "@connectors/connectors/slack/chat/slack_stre
 import { streamConversationToSlack } from "@connectors/connectors/slack/chat/stream_conversation_handler";
 import {
   getBotUserIdResponse,
-  getUserName,
+  getUserInfo,
 } from "@connectors/connectors/slack/lib/bot_user_helpers";
 import {
   isSlackWebAPIPlatformError,
@@ -970,8 +970,13 @@ async function answerMessage(
         }
         message = message.replace(m, "");
       } else {
-        const userName = await getUserName(userId, connector.id, slackClient);
-        message = message.replace(m, `@${userName}`);
+        const { name: userName, email } = await getUserInfo(
+          userId,
+          connector.id,
+          slackClient
+        );
+        const replaceValue = email ? `@${userName} (${email})` : `@${userName}`;
+        message = message.replace(m, replaceValue);
       }
     }
   }

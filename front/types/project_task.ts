@@ -29,6 +29,31 @@ export const AGENT_SUGGESTION_STATUSES = [
 ] as const;
 export type AgentSuggestionStatus = (typeof AGENT_SUGGESTION_STATUSES)[number];
 
+export const PROJECT_TASK_PERIOD_SCOPES = [
+  "active",
+  "last_24h",
+  "last_7d",
+  "last_30d",
+] as const;
+export type ProjectTaskPeriodScope =
+  (typeof PROJECT_TASK_PERIOD_SCOPES)[number];
+
+export function isProjectTaskPeriodScope(
+  v: string
+): v is ProjectTaskPeriodScope {
+  return PROJECT_TASK_PERIOD_SCOPES.includes(v as ProjectTaskPeriodScope);
+}
+
+export const PROJECT_TASK_PEOPLE_SCOPES = ["just_mine", "all_project"] as const;
+export type ProjectTaskPeopleScope =
+  (typeof PROJECT_TASK_PEOPLE_SCOPES)[number];
+
+export function isProjectTaskPeopleScope(
+  v: string
+): v is ProjectTaskPeopleScope {
+  return PROJECT_TASK_PEOPLE_SCOPES.includes(v as ProjectTaskPeopleScope);
+}
+
 export type ProjectTaskSourceInfo = {
   sourceType: ProjectTaskSourceType;
   sourceId: string;
@@ -41,6 +66,12 @@ export type ProjectTaskAssigneeType = {
   fullName: string;
   image: string | null;
 };
+
+/** Stable row / stable-order key when grouping tasks with no assignee. */
+export const PROJECT_TASK_UNASSIGNED_GROUP_KEY = "__unassigned__";
+
+/** Header and menu copy for tasks with no assignee. */
+export const PROJECT_TASK_NO_ASSIGNEE_LABEL = "No assignee";
 
 export type ProjectTaskType = {
   id: ModelId;

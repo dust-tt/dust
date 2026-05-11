@@ -28,6 +28,23 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { makeScript } from "./helpers";
 import { runOnAllWorkspaces } from "./workspace_helpers";
 
+// Metronome publishes a 11 RPS API limit. Cap the script at 10 RPS to leave
+// headroom for concurrent production traffic on the same API key.
+const METRONOME_MAX_RPS = 10;
+const METRONOME_MIN_INTERVAL_MS = 1000 / METRONOME_MAX_RPS;
+let metronomeNextSlotAt = 0;
+
+async function paceMetronome<T>(fn: () => Promise<T>): Promise<T> {
+  const now = Date.now();
+  const slot = Math.max(now, metronomeNextSlotAt);
+  metronomeNextSlotAt = slot + METRONOME_MIN_INTERVAL_MS;
+  const wait = slot - now;
+  if (wait > 0) {
+    await new Promise((r) => setTimeout(r, wait));
+  }
+  return fn();
+}
+
 type FreeCreditSubtype =
   | "free-poke"
   | "free-yearly-renewal"
@@ -76,6 +93,7 @@ async function backfillFromMetronome(
   execute: boolean,
   logger: Logger
 ): Promise<void> {
+  logger.info({ workspaceId: workspace.sId }, "---- Starting ----");
   const { metronomeCustomerId } = workspace;
   if (!metronomeCustomerId) {
     return;
@@ -84,11 +102,14 @@ async function backfillFromMetronome(
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
   const programmaticUsdCreditTypeId = getCreditTypeProgrammaticUsdId();
 
-  const creditsResult = await listMetronomeCustomerCredits({
-    metronomeCustomerId,
-    includeContractCredits: true,
-    includeBalance: true,
-  });
+  const creditsResult = await paceMetronome(() =>
+    listMetronomeCustomerCredits({
+      metronomeCustomerId,
+      includeContractCredits: true,
+      includeBalance: true,
+      coveringDate: new Date().toISOString(),
+    })
+  );
 
   if (creditsResult.isErr()) {
     logger.error(
@@ -285,13 +306,19 @@ makeScript(
         "Optional workspace sId to process (processes all if omitted)",
       required: false,
     },
+    fromWorkspaceId: {
+      type: "number" as const,
+      description:
+        "Resume from this numeric workspace model id (skips workspaces with id < this value)",
+      required: false,
+    },
   },
-  async ({ workspaceId, execute }, logger) => {
+  async ({ workspaceId, fromWorkspaceId, execute }, logger) => {
     await runOnAllWorkspaces(
       async (workspace) => {
         await backfillFromMetronome(workspace, execute, logger);
       },
-      { concurrency: 4, wId: workspaceId }
+      { concurrency: 4, wId: workspaceId, fromWorkspaceId }
     );
   }
 );

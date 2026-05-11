@@ -10,6 +10,7 @@ import {
   getStringFromQuery,
 } from "@app/lib/api/oauth/utils";
 import type { Authenticator } from "@app/lib/auth";
+import { parseOptionalInt } from "@app/lib/utils/parseOptionalInt";
 import { escapeSnowflakeIdentifier } from "@app/lib/utils/snowflake";
 import logger from "@app/logger/logger";
 import type {
@@ -21,6 +22,8 @@ import { isValidSnowflakeRole } from "@app/types/oauth/lib";
 import { OAuthAPI } from "@app/types/oauth/oauth_api";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { EnvironmentConfig } from "@app/types/shared/utils/config";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
 import type { ParsedUrlQuery } from "querystring";
 import querystring from "querystring";
@@ -42,6 +45,7 @@ import snowflake from "snowflake-sdk";
  * - Authorization: https://<account>.snowflakecomputing.com/oauth/authorize
  * - Token: https://<account>.snowflakecomputing.com/oauth/token-request
  */
+
 /**
  * Helper to fetch the workspace OAuth connection for an MCP server.
  * Used to get credentials from an existing admin-configured connection.
@@ -317,6 +321,16 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
     });
 
     if (accessTokenRes.isErr()) {
+      logger.error(
+        {
+          provider: "snowflake",
+          connectionId: connection.connection_id,
+          snowflakeAccount: snowflake_account,
+          snowflakeWarehouse: snowflake_warehouse,
+          oAuthAPIError: accessTokenRes.error,
+        },
+        "[Snowflake OAuth] Failed to retrieve access token during post-finalize check"
+      );
       return new Err({
         message:
           "Unable to retrieve Snowflake access token. Please try connecting again.",
@@ -329,10 +343,21 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
     const testResult = await this.testWarehouseAccess(
       snowflake_account,
       accessToken,
-      snowflake_warehouse
+      snowflake_warehouse,
+      connection.connection_id
     );
 
     if (testResult.isErr()) {
+      logger.error(
+        {
+          provider: "snowflake",
+          connectionId: connection.connection_id,
+          snowflakeAccount: snowflake_account,
+          snowflakeWarehouse: snowflake_warehouse,
+          err: testResult.error,
+        },
+        "[Snowflake OAuth] Warehouse access check failed during post-finalize"
+      );
       return new Err({
         message: testResult.error.message,
       });
@@ -347,20 +372,41 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
   private async testWarehouseAccess(
     account: string,
     accessToken: string,
-    warehouse: string
+    warehouse: string,
+    connectionId: string
   ): Promise<Result<void, Error>> {
     // Configure SDK to suppress verbose logging
     snowflake.configure({ logLevel: "OFF" });
 
+    const logCtx = {
+      provider: "snowflake",
+      connectionId,
+      snowflakeAccount: account,
+      snowflakeWarehouse: warehouse,
+    };
+
+    let connection: Connection;
     try {
       const connectionOptions: ConnectionOptions = {
         account: account.replace(/_/g, "-"),
         authenticator: "OAUTH",
         token: accessToken,
+
+        // Route through the static-IP proxy when configured so customers with
+        // an IP-restricted Snowflake network policy (allowlisting only Dust's
+        // static egress IP) can complete the warehouse access check. Mirrors
+        // the runtime client at `lib/api/actions/servers/snowflake/client.ts`.
+        proxyHost: EnvironmentConfig.getOptionalEnvVariable("PROXY_HOST"),
+        proxyPort: parseOptionalInt(
+          EnvironmentConfig.getOptionalEnvVariable("PROXY_PORT")
+        ),
+        proxyUser: EnvironmentConfig.getOptionalEnvVariable("PROXY_USER_NAME"),
+        proxyPassword: EnvironmentConfig.getOptionalEnvVariable(
+          "PROXY_USER_PASSWORD"
+        ),
       };
 
-      // Connect to Snowflake
-      const connection = await new Promise<Connection>((resolve, reject) => {
+      connection = await new Promise<Connection>((resolve, reject) => {
         const conn = snowflake.createConnection(connectionOptions);
         conn.connect((err: SnowflakeError | undefined, c: Connection) => {
           if (err) {
@@ -370,39 +416,53 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
           }
         });
       });
+    } catch (error) {
+      const normalized = normalizeError(error);
+      logger.error(
+        {
+          ...logCtx,
+          err: normalized,
+        },
+        "[Snowflake OAuth] Failed to connect to Snowflake during warehouse test"
+      );
+      return new Err(
+        new Error(`Failed to connect to Snowflake: ${normalized.message}`)
+      );
+    }
 
-      // Try to use the warehouse
-      try {
-        await new Promise<void>((resolve, reject) => {
-          connection.execute({
-            sqlText: `USE WAREHOUSE "${escapeSnowflakeIdentifier(warehouse)}"`,
-            complete: (err: SnowflakeError | undefined) => {
-              if (err) {
-                reject(err);
-              } else {
-                resolve();
-              }
-            },
-          });
+    try {
+      await new Promise<void>((resolve, reject) => {
+        connection.execute({
+          sqlText: `USE WAREHOUSE "${escapeSnowflakeIdentifier(warehouse)}"`,
+          complete: (err: SnowflakeError | undefined) => {
+            if (err) {
+              reject(err);
+            } else {
+              resolve();
+            }
+          },
         });
-      } catch {
-        // Clean up connection
-        connection.destroy(() => {});
-        return new Err(
-          new Error(
-            `The role does not have access to warehouse "${warehouse}". ` +
-              `Please ensure the role has USAGE privilege on the warehouse, or choose a different warehouse.`
-          )
-        );
-      }
-
+      });
+    } catch (error) {
+      const normalized = normalizeError(error);
+      logger.error(
+        {
+          ...logCtx,
+          err: normalized,
+        },
+        "[Snowflake OAuth] USE WAREHOUSE failed during connection test"
+      );
+      return new Err(
+        new Error(
+          `The role does not have access to warehouse "${warehouse}". ` +
+            `Please ensure the role has USAGE privilege on the warehouse, or choose a different warehouse.`
+        )
+      );
+    } finally {
       // Clean up connection
       connection.destroy(() => {});
-      return new Ok(undefined);
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Unknown connection error";
-      return new Err(new Error(`Failed to connect to Snowflake: ${message}`));
     }
+
+    return new Ok(undefined);
   }
 }

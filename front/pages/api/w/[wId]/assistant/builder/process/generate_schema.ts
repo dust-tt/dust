@@ -9,9 +9,9 @@ import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import { InternalPostBuilderGenerateSchemaRequestBodySchema } from "@app/types/api/internal/assistant";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { ioTsParsePayload } from "@app/types/shared/utils/iots_utils";
 import type { JSONSchema7 } from "json-schema";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
 async function handler(
   req: NextApiRequest,
@@ -24,16 +24,14 @@ async function handler(
 ): Promise<void> {
   switch (req.method) {
     case "POST":
-      const bodyRes = ioTsParsePayload(
-        req.body,
-        InternalPostBuilderGenerateSchemaRequestBodySchema
-      );
-      if (bodyRes.isErr()) {
+      const bodyRes =
+        InternalPostBuilderGenerateSchemaRequestBodySchema.safeParse(req.body);
+      if (!bodyRes.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request body: ${bodyRes.error.join(", ")}`,
+            message: `Invalid request body: ${fromError(bodyRes.error).toString()}`,
           },
         });
       }
@@ -52,7 +50,7 @@ async function handler(
       }
 
       const schemaRes = await getBuilderJsonSchemaGenerator(auth, {
-        instructions: bodyRes.value.instructions,
+        instructions: bodyRes.data.instructions,
         modelId: model.modelId,
         providerId: model.providerId,
       });

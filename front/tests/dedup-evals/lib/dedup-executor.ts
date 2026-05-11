@@ -4,6 +4,7 @@ import {
   runDeduplicationLLMCall,
 } from "@app/lib/project_task/deduplicate_candidates";
 import type { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
+import logger from "@app/logger/logger";
 import { MODEL_ID } from "@app/tests/dedup-evals/lib/config";
 import type {
   DedupExecutionResult,
@@ -53,9 +54,11 @@ export async function executeDedup(
   const candidates = buildCandidates(testCase);
 
   const llmGroups = await runDeduplicationLLMCall(auth, {
+    localLogger: logger,
+    runId: "eval-run",
     model,
     candidates,
-    existingTodos,
+    existingTasks: existingTodos,
   });
 
   // Current eval assertions only cover candidate→existing matches. The LLM

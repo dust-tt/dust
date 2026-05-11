@@ -1,9 +1,10 @@
+import { ProjectTaskCreateBar } from "@app/components/assistant/conversation/space/conversations/project_tasks/ProjectTaskCreateBar";
 import { ProjectTasksPanelProvider } from "@app/components/assistant/conversation/space/conversations/project_tasks/ProjectTasksPanelContext";
 import { ProjectTasksPanelMain } from "@app/components/assistant/conversation/space/conversations/project_tasks/ProjectTasksPanelMain";
 import { ProjectTasksToolbar } from "@app/components/assistant/conversation/space/conversations/project_tasks/ProjectTasksToolbar";
 import type { UseProjectTasksPanelArgs } from "@app/components/assistant/conversation/space/conversations/project_tasks/projectTasksPanelTypes";
 
-export { ProjectTaskCleanButton } from "@app/components/assistant/conversation/space/conversations/project_tasks/ProjectTaskCleanButton";
+export { ProjectTaskCreateBar } from "@app/components/assistant/conversation/space/conversations/project_tasks/ProjectTaskCreateBar";
 export { ProjectTaskLocalSearch } from "@app/components/assistant/conversation/space/conversations/project_tasks/ProjectTaskLocalSearch";
 export { ProjectTaskScopeFilter } from "@app/components/assistant/conversation/space/conversations/project_tasks/ProjectTaskScopeFilter";
 export {
@@ -21,6 +22,7 @@ export function EditableProjectTasksPanel(props: UseProjectTasksPanelArgs) {
   return (
     <ProjectTasksPanelProvider {...props}>
       <div className="flex flex-col gap-3">
+        <ProjectTaskCreateBar />
         <ProjectTasksToolbar />
         <ProjectTasksPanelMain />
       </div>

@@ -40,8 +40,8 @@ import { removeNulls } from "@app/types/shared/utils/general";
 import {
   BookOpenIcon,
   ChatBubbleLeftRightIcon,
+  CheckIcon,
   Cog6ToothIcon,
-  ListCheckIcon,
   Spinner,
   Tabs,
   TabsContent,
@@ -81,7 +81,10 @@ export function SpaceConversationsPage() {
       resourceId: spaceId,
       defaultValue: DEFAULT_SPACE_PROJECT_UI_PREFERENCES,
     });
-  const conversationFilter = projectUIPreferences.conversationsFilter;
+  const isSingleMemberProject = !!spaceInfo && spaceInfo.members.length === 1;
+  const conversationFilter: SpaceConversationListFilter = isSingleMemberProject
+    ? "all"
+    : projectUIPreferences.conversationsFilter;
 
   const {
     conversations,
@@ -308,7 +311,7 @@ export function SpaceConversationsPage() {
               value="tasks"
               label={compactProjectTabs ? undefined : "Tasks"}
               tooltip={compactProjectTabs ? "Tasks" : undefined}
-              icon={ListCheckIcon}
+              icon={CheckIcon}
             />
             <TabsTrigger
               value="knowledge"

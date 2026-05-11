@@ -14,7 +14,6 @@ import { fromError } from "zod-validation-error";
 
 export type BulkActionsResponse = {
   success: boolean;
-  cleanedCount?: number;
 };
 
 const BulkActionsBodySchema = z.discriminatedUnion("action", [
@@ -22,9 +21,6 @@ const BulkActionsBodySchema = z.discriminatedUnion("action", [
     action: z.literal("set_status"),
     taskIds: z.array(z.string().min(1)).min(1).max(200),
     status: z.enum(PROJECT_TASK_STATUSES),
-  }),
-  z.object({
-    action: z.literal("clean_done"),
   }),
   z.object({
     action: z.literal("approve_agent_suggestion"),
@@ -113,26 +109,6 @@ async function handler(
       }
 
       return res.status(200).json({ success: true });
-    }
-
-    case "clean_done": {
-      const result = await ProjectTaskResource.cleanDoneBySpace(auth, {
-        spaceId: space.id,
-      });
-
-      if (result.isErr()) {
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: result.error.message,
-          },
-        });
-      }
-
-      return res
-        .status(200)
-        .json({ success: true, cleanedCount: result.value.cleanedCount });
     }
 
     case "approve_agent_suggestion": {

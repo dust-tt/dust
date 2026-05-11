@@ -14,12 +14,10 @@ import {
   listMetronomeContracts,
   updateMetronomeCreditSegmentAmount,
 } from "@app/lib/metronome/client";
-import {
-  getCreditTypeProgrammaticUsdId,
-  getProductFreeCreditId,
-  PLAN_CODE_CUSTOM_FIELD_KEY,
-} from "@app/lib/metronome/constants";
+import { PLAN_CODE_CUSTOM_FIELD_KEY } from "@app/lib/metronome/constants";
 import { invalidateContractCache } from "@app/lib/metronome/plan_type";
+import { isMetronomeFreeCredit } from "@app/lib/metronome/types";
+import { setUserBlocked } from "@app/lib/metronome/user_block";
 import {
   getCustomerIdFromEvent,
   MetronomeWebhookEventSchema,
@@ -148,12 +146,42 @@ async function handler(
       }
 
       switch (event.type) {
+        case "alerts.spend_threshold_reached": {
+          // Block the user that triggered the threshold. Metronome attaches
+          // the presentation group values that scoped the alert under
+          // `group_values` — extract `user_id` from there.
+          const userId = event.properties.group_values?.find(
+            (g) => g.key === "user_id"
+          )?.value;
+          if (!userId) {
+            logger.warn(
+              { eventId: event.id, workspaceId: workspace.sId },
+              "[Metronome Webhook] spend_threshold_reached: no user_id in group_values, skipping"
+            );
+            break;
+          }
+
+          const currentSpend = event.properties.current_spend;
+
+          // TODO: Check user seat and spend limit and block if needed, don't block on every spend threshold reached.
+          await setUserBlocked(workspace.sId, userId);
+          logger.info(
+            {
+              eventId: event.id,
+              workspaceId: workspace.sId,
+              userId,
+              currentSpend,
+            },
+            "[Metronome Webhook] spend_threshold_reached: user blocked"
+          );
+          break;
+        }
+
         case "alerts.invoice_total_reached":
         case "alerts.low_remaining_commit_balance_reached":
         case "alerts.low_remaining_contract_credit_balance_reached":
         case "alerts.low_remaining_credit_balance_reached":
         case "alerts.low_remaining_seat_balance_reached":
-        case "alerts.spend_threshold_reached":
         case "alerts.usage_threshold_reached":
         case "commit.archive":
         case "commit.create":
@@ -226,11 +254,7 @@ async function handler(
             break;
           }
 
-          if (
-            credit.product.id !== getProductFreeCreditId() ||
-            credit.access_schedule?.credit_type?.id !==
-              getCreditTypeProgrammaticUsdId()
-          ) {
+          if (!isMetronomeFreeCredit(credit)) {
             logger.info(
               {
                 customerId,

@@ -6,6 +6,7 @@ import { CreateOrUpdateConnectionBigQueryModal } from "@app/components/data_sour
 import { CreateOrUpdateConnectionSnowflakeModal } from "@app/components/data_source/CreateOrUpdateConnectionSnowflakeModal";
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
 import { SetupNotionPrivateIntegrationModal } from "@app/components/data_source/SetupNotionPrivateIntegrationModal";
+import { useSensitivityLabelsController } from "@app/components/shared/labels/useSensitivityLabelsController";
 import { setupConnection } from "@app/components/spaces/AddConnectionMenu";
 import { AdvancedNotionManagement } from "@app/components/spaces/AdvancedNotionManagement";
 import { ConnectorDataUpdatedModal } from "@app/components/spaces/ConnectorDataUpdatedModal";
@@ -815,29 +816,43 @@ export function ConnectorPermissionsModal({
   const [saving, setSaving] = useState(false);
   const sendNotification = useSendNotification();
   const { user } = useAuth();
+  const sensitivityLabelsController = useSensitivityLabelsController({
+    owner,
+    source: { dataSourceId: dataSource.sId },
+    disabled:
+      modalToShow !== "selection" ||
+      dataSource.connectorProvider !== "microsoft" ||
+      !featureFlags.includes("sensitivity_labels"),
+  });
+  const advancedOptionsHasChanges = sensitivityLabelsController.isDirty;
 
   function closeModal(save: boolean) {
     setModalToShow(null);
     onClose(save);
+    sensitivityLabelsController.reset();
     setTimeout(() => {
       setSelectedNodes({});
     }, 300);
   }
 
   async function save() {
-    if (
-      !(await confirmPrivateNodesSync({
-        selectedNodes: Object.values(selectedNodes)
-          .filter((sn) => sn.isSelected)
-          .map((sn) => sn.node),
-        confirm,
-      }))
-    ) {
-      return;
+    if (!isUnchanged) {
+      if (
+        !(await confirmPrivateNodesSync({
+          selectedNodes: Object.values(selectedNodes)
+            .filter((sn) => sn.isSelected)
+            .map((sn) => sn.node),
+          confirm,
+        }))
+      ) {
+        return;
+      }
     }
     setSaving(true);
     try {
-      if (Object.keys(selectedNodes).length) {
+      let didSave = false;
+
+      if (!isUnchanged && Object.keys(selectedNodes).length) {
         const r = await clientFetch(
           `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/permissions`,
           {
@@ -870,6 +885,7 @@ export function ConnectorPermissionsModal({
             title: error.error.message,
             description: error.error.connectors_error.message,
           });
+          return;
         } else {
           void mutate(
             (key) =>
@@ -878,22 +894,34 @@ export function ConnectorPermissionsModal({
                 `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/permissions`
               )
           );
-
-          // Display the data updated modal.
-          setModalToShow("data_updated");
+          didSave = true;
         }
+      }
+
+      if (advancedOptionsHasChanges) {
+        const advancedSaveSucceeded = await sensitivityLabelsController.save();
+        if (!advancedSaveSucceeded) {
+          return;
+        }
+        didSave = true;
+      }
+
+      if (didSave) {
+        setModalToShow("data_updated");
       } else {
         closeModal(false);
       }
     } catch (e) {
       sendNotification({
         type: "error",
-        title: "Error saving permissions",
-        description: "An unexpected error occurred while saving permissions.",
+        title: "Error saving connector configuration",
+        description:
+          "An unexpected error occurred while saving connector configuration.",
       });
       console.error(e);
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   }
 
   const isUnchanged = useMemo(
@@ -1053,16 +1081,19 @@ export function ConnectorPermissionsModal({
                     </>
                   )}
                   {AdvancedOptionsComponent &&
-                    plan &&
                     featureFlags.includes("sensitivity_labels") && (
                       <Collapsible className="mb-4">
                         <CollapsibleTrigger>
                           <div className="heading-lg">Advanced</div>
                         </CollapsibleTrigger>
                         <CollapsibleContent>
-                          <AdvancedOptionsComponent
-                            {...{ owner, readOnly, isAdmin, dataSource, plan }}
-                          />
+                          <div className="mt-4">
+                            <AdvancedOptionsComponent
+                              owner={owner}
+                              readOnly={readOnly}
+                              controller={sensitivityLabelsController}
+                            />
+                          </div>
                         </CollapsibleContent>
                       </Collapsible>
                     )}
@@ -1086,7 +1117,8 @@ export function ConnectorPermissionsModal({
                   rightButtonProps={{
                     label: saving ? "Saving..." : "Save",
                     variant: "primary",
-                    disabled: isUnchanged || saving,
+                    disabled:
+                      (isUnchanged && !advancedOptionsHasChanges) || saving,
                     onClick: save,
                   }}
                 />

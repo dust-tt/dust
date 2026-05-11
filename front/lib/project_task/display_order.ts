@@ -1,16 +1,18 @@
-import type {
-  ProjectTaskAssigneeType,
-  ProjectTaskStatus,
-  ProjectTaskType,
+import {
+  PROJECT_TASK_NO_ASSIGNEE_LABEL,
+  PROJECT_TASK_UNASSIGNED_GROUP_KEY,
+  type ProjectTaskAssigneeType,
+  type ProjectTaskStatus,
+  type ProjectTaskType,
 } from "@app/types/project_task";
 
-const PROJECT_TODO_STATUS_SORT_RANK: Record<ProjectTaskStatus, number> = {
+const PROJECT_TASK_STATUS_SORT_RANK: Record<ProjectTaskStatus, number> = {
   in_progress: 0,
   todo: 1,
   done: 2,
 };
 
-function projectTodoUpdatedAtMs(t: ProjectTaskType): number {
+function projectTaskUpdatedAtMs(t: ProjectTaskType): number {
   const u = t.updatedAt;
   if (u instanceof Date) {
     return u.getTime();
@@ -19,65 +21,70 @@ function projectTodoUpdatedAtMs(t: ProjectTaskType): number {
 }
 
 /** In progress → Open → Done, then `updatedAt` descending. Used on first load per assignee group. */
-export function sortProjectTodosForInitialDisplay(
-  todos: ProjectTaskType[]
+export function sortProjectTasksForInitialDisplay(
+  tasks: ProjectTaskType[]
 ): ProjectTaskType[] {
-  return [...todos].sort((a, b) => {
+  return [...tasks].sort((a, b) => {
     const rankDiff =
-      PROJECT_TODO_STATUS_SORT_RANK[a.status] -
-      PROJECT_TODO_STATUS_SORT_RANK[b.status];
+      PROJECT_TASK_STATUS_SORT_RANK[a.status] -
+      PROJECT_TASK_STATUS_SORT_RANK[b.status];
     if (rankDiff !== 0) {
       return rankDiff;
     }
-    return projectTodoUpdatedAtMs(b) - projectTodoUpdatedAtMs(a);
+    return projectTaskUpdatedAtMs(b) - projectTaskUpdatedAtMs(a);
   });
 }
 
 /**
  * Preserves a previously shown order on revalidation; new items (not in `prevOrderedSIds`)
- * are prepended, ordered among themselves with {@link sortProjectTodosForInitialDisplay}.
+ * are prepended, ordered among themselves with {@link sortProjectTasksForInitialDisplay}.
  */
-export function mergeProjectTodoStableOrder(
+export function mergeProjectTaskStableOrder(
   prevOrderedSIds: string[] | undefined,
-  todos: ProjectTaskType[]
+  tasks: ProjectTaskType[]
 ): string[] {
-  const currentSet = new Set(todos.map((t) => t.sId));
+  const currentSet = new Set(tasks.map((t) => t.sId));
 
   if (!prevOrderedSIds || prevOrderedSIds.length === 0) {
-    return sortProjectTodosForInitialDisplay(todos).map((t) => t.sId);
+    return sortProjectTasksForInitialDisplay(tasks).map((t) => t.sId);
   }
 
   const prevSet = new Set(prevOrderedSIds);
   const kept = prevOrderedSIds.filter((id) => currentSet.has(id));
-  const brandNew = todos.filter((t) => !prevSet.has(t.sId));
-  const brandNewIds = sortProjectTodosForInitialDisplay(brandNew).map(
+  const brandNew = tasks.filter((t) => !prevSet.has(t.sId));
+  const brandNewIds = sortProjectTasksForInitialDisplay(brandNew).map(
     (t) => t.sId
   );
   return [...brandNewIds, ...kept];
 }
 
-export function orderProjectTodosBySIdList(
+export function orderProjectTasksBySIdList(
   orderedSIds: string[],
-  todos: ProjectTaskType[]
+  tasks: ProjectTaskType[]
 ): ProjectTaskType[] {
-  const byId = new Map(todos.map((t) => [t.sId, t]));
+  const byId = new Map(tasks.map((t) => [t.sId, t]));
   return orderedSIds
     .map((id) => byId.get(id))
     .filter((t): t is ProjectTaskType => t !== undefined);
 }
 
-export function compareProjectTaskAssigneeGroups(
-  a: { user: ProjectTaskAssigneeType | null },
-  b: { user: ProjectTaskAssigneeType | null },
+export function compareProjectTaskAssignees(
+  a: ProjectTaskAssigneeType | null,
+  b: ProjectTaskAssigneeType | null,
   viewerUserId: string | null
 ): number {
-  const aIsViewer = viewerUserId !== null && a.user?.sId === viewerUserId;
-  const bIsViewer = viewerUserId !== null && b.user?.sId === viewerUserId;
+  const aUnassigned = a === null;
+  const bUnassigned = b === null;
+  if (aUnassigned !== bUnassigned) {
+    return aUnassigned ? -1 : 1;
+  }
+  const aIsViewer = viewerUserId !== null && a?.sId === viewerUserId;
+  const bIsViewer = viewerUserId !== null && b?.sId === viewerUserId;
   if (aIsViewer !== bIsViewer) {
     return aIsViewer ? -1 : 1;
   }
-  const aName = a.user?.fullName ?? "";
-  const bName = b.user?.fullName ?? "";
+  const aName = a?.fullName ?? PROJECT_TASK_NO_ASSIGNEE_LABEL;
+  const bName = b?.fullName ?? PROJECT_TASK_NO_ASSIGNEE_LABEL;
   return aName.localeCompare(bName, undefined, { sensitivity: "base" });
 }
 
@@ -92,31 +99,31 @@ export function flattenProjectTasksWithStableAssigneeOrder(
 ): ProjectTaskType[] {
   const groups = new Map<
     string,
-    { user: ProjectTaskAssigneeType | null; todos: ProjectTaskType[] }
+    { user: ProjectTaskAssigneeType | null; tasks: ProjectTaskType[] }
   >();
 
   for (const task of rawTasks) {
     const user = task.user ?? null;
-    const key = user?.sId ?? `unknown-${task.id}`;
+    const key = user?.sId ?? PROJECT_TASK_UNASSIGNED_GROUP_KEY;
     const existing = groups.get(key);
     if (existing) {
-      existing.todos.push(task);
+      existing.tasks.push(task);
     } else {
-      groups.set(key, { user, todos: [task] });
+      groups.set(key, { user, tasks: [task] });
     }
   }
 
   const sortedGroups = [...groups.values()].sort((a, b) =>
-    compareProjectTaskAssigneeGroups(a, b, viewerUserId)
+    compareProjectTaskAssignees(a.user, b.user, viewerUserId)
   );
 
   const flattened: ProjectTaskType[] = [];
   for (const group of sortedGroups) {
-    const key = group.user?.sId ?? `unknown-${group.todos[0]?.id}`;
+    const key = group.user?.sId ?? PROJECT_TASK_UNASSIGNED_GROUP_KEY;
     const prev = stableOrderByAssigneeKey.get(key);
-    const mergedIds = mergeProjectTodoStableOrder(prev, group.todos);
+    const mergedIds = mergeProjectTaskStableOrder(prev, group.tasks);
     stableOrderByAssigneeKey.set(key, mergedIds);
-    flattened.push(...orderProjectTodosBySIdList(mergedIds, group.todos));
+    flattened.push(...orderProjectTasksBySIdList(mergedIds, group.tasks));
   }
   return flattened;
 }

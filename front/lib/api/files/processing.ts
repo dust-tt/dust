@@ -1,4 +1,5 @@
 import config from "@app/lib/api/config";
+import { isSandboxRawDelimitedConversationFile } from "@app/lib/api/files/sandbox_raw";
 import { isSupportedForAvatar } from "@app/lib/api/files/use_cases/avatar";
 import { isSupportedForConversation } from "@app/lib/api/files/use_cases/conversation";
 import { isSupportedForFoldersDocument } from "@app/lib/api/files/use_cases/folders_document";
@@ -419,6 +420,14 @@ const PROCESSING_BY_CONTENT_TYPE = new Map<
       processedContentType: "text/plain",
     },
   ],
+  // Chrome sometimes uses video/webm for audio files, and we can still process them as audio only files
+  [
+    "video/webm",
+    {
+      process: extractTextFromAudioAndUpload,
+      processedContentType: "text/plain",
+    },
+  ],
   [
     "audio/ogg",
     {
@@ -568,6 +577,10 @@ const maybeApplyProcessing = async (
   auth: Authenticator,
   file: FileResource
 ): Promise<Result<undefined, Error>> => {
+  if (isSandboxRawDelimitedConversationFile(file)) {
+    return new Ok(undefined);
+  }
+
   const entry = getProcessingEntry(file.contentType);
   if (!entry) {
     // No processing needed. The original file is used as-is.

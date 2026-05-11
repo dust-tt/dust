@@ -81,13 +81,14 @@ export default function BlogListing({ posts }: BlogListingPageProps) {
     return posts.filter((post) => post.tags.includes(selectedTag));
   }, [posts, selectedTag]);
 
-  // Split into regular and SEO articles.
+  // SEO and GEO articles are surfaced in the "Further reading" list rather
+  // than the main grid. Thought-leadership posts stay in the main grid.
   const regularPosts = useMemo(
-    () => filteredPosts.filter((p) => !p.isSeoArticle),
+    () => filteredPosts.filter((p) => !p.isSeoArticle && !p.isGeoArticle),
     [filteredPosts]
   );
-  const seoPosts = useMemo(
-    () => filteredPosts.filter((p) => p.isSeoArticle),
+  const furtherReadingPosts = useMemo(
+    () => filteredPosts.filter((p) => p.isSeoArticle || p.isGeoArticle),
     [filteredPosts]
   );
 
@@ -121,9 +122,10 @@ export default function BlogListing({ posts }: BlogListingPageProps) {
   );
 
   const seoStartIndex = (currentPage - 1) * SEO_PAGE_SIZE;
-  const paginatedSeoPosts = useMemo(
-    () => seoPosts.slice(seoStartIndex, seoStartIndex + SEO_PAGE_SIZE),
-    [seoPosts, seoStartIndex]
+  const paginatedFurtherReadingPosts = useMemo(
+    () =>
+      furtherReadingPosts.slice(seoStartIndex, seoStartIndex + SEO_PAGE_SIZE),
+    [furtherReadingPosts, seoStartIndex]
   );
 
   const showFeatured = featuredPost && currentPage === 1;
@@ -177,7 +179,7 @@ export default function BlogListing({ posts }: BlogListingPageProps) {
           </div>
         )}
 
-        <SeoArticleList posts={paginatedSeoPosts} />
+        <SeoArticleList posts={paginatedFurtherReadingPosts} />
       </BlogLayout>
     </>
   );

@@ -3,7 +3,7 @@ import { runIncludeDataRetrieval } from "@app/lib/api/actions/servers/include_da
 import { buildProjectRetrieveDataSources } from "@app/lib/api/actions/servers/project_manager/helpers";
 import { Authenticator } from "@app/lib/auth";
 import { extractDocumentTakeaways } from "@app/lib/project_task/analyze_document";
-import { isInitialTodoSyncLookback } from "@app/lib/project_task/analyze_document/types";
+import { isInitialTaskSyncLookback } from "@app/lib/project_task/analyze_document/types";
 import { mergeTakeawaysIntoProject } from "@app/lib/project_task/merge_into_project";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -78,14 +78,13 @@ function resultToTakeawaySourceDocument(
   return null;
 }
 
-async function runChecksAndGetValues({
+async function resolveProjectTaskContext({
   workspaceId,
   spaceId,
   localLogger,
 }: {
   workspaceId: string;
   spaceId: string;
-  runId: string;
   localLogger: typeof logger;
 }): Promise<
   Result<
@@ -135,10 +134,9 @@ export async function analyzeProjectTodosActivity({
 
   localLogger.info("Starting project todo analysis");
 
-  const checkResult = await runChecksAndGetValues({
+  const checkResult = await resolveProjectTaskContext({
     workspaceId,
     spaceId,
-    runId,
     localLogger,
   });
   if (checkResult.isErr()) {
@@ -186,7 +184,7 @@ export async function analyzeProjectTodosActivity({
     timeFrame = { duration: deltaMs / MS_PER_HOUR, unit: "hour" };
   } else if (
     metadata.initialTodoAnalysisLookback &&
-    isInitialTodoSyncLookback(metadata.initialTodoAnalysisLookback)
+    isInitialTaskSyncLookback(metadata.initialTodoAnalysisLookback)
   ) {
     switch (metadata.initialTodoAnalysisLookback) {
       case "now":
@@ -243,6 +241,7 @@ export async function analyzeProjectTodosActivity({
     async (document) => {
       const result = await extractDocumentTakeaways(auth, {
         localLogger,
+        runId,
         spaceId,
         document,
       });
@@ -285,10 +284,9 @@ export async function mergeTasksForProjectActivity({
 
   localLogger.info("Starting merge of project todo takeaways");
 
-  const checkResult = await runChecksAndGetValues({
+  const checkResult = await resolveProjectTaskContext({
     workspaceId,
     spaceId,
-    runId,
     localLogger,
   });
   if (checkResult.isErr()) {
@@ -297,8 +295,9 @@ export async function mergeTasksForProjectActivity({
 
   const stats = await mergeTakeawaysIntoProject({
     localLogger,
-    workspaceId,
-    spaceId,
+    runId,
+    space: checkResult.value.space,
+    adminAuth: checkResult.value.adminAuth,
   });
 
   localLogger.info(

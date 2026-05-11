@@ -5,6 +5,7 @@ import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { listMetronomeBalances } from "@app/lib/metronome/client";
 import { getCreditTypeProgrammaticUsdId } from "@app/lib/metronome/constants";
+import { isMetronomeExcessCredit } from "@app/lib/metronome/types";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
@@ -85,7 +86,15 @@ async function handler(
             periodEnd: now,
           }),
           metronomeCustomerId
-            ? listMetronomeBalances(metronomeCustomerId)
+            ? listMetronomeBalances(metronomeCustomerId, {
+                // Drop the `covering_date` filter so we still see expired
+                // balances (needed to cross-check against DB credits), but cap
+                // with `effective_before: now` to hide future-dated ones.
+                // `includeArchived` stays false so balances on archived
+                // contracts are excluded by Metronome itself.
+                coveringDate: null,
+                effectiveBefore: now,
+              })
             : null,
         ]);
 
@@ -106,6 +115,9 @@ async function handler(
               entry.access_schedule?.credit_type?.id !==
               programmaticUsdCreditTypeId
             ) {
+              continue;
+            }
+            if (isMetronomeExcessCredit(entry)) {
               continue;
             }
             metronomeBySId.set(entry.id, metronomeBalanceToDisplayData(entry));
@@ -132,14 +144,25 @@ async function handler(
         });
       }
 
+      const nowMs = Date.now();
       for (const [sId, metronome] of metronomeBySId) {
-        if (!matchedSIds.has(sId)) {
-          rows.push({
-            rowKey: `m-${sId}`,
-            internal: null,
-            metronome,
-          });
+        if (matchedSIds.has(sId)) {
+          continue;
         }
+        // Expired credits are fetched only to surface matches against internal
+        // records; unmatched expired entries should not show up as
+        // "Metronome only" noise.
+        if (
+          metronome.expirationDate !== null &&
+          metronome.expirationDate < nowMs
+        ) {
+          continue;
+        }
+        rows.push({
+          rowKey: `m-${sId}`,
+          internal: null,
+          metronome,
+        });
       }
 
       return res.status(200).json({

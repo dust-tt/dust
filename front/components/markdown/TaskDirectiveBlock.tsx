@@ -1,17 +1,26 @@
 import { ConversationSidebarStatusDot } from "@app/components/assistant/conversation/ConversationSidebarStatusDot";
+import { ProjectTaskStartWorkingDropdown } from "@app/components/assistant/conversation/space/conversations/project_tasks/ProjectTaskStartWorkingDropdown";
+import { useAppRouter } from "@app/lib/platform";
+import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
+import { useStartProjectTaskConversation } from "@app/lib/swr/projects";
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import { timeAgoFrom } from "@app/lib/utils";
 import type { ConversationDotStatus } from "@app/lib/utils/conversation_dot_status";
 import { getConversationRoute, getProjectRoute } from "@app/lib/utils/router";
 import type { GetWorkspaceProjectTaskResponseBody } from "@app/pages/api/w/[wId]/project_tasks/[taskSId]/index";
-import type { ProjectTaskStatus } from "@app/types/project_task";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import { compareAgentsForSort } from "@app/types/assistant/assistant";
+import type {
+  ProjectTaskStatus,
+  ProjectTaskType,
+} from "@app/types/project_task";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   AttachmentChip,
   Avatar,
+  CheckIcon,
   LinkWrapper,
-  ListCheckIcon,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
@@ -19,7 +28,7 @@ import {
   Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 import { visit } from "unist-util-visit";
 
@@ -61,36 +70,97 @@ function conversationActivityCaption(
   }
 }
 
-function TaskDirectivePopoverBody({
+/** Start control inside the task popover only (parent mounts when popover opens). */
+function TaskMarkdownPopoverStartChrome({
   owner,
   taskSId,
+  spaceId,
+  task,
+  activeAgents,
+  agentsLoading,
+  onStarted,
+  triggerSize = "xs",
 }: {
   owner: LightWorkspaceType;
   taskSId: string;
+  spaceId: string;
+  task: ProjectTaskType;
+  activeAgents: LightAgentConfigurationType[];
+  agentsLoading: boolean;
+  onStarted?: () => void;
+  triggerSize?: "xs" | "icon-xs";
 }) {
-  const { fetcher } = useFetcher();
-  const url = `/api/w/${owner.sId}/project_tasks/${encodeURIComponent(taskSId)}`;
-  const { data, error, isLoading } = useSWRWithDefaults(
-    url,
-    fetcher as Fetcher<GetWorkspaceProjectTaskResponseBody, string>
+  const router = useAppRouter();
+  const doStart = useStartProjectTaskConversation({ owner, spaceId });
+  const [isStarting, setIsStarting] = useState(false);
+
+  const hasConversationLink =
+    (task.status === "in_progress" || task.status === "done") &&
+    !!task.conversationId;
+  const isDoneWithoutConversation =
+    task.status === "done" && !hasConversationLink;
+
+  if (hasConversationLink) {
+    return null;
+  }
+
+  return (
+    <ProjectTaskStartWorkingDropdown
+      owner={owner}
+      taskSId={taskSId}
+      activeAgents={activeAgents}
+      agentsLoading={agentsLoading}
+      disabled={isDoneWithoutConversation}
+      disabledReason="Reopen this task before starting work."
+      isStarting={isStarting}
+      isFirstOnboardingTask={false}
+      defaultGoToConversation={false}
+      triggerClassName="shrink-0"
+      triggerSize={triggerSize}
+      onStart={async (opts) => {
+        setIsStarting(true);
+        try {
+          const result = await doStart(taskSId, {
+            customMessage: opts.customMessage,
+            agentConfigurationId: opts.agentConfigurationId,
+          });
+          if (
+            result.isOk() &&
+            opts.goToConversation &&
+            result.value.conversationId
+          ) {
+            void router.push(
+              getConversationRoute(owner.sId, result.value.conversationId),
+              undefined,
+              { shallow: true }
+            );
+          }
+          if (result.isOk()) {
+            onStarted?.();
+          }
+        } finally {
+          setIsStarting(false);
+        }
+      }}
+    />
   );
+}
 
-  if (isLoading) {
-    return (
-      <div className="flex min-h-[7rem] items-center justify-center p-3">
-        <Spinner size="sm" />
-      </div>
-    );
-  }
-
-  if (error || !data) {
-    return (
-      <div className="p-3 text-center text-sm text-muted-foreground dark:text-muted-foreground-night">
-        Could not load this task.
-      </div>
-    );
-  }
-
+function TaskDirectivePopoverBodyLoaded({
+  owner,
+  taskSId,
+  data,
+  activeAgents,
+  agentsLoading,
+  onTaskUpdated,
+}: {
+  owner: LightWorkspaceType;
+  taskSId: string;
+  data: GetWorkspaceProjectTaskResponseBody;
+  activeAgents: LightAgentConfigurationType[];
+  agentsLoading: boolean;
+  onTaskUpdated?: () => void;
+}) {
   const { task, space } = data;
   const projectHref = getProjectRoute(owner.sId, space.sId);
   const assignee = task.user;
@@ -102,6 +172,10 @@ function TaskDirectivePopoverBody({
     hasConversation
   );
 
+  const showStartInPopover =
+    (task.status !== "in_progress" && task.status !== "done") ||
+    !task.conversationId;
+
   return (
     <div className="flex flex-col p-3">
       <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground dark:text-foreground-night">
@@ -110,11 +184,18 @@ function TaskDirectivePopoverBody({
 
       <Separator className="-mx-3 my-3 shrink-0 bg-border/60 dark:bg-border-night/60" />
 
-      <dl className="grid grid-cols-[minmax(0,7.5rem)_1fr] gap-x-3 gap-y-2.5 pb-2 text-xs">
-        <dt className="text-muted-foreground dark:text-muted-foreground-night">
+      <dl className="grid grid-cols-[minmax(0,7.5rem)_1fr] gap-x-3 gap-y-2 pb-2 text-xs [grid-auto-rows:minmax(2rem,max-content)]">
+        <dt className="flex items-center text-muted-foreground dark:text-muted-foreground-night">
+          ID
+        </dt>
+        <dd className="flex min-h-8 min-w-0 items-center justify-end font-mono text-[11px] font-medium tabular-nums text-foreground dark:text-foreground-night">
+          <span className="break-all select-text">{task.sId}</span>
+        </dd>
+
+        <dt className="flex items-center text-muted-foreground dark:text-muted-foreground-night">
           Assignee
         </dt>
-        <dd className="flex min-w-0 items-center justify-end">
+        <dd className="flex min-h-8 min-w-0 items-center justify-end">
           {assignee ? (
             <Tooltip
               label={assignee.fullName}
@@ -140,38 +221,45 @@ function TaskDirectivePopoverBody({
           )}
         </dd>
 
-        <dt className="text-muted-foreground dark:text-muted-foreground-night">
+        <dt className="flex items-center text-muted-foreground dark:text-muted-foreground-night">
           Created
         </dt>
-        <dd className="text-right font-medium text-foreground dark:text-foreground-night">
+        <dd className="flex min-h-8 min-w-0 items-center justify-end text-right font-medium text-foreground dark:text-foreground-night">
           {formatRelativeAgo(task.createdAt)}
         </dd>
 
-        <dt className="text-muted-foreground dark:text-muted-foreground-night">
+        <dt className="flex items-center text-muted-foreground dark:text-muted-foreground-night">
           Status
         </dt>
-        <dd className="text-right font-medium text-foreground dark:text-foreground-night">
-          {formatTaskStatusLabel(task.status)}
-          {task.status === "done" && task.doneAt ? (
-            <span className="block text-[11px] font-normal text-muted-foreground dark:text-muted-foreground-night">
-              Completed {formatRelativeAgo(task.doneAt)}
-            </span>
+        <dd className="flex min-h-8 min-w-0 flex-wrap items-center justify-end gap-2 font-medium text-foreground dark:text-foreground-night">
+          <span className="text-right leading-tight">
+            {formatTaskStatusLabel(task.status)}
+            {task.status === "done" && task.doneAt ? (
+              <span className="mt-1 block text-[11px] font-normal leading-tight text-muted-foreground dark:text-muted-foreground-night">
+                Completed {formatRelativeAgo(task.doneAt)}
+              </span>
+            ) : null}
+          </span>
+          {showStartInPopover ? (
+            <TaskMarkdownPopoverStartChrome
+              owner={owner}
+              taskSId={taskSId}
+              spaceId={space.sId}
+              task={task}
+              activeAgents={activeAgents}
+              agentsLoading={agentsLoading}
+              onStarted={onTaskUpdated}
+              triggerSize="icon-xs"
+            />
           ) : null}
-        </dd>
-
-        <dt className="text-muted-foreground dark:text-muted-foreground-night">
-          ID
-        </dt>
-        <dd className="min-w-0 text-right font-mono text-[11px] font-medium tabular-nums text-foreground dark:text-foreground-night">
-          <span className="break-all select-text">{task.sId}</span>
         </dd>
 
         {hasConversation && task.conversationId && activityCaption ? (
           <>
-            <dt className="text-muted-foreground dark:text-muted-foreground-night">
+            <dt className="flex items-center text-muted-foreground dark:text-muted-foreground-night">
               Conversation
             </dt>
-            <dd className="flex min-w-0 items-center justify-end gap-2 text-right">
+            <dd className="flex min-h-8 min-w-0 items-center justify-end gap-2 text-right">
               <ConversationSidebarStatusDot
                 status={dotStatus}
                 className="m-0 shrink-0"
@@ -208,6 +296,63 @@ function TaskDirectivePopoverBody({
   );
 }
 
+/**
+ * Fetches task + agents only while this tree is mounted (popover open).
+ */
+function TaskDirectivePopoverContent({
+  owner,
+  taskSId,
+}: {
+  owner: LightWorkspaceType;
+  taskSId: string;
+}) {
+  const { fetcher } = useFetcher();
+  const url = `/api/w/${owner.sId}/project_tasks/${encodeURIComponent(taskSId)}`;
+  const { data, error, isLoading, mutate } = useSWRWithDefaults(
+    url,
+    fetcher as Fetcher<GetWorkspaceProjectTaskResponseBody, string>
+  );
+
+  const { agentConfigurations, isLoading: agentsLoading } =
+    useUnifiedAgentConfigurations({
+      workspaceId: owner.sId,
+      disabled: false,
+    });
+
+  const activeAgents = useMemo(() => {
+    const agents = agentConfigurations.filter((a) => a.status === "active");
+    agents.sort(compareAgentsForSort);
+    return agents;
+  }, [agentConfigurations]);
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-[7rem] items-center justify-center p-3">
+        <Spinner size="sm" />
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div className="p-3 text-center text-sm text-muted-foreground dark:text-muted-foreground-night">
+        Could not load this task.
+      </div>
+    );
+  }
+
+  return (
+    <TaskDirectivePopoverBodyLoaded
+      owner={owner}
+      taskSId={taskSId}
+      data={data}
+      activeAgents={activeAgents}
+      agentsLoading={agentsLoading}
+      onTaskUpdated={() => void mutate()}
+    />
+  );
+}
+
 function TaskDirectiveChipInner({
   owner,
   label,
@@ -234,20 +379,22 @@ function TaskDirectiveChipInner({
           >
             <AttachmentChip
               label={displayLabel}
-              icon={{ visual: ListCheckIcon }}
+              icon={{ visual: CheckIcon }}
               color="green"
               className="min-w-0 max-w-full transition-opacity group-hover:opacity-90"
             />
           </button>
         </PopoverTrigger>
+        {/* Prevent moving focus to the first control (Start). Radix Tooltip opens on focus → instant tooltip */}
         <PopoverContent
           align="start"
           sideOffset={6}
           collisionPadding={16}
           className="w-[min(22rem,calc(100vw-1.5rem))] overflow-hidden rounded-xl border border-border/70 p-0 shadow-xl ring-1 ring-black/[0.04] dark:border-border-night/70 dark:ring-white/[0.06]"
+          onOpenAutoFocus={(e) => e.preventDefault()}
         >
           {open ? (
-            <TaskDirectivePopoverBody owner={owner} taskSId={sId} />
+            <TaskDirectivePopoverContent owner={owner} taskSId={sId} />
           ) : null}
         </PopoverContent>
       </PopoverRoot>

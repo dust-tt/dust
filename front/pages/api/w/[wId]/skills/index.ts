@@ -1,6 +1,7 @@
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
+import { resolveAdditionalRequestedSpaceModelIds } from "@app/lib/api/skills/space_requirements";
 import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -19,11 +20,10 @@ import {
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString, removeNulls } from "@app/types/shared/utils/general";
 import { isBuilder } from "@app/types/user";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import uniq from "lodash/uniq";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 export type GetSkillsWithoutInstructionsAndToolsResponseBody = {
   skills: SkillWithoutInstructionsAndToolsType[];
@@ -41,63 +41,62 @@ export type PostSkillResponseBody = {
   skill: SkillType;
 };
 
-const SkillStatusSchema = t.union([
-  t.literal("active"),
-  t.literal("archived"),
-  t.literal("suggested"),
-  t.undefined,
-]);
+const SkillStatusSchema = z
+  .enum(["active", "archived", "suggested"])
+  .optional();
 
 function isSkillViewType(value: string): value is SkillViewType {
   return SKILL_VIEWS.some((skillViewType) => skillViewType === value);
 }
 
 // Schema for attached knowledge.
-export const AttachedKnowledgeSchema = t.type({
-  dataSourceViewId: t.string,
-  nodeId: t.string,
-  spaceId: t.string,
-  title: t.string,
+export const AttachedKnowledgeSchema = z.object({
+  dataSourceViewId: z.string(),
+  nodeId: z.string(),
+  spaceId: z.string(),
+  title: z.string(),
 });
 
 // Request body schema for POST.
-const PostSkillRequestBodySchema = t.intersection([
-  t.type({
-    name: t.string,
-    agentFacingDescription: t.string,
-    userFacingDescription: t.string,
-    instructions: t.string,
-    icon: t.union([t.string, t.null]),
-    tools: t.array(
-      t.type({
-        mcpServerViewId: t.string,
+const PostSkillRequestBodySchema = z.intersection(
+  z.object({
+    name: z.string(),
+    agentFacingDescription: z.string(),
+    userFacingDescription: z.string(),
+    instructions: z.string(),
+    icon: z.string().nullable(),
+    tools: z.array(
+      z.object({
+        mcpServerViewId: z.string(),
       })
     ),
-    extendedSkillId: t.union([t.string, t.null]),
-    attachedKnowledge: t.array(AttachedKnowledgeSchema),
-    instructionsHtml: t.union([t.string, t.null]),
+    extendedSkillId: z.string().nullable(),
+    attachedKnowledge: z.array(AttachedKnowledgeSchema),
+    instructionsHtml: z.string().nullable(),
+    additionalRequestedSpaceIds: z.array(z.string()).optional(),
+    fileAttachments: z.array(z.object({ fileId: z.string() })).optional(),
+    isDefault: z.boolean().optional(),
   }),
-  t.partial({
-    fileAttachments: t.array(t.type({ fileId: t.string })),
-    isDefault: t.boolean,
-  }),
-  t.union([
-    t.type({
-      source: t.literal("github"),
-      sourceMetadata: t.type({ repoUrl: t.string, filePath: t.string }),
+  z.union([
+    z.object({
+      source: z.literal("github"),
+      sourceMetadata: z.object({
+        repoUrl: z.string(),
+        filePath: z.string(),
+      }),
     }),
-    t.type({
-      source: t.literal("local_file"),
-      sourceMetadata: t.union([t.type({ filePath: t.string }), t.null]),
+    z.object({
+      source: z.literal("local_file"),
+      sourceMetadata: z.object({ filePath: z.string() }).nullable(),
     }),
-    t.partial({
-      source: t.literal("web_app"),
-      sourceMetadata: t.null,
+    z.object({
+      source: z.literal("web_app").optional(),
+      sourceMetadata: z.null().optional(),
     }),
-  ]),
-]);
+  ])
+);
 
-type PostSkillRequestBody = t.TypeOf<typeof PostSkillRequestBodySchema>;
+type PostSkillRequestBody = z.infer<typeof PostSkillRequestBodySchema>;
 
 async function handler(
   req: NextApiRequest,
@@ -115,8 +114,14 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const { withRelations, status, globalSpaceOnly, isDefault, viewType } =
-        req.query;
+      const {
+        withRelations,
+        status,
+        globalSpaceOnly,
+        onlyCustom,
+        isDefault,
+        viewType,
+      } = req.query;
 
       let skillView: SkillViewType = "full";
       if (viewType !== undefined) {
@@ -144,8 +149,8 @@ async function handler(
         });
       }
 
-      const statusValidation = SkillStatusSchema.decode(status);
-      if (isLeft(statusValidation)) {
+      const statusValidation = SkillStatusSchema.safeParse(status);
+      if (!statusValidation.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -154,11 +159,12 @@ async function handler(
           },
         });
       }
-      const skillStatus = statusValidation.right;
+      const skillStatus = statusValidation.data;
 
       const skills = await SkillResource.listByWorkspace(auth, {
         status: skillStatus,
         globalSpaceOnly: globalSpaceOnly === "true",
+        onlyCustom: onlyCustom === "true",
         isDefault: isDefault === "true" ? true : undefined,
         withInstructions: skillView !== "summary",
         withTools: skillView === "full",
@@ -232,10 +238,10 @@ async function handler(
 
       const user = auth.getNonNullableUser();
 
-      const bodyValidation = PostSkillRequestBodySchema.decode(req.body);
+      const bodyValidation = PostSkillRequestBodySchema.safeParse(req.body);
 
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+      if (!bodyValidation.success) {
+        const pathError = fromError(bodyValidation.error).toString();
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -245,7 +251,7 @@ async function handler(
         });
       }
 
-      const body: PostSkillRequestBody = bodyValidation.right;
+      const body: PostSkillRequestBody = bodyValidation.data;
       const name = body.name.trim();
 
       if (!name) {
@@ -319,19 +325,31 @@ async function handler(
         })
       );
 
-      const spaceIdsFromMcpServerViews =
-        await MCPServerViewResource.listSpaceRequirementsByIds(
+      const computedRequestedSpaceIds =
+        await SkillResource.computeRequestedSpaceIds(auth, {
+          mcpServerViews,
+          attachedKnowledge: attachedKnowledgeWithDataSourceViews,
+        });
+
+      const additionalRequestedSpaceIdsRes =
+        await resolveAdditionalRequestedSpaceModelIds(
           auth,
-          mcpServerViewIds
+          body.additionalRequestedSpaceIds
         );
 
-      const spaceIdsFromAttachedKnowledge = dataSourceViews.map(
-        (dsv) => dsv.space.id
-      );
+      if (additionalRequestedSpaceIdsRes.isErr()) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: additionalRequestedSpaceIdsRes.error.message,
+          },
+        });
+      }
 
       const requestedSpaceIds = uniq([
-        ...spaceIdsFromMcpServerViews,
-        ...spaceIdsFromAttachedKnowledge,
+        ...computedRequestedSpaceIds,
+        ...additionalRequestedSpaceIdsRes.value,
       ]);
 
       const extendedSkill = body.extendedSkillId

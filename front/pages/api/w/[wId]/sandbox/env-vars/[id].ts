@@ -3,24 +3,37 @@ import { getAuditLogContext } from "@app/lib/api/audit/workos_audit";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
-import {
-  getResourceIdFromSId,
-  isResourceSId,
-} from "@app/lib/resources/string_ids";
 import { WorkspaceSandboxEnvVarResource } from "@app/lib/resources/workspace_sandbox_env_var_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
+import {
+  WORKSPACE_SANDBOX_ENV_VAR_KINDS,
+  type WorkspaceSandboxEnvVarType,
+} from "@app/types/sandbox/env_var";
 import { isString } from "@app/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 
 export type DeleteWorkspaceSandboxEnvVarResponseBody = {
   success: true;
 };
 
+export type PatchWorkspaceSandboxEnvVarResponseBody = {
+  envVar: WorkspaceSandboxEnvVarType;
+};
+
+const PatchWorkspaceSandboxEnvVarBodySchema = z.object({
+  kind: z.enum(WORKSPACE_SANDBOX_ENV_VAR_KINDS).optional(),
+  allowedDomains: z.array(z.string()).optional(),
+});
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorResponse<DeleteWorkspaceSandboxEnvVarResponseBody>
+    WithAPIErrorResponse<
+      | DeleteWorkspaceSandboxEnvVarResponseBody
+      | PatchWorkspaceSandboxEnvVarResponseBody
+    >
   >,
   auth: Authenticator
 ): Promise<void> {
@@ -57,12 +70,7 @@ async function handler(
   }
 
   const { id } = req.query;
-
-  const envVarModelId =
-    isString(id) && isResourceSId("sandbox_env_var", id)
-      ? getResourceIdFromSId(id)
-      : null;
-  if (envVarModelId === null) {
+  if (!isString(id)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -73,11 +81,107 @@ async function handler(
   }
 
   switch (req.method) {
+    case "PATCH": {
+      const parsed = PatchWorkspaceSandboxEnvVarBodySchema.safeParse(req.body);
+      if (!parsed.success) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: parsed.error.issues
+              .map((i) => `${i.path.join(".") || "body"}: ${i.message}`)
+              .join("; "),
+          },
+        });
+      }
+
+      const { allowedDomains, kind } = parsed.data;
+      if (kind === undefined && allowedDomains === undefined) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "At least one field must be provided.",
+          },
+        });
+      }
+
+      const envVar = await WorkspaceSandboxEnvVarResource.fetchById(auth, id);
+      if (!envVar) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Sandbox environment variable not found.",
+          },
+        });
+      }
+
+      // Phase 1 only permits one-way promotion. Demoting an HTTPS secret back
+      // to config would put the real value back into the agent environment.
+      if (kind === "config" && envVar.kind === "https_secret") {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "Demoting an HTTPS secret to a config environment variable is not supported.",
+          },
+        });
+      }
+
+      if (kind === "https_secret" && envVar.kind === "config") {
+        if (allowedDomains === undefined) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "allowedDomains is required when promoting to an HTTPS secret.",
+            },
+          });
+        }
+
+        const promoteResult = await envVar.promoteToHttpsSecret(auth, {
+          allowedDomains,
+          context: getAuditLogContext(auth, req),
+        });
+        if (promoteResult.isErr()) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: promoteResult.error.message,
+            },
+          });
+        }
+
+        return res.status(200).json({ envVar: promoteResult.value.toJSON() });
+      }
+
+      if (allowedDomains !== undefined) {
+        const updateResult = await envVar.updateAllowedDomains(auth, {
+          allowedDomains,
+          context: getAuditLogContext(auth, req),
+        });
+        if (updateResult.isErr()) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: updateResult.error.message,
+            },
+          });
+        }
+
+        return res.status(200).json({ envVar: updateResult.value.toJSON() });
+      }
+
+      return res.status(200).json({ envVar: envVar.toJSON() });
+    }
+
     case "DELETE": {
-      const envVar = await WorkspaceSandboxEnvVarResource.fetchById(
-        auth,
-        envVarModelId
-      );
+      const envVar = await WorkspaceSandboxEnvVarResource.fetchById(auth, id);
       if (!envVar) {
         return apiError(req, res, {
           status_code: 404,
@@ -109,7 +213,8 @@ async function handler(
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message: "The method passed is not supported, DELETE is expected.",
+          message:
+            "The method passed is not supported, DELETE or PATCH is expected.",
         },
       });
   }

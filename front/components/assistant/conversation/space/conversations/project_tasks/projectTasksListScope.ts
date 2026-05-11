@@ -1,12 +1,10 @@
+import {
+  isProjectTaskPeriodScope,
+  type ProjectTaskPeopleScope,
+  type ProjectTaskPeriodScope,
+} from "@app/types/project_task";
+import { isString } from "@app/types/shared/utils/general";
 import { z } from "zod";
-
-export type ProjectTaskPeriodScope =
-  | "active"
-  | "last_24h"
-  | "last_7d"
-  | "last_30d";
-
-export type ProjectTaskPeopleScope = "all_project" | "just_mine";
 
 /** Filter for project task list fetching + persisted project UI prefs. */
 export interface TaskOwnerFilter {
@@ -20,34 +18,28 @@ export const DEFAULT_TASK_OWNER_FILTER: TaskOwnerFilter = {
 };
 
 const PERIOD_SCOPE_LABELS: Record<ProjectTaskPeriodScope, string> = {
-  active: "Active",
-  last_24h: "Last 24h",
-  last_7d: "Last 7 days",
-  last_30d: "Last 30 days",
+  active: "Open",
+  last_24h: "Done today",
+  last_7d: "Done in the last 7 days",
+  last_30d: "Done in the last 30 days",
 };
 
 const PEOPLE_SCOPE_LABELS: Record<ProjectTaskPeopleScope, string> = {
-  all_project: "All project's",
-  just_mine: "Just mine",
+  all_project: "Everyone",
+  just_mine: "Mine",
 };
 
-export function formatTaskScopeLabel(filter: TaskOwnerFilter): string {
-  return `${PERIOD_SCOPE_LABELS[filter.periodScope]} · ${PEOPLE_SCOPE_LABELS[filter.peopleScope]}`;
+export function periodScopeLabel(scope: ProjectTaskPeriodScope): string {
+  return PERIOD_SCOPE_LABELS[scope];
 }
 
-const PERIOD_SCOPES: ProjectTaskPeriodScope[] = [
-  "active",
-  "last_24h",
-  "last_7d",
-  "last_30d",
-];
+export function peopleScopeLabel(scope: ProjectTaskPeopleScope): string {
+  return PEOPLE_SCOPE_LABELS[scope];
+}
 
 function coercePeriodScope(raw: unknown): ProjectTaskPeriodScope {
-  if (
-    typeof raw === "string" &&
-    PERIOD_SCOPES.includes(raw as ProjectTaskPeriodScope)
-  ) {
-    return raw as ProjectTaskPeriodScope;
+  if (isString(raw) && isProjectTaskPeriodScope(raw)) {
+    return raw;
   }
   return "active";
 }
@@ -56,8 +48,6 @@ const tasksOwnerFilterPersistedBlobSchema = z
   .object({
     periodScope: z.string().optional(),
     peopleScope: z.enum(["all_project", "just_mine"]).optional(),
-    assigneeScope: z.enum(["mine", "all", "users"]).optional(),
-    selectedUserSIds: z.array(z.string()).optional(),
   })
   .passthrough();
 
@@ -70,13 +60,9 @@ export function normalizeTasksOwnerFilterFromPersistedBlob(
   }
   const blob = parsed.data;
 
-  const peopleScope: ProjectTaskPeopleScope =
-    blob.peopleScope ??
-    (blob.assigneeScope === "mine" ? "just_mine" : "all_project");
-
   return {
     periodScope: coercePeriodScope(blob.periodScope),
-    peopleScope: peopleScope === "just_mine" ? "just_mine" : "all_project",
+    peopleScope: blob.peopleScope ?? "all_project",
   };
 }
 

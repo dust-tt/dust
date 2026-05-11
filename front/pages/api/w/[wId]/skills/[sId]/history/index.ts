@@ -8,9 +8,8 @@ import { GetSkillHistoryQuerySchema } from "@app/types/api/internal/skill";
 import type { SkillWithVersionType } from "@app/types/assistant/skill_configuration";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
 export type GetSkillHistoryResponseBody = {
   history: SkillWithVersionType[];
@@ -50,15 +49,15 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const queryValidation = GetSkillHistoryQuerySchema.decode({
+      const queryValidation = GetSkillHistoryQuerySchema.safeParse({
         ...req.query,
         limit:
           typeof req.query.limit === "string"
             ? parseInt(req.query.limit, 10)
             : undefined,
       });
-      if (isLeft(queryValidation)) {
-        const pathError = reporter.formatValidationErrors(queryValidation.left);
+      if (!queryValidation.success) {
+        const pathError = fromError(queryValidation.error).toString();
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -68,7 +67,7 @@ async function handler(
         });
       }
 
-      const { limit } = queryValidation.right;
+      const { limit } = queryValidation.data;
 
       let skillVersionResources = await skill.listVersions(auth);
 

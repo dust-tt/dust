@@ -12,6 +12,7 @@ import { replaceStandaloneAttachmentIds } from "@app/lib/api/assistant/conversat
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { getOrCreateConversationDataSourceFromFile } from "@app/lib/api/data_sources";
+import { isSandboxRawDelimitedConversationFile } from "@app/lib/api/files/sandbox_raw";
 import {
   isFileTypeUpsertableForUseCase,
   processAndUpsertToDataSource,
@@ -297,6 +298,10 @@ async function addFileToConversationDatasource(
     carriedFile: FileResource;
   }
 ): Promise<void> {
+  if (isSandboxRawDelimitedConversationFile(carriedFile)) {
+    return;
+  }
+
   const childDataSourceRes = await getOrCreateConversationDataSourceFromFile(
     auth,
     carriedFile
@@ -494,6 +499,7 @@ async function carryOverConversationAttachments(
       const shouldCopyFileToDatasource =
         carriedFile !== null &&
         !carriedFile.useCaseMetadata?.skipDataSourceIndexing &&
+        !isSandboxRawDelimitedConversationFile(carriedFile) &&
         isFileTypeUpsertableForUseCase(carriedFile);
 
       if (shouldCopyFileToDatasource) {
@@ -545,6 +551,12 @@ async function carryOverConversationAttachments(
   return attachmentIdReplacements;
 }
 
+type ConversationForkResult = {
+  conversationId: string;
+  parentConversationTitle: string | null;
+  spaceId: string | null;
+};
+
 export async function createConversationFork(
   auth: Authenticator,
   {
@@ -554,7 +566,9 @@ export async function createConversationFork(
     conversationId: string;
     sourceMessageId?: string;
   }
-): Promise<Result<string, DustError<CreateConversationForkErrorCode>>> {
+): Promise<
+  Result<ConversationForkResult, DustError<CreateConversationForkErrorCode>>
+> {
   const parentConversation = await ConversationResource.fetchById(
     auth,
     conversationId
@@ -689,7 +703,11 @@ export async function createConversationFork(
       "Failed to reload child conversation for fork attachment carryover."
     );
 
-    return new Ok(childConversationId.value.childConversationId);
+    return new Ok({
+      conversationId: childConversationId.value.childConversationId,
+      parentConversationTitle: parentConversation.title,
+      spaceId: parentConversation.space?.sId ?? null,
+    });
   }
 
   const parentConversationWithContent = await getConversation(
@@ -740,8 +758,16 @@ export async function createConversationFork(
       },
       "Failed to initialize forked conversation compaction."
     );
-    return new Ok(childConversation.value.sId);
+    return new Ok({
+      conversationId: childConversation.value.sId,
+      parentConversationTitle: parentConversation.title,
+      spaceId: parentConversation.space?.sId ?? null,
+    });
   }
 
-  return new Ok(childConversation.value.sId);
+  return new Ok({
+    conversationId: childConversation.value.sId,
+    parentConversationTitle: parentConversation.title,
+    spaceId: parentConversation.space?.sId ?? null,
+  });
 }

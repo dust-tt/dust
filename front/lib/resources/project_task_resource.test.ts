@@ -440,17 +440,14 @@ describe("ProjectTaskResource", () => {
   });
 
   describe("fetchBySpace", () => {
-    it("should hide done todos completed before lastCleanedAt", async () => {
-      const cutoff = new Date();
-      const beforeCutoff = new Date(cutoff.getTime() - 60_000);
-
-      const oldDone = await ProjectTaskResource.makeNew(
+    it("should hide done todos in the active scope", async () => {
+      const done = await ProjectTaskResource.makeNew(
         auth,
-        makeTodoBlob(space.id, user.id, { text: "Hidden after clean" })
+        makeTodoBlob(space.id, user.id, { text: "Done todo" })
       );
-      await oldDone.updateWithVersion(auth, {
+      await done.updateWithVersion(auth, {
         status: "done",
-        doneAt: beforeCutoff,
+        doneAt: new Date(),
         markedAsDoneByType: "user",
         markedAsDoneByUserId: user.id,
         markedAsDoneByAgentConfigurationId: null,
@@ -458,32 +455,24 @@ describe("ProjectTaskResource", () => {
 
       const visible = await ProjectTaskResource.fetchBySpace(auth, {
         spaceId: space.id,
-        lastCleanedAt: cutoff,
+        timeScope: "active",
       });
 
-      expect(visible.map((t) => t.sId)).not.toContain(oldDone.sId);
+      expect(visible.map((t) => t.sId)).not.toContain(done.sId);
     });
 
-    it("should still return todos with pending agentSuggestionStatus when done before lastCleanedAt", async () => {
-      const cutoff = new Date();
-      const beforeCutoff = new Date(cutoff.getTime() - 60_000);
-
+    it("should still return todos with pending agentSuggestionStatus", async () => {
       const pending = await ProjectTaskResource.makeNew(
         auth,
         makeTodoBlob(space.id, user.id, { text: "Pending suggestion" })
       );
       await pending.updateWithVersion(auth, {
-        status: "done",
-        doneAt: beforeCutoff,
-        markedAsDoneByType: "user",
-        markedAsDoneByUserId: user.id,
-        markedAsDoneByAgentConfigurationId: null,
         agentSuggestionStatus: "pending",
       });
 
       const visible = await ProjectTaskResource.fetchBySpace(auth, {
         spaceId: space.id,
-        lastCleanedAt: cutoff,
+        timeScope: "active",
       });
 
       expect(visible.map((t) => t.sId)).toContain(pending.sId);

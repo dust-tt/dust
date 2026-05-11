@@ -242,4 +242,39 @@ describe("processAndStoreFile", () => {
     expect(writes).toHaveLength(1);
     expect(writes[0].contentType).toBe("text/plain");
   });
+
+  it("should skip processed version creation for raw sandbox spreadsheets", async () => {
+    const { authenticator: auth } = await createResourceTest({
+      role: "admin",
+    });
+
+    const contentType =
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+    const file = await FileFactory.create(auth, null, {
+      contentType,
+      fileName: "large.xlsx",
+      fileSize: 100,
+      status: "created",
+      useCase: "conversation",
+      useCaseMetadata: {
+        conversationId: "conv-raw",
+        skipDataSourceIndexing: true,
+        skipFileProcessing: true,
+      },
+    });
+
+    const result = await processAndStoreFile(auth, {
+      file,
+      content: { type: "string", value: "fake xlsx bytes" },
+    });
+
+    assert(
+      result.isOk(),
+      `Expected Ok, got: ${result.isErr() ? JSON.stringify(result.error) : ""}`
+    );
+
+    const writes = fileStorageMock.writeStreamCalls;
+    expect(writes).toHaveLength(1);
+    expect(writes[0].contentType).toBe(contentType);
+  });
 });

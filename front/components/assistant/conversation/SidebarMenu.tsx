@@ -449,9 +449,6 @@ export function AgentSidebarMenu({
     loadMore,
     isLoadingMore,
   } = useConversations({ workspaceId: owner.sId });
-  const onConversationBranched = useCallback(() => {
-    void mutateConversations();
-  }, [mutateConversations]);
 
   const hasSpaceConversations = hasFeature("projects");
 
@@ -702,17 +699,19 @@ export function AgentSidebarMenu({
           onOpenChange={(open) => setProjectsSectionCollapsed(!open)}
           action={
             <>
-              <Button
-                size="xs"
-                icon={PlusIcon}
-                label="New"
-                variant="ghost"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setIsCreateProjectModalOpen(true);
-                }}
-              />
+              {summary.length > 0 && (
+                <Button
+                  size="xs"
+                  icon={PlusIcon}
+                  label="New"
+                  variant="ghost"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIsCreateProjectModalOpen(true);
+                  }}
+                />
+              )}
               <ProjectsBrowsePopover owner={owner} />
             </>
           }
@@ -759,7 +758,6 @@ export function AgentSidebarMenu({
         selectedConversations={selectedConversations}
         toggleConversationSelection={toggleConversationSelection}
         activeConversationId={activeConversationId}
-        onConversationBranched={onConversationBranched}
         owner={owner}
         projectsSection={projectsSection}
         hasTriggeredConversations={hasTriggeredConversations}
@@ -780,7 +778,6 @@ export function AgentSidebarMenu({
     selectedConversations,
     toggleConversationSelection,
     activeConversationId,
-    onConversationBranched,
     owner,
     projectsSection,
     hasTriggeredConversations,
@@ -1085,7 +1082,6 @@ interface UnreadConversationsSectionProps {
   isMultiSelect: boolean;
   isMarkingAllAsRead: boolean;
   onMarkAllAsRead: (conversationIds: string[]) => void;
-  onConversationBranched?: () => Promise<void> | void;
   selectedConversations: ConversationListItemType[];
   toggleConversationSelection: (c: ConversationListItemType) => void;
   activeConversationId: string | null;
@@ -1114,7 +1110,6 @@ function UnreadConversationsSection({
   isMarkingAllAsRead,
   titleFilter,
   onMarkAllAsRead,
-  onConversationBranched,
   selectedConversations,
   toggleConversationSelection,
   activeConversationId,
@@ -1157,7 +1152,6 @@ function UnreadConversationsSection({
               <ConversationListItem
                 conversation={conversation}
                 isMultiSelect={isMultiSelect}
-                onConversationBranched={onConversationBranched}
                 selectedConversations={selectedConversations}
                 toggleConversationSelection={toggleConversationSelection}
                 activeConversationId={activeConversationId}
@@ -1182,7 +1176,6 @@ const ConversationList = ({
   selectedConversations: ConversationListItemType[];
   toggleConversationSelection: (c: ConversationListItemType) => void;
   activeConversationId: string | null;
-  onConversationBranched?: () => Promise<void> | void;
   owner: WorkspaceType;
 }) => {
   if (!conversations.length) {
@@ -1227,7 +1220,6 @@ const ConversationListItem = memo(
   ({
     conversation,
     isMultiSelect,
-    onConversationBranched,
     selectedConversations,
     toggleConversationSelection,
     activeConversationId,
@@ -1235,7 +1227,6 @@ const ConversationListItem = memo(
   }: {
     conversation: ConversationListItemType;
     isMultiSelect: boolean;
-    onConversationBranched?: () => Promise<void> | void;
     selectedConversations: ConversationListItemType[];
     toggleConversationSelection: (c: ConversationListItemType) => void;
     activeConversationId: string | null;
@@ -1312,7 +1303,6 @@ const ConversationListItem = memo(
           <ConversationMenu
             activeConversationId={conversation.sId}
             conversation={conversation}
-            onConversationBranched={onConversationBranched}
             owner={owner}
             trigger={() => <NavigationListItemAction />}
             isConversationDisplayed={activeConversationId === conversation.sId}
@@ -1342,7 +1332,6 @@ interface NavigationListWithInboxProps {
   selectedConversations: ConversationListItemType[];
   toggleConversationSelection: (conversation: ConversationListItemType) => void;
   activeConversationId: string | null;
-  onConversationBranched?: () => Promise<void> | void;
   owner: WorkspaceType;
   projectsSection?: React.ReactNode;
   hasTriggeredConversations: boolean;
@@ -1363,7 +1352,6 @@ function NavigationListWithInbox({
   selectedConversations,
   toggleConversationSelection,
   activeConversationId,
-  onConversationBranched,
   owner,
   projectsSection,
   hasTriggeredConversations,
@@ -1407,7 +1395,6 @@ function NavigationListWithInbox({
           conversations={conversationsByDate[dateLabel as GroupLabel]}
           dateLabel={dateLabel}
           isMultiSelect={isMultiSelect}
-          onConversationBranched={onConversationBranched}
           selectedConversations={selectedConversations}
           toggleConversationSelection={toggleConversationSelection}
           activeConversationId={activeConversationId}
@@ -1450,7 +1437,6 @@ function NavigationListWithInbox({
                 isMarkingAllAsRead={isMarkingAllAsRead}
                 titleFilter={titleFilter}
                 onMarkAllAsRead={markAllAsRead}
-                onConversationBranched={onConversationBranched}
                 selectedConversations={selectedConversations}
                 toggleConversationSelection={toggleConversationSelection}
                 activeConversationId={activeConversationId}
@@ -1475,7 +1461,6 @@ function NavigationListWithInbox({
                 isMarkingAllAsRead={isMarkingAllAsRead}
                 titleFilter={titleFilter}
                 onMarkAllAsRead={markAllAsRead}
-                onConversationBranched={onConversationBranched}
                 selectedConversations={selectedConversations}
                 toggleConversationSelection={toggleConversationSelection}
                 activeConversationId={activeConversationId}

@@ -13,9 +13,10 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 // Action output file system.
 //
-// Writes qualifying tool output blocks to the conversation's results GCS path as a side effect
-// of processToolResults. Files are conversation-scoped and are not tracked in the database. They
-// are cleaned up when the conversation is scrubbed.
+// Writes qualifying tool output blocks to the conversation's tool outputs GCS path (see
+// `getConversationToolOutputsBasePath`) as a side effect of processToolResults. Files are
+// conversation-scoped and are not tracked in the database. They are cleaned up when the
+// conversation is scrubbed.
 //
 // Two cases are handled:
 //   1. Resource blocks whose mimeType is registered in resolveResourceOutput.
@@ -23,12 +24,12 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 //      file extension).
 
 export interface PersistedToolOutput {
-  // Filename within results/ — what the model and sandbox use.
+  // Filename within the tool outputs folder — what the model and sandbox use.
   fileName: string;
 }
 
 /**
- * Attempts to persist a tool output block to the conversation's results GCS path.
+ * Attempts to persist a tool output block to the conversation's tool outputs GCS path.
  * Returns null if the block does not qualify for persistence.
  *
  * Call this as a side effect from processToolResults.

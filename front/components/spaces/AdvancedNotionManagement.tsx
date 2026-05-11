@@ -17,7 +17,6 @@ import {
   XCircleIcon,
 } from "@dust-tt/sparkle";
 import type { CellContext } from "@tanstack/react-table";
-import { isLeft } from "fp-ts/lib/Either";
 import { useCallback, useState } from "react";
 
 interface TableData {
@@ -256,10 +255,10 @@ export function AdvancedNotionManagement({
           const error: { error: { message: string } } = await r.json();
           throw new Error(error.error.message);
         }
-        const response = GetPostNotionSyncResponseBodySchema.decode(
+        const response = GetPostNotionSyncResponseBodySchema.safeParse(
           await r.json()
         );
-        if (isLeft(response)) {
+        if (!response.success) {
           sendNotification({
             type: "error",
             title: "Error syncing Notion URLs",
@@ -269,7 +268,7 @@ export function AdvancedNotionManagement({
           return;
         }
 
-        const { syncResults } = response.right;
+        const { syncResults } = response.data;
 
         const successCount = syncResults.filter(
           (result) => result.success

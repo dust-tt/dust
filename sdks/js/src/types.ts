@@ -230,6 +230,8 @@ export const supportedAudioFileFormats = {
   "audio/wav": [".wav"],
   "audio/x-wav": [".wav"],
   "audio/webm": [".webm"],
+  // Chrome sometimes uses video/webm for audio files, and we can still process them as audio only files
+  "video/webm": [".webm"],
 } as const;
 
 // Webhook trigger endpoint (skeleton) response type
@@ -757,6 +759,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "conversation_search_read"
   | "new_file_explorer"
   | "use_vertex_for_anthropic_models"
+  | "metronome_billing_usage_page"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;

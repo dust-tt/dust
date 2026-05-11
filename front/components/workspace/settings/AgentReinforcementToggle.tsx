@@ -1,17 +1,25 @@
 import {
+  DEFAULT_REINFORCEMENT_CAP_MICRO_USD,
+  DEFAULT_SELF_IMPROVEMENT_CAP_PER_SKILL_MICRO_USD,
+} from "@app/lib/reinforcement/constants";
+import {
   useReinforcementBatchModeToggle,
+  useReinforcementCapSetting,
   useReinforcementToggle,
+  useSelfImprovementCapPerSkillSetting,
 } from "@app/lib/swr/useReinforcementToggle";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  Chip,
-  ContentMessage,
+  Button,
+  CardIcon,
   ContextItem,
+  Input,
   Page,
   SliderToggle,
   SparklesIcon,
   Square3Stack3DIcon,
 } from "@dust-tt/sparkle";
+import { useState } from "react";
 
 interface ReinforcementSectionProps {
   owner: WorkspaceType;
@@ -21,19 +29,8 @@ export function ReinforcementSection({ owner }: ReinforcementSectionProps) {
   const { isEnabled, isChanging, doToggleReinforcement } =
     useReinforcementToggle({ owner });
 
-  // TODO(reinforcement): Add link to doc
   return (
     <Page.Vertical align="stretch" gap="md">
-      <div className="flex items-center gap-2">
-        <Page.H variant="h4">Reinforcement</Page.H>
-        <Chip size="xs" color="golden" label="Beta" />
-      </div>
-      <ContentMessage variant="info" size="lg">
-        This feature is currently in beta, and only available to a select group
-        of customers. We are very interested in your feedback to improve the
-        feature. Note that the feature is currently free during beta testing but
-        will generate additional costs upon release.
-      </ContentMessage>
       <ContextItem.List>
         <div className="h-full border-b border-border dark:border-border-night" />
         <ContextItem
@@ -50,7 +47,9 @@ export function ReinforcementSection({ owner }: ReinforcementSectionProps) {
         >
           <ContextItem.Description description="Allow Dust to analyze conversations to improve your workspace's skills. Dust does not use conversations to train models." />
         </ContextItem>
-        {isEnabled && <ReinforcementBatchModeToggle owner={owner} />}
+        <ReinforcementBatchModeToggle owner={owner} />
+        <ReinforcementCapItem owner={owner} />
+        <SelfImprovementCapPerSkillItem owner={owner} />
       </ContextItem.List>
     </Page.Vertical>
   );
@@ -74,6 +73,140 @@ function ReinforcementBatchModeToggle({ owner }: ReinforcementSectionProps) {
       }
     >
       <ContextItem.Description description="Conversations are sent in batches to reduce costs. Data may remain on LLM provider servers for up to several hours before processing. Disable to ensure immediate data deletion (ZDR-compatible). This will increase your plan's pricing." />
+    </ContextItem>
+  );
+}
+
+function SelfImprovementCapPerSkillItem({ owner }: ReinforcementSectionProps) {
+  const { capDollars, isSaving, saveCapDollars } =
+    useSelfImprovementCapPerSkillSetting({ owner });
+  const [inputValue, setInputValue] = useState<string>(() =>
+    String(capDollars)
+  );
+
+  const parsedInputDollars = Number(inputValue);
+  const isInputDollarsValid =
+    inputValue.trim() !== "" &&
+    Number.isFinite(parsedInputDollars) &&
+    parsedInputDollars >= 0;
+
+  const defaultDollars =
+    DEFAULT_SELF_IMPROVEMENT_CAP_PER_SKILL_MICRO_USD / 1_000_000;
+
+  const handleSave = async () => {
+    if (!isInputDollarsValid) {
+      return;
+    }
+    await saveCapDollars(parsedInputDollars);
+  };
+
+  return (
+    <ContextItem
+      title="Default cost cap per skill"
+      visual={<CardIcon className="h-6 w-6 shrink-0" />}
+      hasSeparatorIfLast={true}
+      action={
+        <form
+          className="flex items-center gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void handleSave();
+          }}
+        >
+          <div className="w-32">
+            <Input
+              name="selfImprovementCapPerSkill"
+              placeholder={String(defaultDollars)}
+              value={inputValue}
+              message={
+                !isInputDollarsValid && inputValue !== ""
+                  ? "Enter a non-negative number."
+                  : undefined
+              }
+              messageStatus={
+                !isInputDollarsValid && inputValue !== "" ? "error" : undefined
+              }
+              onChange={(event) => setInputValue(event.target.value)}
+              disabled={isSaving}
+            />
+          </div>
+          <Button
+            type="submit"
+            label="Save"
+            disabled={!isInputDollarsValid}
+            isLoading={isSaving}
+          />
+        </form>
+      }
+    >
+      <ContextItem.Description description="Maximum cost per skill per self-improvement run (in USD). Once reached, no further self-improvement runs are started for that skill." />
+    </ContextItem>
+  );
+}
+
+function ReinforcementCapItem({ owner }: ReinforcementSectionProps) {
+  const { capDollars, isSaving, saveCapDollars } = useReinforcementCapSetting({
+    owner,
+  });
+  const [inputValue, setInputValue] = useState<string>(() =>
+    String(capDollars)
+  );
+
+  const parsedInput = Number(inputValue);
+  const isInputValid =
+    inputValue.trim() !== "" &&
+    Number.isFinite(parsedInput) &&
+    parsedInput >= 0;
+
+  const defaultDollars = DEFAULT_REINFORCEMENT_CAP_MICRO_USD / 1_000_000;
+
+  const handleSave = async () => {
+    if (!isInputValid) {
+      return;
+    }
+    await saveCapDollars(parsedInput);
+  };
+
+  return (
+    <ContextItem
+      title="Global spending cap"
+      visual={<CardIcon className="h-6 w-6 shrink-0" />}
+      hasSeparatorIfLast={true}
+      action={
+        <form
+          className="flex items-center gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void handleSave();
+          }}
+        >
+          <div className="w-32">
+            <Input
+              name="reinforcementCap"
+              placeholder={String(defaultDollars)}
+              value={inputValue}
+              message={
+                !isInputValid && inputValue !== ""
+                  ? "Enter a non-negative number."
+                  : undefined
+              }
+              messageStatus={
+                !isInputValid && inputValue !== "" ? "error" : undefined
+              }
+              onChange={(event) => setInputValue(event.target.value)}
+              disabled={isSaving}
+            />
+          </div>
+          <Button
+            type="submit"
+            label="Save"
+            disabled={!isInputValid}
+            isLoading={isSaving}
+          />
+        </form>
+      }
+    >
+      <ContextItem.Description description="Reinforcement is priced as programmatic usage. This is the maximum cost per month (in USD) for the feature across all skills. Once reached, no new reinforcement runs are started until the next billing month." />
     </ContextItem>
   );
 }

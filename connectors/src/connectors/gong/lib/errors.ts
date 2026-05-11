@@ -24,7 +24,7 @@ export class GongAPIError extends Error {
   readonly errors?: string[];
   readonly pathErrors?: string[];
   readonly requestId?: string;
-  readonly retryAfterMs?: number;
+  readonly retryAfterSeconds?: number;
   readonly status?: number;
 
   constructor(
@@ -35,7 +35,7 @@ export class GongAPIError extends Error {
       errors,
       pathErrors,
       requestId,
-      retryAfterMs,
+      retryAfterSeconds,
       status,
       type,
     }: {
@@ -44,7 +44,7 @@ export class GongAPIError extends Error {
       errors?: string[];
       pathErrors?: string[];
       requestId?: string;
-      retryAfterMs?: number;
+      retryAfterSeconds?: number;
       status?: number;
       type: GongAPIErrorType;
     }
@@ -57,7 +57,7 @@ export class GongAPIError extends Error {
     this.errors = errors;
     this.pathErrors = pathErrors;
     this.requestId = requestId;
-    this.retryAfterMs = retryAfterMs;
+    this.retryAfterSeconds = retryAfterSeconds;
     this.status = status;
   }
 
@@ -68,13 +68,13 @@ export class GongAPIError extends Error {
       connectorId,
       endpoint,
       pathErrors,
-      retryAfterMs,
+      retryAfterSeconds,
     }: {
       body: string;
       connectorId: ModelId;
       endpoint: string;
       pathErrors?: string[];
-      retryAfterMs?: number;
+      retryAfterSeconds?: number;
     }
   ) {
     // Attempt to parse the body as JSON.
@@ -103,7 +103,7 @@ export class GongAPIError extends Error {
         pathErrors,
         requestId,
         status: response.status,
-        retryAfterMs,
+        retryAfterSeconds,
       }
     );
   }

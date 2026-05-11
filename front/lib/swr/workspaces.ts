@@ -34,6 +34,7 @@ import type {
   GetSubscriptionsResponseBody,
   PostSubscriptionResponseBody,
 } from "@app/pages/api/w/[wId]/subscriptions";
+import type { GetCheckoutStatusResponseBody } from "@app/pages/api/w/[wId]/subscriptions/checkout-status";
 import type { GetSubscriptionPricingResponseBody } from "@app/pages/api/w/[wId]/subscriptions/pricing";
 import type { GetSubscriptionStatusResponseBody } from "@app/pages/api/w/[wId]/subscriptions/status";
 import type { GetSubscriptionTrialInfoResponseBody } from "@app/pages/api/w/[wId]/subscriptions/trial-info";
@@ -96,21 +97,26 @@ export function useWorkspace({
 
 export function useWorkspaceSubscriptions({
   owner,
+  disabled,
 }: {
   owner: LightWorkspaceType;
+  disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
-  const workspaceSubscrptionsFetcher: Fetcher<GetSubscriptionsResponseBody> =
+  const workspaceSubscriptionsFetcher: Fetcher<GetSubscriptionsResponseBody> =
     fetcher;
 
   const { data, error } = useSWRWithDefaults(
     `/api/w/${owner.sId}/subscriptions`,
-    workspaceSubscrptionsFetcher
+    workspaceSubscriptionsFetcher,
+    {
+      disabled,
+    }
   );
 
   return {
     subscriptions: data?.subscriptions ?? emptyArray(),
-    isSubscriptionsLoading: !error && !data,
+    isSubscriptionsLoading: !error && !data && !disabled,
     isSubscriptionsError: error,
   };
 }
@@ -814,6 +820,38 @@ export function useAuthContext(
     isAuthContextLoading: isFetching || !!isRegionRedirectResponse,
     authContextError: error,
     mutateAuthContext: mutate,
+  };
+}
+
+export function useCheckoutStatus({
+  workspaceId,
+  sessionId,
+  planCode,
+  disabled,
+  pollIntervalMs = 0,
+}: {
+  workspaceId: string;
+  sessionId: string;
+  planCode: string;
+  disabled?: boolean;
+  pollIntervalMs?: number;
+}) {
+  const { fetcher } = useFetcher();
+  const checkoutFetcher: Fetcher<GetCheckoutStatusResponseBody> = fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    disabled
+      ? null
+      : `/api/w/${workspaceId}/subscriptions/checkout-status?session_id=${sessionId}&plan_code=${planCode}`,
+    checkoutFetcher,
+    { refreshInterval: pollIntervalMs }
+  );
+
+  return {
+    checkoutStatus: data ?? null,
+    isCheckoutStatusLoading: !error && !data && !disabled,
+    isCheckoutStatusError: error,
+    mutateCheckoutStatus: mutate,
   };
 }
 

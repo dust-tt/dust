@@ -1,4 +1,5 @@
 import {
+  ProjectTaskCreateBar,
   ProjectTasksPanelMain,
   ProjectTasksPanelProvider,
   ProjectTasksToolbar,
@@ -36,6 +37,7 @@ export function SpaceTasksTab({
           onTaskOwnerFilterChange={onTaskOwnerFilterChange}
         >
           <div className="flex flex-col gap-3">
+            <ProjectTaskCreateBar />
             <ProjectTasksToolbar />
             <ProjectTasksPanelMain />
           </div>

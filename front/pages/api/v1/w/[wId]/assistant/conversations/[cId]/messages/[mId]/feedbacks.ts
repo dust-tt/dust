@@ -13,17 +13,14 @@ import { launchAgentMessageFeedbackWorkflow } from "@app/temporal/analytics_queu
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { getUserEmailFromHeaders } from "@app/types/user";
 import type { PostMessageFeedbackResponseType } from "@dust-tt/client";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
-const ThumbDirectionCodec = t.union([t.literal("up"), t.literal("down")]);
-
-export const MessageFeedbackRequestBodySchema = t.type({
-  thumbDirection: ThumbDirectionCodec,
-  feedbackContent: t.union([t.string, t.undefined, t.null]),
-  isConversationShared: t.union([t.boolean, t.undefined]),
+export const MessageFeedbackRequestBodySchema = z.object({
+  thumbDirection: z.enum(["up", "down"]),
+  feedbackContent: z.string().nullish(),
+  isConversationShared: z.boolean().optional(),
 });
 
 /**
@@ -235,14 +232,15 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      const bodyValidation = MessageFeedbackRequestBodySchema.decode(req.body);
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+      const bodyValidation = MessageFeedbackRequestBodySchema.safeParse(
+        req.body
+      );
+      if (!bodyValidation.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request body: ${pathError}`,
+            message: `Invalid request body: ${fromError(bodyValidation.error).toString()}`,
           },
         });
       }
@@ -251,10 +249,10 @@ async function handler(
         messageId,
         conversation,
         user,
-        thumbDirection: bodyValidation.right.thumbDirection,
+        thumbDirection: bodyValidation.data.thumbDirection,
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        content: bodyValidation.right.feedbackContent || "",
-        isConversationShared: bodyValidation.right.isConversationShared,
+        content: bodyValidation.data.feedbackContent || "",
+        isConversationShared: bodyValidation.data.isConversationShared,
       });
 
       if (created.isErr()) {
@@ -277,7 +275,7 @@ async function handler(
         conversationId: conversation.sId,
         messageId,
         agentConfigurationId: created.value.agentConfigurationId,
-        thumbDirection: bodyValidation.right.thumbDirection,
+        thumbDirection: bodyValidation.data.thumbDirection,
         feedbackId: created.value.feedbackId,
       });
       res.status(200).json({ success: true });

@@ -119,11 +119,13 @@ const STATUS_CONFIG: Record<
 
 interface SubscriptionsDataTableProps {
   owner: WorkspaceType;
+  metronomeCustomerId: string | null;
   subscriptions: SubscriptionType[];
 }
 
 function prepareSubscriptionsForDisplay(
   owner: WorkspaceType,
+  metronomeCustomerId: string | null,
   subscriptions: SubscriptionType[]
 ): SubscriptionsDisplayType[] {
   return subscriptions.map((s) => {
@@ -132,6 +134,11 @@ function prepareSubscriptionsForDisplay(
       name: s.plan.code,
       status: s.status,
       stripeSubscriptionId: s.stripeSubscriptionId,
+      metronomeContractId: s.metronomeContractId,
+      metronomeContractUrl:
+        s.metronomeContractId && metronomeCustomerId
+          ? getMetronomeContractUrl(metronomeCustomerId, s.metronomeContractId)
+          : null,
       startDate: s.startDate
         ? `${new Date(s.startDate).toLocaleDateString()} ${new Date(
             s.startDate
@@ -150,6 +157,7 @@ function prepareSubscriptionsForDisplay(
 
 export function SubscriptionsDataTable({
   owner,
+  metronomeCustomerId,
   subscriptions,
 }: SubscriptionsDataTableProps) {
   return (
@@ -157,7 +165,11 @@ export function SubscriptionsDataTable({
       <h2 className="text-md mb-4 font-bold">History of subscriptions:</h2>
       <PokeDataTable
         columns={makeColumnsForSubscriptions()}
-        data={prepareSubscriptionsForDisplay(owner, subscriptions)}
+        data={prepareSubscriptionsForDisplay(
+          owner,
+          metronomeCustomerId,
+          subscriptions
+        )}
       />
     </div>
   );
@@ -198,6 +210,7 @@ export function ActiveSubscriptionTable({
             </h2>
             <SubscriptionsHistoryModal
               owner={owner}
+              metronomeCustomerId={metronomeCustomerId}
               subscriptions={subscriptions}
             />
             <UpgradeDowngradeModal
@@ -606,9 +619,11 @@ function UpgradeDowngradeModal({
 
 function SubscriptionsHistoryModal({
   owner,
+  metronomeCustomerId,
   subscriptions,
 }: {
   owner: WorkspaceType;
+  metronomeCustomerId: string | null;
   subscriptions: SubscriptionType[];
 }) {
   return (
@@ -621,7 +636,11 @@ function SubscriptionsHistoryModal({
           <SheetTitle>Workspace subscriptions history</SheetTitle>
         </SheetHeader>
         <SheetContainer>
-          <SubscriptionsDataTable owner={owner} subscriptions={subscriptions} />
+          <SubscriptionsDataTable
+            owner={owner}
+            metronomeCustomerId={metronomeCustomerId}
+            subscriptions={subscriptions}
+          />
         </SheetContainer>
       </SheetContent>
     </Sheet>

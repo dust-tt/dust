@@ -1,10 +1,13 @@
 import config from "@app/lib/api/config";
-import { getConversationFilesBasePath } from "@app/lib/api/files/mount_path";
+import {
+  getConversationFilesBasePath,
+  TOOL_OUTPUTS_FOLDER_NAME,
+} from "@app/lib/api/files/mount_path";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { isSupportedImageContentType } from "@app/types/files";
-import { Err, Ok } from "@app/types/shared/result";
+import { Err, Ok, type Result } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
@@ -130,10 +133,16 @@ function makeFileEntry(
 
 /**
  * List files from a GCS mount point (mounted bucket as source of truth).
+ *
+ * `.processed.<ext>` siblings are filtered out by default — they are
+ * auto-generated artifacts (resized images, transcripts, extracted text) and
+ * the UI file panel should not surface them. The MCP `files__list` tool opts
+ * in via `includeProcessed: true` so the agent can read them directly.
  */
 export async function listGCSMountFiles(
   auth: Authenticator,
-  scope: GCSMountPoint
+  scope: GCSMountPoint,
+  { includeProcessed = false }: { includeProcessed?: boolean } = {}
 ): Promise<GCSMountEntry[]> {
   const owner = auth.getNonNullableWorkspace();
   const prefix = resolvePrefix(owner, scope);
@@ -147,6 +156,11 @@ export async function listGCSMountFiles(
     if (f.name.endsWith("/")) {
       return false;
     }
+
+    if (includeProcessed) {
+      return true;
+    }
+
     const name = f.name.split("/").pop() ?? "";
     return !name.includes(".processed.");
   });
@@ -167,8 +181,12 @@ export async function listGCSMountFiles(
     (f) => {
       const trimmed = f.name.replace(/\/$/, "");
       const name = trimmed.split("/").pop() ?? "";
-      // Skip hidden folders (name starting with ".").
-      if (!name || name.startsWith(".")) {
+      // Skip hidden folders (name starting with "."), except the tool outputs folder which is
+      // surfaced to users despite its dot prefix.
+      if (
+        !name ||
+        (name.startsWith(".") && name !== TOOL_OUTPUTS_FOLDER_NAME)
+      ) {
         return [];
       }
 
@@ -256,25 +274,31 @@ export async function createGCSMountFile(
     content: Buffer;
     contentType: string;
   }
-): Promise<GCSMountFileEntry> {
+): Promise<Result<GCSMountFileEntry, Error>> {
   const owner = auth.getNonNullableWorkspace();
   const prefix = resolvePrefix(owner, scope);
 
   const gcsPath = `${prefix}${relativeFilePath}`;
   const bucket = getPrivateUploadBucket();
-  await bucket.file(gcsPath).save(content, { contentType });
+  try {
+    await bucket.file(gcsPath).save(content, { contentType });
+  } catch (error) {
+    return new Err(normalizeError(error));
+  }
 
   const fileName = relativeFilePath.split("/").pop() ?? relativeFilePath;
-  return makeFileEntry(
-    {
-      fileName,
-      relativeFilePath,
-      sizeBytes: content.length,
-      contentType,
-      lastModifiedMs: Date.now(),
-      fileId: null,
-    },
-    scope,
-    owner.sId
+  return new Ok(
+    makeFileEntry(
+      {
+        fileName,
+        relativeFilePath,
+        sizeBytes: content.length,
+        contentType,
+        lastModifiedMs: Date.now(),
+        fileId: null,
+      },
+      scope,
+      owner.sId
+    )
   );
 }

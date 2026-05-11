@@ -21,6 +21,7 @@ import {
 } from "@app/lib/models/skill/conversation_skill";
 import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import { SkillSuggestionModel } from "@app/lib/models/skill/skill_suggestion";
+import { getWorkspaceDefaultSelfImprovementCapPerSkillMicroUsd } from "@app/lib/reinforcement/consumption";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -370,6 +371,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       const skill = await this.model.create(
         {
           ...blob,
+          selfImprovementCostsCapMicroUsd:
+            getWorkspaceDefaultSelfImprovementCapPerSkillMicroUsd(owner),
           workspaceId: owner.id,
         },
         {
@@ -1551,6 +1554,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         isDefault: !SystemSkillsRegistry.isSystemSkill(def.sId),
         reinforcement: "auto",
         lastReinforcementAnalysisAt: null,
+        selfImprovementCostsCapMicroUsd: 0,
+        selfImprovementLock: false,
       },
       {
         // Global skills do not have data source configurations.
@@ -1810,6 +1815,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           isDefault: versionModel.isDefault,
           reinforcement: "auto",
           lastReinforcementAnalysisAt: null,
+          selfImprovementCostsCapMicroUsd:
+            versionModel.selfImprovementCostsCapMicroUsd,
+          selfImprovementLock: versionModel.selfImprovementLock,
         },
         {
           // We ignore data source configurations for historical versions.
@@ -2019,6 +2027,16 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     reinforcement: SkillReinforcementMode
   ): Promise<void> {
     await this.update({ reinforcement });
+  }
+
+  async updateSelfImprovementLock(selfImprovementLock: boolean): Promise<void> {
+    await this.update({ selfImprovementLock });
+  }
+
+  async updateSelfImprovementCostsCap(
+    selfImprovementCostsCapMicroUsd: number
+  ): Promise<void> {
+    await this.update({ selfImprovementCostsCapMicroUsd });
   }
 
   async recordReinforcementAnalysisCompletion(): Promise<void> {
@@ -2627,6 +2645,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       where: { workspaceId },
     });
 
+    await AgentMessageSkillModel.destroy({
+      where: { workspaceId },
+    });
+
+    await ConversationSkillModel.destroy({
+      where: { workspaceId },
+    });
+
     await SkillConfigurationModel.destroy({
       where: { workspaceId },
     });
@@ -2658,6 +2684,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       reinforcement: this.reinforcement,
       lastReinforcementAnalysisAt:
         this.lastReinforcementAnalysisAt?.toISOString() ?? null,
+      selfImprovementLock: this.selfImprovementLock,
+      selfImprovementCostsCapMicroUsd: this.selfImprovementCostsCapMicroUsd,
       source: this.source,
       sourceMetadata: this.sourceMetadata,
       tools: this.mcpServerViews.map((view) => {

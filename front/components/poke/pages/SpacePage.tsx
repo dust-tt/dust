@@ -1,6 +1,7 @@
 import { DataSourceViewsDataTable } from "@app/components/poke/data_source_views/table";
 import { MCPServerViewsDataTable } from "@app/components/poke/mcp_server_views/table";
 import { MembersDataTable } from "@app/components/poke/members/table";
+import { ProjectPage } from "@app/components/poke/pages/ProjectPage";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { ViewSpaceViewTable } from "@app/components/poke/spaces/view";
 import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
@@ -41,6 +42,10 @@ export function SpacePage() {
   }
 
   const { members, space } = spaceDetails;
+
+  if (spaceDetails.space.kind === "project") {
+    return <ProjectPage details={spaceDetails} />;
+  }
 
   return (
     <>

@@ -397,6 +397,7 @@ export interface MetronomePackageSummary {
   id: string;
   name: string;
   aliases: string[];
+  rateCardId?: string;
 }
 
 // Cache the package list for a few minutes as the catalog rarely changes and
@@ -424,6 +425,7 @@ export async function listMetronomePackages(): Promise<
         id: pkg.id,
         name: pkg.name ?? "",
         aliases: pkg.aliases?.map((a) => a.name) ?? [],
+        rateCardId: pkg.rate_card_id ?? undefined,
       });
     }
     packageListCache = {
@@ -1015,7 +1017,20 @@ export async function listMetronomeDraftInvoices(
 }
 
 export async function listMetronomeBalances(
-  metronomeCustomerId: string
+  metronomeCustomerId: string,
+  {
+    includeArchived = false,
+    coveringDate = new Date(),
+    effectiveBefore,
+  }: {
+    // Pass `null` to drop the `covering_date` filter and return balances of any
+    // date (including expired and, depending on `effectiveBefore`, future ones).
+    coveringDate?: Date | null;
+    // Restrict to balances with any access before this date — used to hide
+    // future-dated balances while still returning expired ones.
+    effectiveBefore?: Date;
+    includeArchived?: boolean;
+  } = {}
 ): Promise<Result<MetronomeBalance[], Error>> {
   if (!config.getMetronomeApiKey()) {
     return new Ok([]);
@@ -1029,7 +1044,13 @@ export async function listMetronomeBalances(
       customer_id: metronomeCustomerId,
       include_balance: true,
       include_contract_balances: true,
-      covering_date: new Date().toISOString(),
+      ...(coveringDate !== null
+        ? { covering_date: coveringDate.toISOString() }
+        : {}),
+      ...(effectiveBefore !== undefined
+        ? { effective_before: effectiveBefore.toISOString() }
+        : {}),
+      ...(includeArchived ? { include_archived: true } : {}),
     })) {
       balances.push(entry);
     }

@@ -98,8 +98,12 @@ export class FileResource extends BaseResource<FileModel> {
   static async makeNew(
     blob: Omit<CreationAttributes<FileModel>, "status" | "sId" | "version">
   ) {
+    // Normalize the user-visible file name to NFC. GCS object names are byte-exact and macOS
+    // uploads commonly arrive in NFD, which breaks lookups when consumers (e.g. LLMs) echo paths
+    // back in NFC. Normalizing on the way in keeps mount paths stable.
     const key = await FileResource.model.create({
       ...blob,
+      fileName: blob.fileName.normalize("NFC"),
       status: "created",
       version: 0,
     });
@@ -591,6 +595,10 @@ export class FileResource extends BaseResource<FileModel> {
    * Returns the file version to read for "best available" content.
    */
   private getContentVersion(): FileVersion {
+    if (this.useCaseMetadata?.skipFileProcessing === true) {
+      return "original";
+    }
+
     return hasProcessedVersion(this.contentType) ? "processed" : "original";
   }
 
@@ -1051,6 +1059,13 @@ export class FileResource extends BaseResource<FileModel> {
     const bucket = getPrivateUploadBucket();
     await bucket.delete(this.mountFilePath, { ignoreNotFound: true });
 
+    if (
+      this.useCaseMetadata?.skipFileProcessing === true ||
+      !hasProcessedVersion(this.contentType)
+    ) {
+      return;
+    }
+
     // Only delete processed mount file if this file type has real processing.
     const processedMountPath = makeProcessedMountFileName({
       mountFilePath: this.mountFilePath,
@@ -1116,7 +1131,7 @@ export class FileResource extends BaseResource<FileModel> {
   }
 
   rename(newFileName: string) {
-    return this.update({ fileName: newFileName });
+    return this.update({ fileName: newFileName.normalize("NFC") });
   }
 
   // Sharing logic.

@@ -34,7 +34,10 @@ vi.mock("@app/lib/api/regions/config", () => ({
 
 import { Authenticator } from "@app/lib/auth";
 import { GEMINI_3_PRO_IMAGE_MODEL_ID } from "@app/types/assistant/models/google_ai_studio";
-import { GPT_IMAGE_2_MODEL_ID } from "@app/types/assistant/models/openai";
+import {
+  GPT_IMAGE_1_5_MODEL_ID,
+  GPT_IMAGE_2_MODEL_ID,
+} from "@app/types/assistant/models/openai";
 
 import { getImageGenerationLLM } from "./getImageGenerationLLM";
 
@@ -189,7 +192,7 @@ describe("getImageGenerationLLM", () => {
     });
   });
 
-  it("returns null in the EU region when only openai is whitelisted", async () => {
+  it("falls back to OpenAI gpt-image-1.5 in the EU region when only openai is whitelisted", async () => {
     mockGetCurrentRegion.mockReturnValue("europe-west1");
     mockIsProviderWhitelisted.mockImplementation(
       (_auth, providerId) => providerId === "openai"
@@ -197,8 +200,14 @@ describe("getImageGenerationLLM", () => {
 
     const llm = await getImageGenerationLLM(auth);
 
-    expect(llm).toBeNull();
-    expect(mockOpenAIImageGenerationLLM).not.toHaveBeenCalled();
+    expect(mockOpenAIImageGenerationLLM).toHaveBeenCalledWith(auth, {
+      modelId: GPT_IMAGE_1_5_MODEL_ID,
+      credentials: CREDENTIALS,
+    });
     expect(mockGoogleImageGenerationLLM).not.toHaveBeenCalled();
+    expect(llm).toEqual({
+      provider: "openai",
+      args: { modelId: GPT_IMAGE_1_5_MODEL_ID, credentials: CREDENTIALS },
+    });
   });
 });

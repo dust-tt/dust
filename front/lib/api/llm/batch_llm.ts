@@ -1,6 +1,10 @@
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { categorizeConversationRenderErrorMessage } from "@app/lib/api/assistant/errors";
+import {
+  type EnabledSkill,
+  renderEquippedSkillsUserMessage,
+} from "@app/lib/api/assistant/skills_rendering";
 import type { LLM } from "@app/lib/api/llm/llm";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import { EventError } from "@app/lib/api/llm/types/events";
@@ -9,7 +13,7 @@ import type {
   LLMStreamParameters,
 } from "@app/lib/api/llm/types/options";
 import { systemPromptToText } from "@app/lib/api/llm/types/options";
-import type { Authenticator } from "@app/lib/auth";
+import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
 import {
   AgentMessageModel,
   MessageModel,
@@ -17,6 +21,7 @@ import {
 } from "@app/lib/models/agent/conversation";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
@@ -33,12 +38,15 @@ import { isTextContent } from "@app/types/assistant/generation";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { removeNulls } from "@app/types/shared/utils/general";
 import type { Transaction } from "sequelize";
 
 export interface LlmConversationOptions
   extends LLMParametersWithoutConversation {
   newMessages: ModelMessageTypeMultiActionsWithoutContentFragment[];
   existingConversationId?: string;
+  enabledSkills?: EnabledSkill[];
+  equippedSkills?: SkillResource[];
   title?: string;
   visibility?: ConversationVisibility;
   metadata?: ConversationMetadata;
@@ -291,6 +299,10 @@ export async function sendBatchCallToLlm(
   const batchMap = new Map<string, LLMStreamParameters>();
 
   const modelConfig = llm.getModelConfig();
+  const renderSkillsAsUserMessages = await hasFeatureFlag(
+    auth,
+    "skills_as_user_messages"
+  );
 
   for (const input of conversations) {
     // Store new messages in DB.
@@ -318,12 +330,19 @@ export async function sendBatchCallToLlm(
       }))
     );
 
+    const { enabledSkills, equippedSkills } = input;
+
+    const leadingMessages = equippedSkills
+      ? removeNulls([renderEquippedSkillsUserMessage(equippedSkills)])
+      : [];
+
     const modelConversationRes = await renderConversationForModel(auth, {
       conversation: conversationRes.value,
       model: modelConfig,
-      // TODO(2026-04-29 aubin): handle this by listing skills for all the agents involved (or maybe the last one?).
-      enabledSkills: [],
+      leadingMessages,
+      enabledSkills: enabledSkills ?? [],
       prompt: promptText,
+      renderSkillsAsUserMessages,
       tools,
       allowedTokenCount:
         modelConfig.contextSize - modelConfig.generationTokensCount,

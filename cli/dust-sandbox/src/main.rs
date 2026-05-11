@@ -1,5 +1,6 @@
 mod api;
 mod commands;
+mod egress_secrets;
 
 use clap::{Parser, Subcommand};
 use tracing::error;

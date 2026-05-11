@@ -1,3 +1,4 @@
+import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/lib/api/files/mount_path";
 import { readWorkspacePolicy } from "@app/lib/api/sandbox/egress_policy";
 import {
   createToolManifest,
@@ -49,8 +50,8 @@ Layout:
   for the user (scripts, exports, reports, charts). Anything you write here
   is delivered to the user as a conversation file. Put deliverables
   directly in this directory; do not write your own files into
-  \`results/\`, that path is managed automatically.
-- \`/files/conversation/results/\` — **tool outputs are automatically
+  \`${TOOL_OUTPUTS_FOLDER_NAME}/\`, that path is managed automatically.
+- \`/files/conversation/${TOOL_OUTPUTS_FOLDER_NAME}/\` — **tool outputs are automatically
   persisted here as a side effect of every tool call you make.** Two cases
   qualify:
   1. Output blocks that represent fetched content (the contents of a
@@ -65,7 +66,7 @@ Layout:
 
 The exact same files are also exposed by the \`files\` MCP server (tools
 \`list\`, \`cat\`, \`grep\`, \`create\`) under scoped paths like
-\`conversation/results/<file>\`. The MCP server and the mount are two views
+\`conversation/${TOOL_OUTPUTS_FOLDER_NAME}/<file>\`. The MCP server and the mount are two views
 on the same underlying conversation storage: a write through one is
 immediately visible through the other.
 
@@ -78,13 +79,18 @@ conversation context, and lets you compose pipelines. Reach for the
 \`files\` MCP server only for a trivial one-shot read where spinning up a
 shell command would be heavier than needed. Never re-call a tool just to
 re-read its output: the previous result is already on disk under
-\`/files/conversation/results/\`.
+\`/files/conversation/${TOOL_OUTPUTS_FOLDER_NAME}/\`.
 
 Typical workflow when a prior tool returned a large output: locate the most
-recent matching file under \`/files/conversation/results/\`, then use
+recent matching file under \`/files/conversation/${TOOL_OUTPUTS_FOLDER_NAME}/\`, then use
 \`jq\` / \`rg\` / \`grep\` to extract just the fields or lines you need,
 instead of paging the whole blob back through \`files__cat\` or re-running
-the tool.`;
+the tool.
+
+For tabular files (CSV, TSV, Excel) under \`/files/conversation\`, code is
+the preferred way to interact with them: analyze them with pandas, DuckDB,
+or the standard csv module. For very large files prefer chunked reads
+(\`pandas.read_csv(..., chunksize=...)\`) or DuckDB to keep memory bounded.`;
 }
 
 function formatWorkspaceAllowlist(domains: string[]): string {

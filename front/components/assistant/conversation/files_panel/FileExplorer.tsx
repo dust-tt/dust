@@ -12,6 +12,7 @@ import { buildSandboxTree } from "@app/components/assistant/conversation/files_p
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useConversationSandboxStatus } from "@app/hooks/conversations/useConversationSandboxStatus";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/lib/api/files/mount_path";
 import { downloadSandboxFile } from "@app/lib/swr/files";
 import logger from "@app/logger/logger";
 import type {
@@ -149,7 +150,7 @@ export function NewFileExplorer({
     const filesAtLevel: GCSMountFileEntry[] = [];
 
     for (const node of currentNodes) {
-      if (node.name.startsWith(".")) {
+      if (node.name.startsWith(".") && node.name !== TOOL_OUTPUTS_FOLDER_NAME) {
         continue;
       }
       if (node.isDirectory) {
@@ -193,6 +194,25 @@ export function NewFileExplorer({
     },
     [openPanel]
   );
+
+  const previewIndex = useMemo(() => {
+    if (!previewFile) {
+      return -1;
+    }
+    return filesAtLevel.findIndex((f) => f.path === previewFile.path);
+  }, [filesAtLevel, previewFile]);
+
+  const handlePreviewPrev = useCallback(() => {
+    if (previewIndex > 0) {
+      setPreviewFile(filesAtLevel[previewIndex - 1] ?? null);
+    }
+  }, [filesAtLevel, previewIndex]);
+
+  const handlePreviewNext = useCallback(() => {
+    if (previewIndex >= 0 && previewIndex < filesAtLevel.length - 1) {
+      setPreviewFile(filesAtLevel[previewIndex + 1] ?? null);
+    }
+  }, [filesAtLevel, previewIndex]);
 
   const handleDownload = useCallback(
     async (entry: GCSMountFileEntry) => {
@@ -241,12 +261,17 @@ export function NewFileExplorer({
     <>
       <div className="flex h-full flex-col">
         <AppLayoutTitle>
-          <div className="flex h-full items-center justify-between">
-            <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
-              File explorer
-            </span>
+          <div className="flex h-full items-center justify-between gap-2">
+            <FileExplorerBreadcrumb
+              folderStack={folderStack}
+              onNavigate={handleBreadcrumbNavigate}
+            />
             <div className="flex items-center gap-2">
               {sandboxStatus && <SandboxStatusChip status={sandboxStatus} />}
+              <FileExplorerViewToggle
+                value={viewMode}
+                onValueChange={setViewMode}
+              />
               <Button
                 variant="ghost"
                 size="sm"
@@ -258,17 +283,6 @@ export function NewFileExplorer({
         </AppLayoutTitle>
 
         <div className="flex flex-1 flex-col overflow-hidden gap-5 pt-5 px-4">
-          <div className="flex shrink-0 items-center justify-between">
-            <FileExplorerBreadcrumb
-              folderStack={folderStack}
-              onNavigate={handleBreadcrumbNavigate}
-            />
-            <FileExplorerViewToggle
-              value={viewMode}
-              onValueChange={setViewMode}
-            />
-          </div>
-
           {isLoading ? (
             <div className="flex flex-1 items-center justify-center">
               <Spinner />
@@ -331,6 +345,12 @@ export function NewFileExplorer({
         isOpen={showPreviewSheet}
         onOpenChange={setShowPreviewSheet}
         onDownload={handleDownload}
+        onPrev={previewIndex > 0 ? handlePreviewPrev : undefined}
+        onNext={
+          previewIndex >= 0 && previewIndex < filesAtLevel.length - 1
+            ? handlePreviewNext
+            : undefined
+        }
       />
     </>
   );

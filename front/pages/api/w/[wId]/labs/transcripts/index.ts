@@ -13,59 +13,58 @@ import {
   isProviderWithDefaultWorkspaceConfiguration,
 } from "@app/types/oauth/lib";
 import { OAuthAPI } from "@app/types/oauth/oauth_api";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 export type GetLabsTranscriptsConfigurationResponseBody = {
   configuration: LabsTranscriptsConfigurationType | null;
 };
 
 // Define provider type separately for better reuse
-export const acceptableTranscriptProvidersCodec = t.union([
-  t.literal("google_drive"),
-  t.literal("modjo"),
+export const acceptableTranscriptProvidersCodec = z.enum([
+  "google_drive",
+  "modjo",
 ]);
 
 export const acceptableTranscriptsWithConnectorProvidersCodec =
-  t.literal("gong");
+  z.literal("gong");
 
-const OAuthConfigSchema = t.type({
+const OAuthConfigSchema = z.object({
   provider: acceptableTranscriptProvidersCodec,
-  connectionId: t.string,
+  connectionId: z.string(),
 });
 
-const ApiKeyConfigSchema = t.type({
+const ApiKeyConfigSchema = z.object({
   provider: acceptableTranscriptProvidersCodec,
-  apiKey: t.string,
+  apiKey: z.string(),
 });
 
-const ConnectorConnectionConfigSchema = t.type({
+const ConnectorConnectionConfigSchema = z.object({
   provider: acceptableTranscriptsWithConnectorProvidersCodec,
-  useConnectorConnection: t.boolean,
+  useConnectorConnection: z.boolean(),
 });
 
-export const PostLabsTranscriptsConfigurationBodySchema = t.union([
+export const PostLabsTranscriptsConfigurationBodySchema = z.union([
   OAuthConfigSchema,
   ApiKeyConfigSchema,
   ConnectorConnectionConfigSchema,
 ]);
 
 export function isApiKeyConfig(
-  config: t.TypeOf<typeof PostLabsTranscriptsConfigurationBodySchema>
-): config is t.TypeOf<typeof ApiKeyConfigSchema> {
+  config: z.infer<typeof PostLabsTranscriptsConfigurationBodySchema>
+): config is z.infer<typeof ApiKeyConfigSchema> {
   return "apiKey" in config;
 }
 
 export function isConnectorConnectionConfig(
-  config: t.TypeOf<typeof PostLabsTranscriptsConfigurationBodySchema>
-): config is t.TypeOf<typeof ConnectorConnectionConfigSchema> {
+  config: z.infer<typeof PostLabsTranscriptsConfigurationBodySchema>
+): config is z.infer<typeof ConnectorConnectionConfigSchema> {
   return "useConnectorConnection" in config;
 }
 
 function getConnectionDetails(
-  validatedBody: t.TypeOf<typeof PostLabsTranscriptsConfigurationBodySchema>
+  validatedBody: z.infer<typeof PostLabsTranscriptsConfigurationBodySchema>
 ) {
   if (isConnectorConnectionConfig(validatedBody)) {
     return { oAuthConnectionId: null, useConnectorConnection: true };
@@ -126,11 +125,10 @@ async function handler(
 
     // Create.
     case "POST":
-      const bodyValidation = PostLabsTranscriptsConfigurationBodySchema.decode(
-        req.body
-      );
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+      const bodyValidation =
+        PostLabsTranscriptsConfigurationBodySchema.safeParse(req.body);
+      if (!bodyValidation.success) {
+        const pathError = fromError(bodyValidation.error).toString();
 
         return apiError(req, res, {
           status_code: 400,
@@ -141,7 +139,7 @@ async function handler(
         });
       }
 
-      const validatedBody = bodyValidation.right;
+      const validatedBody = bodyValidation.data;
       const { provider } = validatedBody;
 
       const { oAuthConnectionId, useConnectorConnection, apiKey } =

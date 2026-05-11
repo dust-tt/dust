@@ -1,6 +1,5 @@
 import { Authenticator } from "@app/lib/auth";
 import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
-import { ProjectTaskStateResource } from "@app/lib/resources/project_task_state_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { ProjectTaskFactory } from "@app/tests/utils/ProjectTaskFactory";
@@ -145,49 +144,6 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/project_tasks/bulk-actions", () => 
     );
     expect(refreshedMyTodo?.status).toBe("done");
     expect(refreshedOtherTodo?.status).toBe("done");
-  });
-
-  it("should clean done todos for the user in the space", async () => {
-    const { user, auth: viewerAuth } = await setup();
-    const project = await SpaceFactory.project(workspace, user.id);
-    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-
-    const doneTodo = await ProjectTaskFactory.create(workspace, project, {
-      userId: user.id,
-    });
-    await doneTodo.updateWithVersion(auth, {
-      status: "done",
-      markedAsDoneByType: "user",
-      markedAsDoneByUserId: user.id,
-      markedAsDoneByAgentConfigurationId: null,
-      doneAt: new Date(),
-    });
-    const openTodo = await ProjectTaskFactory.create(workspace, project, {
-      userId: user.id,
-    });
-
-    req.query.spaceId = project.sId;
-    req.body = { action: "clean_done" };
-
-    await handler(req, res);
-
-    expect(res._getStatusCode()).toBe(200);
-    expect(res._getJSONData()).toEqual({ success: true, cleanedCount: 1 });
-
-    // Cleaning is implemented via a per-user cutoff timestamp (lastCleanedAt),
-    // so direct fetches still work, but list queries should hide older done todos.
-    const state = await ProjectTaskStateResource.fetchBySpace(viewerAuth, {
-      spaceId: project.id,
-    });
-    expect(state?.lastCleanedAt).not.toBeNull();
-
-    const visibleTodos = await ProjectTaskResource.fetchBySpace(viewerAuth, {
-      spaceId: project.id,
-      lastCleanedAt: state?.lastCleanedAt ?? null,
-    });
-    const visibleSIds = new Set(visibleTodos.map((t) => t.sId));
-    expect(visibleSIds.has(doneTodo.sId)).toBe(false);
-    expect(visibleSIds.has(openTodo.sId)).toBe(true);
   });
 
   it("should approve pending agent suggestions in the space", async () => {

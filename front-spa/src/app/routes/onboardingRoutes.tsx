@@ -25,6 +25,11 @@ const CheckoutPage = withSuspense(
   () => import("@dust-tt/front/components/pages/onboarding/CheckoutPage"),
   "CheckoutPage"
 );
+const PaymentProcessingPage = withSuspense(
+  () =>
+    import("@dust-tt/front/components/pages/onboarding/PaymentProcessingPage"),
+  "PaymentProcessingPage"
+);
 
 // Onboarding routes inside workspace (paywall-whitelisted)
 export const onboardingRoutes: RouteObject[] = [
@@ -56,6 +61,11 @@ export const onboardingRoutes: RouteObject[] = [
   {
     path: "subscription/checkout",
     element: <CheckoutPage />,
+    handle: { requireCanUseProduct: false },
+  },
+  {
+    path: "subscription/payment_processing",
+    element: <PaymentProcessingPage />,
     handle: { requireCanUseProduct: false },
   },
 ];

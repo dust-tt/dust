@@ -18,20 +18,22 @@ function buildKey(
 export function useDataClassificationLabels({
   owner,
   source,
+  disabled,
 }: {
   owner: LightWorkspaceType;
   source: SensitivityLabelSource;
+  disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
   const key = buildKey(owner, source);
   const { data, error, mutate } = useSWRWithDefaults<
     string,
     DataClassificationLabelsResponseBody
-  >(key, fetcher);
+  >(key, fetcher, { disabled });
 
   return {
     dataClassificationLabels: data,
-    isDataClassificationLabelsLoading: !error && !data,
+    isDataClassificationLabelsLoading: !disabled && !error && !data,
     isDataClassificationLabelsError: error,
     mutateDataClassificationLabels: mutate,
   };

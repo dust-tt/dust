@@ -122,6 +122,7 @@
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getOrCreateConversationDataSourceFromFile } from "@app/lib/api/data_sources";
 import { processAndStoreFile } from "@app/lib/api/files/processing";
+import { isSandboxRawDelimitedConversationFile } from "@app/lib/api/files/sandbox_raw";
 import {
   isFileTypeUpsertableForUseCase,
   processAndUpsertToDataSource,
@@ -436,6 +437,7 @@ async function handler(
       // For files with useCase "conversation" that support upsert, directly add them to the data source.
       if (
         file.useCase === "conversation" &&
+        !isSandboxRawDelimitedConversationFile(file) &&
         isFileTypeUpsertableForUseCase(file)
       ) {
         const jitDataSource = await getOrCreateConversationDataSourceFromFile(
