@@ -1,5 +1,7 @@
 import * as workosClient from "@app/lib/api/workos/client";
+import { Authenticator } from "@app/lib/auth";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { faker } from "@faker-js/faker";
 import type { Organization } from "@workos-inc/node";
@@ -466,6 +468,70 @@ describe("POST /api/w/[wId]", () => {
           reinforcementCapMicroUsd: 0,
         }),
       }),
+    });
+  });
+
+  it("disables audit logs UI", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
+
+    req.body = { disableAuditLogsUi: true };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(res._getJSONData()).toEqual({
+      workspace: expect.objectContaining({
+        id: workspace.id,
+        metadata: expect.objectContaining({
+          disableAuditLogsUi: true,
+        }),
+      }),
+    });
+  });
+
+  it("enables audit logs UI", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
+
+    req.body = { disableAuditLogsUi: false };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(res._getJSONData()).toEqual({
+      workspace: expect.objectContaining({
+        id: workspace.id,
+        metadata: expect.objectContaining({
+          disableAuditLogsUi: false,
+        }),
+      }),
+    });
+  });
+
+  it("returns 403 when disable_audit_logs_ui feature flag is set", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
+
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    await FeatureFlagFactory.basic(auth, "disable_audit_logs_ui");
+
+    req.body = { disableAuditLogsUi: true };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(403);
+    expect(res._getJSONData()).toEqual({
+      error: {
+        type: "feature_flag_not_found",
+        message: "Audit logs UI configuration is not enabled for this workspace.",
+      },
     });
   });
 

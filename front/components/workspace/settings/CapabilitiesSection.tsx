@@ -1,3 +1,4 @@
+import { AuditLogsUiToggle } from "@app/components/workspace/settings/AuditLogsUiToggle";
 import { EmailAgentsToggle } from "@app/components/workspace/settings/EmailAgentsToggle";
 import { InteractiveContentSharingToggle } from "@app/components/workspace/settings/InteractiveContentSharingToggle";
 import { OpenProjectsPolicy } from "@app/components/workspace/settings/OpenProjectsPolicy";
@@ -5,7 +6,7 @@ import { PrivateConversationUrlsToggle } from "@app/components/workspace/setting
 import { ProjectKnowledgePolicy } from "@app/components/workspace/settings/ProjectKnowledgePolicy";
 import { RestrictAgentsPublishingCapability } from "@app/components/workspace/settings/RestrictAgentsPublishingCapability";
 import { VoiceTranscriptionToggle } from "@app/components/workspace/settings/VoiceTranscriptionToggle";
-import { useAuth } from "@app/lib/auth/AuthContext";
+import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { WorkspaceType } from "@app/types/user";
 import { ContextItem, Page } from "@dust-tt/sparkle";
 
@@ -19,6 +20,10 @@ export function CapabilitiesSection({
   publishingRestrictionMessage,
 }: CapabilitiesSectionProps) {
   const { subscription } = useAuth();
+  const { hasFeature } = useFeatureFlags();
+  const hasAuditLogsAccess =
+    (subscription.plan.isAuditLogsAllowed || hasFeature("audit_logs")) &&
+    !hasFeature("disable_audit_logs_ui");
 
   return (
     <Page.Vertical align="stretch" gap="md">
@@ -33,6 +38,7 @@ export function CapabilitiesSection({
         <ProjectKnowledgePolicy owner={owner} />
         <EmailAgentsToggle owner={owner} />
         <PrivateConversationUrlsToggle owner={owner} />
+        {hasAuditLogsAccess && <AuditLogsUiToggle owner={owner} />}
         {publishingRestrictionMessage && (
           <RestrictAgentsPublishingCapability
             subElement={publishingRestrictionMessage}

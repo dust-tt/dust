@@ -69,6 +69,8 @@ type AuditAction =
   | "sandbox_env_var.deleted"
   | "sandbox_env_var.promoted_to_https_secret"
   | "sandbox_env_var.updated"
+  // Workspace settings.
+  | "workspace.audit_logs_ui_updated"
   // SCIM / Directory Sync.
   | "scim.user_provisioned"
   | "scim.user_updated"

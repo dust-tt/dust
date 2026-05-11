@@ -115,6 +115,10 @@ const WorkspaceSelfImprovementCapPerSkillUpdateBodySchema = z.object({
   selfImprovementCapPerSkillMicroUsd: z.number(),
 });
 
+const WorkspaceAuditLogsUiUpdateBodySchema = z.object({
+  disableAuditLogsUi: z.boolean(),
+});
+
 const PostWorkspaceRequestBodySchema = z.union([
   WorkspaceAllowedDomainUpdateBodySchema,
   WorkspaceBatchDomainUpdateBodySchema,
@@ -135,6 +139,7 @@ const PostWorkspaceRequestBodySchema = z.union([
   WorkspaceSandboxAgentEgressRequestsUpdateBodySchema,
   WorkspaceReinforcementCapUpdateBodySchema,
   WorkspaceSelfImprovementCapPerSkillUpdateBodySchema,
+  WorkspaceAuditLogsUiUpdateBodySchema,
 ]);
 
 async function handler(
@@ -384,6 +389,33 @@ async function handler(
           context: getAuditLogContext(auth, req),
           metadata: {
             enabled: String(body.sandboxAllowAgentEgressRequests),
+          },
+        });
+      } else if ("disableAuditLogsUi" in body) {
+        if (await hasFeatureFlag(auth, "disable_audit_logs_ui")) {
+          return apiError(req, res, {
+            status_code: 403,
+            api_error: {
+              type: "feature_flag_not_found",
+              message:
+                "Audit logs UI configuration is not enabled for this workspace.",
+            },
+          });
+        }
+        const previousMetadata = owner.metadata ?? {};
+        const newMetadata = {
+          ...previousMetadata,
+          disableAuditLogsUi: body.disableAuditLogsUi,
+        };
+        await workspace.updateWorkspaceSettings({ metadata: newMetadata });
+        owner.metadata = newMetadata;
+        void emitAuditLogEvent({
+          auth,
+          action: "workspace.audit_logs_ui_updated",
+          targets: [buildAuditLogTarget("workspace", owner)],
+          context: getAuditLogContext(auth, req),
+          metadata: {
+            enabled: String(!body.disableAuditLogsUi),
           },
         });
       } else if ("domainUpdates" in body) {

@@ -1,0 +1,11 @@
+{
+  "action": "workspace.audit_logs_ui_updated",
+  "targets": [
+    {
+      "type": "workspace"
+    }
+  ],
+  "metadata": {
+    "enabled": "string"
+  }
+}

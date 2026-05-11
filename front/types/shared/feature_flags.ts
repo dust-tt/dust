@@ -17,6 +17,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Enable audit log emission via WorkOS",
     stage: "dust_only",
   },
+  disable_audit_logs_ui: {
+    description: "Hide the audit logs section in the workspace admin UI",
+    stage: "dust_only",
+  },
   custom_model_feature: {
     description: "Access to custom models loaded from external config",
     stage: "dust_only",
