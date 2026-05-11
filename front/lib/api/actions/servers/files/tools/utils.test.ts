@@ -1,8 +1,8 @@
 import { resolveMountPoint } from "@app/lib/api/actions/servers/files/tools/utils";
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import { Authenticator } from "@app/lib/auth";
-import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import assert from "assert";
 import { describe, expect, it } from "vitest";
 
