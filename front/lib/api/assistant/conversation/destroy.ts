@@ -53,6 +53,12 @@ async function destroyActionsRelatedResources(
     mcpActions.map((a) => a.id)
   );
 
+  // Destroy the StepContent <-> ToolExecution links.
+  await AgentMCPActionResource.destroyStepContentToolExecutionByActionIds(
+    auth,
+    mcpActions.map((a) => a.id)
+  );
+
   // Destroy the actions.
   await AgentMCPActionResource.deleteByAgentMessageId(auth, {
     agentMessageIds,

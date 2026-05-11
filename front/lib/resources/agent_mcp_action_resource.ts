@@ -920,6 +920,20 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     });
   }
 
+  static async destroyStepContentToolExecutionByActionIds(
+    auth: Authenticator,
+    actionIds: ModelId[]
+  ) {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    await AgentStepContentToolExecutionModel.destroy({
+      where: {
+        workspaceId,
+        agentMCPActionId: { [Op.in]: actionIds },
+      },
+    });
+  }
+
   static async enrichActionsWithOutputItems(
     auth: Authenticator,
     {
@@ -1143,6 +1157,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
   ): Promise<Result<undefined, Error>> {
     try {
       const workspaceId = auth.getNonNullableWorkspace().id;
+
       await AgentMCPActionModel.destroy({
         where: {
           agentMessageId: { [Op.in]: params.agentMessageIds },
@@ -1161,6 +1176,14 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
     try {
+      await AgentStepContentToolExecutionModel.destroy({
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          agentMCPActionId: this.id,
+        },
+        transaction,
+      });
+
       await AgentMCPActionModel.destroy({
         where: {
           workspaceId: auth.getNonNullableWorkspace().id,
