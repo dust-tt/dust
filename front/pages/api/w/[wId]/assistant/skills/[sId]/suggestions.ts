@@ -147,7 +147,8 @@ async function handler(
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: "Reinforcement is not enabled for this workspace.",
+            message:
+              "Self-improving skills are not enabled for this workspace.",
           },
         });
       }

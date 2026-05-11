@@ -87,7 +87,7 @@ export type SubNavigationAdminId =
   | "analytics"
   | "credits_usage"
   | "usage"
-  | "reinforcement";
+  | "self_improving_skills";
 
 export const ADMIN_ROUTE_PATTERNS: Record<SubNavigationAdminId, string[]> = {
   members: ["/w/[wId]/members"],
@@ -101,7 +101,7 @@ export const ADMIN_ROUTE_PATTERNS: Record<SubNavigationAdminId, string[]> = {
   dev_secrets: ["/w/[wId]/developers/dev-secrets"],
   sandbox: ["/w/[wId]/developers/sandbox"],
   usage: ["/w/[wId]/usage"],
-  reinforcement: ["/w/[wId]/developers/reinforcement"],
+  self_improving_skills: ["/w/[wId]/developers/self-improving-skills"],
 };
 
 export type SubNavigationAppId =
@@ -212,7 +212,7 @@ export const getTopNavigationTabs = (
           "/w/[wId]/developers/dev-secrets",
           "/w/[wId]/developers/sandbox",
           "/w/[wId]/usage",
-          "/w/[wId]/developers/reinforcement",
+          "/w/[wId]/developers/self-improving-skills",
         ]),
       sizing: "hug",
     });
@@ -342,11 +342,11 @@ export const subNavigationAdmin = ({
           featureFlag: "sandbox_workspace_admin",
         },
         {
-          id: "reinforcement",
-          label: "Reinforcement",
+          id: "self_improving_skills",
+          label: "Self-Improving Skills",
           icon: SparklesIcon,
-          href: `/w/${owner.sId}/developers/reinforcement`,
-          current: isCurrent("reinforcement"),
+          href: `/w/${owner.sId}/developers/self-improving-skills`,
+          current: isCurrent("self_improving_skills"),
           featureFlag: "reinforcement_ui",
         },
       ],

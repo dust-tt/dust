@@ -34,7 +34,7 @@ export function ReinforcementSection({ owner }: ReinforcementSectionProps) {
       <ContextItem.List>
         <div className="h-full border-b border-border dark:border-border-night" />
         <ContextItem
-          title="Allow reinforcement"
+          title="Allow self-improving skills"
           visual={<SparklesIcon className="h-6 w-6 shrink-0" />}
           hasSeparatorIfLast={true}
           action={
@@ -206,7 +206,7 @@ function ReinforcementCapItem({ owner }: ReinforcementSectionProps) {
         </form>
       }
     >
-      <ContextItem.Description description="Reinforcement is priced as programmatic usage. This is the maximum cost per month (in USD) for the feature across all skills. Once reached, no new reinforcement runs are started until the next billing month." />
+      <ContextItem.Description description="Self-improving skills is priced as programmatic usage. This is the maximum cost per month (in USD) for the feature across all skills. Once reached, no new self-improving runs are started until the next billing month." />
     </ContextItem>
   );
 }
