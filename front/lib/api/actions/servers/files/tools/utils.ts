@@ -82,9 +82,12 @@ export async function resolveConversationFile(
   // been re-keyed or aged out. Uploads are now normalized to NFC at FileResource.makeNew.
   const nfc = gcsPath.normalize("NFC");
   const nfd = gcsPath.normalize("NFD");
+  const candidates = [gcsPath];
+
   if (nfc !== gcsPath) {
     candidates.push(nfc);
   }
+
   if (nfd !== gcsPath && nfd !== nfc) {
     candidates.push(nfd);
   }
@@ -110,6 +113,11 @@ export async function resolveConversationFile(
   }
 
   return new Err(
+    new MCPError(
+      `File not found: \`${path}\`. Error: ${normalizeError(lastError).message}`,
+      { tracked: false }
+    )
+  );
 }
 
 // TODO(20260429 FILE SYSTEM): Find a more exhaustive approach to cover more files.
