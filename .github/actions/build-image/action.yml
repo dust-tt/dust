@@ -223,6 +223,31 @@ runs:
             ${build_args[@]} \
             --push \
             .
+
+          # Build front-api target (Hono server with Next.js fallback — strangler shim).
+          # Lives in its own Dockerfile because it does not use Next.js standalone output
+          # and ships a different runtime entry point. Its base-deps stage is independent.
+          LATEST_TAGS_FRONT_API=()
+          if [[ "$ENV" == "prod" && "$COMPONENT" == "$BASE_COMPONENT" && "${{ github.ref_name }}" == "main" ]]; then
+            LATEST_TAGS_FRONT_API+=("-t" "${REGISTRY}/${COMPONENT}-api:latest")
+          fi
+          depot build \
+            --project $DEPOT_PROJECT_ID \
+            --platform linux/amd64 \
+            --provenance=false \
+            --target front-api \
+            --cache-from type=gha,scope=${{ inputs.component }}-front-api-deps \
+            --cache-from type=gha,scope=${{ inputs.component }}-front-api \
+            --cache-to type=gha,mode=max,scope=${{ inputs.component }}-front-api-deps \
+            --cache-to type=gha,mode=max,scope=${{ inputs.component }}-front-api \
+            -f ./dockerfiles/front-api.Dockerfile \
+            -t ${{ inputs.region }}-docker.pkg.dev/${{ inputs.project_id }}/dust-images/${COMPONENT}-api:${{ inputs.commit_sha }} \
+            "${LATEST_TAGS_FRONT_API[@]}" \
+            --build-arg COMMIT_HASH=${{ inputs.commit_sha }} \
+            --build-arg COMMIT_HASH_LONG=${{ inputs.commit_sha_long }} \
+            ${build_args[@]} \
+            --push \
+            .
         else
           # Standard single-target build for other components
           depot build \

@@ -24,6 +24,7 @@ on:
           - front
           - front-edge
           - front-sse
+          - front-api
           - prodbox
           - oauth
           - viz
@@ -169,7 +170,7 @@ jobs:
         with:
           commit_sha_long: ${{ needs.prepare.outputs.long_sha }}
           commit_sha: ${{ needs.prepare.outputs.short_sha }}
-          component: ${{ inputs.component == 'front-sse' && 'front' || inputs.component }}
+          component: ${{ (inputs.component == 'front-sse' || inputs.component == 'front-api') && 'front' || inputs.component }}
           dd_api_key: ${{ secrets.DD_API_KEY }}
           dd_client_token: ${{ secrets.DD_CLIENT_TOKEN }}
           depot_eu_project_id: ${{ secrets.DEPOT_EU_PROJECT_ID }}
