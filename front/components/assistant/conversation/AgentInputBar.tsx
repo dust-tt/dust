@@ -28,6 +28,7 @@ import { describeWakeUpSchedule } from "@app/lib/utils/wakeup_description";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import {
   isRichAgentMention,
+  isRichUserMention,
   toRichAgentMentionType,
 } from "@app/types/assistant/mentions";
 import { pluralize } from "@app/types/shared/utils/string_utils";
@@ -145,8 +146,26 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
       ? `Conversation paused - a wake-up is scheduled ${describeWakeUpSchedule(activeWakeUp)}`
       : null;
 
+  // Extract user mentions from the last user message so they can be carried
+  // forward as sticky mentions (inserted into the editor ).
+  const lastMessageUserMentions = useMemo(() => {
+    const mentions = lastUserMessage?.richMentions ?? [];
+    return mentions.filter(isRichUserMention);
+  }, [lastUserMessage]);
+
   const autoMentions = useMemo(() => {
-    // If we are in the agent builder, we show the draft agent as the sticky mention, all the time.
+    // If the user's last message contains only human mentions (no agent),
+    // prefill with just those human mentions.
+    const lastMsgAllMentions = lastUserMessage?.richMentions ?? [];
+    const lastMsgHasAgent = lastMsgAllMentions.some(isRichAgentMention);
+    if (
+      lastMessageUserMentions.length > 0 &&
+      !lastMsgHasAgent
+    ) {
+      return lastMessageUserMentions;
+    }
+
+        // If we are in the agent builder, we show the draft agent as the sticky mention, all the time.
     // Especially since the draft agent have a new sId every time it is updated.
     if (draftAgent) {
       return [toRichAgentMentionType(draftAgent)];
@@ -166,8 +185,8 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
     // @sidekick is not available in accessibleAgentIds so we need to skip it
     if (agentBuilderContext) {
       return lastAgentMentionInConversation
-        ? [lastAgentMentionInConversation]
-        : [];
+          ? [lastAgentMentionInConversation]
+          : [];
     }
 
     if (
@@ -177,18 +196,23 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
       return [lastAgentMentionInConversation];
     }
 
-    // Ultimate fallback: select the "dust" agent if available.
-    const dustAgent = agentConfigurations.find(
-      (a) => a.sId === GLOBAL_AGENTS_SID.DUST
-    );
-    if (dustAgent) {
-      return [toRichAgentMentionType(dustAgent)];
+    // Fall back to @dust only for new conversations. In existing conversations
+    // where messages are still loading, don't default — wait for messages.
+    if (!context.conversation) {
+      const dustAgent = agentConfigurations.find(
+        (a) => a.sId === GLOBAL_AGENTS_SID.DUST
+      );
+      if (dustAgent) {
+        return [toRichAgentMentionType(dustAgent)];
+      }
     }
 
     return [];
   }, [
+    context.conversation,
     draftAgent,
     lastUserMessage,
+    lastMessageUserMentions,
     lastAgentMentionInConversation,
     accessibleAgentIds,
     agentConfigurations,

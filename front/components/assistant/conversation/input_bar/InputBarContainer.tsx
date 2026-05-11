@@ -32,6 +32,7 @@ import type {
 } from "@app/types/assistant/mentions";
 import {
   isRichAgentMention,
+  isRichUserMention,
   toRichAgentMentionType,
 } from "@app/types/assistant/mentions";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
@@ -826,7 +827,7 @@ const InputBarContainer = ({
 
   // Restore draft text when switching conversations (including new conversations).
   // Agent selection is handled by useHandleMention.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
+    // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (
       !editor ||
@@ -837,26 +838,25 @@ const InputBarContainer = ({
       return;
     }
 
-    const draft = getDraft();
-    const editorContainsOnlyStickyMentions =
-      !editorService.isEmpty() &&
-      editorService.getTrimmedText() === stickyMentionsTextContent.current;
-    // Only restore draft if editor is empty to avoid overwriting existing content or sticky mentions.
-    if (
-      draft &&
-      (editorService.isEmpty() || editorContainsOnlyStickyMentions)
-    ) {
-      // Strip agent mentions from the draft text since the agent is handled
-      // by the picker button, not inline in the editor. This handles drafts
-      // saved before single-agent mode was enabled.
-      const draftText = draft.text
-        .replace(/:mention\[[^\]]*\]\{sId=[^}]*\}\s*/g, "")
-        .trim();
+    // Only restore draft if editor is empty to avoid overwriting existing content.
+    if (!editorService.isEmpty()) {
+      return;
+    }
 
-      // Schedule content restoration to avoid flushing during render lifecycle.
-      queueMicrotask(() =>
-        editorService.setContent(draftText, { focus: !disableAutoFocus })
-      );
+    const draft = getDraft();
+
+    if (draft) {
+        // Schedule content restoration to avoid flushing during render lifecycle.
+        queueMicrotask(() =>
+          editorService.setContent(draft.text, { focus: !disableAutoFocus })
+        );
+        return;
+    }
+
+    // No draft — insert sticky user mentions into the editor
+    const stickyUserMentions = stickyMentions?.filter(isRichUserMention) ?? [];
+    if (stickyUserMentions.length > 0) {
+      editorService.resetWithMentions(stickyUserMentions, disableAutoFocus);
     }
   }, [
     conversation,
@@ -865,12 +865,13 @@ const InputBarContainer = ({
     editor?.isEditable,
     editorService,
     getDraft,
+    stickyMentions,
+    disableAutoFocus,
   ]);
 
-  const { stickyMentionsTextContent } = useHandleMentions({
+  useHandleMentions({
     allAgents,
     conversation,
-    disableAutoFocus,
     editorService,
     getDraft,
     isAgentBuilder,
