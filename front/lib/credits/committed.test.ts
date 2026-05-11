@@ -13,9 +13,8 @@ import {
   getCreditAmountFromInvoice,
   getCreditPurchaseCouponId,
   isCreditPurchaseInvoice,
-  isEnterpriseSubscription,
   MAX_PRO_INVOICE_ATTEMPTS_BEFORE_VOIDED,
-  makeCreditPurchaseOneOffInvoice,
+  makeCreditPurchaseOneOffInvoiceForSubscription,
   payInvoice,
   voidInvoiceWithReason,
 } from "@app/lib/plans/stripe";
@@ -25,38 +24,19 @@ import { Err, Ok } from "@app/types/shared/result";
 import type Stripe from "stripe";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const MONTH_SECONDS = 30 * 24 * 60 * 60;
-const NOW = 1700000000; // Fixed timestamp for tests
-
 vi.mock("@app/lib/plans/stripe", async () => {
   const actual = await vi.importActual("@app/lib/plans/stripe");
   return {
     ...actual,
-    isEnterpriseSubscription: vi.fn(),
     isCreditPurchaseInvoice: vi.fn(),
     getCreditAmountFromInvoice: vi.fn(),
     voidInvoiceWithReason: vi.fn(),
     getCreditPurchaseCouponId: vi.fn(),
-    makeCreditPurchaseOneOffInvoice: vi.fn(),
+    makeCreditPurchaseOneOffInvoiceForSubscription: vi.fn(),
     finalizeInvoice: vi.fn(),
     payInvoice: vi.fn(),
   };
 });
-
-function makeProSubscription(
-  overrides: Partial<Stripe.Subscription> = {}
-): Stripe.Subscription {
-  return {
-    id: "sub_pro",
-    current_period_start: NOW,
-    current_period_end: NOW + MONTH_SECONDS,
-    start_date: NOW - MONTH_SECONDS * 3,
-    status: "active",
-    customer: "cus_123",
-    items: { data: [], has_more: false, object: "list", url: "" },
-    ...overrides,
-  } as Stripe.Subscription;
-}
 
 function makeCreditPurchaseInvoice(
   overrides: Partial<Stripe.Invoice> = {}
@@ -85,53 +65,23 @@ describe("startCreditFromProOneOffInvoice", () => {
 
   it("should throw when invoice is not a credit purchase invoice", async () => {
     vi.mocked(isCreditPurchaseInvoice).mockReturnValue(false);
-    vi.mocked(isEnterpriseSubscription).mockReturnValue(false);
 
     const invoice = makeCreditPurchaseInvoice();
-    const subscription = makeProSubscription();
 
     await expect(
-      startCreditFromProOneOffInvoice({
-        auth,
-        invoice,
-        stripeSubscription: subscription,
-      })
+      startCreditFromProOneOffInvoice({ auth, invoice })
     ).rejects.toThrow("Cannot process this invoice for credit purchase");
 
     expect(isCreditPurchaseInvoice).toHaveBeenCalledWith(invoice);
   });
 
-  it("should throw when subscription is enterprise", async () => {
-    vi.mocked(isCreditPurchaseInvoice).mockReturnValue(true);
-    vi.mocked(isEnterpriseSubscription).mockReturnValue(true);
-
-    const invoice = makeCreditPurchaseInvoice();
-    const subscription = makeProSubscription();
-
-    await expect(
-      startCreditFromProOneOffInvoice({
-        auth,
-        invoice,
-        stripeSubscription: subscription,
-      })
-    ).rejects.toThrow("Cannot process this invoice for credit purchase");
-
-    expect(isEnterpriseSubscription).toHaveBeenCalledWith(subscription);
-  });
-
   it("should return error when credit amount metadata is invalid", async () => {
     vi.mocked(isCreditPurchaseInvoice).mockReturnValue(true);
-    vi.mocked(isEnterpriseSubscription).mockReturnValue(false);
     vi.mocked(getCreditAmountFromInvoice).mockReturnValue(null);
 
     const invoice = makeCreditPurchaseInvoice();
-    const subscription = makeProSubscription();
 
-    const result = await startCreditFromProOneOffInvoice({
-      auth,
-      invoice,
-      stripeSubscription: subscription,
-    });
+    const result = await startCreditFromProOneOffInvoice({ auth, invoice });
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
@@ -143,17 +93,11 @@ describe("startCreditFromProOneOffInvoice", () => {
 
   it("should return error when credit not found for invoice", async () => {
     vi.mocked(isCreditPurchaseInvoice).mockReturnValue(true);
-    vi.mocked(isEnterpriseSubscription).mockReturnValue(false);
     vi.mocked(getCreditAmountFromInvoice).mockReturnValue(10000);
 
     const invoice = makeCreditPurchaseInvoice();
-    const subscription = makeProSubscription();
 
-    const result = await startCreditFromProOneOffInvoice({
-      auth,
-      invoice,
-      stripeSubscription: subscription,
-    });
+    const result = await startCreditFromProOneOffInvoice({ auth, invoice });
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
@@ -163,11 +107,9 @@ describe("startCreditFromProOneOffInvoice", () => {
 
   it("should start credit successfully when all conditions met", async () => {
     vi.mocked(isCreditPurchaseInvoice).mockReturnValue(true);
-    vi.mocked(isEnterpriseSubscription).mockReturnValue(false);
     vi.mocked(getCreditAmountFromInvoice).mockReturnValue(10000);
 
     const invoice = makeCreditPurchaseInvoice();
-    const subscription = makeProSubscription();
 
     await CreditResource.makeNew(auth, {
       type: "committed",
@@ -176,11 +118,7 @@ describe("startCreditFromProOneOffInvoice", () => {
       invoiceOrLineItemId: invoice.id,
     });
 
-    const result = await startCreditFromProOneOffInvoice({
-      auth,
-      invoice,
-      stripeSubscription: subscription,
-    });
+    const result = await startCreditFromProOneOffInvoice({ auth, invoice });
 
     expect(result.isOk()).toBe(true);
     const credits = await CreditResource.listAll(auth);
@@ -200,35 +138,11 @@ describe("startCreditFromEnterpriseOneOffInvoice", () => {
 
   it("should throw when invoice is not a credit purchase invoice", async () => {
     vi.mocked(isCreditPurchaseInvoice).mockReturnValue(false);
-    vi.mocked(isEnterpriseSubscription).mockReturnValue(true);
 
     const invoice = makeCreditPurchaseInvoice();
-    const subscription = makeProSubscription();
 
     await expect(
-      startCreditFromEnterpriseOneOffInvoice({
-        auth,
-        invoice,
-        stripeSubscription: subscription,
-      })
-    ).rejects.toThrow(
-      "Cannot process this invoice for enterprise credit purchase"
-    );
-  });
-
-  it("should throw when subscription is not enterprise", async () => {
-    vi.mocked(isCreditPurchaseInvoice).mockReturnValue(true);
-    vi.mocked(isEnterpriseSubscription).mockReturnValue(false);
-
-    const invoice = makeCreditPurchaseInvoice();
-    const subscription = makeProSubscription();
-
-    await expect(
-      startCreditFromEnterpriseOneOffInvoice({
-        auth,
-        invoice,
-        stripeSubscription: subscription,
-      })
+      startCreditFromEnterpriseOneOffInvoice({ auth, invoice })
     ).rejects.toThrow(
       "Cannot process this invoice for enterprise credit purchase"
     );
@@ -236,16 +150,13 @@ describe("startCreditFromEnterpriseOneOffInvoice", () => {
 
   it("should return error when credit amount metadata is invalid", async () => {
     vi.mocked(isCreditPurchaseInvoice).mockReturnValue(true);
-    vi.mocked(isEnterpriseSubscription).mockReturnValue(true);
     vi.mocked(getCreditAmountFromInvoice).mockReturnValue(null);
 
     const invoice = makeCreditPurchaseInvoice();
-    const subscription = makeProSubscription();
 
     const result = await startCreditFromEnterpriseOneOffInvoice({
       auth,
       invoice,
-      stripeSubscription: subscription,
     });
 
     expect(result.isErr()).toBe(true);
@@ -258,16 +169,13 @@ describe("startCreditFromEnterpriseOneOffInvoice", () => {
 
   it("should return error when credit not found for invoice", async () => {
     vi.mocked(isCreditPurchaseInvoice).mockReturnValue(true);
-    vi.mocked(isEnterpriseSubscription).mockReturnValue(true);
     vi.mocked(getCreditAmountFromInvoice).mockReturnValue(10000);
 
     const invoice = makeCreditPurchaseInvoice();
-    const subscription = makeProSubscription();
 
     const result = await startCreditFromEnterpriseOneOffInvoice({
       auth,
       invoice,
-      stripeSubscription: subscription,
     });
 
     expect(result.isErr()).toBe(true);
@@ -278,11 +186,9 @@ describe("startCreditFromEnterpriseOneOffInvoice", () => {
 
   it("should be idempotent and return alreadyStarted:true when credit was started optimistically", async () => {
     vi.mocked(isCreditPurchaseInvoice).mockReturnValue(true);
-    vi.mocked(isEnterpriseSubscription).mockReturnValue(true);
     vi.mocked(getCreditAmountFromInvoice).mockReturnValue(10000);
 
     const invoice = makeCreditPurchaseInvoice();
-    const subscription = makeProSubscription();
 
     const credit = await CreditResource.makeNew(auth, {
       type: "committed",
@@ -299,7 +205,6 @@ describe("startCreditFromEnterpriseOneOffInvoice", () => {
     const result = await startCreditFromEnterpriseOneOffInvoice({
       auth,
       invoice,
-      stripeSubscription: subscription,
     });
 
     expect(result.isOk()).toBe(true);
@@ -312,11 +217,9 @@ describe("startCreditFromEnterpriseOneOffInvoice", () => {
 
   it("should start credit and return alreadyStarted:false when credit was not started optimistically", async () => {
     vi.mocked(isCreditPurchaseInvoice).mockReturnValue(true);
-    vi.mocked(isEnterpriseSubscription).mockReturnValue(true);
     vi.mocked(getCreditAmountFromInvoice).mockReturnValue(10000);
 
     const invoice = makeCreditPurchaseInvoice();
-    const subscription = makeProSubscription();
 
     await CreditResource.makeNew(auth, {
       type: "committed",
@@ -328,7 +231,6 @@ describe("startCreditFromEnterpriseOneOffInvoice", () => {
     const result = await startCreditFromEnterpriseOneOffInvoice({
       auth,
       invoice,
-      stripeSubscription: subscription,
     });
 
     expect(result.isOk()).toBe(true);
@@ -449,7 +351,7 @@ describe("createEnterpriseCreditPurchase", () => {
   });
 
   it("should create invoice with send_invoice collection method and N+30 days", async () => {
-    vi.mocked(makeCreditPurchaseOneOffInvoice).mockResolvedValue(
+    vi.mocked(makeCreditPurchaseOneOffInvoiceForSubscription).mockResolvedValue(
       new Ok({ id: "in_enterprise" } as Stripe.Invoice)
     );
     vi.mocked(finalizeInvoice).mockResolvedValue(
@@ -458,22 +360,27 @@ describe("createEnterpriseCreditPurchase", () => {
 
     await createEnterpriseCreditPurchase({
       auth,
-      stripeSubscriptionId: subscriptionId,
+      billingTarget: {
+        type: "stripe-subscription",
+        stripeSubscriptionId: subscriptionId,
+      },
       amountMicroUsd: 5_000_000_000,
     });
 
-    expect(makeCreditPurchaseOneOffInvoice).toHaveBeenCalledWith({
-      stripeSubscriptionId: subscriptionId,
-      amountMicroUsd: 5_000_000_000,
-      couponId: undefined,
-      collectionMethod: "send_invoice",
-      daysUntilDue: ENTERPRISE_N30_PAYMENTS_DAYS,
-    });
+    expect(makeCreditPurchaseOneOffInvoiceForSubscription).toHaveBeenCalledWith(
+      {
+        stripeSubscriptionId: subscriptionId,
+        amountMicroUsd: 5_000_000_000,
+        couponId: undefined,
+        collectionMethod: "send_invoice",
+        daysUntilDue: ENTERPRISE_N30_PAYMENTS_DAYS,
+      }
+    );
   });
 
   it("should create coupon when discountPercent is provided", async () => {
     vi.mocked(getCreditPurchaseCouponId).mockResolvedValue(new Ok("coupon_15"));
-    vi.mocked(makeCreditPurchaseOneOffInvoice).mockResolvedValue(
+    vi.mocked(makeCreditPurchaseOneOffInvoiceForSubscription).mockResolvedValue(
       new Ok({ id: "in_enterprise" } as Stripe.Invoice)
     );
     vi.mocked(finalizeInvoice).mockResolvedValue(
@@ -482,19 +389,22 @@ describe("createEnterpriseCreditPurchase", () => {
 
     await createEnterpriseCreditPurchase({
       auth,
-      stripeSubscriptionId: subscriptionId,
+      billingTarget: {
+        type: "stripe-subscription",
+        stripeSubscriptionId: subscriptionId,
+      },
       amountMicroUsd: 5_000_000_000,
       discountPercent: 15,
     });
 
     expect(getCreditPurchaseCouponId).toHaveBeenCalledWith(15);
-    expect(makeCreditPurchaseOneOffInvoice).toHaveBeenCalledWith(
+    expect(makeCreditPurchaseOneOffInvoiceForSubscription).toHaveBeenCalledWith(
       expect.objectContaining({ couponId: "coupon_15" })
     );
   });
 
   it("should create credit resource with correct type and amounts", async () => {
-    vi.mocked(makeCreditPurchaseOneOffInvoice).mockResolvedValue(
+    vi.mocked(makeCreditPurchaseOneOffInvoiceForSubscription).mockResolvedValue(
       new Ok({ id: "in_enterprise" } as Stripe.Invoice)
     );
     vi.mocked(finalizeInvoice).mockResolvedValue(
@@ -503,7 +413,10 @@ describe("createEnterpriseCreditPurchase", () => {
 
     const result = await createEnterpriseCreditPurchase({
       auth,
-      stripeSubscriptionId: subscriptionId,
+      billingTarget: {
+        type: "stripe-subscription",
+        stripeSubscriptionId: subscriptionId,
+      },
       amountMicroUsd: 5_000_000_000,
       discountPercent: 10,
     });
@@ -519,14 +432,17 @@ describe("createEnterpriseCreditPurchase", () => {
 
   it("should finalize invoice after creation", async () => {
     const mockInvoice = { id: "in_enterprise" } as Stripe.Invoice;
-    vi.mocked(makeCreditPurchaseOneOffInvoice).mockResolvedValue(
+    vi.mocked(makeCreditPurchaseOneOffInvoiceForSubscription).mockResolvedValue(
       new Ok(mockInvoice)
     );
     vi.mocked(finalizeInvoice).mockResolvedValue(new Ok(mockInvoice));
 
     await createEnterpriseCreditPurchase({
       auth,
-      stripeSubscriptionId: subscriptionId,
+      billingTarget: {
+        type: "stripe-subscription",
+        stripeSubscriptionId: subscriptionId,
+      },
       amountMicroUsd: 5_000_000_000,
     });
 
@@ -534,7 +450,7 @@ describe("createEnterpriseCreditPurchase", () => {
   });
 
   it("should start credit immediately with custom dates", async () => {
-    vi.mocked(makeCreditPurchaseOneOffInvoice).mockResolvedValue(
+    vi.mocked(makeCreditPurchaseOneOffInvoiceForSubscription).mockResolvedValue(
       new Ok({ id: "in_enterprise" } as Stripe.Invoice)
     );
     vi.mocked(finalizeInvoice).mockResolvedValue(
@@ -546,7 +462,10 @@ describe("createEnterpriseCreditPurchase", () => {
 
     const result = await createEnterpriseCreditPurchase({
       auth,
-      stripeSubscriptionId: subscriptionId,
+      billingTarget: {
+        type: "stripe-subscription",
+        stripeSubscriptionId: subscriptionId,
+      },
       amountMicroUsd: 5_000_000_000,
       startDate,
       expirationDate,
@@ -565,7 +484,10 @@ describe("createEnterpriseCreditPurchase", () => {
 
     const result = await createEnterpriseCreditPurchase({
       auth,
-      stripeSubscriptionId: subscriptionId,
+      billingTarget: {
+        type: "stripe-subscription",
+        stripeSubscriptionId: subscriptionId,
+      },
       amountMicroUsd: 5_000_000_000,
       discountPercent: 15,
     });
@@ -574,17 +496,22 @@ describe("createEnterpriseCreditPurchase", () => {
     if (result.isErr()) {
       expect(result.error.message).toBe("Coupon API error");
     }
-    expect(makeCreditPurchaseOneOffInvoice).not.toHaveBeenCalled();
+    expect(
+      makeCreditPurchaseOneOffInvoiceForSubscription
+    ).not.toHaveBeenCalled();
   });
 
   it("should return error if invoice creation fails", async () => {
-    vi.mocked(makeCreditPurchaseOneOffInvoice).mockResolvedValue(
+    vi.mocked(makeCreditPurchaseOneOffInvoiceForSubscription).mockResolvedValue(
       new Err({ error_type: "other", error_message: "Invoice creation failed" })
     );
 
     const result = await createEnterpriseCreditPurchase({
       auth,
-      stripeSubscriptionId: subscriptionId,
+      billingTarget: {
+        type: "stripe-subscription",
+        stripeSubscriptionId: subscriptionId,
+      },
       amountMicroUsd: 5_000_000_000,
     });
 
@@ -595,7 +522,7 @@ describe("createEnterpriseCreditPurchase", () => {
   });
 
   it("should return error if finalize fails", async () => {
-    vi.mocked(makeCreditPurchaseOneOffInvoice).mockResolvedValue(
+    vi.mocked(makeCreditPurchaseOneOffInvoiceForSubscription).mockResolvedValue(
       new Ok({ id: "in_enterprise" } as Stripe.Invoice)
     );
     vi.mocked(finalizeInvoice).mockResolvedValue(
@@ -604,7 +531,10 @@ describe("createEnterpriseCreditPurchase", () => {
 
     const result = await createEnterpriseCreditPurchase({
       auth,
-      stripeSubscriptionId: subscriptionId,
+      billingTarget: {
+        type: "stripe-subscription",
+        stripeSubscriptionId: subscriptionId,
+      },
       amountMicroUsd: 5_000_000_000,
     });
 
@@ -627,7 +557,7 @@ describe("createProCreditPurchase", () => {
   });
 
   it("should create invoice with charge_automatically collection method", async () => {
-    vi.mocked(makeCreditPurchaseOneOffInvoice).mockResolvedValue(
+    vi.mocked(makeCreditPurchaseOneOffInvoiceForSubscription).mockResolvedValue(
       new Ok({ id: "in_pro" } as Stripe.Invoice)
     );
     vi.mocked(finalizeInvoice).mockResolvedValue(
@@ -637,22 +567,27 @@ describe("createProCreditPurchase", () => {
 
     await createProCreditPurchase({
       auth,
-      stripeSubscriptionId: subscriptionId,
+      billingTarget: {
+        type: "stripe-subscription",
+        stripeSubscriptionId: subscriptionId,
+      },
       amountMicroUsd: 100_000_000,
     });
 
-    expect(makeCreditPurchaseOneOffInvoice).toHaveBeenCalledWith({
-      stripeSubscriptionId: subscriptionId,
-      amountMicroUsd: 100_000_000,
-      couponId: undefined,
-      collectionMethod: "charge_automatically",
-      requestThreeDSecure: "challenge",
-    });
+    expect(makeCreditPurchaseOneOffInvoiceForSubscription).toHaveBeenCalledWith(
+      {
+        stripeSubscriptionId: subscriptionId,
+        amountMicroUsd: 100_000_000,
+        couponId: undefined,
+        collectionMethod: "charge_automatically",
+        requestThreeDSecure: "challenge",
+      }
+    );
   });
 
   it("should create coupon when discountPercent is provided", async () => {
     vi.mocked(getCreditPurchaseCouponId).mockResolvedValue(new Ok("coupon_20"));
-    vi.mocked(makeCreditPurchaseOneOffInvoice).mockResolvedValue(
+    vi.mocked(makeCreditPurchaseOneOffInvoiceForSubscription).mockResolvedValue(
       new Ok({ id: "in_pro" } as Stripe.Invoice)
     );
     vi.mocked(finalizeInvoice).mockResolvedValue(
@@ -662,19 +597,22 @@ describe("createProCreditPurchase", () => {
 
     await createProCreditPurchase({
       auth,
-      stripeSubscriptionId: subscriptionId,
+      billingTarget: {
+        type: "stripe-subscription",
+        stripeSubscriptionId: subscriptionId,
+      },
       amountMicroUsd: 100_000_000,
       discountPercent: 20,
     });
 
     expect(getCreditPurchaseCouponId).toHaveBeenCalledWith(20);
-    expect(makeCreditPurchaseOneOffInvoice).toHaveBeenCalledWith(
+    expect(makeCreditPurchaseOneOffInvoiceForSubscription).toHaveBeenCalledWith(
       expect.objectContaining({ couponId: "coupon_20" })
     );
   });
 
   it("should create credit resource before finalizing", async () => {
-    vi.mocked(makeCreditPurchaseOneOffInvoice).mockResolvedValue(
+    vi.mocked(makeCreditPurchaseOneOffInvoiceForSubscription).mockResolvedValue(
       new Ok({ id: "in_pro" } as Stripe.Invoice)
     );
     vi.mocked(finalizeInvoice).mockResolvedValue(
@@ -684,7 +622,10 @@ describe("createProCreditPurchase", () => {
 
     await createProCreditPurchase({
       auth,
-      stripeSubscriptionId: subscriptionId,
+      billingTarget: {
+        type: "stripe-subscription",
+        stripeSubscriptionId: subscriptionId,
+      },
       amountMicroUsd: 100_000_000,
     });
 
@@ -701,7 +642,7 @@ describe("createProCreditPurchase", () => {
       id: "in_pro",
       status: "open",
     } as Stripe.Invoice;
-    vi.mocked(makeCreditPurchaseOneOffInvoice).mockResolvedValue(
+    vi.mocked(makeCreditPurchaseOneOffInvoiceForSubscription).mockResolvedValue(
       new Ok(mockInvoice)
     );
     vi.mocked(finalizeInvoice).mockResolvedValue(new Ok(mockFinalizedInvoice));
@@ -709,7 +650,10 @@ describe("createProCreditPurchase", () => {
 
     await createProCreditPurchase({
       auth,
-      stripeSubscriptionId: subscriptionId,
+      billingTarget: {
+        type: "stripe-subscription",
+        stripeSubscriptionId: subscriptionId,
+      },
       amountMicroUsd: 100_000_000,
     });
 
@@ -718,7 +662,7 @@ describe("createProCreditPurchase", () => {
   });
 
   it("should return invoiceId and null paymentUrl on successful auto-charge", async () => {
-    vi.mocked(makeCreditPurchaseOneOffInvoice).mockResolvedValue(
+    vi.mocked(makeCreditPurchaseOneOffInvoiceForSubscription).mockResolvedValue(
       new Ok({ id: "in_pro" } as Stripe.Invoice)
     );
     vi.mocked(finalizeInvoice).mockResolvedValue(
@@ -728,7 +672,10 @@ describe("createProCreditPurchase", () => {
 
     const result = await createProCreditPurchase({
       auth,
-      stripeSubscriptionId: subscriptionId,
+      billingTarget: {
+        type: "stripe-subscription",
+        stripeSubscriptionId: subscriptionId,
+      },
       amountMicroUsd: 100_000_000,
     });
 
@@ -740,7 +687,7 @@ describe("createProCreditPurchase", () => {
   });
 
   it("should return paymentUrl when payment requires additional action (3DS)", async () => {
-    vi.mocked(makeCreditPurchaseOneOffInvoice).mockResolvedValue(
+    vi.mocked(makeCreditPurchaseOneOffInvoiceForSubscription).mockResolvedValue(
       new Ok({ id: "in_pro" } as Stripe.Invoice)
     );
     vi.mocked(finalizeInvoice).mockResolvedValue(
@@ -752,7 +699,10 @@ describe("createProCreditPurchase", () => {
 
     const result = await createProCreditPurchase({
       auth,
-      stripeSubscriptionId: subscriptionId,
+      billingTarget: {
+        type: "stripe-subscription",
+        stripeSubscriptionId: subscriptionId,
+      },
       amountMicroUsd: 100_000_000,
     });
 
@@ -769,7 +719,10 @@ describe("createProCreditPurchase", () => {
 
     const result = await createProCreditPurchase({
       auth,
-      stripeSubscriptionId: subscriptionId,
+      billingTarget: {
+        type: "stripe-subscription",
+        stripeSubscriptionId: subscriptionId,
+      },
       amountMicroUsd: 100_000_000,
       discountPercent: 20,
     });
@@ -778,17 +731,22 @@ describe("createProCreditPurchase", () => {
     if (result.isErr()) {
       expect(result.error.message).toBe("Coupon API error");
     }
-    expect(makeCreditPurchaseOneOffInvoice).not.toHaveBeenCalled();
+    expect(
+      makeCreditPurchaseOneOffInvoiceForSubscription
+    ).not.toHaveBeenCalled();
   });
 
   it("should return error if invoice creation fails", async () => {
-    vi.mocked(makeCreditPurchaseOneOffInvoice).mockResolvedValue(
+    vi.mocked(makeCreditPurchaseOneOffInvoiceForSubscription).mockResolvedValue(
       new Err({ error_type: "other", error_message: "Invoice creation failed" })
     );
 
     const result = await createProCreditPurchase({
       auth,
-      stripeSubscriptionId: subscriptionId,
+      billingTarget: {
+        type: "stripe-subscription",
+        stripeSubscriptionId: subscriptionId,
+      },
       amountMicroUsd: 100_000_000,
     });
 
@@ -799,7 +757,7 @@ describe("createProCreditPurchase", () => {
   });
 
   it("should return error if finalize fails", async () => {
-    vi.mocked(makeCreditPurchaseOneOffInvoice).mockResolvedValue(
+    vi.mocked(makeCreditPurchaseOneOffInvoiceForSubscription).mockResolvedValue(
       new Ok({ id: "in_pro" } as Stripe.Invoice)
     );
     vi.mocked(finalizeInvoice).mockResolvedValue(
@@ -808,7 +766,10 @@ describe("createProCreditPurchase", () => {
 
     const result = await createProCreditPurchase({
       auth,
-      stripeSubscriptionId: subscriptionId,
+      billingTarget: {
+        type: "stripe-subscription",
+        stripeSubscriptionId: subscriptionId,
+      },
       amountMicroUsd: 100_000_000,
     });
 
@@ -819,7 +780,7 @@ describe("createProCreditPurchase", () => {
   });
 
   it("should return error if pay fails", async () => {
-    vi.mocked(makeCreditPurchaseOneOffInvoice).mockResolvedValue(
+    vi.mocked(makeCreditPurchaseOneOffInvoiceForSubscription).mockResolvedValue(
       new Ok({ id: "in_pro" } as Stripe.Invoice)
     );
     vi.mocked(finalizeInvoice).mockResolvedValue(
@@ -831,7 +792,10 @@ describe("createProCreditPurchase", () => {
 
     const result = await createProCreditPurchase({
       auth,
-      stripeSubscriptionId: subscriptionId,
+      billingTarget: {
+        type: "stripe-subscription",
+        stripeSubscriptionId: subscriptionId,
+      },
       amountMicroUsd: 100_000_000,
     });
 

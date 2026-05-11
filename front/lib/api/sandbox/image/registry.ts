@@ -13,8 +13,8 @@ import fs from "fs";
 import path from "path";
 
 const DUST_BEDROCK_IMAGE_VERSION = "1.7.0";
-const DUST_BASE_IMAGE_VERSION = "0.8.4";
-const DSBX_CLI_VERSION = "0.1.5";
+const DUST_BASE_IMAGE_VERSION = "0.8.6";
+const DSBX_CLI_VERSION = "0.1.7";
 const AGENT_PROXIED_UID = 1003;
 // Built from https://github.com/openai/codex at tag rust-v0.115.0 (Apache-2.0).
 // Released via the "Release sandbox tool" GitHub Actions workflow.
@@ -269,6 +269,16 @@ SHELLEOF`,
   .copy(
     getLocalContent(TELEMETRY_LOCAL_DIR, "fluent-bit.service"),
     "/etc/systemd/system/fluent-bit.service",
+    { user: "root" }
+  )
+  // Seed /etc/dust/ca-bundle.pem with the system roots so the SSL_CERT_FILE /
+  // CURL_CA_BUNDLE env vars (set unconditionally on the sandbox process) point
+  // at a valid file from the moment the sandbox boots. installMitmTrustBundle
+  // overwrites this atomically with (system roots + dsbx CA) once the egress
+  // forwarder is up; in dev-unrestricted mode it stays the system-only copy.
+  .runCmd(
+    "mkdir -p /etc/dust && " +
+      "install -m 644 /etc/ssl/certs/ca-certificates.crt /etc/dust/ca-bundle.pem",
     { user: "root" }
   )
   .copy(

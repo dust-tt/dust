@@ -9,6 +9,7 @@ import type React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockClientFetch = vi.fn();
+const mockMutateConversations = vi.fn();
 const mockPush = vi.fn();
 const mockSendNotification = vi.fn();
 
@@ -19,6 +20,12 @@ vi.mock("@app/lib/egress/client", () => ({
 vi.mock("@app/lib/platform", () => ({
   useAppRouter: () => ({
     push: mockPush,
+  }),
+}));
+
+vi.mock("@app/hooks/conversations/useConversations", () => ({
+  useConversations: () => ({
+    mutateConversations: mockMutateConversations,
   }),
 }));
 
@@ -44,7 +51,14 @@ const owner: LightWorkspaceType = {
 };
 
 function makeForkResponse(conversationId: string) {
-  return new Response(JSON.stringify({ conversationId }), { status: 200 });
+  return new Response(
+    JSON.stringify({
+      conversationId,
+      parentConversationTitle: null,
+      spaceId: null,
+    }),
+    { status: 200 }
+  );
 }
 
 function makeDeferredFetch() {
@@ -60,6 +74,7 @@ function makeDeferredFetch() {
 describe("useBranchConversation", () => {
   beforeEach(() => {
     mockClientFetch.mockReset();
+    mockMutateConversations.mockReset();
     mockPush.mockReset();
     mockSendNotification.mockReset();
   });

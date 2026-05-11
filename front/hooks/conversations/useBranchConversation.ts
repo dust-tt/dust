@@ -1,11 +1,12 @@
 import { useOptionalConversationBranchingContext } from "@app/components/assistant/conversation/ConversationBranchingContext";
+import { useConversations } from "@app/hooks/conversations/useConversations";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
-import { ConversationsUpdatedEvent } from "@app/lib/notifications/events";
 import { useAppRouter } from "@app/lib/platform";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { PostConversationForkResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/forks";
+import type { ConversationListItemType } from "@app/types/assistant/conversation";
 import { isRecord, isString } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useState } from "react";
@@ -17,7 +18,10 @@ function isPostConversationForkResponseBody(
     typeof value === "object" &&
     value !== null &&
     isRecord(value) &&
-    isString(value.conversationId)
+    isString(value.conversationId) &&
+    (value.parentConversationTitle === null ||
+      isString(value.parentConversationTitle)) &&
+    (value.spaceId === null || isString(value.spaceId))
   );
 }
 
@@ -34,6 +38,10 @@ export function useBranchConversation({
   const router = useAppRouter();
   const branchingContext = useOptionalConversationBranchingContext();
   const [localIsBranching, setLocalIsBranching] = useState(false);
+  const { mutateConversations } = useConversations({
+    workspaceId: owner.sId,
+    options: { disabled: true },
+  });
 
   const isBranching = conversationId
     ? branchingContext
@@ -102,7 +110,44 @@ export function useBranchConversation({
           return false;
         }
 
-        window.dispatchEvent(new ConversationsUpdatedEvent());
+        // Write directly into the SWR cache instead of dispatching ConversationsUpdatedEvent.
+        // ConversationsUpdatedEvent triggers an immediate refetch, but ES indexes conversations
+        // asynchronously via Temporal so the new conversation is not in ES yet at that point —
+        // the item would disappear from the sidebar. { revalidate: false } keeps the optimistic
+        // item until the next natural SWR revalidation, by which time ES has caught up.
+        const displayTitle = responseBody.parentConversationTitle
+          ? `Branched from '${responseBody.parentConversationTitle}'`
+          : "Branched conversation";
+
+        const nowMs = Date.now();
+        const optimisticConversationItem: ConversationListItemType = {
+          actionRequired: false,
+          created: nowMs,
+          hasError: false,
+          lastReadMs: nowMs,
+          metadata: {},
+          nextWakeupAt: null,
+          requestedSpaceIds: [],
+          sId: responseBody.conversationId,
+          // Inherited from the parent conversation — safe to return via the fork API
+          // because the caller already has access to the parent (they just branched it).
+          spaceId: responseBody.spaceId,
+          title: displayTitle,
+          triggerId: null,
+          unread: false,
+          updated: nowMs,
+        };
+
+        void mutateConversations(
+          (prevConversations) => {
+            if (!prevConversations) {
+              return prevConversations;
+            }
+            return [optimisticConversationItem, ...prevConversations];
+          },
+          { revalidate: false }
+        );
+
         void onConversationBranched?.();
         await router.push(
           getConversationRoute(owner.sId, responseBody.conversationId)
@@ -123,6 +168,7 @@ export function useBranchConversation({
     [
       conversationId,
       isBranching,
+      mutateConversations,
       onConversationBranched,
       owner.sId,
       router,

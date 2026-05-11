@@ -10,8 +10,7 @@ import mainLogger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
 import { safeSubstring } from "@app/types/shared/utils/string_utils";
 import { Storage } from "@google-cloud/storage";
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
+import { fromError } from "zod-validation-error";
 
 const { DUST_UPSERT_QUEUE_BUCKET, SERVICE_ACCOUNT } = process.env;
 
@@ -44,16 +43,16 @@ export async function upsertDocumentActivity(
 
   const upsertDocument = JSON.parse(cleanUtf8Content(content.toString()));
 
-  const documentItemValidation = EnqueueUpsertDocument.decode(upsertDocument);
+  const documentItemValidation =
+    EnqueueUpsertDocument.safeParse(upsertDocument);
 
-  if (isLeft(documentItemValidation)) {
-    const pathErrorDocument = reporter.formatValidationErrors(
-      documentItemValidation.left
+  if (!documentItemValidation.success) {
+    throw new Error(
+      `Invalid upsertQueue document: ${fromError(documentItemValidation.error).toString()}`
     );
-    throw new Error(`Invalid upsertQueue document: ${pathErrorDocument}`);
   }
 
-  const upsertQueueItem = documentItemValidation.right;
+  const upsertQueueItem = documentItemValidation.data;
 
   const logger = mainLogger.child({
     upsertQueueId,

@@ -30,7 +30,6 @@ import {
   AgentMCPActionModel,
   AgentMCPActionOutputItemModel,
 } from "@app/lib/models/agent/actions/mcp";
-import { SandboxToolExecutionModel } from "@app/lib/models/agent/actions/sandbox_tool_execution";
 import {
   AgentMessageModel,
   MessageModel,
@@ -696,10 +695,11 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       }))
     );
 
-    // On GCS failure during migration period, items remain as legacy rows (content read from DB).
-    // Once content column is dropped, this must become a hard error.
+    // GCS write is retried internally. If it still fails we surface the error rather than leaving
+    // rows with no `contentGcsPath`. There is no acceptable degraded state.
     if (gcsResult.isErr()) {
-      return outputItems;
+      // TODO(2026-05-08 FLAV) Return a result and refactor all call sites.
+      throw gcsResult.error;
     }
 
     await warmGcsContentCache(
@@ -1186,28 +1186,5 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
   get functionCallName(): string {
     return this.stepContent.value.value.name;
-  }
-
-  // Spawns a child sandbox tool execution under this agent action. The child
-  // lives in `sandbox_tool_executions` (separate table to dodge the
-  // `agent_step_contents` unique-index race) but is parented by this row, so
-  // the spawner is an instance method that fills in the FK from `this.id`.
-  // Returns the new execution's sId — read paths land with the approval flow.
-  async spawnChildSandboxToolExecution(
-    blob: Omit<
-      CreationAttributes<SandboxToolExecutionModel>,
-      "workspaceId" | "agentMessageId" | "agentMCPActionId"
-    >
-  ): Promise<string> {
-    const model = await SandboxToolExecutionModel.create({
-      ...blob,
-      workspaceId: this.workspaceId,
-      agentMessageId: this.agentMessageId,
-      agentMCPActionId: this.id,
-    });
-    return makeSId("sandbox_tool_execution", {
-      id: model.id,
-      workspaceId: model.workspaceId,
-    });
   }
 }

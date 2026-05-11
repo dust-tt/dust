@@ -1,27 +1,132 @@
-import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
+import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
+import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
+import { InviteEmailButtonWithModal } from "@app/components/members/InviteEmailButtonWithModal";
+import { MembersUsageTable } from "@app/components/workspace/MembersUsageTable";
+import {
+  useAuth,
+  useFeatureFlags,
+  useWorkspace,
+} from "@app/lib/auth/AuthContext";
+import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
-import { useCredits } from "@app/lib/swr/credits";
-import type { CreditDisplayData } from "@app/types/credits";
-import { ActionPieChartIcon, Icon, Page, Spinner } from "@dust-tt/sparkle";
-import { useEffect, useMemo } from "react";
-
-function isActive(credit: CreditDisplayData): boolean {
-  const now = Date.now();
-  const isStarted = credit.startDate !== null && credit.startDate <= now;
-  const isExpired =
-    credit.expirationDate !== null && credit.expirationDate <= now;
-  return isStarted && !isExpired;
-}
+import { useAwuPoolSummary } from "@app/lib/swr/credits";
+import { useMembersUsage } from "@app/lib/swr/memberships";
+import {
+  usePerSeatPricing,
+  useWorkspaceSeatAvailability,
+} from "@app/lib/swr/workspaces";
+import { isAdmin } from "@app/types/user";
+import {
+  ActionPieChartIcon,
+  ContentMessage,
+  ExclamationCircleIcon,
+  Icon,
+  Page,
+  SearchInput,
+  Spinner,
+} from "@dust-tt/sparkle";
+import { useCallback, useEffect, useState } from "react";
 
 function formatAmount(amountMicroUsd: number): string {
   const amountDollars = amountMicroUsd / 1_000_000;
   return `$${amountDollars.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
+function getOrdinalSuffix(day: number): string {
+  if (day >= 11 && day <= 13) {
+    return "th";
+  }
+  switch (day % 10) {
+    case 1:
+      return "st";
+    case 2:
+      return "nd";
+    case 3:
+      return "rd";
+    default:
+      return "th";
+  }
+}
+
+function getResetDateLabel(resetDate: string): string {
+  if (!resetDate) {
+    return "";
+  }
+  const date = new Date(resetDate);
+  const resetDay = date.getUTCDate();
+  const suffix = getOrdinalSuffix(resetDay);
+  const resetMonth = date.toLocaleDateString(undefined, {
+    month: "long",
+    timeZone: "UTC",
+  });
+  return `Monthly resets on the ${resetDay}${suffix}, ${resetMonth}`;
+}
+
+interface CreditPoolUsageBarProps {
+  totalAmountMicroUsd: number;
+  consumedByUsersMicroUsd: number;
+  consumedByProgrammaticMicroUsd: number;
+}
+
+function CreditPoolUsageBar({
+  totalAmountMicroUsd,
+  consumedByUsersMicroUsd,
+  consumedByProgrammaticMicroUsd,
+}: CreditPoolUsageBarProps) {
+  const usersPercentage =
+    totalAmountMicroUsd > 0
+      ? Math.min((consumedByUsersMicroUsd / totalAmountMicroUsd) * 100, 100)
+      : 0;
+  const programmaticPercentage =
+    totalAmountMicroUsd > 0
+      ? Math.min(
+          (consumedByProgrammaticMicroUsd / totalAmountMicroUsd) * 100,
+          100 - usersPercentage
+        )
+      : 0;
+  const totalConsumedPercentage = usersPercentage + programmaticPercentage;
+
+  return (
+    <Page.Vertical gap="xs" align="stretch">
+      <div
+        className="flex h-2 w-full overflow-hidden rounded-full bg-muted-foreground/10 dark:bg-muted-foreground-night/10"
+        role="progressbar"
+        aria-label="User and programmatic usage"
+        aria-valuenow={Math.round(totalConsumedPercentage)}
+        aria-valuemin={0}
+        aria-valuemax={100}
+      >
+        <div
+          className="h-full shrink-0 bg-yellow-400 transition-all"
+          style={{ width: `${usersPercentage}%` }}
+        />
+        <div
+          className="h-full shrink-0 bg-purple-500 transition-all"
+          style={{ width: `${programmaticPercentage}%` }}
+        />
+      </div>
+      <div className="flex gap-4 text-xs text-muted-foreground dark:text-muted-foreground-night">
+        <span className="flex items-center gap-1.5">
+          <span className="h-2 w-2 bg-yellow-400" />
+          Users
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="h-2 w-2 bg-purple-500" />
+          Programmatic Usage
+        </span>
+      </div>
+    </Page.Vertical>
+  );
+}
+
 export function UsagePage() {
   const owner = useWorkspace();
+  const { subscription } = useAuth();
   const { hasFeature } = useFeatureFlags();
   const router = useAppRouter();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [inviteBlockedPopupReason, setInviteBlockedPopupReason] =
+    useState<WorkspaceLimit | null>(null);
 
   useEffect(() => {
     if (!hasFeature("metronome_billing_usage_page")) {
@@ -29,26 +134,53 @@ export function UsagePage() {
     }
   }, [hasFeature, router, owner.sId]);
 
-  const { credits, isCreditsLoading } = useCredits({
+  const {
+    totalAmountMicroUsd,
+    consumedByUsersMicroUsd,
+    consumedByProgrammaticMicroUsd,
+    resetDate,
+    isAwuPoolSummaryLoading,
+    isAwuPoolSummaryError,
+  } = useAwuPoolSummary({
     workspaceId: owner.sId,
-    metronomeCustomerId: owner.metronomeCustomerId ?? null,
   });
 
-  const { totalConsumedMicroUsd, totalAmountMicroUsd } = useMemo(() => {
-    const activeCredits = credits.filter((c) => isActive(c));
-    return {
-      totalConsumedMicroUsd: activeCredits.reduce(
-        (sum, c) => sum + c.consumedAmountMicroUsd,
-        0
-      ),
-      totalAmountMicroUsd: activeCredits.reduce(
-        (sum, c) => sum + c.initialAmountMicroUsd,
-        0
-      ),
-    };
-  }, [credits]);
+  const { membersUsage, isMembersUsageLoading } = useMembersUsage({
+    workspaceId: owner.sId,
+  });
 
-  const isLoading = isCreditsLoading;
+  const { hasAvailableSeats } = useWorkspaceSeatAvailability({
+    workspaceId: owner.sId,
+  });
+
+  const { perSeatPricing } = usePerSeatPricing({
+    workspaceId: owner.sId,
+  });
+
+  const plan = subscription.plan;
+  const isManualInvitationsEnabled =
+    owner.metadata?.disableManualInvitations !== true;
+
+  const onInviteClick = useCallback(
+    (event: React.MouseEvent<HTMLButtonElement>) => {
+      if (!isUpgraded(plan)) {
+        setInviteBlockedPopupReason("cant_invite_free_plan");
+        event.preventDefault();
+      } else if (subscription.paymentFailingSince) {
+        setInviteBlockedPopupReason("cant_invite_payment_failure");
+        event.preventDefault();
+      } else if (!hasAvailableSeats) {
+        setInviteBlockedPopupReason("cant_invite_no_seats_available");
+        event.preventDefault();
+      }
+    },
+    [plan, subscription.paymentFailingSince, hasAvailableSeats]
+  );
+
+  const totalConsumedMicroUsd =
+    consumedByUsersMicroUsd + consumedByProgrammaticMicroUsd;
+
+  const resetDateLabel = getResetDateLabel(resetDate);
 
   if (!hasFeature("metronome_billing_usage_page")) {
     return null;
@@ -73,7 +205,7 @@ export function UsagePage() {
           <span className="text-[16px] font-medium leading-[24px] tracking-[-0.32px] text-foreground dark:text-foreground-night">
             Credit pool
           </span>
-          {!isLoading && (
+          {!isAwuPoolSummaryLoading && (
             <span className="text-[18px] font-semibold leading-[26px] tracking-[-0.36px] text-foreground dark:text-foreground-night">
               {formatAmount(totalConsumedMicroUsd)} /{" "}
               {formatAmount(totalAmountMicroUsd)}
@@ -81,20 +213,81 @@ export function UsagePage() {
           )}
         </div>
 
-        {isLoading && (
+        {isAwuPoolSummaryError && (
+          <ContentMessage
+            title="Failed to load credit pool"
+            icon={ExclamationCircleIcon}
+            variant="warning"
+          >
+            An error occurred while loading your credit pool data. Please
+            refresh the page or contact support if the issue persists.
+          </ContentMessage>
+        )}
+
+        {resetDateLabel &&
+          !isAwuPoolSummaryLoading &&
+          !isAwuPoolSummaryError && (
+            <Page.P variant="secondary">{resetDateLabel}</Page.P>
+          )}
+
+        {!isAwuPoolSummaryLoading && !isAwuPoolSummaryError && (
+          <CreditPoolUsageBar
+            totalAmountMicroUsd={totalAmountMicroUsd}
+            consumedByUsersMicroUsd={consumedByUsersMicroUsd}
+            consumedByProgrammaticMicroUsd={consumedByProgrammaticMicroUsd}
+          />
+        )}
+
+        {isAwuPoolSummaryLoading && (
           <div className="flex justify-center py-8">
             <Spinner />
           </div>
         )}
       </Page.Vertical>
 
+      <Page.Vertical gap="sm" align="stretch">
+        <span className="text-[16px] font-medium leading-[24px] tracking-[-0.32px] text-foreground dark:text-foreground-night">
+          Members
+        </span>
+        <div className="flex flex-row gap-2">
+          <SearchInput
+            placeholder="Search members (email)"
+            value={searchTerm}
+            name="search"
+            onChange={setSearchTerm}
+            className="w-full"
+          />
+          {isManualInvitationsEnabled && (
+            <InviteEmailButtonWithModal
+              owner={owner}
+              prefillText=""
+              perSeatPricing={perSeatPricing}
+              onInviteClick={onInviteClick}
+            />
+          )}
+        </div>
+        <MembersUsageTable
+          members={membersUsage}
+          isLoading={isMembersUsageLoading}
+          searchTerm={searchTerm}
+        />
+      </Page.Vertical>
+
+      {inviteBlockedPopupReason && (
+        <ReachedLimitPopup
+          isAdmin={isAdmin(owner)}
+          isOpened={!!inviteBlockedPopupReason}
+          onClose={() => setInviteBlockedPopupReason(null)}
+          subscription={subscription}
+          owner={owner}
+          code={inviteBlockedPopupReason}
+        />
+      )}
+
       {/* TODO: Settings section*/}
       <div />
 
       {/* TODO: Notifications section */}
-      <div />
-
-      {/* TODO: Members section */}
       <div />
     </Page.Vertical>
   );

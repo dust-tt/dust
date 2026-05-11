@@ -1,4 +1,4 @@
-import { ioTsEnum } from "@app/types/shared/utils/iots_utils";
+import { z } from "zod";
 
 export const DEFAULT_EMBEDDING_PROVIDER_ID = "openai";
 
@@ -7,6 +7,4 @@ export const EMBEDDING_PROVIDER_IDS = [
   "mistral",
 ] as const;
 
-export const EmbeddingProviderCodec = ioTsEnum<
-  (typeof EMBEDDING_PROVIDER_IDS)[number]
->(EMBEDDING_PROVIDER_IDS);
+export const EmbeddingProviderSchema = z.enum(EMBEDDING_PROVIDER_IDS);

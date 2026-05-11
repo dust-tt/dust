@@ -110,7 +110,7 @@ async function handler(
             api_error: {
               type: "workspace_auth_error",
               message:
-                "This skill's reinforcement is locked; only admins can change it.",
+                "This skill's self-improvement is locked; only admins can change it.",
             },
           });
         }

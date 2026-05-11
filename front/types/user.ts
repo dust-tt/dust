@@ -33,9 +33,9 @@ export function isRoleType(role: string): role is RoleType {
   return ROLES.includes(role as RoleType);
 }
 
-export const ActiveRoleSchema = t.keyof(keyObject(ACTIVE_ROLES));
+export const ActiveRoleSchema = z.enum(ACTIVE_ROLES);
 
-export type ActiveRoleType = t.TypeOf<typeof ActiveRoleSchema>;
+export type ActiveRoleType = z.infer<typeof ActiveRoleSchema>;
 
 export function isActiveRoleType(role: string): role is ActiveRoleType {
   return ACTIVE_ROLES.includes(role as ActiveRoleType);

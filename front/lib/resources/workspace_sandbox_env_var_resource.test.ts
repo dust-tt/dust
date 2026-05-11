@@ -159,9 +159,21 @@ describe("WorkspaceSandboxEnvVarResource", () => {
     expect(envResult.value).toEqual({
       DST_CONFIG_TOKEN: "config-token",
     });
+
+    const placeholderEnvResult =
+      await WorkspaceSandboxEnvVarResource.loadHttpsSecretPlaceholderEnv(
+        authenticator
+      );
+    expect(placeholderEnvResult.isOk()).toBe(true);
+    if (placeholderEnvResult.isErr()) {
+      throw placeholderEnvResult.error;
+    }
+    expect(placeholderEnvResult.value).toEqual({
+      DSEC_API_TOKEN: `__DSEC_${initialNonce}__`,
+    });
   });
 
-  it("promotes config vars to HTTPS secrets without injecting plaintext env", async () => {
+  it("promotes config vars to HTTPS secrets and injects only the placeholder env", async () => {
     const { authenticator } = await createResourceTest({ role: "admin" });
 
     const createResult = await WorkspaceSandboxEnvVarResource.makeNew(
@@ -202,6 +214,18 @@ describe("WorkspaceSandboxEnvVarResource", () => {
       throw envResult.error;
     }
     expect(envResult.value).toEqual({});
+
+    const placeholderEnvResult =
+      await WorkspaceSandboxEnvVarResource.loadHttpsSecretPlaceholderEnv(
+        authenticator
+      );
+    expect(placeholderEnvResult.isOk()).toBe(true);
+    if (placeholderEnvResult.isErr()) {
+      throw placeholderEnvResult.error;
+    }
+    expect(placeholderEnvResult.value).toEqual({
+      DSEC_API_TOKEN: `__DSEC_${promotedResult.value.toJSON().placeholderNonce}__`,
+    });
   });
 
   it("rotates HTTPS secret value and allowed domains in a single upsert", async () => {

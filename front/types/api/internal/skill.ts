@@ -1,8 +1,5 @@
-import { createRangeCodec } from "@app/types/shared/utils/iots_utils";
-import * as t from "io-ts";
+import { z } from "zod";
 
-const LimitCodec = createRangeCodec(0, 100);
-
-export const GetSkillHistoryQuerySchema = t.type({
-  limit: t.union([LimitCodec, t.undefined]),
+export const GetSkillHistoryQuerySchema = z.object({
+  limit: z.number().min(0).max(100).optional(),
 });

@@ -7,17 +7,18 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
-const PostConversationForkBodySchema = t.partial({
-  sourceMessageId: t.string,
+const PostConversationForkBodySchema = z.object({
+  sourceMessageId: z.string().optional(),
 });
 
 export type PostConversationForkResponseBody = {
   conversationId: string;
+  parentConversationTitle: string | null;
+  spaceId: string | null;
 };
 
 async function handler(
@@ -62,9 +63,9 @@ async function handler(
 
   const requestBody = req.body === "" ? {} : (req.body ?? {});
 
-  const bodyValidation = PostConversationForkBodySchema.decode(requestBody);
-  if (isLeft(bodyValidation)) {
-    const pathError = reporter.formatValidationErrors(bodyValidation.left);
+  const bodyValidation = PostConversationForkBodySchema.safeParse(requestBody);
+  if (!bodyValidation.success) {
+    const pathError = fromError(bodyValidation.error).toString();
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -76,7 +77,7 @@ async function handler(
 
   const createRes = await createConversationFork(auth, {
     conversationId: cId,
-    sourceMessageId: bodyValidation.right.sourceMessageId,
+    sourceMessageId: bodyValidation.data.sourceMessageId,
   });
 
   if (createRes.isErr()) {
@@ -111,7 +112,9 @@ async function handler(
   }
 
   return res.status(200).json({
-    conversationId: createRes.value,
+    conversationId: createRes.value.conversationId,
+    parentConversationTitle: createRes.value.parentConversationTitle,
+    spaceId: createRes.value.spaceId,
   });
 }
 

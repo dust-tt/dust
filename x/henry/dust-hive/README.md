@@ -190,6 +190,22 @@ dust-hive down
 
 **Aliases**: Most commands have short aliases (e.g., `s` for spawn, `o` for open, `w` for warm). Run `dust-hive --help` to see all aliases.
 
+When you source the shell completion script, it also defines shorthand commands:
+
+| Shorthand | Equivalent |
+|-----------|------------|
+| `dh` | `dust-hive` |
+| `dhs` | `dust-hive spawn -C -c "claude --dangerously-skip-permissions"` |
+| `dho` | `dust-hive open -C` |
+| `dhl` | `dust-hive list` |
+| `dhd` | `dust-hive destroy` |
+| `dhw` | `dust-hive warm` |
+| `dhc` | `dust-hive cool` |
+| `dhx` | `dust-hive spawn -C -c "codex"` |
+| `dhb <query>` | Open the matched environment app URL in your browser |
+| `dhdb <query> [database]` | Open `psql` on the matched environment database |
+| `dhcd` | Change directory into the environment worktree |
+
 > **Tip**: When `NAME` is omitted, you'll get an interactive picker to select an environment.
 > It pre-selects the current environment (if you're in a worktree) or the last one you used.
 

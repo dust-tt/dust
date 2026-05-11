@@ -2,6 +2,7 @@
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { startVerification } from "@app/lib/api/workspace_verification";
 import type { Authenticator } from "@app/lib/auth";
+import { PHONE_REGEXP } from "@app/lib/resources/workspace_verification_attempt_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -10,22 +11,15 @@ import type {
   VerificationErrorResponse,
   VerificationErrorType,
 } from "@app/types/workspace_verification";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
-export const E164PhoneNumber = t.refinement(
-  t.string,
-  (s) => /^\+[1-9]\d{1,14}$/.test(s),
-  "E164PhoneNumber"
-);
+export const E164PhoneNumber = z
+  .string()
+  .regex(PHONE_REGEXP, { message: "E164PhoneNumber" });
 
-export const OtpCode = t.refinement(
-  t.string,
-  (s) => /^\d{6}$/.test(s),
-  "OtpCode"
-);
+export const OtpCode = z.string().regex(/^\d{6}$/, { message: "OtpCode" });
 
 export function getStatusCodeForError(type: VerificationErrorType): number {
   switch (type) {
@@ -41,7 +35,7 @@ export function getStatusCodeForError(type: VerificationErrorType): number {
   }
 }
 
-const PostStartVerificationRequestBody = t.type({
+const PostStartVerificationRequestBody = z.object({
   phoneNumber: E164PhoneNumber,
 });
 
@@ -65,9 +59,11 @@ async function handler(
 
   switch (req.method) {
     case "POST": {
-      const bodyValidation = PostStartVerificationRequestBody.decode(req.body);
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+      const bodyValidation = PostStartVerificationRequestBody.safeParse(
+        req.body
+      );
+      if (!bodyValidation.success) {
+        const pathError = fromError(bodyValidation.error).toString();
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -77,7 +73,7 @@ async function handler(
         });
       }
 
-      const { phoneNumber } = bodyValidation.right;
+      const { phoneNumber } = bodyValidation.data;
 
       const result = await startVerification(auth, phoneNumber);
 

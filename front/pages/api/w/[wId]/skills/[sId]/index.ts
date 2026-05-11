@@ -18,11 +18,10 @@ import type {
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { ModelId } from "@app/types/shared/model_id";
 import { isString } from "@app/types/shared/utils/general";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import uniq from "lodash/uniq";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 export type GetSkillResponseBody = {
   skill: SkillType;
@@ -49,34 +48,26 @@ export type DeleteSkillResponseBody = {
 };
 
 // Request body schema for PATCH.
-const PatchSkillRequestBodySchema = t.intersection([
-  t.type({
-    name: t.string,
-    agentFacingDescription: t.string,
-    userFacingDescription: t.string,
-    instructions: t.string,
-    icon: t.union([t.string, t.null]),
-    tools: t.array(
-      t.type({
-        mcpServerViewId: t.string,
-      })
-    ),
-    attachedKnowledge: t.array(AttachedKnowledgeSchema),
-    instructionsHtml: t.union([t.string, t.null]),
-  }),
-  t.partial({
-    additionalRequestedSpaceIds: t.array(t.string),
-    fileAttachments: t.array(t.type({ fileId: t.string })),
-    isDefault: t.boolean,
-    reinforcement: t.union([
-      t.literal("auto"),
-      t.literal("on"),
-      t.literal("off"),
-    ]),
-  }),
-]);
+const PatchSkillRequestBodySchema = z.object({
+  name: z.string(),
+  agentFacingDescription: z.string(),
+  userFacingDescription: z.string(),
+  instructions: z.string(),
+  icon: z.string().nullable(),
+  tools: z.array(
+    z.object({
+      mcpServerViewId: z.string(),
+    })
+  ),
+  attachedKnowledge: z.array(AttachedKnowledgeSchema),
+  instructionsHtml: z.string().nullable(),
+  additionalRequestedSpaceIds: z.array(z.string()).optional(),
+  fileAttachments: z.array(z.object({ fileId: z.string() })).optional(),
+  isDefault: z.boolean().optional(),
+  reinforcement: z.enum(["auto", "on", "off"]).optional(),
+});
 
-type PatchSkillRequestBody = t.TypeOf<typeof PatchSkillRequestBodySchema>;
+type PatchSkillRequestBody = z.infer<typeof PatchSkillRequestBodySchema>;
 
 async function handler(
   req: NextApiRequest,
@@ -146,10 +137,10 @@ async function handler(
     }
 
     case "PATCH": {
-      const bodyValidation = PatchSkillRequestBodySchema.decode(req.body);
+      const bodyValidation = PatchSkillRequestBodySchema.safeParse(req.body);
 
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+      if (!bodyValidation.success) {
+        const pathError = fromError(bodyValidation.error).toString();
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -159,7 +150,7 @@ async function handler(
         });
       }
 
-      const body: PatchSkillRequestBody = bodyValidation.right;
+      const body: PatchSkillRequestBody = bodyValidation.data;
       const name = body.name.trim();
 
       if (!name) {

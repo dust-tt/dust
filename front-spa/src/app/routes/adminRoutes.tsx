@@ -114,7 +114,7 @@ export const adminRoutes: RouteObject[] = [
         element: <SandboxPage />,
       },
       {
-        path: "developers/reinforcement",
+        path: "developers/self-improving-skills",
         element: <ReinforcementPage />,
       },
     ],

@@ -8,11 +8,10 @@ import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api
 import { acceptableTranscriptProvidersCodec } from "@app/pages/api/w/[wId]/labs/transcripts";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isProviderWithDefaultWorkspaceConfiguration } from "@app/types/oauth/lib";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 
-export const GetDefaultTranscriptsConfigurationBodySchema = t.type({
+export const GetDefaultTranscriptsConfigurationBodySchema = z.object({
   provider: acceptableTranscriptProvidersCodec,
 });
 
@@ -38,9 +37,9 @@ async function handler(
   switch (req.method) {
     case "GET":
       const bodyValidation =
-        GetDefaultTranscriptsConfigurationBodySchema.decode(req.query);
+        GetDefaultTranscriptsConfigurationBodySchema.safeParse(req.query);
 
-      if (isLeft(bodyValidation)) {
+      if (!bodyValidation.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -50,7 +49,7 @@ async function handler(
         });
       }
 
-      const { provider } = bodyValidation.right;
+      const { provider } = bodyValidation.data;
 
       const transcriptsConfiguration =
         await LabsTranscriptsConfigurationResource.findByWorkspaceAndProvider({

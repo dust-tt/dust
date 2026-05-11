@@ -34,6 +34,7 @@ import type { GoogleDriveObjectType, ModelId } from "@connectors/types";
 import { FILE_ATTRIBUTES_TO_FETCH, WithRetriesError } from "@connectors/types";
 import { redisClient } from "@connectors/types/shared/redis_client";
 import { uuid4 } from "@temporalio/workflow";
+import tracer from "dd-trace";
 import type { drive_v3 } from "googleapis";
 import type { GaxiosResponse } from "googleapis-common";
 import { GaxiosError } from "googleapis-common";
@@ -383,6 +384,26 @@ async function recurseUpdateParents(
   parentIds: string[],
   logger: Logger
 ) {
+  return tracer.trace(
+    "gdrive",
+    {
+      resource: "recurseUpdateParents",
+    },
+    async (span) => {
+      span?.setTag("connectorId", connector.id);
+      span?.setTag("workspaceId", connector.workspaceId);
+      span?.setTag("fileId", file.driveFileId);
+      return recurseUpdateParentsInner(connector, file, parentIds, logger);
+    }
+  );
+}
+
+async function recurseUpdateParentsInner(
+  connector: ConnectorResource,
+  file: GoogleDriveFilesModel,
+  parentIds: string[],
+  logger: Logger
+) {
   await heartbeat();
   const children = await GoogleDriveFilesModel.findAll({
     where: {
@@ -418,7 +439,7 @@ async function recurseUpdateParents(
   }
 
   for (const child of children) {
-    await recurseUpdateParents(
+    await recurseUpdateParentsInner(
       connector,
       child,
       [child.dustFileId, ...parentIds],

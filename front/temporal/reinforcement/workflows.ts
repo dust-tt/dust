@@ -319,15 +319,18 @@ export async function reinforcementWorkspaceWorkflow({
   conversationLookbackDays?: number;
   disableNotifications?: boolean;
 }): Promise<void> {
-  const { reinforcementEnabled, batchModeAllowed } =
-    await getReinforcementSettingsActivity({ workspaceId });
-  if (!reinforcementEnabled) {
+  const settings = await getReinforcementSettingsActivity({ workspaceId });
+  if (!settings.reinforcementEnabled) {
+    return;
+  }
+  if (settings.globalConsumptionMicroUsd >= settings.globalCapMicroUsd) {
+    // Cap reached: activity already logged the details. Stop immediately.
     return;
   }
 
   // Resolve effective batch mode: the caller may request batch mode, but the
   // workspace setting can override it to streaming.
-  const effectiveBatchMode = useBatchMode && batchModeAllowed;
+  const effectiveBatchMode = useBatchMode && settings.batchModeAllowed;
 
   // Phase 1: Discover conversations with skills.
   const conversationsWithSkills =

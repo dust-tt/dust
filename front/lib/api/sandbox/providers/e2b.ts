@@ -64,6 +64,48 @@ interface E2BConfig {
   domain: string | undefined;
 }
 
+// Send command stdin via the E2B Commands API rather than baking it into argv.
+// The command is started in the background with stdin open; if anything goes
+// wrong on the SDK round-trip, we kill the handle so we don't leak a running
+// command on the VM until the lifetime cap kicks in.
+async function runWithStdin(
+  sandbox: Sandbox,
+  command: string,
+  commandOpts: {
+    cwd?: string;
+    envs?: Record<string, string>;
+    timeoutMs?: number;
+    user?: string;
+  },
+  stdin: string | Uint8Array
+) {
+  const handle = await sandbox.commands.run(command, {
+    ...commandOpts,
+    background: true,
+    stdin: true,
+  });
+
+  try {
+    // Per-RPC timeout, not the command's total runtime — clamping to the
+    // overall timeoutMs would block sendStdin/closeStdin for the entire
+    // duration of a long-running command on the very first network hiccup.
+    await sandbox.commands.sendStdin(handle.pid, stdin, {
+      requestTimeoutMs: REQUEST_TIMEOUT_MS,
+    });
+    await sandbox.commands.closeStdin(handle.pid, {
+      requestTimeoutMs: REQUEST_TIMEOUT_MS,
+    });
+    return await handle.wait();
+  } catch (err) {
+    try {
+      await handle.kill();
+    } catch {
+      // Best-effort: caller already has a real error to surface.
+    }
+    throw err;
+  }
+}
+
 /**
  * E2B implementation of SandboxProvider.
  *
@@ -262,12 +304,17 @@ export class E2BSandboxProvider implements SandboxProvider {
         }
 
         try {
-          const result = await sandbox.commands.run(command, {
+          const commandOpts = {
             cwd: execOpts?.workingDirectory,
             envs: execOpts?.envVars,
             timeoutMs: execOpts?.timeoutMs,
             user: execOpts?.user,
-          });
+          };
+          const stdin = execOpts?.stdin;
+          const result =
+            stdin === undefined
+              ? await sandbox.commands.run(command, commandOpts)
+              : await runWithStdin(sandbox, command, commandOpts, stdin);
 
           return new Ok({
             exitCode: result.exitCode,

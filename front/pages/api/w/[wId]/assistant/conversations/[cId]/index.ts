@@ -145,33 +145,29 @@ import { ConversationError } from "@app/types/assistant/conversation";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
-const PatchConversationsRequestBodySchema = t.union([
-  t.type({
-    title: t.string,
+const PatchConversationsRequestBodySchema = z.union([
+  z.object({
+    title: z.string(),
   }),
-  t.type({
-    read: t.boolean,
+  z.object({
+    read: z.boolean(),
   }),
-  t.type({
-    spaceId: t.string,
+  z.object({
+    spaceId: z.string(),
   }),
-  t.type({
-    accessMode: t.keyof({
-      participants_only: null,
-      workspace_members: null,
-    }),
+  z.object({
+    accessMode: z.enum(["participants_only", "workspace_members"]),
   }),
-  t.type({
-    removeFromProject: t.literal(true),
+  z.object({
+    removeFromProject: z.literal(true),
   }),
 ]);
 
-export type PatchConversationsRequestBody = t.TypeOf<
+export type PatchConversationsRequestBody = z.infer<
   typeof PatchConversationsRequestBodySchema
 >;
 
@@ -266,14 +262,12 @@ async function handler(
         }
 
         const conversation = conversationRes.value;
-        const bodyValidation = PatchConversationsRequestBodySchema.decode(
+        const bodyValidation = PatchConversationsRequestBodySchema.safeParse(
           req.body
         );
 
-        if (isLeft(bodyValidation)) {
-          const pathError = reporter.formatValidationErrors(
-            bodyValidation.left
-          );
+        if (!bodyValidation.success) {
+          const pathError = fromError(bodyValidation.error).toString();
 
           return apiError(req, res, {
             status_code: 400,
@@ -284,10 +278,10 @@ async function handler(
           });
         }
 
-        if ("title" in bodyValidation.right) {
+        if ("title" in bodyValidation.data) {
           const result = await updateConversationTitle(auth, {
             conversationId: conversation.sId,
-            title: bodyValidation.right.title,
+            title: bodyValidation.data.title,
           });
           await ConversationResource.markAsReadForAuthUser(auth, {
             conversation,
@@ -297,8 +291,8 @@ async function handler(
             return apiErrorForConversation(req, res, result.error);
           }
           return res.status(200).json({ success: true });
-        } else if ("read" in bodyValidation.right) {
-          if (bodyValidation.right.read) {
+        } else if ("read" in bodyValidation.data) {
+          if (bodyValidation.data.read) {
             await ConversationResource.markAsReadForAuthUser(auth, {
               conversation,
             });
@@ -309,10 +303,10 @@ async function handler(
           }
 
           return res.status(200).json({ success: true });
-        } else if ("spaceId" in bodyValidation.right) {
+        } else if ("spaceId" in bodyValidation.data) {
           const r = await moveConversationToProject(auth, {
             conversation,
-            spaceId: bodyValidation.right.spaceId,
+            spaceId: bodyValidation.data.spaceId,
           });
           if (r.isOk()) {
             return res.status(200).json({ success: true });
@@ -354,18 +348,18 @@ async function handler(
                 assertNever(r.error.code);
             }
           }
-        } else if ("accessMode" in bodyValidation.right) {
+        } else if ("accessMode" in bodyValidation.data) {
           const result = await ConversationResource.updateUrlAccessMode(
             auth,
             conversation.sId,
-            bodyValidation.right.accessMode
+            bodyValidation.data.accessMode
           );
           if (result.isErr()) {
             return apiErrorForConversation(req, res, result.error);
           }
 
           return res.status(200).json({ success: true });
-        } else if ("removeFromProject" in bodyValidation.right) {
+        } else if ("removeFromProject" in bodyValidation.data) {
           const r = await moveConversationOutOfProject(auth, {
             conversation,
           });

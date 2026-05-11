@@ -15,9 +15,7 @@ import {
   listMetronomeContracts,
   listMetronomePackages,
   scheduleMetronomeContractEnd,
-  setMetronomeContractCustomFields,
 } from "@app/lib/metronome/client";
-import { PLAN_CODE_CUSTOM_FIELD_KEY } from "@app/lib/metronome/constants";
 import { ensureMetronomeCustomerForWorkspace } from "@app/lib/metronome/contracts";
 import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import {
@@ -323,8 +321,15 @@ async function handler(
         const createResult = await createMetronomeContract({
           metronomeCustomerId,
           packageId: pkg.id,
+          // Composite of the inputs that define this specific upgrade intent
+          // — retries of the same Poke call dedup against the existing contract,
+          // so a partial failure (e.g. PLAN_CODE stamp) can be recovered by
+          // simply retrying. A different upgrade (different package, plan, or
+          // start date) hashes to a different key and gets its own contract.
+          uniquenessKey: `upgrade-enterprise:${metronomeCustomerId}:${pkg.id}:${body.planCode}:${startingAtDate.toISOString()}`,
           startingAt: startingAtDate,
           enableStripeBilling: true,
+          planCode: body.planCode,
         });
         if (createResult.isErr()) {
           const errorMessage = `Failed to create Metronome contract: ${createResult.error.message}`;
@@ -339,26 +344,6 @@ async function handler(
         }
 
         const newMetronomeContractId = createResult.value.contractId;
-
-        // Stamp the target plan code on the new contract so the contract.start
-        // webhook can determine which plan to put the subscription on.
-        const customFieldsResult = await setMetronomeContractCustomFields({
-          contractId: newMetronomeContractId,
-          customFields: { [PLAN_CODE_CUSTOM_FIELD_KEY]: body.planCode },
-        });
-        if (customFieldsResult.isErr()) {
-          const errorMessage =
-            `Created contract ${newMetronomeContractId} but failed to set ` +
-            `${PLAN_CODE_CUSTOM_FIELD_KEY}: ${customFieldsResult.error.message}. Manual cleanup required in Metronome.`;
-          await pluginRun.recordError(errorMessage);
-          return apiError(req, res, {
-            status_code: 502,
-            api_error: {
-              type: "internal_server_error",
-              message: errorMessage,
-            },
-          });
-        }
 
         // Sunset any other non-archived contract on this customer that
         // overlaps with our new contract's window. We list all contracts

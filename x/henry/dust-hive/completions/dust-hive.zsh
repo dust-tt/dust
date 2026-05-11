@@ -18,6 +18,9 @@
 #   dhd   - destroy
 #   dhw   - warm
 #   dhc   - cool
+#   dhx   - spawn -C -c "codex"
+#   dhb   - open app URL in browser
+#   dhdb  - open psql on environment database
 #   dhcd  - cd into environment worktree (changes dir in current shell)
 
 _dust_hive_services=(
@@ -269,13 +272,82 @@ _dust-hive() {
 alias dh=dust-hive
 
 # Shorthand aliases (use `function` keyword to avoid zsh alias expansion on the name)
-unalias dhs dho dhl dhd dhw dhc dhcd 2>/dev/null
+unalias dhs dho dhl dhd dhw dhc dhx dhb dhdb dhcd 2>/dev/null
 function dhs  { command dust-hive spawn -C -c "claude --dangerously-skip-permissions" "$@"; }
 function dho  { command dust-hive open -C "$@"; }
 function dhl  { command dust-hive list "$@"; }
 function dhd  { command dust-hive destroy "$@"; }
 function dhw  { command dust-hive warm "$@"; }
 function dhc  { command dust-hive cool "$@"; }
+function dhx  { command dust-hive spawn -C -c "codex" "$@"; }
+
+function _dust_hive_matching_row {
+  local query="${1:?usage: _dust_hive_matching_row <worktree-name-query>}"
+
+  command dust-hive list | awk '
+    /^[[:space:]]*$/ { next }
+    /^NAME[[:space:]]/ { next }
+    /^-+/ { next }
+    {
+      for (i = 1; i <= NF; i++) {
+        if ($i ~ /^[0-9]+-[0-9]+$/) {
+          print $1 "\t" $i "\t" $0
+          next
+        }
+      }
+    }
+  ' | fzf --filter="$query" --delimiter=$'\t' --nth=1,3 | head -n 1
+}
+
+function _dust_hive_base_port {
+  local query="${1:?usage: _dust_hive_base_port <worktree-name-query>}"
+  local row range
+
+  row="$(_dust_hive_matching_row "$query")"
+
+  if [[ -z "$row" ]]; then
+    echo "No matching dust-hive worktree for: $query" >&2
+    return 1
+  fi
+
+  range="$(printf '%s\n' "$row" | cut -f2)"
+  printf '%s\n' "${range%%-*}"
+}
+
+function dhb {
+  local query="${1:?usage: dhb <worktree-name-query>}"
+  local offset="${DHB_PORT_OFFSET:-11}"
+  local base port url
+
+  base="$(_dust_hive_base_port "$query")" || return
+  port=$((base + offset))
+  url="http://localhost:${port}"
+
+  echo "Opening $url"
+  open "$url"
+}
+
+function dhdb {
+  local query="${1:?usage: dhdb <worktree-name-query> [dust_front|dust_connectors|dust_api|dust_oauth]}"
+  local db="${2:-dust_front}"
+  local offset="${DHDB_PORT_OFFSET:-432}"
+  local base port
+
+  case "$db" in
+    dust_front|dust_connectors|dust_api|dust_oauth) ;;
+    *)
+      echo "Invalid database: $db" >&2
+      echo "usage: dhdb <worktree-name-query> [dust_front|dust_connectors|dust_api|dust_oauth]" >&2
+      return 2
+      ;;
+  esac
+
+  base="$(_dust_hive_base_port "$query")" || return
+  port=$((base + offset))
+
+  echo "Connecting to $db on localhost:$port"
+  command psql "postgres://dev:dev@localhost:${port}/${db}"
+}
 
 # dhcd: cd into an environment's worktree in the current shell
 function dhcd {
@@ -300,6 +372,23 @@ function _dhl  { :; }
 function _dhd  { local words=("dust-hive" "destroy" "${(@)words[2,-1]}"); local CURRENT=$((CURRENT+1)); _dust-hive; }
 function _dhw  { local words=("dust-hive" "warm" "${(@)words[2,-1]}"); local CURRENT=$((CURRENT+1)); _dust-hive; }
 function _dhc  { local words=("dust-hive" "cool" "${(@)words[2,-1]}"); local CURRENT=$((CURRENT+1)); _dust-hive; }
+function _dhx  { local words=("dust-hive" "spawn" "${(@)words[2,-1]}"); local CURRENT=$((CURRENT+1)); _dust-hive; }
+function _dhb  { _arguments '1::worktree:_dust_hive_envs'; }
+function _dhdb_database {
+  local -a dbs=(
+    'dust_front:Front database'
+    'dust_connectors:Connectors database'
+    'dust_api:API database'
+    'dust_oauth:OAuth database'
+  )
+
+  _describe 'database' dbs
+}
+function _dhdb {
+  _arguments \
+    '1::worktree:_dust_hive_envs' \
+    '2::database:_dhdb_database'
+}
 function _dhcd { local words=("dust-hive" "cd" "${(@)words[2,-1]}"); local CURRENT=$((CURRENT+1)); _dust-hive; }
 
 # When loaded via fpath, zsh calls the file as a function — invoke the completer.
@@ -314,5 +403,8 @@ else
   compdef _dhd dhd
   compdef _dhw dhw
   compdef _dhc dhc
+  compdef _dhx dhx
+  compdef _dhb dhb
+  compdef _dhdb dhdb
   compdef _dhcd dhcd
 fi

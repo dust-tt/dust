@@ -1,11 +1,7 @@
 import { MetronomeSubscriptionPanel } from "@app/components/pages/workspace/subscription/MetronomeSubscriptionPanel";
 import { SubscriptionPlanCards } from "@app/components/plans/SubscriptionPlanCards";
 import { useSendNotification } from "@app/hooks/useNotification";
-import {
-  useAuth,
-  useFeatureFlags,
-  useWorkspace,
-} from "@app/lib/auth/AuthContext";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { getPriceAsString } from "@app/lib/client/subscription";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
@@ -16,7 +12,6 @@ import {
   isWhitelistedBusinessPlan,
 } from "@app/lib/plans/plan_codes";
 import { LinkWrapper, useAppRouter, useSearchParam } from "@app/lib/platform";
-import { useKillSwitches } from "@app/lib/swr/kill";
 import {
   usePerSeatPricing,
   useSubscriptionTrialInfo,
@@ -29,7 +24,7 @@ import type {
   SubscriptionPerSeatPricing,
   SubscriptionType,
 } from "@app/types/plan";
-import { isSubscriptionStripeBilled } from "@app/types/plan";
+import { isSubscriptionMetronomeBilled } from "@app/types/plan";
 import {
   Button,
   ButtonsSwitch,
@@ -48,8 +43,8 @@ import {
   ShapesIcon,
   Spinner,
 } from "@dust-tt/sparkle";
-import type * as t from "io-ts";
 import React, { useEffect, useState } from "react";
+import type { z } from "zod";
 
 interface SkipFreeTrialDialogProps {
   show: boolean;
@@ -196,13 +191,7 @@ function CancelFreeTrialDialog({
 export function SubscriptionPage() {
   const owner = useWorkspace();
   const { subscription } = useAuth();
-  const { hasFeature } = useFeatureFlags();
-  const { killSwitches } = useKillSwitches();
-  const isMetronomeBillingEnabled =
-    hasFeature("metronome_billing") ||
-    !killSwitches?.includes("global_disable_metronome_billing");
-  const useMetronomePanel =
-    isMetronomeBillingEnabled && !isSubscriptionStripeBilled(subscription);
+  const useMetronomePanel = isSubscriptionMetronomeBilled(subscription);
   const router = useAppRouter();
   const sendNotification = useSendNotification();
   const type = useSearchParam("type");
@@ -280,7 +269,7 @@ export function SubscriptionPage() {
       },
       body: JSON.stringify({
         action: "upgrade_to_business",
-      } satisfies t.TypeOf<typeof PatchSubscriptionRequestBody>),
+      } satisfies z.infer<typeof PatchSubscriptionRequestBody>),
     });
 
     if (!res.ok) {
@@ -310,7 +299,7 @@ export function SubscriptionPage() {
           },
           body: JSON.stringify({
             action: "pay_now",
-          } satisfies t.TypeOf<typeof PatchSubscriptionRequestBody>),
+          } satisfies z.infer<typeof PatchSubscriptionRequestBody>),
         });
         if (!res.ok) {
           sendNotification({
@@ -342,7 +331,7 @@ export function SubscriptionPage() {
           },
           body: JSON.stringify({
             action: "cancel_free_trial",
-          } satisfies t.TypeOf<typeof PatchSubscriptionRequestBody>),
+          } satisfies z.infer<typeof PatchSubscriptionRequestBody>),
         });
         if (!res.ok) {
           sendNotification({

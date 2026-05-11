@@ -10,15 +10,14 @@ import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { apiError } from "@app/logger/withlogging";
-import { EmbeddingProviderCodec } from "@app/types/assistant/models/embedding";
-import { ModelProviderIdCodec } from "@app/types/assistant/models/providers";
+import { EmbeddingProviderSchema } from "@app/types/assistant/models/embedding";
+import { ModelProviderIdSchema } from "@app/types/assistant/models/providers";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { WorkspaceType } from "@app/types/user";
-import { isLeft } from "fp-ts/lib/Either";
 import { escape } from "html-escaper";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 export type PostWorkspaceResponseBody = {
   workspace: WorkspaceType;
@@ -28,95 +27,95 @@ export type GetWorkspaceResponseBody = {
   workspace: WorkspaceType;
 };
 
-const WorkspaceNameUpdateBodySchema = t.type({
-  name: t.string,
+const WorkspaceNameUpdateBodySchema = z.object({
+  name: z.string(),
 });
 
-const WorkspaceSsoEnforceUpdateBodySchema = t.type({
-  ssoEnforced: t.boolean,
+const WorkspaceSsoEnforceUpdateBodySchema = z.object({
+  ssoEnforced: z.boolean(),
 });
 
-const WorkspaceAllowedDomainUpdateBodySchema = t.type({
-  domain: t.union([t.string, t.undefined]),
-  domainAutoJoinEnabled: t.boolean,
+const WorkspaceAllowedDomainUpdateBodySchema = z.object({
+  domain: z.string().optional(),
+  domainAutoJoinEnabled: z.boolean(),
 });
 
-const WorkspaceBatchDomainUpdateBodySchema = t.type({
-  domainUpdates: t.array(
-    t.type({
-      domain: t.string,
-      domainAutoJoinEnabled: t.boolean,
+const WorkspaceBatchDomainUpdateBodySchema = z.object({
+  domainUpdates: z.array(
+    z.object({
+      domain: z.string(),
+      domainAutoJoinEnabled: z.boolean(),
     })
   ),
 });
 
-const WorkspaceProvidersUpdateBodySchema = t.type({
-  whiteListedProviders: t.array(ModelProviderIdCodec),
-  defaultEmbeddingProvider: t.union([EmbeddingProviderCodec, t.null]),
+const WorkspaceProvidersUpdateBodySchema = z.object({
+  whiteListedProviders: z.array(ModelProviderIdSchema),
+  defaultEmbeddingProvider: EmbeddingProviderSchema.nullable(),
 });
 
-const WorkspaceWorkOSUpdateBodySchema = t.type({
-  workOSOrganizationId: t.union([t.string, t.null]),
+const WorkspaceWorkOSUpdateBodySchema = z.object({
+  workOSOrganizationId: z.string().nullable(),
 });
 
 // TODO(2026-03-20 FRAME SHARING): Remove once all clients have refreshed.
-const WorkspaceInteractiveContentSharingUpdateBodySchema = t.type({
-  allowContentCreationFileSharing: t.boolean,
+const WorkspaceInteractiveContentSharingUpdateBodySchema = z.object({
+  allowContentCreationFileSharing: z.boolean(),
 });
 
-const WorkspaceSharingPolicyUpdateBodySchema = t.type({
-  sharingPolicy: t.union([
-    t.literal("all_scopes"),
-    t.literal("workspace_only"),
-    t.literal("workspace_and_emails"),
+const WorkspaceSharingPolicyUpdateBodySchema = z.object({
+  sharingPolicy: z.enum([
+    "all_scopes",
+    "workspace_only",
+    "workspace_and_emails",
   ]),
 });
 
-const WorkspaceVoiceTranscriptionUpdateBodySchema = t.type({
-  allowVoiceTranscription: t.boolean,
+const WorkspaceVoiceTranscriptionUpdateBodySchema = z.object({
+  allowVoiceTranscription: z.boolean(),
 });
 
-const WorkspacePrivateConversationUrlsUpdateBodySchema = t.type({
-  privateConversationUrlsByDefault: t.boolean,
+const WorkspacePrivateConversationUrlsUpdateBodySchema = z.object({
+  privateConversationUrlsByDefault: z.boolean(),
 });
 
-const WorkspaceEmailAgentsUpdateBodySchema = t.type({
-  allowEmailAgents: t.boolean,
+const WorkspaceEmailAgentsUpdateBodySchema = z.object({
+  allowEmailAgents: z.boolean(),
 });
 
-const WorkspaceAgentReinforcementUpdateBodySchema = t.type({
-  allowReinforcement: t.boolean,
+const WorkspaceAgentReinforcementUpdateBodySchema = z.object({
+  allowReinforcement: z.boolean(),
 });
 
-const WorkspaceReinforcementBatchModeUpdateBodySchema = t.type({
-  allowReinforcementBatchMode: t.boolean,
+const WorkspaceReinforcementBatchModeUpdateBodySchema = z.object({
+  allowReinforcementBatchMode: z.boolean(),
 });
 
-const WorkspaceExtensionMcpToolsUpdateBodySchema = t.type({
-  disableExtensionMcpTools: t.boolean,
+const WorkspaceExtensionMcpToolsUpdateBodySchema = z.object({
+  disableExtensionMcpTools: z.boolean(),
 });
 
-const WorkspaceOpenProjectsUpdateBodySchema = t.type({
-  allowOpenProjects: t.boolean,
+const WorkspaceOpenProjectsUpdateBodySchema = z.object({
+  allowOpenProjects: z.boolean(),
 });
 
-const WorkspaceManualProjectKnowledgeManagementUpdateBodySchema = t.type({
-  allowManualProjectKnowledgeManagement: t.boolean,
+const WorkspaceManualProjectKnowledgeManagementUpdateBodySchema = z.object({
+  allowManualProjectKnowledgeManagement: z.boolean(),
 });
 
-const WorkspaceSandboxAgentEgressRequestsUpdateBodySchema = t.type({
-  sandboxAllowAgentEgressRequests: t.boolean,
+const WorkspaceSandboxAgentEgressRequestsUpdateBodySchema = z.object({
+  sandboxAllowAgentEgressRequests: z.boolean(),
 });
 
-const WorkspaceReinforcementCapUpdateBodySchema = t.type({
-  reinforcementCapMicroUsd: t.number,
+const WorkspaceReinforcementCapUpdateBodySchema = z.object({
+  reinforcementCapMicroUsd: z.number(),
 });
 
-const WorkspaceSelfImprovementCapPerSkillUpdateBodySchema = t.type({
-  selfImprovementCapPerSkillMicroUsd: t.number,
+const WorkspaceSelfImprovementCapPerSkillUpdateBodySchema = z.object({
+  selfImprovementCapPerSkillMicroUsd: z.number(),
 });
 
-const PostWorkspaceRequestBodySchema = t.union([
+const PostWorkspaceRequestBodySchema = z.union([
   WorkspaceAllowedDomainUpdateBodySchema,
   WorkspaceBatchDomainUpdateBodySchema,
   WorkspaceNameUpdateBodySchema,
@@ -164,9 +163,9 @@ async function handler(
       return;
 
     case "POST":
-      const bodyValidation = PostWorkspaceRequestBodySchema.decode(req.body);
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+      const bodyValidation = PostWorkspaceRequestBodySchema.safeParse(req.body);
+      if (!bodyValidation.success) {
+        const pathError = fromError(bodyValidation.error).toString();
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -175,7 +174,7 @@ async function handler(
           },
         });
       }
-      const { right: body } = bodyValidation;
+      const { data: body } = bodyValidation;
 
       const workspace = await WorkspaceResource.fetchByModelId(owner.id);
       if (!workspace) {

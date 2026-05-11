@@ -1,6 +1,8 @@
 import { createPlugin } from "@app/lib/api/poke/types";
-import { WorkspaceVerificationAttemptResource } from "@app/lib/resources/workspace_verification_attempt_resource";
-import { expireRateLimiterKey } from "@app/lib/utils/rate_limiter";
+import {
+  PHONE_REGEXP,
+  WorkspaceVerificationAttemptResource,
+} from "@app/lib/resources/workspace_verification_attempt_resource";
 import { Err, Ok } from "@app/types/shared/result";
 
 export const resetPhoneVerificationPlugin = createPlugin({
@@ -34,7 +36,7 @@ export const resetPhoneVerificationPlugin = createPlugin({
       return new Err(new Error("Reset not confirmed."));
     }
 
-    if (!/^\+[1-9]\d{1,14}$/.test(phoneNumber)) {
+    if (!PHONE_REGEXP.test(phoneNumber)) {
       return new Err(
         new Error("Invalid phone number format (expected E.164).")
       );
@@ -48,16 +50,9 @@ export const resetPhoneVerificationPlugin = createPlugin({
         phoneNumberHash
       );
 
-    const expireResult = await expireRateLimiterKey({
-      key: `verification:phone:${phoneNumberHash}`,
-    });
-    const redisCleared = expireResult.isOk() && expireResult.value;
-
     return new Ok({
       display: "text",
-      value:
-        `Deleted ${deletedCount} verification attempt(s) for the provided phone number.` +
-        ` Per-phone rate-limit key ${redisCleared ? "cleared" : "was already absent"}.`,
+      value: `Deleted ${deletedCount} verification attempt(s) for the provided phone number.`,
     });
   },
 });

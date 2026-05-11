@@ -2645,6 +2645,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       where: { workspaceId },
     });
 
+    await AgentMessageSkillModel.destroy({
+      where: { workspaceId },
+    });
+
+    await ConversationSkillModel.destroy({
+      where: { workspaceId },
+    });
+
     await SkillConfigurationModel.destroy({
       where: { workspaceId },
     });

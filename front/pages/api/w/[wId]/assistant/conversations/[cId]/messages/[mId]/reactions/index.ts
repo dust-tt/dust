@@ -14,13 +14,12 @@ import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { MessageReactionType } from "@app/types/assistant/conversation";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
-export const MessageReactionRequestBodySchema = t.type({
-  reaction: t.string,
+export const MessageReactionRequestBodySchema = z.object({
+  reaction: z.string(),
 });
 
 async function handler(
@@ -81,9 +80,9 @@ async function handler(
   }
 
   const messageId = req.query.mId;
-  const bodyValidation = MessageReactionRequestBodySchema.decode(req.body);
-  if (isLeft(bodyValidation)) {
-    const pathError = reporter.formatValidationErrors(bodyValidation.left);
+  const bodyValidation = MessageReactionRequestBodySchema.safeParse(req.body);
+  if (!bodyValidation.success) {
+    const pathError = fromError(bodyValidation.error).toString();
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -137,7 +136,7 @@ async function handler(
           username: user.username,
           fullName: user.fullName(),
         },
-        reaction: bodyValidation.right.reaction,
+        reaction: bodyValidation.data.reaction,
       });
 
       if (created) {
@@ -171,7 +170,7 @@ async function handler(
           username: user.username,
           fullName: user.fullName(),
         },
-        reaction: bodyValidation.right.reaction,
+        reaction: bodyValidation.data.reaction,
       });
 
       if (deleted) {
