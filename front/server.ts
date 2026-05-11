@@ -2,13 +2,14 @@
 import { createServer } from "node:http";
 import { parse } from "node:url";
 import logger from "@app/logger/logger";
+import { isDevelopment } from "@app/types/shared/env";
 import { getRequestListener } from "@hono/node-server";
 import next from "next";
 import { honoApp, isHonoRoute } from "../front-api/app";
 
 const KEEP_ALIVE_TIMEOUT_MS = 5000;
 
-const dev = process.env.NODE_ENV !== "production";
+const dev = isDevelopment();
 const port = parseInt(process.env.PORT ?? "3000", 10);
 const hostname = process.env.HOSTNAME ?? "localhost";
 
