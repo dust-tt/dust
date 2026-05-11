@@ -207,9 +207,9 @@ function Attribution({
           <Image
             src={logoSrc}
             alt={logoLabel ?? ""}
-            width={120}
+            width={200}
             height={36}
-            className="h-9 w-auto opacity-95"
+            className="h-9 w-auto max-w-[160px] opacity-95"
           />
         </span>
       ) : null}
@@ -292,7 +292,7 @@ function PhotoCard({ card, delay }: { card: BentoPhotoCard; delay: number }) {
         src={card.imageSrc}
         alt={card.alt}
         fill
-        className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"
+        className="object-cover transition-transform duration-300 ease-in-out group-hover:scale-[1.03]"
         sizes="(min-width: 1024px) 50vw, 100vw"
       />
       <div

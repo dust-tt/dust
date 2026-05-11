@@ -8,7 +8,7 @@ import * as React from "react";
 
 export function FooterNavigation() {
   return (
-    <div className="z-11 mt-12 flex w-full flex-col items-center gap-6 border-b border-t border-border bg-muted-background pb-16 pt-12">
+    <div className="z-11 flex w-full flex-col items-center gap-6 border-b border-t border-border bg-muted-background pb-16 pt-12">
       <div className="w-full px-6 sm:px-12">
         <Grid gap="gap-6">
           <div className="col-span-12">

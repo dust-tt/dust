@@ -22,7 +22,7 @@ interface OutgoingState {
   direction: 1 | -1;
 }
 
-const SLIDE_DURATION_MS = 360;
+const SLIDE_DURATION_MS = 300;
 // CSS keyframes for the carousel slide. Defined globally (per section render)
 // via <style>; ease-out-cubic chosen because each slide is entering or
 // exiting the viewport — the easing accelerates fast and decelerates into
@@ -45,7 +45,7 @@ const SLIDE_CSS = `
   to { transform: translate3d(48px, 0, 0); opacity: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .home-quote-slide { animation: none !important; }
+  .home-quote-slide { animation: none; opacity: 1; transform: none; }
 }
 `;
 

@@ -2,7 +2,6 @@ import { HeroOfficeSection } from "@app/components/home/content/Product/HeroOffi
 import { HomeAgentsImproveSection } from "@app/components/home/content/Product/HomeAgentsImproveSection";
 import { HomeAIOperatorsCTASection } from "@app/components/home/content/Product/HomeAIOperatorsCTASection";
 import { HomeCoordinatedSection } from "@app/components/home/content/Product/HomeCoordinatedSection";
-import { HomeCustomerStatsSection } from "@app/components/home/content/Product/HomeCustomerStatsSection";
 import { HomeNewsSection } from "@app/components/home/content/Product/HomeNewsSection";
 import { HomeQuotesSection } from "@app/components/home/content/Product/HomeQuotesSection";
 import { HomeSecuritySection } from "@app/components/home/content/Product/HomeSecuritySection";
@@ -51,10 +50,10 @@ const HOME_REVEAL_CSS = `
     .home-reveal-right,
     .home-reveal-photo,
     .home-reveal-running {
-      opacity: 1 !important;
-      transform: none !important;
-      letter-spacing: normal !important;
-      transition: none !important;
+      opacity: 1;
+      transform: none;
+      letter-spacing: normal;
+      transition: none;
     }
   }
 `;
@@ -72,7 +71,6 @@ export function IntroSection() {
           <HomeTeamSportSection />
           <HomeAgentsImproveSection />
           <HomeTeamUsageSection />
-          <HomeCustomerStatsSection />
           <HomeNewsSection />
           <HomeSecuritySection />
           <HomeAIOperatorsCTASection />

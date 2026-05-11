@@ -207,7 +207,7 @@ export default function LandingLayout({
           className={classNames(
             "flex w-full flex-col",
             fullWidth ? "" : "container",
-            "gap-6 px-6 pb-12 md:gap-24",
+            "gap-6 px-6 md:gap-24",
             hideNavigation ? "pt-6" : "pt-24",
             "xl:gap-16",
             "2xl:gap-24"
