@@ -2,6 +2,7 @@
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { startVerification } from "@app/lib/api/workspace_verification";
 import type { Authenticator } from "@app/lib/auth";
+import { PHONE_REGEXP } from "@app/lib/resources/workspace_verification_attempt_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -16,7 +17,7 @@ import { fromError } from "zod-validation-error";
 
 export const E164PhoneNumber = z
   .string()
-  .regex(/^\+[1-9]\d{1,14}$/, { message: "E164PhoneNumber" });
+  .regex(PHONE_REGEXP, { message: "E164PhoneNumber" });
 
 export const OtpCode = z.string().regex(/^\d{6}$/, { message: "OtpCode" });
 
