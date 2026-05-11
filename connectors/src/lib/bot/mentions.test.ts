@@ -36,6 +36,8 @@ function makeAgentConfiguration({
 const activeAgentConfigurations = [
   makeAgentConfiguration({ name: "SupportAgent", sId: "support" }),
   makeAgentConfiguration({ name: "BillingAgent", sId: "billing" }),
+  makeAgentConfiguration({ name: "gpt5.5", sId: "gpt-5-5" }),
+  makeAgentConfiguration({ name: "test.", sId: "test-dot" }),
 ];
 
 describe("processMentions", () => {
@@ -54,6 +56,46 @@ describe("processMentions", () => {
       mention: {
         agentId: "support",
         agentName: "SupportAgent",
+      },
+      processedMessage: "help me",
+    });
+  });
+
+  it("matches exact =mentions with dots in the agent name", () => {
+    const result = processMentions({
+      message: "=gpt5.5 help me",
+      activeAgentConfigurations,
+      mentionCandidate: "=gpt5.5",
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      throw result.error;
+    }
+    expect(result.value).toEqual({
+      mention: {
+        agentId: "gpt-5-5",
+        agentName: "gpt5.5",
+      },
+      processedMessage: "help me",
+    });
+  });
+
+  it("matches exact =mentions ending with a dot", () => {
+    const result = processMentions({
+      message: "=test. help me",
+      activeAgentConfigurations,
+      mentionCandidate: "=test.",
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      throw result.error;
+    }
+    expect(result.value).toEqual({
+      mention: {
+        agentId: "test-dot",
+        agentName: "test.",
       },
       processedMessage: "help me",
     });
@@ -121,6 +163,44 @@ describe("processMessageForMention", () => {
       mention: {
         agentId: "support",
         agentName: "SupportAgent",
+      },
+      processedMessage: "help me",
+    });
+  });
+
+  it("detects =mentions with dots through the shared mention pattern", () => {
+    const result = processMessageForMention({
+      message: "=gpt5.5 help me",
+      activeAgentConfigurations,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      throw result.error;
+    }
+    expect(result.value).toEqual({
+      mention: {
+        agentId: "gpt-5-5",
+        agentName: "gpt5.5",
+      },
+      processedMessage: "help me",
+    });
+  });
+
+  it("detects =mentions ending with a dot through the shared mention pattern", () => {
+    const result = processMessageForMention({
+      message: "=test. help me",
+      activeAgentConfigurations,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      throw result.error;
+    }
+    expect(result.value).toEqual({
+      mention: {
+        agentId: "test-dot",
+        agentName: "test.",
       },
       processedMessage: "help me",
     });
