@@ -107,10 +107,10 @@ export const InputBarButtons = React.memo(function InputBarButtons({
             aria-label={`Selected agent: ${selectedAgent.label}`}
             aria-disabled={isInputDisabled}
             className={cn(
-              "inline-flex box-border items-center rounded-lg min-h-7 heading-xs px-3 gap-1 bg-muted-background border-border dark:bg-muted-background-night dark:border-border-night text-primary-900 dark:text-primary-900-night",
+              "inline-flex box-border items-center rounded-lg heading-xs px-2 gap-1.5 bg-muted-background border-border dark:bg-muted-background-night dark:border-border-night text-primary-900 dark:text-primary-900-night transition-colors duration-200",
               isInputDisabled
                 ? "opacity-50 pointer-events-none"
-                : "cursor-pointer"
+                : "cursor-pointer hover:bg-hover dark:hover:bg-hover-night"
             )}
           >
             <Avatar size="xxs" visual={selectedAgent.pictureUrl} />

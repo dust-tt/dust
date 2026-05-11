@@ -923,7 +923,6 @@ const InputBarContainer = ({
               "scrollbar-hide",
               "overflow-y-auto",
               "max-h-[40vh] min-h-14 sm:min-h-16",
-              hideCapabilities && "pr-20"
             )}
           />
         </div>
