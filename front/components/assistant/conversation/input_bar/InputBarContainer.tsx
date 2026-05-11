@@ -16,6 +16,7 @@ import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useVoiceTranscriberService } from "@app/hooks/useVoiceTranscriberService";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
+import { startsWithUserMention } from "@app/lib/mentions/format";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
@@ -167,7 +168,7 @@ const InputBarContainer = ({
   const { selectedSingleAgent, setSelectedSingleAgent } =
     useContext(InputBarContext);
 
-  const [hasUserMention, setHasUserMention] = useState(false);
+  const [startsWithUserMention, setStartsWithUserMention] = useState(false);
   const canSubmitEmpty = !!selectedSingleAgent;
   const [isBlockTooltipOpen, setIsBlockTooltipOpen] = useState(false);
   const blockTooltipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
@@ -611,17 +612,17 @@ const InputBarContainer = ({
       const { markdown } = editorService.getMarkdownAndMentions();
       saveDraft(editorIsEmpty ? "" : markdown, selectedSingleAgentRef.current);
       const userMentioned = mentions.some((m) => m.type === "user");
-      setHasUserMention(userMentioned);
 
       // Check if the very first content node in the editor is a user mention.
-      let startsWithUserMention = false;
+      let editorStartsWithUserMention = false;
       if (userMentioned && editor) {
         const firstChild = editor.state.doc.firstChild;
         const firstNode = firstChild?.firstChild;
-        startsWithUserMention =
+        editorStartsWithUserMention =
           firstNode?.type.name === "mention" && firstNode.attrs.type === "user";
       }
-      onEditorMentionsChangedRef.current(userMentioned, startsWithUserMention);
+      setStartsWithUserMention(editorStartsWithUserMention);
+      onEditorMentionsChangedRef.current(userMentioned, editorStartsWithUserMention);
     };
 
     if (editorRef.current) {
@@ -888,7 +889,7 @@ const InputBarContainer = ({
     voiceTranscriberService.status !== "idle";
 
   const [isToolbarOpen, setIsToolbarOpen] = useState(false);
-  const hideCapabilities = hasUserMention && !selectedSingleAgent;
+  const hideCapabilities = startsWithUserMention && !selectedSingleAgent;
 
   const contentEditableClasses = classNames(
     "inline-block w-full",
