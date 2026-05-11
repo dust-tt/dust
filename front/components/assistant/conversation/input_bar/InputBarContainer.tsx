@@ -1000,6 +1000,7 @@ const InputBarContainer = ({
                     fileUploaderService={fileUploaderService}
                     handleSingleAgentSelect={handleSingleAgentSelect}
                     isInputDisabled={disableInput}
+                    onAgentRemove={() => setSelectedSingleAgent(null)}
                     onMCPServerViewSelect={onMCPServerViewSelect}
                     onNodeSelect={onNodeSelect}
                     onNodeUnselect={onNodeUnselect}

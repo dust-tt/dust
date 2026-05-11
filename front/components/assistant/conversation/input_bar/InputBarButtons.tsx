@@ -19,7 +19,13 @@ import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import { getSupportedFileExtensions } from "@app/types/files";
 import type { SpaceType } from "@app/types/space";
 import type { UserType, WorkspaceType } from "@app/types/user";
-import { Avatar, Button, cn, RobotIcon } from "@dust-tt/sparkle";
+import {
+  Avatar,
+  Button,
+  cn,
+  RobotIcon,
+  XMarkIcon,
+} from "@dust-tt/sparkle";
 import React from "react";
 
 interface InputBarButtonsProps {
@@ -37,6 +43,7 @@ interface InputBarButtonsProps {
   // When true, disables every picker (tools, attachment) in addition to the
   // agent selector which is muted via `disableAgentSelector`.
   isInputDisabled: boolean;
+  onAgentRemove: () => void;
   onMCPServerViewSelect: (serverView: MCPServerViewType) => void;
   onNodeSelect: (node: DataSourceViewContentNode) => void;
   onNodeUnselect: (node: DataSourceViewContentNode) => void;
@@ -61,6 +68,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
   fileUploaderService,
   handleSingleAgentSelect,
   isInputDisabled,
+  onAgentRemove,
   onMCPServerViewSelect,
   onNodeSelect,
   onNodeUnselect,
@@ -97,16 +105,30 @@ export const InputBarButtons = React.memo(function InputBarButtons({
       }
       pickerButton={
         selectedAgent ? (
-          <Button
-            variant="ghost-secondary"
-            size={buttonSize}
-            icon={() => <Avatar size="xxs" visual={selectedAgent.pictureUrl} />}
-            label={selectedAgent.label}
-            disabled={isInputDisabled}
-            className={cn(
-              disableAgentSelector && "bg-gray-150 dark:bg-gray-800"
+          <div className="inline-flex box-border items-center rounded-lg min-h-7 heading-xs px-3 gap-1 bg-muted-background border-border dark:bg-muted-background-night dark:border-border-night text-primary-900 dark:text-primary-900-night cursor-pointer">
+            <Avatar size="xxs" visual={selectedAgent.pictureUrl} />
+            <span className="grow truncate">
+              {selectedAgent.label}
+            </span>
+            {!isInputDisabled && (
+              <button
+                type="button"
+                aria-label="Remove agent"
+                className="p-0.5 text-faint dark:text-faint-night hover:text-foreground transition-colors duration-200"
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onAgentRemove();
+                }}
+              >
+                <XMarkIcon className="h-3 w-3" />
+              </button>
             )}
-          />
+          </div>
         ) : (
           <Button
             variant="ghost-secondary"
