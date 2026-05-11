@@ -797,7 +797,7 @@ async function handler(
                 planCode,
                 stripeError: true,
               },
-              `[Stripe Webhook] Received checkout.session.completed with unkown status "${session.status}". Ignoring event.`
+              `[Stripe Webhook] Received checkout.session.completed with unknown status "${session.status}". Ignoring event.`
             );
             break;
           }
@@ -1488,7 +1488,13 @@ async function handler(
                   },
                   "Error launching scrub workspace workflow"
                 );
-                return res.status(200).json({ success: true });
+                return apiError(req, res, {
+                  status_code: 500,
+                  api_error: {
+                    type: "internal_server_error",
+                    message: `Error launching scrub workspace workflow: ${scheduleScrubRes.error.message}`,
+                  },
+                });
               }
               break;
             default:
