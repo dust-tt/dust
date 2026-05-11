@@ -1,5 +1,4 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
   type GCSMountPoint,
   getGCSPathFromScopedPath,
