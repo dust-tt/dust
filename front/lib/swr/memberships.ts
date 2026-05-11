@@ -1,10 +1,10 @@
+import type { GetMembersUsageResponseBody } from "@app/lib/api/credits/members_usage";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import { debounce } from "@app/lib/utils/debounce";
 import type { GetWorkspaceInvitationsResponseBody } from "@app/pages/api/w/[wId]/invitations";
 import type { GetMembersResponseBody } from "@app/pages/api/w/[wId]/members";
 import type { MembersLookupResponseBody } from "@app/pages/api/w/[wId]/members/lookup";
 import type { SearchMembersResponseBody } from "@app/pages/api/w/[wId]/members/search";
-import type { GetMembersUsageResponseBody } from "@app/lib/api/credits/members_usage";
 import type { GroupKind } from "@app/types/groups";
 import { isGroupKind } from "@app/types/groups";
 import type { LightWorkspaceType } from "@app/types/user";
