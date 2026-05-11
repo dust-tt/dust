@@ -63,7 +63,6 @@ export function EditableTaskItem({ task }: EditableTaskItemProps) {
     !!task.conversationId;
   const isDoneWithoutConversation = isDone && !hasConversationLink;
   const canEdit = viewerUserId !== null && !isReadOnly;
-  const showInProgressTextAnimation = task.status === "in_progress";
   const conversationDotStatus: ConversationDotStatus =
     task.conversationSidebarStatus ?? "idle";
 
@@ -172,7 +171,7 @@ export function EditableTaskItem({ task }: EditableTaskItemProps) {
                       duration={16}
                       onComplete={typing.dismiss}
                     />
-                  ) : showInProgressTextAnimation ? (
+                  ) : task.conversationIsRunningAgentLoop ? (
                     <AnimatedText variant="muted">{displayText}</AnimatedText>
                   ) : (
                     displayText

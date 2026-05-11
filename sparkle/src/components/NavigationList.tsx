@@ -1,4 +1,5 @@
 import type * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area";
+import { AnimatedText } from "@sparkle/components/AnimatedText";
 import { Button } from "@sparkle/components/Button";
 import {
   Collapsible,
@@ -12,6 +13,7 @@ import {
   type LinkWrapperProps,
 } from "@sparkle/components/LinkWrapper";
 import { ScrollArea, ScrollBar } from "@sparkle/components/ScrollArea";
+import { TypingAnimation } from "@sparkle/components/TypingAnimation";
 import { ChevronDownIcon, ChevronUpIcon, MoreIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
@@ -74,6 +76,8 @@ interface NavigationListItemProps
     Omit<LinkWrapperProps, "children" | "className"> {
   selected?: boolean;
   label?: string;
+  labelAnimation?: "none" | "typing" | "streaming";
+  onTypingAnimationComplete?: () => void;
   icon?: React.ComponentType;
   avatar?: React.ReactNode;
   moreMenu?: React.ReactNode;
@@ -92,6 +96,8 @@ const NavigationListItem = React.forwardRef<
       className,
       selected,
       label,
+      labelAnimation = "none",
+      onTypingAnimationComplete,
       icon,
       avatar,
       href,
@@ -176,7 +182,17 @@ const NavigationListItem = React.forwardRef<
                   hasActivity && "s-font-semibold"
                 )}
               >
-                {label}
+                {labelAnimation === "typing" ? (
+                  <TypingAnimation
+                    text={label}
+                    duration={32}
+                    onComplete={onTypingAnimationComplete}
+                  />
+                ) : labelAnimation === "streaming" ? (
+                  <AnimatedText variant="muted">{label}</AnimatedText>
+                ) : (
+                  label
+                )}
               </span>
             )}
             {suffix && (

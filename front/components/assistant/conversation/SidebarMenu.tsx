@@ -105,6 +105,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -1150,6 +1151,7 @@ function UnreadConversationsSection({
           >
             <div className="overflow-hidden">
               <ConversationListItem
+                key={conversation.sId}
                 conversation={conversation}
                 isMultiSelect={isMultiSelect}
                 selectedConversations={selectedConversations}
@@ -1240,6 +1242,20 @@ const ConversationListItem = memo(
       handleMenuOpenChange,
     } = useConversationMenu();
 
+    const [showTypingAnimation, setShowTypingAnimation] = useState(false);
+    const titleRef = useRef<string | null>(conversation.title); // Used to detect when the title changes to show the typing animation.
+
+    useLayoutEffect(() => {
+      if (titleRef.current === null && conversation.title !== null) {
+        setShowTypingAnimation(true);
+      }
+      titleRef.current = conversation.title;
+    }, [conversation.title]);
+
+    const handleTypingAnimationComplete = useCallback(() => {
+      setShowTypingAnimation(false);
+    }, []);
+
     const conversationLabel = getConversationDisplayTitle(conversation);
 
     const handleDragStart = useCallback(
@@ -1282,9 +1298,18 @@ const ConversationListItem = memo(
       </div>
     ) : (
       <NavigationListItem
+        key={conversation.sId}
         selected={activeConversationId === conversation.sId}
         status={getConversationDotStatus(conversation)}
         label={conversationLabel}
+        labelAnimation={
+          showTypingAnimation
+            ? "typing"
+            : conversation.isRunningAgentLoop
+              ? "streaming"
+              : "none"
+        }
+        onTypingAnimationComplete={handleTypingAnimationComplete}
         href={getConversationRoute(owner.sId, conversation.sId)}
         shallow
         draggable={!conversation.spaceId}

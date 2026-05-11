@@ -50,6 +50,9 @@
     },
     "next_wakeup_at": {
       "type": "date"
+    },
+    "is_running_agent_loop": {
+      "type": "boolean"
     }
   }
 }

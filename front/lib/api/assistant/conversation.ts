@@ -251,6 +251,7 @@ export async function createConversation(
     triggerId: conversation.triggerSId,
     metadata: conversation.metadata,
     branchId: null,
+    isRunningAgentLoop: conversation.isRunningAgentLoop,
   };
 }
 
