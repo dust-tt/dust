@@ -5,13 +5,51 @@ import {
   useFeatureFlags,
   useWorkspace,
 } from "@app/lib/auth/AuthContext";
+import { getReinforcementMonthlyCapMicroUsd } from "@app/lib/reinforcement/consumption";
+import { useSkillsReinforcementSpend } from "@app/lib/swr/useReinforcementToggle";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Chip,
   ContentMessage,
   InformationCircleIcon,
   Page,
   SparklesIcon,
+  Spinner,
 } from "@dust-tt/sparkle";
+
+interface ReinforcementTotalConsumptionSectionProps {
+  owner: LightWorkspaceType;
+}
+
+function ReinforcementTotalConsumptionSection({
+  owner,
+}: ReinforcementTotalConsumptionSectionProps) {
+  const { spentMicroUsdBySkillId, isSpendLoading } =
+    useSkillsReinforcementSpend({ owner });
+
+  const totalSpentDollars =
+    Object.values(spentMicroUsdBySkillId).reduce((sum, v) => sum + v, 0) /
+    1_000_000;
+  const capDollars = getReinforcementMonthlyCapMicroUsd(owner) / 1_000_000;
+
+  return (
+    <Page.Vertical align="stretch" gap="md">
+      <Page.SectionHeader title="Current period consumption" />
+      {isSpendLoading ? (
+        <div className="flex justify-center py-4">
+          <Spinner />
+        </div>
+      ) : (
+        <div className="text-sm text-foreground dark:text-foreground-night">
+          <span className="font-semibold">${totalSpentDollars.toFixed(2)}</span>{" "}
+          spent out of{" "}
+          <span className="font-semibold">${capDollars.toFixed(2)}</span>{" "}
+          monthly cap
+        </div>
+      )}
+    </Page.Vertical>
+  );
+}
 
 export function ReinforcementPage() {
   const owner = useWorkspace();
@@ -43,6 +81,7 @@ export function ReinforcementPage() {
           testing but will generate additional costs upon release.
         </ContentMessage>
         <ReinforcementSection owner={owner} />
+        <ReinforcementTotalConsumptionSection owner={owner} />
         <ReinforcementSkillsSection owner={owner} />
       </>
     );
