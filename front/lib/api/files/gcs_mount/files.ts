@@ -132,34 +132,35 @@ function makeFileEntry(
     lastModifiedMs,
     fileId,
     thumbnailUrl: makeThumbnailUrl({
-      scope,
-      relativeFilePath,
       contentType,
+      relativeFilePath,
+      scope,
       workspaceId,
     }),
   };
 }
 
 function makeThumbnailUrl({
-  scope,
-  relativeFilePath,
   contentType,
+  relativeFilePath,
+  scope,
   workspaceId,
 }: {
-  scope: GCSMountPoint;
-  relativeFilePath: string;
   contentType: string;
+  relativeFilePath: string;
+  scope: GCSMountPoint;
   workspaceId: string;
 }): string | null {
   if (!isSupportedImageContentType(contentType)) {
     return null;
   }
+
   switch (scope.useCase) {
     case "conversation":
       return `${config.getClientFacingUrl()}/api/w/${workspaceId}/assistant/conversations/${scope.conversationId}/files/thumbnail?filePath=${encodeURIComponent(`${scope.useCase}/${relativeFilePath}`)}`;
 
     case "project":
-      // TODO(FILE SYSTEM PROJECT) Expose a project files thumbnail endpoint.
+      // TODO(2026-05-10: FILE SYSTEM) Expose a project files thumbnail endpoint.
       return null;
 
     default:
@@ -281,9 +282,7 @@ export async function getConversationFileMountSignedUrl(
   const prefix = resolvePrefix(owner, scope);
   if (!gcsPath.startsWith(prefix)) {
     return new Err(
-      new Error(
-        `GCS path does not belong to the expected mount point.`
-      )
+      new Error(`GCS path does not belong to the expected mount point.`)
     );
   }
   try {

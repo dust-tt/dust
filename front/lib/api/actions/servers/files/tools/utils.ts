@@ -103,8 +103,7 @@ async function buildProjectMountPoint(
 export async function resolveMountPointForPath(
   auth: Authenticator,
   conversation: ConversationType,
-  scopedPath: string,
-  { access }: { access: Access }
+  { access, scopedPath }: { access: Access; scopedPath: string }
 ): Promise<Result<MountPoint, MCPError>> {
   const parsed = parseScopedFilePath(scopedPath);
   if (!parsed) {
@@ -163,8 +162,9 @@ export async function resolveFileForRead(
   conversation: ConversationType,
   path: string
 ): Promise<Result<ResolvedFile, MCPError>> {
-  const mountRes = await resolveMountPointForPath(auth, conversation, path, {
+  const mountRes = await resolveMountPointForPath(auth, conversation, {
     access: "read",
+    scopedPath: path,
   });
   if (mountRes.isErr()) {
     return mountRes;

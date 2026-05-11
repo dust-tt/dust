@@ -30,8 +30,9 @@ export async function createHandler(
     );
   }
 
-  const mountRes = await resolveMountPointForPath(auth, conversation, path, {
+  const mountRes = await resolveMountPointForPath(auth, conversation, {
     access: "write",
+    scopedPath: path,
   });
   if (mountRes.isErr()) {
     return mountRes;
