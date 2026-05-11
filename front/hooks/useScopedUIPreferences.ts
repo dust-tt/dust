@@ -70,24 +70,6 @@ function writePersistedValue(storageKey: string, value: unknown) {
   }
 }
 
-/** Read persisted preferences synchronously (e.g. when `spaceId` changes before hook state catches up). */
-export function readScopedUIPreferencesValue<
-  TScope extends ScopedUIPreferencesScope,
->(
-  scope: TScope,
-  resourceId: string | null | undefined,
-  defaultValue: ScopeValue<TScope>
-): ScopeValue<TScope> {
-  if (resourceId === null || resourceId === undefined || resourceId === "") {
-    return defaultValue;
-  }
-  const storageKey = `${SCOPED_UI_PREFERENCES_KEY_PREFIX}:${scope}:${resourceId}`;
-  const schema = scopedUIPreferencesSchemaByScope[scope];
-  const candidateValue = readPersistedValue(storageKey);
-  const parsedValue = schema.safeParse(candidateValue);
-  return parsedValue.success ? parsedValue.data : defaultValue;
-}
-
 export function useScopedUIPreferences<
   TScope extends ScopedUIPreferencesScope,
 >({
