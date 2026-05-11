@@ -146,20 +146,16 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
       ? `Conversation paused - a wake-up is scheduled ${describeWakeUpSchedule(activeWakeUp)}`
       : null;
 
-  // Extract user mentions from the last user message so they can be carried
-  // forward as sticky mentions (inserted into the editor ).
-  const lastMessageUserMentions = useMemo(() => {
-    const mentions = lastUserMessage?.richMentions ?? [];
-    return mentions.filter(isRichUserMention);
-  }, [lastUserMessage]);
-
   const autoMentions = useMemo(() => {
     // If the user's last message contains only human mentions (no agent),
     // prefill with just those human mentions.
-    const lastMsgAllMentions = lastUserMessage?.richMentions ?? [];
-    const lastMsgHasAgent = lastMsgAllMentions.some(isRichAgentMention);
-    if (lastMessageUserMentions.length > 0 && !lastMsgHasAgent) {
-      return lastMessageUserMentions;
+    const mentionsFromLastUserMessage = lastUserMessage?.richMentions ?? [];
+    
+    if (
+      mentionsFromLastUserMessage.length > 0 &&
+      mentionsFromLastUserMessage.every(isRichUserMention)
+    ) {
+      return mentionsFromLastUserMessage;
     }
 
     // If we are in the agent builder, we show the draft agent as the sticky mention, all the time.
@@ -209,7 +205,6 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
     context.conversation,
     draftAgent,
     lastUserMessage,
-    lastMessageUserMentions,
     lastAgentMentionInConversation,
     accessibleAgentIds,
     agentConfigurations,
