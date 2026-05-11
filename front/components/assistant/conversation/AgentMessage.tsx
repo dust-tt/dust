@@ -121,6 +121,9 @@ import {
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
+// TODO(sessions-branching): Re-enable once branching from a source message is fixed.
+const SHOW_BRANCH_FROM_HERE_ACTION = false;
+
 function PrunedContextChip() {
   return (
     <Tooltip
@@ -678,7 +681,9 @@ export function AgentMessage({
     !isProjectArchived;
 
   const canBranchConversation =
-    hasFeature("sessions_branching") && shouldShowCopy;
+    SHOW_BRANCH_FROM_HERE_ACTION &&
+    hasFeature("sessions_branching") &&
+    shouldShowCopy;
 
   const shouldShowFeedback =
     !isDeleted &&
