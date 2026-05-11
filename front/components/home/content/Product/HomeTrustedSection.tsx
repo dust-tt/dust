@@ -1,7 +1,36 @@
 // biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { useGeolocation } from "@app/lib/swr/geo";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/router";
+
+// Exact copy of CASE_STUDIES from TrustedBy.tsx — keys are lowercase with no
+// spaces (e.g. "backmarket", "payfit"). Lookup strips spaces from logo.name.
+const CASE_STUDIES: Record<string, string> = {
+  alan: "/customers/alans-pmm-team-transforms-sales-conversations-into-intelligence-with-ai-agents",
+  assembled: "/customers/part-1-assembled-ai-operating-system",
+  backmarket:
+    "/customers/back-markets-fraud-team-builds-ai-detection-system-in-one-week-contributing",
+  blueground: "/customers/customer-support-blueground",
+  clay: "/customers/clay-scaling-gtme-team",
+  doctolib:
+    "/customers/why-doctolib-made-company-wide-enterprise-ai-a-national-cause",
+  fleet: "/customers/how-valentine-head-of-marketing-at-fleet-uses-dust",
+  kyriba: "/customers/kyriba-accelerating-innovation-with-dust",
+  malt: "/customers/malt-customer-support",
+  mirakl: "/customers/why-mirakl-chose-dust-as-its-go-to-agentic-solution",
+  payfit: "/customers/dust-ai-payfit-efficiency",
+  pennylane: "/customers/pennylane-dust-customer-support-journey",
+  persona: "/customers/how-persona-hit-80-ai-agent-adoption-with-dust",
+  profound: "/customers/profound-post-sales-team-reclaimed-1800-hours",
+  qonto: "/customers/qonto-dust-ai-partnership",
+  wakam:
+    "/customers/how-wakam-cut-legal-contract-analysis-time-by-50-with-dust",
+  watershed:
+    "/customers/how-watershed-got-90-of-its-team-to-leverage-dust-agents",
+  vanta:
+    "/customers/how-vantas-gtm-team-saves-thousands-of-hours-annually-with-dust",
+};
 
 const LOGO_SETS = {
   // 🇺🇸 US & rest of world (default)
@@ -91,12 +120,57 @@ const MARQUEE_CSS = `
   .home-trusted-track:hover {
     animation-play-state: paused;
   }
+
+  /* Case study chip — drops from above */
+  .home-trusted-chip {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.95);
+    transform-origin: top center;
+    transition: opacity 180ms cubic-bezier(0.165, 0.84, 0.44, 1),
+                transform 180ms cubic-bezier(0.165, 0.84, 0.44, 1);
+    will-change: opacity, transform;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .home-trusted-item:hover .home-trusted-chip {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
-    .home-trusted-track {
-      animation: none;
+    .home-trusted-track { animation: none; }
+    .home-trusted-chip {
+      transition: opacity 100ms ease;
+      transform: none;
+    }
+    @media (hover: hover) and (pointer: fine) {
+      .home-trusted-item:hover .home-trusted-chip {
+        transform: none;
+      }
     }
   }
 `;
+
+// Arrow-up-right icon for the case study chip.
+function ExternalArrowIcon() {
+  return (
+    <svg
+      width="10"
+      height="10"
+      viewBox="0 0 10 10"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M2 8L8 2M8 2H3.5M8 2V6.5"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 
 export function HomeTrustedSection() {
   const logos = useLogoSet();
@@ -119,22 +193,46 @@ export function HomeTrustedSection() {
               "linear-gradient(to right, transparent 0, #000 8%, #000 92%, transparent 100%)",
           }}
         >
-          <div className="home-trusted-track flex w-max items-center gap-x-16 sm:gap-x-20 lg:gap-x-24">
-            {marqueeLogos.map((logo, idx) => (
-              <div
-                key={`${logo.name}-${idx}`}
-                className="flex h-14 flex-shrink-0 items-center justify-center opacity-70 transition-opacity hover:opacity-100 md:h-16"
-                aria-hidden={idx >= logos.length}
-              >
-                <Image
-                  alt={idx >= logos.length ? "" : logo.name}
-                  src={logo.src}
-                  width={220}
-                  height={64}
-                  className="h-auto max-h-14 w-auto object-contain md:max-h-16"
-                />
-              </div>
-            ))}
+          <div className="home-trusted-track flex w-max items-end gap-x-16 sm:gap-x-20 lg:gap-x-24">
+            {marqueeLogos.map((logo, idx) => {
+              const caseStudyUrl =
+                idx < logos.length
+                  ? CASE_STUDIES[logo.name.toLowerCase().replace(/\s+/g, "")]
+                  : undefined;
+              return (
+                <div
+                  key={`${logo.name}-${idx}`}
+                  className="home-trusted-item flex flex-shrink-0 flex-col items-center gap-1"
+                  aria-hidden={idx >= logos.length}
+                >
+                  <div className="flex h-14 items-center justify-center opacity-70 transition-opacity duration-150 ease-in-out [.home-trusted-item:hover_&]:opacity-100 md:h-16">
+                    <Image
+                      alt={idx >= logos.length ? "" : logo.name}
+                      src={logo.src}
+                      width={220}
+                      height={64}
+                      className="h-auto max-h-14 w-auto object-contain md:max-h-16"
+                    />
+                  </div>
+                  {/* Reserve a fixed height for the chip so all items share the
+                      same total height — no layout shift when chip appears. */}
+                  <div className="h-6">
+                    {caseStudyUrl && (
+                      <Link
+                        href={caseStudyUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        tabIndex={idx >= logos.length ? -1 : undefined}
+                        className="home-trusted-chip inline-flex items-center gap-1 rounded-full border border-foreground/10 bg-white px-2.5 py-1 text-[11px] font-medium leading-none text-foreground/60 shadow-sm hover:text-foreground"
+                      >
+                        Case study
+                        <ExternalArrowIcon />
+                      </Link>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>

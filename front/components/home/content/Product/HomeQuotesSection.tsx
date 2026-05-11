@@ -9,6 +9,7 @@ interface QuoteEntry {
   authorRole: string;
   imageSrc: string;
   imageAlt: string;
+  bg?: string;
 }
 
 interface HomeQuotesSectionProps {
@@ -109,7 +110,7 @@ export function HomeQuotesSection({ quotes }: HomeQuotesSectionProps) {
       <style dangerouslySetInnerHTML={{ __html: SLIDE_CSS }} />
       <div className="mx-auto w-full max-w-[1180px] px-6">
         <div className="flex flex-col items-stretch gap-4 lg:flex-row">
-          <div className="flex flex-1 flex-col gap-8 rounded-2xl bg-blue-50 p-10 md:p-14 lg:gap-12">
+          <div className={`flex flex-1 flex-col gap-8 rounded-2xl p-10 transition-colors duration-300 md:p-14 lg:gap-12 ${activeQuote.bg ?? "bg-blue-50"}`}>
             {/* Stack a ghost copy of every quote in the same grid cell so
                 the cell always sizes to the tallest quote — the card height
                 stays stable regardless of which quote is animating. The

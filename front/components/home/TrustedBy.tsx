@@ -19,13 +19,12 @@ const CASE_STUDIES: Record<string, string> = {
   blueground: "/customers/customer-support-blueground",
   clay: "/customers/clay-scaling-gtme-team",
   doctolib:
-    "/customers/doctolibs-ai-adoption-playbook-from-30-person-pilot-to-company-wide-deployment",
+    "/customers/why-doctolib-made-company-wide-enterprise-ai-a-national-cause",
   fleet: "/customers/how-valentine-head-of-marketing-at-fleet-uses-dust",
   kyriba: "/customers/kyriba-accelerating-innovation-with-dust",
   malt: "/customers/malt-customer-support",
   mirakl: "/customers/why-mirakl-chose-dust-as-its-go-to-agentic-solution",
-  payfit:
-    "/customers/less-admin-more-selling-how-dust-frees-up-payfits-sales-team-to-close-more-deals",
+  payfit: "/customers/dust-ai-payfit-efficiency",
   pennylane: "/customers/pennylane-customer-support-journey",
   persona: "/customers/how-persona-hit-80-ai-agent-adoption-with-dust",
   profound: "/customers/profound-post-sales-team-reclaimed-1800-hours",

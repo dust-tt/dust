@@ -1,6 +1,7 @@
 // biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 "use client";
 
+import { H2 } from "@app/components/home/ContentComponents";
 import { HomeEyebrow } from "@app/components/home/content/Product/HomeEyebrow";
 import { cn } from "@app/components/poke/shadcn/lib/utils";
 import Image from "next/image";
@@ -41,7 +42,7 @@ const TABS: UsageTab[] = [
     id: "engineering",
     label: "Engineering",
     heading: "Engineering\nOperations",
-    imageSrc: "/static/landing/functions/engineering.png",
+    imageSrc: "/static/landing/functions/engineering.jpg",
     imageAlt: "Engineering team workflow placeholder",
     bg: "bg-orange-100/40",
     points: [
@@ -78,7 +79,7 @@ const TABS: UsageTab[] = [
     id: "support",
     label: "Customer Support",
     heading: "Customer Support\nOperations",
-    imageSrc: "/static/landing/functions/customersupport.png",
+    imageSrc: "/static/landing/functions/customersupport.jpg",
     imageAlt: "Customer support workflow placeholder",
     bg: "bg-blue-100/40",
     points: [
@@ -113,7 +114,7 @@ const TABS: UsageTab[] = [
     id: "sales",
     label: "Sales",
     heading: "Sales\nOperations",
-    imageSrc: "/static/landing/functions/sales.png",
+    imageSrc: "/static/landing/functions/sales.jpg",
     imageAlt: "Sales workflow placeholder",
     bg: "bg-green-100/40",
     points: [
@@ -147,7 +148,7 @@ const TABS: UsageTab[] = [
     id: "marketing",
     label: "Marketing & Content",
     heading: "Marketing & Content\nOperations",
-    imageSrc: "/static/landing/functions/marketing.png",
+    imageSrc: "/static/landing/functions/marketing.jpg",
     imageAlt: "Marketing workflow placeholder",
     bg: "bg-pink-100/40",
     points: [
@@ -182,7 +183,7 @@ const TABS: UsageTab[] = [
     id: "data",
     label: "Data & analytics",
     heading: "Data & Analytics\nOperations",
-    imageSrc: "/static/landing/functions/data.png",
+    imageSrc: "/static/landing/functions/data.jpg",
     imageAlt: "Data and analytics workflow placeholder",
     bg: "bg-violet-100/40",
     points: [
@@ -221,7 +222,7 @@ interface UsageMarkerProps {
   size?: number;
 }
 
-function UsageMarker({ shape, colorClass, size = 22 }: UsageMarkerProps) {
+function UsageMarker({ shape, colorClass, size = 16 }: UsageMarkerProps) {
   if (shape === "circle") {
     return (
       <span
@@ -318,9 +319,9 @@ export function HomeTeamUsageSection() {
       <div className="mx-auto flex w-full max-w-[1180px] flex-col gap-12 px-6">
         <div className="flex flex-col items-center gap-6 text-center">
           <HomeEyebrow label="How every team uses Dust" />
-          <h2 className="m-0 max-w-[760px] text-balance text-center text-4xl font-semibold leading-[1.08] tracking-[-0.03em] text-foreground md:text-5xl xl:text-6xl">
+          <H2 className="max-w-[760px] text-balance text-center font-semibold leading-[1.08] tracking-[-0.03em] text-foreground">
             One platform, every team, compounding value
-          </h2>
+          </H2>
           <p className="m-0 max-w-[560px] text-base leading-[1.55] text-muted-foreground">
             Pick your team to see what AI operators are shipping there today.
           </p>
@@ -383,7 +384,7 @@ export function HomeTeamUsageSection() {
           className="grid animate-in grid-cols-1 gap-10 fade-in-0 duration-200 lg:grid-cols-2 lg:gap-16"
         >
           <div
-            className={`relative flex aspect-[4/3] w-full items-center justify-center self-stretch overflow-hidden rounded-2xl lg:aspect-auto lg:min-h-[480px] ${activeTab.bg}`}
+            className="relative flex aspect-[4/3] w-full self-stretch overflow-hidden rounded-2xl lg:aspect-auto lg:min-h-[480px]"
           >
             <Image
               src={activeTab.imageSrc}
@@ -391,7 +392,7 @@ export function HomeTeamUsageSection() {
               fill
               loading={activeIndex === 0 ? "eager" : "lazy"}
               sizes="(min-width: 1024px) 50vw, 100vw"
-              className="object-contain p-8"
+              className="object-cover"
             />
           </div>
           <div className="flex flex-col gap-10 lg:gap-12 lg:py-4">

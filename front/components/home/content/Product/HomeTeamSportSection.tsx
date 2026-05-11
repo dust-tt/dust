@@ -76,14 +76,12 @@ export function HomeTeamSportSection() {
             delay={120}
             className="flex w-full justify-center self-stretch lg:w-1/2"
           >
-            <div className="flex w-full max-w-[520px] items-center justify-center self-stretch rounded-3xl bg-blue-50 p-8">
-              <Image
-                src="/static/landing/home/team-sport-collab.png"
+            <div className="relative w-full max-w-[520px] self-stretch overflow-hidden rounded-3xl">
+              {/* biome-ignore lint/performance/noImgElement: SVG cannot use next/image fill */}
+              <img
+                src="/static/landing/home/team-sport-collab.svg"
                 alt="Dust collaboration: shared agent in a chat with named teammates and live cursors"
-                width={560}
-                height={560}
-                className="m-auto h-auto w-full max-w-[420px] object-contain"
-                priority={false}
+                className="h-full w-full object-cover"
               />
             </div>
           </HomeReveal>

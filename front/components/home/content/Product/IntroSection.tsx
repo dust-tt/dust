@@ -26,6 +26,7 @@ const QUOTES = [
     authorRole: "Founder in Residence of GTM Innovation at Vanta",
     imageSrc: "/static/landing/people/shashank-khanna.png",
     imageAlt: "Shashank Khanna, Founder in Residence at Vanta",
+    bg: "bg-violet-50",
   },
 ];
 

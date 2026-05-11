@@ -259,7 +259,8 @@ const ExploreMenuConfig: MenuConfig = {
   items: [
     {
       title: "Blog",
-      href: "/blog",
+      href: "https://dust.tt/blog",
+      isExternal: true,
     },
     {
       title: "Webinars",
