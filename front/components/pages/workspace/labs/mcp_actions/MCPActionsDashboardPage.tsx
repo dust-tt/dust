@@ -1,4 +1,4 @@
-import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
+import { AgentSidebarMenuWithBranchingProvider } from "@app/components/assistant/conversation/SidebarMenu";
 import {
   useSetContentWidth,
   useSetNavChildren,
@@ -63,7 +63,7 @@ export function MCPActionsDashboardPage() {
   const isLoading = !featureFlags.includes("labs_mcp_actions_dashboard");
 
   const navChildren = useMemo(
-    () => <AgentSidebarMenu owner={owner} />,
+    () => <AgentSidebarMenuWithBranchingProvider owner={owner} />,
     [owner]
   );
 

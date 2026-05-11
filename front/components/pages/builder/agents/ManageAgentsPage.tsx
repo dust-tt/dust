@@ -1,6 +1,6 @@
 import { AgentEditBar } from "@app/components/assistant/AgentEditBar";
 import { CreateDropdown } from "@app/components/assistant/CreateDropdown";
-import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
+import { AgentSidebarMenuWithBranchingProvider } from "@app/components/assistant/conversation/SidebarMenu";
 import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
 import { AssistantsTable } from "@app/components/assistant/manager/AssistantsTable";
 import { TagsFilterMenu } from "@app/components/assistant/TagsFilterMenu";
@@ -272,7 +272,7 @@ export function ManageAgentsPage() {
   }, [isRestrictedFromAgentCreation]);
 
   const navChildren = useMemo(
-    () => <AgentSidebarMenu owner={owner} />,
+    () => <AgentSidebarMenuWithBranchingProvider owner={owner} />,
     [owner]
   );
 

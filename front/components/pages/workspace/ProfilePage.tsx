@@ -1,4 +1,4 @@
-import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
+import { AgentSidebarMenuWithBranchingProvider } from "@app/components/assistant/conversation/SidebarMenu";
 import { AccountSettings } from "@app/components/me/AccountSettings";
 import { PendingInvitationsTable } from "@app/components/me/PendingInvitationsTable";
 import { ProfileTriggersTab } from "@app/components/me/ProfileTriggersTab";
@@ -32,7 +32,7 @@ export function ProfilePage() {
     });
 
   const navChildren = useMemo(
-    () => <AgentSidebarMenu owner={owner} />,
+    () => <AgentSidebarMenuWithBranchingProvider owner={owner} />,
     [owner]
   );
 

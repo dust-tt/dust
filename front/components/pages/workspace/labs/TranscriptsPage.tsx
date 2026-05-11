@@ -1,4 +1,4 @@
-import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
+import { AgentSidebarMenuWithBranchingProvider } from "@app/components/assistant/conversation/SidebarMenu";
 import { DeleteProviderDialog } from "@app/components/labs/transcripts/DeleteProviderDialog";
 import { ProcessingConfiguration } from "@app/components/labs/transcripts/ProcessingConfiguration";
 import { ProviderSelection } from "@app/components/labs/transcripts/ProviderSelection";
@@ -106,7 +106,7 @@ export function TranscriptsPage() {
     !featureFlags.includes("labs_transcripts");
 
   const navChildren = useMemo(
-    () => <AgentSidebarMenu owner={owner} />,
+    () => <AgentSidebarMenuWithBranchingProvider owner={owner} />,
     [owner]
   );
 

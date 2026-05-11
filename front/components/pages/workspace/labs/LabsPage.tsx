@@ -1,4 +1,4 @@
-import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
+import { AgentSidebarMenuWithBranchingProvider } from "@app/components/assistant/conversation/SidebarMenu";
 import { FeatureAccessButton } from "@app/components/labs/FeatureAccessButton";
 import {
   useSetContentWidth,
@@ -59,7 +59,7 @@ export function LabsPage() {
   const visibleFeatures = getVisibleFeatures(featureFlags);
 
   const navChildren = useMemo(
-    () => <AgentSidebarMenu owner={owner} />,
+    () => <AgentSidebarMenuWithBranchingProvider owner={owner} />,
     [owner]
   );
 

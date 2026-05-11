@@ -1,5 +1,9 @@
 import { CONVERSATION_BRANCHING_COPY } from "@app/components/assistant/conversation/branching";
 import {
+  ConversationBranchingProvider,
+  useConversationBranchingContextValue,
+} from "@app/components/assistant/conversation/ConversationBranchingContext";
+import {
   ConversationMenu,
   useConversationMenu,
 } from "@app/components/assistant/conversation/ConversationMenu";
@@ -115,6 +119,18 @@ interface AgentSidebarMenuProps {
   owner: WorkspaceType;
   hideActions?: boolean;
   hideInAppBanner?: boolean;
+}
+
+export function AgentSidebarMenuWithBranchingProvider(
+  props: AgentSidebarMenuProps
+) {
+  const value = useConversationBranchingContextValue();
+
+  return (
+    <ConversationBranchingProvider value={value}>
+      <AgentSidebarMenu {...props} />
+    </ConversationBranchingProvider>
+  );
 }
 
 type GroupLabel =
