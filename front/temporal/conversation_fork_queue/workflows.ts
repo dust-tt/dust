@@ -1,6 +1,5 @@
-import { proxyActivities } from "@temporalio/workflow";
-
 import type * as activities from "@app/temporal/conversation_fork_queue/activities";
+import { proxyActivities } from "@temporalio/workflow";
 
 const { copyConversationGCSMountActivity } = proxyActivities<typeof activities>(
   {

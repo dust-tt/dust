@@ -1,5 +1,3 @@
-import { WorkflowExecutionAlreadyStartedError } from "@temporalio/client";
-
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import { QUEUE_NAME } from "@app/temporal/conversation_fork_queue/config";
@@ -8,6 +6,7 @@ import { conversationForkWorkflow } from "@app/temporal/conversation_fork_queue/
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { WorkflowExecutionAlreadyStartedError } from "@temporalio/client";
 
 export async function launchConversationForkWorkflow({
   workspaceId,

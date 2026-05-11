@@ -36,9 +36,9 @@ import type {
   ContentFragmentInputWithFileIdType,
 } from "@app/types/api/internal/assistant";
 import type { CompactionAttachmentIdReplacements } from "@app/types/assistant/compaction";
-import {
-  type ConversationType,
-  type ConversationWithoutContentType,
+import type {
+  ConversationType,
+  ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
 import type { SupportedModel } from "@app/types/assistant/models/types";
 import type { ContentFragmentType } from "@app/types/content_fragment";

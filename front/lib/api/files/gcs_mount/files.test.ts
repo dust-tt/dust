@@ -347,7 +347,10 @@ describe("copyConversationGCSMount", () => {
       spaceId: conversationsSpace.id,
     });
 
-    const sourceRes = await ConversationResource.fetchById(auth, sourceConv.sId);
+    const sourceRes = await ConversationResource.fetchById(
+      auth,
+      sourceConv.sId
+    );
     const destRes = await ConversationResource.fetchById(auth, destConv.sId);
     assert(sourceRes !== null);
     assert(destRes !== null);
