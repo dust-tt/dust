@@ -367,12 +367,11 @@ export const InputBar = React.memo(function InputBar({
     setAttachedNodes((prev) => prev.filter((n) => !isEqualNode(n, node)));
   };
 
-  const handleResetSelections = () => {
+  const handleResetMCPServerViews = () => {
     setSelectedMCPServerViews((prev) => {
       prev.forEach((sv) => void deleteTool(sv.sId));
       return [];
     });
-    setAttachedNodes([]);
   };
 
   const handleShake = useCallback(() => {
@@ -444,7 +443,7 @@ export const InputBar = React.memo(function InputBar({
             selectedMCPServerViews={selectedMCPServerViews}
             onMCPServerViewSelect={handleMCPServerViewSelect}
             onMCPServerViewDeselect={handleMCPServerViewDeselect}
-            onResetSelections={handleResetSelections}
+            onResetMCPServerViews={handleResetMCPServerViews}
             isAgentBuilder={isAgentBuilder}
             attachedNodes={attachedNodes}
             saveDraft={saveDraft}

@@ -121,7 +121,7 @@ export interface InputBarContainerProps {
   onMCPServerViewSelect: (serverView: MCPServerViewType) => void;
   onNodeSelect: (node: DataSourceViewContentNode) => void;
   onNodeUnselect: (node: DataSourceViewContentNode) => void;
-  onResetSelections: () => void;
+  onResetMCPServerViews: () => void;
   owner: WorkspaceType;
   saveDraft: (markdown: string, agentMention?: RichAgentMention | null) => void;
   pendingInputText: string | null;
@@ -153,7 +153,7 @@ const InputBarContainer = ({
   onMCPServerViewSelect,
   onMCPServerViewDeselect,
   selectedMCPServerViews,
-  onResetSelections,
+  onResetMCPServerViews,
   saveDraft,
   user,
   disableAgentSelector,
@@ -595,7 +595,7 @@ const InputBarContainer = ({
     prevUserMentionedRef.current = userMentioned;
     if (startsWithUserMention && !wasUserMentioned) {
       setSelectedSingleAgent(null);
-      onResetSelections();
+      onResetMCPServerViews();
     }
   };
 
