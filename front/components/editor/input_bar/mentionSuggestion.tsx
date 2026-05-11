@@ -11,7 +11,6 @@ import type {
   SuggestionKeyDownProps,
   SuggestionProps,
 } from "@tiptap/suggestion";
-import type React from "react";
 import type { RefAttributes } from "react";
 
 export const mentionPluginKey = new PluginKey("mention-suggestion");
@@ -86,8 +85,7 @@ export function createMentionSuggestion({
               includeCurrentUser,
               onClose: closeDropdown,
               select: {
-                agents:
-                  select.agents,
+                agents: select.agents,
                 users: select.users,
               },
             },

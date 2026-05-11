@@ -19,13 +19,7 @@ import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import { getSupportedFileExtensions } from "@app/types/files";
 import type { SpaceType } from "@app/types/space";
 import type { UserType, WorkspaceType } from "@app/types/user";
-import {
-  Avatar,
-  Button,
-  cn,
-  RobotIcon,
-  XMarkIcon,
-} from "@dust-tt/sparkle";
+import { Avatar, Button, cn, RobotIcon, XMarkIcon } from "@dust-tt/sparkle";
 import React from "react";
 
 interface InputBarButtonsProps {
@@ -109,9 +103,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
         selectedAgent ? (
           <div className="inline-flex box-border items-center rounded-lg min-h-7 heading-xs px-3 gap-1 bg-muted-background border-border dark:bg-muted-background-night dark:border-border-night text-primary-900 dark:text-primary-900-night cursor-pointer">
             <Avatar size="xxs" visual={selectedAgent.pictureUrl} />
-            <span className="grow truncate">
-              {selectedAgent.label}
-            </span>
+            <span className="grow truncate">{selectedAgent.label}</span>
             {!isInputDisabled && (
               <button
                 type="button"

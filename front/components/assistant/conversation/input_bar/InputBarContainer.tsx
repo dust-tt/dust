@@ -614,8 +614,7 @@ const InputBarContainer = ({
         const firstChild = editor.state.doc.firstChild;
         const firstNode = firstChild?.firstChild;
         startsWithUserMention =
-          firstNode?.type.name === "mention" &&
-          firstNode.attrs.type === "user";
+          firstNode?.type.name === "mention" && firstNode.attrs.type === "user";
       }
       onEditorMentionsChangedRef.current(userMentioned, startsWithUserMention);
     };
@@ -895,7 +894,8 @@ const InputBarContainer = ({
 
   const isRecording = voiceTranscriberService.status === "recording";
 
-  const toolbarRowTransitionStyle = getToolbarRowTransitionStyle(hideCapabilities);
+  const toolbarRowTransitionStyle =
+    getToolbarRowTransitionStyle(hideCapabilities);
 
   return (
     <div
