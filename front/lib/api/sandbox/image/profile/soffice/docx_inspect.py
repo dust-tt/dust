@@ -10,8 +10,6 @@ from __future__ import annotations
 
 import argparse
 import os
-import shutil
-import subprocess
 import sys
 import zipfile
 from pathlib import Path
@@ -19,15 +17,21 @@ from typing import Dict, Iterable, List, Optional, Tuple
 from xml.etree import ElementTree as ET
 
 import ooxml
+import render
 from docx import Document
 from docx.document import Document as DocumentType
+from utils import (
+    TEXT_PREVIEW_LIMIT,
+    ellipsize,
+    format_size,
+    pad,
+    safe_output,
+)
 
 W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 A_NS = ooxml.NS["a"]
 
-MAX_OUTPUT_BYTES = 48_000
 DEFAULT_MAX_PARAGRAPHS = 200
-TEXT_PREVIEW_LIMIT = 80
 
 USAGE = (
     "docx_inspect <file> [--styles] [--paragraphs] [--text] [--tables] "
@@ -64,26 +68,6 @@ HELP_TEXT = (
 # ---------------------------------------------------------------------------
 # Helpers.
 # ---------------------------------------------------------------------------
-
-
-def ellipsize(text: str, limit: int) -> str:
-    if len(text) <= limit:
-        return text
-    return text[: limit - 1] + "…"
-
-
-def pad(text: str, width: int) -> str:
-    if len(text) >= width:
-        return text
-    return text + " " * (width - len(text))
-
-
-def format_size(num_bytes: int) -> str:
-    if num_bytes < 1024:
-        return f"{num_bytes} B"
-    if num_bytes < 1024 * 1024:
-        return f"{num_bytes / 1024:.1f} KB"
-    return f"{num_bytes / (1024 * 1024):.1f} MB"
 
 
 def _qw(local: str) -> str:
@@ -619,68 +603,17 @@ def print_media(file_path: str) -> str:
 
 
 def print_render(file_path: str, page_idx: Optional[int]) -> str:
-    doc_basename = os.path.splitext(os.path.basename(file_path))[0]
-    out_dir = Path("/tmp/docx_render") / doc_basename
-
-    if page_idx is None and out_dir.exists():
-        shutil.rmtree(out_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
-
-    pdf_path = out_dir / f"{doc_basename}.pdf"
-    soffice = subprocess.run(
-        [
-            "soffice",
-            "--headless",
-            "--convert-to", "pdf",
-            "--outdir", str(out_dir),
-            file_path,
-        ],
-        capture_output=True,
-        text=True,
-        timeout=180,
+    out_dir, rendered = render.render_via_soffice(
+        file_path,
+        out_root=Path("/tmp/docx_render"),
+        item_name="page",
+        item_idx=page_idx,
     )
-    if soffice.returncode != 0 or not pdf_path.exists():
-        tail = (soffice.stderr or soffice.stdout or "").strip().splitlines()
-        msg = tail[-1] if tail else "soffice produced no output"
-        raise ValueError(f"pdf conversion failed: {msg}")
-
-    pdftoppm_args = ["pdftoppm", "-jpeg", "-r", "100"]
-    if page_idx is not None:
-        pdftoppm_args.extend(["-f", str(page_idx), "-l", str(page_idx)])
-    pdftoppm_args.extend([str(pdf_path), str(out_dir / "page")])
-    pdftoppm = subprocess.run(
-        pdftoppm_args,
-        capture_output=True,
-        text=True,
-        timeout=180,
-    )
-    if pdftoppm.returncode != 0:
-        tail = (pdftoppm.stderr or pdftoppm.stdout or "").strip().splitlines()
-        msg = tail[-1] if tail else "pdftoppm produced no output"
-        raise ValueError(f"page rasterization failed: {msg}")
-
-    # pdftoppm zero-pads to the page count's width. Renormalize to a fixed
-    # 3-digit width so paths sort and look consistent across runs.
-    rendered: List[Path] = sorted(out_dir.glob("page-*.jpg"))
-    if not rendered:
-        raise ValueError("no page images produced")
-    normalized: List[Path] = []
-    for src in rendered:
-        try:
-            n = int(src.stem.split("-", 1)[1])
-        except (IndexError, ValueError):
-            continue
-        target = out_dir / f"page-{n:03d}.jpg"
-        if src != target:
-            src.rename(target)
-        normalized.append(target)
-    normalized.sort()
-
-    plural = "" if len(normalized) == 1 else "s"
+    plural = "" if len(rendered) == 1 else "s"
     lines = [
-        f"[Rendered: {len(normalized)} page{plural} | jpeg @ 100 dpi | {out_dir}]"
+        f"[Rendered: {len(rendered)} page{plural} | jpeg @ 100 dpi | {out_dir}]"
     ]
-    for p in normalized:
+    for p in rendered:
         lines.append(str(p))
     return "\n".join(lines)
 
@@ -688,20 +621,6 @@ def print_render(file_path: str, page_idx: Optional[int]) -> str:
 # ---------------------------------------------------------------------------
 # CLI dispatch.
 # ---------------------------------------------------------------------------
-
-
-def safe_output(text: str) -> Tuple[str, bool]:
-    if len(text.encode("utf-8")) <= MAX_OUTPUT_BYTES:
-        return text, False
-    out_lines: List[str] = []
-    out_bytes = 0
-    for line in text.split("\n"):
-        line_bytes = len((line + "\n").encode("utf-8"))
-        if out_bytes + line_bytes > MAX_OUTPUT_BYTES:
-            return "\n".join(out_lines), True
-        out_lines.append(line)
-        out_bytes += line_bytes
-    return "\n".join(out_lines), False
 
 
 def main() -> int:

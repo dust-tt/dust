@@ -10,27 +10,31 @@ from __future__ import annotations
 
 import argparse
 import os
-import shutil
-import subprocess
 import sys
 import zipfile
 from pathlib import Path
 from typing import Dict, Iterable, List, NamedTuple, Optional, Tuple
 
 import ooxml
+import render
 from pptx import Presentation
 from pptx.enum.shapes import MSO_SHAPE_TYPE
 from pptx.presentation import Presentation as PresentationType
 from pptx.shapes.base import BaseShape
 from pptx.slide import Slide
+from utils import (
+    TEXT_PREVIEW_LIMIT,
+    ellipsize,
+    format_size,
+    pad,
+    safe_output,
+)
 
 A_NS = ooxml.NS["a"]
 P_NS = "http://schemas.openxmlformats.org/presentationml/2006/main"
 THEME_NS = {"a": A_NS, "p": P_NS}
 
-MAX_OUTPUT_BYTES = 48_000
 DEFAULT_MAX_SHAPES = 200
-TEXT_PREVIEW_LIMIT = 80
 EMU_PER_INCH = 914_400
 EDGE_EPSILON_EMU = 45_720  # 0.05" tolerance before flagging edge overflow.
 
@@ -78,26 +82,6 @@ HELP_TEXT = (
     "    p<level>: <text>  [<font hints>]\n"
     "Empty shapes are skipped; long text is ellipsized."
 )
-
-
-def ellipsize(text: str, limit: int) -> str:
-    if len(text) <= limit:
-        return text
-    return text[: limit - 1] + "…"
-
-
-def pad(text: str, width: int) -> str:
-    if len(text) >= width:
-        return text
-    return text + " " * (width - len(text))
-
-
-def format_size(num_bytes: int) -> str:
-    if num_bytes < 1024:
-        return f"{num_bytes} B"
-    if num_bytes < 1024 * 1024:
-        return f"{num_bytes / 1024:.1f} KB"
-    return f"{num_bytes / (1024 * 1024):.1f} MB"
 
 
 def emu_to_inches(emu: Optional[int]) -> Optional[float]:
@@ -185,10 +169,6 @@ def font_argb(run) -> Optional[str]:
 # ---------------------------------------------------------------------------
 
 
-def _q(local: str) -> str:
-    return f"{{{A_NS}}}{local}"
-
-
 def _qp(local: str) -> str:
     return f"{{{P_NS}}}{local}"
 
@@ -202,27 +182,6 @@ def _read_clr_map(master_xml) -> Dict[str, str]:
     if clr_map is None:
         return {}
     return {k: v for k, v in clr_map.attrib.items() if not k.startswith("{")}
-
-
-def _theme_color_table(theme_xml) -> Dict[str, str]:
-    """Return {scheme-token: 6-hex} for the theme's color scheme."""
-    if theme_xml is None:
-        return {}
-    out: Dict[str, str] = {}
-    scheme = theme_xml.find(f"{_q('themeElements')}/{_q('clrScheme')}")
-    if scheme is None:
-        return out
-    for child in scheme:
-        token = child.tag.split("}", 1)[-1]
-        srgb = child.find(_q("srgbClr"))
-        if srgb is not None:
-            out[token] = srgb.attrib.get("val", "").upper()
-            continue
-        sysclr = child.find(_q("sysClr"))
-        if sysclr is not None:
-            # lastClr is the resolved value the system color uses.
-            out[token] = sysclr.attrib.get("lastClr", "").upper()
-    return out
 
 
 def _resolve_scheme_color(
@@ -243,29 +202,16 @@ def _solid_fill_hex(
     """Resolve <a:solidFill> on a defRPr-like element to a 6-hex color."""
     if elem is None:
         return None
-    fill = elem.find(_q("solidFill"))
+    fill = elem.find(ooxml.qa("solidFill"))
     if fill is None:
         return None
-    srgb = fill.find(_q("srgbClr"))
+    srgb = fill.find(ooxml.qa("srgbClr"))
     if srgb is not None:
         return srgb.attrib.get("val", "").upper() or None
-    scheme = fill.find(_q("schemeClr"))
+    scheme = fill.find(ooxml.qa("schemeClr"))
     if scheme is not None:
         return _resolve_scheme_color(scheme.attrib.get("val", ""), clr_map, theme_colors)
     return None
-
-
-def _theme_font(theme_xml, kind: str) -> Optional[str]:
-    """kind is 'major' or 'minor'. Returns the latin typeface."""
-    if theme_xml is None:
-        return None
-    latin = theme_xml.find(
-        f"{_q('themeElements')}/{_q('fontScheme')
-                                 }/{_q(kind + 'Font')}/{_q('latin')}"
-    )
-    if latin is None:
-        return None
-    return latin.attrib.get("typeface") or None
 
 
 def _ph_type_default_kind(ph_type: Optional[str]) -> str:
@@ -300,13 +246,13 @@ def _lvl1_defrpr(sp):
     placeholder shape. Either may be None."""
     if sp is None:
         return None, None
-    lst = sp.find(f"{_qp('txBody')}/{_q('lstStyle')}")
+    lst = sp.find(f"{_qp('txBody')}/{ooxml.qa('lstStyle')}")
     if lst is None:
         return None, None
-    lvl1 = lst.find(_q("lvl1pPr"))
+    lvl1 = lst.find(ooxml.qa("lvl1pPr"))
     if lvl1 is None:
         return None, None
-    def_rpr = lvl1.find(_q("defRPr"))
+    def_rpr = lvl1.find(ooxml.qa("defRPr"))
     return lvl1, def_rpr
 
 
@@ -323,10 +269,10 @@ def _master_style_defrpr(master_xml, kind: str):
     style = master_xml.find(f"{_qp('txStyles')}/{_qp(style_name)}")
     if style is None:
         return None, None
-    lvl1 = style.find(_q("lvl1pPr"))
+    lvl1 = style.find(ooxml.qa("lvl1pPr"))
     if lvl1 is None:
         return None, None
-    def_rpr = lvl1.find(_q("defRPr"))
+    def_rpr = lvl1.find(ooxml.qa("defRPr"))
     return lvl1, def_rpr
 
 
@@ -362,7 +308,7 @@ def resolve_placeholder_defaults(
         if def_rpr is None:
             continue
         if typeface is None:
-            latin = def_rpr.find(_q("latin"))
+            latin = def_rpr.find(ooxml.qa("latin"))
             if latin is not None:
                 typeface = latin.attrib.get("typeface") or None
         if size_pt is None:
@@ -379,7 +325,7 @@ def resolve_placeholder_defaults(
             color_hex = _solid_fill_hex(def_rpr, clr_map, theme_colors)
 
     if typeface is None:
-        typeface = _theme_font(
+        typeface = ooxml.theme_font(
             theme_xml, "major" if kind == "title" else "minor")
 
     return {
@@ -452,7 +398,7 @@ def _read_layout_chain(
     if master_path:
         _, theme_xml = _read_theme_for_master(zf, master_path)
     clr_map = _read_clr_map(master_xml)
-    theme_colors = _theme_color_table(theme_xml)
+    theme_colors = ooxml.theme_colors_by_name(theme_xml)
     return layout_xml, master_xml, theme_xml, clr_map, theme_colors
 
 
@@ -767,9 +713,9 @@ def _theme_summary_line(file_path: str) -> Optional[str]:
             if theme_xml is None:
                 return None
             clr_map = _read_clr_map(master_xml)
-            theme_colors = _theme_color_table(theme_xml)
-            major = _theme_font(theme_xml, "major")
-            minor = _theme_font(theme_xml, "minor")
+            theme_colors = ooxml.theme_colors_by_name(theme_xml)
+            major = ooxml.theme_font(theme_xml, "major")
+            minor = ooxml.theme_font(theme_xml, "minor")
             theme_name = theme_xml.attrib.get("name") or "?"
 
             def _resolved(token: str) -> str:
@@ -1047,87 +993,19 @@ def print_render(
             f"(deck has {total_slides} slides)"
         )
 
-    deck_basename = os.path.splitext(os.path.basename(file_path))[0]
-    out_dir = Path("/tmp/pptx_render") / deck_basename
-
-    if slide_idx is None and out_dir.exists():
-        shutil.rmtree(out_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
-
-    pdf_path = out_dir / f"{deck_basename}.pdf"
-    soffice = subprocess.run(
-        [
-            "soffice",
-            "--headless",
-            "--convert-to", "pdf",
-            "--outdir", str(out_dir),
-            file_path,
-        ],
-        capture_output=True,
-        text=True,
-        timeout=180,
+    out_dir, rendered = render.render_via_soffice(
+        file_path,
+        out_root=Path("/tmp/pptx_render"),
+        item_name="slide",
+        item_idx=slide_idx,
     )
-    if soffice.returncode != 0 or not pdf_path.exists():
-        tail = (soffice.stderr or soffice.stdout or "").strip().splitlines()
-        msg = tail[-1] if tail else "soffice produced no output"
-        raise ValueError(f"pdf conversion failed: {msg}")
-
-    pdftoppm_args = ["pdftoppm", "-jpeg", "-r", "100"]
-    if slide_idx is not None:
-        pdftoppm_args.extend(["-f", str(slide_idx), "-l", str(slide_idx)])
-    pdftoppm_args.extend([str(pdf_path), str(out_dir / "slide")])
-    pdftoppm = subprocess.run(
-        pdftoppm_args,
-        capture_output=True,
-        text=True,
-        timeout=180,
-    )
-    if pdftoppm.returncode != 0:
-        tail = (pdftoppm.stderr or pdftoppm.stdout or "").strip().splitlines()
-        msg = tail[-1] if tail else "pdftoppm produced no output"
-        raise ValueError(f"page rasterization failed: {msg}")
-
-    # pdftoppm zero-pads to the width of the total page count, so a 5-page
-    # deck yields slide-1.jpg..slide-5.jpg and a 50-page deck yields
-    # slide-01.jpg..slide-50.jpg. Normalize everything we just produced to
-    # 3-digit padding so paths sort lexically and stay stable across runs.
-    width = max(1, len(str(total_slides)))
-    nums = [slide_idx] if slide_idx is not None else list(
-        range(1, total_slides + 1))
-    rendered: List[Path] = []
-    for n in nums:
-        src = out_dir / f"slide-{n:0{width}d}.jpg"
-        target = out_dir / f"slide-{n:03d}.jpg"
-        if src != target and src.exists():
-            src.rename(target)
-        if not target.exists():
-            raise ValueError(
-                f"expected rendered slide missing: {target.name}"
-            )
-        rendered.append(target)
-
     plural = "" if len(rendered) == 1 else "s"
     lines = [
-        f"[Rendered: {len(rendered)} slide{
-            plural} | jpeg @ 100 dpi | {out_dir}]"
+        f"[Rendered: {len(rendered)} slide{plural} | jpeg @ 100 dpi | {out_dir}]"
     ]
     for p in rendered:
         lines.append(str(p))
     return "\n".join(lines)
-
-
-def safe_output(text: str) -> Tuple[str, bool]:
-    if len(text.encode("utf-8")) <= MAX_OUTPUT_BYTES:
-        return text, False
-    out_lines: List[str] = []
-    out_bytes = 0
-    for line in text.split("\n"):
-        line_bytes = len((line + "\n").encode("utf-8"))
-        if out_bytes + line_bytes > MAX_OUTPUT_BYTES:
-            return "\n".join(out_lines), True
-        out_lines.append(line)
-        out_bytes += line_bytes
-    return "\n".join(out_lines), False
 
 
 def main() -> int:
