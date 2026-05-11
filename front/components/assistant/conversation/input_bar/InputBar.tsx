@@ -16,7 +16,6 @@ import {
 import { RUNNING_AGENT_SWITCH_BLOCK_MESSAGE } from "@app/lib/api/assistant/errors";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { DustError } from "@app/lib/error";
-import { startsWithUserMention } from "@app/lib/mentions/format";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { TRACKING_AREAS, trackEvent } from "@app/lib/tracking";
 import { classNames } from "@app/lib/utils";
@@ -259,12 +258,8 @@ export const InputBar = React.memo(function InputBar({
     }
 
     const { mentions: rawMentions, markdown } = markdownAndMentions;
-    // When single-agent input is enabled, inject the selected agent into mentions
-    // since it's no longer in the editor as a mention node.
-    const isLeadingUserMention = startsWithUserMention(markdown);
     const shouldInjectSelectedAgent =
       selectedSingleAgent &&
-      !isLeadingUserMention &&
       !rawMentions.some((m) => m.id === selectedSingleAgent.id);
 
     const allMentions = shouldInjectSelectedAgent
@@ -374,12 +369,11 @@ export const InputBar = React.memo(function InputBar({
     setAttachedNodes((prev) => prev.filter((n) => !isEqualNode(n, node)));
   };
 
-  const handleResetSelections = () => {
+  const handleResetMCPServerViews = () => {
     setSelectedMCPServerViews((prev) => {
       prev.forEach((sv) => void deleteTool(sv.sId));
       return [];
     });
-    setAttachedNodes([]);
   };
 
   const handleShake = useCallback(() => {
@@ -451,7 +445,7 @@ export const InputBar = React.memo(function InputBar({
             selectedMCPServerViews={selectedMCPServerViews}
             onMCPServerViewSelect={handleMCPServerViewSelect}
             onMCPServerViewDeselect={handleMCPServerViewDeselect}
-            onResetSelections={handleResetSelections}
+            onResetMCPServerViews={handleResetMCPServerViews}
             isAgentBuilder={isAgentBuilder}
             attachedNodes={attachedNodes}
             saveDraft={saveDraft}
