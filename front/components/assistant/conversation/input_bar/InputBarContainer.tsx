@@ -79,17 +79,17 @@ const FADE_OUT_TRANSITION = "50ms ease-out";
 const FADE_IN_TRANSITION = "150ms ease-out";
 
 function getToolbarRowTransitionStyle(
-  hideButtons: boolean
+  hideCapabilities: boolean
 ): React.CSSProperties {
-  const opacityTransition = hideButtons
+  const opacityTransition = hideCapabilities
     ? FADE_OUT_TRANSITION
     : FADE_IN_TRANSITION;
   return {
-    maxHeight: hideButtons ? 0 : 100,
-    opacity: hideButtons ? 0 : 1,
+    maxHeight: hideCapabilities ? 0 : 100,
+    opacity: hideCapabilities ? 0 : 1,
     overflow: "hidden",
-    paddingTop: hideButtons ? 0 : undefined,
-    paddingBottom: hideButtons ? 0 : undefined,
+    paddingTop: hideCapabilities ? 0 : undefined,
+    paddingBottom: hideCapabilities ? 0 : undefined,
     transition: `max-height ${COLLAPSE_TRANSITION}, opacity ${opacityTransition}, padding ${COLLAPSE_TRANSITION}`,
   };
 }
@@ -202,8 +202,6 @@ const InputBarContainer = ({
   >(null);
   const [pastedCount, setPastedCount] = useState(0);
   const [isEmpty, setIsEmpty] = useState(true);
-  // A ref so the mention suggestion plugin (which lives outside React) can read it synchronously.
-  const shouldSuggestAgentRef = useRef(true);
   // The editor plugin captures its options once at initialization. Passing a ref lets the plugin
   // always invoke the latest closure without needing to reinitialize the editor.
   const onFirstAgentMentionPasteRef = useRef<
@@ -453,7 +451,6 @@ const InputBarContainer = ({
     conversationId: conversation?.sId,
     spaceId,
     onInlineText: handleInlineText,
-    shouldSuggestAgentRef,
     onFirstAgentMentionPasteRef,
     slashSuggestion: {
       enabledRef: shouldEnableSlashSuggestionRef,
@@ -581,16 +578,19 @@ const InputBarContainer = ({
   // Uses a ref so the editor listener (registered once in the useEffect below) always
   // calls the latest closure without re-registering the listener on every render.
   const prevUserMentionedRef = useRef(false);
-  const onEditorMentionsChangedRef = useRef((_userMentioned: boolean) => {});
+  const onEditorMentionsChangedRef = useRef(
+    (_userMentioned: boolean, _startsWithUserMention: boolean) => {}
+  );
 
-  onEditorMentionsChangedRef.current = (userMentioned: boolean) => {
-    shouldSuggestAgentRef.current = !userMentioned;
+  onEditorMentionsChangedRef.current = (
+    userMentioned: boolean,
+    startsWithUserMention: boolean
+  ) => {
     const wasUserMentioned = prevUserMentionedRef.current;
     prevUserMentionedRef.current = userMentioned;
-    if (userMentioned && !wasUserMentioned) {
+    if (startsWithUserMention && !wasUserMentioned) {
       setSelectedSingleAgent(null);
       onResetSelections();
-      fileUploaderService.resetUpload();
     }
   };
 
@@ -607,7 +607,17 @@ const InputBarContainer = ({
       saveDraft(editorIsEmpty ? "" : markdown, selectedSingleAgentRef.current);
       const userMentioned = mentions.some((m) => m.type === "user");
       setHasUserMention(userMentioned);
-      onEditorMentionsChangedRef.current(userMentioned);
+
+      // Check if the very first content node in the editor is a user mention.
+      let startsWithUserMention = false;
+      if (userMentioned && editor) {
+        const firstChild = editor.state.doc.firstChild;
+        const firstNode = firstChild?.firstChild;
+        startsWithUserMention =
+          firstNode?.type.name === "mention" &&
+          firstNode.attrs.type === "user";
+      }
+      onEditorMentionsChangedRef.current(userMentioned, startsWithUserMention);
     };
 
     if (editorRef.current) {
@@ -874,7 +884,7 @@ const InputBarContainer = ({
     voiceTranscriberService.status !== "idle";
 
   const [isToolbarOpen, setIsToolbarOpen] = useState(false);
-  const hideButtons = hasUserMention;
+  const hideCapabilities = hasUserMention && !selectedSingleAgent;
 
   const contentEditableClasses = classNames(
     "inline-block w-full",
@@ -885,7 +895,7 @@ const InputBarContainer = ({
 
   const isRecording = voiceTranscriberService.status === "recording";
 
-  const toolbarRowTransitionStyle = getToolbarRowTransitionStyle(hideButtons);
+  const toolbarRowTransitionStyle = getToolbarRowTransitionStyle(hideCapabilities);
 
   return (
     <div
@@ -907,7 +917,7 @@ const InputBarContainer = ({
               "scrollbar-hide",
               "overflow-y-auto",
               "max-h-[40vh] min-h-14 sm:min-h-16",
-              hideButtons && "pr-20"
+              hideCapabilities && "pr-20"
             )}
           />
         </div>
@@ -999,6 +1009,7 @@ const InputBarContainer = ({
                     fileInputRef={fileInputRef}
                     fileUploaderService={fileUploaderService}
                     handleSingleAgentSelect={handleSingleAgentSelect}
+                    hideCapabilities={hideCapabilities}
                     isInputDisabled={disableInput}
                     onAgentRemove={() => setSelectedSingleAgent(null)}
                     onMCPServerViewSelect={onMCPServerViewSelect}

@@ -21,7 +21,6 @@ export function createMentionSuggestion({
   conversationId,
   spaceId,
   select,
-  shouldSuggestAgentRef,
   includeCurrentUser = false,
   onAgentSelect,
 }: {
@@ -33,8 +32,6 @@ export function createMentionSuggestion({
     agents: boolean;
     users: boolean;
   };
-  // Optional ref that gates select.agents at render time (used to hide agents dynamically in single-agent mode).
-  shouldSuggestAgentRef?: React.RefObject<boolean>;
   onAgentSelect?: (mention: RichMention) => void;
 }) {
   return {
@@ -90,7 +87,7 @@ export function createMentionSuggestion({
               onClose: closeDropdown,
               select: {
                 agents:
-                  select.agents && (shouldSuggestAgentRef?.current ?? true),
+                  select.agents,
                 users: select.users,
               },
             },
@@ -107,7 +104,7 @@ export function createMentionSuggestion({
             conversationId,
             spaceId,
             select: {
-              agents: select.agents && (shouldSuggestAgentRef?.current ?? true),
+              agents: select.agents,
               users: select.users,
             },
           });

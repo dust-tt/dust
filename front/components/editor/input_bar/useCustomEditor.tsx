@@ -200,8 +200,6 @@ export interface CustomEditorProps {
   onInlineText?: (fileId: string, textContent: string) => void;
   // When true, agent suggestions are fully disabled (e.g. edit mode).
   disableAgentMentions?: boolean;
-  // Ref that dynamically controls whether agent suggestions are shown for single agent mode.
-  shouldSuggestAgentRef?: React.RefObject<boolean>;
   onFirstAgentMentionPasteRef?: React.RefObject<
     ((agentId: string) => void) | undefined
   >;
@@ -225,7 +223,6 @@ export const buildEditorExtensions = ({
   onInlineText,
   onUrlDetected,
   onAgentSelect,
-  shouldSuggestAgentRef,
   onFirstAgentMentionPasteRef,
   slashSuggestion,
   placeholderOverride,
@@ -238,7 +235,6 @@ export const buildEditorExtensions = ({
   onInlineText?: (fileId: string, textContent: string) => void;
   onUrlDetected?: (candidate: UrlCandidate | NodeCandidate | null) => void;
   onAgentSelect?: (mention: RichMention) => void;
-  shouldSuggestAgentRef?: React.RefObject<boolean>;
   onFirstAgentMentionPasteRef?: React.RefObject<
     ((agentId: string) => void) | undefined
   >;
@@ -318,7 +314,6 @@ export const buildEditorExtensions = ({
           agents: !disableAgentMentions,
           users: !disableUserMentions,
         },
-        shouldSuggestAgentRef,
         onAgentSelect,
       }),
     }),
@@ -376,7 +371,6 @@ const useCustomEditor = ({
   longTextPasteCharsThreshold,
   onInlineText,
   disableAgentMentions,
-  shouldSuggestAgentRef,
   onFirstAgentMentionPasteRef,
   slashSuggestion,
   placeholderOverride,
@@ -393,7 +387,6 @@ const useCustomEditor = ({
         onInlineText,
         onUrlDetected,
         onAgentSelect,
-        shouldSuggestAgentRef,
         onFirstAgentMentionPasteRef,
         slashSuggestion,
         placeholderOverride,

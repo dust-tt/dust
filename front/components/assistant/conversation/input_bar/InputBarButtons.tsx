@@ -40,6 +40,7 @@ interface InputBarButtonsProps {
   fileInputRef: React.MutableRefObject<HTMLInputElement | null>;
   fileUploaderService: FileUploaderService;
   handleSingleAgentSelect: (mention: RichMention) => void;
+  hideCapabilities: boolean;
   // When true, disables every picker (tools, attachment) in addition to the
   // agent selector which is muted via `disableAgentSelector`.
   isInputDisabled: boolean;
@@ -67,6 +68,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
   fileInputRef,
   fileUploaderService,
   handleSingleAgentSelect,
+  hideCapabilities,
   isInputDisabled,
   onAgentRemove,
   onMCPServerViewSelect,
@@ -195,7 +197,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
   return (
     <>
       {agentButton}
-      {toolsButton}
+      {!hideCapabilities && toolsButton}
       {attachmentButton}
     </>
   );
