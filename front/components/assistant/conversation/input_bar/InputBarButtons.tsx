@@ -103,13 +103,18 @@ export const InputBarButtons = React.memo(function InputBarButtons({
         selectedAgent ? (
           <div
             role="button"
-            tabIndex={0}
+            tabIndex={isInputDisabled ? -1 : 0}
             aria-label={`Selected agent: ${selectedAgent.label}`}
-            className="inline-flex box-border items-center rounded-lg min-h-7 heading-xs px-3 gap-1 bg-muted-background border-border dark:bg-muted-background-night dark:border-border-night text-primary-900 dark:text-primary-900-night cursor-pointer"
+            aria-disabled={isInputDisabled}
+            className={cn(
+              "inline-flex box-border items-center rounded-lg min-h-7 heading-xs px-3 gap-1 bg-muted-background border-border dark:bg-muted-background-night dark:border-border-night text-primary-900 dark:text-primary-900-night",
+              isInputDisabled
+                ? "opacity-50 pointer-events-none"
+                : "cursor-pointer"
+            )}
           >
             <Avatar size="xxs" visual={selectedAgent.pictureUrl} />
             <span className="grow truncate">{selectedAgent.label}</span>
-            {!isInputDisabled && (
               <button
                 type="button"
                 aria-label="Remove agent"
@@ -126,7 +131,6 @@ export const InputBarButtons = React.memo(function InputBarButtons({
               >
                 <XMarkIcon className="h-3 w-3" />
               </button>
-            )}
           </div>
         ) : (
           <Button
