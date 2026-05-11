@@ -30,10 +30,10 @@ describe("buildProjectKickoffPrompt", () => {
 
   it("should guide direct project context writes without skill detours", () => {
     expect(prompt).toContain(
-      "use `project_manager.add_file` directly with `content`"
+      "use `files__create` with a `project/<filename>` scoped path"
     );
     expect(prompt).toContain(
-      "Do NOT enable skills/tools just to create files when `project_manager.add_file` can do it directly"
+      "Do NOT enable skills/tools just to create files when `files__create` can do it directly"
     );
   });
 

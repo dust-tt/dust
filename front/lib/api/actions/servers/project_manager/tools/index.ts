@@ -7,17 +7,14 @@ import type {
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { runIncludeDataRetrieval } from "@app/lib/api/actions/servers/include_data/include_function";
-import { buildProjectSearchDataSources } from "@app/lib/api/actions/servers/project_manager/build_project_search_data_sources";
 import {
   buildProjectRetrieveDataSources,
   getProjectSpace,
   getWritableProjectContext,
   makeSuccessResponse,
-  validateSourceFileForCopy,
   withErrorHandling,
 } from "@app/lib/api/actions/servers/project_manager/helpers";
 import { PROJECT_MANAGER_TOOLS_METADATA } from "@app/lib/api/actions/servers/project_manager/metadata";
-import { searchFunction } from "@app/lib/api/actions/servers/search/tools";
 import { resolveAgentConfigurationIdByName } from "@app/lib/api/assistant/configuration/agent";
 import {
   createConversation,
@@ -31,11 +28,9 @@ import {
 import config from "@app/lib/api/config";
 import {
   addContentNodeToProject,
-  addFileToProject,
   fetchLatestProjectContextFileContentFragment,
   listProjectContextAttachments,
   removeContentNodeFromProject,
-  removeFileFromProject,
 } from "@app/lib/api/projects/context";
 import { listNonArchivedMemberSpacesWithMetadata } from "@app/lib/api/projects/list";
 import { createSpaceAndGroup } from "@app/lib/api/spaces";
@@ -43,7 +38,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { FileResource } from "@app/lib/resources/file_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -56,10 +50,6 @@ import {
   type UserMessageOrigin,
 } from "@app/types/assistant/conversation";
 import { extractDataSourceIdFromNodeId } from "@app/types/core/content_node";
-import {
-  contentTypeFromFileName,
-  isAllSupportedFileContentType,
-} from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { formatConversationsForDisplay } from "./conversation_formatting";
@@ -88,174 +78,11 @@ function formatListedConversationWithoutMessages(
   };
 }
 
-/**
- * Reads content from a source file.
- */
-async function readSourceFileContent(
-  auth: Authenticator,
-  sourceFile: FileResource
-): Promise<string> {
-  const owner = auth.getNonNullableWorkspace();
-  const readStream = sourceFile.getSharedReadStream(owner, "original");
-  const chunks: Buffer[] = [];
-  for await (const chunk of readStream) {
-    chunks.push(chunk);
-  }
-  return Buffer.concat(chunks).toString("utf-8");
-}
-
 export function createProjectManagerTools(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): ToolDefinition[] {
   const handlers: ToolHandlers<typeof PROJECT_MANAGER_TOOLS_METADATA> = {
-    add_file: async (params) => {
-      return withErrorHandling(async () => {
-        const contextRes = await getWritableProjectContext(auth, {
-          agentLoopContext,
-          dustProject: params.dustProject,
-        });
-        if (contextRes.isErr()) {
-          return contextRes;
-        }
-
-        const { space } = contextRes.value;
-        const { fileName, content, sourceFileId, contentType } = params;
-        const owner = auth.getNonNullableWorkspace();
-        const user = auth.getNonNullableUser();
-
-        let file: FileResource;
-
-        // If sourceFileId is provided, use the copy method.
-        if (sourceFileId) {
-          const sourceFileRes = await validateSourceFileForCopy(auth, {
-            sourceFileId,
-            targetSpaceId: space.id,
-          });
-          if (sourceFileRes.isErr()) {
-            return sourceFileRes;
-          }
-
-          const sourceFile = sourceFileRes.value;
-          const sourceConversationId = sourceFile.useCaseMetadata
-            ?.conversationId
-            ? sourceFile.useCaseMetadata.sourceConversationId
-            : undefined;
-
-          const copyResult = await FileResource.copy(auth, {
-            sourceId: sourceFileId,
-            useCase: "project_context",
-            useCaseMetadata: {
-              spaceId: space.sId,
-              sourceConversationId,
-            },
-          });
-
-          if (copyResult.isErr()) {
-            return new Err(
-              new MCPError(`Failed to copy file: ${copyResult.error.message}`, {
-                tracked: false,
-              })
-            );
-          }
-
-          file = copyResult.value;
-
-          // Rename if a different fileName was provided.
-          if (fileName !== file.fileName) {
-            await file.rename(fileName);
-          }
-        } else if (content) {
-          // Create file from direct content.
-          const finalContentType =
-            contentType ?? contentTypeFromFileName(fileName) ?? "text/plain";
-
-          // Validate content type is text-based.
-          if (!finalContentType.startsWith("text/")) {
-            return new Err(
-              new MCPError(
-                `Only text-based content types are supported. Got: ${finalContentType}`,
-                { tracked: false }
-              )
-            );
-          }
-
-          // Validate content type is supported.
-          if (!isAllSupportedFileContentType(finalContentType)) {
-            return new Err(
-              new MCPError(`Unsupported content type: ${finalContentType}`, {
-                tracked: false,
-              })
-            );
-          }
-
-          // Create file resource.
-          file = await FileResource.makeNew({
-            workspaceId: owner.id,
-            userId: user.id,
-            contentType: finalContentType,
-            fileName,
-            fileSize: Buffer.byteLength(content, "utf-8"),
-            useCase: "project_context",
-            useCaseMetadata: {
-              spaceId: space.sId,
-              sourceConversationId:
-                agentLoopContext?.runContext?.conversation?.sId,
-            },
-          });
-
-          // Upload content to GCS.
-          await file.uploadContent(auth, content);
-        } else {
-          return new Err(
-            new MCPError(
-              "Either 'content' or 'sourceFileId' must be provided",
-              { tracked: false }
-            )
-          );
-        }
-
-        const upsertRes = await addFileToProject(auth, {
-          file,
-          space,
-          sourceConversationId: agentLoopContext?.runContext?.conversation?.sId,
-        });
-
-        if (upsertRes.isErr()) {
-          logger.warn(
-            {
-              error: upsertRes.error,
-              fileId: file.sId,
-            },
-            "Failed to add file to project (datasource or content fragment)"
-          );
-          // Don't fail - file is uploaded, just not fully indexed yet.
-        }
-
-        // Adapt the message based on the input
-        let message: string;
-        if (sourceFileId) {
-          message = `File "${fileName}" (${file.sId}) created in project context successfully by copying from the source file (${sourceFileId}). These 2 files are NOT the same, you must use the appropriate file ID depending if you want to work on the original file or the new one.`;
-        } else {
-          message = `File "${fileName}" (${file.sId}) created in project context successfully from provided content.`;
-        }
-
-        return new Ok([
-          {
-            type: "resource" as const,
-            resource: {
-              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
-              uri: file.getPublicUrl(auth),
-              fileId: file.sId,
-              title: file.fileName,
-              contentType: file.contentType,
-              snippet: null,
-              text: message,
-            },
-          },
-        ]);
-      }, "Failed to add file");
-    },
     add_content_node: async (params) => {
       return withErrorHandling(async () => {
         const contextRes = await getWritableProjectContext(auth, {
@@ -344,144 +171,6 @@ export function createProjectManagerTools(
           })
         );
       }, "Failed to add content node");
-    },
-
-    update_file: async (params) => {
-      return withErrorHandling(async () => {
-        const contextRes = await getWritableProjectContext(auth, {
-          agentLoopContext,
-          dustProject: params.dustProject,
-        });
-        if (contextRes.isErr()) {
-          return contextRes;
-        }
-
-        const { space } = contextRes.value;
-        const { fileId, content, sourceFileId } = params;
-
-        // Fetch file.
-        const file = await FileResource.fetchById(auth, fileId);
-        if (!file) {
-          return new Err(
-            new MCPError(`File not found: ${fileId}`, { tracked: false })
-          );
-        }
-
-        // Verify it's a project context file for this space.
-        const metadata = file.useCaseMetadata;
-        if (
-          file.useCase !== "project_context" ||
-          metadata?.spaceId !== space.sId
-        ) {
-          return new Err(
-            new MCPError("File not found in this project context", {
-              tracked: false,
-            })
-          );
-        }
-
-        // Get file content from either direct content or source file.
-        let fileContent: string;
-
-        if (sourceFileId) {
-          const sourceFileRes = await validateSourceFileForCopy(auth, {
-            sourceFileId,
-            targetSpaceId: space.id,
-          });
-          if (sourceFileRes.isErr()) {
-            return sourceFileRes;
-          }
-
-          const sourceFile = sourceFileRes.value;
-          fileContent = await readSourceFileContent(auth, sourceFile);
-
-          if (!fileContent) {
-            return new Err(
-              new MCPError(
-                `Failed to read content from source file: ${sourceFileId}`,
-                { tracked: false }
-              )
-            );
-          }
-        } else if (content) {
-          fileContent = content;
-        } else {
-          return new Err(
-            new MCPError(
-              "Either 'content' or 'sourceFileId' must be provided",
-              { tracked: false }
-            )
-          );
-        }
-
-        // Upload new content.
-        await file.uploadContent(auth, fileContent);
-
-        // Re-upsert to datasource to update search index.
-        const upsertRes = await addFileToProject(auth, {
-          file,
-          space,
-          sourceConversationId: agentLoopContext?.runContext?.conversation?.sId,
-        });
-
-        if (upsertRes.isErr()) {
-          logger.error(
-            {
-              error: upsertRes.error,
-              fileId: file.sId,
-            },
-            "Failed to re-index updated file"
-          );
-          // Don't fail - content is updated, just not re-indexed.
-        }
-
-        return new Ok([
-          {
-            type: "resource" as const,
-            resource: {
-              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
-              uri: file.getPublicUrl(auth),
-              fileId: file.sId,
-              title: file.fileName,
-              contentType: file.contentType,
-              snippet: null,
-              text: `File "${file.fileName}" (${file.sId}) updated in project context successfully.`,
-            },
-          },
-        ]);
-      }, "Failed to update file");
-    },
-
-    remove_file: async (params) => {
-      return withErrorHandling(async () => {
-        const contextRes = await getWritableProjectContext(auth, {
-          agentLoopContext,
-          dustProject: params.dustProject,
-        });
-        if (contextRes.isErr()) {
-          return contextRes;
-        }
-
-        const { space } = contextRes.value;
-        const { fileId } = params;
-
-        const removeRes = await removeFileFromProject(auth, {
-          space,
-          fileId,
-        });
-        if (removeRes.isErr()) {
-          return new Err(
-            new MCPError(removeRes.error.message, { tracked: false })
-          );
-        }
-
-        return new Ok(
-          makeSuccessResponse({
-            success: true,
-            message: `File "${fileId}" removed from the project context.`,
-          })
-        );
-      }, "Failed to remove file from project");
     },
 
     remove_content_node: async (params) => {
@@ -996,53 +685,6 @@ export function createProjectManagerTools(
           retrievalTopK: agentLoopContext.runContext.stepContext.retrievalTopK,
         });
       }, "Failed to retrieve recent project documents");
-    },
-
-    semantic_search: async (params) => {
-      return withErrorHandling(async () => {
-        if (!agentLoopContext?.runContext) {
-          return new Err(
-            new MCPError("No conversation context available", {
-              tracked: false,
-            })
-          );
-        }
-
-        const scope = params.searchScope ?? "all";
-        const contextRes = await getProjectSpace(auth, {
-          agentLoopContext,
-          dustProject: params.dustProject,
-        });
-        if (contextRes.isErr()) {
-          return contextRes;
-        }
-
-        const { space } = contextRes.value;
-        const dataSources = await buildProjectSearchDataSources(
-          auth,
-          space,
-          scope
-        );
-
-        if (dataSources.length === 0) {
-          return new Err(
-            new MCPError(
-              scope === "conversations"
-                ? "No project data source available to search conversations, or the project connector is not linked (required to scope transcript documents)."
-                : "No project data sources available to search for this scope.",
-              { tracked: false }
-            )
-          );
-        }
-
-        return searchFunction(auth, {
-          query: params.query,
-          relativeTimeFrame: params.relativeTimeFrame ?? "all",
-          dataSources,
-          nodeIds: params.nodeIds,
-          agentLoopContext,
-        });
-      }, "Failed to search project");
     },
 
     create_conversation: async (params) => {
