@@ -1,3 +1,4 @@
+import { MARKUP_MULTIPLIER } from "@app/lib/api/programmatic_usage/common";
 import type { Authenticator } from "@app/lib/auth";
 import { SelfImprovingSkillsUsageModel } from "@app/lib/models/skill/self_improving_skills_usage";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -91,7 +92,8 @@ export class SelfImprovingSkillsUsageResource extends BaseResource<SelfImproving
 
   static async getSumPriceMicroUsdAfterDate(
     auth: Authenticator,
-    createdAfter: Date
+    createdAfter: Date,
+    { applyMarkup = true }: { applyMarkup?: boolean } = {}
   ): Promise<number> {
     const sum = await this.model.sum("priceMicroUsd", {
       where: {
@@ -100,7 +102,8 @@ export class SelfImprovingSkillsUsageResource extends BaseResource<SelfImproving
       },
     });
 
-    return sum ?? 0;
+    const raw = sum ?? 0;
+    return applyMarkup ? raw * MARKUP_MULTIPLIER : raw;
   }
 
   static async getSumPriceMicroUsdAfterDateForSkills(
@@ -108,9 +111,11 @@ export class SelfImprovingSkillsUsageResource extends BaseResource<SelfImproving
     {
       createdAfter,
       skillModelIds,
+      applyMarkup = true,
     }: {
       createdAfter: Date;
       skillModelIds: ModelId[];
+      applyMarkup?: boolean;
     }
   ): Promise<Map<ModelId, number>> {
     const uniqueSkillIds = [...new Set(skillModelIds)];
@@ -132,7 +137,10 @@ export class SelfImprovingSkillsUsageResource extends BaseResource<SelfImproving
     });
 
     return new Map(
-      rows.map((row) => [row.skillId as ModelId, Number(row.priceMicroUsd)])
+      rows.map((row) => [
+        row.skillId as ModelId,
+        Number(row.priceMicroUsd) * (applyMarkup ? MARKUP_MULTIPLIER : 1),
+      ])
     );
   }
 
