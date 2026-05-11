@@ -221,14 +221,17 @@ const METRICS: MetricDef[] = [
     aggregation_key: "cost_micro_usd",
     group_keys: [["api_key_name"], ["model_id"], ["origin"], ["agent_id"]],
   },
+  // Tool invocation metric — counts tool uses, group keys cover both user and
+  // programmatic events. `user_id` is "unknown" for programmatic, `api_key_name`
+  // is "unknown" for user events (see events.ts).
   {
-    name: "Tool Invocations (Programmatic)",
+    name: "Tool Invocations",
     event_type_filter: { in_values: ["tool_use_v3"] },
     property_filters: [
       { name: "count", exists: true },
-      { name: "is_programmatic_usage", in_values: ["true"] },
       { name: "tool_category", exists: true },
       { name: "tool_group", exists: true },
+      { name: "user_id", exists: true },
       { name: "api_key_name", exists: true },
       { name: "origin", exists: true },
       { name: "agent_id", exists: true },
@@ -236,46 +239,28 @@ const METRICS: MetricDef[] = [
     ],
     aggregation_type: "SUM",
     aggregation_key: "count",
+    // 6 group keys — Metronome's default cap is 5; this metric needs an
+    // explicit limit increase (granted by Metronome support).
     group_keys: [
       ["tool_category", "tool_group"],
+      ["user_id"],
       ["api_key_name"],
       ["origin"],
       ["agent_id"],
       ["mcp_server_id"],
     ],
   },
+  // AWU-based AI cost metric — sums cost_awu directly (no unit conversion).
+  // Powers the new AI Usage product on all AWU rate cards (Business, Enterprise).
+  // Group keys cover both user and programmatic events; per-seat credit drawdown
+  // only matches events whose `user_id` is assigned to a seat.
   {
-    name: "Tool Invocations (User)",
-    event_type_filter: { in_values: ["tool_use_v3"] },
-    property_filters: [
-      { name: "count", exists: true },
-      { name: "is_programmatic_usage", in_values: ["false"] },
-      { name: "tool_category", exists: true },
-      { name: "tool_group", exists: true },
-      { name: "user_id", exists: true },
-      { name: "origin", exists: true },
-      { name: "agent_id", exists: true },
-      { name: "mcp_server_id", exists: true },
-    ],
-    aggregation_type: "SUM",
-    aggregation_key: "count",
-    group_keys: [
-      ["tool_category", "tool_group"],
-      ["user_id"],
-      ["origin"],
-      ["agent_id"],
-      ["mcp_server_id"],
-    ],
-  },
-  // AWU-based AI cost metrics — sum cost_awu directly (no unit conversion).
-  // Used by the new AI Usage products for AWU rate cards (e.g. Enterprise EUR).
-  {
-    name: "LLM Cost AWU (Programmatic)",
+    name: "LLM Provider Cost AWU",
     event_type_filter: { in_values: ["llm_usage_v3"] },
     property_filters: [
       { name: "cost_awu", exists: true },
-      { name: "is_programmatic_usage", in_values: ["true"] },
       { name: "is_free_usage", exists: true },
+      { name: "user_id", exists: true },
       { name: "api_key_name", exists: true },
       { name: "model_id", exists: true },
       { name: "origin", exists: true },
@@ -283,30 +268,10 @@ const METRICS: MetricDef[] = [
     ],
     aggregation_type: "SUM",
     aggregation_key: "cost_awu",
-    group_keys: [
-      ["api_key_name"],
-      ["model_id"],
-      ["origin"],
-      ["agent_id"],
-      ["is_free_usage"],
-    ],
-  },
-  {
-    name: "LLM Cost AWU (User)",
-    event_type_filter: { in_values: ["llm_usage_v3"] },
-    property_filters: [
-      { name: "cost_awu", exists: true },
-      { name: "is_programmatic_usage", in_values: ["false"] },
-      { name: "is_free_usage", exists: true },
-      { name: "user_id", exists: true },
-      { name: "model_id", exists: true },
-      { name: "origin", exists: true },
-      { name: "agent_id", exists: true },
-    ],
-    aggregation_type: "SUM",
-    aggregation_key: "cost_awu",
+    // 6 group keys — see note on Tool Invocations above.
     group_keys: [
       ["user_id"],
+      ["api_key_name"],
       ["model_id"],
       ["origin"],
       ["agent_id"],
@@ -340,32 +305,20 @@ const PRODUCTS: ProductDef[] = [
   // 1 AWU = $0.01. AI Usage is priced directly on the cost_awu event property
   // (no quantity_conversion). Tool Usage: count × tool_weight = AWU (weight
   // configured per tool category in rate card via pricing_group_values).
+  // Single product per usage type — the metric carries both `user_id` and
+  // `api_key_name` as group keys so per-seat credits and workspace pool credits
+  // are dispatched correctly by Metronome based on the event's properties.
   {
-    name: "AI Usage (User)",
+    name: "AI Usage",
     type: "USAGE",
-    billable_metric_name: "LLM Cost AWU (User)",
+    billable_metric_name: "LLM Provider Cost AWU",
     presentation_group_key: ["is_free_usage"],
     tags: [USAGE_TAG],
   },
   {
-    name: "AI Usage (Programmatic)",
+    name: "Tool Usage",
     type: "USAGE",
-    billable_metric_name: "LLM Cost AWU (Programmatic)",
-    presentation_group_key: ["is_free_usage"],
-    tags: [USAGE_TAG],
-  },
-  {
-    name: "Tool Usage (Programmatic)",
-    type: "USAGE",
-    billable_metric_name: "Tool Invocations (Programmatic)",
-    pricing_group_key: ["tool_category"],
-    presentation_group_key: ["tool_group"],
-    tags: [USAGE_TAG],
-  },
-  {
-    name: "Tool Usage (User)",
-    type: "USAGE",
-    billable_metric_name: "Tool Invocations (User)",
+    billable_metric_name: "Tool Invocations",
     pricing_group_key: ["tool_category"],
     presentation_group_key: ["tool_group"],
     tags: [USAGE_TAG],
@@ -483,20 +436,17 @@ const TOOL_CATEGORY_PRICES_AWU: Record<
 };
 
 function buildAwuToolUsageRates(): RateDef[] {
-  return TOOL_CATEGORIES.flatMap((category): RateDef[] => {
-    const price = TOOL_CATEGORY_PRICES_AWU[category];
-    return (["Tool Usage (User)", "Tool Usage (Programmatic)"] as const).map(
-      (productName): RateDef => ({
-        product_name: productName,
-        starting_at: "2026-04-01T00:00:00.000Z",
-        entitled: true,
-        rate_type: "FLAT",
-        price,
-        credit_type_id: getCreditTypeAwuId(),
-        pricing_group_values: { tool_category: category },
-      })
-    );
-  });
+  return TOOL_CATEGORIES.map(
+    (category): RateDef => ({
+      product_name: "Tool Usage",
+      starting_at: "2026-04-01T00:00:00.000Z",
+      entitled: true,
+      rate_type: "FLAT",
+      price: TOOL_CATEGORY_PRICES_AWU[category],
+      credit_type_id: getCreditTypeAwuId(),
+      pricing_group_values: { tool_category: category },
+    })
+  );
 }
 
 // Function — evaluated after detectEnvironment() resolves ENV (needed for AWU credit type).
@@ -798,15 +748,7 @@ function getRateCards(): RateCardDef[] {
           price: 4500,
         },
         {
-          product_name: "AI Usage (User)",
-          starting_at: "2026-04-01T00:00:00.000Z",
-          entitled: true,
-          rate_type: "FLAT",
-          price: 1,
-          credit_type_id: getCreditTypeAwuId(),
-        },
-        {
-          product_name: "AI Usage (Programmatic)",
+          product_name: "AI Usage",
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: true,
           rate_type: "FLAT",
@@ -850,15 +792,7 @@ function getRateCards(): RateCardDef[] {
           credit_type_id: CREDIT_TYPE_EUR_ID,
         },
         {
-          product_name: "AI Usage (User)",
-          starting_at: "2026-04-01T00:00:00.000Z",
-          entitled: true,
-          rate_type: "FLAT",
-          price: 1,
-          credit_type_id: getCreditTypeAwuId(),
-        },
-        {
-          product_name: "AI Usage (Programmatic)",
+          product_name: "AI Usage",
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: true,
           rate_type: "FLAT",
@@ -908,15 +842,7 @@ function getRateCards(): RateCardDef[] {
           billing_frequency: "MONTHLY",
         },
         {
-          product_name: "AI Usage (User)",
-          starting_at: "2026-04-01T00:00:00.000Z",
-          entitled: true,
-          rate_type: "FLAT",
-          price: 1,
-          credit_type_id: getCreditTypeAwuId(),
-        },
-        {
-          product_name: "AI Usage (Programmatic)",
+          product_name: "AI Usage",
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: true,
           rate_type: "FLAT",
@@ -960,15 +886,7 @@ function getRateCards(): RateCardDef[] {
           credit_type_id: CREDIT_TYPE_EUR_ID,
         },
         {
-          product_name: "AI Usage (User)",
-          starting_at: "2026-04-01T00:00:00.000Z",
-          entitled: true,
-          rate_type: "FLAT",
-          price: 1,
-          credit_type_id: getCreditTypeAwuId(),
-        },
-        {
-          product_name: "AI Usage (Programmatic)",
+          product_name: "AI Usage",
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: true,
           rate_type: "FLAT",

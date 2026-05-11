@@ -6,7 +6,7 @@ import {
   listMetronomeDraftInvoices,
   listMetronomeUsageWithGroups,
 } from "@app/lib/metronome/client";
-import { getMetricLlmCostAwuUserId } from "@app/lib/metronome/constants";
+import { getMetricLlmProviderCostAwuId } from "@app/lib/metronome/constants";
 import { METRONOME_USER_CREDIT_TO_MICRO_USD } from "@app/lib/metronome/types";
 import type { MembershipsPaginationParams } from "@app/lib/resources/membership_resource";
 import { apiError } from "@app/logger/withlogging";
@@ -104,7 +104,7 @@ async function fetchPerUserUsageMicroUsd({
 
   const usageResult = await listMetronomeUsageWithGroups({
     customerId: metronomeCustomerId,
-    billableMetricId: getMetricLlmCostAwuUserId(),
+    billableMetricId: getMetricLlmProviderCostAwuId(),
     startingOn,
     endingBefore,
     windowSize: "NONE",
@@ -118,7 +118,8 @@ async function fetchPerUserUsageMicroUsd({
   const perUser = new Map<string, number>();
   for (const entry of usageResult.value) {
     const userId = entry.group?.["user_id"];
-    if (!userId || entry.value === null) {
+    // Skip programmatic events — they carry user_id="unknown" (see events.ts).
+    if (!userId || userId === "unknown" || entry.value === null) {
       continue;
     }
     const existing = perUser.get(userId) ?? 0;
