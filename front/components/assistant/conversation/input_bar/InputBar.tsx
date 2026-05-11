@@ -64,6 +64,7 @@ interface InputBarProps {
   isFloatingWithoutMargin?: boolean;
   isSubmitting?: boolean;
   isAgentBuilder?: boolean;
+  disableInput?: boolean;
   submitBlockMessage?: string | null;
 }
 
@@ -81,6 +82,7 @@ export const InputBar = React.memo(function InputBar({
   isAgentBuilder = false,
   isFloating = true,
   isSubmitting = false,
+  disableInput = false,
   submitBlockMessage = null,
 }: InputBarProps) {
   const [isLocalSubmitting, setIsLocalSubmitting] = useState(isSubmitting);
@@ -455,10 +457,8 @@ export const InputBar = React.memo(function InputBar({
             saveDraft={saveDraft}
             getDraft={getDraft}
             user={user}
-            disableAgentSelector={
-              isBlockedByAgentSwitch || submitBlockMessage !== null
-            }
-            disableInput={submitBlockMessage !== null}
+            disableAgentSelector={isBlockedByAgentSwitch}
+            disableInput={disableInput}
             submitBlockMessage={submitBlockMessage ?? agentSwitchBlockMessage}
             onShake={handleShake}
           />

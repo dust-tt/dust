@@ -132,8 +132,8 @@ export interface InputBarContainerProps {
   // When true, the editor is made non-editable and every picker (agent,
   // tools, attachment, voice) is disabled. Reserved for states where the user
   // cannot interact at all (e.g. non-owner viewing a conversation with an
-  // active wake-up, or compaction in progress). `submitBlockMessage` on its
-  // own only mutes the send button.
+  // active wake-up). `submitBlockMessage` on its own only mutes the send
+  // button.
   disableInput: boolean;
   submitBlockMessage: string | null;
   onShake: () => void;
@@ -839,7 +839,7 @@ const InputBarContainer = ({
 
   useEffect(() => {
     // captureActions is defined only in the extension, so the shortcuts won't work in the web app
-    if (!captureActions) {
+    if (!captureActions || disableInput) {
       return;
     }
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -860,7 +860,7 @@ const InputBarContainer = ({
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [captureActions, fileUploaderService.isProcessingFiles]);
+  }, [captureActions, disableInput, fileUploaderService.isProcessingFiles]);
 
   useEffect(() => {
     if (animate) {
@@ -1136,6 +1136,7 @@ const InputBarContainer = ({
                       variant="ghost-secondary"
                       icon={PlusIcon}
                       size={buttonSize}
+                      disabled={disableInput}
                     />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
@@ -1155,6 +1156,7 @@ const InputBarContainer = ({
                           icon={GlobeAltIcon}
                           label="Attach page content"
                           disabled={
+                            disableInput ||
                             captureActions.isCapturing ||
                             fileUploaderService.isProcessingFiles
                           }
@@ -1170,6 +1172,7 @@ const InputBarContainer = ({
                           icon={CameraIcon}
                           label="Take screenshot"
                           disabled={
+                            disableInput ||
                             captureActions.isCapturing ||
                             fileUploaderService.isProcessingFiles
                           }
