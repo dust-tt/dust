@@ -1,10 +1,11 @@
 import type { Authenticator } from "@app/lib/auth";
 import type { BillingCycle } from "@app/lib/client/subscription";
-import { getMetronomeContractById } from "@app/lib/metronome/client";
+import { getMetronomeCurrentBillingPeriod } from "@app/lib/metronome/contracts";
 import {
   DEFAULT_REINFORCEMENT_CAP_MICRO_USD,
   DEFAULT_SELF_IMPROVEMENT_CAP_PER_SKILL_MICRO_USD,
 } from "@app/lib/reinforcement/constants";
+import logger from "@app/logger/logger";
 import type { LightWorkspaceType } from "@app/types/user";
 
 /**
@@ -54,28 +55,16 @@ export async function getCurrentPeriod(
   const subscription = auth.subscription();
   const workspace = auth.workspace();
 
-  const metronomeContractId = subscription?.metronomeContractId ?? null;
-  const metronomeCustomerId = workspace?.metronomeCustomerId ?? null;
+  const result = await getMetronomeCurrentBillingPeriod({
+    metronomeContractId: subscription?.metronomeContractId ?? null,
+    metronomeCustomerId: workspace?.metronomeCustomerId ?? null,
+  });
 
-  if (metronomeContractId && metronomeCustomerId) {
-    const contractResult = await getMetronomeContractById({
-      metronomeCustomerId,
-      metronomeContractId,
-    });
-
-    if (contractResult.isOk()) {
-      const contract = contractResult.value;
-      const currentPeriod = contract.subscriptions
-        ?.map((s) => s.billing_periods?.current)
-        .find((bp) => bp !== undefined);
-
-      if (currentPeriod) {
-        return {
-          cycleStart: new Date(currentPeriod.starting_at),
-          cycleEnd: new Date(currentPeriod.ending_before),
-        };
-      }
-    }
+  if (result.isOk() && result.value !== null) {
+    return result.value;
+  }
+  if (result.isErr()) {
+    logger.warn("Failed to get billing period from metronome");
   }
 
   return currentCalendarMonth();

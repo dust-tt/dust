@@ -1,5 +1,5 @@
 import type { Authenticator } from "@app/lib/auth";
-import * as metronomeClient from "@app/lib/metronome/client";
+import * as metronomeContracts from "@app/lib/metronome/contracts";
 import {
   DEFAULT_REINFORCEMENT_CAP_MICRO_USD,
   DEFAULT_SELF_IMPROVEMENT_CAP_PER_SKILL_MICRO_USD,
@@ -9,8 +9,8 @@ import {
   getReinforcementMonthlyCapMicroUsd,
   getWorkspaceDefaultSelfImprovementCapPerSkillMicroUsd,
 } from "@app/lib/reinforcement/consumption";
+import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Ok, Err } from "@app/types/shared/result";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 function makeAuth({
@@ -98,7 +98,7 @@ describe("getSelfImprovementCapPerSkillMicroUsd", () => {
 describe("getCurrentPeriod", () => {
   beforeEach(() => {
     vi.useFakeTimers();
-    vi.spyOn(metronomeClient, "getMetronomeContractById");
+    vi.spyOn(metronomeContracts, "getMetronomeCurrentBillingPeriod");
   });
 
   afterEach(() => {
@@ -116,9 +116,9 @@ describe("getCurrentPeriod", () => {
 
     it("falls back when the Metronome API returns an error", async () => {
       vi.setSystemTime(new Date("2026-03-15T13:45:30.123Z"));
-      vi.mocked(metronomeClient.getMetronomeContractById).mockResolvedValue(
-        new Err(new Error("Metronome unavailable"))
-      );
+      vi.mocked(
+        metronomeContracts.getMetronomeCurrentBillingPeriod
+      ).mockResolvedValue(new Err(new Error("Metronome unavailable")));
       const { cycleStart, cycleEnd } = await getCurrentPeriod(
         makeAuth({
           metronomeContractId: "contract-1",
@@ -129,11 +129,11 @@ describe("getCurrentPeriod", () => {
       expect(cycleEnd.toISOString()).toBe("2026-04-01T00:00:00.000Z");
     });
 
-    it("falls back when no subscription has billing_periods", async () => {
+    it("falls back when Metronome has no billing period (Ok(null))", async () => {
       vi.setSystemTime(new Date("2026-03-15T13:45:30.123Z"));
-      vi.mocked(metronomeClient.getMetronomeContractById).mockResolvedValue(
-        new Ok({ id: "contract-1", subscriptions: [] } as any)
-      );
+      vi.mocked(
+        metronomeContracts.getMetronomeCurrentBillingPeriod
+      ).mockResolvedValue(new Ok(null));
       const { cycleStart, cycleEnd } = await getCurrentPeriod(
         makeAuth({
           metronomeContractId: "contract-1",
@@ -146,21 +146,14 @@ describe("getCurrentPeriod", () => {
   });
 
   describe("using Metronome billing period", () => {
-    it("returns the period from the first subscription with billing_periods", async () => {
-      vi.mocked(metronomeClient.getMetronomeContractById).mockResolvedValue(
+    it("returns the period from Metronome", async () => {
+      vi.mocked(
+        metronomeContracts.getMetronomeCurrentBillingPeriod
+      ).mockResolvedValue(
         new Ok({
-          id: "contract-1",
-          subscriptions: [
-            {
-              billing_periods: {
-                current: {
-                  starting_at: "2026-03-04T00:00:00.000Z",
-                  ending_before: "2026-04-04T00:00:00.000Z",
-                },
-              },
-            },
-          ],
-        } as any)
+          cycleStart: new Date("2026-03-04T00:00:00.000Z"),
+          cycleEnd: new Date("2026-04-04T00:00:00.000Z"),
+        })
       );
       const { cycleStart, cycleEnd } = await getCurrentPeriod(
         makeAuth({
@@ -170,33 +163,6 @@ describe("getCurrentPeriod", () => {
       );
       expect(cycleStart.toISOString()).toBe("2026-03-04T00:00:00.000Z");
       expect(cycleEnd.toISOString()).toBe("2026-04-04T00:00:00.000Z");
-    });
-
-    it("skips subscriptions without billing_periods and uses the first with one", async () => {
-      vi.mocked(metronomeClient.getMetronomeContractById).mockResolvedValue(
-        new Ok({
-          id: "contract-1",
-          subscriptions: [
-            { billing_periods: undefined },
-            {
-              billing_periods: {
-                current: {
-                  starting_at: "2026-05-04T00:00:00.000Z",
-                  ending_before: "2026-06-04T00:00:00.000Z",
-                },
-              },
-            },
-          ],
-        } as any)
-      );
-      const { cycleStart, cycleEnd } = await getCurrentPeriod(
-        makeAuth({
-          metronomeContractId: "contract-1",
-          metronomeCustomerId: "customer-1",
-        })
-      );
-      expect(cycleStart.toISOString()).toBe("2026-05-04T00:00:00.000Z");
-      expect(cycleEnd.toISOString()).toBe("2026-06-04T00:00:00.000Z");
     });
   });
 });

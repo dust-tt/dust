@@ -48,6 +48,7 @@ import type { Logger } from "@app/logger/logger";
 import logger from "@app/logger/logger";
 import type { SupportedCurrency } from "@app/types/currency";
 import { isSupportedCurrency } from "@app/types/currency";
+import type { BillingCycle } from "@app/lib/client/subscription";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -1095,4 +1096,46 @@ export async function provisionShadowEnterpriseMetronomeContract({
   });
 
   return new Ok({ metronomeCustomerId, metronomeContractId });
+}
+
+/**
+ * Retrieve the current billing period from the Metronome contract.
+ *
+ * Returns:
+ * - Ok(BillingCycle) when the period is found on the contract.
+ * - Ok(null) when Metronome is not set up for this workspace (missing IDs).
+ * - Err when the Metronome API call fails or no subscription has a billing period.
+ */
+export async function getMetronomeCurrentBillingPeriod({
+  metronomeContractId,
+  metronomeCustomerId,
+}: {
+  metronomeContractId: string | null;
+  metronomeCustomerId: string | null;
+}): Promise<Result<BillingCycle | null, Error>> {
+  if (!metronomeContractId || !metronomeCustomerId) {
+    return new Ok(null);
+  }
+
+  const contractResult = await getMetronomeContractById({
+    metronomeCustomerId,
+    metronomeContractId,
+  });
+
+  if (contractResult.isErr()) {
+    return new Err(contractResult.error);
+  }
+
+  const currentPeriod = contractResult.value.subscriptions
+    ?.map((s) => s.billing_periods?.current)
+    .find((bp) => bp !== undefined);
+
+  if (!currentPeriod) {
+    return new Err(new Error("No current billing period found on Metronome contract"));
+  }
+
+  return new Ok({
+    cycleStart: new Date(currentPeriod.starting_at),
+    cycleEnd: new Date(currentPeriod.ending_before),
+  });
 }
