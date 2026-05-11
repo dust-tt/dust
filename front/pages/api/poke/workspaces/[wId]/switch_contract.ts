@@ -24,6 +24,7 @@ import {
 } from "@app/lib/plans/plan_codes";
 import { getStripeCustomer } from "@app/lib/plans/stripe";
 import { PluginRunResource } from "@app/lib/resources/plugin_run_resource";
+import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import type { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -169,15 +170,19 @@ async function handler(
   }
 
   // PAYG on the Metronome path is not yet wired up — reject before touching
-  // any state. (Mirrors the guard in upgrade_enterprise.ts.)
-  const programmaticConfig = currentSubscription
-    ? (currentSubscription.toJSON(), null) // placeholder; PAYG state lives elsewhere
-    : null;
-  // The PAYG state lives on ProgrammaticUsageConfiguration. The frontend
-  // already disables the button when PAYG is on, so we just refuse here as
-  // a server-side defense.
-  // (We don't fetch the config to avoid extra IO — the dialog won't open if PAYG is on.)
-  void programmaticConfig;
+  // any state.
+  const programmaticConfig =
+    await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
+  if (programmaticConfig?.paygCapMicroUsd != null) {
+    const errorMessage =
+      "Pay-as-you-go is not yet supported for Metronome-billed subscriptions. " +
+      "Disable PAYG via the 'Manage Programmatic Usage Configuration' plugin first.";
+    await pluginRun.recordError(errorMessage);
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: { type: "invalid_request_error", message: errorMessage },
+    });
+  }
 
   // Validate the Stripe customer exists before we touch Metronome.
   const stripeCustomer = await getStripeCustomer(body.stripeCustomerId);
