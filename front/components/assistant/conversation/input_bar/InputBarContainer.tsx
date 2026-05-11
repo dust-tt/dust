@@ -922,10 +922,7 @@ const InputBarContainer = ({
           )}
         </BubbleMenu>
         <div
-          className={cn(
-            "flex w-full flex-col",
-            "py-1.5 sm:pb-2"
-          )}
+          className={cn("flex w-full flex-col", "py-1.5 sm:pb-2")}
           style={{
             transition: `padding ${COLLAPSE_TRANSITION}`,
           }}
@@ -957,9 +954,7 @@ const InputBarContainer = ({
               </React.Fragment>
             ))}
           </div>
-          <div
-            className="relative flex w-full items-center justify-between"
-          >
+          <div className="relative flex w-full items-center justify-between">
             {!isRecording && editor && (
               <Toolbar
                 variant="overlay"
