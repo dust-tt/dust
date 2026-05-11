@@ -11,10 +11,7 @@ import { PastedAttachmentExtension } from "@app/components/editor/extensions/inp
 import { SkillNode } from "@app/components/editor/extensions/input_bar/SkillNode";
 import { URLDetectionExtension } from "@app/components/editor/extensions/input_bar/URLDetectionExtension";
 import { URLStorageExtension } from "@app/components/editor/extensions/input_bar/URLStorageExtension";
-import {
-  MentionExtension,
-  type MentionsStrippedPayload,
-} from "@app/components/editor/extensions/MentionExtension";
+import { MentionExtension } from "@app/components/editor/extensions/MentionExtension";
 import { BlockquoteExtension } from "@app/components/editor/input_bar/BlockquoteExtension";
 import { cleanupPastedHTML } from "@app/components/editor/input_bar/cleanupPastedHTML";
 import { emojiPluginKey } from "@app/components/editor/input_bar/emojiSuggestion";
@@ -163,24 +160,6 @@ const useEditorService = (editor: Editor | null) => {
         return editor?.commands.clearContent();
       },
 
-      removeUserMentions(): boolean {
-        if (!editor) {
-          return false;
-        }
-        const { tr } = editor.state;
-        let modified = false;
-        editor.state.doc.descendants((node, pos) => {
-          if (node.type.name === "mention" && node.attrs.type === "user") {
-            tr.delete(tr.mapping.map(pos), tr.mapping.map(pos + node.nodeSize));
-            modified = true;
-          }
-        });
-        if (modified) {
-          editor.view.dispatch(tr);
-        }
-        return modified;
-      },
-
       setLoading(loading: boolean) {
         if (loading) {
           editor?.view.dom.classList.add("loading-text");
@@ -226,9 +205,6 @@ export interface CustomEditorProps {
   onFirstAgentMentionPasteRef?: React.RefObject<
     ((agentId: string) => void) | undefined
   >;
-  onAgentMentionsStrippedRef?: React.RefObject<
-    ((payload: MentionsStrippedPayload) => void) | undefined
-  >;
   slashSuggestion?: {
     enabledRef: React.RefObject<boolean>;
     onSelectRef: React.RefObject<
@@ -251,7 +227,6 @@ export const buildEditorExtensions = ({
   onAgentSelect,
   shouldSuggestAgentRef,
   onFirstAgentMentionPasteRef,
-  onAgentMentionsStrippedRef,
   slashSuggestion,
   placeholderOverride,
 }: {
@@ -266,9 +241,6 @@ export const buildEditorExtensions = ({
   shouldSuggestAgentRef?: React.RefObject<boolean>;
   onFirstAgentMentionPasteRef?: React.RefObject<
     ((agentId: string) => void) | undefined
-  >;
-  onAgentMentionsStrippedRef?: React.RefObject<
-    ((payload: MentionsStrippedPayload) => void) | undefined
   >;
   slashSuggestion?: CustomEditorProps["slashSuggestion"];
   placeholderOverride?: string | null;
@@ -334,7 +306,6 @@ export const buildEditorExtensions = ({
     MentionExtension.configure({
       owner,
       onFirstAgentMentionPasteRef,
-      onAgentMentionsStrippedRef,
       HTMLAttributes: {
         class:
           "min-w-0 px-0 py-0 border-none outline-none focus:outline-none focus:border-none ring-0 focus:ring-0 text-highlight-500 font-semibold",
@@ -407,7 +378,6 @@ const useCustomEditor = ({
   disableAgentMentions,
   shouldSuggestAgentRef,
   onFirstAgentMentionPasteRef,
-  onAgentMentionsStrippedRef,
   slashSuggestion,
   placeholderOverride,
 }: CustomEditorProps) => {
@@ -425,7 +395,6 @@ const useCustomEditor = ({
         onAgentSelect,
         shouldSuggestAgentRef,
         onFirstAgentMentionPasteRef,
-        onAgentMentionsStrippedRef,
         slashSuggestion,
         placeholderOverride,
       }),

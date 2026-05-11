@@ -7,7 +7,6 @@ import {
 } from "@app/components/assistant/conversation/input_bar/pasted_utils";
 import { ToolBarContent } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarContent";
 import type { InputBarSlashSuggestionCapability } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
-import type { MentionsStrippedPayload } from "@app/components/editor/extensions/MentionExtension";
 import type { CustomEditorProps } from "@app/components/editor/input_bar/useCustomEditor";
 import useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
 import useHandleMentions from "@app/components/editor/input_bar/useHandleMentions";
@@ -210,9 +209,6 @@ const InputBarContainer = ({
   const onFirstAgentMentionPasteRef = useRef<
     ((agentId: string) => void) | undefined
   >(undefined);
-  const onAgentMentionsStrippedRef = useRef<
-    ((payload: MentionsStrippedPayload) => void) | undefined
-  >(undefined);
   const [isCaptureDropdownOpen, setIsCaptureDropdownOpen] = useState(false);
   const [showKnowledgePicker, setShowKnowledgePicker] = useState(false);
   const plusButtonRef = useRef<HTMLDivElement>(null);
@@ -413,35 +409,6 @@ const InputBarContainer = ({
     }
   };
 
-  onAgentMentionsStrippedRef.current = (payload: MentionsStrippedPayload) => {
-    let title: string;
-    let description: string;
-    switch (payload.reason) {
-      case "extra-agents":
-        title = "Agent mentions removed";
-        description = `${payload.count} ${payload.count === 1 ? "agent mention was" : "agent mentions were"} removed. Only one agent can be used at a time.`;
-        break;
-      case "users-stripped-for-agent":
-        title = "User mentions removed";
-        description =
-          "You can’t mention both users and agents in the same message.";
-        break;
-      case "user-conflict":
-      case "mixed-conflict":
-        title = "Agent mentions removed";
-        description =
-          "You can’t mention both users and agents in the same message.";
-        break;
-      default:
-        assertNever(payload);
-    }
-    sendNotification({
-      type: "info",
-      title,
-      description,
-    });
-  };
-
   const handleSkillSelect = ({
     sId: skillId,
     name: skillName,
@@ -488,7 +455,6 @@ const InputBarContainer = ({
     onInlineText: handleInlineText,
     shouldSuggestAgentRef,
     onFirstAgentMentionPasteRef,
-    onAgentMentionsStrippedRef,
     slashSuggestion: {
       enabledRef: shouldEnableSlashSuggestionRef,
       onSelectRef,
@@ -627,25 +593,6 @@ const InputBarContainer = ({
       fileUploaderService.resetUpload();
     }
   };
-
-  // When the selected agent changes, remove any @user mentions (which are
-  // incompatible with single-agent mode), notify the user, and persist the draft.
-  useEffect(() => {
-    if (selectedSingleAgent) {
-      const hadUserMentions = editorService.removeUserMentions();
-      if (hadUserMentions) {
-        sendNotification({
-          type: "info",
-          title: "User mentions removed",
-          description:
-            "You can’t mention both users and agents in the same message.",
-        });
-      }
-      editorService.focusEnd();
-      const { markdown } = editorService.getMarkdownAndMentions();
-      saveDraft(markdown, selectedSingleAgent);
-    }
-  }, [selectedSingleAgent, editorService, saveDraft, sendNotification]);
 
   // Update the editor ref when the editor is created and listen for updates to the editor.
   useEffect(() => {
