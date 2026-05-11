@@ -1,84 +1,79 @@
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { INTERNAL_MIME_TYPES_VALUES } from "@dust-tt/client";
-import * as t from "io-ts";
+import { z } from "zod";
 
+import type { SupportedNonImageContentType } from "../../files";
 import { getSupportedNonImageMimeTypes } from "../../files";
 
-const AgentMentionSchema = t.type({
+const AgentMentionSchema = z.object({
   // TODO: add a type="agent" but this requires to be backwards compatible with the old API, not doing for now
-  configurationId: t.string,
+  configurationId: z.string(),
 });
-const UserMentionSchema = t.type({ type: t.literal("user"), userId: t.string });
-
-const UserMessageOriginSchema = t.union([
-  t.literal("web"),
-  t.literal("agent_sidekick"),
-  t.literal("project_kickoff"),
-  t.literal("extension"),
-  t.literal("reinforced_skill_notification"),
-]);
-
-export const MessageBaseSchema = t.type({
-  content: t.string,
-  mentions: t.array(t.union([AgentMentionSchema, UserMentionSchema])),
-  context: t.intersection([
-    t.type({
-      timezone: t.string,
-      profilePictureUrl: t.union([t.string, t.null]),
-    }),
-    t.partial({
-      clientSideMCPServerIds: t.array(t.string),
-      selectedMCPServerViewIds: t.array(t.string),
-      selectedSkillIds: t.array(t.string),
-      originMessageId: t.string,
-      origin: UserMessageOriginSchema,
-    }),
-  ]),
+const UserMentionSchema = z.object({
+  type: z.literal("user"),
+  userId: z.string(),
 });
 
-export const InternalPostMessagesRequestBodySchema = t.intersection([
-  MessageBaseSchema,
-  t.partial({
-    skipToolsValidation: t.boolean,
-  }),
+const UserMessageOriginSchema = z.enum([
+  "web",
+  "agent_sidekick",
+  "project_kickoff",
+  "extension",
+  "reinforced_skill_notification",
 ]);
 
-const ContentFragmentBaseSchema = t.intersection([
-  t.type({
-    title: t.string,
+export const MessageBaseSchema = z.object({
+  content: z.string(),
+  mentions: z.array(z.union([AgentMentionSchema, UserMentionSchema])),
+  context: z.object({
+    timezone: z.string(),
+    profilePictureUrl: z.string().nullable(),
+    clientSideMCPServerIds: z.array(z.string()).optional(),
+    selectedMCPServerViewIds: z.array(z.string()).optional(),
+    selectedSkillIds: z.array(z.string()).optional(),
+    originMessageId: z.string().optional(),
+    origin: UserMessageOriginSchema.optional(),
   }),
-  t.partial({
-    url: t.union([t.string, t.null]),
-    supersededContentFragmentId: t.union([t.string, t.null]),
-  }),
-]);
+});
+
+export const InternalPostMessagesRequestBodySchema = MessageBaseSchema.extend({
+  skipToolsValidation: z.boolean().optional(),
+});
+
+const ContentFragmentBaseSchema = z.object({
+  title: z.string(),
+  url: z.string().nullable().optional(),
+  supersededContentFragmentId: z.string().nullable().optional(),
+});
 
 export const getSupportedInlinedContentType = () => {
-  const [first, second, ...rest] = getSupportedNonImageMimeTypes();
-  return t.union([
-    t.literal(first),
-    t.literal(second),
-    ...rest.map((value) => t.literal(value)),
-  ]);
+  return z.enum(
+    getSupportedNonImageMimeTypes() as [
+      SupportedNonImageContentType,
+      ...SupportedNonImageContentType[],
+    ]
+  );
 };
 
-const [first, second, ...rest] = [
-  ...INTERNAL_MIME_TYPES_VALUES,
-  ...getSupportedNonImageMimeTypes(),
-];
 export const getSupportedContentNodeContentTypeSchema = () => {
-  return t.union([
-    t.literal(first),
-    t.literal(second),
-    ...rest.map((value) => t.literal(value)),
+  return z.enum([
+    ...INTERNAL_MIME_TYPES_VALUES,
+    ...getSupportedNonImageMimeTypes(),
+  ] as [
+    SupportedContentNodeContentTypeMember,
+    ...SupportedContentNodeContentTypeMember[],
   ]);
 };
 
-export type SupportedContentNodeContentType = t.TypeOf<
+type SupportedContentNodeContentTypeMember =
+  | (typeof INTERNAL_MIME_TYPES_VALUES)[number]
+  | SupportedNonImageContentType;
+
+export type SupportedContentNodeContentType = z.infer<
   ReturnType<typeof getSupportedContentNodeContentTypeSchema>
 >;
 
-export type SupportedInlinedContentFragmentTypeSchema = t.TypeOf<
+export type SupportedInlinedContentFragmentTypeSchema = z.infer<
   ReturnType<typeof getSupportedInlinedContentType>
 >;
 
@@ -105,38 +100,30 @@ export const isSupportedContentNodeFragmentContentType = (
 };
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-const ContentFragmentInputWithContentSchema = t.intersection([
-  ContentFragmentBaseSchema,
-  t.type({
-    content: t.string,
-    contentType: getSupportedInlinedContentType(),
-  }),
-]);
+const ContentFragmentInputWithContentSchema = ContentFragmentBaseSchema.extend({
+  content: z.string(),
+  contentType: getSupportedInlinedContentType(),
+});
 
-export type ContentFragmentInputWithInlinedContent = t.TypeOf<
+export type ContentFragmentInputWithInlinedContent = z.infer<
   typeof ContentFragmentInputWithContentSchema
 >;
 
-const ContentFragmentInputWithContentNodeSchema = t.intersection([
-  ContentFragmentBaseSchema,
-  t.type({
-    nodeId: t.string,
-    nodeDataSourceViewId: t.string,
-  }),
-]);
+const ContentFragmentInputWithContentNodeSchema =
+  ContentFragmentBaseSchema.extend({
+    nodeId: z.string(),
+    nodeDataSourceViewId: z.string(),
+  });
 
-export type ContentFragmentInputWithContentNode = t.TypeOf<
+export type ContentFragmentInputWithContentNode = z.infer<
   typeof ContentFragmentInputWithContentNodeSchema
 >;
 
-const ContentFragmentInputWithFileIdSchema = t.intersection([
-  ContentFragmentBaseSchema,
-  t.type({
-    fileId: t.string,
-  }),
-]);
+const ContentFragmentInputWithFileIdSchema = ContentFragmentBaseSchema.extend({
+  fileId: z.string(),
+});
 
-export type ContentFragmentInputWithFileIdType = t.TypeOf<
+export type ContentFragmentInputWithFileIdType = z.infer<
   typeof ContentFragmentInputWithFileIdSchema
 >;
 
@@ -181,67 +168,59 @@ export function isContentFragmentInputWithContentNode(
   return "nodeId" in fragment && "nodeDataSourceViewId" in fragment;
 }
 
-export const InternalPostContentFragmentRequestBodySchema = t.intersection([
-  t.type({
-    context: t.type({
-      profilePictureUrl: t.union([t.string, t.null]),
+export const InternalPostContentFragmentRequestBodySchema = z.intersection(
+  z.object({
+    context: z.object({
+      profilePictureUrl: z.string().nullable(),
     }),
   }),
-  t.union([
+  z.union([
     ContentFragmentInputWithFileIdSchema,
     ContentFragmentInputWithContentNodeSchema,
-  ]),
-]);
+  ])
+);
 
-export type InternalPostContentFragmentRequestBodyType = t.TypeOf<
+export type InternalPostContentFragmentRequestBodyType = z.infer<
   typeof InternalPostContentFragmentRequestBodySchema
 >;
 
-const ConversationMetadataSchema = t.UnknownRecord;
+const ConversationMetadataSchema = z.record(z.unknown());
 
-export const InternalPostConversationsRequestBodySchema = t.intersection([
-  t.type({
-    title: t.union([t.string, t.null]),
-    visibility: t.union([
-      t.literal("unlisted"),
-      t.literal("deleted"),
-      t.literal("test"),
-    ]),
-    spaceId: t.union([t.string, t.null]),
-    message: t.union([MessageBaseSchema, t.null]),
-    contentFragments: t.array(InternalPostContentFragmentRequestBodySchema),
-  }),
-  t.partial({
-    metadata: ConversationMetadataSchema,
-    skipToolsValidation: t.boolean,
-  }),
-]);
+export const InternalPostConversationsRequestBodySchema = z.object({
+  title: z.string().nullable(),
+  visibility: z.enum(["unlisted", "deleted", "test"]),
+  spaceId: z.string().nullable(),
+  message: MessageBaseSchema.nullable(),
+  contentFragments: z.array(InternalPostContentFragmentRequestBodySchema),
+  metadata: ConversationMetadataSchema.optional(),
+  skipToolsValidation: z.boolean().optional(),
+});
 
-export const InternalPostBuilderSuggestionsRequestBodySchema = t.union([
-  t.type({
-    type: t.literal("name"),
-    inputs: t.type({ instructions: t.string, description: t.string }),
+export const InternalPostBuilderSuggestionsRequestBodySchema = z.union([
+  z.object({
+    type: z.literal("name"),
+    inputs: z.object({ instructions: z.string(), description: z.string() }),
   }),
-  t.type({
-    type: t.literal("emoji"),
-    inputs: t.type({ instructions: t.string }),
+  z.object({
+    type: z.literal("emoji"),
+    inputs: z.object({ instructions: z.string() }),
   }),
-  t.type({
-    type: t.literal("description"),
-    inputs: t.type({ instructions: t.string, name: t.string }),
+  z.object({
+    type: z.literal("description"),
+    inputs: z.object({ instructions: z.string(), name: z.string() }),
   }),
-  t.type({
-    type: t.literal("tags"),
-    inputs: t.type({
-      instructions: t.string,
-      description: t.string,
-      isAdmin: t.boolean,
-      tags: t.array(t.string),
+  z.object({
+    type: z.literal("tags"),
+    inputs: z.object({
+      instructions: z.string(),
+      description: z.string(),
+      isAdmin: z.boolean(),
+      tags: z.array(z.string()),
     }),
   }),
 ]);
 
-export type BuilderSuggestionsRequestType = t.TypeOf<
+export type BuilderSuggestionsRequestType = z.infer<
   typeof InternalPostBuilderSuggestionsRequestBodySchema
 >;
 
@@ -250,41 +229,42 @@ export type BuilderSuggestionInputType =
 
 export type BuilderSuggestionType = BuilderSuggestionsRequestType["type"];
 
-const BuilderTextSuggestionTypeSchema = t.union([
-  t.array(t.string),
-  t.null,
-  t.undefined,
-]);
+const BuilderTextSuggestionTypeSchema = z
+  .array(z.string())
+  .nullable()
+  .optional();
 
-export type BuilderTextSuggestionsType = t.TypeOf<
+export type BuilderTextSuggestionsType = z.infer<
   typeof BuilderTextSuggestionTypeSchema
 >;
 
-export const BuilderSuggestionsResponseBodySchema = t.union([
-  t.type({
-    status: t.literal("ok"),
+export const BuilderSuggestionsResponseBodySchema = z.union([
+  z.object({
+    status: z.literal("ok"),
     suggestions: BuilderTextSuggestionTypeSchema,
   }),
-  t.type({
-    status: t.literal("unavailable"),
-    reason: t.union([
-      t.literal("user_not_finished"), // The user has not finished inputing data for suggestions to make sense
-      t.literal("irrelevant"),
+  z.object({
+    status: z.literal("unavailable"),
+    reason: z.enum([
+      "user_not_finished", // The user has not finished inputing data for suggestions to make sense
+      "irrelevant",
     ]),
   }),
 ]);
 
-export type BuilderSuggestionsType = t.TypeOf<
+export type BuilderSuggestionsType = z.infer<
   typeof BuilderSuggestionsResponseBodySchema
 >;
 
-export const BuilderEmojiSuggestionsResponseBodySchema = t.type({
-  suggestions: t.array(t.type({ emoji: t.string, backgroundColor: t.string })),
+export const BuilderEmojiSuggestionsResponseBodySchema = z.object({
+  suggestions: z.array(
+    z.object({ emoji: z.string(), backgroundColor: z.string() })
+  ),
 });
-export type BuilderEmojiSuggestionsType = t.TypeOf<
+export type BuilderEmojiSuggestionsType = z.infer<
   typeof BuilderEmojiSuggestionsResponseBodySchema
 >;
 
-export const InternalPostBuilderGenerateSchemaRequestBodySchema = t.type({
-  instructions: t.string,
+export const InternalPostBuilderGenerateSchemaRequestBodySchema = z.object({
+  instructions: z.string(),
 });

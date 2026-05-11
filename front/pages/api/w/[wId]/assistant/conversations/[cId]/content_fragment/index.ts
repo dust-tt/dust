@@ -74,9 +74,8 @@ import { apiError } from "@app/logger/withlogging";
 import { InternalPostContentFragmentRequestBodySchema } from "@app/types/api/internal/assistant";
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import type { WithAPIErrorResponse } from "@app/types/error";
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
 async function handler(
   req: NextApiRequest,
@@ -113,10 +112,10 @@ async function handler(
   switch (req.method) {
     case "POST":
       const bodyValidation =
-        InternalPostContentFragmentRequestBodySchema.decode(req.body);
+        InternalPostContentFragmentRequestBodySchema.safeParse(req.body);
 
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+      if (!bodyValidation.success) {
+        const pathError = fromError(bodyValidation.error).toString();
 
         return apiError(req, res, {
           status_code: 400,
@@ -127,7 +126,7 @@ async function handler(
         });
       }
 
-      const contentFragmentPayload = bodyValidation.right;
+      const contentFragmentPayload = bodyValidation.data;
       const baseContext = {
         username: user.username,
         fullName: user.fullName(),

@@ -25,13 +25,12 @@ import type { SupportedCurrency } from "@app/types/currency";
 import { isSupportedCurrency } from "@app/types/currency";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { StripePricingData } from "@app/types/stripe/pricing";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
-export const PostCreditPurchaseRequestBody = t.type({
-  amountDollars: t.number,
+export const PostCreditPurchaseRequestBody = z.object({
+  amountDollars: z.number(),
 });
 
 type PostCreditPurchaseResponseBody = {
@@ -180,9 +179,9 @@ async function handler(
 
     case "POST": {
       const workspace = auth.getNonNullableWorkspace();
-      const bodyValidation = PostCreditPurchaseRequestBody.decode(req.body);
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+      const bodyValidation = PostCreditPurchaseRequestBody.safeParse(req.body);
+      if (!bodyValidation.success) {
+        const pathError = fromError(bodyValidation.error).toString();
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -192,7 +191,7 @@ async function handler(
         });
       }
 
-      const { amountDollars } = bodyValidation.right;
+      const { amountDollars } = bodyValidation.data;
 
       // Validate amount is positive.
       if (amountDollars <= 0) {

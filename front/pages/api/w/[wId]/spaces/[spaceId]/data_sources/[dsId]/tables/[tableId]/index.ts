@@ -10,9 +10,8 @@ import { apiError } from "@app/logger/withlogging";
 import { PatchDataSourceTableRequestBodySchema } from "@app/types/api/public/data_sources";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
 
 export type PatchTableResponseBody = {
   table?: { table_id: string };
@@ -61,12 +60,12 @@ async function handler(
         });
       }
 
-      const bodyValidation = PatchDataSourceTableRequestBodySchema.decode(
+      const bodyValidation = PatchDataSourceTableRequestBodySchema.safeParse(
         req.body
       );
 
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+      if (!bodyValidation.success) {
+        const pathError = fromError(bodyValidation.error).toString();
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -79,9 +78,9 @@ async function handler(
       const upsertRes = await upsertTable({
         auth,
         params: {
-          ...bodyValidation.right,
+          ...bodyValidation.data,
           tableId,
-          async: bodyValidation.right.async ?? false,
+          async: bodyValidation.data.async ?? false,
         },
         dataSource,
       });

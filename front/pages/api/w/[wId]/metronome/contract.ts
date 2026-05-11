@@ -11,10 +11,9 @@ import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 export type MetronomeContractSummary = {
   planFamily: "pro" | "enterprise";
@@ -36,8 +35,8 @@ type PatchMetronomeContractResponseBody = {
   success: boolean;
 };
 
-export const PatchMetronomeContractRequestBody = t.type({
-  action: t.union([t.literal("cancel"), t.literal("reactivate")]),
+export const PatchMetronomeContractRequestBody = z.object({
+  action: z.enum(["cancel", "reactivate"]),
 });
 
 async function handler(
@@ -142,9 +141,9 @@ async function handlePatch(
   >,
   auth: Authenticator
 ): Promise<void> {
-  const bodyValidation = PatchMetronomeContractRequestBody.decode(req.body);
-  if (isLeft(bodyValidation)) {
-    const pathError = reporter.formatValidationErrors(bodyValidation.left);
+  const bodyValidation = PatchMetronomeContractRequestBody.safeParse(req.body);
+  if (!bodyValidation.success) {
+    const pathError = fromError(bodyValidation.error).toString();
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -154,7 +153,7 @@ async function handlePatch(
     });
   }
 
-  const { action } = bodyValidation.right;
+  const { action } = bodyValidation.data;
 
   switch (action) {
     case "cancel": {

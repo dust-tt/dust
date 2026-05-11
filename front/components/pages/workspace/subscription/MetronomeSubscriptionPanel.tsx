@@ -38,8 +38,8 @@ import {
   Page,
   Spinner,
 } from "@dust-tt/sparkle";
-import type * as t from "io-ts";
 import { useState } from "react";
+import type { z } from "zod";
 
 const CONTACT_SALES_URL = `${config.getStaticWebsiteUrl()}/home/contact`;
 
@@ -214,7 +214,7 @@ export function MetronomeSubscriptionPanel({
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               action: "cancel",
-            } satisfies t.TypeOf<typeof PatchMetronomeContractRequestBody>),
+            } satisfies z.infer<typeof PatchMetronomeContractRequestBody>),
           }
         );
         if (!res.ok) {
@@ -243,7 +243,7 @@ export function MetronomeSubscriptionPanel({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "reactivate",
-        } satisfies t.TypeOf<typeof PatchMetronomeContractRequestBody>),
+        } satisfies z.infer<typeof PatchMetronomeContractRequestBody>),
       });
       if (!res.ok) {
         sendNotification({
@@ -271,7 +271,7 @@ export function MetronomeSubscriptionPanel({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "upgrade_to_business",
-        } satisfies t.TypeOf<typeof PatchSubscriptionRequestBody>),
+        } satisfies z.infer<typeof PatchSubscriptionRequestBody>),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => null);

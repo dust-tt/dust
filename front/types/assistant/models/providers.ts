@@ -2,7 +2,6 @@ import type {
   ByokModelProviderIdType,
   ModelProviderIdType,
 } from "@app/types/assistant/models/types";
-import { ioTsEnum } from "@app/types/shared/utils/iots_utils";
 import { z } from "zod";
 
 /**
@@ -57,8 +56,6 @@ export const isModelProviderId = (
   providerId: string
 ): providerId is ModelProviderIdType =>
   MODEL_PROVIDER_IDS.includes(providerId as ModelProviderIdType);
-export const ModelProviderIdCodec =
-  ioTsEnum<(typeof MODEL_PROVIDER_IDS)[number]>(MODEL_PROVIDER_IDS);
 export const ModelProviderIdSchema = z.enum(MODEL_PROVIDER_IDS);
 export const isByokProviderId = (
   providerId: ModelProviderIdType

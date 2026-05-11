@@ -15,21 +15,15 @@ import { isValidContentNodesViewType } from "@app/types/connectors/content_nodes
 import type { DataSourceType } from "@app/types/data_source";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
-const SetConnectorPermissionsRequestBodySchema = t.type({
-  resources: t.array(
-    t.type({
-      internal_id: t.string,
-      permission: t.union([
-        t.literal("none"),
-        t.literal("read"),
-        t.literal("write"),
-        t.literal("read_write"),
-      ]),
+const SetConnectorPermissionsRequestBodySchema = z.object({
+  resources: z.array(
+    z.object({
+      internal_id: z.string(),
+      permission: z.enum(["none", "read", "write", "read_write"]),
     })
   ),
 });
@@ -124,11 +118,11 @@ async function handler(
         });
       }
 
-      const bodyValidation = SetConnectorPermissionsRequestBodySchema.decode(
+      const bodyValidation = SetConnectorPermissionsRequestBodySchema.safeParse(
         req.body
       );
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+      if (!bodyValidation.success) {
+        const pathError = fromError(bodyValidation.error).toString();
         return apiError(req, res, {
           api_error: {
             type: "invalid_request_error",
@@ -138,7 +132,7 @@ async function handler(
         });
       }
 
-      const { resources } = bodyValidation.right;
+      const { resources } = bodyValidation.data;
 
       const connectorsRes = await connectorsAPI.setConnectorPermissions({
         connectorId: dataSource.connectorId,
