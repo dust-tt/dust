@@ -150,7 +150,7 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
     // If the user's last message contains only human mentions (no agent),
     // prefill with just those human mentions.
     const mentionsFromLastUserMessage = lastUserMessage?.richMentions ?? [];
-    
+
     if (
       mentionsFromLastUserMessage.length > 0 &&
       mentionsFromLastUserMessage.every(isRichUserMention)
