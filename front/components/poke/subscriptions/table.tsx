@@ -487,34 +487,6 @@ function UpgradeDowngradeModal({
   const router = useAppRouter();
   const { plans } = usePokePlans();
 
-  const { submit: onDowngrade } = useSubmitFunction(async () => {
-    if (
-      !window.confirm(
-        "Confirm workspace downgrade to no plan? This action will pause all connectors and delete data after the retention period expires."
-      )
-    ) {
-      return;
-    }
-    try {
-      const r = await clientFetch(
-        `/api/poke/workspaces/${owner.sId}/downgrade`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
-      if (!r.ok) {
-        throw new Error("Failed to downgrade workspace.");
-      }
-      router.reload();
-    } catch (e) {
-      console.error(e);
-      window.alert("An error occurred while downgrading the workspace.");
-    }
-  });
-
   const { submit: onUpgradeToProPlan } = useSubmitFunction(
     async (plan: PlanType) => {
       if (
@@ -574,14 +546,10 @@ function UpgradeDowngradeModal({
               </div>
             )}
             <div>
-              <Button
-                variant="warning"
-                onClick={onDowngrade}
-                disabled={
-                  subscription.plan.code === FREE_NO_PLAN_CODE ||
-                  !!programmaticUsageConfig?.paygCapMicroUsd
-                }
-                label="Downgrade to NO PLAN"
+              <DowngradeToNoPlanButton
+                owner={owner}
+                subscription={subscription}
+                programmaticUsageConfig={programmaticUsageConfig}
               />
             </div>
             <Separator />
