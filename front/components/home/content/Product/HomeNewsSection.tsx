@@ -13,28 +13,29 @@ interface NewsItem {
 
 const NEWS: NewsItem[] = [
   {
-    source: "TECHCRUNCH",
-    title: "Dust builds the operating system for AI agents",
-    date: "Apr 22, 2026",
-    href: "#",
+    source: "HYPERTEXT",
+    title: "What is ARR anyway?",
+    date: "Apr 17, 2026",
+    href: "https://hypertext.fyi/what-is-arr-anyway/",
   },
   {
-    source: "FORBES",
-    title: "How European startups are quietly winning the AI agent race",
-    date: "Mar 18, 2026",
-    href: "#",
+    source: "WING VC",
+    title: "Enterprise Tech 30 List 2026",
+    date: "Mar 31, 2026",
+    href: "https://www.wing.vc/et30/list",
   },
   {
-    source: "BLOOMBERG",
-    title: "Dust raises Series B to bring AI operators into every team",
-    date: "Feb 04, 2026",
-    href: "#",
+    source: "VENTUREBEAT",
+    title:
+      "Dust hits $6M ARR helping enterprises build AI agents that actually do stuff instead of just talking",
+    date: "Jul 3, 2025",
+    href: "https://venturebeat.com/ai/dust-hits-6m-arr-helping-enterprises-build-ai-agents-that-actually-do-stuff-instead-of-just-talking",
   },
   {
-    source: "THE INFORMATION",
-    title: "Why customer support teams are betting on agent platforms",
-    date: "Jan 12, 2026",
-    href: "#",
+    source: "SEQUOIA CAPITAL",
+    title: "Partnering with Dust: LLM-Powered Productivity",
+    date: "Jul 3, 2023",
+    href: "https://sequoiacap.com/article/partnering-with-dust-llm-powered-productivity/",
   },
 ];
 
@@ -63,7 +64,7 @@ export function HomeNewsSection() {
                 href={SEE_ALL_PRESS_HREF}
                 className="group inline-flex w-fit items-center gap-2 text-base font-medium text-foreground/80 underline-offset-4 transition-colors hover:text-foreground hover:underline focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-4 focus-visible:ring-offset-background"
               >
-                See all press
+                More about us
                 <svg
                   width="16"
                   height="16"

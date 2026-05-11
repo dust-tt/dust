@@ -2,7 +2,7 @@
 
 import { homeScenarios } from "@app/components/home/content/Product/heroOfficeScenario";
 import { mountFloorScene } from "@app/components/home/content/Product/heroOfficeScene";
-import { PEOPLE } from "@app/components/home/content/shared/team";
+import type { TeamMember } from "@app/components/home/content/shared/team";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { Button } from "@dust-tt/sparkle";
 import Link from "next/link";
@@ -14,7 +14,36 @@ const LEAD_COPY =
   "Turn scattered knowledge into coordinated execution. AI agents your team builds, owns, and runs — alongside the humans who know the work.";
 const EYEBROW_COPY = "Run on Dust · live in 47 companies right now";
 
-const TEAM_POOL = Object.values(PEOPLE);
+const OFFICE_FIRST_NAMES = [
+  "Aisha",
+  "Amara",
+  "Carlos",
+  "David",
+  "Elena",
+  "James",
+  "Kevin",
+  "Leila",
+  "Marcus",
+  "Mei",
+  "Natasha",
+  "Omar",
+  "Priya",
+  "Raj",
+  "Ryan",
+  "Sarah",
+  "Sofia",
+  "Tyler",
+  "Wei",
+  "Yuki",
+] as const;
+
+const TEAM_POOL: TeamMember[] = OFFICE_FIRST_NAMES.map((firstName) => ({
+  name: firstName,
+  title: "",
+  image: `/static/landing/people/office/${firstName.toLowerCase()}.png`,
+  linkedIn: null,
+  github: "",
+}));
 
 export function HeroOfficeSection() {
   const sceneRef = useRef<HTMLDivElement>(null);
