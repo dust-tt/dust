@@ -76,7 +76,7 @@ export function ToolUsageChart({
     configurationNames,
   });
 
-  const { selectedKey, isDimmed, decorate } = useSelectableSeries();
+  const { selectedKey, isDimmed, decorate } = useSelectableSeries(topTools);
 
   const legendItems = useMemo(
     () =>

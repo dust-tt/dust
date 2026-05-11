@@ -175,7 +175,7 @@ describe("createOrLinkTasks", () => {
       ],
     };
 
-    const { deduplicated, createdNew } = await createOrLinkTasks(fakeAuth, {
+    const result = await createOrLinkTasks(fakeAuth, {
       localLogger: fakeLogger,
       newCandidates: [
         {
@@ -191,8 +191,13 @@ describe("createOrLinkTasks", () => {
       unassignedCandidates: [],
       dedupGroups: [group],
       spaceModelId: 1 as ModelId,
+      memberCount: 10,
     });
 
+    expect(result.isOk()).toBe(true);
+    const { deduplicated, createdNew } = result.isOk()
+      ? result.value
+      : { deduplicated: -1, createdNew: -1 };
     expect(upsertSource).not.toHaveBeenCalled();
     expect(deduplicated).toBe(0);
     expect(createdNew).toBe(0);
@@ -221,7 +226,7 @@ describe("createOrLinkTasks", () => {
       ],
     };
 
-    const { deduplicated, createdNew } = await createOrLinkTasks(fakeAuth, {
+    const result = await createOrLinkTasks(fakeAuth, {
       localLogger: fakeLogger,
       newCandidates: [
         {
@@ -237,8 +242,13 @@ describe("createOrLinkTasks", () => {
       unassignedCandidates: [],
       dedupGroups: [group],
       spaceModelId: 1 as ModelId,
+      memberCount: 10,
     });
 
+    expect(result.isOk()).toBe(true);
+    const { deduplicated, createdNew } = result.isOk()
+      ? result.value
+      : { deduplicated: -1, createdNew: -1 };
     expect(upsertSource).toHaveBeenCalledOnce();
     expect(deduplicated).toBe(1);
     expect(createdNew).toBe(0);

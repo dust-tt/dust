@@ -16,18 +16,17 @@ import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { Organization } from "@workos-inc/node";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 export interface GetWorkspaceDomainsResponseBody {
   addDomainLink?: string;
   domains: Organization["domains"];
 }
 
-const DeleteWorkspaceDomainRequestBodySchema = t.type({
-  domain: t.string,
+const DeleteWorkspaceDomainRequestBodySchema = z.object({
+  domain: z.string(),
 });
 
 async function handler(
@@ -84,11 +83,11 @@ async function handler(
       });
 
     case "DELETE":
-      const bodyValidation = DeleteWorkspaceDomainRequestBodySchema.decode(
+      const bodyValidation = DeleteWorkspaceDomainRequestBodySchema.safeParse(
         req.body
       );
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+      if (!bodyValidation.success) {
+        const pathError = fromError(bodyValidation.error).toString();
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -97,7 +96,7 @@ async function handler(
           },
         });
       }
-      const { right: body } = bodyValidation;
+      const { data: body } = bodyValidation;
 
       const removeDomainRes = await removeWorkOSOrganizationDomain(
         auth.getNonNullableWorkspace(),

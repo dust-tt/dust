@@ -1,4 +1,3 @@
-import { CONVERSATION_BRANCHING_COPY } from "@app/components/assistant/conversation/branching";
 import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
 import { EditConversationTitleDialog } from "@app/components/assistant/conversation/EditConversationTitleDialog";
 import { LeaveConversationDialog } from "@app/components/assistant/conversation/LeaveConversationDialog";
@@ -61,7 +60,6 @@ import {
   PencilSquareIcon,
   PlusCircleIcon,
   SidekickIcon,
-  Spinner,
   TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
@@ -140,7 +138,6 @@ export function useConversationMenu() {
 interface ConversationMenuProps {
   activeConversationId: string | null;
   conversation?: ConversationListItemType;
-  onConversationBranched?: () => Promise<void> | void;
   owner: WorkspaceType;
   trigger:
     | ReactElement
@@ -156,7 +153,6 @@ interface ConversationMenuProps {
 export function ConversationMenu({
   activeConversationId,
   conversation,
-  onConversationBranched,
   owner,
   trigger,
   isConversationDisplayed,
@@ -277,9 +273,7 @@ export function ConversationMenu({
     if (isConversationDisplayed) {
       void mutateConversation();
     }
-
-    void onConversationBranched?.();
-  }, [isConversationDisplayed, mutateConversation, onConversationBranched]);
+  }, [isConversationDisplayed, mutateConversation]);
   const { branchConversation, isBranching } = useBranchConversation({
     owner,
     conversationId: activeConversationId,
@@ -412,15 +406,11 @@ export function ConversationMenu({
           {hasFeature("sessions_branching") && (
             <>
               <DropdownMenuItem
-                label={
-                  isBranching
-                    ? CONVERSATION_BRANCHING_COPY.branching
-                    : CONVERSATION_BRANCHING_COPY.branchConversation
-                }
+                label="Branch conversation"
                 onClick={() => {
                   void branchConversation();
                 }}
-                icon={isBranching ? <Spinner size="xs" /> : ActionGitBranchIcon}
+                icon={ActionGitBranchIcon}
                 disabled={isBranching}
               />
               <DropdownMenuSeparator />

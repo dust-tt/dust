@@ -1,5 +1,4 @@
-import * as t from "io-ts";
-import { NonEmptyString } from "io-ts-types";
+import { z } from "zod";
 
 import type { ModelId } from "./shared/model_id";
 import type { ActiveRoleType } from "./user";
@@ -30,9 +29,9 @@ export interface PendingInvitationOption {
 
 // Types for the invite form in Poke.
 
-export const InviteMemberFormSchema = t.type({
-  email: NonEmptyString,
+export const InviteMemberFormSchema = z.object({
+  email: z.string().min(1),
   role: ActiveRoleSchema,
 });
 
-export type InviteMemberFormType = t.TypeOf<typeof InviteMemberFormSchema>;
+export type InviteMemberFormType = z.infer<typeof InviteMemberFormSchema>;

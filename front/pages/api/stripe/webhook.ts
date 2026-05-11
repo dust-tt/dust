@@ -11,6 +11,7 @@ import { Authenticator } from "@app/lib/auth";
 import {
   deleteCreditFromVoidedInvoice,
   startCreditFromEnterpriseOneOffInvoice,
+  startCreditFromMetronomeOneOffInvoice,
   startCreditFromProOneOffInvoice,
   voidFailedProCreditPurchaseInvoice,
 } from "@app/lib/credits/committed";
@@ -20,6 +21,7 @@ import {
   isPAYGEnabled,
 } from "@app/lib/credits/payg";
 import { handleMetronomeSetupCheckout } from "@app/lib/metronome/checkout";
+import { storeMetronomeCheckoutError } from "@app/lib/metronome/checkout_error";
 import {
   floorToHourISO,
   reactivateMetronomeContract,
@@ -30,7 +32,10 @@ import {
   provisionMetronomeContract,
 } from "@app/lib/metronome/contracts";
 import { PlanModel } from "@app/lib/models/plan";
-import { resolvePackageAliasForCurrency } from "@app/lib/plans/billing_currency";
+import {
+  resolveCurrencyFromStripe,
+  resolvePackageAliasForCurrency,
+} from "@app/lib/plans/billing_currency";
 import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import {
@@ -260,6 +265,11 @@ async function handler(
               return res.status(200).json({ success: true });
             }
 
+            await storeMetronomeCheckoutError({
+              sessionId: session.id,
+              message: result.error.message,
+            });
+
             switch (result.error.code) {
               case "subscription_already_exists":
               case "workspace_not_found":
@@ -267,24 +277,19 @@ async function handler(
                   { error: result.error, workspaceId, planCode },
                   `[Stripe Webhook] Metronome setup: ${result.error.message}`
                 );
-                return res
-                  .status(200)
-                  .json({ success: false, message: result.error.message });
+                break;
 
               default:
                 logger.error(
                   { error: result.error, workspaceId, planCode },
                   `[Stripe Webhook] Metronome setup: ${result.error.message}`
                 );
-                return apiError(req, res, {
-                  status_code: 500,
-                  api_error: {
-                    type: "internal_server_error",
-                    message:
-                      "Stripe Webhook: error handling Metronome setup checkout.session.completed.",
-                  },
-                });
+                break;
             }
+
+            return res
+              .status(200)
+              .json({ success: false, message: result.error.message });
           }
 
           try {
@@ -415,12 +420,12 @@ async function handler(
                 checkoutStripeSubscription.current_period_start * 1000
               );
 
-              // Resolve EUR variant based on Stripe subscription currency.
-              const subscriptionCurrency =
-                checkoutStripeSubscription.currency === "eur" ? "eur" : "usd";
+              const billingCurrency = resolveCurrencyFromStripe({
+                stripeSubscription: checkoutStripeSubscription,
+              });
               const resolvedAlias = resolvePackageAliasForCurrency(
                 metronomePackageAlias,
-                subscriptionCurrency
+                billingCurrency
               );
               void provisionShadowMetronome({
                 workspace,
@@ -466,6 +471,37 @@ async function handler(
           );
           const invoice = event.data.object as Stripe.Invoice;
           if (typeof invoice.subscription !== "string") {
+            // Metronome-only billed workspaces issue credit-purchase invoices
+            // directly on the Stripe customer (no subscription). Activate the
+            // credit now that payment has cleared. The originating workspace
+            // is stamped on `invoice.metadata.workspace_id`.
+            if (isCreditPurchaseInvoice(invoice)) {
+              const workspaceId = invoice.metadata?.workspace_id;
+              if (!workspaceId) {
+                logger.error(
+                  { invoiceId: invoice.id, customer: invoice.customer },
+                  "[Stripe Webhook] Metronome-only credit purchase invoice missing workspace_id metadata"
+                );
+                return res.status(200).json({ success: true });
+              }
+              const metronomeAuth =
+                await Authenticator.internalAdminForWorkspace(workspaceId);
+              const startResult = await startCreditFromMetronomeOneOffInvoice({
+                auth: metronomeAuth,
+                invoice,
+              });
+              if (startResult.isErr()) {
+                logger.error(
+                  {
+                    error: startResult.error,
+                    invoiceId: invoice.id,
+                    workspaceId,
+                  },
+                  "[Stripe Webhook] Error processing Metronome-only credit purchase"
+                );
+              }
+              return res.status(200).json({ success: true });
+            }
             return _returnStripeApiError(
               req,
               res,
@@ -582,6 +618,43 @@ async function handler(
           }
 
           if (typeof invoice.subscription !== "string") {
+            // Metronome-only credit purchase: no subscription on the invoice.
+            // Reuse the Pro void-after-N-attempts flow — it's keyed off the
+            // invoice id, not the subscription.
+            if (isCreditPurchaseInvoice(invoice)) {
+              const workspaceId = invoice.metadata?.workspace_id;
+              if (!workspaceId) {
+                logger.error(
+                  { invoiceId: invoice.id, customer: invoice.customer },
+                  "[Stripe Webhook] Metronome-only failed credit purchase invoice missing workspace_id metadata"
+                );
+                return res.status(200).json({ success: true });
+              }
+              const metronomeAuth =
+                await Authenticator.internalAdminForWorkspace(workspaceId);
+              const result = await voidFailedProCreditPurchaseInvoice({
+                auth: metronomeAuth,
+                invoice,
+              });
+              if (result.isErr()) {
+                logger.error(
+                  {
+                    error: result.error,
+                    panic: true,
+                    stripeError: true,
+                    invoiceId: invoice.id,
+                    workspaceId,
+                  },
+                  "[Stripe Webhook] Error handling failed Metronome-only credit purchase"
+                );
+              } else if (result.value.voided) {
+                logger.warn(
+                  { invoiceId: invoice.id, workspaceId },
+                  "[Stripe Webhook] Voided Metronome-only credit purchase invoice after 3 failures"
+                );
+              }
+              return res.status(200).json({ success: true });
+            }
             return _returnStripeApiError(
               req,
               res,
@@ -858,10 +931,60 @@ async function handler(
           }
 
           if (!isString(voidedInvoice.subscription)) {
-            logger.warn(
-              { invoiceId: voidedInvoice.id, stripeError: true },
-              "[Stripe Webhook] Voided credit purchase invoice has no subscription."
-            );
+            // Metronome-only credit purchase: no subscription. Resolve the
+            // workspace via the metadata stamp and route to the same delete
+            // helper used for Pro voids.
+            const workspaceId = voidedInvoice.metadata?.workspace_id;
+            if (!workspaceId) {
+              logger.warn(
+                { invoiceId: voidedInvoice.id, stripeError: true },
+                "[Stripe Webhook] Voided credit purchase invoice has no subscription and no workspace_id metadata."
+              );
+              break;
+            }
+
+            const metronomeAuth =
+              await Authenticator.internalAdminForWorkspace(workspaceId);
+            const deleteResult = await deleteCreditFromVoidedInvoice({
+              auth: metronomeAuth,
+              invoice: voidedInvoice,
+            });
+            if (deleteResult.isOk()) {
+              logger.info(
+                { invoiceId: voidedInvoice.id, workspaceId },
+                "[Stripe Webhook] Successfully deleted Metronome-only credit for voided invoice."
+              );
+              break;
+            }
+            const error = deleteResult.error;
+            if (error.type === "credit_already_started") {
+              const freezeResult = await error.credit.freeze(metronomeAuth);
+              if (freezeResult.isErr()) {
+                logger.warn(
+                  {
+                    invoiceId: voidedInvoice.id,
+                    creditId: error.credit.id,
+                    workspaceId,
+                    error: freezeResult.error.message,
+                  },
+                  "[Stripe Webhook] Failed to freeze started Metronome-only credit for voided invoice."
+                );
+              } else {
+                logger.warn(
+                  {
+                    invoiceId: voidedInvoice.id,
+                    creditId: error.credit.id,
+                    workspaceId,
+                  },
+                  "[Stripe Webhook] Froze started Metronome-only credit for voided invoice"
+                );
+              }
+            } else {
+              logger.warn(
+                { invoiceId: voidedInvoice.id, workspaceId },
+                "[Stripe Webhook] Metronome-only credit not found for voided invoice (likely already voided)."
+              );
+            }
             break;
           }
 

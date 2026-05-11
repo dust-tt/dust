@@ -1,65 +1,33 @@
-import { useSendNotification } from "@app/hooks/useNotification";
-import type { MicrosoftAllowedLabel } from "@app/lib/models/workspace_sensitivity_label_config";
-import { saveDataClassificationLabels } from "@app/lib/swr/data_classification_labels";
-import type { MicrosoftSensitivityLabel } from "@app/pages/api/w/[wId]/data-classification-labels";
 import { isAdmin, type LightWorkspaceType } from "@app/types/user";
 import { Chip, Input, SliderToggle } from "@dust-tt/sparkle";
-import {
-  forwardRef,
-  useCallback,
-  useEffect,
-  useImperativeHandle,
-  useMemo,
-  useState,
-} from "react";
-import type { LabelsHandle, SensitivityLabelSource } from "./types";
+import { useState } from "react";
+import type { SensitivityLabelsController } from "./types";
 
 interface MicrosoftLabelsSelectorProps {
   owner: LightWorkspaceType;
-  source: SensitivityLabelSource;
-  labels: MicrosoftSensitivityLabel[];
-  savedAllowedLabels: MicrosoftAllowedLabel[];
-  onSaved: () => Promise<unknown> | unknown;
+  controller: SensitivityLabelsController;
   readOnly: boolean;
-  hasError: boolean;
-  isLoading?: boolean;
-  onDirtyChange?: (dirty: boolean) => void;
 }
 
-export const MicrosoftLabelsSelector = forwardRef<
-  LabelsHandle,
-  MicrosoftLabelsSelectorProps
->(function MicrosoftLabelsSelector(
-  {
-    owner,
-    source,
-    labels,
-    savedAllowedLabels,
-    onSaved,
-    readOnly,
-    hasError,
-    isLoading = false,
-    onDirtyChange,
-  },
-  ref
-) {
-  const sendNotification = useSendNotification();
-  const [pendingSelected, setPendingSelected] = useState<Set<string>>(
-    new Set(savedAllowedLabels)
-  );
-  const [isEnabled, setIsEnabled] = useState(savedAllowedLabels.length > 0);
+export function MicrosoftLabelsSelector({
+  owner,
+  controller,
+  readOnly,
+}: MicrosoftLabelsSelectorProps) {
   const [searchText, setSearchText] = useState("");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
 
   const isAdminUser = isAdmin(owner);
-
-  useEffect(() => {
-    if (!isSaving && !isLoading) {
-      setPendingSelected(new Set(savedAllowedLabels));
-      setIsEnabled(savedAllowedLabels.length > 0);
-    }
-  }, [savedAllowedLabels, isSaving, isLoading]);
+  const {
+    labels,
+    pendingSelected,
+    isEnabled,
+    isSaving,
+    isLoading,
+    hasError,
+    setIsEnabled,
+    setPendingSelected,
+  } = controller;
 
   const filteredLabels = labels.filter(
     (l) =>
@@ -67,61 +35,6 @@ export const MicrosoftLabelsSelector = forwardRef<
       l.name.toLowerCase().includes(searchText.toLowerCase())
   );
   const shouldShowSuggestions = isEnabled && isSearchFocused;
-
-  const hasPendingChanges = useMemo(() => {
-    const effective = isEnabled ? Array.from(pendingSelected).sort() : [];
-    const saved = [...savedAllowedLabels].sort();
-    if (effective.length !== saved.length) {
-      return true;
-    }
-    return effective.some((id, i) => id !== saved[i]);
-  }, [pendingSelected, isEnabled, savedAllowedLabels]);
-
-  const persistChanges = useCallback(async () => {
-    const allowedLabels = isEnabled ? Array.from(pendingSelected) : [];
-    setIsSaving(true);
-    try {
-      const result = await saveDataClassificationLabels({
-        owner,
-        source,
-        allowedLabels,
-      });
-      if (result.success) {
-        await onSaved();
-      } else {
-        sendNotification({
-          type: "error",
-          title: "Failed to update labels setting",
-          description: result.error,
-        });
-        return false;
-      }
-    } catch (error) {
-      sendNotification({
-        type: "error",
-        title: "Failed to update sensitivity labels setting",
-        description:
-          error instanceof Error ? error.message : "An unknown error occurred.",
-      });
-      return false;
-    } finally {
-      setIsSaving(false);
-    }
-    return true;
-  }, [isEnabled, onSaved, owner, pendingSelected, sendNotification, source]);
-
-  useEffect(() => {
-    onDirtyChange?.(hasPendingChanges);
-  }, [hasPendingChanges, onDirtyChange]);
-
-  useImperativeHandle(
-    ref,
-    () => ({
-      isDirty: hasPendingChanges,
-      save: persistChanges,
-    }),
-    [hasPendingChanges, persistChanges]
-  );
 
   const handleToggle = () => {
     if (isEnabled) {
@@ -230,4 +143,4 @@ export const MicrosoftLabelsSelector = forwardRef<
       )}
     </div>
   );
-});
+}

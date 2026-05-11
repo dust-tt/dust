@@ -285,6 +285,12 @@ export function useArchiveSkill({
   return doArchive;
 }
 
+type SkillReinforcementUpdate = {
+  reinforcement?: SkillReinforcementMode;
+  selfImprovementLock?: boolean;
+  selfImprovementCostsCapMicroUsd?: number;
+};
+
 export function useUpdateSkillReinforcement({
   owner,
   onlyCustom,
@@ -303,20 +309,20 @@ export function useUpdateSkillReinforcement({
       disabled: true,
     });
 
-  const updateReinforcement = useCallback(
-    async (skillId: string, reinforcement: SkillReinforcementMode) => {
+  const updateSkillReinforcement = useCallback(
+    async (skillId: string, update: SkillReinforcementUpdate) => {
       try {
         await fetcher(`/api/w/${owner.sId}/skills/${skillId}/reinforcement`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ reinforcement }),
+          body: JSON.stringify(update),
         });
         void mutateActiveSkills();
         return true;
       } catch (err) {
         sendNotification({
           type: "error",
-          title: "Failed to update reinforcement",
+          title: "Failed to update reinforcement settings",
           description: isAPIErrorResponse(err)
             ? err.error.message
             : "An unexpected error occurred.",
@@ -327,7 +333,7 @@ export function useUpdateSkillReinforcement({
     [owner.sId, fetcher, mutateActiveSkills, sendNotification]
   );
 
-  return { updateReinforcement };
+  return { updateSkillReinforcement };
 }
 
 export function useRestoreSkill({

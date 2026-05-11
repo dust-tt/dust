@@ -7,20 +7,17 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import { isLeft } from "fp-ts/Either";
 import { escape } from "html-escaper";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
-export const PostRequestAccessBodySchema = t.type({
-  emailMessage: t.string,
-  dataSourceId: t.string,
+export const PostRequestAccessBodySchema = z.object({
+  emailMessage: z.string(),
+  dataSourceId: z.string(),
 });
 
-export type PostRequestAccessBody = t.TypeOf<
-  typeof PostRequestAccessBodySchema
->;
+export type PostRequestAccessBody = z.infer<typeof PostRequestAccessBodySchema>;
 
 const MAX_ACCESS_REQUESTS_PER_DAY = 30;
 
@@ -42,9 +39,9 @@ async function handler(
     });
   }
 
-  const bodyValidation = PostRequestAccessBodySchema.decode(req.body);
-  if (isLeft(bodyValidation)) {
-    const pathError = reporter.formatValidationErrors(bodyValidation.left);
+  const bodyValidation = PostRequestAccessBodySchema.safeParse(req.body);
+  if (!bodyValidation.success) {
+    const pathError = fromError(bodyValidation.error).toString();
 
     return apiError(req, res, {
       status_code: 400,
@@ -56,7 +53,7 @@ async function handler(
   }
 
   const emailRequester = user.email;
-  const { emailMessage, dataSourceId } = bodyValidation.right;
+  const { emailMessage, dataSourceId } = bodyValidation.data;
 
   const dataSource = await DataSourceResource.fetchById(auth, dataSourceId, {
     includeEditedBy: true,

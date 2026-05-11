@@ -296,8 +296,8 @@ export async function mergeTasksForProjectActivity({
   const stats = await mergeTakeawaysIntoProject({
     localLogger,
     runId,
-    workspaceId,
-    spaceId,
+    space: checkResult.value.space,
+    adminAuth: checkResult.value.adminAuth,
   });
 
   localLogger.info(

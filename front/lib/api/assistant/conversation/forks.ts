@@ -553,6 +553,12 @@ async function carryOverConversationAttachments(
   return attachmentIdReplacements;
 }
 
+type ConversationForkResult = {
+  conversationId: string;
+  parentConversationTitle: string | null;
+  spaceId: string | null;
+};
+
 export async function createConversationFork(
   auth: Authenticator,
   {
@@ -562,7 +568,9 @@ export async function createConversationFork(
     conversationId: string;
     sourceMessageId?: string;
   }
-): Promise<Result<string, DustError<CreateConversationForkErrorCode>>> {
+): Promise<
+  Result<ConversationForkResult, DustError<CreateConversationForkErrorCode>>
+> {
   const parentConversation = await ConversationResource.fetchById(
     auth,
     conversationId
@@ -721,7 +729,11 @@ export async function createConversationFork(
       "Failed to reload child conversation for fork attachment carryover."
     );
 
-    return new Ok(childConversationId.value.childConversationId);
+    return new Ok({
+      conversationId: childConversationId.value.childConversationId,
+      parentConversationTitle: parentConversation.title,
+      spaceId: parentConversation.space?.sId ?? null,
+    });
   }
 
   const parentConversationWithContent = await getConversation(
@@ -772,8 +784,16 @@ export async function createConversationFork(
       },
       "Failed to initialize forked conversation compaction."
     );
-    return new Ok(childConversation.value.sId);
+    return new Ok({
+      conversationId: childConversation.value.sId,
+      parentConversationTitle: parentConversation.title,
+      spaceId: parentConversation.space?.sId ?? null,
+    });
   }
 
-  return new Ok(childConversation.value.sId);
+  return new Ok({
+    conversationId: childConversation.value.sId,
+    parentConversationTitle: parentConversation.title,
+    spaceId: parentConversation.space?.sId ?? null,
+  });
 }

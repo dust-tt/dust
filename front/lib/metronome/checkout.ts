@@ -8,15 +8,16 @@ import {
 } from "@app/lib/metronome/contracts";
 import { PlanModel } from "@app/lib/models/plan";
 import {
-  getBillingCurrencyForCountry,
+  resolveCurrencyFromStripe,
   resolvePackageAliasForCurrency,
 } from "@app/lib/plans/billing_currency";
-import { getStripeClient } from "@app/lib/plans/stripe";
+import { getStripeClient, getStripeCustomer } from "@app/lib/plans/stripe";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
+import logger from "@app/logger/logger";
 import { launchWorkOSWorkspaceSubscriptionCreatedWorkflow } from "@app/temporal/workos_events_queue/client";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -96,6 +97,18 @@ export async function handleMetronomeSetupCheckout({
     setup_intent: setupIntentId,
   } = parsed.data;
 
+  logger.info(
+    {
+      sessionId,
+      workspaceId,
+      planCode,
+      userId,
+      metronomePackageAlias,
+      stripeCustomerId,
+    },
+    "[Metronome] Handle metronome checkout"
+  );
+
   // Resolve the package alias based on the customer's billing country.
   // With billing_address_collection: "auto", Stripe may not populate
   // customer_details.address — fall back to the SetupIntent's payment method
@@ -105,9 +118,11 @@ export async function handleMetronomeSetupCheckout({
     customerCountry: customerDetails?.address?.country,
   });
 
-  const billingCurrency = customerCountry
-    ? getBillingCurrencyForCountry(customerCountry, true)
-    : "usd";
+  const stripeCustomer = await getStripeCustomer(stripeCustomerId);
+  const billingCurrency = resolveCurrencyFromStripe({
+    stripeCustomer,
+    countryFallback: customerCountry,
+  });
   const resolvedPackageAlias = resolvePackageAliasForCurrency(
     metronomePackageAlias,
     billingCurrency
@@ -186,6 +201,11 @@ export async function handleMetronomeSetupCheckout({
   await restoreWorkspaceAfterSubscription(auth);
 
   await launchWorkOSWorkspaceSubscriptionCreatedWorkflow({ workspaceId });
+
+  logger.info(
+    { workspaceId, metronomeContractId },
+    "[Metronome] Checkout completed"
+  );
 
   return new Ok(undefined);
 }

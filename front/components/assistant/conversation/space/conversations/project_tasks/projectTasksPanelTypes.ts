@@ -5,25 +5,25 @@ import type {
   ProjectTaskType,
 } from "@app/types/project_task";
 import type { LightWorkspaceType, SpaceUserType } from "@app/types/user";
-import type { Dispatch, SetStateAction } from "react";
 
 export type GroupedTasksByAssignee = Array<{
   user: ProjectTaskAssigneeType | null;
   tasks: ProjectTaskType[];
 }>;
 
+export type CombinedGroupedTasksByUser = Array<{
+  user: ProjectTaskAssigneeType | null;
+  suggestedTasks: ProjectTaskType[];
+  regularTasks: ProjectTaskType[];
+}>;
+
 export type ProjectTasksPanelData = {
-  isScopeMenuOpen: boolean;
-  setIsScopeMenuOpen: Dispatch<SetStateAction<boolean>>;
   taskOwnerFilter: TaskOwnerFilter;
   onTaskOwnerFilterChange: (value: TaskOwnerFilter) => void;
   viewerUserId: string | null;
-  taskScopeLabel: string;
   isReadOnly?: boolean;
-  showSuggestedTasksTable: boolean;
   owner: LightWorkspaceType;
-  groupedSuggestedTasksOnly: GroupedTasksByAssignee;
-  groupedRegularTasksOnly: GroupedTasksByAssignee;
+  combinedGroupedTasksByUser: CombinedGroupedTasksByUser;
   activeAgents: LightAgentConfigurationType[];
   isAgentsLoading: boolean;
   agentNameById: Map<string, string>;
@@ -36,7 +36,6 @@ export type ProjectTasksPanelData = {
   handleToggleDone: (task: ProjectTaskType) => void;
   requestDelete: (task: ProjectTaskType) => Promise<void>;
   onApproveAgentSuggestion: (task: ProjectTaskType) => Promise<void>;
-  onRejectAgentSuggestion: (task: ProjectTaskType) => Promise<void>;
   onApproveAllSuggestedForAssignee: (taskIds: string[]) => Promise<void>;
   onRejectAllSuggestedForAssignee: (taskIds: string[]) => Promise<void>;
   handleStartWorking: (
@@ -52,7 +51,7 @@ export type ProjectTasksPanelData = {
     updates: { text?: string; assigneeUserId?: string | null }
   ) => Promise<void>;
   isSpaceInfoLoading: boolean;
-  defaultNewAssigneeSId: string | null;
+  defaultNewAssigneeId: string | null;
   handleAddTask: (text: string, assigneeSId: string | null) => Promise<boolean>;
   isTasksLoading: boolean;
   isTasksError: boolean;
@@ -67,8 +66,8 @@ export type ProjectTasksPanelData = {
   setDebouncedTaskSearchQuery: (value: string) => void;
   /** Single project member — hide member lists, reassign, and add-row assignee picker. */
   isSoleProjectMember: boolean;
-  /** Solo project + every visible regular task is assigned to the viewer — flat list, no assignee headers. */
-  hideRegularTaskAssigneeHeaders: boolean;
+  /** Solo project + every visible task is assigned to the viewer — flat list, no assignee headers. */
+  hideAssigneeHeaders: boolean;
 };
 
 export type UseProjectTasksPanelArgs = {

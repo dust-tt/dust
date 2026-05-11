@@ -2,6 +2,7 @@
 import { getMicrosoftClient } from "@connectors/connectors/microsoft";
 import {
   clientApiPost,
+  DeltaTooLargeError,
   getAllPaginatedEntities,
   getDeltaResults,
   getDriveInternalIdFromItem,
@@ -33,6 +34,8 @@ import {
   isJSONParsingError,
   isMalformedDriveError,
 } from "@connectors/connectors/microsoft/temporal/cast_known_errors";
+// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
+import { launchMicrosoftFullSyncWorkflow } from "@connectors/connectors/microsoft/temporal/client";
 import {
   deleteFile,
   deleteFolder,
@@ -1329,7 +1332,7 @@ export async function fetchDeltaForRootNodesInDrive({
   connectorId: ModelId;
   driveId: string;
   rootNodeIds: string[];
-}): Promise<{ gcsFilePath: string | null }> {
+}): Promise<{ gcsFilePath: string | null; deltaTooLarge: boolean }> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
@@ -1364,7 +1367,7 @@ export async function fetchDeltaForRootNodesInDrive({
       },
       "Some root nodes not found in database, skipping delta sync for this drive"
     );
-    return { gcsFilePath: null };
+    return { gcsFilePath: null, deltaTooLarge: false };
   }
 
   const client = await getMicrosoftClient(connector.connectionId);
@@ -1390,7 +1393,7 @@ export async function fetchDeltaForRootNodesInDrive({
           { error: normalizeError(error).message, driveId },
           "Drive not found or malformed during delta population, skipping"
         );
-        return { gcsFilePath: null };
+        return { gcsFilePath: null, deltaTooLarge: false };
       }
       throw error;
     }
@@ -1419,12 +1422,19 @@ export async function fetchDeltaForRootNodesInDrive({
     results = resultsFromDelta;
     deltaLink = deltaLinkFromDelta;
   } catch (error) {
+    if (error instanceof DeltaTooLargeError) {
+      logger.warn(
+        { connectorId, driveId, rootNodeIds, itemCount: error.itemCount },
+        "Incremental delta too large, signaling workflow to recover"
+      );
+      return { gcsFilePath: null, deltaTooLarge: true };
+    }
     if (isItemNotFoundError(error) || isMalformedDriveError(error)) {
       logger.info(
         { error: error.message, driveId },
         "Drive not found or malformed, skipping"
       );
-      return { gcsFilePath: null };
+      return { gcsFilePath: null, deltaTooLarge: false };
     }
     throw error;
   }
@@ -1499,7 +1509,7 @@ export async function fetchDeltaForRootNodesInDrive({
       { connectorId, driveId, rootNodeIds },
       "No changes found, skipping delta sync"
     );
-    return { gcsFilePath: null };
+    return { gcsFilePath: null, deltaTooLarge: false };
   }
 
   const totalItems = sortedChangedItems.length;
@@ -1549,7 +1559,7 @@ export async function fetchDeltaForRootNodesInDrive({
     "Delta data fetched, processed, and uploaded to GCS"
   );
 
-  return { gcsFilePath };
+  return { gcsFilePath, deltaTooLarge: false };
 }
 
 export async function cleanupDeltaGCSFile({
@@ -2596,5 +2606,22 @@ export async function isMicrosoftFullSyncRunning(
       return false;
     }
     throw e;
+  }
+}
+
+export async function launchMicrosoftFullSyncForDrive({
+  connectorId,
+  rootNodeIds,
+}: {
+  connectorId: ModelId;
+  rootNodeIds: string[];
+}): Promise<void> {
+  const res = await launchMicrosoftFullSyncWorkflow(
+    connectorId,
+    rootNodeIds,
+    []
+  );
+  if (res.isErr()) {
+    throw res.error;
   }
 }

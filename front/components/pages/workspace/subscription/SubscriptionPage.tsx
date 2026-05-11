@@ -16,6 +16,7 @@ import {
   isWhitelistedBusinessPlan,
 } from "@app/lib/plans/plan_codes";
 import { LinkWrapper, useAppRouter, useSearchParam } from "@app/lib/platform";
+import { useKillSwitches } from "@app/lib/swr/kill";
 import {
   usePerSeatPricing,
   useSubscriptionTrialInfo,
@@ -47,8 +48,8 @@ import {
   ShapesIcon,
   Spinner,
 } from "@dust-tt/sparkle";
-import type * as t from "io-ts";
 import React, { useEffect, useState } from "react";
+import type { z } from "zod";
 
 interface SkipFreeTrialDialogProps {
   show: boolean;
@@ -196,9 +197,12 @@ export function SubscriptionPage() {
   const owner = useWorkspace();
   const { subscription } = useAuth();
   const { hasFeature } = useFeatureFlags();
+  const { killSwitches } = useKillSwitches();
+  const isMetronomeBillingEnabled =
+    hasFeature("metronome_billing") ||
+    !killSwitches?.includes("global_disable_metronome_billing");
   const useMetronomePanel =
-    hasFeature("metronome_billing") &&
-    !isSubscriptionStripeBilled(subscription);
+    isMetronomeBillingEnabled && !isSubscriptionStripeBilled(subscription);
   const router = useAppRouter();
   const sendNotification = useSendNotification();
   const type = useSearchParam("type");
@@ -276,7 +280,7 @@ export function SubscriptionPage() {
       },
       body: JSON.stringify({
         action: "upgrade_to_business",
-      } satisfies t.TypeOf<typeof PatchSubscriptionRequestBody>),
+      } satisfies z.infer<typeof PatchSubscriptionRequestBody>),
     });
 
     if (!res.ok) {
@@ -306,7 +310,7 @@ export function SubscriptionPage() {
           },
           body: JSON.stringify({
             action: "pay_now",
-          } satisfies t.TypeOf<typeof PatchSubscriptionRequestBody>),
+          } satisfies z.infer<typeof PatchSubscriptionRequestBody>),
         });
         if (!res.ok) {
           sendNotification({
@@ -338,7 +342,7 @@ export function SubscriptionPage() {
           },
           body: JSON.stringify({
             action: "cancel_free_trial",
-          } satisfies t.TypeOf<typeof PatchSubscriptionRequestBody>),
+          } satisfies z.infer<typeof PatchSubscriptionRequestBody>),
         });
         if (!res.ok) {
           sendNotification({

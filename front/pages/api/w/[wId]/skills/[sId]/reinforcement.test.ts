@@ -179,4 +179,122 @@ describe("PATCH /api/w/[wId]/skills/[sId]/reinforcement", () => {
       expect(res._getStatusCode()).toBe(405);
     }
   });
+
+  it("returns 400 when no fields are provided", async () => {
+    const { req, res } = await setupTest({ requestUserRole: "admin" });
+    req.body = {};
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(400);
+  });
+
+  it("updates selfImprovementLock", async () => {
+    const { req, res, skill, requestUserAuth } = await setupTest({
+      requestUserRole: "admin",
+    });
+
+    expect(skill.selfImprovementLock).toBe(false);
+
+    req.body = { selfImprovementLock: true };
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const updated = await SkillResource.fetchById(requestUserAuth, skill.sId);
+    expect(updated?.selfImprovementLock).toBe(true);
+    expect(updated?.reinforcement).toBe(skill.reinforcement);
+  });
+
+  it("updates selfImprovementCostsCapMicroUsd", async () => {
+    const { req, res, skill, requestUserAuth } = await setupTest({
+      requestUserRole: "admin",
+    });
+
+    req.body = { selfImprovementCostsCapMicroUsd: 25_000_000 };
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const updated = await SkillResource.fetchById(requestUserAuth, skill.sId);
+    expect(updated?.selfImprovementCostsCapMicroUsd).toBe(25_000_000);
+  });
+
+  it("updates multiple fields in a single request", async () => {
+    const { req, res, skill, requestUserAuth } = await setupTest({
+      requestUserRole: "admin",
+    });
+
+    req.body = {
+      reinforcement: "off",
+      selfImprovementLock: true,
+      selfImprovementCostsCapMicroUsd: 0,
+    };
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const updated = await SkillResource.fetchById(requestUserAuth, skill.sId);
+    expect(updated?.reinforcement).toBe("off");
+    expect(updated?.selfImprovementLock).toBe(true);
+    expect(updated?.selfImprovementCostsCapMicroUsd).toBe(0);
+  });
+
+  it("returns 403 when a non-admin tries to set selfImprovementLock", async () => {
+    const { req, res } = await setupTest({
+      skillOwnerRole: "builder",
+      requestUserRole: "builder",
+    });
+
+    req.body = { selfImprovementLock: true };
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(403);
+    expect(res._getJSONData()).toEqual({
+      error: {
+        type: "workspace_auth_error",
+        message: "Only admins can change the lock state or per-skill cost cap.",
+      },
+    });
+  });
+
+  it("returns 403 when a non-admin tries to set the per-skill cap", async () => {
+    const { req, res } = await setupTest({
+      skillOwnerRole: "builder",
+      requestUserRole: "builder",
+    });
+
+    req.body = { selfImprovementCostsCapMicroUsd: 5_000_000 };
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(403);
+  });
+
+  it("returns 403 when a non-admin tries to flip reinforcement on a locked skill", async () => {
+    const { req, res, skill } = await setupTest({
+      skillOwnerRole: "builder",
+      requestUserRole: "builder",
+    });
+
+    // Lock the skill via direct resource update — admin-only via the API.
+    await skill.updateSelfImprovementLock(true);
+
+    req.body = { reinforcement: "off" };
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(403);
+    expect(res._getJSONData()).toEqual({
+      error: {
+        type: "workspace_auth_error",
+        message:
+          "This skill's reinforcement is locked; only admins can change it.",
+      },
+    });
+  });
+
+  it("rejects negative cap values", async () => {
+    const { req, res } = await setupTest({ requestUserRole: "admin" });
+
+    req.body = { selfImprovementCostsCapMicroUsd: -1 };
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(400);
+  });
 });

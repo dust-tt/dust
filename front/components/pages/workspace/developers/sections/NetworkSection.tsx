@@ -71,7 +71,7 @@ export function NetworkSection() {
         ? "This domain is already allowed."
         : normalizedDomain
           ? `Will be saved as ${normalizedDomain}.`
-          : "Use an exact domain such as api.github.com or a wildcard such as *.github.com.";
+          : "Use an exact domain such as api.openai.com or a wildcard such as *.mistral.ai.";
   const isDomainInputInvalid =
     domainInputResult?.isErr() === true || isDuplicate;
   const canAddDomain =
@@ -188,7 +188,7 @@ export function NetworkSection() {
             <Input
               label="Domain"
               name="domain"
-              placeholder="api.github.com or *.github.com"
+              placeholder="e.g. api.openai.com or *.mistral.ai"
               value={domainInput}
               message={domainInputMessage}
               messageStatus={isDomainInputInvalid ? "error" : "info"}

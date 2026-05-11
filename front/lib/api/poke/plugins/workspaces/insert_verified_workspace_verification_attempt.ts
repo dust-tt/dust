@@ -1,5 +1,8 @@
 import { createPlugin } from "@app/lib/api/poke/types";
-import { WorkspaceVerificationAttemptResource } from "@app/lib/resources/workspace_verification_attempt_resource";
+import {
+  PHONE_REGEXP,
+  WorkspaceVerificationAttemptResource,
+} from "@app/lib/resources/workspace_verification_attempt_resource";
 import { Err, Ok } from "@app/types/shared/result";
 
 export const insertVerifiedWorkspaceVerificationAttemptPlugin = createPlugin({
@@ -27,7 +30,7 @@ export const insertVerifiedWorkspaceVerificationAttemptPlugin = createPlugin({
 
     const { phoneNumber } = args;
 
-    if (!/^\+[1-9]\d{1,14}$/.test(phoneNumber)) {
+    if (!PHONE_REGEXP.test(phoneNumber)) {
       return new Err(
         new Error("Invalid phone number format (expected E.164).")
       );

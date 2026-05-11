@@ -13,7 +13,7 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 const GCS_PREFIX = "mcp_output_items";
 const GCS_CONCURRENCY = 4;
-const GCS_CONTENT_CACHE_TTL_MS = 15 * 60 * 1000;
+export const GCS_CONTENT_CACHE_TTL_MS = 15 * 60 * 1000;
 
 type OutputContent = CallToolResult["content"][number];
 
@@ -92,11 +92,13 @@ async function fetchGcsContent(
   return JSON.parse(buffer.toString("utf-8"));
 }
 
-const gcsContentCacheKey = (
+// Bump the `:v1` suffix any time the cached value shape changes, so stale entries from previous
+// formats are orphaned instead of mis-parsed.
+export const gcsContentCacheKey = (
   auth: Authenticator,
   _gcsPath: string,
   itemId: ModelId
-) => `w:${auth.getNonNullableWorkspace().sId}:mcp_output:${itemId}`;
+) => `w:${auth.getNonNullableWorkspace().sId}:mcp_output:${itemId}:v1`;
 
 const fetchGcsContentCached = cacheWithRedis(
   fetchGcsContent,

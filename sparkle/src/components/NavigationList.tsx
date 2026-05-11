@@ -12,7 +12,6 @@ import {
   type LinkWrapperProps,
 } from "@sparkle/components/LinkWrapper";
 import { ScrollArea, ScrollBar } from "@sparkle/components/ScrollArea";
-import { Spinner } from "@sparkle/components/Spinner";
 import { ChevronDownIcon, ChevronUpIcon, MoreIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
@@ -219,34 +218,24 @@ NavigationListItem.displayName = "NavigationListItem";
 interface NavigationListItemActionProps
   extends React.HTMLAttributes<HTMLDivElement> {
   showOnHover?: boolean;
-  isLoading?: boolean;
-  loadingLabel?: string;
 }
 
 const NavigationListItemAction = React.forwardRef<
   HTMLDivElement,
   NavigationListItemActionProps
->(({ className, isLoading = false, loadingLabel, ...props }, ref) => {
+>(({ className, ...props }, ref) => {
   return (
     <div
       ref={ref}
       data-sidebar="menu-action"
       className={cn(
-        "s-absolute s-right-2 s-top-1.5 s-transition-opacity",
-        isLoading
-          ? "s-opacity-100"
-          : "s-opacity-0 group-focus-within/menu-item:s-opacity-100 group-hover/menu-item:s-opacity-100",
+        "s-absolute s-right-2 s-top-1.5 s-opacity-0 s-transition-opacity",
+        "s-opacity-0 group-focus-within/menu-item:s-opacity-100 group-hover/menu-item:s-opacity-100",
         className
       )}
       {...props}
     >
-      <Button
-        size="xmini"
-        icon={isLoading ? <Spinner size="xs" /> : MoreIcon}
-        variant="ghost"
-        tooltip={isLoading ? loadingLabel : undefined}
-        aria-label={isLoading && loadingLabel ? loadingLabel : "Menu actions"}
-      />
+      <Button size="xmini" icon={MoreIcon} variant="ghost" />
     </div>
   );
 });

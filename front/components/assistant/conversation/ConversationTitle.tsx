@@ -1,4 +1,3 @@
-import { CONVERSATION_BRANCHING_COPY } from "@app/components/assistant/conversation/branching";
 import {
   ConversationMenu,
   useConversationMenu,
@@ -7,7 +6,7 @@ import { useConversationSidePanelContext } from "@app/components/assistant/conve
 import { EditConversationTitleDialog } from "@app/components/assistant/conversation/EditConversationTitleDialog";
 import { getParentConversationTitleLabel } from "@app/components/assistant/conversation/utils";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
-import { useConversation, useConversations } from "@app/hooks/conversations";
+import { useConversation } from "@app/hooks/conversations";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
@@ -25,10 +24,9 @@ import {
   Button,
   Chip,
   MoreIcon,
-  Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
-import { useCallback, useState } from "react";
+import { useState } from "react";
 
 const BREADCRUMB_MIDDLE_TRUNCATE_LENGTH = 35;
 const DESKTOP_TITLE_TRUNCATE_LENGTH = 120;
@@ -46,7 +44,6 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
     workspaceId: owner.sId,
     spaceId: conversation?.spaceId ?? null,
   });
-  const { mutateConversations } = useConversations({ workspaceId: owner.sId });
   const router = useAppRouter();
   const isMobile = useIsMobile();
 
@@ -58,9 +55,6 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
     handleRightClick,
     handleMenuOpenChange,
   } = useConversationMenu();
-  const onConversationBranched = useCallback(() => {
-    void mutateConversations();
-  }, [mutateConversations]);
 
   const currentTitle = conversation
     ? getConversationDisplayTitle(conversation)
@@ -185,27 +179,19 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
           <ConversationMenu
             activeConversationId={activeConversationId}
             conversation={conversation}
-            onConversationBranched={onConversationBranched}
             owner={owner}
             trigger={({ isPendingAction }) => (
               <Button
                 size="sm"
                 variant="ghost"
-                icon={isPendingAction ? <Spinner size="xs" /> : MoreIcon}
-                aria-label={
-                  isPendingAction
-                    ? CONVERSATION_BRANCHING_COPY.branching
-                    : "Conversation menu"
-                }
-                tooltip={
-                  isPendingAction
-                    ? CONVERSATION_BRANCHING_COPY.branching
-                    : undefined
-                }
+                icon={MoreIcon}
+                aria-label="Conversation menu"
+                isLoading={isPendingAction}
                 disabled={
                   activeConversationId === null ||
                   conversation === null ||
-                  user === null
+                  user === null ||
+                  isPendingAction
                 }
               />
             )}

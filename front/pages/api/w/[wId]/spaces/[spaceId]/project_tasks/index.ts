@@ -7,37 +7,37 @@ import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
 import { ProjectTaskStateResource } from "@app/lib/resources/project_task_state_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { getConversationDotStatus } from "@app/lib/utils/conversation_dot_status";
+import { apiError } from "@app/logger/withlogging";
+import type { WithAPIErrorResponse } from "@app/types/error";
+import {
+  isProjectTaskPeriodScope,
+  type ProjectTaskPeriodScope,
+  type ProjectTaskType,
+} from "@app/types/project_task";
 import type { ModelId } from "@app/types/shared/model_id";
+import { isString } from "@app/types/shared/utils/general";
+import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 
 function parseSingleQueryValue(
   value: NextApiRequest["query"][string] | undefined
 ): string | undefined {
   const v = Array.isArray(value) ? value[0] : value;
-  return typeof v === "string" && v.trim().length > 0 ? v.trim() : undefined;
+  return isString(v) && v.trim().length > 0 ? v.trim() : undefined;
 }
-
-const PROJECT_TODO_TIME_SCOPE_VALUES = [
-  "active",
-  "last_24h",
-  "last_7d",
-  "last_30d",
-] as const;
-
-type ProjectTaskFetchTimeScope =
-  (typeof PROJECT_TODO_TIME_SCOPE_VALUES)[number];
 
 function parseProjectTaskTimeScope(
   req: NextApiRequest
-): ProjectTaskFetchTimeScope {
+): ProjectTaskPeriodScope {
   const raw =
     parseSingleQueryValue(req.query.period)?.toLowerCase() ?? "active";
-  if ((PROJECT_TODO_TIME_SCOPE_VALUES as readonly string[]).includes(raw)) {
-    return raw as ProjectTaskFetchTimeScope;
+  if (isProjectTaskPeriodScope(raw)) {
+    return raw;
   }
   return "active";
 }
 
-type ProjectTasksPeopleFetchMode = "all" | "mine" | "unassigned";
+type ProjectTasksPeopleFetchMode = "all" | "mine";
 
 function parseProjectTasksPeopleMode(
   req: NextApiRequest
@@ -49,17 +49,8 @@ function parseProjectTasksPeopleMode(
   if (token === "mine") {
     return "mine";
   }
-  if (token === "unassigned") {
-    return "unassigned";
-  }
   return "all";
 }
-
-import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types/error";
-import type { ProjectTaskType } from "@app/types/project_task";
-import type { NextApiRequest, NextApiResponse } from "next";
-import { z } from "zod";
 
 export interface GetProjectTasksResponseBody {
   tasks: ProjectTaskType[];
@@ -109,19 +100,13 @@ async function handler(
       });
       const timeScope = parseProjectTaskTimeScope(req);
       const peopleMode = parseProjectTasksPeopleMode(req);
-      let assigneeUserId: ModelId | null = null;
-      let onlyUnassigned = false;
-      if (peopleMode === "mine") {
-        assigneeUserId = currentUser.id;
-      } else if (peopleMode === "unassigned") {
-        onlyUnassigned = true;
-      }
+      const assigneeUserId: ModelId | null =
+        peopleMode === "mine" ? currentUser.id : null;
 
       const todos = await ProjectTaskResource.fetchBySpace(auth, {
         spaceId: space.id,
         timeScope,
         assigneeUserId,
-        onlyUnassigned,
       });
 
       const todoIds = todos.map((t) => t.sId);

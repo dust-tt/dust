@@ -65,69 +65,73 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { FileTypeWithUploadUrl } from "@app/types/files";
 import { ensureFileSize, isSupportedFileContentType } from "@app/types/files";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 // File upload form validation.
 
-const FileUploadUrlRequestSchema = t.union([
-  t.type({
-    contentType: t.string,
-    fileName: t.string,
-    fileSize: t.number,
-    useCase: t.literal("conversation"),
-    useCaseMetadata: t.union([
-      t.type({
-        conversationId: t.string,
-      }),
-      t.undefined,
-    ]),
+const FileUploadUrlRequestSchema = z.discriminatedUnion("useCase", [
+  z.object({
+    contentType: z.string(),
+    fileName: z.string(),
+    fileSize: z.number(),
+    useCase: z.literal("conversation"),
+    useCaseMetadata: z
+      .object({
+        conversationId: z.string(),
+      })
+      .optional(),
   }),
-  t.type({
-    contentType: t.string,
-    fileName: t.string,
-    fileSize: t.number,
-    useCase: t.literal("folders_document"),
-    useCaseMetadata: t.type({
-      spaceId: t.string,
+  z.object({
+    contentType: z.string(),
+    fileName: z.string(),
+    fileSize: z.number(),
+    useCase: z.literal("folders_document"),
+    useCaseMetadata: z.object({
+      spaceId: z.string(),
     }),
   }),
-  t.type({
-    contentType: t.string,
-    fileName: t.string,
-    fileSize: t.number,
-    useCase: t.union([t.literal("avatar"), t.literal("upsert_document")]),
-    useCaseMetadata: t.undefined,
+  z.object({
+    contentType: z.string(),
+    fileName: z.string(),
+    fileSize: z.number(),
+    useCase: z.literal("avatar"),
+    useCaseMetadata: z.undefined(),
   }),
-  t.type({
-    contentType: t.string,
-    fileName: t.string,
-    fileSize: t.number,
-    useCase: t.literal("upsert_table"),
-    useCaseMetadata: t.union([
-      t.type({
-        spaceId: t.string,
-      }),
-      t.undefined,
-    ]),
+  z.object({
+    contentType: z.string(),
+    fileName: z.string(),
+    fileSize: z.number(),
+    useCase: z.literal("upsert_document"),
+    useCaseMetadata: z.undefined(),
   }),
-  t.type({
-    contentType: t.string,
-    fileName: t.string,
-    fileSize: t.number,
-    useCase: t.literal("project_context"),
-    useCaseMetadata: t.type({
-      spaceId: t.string,
+  z.object({
+    contentType: z.string(),
+    fileName: z.string(),
+    fileSize: z.number(),
+    useCase: z.literal("upsert_table"),
+    useCaseMetadata: z
+      .object({
+        spaceId: z.string(),
+      })
+      .optional(),
+  }),
+  z.object({
+    contentType: z.string(),
+    fileName: z.string(),
+    fileSize: z.number(),
+    useCase: z.literal("project_context"),
+    useCaseMetadata: z.object({
+      spaceId: z.string(),
     }),
   }),
-  t.type({
-    contentType: t.string,
-    fileName: t.string,
-    fileSize: t.number,
-    useCase: t.literal("skill_attachment"),
-    useCaseMetadata: t.union([t.type({ skillId: t.string }), t.undefined]),
+  z.object({
+    contentType: z.string(),
+    fileName: z.string(),
+    fileSize: z.number(),
+    useCase: z.literal("skill_attachment"),
+    useCaseMetadata: z.object({ skillId: z.string() }).optional(),
   }),
 ]);
 
@@ -145,9 +149,9 @@ async function handler(
 
   switch (req.method) {
     case "POST": {
-      const bodyValidation = FileUploadUrlRequestSchema.decode(req.body);
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+      const bodyValidation = FileUploadUrlRequestSchema.safeParse(req.body);
+      if (!bodyValidation.success) {
+        const pathError = fromError(bodyValidation.error).toString();
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -175,7 +179,7 @@ async function handler(
       }
 
       const { contentType, fileName, fileSize, useCase, useCaseMetadata } =
-        bodyValidation.right;
+        bodyValidation.data;
 
       if (!isSupportedFileContentType(contentType)) {
         return apiError(req, res, {

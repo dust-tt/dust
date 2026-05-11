@@ -1,40 +1,35 @@
-import * as t from "io-ts";
 import { z } from "zod";
 
-export const ContentSchema = t.type({
-  dataSourceId: t.string,
-  parentsIn: t.array(t.string),
+export const ContentSchema = z.object({
+  dataSourceId: z.string(),
+  parentsIn: z.array(z.string()),
 });
 
-export const PatchSpaceRequestBodySchema = t.type({
-  name: t.union([t.string, t.undefined]),
-  content: t.union([t.array(ContentSchema), t.undefined]),
+export const PatchSpaceRequestBodySchema = z.object({
+  name: z.string().optional(),
+  content: z.array(ContentSchema).optional(),
 });
 
 export const PostDataSourceViewSchema = ContentSchema;
 
-export const PostNotionSyncPayloadSchema = t.type({
-  urls: t.array(t.string),
-  method: t.union([t.literal("sync"), t.literal("delete")]),
+export const PostNotionSyncPayloadSchema = z.object({
+  urls: z.array(z.string()),
+  method: z.enum(["sync", "delete"]),
 });
 
-export const GetPostNotionSyncResponseBodySchema = t.type({
-  syncResults: t.array(
-    t.intersection([
-      t.type({
-        url: t.string,
-        method: t.union([t.literal("sync"), t.literal("delete")]),
-        timestamp: t.number,
-        success: t.boolean,
-      }),
-      t.partial({
-        error_message: t.string,
-      }),
-    ])
+export const GetPostNotionSyncResponseBodySchema = z.object({
+  syncResults: z.array(
+    z.object({
+      url: z.string(),
+      method: z.enum(["sync", "delete"]),
+      timestamp: z.number(),
+      success: z.boolean(),
+      error_message: z.string().optional(),
+    })
   ),
 });
 
-export type GetPostNotionSyncResponseBody = t.TypeOf<
+export type GetPostNotionSyncResponseBody = z.infer<
   typeof GetPostNotionSyncResponseBodySchema
 >;
 

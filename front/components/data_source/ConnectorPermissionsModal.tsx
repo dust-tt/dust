@@ -6,7 +6,7 @@ import { CreateOrUpdateConnectionBigQueryModal } from "@app/components/data_sour
 import { CreateOrUpdateConnectionSnowflakeModal } from "@app/components/data_source/CreateOrUpdateConnectionSnowflakeModal";
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
 import { SetupNotionPrivateIntegrationModal } from "@app/components/data_source/SetupNotionPrivateIntegrationModal";
-import type { LabelsHandle } from "@app/components/shared/labels/types";
+import { useSensitivityLabelsController } from "@app/components/shared/labels/useSensitivityLabelsController";
 import { setupConnection } from "@app/components/spaces/AddConnectionMenu";
 import { AdvancedNotionManagement } from "@app/components/spaces/AdvancedNotionManagement";
 import { ConnectorDataUpdatedModal } from "@app/components/spaces/ConnectorDataUpdatedModal";
@@ -83,14 +83,7 @@ import {
 } from "@dust-tt/sparkle";
 import { InformationCircleIcon } from "@heroicons/react/20/solid";
 import type React from "react";
-import {
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { useSWRConfig } from "swr";
 
@@ -821,16 +814,22 @@ export function ConnectorPermissionsModal({
   const plan = activeSubscription ? activeSubscription.plan : null;
 
   const [saving, setSaving] = useState(false);
-  const [advancedOptionsHasChanges, setAdvancedOptionsHasChanges] =
-    useState(false);
-  const labelsRef = useRef<LabelsHandle>(null);
   const sendNotification = useSendNotification();
   const { user } = useAuth();
+  const sensitivityLabelsController = useSensitivityLabelsController({
+    owner,
+    source: { dataSourceId: dataSource.sId },
+    disabled:
+      modalToShow !== "selection" ||
+      dataSource.connectorProvider !== "microsoft" ||
+      !featureFlags.includes("sensitivity_labels"),
+  });
+  const advancedOptionsHasChanges = sensitivityLabelsController.isDirty;
 
   function closeModal(save: boolean) {
     setModalToShow(null);
     onClose(save);
-    setAdvancedOptionsHasChanges(false);
+    sensitivityLabelsController.reset();
     setTimeout(() => {
       setSelectedNodes({});
     }, 300);
@@ -900,11 +899,10 @@ export function ConnectorPermissionsModal({
       }
 
       if (advancedOptionsHasChanges) {
-        const advancedSaveSucceeded = (await labelsRef.current?.save()) ?? true;
+        const advancedSaveSucceeded = await sensitivityLabelsController.save();
         if (!advancedSaveSucceeded) {
           return;
         }
-        setAdvancedOptionsHasChanges(false);
         didSave = true;
       }
 
@@ -1083,24 +1081,19 @@ export function ConnectorPermissionsModal({
                     </>
                   )}
                   {AdvancedOptionsComponent &&
-                    plan &&
                     featureFlags.includes("sensitivity_labels") && (
                       <Collapsible className="mb-4">
                         <CollapsibleTrigger>
                           <div className="heading-lg">Advanced</div>
                         </CollapsibleTrigger>
                         <CollapsibleContent>
-                          <AdvancedOptionsComponent
-                            {...{
-                              owner,
-                              readOnly,
-                              isAdmin,
-                              dataSource,
-                              plan,
-                              onDirtyChange: setAdvancedOptionsHasChanges,
-                              labelsRef,
-                            }}
-                          />
+                          <div className="mt-4">
+                            <AdvancedOptionsComponent
+                              owner={owner}
+                              readOnly={readOnly}
+                              controller={sensitivityLabelsController}
+                            />
+                          </div>
                         </CollapsibleContent>
                       </Collapsible>
                     )}

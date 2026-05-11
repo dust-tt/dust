@@ -6,7 +6,7 @@ import type { MembershipRoleType } from "@app/types/memberships";
 import type { RequestMethod } from "node-mocks-http";
 import { describe, expect, it } from "vitest";
 
-import handler from "./skills_spend";
+import handler from "./reinforcement_spend";
 
 async function setupTest(
   method: RequestMethod = "GET",
@@ -15,7 +15,7 @@ async function setupTest(
   return createPrivateApiMockRequest({ method, role });
 }
 
-describe("GET /api/w/[wId]/reinforcement/skills_spend", () => {
+describe("GET /api/w/[wId]/skills/reinforcement_spend", () => {
   it("returns spend summed since the start of the current month, keyed by sId", async () => {
     const { req, res, workspace, user } = await setupTest();
 

@@ -4,6 +4,7 @@ import {
 } from "@app/lib/api/audit/workos_audit";
 import {
   MAX_VARS_PER_WORKSPACE,
+  renderEgressSecretPlaceholder,
   renderWorkspaceSandboxEnvVarName,
   validateEnvVarName,
   validateEnvVarValueForKind,
@@ -14,13 +15,16 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import { WorkspaceSandboxEnvVarModel } from "@app/lib/resources/storage/models/workspace_sandbox_env_var";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
-import { makeSId } from "@app/lib/resources/string_ids";
+import {
+  getResourceIdFromSId,
+  isResourceSId,
+  makeSId,
+} from "@app/lib/resources/string_ids";
 import { normalizeEgressPolicyDomains } from "@app/types/sandbox/egress_policy";
 import type {
   WorkspaceSandboxEnvVarKind,
   WorkspaceSandboxEnvVarType,
 } from "@app/types/sandbox/env_var";
-import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -43,6 +47,34 @@ const USER_JOIN_INCLUDES: Includeable[] = [
 ];
 
 type NormalizedAllowedDomains = string[] | null | undefined;
+
+function formatAllowedDomainsForAudit(
+  allowedDomains: string[] | null | undefined
+): string {
+  return JSON.stringify(allowedDomains ?? []);
+}
+
+// Domains are compared as sets so reordering the same domains does not
+// trigger an `allowed_domains_updated` audit emission.
+function areAllowedDomainsEqual(
+  left: string[] | null | undefined,
+  right: string[] | null | undefined
+): boolean {
+  const leftSet = new Set(left ?? []);
+  const rightSet = new Set(right ?? []);
+
+  if (leftSet.size !== rightSet.size) {
+    return false;
+  }
+
+  for (const domain of leftSet) {
+    if (!rightSet.has(domain)) {
+      return false;
+    }
+  }
+
+  return true;
+}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface WorkspaceSandboxEnvVarResource
@@ -94,7 +126,7 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
 
   private static async baseFetch(
     auth: Authenticator,
-    where?: Partial<Pick<WorkspaceSandboxEnvVarModel, "id" | "name">>,
+    where?: Partial<Pick<WorkspaceSandboxEnvVarModel, "id" | "kind" | "name">>,
     { withUserJoins = true }: { withUserJoins?: boolean } = {}
   ): Promise<WorkspaceSandboxEnvVarResource[]> {
     const isPointLookup = Boolean(where?.id ?? where?.name);
@@ -127,15 +159,24 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
 
   static async fetchById(
     auth: Authenticator,
-    id: ModelId
+    sId: string
   ): Promise<WorkspaceSandboxEnvVarResource | null> {
+    if (!isResourceSId("sandbox_env_var", sId)) {
+      return null;
+    }
+    const id = getResourceIdFromSId(sId);
+    if (id === null) {
+      return null;
+    }
     const rows = await this.baseFetch(auth, { id });
     return rows[0] ?? null;
   }
 
-  // `kind` and `allowedDomains` are reachable in slice 2 once the API/admin
-  // UI accept them. Slice 1 callers stick to `kind = 'config'` defaults and
-  // never pass `allowedDomains`.
+  // Rejects kind transitions: the one-way config -> https_secret promotion
+  // goes through `promoteToHttpsSecret`. For an existing https_secret row,
+  // callers may pass `allowedDomains` alongside the new value to rotate both
+  // in one call; this emits both `sandbox_env_var.updated` and
+  // `sandbox_env_var.allowed_domains_updated`.
   static async upsert(
     auth: Authenticator,
     {
@@ -187,6 +228,8 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
 
     let row: WorkspaceSandboxEnvVarModel;
     let created: boolean;
+    let allowedDomainsChanged = false;
+    let previousAllowedDomains: string[] | null = null;
     if (existing) {
       if (existing.kind !== kind) {
         return new Err(
@@ -204,6 +247,14 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
       if (normalizedAllowedDomains.isErr()) {
         return normalizedAllowedDomains;
       }
+      previousAllowedDomains = existing.allowedDomains;
+      allowedDomainsChanged =
+        allowedDomains !== undefined &&
+        allowedDomains !== null &&
+        !areAllowedDomainsEqual(
+          previousAllowedDomains,
+          normalizedAllowedDomains.value
+        );
 
       // `existing` is a Sequelize model instance (we found it via `findOne`
       // above), not a Resource — that's why we call its `update()` directly
@@ -278,19 +329,55 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
       ],
       context,
       metadata: created
-        ? { name: resource.envName }
-        : { name: resource.envName, previously_existed: "true" },
+        ? {
+            name: resource.envName,
+            kind: resource.kind,
+            allowed_domains: formatAllowedDomainsForAudit(
+              resource.allowedDomains
+            ),
+          }
+        : {
+            name: resource.envName,
+            kind: resource.kind,
+            allowed_domains: formatAllowedDomainsForAudit(
+              resource.allowedDomains
+            ),
+            previously_existed: "true",
+          },
     });
+
+    if (!created && allowedDomainsChanged) {
+      void emitAuditLogEvent({
+        auth,
+        action: "sandbox_env_var.allowed_domains_updated",
+        targets: [
+          buildAuditLogTarget("workspace", owner),
+          buildAuditLogTarget("sandbox_env_var", {
+            sId: resource.sId,
+            name: resource.envName,
+          }),
+        ],
+        context,
+        metadata: {
+          name: resource.envName,
+          kind: resource.kind,
+          allowed_domains: formatAllowedDomainsForAudit(
+            resource.allowedDomains
+          ),
+          previous_allowed_domains: formatAllowedDomainsForAudit(
+            previousAllowedDomains
+          ),
+        },
+      });
+    }
 
     return new Ok({ resource, created });
   }
 
-  // Slice-2-callable. Slice 1's API still routes through `upsert()`; this
-  // helper exists so future callers (admin promotion flow, scripts) get a
-  // create-only entry point without piggybacking on upsert's update branch.
-  // Implementation defers to upsert() and rejects when the row already
+  // Create-only entry point for callers that must not replace an existing
+  // value. Implementation defers to upsert() and rejects when the row already
   // existed — relies on the unique index to catch concurrent creates.
-  static async create(
+  static async makeNew(
     auth: Authenticator,
     {
       name,
@@ -322,6 +409,98 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
     }
 
     return new Ok(result.value.resource);
+  }
+
+  async promoteToHttpsSecret(
+    auth: Authenticator,
+    {
+      allowedDomains,
+      context,
+    }: {
+      allowedDomains: string[];
+      context?: AuditLogContext;
+    }
+  ): Promise<Result<WorkspaceSandboxEnvVarResource, Error>> {
+    if (this.kind !== "config") {
+      return new Err(
+        new Error(
+          "Only config sandbox environment variables can be promoted to HTTPS secrets."
+        )
+      );
+    }
+
+    const owner = auth.getNonNullableWorkspace();
+    const user = auth.getNonNullableUser();
+    const previousEnvName = this.envName;
+
+    const normalizedAllowedDomains =
+      WorkspaceSandboxEnvVarResource.normalizeAllowedDomainsForKind({
+        kind: "https_secret",
+        allowedDomains,
+        requiredForSecret: true,
+      });
+    if (normalizedAllowedDomains.isErr()) {
+      return normalizedAllowedDomains;
+    }
+    const normalizedAllowedDomainsValue = normalizedAllowedDomains.value;
+    if (!normalizedAllowedDomainsValue) {
+      return new Err(
+        new Error("HTTPS secrets require at least one allowed domain.")
+      );
+    }
+
+    let currentValue: string;
+    try {
+      currentValue = decrypt({
+        encrypted: this.encryptedValue,
+        key: owner.sId,
+        useCase: "developer_secret",
+      });
+    } catch (error) {
+      return new Err(
+        new Error(
+          `Failed to decrypt sandbox environment variable ${previousEnvName}: ${
+            normalizeError(error).message
+          }`
+        )
+      );
+    }
+
+    const valueValidation = validateEnvVarValueForKind({
+      kind: "https_secret",
+      value: currentValue,
+    });
+    if (valueValidation.isErr()) {
+      return new Err(new Error(valueValidation.error));
+    }
+
+    await this.update({
+      kind: "https_secret",
+      placeholderNonce: randomBytes(16),
+      allowedDomains: normalizedAllowedDomainsValue,
+      lastUpdatedByUserId: user.id,
+    });
+
+    void emitAuditLogEvent({
+      auth,
+      action: "sandbox_env_var.promoted_to_https_secret",
+      targets: [
+        buildAuditLogTarget("workspace", owner),
+        buildAuditLogTarget("sandbox_env_var", {
+          sId: this.sId,
+          name: this.envName,
+        }),
+      ],
+      context,
+      metadata: {
+        name: this.envName,
+        previous_name: previousEnvName,
+        kind: this.kind,
+        allowed_domains: formatAllowedDomainsForAudit(this.allowedDomains),
+      },
+    });
+
+    return new Ok(this);
   }
 
   async updateValue(
@@ -356,29 +535,26 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
       lastUpdatedByUserId: user.id,
     });
 
-    const updated = await WorkspaceSandboxEnvVarResource.fetchById(
-      auth,
-      this.id
-    );
-    if (!updated) {
-      return new Err(new Error("Sandbox environment variable not found."));
-    }
-
     void emitAuditLogEvent({
       auth,
       action: "sandbox_env_var.updated",
       targets: [
         buildAuditLogTarget("workspace", owner),
         buildAuditLogTarget("sandbox_env_var", {
-          sId: updated.sId,
-          name: updated.envName,
+          sId: this.sId,
+          name: this.envName,
         }),
       ],
       context,
-      metadata: { name: updated.envName, previously_existed: "true" },
+      metadata: {
+        name: this.envName,
+        kind: this.kind,
+        allowed_domains: formatAllowedDomainsForAudit(this.allowedDomains),
+        previously_existed: "true",
+      },
     });
 
-    return new Ok(updated);
+    return new Ok(this);
   }
 
   async updateAllowedDomains(
@@ -391,8 +567,15 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
       context?: AuditLogContext;
     }
   ): Promise<Result<WorkspaceSandboxEnvVarResource, Error>> {
+    if (this.kind !== "https_secret") {
+      return new Err(
+        new Error("Allowed domains can only be updated for HTTPS secrets.")
+      );
+    }
+
     const owner = auth.getNonNullableWorkspace();
     const user = auth.getNonNullableUser();
+    const previousAllowedDomains = this.allowedDomains;
 
     const normalizedAllowedDomains =
       WorkspaceSandboxEnvVarResource.normalizeAllowedDomainsForKind({
@@ -403,35 +586,49 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
     if (normalizedAllowedDomains.isErr()) {
       return normalizedAllowedDomains;
     }
+    const normalizedAllowedDomainsValue = normalizedAllowedDomains.value;
+    if (!normalizedAllowedDomainsValue) {
+      return new Err(
+        new Error("HTTPS secrets require at least one allowed domain.")
+      );
+    }
+
+    if (
+      areAllowedDomainsEqual(
+        previousAllowedDomains,
+        normalizedAllowedDomainsValue
+      )
+    ) {
+      return new Ok(this);
+    }
 
     await this.update({
-      allowedDomains: normalizedAllowedDomains.value,
+      allowedDomains: normalizedAllowedDomainsValue,
       lastUpdatedByUserId: user.id,
     });
 
-    const updated = await WorkspaceSandboxEnvVarResource.fetchById(
-      auth,
-      this.id
-    );
-    if (!updated) {
-      return new Err(new Error("Sandbox environment variable not found."));
-    }
-
     void emitAuditLogEvent({
       auth,
-      action: "sandbox_env_var.updated",
+      action: "sandbox_env_var.allowed_domains_updated",
       targets: [
         buildAuditLogTarget("workspace", owner),
         buildAuditLogTarget("sandbox_env_var", {
-          sId: updated.sId,
-          name: updated.envName,
+          sId: this.sId,
+          name: this.envName,
         }),
       ],
       context,
-      metadata: { name: updated.envName, previously_existed: "true" },
+      metadata: {
+        name: this.envName,
+        kind: this.kind,
+        allowed_domains: formatAllowedDomainsForAudit(this.allowedDomains),
+        previous_allowed_domains: formatAllowedDomainsForAudit(
+          previousAllowedDomains
+        ),
+      },
     });
 
-    return new Ok(updated);
+    return new Ok(this);
   }
 
   private static normalizeAllowedDomainsForKind({
@@ -524,7 +721,11 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
         }),
       ],
       context,
-      metadata: { name: this.envName },
+      metadata: {
+        name: this.envName,
+        kind: this.kind,
+        allowed_domains: formatAllowedDomainsForAudit(this.allowedDomains),
+      },
     });
 
     return new Ok(undefined);
@@ -543,17 +744,16 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
   ): Promise<Result<Record<string, string>, Error>> {
     const owner = auth.getNonNullableWorkspace();
     // Hot path on every sandbox mount — skip the user joins, we only need
-    // name + encryptedValue here.
-    //
-    // TODO(2026-05-05 SLICE_2): skip `kind = 'https_secret'` rows here.
-    // Their real value must NOT land in the agent env as `DSEC_<name>`
-    // plaintext — substitution is supposed to happen on the wire from
-    // the secrets file. Slice 1 leaves them in for symmetry; the
-    // production-user gate (no admin promotes rows in prod until the
-    // last slice) keeps this safe in the meantime.
-    const resources = await this.baseFetch(auth, undefined, {
-      withUserJoins: false,
-    });
+    // name + encryptedValue here. HTTPS secrets are handled separately by
+    // loadHttpsSecretPlaceholderEnv; injecting their real value here would
+    // defeat the MITM swap.
+    const resources = await this.baseFetch(
+      auth,
+      { kind: "config" },
+      {
+        withUserJoins: false,
+      }
+    );
 
     const env: Record<string, string> = {};
     for (const resource of resources) {
@@ -577,6 +777,44 @@ export class WorkspaceSandboxEnvVarResource extends BaseResource<WorkspaceSandbo
           )
         );
       }
+    }
+
+    return new Ok(env);
+  }
+
+  static async listHttpsSecretsForEgress(
+    auth: Authenticator
+  ): Promise<WorkspaceSandboxEnvVarResource[]> {
+    return this.baseFetch(
+      auth,
+      { kind: "https_secret" },
+      {
+        withUserJoins: false,
+      }
+    );
+  }
+
+  static async loadHttpsSecretPlaceholderEnv(
+    auth: Authenticator
+  ): Promise<Result<Record<string, string>, Error>> {
+    const resources = await this.listHttpsSecretsForEgress(auth);
+    const env: Record<string, string> = {};
+
+    for (const resource of resources) {
+      const envName = renderWorkspaceSandboxEnvVarName({
+        kind: resource.kind,
+        name: resource.name,
+      });
+
+      if (!resource.placeholderNonce) {
+        return new Err(
+          new Error(
+            `HTTPS secret sandbox environment variable ${envName} is missing its placeholder nonce.`
+          )
+        );
+      }
+
+      env[envName] = renderEgressSecretPlaceholder(resource.placeholderNonce);
     }
 
     return new Ok(env);

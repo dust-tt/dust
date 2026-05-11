@@ -26,7 +26,7 @@
 //       - Not in dedupMap → makeNew + addSource.
 
 import { getSmallWhitelistedModel } from "@app/lib/assistant";
-import { Authenticator } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import {
   batchDeduplicateCandidates,
   type DeduplicateCandidate,
@@ -36,7 +36,7 @@ import {
   ProjectTaskResource,
   type TasksByItemId,
 } from "@app/lib/resources/project_task_resource";
-import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import {
   TakeawaysResource,
   type TakeawaysWithSource,
@@ -45,6 +45,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { ProjectTaskSourceInfo } from "@app/types/project_task";
 import type { ModelId } from "@app/types/shared/model_id";
+import { Err, Ok, type Result } from "@app/types/shared/result";
 import type { TaskVersionedActionItem } from "@app/types/takeaways";
 import type { Logger } from "pino";
 
@@ -96,27 +97,21 @@ function emptyMergeStats(): MergeStats {
 export async function mergeTakeawaysIntoProject({
   localLogger,
   runId,
-  workspaceId,
-  spaceId,
+  space,
+  adminAuth,
 }: {
   localLogger: Logger;
   runId: string;
-  workspaceId: string;
-  spaceId: string;
+  space: SpaceResource;
+  adminAuth: Authenticator;
 }): Promise<MergeStats> {
   const stats = emptyMergeStats();
 
-  const spaceModelId = getResourceIdFromSId(spaceId);
-  if (spaceModelId === null) {
-    localLogger.error("Project task merge: invalid space sId");
-    return stats;
-  }
-
-  const adminAuth = await Authenticator.internalAdminForWorkspace(workspaceId);
-
   // Fetch all latest takeaways for the space directly.
   const latestTakeawaysWithSource =
-    await TakeawaysResource.fetchLatestBySpaceId(adminAuth, { spaceModelId });
+    await TakeawaysResource.fetchLatestBySpaceId(adminAuth, {
+      spaceModelId: space.id,
+    });
 
   stats.takeawaysProcessed = latestTakeawaysWithSource.length;
 
@@ -164,21 +159,30 @@ export async function mergeTakeawaysIntoProject({
     localLogger,
     runId,
     newCandidates: assignedCandidates,
-    spaceModelId,
+    spaceModelId: space.id,
   });
 
   // ── Phase 3: create or link ───────────────────────────────────────────────
-
-  const { deduplicated, createdNew } = await createOrLinkTasks(adminAuth, {
+  const members = await space.fetchDistinctActiveManualGroupMembers(adminAuth);
+  const createResult = await createOrLinkTasks(adminAuth, {
     localLogger,
     newCandidates: assignedCandidates,
     unassignedCandidates,
     dedupGroups,
-    spaceModelId,
+    spaceModelId: space.id,
+    memberCount: members.length,
   });
 
-  stats.deduplicated = deduplicated;
-  stats.createdNew = createdNew;
+  if (createResult.isErr()) {
+    localLogger.error(
+      { error: createResult.error.message },
+      "Project task merge: too many new tasks, aborting"
+    );
+    return stats;
+  }
+
+  stats.deduplicated = createResult.value.deduplicated;
+  stats.createdNew = createResult.value.createdNew;
 
   return stats;
 }
@@ -350,14 +354,30 @@ export async function createOrLinkTasks(
     unassignedCandidates,
     dedupGroups,
     spaceModelId,
+    memberCount,
   }: {
     localLogger: Logger;
     newCandidates: PendingCandidate[];
     unassignedCandidates: PendingCandidate[];
     dedupGroups: DeduplicatedGroup[];
     spaceModelId: ModelId;
+    memberCount: number;
   }
-): Promise<{ deduplicated: number; createdNew: number }> {
+): Promise<Result<{ deduplicated: number; createdNew: number }, Error>> {
+  // to get a number that grows with the number of members, but asymptotically to not have too many
+  const maxNewTasks = Math.log(memberCount + 1) * 3;
+  const newTaskCount =
+    dedupGroups.filter((g) => g.kind === "new").length +
+    unassignedCandidates.length;
+
+  if (newTaskCount > maxNewTasks) {
+    return new Err(
+      new Error(
+        `Too many new tasks: ${newTaskCount} candidates exceed the limit of ${maxNewTasks.toFixed(2)} (ln(${memberCount} + 1) * 3) for this project`
+      )
+    );
+  }
+
   let deduplicated = 0;
   let createdNew = 0;
 
@@ -504,7 +524,7 @@ export async function createOrLinkTasks(
     { concurrency: 4 }
   );
 
-  return { deduplicated, createdNew };
+  return new Ok({ deduplicated, createdNew });
 }
 
 // ── Blob helpers ─────────────────────────────────────────────────────────────

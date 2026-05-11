@@ -5,12 +5,15 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import { expireRateLimiterKey } from "@app/lib/utils/rate_limiter";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import type { VerificationStatus } from "@app/types/workspace_verification";
 import { createHash } from "crypto";
 import type { Attributes, Transaction } from "sequelize";
 import { Op } from "sequelize";
+
+export const PHONE_REGEXP = /^\+[1-9]\d{1,14}$/;
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface WorkspaceVerificationAttemptResource
@@ -220,6 +223,11 @@ export class WorkspaceVerificationAttemptResource extends BaseResource<Workspace
         where: { id: row.id, workspaceId: row.workspaceId },
       });
     }
+
+    await expireRateLimiterKey({
+      key: `verification:phone:${phoneNumberHash}`,
+    });
+
     return deletedCount;
   }
 }
