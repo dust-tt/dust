@@ -335,7 +335,11 @@ async function resolveInvoiceCtx(
   }
   // Metronome subscription invoice — metronome_customer_id stamped by
   // Metronome on every invoice it pushes.
-  return resolveMetronomeSubscriptionInvoiceCtx(invoice);
+  if (invoice.metadata?.metronome_customer_id) {
+    return resolveMetronomeSubscriptionInvoiceCtx(invoice);
+  }
+
+  return null;
 }
 
 /**
@@ -526,8 +530,9 @@ async function handleMetronomeCheckoutCompleted({
     });
 
     switch (result.error.code) {
-      case "subscription_already_exists":
       case "workspace_not_found":
+        break;
+      case "subscription_already_exists":
         logger.warn(
           { error: result.error, workspaceId, planCode },
           `[Stripe Webhook] Metronome setup: ${result.error.message}`

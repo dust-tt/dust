@@ -95,6 +95,16 @@ export async function handleMetronomeSetupCheckout({
     setup_intent: setupIntentId,
   } = parsed.data;
 
+  const workspace = await WorkspaceResource.fetchById(workspaceId);
+  if (!workspace) {
+    return new Err(
+      new DustError(
+        "workspace_not_found",
+        `Workspace ${workspaceId} not found for Metronome setup session.`
+      )
+    );
+  }
+
   logger.info(
     {
       sessionId,
@@ -143,16 +153,6 @@ export async function handleMetronomeSetupCheckout({
     metronomePackageAlias,
     billingCurrency
   );
-
-  const workspace = await WorkspaceResource.fetchById(workspaceId);
-  if (!workspace) {
-    return new Err(
-      new DustError(
-        "workspace_not_found",
-        `Workspace ${workspaceId} not found for Metronome setup session.`
-      )
-    );
-  }
 
   const plan = await PlanModel.findOne({ where: { code: planCode } });
   if (!plan) {
