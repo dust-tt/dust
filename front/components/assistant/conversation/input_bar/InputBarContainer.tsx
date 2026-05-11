@@ -922,7 +922,7 @@ const InputBarContainer = ({
               contentEditableClasses,
               "scrollbar-hide",
               "overflow-y-auto",
-              "max-h-[40vh] min-h-14 sm:min-h-16",
+              "max-h-[40vh] min-h-14 sm:min-h-16"
             )}
           />
         </div>

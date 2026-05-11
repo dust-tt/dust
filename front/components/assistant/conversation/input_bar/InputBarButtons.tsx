@@ -115,22 +115,22 @@ export const InputBarButtons = React.memo(function InputBarButtons({
           >
             <Avatar size="xxs" visual={selectedAgent.pictureUrl} />
             <span className="grow truncate">{selectedAgent.label}</span>
-              <button
-                type="button"
-                aria-label="Remove agent"
-                className="p-0.5 text-faint dark:text-faint-night hover:text-foreground transition-colors duration-200"
-                onPointerDown={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                }}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onAgentRemove();
-                }}
-              >
-                <XMarkIcon className="h-3 w-3" />
-              </button>
+            <button
+              type="button"
+              aria-label="Remove agent"
+              className="p-0.5 text-faint dark:text-faint-night hover:text-foreground transition-colors duration-200"
+              onPointerDown={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onAgentRemove();
+              }}
+            >
+              <XMarkIcon className="h-3 w-3" />
+            </button>
           </div>
         ) : (
           <Button
