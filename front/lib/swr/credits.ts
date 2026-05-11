@@ -212,7 +212,7 @@ export function useAwuPoolSummary({
   const { fetcher } = useFetcher();
   const awuFetcher: Fetcher<AwuPoolSummaryResponseBody> = fetcher;
 
-  const { data, error, isValidating } = useSWRWithDefaults(
+  const { data, error, isValidating, mutate } = useSWRWithDefaults(
     `/api/w/${workspaceId}/credits/awu-pool-summary`,
     awuFetcher,
     { disabled }
@@ -226,5 +226,6 @@ export function useAwuPoolSummary({
     isAwuPoolSummaryLoading: !error && !data && !disabled,
     isAwuPoolSummaryError: error,
     isAwuPoolSummaryValidating: isValidating,
+    mutateAwuPoolSummary: mutate,
   };
 }
