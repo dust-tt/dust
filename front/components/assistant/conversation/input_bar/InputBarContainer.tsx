@@ -16,7 +16,6 @@ import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useVoiceTranscriberService } from "@app/hooks/useVoiceTranscriberService";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
-import { startsWithUserMention } from "@app/lib/mentions/format";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
@@ -622,7 +621,10 @@ const InputBarContainer = ({
           firstNode?.type.name === "mention" && firstNode.attrs.type === "user";
       }
       setStartsWithUserMention(editorStartsWithUserMention);
-      onEditorMentionsChangedRef.current(userMentioned, editorStartsWithUserMention);
+      onEditorMentionsChangedRef.current(
+        userMentioned,
+        editorStartsWithUserMention
+      );
     };
 
     if (editorRef.current) {
@@ -900,7 +902,6 @@ const InputBarContainer = ({
 
   const isRecording = voiceTranscriberService.status === "recording";
 
-
   return (
     <div
       id="InputBarContainer"
@@ -941,9 +942,7 @@ const InputBarContainer = ({
             transition: `padding ${COLLAPSE_TRANSITION}`,
           }}
         >
-          <div
-            className="mb-1 flex flex-wrap items-center px-2"
-          >
+          <div className="mb-1 flex flex-wrap items-center px-2">
             {selectedMCPServerViews.map((msv) => (
               <React.Fragment key={msv.sId}>
                 {/* Two Chips: one for larger screens (desktop), one for smaller screens (mobile). */}
