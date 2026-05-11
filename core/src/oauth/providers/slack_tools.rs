@@ -80,7 +80,10 @@ impl Provider for SlackToolsConnectionProvider {
         let team_id = raw_json["team"]["id"]
             .as_str()
             .ok_or_else(|| anyhow!("Missing `team_id` in response from Slack"))?;
-        let team_name = raw_json["team"]["name"].as_str().unwrap_or(team_id);
+        let team_name = match raw_json["team"]["name"].as_str() {
+            Some(name) => name,
+            None => team_id,
+        };
 
         let access_token = raw_json["access_token"]
             .as_str()
