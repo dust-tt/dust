@@ -1,12 +1,14 @@
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import type {
   ToolHandlerExtra,
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { resolveMountPoint } from "@app/lib/api/actions/servers/files/tools/utils";
+import { resolveAvailableMountPoints } from "@app/lib/api/actions/servers/files/tools/utils";
+import type { GCSMountEntry } from "@app/lib/api/files/gcs_mount/files";
 import { listGCSMountFiles } from "@app/lib/api/files/gcs_mount/files";
 import { parseProcessedFilename } from "@app/lib/api/files/mount_path";
 import { stripMimeParameters } from "@app/types/files";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import partition from "lodash/partition";
 
 function getDirAndFileName(path: string): { dir: string; fileName: string } {
@@ -25,17 +27,22 @@ export async function listHandler(
   _params: Record<string, never>,
   extra: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
-  const mountRes = resolveMountPoint(
-    extra.auth,
-    extra.agentLoopContext?.runContext?.conversation
-  );
-  if (mountRes.isErr()) {
-    return mountRes;
+  const conversation = extra.agentLoopContext?.runContext?.conversation;
+  if (!conversation) {
+    return new Err(
+      new MCPError("No conversation context available.", { tracked: false })
+    );
   }
 
-  const entries = await listGCSMountFiles(extra.auth, mountRes.value.scope, {
-    includeProcessed: true,
-  });
+  const mounts = await resolveAvailableMountPoints(extra.auth, conversation);
+
+  const entries: GCSMountEntry[] = [];
+  for (const mount of mounts) {
+    const mountEntries = await listGCSMountFiles(extra.auth, mount.scope, {
+      includeProcessed: true,
+    });
+    entries.push(...mountEntries);
+  }
 
   const [dirs, files] = partition(entries, (e) => e.isDirectory);
 

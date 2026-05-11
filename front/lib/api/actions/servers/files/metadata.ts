@@ -10,6 +10,7 @@ export const FILES_LIST_ACTION_NAME = "list" as const;
 export const FILES_CAT_ACTION_NAME = "cat" as const;
 export const FILES_GREP_ACTION_NAME = "grep" as const;
 export const FILES_CREATE_ACTION_NAME = "create" as const;
+export const FILES_DELETE_ACTION_NAME = "delete" as const;
 
 export const CAT_LINES_DEFAULT = 200;
 export const CAT_LINES_MAX = 500;
@@ -120,6 +121,23 @@ export const FILES_TOOLS_METADATA = createToolsRecord({
     displayLabels: {
       running: "Writing file",
       done: "Write file",
+    },
+  },
+  [FILES_DELETE_ACTION_NAME]: {
+    description:
+      "Delete a file from the conversation file system. " +
+      "Returns an error if the file does not exist. Deletion is permanent.",
+    schema: {
+      path: z
+        .string()
+        .describe(
+          `Scoped file path as returned by \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_LIST_ACTION_NAME)}\` (e.g. \`conversation/output.json\`)`
+        ),
+    },
+    stake: "medium",
+    displayLabels: {
+      running: "Deleting file",
+      done: "Deleted file",
     },
   },
 });

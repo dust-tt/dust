@@ -5,7 +5,7 @@ import type {
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { CREATE_CONTENT_MAX_BYTES } from "@app/lib/api/actions/servers/files/metadata";
-import { resolveMountPoint } from "@app/lib/api/actions/servers/files/tools/utils";
+import { resolveMountPointForPath } from "@app/lib/api/actions/servers/files/tools/utils";
 import {
   createGCSMountFile,
   getGCSPathFromScopedPath,
@@ -23,10 +23,16 @@ export async function createHandler(
   }: { path: string; content: string; content_type: string },
   { auth, agentLoopContext }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
-  const mountRes = resolveMountPoint(
-    auth,
-    agentLoopContext?.runContext?.conversation
-  );
+  const conversation = agentLoopContext?.runContext?.conversation;
+  if (!conversation) {
+    return new Err(
+      new MCPError("No conversation context available.", { tracked: false })
+    );
+  }
+
+  const mountRes = await resolveMountPointForPath(auth, conversation, path, {
+    access: "write",
+  });
   if (mountRes.isErr()) {
     return mountRes;
   }
@@ -40,7 +46,7 @@ export async function createHandler(
   if (!gcsPath) {
     return new Err(
       new MCPError(
-        `Invalid path: \`${path}\` does not belong to the conversation file system.`,
+        `Invalid path: \`${path}\` does not match the resolved mount point.`,
         { tracked: false }
       )
     );
