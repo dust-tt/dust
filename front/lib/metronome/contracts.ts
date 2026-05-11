@@ -1,3 +1,4 @@
+import type { BillingCycle } from "@app/lib/client/subscription";
 import {
   ceilToHourISO,
   createMetronomeContract,
@@ -48,7 +49,6 @@ import type { Logger } from "@app/logger/logger";
 import logger from "@app/logger/logger";
 import type { SupportedCurrency } from "@app/types/currency";
 import { isSupportedCurrency } from "@app/types/currency";
-import type { BillingCycle } from "@app/lib/client/subscription";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -1114,6 +1114,12 @@ export async function getMetronomeCurrentBillingPeriod({
   metronomeCustomerId: string | null;
 }): Promise<Result<BillingCycle | null, Error>> {
   if (!metronomeContractId || !metronomeCustomerId) {
+    if (metronomeContractId !== null || metronomeCustomerId !== null) {
+      logger.warn(
+        { metronomeContractId, metronomeCustomerId },
+        "[Metronome] Partial Metronome configuration: one of metronomeContractId or metronomeCustomerId is missing"
+      );
+    }
     return new Ok(null);
   }
 
@@ -1131,7 +1137,9 @@ export async function getMetronomeCurrentBillingPeriod({
     .find((bp) => bp !== undefined);
 
   if (!currentPeriod) {
-    return new Err(new Error("No current billing period found on Metronome contract"));
+    return new Err(
+      new Error("No current billing period found on Metronome contract")
+    );
   }
 
   return new Ok({
