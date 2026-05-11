@@ -11,6 +11,7 @@ export const FILES_CAT_ACTION_NAME = "cat" as const;
 export const FILES_GREP_ACTION_NAME = "grep" as const;
 export const FILES_CREATE_ACTION_NAME = "create" as const;
 export const FILES_DELETE_ACTION_NAME = "delete" as const;
+export const FILES_COPY_ACTION_NAME = "copy" as const;
 
 export const CAT_LINES_DEFAULT = 200;
 export const CAT_LINES_MAX = 500;
@@ -138,6 +139,31 @@ export const FILES_TOOLS_METADATA = createToolsRecord({
     displayLabels: {
       running: "Deleting file",
       done: "Deleted file",
+    },
+  },
+  [FILES_COPY_ACTION_NAME]: {
+    description:
+      "Copy a file between scoped paths, preserving its bytes and content type. " +
+      "Useful for promoting a conversation file into a project (e.g. `conversation/report.pdf` → " +
+      "`project/report.pdf`) without round-tripping the content through the agent, which keeps " +
+      "binary files (PDFs, images, audio) intact. " +
+      "Overwrites `dest` if it already exists.",
+    schema: {
+      source: z
+        .string()
+        .describe(
+          "Scoped path of the file to copy from (e.g. `conversation/report.pdf`)."
+        ),
+      dest: z
+        .string()
+        .describe(
+          "Scoped path of the destination (e.g. `project/report.pdf`)."
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Copying file",
+      done: "Copied file",
     },
   },
 });
