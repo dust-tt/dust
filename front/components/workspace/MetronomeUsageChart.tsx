@@ -29,7 +29,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Area,
   AreaChart,
@@ -57,15 +57,19 @@ type ChartDataPoint = {
   [key: string]: string | number | undefined;
 };
 
-const GROUP_BY_OPTIONS: {
-  value: "global" | MetronomeUsageGroupByType;
+const GROUP_BY_TYPE_OPTIONS: {
+  value: MetronomeUsageGroupByType;
   label: string;
 }[] = [
-  { value: "global", label: "Global" },
   { value: "api_key", label: "By API Key" },
   { value: "model", label: "By Model" },
   { value: "origin", label: "By Source" },
 ];
+
+const GROUP_BY_OPTIONS: {
+  value: "global" | MetronomeUsageGroupByType;
+  label: string;
+}[] = [{ value: "global", label: "Global" }, ...GROUP_BY_TYPE_OPTIONS];
 
 const TOP_K_OPTIONS = [
   { value: 5, label: "Top 5" },
@@ -280,7 +284,7 @@ export function BaseMetronomeUsageChart({
   // switching to a different groupBy.
   const enabledGroupKeys = groupBy ? filter[groupBy] : undefined;
 
-  useMemo(() => {
+  useEffect(() => {
     if (!groupBy || availableGroupsArray.length === 0) {
       return;
     }
@@ -346,10 +350,8 @@ export function BaseMetronomeUsageChart({
   );
 
   const activeFilterChips = useMemo(() => {
-    return (
-      Object.entries(filter) as [MetronomeUsageGroupByType, string[]][]
-    ).flatMap(([type, keys]) =>
-      (keys ?? []).map((key) => ({
+    return GROUP_BY_TYPE_OPTIONS.flatMap(({ value: type }) =>
+      (filter[type] ?? []).map((key) => ({
         groupByType: type,
         filterKey: key,
         label: getFilterLabel(type, key),
