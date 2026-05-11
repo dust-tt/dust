@@ -1,5 +1,9 @@
 import { BlockedActionsProvider } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import {
+  ConversationBranchingProvider,
+  useConversationBranchingContextValue,
+} from "@app/components/assistant/conversation/ConversationBranchingContext";
+import {
   ConversationErrorDisplay,
   ErrorDisplay,
 } from "@app/components/assistant/conversation/ConversationError";
@@ -115,10 +119,15 @@ const ConversationLayoutContent = ({
   const pageTitle = conversation
     ? `Dust - ${getConversationDisplayTitle(conversation)}`
     : "Dust - New Conversation";
+  const conversationBranchingContext = useConversationBranchingContextValue();
 
   const navChildren = useMemo(
-    () => <AgentSidebarMenu owner={owner} />,
-    [owner]
+    () => (
+      <ConversationBranchingProvider value={conversationBranchingContext}>
+        <AgentSidebarMenu owner={owner} />
+      </ConversationBranchingProvider>
+    ),
+    [owner, conversationBranchingContext]
   );
 
   useSetHasTitle(!!activeConversationId || !!activeSpaceId);
@@ -140,16 +149,18 @@ const ConversationLayoutContent = ({
         onClose={() => onOpenChangeUserModal(false)}
       />
 
-      <ConversationSidePanelProvider>
-        <ConversationInnerLayout
-          activeConversationId={activeConversationId}
-          conversation={conversation}
-          conversationError={conversationError}
-          owner={owner}
-        >
-          {children}
-        </ConversationInnerLayout>
-      </ConversationSidePanelProvider>
+      <ConversationBranchingProvider value={conversationBranchingContext}>
+        <ConversationSidePanelProvider>
+          <ConversationInnerLayout
+            activeConversationId={activeConversationId}
+            conversation={conversation}
+            conversationError={conversationError}
+            owner={owner}
+          >
+            {children}
+          </ConversationInnerLayout>
+        </ConversationSidePanelProvider>
+      </ConversationBranchingProvider>
       {shouldDisplayWelcomeTourGuide && (
         <WelcomeTourGuide
           owner={owner}

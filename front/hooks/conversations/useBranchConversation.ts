@@ -1,3 +1,4 @@
+import { useConversationBranchingContext } from "@app/components/assistant/conversation/ConversationBranchingContext";
 import { useConversations } from "@app/hooks/conversations/useConversations";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
@@ -8,7 +9,7 @@ import type { PostConversationForkResponseBody } from "@app/pages/api/w/[wId]/as
 import type { ConversationListItemType } from "@app/types/assistant/conversation";
 import { isRecord, isString } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 
 function isPostConversationForkResponseBody(
   value: unknown
@@ -39,8 +40,12 @@ export function useBranchConversation({
     workspaceId: owner.sId,
     options: { disabled: true },
   });
+  const { branchingConversationIds, setConversationBranching } =
+    useConversationBranchingContext();
 
-  const [isBranching, setIsBranching] = useState(false);
+  const isBranching = conversationId
+    ? branchingConversationIds.has(conversationId)
+    : false;
 
   const branchConversation = useCallback(
     async (sourceMessageId?: string): Promise<boolean> => {
@@ -48,7 +53,7 @@ export function useBranchConversation({
         return false;
       }
 
-      setIsBranching(true);
+      setConversationBranching(conversationId, true);
 
       try {
         const requestBody = sourceMessageId ? { sourceMessageId } : {};
@@ -139,7 +144,7 @@ export function useBranchConversation({
 
         return false;
       } finally {
-        setIsBranching(false);
+        setConversationBranching(conversationId, false);
       }
     },
     [
@@ -150,6 +155,7 @@ export function useBranchConversation({
       owner.sId,
       router,
       sendNotification,
+      setConversationBranching,
     ]
   );
 
