@@ -293,6 +293,12 @@ SHELLEOF`,
     { user: "root" }
   )
   .runCmd(`chmod +x ${PROFILE_DIR}/soffice/pptx_inspect.py`, { user: "root" })
+  .copy(
+    getLocalContent(PROFILE_LOCAL_DIR, "soffice/docx_inspect.py"),
+    `${PROFILE_DIR}/soffice/docx_inspect.py`,
+    { user: "root" }
+  )
+  .runCmd(`chmod +x ${PROFILE_DIR}/soffice/docx_inspect.py`, { user: "root" })
   // Telemetry configs for fluent-bit
   .copy(
     getLocalContent(TELEMETRY_LOCAL_DIR, "fluent-bit.conf"),
@@ -439,6 +445,17 @@ SHELLEOF`,
       "pptx_inspect <file> [--slide N] [--layouts] [--text] [--media] [--max-shapes N] [--offset N]",
     returns:
       "Deck overview, or one shape per line in slide view: '<id>  <kind>  <left,top WxH>  [ph=<type>]  <summary>' with paragraphs indented. Layouts/text/media views emit format-specific listings",
+    runtime: "system",
+  })
+  // --- docx_inspect: structural inspection of .docx documents ---
+  .registerTool({
+    name: "docx_inspect",
+    description:
+      "Inspect .docx structure: sections, headings outline, paragraph and character styles with resolved typography, run formatting, tables, tracked changes, fields, embedded media. Use before editing a document to map style names so the model can apply Heading1 / Normal / Quote rather than restyling inline",
+    usage:
+      "docx_inspect <file> [--styles] [--paragraphs] [--text] [--tables] [--sections] [--changes] [--fields] [--media] [--render] [--offset N] [--max N] [--page N]",
+    returns:
+      "Document overview with theme + default typography and heading outline, or one paragraph/style/section/table/change/field per line. Render mode emits one absolute jpeg path per page",
     runtime: "system",
   })
   .withCapability("gcsfuse")
