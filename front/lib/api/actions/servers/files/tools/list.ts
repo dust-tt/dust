@@ -3,8 +3,7 @@ import type {
   ToolHandlerExtra,
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { resolveAvailableMountPoints } from "@app/lib/api/actions/servers/files/tools/utils";
-import type { GCSMountEntry } from "@app/lib/api/files/gcs_mount/files";
+import type { GCSMountPoint } from "@app/lib/api/files/gcs_mount/files";
 import { listGCSMountFiles } from "@app/lib/api/files/gcs_mount/files";
 import { parseProcessedFilename } from "@app/lib/api/files/mount_path";
 import { stripMimeParameters } from "@app/types/files";
@@ -34,15 +33,13 @@ export async function listHandler(
     );
   }
 
-  const mounts = await resolveAvailableMountPoints(extra.auth, conversation);
-
-  const entries: GCSMountEntry[] = [];
-  for (const mount of mounts) {
-    const mountEntries = await listGCSMountFiles(extra.auth, mount.scope, {
-      includeProcessed: true,
-    });
-    entries.push(...mountEntries);
-  }
+  const scope: GCSMountPoint = {
+    useCase: "conversation",
+    conversationId: conversation.sId,
+  };
+  const entries = await listGCSMountFiles(extra.auth, scope, {
+    includeProcessed: true,
+  });
 
   const [dirs, files] = partition(entries, (e) => e.isDirectory);
 

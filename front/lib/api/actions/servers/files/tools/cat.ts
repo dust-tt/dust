@@ -7,7 +7,7 @@ import type {
 import { CAT_LINES_DEFAULT } from "@app/lib/api/actions/servers/files/metadata";
 import {
   isReadableAsText,
-  resolveFileForRead,
+  resolveFile,
 } from "@app/lib/api/actions/servers/files/tools/utils";
 import { isLLMVisionSupportedImageContentType } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
@@ -139,7 +139,7 @@ export async function catHandler(
     );
   }
 
-  const resolvedRes = await resolveFileForRead(auth, conversation, path);
+  const resolvedRes = await resolveFile(auth, conversation, path);
   if (resolvedRes.isErr()) {
     return resolvedRes;
   }

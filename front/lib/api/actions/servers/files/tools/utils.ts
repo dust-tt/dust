@@ -99,7 +99,7 @@ async function buildProjectMountPoint(
  * `project/` prefix, looks up the parent project space when needed, and verifies the requested
  * access level.
  */
-export async function resolveMountPointForPath(
+export async function resolveMountPoint(
   auth: Authenticator,
   conversation: ConversationType,
   { access, scopedPath }: { access: Access; scopedPath: string }
@@ -127,41 +127,15 @@ export async function resolveMountPointForPath(
 }
 
 /**
- * Resolve all mount points visible from the given conversation: the conversation's own mount, plus
- * the parent project mount when the conversation is in a project (and the actor can read it).
- * Used by the `list` tool to enumerate everything available.
+ * Resolve a GCS file from a scoped path. Looks up the file metadata via `resolveMountPoint`.
+ * Used by `cat` and `grep`.
  */
-export async function resolveAvailableMountPoints(
-  auth: Authenticator,
-  conversation: ConversationType
-): Promise<MountPoint[]> {
-  const mounts: MountPoint[] = [
-    buildConversationMountPoint(auth, conversation),
-  ];
-
-  if (isProjectConversation(conversation)) {
-    const projectRes = await buildProjectMountPoint(auth, conversation, {
-      access: "read",
-    });
-    // Silently skip the project mount if the actor lacks read permissions — listing should still
-    // surface conversation files. Other errors (e.g. space not found) also drop the mount.
-    if (projectRes.isOk()) {
-      mounts.push(projectRes.value);
-    }
-  }
-
-  return mounts;
-}
-
-/**
- * Resolve a GCS file from a scoped path for read access. Used by `cat` and `grep`.
- */
-export async function resolveFileForRead(
+export async function resolveFile(
   auth: Authenticator,
   conversation: ConversationType,
   path: string
 ): Promise<Result<ResolvedFile, MCPError>> {
-  const mountRes = await resolveMountPointForPath(auth, conversation, {
+  const mountRes = await resolveMountPoint(auth, conversation, {
     access: "read",
     scopedPath: path,
   });

@@ -11,7 +11,7 @@ import {
 } from "@app/lib/api/actions/servers/files/metadata";
 import {
   isReadableAsText,
-  resolveFileForRead,
+  resolveFile,
 } from "@app/lib/api/actions/servers/files/tools/utils";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -28,7 +28,7 @@ export async function grepHandler(
     );
   }
 
-  const resolvedRes = await resolveFileForRead(auth, conversation, path);
+  const resolvedRes = await resolveFile(auth, conversation, path);
   if (resolvedRes.isErr()) {
     return resolvedRes;
   }

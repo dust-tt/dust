@@ -5,7 +5,7 @@ import type {
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { CREATE_CONTENT_MAX_BYTES } from "@app/lib/api/actions/servers/files/metadata";
-import { resolveMountPointForPath } from "@app/lib/api/actions/servers/files/tools/utils";
+import { resolveMountPoint } from "@app/lib/api/actions/servers/files/tools/utils";
 import {
   createGCSMountFile,
   getGCSPathFromScopedPath,
@@ -30,7 +30,7 @@ export async function createHandler(
     );
   }
 
-  const mountRes = await resolveMountPointForPath(auth, conversation, {
+  const mountRes = await resolveMountPoint(auth, conversation, {
     access: "write",
     scopedPath: path,
   });

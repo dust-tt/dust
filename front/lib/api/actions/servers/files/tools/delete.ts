@@ -3,7 +3,7 @@ import type {
   ToolHandlerExtra,
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { resolveMountPointForPath } from "@app/lib/api/actions/servers/files/tools/utils";
+import { resolveMountPoint } from "@app/lib/api/actions/servers/files/tools/utils";
 import { getGCSPathFromScopedPath } from "@app/lib/api/files/gcs_mount/files";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { Err, Ok } from "@app/types/shared/result";
@@ -20,7 +20,7 @@ export async function deleteHandler(
     );
   }
 
-  const mountRes = await resolveMountPointForPath(auth, conversation, {
+  const mountRes = await resolveMountPoint(auth, conversation, {
     access: "write",
     scopedPath: path,
   });
