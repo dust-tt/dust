@@ -64,12 +64,14 @@ export async function switchMetronomeContractPackage({
   workspace,
   packageAlias,
   enableStripeBilling,
+  planCode,
 }: {
   metronomeCustomerId: string;
   oldContractId: string;
   workspace: LightWorkspaceType;
   packageAlias: string;
   enableStripeBilling: boolean;
+  planCode: string;
 }): Promise<Result<{ metronomeContractId: string }, Error>> {
   // Round up to the next hour boundary (Metronome requires hour-aligned dates)
   // so the new contract starts exactly when the old one ends.
@@ -87,8 +89,11 @@ export async function switchMetronomeContractPackage({
   const contractResult = await createMetronomeContract({
     metronomeCustomerId,
     packageAlias,
+    // One switch per old contract — retries dedup against the same successor.
+    uniquenessKey: `switch:${oldContractId}`,
     startingAt: switchAt,
     enableStripeBilling,
+    planCode,
   });
   if (contractResult.isErr()) {
     return new Err(contractResult.error);
@@ -255,6 +260,7 @@ export async function provisionMetronomeContract({
   uniquenessKey,
   startingAt,
   enableStripeBilling = true,
+  planCode,
 }: {
   metronomeCustomerId: string;
   workspace: LightWorkspaceType;
@@ -263,6 +269,7 @@ export async function provisionMetronomeContract({
   // Must already be on an hour boundary (Metronome requirement).
   startingAt: Date;
   enableStripeBilling?: boolean;
+  planCode: string;
 }): Promise<Result<{ metronomeContractId: string }, Error>> {
   logger.info(
     {
@@ -279,6 +286,7 @@ export async function provisionMetronomeContract({
     uniquenessKey,
     startingAt,
     enableStripeBilling,
+    planCode,
   });
   if (contractResult.isErr()) {
     return new Err(contractResult.error);
@@ -986,9 +994,11 @@ export async function applyEnterpriseOverrides({
 export async function provisionShadowEnterpriseMetronomeContract({
   workspace,
   stripeSubscription,
+  planCode,
 }: {
   workspace: LightWorkspaceType;
   stripeSubscription: Stripe.Subscription;
+  planCode: string;
 }): Promise<
   Result<{ metronomeCustomerId: string; metronomeContractId: string }, Error>
 > {
@@ -1046,6 +1056,7 @@ export async function provisionShadowEnterpriseMetronomeContract({
     uniquenessKey: stripeSubscription.id,
     startingAt: new Date(startDate),
     enableStripeBilling: false,
+    planCode,
   });
   if (contractResult.isErr()) {
     return new Err(contractResult.error);

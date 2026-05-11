@@ -842,6 +842,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       const metronomeResult = await provisionShadowEnterpriseMetronomeContract({
         workspace: renderLightWorkspaceType({ workspace: workspaceResource }),
         stripeSubscription,
+        planCode: plan.code,
       });
 
       if (metronomeResult.isErr()) {
@@ -1020,6 +1021,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
         workspace: owner,
         packageAlias,
         enableStripeBilling: isSubscriptionMetronomeBilled(this.toJSON()),
+        planCode: PRO_PLAN_SEAT_39_CODE,
       });
       if (result.isErr() && !this.isMetronomeShadowBilled) {
         return new Err(result.error);

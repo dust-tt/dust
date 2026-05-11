@@ -180,6 +180,7 @@ export async function handleMetronomeSetupCheckout({
     packageAlias: resolvedPackageAlias,
     uniquenessKey: sessionId,
     startingAt: new Date(floorToHourISO(now)),
+    planCode,
   });
   if (contractResult.isErr()) {
     return new Err(
