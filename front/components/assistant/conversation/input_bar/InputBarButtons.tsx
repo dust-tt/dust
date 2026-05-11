@@ -101,7 +101,12 @@ export const InputBarButtons = React.memo(function InputBarButtons({
       }
       pickerButton={
         selectedAgent ? (
-          <div className="inline-flex box-border items-center rounded-lg min-h-7 heading-xs px-3 gap-1 bg-muted-background border-border dark:bg-muted-background-night dark:border-border-night text-primary-900 dark:text-primary-900-night cursor-pointer">
+          <div
+            role="button"
+            tabIndex={0}
+            aria-label={`Selected agent: ${selectedAgent.label}`}
+            className="inline-flex box-border items-center rounded-lg min-h-7 heading-xs px-3 gap-1 bg-muted-background border-border dark:bg-muted-background-night dark:border-border-night text-primary-900 dark:text-primary-900-night cursor-pointer"
+          >
             <Avatar size="xxs" visual={selectedAgent.pictureUrl} />
             <span className="grow truncate">{selectedAgent.label}</span>
             {!isInputDisabled && (
