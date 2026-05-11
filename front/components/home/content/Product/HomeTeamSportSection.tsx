@@ -17,7 +17,7 @@ export function HomeTeamSportSection() {
         <div className="flex flex-col items-stretch gap-12 lg:flex-row lg:items-center lg:gap-20">
           <div className="flex w-full flex-col gap-6 lg:w-1/2">
             <HomeReveal>
-              <HomeEyebrow label="The platform for AI operators" />
+              <HomeEyebrow label="The platform for AI Operators" />
             </HomeReveal>
             <HomeReveal delay={80}>
               <H2 className="text-balance font-semibold leading-[1.08] tracking-[-0.03em] text-foreground">

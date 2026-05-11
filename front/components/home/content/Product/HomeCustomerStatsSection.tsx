@@ -173,7 +173,7 @@ const CARDS: BentoCard[] = [
     imageSrc: "/static/landing/people/people5.png",
     alt: "Customers running Dust agents in their daily workflow",
     overline: "On the floor",
-    caption: "AI operators making it look easy.",
+    caption: "AI Operators making it look easy.",
   },
 ];
 

@@ -1,5 +1,4 @@
 // biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
-import { HomeCountUp } from "@app/components/home/content/Product/HomeCountUp";
 import { HomeReveal } from "@app/components/home/content/Product/HomeReveal";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { Button } from "@dust-tt/sparkle";
@@ -16,12 +15,12 @@ interface CTAStat {
 const STATS: CTAStat[] = [
   {
     label: "Agents deployed",
-    display: <HomeCountUp to={300000} suffix="+" durationMs={1400} />,
+    display: "300,000+",
     accent: "blue",
   },
   {
     label: "Teams running on Dust",
-    display: <HomeCountUp to={5000} suffix="+" durationMs={1400} />,
+    display: "5,000+",
     accent: "golden",
   },
   {
@@ -48,7 +47,7 @@ export function HomeAIOperatorsCTASection() {
         <HomeReveal>
           <span className="inline-flex h-7 w-fit items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 font-mono text-[11px] uppercase tracking-[0.12em] text-white/70 backdrop-blur-sm">
             <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />
-            The platform for AI operators
+            The platform for AI Operators
           </span>
         </HomeReveal>
         <HomeReveal delay={80}>
@@ -82,16 +81,16 @@ export function HomeAIOperatorsCTASection() {
             There&apos;s a new kind of person emerging in fast-moving companies;
             someone who doesn&apos;t wait for an AI tool to be handed to them.
             They build it with judgment, deploy it, and run it for their whole
-            team. We call them AI operators.
+            team. We call them AI Operators.
           </p>
           <p className="m-0 text-base leading-[1.6]">
             At companies like Datadog, 1Password, Cursor, Vanta, Persona, Clay,
-            and Qonto, thousands of AI operators have deployed over 300,000
+            and Qonto, thousands of AI Operators have deployed over 300,000
             agents. They&apos;ve rewired how their teams work, achieved 70%
             weekly active usage, and expanded every single renewal.
           </p>
           <p className="m-0 text-base leading-[1.6] text-white/85">
-            Work is being rewritten. The pen is in the hands of AI operators and
+            Work is being rewritten. The pen is in the hands of AI Operators and
             their leaders.
             <br />
             We&apos;re building the platform they choose.
@@ -108,7 +107,7 @@ export function HomeAIOperatorsCTASection() {
             <Button
               variant="highlight"
               size="md"
-              label="Become an AI operator"
+              label="Become an AI Operator"
               onClick={withTracking(TRACKING_AREAS.HOME, "ai_operator_become")}
             />
           </Link>

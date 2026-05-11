@@ -180,7 +180,7 @@ export function HomeTrustedSection() {
       <style dangerouslySetInnerHTML={{ __html: MARQUEE_CSS }} />
       <div className="mx-auto flex w-full max-w-[1280px] flex-col items-center justify-center gap-12 text-center">
         <h2 className="m-0 text-balance px-6 text-center text-xl font-semibold tracking-[-0.02em] text-foreground md:text-2xl">
-          Trusted among AI operators
+          Trusted among AI Operators
           <br />
           at <span className="text-blue-500">5,000+</span> global organizations
         </h2>

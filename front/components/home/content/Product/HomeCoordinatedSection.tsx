@@ -10,7 +10,7 @@ export function HomeCoordinatedSection() {
       <div className="mx-auto flex w-full max-w-[1180px] flex-col items-center gap-12 px-6 lg:flex-row-reverse lg:items-center lg:gap-20">
         <div className="flex w-full flex-col gap-6 lg:w-1/2">
           <HomeReveal>
-            <HomeEyebrow label="The platform for AI operators" />
+            <HomeEyebrow label="The platform for AI Operators" />
           </HomeReveal>
           <HomeReveal delay={80}>
             <H2 className="text-balance font-semibold leading-[1.08] tracking-[-0.03em] text-foreground">
