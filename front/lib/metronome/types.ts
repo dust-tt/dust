@@ -11,6 +11,7 @@ import {
   getProductExcessCreditsId,
   getProductFreeCreditId,
 } from "@app/lib/metronome/constants";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { Commit, Credit } from "@metronome/sdk/resources/shared";
 
 // Metronome package aliases for contract provisioning.
@@ -34,6 +35,74 @@ export const PRO_OR_BUSINESS_PACKAGE_ALIASES: ReadonlySet<string> = new Set([
   LEGACY_PRO_ANNUAL_EUR_PACKAGE_ALIAS,
   LEGACY_BUSINESS_EUR_PACKAGE_ALIAS,
 ]);
+
+export type MetronomePackageTier = "pro" | "business" | "enterprise";
+
+/**
+ * Closed set of aliases we know how to classify. Adding a new alias forces
+ * `classifyKnownAlias` to error at compile time until it's handled.
+ */
+export type KnownPackageAlias =
+  | typeof LEGACY_PRO_MONTHLY_PACKAGE_ALIAS
+  | typeof LEGACY_PRO_ANNUAL_PACKAGE_ALIAS
+  | typeof LEGACY_BUSINESS_PACKAGE_ALIAS
+  | typeof LEGACY_ENTERPRISE_PACKAGE_ALIAS
+  | typeof LEGACY_PRO_MONTHLY_EUR_PACKAGE_ALIAS
+  | typeof LEGACY_PRO_ANNUAL_EUR_PACKAGE_ALIAS
+  | typeof LEGACY_BUSINESS_EUR_PACKAGE_ALIAS
+  | typeof LEGACY_ENTERPRISE_EUR_PACKAGE_ALIAS;
+
+const KNOWN_PACKAGE_ALIASES: ReadonlySet<KnownPackageAlias> =
+  new Set<KnownPackageAlias>([
+    LEGACY_PRO_MONTHLY_PACKAGE_ALIAS,
+    LEGACY_PRO_ANNUAL_PACKAGE_ALIAS,
+    LEGACY_BUSINESS_PACKAGE_ALIAS,
+    LEGACY_ENTERPRISE_PACKAGE_ALIAS,
+    LEGACY_PRO_MONTHLY_EUR_PACKAGE_ALIAS,
+    LEGACY_PRO_ANNUAL_EUR_PACKAGE_ALIAS,
+    LEGACY_BUSINESS_EUR_PACKAGE_ALIAS,
+    LEGACY_ENTERPRISE_EUR_PACKAGE_ALIAS,
+  ]);
+
+export function isKnownPackageAlias(alias: string): alias is KnownPackageAlias {
+  return KNOWN_PACKAGE_ALIASES.has(alias as KnownPackageAlias);
+}
+
+function classifyKnownAlias(alias: KnownPackageAlias): MetronomePackageTier {
+  switch (alias) {
+    case LEGACY_PRO_MONTHLY_PACKAGE_ALIAS:
+    case LEGACY_PRO_ANNUAL_PACKAGE_ALIAS:
+    case LEGACY_PRO_MONTHLY_EUR_PACKAGE_ALIAS:
+    case LEGACY_PRO_ANNUAL_EUR_PACKAGE_ALIAS:
+      return "pro";
+    case LEGACY_BUSINESS_PACKAGE_ALIAS:
+    case LEGACY_BUSINESS_EUR_PACKAGE_ALIAS:
+      return "business";
+    case LEGACY_ENTERPRISE_PACKAGE_ALIAS:
+    case LEGACY_ENTERPRISE_EUR_PACKAGE_ALIAS:
+      return "enterprise";
+    default:
+      return assertNever(alias);
+  }
+}
+
+/**
+ * Classify a Metronome package by its aliases. Returns `null` when the
+ * package has no alias we recognize — callers must explicitly handle that
+ * case (typically by refusing the request). This is deliberate: silently
+ * defaulting unknown packages to "enterprise" would mask both bespoke
+ * per-customer packages and aliases we forgot to enumerate.
+ */
+export function classifyMetronomePackage(
+  aliases: readonly string[]
+): MetronomePackageTier | null {
+  for (const alias of aliases) {
+    if (isKnownPackageAlias(alias)) {
+      return classifyKnownAlias(alias);
+    }
+  }
+  return null;
+}
 
 export interface MetronomeEvent {
   transaction_id: string;

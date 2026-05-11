@@ -12,9 +12,11 @@ import type { Invoice } from "@metronome/sdk/resources/v1/customers";
 import type {
   MetronomeBalance,
   MetronomeEvent,
+  MetronomePackageTier,
   MetronomeUsageListResponse,
   MetronomeUsageWithGroupsResponse,
 } from "./types";
+import { classifyMetronomePackage } from "./types";
 
 let cachedClient: Metronome | null = null;
 
@@ -392,13 +394,15 @@ export async function addStripeMetronomeBillingConfig({
 
 /**
  * Compact summary of a Metronome package, used by Poke to let an operator
- * pick which package to put a customer on.
+ * pick which package to put a customer on. `tier` is `null` when no known
+ * alias matches — callers must refuse such packages explicitly.
  */
 export interface MetronomePackageSummary {
   id: string;
   name: string;
   aliases: string[];
   rateCardId?: string;
+  tier: MetronomePackageTier | null;
 }
 
 // Cache the package list for a few minutes as the catalog rarely changes and
@@ -422,11 +426,13 @@ export async function listMetronomePackages(): Promise<
   try {
     const packages: MetronomePackageSummary[] = [];
     for await (const pkg of getMetronomeClient().v1.packages.list()) {
+      const aliases = pkg.aliases?.map((a) => a.name) ?? [];
       packages.push({
         id: pkg.id,
         name: pkg.name ?? "",
-        aliases: pkg.aliases?.map((a) => a.name) ?? [],
+        aliases,
         rateCardId: pkg.rate_card_id ?? undefined,
+        tier: classifyMetronomePackage(aliases),
       });
     }
     packageListCache = {
