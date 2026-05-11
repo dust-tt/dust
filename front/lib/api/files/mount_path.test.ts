@@ -3,8 +3,10 @@ import {
   getBaseMountPathForWorkspace,
   getConversationFilePath,
   getConversationFilesBasePath,
+  getProjectFilesBasePath,
   makeProcessedMountFileName,
   parseProcessedFilename,
+  parseScopedFilePath,
 } from "@app/lib/api/files/mount_path";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -27,6 +29,38 @@ describe("mount_path helpers", () => {
           conversationId: "conv1",
         })
       ).toBe("w/ws1/conversations/conv1/files/");
+    });
+  });
+
+  describe("getProjectFilesBasePath", () => {
+    it("should return full project files path", () => {
+      expect(
+        getProjectFilesBasePath({ workspaceId: "ws1", projectId: "spc1" })
+      ).toBe("w/ws1/projects/spc1/files/");
+    });
+  });
+
+  describe("parseScopedFilePath", () => {
+    it("parses a conversation path", () => {
+      expect(parseScopedFilePath("conversation/report.pdf")).toEqual({
+        prefix: "conversation",
+        rel: "report.pdf",
+      });
+    });
+
+    it("parses a project path", () => {
+      expect(parseScopedFilePath("project/notes/2026/draft.md")).toEqual({
+        prefix: "project",
+        rel: "notes/2026/draft.md",
+      });
+    });
+
+    it("returns null for unknown prefixes", () => {
+      expect(parseScopedFilePath("other/foo.txt")).toBeNull();
+    });
+
+    it("returns null when there is no slash", () => {
+      expect(parseScopedFilePath("conversation")).toBeNull();
     });
   });
 
