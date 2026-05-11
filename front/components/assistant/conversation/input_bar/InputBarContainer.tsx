@@ -608,9 +608,10 @@ const InputBarContainer = ({
       // Auto-save draft when content changes and track user mentions.
       // Include the selected single agent so the debounced save doesn't
       // overwrite the agent mention saved by the single-agent effect.
-      const { markdown } = editorService.getMarkdownAndMentions();
+      const { markdown, mentions: editorMentions } =
+        editorService.getMarkdownAndMentions();
       saveDraft(editorIsEmpty ? "" : markdown, selectedSingleAgentRef.current);
-      const userMentioned = mentions.some((m) => m.type === "user");
+      const userMentioned = editorMentions.some((m) => m.type === "user");
 
       // Check if the very first content node in the editor is a user mention.
       let editorStartsWithUserMention = false;
