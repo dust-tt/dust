@@ -18,16 +18,8 @@ const ConversationBranchingContext = createContext<
   ConversationBranchingContextValue | undefined
 >(undefined);
 
-export function useConversationBranchingContext() {
-  const context = useContext(ConversationBranchingContext);
-
-  if (!context) {
-    throw new Error(
-      "useConversationBranchingContext must be used within a ConversationBranchingProvider"
-    );
-  }
-
-  return context;
+export function useOptionalConversationBranchingContext() {
+  return useContext(ConversationBranchingContext);
 }
 
 export function useConversationBranchingContextValue(): ConversationBranchingContextValue {
