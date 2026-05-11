@@ -22,6 +22,9 @@ export function PokeMetronomeUsageChart({
   const [displayMode, setDisplayMode] = useState<"cumulative" | "daily">(
     "cumulative"
   );
+  const [filter, setFilter] = useState<
+    Partial<Record<MetronomeUsageGroupByType, string[]>>
+  >({});
 
   const [selectedPeriod, setSelectedPeriod] = useState<string>(() => {
     const currentBillingCycle = getBillingCycleFromDay(
@@ -51,6 +54,8 @@ export function PokeMetronomeUsageChart({
       setGroupBy={setGroupBy}
       groupByCount={groupByCount}
       setGroupByCount={setGroupByCount}
+      filter={filter}
+      setFilter={setFilter}
       selectedPeriod={selectedPeriod}
       setSelectedPeriod={setSelectedPeriod}
       billingCycleStartDay={billingCycleStartDay}
