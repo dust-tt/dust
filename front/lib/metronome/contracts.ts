@@ -57,6 +57,16 @@ import { metronomeAmount } from "./amounts";
 /**
  * Switch a Metronome contract to a different package (end old + create new).
  * Customer must already exist.
+ *
+ * `swapAt` controls when the swap happens:
+ *  - `"current-hour"`: floor to the current hour boundary (in the past). Use
+ *    for seat-based plans (Pro, Business) where the current partial hour has
+ *    no usage to attribute. The new contract is effectively active "now", so
+ *    callers can flip the DB subscription synchronously.
+ *  - `"next-hour"`: ceil to the next hour boundary (in the future, by up to
+ *    one hour). Preserves the current partial hour's usage on the old
+ *    contract — required for MAU-based Enterprise plans. Callers should
+ *    defer the DB flip until `contract.start` fires.
  */
 export async function switchMetronomeContractPackage({
   metronomeCustomerId,
@@ -65,6 +75,7 @@ export async function switchMetronomeContractPackage({
   packageAlias,
   enableStripeBilling,
   planCode,
+  swapAt,
 }: {
   metronomeCustomerId: string;
   oldContractId: string;
@@ -72,10 +83,13 @@ export async function switchMetronomeContractPackage({
   packageAlias: string;
   enableStripeBilling: boolean;
   planCode: string;
+  swapAt: "current-hour" | "next-hour";
 }): Promise<Result<{ metronomeContractId: string }, Error>> {
-  // Round up to the next hour boundary (Metronome requires hour-aligned dates)
-  // so the new contract starts exactly when the old one ends.
-  const switchAt = new Date(ceilToHourISO(new Date()));
+  const switchAt = new Date(
+    swapAt === "current-hour"
+      ? floorToHourISO(new Date())
+      : ceilToHourISO(new Date())
+  );
 
   const endResult = await scheduleMetronomeContractEnd({
     metronomeCustomerId,
