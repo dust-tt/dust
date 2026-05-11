@@ -68,10 +68,7 @@ export function processMentions({
   for (const agentConfiguration of activeAgentConfigurations) {
     const distance =
       1 -
-      jaroWinkler(
-        mentionCandidateName,
-        agentConfiguration.name.toLowerCase()
-      );
+      jaroWinkler(mentionCandidateName, agentConfiguration.name.toLowerCase());
 
     if (bestCandidate === null || bestCandidate.distance > distance) {
       bestCandidate = {
