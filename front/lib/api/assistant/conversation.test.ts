@@ -84,15 +84,50 @@ vi.mock("@app/lib/api/assistant/conversation/content_fragment", () => ({
   getContentFragmentBlob: vi.fn(),
 }));
 
+import { runOnRedis } from "@app/lib/api/redis";
 import { ConversationBranchResource } from "@app/lib/resources/conversation_branch_resource";
 import { ConversationForkResource } from "@app/lib/resources/conversation_fork_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { CreditResource } from "@app/lib/resources/credit_resource";
 import { makeSId } from "@app/lib/resources/string_ids";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 // Mock rateLimiter from the utils module
 import * as rateLimiterModule from "@app/lib/utils/rate_limiter";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
+
+const TEST_PROGRAMMATIC_CREDIT_AMOUNT_MICRO_USD = 100_000_000;
+const TEST_CREDIT_START_DELAY_MS = 1000;
+const TEST_CREDIT_EXPIRATION_DAYS = 365;
+const TEST_CREDIT_EXPIRATION_DELAY_MS =
+  TEST_CREDIT_EXPIRATION_DAYS * 24 * 60 * 60 * 1000;
+const TEST_DAILY_USAGE_TTL_SECONDS = 60 * 60;
+
+async function createActiveProgrammaticCredit(
+  auth: Authenticator
+): Promise<void> {
+  const credit = await CreditResource.makeNew(auth, {
+    type: "free",
+    initialAmountMicroUsd: TEST_PROGRAMMATIC_CREDIT_AMOUNT_MICRO_USD,
+    consumedAmountMicroUsd: 0,
+  });
+
+  const result = await credit.start(auth, {
+    startDate: new Date(Date.now() - TEST_CREDIT_START_DELAY_MS),
+    expirationDate: new Date(Date.now() + TEST_CREDIT_EXPIRATION_DELAY_MS),
+  });
+
+  if (result.isErr()) {
+    throw result.error;
+  }
+
+  const workspace = auth.getNonNullableWorkspace();
+  await runOnRedis({ origin: "daily_usage_tracking" }, async (redis) => {
+    await redis.set(`workspace-daily-usage:${workspace.sId}`, "0", {
+      EX: TEST_DAILY_USAGE_TTL_SECONDS,
+    });
+  });
+}
 
 describe("retryAgentMessage", () => {
   let auth: Authenticator;
@@ -551,6 +586,7 @@ describe("retryAgentMessage", () => {
     const systemKey = await KeyFactory.system(globalGroup);
     const mixedAuth = auth.exchangeKey(systemKey.toAuthJSON());
     const userId = auth.getNonNullableUser().id;
+    await createActiveProgrammaticCredit(mixedAuth);
 
     const rateLimiterSpy = vi
       .spyOn(rateLimiterModule, "rateLimiter")
@@ -1415,6 +1451,7 @@ describe("postUserMessage", () => {
       name: "Test Agent 1",
       description: "First test agent",
     });
+    await createActiveProgrammaticCredit(auth);
 
     const conversationWithoutContent = await ConversationFactory.create(auth, {
       agentConfigurationId: agentConfig1.sId,
@@ -1432,6 +1469,71 @@ describe("postUserMessage", () => {
     conversation = fetchedConversationResult.value;
 
     vi.clearAllMocks();
+  });
+
+  it("should reject programmatic messages when programmatic credits are exhausted", async () => {
+    const setup = await createResourceTest({});
+    const noCreditAuth = setup.authenticator;
+    const noCreditAgent = await AgentConfigurationFactory.createTestAgent(
+      noCreditAuth,
+      {
+        name: "No Credit Test Agent",
+        description: "No Credit Test Agent Description",
+      }
+    );
+    const conversationWithoutContent = await ConversationFactory.create(
+      noCreditAuth,
+      {
+        agentConfigurationId: noCreditAgent.sId,
+        messagesCreatedAt: [],
+        visibility: "unlisted",
+      }
+    );
+    const fetchedConversationResult = await getConversation(
+      noCreditAuth,
+      conversationWithoutContent.sId
+    );
+    if (fetchedConversationResult.isErr()) {
+      throw new Error("Failed to fetch conversation");
+    }
+
+    const noCreditWorkspace = noCreditAuth.getNonNullableWorkspace();
+    const rateLimiterSpy = vi
+      .spyOn(rateLimiterModule, "rateLimiter")
+      .mockResolvedValue(100);
+    const noCreditUser = noCreditAuth.getNonNullableUser();
+    const noCreditUserJson = noCreditUser.toJSON();
+
+    const result = await postUserMessage(noCreditAuth, {
+      conversation: fetchedConversationResult.value,
+      content: "Programmatic message",
+      mentions: [],
+      context: {
+        username: noCreditUserJson.username,
+        timezone: "UTC",
+        fullName: noCreditUserJson.fullName,
+        email: noCreditUserJson.email,
+        profilePictureUrl: noCreditUserJson.image,
+        origin: "triggered_programmatic",
+      },
+      skipToolsValidation: false,
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.status_code).toBe(403);
+      expect(result.error.api_error.type).toBe("credits_exhausted");
+      expect(result.error.api_error.message).toContain(
+        "programmatic usage credits"
+      );
+    }
+    expect(rateLimiterSpy).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        key: `workspace:${noCreditWorkspace.sId}:programmatic_usage_rate_limit`,
+      })
+    );
+
+    rateLimiterSpy.mockRestore();
   });
 
   it("should preserve agent mentions in the returned userMessage", async () => {

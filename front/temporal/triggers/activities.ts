@@ -226,6 +226,7 @@ export async function runTriggeredAgentsActivity({
       conversationResult.error.api_error;
     const isNonRetryable =
       errorType === "plan_message_limit_exceeded" ||
+      errorType === "credits_exhausted" ||
       errorType === "model_disabled" ||
       errorType === "invalid_request_error" ||
       errorType === "agent_inaccessible";

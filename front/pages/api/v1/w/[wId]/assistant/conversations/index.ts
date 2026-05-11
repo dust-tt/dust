@@ -175,6 +175,8 @@ async function handler(
       const origin = message?.context.origin ?? "api";
 
       if (message) {
+        // Keep this before createConversation to avoid creating an empty conversation when the
+        // initial programmatic message is blocked.
         if (isProgrammaticUsage(auth, { userMessageOrigin: origin })) {
           const limitsResult = await checkProgrammaticUsageLimits(auth);
           if (limitsResult.isErr()) {

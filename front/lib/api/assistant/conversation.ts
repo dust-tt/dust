@@ -1,5 +1,4 @@
 // biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
-
 import type { LightMCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { StepContext } from "@app/lib/actions/types";
 import {
@@ -50,7 +49,10 @@ import {
 } from "@app/lib/api/audit/workos_audit";
 import { maybeUpsertFileAttachment } from "@app/lib/api/files/attachments";
 import { getRemainingKeyCapMicroUsd } from "@app/lib/api/programmatic_usage/key_cap";
-import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage/tracking";
+import {
+  checkProgrammaticUsageLimits,
+  isProgrammaticUsage,
+} from "@app/lib/api/programmatic_usage/tracking";
 import { fetchLatestProjectContextFileContentFragment } from "@app/lib/api/projects/context";
 import { isModelAvailable, isProviderWhitelisted } from "@app/lib/assistant";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
@@ -2377,7 +2379,33 @@ export async function softDeleteAgentMessage(
 
 interface MessageLimit {
   isLimitReached: boolean;
-  limitType: "rate_limit_error" | "plan_message_limit_exceeded" | null;
+  limitType:
+    | "rate_limit_error"
+    | "plan_message_limit_exceeded"
+    | "credits_exhausted"
+    | null;
+  message?: string;
+}
+
+function getMessageLimitErrorMessage({
+  limitType,
+  message,
+}: {
+  limitType: NonNullable<MessageLimit["limitType"]>;
+  message?: string;
+}): string {
+  if (message) {
+    return message;
+  }
+
+  switch (limitType) {
+    case "plan_message_limit_exceeded":
+      return "The message limit for this plan has been exceeded.";
+    case "credits_exhausted":
+      return "Your workspace has run out of credits. Please purchase more credits to continue.";
+    case "rate_limit_error":
+      return "Rate limit exceeded. Please retry later.";
+  }
 }
 
 async function checkMessagesLimit(
@@ -2428,10 +2456,10 @@ async function checkMessagesLimit(
       status_code: 403,
       api_error: {
         type: messageLimit.limitType,
-        message:
-          messageLimit.limitType === "plan_message_limit_exceeded"
-            ? "The message limit for this plan has been exceeded."
-            : "Rate limit exceeded. Please retry later.",
+        message: getMessageLimitErrorMessage({
+          limitType: messageLimit.limitType,
+          message: messageLimit.message,
+        }),
       },
     });
   }
@@ -2608,7 +2636,25 @@ async function isMessagesLimitReached(
   }
 
   if (isProgrammaticUsage(auth, { userMessageOrigin: context.origin })) {
-    return checkProgrammaticUsageRateLimit(auth);
+    const limitsResult = await checkProgrammaticUsageLimits(auth);
+    if (limitsResult.isErr()) {
+      return {
+        isLimitReached: true,
+        limitType: limitsResult.error.type,
+        message: limitsResult.error.message,
+      };
+    }
+
+    const programmaticUsageRateLimit =
+      await checkProgrammaticUsageRateLimit(auth);
+    if (programmaticUsageRateLimit.isLimitReached) {
+      return programmaticUsageRateLimit;
+    }
+
+    return {
+      isLimitReached: false,
+      limitType: null,
+    };
   }
 
   // Checking rate limit
