@@ -16,7 +16,7 @@ import type {
   MetronomeUsageListResponse,
   MetronomeUsageWithGroupsResponse,
 } from "./types";
-import { classifyMetronomePackage } from "./types";
+import { classifyMetronomePackageByName } from "./types";
 
 let cachedClient: Metronome | null = null;
 
@@ -427,12 +427,20 @@ export async function listMetronomePackages(): Promise<
     const packages: MetronomePackageSummary[] = [];
     for await (const pkg of getMetronomeClient().v1.packages.list()) {
       const aliases = pkg.aliases?.map((a) => a.name) ?? [];
+      const name = pkg.name ?? "";
+      const tier = classifyMetronomePackageByName(name);
+      if (tier === null) {
+        logger.warn(
+          { packageId: pkg.id, packageName: name, aliases },
+          "[Metronome] Package name has no recognized tier keyword (pro/business/enterprise); package will be hidden in Poke."
+        );
+      }
       packages.push({
         id: pkg.id,
-        name: pkg.name ?? "",
+        name,
         aliases,
         rateCardId: pkg.rate_card_id ?? undefined,
-        tier: classifyMetronomePackage(aliases),
+        tier,
       });
     }
     packageListCache = {
