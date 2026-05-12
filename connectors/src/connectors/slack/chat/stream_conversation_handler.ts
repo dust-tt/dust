@@ -225,6 +225,8 @@ async function streamAgentAnswerToSlack(
   }
 
   let answer = "";
+  // Partial :cite[...] marker that may span across tokens.
+  let pendingCitePrefix = "";
   const actions: AgentActionPublicType[] = [];
   let pendingPersonalAuth: {
     redisKey: string;
@@ -433,7 +435,24 @@ async function streamAgentAnswerToSlack(
           break;
         }
         if (answer.length <= MAX_SLACK_MESSAGE_LENGTH) {
-          await streamHandler.appendText(event.text);
+          const combined = pendingCitePrefix + event.text;
+          pendingCitePrefix = "";
+
+          // Strip complete :cite[...] markers (resolved to footnotes on final chat.update).
+          let safeText = combined.replace(/ ?:cite\[[a-zA-Z0-9, ]+\]/g, "");
+
+          // Hold back trailing partial markers until the next token.
+          const partialMatch = safeText.match(
+            / ?:c(?:i(?:t(?:e(?:\[[a-zA-Z0-9, ]*)?)?)?)?$/
+          );
+          if (partialMatch) {
+            pendingCitePrefix = partialMatch[0];
+            safeText = safeText.slice(0, -pendingCitePrefix.length);
+          }
+
+          if (safeText) {
+            await streamHandler.appendText(safeText);
+          }
           break;
         }
 
@@ -466,6 +485,12 @@ async function streamAgentAnswerToSlack(
 
       case "agent_message_gracefully_stopped":
       case "agent_message_success": {
+        // Flush pending text that turned out not to be a citation.
+        if (pendingCitePrefix) {
+          await streamHandler.appendText(pendingCitePrefix);
+          pendingCitePrefix = "";
+        }
+
         planHandler.abortAllChildStreams();
         await planHandler.deletePlanMessage();
 
