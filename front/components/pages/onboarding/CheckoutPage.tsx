@@ -46,6 +46,8 @@ function getStripePromise() {
   return stripePromise;
 }
 
+const COUPONS_ENABLED = false;
+
 const couponFormSchema = z.object({
   couponCode: z.string().min(1, "Please enter a promotion code"),
 });
@@ -255,7 +257,8 @@ export function CheckoutPage() {
             </div>
 
             {/* Promotion code: toggle button → input field */}
-            {!appliedCoupon &&
+            {COUPONS_ENABLED &&
+              !appliedCoupon &&
               (showCouponInput ? (
                 <div className="mt-4 flex flex-col gap-2">
                   <div className="flex gap-2">
@@ -292,7 +295,7 @@ export function CheckoutPage() {
               ))}
 
             {/* Applied coupon: pill + description */}
-            {appliedCoupon && (
+            {COUPONS_ENABLED && appliedCoupon && (
               <div className="mt-4 flex flex-col gap-1">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5 rounded-md bg-muted px-2 py-1 text-sm text-muted-foreground">
