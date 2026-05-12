@@ -1,5 +1,6 @@
 import type { RegionType } from "@app/lib/api/regions/config";
 import type { Authenticator } from "@app/lib/auth";
+import { hasFeatureFlag } from "@app/lib/auth";
 import {
   isByokTransitioningPlan,
   isDustCompanyPlan,
@@ -126,6 +127,24 @@ export function getLargeWhitelistedModel(
   );
 }
 
+export async function getLargeWhitelistedModelWithBatchMode(
+  auth: Authenticator
+): Promise<ModelConfigurationType | null> {
+  // TODO: remove this when vertex supports batch mode
+  const useVertex = await hasFeatureFlag(
+    auth,
+    "use_vertex_for_anthropic_models"
+  );
+  const excludeProviders: Set<ModelProviderIdType> = useVertex
+    ? new Set(["anthropic"])
+    : new Set();
+
+  return _getLargeWhitelistedModel(
+    getWhitelistedProviders(auth).difference(excludeProviders),
+    { hasBatch: true }
+  );
+}
+
 function _getSmallWhitelistedModel(
   whitelistedProviders: Set<ModelProviderIdType>
 ): ModelConfigurationType | null {
@@ -147,25 +166,25 @@ function _getSmallWhitelistedModel(
   return null;
 }
 
+const LARGE_MODEL_CONFIGS: ModelConfigurationType[] = [
+  CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+  GPT_5_5_MODEL_CONFIG,
+  GEMINI_3_PRO_MODEL_CONFIG,
+  MISTRAL_MEDIUM_3_5_MODEL_CONFIG,
+  GROK_4_MODEL_CONFIG,
+];
+
 function _getLargeWhitelistedModel(
-  whitelistedProviders: Set<ModelProviderIdType>
+  whitelistedProviders: Set<ModelProviderIdType>,
+  { hasBatch }: { hasBatch?: boolean } = {}
 ): ModelConfigurationType | null {
-  if (whitelistedProviders.has("anthropic")) {
-    return CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG;
-  }
-  if (whitelistedProviders.has("openai")) {
-    return GPT_5_5_MODEL_CONFIG;
-  }
-  if (whitelistedProviders.has("google_ai_studio")) {
-    return GEMINI_3_PRO_MODEL_CONFIG;
-  }
-  if (whitelistedProviders.has("mistral")) {
-    return MISTRAL_MEDIUM_3_5_MODEL_CONFIG;
-  }
-  if (whitelistedProviders.has("xai")) {
-    return GROK_4_MODEL_CONFIG;
-  }
-  return null;
+  const compatibleModels = LARGE_MODEL_CONFIGS.filter(
+    (m) =>
+      whitelistedProviders.has(m.providerId) &&
+      (!hasBatch || m.supportsBatchProcessing)
+  );
+
+  return compatibleModels[0] ?? null;
 }
 
 // Returns true if the model is available to the workspace for use.
@@ -257,6 +276,9 @@ export function filterCustomAvailableAndWhitelistedModels(
     whitelistedProviders: Set<ModelProviderIdType>;
   }
 ): ModelConfigurationType[] {
+  const plan = auth.plan();
+  const whitelistedProviders = getWhitelistedProviders(auth);
+
   return models.filter(
     (m) =>
       isModelCustomAvailable(m, { featureFlags, plan, owner, region }) &&
