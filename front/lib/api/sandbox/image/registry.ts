@@ -13,7 +13,7 @@ import fs from "fs";
 import path from "path";
 
 const DUST_BEDROCK_IMAGE_VERSION = "1.7.0";
-const DUST_BASE_IMAGE_VERSION = "0.8.7";
+const DUST_BASE_IMAGE_VERSION = "0.8.8";
 const DSBX_CLI_VERSION = "0.1.7";
 const AGENT_PROXIED_UID = 1003;
 // Built from https://github.com/openai/codex at tag rust-v0.115.0 (Apache-2.0).
@@ -275,30 +275,10 @@ SHELLEOF`,
     getLocalContent(PROFILE_LOCAL_DIR, "gemini.sh"),
     `${PROFILE_DIR}/gemini.sh`
   )
-  .runCmd(`mkdir -p ${PROFILE_DIR}/soffice`, { user: "root" })
-  .copy(
-    getLocalContent(PROFILE_LOCAL_DIR, "soffice/ooxml.py"),
-    `${PROFILE_DIR}/soffice/ooxml.py`,
-    { user: "root" }
-  )
-  .copy(
-    getLocalContent(PROFILE_LOCAL_DIR, "soffice/xlsx_inspect.py"),
-    `${PROFILE_DIR}/soffice/xlsx_inspect.py`,
-    { user: "root" }
-  )
-  .runCmd(`chmod +x ${PROFILE_DIR}/soffice/xlsx_inspect.py`, { user: "root" })
-  .copy(
-    getLocalContent(PROFILE_LOCAL_DIR, "soffice/pptx_inspect.py"),
-    `${PROFILE_DIR}/soffice/pptx_inspect.py`,
-    { user: "root" }
-  )
-  .runCmd(`chmod +x ${PROFILE_DIR}/soffice/pptx_inspect.py`, { user: "root" })
-  .copy(
-    getLocalContent(PROFILE_LOCAL_DIR, "soffice/docx_inspect.py"),
-    `${PROFILE_DIR}/soffice/docx_inspect.py`,
-    { user: "root" }
-  )
-  .runCmd(`chmod +x ${PROFILE_DIR}/soffice/docx_inspect.py`, { user: "root" })
+  .copyDir(path.join(PROFILE_LOCAL_DIR, "soffice"), `${PROFILE_DIR}/soffice`, {
+    user: "root",
+  })
+  .runCmd(`chmod +x ${PROFILE_DIR}/soffice/*.py`, { user: "root" })
   // Telemetry configs for fluent-bit
   .copy(
     getLocalContent(TELEMETRY_LOCAL_DIR, "fluent-bit.conf"),
