@@ -56,7 +56,8 @@ describe("SelfImprovingSkillsUsageResource", () => {
     const sum =
       await SelfImprovingSkillsUsageResource.getSumPriceMicroUsdAfterDate(
         authenticator,
-        cutoff
+        cutoff,
+        { applyMarkup: false }
       );
 
     expect(usages).toHaveLength(3);
@@ -101,7 +102,11 @@ describe("SelfImprovingSkillsUsageResource", () => {
     const sums =
       await SelfImprovingSkillsUsageResource.getSumPriceMicroUsdAfterDateForSkills(
         authenticator,
-        { createdAfter: cutoff, skillModelIds: [skill.id, otherSkill.id] }
+        {
+          createdAfter: cutoff,
+          skillModelIds: [skill.id, otherSkill.id],
+          applyMarkup: false,
+        }
       );
 
     expect(sums.get(skill.id)).toBe(100);

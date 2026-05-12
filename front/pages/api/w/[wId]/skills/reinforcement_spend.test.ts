@@ -72,8 +72,8 @@ describe("GET /api/w/[wId]/skills/reinforcement_spend", () => {
     expect(res._getStatusCode()).toBe(200);
     const { spentMicroUsdBySkillId } = res._getJSONData();
     expect(spentMicroUsdBySkillId).toEqual({
-      [skill.sId]: 2_000_000,
-      [otherSkill.sId]: 7_000_000,
+      [skill.sId]: 2_600_000,
+      [otherSkill.sId]: 9_100_000,
     });
   });
 
