@@ -47,6 +47,8 @@ import { removeNulls } from "@dust-tt/client";
 import type { Logger } from "pino";
 import type { InferAttributes, WhereOptions } from "sequelize";
 
+const SHEET_PARENT_UPDATES_CONCURRENCY = 8;
+
 export async function isDriveObjectExpandable({
   objectId,
   mimeType,
@@ -216,18 +218,22 @@ export async function updateParentsField(
         notUpsertedReason: null,
       },
     });
-    for (const sheet of sheets) {
-      const tableId = getGoogleSheetTableId(
-        sheet.driveFileId,
-        sheet.driveSheetId
-      );
-      await updateDataSourceTableParents({
-        dataSourceConfig,
-        tableId,
-        parents: [tableId, ...parentIds],
-        parentId: file.dustFileId,
-      });
-    }
+    await concurrentExecutor(
+      sheets,
+      async (sheet) => {
+        const tableId = getGoogleSheetTableId(
+          sheet.driveFileId,
+          sheet.driveSheetId
+        );
+        await updateDataSourceTableParents({
+          dataSourceConfig,
+          tableId,
+          parents: [tableId, ...parentIds],
+          parentId: file.dustFileId,
+        });
+      },
+      { concurrency: SHEET_PARENT_UPDATES_CONCURRENCY }
+    );
   } else {
     await updateDataSourceDocumentParents({
       dataSourceConfig,
