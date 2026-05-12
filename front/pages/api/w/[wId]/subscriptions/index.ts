@@ -1,13 +1,12 @@
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { isMetronomeBillingEnabled } from "@app/lib/api/subscription";
 import type { Authenticator } from "@app/lib/auth";
-import { hasFeatureFlag } from "@app/lib/auth";
 import { scheduleMetronomeContractEnd } from "@app/lib/metronome/client";
 import {
   cancelSubscriptionAtPeriodEnd,
   skipSubscriptionFreeTrial,
 } from "@app/lib/plans/stripe";
-import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
@@ -263,19 +262,6 @@ async function handler(
         },
       });
   }
-}
-
-// Metronome billing is enabled by default for all workspaces. The
-// `global_disable_metronome_billing` kill switch turns it off globally; the
-// `metronome_billing` feature flag re-enables it for individual workspaces.
-async function isMetronomeBillingEnabled(
-  auth: Authenticator
-): Promise<boolean> {
-  const [hasFlag, killed] = await Promise.all([
-    hasFeatureFlag(auth, "metronome_billing"),
-    KillSwitchResource.isKillSwitchEnabled("global_disable_metronome_billing"),
-  ]);
-  return hasFlag || !killed;
 }
 
 export default withSessionAuthenticationForWorkspace(handler, {

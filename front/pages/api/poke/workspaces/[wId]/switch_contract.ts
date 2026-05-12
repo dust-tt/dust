@@ -1,8 +1,11 @@
 /** @ignoreswagger */
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { pluginManager } from "@app/lib/api/poke/plugin_manager";
-import { restoreWorkspaceAfterSubscription } from "@app/lib/api/subscription";
-import { Authenticator, hasFeatureFlag } from "@app/lib/auth";
+import {
+  isMetronomeBillingEnabled,
+  restoreWorkspaceAfterSubscription,
+} from "@app/lib/api/subscription";
+import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import {
   ceilToHourISO,
@@ -151,13 +154,13 @@ async function handler(
   const body = validation.data;
 
   // Workspace must be Metronome-billed (current sub Metronome-only) or
-  // freshly Metronome-eligible (metronome_billing flag + no Stripe sub).
+  // freshly Metronome-eligible (Metronome billing enabled + no Stripe sub).
   const currentSubscription = auth.subscriptionResource();
   const isCurrentlyMetronomeOnlyBilled =
     currentSubscription?.isMetronomeOnlyBilled ?? false;
-  const hasMetronomeFlag = await hasFeatureFlag(auth, "metronome_billing");
+  const metronomeBillingEnabled = await isMetronomeBillingEnabled(auth);
   const canStartFreshMetronomeContract =
-    hasMetronomeFlag && !currentSubscription?.stripeSubscriptionId;
+    metronomeBillingEnabled && !currentSubscription?.stripeSubscriptionId;
   if (!isCurrentlyMetronomeOnlyBilled && !canStartFreshMetronomeContract) {
     const errorMessage =
       "switch_contract is only available for Metronome-billed workspaces. " +
@@ -451,18 +454,11 @@ async function handleProOrBusinessSwitch({
     });
   }
 
-  const currentMetronomeContractId = currentSubscription.metronomeContractId;
-  if (!currentMetronomeContractId) {
-    const errorMessage =
-      "Workspace has no current Metronome contract. Fresh Pro/Business " +
-      "provisioning via Poke is not yet supported — the user must complete " +
-      "the regular checkout flow first.";
-    await pluginRun.recordError(errorMessage);
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: { type: "invalid_request_error", message: errorMessage },
-    });
-  }
+  // When the workspace has no Metronome contract yet, fall through to the
+  // same call with `oldContractId: null` — `switchMetronomeContractPackage`
+  // skips the end-of-old step and just creates the first contract.
+  const currentMetronomeContractId =
+    currentSubscription.metronomeContractId ?? null;
 
   const switchResult = await switchMetronomeContractPackage({
     metronomeCustomerId,

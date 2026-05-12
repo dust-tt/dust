@@ -17,7 +17,6 @@ import { getStripeCustomer } from "@app/lib/plans/stripe";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { Ok } from "@app/types/shared/result";
 import type { WorkspaceType } from "@app/types/user";
@@ -50,9 +49,15 @@ vi.mock("@app/lib/metronome/contracts", async () => {
   };
 });
 
-vi.mock("@app/lib/api/subscription", () => ({
-  restoreWorkspaceAfterSubscription: vi.fn(),
-}));
+vi.mock("@app/lib/api/subscription", async () => {
+  const actual = await vi.importActual<
+    typeof import("@app/lib/api/subscription")
+  >("@app/lib/api/subscription");
+  return {
+    ...actual,
+    restoreWorkspaceAfterSubscription: vi.fn(),
+  };
+});
 
 vi.mock("@app/lib/metronome/plan_type", async () => {
   const actual = await vi.importActual<
@@ -353,27 +358,35 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — Pro / Business", (
     expect(res._getJSONData().error.message).toContain("not supported");
   });
 
-  it("rejects when workspace has no current Metronome contract (fresh-Metronome path)", async () => {
+  it("creates the first Pro contract and sync-flips the DB when the workspace has no current Metronome contract", async () => {
     const { req, res, workspace } = await createPrivateApiMockRequest({
       method: "POST",
       isSuperUser: true,
     });
-    // metronome_billing flag + no Stripe sub bypasses the Metronome-only-billed
-    // eligibility check; ends up in the handler with no contract to switch.
-    const adminAuth = await Authenticator.internalAdminForWorkspace(
-      workspace.sId
-    );
-    await FeatureFlagFactory.basic(adminAuth, "metronome_billing");
+    // No Stripe sub + no Metronome contract: with Metronome billing enabled
+    // by default, the workspace is eligible for a fresh Metronome contract.
 
     req.body = proBody();
     req.query.wId = workspace.sId;
 
     await handler(req, res);
 
-    expect(res._getStatusCode()).toBe(400);
-    expect(res._getJSONData().error.message).toContain(
-      "no current Metronome contract"
+    expect(res._getStatusCode()).toBe(200);
+    expect(switchMetronomeContractPackage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        oldContractId: null,
+        packageAlias: "legacy-pro-monthly",
+        planCode: PRO_PLAN_SEAT_29_CODE,
+        swapAt: "current-hour",
+      })
     );
+
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const sub = adminAuth.subscriptionResource();
+    expect(sub!.metronomeContractId).toBe(NEW_CONTRACT_ID);
+    expect(sub!.getPlan().code).toBe(PRO_PLAN_SEAT_29_CODE);
   });
 });
 

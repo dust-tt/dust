@@ -1,6 +1,7 @@
 /** @ignoreswagger */
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
+import { isMetronomeBillingEnabled } from "@app/lib/api/subscription";
 import { getWorkspaceCreationDate } from "@app/lib/api/workspace";
 import { Authenticator, hasFeatureFlag } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
@@ -105,10 +106,7 @@ async function handler(
         "dummy_feature_for_flag_testing"
       );
 
-      const hasMetronomeFeature = await hasFeatureFlag(
-        auth,
-        "metronome_billing"
-      );
+      const hasMetronomeFeature = await isMetronomeBillingEnabled(auth);
 
       const membersCount = await MembershipResource.getMembersCountForWorkspace(
         {
