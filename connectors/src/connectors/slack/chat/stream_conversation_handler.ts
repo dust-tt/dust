@@ -200,7 +200,7 @@ type SlackUserActionType = Extract<
   | "tool_ask_user_question"
 >;
 
-const SLACK_USER_ACTION_IDLE_TIMEOUT_MS = 3 * 60 * 1000;
+const SLACK_USER_ACTION_IDLE_TIMEOUT_MS = 4 * 60 * 1000 + 30 * 1000; // 4.5 minutes
 
 function getUserActionFallbackMessage(
   actionType: SlackUserActionType,
@@ -225,10 +225,10 @@ function getUserActionFallbackMessage(
   }
 
   const urlPart = conversationUrl
-    ? ` <${conversationUrl}|Continue the conversation>.`
+    ? ` <${conversationUrl}|Continue the conversation on Dust>.`
     : "";
 
-  return `:hourglass_flowing_sand: _This conversation is waiting for ${actionLabel}.${urlPart}_`;
+  return `:hourglass_flowing_sand: _Streaming has timed out after 5 mins waiting on ${actionLabel}.${urlPart}_`;
 }
 
 async function streamAgentAnswerToSlack(
