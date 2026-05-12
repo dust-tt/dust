@@ -167,6 +167,51 @@ export class SelfImprovingSkillsUsageResource extends BaseResource<SelfImproving
     );
   }
 
+  /**
+   * Return total spend per calendar day (UTC) within a date range.
+   *
+   * Each entry maps an ISO date string ("YYYY-MM-DD") to the summed spend in
+   * micro-USD for that day. Days with no spend are omitted.
+   */
+  static async getDailySpendMicroUsd(
+    auth: Authenticator,
+    {
+      startDate,
+      endDate,
+    }: {
+      startDate: Date;
+      endDate: Date;
+    }
+  ): Promise<Map<string, number>> {
+    const dayExpr = Sequelize.fn(
+      "DATE",
+      Sequelize.cast(Sequelize.col("createdAt"), "TIMESTAMPTZ")
+    );
+
+    const rows = await this.model.findAll({
+      attributes: [
+        [dayExpr, "day"],
+        [Sequelize.fn("SUM", Sequelize.col("priceMicroUsd")), "priceMicroUsd"],
+      ],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        createdAt: {
+          [Op.gte]: startDate,
+          [Op.lt]: endDate,
+        },
+      },
+      group: [dayExpr],
+      order: [[dayExpr, "ASC"]],
+      raw: true,
+    });
+
+    return new Map(
+      (rows as unknown as { day: string; priceMicroUsd: string }[]).map(
+        (row) => [row.day, Number(row.priceMicroUsd)]
+      )
+    );
+  }
+
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}

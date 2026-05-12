@@ -5,6 +5,7 @@ import {
   getWorkspaceDefaultSelfImprovementCapPerSkillMicroUsd,
 } from "@app/lib/reinforcement/consumption";
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import type { GetReinforcementDailySpendResponseBody } from "@app/pages/api/w/[wId]/skills/reinforcement_daily_spend";
 import type { GetSkillsSpendResponseBody } from "@app/pages/api/w/[wId]/skills/reinforcement_spend";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -178,6 +179,31 @@ export function useSkillsReinforcementSpend({
     isSpendLoading: isLoading,
     isSpendError: !!error,
     mutateSpend: mutate,
+  };
+}
+
+export function useReinforcementDailySpend({
+  owner,
+  disabled,
+}: {
+  owner: LightWorkspaceType;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const dailyFetcher: Fetcher<GetReinforcementDailySpendResponseBody> = fetcher;
+
+  const { data, error, isLoading } = useSWRWithDefaults(
+    `/api/w/${owner.sId}/skills/reinforcement_daily_spend`,
+    dailyFetcher,
+    { disabled }
+  );
+
+  return {
+    dailySpendMicroUsd: data?.dailySpendMicroUsd ?? {},
+    periodStartDate: data?.periodStartDate ?? null,
+    periodEndDate: data?.periodEndDate ?? null,
+    isDailySpendLoading: isLoading,
+    isDailySpendError: !!error,
   };
 }
 
