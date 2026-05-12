@@ -152,10 +152,8 @@ export const getSeatProductIds = (): Set<string> =>
   new Set([
     getProductSeatSubscriptionCreditsId(),
     getProductWorkspaceSeatId(),
-    getProductRegularSeatId(),
     getProductProSeatId(),
     getProductMaxSeatId(),
-    ...getProductRegularSeatTierIds(),
   ]);
 
 // tier product accessors — ordered array for indexed access.
