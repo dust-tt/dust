@@ -87,8 +87,6 @@ export async function getLLM(
     const featureFlags = await getFeatureFlags(auth);
 
     const useVertex =
-      // Vertex does not support structured outputs yet
-      !responseFormat &&
       featureFlags.includes("use_vertex_for_anthropic_models") &&
       !auth.getNonNullablePlan().isByok &&
       isVertexWhitelistedModelId(modelId);
