@@ -1,11 +1,11 @@
 import type { Authenticator } from "@app/lib/auth";
 import * as metronomeContracts from "@app/lib/metronome/contracts";
+import { getCurrentPeriod } from "@app/lib/reinforcement/billing";
 import {
   DEFAULT_REINFORCEMENT_CAP_MICRO_USD,
   DEFAULT_SELF_IMPROVEMENT_CAP_PER_SKILL_MICRO_USD,
 } from "@app/lib/reinforcement/constants";
 import {
-  getCurrentPeriod,
   getReinforcementMonthlyCapMicroUsd,
   getWorkspaceDefaultSelfImprovementCapPerSkillMicroUsd,
 } from "@app/lib/reinforcement/consumption";
