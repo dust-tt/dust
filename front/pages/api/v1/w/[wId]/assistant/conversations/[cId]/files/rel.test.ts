@@ -154,10 +154,7 @@ describe("GET /api/v1/w/[wId]/assistant/conversations/[cId]/files/[...rel]", () 
   });
 
   it("should reject non-GET methods", async () => {
-    const { req, res } = await setupTest(
-      ["conversation", "chart.png"],
-      "POST"
-    );
+    const { req, res } = await setupTest(["conversation", "chart.png"], "POST");
     await handler(req, res);
     expect(res._getStatusCode()).toBe(405);
   });
