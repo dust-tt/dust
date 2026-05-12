@@ -1241,13 +1241,13 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
   }
 
   /**
-   * End the current subscription as `ended_backend_only` and create a new
-   * active subscription on a different Metronome contract and plan code.
-   * Used by the contract.start webhook when an admin-scheduled Enterprise
-   * upgrade activates — preserves the plan-change history rather than
-   * mutating the existing subscription in place. The `ended_backend_only`
-   * status ensures the contract.end webhook for the old contract finds the
-   * old subscription in that state and does not scrub the workspace.
+   * End the current subscription and create a new active subscription on a
+   * different Metronome contract and plan code. Used by the contract.start
+   * webhook when an admin-scheduled upgrade activates — preserves the
+   * plan-change history rather than mutating the existing subscription in
+   * place. A billed current sub is ended as `ended_backend_only` so the
+   * contract.end webhook does not scrub the workspace; a non-billed (free)
+   * current sub is ended as `ended` since no external webhook will close it.
    */
   async swapMetronomeContract({
     metronomeContractId,
@@ -1257,9 +1257,10 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     planCode: string;
   }): Promise<void> {
     const newPlan = await SubscriptionResource.findPlanOrThrow(planCode);
+    const endedStatus = this.isBilled ? "ended_backend_only" : "ended";
 
     await withTransaction(async (t) => {
-      await this.markAsEnded("ended_backend_only", t);
+      await this.markAsEnded(endedStatus, t);
 
       await SubscriptionResource.makeNew(
         {

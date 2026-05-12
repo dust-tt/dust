@@ -56,7 +56,8 @@ import type Stripe from "stripe";
 import { metronomeAmount } from "./amounts";
 
 /**
- * Switch a Metronome contract to a different package (end old + create new).
+ * Switch a Metronome contract to a different package (end old + create new),
+ * or create the first contract on the customer when `oldContractId` is null.
  * Customer must already exist.
  *
  * `swapAt` controls when the swap happens:
@@ -79,7 +80,7 @@ export async function switchMetronomeContractPackage({
   swapAt,
 }: {
   metronomeCustomerId: string;
-  oldContractId: string;
+  oldContractId: string | null;
   workspace: LightWorkspaceType;
   packageAlias: string;
   enableStripeBilling: boolean;
@@ -92,20 +93,25 @@ export async function switchMetronomeContractPackage({
       : ceilToHourISO(new Date())
   );
 
-  const endResult = await scheduleMetronomeContractEnd({
-    metronomeCustomerId,
-    contractId: oldContractId,
-    endingBefore: switchAt,
-  });
-  if (endResult.isErr()) {
-    return new Err(endResult.error);
+  if (oldContractId) {
+    const endResult = await scheduleMetronomeContractEnd({
+      metronomeCustomerId,
+      contractId: oldContractId,
+      endingBefore: switchAt,
+    });
+    if (endResult.isErr()) {
+      return new Err(endResult.error);
+    }
   }
 
   const contractResult = await createMetronomeContract({
     metronomeCustomerId,
     packageAlias,
-    // One switch per old contract — retries dedup against the same successor.
-    uniquenessKey: `switch:${oldContractId}`,
+    // Retries dedup against the same successor. When switching, the old
+    // contract is unique enough; for first contracts use customer+package+plan.
+    uniquenessKey: oldContractId
+      ? `switch:${oldContractId}`
+      : `switch:${metronomeCustomerId}:${packageAlias}:${planCode}`,
     startingAt: switchAt,
     enableStripeBilling,
     planCode,
