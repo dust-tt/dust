@@ -66,7 +66,7 @@ export async function handleSeatPlanRequest(
   const proProductId = getProductProSeatId();
   const maxProductId = getProductMaxSeatId();
 
-  const monthlyPriceMap = new Map<PriceKey, number>();
+  const monthlyPriceCentsMap = new Map<PriceKey, number>();
 
   try {
     const rateSchedule =
@@ -90,7 +90,7 @@ export async function handleSeatPlanRequest(
         continue;
       }
       // TODO (https://github.com/dust-tt/tasks/issues/8072): Add annual pricing
-      monthlyPriceMap.set(key, entry.rate.price);
+      monthlyPriceCentsMap.set(key, entry.rate.price);
     }
   } catch (err) {
     logger.warn(
@@ -111,13 +111,13 @@ export async function handleSeatPlanRequest(
   }
 
   const buildSeatInfo = (key: PriceKey): SeatTypeInfo | null => {
-    const monthlyPrice = monthlyPriceMap.get(key);
-    if (monthlyPrice === undefined) {
+    const monthlyPriceCents = monthlyPriceCentsMap.get(key);
+    if (monthlyPriceCents === undefined) {
       return null;
     }
     return {
       awuCredits: awuCreditsMap.get(key) ?? 0,
-      priceCents: monthlyPrice,
+      priceCents: monthlyPriceCents,
     };
   };
 
