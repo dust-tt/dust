@@ -7,9 +7,9 @@ import { DustError } from "@app/lib/error";
 import { scheduleMetronomeContractEnd } from "@app/lib/metronome/client";
 import {
   ensureMetronomeCustomerForWorkspace,
+  provisionMetronomeContract,
   provisionShadowEnterpriseMetronomeContract,
   resolveCurrencyForExistingMetronomeCustomer,
-  switchMetronomeContractPackage,
   syncContractQuantities,
 } from "@app/lib/metronome/contracts";
 import { invalidateContractCache } from "@app/lib/metronome/plan_type";
@@ -1015,17 +1015,18 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
         LEGACY_BUSINESS_PACKAGE_ALIAS,
         billingCurrencyResult.value
       );
-      const result = await switchMetronomeContractPackage({
+      const result = await provisionMetronomeContract({
         metronomeCustomerId: owner.metronomeCustomerId,
-        oldContractId: this.metronomeContractId,
         workspace: owner,
         packageAlias,
-        enableStripeBilling: isSubscriptionMetronomeBilled(this.toJSON()),
-        planCode: PRO_PLAN_SEAT_39_CODE,
+        uniquenessKey: `switch:${this.metronomeContractId}`,
+        startingAt: new Date(),
         // Business is seat-based — swap at the current hour boundary so the
         // new contract is active immediately and the sync DB flip below is
         // consistent with Metronome.
         swapAt: "current-hour",
+        enableStripeBilling: isSubscriptionMetronomeBilled(this.toJSON()),
+        planCode: PRO_PLAN_SEAT_39_CODE,
       });
       if (result.isErr() && !this.isMetronomeShadowBilled) {
         return new Err(result.error);

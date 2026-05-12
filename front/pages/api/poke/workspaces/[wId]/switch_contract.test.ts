@@ -1,12 +1,8 @@
 import { Authenticator } from "@app/lib/auth";
-import {
-  createMetronomeContract,
-  listMetronomeContracts,
-  listMetronomePackages,
-} from "@app/lib/metronome/client";
+import { listMetronomePackages } from "@app/lib/metronome/client";
 import {
   ensureMetronomeCustomerForWorkspace,
-  switchMetronomeContractPackage,
+  provisionMetronomeContract,
 } from "@app/lib/metronome/contracts";
 import { PlanModel } from "@app/lib/models/plan";
 import {
@@ -32,9 +28,6 @@ vi.mock("@app/lib/metronome/client", async () => {
   return {
     ...actual,
     listMetronomePackages: vi.fn(),
-    createMetronomeContract: vi.fn(),
-    listMetronomeContracts: vi.fn(),
-    scheduleMetronomeContractEnd: vi.fn(),
   };
 });
 
@@ -45,17 +38,7 @@ vi.mock("@app/lib/metronome/contracts", async () => {
   return {
     ...actual,
     ensureMetronomeCustomerForWorkspace: vi.fn(),
-    switchMetronomeContractPackage: vi.fn(),
-  };
-});
-
-vi.mock("@app/lib/api/subscription", async () => {
-  const actual = await vi.importActual<
-    typeof import("@app/lib/api/subscription")
-  >("@app/lib/api/subscription");
-  return {
-    ...actual,
-    restoreWorkspaceAfterSubscription: vi.fn(),
+    provisionMetronomeContract: vi.fn(),
   };
 });
 
@@ -215,17 +198,13 @@ beforeEach(() => {
       },
     ])
   );
-  vi.mocked(createMetronomeContract).mockResolvedValue(
-    new Ok({ contractId: NEW_CONTRACT_ID })
-  );
-  vi.mocked(listMetronomeContracts).mockResolvedValue(new Ok([]));
-  vi.mocked(switchMetronomeContractPackage).mockResolvedValue(
+  vi.mocked(provisionMetronomeContract).mockResolvedValue(
     new Ok({ metronomeContractId: NEW_CONTRACT_ID })
   );
 });
 
 describe("POST /api/poke/workspaces/[wId]/switch_contract — Enterprise", () => {
-  it("creates a future-scheduled contract and leaves the subscription untouched", async () => {
+  it("provisions a future-scheduled contract and leaves the DB subscription for contract.start", async () => {
     await ensureEnterprisePlan();
     const { req, res, workspace } = await createPrivateApiMockRequest({
       method: "POST",
@@ -239,15 +218,16 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — Enterprise", () =>
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(200);
-    expect(createMetronomeContract).toHaveBeenCalledWith(
+    expect(provisionMetronomeContract).toHaveBeenCalledWith(
       expect.objectContaining({
         metronomeCustomerId: METRONOME_CUSTOMER_ID,
-        packageId: ENT_PACKAGE_ID,
+        packageAlias: "legacy-enterprise",
         planCode: ENT_PLAN_CODE,
+        swapAt: "next-hour",
       })
     );
 
-    // Subscription DB record is unchanged: still points at the old contract.
+    // DB subscription unchanged — the contract.start webhook will flip it.
     const adminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
     );
@@ -312,12 +292,12 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — Enterprise", () =>
     expect(res._getStatusCode()).toBe(400);
     expect(res._getJSONData().error.message).toContain("resolves to EUR");
     expect(res._getJSONData().error.message).toContain("Pick a EUR package");
-    expect(createMetronomeContract).not.toHaveBeenCalled();
+    expect(provisionMetronomeContract).not.toHaveBeenCalled();
   });
 });
 
 describe("POST /api/poke/workspaces/[wId]/switch_contract — Pro / Business", () => {
-  it("switches Pro contract at current hour and sync-flips the DB", async () => {
+  it("provisions a Pro contract at the current hour and leaves the DB subscription for contract.start", async () => {
     const { req, res, workspace } = await createPrivateApiMockRequest({
       method: "POST",
       isSuperUser: true,
@@ -330,24 +310,23 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — Pro / Business", (
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(200);
-    expect(switchMetronomeContractPackage).toHaveBeenCalledWith(
+    expect(provisionMetronomeContract).toHaveBeenCalledWith(
       expect.objectContaining({
-        oldContractId: EXISTING_CONTRACT_ID,
         packageAlias: "legacy-pro-monthly",
         planCode: PRO_PLAN_SEAT_29_CODE,
         swapAt: "current-hour",
       })
     );
 
+    // DB subscription unchanged — the contract.start webhook will flip it.
     const adminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
     );
     const sub = adminAuth.subscriptionResource();
-    expect(sub!.metronomeContractId).toBe(NEW_CONTRACT_ID);
-    expect(sub!.getPlan().code).toBe(PRO_PLAN_SEAT_29_CODE);
+    expect(sub!.metronomeContractId).toBe(EXISTING_CONTRACT_ID);
   });
 
-  it("switches Business contract at current hour and sync-flips the DB", async () => {
+  it("provisions a Business contract at the current hour", async () => {
     const { req, res, workspace } = await createPrivateApiMockRequest({
       method: "POST",
       isSuperUser: true,
@@ -360,7 +339,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — Pro / Business", (
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(200);
-    expect(switchMetronomeContractPackage).toHaveBeenCalledWith(
+    expect(provisionMetronomeContract).toHaveBeenCalledWith(
       expect.objectContaining({
         packageAlias: "legacy-business",
         planCode: PRO_PLAN_SEAT_39_CODE,
@@ -369,7 +348,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — Pro / Business", (
     );
   });
 
-  it("rejects when startingAt is provided", async () => {
+  it("accepts startingAt and schedules at the next hour boundary", async () => {
     const { req, res, workspace } = await createPrivateApiMockRequest({
       method: "POST",
       isSuperUser: true,
@@ -381,11 +360,16 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — Pro / Business", (
 
     await handler(req, res);
 
-    expect(res._getStatusCode()).toBe(400);
-    expect(res._getJSONData().error.message).toContain("not supported");
+    expect(res._getStatusCode()).toBe(200);
+    expect(provisionMetronomeContract).toHaveBeenCalledWith(
+      expect.objectContaining({
+        packageAlias: "legacy-pro-monthly",
+        swapAt: "next-hour",
+      })
+    );
   });
 
-  it("creates the first Pro contract and sync-flips the DB when the workspace has no current Metronome contract", async () => {
+  it("provisions the first Pro contract when the workspace has no current Metronome contract", async () => {
     const { req, res, workspace } = await createPrivateApiMockRequest({
       method: "POST",
       isSuperUser: true,
@@ -399,21 +383,13 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — Pro / Business", (
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(200);
-    expect(switchMetronomeContractPackage).toHaveBeenCalledWith(
+    expect(provisionMetronomeContract).toHaveBeenCalledWith(
       expect.objectContaining({
-        oldContractId: null,
         packageAlias: "legacy-pro-monthly",
         planCode: PRO_PLAN_SEAT_29_CODE,
         swapAt: "current-hour",
       })
     );
-
-    const adminAuth = await Authenticator.internalAdminForWorkspace(
-      workspace.sId
-    );
-    const sub = adminAuth.subscriptionResource();
-    expect(sub!.metronomeContractId).toBe(NEW_CONTRACT_ID);
-    expect(sub!.getPlan().code).toBe(PRO_PLAN_SEAT_29_CODE);
   });
 });
 
