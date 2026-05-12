@@ -30,12 +30,14 @@ import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import assert from "assert";
+import * as fs from "fs";
 import { APIError, OpenAI, toFile } from "openai";
 import type {
   Response,
   ResponseCreateParamsBase,
   ResponseCreateParamsStreaming,
 } from "openai/resources/responses/responses";
+import * as path from "path";
 import { z } from "zod";
 
 const openAIBatchOutputLineSchema = z.object({
@@ -129,6 +131,11 @@ export class OpenAIResponsesLLM extends LLM<ResponseCreateParamsStreaming> {
     payload: ResponseCreateParamsStreaming
   ): AsyncGenerator<LLMEvent> {
     try {
+      await fs.promises.writeFile(
+        path.join(__dirname, `responses_payload_${Date.now().toString()}.json`),
+        JSON.stringify(payload, null, 2),
+        "utf8"
+      );
       const events = await this.client.responses.create(payload);
       yield* streamLLMEvents(events, this.metadata);
     } catch (err) {

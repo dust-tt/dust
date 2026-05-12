@@ -31,6 +31,8 @@ import logger from "@app/logger/logger";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { ApiError, GoogleGenAI, JobState } from "@google/genai";
 import assert from "assert";
+import * as fs from "fs";
+import * as path from "path";
 import { z } from "zod";
 import { handleError } from "./utils/errors";
 
@@ -110,6 +112,24 @@ export class GoogleLLM extends LLM<GoogleGenerateContentRequestParams> {
         payload.conversation.messages.map((message) =>
           toContent(message, this.modelId)
         )
+      );
+
+      await fs.promises.writeFile(
+        path.join(__dirname, `google_payload_${Date.now().toString()}.json`),
+        JSON.stringify(
+          {
+            model: this.modelId,
+            contents,
+            config: this.buildGenerateContentConfig(
+              payload.specifications,
+              payload.prompt,
+              payload.forceToolCall
+            ),
+          },
+          null,
+          2
+        ),
+        "utf8"
       );
 
       const generateContentResponses =
