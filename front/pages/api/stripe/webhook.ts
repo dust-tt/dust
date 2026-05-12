@@ -562,7 +562,6 @@ async function handleStripeCheckoutCompleted({
   planCode,
   stripeSubscriptionId,
   metronomePackageAlias,
-  userId,
   stripe,
   now,
 }: {
@@ -571,7 +570,6 @@ async function handleStripeCheckoutCompleted({
   planCode: string | null;
   stripeSubscriptionId: string | Stripe.Subscription | null;
   metronomePackageAlias: string | null;
-  userId: string | null;
   stripe: Stripe;
   now: Date;
 }): Promise<void> {
@@ -668,17 +666,15 @@ async function handleStripeCheckoutCompleted({
 
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-    if (userId) {
-      const workspaceSeats =
-        await MembershipResource.countActiveSeatsInWorkspace(workspace.sId);
-      await ServerSideTracking.trackSubscriptionCreated({
-        userId,
-        workspace: renderLightWorkspaceType({ workspace }),
-        planCode,
-        workspaceSeats,
-        subscriptionStartAt: now,
-      });
-    }
+    const workspaceSeats = await MembershipResource.countActiveSeatsInWorkspace(
+      workspace.sId
+    );
+    await ServerSideTracking.trackSubscriptionCreated({
+      workspace: renderLightWorkspaceType({ workspace }),
+      planCode,
+      workspaceSeats,
+      subscriptionStartAt: now,
+    });
     await restoreWorkspaceAfterSubscription(auth);
 
     if (
@@ -787,7 +783,6 @@ async function handler(
           const planCode = session?.metadata?.planCode || null;
           const metronomePackageAlias =
             session?.metadata?.metronomePackageAlias || null;
-          const userId = session?.metadata?.userId || null;
 
           if (session.status === "open" || session.status === "expired") {
             // Open: still in progress, payment processing has not started.
@@ -827,7 +822,6 @@ async function handler(
               planCode,
               stripeSubscriptionId,
               metronomePackageAlias,
-              userId,
               stripe,
               now,
             });

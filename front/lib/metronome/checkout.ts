@@ -235,18 +235,15 @@ export async function handleMetronomeSetupCheckout({
     return subscriptionResult;
   }
 
-  if (userId) {
-    const workspaceSeats = await MembershipResource.countActiveSeatsInWorkspace(
-      workspace.sId
-    );
-    await ServerSideTracking.trackSubscriptionCreated({
-      userId,
-      workspace: renderLightWorkspaceType({ workspace }),
-      planCode,
-      workspaceSeats,
-      subscriptionStartAt: now,
-    });
-  }
+  const workspaceSeats = await MembershipResource.countActiveSeatsInWorkspace(
+    workspace.sId
+  );
+  await ServerSideTracking.trackSubscriptionCreated({
+    workspace: lightWorkspace,
+    planCode,
+    workspaceSeats,
+    subscriptionStartAt: now,
+  });
 
   await restoreWorkspaceAfterSubscription(authAdmin);
 
