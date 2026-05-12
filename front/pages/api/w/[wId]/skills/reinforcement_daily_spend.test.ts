@@ -1,3 +1,4 @@
+import { MARKUP_MULTIPLIER } from "@app/lib/api/programmatic_usage/common";
 import { Authenticator } from "@app/lib/auth";
 import { SelfImprovingSkillsUsageResource } from "@app/lib/resources/self_improving_skills_usage_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
@@ -82,8 +83,8 @@ describe("GET /api/w/[wId]/skills/reinforcement_daily_spend", () => {
     const day1Str = day1.toISOString().slice(0, 10);
     const day2Str = day2.toISOString().slice(0, 10);
 
-    expect(dailySpendMicroUsd[day1Str]).toBe(1_500_000);
-    expect(dailySpendMicroUsd[day2Str]).toBe(3_000_000);
+    expect(dailySpendMicroUsd[day1Str]).toBe(1_500_000 * MARKUP_MULTIPLIER);
+    expect(dailySpendMicroUsd[day2Str]).toBe(3_000_000 * MARKUP_MULTIPLIER);
 
     // Before-period row should not appear.
     const beforeStr = beforePeriod.toISOString().slice(0, 10);
