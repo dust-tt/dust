@@ -130,16 +130,17 @@ export async function handleAwuPoolSummaryRequest(
         }
       }
 
-      // Single merged AWU metric, grouped by user_id. Programmatic events
-      // carry user_id="unknown" (see events.ts), so we split the totals on
-      // that sentinel value.
+      // Single merged AWU metric, grouped by `is_programmatic_usage` —
+      // authoritative flag set by the event emitter (see events.ts). Sentinel
+      // values like user_id/api_key_name = "unknown" are not reliable since
+      // programmatic callers without an API key also emit user_id="unknown".
       const usageResult = await listMetronomeUsageWithGroups({
         customerId: metronomeCustomerId,
         billableMetricId: getMetricLlmProviderCostAwuId(),
         startingOn,
         endingBefore,
         windowSize: "NONE",
-        groupKey: ["user_id"],
+        groupKey: ["is_programmatic_usage"],
       });
 
       if (usageResult.isErr()) {
@@ -155,9 +156,8 @@ export async function handleAwuPoolSummaryRequest(
       let userAwu = 0;
       let programmaticAwu = 0;
       for (const entry of usageResult.value) {
-        const userId = entry.group?.["user_id"];
         const value = entry.value ?? 0;
-        if (userId === "unknown") {
+        if (entry.group?.["is_programmatic_usage"] === "true") {
           programmaticAwu += value;
         } else {
           userAwu += value;

@@ -222,13 +222,16 @@ const METRICS: MetricDef[] = [
     group_keys: [["api_key_name"], ["model_id"], ["origin"], ["agent_id"]],
   },
   // Tool invocation metric — counts tool uses, group keys cover both user and
-  // programmatic events. `user_id` is "unknown" for programmatic, `api_key_name`
-  // is "unknown" for user events (see events.ts).
+  // programmatic events. `is_programmatic_usage` is the authoritative split
+  // signal: sentinel values like user_id="unknown" or api_key_name="unknown"
+  // are not reliable (programmatic callers without an API key still emit
+  // user_id="unknown" but must be classed as programmatic).
   {
     name: "Tool Invocations",
     event_type_filter: { in_values: ["tool_use_v3"] },
     property_filters: [
       { name: "count", exists: true },
+      { name: "is_programmatic_usage", exists: true },
       { name: "tool_category", exists: true },
       { name: "tool_group", exists: true },
       { name: "user_id", exists: true },
@@ -239,7 +242,7 @@ const METRICS: MetricDef[] = [
     ],
     aggregation_type: "SUM",
     aggregation_key: "count",
-    // 6 group keys — Metronome's default cap is 5; this metric needs an
+    // 7 group keys — Metronome's default cap is 5; this metric needs an
     // explicit limit increase (granted by Metronome support).
     group_keys: [
       ["tool_category", "tool_group"],
@@ -248,6 +251,7 @@ const METRICS: MetricDef[] = [
       ["origin"],
       ["agent_id"],
       ["mcp_server_id"],
+      ["is_programmatic_usage"],
     ],
   },
   // AWU-based AI cost metric — sums cost_awu directly (no unit conversion).
@@ -260,6 +264,7 @@ const METRICS: MetricDef[] = [
     property_filters: [
       { name: "cost_awu", exists: true },
       { name: "is_free_usage", exists: true },
+      { name: "is_programmatic_usage", exists: true },
       { name: "user_id", exists: true },
       { name: "api_key_name", exists: true },
       { name: "model_id", exists: true },
@@ -268,7 +273,7 @@ const METRICS: MetricDef[] = [
     ],
     aggregation_type: "SUM",
     aggregation_key: "cost_awu",
-    // 6 group keys — see note on Tool Invocations above.
+    // 7 group keys — see note on Tool Invocations above.
     group_keys: [
       ["user_id"],
       ["api_key_name"],
@@ -276,6 +281,7 @@ const METRICS: MetricDef[] = [
       ["origin"],
       ["agent_id"],
       ["is_free_usage"],
+      ["is_programmatic_usage"],
     ],
   },
   // Phase 2 token metrics removed — will be added when Pricing Index is ready.
