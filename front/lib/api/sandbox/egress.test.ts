@@ -174,6 +174,14 @@ describe("sandbox egress helpers", () => {
     expect(
       installCall.indexOf("/usr/local/bin/dust-install-trust-bundle")
     ).toBeLessThan(installCall.indexOf("/etc/dust/.ca-bundle.merged"));
+    // Pre-0.8.8 sandbox fallback: when the helper script is missing, the
+    // exec must inline the system-store + merged-bundle install so old
+    // sandboxes don't fail on wake. Remove with the fallback in egress.ts.
+    expect(installCall).toContain(
+      "if [ -x '/usr/local/bin/dust-install-trust-bundle' ]"
+    );
+    expect(installCall).toContain("update-ca-certificates");
+    expect(installCall).toContain("/etc/ssl/certs/ca-certificates.crt");
     expect(mockLoggerInfo).toHaveBeenCalledWith(
       expect.objectContaining({
         event: "egress.setup",

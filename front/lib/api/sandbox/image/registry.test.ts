@@ -1,5 +1,6 @@
 import { getSandboxImageFromRegistry } from "@app/lib/api/sandbox/image/registry";
 import type { Operation } from "@app/lib/api/sandbox/image/types";
+import { SANDBOX_TRUST_ENV_VARS } from "@app/lib/api/sandbox/trust_env";
 import { describe, expect, test } from "vitest";
 
 function getDustBaseImage() {
@@ -164,32 +165,25 @@ describe("sandbox image registry", () => {
       ])
     );
 
-    expect(environment).toContain("SSL_CERT_FILE=/etc/dust/ca-bundle.pem");
-    expect(environment).toContain("SSL_CERT_DIR=/etc/ssl/certs");
-    expect(environment).toContain("CURL_CA_BUNDLE=/etc/dust/ca-bundle.pem");
-    expect(environment).toContain(
-      "REQUESTS_CA_BUNDLE=/etc/dust/ca-bundle.pem"
-    );
-    expect(environment).toContain("AWS_CA_BUNDLE=/etc/dust/ca-bundle.pem");
-    expect(environment).toContain("GIT_SSL_CAINFO=/etc/dust/ca-bundle.pem");
-    expect(environment).toContain(
-      "NODE_EXTRA_CA_CERTS=/run/dust/egress-ca.pem"
-    );
-    expect(environment).toContain("DENO_CERT=/run/dust/egress-ca.pem");
-    expect(environment).toContain("DENO_TLS_CA_STORE=system,mozilla");
+    // Derive expected contents directly from SANDBOX_TRUST_ENV_VARS so any
+    // future drift between the const and the image-baked files fails this
+    // test rather than silently shipping a stale env file.
+    const expectedEnvironment =
+      Object.entries(SANDBOX_TRUST_ENV_VARS)
+        .map(([k, v]) => `${k}=${v}`)
+        .join("\n") + "\n";
+    const expectedProfile =
+      Object.entries(SANDBOX_TRUST_ENV_VARS)
+        .map(([k, v]) => `export ${k}=${v}`)
+        .join("\n") + "\n";
 
-    expect(profileScript).toContain(
-      "export REQUESTS_CA_BUNDLE=/etc/dust/ca-bundle.pem"
-    );
-    expect(profileScript).toContain(
-      "export NODE_EXTRA_CA_CERTS=/run/dust/egress-ca.pem"
-    );
-    expect(profileScript).toContain("export DENO_TLS_CA_STORE=system,mozilla");
+    expect(environment).toBe(expectedEnvironment);
+    expect(profileScript).toBe(expectedProfile);
 
     expect(tmpfilesConfig).toBe("d /run/dust 0755 root root -\n");
     expect(installer).toContain("update-ca-certificates");
-    expect(installer).toContain("cat \"$SYSTEM_CA_BUNDLE\"");
-    expect(installer).toContain("cat \"$CA_PATH\"");
+    expect(installer).toContain('cat "$SYSTEM_CA_BUNDLE"');
+    expect(installer).toContain('cat "$CA_PATH"');
     expect(installer).toContain("keytool -importcert -noprompt -trustcacerts");
     expect(installer).toContain("already exists");
   });

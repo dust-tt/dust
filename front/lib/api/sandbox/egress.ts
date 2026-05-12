@@ -31,6 +31,10 @@ const MITM_CA_PATH = "/run/dust/egress-ca.pem";
 const MITM_CA_BUNDLE_PATH = "/etc/dust/ca-bundle.pem";
 const MITM_TRUST_BUNDLE_INSTALLER_PATH =
   "/usr/local/bin/dust-install-trust-bundle";
+// Constants used by the pre-0.8.8 fallback path. Remove with the fallback
+// once all dust-base:0.8.7 sandboxes have aged out.
+const MITM_SYSTEM_CA_DEST = "/usr/local/share/ca-certificates/dust-egress.crt";
+const MITM_SYSTEM_CA_BUNDLE = "/etc/ssl/certs/ca-certificates.crt";
 // Sentinel written atomically alongside the merged bundle so the health probe
 // can distinguish "installMitmTrustBundle ran successfully" from "image-seeded
 // system-only placeholder". Without it, [ -s ca-bundle.pem ] is true the
@@ -403,10 +407,29 @@ async function installMitmTrustBundle(
   auth: Authenticator,
   sandbox: SandboxResource
 ): Promise<Result<void, Error>> {
+  // Pre-0.8.8 sandboxes don't have the helper script. We can't ship a new
+  // image to already-running sandboxes, so fall back to the inline install
+  // command from before slice 4.7 (system store update + merged bundle
+  // rebuild) when the helper is missing. Keytool / Java is skipped in the
+  // fallback (no JDK in 0.8.7 either, dead branch).
+  // TODO(2026-08-01 SANDBOX): remove the fallback once all pre-0.8.8
+  // sandboxes have aged out.
+  const inlineFallback =
+    `mkdir -p ${shellEscape("/etc/dust")} ${shellEscape("/usr/local/share/ca-certificates")} && ` +
+    `((cp ${shellEscape(MITM_CA_PATH)} ${shellEscape(MITM_SYSTEM_CA_DEST)} && update-ca-certificates >/dev/null 2>&1) || true) && ` +
+    `_bundle_tmp=$(mktemp ${shellEscape("/etc/dust/.ca-bundle.pem.XXXXXX")}) && ` +
+    `{ cat ${shellEscape(MITM_SYSTEM_CA_BUNDLE)}; printf '\\n'; cat ${shellEscape(MITM_CA_PATH)}; } > "$_bundle_tmp" && ` +
+    `chmod 644 "$_bundle_tmp" && ` +
+    `mv "$_bundle_tmp" ${shellEscape(MITM_CA_BUNDLE_PATH)}`;
+
   const command =
     `[ -s ${shellEscape(MITM_CA_PATH)} ] || ` +
     `{ echo "dsbx CA file ${MITM_CA_PATH} missing or empty" >&2; exit 1; }; ` +
-    `${shellEscape(MITM_TRUST_BUNDLE_INSTALLER_PATH)} && ` +
+    `if [ -x ${shellEscape(MITM_TRUST_BUNDLE_INSTALLER_PATH)} ]; then ` +
+    `${shellEscape(MITM_TRUST_BUNDLE_INSTALLER_PATH)}; ` +
+    `else ` +
+    `${inlineFallback}; ` +
+    `fi && ` +
     `: > ${shellEscape(MITM_CA_BUNDLE_MARKER_PATH)}`;
 
   return runSuccessfulSandboxCommand(auth, sandbox, command, "root");
