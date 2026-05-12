@@ -218,17 +218,17 @@ function getUserActionFallbackMessage(
       actionLabel = "tool authentication";
       break;
     case "tool_ask_user_question":
-      actionLabel = "a response to a question";
+      actionLabel = "response to a question";
       break;
     default:
       assertNever(actionType);
   }
 
   const urlPart = conversationUrl
-    ? ` <${conversationUrl}|Continue the conversation on Dust>.`
+    ? ` <${conversationUrl}|Continue on Dust>.`
     : "";
 
-  return `:hourglass_flowing_sand: _Streaming has timed out after 5 mins waiting on ${actionLabel}.${urlPart}_`;
+  return `:hourglass_flowing_sand: _Streaming was interrupted after 5 mins waiting on a ${actionLabel}.${urlPart}_`;
 }
 
 async function streamAgentAnswerToSlack(
