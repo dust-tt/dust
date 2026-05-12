@@ -9,7 +9,6 @@ import { getReinforcementMonthlyCapMicroUsd } from "@app/lib/reinforcement/consu
 import { useSkillsReinforcementSpend } from "@app/lib/swr/useReinforcementToggle";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  Chip,
   ContentMessage,
   InformationCircleIcon,
   LinkWrapper,
@@ -76,12 +75,20 @@ export function ReinforcementPage() {
     return (
       <>
         <ContentMessage variant="info" size="lg">
-          This feature is currently in <strong>beta</strong>, and only available to a select group of customers.<br/>
-          Note that the feature is currently free during beta testing but will generate additional costs upon release.<br/>
-          Contact <LinkWrapper
-              href="mailto:self-improving-skills@dust.tt"
-              className="underline"
-            >self-improving-skills@dust.tt</LinkWrapper> to share some feedback about this feature.
+          This feature is currently in <strong>beta</strong>, and only available
+          to a select group of customers.
+          <br />
+          Note that the feature is currently free during beta testing but will
+          generate additional costs upon release.
+          <br />
+          Contact{" "}
+          <LinkWrapper
+            href="mailto:self-improving-skills@dust.tt"
+            className="underline"
+          >
+            self-improving-skills@dust.tt
+          </LinkWrapper>{" "}
+          to share some feedback about this feature.
         </ContentMessage>
         <ReinforcementSection owner={owner} />
         <ReinforcementTotalConsumptionSection owner={owner} />
