@@ -38,9 +38,9 @@ const LOGO_SETS = {
   default: [
     { name: "Datadog", src: "/static/landing/logos/gray/datadog.svg" },
     { name: "Clay", src: "/static/landing/logos/gray/clay.svg" },
+    { name: "Cursor", src: "/static/landing/logos/gray/cursor.svg" },
     { name: "Assembled", src: "/static/landing/logos/gray/assembled.svg" },
     { name: "Decagon", src: "/static/landing/logos/gray/decagon.svg" },
-    { name: "Kyriba", src: "/static/landing/logos/gray/kyriba.svg" },
     { name: "EvenUp", src: "/static/landing/logos/gray/evenup.svg" },
     { name: "Persona", src: "/static/landing/logos/gray/persona.svg" },
     { name: "1Password", src: "/static/landing/logos/gray/1password.svg" },
@@ -53,6 +53,7 @@ const LOGO_SETS = {
   gb: [
     { name: "Paddle", src: "/static/landing/logos/gray/paddle.svg" },
     { name: "Vanta", src: "/static/landing/logos/gray/vanta.svg" },
+    { name: "Cursor", src: "/static/landing/logos/gray/cursor.svg" },
     { name: "Kyriba", src: "/static/landing/logos/gray/kyriba.svg" },
     { name: "TrueLayer", src: "/static/landing/logos/gray/truelayer.svg" },
     {
@@ -85,6 +86,7 @@ const LOGO_SETS = {
       name: "Welcome to the Jungle",
       src: "/static/landing/logos/gray/welcometothejungle.svg",
     },
+    { name: "Cursor", src: "/static/landing/logos/gray/cursor.svg" },
     { name: "Kyriba", src: "/static/landing/logos/gray/kyriba.svg" },
     { name: "Didomi", src: "/static/landing/logos/gray/didomi.svg" },
   ],
