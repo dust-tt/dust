@@ -1,3 +1,4 @@
+import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { AgentYAMLConverter } from "@app/lib/agent_yaml_converter/converter";
 import type { AgentYAMLConfig } from "@app/lib/agent_yaml_converter/schemas";
 import {
@@ -5,12 +6,16 @@ import {
   agentYAMLConfigSchema,
   agentYAMLGenerationSettingsSchema,
 } from "@app/lib/agent_yaml_converter/schemas";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationAsYAMLConfig } from "@app/lib/api/assistant/configuration/yaml_export";
 import type { Authenticator } from "@app/lib/auth";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { createOrUpgradeAgentConfiguration } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
+import {
+  type PostOrPatchAgentConfigurationRequestBody,
+} from "@app/types/api/internal/agent_configuration";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { APIErrorWithStatusCode } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
@@ -32,7 +37,11 @@ type ImportResult = Result<
 async function importAgentConfiguration(
   auth: Authenticator,
   yamlConfig: AgentYAMLConfig,
-  agentConfigurationId?: string
+  agentConfigurationId?: string,
+  // When provided, these actions are used as-is instead of converting from the
+  // YAML toolset. This is used by patchAgentConfigurationFromJSON to preserve
+  // the current actions when the patch does not touch the toolset.
+  resolvedActions?: AgentConfigurationType["actions"]
 ): Promise<ImportResult> {
   const isSaveAgentConfigurationsEnabled =
     await KillSwitchResource.isKillSwitchEnabled("save_agent_configurations");
@@ -71,24 +80,46 @@ async function importAgentConfiguration(
 
   const authorModelId = editorUsers[0].id;
 
-  const mcpConfigurationsResult =
-    await AgentYAMLConverter.convertYAMLActionsToMCPConfigurations(
-      auth,
-      yamlConfig.toolset
+  let mcpConfigurations: PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"];
+  let skippedActions: { action: { name?: string }; reason: string }[] = [];
+
+  if (resolvedActions) {
+    const serverSideActions = resolvedActions.filter(
+      isServerSideMCPServerConfiguration
     );
 
-  if (mcpConfigurationsResult.isErr()) {
-    return new Err({
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: `Error converting YAML actions: ${mcpConfigurationsResult.error.message}`,
-      },
-    });
-  }
+    // Strip fields that exist on ServerSideMCPServerConfigurationType but not
+    // on the request body schema (MCPServerActionConfigurationSchema).
+    mcpConfigurations = serverSideActions.map(
+      ({
+        id: _id,
+        sId: _sId,
+        icon: _icon,
+        meta: _meta,
+        internalMCPServerId: _internalMCPServerId,
+        ...rest
+      }) => rest
+    );
+  } else {
+    const mcpConfigurationsResult =
+      await AgentYAMLConverter.convertYAMLActionsToMCPConfigurations(
+        auth,
+        yamlConfig.toolset
+      );
 
-  const { configurations: mcpConfigurations, skipped: skippedActions } =
-    mcpConfigurationsResult.value;
+    if (mcpConfigurationsResult.isErr()) {
+      return new Err({
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: `Error converting YAML actions: ${mcpConfigurationsResult.error.message}`,
+        },
+      });
+    }
+
+    mcpConfigurations = mcpConfigurationsResult.value.configurations;
+    skippedActions = mcpConfigurationsResult.value.skipped;
+  }
 
   const tagNames = yamlConfig.tags.map((t) => t.name);
   const resolvedTags = await TagResource.findByNames(auth, tagNames);
@@ -235,5 +266,20 @@ export async function patchAgentConfigurationFromJSON(
     },
   };
 
-  return importAgentConfiguration(auth, merged, agentId);
+  // When the patch does not include toolset, preserve the existing actions
+  // directly from the agent config to avoid the YAML round-trip
+  let resolvedActions: AgentConfigurationType["actions"] | undefined;
+
+  if (!patch.toolset) {
+    const agentConfig = await getAgentConfiguration(auth, {
+      agentId,
+      variant: "full",
+    });
+
+    if (agentConfig) {
+      resolvedActions = agentConfig.actions;
+    }
+  }
+
+  return importAgentConfiguration(auth, merged, agentId, resolvedActions);
 }
