@@ -12,9 +12,11 @@ import type { Invoice } from "@metronome/sdk/resources/v1/customers";
 import type {
   MetronomeBalance,
   MetronomeEvent,
+  MetronomePackageTier,
   MetronomeUsageListResponse,
   MetronomeUsageWithGroupsResponse,
 } from "./types";
+import { classifyMetronomePackageByName } from "./types";
 
 let cachedClient: Metronome | null = null;
 
@@ -392,13 +394,16 @@ export async function addStripeMetronomeBillingConfig({
 
 /**
  * Compact summary of a Metronome package, used by Poke to let an operator
- * pick which package to put a customer on.
+ * pick which package to put a customer on. Only classifiable packages are
+ * included — `listMetronomePackages` filters out anything whose name
+ * doesn't match a known tier keyword (with a warning log).
  */
 export interface MetronomePackageSummary {
   id: string;
   name: string;
   aliases: string[];
   rateCardId?: string;
+  tier: MetronomePackageTier;
 }
 
 // Cache the package list for a few minutes as the catalog rarely changes and
@@ -422,11 +427,22 @@ export async function listMetronomePackages(): Promise<
   try {
     const packages: MetronomePackageSummary[] = [];
     for await (const pkg of getMetronomeClient().v1.packages.list()) {
+      const aliases = pkg.aliases?.map((a) => a.name) ?? [];
+      const name = pkg.name ?? "";
+      const tier = classifyMetronomePackageByName(name);
+      if (tier === null) {
+        logger.warn(
+          { packageId: pkg.id, packageName: name, aliases },
+          "[Metronome] Package name has no recognized tier keyword (pro/business/enterprise); package will be hidden in Poke."
+        );
+        continue;
+      }
       packages.push({
         id: pkg.id,
-        name: pkg.name ?? "",
-        aliases: pkg.aliases?.map((a) => a.name) ?? [],
+        name,
+        aliases,
         rateCardId: pkg.rate_card_id ?? undefined,
+        tier,
       });
     }
     packageListCache = {

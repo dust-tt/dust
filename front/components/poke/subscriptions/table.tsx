@@ -7,8 +7,10 @@ import {
 } from "@app/components/poke/shadcn/ui/table";
 import type { SubscriptionsDisplayType } from "@app/components/poke/subscriptions/columns";
 import { makeColumnsForSubscriptions } from "@app/components/poke/subscriptions/columns";
+import DowngradeToNoPlanButton from "@app/components/poke/subscriptions/DowngradeToNoPlanButton";
 import EnterpriseUpgradeDialog from "@app/components/poke/subscriptions/EnterpriseUpgradeDialog";
 import FreePlanUpgradeDialog from "@app/components/poke/subscriptions/FreePlanUpgradeDialog";
+import SwitchContractDialog from "@app/components/poke/subscriptions/SwitchContractDialog";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import { getMetronomeContractUrl } from "@app/lib/metronome/urls";
@@ -21,6 +23,7 @@ import {
 import { useAppRouter } from "@app/lib/platform";
 import { usePokePlans } from "@app/lib/swr/poke";
 import type { PlanType, SubscriptionType } from "@app/types/plan";
+import { isSubscriptionMetronomeBilled } from "@app/types/plan";
 import type { ProgrammaticUsageConfigurationType } from "@app/types/programmatic_usage";
 import { isDevelopment } from "@app/types/shared/env";
 import type { WorkspaceType } from "@app/types/user";
@@ -203,24 +206,41 @@ export function ActiveSubscriptionTable({
         <div
           className={`flex flex-grow flex-col rounded-lg border p-4 pb-2 ${cardClass}`}
         >
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-md flex flex-grow items-center gap-2 pb-4 font-bold">
-              Subscription
+          <div className="flex items-center justify-between gap-3 pb-4">
+            <div className="flex items-center gap-2">
+              <h2 className="text-md font-bold">Subscription</h2>
               <Chip color={chipColor} label={chipLabel} size="xs" />
-            </h2>
-            <SubscriptionsHistoryModal
-              owner={owner}
-              metronomeCustomerId={metronomeCustomerId}
-              subscriptions={subscriptions}
-            />
-            <UpgradeDowngradeModal
-              owner={owner}
-              subscription={subscription}
-              programmaticUsageConfig={programmaticUsageConfig}
-              hasMetronomeBillingFeature={hasMetronomeBillingFeature}
-              stripeCustomerId={stripeCustomerId}
-            />
+              <SubscriptionsHistoryModal
+                owner={owner}
+                metronomeCustomerId={metronomeCustomerId}
+                subscriptions={subscriptions}
+              />
+            </div>
+            {!isSubscriptionMetronomeBilled(subscription) && (
+              <UpgradeDowngradeModal
+                owner={owner}
+                subscription={subscription}
+                programmaticUsageConfig={programmaticUsageConfig}
+                hasMetronomeBillingFeature={hasMetronomeBillingFeature}
+                stripeCustomerId={stripeCustomerId}
+              />
+            )}
           </div>
+          {isSubscriptionMetronomeBilled(subscription) && (
+            <div className="flex flex-wrap items-center gap-2 pb-4">
+              <SwitchContractDialog
+                owner={owner}
+                programmaticUsageConfig={programmaticUsageConfig}
+                stripeCustomerId={stripeCustomerId}
+              />
+              <FreePlanUpgradeDialog owner={owner} />
+              <DowngradeToNoPlanButton
+                owner={owner}
+                subscription={subscription}
+                programmaticUsageConfig={programmaticUsageConfig}
+              />
+            </div>
+          )}
           <PokeTable>
             <PokeTableBody>
               <PokeTableRow>
@@ -467,34 +487,6 @@ function UpgradeDowngradeModal({
   const router = useAppRouter();
   const { plans } = usePokePlans();
 
-  const { submit: onDowngrade } = useSubmitFunction(async () => {
-    if (
-      !window.confirm(
-        "Confirm workspace downgrade to no plan? This action will pause all connectors and delete data after the retention period expires."
-      )
-    ) {
-      return;
-    }
-    try {
-      const r = await clientFetch(
-        `/api/poke/workspaces/${owner.sId}/downgrade`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
-      if (!r.ok) {
-        throw new Error("Failed to downgrade workspace.");
-      }
-      router.reload();
-    } catch (e) {
-      console.error(e);
-      window.alert("An error occurred while downgrading the workspace.");
-    }
-  });
-
   const { submit: onUpgradeToProPlan } = useSubmitFunction(
     async (plan: PlanType) => {
       if (
@@ -554,14 +546,10 @@ function UpgradeDowngradeModal({
               </div>
             )}
             <div>
-              <Button
-                variant="warning"
-                onClick={onDowngrade}
-                disabled={
-                  subscription.plan.code === FREE_NO_PLAN_CODE ||
-                  !!programmaticUsageConfig?.paygCapMicroUsd
-                }
-                label="Downgrade to NO PLAN"
+              <DowngradeToNoPlanButton
+                owner={owner}
+                subscription={subscription}
+                programmaticUsageConfig={programmaticUsageConfig}
               />
             </div>
             <Separator />

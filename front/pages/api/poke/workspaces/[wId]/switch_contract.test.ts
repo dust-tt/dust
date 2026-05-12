@@ -3,10 +3,16 @@ import {
   createMetronomeContract,
   listMetronomeContracts,
   listMetronomePackages,
-  scheduleMetronomeContractEnd,
 } from "@app/lib/metronome/client";
-import { ensureMetronomeCustomerForWorkspace } from "@app/lib/metronome/contracts";
+import {
+  ensureMetronomeCustomerForWorkspace,
+  switchMetronomeContractPackage,
+} from "@app/lib/metronome/contracts";
 import { PlanModel } from "@app/lib/models/plan";
+import {
+  PRO_PLAN_SEAT_29_CODE,
+  PRO_PLAN_SEAT_39_CODE,
+} from "@app/lib/plans/plan_codes";
 import { getStripeCustomer } from "@app/lib/plans/stripe";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
@@ -18,7 +24,7 @@ import type { WorkspaceType } from "@app/types/user";
 import type Stripe from "stripe";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import handler from "./upgrade_enterprise";
+import handler from "./switch_contract";
 
 vi.mock("@app/lib/metronome/client", async () => {
   const actual = await vi.importActual<
@@ -40,6 +46,21 @@ vi.mock("@app/lib/metronome/contracts", async () => {
   return {
     ...actual,
     ensureMetronomeCustomerForWorkspace: vi.fn(),
+    switchMetronomeContractPackage: vi.fn(),
+  };
+});
+
+vi.mock("@app/lib/api/subscription", () => ({
+  restoreWorkspaceAfterSubscription: vi.fn(),
+}));
+
+vi.mock("@app/lib/metronome/plan_type", async () => {
+  const actual = await vi.importActual<
+    typeof import("@app/lib/metronome/plan_type")
+  >("@app/lib/metronome/plan_type");
+  return {
+    ...actual,
+    invalidateContractCache: vi.fn(),
   };
 });
 
@@ -56,7 +77,9 @@ vi.mock("@app/lib/plans/stripe", async () => {
 const METRONOME_CUSTOMER_ID = "cust_test_xxx";
 const EXISTING_CONTRACT_ID = "contract_existing_xxx";
 const NEW_CONTRACT_ID = "contract_new_yyy";
-const PACKAGE_ID = "pkg_ent_usd";
+const ENT_PACKAGE_ID = "pkg_ent_usd";
+const PRO_PACKAGE_ID = "pkg_pro_usd";
+const BUSINESS_PACKAGE_ID = "pkg_business_usd";
 const ENT_PLAN_CODE = "ENT_TEST_PLAN";
 const STRIPE_CUSTOMER_ID = "cus_test_xxx";
 
@@ -91,22 +114,17 @@ async function ensureEnterprisePlan(): Promise<void> {
   });
 }
 
-/**
- * Patch the workspace's subscription to be Metronome-only billed (set
- * `metronomeContractId`, no `stripeSubscriptionId`) so the handler's gate
- * passes.
- */
 async function makeSubscriptionMetronomeBilled(
   workspace: WorkspaceType,
-  contractId: string,
+  contractId: string | null,
   { stripeSubscriptionId = null }: { stripeSubscriptionId?: string | null } = {}
 ): Promise<void> {
-  await WorkspaceResource.updateMetronomeCustomerId(
-    (await WorkspaceResource.fetchById(workspace.sId))!.id,
-    METRONOME_CUSTOMER_ID
-  );
   const workspaceModelId = (await WorkspaceResource.fetchById(workspace.sId))!
     .id;
+  await WorkspaceResource.updateMetronomeCustomerId(
+    workspaceModelId,
+    METRONOME_CUSTOMER_ID
+  );
   const sub =
     await SubscriptionResource.fetchActiveByWorkspaceModelId(workspaceModelId);
   if (!sub) {
@@ -132,20 +150,35 @@ function futureIso(hoursFromNow: number): string {
   return new Date(Date.now() + hoursFromNow * 60 * 60 * 1000).toISOString();
 }
 
-function defaultBody(overrides: Record<string, unknown> = {}) {
+function enterpriseBody(overrides: Record<string, unknown> = {}) {
   return {
     planCode: ENT_PLAN_CODE,
-    metronomePackageId: PACKAGE_ID,
+    metronomePackageId: ENT_PACKAGE_ID,
     startingAt: futureIso(2),
     stripeCustomerId: STRIPE_CUSTOMER_ID,
-    freeCreditsOverrideEnabled: false,
-    paygEnabled: false,
+    ...overrides,
+  };
+}
+
+function proBody(overrides: Record<string, unknown> = {}) {
+  return {
+    planCode: PRO_PLAN_SEAT_29_CODE,
+    metronomePackageId: PRO_PACKAGE_ID,
+    stripeCustomerId: STRIPE_CUSTOMER_ID,
+    ...overrides,
+  };
+}
+
+function businessBody(overrides: Record<string, unknown> = {}) {
+  return {
+    planCode: PRO_PLAN_SEAT_39_CODE,
+    metronomePackageId: BUSINESS_PACKAGE_ID,
+    stripeCustomerId: STRIPE_CUSTOMER_ID,
     ...overrides,
   };
 }
 
 beforeEach(() => {
-  // Default-happy mocks; individual tests override as needed.
   vi.mocked(ensureMetronomeCustomerForWorkspace).mockResolvedValue(
     new Ok({ metronomeCustomerId: METRONOME_CUSTOMER_ID })
   );
@@ -153,197 +186,68 @@ beforeEach(() => {
     id: STRIPE_CUSTOMER_ID,
   } as unknown as Stripe.Customer);
   vi.mocked(listMetronomePackages).mockResolvedValue(
-    new Ok([{ id: PACKAGE_ID, name: "Enterprise USD", aliases: [] }])
+    new Ok([
+      {
+        id: ENT_PACKAGE_ID,
+        name: "Enterprise USD",
+        aliases: ["legacy-enterprise"],
+        tier: "enterprise",
+      },
+      {
+        id: PRO_PACKAGE_ID,
+        name: "Pro USD",
+        aliases: ["legacy-pro-monthly"],
+        tier: "pro",
+      },
+      {
+        id: BUSINESS_PACKAGE_ID,
+        name: "Business USD",
+        aliases: ["legacy-business"],
+        tier: "business",
+      },
+    ])
   );
   vi.mocked(createMetronomeContract).mockResolvedValue(
     new Ok({ contractId: NEW_CONTRACT_ID })
   );
-  // After creation, both contracts coexist on the customer.
-  vi.mocked(listMetronomeContracts).mockResolvedValue(
-    new Ok([
-      {
-        id: EXISTING_CONTRACT_ID,
-        starting_at: new Date(
-          Date.now() - 30 * 24 * 60 * 60 * 1000
-        ).toISOString(),
-        // Open-ended → should be sunset.
-      },
-      {
-        id: NEW_CONTRACT_ID,
-        starting_at: futureIso(2),
-      },
-    ] as never)
+  vi.mocked(listMetronomeContracts).mockResolvedValue(new Ok([]));
+  vi.mocked(switchMetronomeContractPackage).mockResolvedValue(
+    new Ok({ metronomeContractId: NEW_CONTRACT_ID })
   );
-  vi.mocked(scheduleMetronomeContractEnd).mockResolvedValue(new Ok(undefined));
 });
 
-describe("POST /api/poke/workspaces/[wId]/upgrade_enterprise — Metronome path", () => {
-  it("rejects when the current subscription is not Metronome-only billed", async () => {
+describe("POST /api/poke/workspaces/[wId]/switch_contract — Enterprise", () => {
+  it("creates a future-scheduled contract and leaves the subscription untouched", async () => {
     await ensureEnterprisePlan();
     const { req, res, workspace } = await createPrivateApiMockRequest({
       method: "POST",
       isSuperUser: true,
     });
-    // Don't make the subscription Metronome-billed — leave the WorkspaceFactory
-    // default (Pro plan, no metronomeContractId).
+    await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
 
-    req.body = defaultBody();
-    req.query.wId = workspace.sId;
-
-    await handler(req, res);
-
-    expect(res._getStatusCode()).toBe(400);
-    expect(res._getJSONData().error.message).toContain(
-      "Stripe-billed and not yet migrated"
-    );
-    expect(createMetronomeContract).not.toHaveBeenCalled();
-  });
-
-  it("accepts a metronome-billed subscription when stripeSubscriptionId is an empty string", async () => {
-    await ensureEnterprisePlan();
-    const { req, res, workspace } = await createPrivateApiMockRequest({
-      method: "POST",
-      isSuperUser: true,
-    });
-    await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID, {
-      stripeSubscriptionId: "",
-    });
-
-    req.body = defaultBody();
+    req.body = enterpriseBody();
     req.query.wId = workspace.sId;
 
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(200);
-    expect(createMetronomeContract).toHaveBeenCalled();
-  });
-
-  it("rejects when startingAt is in the past", async () => {
-    await ensureEnterprisePlan();
-    const { req, res, workspace } = await createPrivateApiMockRequest({
-      method: "POST",
-      isSuperUser: true,
-    });
-    await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
-
-    req.body = defaultBody({ startingAt: futureIso(-1) });
-    req.query.wId = workspace.sId;
-
-    await handler(req, res);
-
-    expect(res._getStatusCode()).toBe(400);
-    expect(res._getJSONData().error.message).toContain(
-      "at least one hour in the future"
-    );
-    expect(createMetronomeContract).not.toHaveBeenCalled();
-  });
-
-  it("rejects when planCode is not an enterprise plan", async () => {
-    await ensureEnterprisePlan();
-    const { req, res, workspace } = await createPrivateApiMockRequest({
-      method: "POST",
-      isSuperUser: true,
-    });
-    await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
-
-    req.body = defaultBody({ planCode: "PRO_PLAN_SEAT_29" });
-    req.query.wId = workspace.sId;
-
-    await handler(req, res);
-
-    expect(res._getStatusCode()).toBe(400);
-    expect(res._getJSONData().error.message).toContain(
-      "is not an enterprise plan"
-    );
-    expect(createMetronomeContract).not.toHaveBeenCalled();
-  });
-
-  it("rejects when paygEnabled is true (PAYG on Metronome is not yet supported)", async () => {
-    await ensureEnterprisePlan();
-    const { req, res, workspace } = await createPrivateApiMockRequest({
-      method: "POST",
-      isSuperUser: true,
-    });
-    await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
-
-    req.body = defaultBody({ paygEnabled: true, paygCapDollars: 1000 });
-    req.query.wId = workspace.sId;
-
-    await handler(req, res);
-
-    expect(res._getStatusCode()).toBe(400);
-    expect(res._getJSONData().error.message).toContain(
-      "Pay-as-you-go is not yet supported"
-    );
-    expect(createMetronomeContract).not.toHaveBeenCalled();
-  });
-
-  it("rejects when packageId is unknown", async () => {
-    await ensureEnterprisePlan();
-    const { req, res, workspace } = await createPrivateApiMockRequest({
-      method: "POST",
-      isSuperUser: true,
-    });
-    await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
-
-    req.body = defaultBody({ metronomePackageId: "pkg_does_not_exist" });
-    req.query.wId = workspace.sId;
-
-    await handler(req, res);
-
-    expect(res._getStatusCode()).toBe(400);
-    expect(res._getJSONData().error.message).toContain(
-      "Metronome package not found"
-    );
-    expect(createMetronomeContract).not.toHaveBeenCalled();
-  });
-
-  it("creates a new contract, stamps PLAN_CODE, sunsets the overlapping contract, and leaves the subscription untouched", async () => {
-    await ensureEnterprisePlan();
-    const { req, res, workspace } = await createPrivateApiMockRequest({
-      method: "POST",
-      isSuperUser: true,
-    });
-    await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
-
-    req.body = defaultBody();
-    req.query.wId = workspace.sId;
-
-    await handler(req, res);
-
-    expect(res._getStatusCode()).toBe(200);
-    expect(res._getJSONData()).toEqual({ success: true });
-
-    expect(createMetronomeContract).toHaveBeenCalledTimes(1);
     expect(createMetronomeContract).toHaveBeenCalledWith(
       expect.objectContaining({
         metronomeCustomerId: METRONOME_CUSTOMER_ID,
-        packageId: PACKAGE_ID,
+        packageId: ENT_PACKAGE_ID,
         planCode: ENT_PLAN_CODE,
       })
     );
 
-    // Old contract is sunset, new one is skipped by id.
-    expect(scheduleMetronomeContractEnd).toHaveBeenCalledTimes(1);
-    expect(scheduleMetronomeContractEnd).toHaveBeenCalledWith(
-      expect.objectContaining({
-        metronomeCustomerId: METRONOME_CUSTOMER_ID,
-        contractId: EXISTING_CONTRACT_ID,
-      })
-    );
-
-    // Subscription DB record is unchanged: still active, still on the old
-    // contract id. The contract.start webhook is what flips it.
+    // Subscription DB record is unchanged: still points at the old contract.
     const adminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
     );
     const sub = adminAuth.subscriptionResource();
-    expect(sub).not.toBeNull();
     expect(sub!.metronomeContractId).toBe(EXISTING_CONTRACT_ID);
-    expect(sub!.status).toBe("active");
   });
 
-  it("rejects when stripeCustomerId is missing", async () => {
+  it("rejects when startingAt is missing", async () => {
     await ensureEnterprisePlan();
     const { req, res, workspace } = await createPrivateApiMockRequest({
       method: "POST",
@@ -351,66 +255,177 @@ describe("POST /api/poke/workspaces/[wId]/upgrade_enterprise — Metronome path"
     });
     await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
 
-    req.body = defaultBody({ stripeCustomerId: undefined });
-    req.query.wId = workspace.sId;
-
-    await handler(req, res);
-
-    expect(res._getStatusCode()).toBe(400);
-    expect(res._getJSONData().error.message).toContain("stripeCustomerId");
-    expect(createMetronomeContract).not.toHaveBeenCalled();
-  });
-
-  it("rejects when the Stripe customer does not exist", async () => {
-    await ensureEnterprisePlan();
-    const { req, res, workspace } = await createPrivateApiMockRequest({
-      method: "POST",
-      isSuperUser: true,
-    });
-    await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
-    vi.mocked(getStripeCustomer).mockResolvedValueOnce(null);
-
-    req.body = defaultBody();
+    req.body = enterpriseBody({ startingAt: undefined });
     req.query.wId = workspace.sId;
 
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(400);
     expect(res._getJSONData().error.message).toContain(
-      "Stripe customer not found"
+      "startingAt is required"
     );
-    expect(createMetronomeContract).not.toHaveBeenCalled();
   });
 
-  it("accepts a fresh workspace with the metronome_billing flag and provisions the Metronome customer with the Stripe link", async () => {
+  it("rejects when startingAt is less than 1h in the future", async () => {
     await ensureEnterprisePlan();
     const { req, res, workspace } = await createPrivateApiMockRequest({
       method: "POST",
       isSuperUser: true,
     });
-    // Don't mark Metronome-billed; default workspace has no Stripe sub.
-    // Enable the flag to unlock the fresh-Metronome path.
+    await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
+
+    req.body = enterpriseBody({ startingAt: futureIso(0.5) });
+    req.query.wId = workspace.sId;
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(400);
+    expect(res._getJSONData().error.message).toContain("at least one hour");
+  });
+});
+
+describe("POST /api/poke/workspaces/[wId]/switch_contract — Pro / Business", () => {
+  it("switches Pro contract at current hour and sync-flips the DB", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      isSuperUser: true,
+    });
+    await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
+
+    req.body = proBody();
+    req.query.wId = workspace.sId;
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(switchMetronomeContractPackage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        oldContractId: EXISTING_CONTRACT_ID,
+        packageAlias: "legacy-pro-monthly",
+        planCode: PRO_PLAN_SEAT_29_CODE,
+        swapAt: "current-hour",
+      })
+    );
+
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const sub = adminAuth.subscriptionResource();
+    expect(sub!.metronomeContractId).toBe(NEW_CONTRACT_ID);
+    expect(sub!.getPlan().code).toBe(PRO_PLAN_SEAT_29_CODE);
+  });
+
+  it("switches Business contract at current hour and sync-flips the DB", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      isSuperUser: true,
+    });
+    await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
+
+    req.body = businessBody();
+    req.query.wId = workspace.sId;
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(switchMetronomeContractPackage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        packageAlias: "legacy-business",
+        planCode: PRO_PLAN_SEAT_39_CODE,
+        swapAt: "current-hour",
+      })
+    );
+  });
+
+  it("rejects when startingAt is provided", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      isSuperUser: true,
+    });
+    await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
+
+    req.body = proBody({ startingAt: futureIso(2) });
+    req.query.wId = workspace.sId;
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(400);
+    expect(res._getJSONData().error.message).toContain("not supported");
+  });
+
+  it("rejects when workspace has no current Metronome contract (fresh-Metronome path)", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      isSuperUser: true,
+    });
+    // metronome_billing flag + no Stripe sub bypasses the Metronome-only-billed
+    // eligibility check; ends up in the handler with no contract to switch.
     const adminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
     );
     await FeatureFlagFactory.basic(adminAuth, "metronome_billing");
 
-    req.body = defaultBody();
+    req.body = proBody();
     req.query.wId = workspace.sId;
 
     await handler(req, res);
 
-    expect(res._getStatusCode()).toBe(200);
-    expect(ensureMetronomeCustomerForWorkspace).toHaveBeenCalledWith(
-      expect.objectContaining({ stripeCustomerId: STRIPE_CUSTOMER_ID })
+    expect(res._getStatusCode()).toBe(400);
+    expect(res._getJSONData().error.message).toContain(
+      "no current Metronome contract"
     );
-    expect(createMetronomeContract).toHaveBeenCalledWith(
-      expect.objectContaining({
-        metronomeCustomerId: METRONOME_CUSTOMER_ID,
-        packageId: PACKAGE_ID,
-        enableStripeBilling: true,
-        planCode: ENT_PLAN_CODE,
-      })
-    );
+  });
+});
+
+describe("POST /api/poke/workspaces/[wId]/switch_contract — guards", () => {
+  it("rejects when plan tier doesn't match package tier", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      isSuperUser: true,
+    });
+    await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
+
+    // Pro plan code with an Enterprise package.
+    req.body = proBody({ metronomePackageId: ENT_PACKAGE_ID });
+    req.query.wId = workspace.sId;
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(400);
+    expect(res._getJSONData().error.message).toContain("does not match");
+  });
+
+  it("rejects when target plan is free", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      isSuperUser: true,
+    });
+    await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
+
+    req.body = proBody({ planCode: "FREE_UPGRADED_PLAN" });
+    req.query.wId = workspace.sId;
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(400);
+    expect(res._getJSONData().error.message).toContain("free plan");
+  });
+
+  it("rejects when the workspace is Stripe-billed", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      isSuperUser: true,
+    });
+    await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID, {
+      stripeSubscriptionId: "sub_stripe_xxx",
+    });
+
+    req.body = proBody();
+    req.query.wId = workspace.sId;
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(400);
+    expect(res._getJSONData().error.message).toContain("Metronome-billed");
   });
 });
