@@ -38,6 +38,7 @@ import {
   NavigationListItem,
   NavigationListItemAction,
   PencilSquareIcon,
+  PlanetIcon,
   PlusIcon,
   PuzzleIcon,
   ScrollArea,
@@ -538,7 +539,7 @@ function DustMain() {
             label="Chat"
             icon={ChatBubbleLeftRightIcon}
           />
-          <TabsTrigger value="spaces" label="Spaces" icon={SpaceOpenIcon} />
+          <TabsTrigger value="spaces" label="Spaces" icon={PlanetIcon} />
           <TabsTrigger value="admin" icon={Cog6ToothIcon} />
         </TabsList>
         <TabsContent

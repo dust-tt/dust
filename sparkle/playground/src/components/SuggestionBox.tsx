@@ -1,12 +1,7 @@
-import {
-  Button,
-  Card,
-  Checkbox,
-  Icon,
-  SparklesIcon,
-  Spinner,
-} from "@dust-tt/sparkle";
-import { useEffect, useRef, type ComponentType, type ReactNode } from "react";
+import { Button, Card, Icon, SparklesIcon, Spinner } from "@dust-tt/sparkle";
+import { type ComponentProps, type ComponentType, type ReactNode } from "react";
+
+import { TaskItem } from "./TaskItem";
 
 export interface SuggestionBoxItem {
   id: string;
@@ -27,52 +22,17 @@ interface SuggestionBoxProps {
   acceptItemLabel?: string;
   rejectItemLabel?: string;
   acceptAllLabel?: string;
+  acceptAllButtonVariant?: ComponentProps<typeof Button>["variant"];
+  acceptAllIcon?: ComponentProps<typeof Button>["icon"];
   rejectAllLabel?: string;
   showDisabledCheckbox?: boolean;
+  showItemAcceptAction?: boolean;
+  showRejectAllAction?: boolean;
   onTextChange: (id: string, text: string) => void;
   onAcceptItem: (id: string) => void;
   onRejectItem?: (id: string) => void;
   onAcceptAll: () => void;
   onRejectAll: () => void;
-}
-
-function EditableSuggestionText({
-  id,
-  text,
-  onTextChange,
-}: {
-  id: string;
-  text: string;
-  onTextChange: (id: string, text: string) => void;
-}) {
-  const textRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (textRef.current && textRef.current.textContent !== text) {
-      textRef.current.textContent = text;
-    }
-  }, [text]);
-
-  return (
-    <div
-      ref={textRef}
-      className="s-min-h-6 s-cursor-text s-text-base s-text-foreground s-outline-none focus:s-outline-none dark:s-text-foreground-night"
-      contentEditable
-      suppressContentEditableWarning
-      onInput={(event) => {
-        onTextChange(id, event.currentTarget.textContent ?? "");
-      }}
-      onBlur={(event) => {
-        onTextChange(id, event.currentTarget.textContent ?? "");
-      }}
-      onKeyDown={(event) => {
-        if (event.key === "Enter") {
-          event.preventDefault();
-          event.currentTarget.blur();
-        }
-      }}
-    />
-  );
 }
 
 export function SuggestionBox({
@@ -85,8 +45,12 @@ export function SuggestionBox({
   acceptItemLabel = "Accept suggestion",
   rejectItemLabel = "Reject suggestion",
   acceptAllLabel = "Accept all",
+  acceptAllButtonVariant = "highlight-secondary",
+  acceptAllIcon,
   rejectAllLabel = "Dismiss all",
   showDisabledCheckbox = true,
+  showItemAcceptAction = true,
+  showRejectAllAction = true,
   onTextChange,
   onAcceptItem,
   onRejectItem,
@@ -125,11 +89,11 @@ export function SuggestionBox({
               {title}
             </div>
           )}
-          <div className="s-flex s-w-full s-items-center s-flex-col">
+          <div className="s-flex s-w-full s-items-center s-flex-col s-gap-4">
             {suggestionGroups.map((group, groupIndex) => (
               <div
                 key={group.title ?? `suggestion-group-${groupIndex}`}
-                className="s-flex s-w-full s-flex-col"
+                className="s-flex s-w-full s-flex-col s-gap-1"
               >
                 {(group.title || group.visual) && (
                   <div className="s-flex s-items-center s-gap-3">
@@ -145,57 +109,48 @@ export function SuggestionBox({
                   const text = textById[item.id] ?? item.text;
 
                   return (
-                    <div
+                    <TaskItem
                       key={item.id}
-                      className="s-group/suggestion-item s-flex s-items-start s-gap-3 s-items-center s-pl-6"
-                    >
-                      {showDisabledCheckbox && (
-                        <Checkbox
-                          size="xs"
-                          className="s-mt-1"
-                          checked={false}
-                          disabled
-                        />
-                      )}
-                      {item.visual}
-                      <div className="s-flex s-min-w-0 s-flex-1 s-flex-col">
-                        {item.title && (
-                          <div className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
-                            {item.title}
-                          </div>
-                        )}
-                        <EditableSuggestionText
-                          id={item.id}
-                          text={text}
-                          onTextChange={onTextChange}
-                        />
-                      </div>
-                      <div className="s-flex s-items-center s-gap-1 s-opacity-0 s-transition-opacity group-hover/suggestion-item:s-opacity-100 group-focus-within/suggestion-item:s-opacity-100">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          label="Accept"
-                          tooltip={acceptItemLabel}
-                          aria-label={acceptItemLabel}
-                          onClick={() => onAcceptItem(item.id)}
-                        />
-                      </div>
-                    </div>
+                      id={item.id}
+                      text={text}
+                      title={item.title}
+                      visual={item.visual}
+                      className="s-pl-6"
+                      isEditable
+                      isDisabled
+                      showCheckbox={showDisabledCheckbox}
+                      onTextChange={onTextChange}
+                      actions={
+                        showItemAcceptAction ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            label="Accept"
+                            tooltip={acceptItemLabel}
+                            aria-label={acceptItemLabel}
+                            onClick={() => onAcceptItem(item.id)}
+                          />
+                        ) : null
+                      }
+                    />
                   );
                 })}
               </div>
             ))}
           </div>
           <div className="s-flex s-items-center s-justify-start s-gap-2">
+            {showRejectAllAction && (
+              <Button
+                size="sm"
+                variant="outline"
+                label={rejectAllLabel}
+                onClick={onRejectAll}
+              />
+            )}
             <Button
               size="sm"
-              variant="outline"
-              label={rejectAllLabel}
-              onClick={onRejectAll}
-            />
-            <Button
-              size="sm"
-              variant="highlight-secondary"
+              variant={acceptAllButtonVariant}
+              icon={acceptAllIcon}
               label={acceptAllLabel}
               onClick={onAcceptAll}
             />

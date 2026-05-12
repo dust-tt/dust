@@ -2,6 +2,7 @@ import {
   AnimatedText,
   ArchiveIcon,
   ArrowDownOnSquareIcon,
+  ArrowUpIcon,
   ArrowUpOnSquareIcon,
   Avatar,
   Button,
@@ -10,8 +11,9 @@ import {
   Card,
   CardGrid,
   ChatBubbleLeftRightIcon,
+  CheckCircleIcon,
+  CheckDoubleIcon,
   CheckIcon,
-  Checkbox,
   Chip,
   Cog6ToothIcon,
   ContentMessage,
@@ -36,7 +38,6 @@ import {
   EmptyCTA,
   EmptyCTAButton,
   ExternalLinkIcon,
-  EyeIcon,
   FolderIcon,
   Icon,
   InformationCircleIcon,
@@ -46,7 +47,6 @@ import {
   LogoutIcon,
   MagicIcon,
   MoreIcon,
-  PlayIcon,
   ReplySection,
   SearchInput,
   SearchInputWithPopover,
@@ -89,8 +89,9 @@ import type {
   User,
 } from "../data/types";
 import { getUserById } from "../data/users";
-import { InputBar } from "./InputBar";
+import { InputBar, type InputBarTaskCommand } from "./InputBar";
 import { SuggestionBox } from "./SuggestionBox";
+import { TaskItem } from "./TaskItem";
 import { TodoInputBar } from "./TodoInputBar";
 
 interface GroupConversationViewProps {
@@ -1162,6 +1163,8 @@ export function GroupConversationView({
   const [hiddenFakeTodoItemKeys, setHiddenFakeTodoItemKeys] = useState<
     Set<string>
   >(new Set());
+  const [activeTaskCommand, setActiveTaskCommand] =
+    useState<InputBarTaskCommand | null>(null);
   const [ongoingSummary, setOngoingSummary] = useState<OngoingSummary | null>(
     null
   );
@@ -2773,7 +2776,10 @@ export function GroupConversationView({
                 label="Conversations"
                 icon={ChatBubbleLeftRightIcon}
               />
-              <TabsTrigger value="todos" label="To-dos" icon={CheckIcon} />
+              <TabsTrigger value="todos" label="Tasks" icon={CheckCircleIcon} />
+              <div className="s-flex s-h-full s-items-center s-pb-2">
+                <Chip size="xs" color="golden" label="Beta" />
+              </div>
               <TabsTrigger value="knowledge" label="Files" icon={FolderIcon} />
               {showToolsAndAboutTabs && (
                 <>
@@ -2996,10 +3002,9 @@ export function GroupConversationView({
                         })}
                       </div>
                       <Separator className="s-mt-4" />
-                      <div className="s-flex s-w-full s-items-center s-justify-between s-gap-4">
+                      <div className="s-flex s-w-full s-items-center s-justify-between s-gap-2">
                         <ButtonsSwitchList
                           defaultValue={goodToKnowFilter}
-                          size="xs"
                           onValueChange={(value) => {
                             if (
                               value === "all" ||
@@ -3026,9 +3031,40 @@ export function GroupConversationView({
                             tooltip="Every conversation in this project"
                           />
                         </ButtonsSwitchList>
+                        {hasHistory && (
+                          <SearchInputWithPopover
+                            name="conversation-search"
+                            value={searchText}
+                            onChange={(value) => {
+                              setSearchText(value);
+                              if (!value.trim()) {
+                                setIsSearchOpen(false);
+                              }
+                            }}
+                            open={isSearchOpen}
+                            onOpenChange={setIsSearchOpen}
+                            placeholder={`Search in ${space.name}`}
+                            className="s-w-full"
+                            items={searchResults}
+                            availableHeight
+                            noResults={
+                              searchText.trim()
+                                ? "No results found"
+                                : "Start typing to search"
+                            }
+                            onItemSelect={handleSearchItemSelect}
+                            renderItem={(item, selected) => (
+                              <SearchResultItem
+                                item={item}
+                                selected={selected}
+                              />
+                            )}
+                          />
+                        )}
                         <Button
-                          size="xs"
+                          size="sm"
                           variant="outline"
+                          icon={CheckDoubleIcon}
                           label="Mark all as read"
                           onClick={() => {
                             setCheckedSummaryItems((previous) => ({
@@ -3231,13 +3267,13 @@ export function GroupConversationView({
           </div>
         </TabsContent>
 
-        {/* To-dos Tab */}
+        {/* Tasks Tab */}
         <TabsContent value="todos">
           <div className="s-flex s-h-full s-min-h-0 s-flex-1 s-flex-col s-overflow-y-auto">
             <div className="s-mx-auto s-flex s-w-full s-max-w-4xl s-flex-col s-gap-4 s-py-8">
               <div className="s-flex s-flex-col s-gap-3">
                 <h2 className="s-heading-2xl s-text-foreground dark:s-text-foreground-night">
-                  {getProjectPageTitle("to-dos")}
+                  {getProjectPageTitle("tasks")}
                 </h2>
                 <TodoInputBar
                   placeholder="Describe the tasks to create"
@@ -3248,7 +3284,7 @@ export function GroupConversationView({
               {todoSuggestionStatus !== "idle" && (
                 <SuggestionBox
                   status={todoSuggestionStatus}
-                  workingLabel="Creating suggested to-dos..."
+                  workingLabel="Creating suggested tasks..."
                   items={todoSuggestions.map((suggestion) => {
                     const participant = todoParticipants.find(
                       (user) => user.id === suggestion.userId
@@ -3269,7 +3305,7 @@ export function GroupConversationView({
                     };
                   })}
                   textById={todoSuggestionTextById}
-                  acceptItemLabel="Add this to-do"
+                  acceptItemLabel="Add this task"
                   acceptAllLabel="Accept all"
                   rejectAllLabel="Cancel"
                   onTextChange={(id, text) => {
@@ -3297,6 +3333,7 @@ export function GroupConversationView({
                     <div className="s-flex s-items-center s-gap-2">
                       <ButtonsSwitchList
                         defaultValue={todoScopeFilter}
+                        size="sm"
                         onValueChange={(value) => {
                           if (value === "all" || value === "mine") {
                             setTodoScopeFilter(value);
@@ -3311,10 +3348,7 @@ export function GroupConversationView({
                           <Button
                             size="sm"
                             variant="outline"
-                            icon={EyeIcon}
-                            label={
-                              TODO_HISTORY_FILTER_LABELS[todoHistoryFilter]
-                            }
+                            label={`Status: ${TODO_HISTORY_FILTER_LABELS[todoHistoryFilter]}`}
                             isSelect
                           />
                         </DropdownMenuTrigger>
@@ -3350,7 +3384,7 @@ export function GroupConversationView({
                       name="todo-search"
                       value={todoSearchText}
                       onChange={setTodoSearchText}
-                      placeholder="Search to-dos..."
+                      placeholder="Search tasks..."
                       className="s-w-full"
                     />
                   </div>
@@ -3395,7 +3429,7 @@ export function GroupConversationView({
                             {participantTodoSuggestions.length > 0 && (
                               <SuggestionBox
                                 status="ready"
-                                workingLabel="Creating suggested to-dos..."
+                                workingLabel="Creating suggested tasks..."
                                 title="Suggestions"
                                 items={participantTodoSuggestions.map(
                                   (suggestion) => ({
@@ -3404,7 +3438,7 @@ export function GroupConversationView({
                                   })
                                 )}
                                 textById={participantTodoSuggestionTextById}
-                                acceptItemLabel="Add this to-do"
+                                acceptItemLabel="Add this task"
                                 onTextChange={(id, text) => {
                                   setParticipantTodoSuggestionTextById(
                                     (previousTextById) => ({
@@ -3434,7 +3468,7 @@ export function GroupConversationView({
                                 }}
                               />
                             )}
-                            <div className="s-flex s-flex-col s-gap-2">
+                            <div className="s-flex s-flex-col s-gap-2 s-pl-4">
                               {visibleItemsWithDrafts.map((item) => {
                                 const itemKey = getSummaryItemKey(
                                   "needAttention",
@@ -3463,10 +3497,17 @@ export function GroupConversationView({
                                   editingTodoItemKey === itemKey;
 
                                 return (
-                                  <div
+                                  <TaskItem
                                     key={itemKey}
+                                    id={itemKey}
+                                    text={todoItemText}
+                                    isEditable={!isClosedHistoryItem}
+                                    isChecked={isChecked}
+                                    isDisabled={isClosedHistoryItem}
+                                    isEditing={isEditingTodoItem}
+                                    isMutedAfterCheck
                                     className={cn(
-                                      "s-group/todo-item s-flex s-w-full s-items-start s-gap-3 s-overflow-hidden",
+                                      "s-w-full s-overflow-hidden s-pl-6 s-py-1",
                                       "s-transition-all s-duration-200",
                                       isExiting
                                         ? "s-max-h-0 s-opacity-0"
@@ -3474,253 +3515,180 @@ export function GroupConversationView({
                                           ? "s-max-h-0 s-opacity-0"
                                           : "s-max-h-32 s-opacity-100"
                                     )}
-                                  >
-                                    <div
-                                      className={cn(
-                                        "s-flex s-items-center s-px-0.5 s-transition-opacity",
-                                        isEditingTodoItem
-                                          ? "s-opacity-0"
-                                          : "s-opacity-0 group-focus-within/todo-item:s-opacity-100 group-hover/todo-item:s-opacity-100"
-                                      )}
-                                    >
-                                      <Button
-                                        icon={PlayIcon}
-                                        size="xmini"
-                                        variant="highlight"
-                                        isRounded
-                                        tooltip="Start working on the todo"
-                                        aria-label="Start to-do"
-                                      />
-                                    </div>
-                                    <Checkbox
-                                      size="xs"
-                                      className="s-mt-1"
-                                      isMutedAfterCheck
-                                      checked={isChecked}
-                                      disabled={isClosedHistoryItem}
-                                      onCheckedChange={(checked) => {
-                                        if (isClosedHistoryItem) {
-                                          return;
+                                    renderText={
+                                      shouldTypeChecklistItem ? (
+                                        <TypingAnimation
+                                          key={`${itemKey}-${typingVersion}`}
+                                          text={todoItemText}
+                                          duration={16}
+                                        />
+                                      ) : undefined
+                                    }
+                                    autoCheckRationale={autoCheckRationale}
+                                    relatedConversations={relatedConversationIds.map(
+                                      (conversationId) => ({
+                                        id: conversationId,
+                                        label:
+                                          conversationTitleById.get(
+                                            conversationId
+                                          ) ?? conversationId,
+                                      })
+                                    )}
+                                    actionsClassName="s-pr-4"
+                                    editorRef={(node) => {
+                                      if (node) {
+                                        todoItemEditorRefs.current.set(
+                                          itemKey,
+                                          node
+                                        );
+                                      } else {
+                                        todoItemEditorRefs.current.delete(
+                                          itemKey
+                                        );
+                                      }
+                                    }}
+                                    onCheckedChange={(checked) => {
+                                      if (isClosedHistoryItem) {
+                                        return;
+                                      }
+                                      setCheckedSummaryItems((previous) => ({
+                                        ...previous,
+                                        [itemKey]: checked,
+                                      }));
+                                    }}
+                                    onEditingChange={(isEditing) => {
+                                      setEditingTodoItemKey((previousKey) => {
+                                        if (isEditing) {
+                                          return itemKey;
                                         }
-                                        setCheckedSummaryItems((previous) => ({
-                                          ...previous,
-                                          [itemKey]: checked === true,
-                                        }));
-                                      }}
-                                    />
-                                    <div className="s-flex s-min-w-0 s-flex-1 s-flex-col">
-                                      <div
-                                        className={cn(
-                                          "s-text-base s-min-h-6",
-                                          "s-cursor-text s-outline-none focus:s-outline-none",
-                                          isChecked
-                                            ? "s-text-faint s-line-through dark:s-text-faint-night"
-                                            : "s-text-foreground dark:s-text-foreground-night"
-                                        )}
-                                        contentEditable
-                                        suppressContentEditableWarning
-                                        ref={(node) => {
-                                          if (node) {
-                                            todoItemEditorRefs.current.set(
-                                              itemKey,
-                                              node
-                                            );
-                                          } else {
-                                            todoItemEditorRefs.current.delete(
-                                              itemKey
-                                            );
-                                          }
-                                        }}
-                                        onFocus={() => {
-                                          setEditingTodoItemKey(itemKey);
-                                        }}
-                                        onBlur={(event) => {
-                                          const nextText =
-                                            event.currentTarget.textContent ??
-                                            "";
-                                          setEditingTodoItemKey(
-                                            (previousKey) =>
-                                              previousKey === itemKey
-                                                ? null
-                                                : previousKey
-                                          );
-                                          if (nextText.trim().length === 0) {
-                                            removeTodoItem(itemKey);
-                                            return;
-                                          }
-                                          saveTodoItemText(
-                                            itemKey,
-                                            item.text,
-                                            nextText
-                                          );
-                                        }}
-                                        onKeyDown={(event) => {
-                                          if (event.key === "Escape") {
-                                            event.preventDefault();
-                                            event.stopPropagation();
-                                            if (
-                                              (
-                                                event.currentTarget
-                                                  .textContent ?? ""
-                                              ).trim().length === 0
-                                            ) {
-                                              removeTodoItem(itemKey);
-                                              return;
+                                        return previousKey === itemKey
+                                          ? null
+                                          : previousKey;
+                                      });
+                                    }}
+                                    onCommit={(nextText) => {
+                                      saveTodoItemText(
+                                        itemKey,
+                                        item.text,
+                                        nextText
+                                      );
+                                    }}
+                                    onRemove={() => removeTodoItem(itemKey)}
+                                    onAddAfter={() =>
+                                      addDraftTodoItemAfter(
+                                        list.user.id,
+                                        itemKey
+                                      )
+                                    }
+                                    onRelatedConversationClick={
+                                      scrollToConversationRow
+                                    }
+                                    actions={
+                                      <>
+                                        <DropdownMenu
+                                          onOpenChange={(open) => {
+                                            if (!open) {
+                                              setTodoReassignSearchText("");
                                             }
-                                            event.currentTarget.textContent =
-                                              todoItemText;
-                                            event.currentTarget.blur();
-                                            return;
-                                          }
-
-                                          if (event.key === "Enter") {
-                                            event.preventDefault();
-                                            event.stopPropagation();
-                                            saveTodoItemText(
-                                              itemKey,
-                                              item.text,
-                                              event.currentTarget.textContent ??
-                                                ""
-                                            );
-                                            addDraftTodoItemAfter(
-                                              list.user.id,
-                                              itemKey
-                                            );
-                                          }
-                                        }}
-                                      >
-                                        {shouldTypeChecklistItem ? (
-                                          <TypingAnimation
-                                            key={`${itemKey}-${typingVersion}`}
-                                            text={todoItemText}
-                                            duration={16}
-                                          />
-                                        ) : (
-                                          todoItemText
-                                        )}
-                                      </div>
-                                      {isChecked && autoCheckRationale ? (
-                                        <div className="s-text-xs s-text-faint dark:s-text-faint-night">
-                                          {autoCheckRationale}
-                                        </div>
-                                      ) : null}
-                                      {relatedConversationIds.length ===
-                                      0 ? null : (
-                                        <div className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
-                                          <span>In </span>
-                                          {relatedConversationIds.map(
-                                            (conversationId, index) => (
-                                              <span key={conversationId}>
-                                                <button
-                                                  type="button"
-                                                  className={cn(
-                                                    "s-underline hover:s-no-underline",
-                                                    isChecked
-                                                      ? "s-text-faint dark:s-text-faint-night"
-                                                      : "s-text-muted-foreground dark:s-text-muted-foreground-night"
-                                                  )}
-                                                  onClick={(event) => {
-                                                    event.stopPropagation();
-                                                    scrollToConversationRow(
-                                                      conversationId
-                                                    );
-                                                  }}
-                                                >
-                                                  {conversationTitleById.get(
-                                                    conversationId
-                                                  ) ?? conversationId}
-                                                </button>
-                                                {index <
-                                                  relatedConversationIds.length -
-                                                    1 && ", "}
-                                              </span>
-                                            )
-                                          )}
-                                        </div>
-                                      )}
-                                    </div>
-                                    <div
-                                      className={cn(
-                                        "s-flex s-items-center s-transition-opacity",
-                                        isEditingTodoItem
-                                          ? "s-opacity-0"
-                                          : "s-opacity-0 group-focus-within/todo-item:s-opacity-100 group-hover/todo-item:s-opacity-100"
-                                      )}
-                                    >
-                                      <DropdownMenu
-                                        onOpenChange={(open) => {
-                                          if (!open) {
-                                            setTodoReassignSearchText("");
-                                          }
-                                        }}
-                                      >
-                                        <DropdownMenuTrigger asChild>
-                                          <Button
-                                            icon={MoreIcon}
-                                            size="sm"
-                                            variant="outline"
-                                            tooltip="More actions"
-                                            aria-label="More actions"
-                                          />
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">
-                                          <DropdownMenuItem
-                                            label="Delete"
-                                            icon={TrashIcon}
-                                            variant="warning"
-                                          />
-                                          <DropdownMenuSub>
-                                            <DropdownMenuSubTrigger label="Re-assign to" />
-                                            <DropdownMenuSubContent
-                                              className="s-w-64"
-                                              dropdownHeaders={
-                                                <DropdownMenuSearchbar
-                                                  placeholder="Search participants"
-                                                  name="todo-reassign-search"
-                                                  value={todoReassignSearchText}
-                                                  onChange={
-                                                    setTodoReassignSearchText
-                                                  }
-                                                  autoFocus
-                                                />
-                                              }
-                                            >
-                                              {reassignTodoParticipants.length >
-                                              0 ? (
-                                                reassignTodoParticipants.map(
-                                                  (participant) => (
-                                                    <DropdownMenuItem
-                                                      key={participant.id}
-                                                      label={
-                                                        participant.fullName
-                                                      }
-                                                      icon={
-                                                        <Avatar
-                                                          name={
-                                                            participant.fullName
-                                                          }
-                                                          visual={
-                                                            participant.portrait
-                                                          }
-                                                          size="xs"
-                                                          isRounded={true}
-                                                        />
-                                                      }
-                                                    />
+                                          }}
+                                        >
+                                          <DropdownMenuTrigger asChild>
+                                            <Button
+                                              icon={MoreIcon}
+                                              size="xs"
+                                              variant="ghost"
+                                              tooltip="More actions"
+                                              aria-label="More actions"
+                                            />
+                                          </DropdownMenuTrigger>
+                                          <DropdownMenuContent align="end">
+                                            <DropdownMenuItem
+                                              label="Delete"
+                                              icon={TrashIcon}
+                                              variant="warning"
+                                            />
+                                            <DropdownMenuSub>
+                                              <DropdownMenuSubTrigger label="Re-assign to" />
+                                              <DropdownMenuSubContent
+                                                className="s-w-64"
+                                                dropdownHeaders={
+                                                  <DropdownMenuSearchbar
+                                                    placeholder="Search participants"
+                                                    name="todo-reassign-search"
+                                                    value={
+                                                      todoReassignSearchText
+                                                    }
+                                                    onChange={
+                                                      setTodoReassignSearchText
+                                                    }
+                                                    autoFocus
+                                                  />
+                                                }
+                                              >
+                                                {reassignTodoParticipants.length >
+                                                0 ? (
+                                                  reassignTodoParticipants.map(
+                                                    (participant) => (
+                                                      <DropdownMenuItem
+                                                        key={participant.id}
+                                                        label={
+                                                          participant.fullName
+                                                        }
+                                                        icon={
+                                                          <Avatar
+                                                            name={
+                                                              participant.fullName
+                                                            }
+                                                            visual={
+                                                              participant.portrait
+                                                            }
+                                                            size="xs"
+                                                            isRounded={true}
+                                                          />
+                                                        }
+                                                      />
+                                                    )
                                                   )
-                                                )
-                                              ) : (
-                                                <DropdownMenuItem
-                                                  label="No participants found"
-                                                  disabled
-                                                />
-                                              )}
-                                            </DropdownMenuSubContent>
-                                          </DropdownMenuSub>
-                                        </DropdownMenuContent>
-                                      </DropdownMenu>
-                                    </div>
-                                  </div>
+                                                ) : (
+                                                  <DropdownMenuItem
+                                                    label="No participants found"
+                                                    disabled
+                                                  />
+                                                )}
+                                              </DropdownMenuSubContent>
+                                            </DropdownMenuSub>
+                                          </DropdownMenuContent>
+                                        </DropdownMenu>
+                                        <Button
+                                          icon={ArrowUpIcon}
+                                          size="xs"
+                                          variant="highlight"
+                                          tooltip="Start working on task"
+                                          aria-label="Start task"
+                                          onClick={() => {
+                                            setActiveTaskCommand({
+                                              id: itemKey,
+                                              label: todoItemText,
+                                              contextAttachments:
+                                                relatedConversationIds.map(
+                                                  (conversationId) => ({
+                                                    id: conversationId,
+                                                    label:
+                                                      conversationTitleById.get(
+                                                        conversationId
+                                                      ) ?? conversationId,
+                                                    tooltip:
+                                                      "Conversation context",
+                                                    visual:
+                                                      ChatBubbleLeftRightIcon,
+                                                  })
+                                                ),
+                                            });
+                                          }}
+                                        />
+                                      </>
+                                    }
+                                  />
                                 );
                               })}
                             </div>
@@ -3729,7 +3697,7 @@ export function GroupConversationView({
                       })
                     ) : (
                       <div className="s-text-base s-text-faint s-italic dark:s-text-faint-night">
-                        No to-dos match your filters.
+                        No tasks match your filters.
                       </div>
                     )
                   ) : (
@@ -3740,7 +3708,7 @@ export function GroupConversationView({
                 </div>
               ) : (
                 <div className="s-text-base s-text-faint s-italic dark:s-text-faint-night">
-                  Start a conversation to generate project to-dos.
+                  Start a conversation to generate project tasks.
                 </div>
               )}
             </div>
@@ -4042,6 +4010,27 @@ export function GroupConversationView({
           </div>
         </TabsContent>
       </Tabs>
+
+      {activeTaskCommand && (
+        <div
+          className="s-fixed s-inset-0 s-z-50 s-flex s-items-center s-justify-center s-bg-black/40 s-p-4"
+          onClick={() => setActiveTaskCommand(null)}
+        >
+          <div
+            className="s-w-full s-max-w-xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <InputBar
+              placeholder="Ask Dust to work on this task"
+              variant="embedded"
+              taskCommand={activeTaskCommand}
+              className="s-rounded-2xl s-shadow-lg"
+              onClose={() => setActiveTaskCommand(null)}
+              onSend={() => setActiveTaskCommand(null)}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Confirmation Dialogs */}
       {/* Name Save Dialog */}

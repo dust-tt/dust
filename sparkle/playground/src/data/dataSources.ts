@@ -100,7 +100,7 @@ const txtNames = [
   "Configuration",
   "Instructions",
   "Changelog",
-  "TODO_List",
+  "Task_List",
   "Quick_Reference",
   "Script_Output",
   "Error_Log",

@@ -60,6 +60,20 @@ export interface MessageActionCardData {
   };
 }
 
+export interface MessageTaskSuggestionItemData {
+  id: string;
+  text: string;
+  groupTitle?: string;
+  groupUserId?: string;
+}
+
+export interface MessageTaskSuggestionBoxData {
+  id: string;
+  title: string;
+  variant: "created" | "suggestions";
+  items: MessageTaskSuggestionItemData[];
+}
+
 export interface MessageInfoChipData {
   icon: "bolt";
 }
@@ -81,6 +95,7 @@ export interface ConversationMessage {
   markdown?: string;
   attachments?: MessageAttachmentData[];
   actionCards?: MessageActionCardData[];
+  taskSuggestionBoxes?: MessageTaskSuggestionBoxData[];
   citations?: MessageCitationData[];
   reactions?: MessageReactionData[];
   timestamp: Date;

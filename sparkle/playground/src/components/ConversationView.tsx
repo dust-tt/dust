@@ -2,6 +2,7 @@ import {
   ActionCardBlock,
   ArrowDownOnSquareIcon,
   ArrowLeftIcon,
+  ArrowRightIcon,
   AttachmentChip,
   AttachmentIcon,
   Avatar,
@@ -11,6 +12,7 @@ import {
   Button,
   ButtonsSwitch,
   ButtonsSwitchList,
+  CheckIcon,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -71,6 +73,7 @@ import type {
 } from "../data/types";
 import { getUserById } from "../data/users";
 import { InputBar } from "./InputBar";
+import { SuggestionBox } from "./SuggestionBox";
 
 interface ConversationViewProps {
   conversation: Conversation;
@@ -343,10 +346,24 @@ export function ConversationView({
   const [actionCardStates, setActionCardStates] = useState<
     Map<string, ActionCardState>
   >(new Map());
+  const [taskSuggestionTextById, setTaskSuggestionTextById] = useState<
+    Record<string, string>
+  >({});
+  const [hiddenTaskSuggestionBoxIds, setHiddenTaskSuggestionBoxIds] = useState<
+    Set<string>
+  >(new Set());
+  const [hiddenTaskSuggestionItemIds, setHiddenTaskSuggestionItemIds] =
+    useState<Set<string>>(new Set());
 
   useEffect(() => {
     setActionCardStates(new Map(baseActionStates));
   }, [baseActionStates, conversation.id]);
+
+  useEffect(() => {
+    setTaskSuggestionTextById({});
+    setHiddenTaskSuggestionBoxIds(new Set());
+    setHiddenTaskSuggestionItemIds(new Set());
+  }, [conversation.id]);
 
   const toggleReaction = useCallback(
     (messageId: string, emoji: string) => {
@@ -409,6 +426,29 @@ export function ConversationView({
     },
     []
   );
+
+  const setTaskSuggestionText = useCallback((id: string, text: string) => {
+    setTaskSuggestionTextById((previousTextById) => ({
+      ...previousTextById,
+      [id]: text,
+    }));
+  }, []);
+
+  const hideTaskSuggestionItem = useCallback((id: string) => {
+    setHiddenTaskSuggestionItemIds((previousIds) => {
+      const nextIds = new Set(previousIds);
+      nextIds.add(id);
+      return nextIds;
+    });
+  }, []);
+
+  const hideTaskSuggestionBox = useCallback((id: string) => {
+    setHiddenTaskSuggestionBoxIds((previousIds) => {
+      const nextIds = new Set(previousIds);
+      nextIds.add(id);
+      return nextIds;
+    });
+  }, []);
 
   // Auto-scroll to bottom on mount and when conversation changes
   useEffect(() => {
@@ -528,6 +568,82 @@ export function ConversationView({
           })}
         </div>
       );
+    }
+
+    if (message.taskSuggestionBoxes && message.taskSuggestionBoxes.length > 0) {
+      const visibleBoxes = message.taskSuggestionBoxes.filter(
+        (box) => !hiddenTaskSuggestionBoxIds.has(box.id)
+      );
+
+      if (visibleBoxes.length > 0) {
+        blocks.push(
+          <div
+            key={`${message.id}-task-suggestion-boxes`}
+            className="s-flex s-flex-col s-gap-3"
+          >
+            {visibleBoxes.map((box) => {
+              const visibleItems = box.items.filter(
+                (item) => !hiddenTaskSuggestionItemIds.has(item.id)
+              );
+
+              if (visibleItems.length === 0) {
+                return null;
+              }
+
+              return (
+                <SuggestionBox
+                  key={box.id}
+                  status="ready"
+                  workingLabel="Creating tasks..."
+                  title={box.title}
+                  headerIcon={box.variant === "created" ? CheckIcon : undefined}
+                  items={visibleItems.map((item) => {
+                    const groupUser = item.groupUserId
+                      ? getUserByOwnerId(item.groupUserId)
+                      : undefined;
+
+                    return {
+                      id: item.id,
+                      groupTitle: item.groupTitle,
+                      groupVisual: groupUser ? (
+                        <Avatar
+                          name={groupUser.fullName}
+                          visual={groupUser.portrait}
+                          size="xs"
+                          isRounded
+                        />
+                      ) : undefined,
+                      text: item.text,
+                    };
+                  })}
+                  textById={taskSuggestionTextById}
+                  acceptItemLabel={
+                    box.variant === "created" ? "Open task" : "Add this task"
+                  }
+                  acceptAllLabel={
+                    box.variant === "created" ? "Go to tasks" : "Accept all"
+                  }
+                  acceptAllButtonVariant={
+                    box.variant === "created" ? "outline" : undefined
+                  }
+                  acceptAllIcon={
+                    box.variant === "created" ? ArrowRightIcon : undefined
+                  }
+                  rejectAllLabel={
+                    box.variant === "created" ? "Dismiss" : "Reject all"
+                  }
+                  showItemAcceptAction={box.variant !== "created"}
+                  showRejectAllAction={box.variant !== "created"}
+                  onTextChange={setTaskSuggestionText}
+                  onAcceptItem={hideTaskSuggestionItem}
+                  onAcceptAll={() => hideTaskSuggestionBox(box.id)}
+                  onRejectAll={() => hideTaskSuggestionBox(box.id)}
+                />
+              );
+            })}
+          </div>
+        );
+      }
     }
 
     if (blocks.length === 0) {
