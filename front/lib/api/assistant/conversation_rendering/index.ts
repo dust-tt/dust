@@ -41,9 +41,6 @@ const IMAGE_CONTENT_TOKEN_COUNT = 3100;
 export const TOOL_DEFINITIONS_COUNT_ADJUSTMENT_FACTOR = 0.7;
 export const TOKENS_MARGIN = 1024;
 
-const CONTEXT_WINDOW_EXCEEDED_ERROR_MESSAGE =
-  "Context window exceeded: at least one message is required";
-
 export async function renderConversationForModel(
   auth: Authenticator,
   {
@@ -196,7 +193,9 @@ export async function renderConversationForModel(
         },
         "Render Conversation V2: No interactions fit in context window."
       );
-      return new Err(new Error(CONTEXT_WINDOW_EXCEEDED_ERROR_MESSAGE));
+      return new Err(
+        new Error("Context window exceeded: at least one message is required")
+      );
     }
     availableTokens -= currentInteractionTokens;
   }
@@ -268,7 +267,9 @@ export async function renderConversationForModel(
       },
       "Render Conversation V2: No interactions fit in context window."
     );
-    return new Err(new Error(CONTEXT_WINDOW_EXCEEDED_ERROR_MESSAGE));
+    return new Err(
+      new Error("Context window exceeded: at least one message is required")
+    );
   }
 
   // Remove tokenCount from final messages and remove content fragments from return type
