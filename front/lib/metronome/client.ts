@@ -1,6 +1,7 @@
 import config from "@app/lib/api/config";
 import { PLAN_CODE_CUSTOM_FIELD_KEY } from "@app/lib/metronome/constants";
 import logger from "@app/logger/logger";
+import type { SupportedCurrency } from "@app/types/currency";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -16,7 +17,10 @@ import type {
   MetronomeUsageListResponse,
   MetronomeUsageWithGroupsResponse,
 } from "./types";
-import { classifyMetronomePackageByName } from "./types";
+import {
+  classifyMetronomePackageByName,
+  classifyMetronomePackageCurrencyByName,
+} from "./types";
 
 let cachedClient: Metronome | null = null;
 
@@ -404,6 +408,7 @@ export interface MetronomePackageSummary {
   aliases: string[];
   rateCardId?: string;
   tier: MetronomePackageTier;
+  currency: SupportedCurrency;
 }
 
 // Cache the package list for a few minutes as the catalog rarely changes and
@@ -413,6 +418,32 @@ let packageListCache: {
   expiresAtMs: number;
   packages: MetronomePackageSummary[];
 } | null = null;
+
+const TIER_SORT_ORDER: Record<MetronomePackageTier, number> = {
+  enterprise: 0,
+  business: 1,
+  pro: 2,
+};
+const CURRENCY_SORT_ORDER: Record<SupportedCurrency, number> = {
+  usd: 0,
+  eur: 1,
+};
+
+function comparePackagesForDisplay(
+  a: MetronomePackageSummary,
+  b: MetronomePackageSummary
+): number {
+  const tierDelta = TIER_SORT_ORDER[a.tier] - TIER_SORT_ORDER[b.tier];
+  if (tierDelta !== 0) {
+    return tierDelta;
+  }
+  const currencyDelta =
+    CURRENCY_SORT_ORDER[a.currency] - CURRENCY_SORT_ORDER[b.currency];
+  if (currencyDelta !== 0) {
+    return currencyDelta;
+  }
+  return a.name.localeCompare(b.name);
+}
 
 /**
  * List all Metronome packages on the account. Cached for 5 minutes.
@@ -443,8 +474,10 @@ export async function listMetronomePackages(): Promise<
         aliases,
         rateCardId: pkg.rate_card_id ?? undefined,
         tier,
+        currency: classifyMetronomePackageCurrencyByName(name),
       });
     }
+    packages.sort(comparePackagesForDisplay);
     packageListCache = {
       expiresAtMs: Date.now() + PACKAGE_LIST_CACHE_TTL_MS,
       packages,

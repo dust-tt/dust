@@ -20,6 +20,7 @@ import {
 } from "@app/lib/metronome/contracts";
 import { invalidateContractCache } from "@app/lib/metronome/plan_type";
 import type { MetronomePackageTier } from "@app/lib/metronome/types";
+import { resolveCurrencyFromStripe } from "@app/lib/plans/billing_currency";
 import {
   isEntreprisePlanPrefix,
   isProPlanPrefix,
@@ -197,6 +198,7 @@ async function handler(
       api_error: { type: "invalid_request_error", message: errorMessage },
     });
   }
+  const resolvedCurrency = resolveCurrencyFromStripe({ stripeCustomer });
 
   // Resolve the Metronome customer.
   const customerResult = await ensureMetronomeCustomerForWorkspace({
@@ -232,6 +234,20 @@ async function handler(
     return apiError(req, res, {
       status_code: 400,
       api_error: { type: "invalid_request_error", message: errorMessage },
+    });
+  }
+  if (pkg.currency !== resolvedCurrency) {
+    const errorMessage =
+      `Metronome package ${body.metronomePackageId} is ${pkg.currency.toUpperCase()}, ` +
+      `but Stripe customer ${body.stripeCustomerId} resolves to ` +
+      `${resolvedCurrency.toUpperCase()}. Pick a ${resolvedCurrency.toUpperCase()} package.`;
+    await pluginRun.recordError(errorMessage);
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: errorMessage,
+      },
     });
   }
   // Plan ↔ package tier compatibility.

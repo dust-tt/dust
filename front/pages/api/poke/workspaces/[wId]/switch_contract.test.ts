@@ -197,18 +197,21 @@ beforeEach(() => {
         name: "Enterprise USD",
         aliases: ["legacy-enterprise"],
         tier: "enterprise",
+        currency: "usd",
       },
       {
         id: PRO_PACKAGE_ID,
         name: "Pro USD",
         aliases: ["legacy-pro-monthly"],
         tier: "pro",
+        currency: "usd",
       },
       {
         id: BUSINESS_PACKAGE_ID,
         name: "Business USD",
         aliases: ["legacy-business"],
         tier: "business",
+        currency: "usd",
       },
     ])
   );
@@ -286,6 +289,30 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — Enterprise", () =>
 
     expect(res._getStatusCode()).toBe(400);
     expect(res._getJSONData().error.message).toContain("at least one hour");
+  });
+
+  it("rejects when the package currency does not match the Stripe customer currency", async () => {
+    await ensureEnterprisePlan();
+    vi.mocked(getStripeCustomer).mockResolvedValue({
+      id: STRIPE_CUSTOMER_ID,
+      address: { country: "FR" },
+    } as unknown as Stripe.Customer);
+
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      isSuperUser: true,
+    });
+    await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
+
+    req.body = enterpriseBody();
+    req.query.wId = workspace.sId;
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(400);
+    expect(res._getJSONData().error.message).toContain("resolves to EUR");
+    expect(res._getJSONData().error.message).toContain("Pick a EUR package");
+    expect(createMetronomeContract).not.toHaveBeenCalled();
   });
 });
 
