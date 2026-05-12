@@ -433,7 +433,12 @@ async function streamAgentAnswerToSlack(
           break;
         }
         if (answer.length <= MAX_SLACK_MESSAGE_LENGTH) {
-          await streamHandler.appendText(event.text);
+          // Strip complete :cite[...] markers during streaming — they'll be
+          // resolved to proper footnotes on the final chat.update.
+          const safeText = event.text.replace(/ ?:cite\[[a-zA-Z0-9, ]+\]/g, "");
+          if (safeText) {
+            await streamHandler.appendText(safeText);
+          }
           break;
         }
 
