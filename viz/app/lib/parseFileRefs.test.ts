@@ -1,6 +1,5 @@
-import { describe, expect, it } from "vitest";
-
 import { extractFileRefs } from "@viz/app/lib/parseFileRefs";
+import { describe, expect, it } from "vitest";
 
 describe("extractFileRefs", () => {
   it("extracts file IDs from useFile() calls", () => {
