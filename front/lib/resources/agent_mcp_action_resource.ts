@@ -26,6 +26,7 @@ import { getCitationsFromToolOutput } from "@app/lib/api/assistant/citations";
 import { getAgentConfigurationsWithVersion } from "@app/lib/api/assistant/configuration/agent";
 import type { ToolDisplayLabels } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";
 import {
   AgentMCPActionModel,
   AgentMCPActionOutputItemModel,
@@ -159,8 +160,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
   static async makeNew(
     auth: Authenticator,
-    // TODO(2026-05-11 SANDBOX) Use conversation id when creating the action row.
-    _conversation: ConversationWithoutContentType,
+    conversation: ConversationWithoutContentType,
     blob: Omit<CreationAttributes<AgentMCPActionModel>, "workspaceId">,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<AgentMCPActionResource> {
@@ -186,6 +186,14 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       stepContent.isFunctionCallContent(),
       "Step content is not a function call."
     );
+
+    await AgentStepContentToolExecutionModel.create({
+      workspaceId: workspace.id,
+      agentMessageId: blob.agentMessageId,
+      conversationId: conversation.id,
+      agentMCPActionId: action.id,
+      stepContentId: stepContent.id,
+    });
 
     return new this(this.model, action.get(), stepContent, {
       internalMCPServerName,
@@ -913,6 +921,20 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     });
   }
 
+  static async destroyStepContentToolExecutionByActionIds(
+    auth: Authenticator,
+    actionIds: ModelId[]
+  ) {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    await AgentStepContentToolExecutionModel.destroy({
+      where: {
+        workspaceId,
+        agentMCPActionId: { [Op.in]: actionIds },
+      },
+    });
+  }
+
   static async enrichActionsWithOutputItems(
     auth: Authenticator,
     {
@@ -1136,6 +1158,15 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
   ): Promise<Result<undefined, Error>> {
     try {
       const workspaceId = auth.getNonNullableWorkspace().id;
+
+      await AgentStepContentToolExecutionModel.destroy({
+        where: {
+          agentMessageId: { [Op.in]: params.agentMessageIds },
+          workspaceId,
+        },
+        transaction: params.transaction,
+      });
+
       await AgentMCPActionModel.destroy({
         where: {
           agentMessageId: { [Op.in]: params.agentMessageIds },
@@ -1154,6 +1185,14 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
     try {
+      await AgentStepContentToolExecutionModel.destroy({
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          agentMCPActionId: this.id,
+        },
+        transaction,
+      });
+
       await AgentMCPActionModel.destroy({
         where: {
           workspaceId: auth.getNonNullableWorkspace().id,
