@@ -68,11 +68,11 @@ struct ForwardRuntime {
     proxy_addr: std::net::SocketAddr,
     proxy_tls_name: Arc<str>,
     deny_log: Arc<PathBuf>,
-    // Plumbed in Slice 4; consumed by SNI-scoped MITM in Slice 5 and the
-    // request rewriter in Slice 6.
+    // Loaded at startup; consumed by the SNI-scoped MITM predicate and the
+    // request rewriter once those land.
     #[allow(dead_code)]
     secret_table: Arc<SecretTable>,
-    // Plumbed in Slice 4.5; consumed by SNI-scoped MITM in Slice 5.
+    // Operator kill switch read at startup; consumed by the MITM predicate.
     #[allow(dead_code)]
     disable_mitm: bool,
     tls_connector: TlsConnector,
@@ -218,9 +218,9 @@ fn parse_disable_mitm_env(value: Option<&str>) -> bool {
     }
 }
 
-// Slice 4.5 pins the rollback contract before the MITM branch lands: even if a
-// domain is in the secret allowlist union, the kill switch forces the 443 path
-// to remain TCP-splice. Slice 5 wires this predicate into handle_connection
+// Pins the rollback contract before the MITM branch lands: even if a domain
+// is in the secret allowlist union, the kill switch forces the 443 path to
+// remain TCP-splice. Wired into handle_connection once MITM is enabled
 // (either as a free helper sourced off ForwardRuntime fields, or as a thin
 // `&self` method that delegates here).
 #[allow(dead_code)]

@@ -12,9 +12,9 @@ use rcgen::{
 
 const CA_COMMON_NAME: &str = "Dust Sandbox Egress MITM CA";
 
-// Slice 3 only persists the CA on disk so front can install it in the sandbox
-// trust bundle. Per-host leaf signing + an LRU-bounded cache land in the slice
-// that wires up TLS termination, alongside the per-request placeholder swap.
+// Today we only persist the CA on disk so front can install it in the sandbox
+// trust bundle. Per-host leaf signing + an LRU-bounded cache will land once
+// TLS termination is wired up, alongside the per-request placeholder swap.
 pub struct MitmCa {
     #[allow(dead_code)]
     ca_cert: Certificate,
