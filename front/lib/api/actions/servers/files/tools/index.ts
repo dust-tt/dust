@@ -7,6 +7,7 @@ import {
   FILES_GREP_ACTION_NAME,
   FILES_LIST_ACTION_NAME,
   FILES_TOOLS_METADATA,
+  FILES_TOOLS_METADATA_WITH_PROJECT,
 } from "@app/lib/api/actions/servers/files/metadata";
 import { catHandler } from "@app/lib/api/actions/servers/files/tools/cat";
 import { copyHandler } from "@app/lib/api/actions/servers/files/tools/copy";
@@ -15,11 +16,18 @@ import { deleteHandler } from "@app/lib/api/actions/servers/files/tools/delete";
 import { grepHandler } from "@app/lib/api/actions/servers/files/tools/grep";
 import { listHandler } from "@app/lib/api/actions/servers/files/tools/list";
 
-export const TOOLS = buildTools(FILES_TOOLS_METADATA, {
+const HANDLERS = {
   [FILES_LIST_ACTION_NAME]: listHandler,
   [FILES_CAT_ACTION_NAME]: catHandler,
   [FILES_GREP_ACTION_NAME]: grepHandler,
   [FILES_CREATE_ACTION_NAME]: createHandler,
   [FILES_DELETE_ACTION_NAME]: deleteHandler,
   [FILES_COPY_ACTION_NAME]: copyHandler,
-});
+};
+
+export const TOOLS = buildTools(FILES_TOOLS_METADATA, HANDLERS);
+
+export const TOOLS_WITH_PROJECT = buildTools(
+  FILES_TOOLS_METADATA_WITH_PROJECT,
+  HANDLERS
+);
