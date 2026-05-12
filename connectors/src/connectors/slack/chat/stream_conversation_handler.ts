@@ -225,6 +225,9 @@ async function streamAgentAnswerToSlack(
   }
 
   let answer = "";
+  // Holds back text that might be the start of a :cite[...] marker
+  // split across streaming tokens (e.g. ":c", ":cite[ab").
+  let pendingCitePrefix = "";
   const actions: AgentActionPublicType[] = [];
   let pendingPersonalAuth: {
     redisKey: string;
@@ -433,9 +436,24 @@ async function streamAgentAnswerToSlack(
           break;
         }
         if (answer.length <= MAX_SLACK_MESSAGE_LENGTH) {
-          // Strip complete :cite[...] markers during streaming — they'll be
-          // resolved to proper footnotes on the final chat.update.
-          const safeText = event.text.replace(/ ?:cite\[[a-zA-Z0-9, ]+\]/g, "");
+          // Combine any buffered partial citation prefix with the new token.
+          const combined = pendingCitePrefix + event.text;
+          pendingCitePrefix = "";
+
+          // Strip complete :cite[...] markers — they'll be resolved to
+          // proper footnotes on the final chat.update.
+          let safeText = combined.replace(/ ?:cite\[[a-zA-Z0-9, ]+\]/g, "");
+
+          // Hold back any trailing partial citation prefix so it isn't
+          // rendered if the next token completes the marker.
+          const partialMatch = safeText.match(
+            / ?:c(?:i(?:t(?:e(?:\[[a-zA-Z0-9, ]*)?)?)?)?$/
+          );
+          if (partialMatch) {
+            pendingCitePrefix = partialMatch[0];
+            safeText = safeText.slice(0, -pendingCitePrefix.length);
+          }
+
           if (safeText) {
             await streamHandler.appendText(safeText);
           }
@@ -471,6 +489,12 @@ async function streamAgentAnswerToSlack(
 
       case "agent_message_gracefully_stopped":
       case "agent_message_success": {
+        // Flush any buffered partial text that turned out not to be a citation.
+        if (pendingCitePrefix) {
+          await streamHandler.appendText(pendingCitePrefix);
+          pendingCitePrefix = "";
+        }
+
         planHandler.abortAllChildStreams();
         await planHandler.deletePlanMessage();
 
