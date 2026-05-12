@@ -29,8 +29,8 @@ import {
   FREE_MONTHLY_CREDIT_NAME,
 } from "@app/lib/metronome/types";
 
-// Number of pricing tiers for any tiered seat-style product (MAU, Regular
-// Seat, future). Tier products and rates are derived from the prefix.
+// Number of pricing tiers for any tiered seat-style product (MAU, future).
+// Tier products and rates are derived from the prefix.
 const SEAT_TIER_COUNT = 6;
 
 if (!process.env.METRONOME_API_KEY) {
@@ -329,17 +329,11 @@ const PRODUCTS: ProductDef[] = [
     presentation_group_key: ["tool_group"],
     tags: [USAGE_TAG],
   },
-  // Legacy seat product — SUBSCRIPTION type, managed via Metronome seat subscriptions.
-  // Seats synced from membership create/revoke hooks (same as new pricing).
+  // Workspace Seat — single SUBSCRIPTION product covering both legacy (ANNUAL)
+  // and new (MONTHLY) per-seat plans. Seats synced from membership create/revoke
+  // hooks; price/frequency differs between rate cards.
   {
     name: "Workspace Seat",
-    type: "SUBSCRIPTION",
-  },
-  // Regular Seat — SUBSCRIPTION product for new (non-legacy) plans (e.g. Enterprise EUR).
-  // Same seat-sync mechanism as Workspace Seat; kept as a separate product so legacy
-  // and new pricing live on distinct rate cards without conflict.
-  {
-    name: "Regular Seat",
     type: "SUBSCRIPTION",
   },
   // Pro Seat / Max Seat — SUBSCRIPTION products for the new Business / Enterprise
@@ -361,7 +355,6 @@ const PRODUCTS: ProductDef[] = [
   // Quantity managed by the MAU/seat sync flow based on the contract's tier
   // custom field.
   ...buildSeatTierProducts("MAU"),
-  ...buildSeatTierProducts("Regular Seat"),
   // MAU Commit — appears as a line item on invoices for the monthly minimum charge.
   { name: "MAU Commit", type: "FIXED" },
   // FIXED products for credit grants — separate products for distinct invoice line items.
@@ -387,7 +380,7 @@ const PRODUCTS: ProductDef[] = [
   },
 ];
 
-// "MAU Tier 1", …, "MAU Tier 6" / "Regular Seat Tier 1", …, "Regular Seat Tier 6".
+// "MAU Tier 1", …, "MAU Tier 6".
 function buildSeatTierProductNames(prefix: string): string[] {
   return Array.from(
     { length: SEAT_TIER_COUNT },
@@ -729,7 +722,7 @@ function getRateCards(): RateCardDef[] {
     },
     // --- Enterprise USD: new (non-legacy) enterprise rate card ---
     // Same shape as Enterprise EUR, priced in USD.
-    // - Regular Seat: $45/seat/month (price in cents).
+    // - Workspace Seat: $45/seat/month (price in cents).
     // - AI Usage: priced directly on cost_awu (1 AWU per unit).
     // - Tool Usage: per-category AWU price via pricing_group_values.tool_category.
     {
@@ -746,7 +739,7 @@ function getRateCards(): RateCardDef[] {
       ],
       rates: [
         {
-          product_name: "Regular Seat",
+          product_name: "Workspace Seat",
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: true,
           rate_type: "FLAT",
@@ -762,17 +755,11 @@ function getRateCards(): RateCardDef[] {
           credit_type_id: getCreditTypeAwuId(),
         },
         ...buildAwuToolUsageRates(),
-        // Per-tier Regular Seat rates — not entitled by default; enabled per
-        // contract via overrides with the actual per-tier price (in USD cents).
-        ...buildSeatTierRates({
-          prefix: "Regular Seat",
-          creditTypeId: CREDIT_TYPE_USD_ID,
-        }),
       ],
     },
     // --- Enterprise EUR: new (non-legacy) enterprise rate card ---
     // Per-seat billing in EUR + AWU-based AI/Tool usage.
-    // - Regular Seat: €45/seat/month (subscription).
+    // - Workspace Seat: €45/seat/month (subscription).
     // - AI Usage: priced directly on cost_awu (1 AWU per unit, no multiplier).
     // - Tool Usage: per-category AWU price via pricing_group_values.tool_category.
     {
@@ -789,7 +776,7 @@ function getRateCards(): RateCardDef[] {
       ],
       rates: [
         {
-          product_name: "Regular Seat",
+          product_name: "Workspace Seat",
           starting_at: "2026-04-01T00:00:00.000Z",
           entitled: true,
           rate_type: "FLAT",
@@ -806,12 +793,6 @@ function getRateCards(): RateCardDef[] {
           credit_type_id: getCreditTypeAwuId(),
         },
         ...buildAwuToolUsageRates(),
-        // Per-tier Regular Seat rates — not entitled by default; enabled per
-        // contract via overrides with the actual per-tier price (in EUR).
-        ...buildSeatTierRates({
-          prefix: "Regular Seat",
-          creditTypeId: CREDIT_TYPE_EUR_ID,
-        }),
       ],
     },
     // --- Business USD: new seat-based plan (Pro / Max seats) ---
@@ -1015,10 +996,11 @@ const LEGACY_SEAT_ANNUAL_SUBSCRIPTION: PackageSubscription = {
 };
 
 // Seat subscription definition for new (non-legacy) per-seat packages.
-// Same shape as LEGACY_SEAT_SUBSCRIPTION but bound to the Regular Seat product.
-const REGULAR_SEAT_SUBSCRIPTION: PackageSubscription = {
-  temporary_id: "regular-seat-sub",
-  product_name: "Regular Seat",
+// Same shape as LEGACY_SEAT_ANNUAL_SUBSCRIPTION but billed MONTHLY. Reuses the
+// Workspace Seat product so legacy and new plans share a single seat product.
+const WORKSPACE_SEAT_MONTHLY_SUBSCRIPTION: PackageSubscription = {
+  temporary_id: "workspace-seat-monthly-sub",
+  product_name: "Workspace Seat",
   billing_frequency: "MONTHLY",
   collection_schedule: "ADVANCE",
   quantity_management_mode: "QUANTITY_ONLY",
@@ -1218,14 +1200,14 @@ function getPackages(): PackageDef[] {
       ],
       ...BILLING_CYCLE_CONFIG,
     },
-    // New Enterprise USD / EUR — per-seat billing (Regular Seat) + AWU AI/Tool
-    // usage. Includes a recurring AWU credit that draws down on usage tagged as
-    // free via the `is_free_usage` presentation group.
+    // New Enterprise USD / EUR — per-seat billing on Workspace Seat (MONTHLY)
+    // + AWU AI/Tool usage. Includes a recurring AWU credit that draws down on
+    // usage tagged as free via the `is_free_usage` presentation group.
     {
       name: "Enterprise USD",
       aliases: [{ name: "enterprise-usd" }],
       rate_card_name: "Enterprise USD",
-      subscriptions: [REGULAR_SEAT_SUBSCRIPTION],
+      subscriptions: [WORKSPACE_SEAT_MONTHLY_SUBSCRIPTION],
       scheduled_charges_on_usage_invoices: "ALL",
       recurring_credits: [getFreeUsageAwuRecurringCredits()],
       ...BILLING_CYCLE_CONFIG,
@@ -1234,7 +1216,7 @@ function getPackages(): PackageDef[] {
       name: "Enterprise EUR",
       aliases: [{ name: "enterprise-eur" }],
       rate_card_name: "Enterprise EUR",
-      subscriptions: [REGULAR_SEAT_SUBSCRIPTION],
+      subscriptions: [WORKSPACE_SEAT_MONTHLY_SUBSCRIPTION],
       scheduled_charges_on_usage_invoices: "ALL",
       recurring_credits: [getFreeUsageAwuRecurringCredits()],
       ...BILLING_CYCLE_CONFIG,

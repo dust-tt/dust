@@ -59,7 +59,7 @@ MembershipModel.init(
     seatType: {
       type: DataTypes.STRING,
       allowNull: false,
-      defaultValue: "free",
+      defaultValue: "workspace",
     },
   },
   {

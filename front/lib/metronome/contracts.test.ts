@@ -16,7 +16,7 @@ const {
   mockFindMetronomeCustomerByAlias,
   mockGetMetronomeContractById,
   mockGetMetronomeCustomerStripeCustomerId,
-  mockGetSeatSubscriptionIdFromContract,
+  mockHasContractSeatSubscription,
   mockGetStripeCustomer,
   mockGetStripeSubscription,
   mockHasMauSubscriptionInContract,
@@ -34,7 +34,7 @@ const {
     mockFindMetronomeCustomerByAlias: vi.fn(),
     mockGetMetronomeContractById: vi.fn(),
     mockGetMetronomeCustomerStripeCustomerId: vi.fn(),
-    mockGetSeatSubscriptionIdFromContract: vi.fn(),
+    mockHasContractSeatSubscription: vi.fn(),
     mockGetStripeCustomer: vi.fn(),
     mockGetStripeSubscription: vi.fn(),
     mockHasMauSubscriptionInContract: vi.fn(),
@@ -74,7 +74,7 @@ vi.mock("@app/lib/metronome/mau_sync", async () => {
 });
 
 vi.mock("@app/lib/metronome/seats", () => ({
-  getSeatSubscriptionIdFromContract: mockGetSeatSubscriptionIdFromContract,
+  hasContractSeatSubscription: mockHasContractSeatSubscription,
   syncSeatCount: mockSyncSeatCount,
 }));
 
@@ -147,8 +147,8 @@ beforeEach(() => {
   mockGetMetronomeContractById.mockReset();
   mockGetMetronomeContractById.mockResolvedValue(new Ok(CONTRACT));
 
-  mockGetSeatSubscriptionIdFromContract.mockReset();
-  mockGetSeatSubscriptionIdFromContract.mockReturnValue("seat-subscription");
+  mockHasContractSeatSubscription.mockReset();
+  mockHasContractSeatSubscription.mockReturnValue(true);
 
   mockHasMauSubscriptionInContract.mockReset();
   mockHasMauSubscriptionInContract.mockReturnValue(true);
@@ -685,9 +685,7 @@ describe("provisionMetronomeContract", () => {
       metronomeCustomerId: "m-customer",
       metronomeContractId: "m-contract",
     });
-    expect(mockGetSeatSubscriptionIdFromContract).toHaveBeenCalledWith(
-      CONTRACT
-    );
+    expect(mockHasContractSeatSubscription).toHaveBeenCalledWith(CONTRACT);
     expect(mockHasMauSubscriptionInContract).toHaveBeenCalledWith(CONTRACT);
     expect(mockSyncSeatCount).toHaveBeenCalledTimes(1);
     expect(mockSyncSeatCount).toHaveBeenCalledWith({
@@ -708,7 +706,7 @@ describe("provisionMetronomeContract", () => {
   });
 
   it("skips seat sync when the contract has no seat subscription", async () => {
-    mockGetSeatSubscriptionIdFromContract.mockReturnValue(undefined);
+    mockHasContractSeatSubscription.mockReturnValue(false);
 
     const result = await provisionMetronomeContract({
       metronomeCustomerId: "m-customer",

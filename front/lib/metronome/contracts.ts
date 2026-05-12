@@ -26,7 +26,7 @@ import {
   syncMauCount,
 } from "@app/lib/metronome/mau_sync";
 import {
-  getSeatSubscriptionIdFromContract,
+  hasContractSeatSubscription,
   syncSeatCount,
 } from "@app/lib/metronome/seats";
 import { LEGACY_ENTERPRISE_PACKAGE_ALIAS } from "@app/lib/metronome/types";
@@ -359,8 +359,7 @@ export async function syncContractQuantities(
 
   const contract = contractResult.value;
 
-  const seatSubscriptionId = getSeatSubscriptionIdFromContract(contract);
-  const shouldSyncSeats = seatSubscriptionId !== undefined;
+  const shouldSyncSeats = hasContractSeatSubscription(contract);
   const shouldSyncMau = hasMauSubscriptionInContract(contract);
 
   const syncFns = [
