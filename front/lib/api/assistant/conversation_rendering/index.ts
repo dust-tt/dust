@@ -41,6 +41,9 @@ const IMAGE_CONTENT_TOKEN_COUNT = 3100;
 export const TOOL_DEFINITIONS_COUNT_ADJUSTMENT_FACTOR = 0.7;
 export const TOKENS_MARGIN = 1024;
 
+const CONTEXT_WINDOW_EXCEEDED_ERROR_MESSAGE =
+  "Context window exceeded: at least one message is required";
+
 export async function renderConversationForModel(
   auth: Authenticator,
   {
@@ -152,6 +155,19 @@ export async function renderConversationForModel(
 
   let availableTokens = allowedTokenCount - baseTokens;
 
+  const logDetails = {
+    workspaceId: conversation.owner.sId,
+    conversationId: conversation.sId,
+    model,
+    allowedTokenCount,
+    baseTokens,
+    promptCount,
+    toolDefinitionsCount,
+    tokensMargin: TOKENS_MARGIN,
+    messageCount: messages.length,
+    interactionCount: interactions.length,
+  };
+
   if (currentInteractionTokens > availableTokens) {
     // The last interaction does not fit within the token budget.
     // We apply progressive pruning to that interaction until it fits within the token budget.
@@ -162,8 +178,7 @@ export async function renderConversationForModel(
     if (currentInteraction.prunedContext) {
       logger.warn(
         {
-          workspaceId: conversation.owner.sId,
-          conversationId: conversation.sId,
+          ...logDetails,
           currentInteractionTokens,
           availableTokens,
         },
@@ -174,14 +189,14 @@ export async function renderConversationForModel(
     if (currentInteractionTokens > availableTokens) {
       logger.error(
         {
-          workspaceId: conversation.owner.sId,
-          conversationId: conversation.sId,
+          ...logDetails,
+          failureStage: "interaction_exceeds_after_pruning",
+          currentInteractionTokens,
+          availableTokens,
         },
         "Render Conversation V2: No interactions fit in context window."
       );
-      return new Err(
-        new Error("Context window exceeded: at least one message is required")
-      );
+      return new Err(new Error(CONTEXT_WINDOW_EXCEEDED_ERROR_MESSAGE));
     }
     availableTokens -= currentInteractionTokens;
   }
@@ -245,14 +260,15 @@ export async function renderConversationForModel(
   if (selected.length === 0) {
     logger.error(
       {
-        workspaceId: conversation.owner.sId,
-        conversationId: conversation.sId,
+        ...logDetails,
+        failureStage: "no_interactions_selected",
+        tokensUsed,
+        availableTokens,
+        selectedMessageCount: selected.length,
       },
       "Render Conversation V2: No interactions fit in context window."
     );
-    return new Err(
-      new Error("Context window exceeded: at least one message is required")
-    );
+    return new Err(new Error(CONTEXT_WINDOW_EXCEEDED_ERROR_MESSAGE));
   }
 
   // Remove tokenCount from final messages and remove content fragments from return type
