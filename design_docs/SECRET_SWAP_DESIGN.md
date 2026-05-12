@@ -753,9 +753,9 @@ explicitly promote sensitive ones to `kind = 'https_secret'` and set
     old value until it sleeps and wakes again, OR until front
     explicitly kills dsbx (oncall script via `pkill dsbx`) which
     triggers `setupEgressForwarder` health-recovery on the next
-    exec. The kill-and-restart path exists for incident rollback
-    (kill switch propagation) and "rotated/deleted secret must not
-    linger" cases but is operator-driven, not automatic.
+    exec. The kill-and-restart path exists for the "rotated/deleted
+    secret must not linger" case but is operator-driven, not
+    automatic.
 
   The race / serialization questions (admin rotation mid-wake,
   multi-instance front coordination, push-to-active-sandbox
@@ -1027,17 +1027,6 @@ with secrets. With Phase 3 they can, after the admin sets
   fresh outbound TLS without a client cert; client-auth flows to a
   domain in the allowlist union fail at the upstream's handshake.
   mTLS to non-MITM domains (TCP-spliced) is unaffected.
-- **Operator kill switch (`DSBX_DISABLE_MITM`)**: dsbx reads this env
-  var at startup; when set to `1` or `true`, it skips the SNI
-  allowlist check and forces TCP-splice on all 443 traffic, ignoring
-  the loaded secret table. This is the Phase 1 incident-rollback
-  primitive. Stored in GCP Secret Manager so oncall can flip without
-  a deploy. Active-sandbox propagation is not automatic (the value
-  is read at dsbx startup): the runbook flips the secret, refreshes
-  ESO, rolls front pods, then runs an oncall script that does
-  `pkill dsbx` on each active sandbox so the next exec respawns dsbx
-  with the new env. Acceptable for Phase 1 because the rollout is
-  internal-only.
 - **Workspace-scoped secrets only**: Phase 1 has no user-scoped
   secret tier. A `kind = 'https_secret'` row is owned by a
   workspace; every sandbox in that workspace sees the same
