@@ -13,9 +13,7 @@ import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { createOrUpgradeAgentConfiguration } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
-import {
-  type PostOrPatchAgentConfigurationRequestBody,
-} from "@app/types/api/internal/agent_configuration";
+import type { PostOrPatchAgentConfigurationRequestBody } from "@app/types/api/internal/agent_configuration";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { APIErrorWithStatusCode } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
