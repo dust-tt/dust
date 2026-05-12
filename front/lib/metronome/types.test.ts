@@ -1,4 +1,7 @@
-import { classifyMetronomePackageByName } from "@app/lib/metronome/types";
+import {
+  classifyMetronomePackageByName,
+  classifyMetronomePackageCurrencyByName,
+} from "@app/lib/metronome/types";
 import { describe, expect, it } from "vitest";
 
 describe("classifyMetronomePackageByName", () => {
@@ -32,5 +35,37 @@ describe("classifyMetronomePackageByName", () => {
     expect(classifyMetronomePackageByName("Starter")).toBeNull();
     expect(classifyMetronomePackageByName("Premium")).toBeNull();
     expect(classifyMetronomePackageByName("")).toBeNull();
+  });
+});
+
+describe("classifyMetronomePackageCurrencyByName", () => {
+  it("returns eur when the name contains a euro marker", () => {
+    expect(
+      classifyMetronomePackageCurrencyByName("Legacy Pro Monthly EUR")
+    ).toBe("eur");
+    expect(classifyMetronomePackageCurrencyByName("Enterprise euro")).toBe(
+      "eur"
+    );
+  });
+
+  it("is case-insensitive", () => {
+    expect(classifyMetronomePackageCurrencyByName("BUSINESS eur")).toBe("eur");
+  });
+
+  it("defaults to usd when no euro marker is present", () => {
+    expect(classifyMetronomePackageCurrencyByName("Legacy Pro Monthly")).toBe(
+      "usd"
+    );
+    expect(classifyMetronomePackageCurrencyByName("Enterprise USD")).toBe(
+      "usd"
+    );
+    expect(classifyMetronomePackageCurrencyByName("")).toBe("usd");
+  });
+
+  it("respects word boundaries so substrings don't false-match", () => {
+    expect(classifyMetronomePackageCurrencyByName("Neurology Plan")).toBe(
+      "usd"
+    );
+    expect(classifyMetronomePackageCurrencyByName("Heuristic Pro")).toBe("usd");
   });
 });

@@ -11,6 +11,7 @@ import {
   getProductExcessCreditsId,
   getProductFreeCreditId,
 } from "@app/lib/metronome/constants";
+import type { SupportedCurrency } from "@app/types/currency";
 import type { Commit, Credit } from "@metronome/sdk/resources/shared";
 
 // Metronome package aliases for contract provisioning.
@@ -53,6 +54,16 @@ export function classifyMetronomePackageByName(
     return "pro";
   }
   return null;
+}
+
+export function classifyMetronomePackageCurrencyByName(
+  name: string
+): SupportedCurrency {
+  const normalized = name.toLowerCase();
+  if (/\b(?:eur|euro)\b/.test(normalized)) {
+    return "eur";
+  }
+  return "usd";
 }
 
 export interface MetronomeEvent {
