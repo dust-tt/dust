@@ -473,13 +473,17 @@ async function handler(
             break;
           }
 
-          // Only swap when the workspace is Metronome-only billed. Shadow
-          // billed subscriptions (Stripe + Metronome) follow Stripe's signal,
-          // and pure Stripe subs have no Metronome contract at all. Pro and
-          // Business swaps are synchronous, so this branch effectively only
-          // fires for Enterprise upgrades scheduled in the future via Poke —
-          // the idempotency check below catches the sync cases.
-          if (!activeSubscription.isMetronomeOnlyBilled) {
+          // Only swap when the workspace is Metronome-only billed, or not
+          // billed at all. Shadow billed subscriptions (Stripe + Metronome)
+          // follow Stripe's signal, and pure Stripe subs have no Metronome
+          // contract at all. Pro and Business swaps are synchronous, so this
+          // branch effectively only fires for Enterprise upgrades scheduled
+          // in the future via Poke - the idempotency check below catches
+          // the sync cases.
+          if (
+            !activeSubscription.isMetronomeOnlyBilled &&
+            activeSubscription.isBilled
+          ) {
             logger.info(
               {
                 contractId,
