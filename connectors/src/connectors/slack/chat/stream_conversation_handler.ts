@@ -215,10 +215,10 @@ function getUserActionFallbackMessage(
       actionLabel = "file access authorization";
       break;
     case "tool_personal_auth_required":
-      actionLabel = "authentication";
+      actionLabel = "tool authentication";
       break;
     case "tool_ask_user_question":
-      actionLabel = "your response to a question";
+      actionLabel = "a response to a question";
       break;
     default:
       assertNever(actionType);
