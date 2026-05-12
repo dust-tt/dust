@@ -181,10 +181,103 @@ export function SubscriptionsDataTable({
   );
 }
 
+interface SubscriptionDetailsTableProps {
+  subscription: SubscriptionType;
+  metronomeCustomerId: string | null;
+}
+
+function SubscriptionDetailsTable({
+  subscription,
+  metronomeCustomerId,
+}: SubscriptionDetailsTableProps) {
+  return (
+    <PokeTable>
+      <PokeTableBody>
+        <PokeTableRow>
+          <PokeTableCell>Plan Name</PokeTableCell>
+          <PokeTableCell>{subscription.plan.name}</PokeTableCell>
+        </PokeTableRow>
+        <PokeTableRow>
+          <PokeTableCell>Plan Code</PokeTableCell>
+          <PokeTableCell>{subscription.plan.code}</PokeTableCell>
+        </PokeTableRow>
+        <PokeTableRow>
+          <PokeTableCell>Is in Trial?</PokeTableCell>
+          <PokeTableCell>{subscription.trialing ? "✅" : "❌"}</PokeTableCell>
+        </PokeTableRow>
+        <PokeTableRow>
+          <PokeTableCell>Stripe Subscription Id</PokeTableCell>
+          <PokeTableCell>
+            {subscription.stripeSubscriptionId ? (
+              <LinkWrapper
+                href={
+                  isDevelopment()
+                    ? `https://dashboard.stripe.com/test/subscriptions/${subscription.stripeSubscriptionId}`
+                    : `https://dashboard.stripe.com/subscriptions/${subscription.stripeSubscriptionId}`
+                }
+                target="_blank"
+                className="text-xs text-highlight-400"
+              >
+                {subscription.stripeSubscriptionId}
+              </LinkWrapper>
+            ) : (
+              "No subscription id"
+            )}
+          </PokeTableCell>
+        </PokeTableRow>
+        {subscription.metronomeContractId && metronomeCustomerId && (
+          <PokeTableRow>
+            <PokeTableCell>Metronome Contract</PokeTableCell>
+            <PokeTableCell>
+              <LinkWrapper
+                href={getMetronomeContractUrl(
+                  metronomeCustomerId,
+                  subscription.metronomeContractId
+                )}
+                target="_blank"
+                className="text-xs text-highlight-400"
+              >
+                {subscription.metronomeContractId}
+              </LinkWrapper>
+            </PokeTableCell>
+          </PokeTableRow>
+        )}
+        <PokeTableRow>
+          <PokeTableCell>Start Date</PokeTableCell>
+          <PokeTableCell>
+            {subscription.startDate
+              ? format(subscription.startDate, "yyyy-MM-dd HH:mm")
+              : "/"}
+          </PokeTableCell>
+        </PokeTableRow>
+        <PokeTableRow>
+          <PokeTableCell>End Date</PokeTableCell>
+          <PokeTableCell>
+            {subscription.endDate ? (
+              <span
+                className={cn(
+                  subscription.status === "active" &&
+                    subscription.endDate <= Date.now() &&
+                    "font-semibold text-red-500"
+                )}
+              >
+                {format(subscription.endDate, "yyyy-MM-dd HH:mm")}
+              </span>
+            ) : (
+              "/"
+            )}
+          </PokeTableCell>
+        </PokeTableRow>
+      </PokeTableBody>
+    </PokeTable>
+  );
+}
+
 interface ActiveSubscriptionTableProps {
   owner: WorkspaceType;
   metronomeCustomerId: string | null;
   subscription: SubscriptionType;
+  pendingSubscription: SubscriptionType | null;
   subscriptions: SubscriptionType[];
   programmaticUsageConfig: ProgrammaticUsageConfigurationType | null;
   hasMetronomeBillingFeature: boolean;
@@ -195,6 +288,7 @@ export function ActiveSubscriptionTable({
   owner,
   metronomeCustomerId,
   subscription,
+  pendingSubscription,
   subscriptions,
   programmaticUsageConfig,
   hasMetronomeBillingFeature,
@@ -213,7 +307,7 @@ export function ActiveSubscriptionTable({
     (hasNoBillingYet && hasMetronomeBillingFeature);
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col gap-3">
       <div className="flex justify-between gap-3">
         <div
           className={`flex flex-grow flex-col rounded-lg border p-4 pb-2 ${cardClass}`}
@@ -253,89 +347,30 @@ export function ActiveSubscriptionTable({
               />
             </div>
           )}
-          <PokeTable>
-            <PokeTableBody>
-              <PokeTableRow>
-                <PokeTableCell>Plan Name</PokeTableCell>
-                <PokeTableCell>{subscription.plan.name}</PokeTableCell>
-              </PokeTableRow>
-              <PokeTableRow>
-                <PokeTableCell>Plan Code</PokeTableCell>
-                <PokeTableCell>{subscription.plan.code}</PokeTableCell>
-              </PokeTableRow>
-              <PokeTableRow>
-                <PokeTableCell>Is in Trial?</PokeTableCell>
-                <PokeTableCell>
-                  {subscription.trialing ? "✅" : "❌"}
-                </PokeTableCell>
-              </PokeTableRow>
-              <PokeTableRow>
-                <PokeTableCell>Stripe Subscription Id</PokeTableCell>
-                <PokeTableCell>
-                  {subscription.stripeSubscriptionId ? (
-                    <LinkWrapper
-                      href={
-                        isDevelopment()
-                          ? `https://dashboard.stripe.com/test/subscriptions/${subscription.stripeSubscriptionId}`
-                          : `https://dashboard.stripe.com/subscriptions/${subscription.stripeSubscriptionId}`
-                      }
-                      target="_blank"
-                      className="text-xs text-highlight-400"
-                    >
-                      {subscription.stripeSubscriptionId}
-                    </LinkWrapper>
-                  ) : (
-                    "No subscription id"
-                  )}
-                </PokeTableCell>
-              </PokeTableRow>
-              {subscription.metronomeContractId && metronomeCustomerId && (
-                <PokeTableRow>
-                  <PokeTableCell>Metronome Contract</PokeTableCell>
-                  <PokeTableCell>
-                    <LinkWrapper
-                      href={getMetronomeContractUrl(
-                        metronomeCustomerId,
-                        subscription.metronomeContractId
-                      )}
-                      target="_blank"
-                      className="text-xs text-highlight-400"
-                    >
-                      {subscription.metronomeContractId}
-                    </LinkWrapper>
-                  </PokeTableCell>
-                </PokeTableRow>
-              )}
-              <PokeTableRow>
-                <PokeTableCell>Start Date</PokeTableCell>
-                <PokeTableCell>
-                  {subscription.startDate
-                    ? format(subscription.startDate, "yyyy-MM-dd")
-                    : "/"}
-                </PokeTableCell>
-              </PokeTableRow>
-              <PokeTableRow>
-                <PokeTableCell>End Date</PokeTableCell>
-                <PokeTableCell>
-                  {subscription.endDate ? (
-                    <span
-                      className={cn(
-                        subscription.status === "active" &&
-                          subscription.endDate <= Date.now() &&
-                          "font-semibold text-red-500"
-                      )}
-                    >
-                      {format(subscription.endDate, "yyyy-MM-dd")}
-                    </span>
-                  ) : (
-                    "/"
-                  )}
-                </PokeTableCell>
-              </PokeTableRow>
-            </PokeTableBody>
-          </PokeTable>
+          <SubscriptionDetailsTable
+            subscription={subscription}
+            metronomeCustomerId={metronomeCustomerId}
+          />
         </div>
       </div>
+      {pendingSubscription && (
+        <div className="flex justify-between gap-3">
+          <div className="flex flex-grow flex-col rounded-lg border border-blue-200 bg-blue-50 p-4 pb-2 dark:border-blue-200-night dark:bg-blue-50-night">
+            <div className="flex items-center gap-2 pb-4">
+              <h2 className="text-md font-bold">Pending Subscription</h2>
+              <Chip color="blue" label="Pending activation" size="xs" />
+            </div>
+            <p className="pb-2 text-xs text-muted-foreground">
+              Provisioned in DB. The `contract.start` Metronome webhook will
+              flip it to active and end the current subscription.
+            </p>
+            <SubscriptionDetailsTable
+              subscription={pendingSubscription}
+              metronomeCustomerId={metronomeCustomerId}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

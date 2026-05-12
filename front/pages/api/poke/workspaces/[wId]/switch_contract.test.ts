@@ -16,6 +16,8 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { Ok } from "@app/types/shared/result";
 import type { WorkspaceType } from "@app/types/user";
+import type { NextApiRequest, NextApiResponse } from "next";
+import { createMocks } from "node-mocks-http";
 import type Stripe from "stripe";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -390,6 +392,81 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — Pro / Business", (
         swapAt: "current-hour",
       })
     );
+  });
+
+  it("stages a created_backend_only subscription for contract.start to activate", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      isSuperUser: true,
+    });
+    await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
+
+    req.body = proBody();
+    req.query.wId = workspace.sId;
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+
+    const workspaceModelId = (await WorkspaceResource.fetchById(workspace.sId))!
+      .id;
+    const pending =
+      await SubscriptionResource.fetchPendingByWorkspaceModelId(
+        workspaceModelId
+      );
+    expect(pending).not.toBeNull();
+    expect(pending!.status).toBe("created_backend_only");
+    expect(pending!.metronomeContractId).toBe(NEW_CONTRACT_ID);
+    expect(pending!.getPlan().code).toBe(PRO_PLAN_SEAT_29_CODE);
+  });
+
+  it("supersedes a prior pending subscription on a second schedule", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      isSuperUser: true,
+    });
+    await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
+
+    // First schedule → pending P1.
+    req.body = proBody();
+    req.query.wId = workspace.sId;
+    await handler(req, res);
+    expect(res._getStatusCode()).toBe(200);
+
+    const workspaceModelId = (await WorkspaceResource.fetchById(workspace.sId))!
+      .id;
+    const firstPending =
+      await SubscriptionResource.fetchPendingByWorkspaceModelId(
+        workspaceModelId
+      );
+    expect(firstPending).not.toBeNull();
+    const firstPendingSId = firstPending!.sId;
+
+    // Second schedule with a different (business) target → ends P1, creates P2.
+    const SECOND_CONTRACT_ID = "contract_new_zzz";
+    vi.mocked(provisionMetronomeContract).mockResolvedValueOnce(
+      new Ok({ metronomeContractId: SECOND_CONTRACT_ID })
+    );
+    const { req: req2, res: res2 } = createMocks<
+      NextApiRequest,
+      NextApiResponse
+    >({
+      method: "POST",
+      query: { wId: workspace.sId },
+      headers: {},
+    });
+    req2.body = businessBody();
+    await handler(req2, res2);
+    expect(res2._getStatusCode()).toBe(200);
+
+    const secondPending =
+      await SubscriptionResource.fetchPendingByWorkspaceModelId(
+        workspaceModelId
+      );
+    expect(secondPending).not.toBeNull();
+    expect(secondPending!.sId).not.toBe(firstPendingSId);
+    expect(secondPending!.metronomeContractId).toBe(SECOND_CONTRACT_ID);
+    expect(secondPending!.getPlan().code).toBe(PRO_PLAN_SEAT_39_CODE);
   });
 });
 

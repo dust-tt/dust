@@ -132,6 +132,7 @@ export function WorkspacePage() {
     hasMetronomeFeature,
     membersCount,
     metronomeCustomerId,
+    pendingSubscription,
     stripeSubscription,
     stripeCustomerId,
     subscriptions,
@@ -229,6 +230,7 @@ export function WorkspacePage() {
                   owner={owner}
                   metronomeCustomerId={metronomeCustomerId}
                   subscription={activeSubscription}
+                  pendingSubscription={pendingSubscription}
                   subscriptions={subscriptions}
                   programmaticUsageConfig={programmaticUsageConfig}
                   hasMetronomeBillingFeature={hasMetronomeFeature}
