@@ -225,8 +225,7 @@ async function streamAgentAnswerToSlack(
   }
 
   let answer = "";
-  // Holds back text that might be the start of a :cite[...] marker
-  // split across streaming tokens (e.g. ":c", ":cite[ab").
+  // Partial :cite[...] marker that may span across tokens.
   let pendingCitePrefix = "";
   const actions: AgentActionPublicType[] = [];
   let pendingPersonalAuth: {
@@ -436,16 +435,13 @@ async function streamAgentAnswerToSlack(
           break;
         }
         if (answer.length <= MAX_SLACK_MESSAGE_LENGTH) {
-          // Combine any buffered partial citation prefix with the new token.
           const combined = pendingCitePrefix + event.text;
           pendingCitePrefix = "";
 
-          // Strip complete :cite[...] markers — they'll be resolved to
-          // proper footnotes on the final chat.update.
+          // Strip complete :cite[...] markers (resolved to footnotes on final chat.update).
           let safeText = combined.replace(/ ?:cite\[[a-zA-Z0-9, ]+\]/g, "");
 
-          // Hold back any trailing partial citation prefix so it isn't
-          // rendered if the next token completes the marker.
+          // Hold back trailing partial markers until the next token.
           const partialMatch = safeText.match(
             / ?:c(?:i(?:t(?:e(?:\[[a-zA-Z0-9, ]*)?)?)?)?$/
           );
@@ -489,7 +485,7 @@ async function streamAgentAnswerToSlack(
 
       case "agent_message_gracefully_stopped":
       case "agent_message_success": {
-        // Flush any buffered partial text that turned out not to be a citation.
+        // Flush pending text that turned out not to be a citation.
         if (pendingCitePrefix) {
           await streamHandler.appendText(pendingCitePrefix);
           pendingCitePrefix = "";
