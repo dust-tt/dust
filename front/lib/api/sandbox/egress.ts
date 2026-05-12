@@ -370,7 +370,7 @@ export async function setupEgressForwarder(
   }
 
   if (disableMitm) {
-    logger.warn(
+    logger.info(
       { ...baseLogContext, event: "egress.mitm_kill_switch_engaged" },
       "Sandbox egress MITM kill switch engaged"
     );
