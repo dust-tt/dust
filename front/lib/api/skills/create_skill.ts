@@ -10,36 +10,59 @@ import type { SkillType } from "@app/types/assistant/skill_configuration";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import uniq from "lodash/uniq";
+import { z } from "zod";
 
 export interface CreateSkillError {
   message: string;
   statusCode: 400 | 403 | 404;
 }
 
-export interface CreateSkillInput {
-  name: string;
-  agentFacingDescription: string;
-  userFacingDescription: string;
-  instructions: string;
-  instructionsHtml: string | null;
-  icon: string | null;
-  tools: { mcpServerViewId: string }[];
-  extendedSkillId: string | null;
-  attachedKnowledge: {
-    dataSourceViewId: string;
-    nodeId: string;
-    spaceId: string;
-    title: string;
-  }[];
-  additionalRequestedSpaceIds?: string[];
-  fileAttachments?: { fileId: string }[];
-  isDefault?: boolean;
-  source?: "github" | "local_file" | "web_app";
-  sourceMetadata?:
-    | { repoUrl: string; filePath: string }
-    | { filePath: string }
-    | null;
-}
+export const AttachedKnowledgeSchema = z.object({
+  dataSourceViewId: z.string(),
+  nodeId: z.string(),
+  spaceId: z.string(),
+  title: z.string(),
+});
+
+export const CreateSkillInputSchema = z.intersection(
+  z.object({
+    name: z.string(),
+    agentFacingDescription: z.string(),
+    userFacingDescription: z.string(),
+    instructions: z.string(),
+    icon: z.string().nullable(),
+    tools: z.array(
+      z.object({
+        mcpServerViewId: z.string(),
+      })
+    ),
+    extendedSkillId: z.string().nullable(),
+    attachedKnowledge: z.array(AttachedKnowledgeSchema),
+    instructionsHtml: z.string().nullable(),
+    additionalRequestedSpaceIds: z.array(z.string()).optional(),
+    fileAttachments: z.array(z.object({ fileId: z.string() })).optional(),
+    isDefault: z.boolean().optional(),
+  }),
+  z.union([
+    z.object({
+      source: z.literal("github"),
+      sourceMetadata: z.object({
+        repoUrl: z.string(),
+        filePath: z.string(),
+      }),
+    }),
+    z.object({
+      source: z.literal("local_file"),
+      sourceMetadata: z.object({ filePath: z.string() }).nullable(),
+    }),
+    z.object({
+      source: z.literal("web_app").optional(),
+      sourceMetadata: z.null().optional(),
+    }),
+  ])
+);
+
+export type CreateSkillInput = z.infer<typeof CreateSkillInputSchema>;
 
 export async function createSkill(
   auth: Authenticator,

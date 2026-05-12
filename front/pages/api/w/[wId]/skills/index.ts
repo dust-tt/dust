@@ -1,6 +1,9 @@
 /** @ignoreswagger */
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { createSkill } from "@app/lib/api/skills/create_skill";
+import {
+  CreateSkillInputSchema,
+  createSkill,
+} from "@app/lib/api/skills/create_skill";
 import type { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -43,53 +46,6 @@ const SkillStatusSchema = z
 function isSkillViewType(value: string): value is SkillViewType {
   return SKILL_VIEWS.some((skillViewType) => skillViewType === value);
 }
-
-// Schema for attached knowledge.
-export const AttachedKnowledgeSchema = z.object({
-  dataSourceViewId: z.string(),
-  nodeId: z.string(),
-  spaceId: z.string(),
-  title: z.string(),
-});
-
-// Request body schema for POST.
-const PostSkillRequestBodySchema = z.intersection(
-  z.object({
-    name: z.string(),
-    agentFacingDescription: z.string(),
-    userFacingDescription: z.string(),
-    instructions: z.string(),
-    icon: z.string().nullable(),
-    tools: z.array(
-      z.object({
-        mcpServerViewId: z.string(),
-      })
-    ),
-    extendedSkillId: z.string().nullable(),
-    attachedKnowledge: z.array(AttachedKnowledgeSchema),
-    instructionsHtml: z.string().nullable(),
-    additionalRequestedSpaceIds: z.array(z.string()).optional(),
-    fileAttachments: z.array(z.object({ fileId: z.string() })).optional(),
-    isDefault: z.boolean().optional(),
-  }),
-  z.union([
-    z.object({
-      source: z.literal("github"),
-      sourceMetadata: z.object({
-        repoUrl: z.string(),
-        filePath: z.string(),
-      }),
-    }),
-    z.object({
-      source: z.literal("local_file"),
-      sourceMetadata: z.object({ filePath: z.string() }).nullable(),
-    }),
-    z.object({
-      source: z.literal("web_app").optional(),
-      sourceMetadata: z.null().optional(),
-    }),
-  ])
-);
 
 async function handler(
   req: NextApiRequest,
@@ -229,7 +185,7 @@ async function handler(
         });
       }
 
-      const bodyValidation = PostSkillRequestBodySchema.safeParse(req.body);
+      const bodyValidation = CreateSkillInputSchema.safeParse(req.body);
       if (!bodyValidation.success) {
         const pathError = fromError(bodyValidation.error).toString();
         return apiError(req, res, {
