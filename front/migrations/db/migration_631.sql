@@ -11,6 +11,6 @@ CREATE TABLE IF NOT EXISTS "agent_step_content_tool_executions" (
     PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX CONCURRENTLY "agent_step_content_tool_executions_workspace_action" ON "agent_step_content_tool_executions" ("workspaceId", "agentMCPActionId");
-CREATE INDEX CONCURRENTLY "agent_step_content_tool_executions_workspace_step_content" ON "agent_step_content_tool_executions" ("workspaceId", "stepContentId");
+CREATE UNIQUE INDEX CONCURRENTLY "agent_sc_te_workspace_action" ON "agent_step_content_tool_executions" ("workspaceId", "agentMCPActionId");
+CREATE INDEX CONCURRENTLY "agent_sc_te_workspace_step_content" ON "agent_step_content_tool_executions" ("workspaceId", "stepContentId");
 CREATE INDEX CONCURRENTLY "agent_sc_te_workspace_conversation_message" ON "agent_step_content_tool_executions" ("workspaceId", "conversationId", "agentMessageId");

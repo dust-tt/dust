@@ -65,12 +65,12 @@ AgentStepContentToolExecutionModel.init(
         unique: true,
         fields: ["workspaceId", "agentMCPActionId"],
         concurrently: true,
-        name: "agent_step_content_tool_executions_workspace_action",
+        name: "agent_sc_te_workspace_action",
       },
       {
         fields: ["workspaceId", "stepContentId"],
         concurrently: true,
-        name: "agent_step_content_tool_executions_workspace_step_content",
+        name: "agent_sc_te_workspace_step_content",
       },
       {
         fields: ["workspaceId", "conversationId", "agentMessageId"],
@@ -84,18 +84,38 @@ AgentStepContentToolExecutionModel.init(
 AgentStepContentToolExecutionModel.belongsTo(AgentMCPActionModel, {
   foreignKey: { name: "agentMCPActionId", allowNull: false },
   onDelete: "RESTRICT",
+  as: "agentMCPAction",
+});
+AgentMCPActionModel.hasOne(AgentStepContentToolExecutionModel, {
+  foreignKey: { name: "agentMCPActionId", allowNull: false },
+  as: "toolExecution",
 });
 
 AgentStepContentToolExecutionModel.belongsTo(AgentStepContentModel, {
   foreignKey: { name: "stepContentId", allowNull: false },
   onDelete: "RESTRICT",
+  as: "stepContent",
+});
+AgentStepContentModel.hasMany(AgentStepContentToolExecutionModel, {
+  foreignKey: { name: "stepContentId", allowNull: false },
+  as: "toolExecutions",
 });
 
 AgentStepContentToolExecutionModel.belongsTo(AgentMessageModel, {
   foreignKey: { name: "agentMessageId", allowNull: false },
   onDelete: "RESTRICT",
+  as: "agentMessage",
+});
+AgentMessageModel.hasMany(AgentStepContentToolExecutionModel, {
+  foreignKey: { name: "agentMessageId", allowNull: false },
+  as: "toolExecutions",
 });
 AgentStepContentToolExecutionModel.belongsTo(ConversationModel, {
   foreignKey: { name: "conversationId", allowNull: false },
   onDelete: "RESTRICT",
+  as: "conversation",
+});
+ConversationModel.hasMany(AgentStepContentToolExecutionModel, {
+  foreignKey: { name: "conversationId", allowNull: false },
+  as: "toolExecutions",
 });
