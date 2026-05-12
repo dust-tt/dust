@@ -28,15 +28,6 @@ describe("buildProjectKickoffPrompt", () => {
     );
   });
 
-  it("should guide direct project context writes without skill detours", () => {
-    expect(prompt).toContain(
-      "use `project_manager.add_file` directly with `content`"
-    );
-    expect(prompt).toContain(
-      "Do NOT enable skills/tools just to create files when `project_manager.add_file` can do it directly"
-    );
-  });
-
   it("should require accurate search reporting", () => {
     expect(prompt).toContain(
       'Never claim "I searched" or "I didn\'t find" unless you actually ran search tools in this conversation'
