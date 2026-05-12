@@ -12,6 +12,7 @@ import {
   Chip,
   ContentMessage,
   InformationCircleIcon,
+  LinkWrapper,
   Page,
   SparklesIcon,
   Spinner,
@@ -75,10 +76,12 @@ export function ReinforcementPage() {
     return (
       <>
         <ContentMessage variant="info" size="lg">
-          This feature is currently in beta, and only available to a select
-          group of customers. We are very interested in your feedback to improve
-          the feature. Note that the feature is currently free during beta
-          testing but will generate additional costs upon release.
+          This feature is currently in <strong>beta</strong>, and only available to a select group of customers.<br/>
+          Note that the feature is currently free during beta testing but will generate additional costs upon release.<br/>
+          Contact <LinkWrapper
+              href="mailto:self-improving-skills@dust.tt"
+              className="underline"
+            >self-improving-skills@dust.tt</LinkWrapper> to share some feedback about this feature.
         </ContentMessage>
         <ReinforcementSection owner={owner} />
         <ReinforcementTotalConsumptionSection owner={owner} />
@@ -90,12 +93,7 @@ export function ReinforcementPage() {
   return (
     <Page.Vertical gap="xl" align="stretch">
       <Page.Header
-        title={
-          <span className="flex items-center gap-2">
-            Self-Improving Skills
-            <Chip size="xs" color="golden" label="Beta" />
-          </span>
-        }
+        title="Self-Improving Skills"
         icon={SparklesIcon}
         description={
           <span>
