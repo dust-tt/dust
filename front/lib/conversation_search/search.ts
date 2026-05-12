@@ -177,6 +177,7 @@ export async function listPrivateConversationsFromES({
           triggerId: source.trigger_id ?? null,
           unread: true,
           updated: updatedMs,
+          isRunningAgentLoop: !!source.is_running_agent_loop,
         },
       ];
     });

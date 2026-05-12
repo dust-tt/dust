@@ -50,6 +50,7 @@ export function buildConversationSearchDocument(
     workspace_id: auth.getNonNullableWorkspace().sId,
     ...(conversation.space?.sId && { space_id: conversation.space.sId }),
     next_wakeup_at: activeWakeUp?.nextFireAt()?.toISOString() ?? null,
+    is_running_agent_loop: conversation.isRunningAgentLoop,
   };
 }
 

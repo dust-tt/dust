@@ -6,7 +6,10 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { getConversationDotStatus } from "@app/lib/utils/conversation_dot_status";
+import {
+  type ConversationDotStatus,
+  getConversationDotStatus,
+} from "@app/lib/utils/conversation_dot_status";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import type { ProjectTaskType } from "@app/types/project_task";
@@ -72,8 +75,8 @@ async function handler(
       const conversationId = await taskRow.getLatestConversationId(auth);
 
       const serializedBase = taskRow.toJSON();
-      let conversationSidebarStatus: ProjectTaskType["conversationSidebarStatus"] =
-        null;
+      let conversationSidebarStatus: ConversationDotStatus | null = null;
+      let conversationIsRunningAgentLoop: boolean = false;
       if (conversationId) {
         const listItemByConversationSId =
           await ConversationResource.fetchListItemsBySIds(auth, [
@@ -83,6 +86,7 @@ async function handler(
         conversationSidebarStatus = listItem
           ? getConversationDotStatus(listItem)
           : "idle";
+        conversationIsRunningAgentLoop = listItem?.isRunningAgentLoop ?? false;
       }
 
       const sources = sourcesByTaskId.get(taskRow.sId) ?? [];
@@ -90,6 +94,7 @@ async function handler(
         ...serializedBase,
         conversationId,
         conversationSidebarStatus,
+        conversationIsRunningAgentLoop,
         sources: sources.map((s) => ({
           sourceType: s.sourceType,
           sourceId: s.sourceId,

@@ -80,6 +80,7 @@ export type ProjectTaskType = {
   conversationId: string | null;
   /** Same semantics as the left sidebar conversation row (see `getConversationDotStatus`). */
   conversationSidebarStatus: ConversationDotStatus | null;
+  conversationIsRunningAgentLoop: boolean | null;
   text: string;
   status: ProjectTaskStatus;
   doneAt: Date | null;

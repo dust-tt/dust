@@ -6,7 +6,10 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
 import { ProjectTaskStateResource } from "@app/lib/resources/project_task_state_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import { getConversationDotStatus } from "@app/lib/utils/conversation_dot_status";
+import {
+  type ConversationDotStatus,
+  getConversationDotStatus,
+} from "@app/lib/utils/conversation_dot_status";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import {
@@ -136,18 +139,21 @@ async function handler(
           const t = todos[i]!;
           const sources = sourcesByTodoId.get(t.sId) ?? [];
           const { conversationId } = serializedTodo;
-          let conversationSidebarStatus: ProjectTaskType["conversationSidebarStatus"] =
-            null;
+          let conversationSidebarStatus: ConversationDotStatus | null = null;
+          let conversationIsRunningAgentLoop: boolean = false;
           if (conversationId) {
             const listItem = listItemByConversationSId.get(conversationId);
             conversationSidebarStatus = listItem
               ? getConversationDotStatus(listItem)
               : "idle";
+            conversationIsRunningAgentLoop =
+              listItem?.isRunningAgentLoop ?? false;
           }
 
           return {
             ...serializedTodo,
             conversationSidebarStatus,
+            conversationIsRunningAgentLoop,
             sources: sources.map((s) => ({
               sourceType: s.sourceType,
               sourceId: s.sourceId,
