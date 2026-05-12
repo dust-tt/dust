@@ -231,17 +231,6 @@ async function handler(
       api_error: { type: "invalid_request_error", message: errorMessage },
     });
   }
-  if (pkg.tier === null) {
-    const errorMessage =
-      `Metronome package "${pkg.name}" (${pkg.id}) has no known alias. ` +
-      "Add its alias to KnownPackageAlias in lib/metronome/types.ts before using it.";
-    await pluginRun.recordError(errorMessage);
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: { type: "invalid_request_error", message: errorMessage },
-    });
-  }
-
   // Plan ↔ package tier compatibility.
   const compatResult = validatePlanPackageCompat(body.planCode, pkg.tier);
   if (compatResult.isErr()) {

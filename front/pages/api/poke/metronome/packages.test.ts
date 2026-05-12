@@ -27,7 +27,7 @@ describe("GET /api/poke/metronome/packages", () => {
           id: "pkg_ent_usd",
           name: "Enterprise USD",
           aliases: ["enterprise-usd"],
-          tier: null,
+          tier: "enterprise",
         },
       ])
     );
@@ -46,7 +46,7 @@ describe("GET /api/poke/metronome/packages", () => {
           id: "pkg_ent_usd",
           name: "Enterprise USD",
           aliases: ["enterprise-usd"],
-          tier: null,
+          tier: "enterprise",
         },
       ],
     });

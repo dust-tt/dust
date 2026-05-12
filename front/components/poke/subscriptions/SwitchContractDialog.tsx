@@ -4,8 +4,6 @@ import {
   SelectField,
 } from "@app/components/poke/shadcn/ui/form/fields";
 import { clientFetch } from "@app/lib/egress/client";
-import type { MetronomePackageSummary } from "@app/lib/metronome/client";
-import type { MetronomePackageTier } from "@app/lib/metronome/types";
 import {
   isEntreprisePlanPrefix,
   PRO_PLAN_SEAT_29_CODE,
@@ -97,22 +95,12 @@ export default function SwitchContractDialog({
     );
   }, []);
 
-  // Only packages with a classifiable tier are selectable; unclassified
-  // packages would be refused server-side.
   const packageOptions = useMemo(
     () =>
-      metronomePackages
-        .filter(
-          (
-            p
-          ): p is MetronomePackageSummary & {
-            tier: MetronomePackageTier;
-          } => p.tier !== null
-        )
-        .map((p) => ({
-          value: p.id,
-          display: `${p.name} (${p.tier})`,
-        })),
+      metronomePackages.map((p) => ({
+        value: p.id,
+        display: `${p.name} (${p.tier})`,
+      })),
     [metronomePackages]
   );
 

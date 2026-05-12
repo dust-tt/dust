@@ -394,15 +394,16 @@ export async function addStripeMetronomeBillingConfig({
 
 /**
  * Compact summary of a Metronome package, used by Poke to let an operator
- * pick which package to put a customer on. `tier` is `null` when no known
- * alias matches — callers must refuse such packages explicitly.
+ * pick which package to put a customer on. Only classifiable packages are
+ * included — `listMetronomePackages` filters out anything whose name
+ * doesn't match a known tier keyword (with a warning log).
  */
 export interface MetronomePackageSummary {
   id: string;
   name: string;
   aliases: string[];
   rateCardId?: string;
-  tier: MetronomePackageTier | null;
+  tier: MetronomePackageTier;
 }
 
 // Cache the package list for a few minutes as the catalog rarely changes and
@@ -434,6 +435,7 @@ export async function listMetronomePackages(): Promise<
           { packageId: pkg.id, packageName: name, aliases },
           "[Metronome] Package name has no recognized tier keyword (pro/business/enterprise); package will be hidden in Poke."
         );
+        continue;
       }
       packages.push({
         id: pkg.id,

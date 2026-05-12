@@ -428,31 +428,4 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — guards", () => {
     expect(res._getStatusCode()).toBe(400);
     expect(res._getJSONData().error.message).toContain("Metronome-billed");
   });
-
-  it("rejects when the selected package has no known alias (tier=null)", async () => {
-    const { req, res, workspace } = await createPrivateApiMockRequest({
-      method: "POST",
-      isSuperUser: true,
-    });
-    await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
-
-    vi.mocked(listMetronomePackages).mockResolvedValueOnce(
-      new Ok([
-        {
-          id: ENT_PACKAGE_ID,
-          name: "Unknown Pkg",
-          aliases: ["some-bespoke-alias"],
-          tier: null,
-        },
-      ])
-    );
-
-    req.body = enterpriseBody();
-    req.query.wId = workspace.sId;
-
-    await handler(req, res);
-
-    expect(res._getStatusCode()).toBe(400);
-    expect(res._getJSONData().error.message).toContain("no known alias");
-  });
 });
