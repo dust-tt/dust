@@ -225,7 +225,7 @@ function getUserActionFallbackMessage(
   }
 
   const urlPart = conversationUrl
-    ? ` You can continue the conversation here: ${conversationUrl}`
+    ? ` <${conversationUrl}|Continue the conversation>.`
     : "";
 
   return `:hourglass_flowing_sand: _This conversation is waiting for ${actionLabel}.${urlPart}_`;
