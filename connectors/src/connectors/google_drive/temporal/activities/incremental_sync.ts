@@ -21,6 +21,7 @@ import {
   isSharedDriveNotFoundError,
 } from "@connectors/connectors/google_drive/temporal/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
   GoogleDriveConfigModel,
   GoogleDriveFilesModel,
@@ -41,6 +42,17 @@ import { GaxiosError } from "googleapis-common";
 import type { RedisClientType } from "redis";
 
 const PAGE_SIZE = 500;
+// Best effort queued traversal cap: a single folder's direct children are still
+// loaded together. Google Drive folders are assumed to stay below this order of
+// magnitude.
+const UPDATE_PARENTS_QUEUE_MAX_SIZE = 10_000;
+const UPDATE_PARENTS_CONCURRENCY = 8;
+
+type ParentsUpdateQueueItem = {
+  file: GoogleDriveFilesModel;
+  parentIds: string[];
+  skipUpdate: boolean;
+};
 
 export async function incrementalSync(
   connectorId: ModelId,
@@ -393,61 +405,98 @@ async function recurseUpdateParents(
       span?.setTag("connectorId", connector.id);
       span?.setTag("workspaceId", connector.workspaceId);
       span?.setTag("fileId", file.driveFileId);
-      return recurseUpdateParentsInner(connector, file, parentIds, logger);
+      return updateParentsForAllChildren(connector, file, parentIds, logger);
     }
   );
 }
 
-async function recurseUpdateParentsInner(
+async function updateParentsForAllChildren(
   connector: ConnectorResource,
-  file: GoogleDriveFilesModel,
+  baseFile: GoogleDriveFilesModel,
   parentIds: string[],
   logger: Logger
 ) {
-  await heartbeat();
-  const children = await GoogleDriveFilesModel.findAll({
-    where: {
-      connectorId: connector.id,
-      parentId: file.driveFileId,
-      skipReason: null,
-    },
-  });
+  let queue: ParentsUpdateQueueItem[] = [
+    { file: baseFile, parentIds, skipUpdate: false },
+  ];
+  let traversalCursor = 0;
+  let updateCursor = 0;
 
-  logger.info(
-    {
-      fileId: file.driveFileId,
-      parentIds,
-      name: file.name,
-      count: children.length,
-    },
-    "Updating parents recursively"
-  );
+  while (traversalCursor < queue.length) {
+    while (
+      (traversalCursor === updateCursor ||
+        queue.length - updateCursor < UPDATE_PARENTS_QUEUE_MAX_SIZE) &&
+      traversalCursor < queue.length
+    ) {
+      const item = queue[traversalCursor];
+      if (!item) {
+        throw new Error("Unexpected missing Google Drive parent update item.");
+      }
+      traversalCursor += 1;
 
-  // Move updates recurse from the moved folder itself, so `parentIds[0]` is
-  // the current node and only deeper repeats indicate a real parent cycle.
-  if (parentIds.slice(1).includes(file.dustFileId)) {
-    logger.warn(
-      {
-        fileId: file.driveFileId,
-        parentIds,
-        name: file.name,
-        count: children.length,
+      await heartbeat();
+
+      const { file, parentIds } = item;
+      if (parentIds.slice(1).includes(file.dustFileId)) {
+        item.skipUpdate = true;
+        logger.warn(
+          {
+            fileId: file.driveFileId,
+            parentIds,
+            name: file.name,
+          },
+          "Infinite parent loop."
+        );
+        continue;
+      }
+
+      const children = await GoogleDriveFilesModel.findAll({
+        where: {
+          connectorId: connector.id,
+          parentId: file.driveFileId,
+          skipReason: null,
+        },
+      });
+
+      logger.info(
+        {
+          fileId: file.driveFileId,
+          parentIds,
+          name: file.name,
+          count: children.length,
+        },
+        "Updating parents recursively"
+      );
+
+      queue.push(
+        ...children.map((child) => ({
+          file: child,
+          parentIds: [child.dustFileId, ...parentIds],
+          skipUpdate: false,
+        }))
+      );
+    }
+
+    const updateBatch = queue
+      .slice(updateCursor, traversalCursor)
+      .filter((item) => !item.skipUpdate);
+    updateCursor = traversalCursor;
+
+    await concurrentExecutor(
+      updateBatch,
+      async ({ file, parentIds }) => {
+        await heartbeat();
+        await updateParentsField(connector, file, parentIds, logger);
       },
-      "Infinite parent loop."
+      {
+        concurrency: UPDATE_PARENTS_CONCURRENCY,
+        onBatchComplete: heartbeat,
+      }
     );
-    return;
+    queue = queue.slice(updateCursor);
+    traversalCursor -= updateCursor;
+    updateCursor = 0;
   }
-
-  for (const child of children) {
-    await recurseUpdateParentsInner(
-      connector,
-      child,
-      [child.dustFileId, ...parentIds],
-      logger
-    );
-  }
-
-  await updateParentsField(connector, file, parentIds, logger);
 }
 
 async function alreadySeenAndIgnored({

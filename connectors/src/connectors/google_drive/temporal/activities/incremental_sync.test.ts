@@ -408,4 +408,114 @@ describe("google drive incremental sync folder metadata", () => {
     expect(folder).toBeNull();
     expect(mocks.upsertDataSourceFolder).not.toHaveBeenCalled();
   });
+
+  it("updates descendant parents when an existing folder is moved", async () => {
+    const suffix = randomUUID();
+    const folderId = `folder-${suffix}`;
+    const oldParentId = `old-parent-${suffix}`;
+    const newParentId = `new-parent-${suffix}`;
+    const rootId = `root-${suffix}`;
+    const childFolderId = `child-folder-${suffix}`;
+    const childDocumentId = `child-document-${suffix}`;
+    const connector = await makeConnector(suffix);
+
+    await GoogleDriveFilesModel.create({
+      connectorId: connector.id,
+      driveFileId: folderId,
+      dustFileId: `gdrive-${folderId}`,
+      mimeType: "application/vnd.google-apps.folder",
+      name: "Board Presentations",
+      parentId: oldParentId,
+    });
+    await GoogleDriveFilesModel.create({
+      connectorId: connector.id,
+      driveFileId: childFolderId,
+      dustFileId: `gdrive-${childFolderId}`,
+      mimeType: "application/vnd.google-apps.folder",
+      name: "Q1",
+      parentId: folderId,
+    });
+    await GoogleDriveFilesModel.create({
+      connectorId: connector.id,
+      driveFileId: childDocumentId,
+      dustFileId: `gdrive-${childDocumentId}`,
+      mimeType: "application/pdf",
+      name: "Roadmap.pdf",
+      parentId: childFolderId,
+    });
+
+    const driveFile = makeGoogleDriveFolder({
+      id: folderId,
+      name: "Board Presentations",
+      parent: newParentId,
+    });
+
+    mocks.changeList.mockResolvedValue({
+      data: {
+        changes: [makeFolderChange(driveFile)],
+        newStartPageToken: "sync-token",
+        nextPageToken: undefined,
+      },
+      status: 200,
+    });
+    mocks.driveObjectToDustType.mockResolvedValue(driveFile);
+    mocks.getFileParentsMemoized.mockResolvedValue([
+      folderId,
+      newParentId,
+      rootId,
+    ]);
+
+    await incrementalSync(
+      connector.id,
+      "drive-1",
+      false,
+      Date.now(),
+      "page-token"
+    );
+
+    const movedFolder = await GoogleDriveFilesModel.findOne({
+      where: {
+        connectorId: connector.id,
+        driveFileId: folderId,
+      },
+    });
+
+    expect(movedFolder?.parentId).toBe(newParentId);
+    expect(mocks.upsertDataSourceFolder).toHaveBeenCalledWith(
+      expect.objectContaining({
+        folderId: `gdrive-${folderId}`,
+        parentId: `gdrive-${newParentId}`,
+        parents: [
+          `gdrive-${folderId}`,
+          `gdrive-${newParentId}`,
+          `gdrive-${rootId}`,
+        ],
+      })
+    );
+    expect(mocks.upsertDataSourceFolder).toHaveBeenCalledWith(
+      expect.objectContaining({
+        folderId: `gdrive-${childFolderId}`,
+        parentId: `gdrive-${folderId}`,
+        parents: [
+          `gdrive-${childFolderId}`,
+          `gdrive-${folderId}`,
+          `gdrive-${newParentId}`,
+          `gdrive-${rootId}`,
+        ],
+      })
+    );
+    expect(mocks.updateDataSourceDocumentParents).toHaveBeenCalledWith(
+      expect.objectContaining({
+        documentId: `gdrive-${childDocumentId}`,
+        parentId: `gdrive-${childFolderId}`,
+        parents: [
+          `gdrive-${childDocumentId}`,
+          `gdrive-${childFolderId}`,
+          `gdrive-${folderId}`,
+          `gdrive-${newParentId}`,
+          `gdrive-${rootId}`,
+        ],
+      })
+    );
+  });
 });
