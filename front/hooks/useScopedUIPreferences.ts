@@ -6,7 +6,7 @@ const SCOPED_UI_PREFERENCES_KEY_PREFIX = "scopedUIPreferences";
 
 const scopedUIPreferencesSchemaByScope = {
   projectUI: z.object({
-    tab: z.enum(["conversations", "tasks", "knowledge", "settings", "alpha"]),
+    tab: z.enum(["conversations", "tasks", "files", "settings", "alpha"]),
     conversationsFilter: z.enum(["all", "group", "with_me"]),
     tasksOwnerFilter: z
       .unknown()

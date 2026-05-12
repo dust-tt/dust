@@ -38,10 +38,10 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 import {
-  BookOpenIcon,
   ChatBubbleLeftRightIcon,
   CheckIcon,
   Cog6ToothIcon,
+  FolderIcon,
   Spinner,
   Tabs,
   TabsContent,
@@ -314,10 +314,10 @@ export function SpaceConversationsPage() {
               icon={CheckIcon}
             />
             <TabsTrigger
-              value="knowledge"
-              label={compactProjectTabs ? undefined : "Knowledge"}
-              tooltip={compactProjectTabs ? "Knowledge" : undefined}
-              icon={BookOpenIcon}
+              value="files"
+              label={compactProjectTabs ? undefined : "Files"}
+              tooltip={compactProjectTabs ? "Files" : undefined}
+              icon={FolderIcon}
             />
             <TabsTrigger
               value="settings"
@@ -365,7 +365,7 @@ export function SpaceConversationsPage() {
           />
         </TabsContent>
 
-        <TabsContent value="knowledge">
+        <TabsContent value="files">
           <SpaceKnowledgeTab owner={owner} space={spaceInfo} />
         </TabsContent>
 
