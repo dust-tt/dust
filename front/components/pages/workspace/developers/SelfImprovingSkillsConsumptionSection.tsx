@@ -5,6 +5,7 @@ import {
 import { ChartContainer } from "@app/components/charts/ChartContainer";
 import type { LegendItem } from "@app/components/charts/ChartLegend";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
+import { ConsumptionProgressBarWithNumbers } from "@app/components/pages/workspace/developers/ConsumptionProgressBar";
 import {
   useReinforcementDailySpend,
   useSkillsReinforcementSpend,
@@ -385,12 +386,12 @@ export function SelfImprovingSkillsConsumptionSection({
           <Spinner />
         </div>
       ) : (
-        <div className="text-sm text-foreground dark:text-foreground-night">
-          <span className="font-semibold">${totalSpentDollars.toFixed(2)}</span>{" "}
-          spent out of{" "}
-          <span className="font-semibold">${capDollars.toFixed(2)}</span>{" "}
-          monthly cap
-        </div>
+        <ConsumptionProgressBarWithNumbers
+          consumed={totalSpentDollars}
+          total={capDollars}
+          consumedFormatted={`$${totalSpentDollars.toFixed(2)}`}
+          totalFormatted={`$${capDollars.toFixed(2)}`}
+        />
       )}
       <ReinforcementSpendChart owner={owner} capMicroUsd={capMicroUsd} />
     </Page.Vertical>
