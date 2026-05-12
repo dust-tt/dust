@@ -35,12 +35,22 @@ import type { GoogleDriveObjectType, ModelId } from "@connectors/types";
 import { FILE_ATTRIBUTES_TO_FETCH, WithRetriesError } from "@connectors/types";
 import { redisClient } from "@connectors/types/shared/redis_client";
 import { uuid4 } from "@temporalio/workflow";
+import tracer from "dd-trace";
 import type { drive_v3 } from "googleapis";
 import type { GaxiosResponse } from "googleapis-common";
 import { GaxiosError } from "googleapis-common";
 import type { RedisClientType } from "redis";
 
 const PAGE_SIZE = 500;
+const UPDATE_PARENTS_BATCH_SIZE = 1_000;
+const UPDATE_PARENTS_CONCURRENCY = 8;
+
+type ParentsUpdate = {
+  file: GoogleDriveFilesModel;
+  parentIds: string[];
+};
+
+type EnqueueParentsUpdate = (update: ParentsUpdate) => Promise<void>;
 
 export async function incrementalSync(
   connectorId: ModelId,
@@ -384,24 +394,46 @@ async function recurseUpdateParents(
   parentIds: string[],
   logger: Logger
 ) {
-  const updateBatch: { file: GoogleDriveFilesModel; parentIds: string[] }[] =
-    [];
-  const shouldUpdateInitialFolder = await recurseUpdateParentsInner(
-    connector,
-    file,
-    parentIds,
-    logger,
-    updateBatch,
-    true
+  return tracer.trace(
+    "gdrive",
+    {
+      resource: "recurseUpdateParents",
+    },
+    async (span) => {
+      span?.setTag("connectorId", connector.id);
+      span?.setTag("workspaceId", connector.workspaceId);
+      span?.setTag("fileId", file.driveFileId);
+
+      let updateBatch: ParentsUpdate[] = [];
+      const flushUpdateBatch = async () => {
+        await updateParentsFieldForBatch(connector, updateBatch, logger);
+        updateBatch = [];
+      };
+      const enqueueUpdate = async (update: ParentsUpdate) => {
+        if (updateBatch.length >= UPDATE_PARENTS_BATCH_SIZE) {
+          await flushUpdateBatch();
+        }
+        updateBatch.push(update);
+      };
+
+      const shouldUpdateInitialFolder = await recurseUpdateParentsInner(
+        connector,
+        file,
+        parentIds,
+        logger,
+        enqueueUpdate,
+        true
+      );
+      await flushUpdateBatch();
+
+      if (!shouldUpdateInitialFolder) {
+        return;
+      }
+
+      await heartbeat();
+      await updateParentsField(connector, file, parentIds, logger);
+    }
   );
-  await updateParentsFieldForBatch(connector, updateBatch, logger);
-
-  if (!shouldUpdateInitialFolder) {
-    return;
-  }
-
-  await heartbeat();
-  await updateParentsField(connector, file, parentIds, logger);
 }
 
 async function recurseUpdateParentsInner(
@@ -409,7 +441,7 @@ async function recurseUpdateParentsInner(
   file: GoogleDriveFilesModel,
   parentIds: string[],
   logger: Logger,
-  updateBatch: { file: GoogleDriveFilesModel; parentIds: string[] }[],
+  enqueueUpdate: EnqueueParentsUpdate,
   isInitialFolder = false
 ): Promise<boolean> {
   await heartbeat();
@@ -452,17 +484,12 @@ async function recurseUpdateParentsInner(
       child,
       [child.dustFileId, ...parentIds],
       logger,
-      updateBatch
+      enqueueUpdate
     );
   }
 
-  if (updateBatch.length >= 1000) {
-    await updateParentsFieldForBatch(connector, updateBatch, logger);
-    updateBatch.length = 0;
-  }
-
   if (!isInitialFolder) {
-    updateBatch.push({ file, parentIds });
+    await enqueueUpdate({ file, parentIds });
   }
 
   return true;
@@ -470,21 +497,20 @@ async function recurseUpdateParentsInner(
 
 async function updateParentsFieldForBatch(
   connector: ConnectorResource,
-  updateBatch: { file: GoogleDriveFilesModel; parentIds: string[] }[],
+  updateBatch: ParentsUpdate[],
   logger: Logger
 ) {
+  if (updateBatch.length === 0) {
+    return;
+  }
+
   await concurrentExecutor(
     updateBatch,
-    async (update) => {
+    async ({ file, parentIds }) => {
       await heartbeat();
-      return await updateParentsField(
-        connector,
-        update.file,
-        update.parentIds,
-        logger
-      );
+      await updateParentsField(connector, file, parentIds, logger);
     },
-    { concurrency: 8, onBatchComplete: heartbeat }
+    { concurrency: UPDATE_PARENTS_CONCURRENCY, onBatchComplete: heartbeat }
   );
 }
 
