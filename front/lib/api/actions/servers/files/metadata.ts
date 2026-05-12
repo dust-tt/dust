@@ -11,13 +11,69 @@ export const FILES_CAT_ACTION_NAME = "cat" as const;
 export const FILES_GREP_ACTION_NAME = "grep" as const;
 export const FILES_CREATE_ACTION_NAME = "create" as const;
 export const FILES_DELETE_ACTION_NAME = "delete" as const;
+export const FILES_COPY_ACTION_NAME = "copy" as const;
 
 export const CAT_LINES_DEFAULT = 200;
 export const CAT_LINES_MAX = 500;
 export const GREP_MATCHES_MAX = 50;
 export const CREATE_CONTENT_MAX_BYTES = 50 * 1024; // 50 KB (~12K tokens).
 
-export const FILES_TOOLS_METADATA = createToolsRecord({
+// `copy` tool variants. The conversation-only build keeps the description scoped to within-
+// conversation use cases. The project-aware build is registered only in project conversations
+// and adds an example of the cross-scope promotion the agent can perform there.
+const COPY_DESCRIPTION_BASE =
+  "Copy a file between scoped paths, preserving its bytes and content type. " +
+  "Useful for duplicating a file without round-tripping the content through the agent, " +
+  "which keeps binary files (PDFs, images, audio) intact. " +
+  "Overwrites `dest` if it already exists.";
+
+const COPY_CONVERSATION_ONLY_TOOL = {
+  description: COPY_DESCRIPTION_BASE,
+  schema: {
+    source: z
+      .string()
+      .describe(
+        "Scoped path of the file to copy from (e.g. `conversation/report.pdf`)."
+      ),
+    dest: z
+      .string()
+      .describe(
+        "Scoped path of the destination (e.g. `conversation/archive/report.pdf`)."
+      ),
+  },
+  stake: "never_ask" as const,
+  displayLabels: {
+    running: "Copying file",
+    done: "Copied file",
+  },
+};
+
+const COPY_PROJECT_AWARE_TOOL = {
+  description:
+    `${COPY_DESCRIPTION_BASE} ` +
+    "Since this conversation belongs to a project, you can also copy between scopes — " +
+    "e.g. `conversation/report.pdf` -> `project/report.pdf` to promote a file into the project, " +
+    "or `project/spec.md` -> `conversation/spec.md` to pull it into the conversation.",
+  schema: {
+    source: z
+      .string()
+      .describe(
+        "Scoped path of the file to copy from (e.g. `conversation/report.pdf` or `project/spec.md`)."
+      ),
+    dest: z
+      .string()
+      .describe(
+        "Scoped path of the destination (e.g. `project/report.pdf` or `conversation/archive/report.pdf`)."
+      ),
+  },
+  stake: "never_ask" as const,
+  displayLabels: {
+    running: "Copying file",
+    done: "Copied file",
+  },
+};
+
+const FILES_TOOLS_COMMON_METADATA = {
   [FILES_LIST_ACTION_NAME]: {
     description:
       "List all files in the conversation file system. " +
@@ -30,7 +86,7 @@ export const FILES_TOOLS_METADATA = createToolsRecord({
       "a transcript for audio, or extracted text for PDFs and other documents. " +
       `Read the sibling with \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_CAT_ACTION_NAME)}\` to access the content of binary sources.`,
     schema: {},
-    stake: "never_ask",
+    stake: "never_ask" as const,
     displayLabels: {
       running: "Listing available files",
       done: "Listed available files",
@@ -67,7 +123,7 @@ export const FILES_TOOLS_METADATA = createToolsRecord({
           `Maximum number of lines to return (default ${CAT_LINES_DEFAULT}, max ${CAT_LINES_MAX})`
         ),
     },
-    stake: "never_ask",
+    stake: "never_ask" as const,
     displayLabels: {
       running: "Reading file",
       done: "Read file",
@@ -91,7 +147,7 @@ export const FILES_TOOLS_METADATA = createToolsRecord({
           "Regular expression to search for (case-sensitive; use `(?i)` prefix for case-insensitive)"
         ),
     },
-    stake: "never_ask",
+    stake: "never_ask" as const,
     displayLabels: {
       running: "Searching file",
       done: "Searched file",
@@ -117,7 +173,7 @@ export const FILES_TOOLS_METADATA = createToolsRecord({
           "MIME content type (e.g. `text/plain`, `application/json`, `text/csv`, `text/markdown`)"
         ),
     },
-    stake: "never_ask",
+    stake: "never_ask" as const,
     displayLabels: {
       running: "Writing file",
       done: "Write file",
@@ -134,12 +190,22 @@ export const FILES_TOOLS_METADATA = createToolsRecord({
           `Scoped file path as returned by \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_LIST_ACTION_NAME)}\` (e.g. \`conversation/output.json\`)`
         ),
     },
-    stake: "medium",
+    stake: "medium" as const,
     displayLabels: {
       running: "Deleting file",
       done: "Deleted file",
     },
   },
+};
+
+export const FILES_TOOLS_METADATA = createToolsRecord({
+  ...FILES_TOOLS_COMMON_METADATA,
+  [FILES_COPY_ACTION_NAME]: COPY_CONVERSATION_ONLY_TOOL,
+});
+
+export const FILES_TOOLS_METADATA_WITH_PROJECT = createToolsRecord({
+  ...FILES_TOOLS_COMMON_METADATA,
+  [FILES_COPY_ACTION_NAME]: COPY_PROJECT_AWARE_TOOL,
 });
 
 export const FILES_SERVER = {
