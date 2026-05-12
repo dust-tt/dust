@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS "agent_step_content_tool_executions" (
     "id" bigserial,
     "createdAt" timestamp WITH time zone NOT NULL,
     "updatedAt" timestamp WITH time zone NOT NULL,
-    "conversationId" bigint NOT NULL REFERENCES "conversation" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
+    "conversationId" bigint NOT NULL REFERENCES "conversations" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
     "agentMessageId" bigint NOT NULL REFERENCES "agent_messages" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
     "agentMCPActionId" bigint NOT NULL REFERENCES "agent_mcp_actions" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
     "stepContentId" bigint NOT NULL REFERENCES "agent_step_contents" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
