@@ -144,9 +144,8 @@ export const FILES_TOOLS_METADATA = createToolsRecord({
   [FILES_COPY_ACTION_NAME]: {
     description:
       "Copy a file between scoped paths, preserving its bytes and content type. " +
-      "Useful for promoting a conversation file into a project (e.g. `conversation/report.pdf` → " +
-      "`project/report.pdf`) without round-tripping the content through the agent, which keeps " +
-      "binary files (PDFs, images, audio) intact. " +
+      "Useful for duplicating a file without round-tripping the content through the agent, " +
+      "which keeps binary files (PDFs, images, audio) intact. " +
       "Overwrites `dest` if it already exists.",
     schema: {
       source: z
@@ -157,7 +156,7 @@ export const FILES_TOOLS_METADATA = createToolsRecord({
       dest: z
         .string()
         .describe(
-          "Scoped path of the destination (e.g. `project/report.pdf`)."
+          "Scoped path of the destination (e.g. `conversation/archive/report.pdf`)."
         ),
     },
     stake: "never_ask",
