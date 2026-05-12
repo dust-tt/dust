@@ -25,6 +25,7 @@ import type { GetWorkspaceTopAgentsResponse } from "@app/pages/api/w/[wId]/analy
 import type { GetWorkspaceTopUsersResponse } from "@app/pages/api/w/[wId]/analytics/top-users";
 import type { GetWorkspaceUsageMetricsResponse } from "@app/pages/api/w/[wId]/analytics/usage-metrics";
 import type { GetWorkspaceAuthContextResponseType } from "@app/pages/api/w/[wId]/auth-context";
+import type { GetCouponValidateResponseBody } from "@app/pages/api/w/[wId]/coupon/validate";
 import type { GetJoinResponseBody } from "@app/pages/api/w/[wId]/join";
 import type { GetMetronomeContractResponseBody } from "@app/pages/api/w/[wId]/metronome/contract";
 import type { GetMetronomeInvoiceResponseBody } from "@app/pages/api/w/[wId]/metronome/invoice";
@@ -1054,4 +1055,30 @@ export function useCreateCheckoutSession({
   );
 
   return { createSession, isCreating };
+}
+
+export function useValidateCoupon({ workspaceId }: { workspaceId: string }) {
+  const validateCoupon = useCallback(
+    async (
+      code: string
+    ): Promise<
+      | { ok: true; coupon: GetCouponValidateResponseBody["coupon"] }
+      | { ok: false; message: string }
+    > => {
+      const res = await clientFetch(
+        `/api/w/${workspaceId}/coupon/validate?code=${encodeURIComponent(code)}`
+      );
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        const message =
+          body?.error?.message ?? "Invalid or expired coupon code.";
+        return { ok: false, message };
+      }
+      const body = (await res.json()) as GetCouponValidateResponseBody;
+      return { ok: true, coupon: body.coupon };
+    },
+    [workspaceId]
+  );
+
+  return { validateCoupon };
 }
