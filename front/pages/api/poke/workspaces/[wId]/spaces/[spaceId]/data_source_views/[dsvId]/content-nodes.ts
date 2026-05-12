@@ -126,7 +126,7 @@ async function handler(
     });
   }
 
-  const paginationRes = getCursorPaginationParams(req);
+  const paginationRes = getCursorPaginationParams(req.query);
   if (paginationRes.isErr()) {
     return apiError(req, res, {
       status_code: 400,

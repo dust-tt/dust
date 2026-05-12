@@ -195,7 +195,7 @@ async function handler(
     case "GET":
       const messageStartTime = performance.now();
 
-      const paginationRes = getPaginationParams(req, {
+      const paginationRes = getPaginationParams(req.query, {
         defaultLimit: 10,
         defaultOrderColumn: "rank",
         defaultOrderDirection: "desc",
