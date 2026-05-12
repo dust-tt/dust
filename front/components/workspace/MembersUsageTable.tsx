@@ -23,7 +23,11 @@ type RowData = {
 
 type Info = CellContext<RowData, string>;
 
-function CircleProgress({ percentage }: { percentage: number }) {
+interface CircleProgressProps {
+  percentage: number;
+}
+
+function CircleProgress({ percentage }: CircleProgressProps) {
   const size = 16;
   const strokeWidth = 2;
   const radius = (size - strokeWidth) / 2;
@@ -70,7 +74,11 @@ const SEAT_TYPE_ICONS: Record<MembershipSeatType, React.ComponentType> = {
   free: SeatFreeIcon,
 };
 
-function SeatTypeIcon({ seatType }: { seatType: MembershipSeatType | null }) {
+interface SeatTypeIconProps {
+  seatType: MembershipSeatType | null;
+}
+
+function SeatTypeIcon({ seatType }: SeatTypeIconProps) {
   if (!seatType) {
     return null;
   }

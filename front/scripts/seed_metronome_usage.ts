@@ -26,7 +26,7 @@ async function seedMetronomeUsage(execute: boolean): Promise<void> {
   const now = new Date().toISOString();
 
   const events: MetronomeEvent[] = [
-    // 200 AWU of programmatic usage — no user_id required, goes straight to pool
+    // 200 AWU of programmatic usage
     {
       transaction_id: uuidv4(),
       customer_id: DEV_WORKSPACE_SID,
@@ -36,6 +36,7 @@ async function seedMetronomeUsage(execute: boolean): Promise<void> {
         cost_awu: 200,
         is_programmatic_usage: "true",
         is_free_usage: "false",
+        user_id: "unknown",
         api_key_name: "seed-script",
         model_id: "claude-3-5-sonnet-20241022",
         origin: "api",
@@ -44,7 +45,6 @@ async function seedMetronomeUsage(execute: boolean): Promise<void> {
       },
     },
     // 100 AWU of user usage for a synthetic non-seat user
-    // (no seat assignment → overflows directly to workspace pool)
     {
       transaction_id: uuidv4(),
       customer_id: DEV_WORKSPACE_SID,
@@ -54,12 +54,12 @@ async function seedMetronomeUsage(execute: boolean): Promise<void> {
         cost_awu: 100,
         is_programmatic_usage: "false",
         is_free_usage: "false",
-        api_key_name: "",
+        user_id: "seed-pool-user",
+        api_key_name: "unknown",
         model_id: "claude-3-5-sonnet-20241022",
         origin: "chat",
         agent_id: "seed-agent",
         workspace_id: DEV_WORKSPACE_SID,
-        user_id: "seed-pool-user",
       },
     },
   ];
