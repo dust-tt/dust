@@ -1,3 +1,7 @@
+import {
+  ConsumptionProgressBar,
+  ConsumptionProgressBarWithNumbers,
+} from "@app/components/pages/workspace/developers/ConsumptionProgressBar";
 import { BuyCreditDialog } from "@app/components/workspace/BuyCreditDialog";
 import { CreditHistorySheet } from "@app/components/workspace/CreditHistorySheet";
 import { CreditsList, isExpired } from "@app/components/workspace/CreditsList";
@@ -15,7 +19,6 @@ import {
   Button,
   CardIcon,
   ContentMessage,
-  cn,
   ExclamationCircleIcon,
   Hoverable,
   Page,
@@ -30,29 +33,6 @@ function isActive(credit: CreditDisplayData): boolean {
   const isExpired =
     credit.expirationDate !== null && credit.expirationDate <= now;
   return isStarted && !isExpired;
-}
-
-interface ProgressBarProps {
-  consumed: number;
-  total: number;
-}
-
-function ProgressBar({ consumed, total }: ProgressBarProps) {
-  const percentage = total > 0 ? Math.min((consumed / total) * 100, 100) : 0;
-
-  return (
-    <div className="h-2 w-full overflow-hidden rounded-full bg-muted-foreground/10 dark:bg-muted-foreground-night/10">
-      <div
-        className={cn(
-          "h-full rounded-full transition-all",
-          percentage > 80
-            ? "bg-warning-700"
-            : "bg-primary dark:bg-primary-night"
-        )}
-        style={{ width: `${percentage}%` }}
-      />
-    </div>
-  );
 }
 
 interface CreditCategoryBarProps {
@@ -96,7 +76,7 @@ function CreditCategoryBar({
           {isCap ? " cap" : ""}
         </span>
       </div>
-      <ProgressBar consumed={consumed} total={total} />
+      <ConsumptionProgressBar consumed={consumed} total={total} />
       {renewalDate && <Page.P variant="secondary">{renewalDate}</Page.P>}
     </Page.Vertical>
   );
@@ -190,16 +170,12 @@ function UsageSection({
       </div>
 
       {/* Total Consumed */}
-      <Page.Vertical>
-        <Page.P variant="secondary">Total consumed</Page.P>
-        <div className="flex items-baseline gap-2">
-          <span className="text-5xl font-bold">{totalConsumedFormatted}</span>
-          <span className="text-2xl text-muted-foreground dark:text-muted-foreground-night">
-            /{totalCreditsFormatted}
-          </span>
-        </div>
-        <ProgressBar consumed={totalConsumed} total={totalCredits} />
-      </Page.Vertical>
+      <ConsumptionProgressBarWithNumbers
+        consumed={totalConsumed}
+        total={totalCredits}
+        consumedFormatted={totalConsumedFormatted}
+        totalFormatted={totalCreditsFormatted}
+      />
 
       {/* Credit Categories */}
       <div className="grid grid-cols-3 gap-8 border-t border-border pt-6 dark:border-border-night">
