@@ -66,6 +66,73 @@ describe("SelfImprovingSkillsUsageResource", () => {
     expect(sum).toBe(300);
   });
 
+  it("returns daily spend with markup aggregated by calendar day", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    const { authenticator: otherAuthenticator } = await createResourceTest({
+      role: "admin",
+    });
+
+    const skill = await SkillFactory.create(authenticator, {
+      name: "Daily Spend Skill",
+    });
+
+    await SelfImprovingSkillsUsageResource.bulkCreate(authenticator, [
+      {
+        createdAt: new Date("2026-03-10T08:00:00.000Z"),
+        skillId: skill.id,
+        conversationId: null,
+        priceMicroUsd: 100,
+      },
+      {
+        createdAt: new Date("2026-03-10T20:00:00.000Z"),
+        skillId: skill.id,
+        conversationId: null,
+        priceMicroUsd: 200,
+      },
+      {
+        createdAt: new Date("2026-03-12T10:00:00.000Z"),
+        skillId: skill.id,
+        conversationId: null,
+        priceMicroUsd: 500,
+      },
+      // Outside the queried range.
+      {
+        createdAt: new Date("2026-03-09T23:59:59.000Z"),
+        skillId: skill.id,
+        conversationId: null,
+        priceMicroUsd: 999,
+      },
+    ]);
+
+    // Other workspace — should be excluded.
+    const otherSkill = await SkillFactory.create(otherAuthenticator, {
+      name: "Other WS Skill",
+    });
+    await SelfImprovingSkillsUsageResource.bulkCreate(otherAuthenticator, [
+      {
+        createdAt: new Date("2026-03-10T12:00:00.000Z"),
+        skillId: otherSkill.id,
+        conversationId: null,
+        priceMicroUsd: 9999,
+      },
+    ]);
+
+    const result =
+      await SelfImprovingSkillsUsageResource.getDailySpendMicroUsdWithMarkup(
+        authenticator,
+        {
+          startDate: new Date("2026-03-10T00:00:00.000Z"),
+          endDate: new Date("2026-03-15T00:00:00.000Z"),
+        }
+      );
+
+    expect(result.get("2026-03-10")).toBe(300 * MARKUP_MULTIPLIER);
+    expect(result.has("2026-03-11")).toBe(false);
+    expect(result.get("2026-03-12")).toBe(500 * MARKUP_MULTIPLIER);
+    expect(result.has("2026-03-09")).toBe(false);
+    expect(result.size).toBe(2);
+  });
+
   it("sums usage after a date by skill", async () => {
     const { authenticator } = await createResourceTest({ role: "admin" });
     const skill = await SkillFactory.create(authenticator, {
