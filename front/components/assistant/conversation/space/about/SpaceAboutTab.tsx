@@ -178,7 +178,7 @@ export function SpaceAboutTab({
     const newIsPublic = !isPublic;
     const title = newIsPublic ? "Switch to public?" : "Switch to restricted?";
     const message = newIsPublic
-      ? "Everyone in the workspace will be able to see and join this project."
+      ? "All workspace members will be able to join and see everything in this project — including existing conversations and files."
       : "Access will be limited to invited members only.";
 
     const confirmed = await confirm({

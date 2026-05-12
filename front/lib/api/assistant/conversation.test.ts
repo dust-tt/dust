@@ -668,6 +668,20 @@ describe("retryAgentMessage", () => {
             `Failed to add user to project space group: ${addRes.error.message}`
           );
         }
+
+        const secondProjectMember = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, secondProjectMember, {
+          role: "user",
+        });
+        const addSecondRes = await projectSpaceGroup.dangerouslyAddMember(
+          internalAdminAuth,
+          { user: secondProjectMember.toJSON() }
+        );
+        if (addSecondRes.isErr()) {
+          throw new Error(
+            `Failed to add second user to project space group: ${addSecondRes.error.message}`
+          );
+        }
       }
 
       if (anotherProjectSpaceGroup) {
@@ -745,7 +759,7 @@ describe("retryAgentMessage", () => {
       vi.clearAllMocks();
     });
 
-    it("should return error when agent is restricted by space usage in project conversation", async () => {
+    it("should return error when agent is restricted by space usage in project conversation with more than one manual member on that project", async () => {
       const result = await retryAgentMessage(auth, {
         conversation: projectConversation,
         message: projectAgentMessage,
@@ -2586,6 +2600,20 @@ describe("postUserMessage", () => {
         if (addRes.isErr()) {
           throw new Error(
             `Failed to add user to project space: ${addRes.error.message}`
+          );
+        }
+
+        const secondProjectMember = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, secondProjectMember, {
+          role: "user",
+        });
+        const addSecondRes = await projectSpaceGroup.dangerouslyAddMember(
+          internalAdminAuth,
+          { user: secondProjectMember.toJSON() }
+        );
+        if (addSecondRes.isErr()) {
+          throw new Error(
+            `Failed to add second user to project space: ${addSecondRes.error.message}`
           );
         }
       }
