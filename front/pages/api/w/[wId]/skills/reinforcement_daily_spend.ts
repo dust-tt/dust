@@ -36,10 +36,13 @@ async function handler(
       const period = await getCurrentPeriod(auth);
 
       const dailyMap =
-        await SelfImprovingSkillsUsageResource.getDailySpendMicroUsd(auth, {
-          startDate: period.cycleStart,
-          endDate: period.cycleEnd,
-        });
+        await SelfImprovingSkillsUsageResource.getDailySpendMicroUsdWithMarkup(
+          auth,
+          {
+            startDate: period.cycleStart,
+            endDate: period.cycleEnd,
+          }
+        );
 
       const dailySpendMicroUsd: Record<string, number> = {};
       for (const [day, spend] of dailyMap) {

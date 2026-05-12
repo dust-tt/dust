@@ -173,7 +173,7 @@ export class SelfImprovingSkillsUsageResource extends BaseResource<SelfImproving
    * Each entry maps an ISO date string ("YYYY-MM-DD") to the summed spend in
    * micro-USD for that day. Days with no spend are omitted.
    */
-  static async getDailySpendMicroUsd(
+  private static async getDailySpendMicroUsd(
     auth: Authenticator,
     {
       startDate,
@@ -188,7 +188,7 @@ export class SelfImprovingSkillsUsageResource extends BaseResource<SelfImproving
       Sequelize.cast(Sequelize.col("createdAt"), "TIMESTAMPTZ")
     );
 
-    const rows = await this.model.findAll({
+    const rows = (await this.model.findAll({
       attributes: [
         [dayExpr, "day"],
         [Sequelize.fn("SUM", Sequelize.col("priceMicroUsd")), "priceMicroUsd"],
@@ -203,12 +203,22 @@ export class SelfImprovingSkillsUsageResource extends BaseResource<SelfImproving
       group: [dayExpr],
       order: [[dayExpr, "ASC"]],
       raw: true,
-    });
+    })) as unknown as { day: string; priceMicroUsd: string }[];
+
+    return new Map(rows.map((row) => [row.day, Number(row.priceMicroUsd)]));
+  }
+
+  static async getDailySpendMicroUsdWithMarkup(
+    auth: Authenticator,
+    params: {
+      startDate: Date;
+      endDate: Date;
+    }
+  ): Promise<Map<string, number>> {
+    const raw = await this.getDailySpendMicroUsd(auth, params);
 
     return new Map(
-      (rows as unknown as { day: string; priceMicroUsd: string }[]).map(
-        (row) => [row.day, Number(row.priceMicroUsd)]
-      )
+      [...raw.entries()].map(([day, value]) => [day, value * MARKUP_MULTIPLIER])
     );
   }
 

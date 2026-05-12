@@ -66,7 +66,7 @@ describe("SelfImprovingSkillsUsageResource", () => {
     expect(sum).toBe(300);
   });
 
-  it("returns daily spend aggregated by calendar day", async () => {
+  it("returns daily spend with markup aggregated by calendar day", async () => {
     const { authenticator } = await createResourceTest({ role: "admin" });
     const { authenticator: otherAuthenticator } = await createResourceTest({
       role: "admin",
@@ -117,17 +117,18 @@ describe("SelfImprovingSkillsUsageResource", () => {
       },
     ]);
 
-    const result = await SelfImprovingSkillsUsageResource.getDailySpendMicroUsd(
-      authenticator,
-      {
-        startDate: new Date("2026-03-10T00:00:00.000Z"),
-        endDate: new Date("2026-03-15T00:00:00.000Z"),
-      }
-    );
+    const result =
+      await SelfImprovingSkillsUsageResource.getDailySpendMicroUsdWithMarkup(
+        authenticator,
+        {
+          startDate: new Date("2026-03-10T00:00:00.000Z"),
+          endDate: new Date("2026-03-15T00:00:00.000Z"),
+        }
+      );
 
-    expect(result.get("2026-03-10")).toBe(300);
+    expect(result.get("2026-03-10")).toBe(300 * MARKUP_MULTIPLIER);
     expect(result.has("2026-03-11")).toBe(false);
-    expect(result.get("2026-03-12")).toBe(500);
+    expect(result.get("2026-03-12")).toBe(500 * MARKUP_MULTIPLIER);
     expect(result.has("2026-03-09")).toBe(false);
     expect(result.size).toBe(2);
   });
